@@ -4,7 +4,7 @@ First principles describe what should stay true. Patterns describe moves that te
 
 This is a field guide, not a maturity model. Start with the pattern that removes the most repeated friction from the next run.
 
-Some patterns use guides and sensors language. Guides shape work before action. Sensors make outcomes visible after action. In this repo, both belong to the engineering harness only when they improve the project-side loop for booting, interacting with, observing, validating, or improving the product.
+Some patterns use guides and sensors language. Guides shape work before action. Sensors make outcomes visible after action. This phrasing follows Birgitta Böckeler’s [“Harness engineering for coding agent users”](https://martinfowler.com/articles/harness-engineering.html). In this repo, both belong to the engineering harness only when they improve the project-side loop for booting, interacting with, observing, validating, or improving the product.
 
 ## Pattern 1. Classify the failure before changing the model
 
@@ -80,17 +80,17 @@ Minimal version: for every active feature, record behaviour, state, verification
 
 Watch for: status fields that drift away from reality, or feature lists that become wishlists without verification commands.
 
-## Pattern 7. Let the agent propose done, then let the harness decide done
+## Pattern 7. Route done to checks or human judgement
 
 Agents are prone to premature victory. They often produce a plausible summary before the system has actually proven the behaviour.
 
 A good termination gate is layered. Start with cheap checks such as format, lint, typecheck, and build. Then run targeted tests for the changed behaviour. Then prove startup still works. Then run a smoke or end-to-end scenario where the risk justifies it. Finally, capture evidence, update progress, clean up intentional artefacts, and leave the next session able to start.
 
-The agent can report what it believes is complete. The harness should decide whether done has been reached.
+The agent can report what it believes is complete, but its confidence is not the verdict. If the completion contract is executable, the harness should decide with checks. If the completion contract is not executable, the harness should route the unresolved judgement to a human with enough evidence to decide.
 
-Minimal version: define a done command or checklist that includes static checks, runtime proof, evidence, and clean-state handoff.
+Minimal version: define a done command or checklist that separates executable checks from human judgement items, then require evidence for both.
 
-Watch for: accepting summaries as evidence, or treating unit tests as sufficient when the real failure mode is startup, integration, rendering, hydration, permissions, data, or side effects.
+Watch for: accepting summaries as evidence, pretending automation decided a non-executable product judgement, or treating unit tests as sufficient when the real failure mode is startup, integration, rendering, hydration, permissions, data, or side effects.
 
 ## Pattern 8. Observe the process, not only the product
 
@@ -135,6 +135,8 @@ CLIs work unusually well as harness surfaces because agents already know how to 
 A good CLI documents what is possible without forcing the agent to load a large manual into context. Command names, help text, subcommands, flags, examples, exit codes, and non-interactive modes let an agent discover the safe path incrementally. The CLI becomes a navigable surface: ask for help, choose a command, run a dry run, read the result, then move to the next supported action.
 
 This does not mean the harness is only a CLI. The harness still includes fixtures, docs, checks, state, workflows, observability, and review paths. The CLI is often the best front door because it makes those pieces callable and discoverable.
+
+The CLI also does not need to reimplement the world. It can wrap existing build scripts, test runners, package commands, seed scripts, diagnostics, and deployment checks. Its job is to make the supported path easy to find and run, not to replace every tool already working underneath it.
 
 Minimal version: provide one top-level command with useful help text, obvious subcommands, and examples for boot, validate, doctor, seed, and status.
 

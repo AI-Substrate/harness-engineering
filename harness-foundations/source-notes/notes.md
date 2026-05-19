@@ -243,4 +243,4 @@ Handling: use for agent-harness boundary calibration and for engineering-harness
 
 Type: public terminology calibration for the phrase “agent harness”.
 
-Handling: use only as source discovery and vocabulary calibration. Verify original public URLs before citation. Do not cite the research intermediary.
+Handling: use only verified original public URLs for citation and vocabulary calibration.

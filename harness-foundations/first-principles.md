@@ -16,7 +16,7 @@ A model runtime can coordinate work, but only the project-side harness can prove
 
 #### 4. The harness is a productised development surface
 
-The harness is a productised development surface, not a separate installable product; it is the repo-local commands, fixtures, docs, checks, state, workflows, and review paths every future feature, experiment, human, and agent passes through. A CLI often works well as the front door to that surface because it is explorable, scriptable, and cheap for agents to discover without loading the whole project into context.
+The harness is a productised development surface, not a separate installable product; it is the repo-local commands, fixtures, docs, checks, state, workflows, and review paths every future feature, experiment, human, and agent passes through. A CLI often works well as the front door to that surface because it is explorable, scriptable, and cheap for agents to discover without loading the whole project into context. The harness can wrap existing scripts and tools rather than reimplementing them; its value is often the focused façade that makes the supported path obvious.
 
 #### 5. Harness engineering is not a silver bullet
 
@@ -24,7 +24,7 @@ Engineering fundamentals do not change: harness engineering amplifies discipline
 
 #### 6. Harnessability is a property of the codebase
 
-Some products, especially brownfield systems, must be changed before they can be operated effectively through a harness.
+Some products, especially brownfield systems, must be changed before they can be operated effectively through a harness. For related industry framing on harnessability, see Birgitta Böckeler’s [“Harness engineering for coding agent users”](https://martinfowler.com/articles/harness-engineering.html).
 
 #### 7. A harness is an interface to complexity
 
@@ -124,17 +124,17 @@ The harness may consume domain contracts, but it should not silently become part
 
 ## Verification and completion control
 
-#### 27. Definition of Done must be machine-verifiable
+#### 27. Definition of Done must separate checks from judgement
 
-Completion criteria should be executable checks such as tests, lint, type checks, builds, startup checks, and behavioural acceptance tests.
+Executable completion criteria should be machine-verifiable through tests, lint, type checks, builds, startup checks, and behavioural acceptance tests. Non-executable criteria should be routed to a human with the evidence needed to decide.
 
 #### 28. Agent confidence is not completion evidence
 
 The harness must close the verification gap between what the agent claims and what the system actually does.
 
-#### 29. Completion belongs to the harness, not the agent
+#### 29. Completion belongs to evidence, not agent confidence
 
-The agent can report progress, but the harness should independently decide whether the work is done.
+The agent can report progress, but done must be decided outside the agent’s confidence. Where the completion contract is executable, the harness should decide with checks. Where the contract is not executable, the harness should route unresolved judgement to a human with evidence instead of pretending automation decided.
 
 #### 30. Termination should be layered
 
