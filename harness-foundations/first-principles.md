@@ -14,9 +14,9 @@ Runtime capabilities like tools, permissions, memory, orchestration, and session
 
 A model runtime can coordinate work, but only the project-side harness can prove the actual software behaves correctly.
 
-#### 4. The harness is the product
+#### 4. The harness is a productised development surface
 
-Development infrastructure is not scaffolding; it is the product surface every future feature, experiment, human, and agent passes through.
+The harness is a productised development surface, not a separate installable product; it is the repo-local commands, fixtures, docs, checks, state, workflows, and review paths every future feature, experiment, human, and agent passes through. A CLI often works well as the front door to that surface because it is explorable, scriptable, and cheap for agents to discover without loading the whole project into context.
 
 #### 5. Harness engineering is not a silver bullet
 

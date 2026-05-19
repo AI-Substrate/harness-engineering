@@ -4,6 +4,8 @@ First principles describe what should stay true. Patterns describe moves that te
 
 This is a field guide, not a maturity model. Start with the pattern that removes the most repeated friction from the next run.
 
+Some patterns use guides and sensors language. Guides shape work before action. Sensors make outcomes visible after action. In this repo, both belong to the engineering harness only when they improve the project-side loop for booting, interacting with, observing, validating, or improving the product.
+
 ## Pattern 1. Classify the failure before changing the model
 
 When an agent run fails, do not start by assuming the model was too weak. First ask which layer of the harness failed.
@@ -126,7 +128,19 @@ Minimal version: ask the magic-wand question at the end of meaningful agent runs
 
 Watch for: retrospectives becoming diaries. The value is not the number of notes. The value is how many recurring frictions become encoded fixes.
 
-## Pattern 11. Return structured evidence, not logs to scrape
+## Pattern 11. Make the CLI explorable
+
+CLIs work unusually well as harness surfaces because agents already know how to inspect and operate them.
+
+A good CLI documents what is possible without forcing the agent to load a large manual into context. Command names, help text, subcommands, flags, examples, exit codes, and non-interactive modes let an agent discover the safe path incrementally. The CLI becomes a navigable surface: ask for help, choose a command, run a dry run, read the result, then move to the next supported action.
+
+This does not mean the harness is only a CLI. The harness still includes fixtures, docs, checks, state, workflows, observability, and review paths. The CLI is often the best front door because it makes those pieces callable and discoverable.
+
+Minimal version: provide one top-level command with useful help text, obvious subcommands, and examples for boot, validate, doctor, seed, and status.
+
+Watch for: hiding important capability in prose-only docs, or making agents guess raw shell sequences that a supported command could expose safely.
+
+## Pattern 12. Return structured evidence, not logs to scrape
 
 A CLI is one of the best harness surfaces because both humans and agents can call it. But a CLI that only prints vague logs still forces interpretation work back onto the operator.
 
@@ -138,7 +152,7 @@ Minimal version: every important command should say what it checked, whether it 
 
 Watch for: agents scraping brittle log text, or commands that fail loudly without explaining the failed layer.
 
-## Pattern 12. Make diagnostics fix-forward
+## Pattern 13. Make diagnostics fix-forward
 
 A good doctor command is executable orientation.
 
@@ -150,7 +164,7 @@ Minimal version: build a doctor command that checks prerequisites and product re
 
 Watch for: dumping raw stack traces without guidance, or hiding the command that would repair the problem.
 
-## Pattern 13. Seed the first real scenario
+## Pattern 14. Seed the first real scenario
 
 A product that boots empty is still hard to understand.
 
@@ -162,7 +176,7 @@ Minimal version: provide one command that creates or resets a safe development f
 
 Watch for: demo data that rots, fixtures that require tribal setup, or seed commands that cannot be rerun safely.
 
-## Pattern 14. Measure the loop, not the person
+## Pattern 15. Measure the loop, not the person
 
 Harness measurement should help the team improve the development loop. It should not become productivity theatre.
 
@@ -174,7 +188,7 @@ Minimal version: track recurring friction and encoded fixes. That is usually mor
 
 Watch for: measuring activity volume, retro volume, or individual productivity as if those were harness value.
 
-## Pattern 15. Change one harness variable at a time when learning
+## Pattern 16. Change one harness variable at a time when learning
 
 When testing whether a harness improvement helped, avoid changing everything at once.
 
@@ -185,3 +199,75 @@ This does not need to be scientific theatre. It is simply a discipline for avoid
 Minimal version: when making a harness change, write the intended effect in one sentence and check for that effect on the next comparable run.
 
 Watch for: attributing every improvement to the model, or every failure to the agent, when the harness changed at the same time.
+
+## Pattern 17. Build a guides-and-sensors matrix
+
+Recurring failures usually need either a guide, a sensor, or both.
+
+A guide shapes the work before action. Examples include task specs, repo instructions, templates, architecture maps, examples, seed scenarios, and command recipes. A sensor makes the result visible after action. Examples include tests, lint, typecheck, health checks, doctor diagnostics, logs, traces, smoke checks, end-to-end checks, review evidence, and process artefacts.
+
+For each repeated failure, ask whether the agent needed better feedforward guidance, better feedback after acting, or a tighter connection between the two. A missing instruction might need a guide. A missed regression might need a sensor. A recurring misuse of a command might need both clearer guidance and a validation check.
+
+Minimal version: make a two-column table for one repeated failure: what guide would have prevented it, and what sensor would have caught it?
+
+Watch for: adding guidance where only a sensor can prove the outcome, or adding sensors where the agent still lacks enough context to make a good first attempt.
+
+## Pattern 18. Tier computational and inferential controls
+
+Not every check should be an AI review, and not every judgement can be reduced to a script.
+
+Computational controls are deterministic checks: tests, type checks, linters, schema validation, dependency rules, architecture rules, health probes, and scripted smoke checks. They are usually cheaper, faster, and more repeatable. Inferential controls are judgement checks: AI-assisted review, evaluator rubrics, semantic assessment, product judgement, accessibility nuance, and human review.
+
+Run computational controls early and often where the contract is expressible. Use inferential controls when meaning, intent, quality, risk, or tradeoff cannot be captured reliably by deterministic tooling. When judgement remains unresolved, the harness should route the question to a human with evidence.
+
+Minimal version: label each validation step as computational, inferential, or human judgement, then make sure cheap deterministic checks run before expensive judgement checks.
+
+Watch for: using an LLM review to compensate for missing tests, or pretending a deterministic check has answered a product judgement question.
+
+## Pattern 19. Regulate one quality dimension at a time
+
+A harness is clearer when it names what kind of quality it is trying to regulate.
+
+Maintainability concerns include style, readability, duplication, dependency hygiene, generated-file boundaries, and ordinary code health. Architecture fitness concerns include boundaries, layering, public contracts, dependency direction, ownership, and coupling. Behaviour concerns include user outcomes, system workflows, domain correctness, runtime side effects, and acceptance examples.
+
+Different dimensions need different guides, sensors, and proof strategies. A linter might regulate maintainability. A dependency rule might regulate architecture. A seeded end-to-end scenario might regulate behaviour. One check rarely proves all three.
+
+Minimal version: before adding a harness check, write which dimension it protects: maintainability, architecture fitness, behaviour, or something else.
+
+Watch for: calling everything validation without saying what risk the validation actually addresses.
+
+## Pattern 20. Approve behavioural scenarios before trusting generated tests
+
+A green generated test suite is not the same as behavioural proof.
+
+For important behaviour, the trusted artefact should be the scenario, fixture, contract, or acceptance example that expresses what the product must actually do. An agent can help draft it, but a human or established product contract should approve the behavioural target before the team trusts generated implementation or generated tests.
+
+This fits naturally with spec-driven development. Put judgement into the expected behaviour first. Then let agents implement, test, and iterate against that approved target.
+
+Minimal version: for any high-risk behaviour, review the scenario or acceptance example before reviewing the code that satisfies it.
+
+Watch for: tests that only prove the implementation matches the agent's assumptions, not the user's required behaviour.
+
+## Pattern 21. Regression-test the harness
+
+A harness is not good because it exists. It is good when it catches known risks and improves future runs.
+
+Keep a small set of known-bad examples, synthetic tasks, stale-instruction cases, broken fixtures, or intentionally failing scenarios. Use them to check whether the harness catches the risks it claims to catch after changes to instructions, tools, validation, docs, fixtures, or workflows.
+
+This is especially useful when sensors appear quiet. No failures might mean the code is good. It might also mean the harness has gone blind.
+
+Minimal version: keep three known-bad cases and rerun them when changing a major guide, sensor, or validation flow.
+
+Watch for: measuring harness value by the number of files or checks instead of whether it catches meaningful failures.
+
+## Pattern 22. Garbage-collect stale harness assumptions
+
+Harnesses decay because projects, teams, models, dependencies, and workflows change.
+
+Periodically scan for stale instructions, duplicated rules, dead fixtures, flaky checks, obsolete commands, drifted docs, noisy warnings, weak sensors, unused templates, and old workarounds that have become folklore. Some items should be deleted. Some should be promoted into executable checks. Some should be rewritten as routing guidance. Some should be retired because the product or toolchain changed.
+
+Garbage collection is not a cleanup chore separate from harness engineering. It is how the harness remains trustworthy and low ceremony.
+
+Minimal version: during a regular review, ask which harness rule, check, fixture, or document no longer earns its keep.
+
+Watch for: treating every accumulated lesson as permanent law. A harness should compound value, not compound clutter.
