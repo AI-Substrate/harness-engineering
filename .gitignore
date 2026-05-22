@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Private research workspace; never commit raw sources or notes
 scratch/
+
+# Local agent tool state (activity logs, etc.)
+.chainglass/
