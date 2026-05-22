@@ -18,7 +18,7 @@
 | D | Write SKILL.md body (Sections 0–4) | [x] | `SKILL.md` (full rewrite) | 18KB; Section 0 preamble + worked-example anchor, Section 1 eight principles with foundation citations, Section 2 14-step table + per-file merge policy, Section 3 21 non-goals, Section 4 5 known-limitations |
 | E | Append README skills paragraph | [x] | `README.md` (EOF, 1 new section) | 3-sentence section linking to SKILL.md + AUTHORING.md |
 | F | Dogfood against two greenfield targets | [—] | (deferred) | **User will dogfood separately in a new repo**; install-flow coherence validated structurally by `check.sh` + spec review |
-| G | Run `check.sh all` + commit | [~] | — | All 4 invariants already pass; commit pending |
+| G | Run `check.sh all` + commit | [x] | 36 files staged in commit `5a097cf` | Commit message Conventional-Commits style; `.fs2/` excluded |
 
 ## Discoveries & learnings
 
@@ -69,4 +69,32 @@
 - **Sign-off impact**: 12 of 15 ACs structurally verified by `check.sh` + spec review; AC-6 (end-to-end invokable), AC-9 wrap-existing branch, AC-13 (neither-runtime degradation), AC-15 (long-running-boot lockdown) cannot be verified without a real install run.
 - **Friction-log placeholder**: when the user dogfoods, the seed friction entry should land in the dogfood target's `harness/state/friction-log.md`, with a one-line back-reference appended to this plan's `decisions.md`.
 
-<!-- Entries appended below as tasks complete. -->
+### Group G — Pre-commit checks + commit (completed)
+
+- `check.sh all` exit 0; all four invariants pass.
+- Staged 36 files: the skill package (21 files), README.md modification, plan folder artifacts (14 files including 8 lenses).
+- Excluded `.fs2/` (flowspace state, untracked artefact; should be added to .gitignore later — friction-log fodder).
+- Commit `5a097cf` landed: `feat: add engineering-harness-setup skill (v0.1)`.
+- Commit message documents Group F deferral and lists which ACs are structurally vs runtime-verified.
+
+## Phase 1 complete
+
+All 7 groups in their final states:
+
+| Group | Status |
+|---|---|
+| A Scaffold | ✅ done |
+| B Lift brief templates | ✅ done |
+| C FR-NEW templates | ✅ done |
+| D SKILL.md body | ✅ done |
+| E README append | ✅ done |
+| F Dogfood | ⏸️ deferred (user-driven, separately) |
+| G Pre-commit + commit | ✅ done |
+
+**Sign-off**:
+- 4/4 invariants pass via `check.sh all`.
+- Structural ACs 1, 2, 3, 4, 5, 7, 8, 10, 11, 12, 14 verified by `check.sh` + spec review.
+- Runtime ACs 6, 9 (wrap-existing branch), 13, 15 await user dogfood.
+- One commit (`5a097cf`); `scratch/` remains ignored.
+
+<!-- Phase 1 complete. -->
