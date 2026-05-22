@@ -1,0 +1,107 @@
+#!/usr/bin/env sh
+# foundations: patterns-that-work#P11
+# Wrap-existing harness CLI shim — v0.1.
+#
+# Materialised by engineering-harness-setup as harness/bin/harness.sh when the
+# user selects the wrap-existing branch. The skill substitutes one block per
+# detected host command. Placeholders:
+#   {{COMMAND_NAME}}             - the wrapper subcommand (e.g. "test")
+#   {{TARGET_COMMAND}}           - the wrapped command (e.g. "pnpm test")
+#   {{ENVELOPE_STATUS_SUCCESS}}  - envelope status on success (typically "pass")
+#   {{ENVELOPE_STATUS_FAILURE}}  - envelope status on failure (typically "fail")
+#
+# Process exit codes: 0/1/2 per FR-04. Envelope shape conforms to
+# harness/templates/cli-envelope.schema.json.
+
+set -e
+
+# json_escape — tiny sed-based escape. Sufficient for command output (newlines,
+# backslashes, quotes, tabs). Not RFC-perfect; if you need rigorous escaping,
+# install jq and replace this helper.
+json_escape() {
+  printf '%s' "$1" \
+    | sed -e 's/\\/\\\\/g' \
+          -e 's/"/\\"/g' \
+          -e ':a;N;$!ba;s/\n/\\n/g' \
+          -e 's/\t/\\t/g' \
+          -e 's/\r/\\r/g'
+}
+
+emit_envelope() {
+  # $1=command, $2=status, $3=data_json, $4=error_code, $5=error_message
+  cmd="$1"; status="$2"; data="$3"; err_code="${4:-}"; err_msg="${5:-}"
+  if [ -n "$err_code" ]; then
+    printf '{"command":"%s","status":"%s","data":%s,"error":{"code":"%s","message":"%s"}}\n' \
+      "$cmd" "$status" "$data" "$err_code" "$(json_escape "$err_msg")"
+  else
+    printf '{"command":"%s","status":"%s","data":%s}\n' \
+      "$cmd" "$status" "$data"
+  fi
+}
+
+subcommand="${1:-}"; shift 2>/dev/null || true
+
+case "$subcommand" in
+  ""|--help|-h|help)
+    cat <<'EOF'
+Repo-local engineering harness CLI (wrap-existing shim).
+
+Usage:
+  ./harness/bin/harness.sh <subcommand> [--dry-run]
+
+Subcommands are generated per detected host tool. Each delegates to the
+corresponding host command and emits a JSON envelope on stdout.
+
+Run `./harness/bin/harness.sh doctor` to see which subcommands are configured.
+EOF
+    exit 0
+    ;;
+
+  doctor)
+    # Generated doctor block — reports the wrapped commands.
+    emit_envelope "doctor" "pass" \
+      '{"wrapper":"sh","wrapped_commands":[{{WRAPPED_COMMANDS_JSON_LIST}}]}'
+    exit 0
+    ;;
+
+  {{COMMAND_NAME}})
+    # Generated per detected host command. Repeat one block per command.
+    if [ "${1:-}" = "--dry-run" ]; then
+      emit_envelope "{{COMMAND_NAME}}" "dry-run" \
+        '{"would_run":"{{TARGET_COMMAND}}"}'
+      exit 0
+    fi
+    output=$({{TARGET_COMMAND}} "$@" 2>&1) && exit_code=0 || exit_code=$?
+    escaped_output=$(json_escape "$output")
+    if [ $exit_code -eq 0 ]; then
+      emit_envelope "{{COMMAND_NAME}}" "{{ENVELOPE_STATUS_SUCCESS}}" \
+        "{\"ran\":\"{{TARGET_COMMAND}}\",\"output\":\"$escaped_output\"}"
+      exit 0
+    else
+      emit_envelope "{{COMMAND_NAME}}" "{{ENVELOPE_STATUS_FAILURE}}" \
+        "{\"ran\":\"{{TARGET_COMMAND}}\",\"exit_code\":$exit_code,\"output\":\"$escaped_output\"}" \
+        "UNKNOWN" "'{{TARGET_COMMAND}}' exited with code $exit_code."
+      exit 1
+    fi
+    ;;
+
+  magic-wand)
+    # Print the canonical magic-wand prompt. Reads from the prompt template if
+    # present so future drift is impossible.
+    if [ -f "$(dirname "$0")/../templates/magic-wand-prompt.md" ]; then
+      grep -F 'If you had a magic wand, what ONE thing' \
+        "$(dirname "$0")/../templates/magic-wand-prompt.md" \
+        | head -1 \
+        | sed 's/^> //'
+    else
+      printf '%s\n' \
+        'If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.'
+    fi
+    exit 0
+    ;;
+
+  *)
+    emit_envelope "$subcommand" "fail" '{}' "INVALID_ARGS" "Unknown subcommand: $subcommand"
+    exit 1
+    ;;
+esac

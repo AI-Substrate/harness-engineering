@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/engineering-harness-setup/harness-config.schema.json",
+  "title": "harness/config.json schema",
+  "description": "Schema for the per-repo harness/config.json. The schema is intentionally permissive about empty strings — an unconfigured command is an improvement opportunity, not a validation failure.",
+  "type": "object",
+  "required": ["version", "harness", "commands", "health", "validation", "paths", "permissions"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version, e.g. \"0.1\". Distinct from the skill version that authored the file.",
+      "pattern": "^[0-9]+(\\.[0-9]+)*$"
+    },
+    "harness": {
+      "type": "object",
+      "required": ["name", "cli_language", "cli_path"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "cli_language": {
+          "type": "string",
+          "enum": ["python", "node", "wrap", ""],
+          "description": "Which CLI implementation the skill installed. \"wrap\" means the wrap-existing branch (harness/bin/harness.sh shim); \"\" means no runtime was detected and the install completed in degraded mode."
+        },
+        "cli_path": {
+          "type": "string",
+          "description": "Path to the installed CLI, e.g. harness/bin/harness.py. Empty when cli_language is \"\"."
+        },
+        "created_by": { "type": "string" }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "description": "Each value is the shell command (possibly empty string). Empty commands are skipped by validate and reported as 'unconfigured' by doctor.",
+      "required": ["install", "build", "test", "lint", "format_check", "run", "smoke"],
+      "additionalProperties": false,
+      "properties": {
+        "install": { "type": "string" },
+        "build": { "type": "string" },
+        "test": { "type": "string" },
+        "lint": { "type": "string" },
+        "format_check": { "type": "string" },
+        "run": { "type": "string" },
+        "smoke": { "type": "string" }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "url": { "type": "string", "description": "Empty string disables the health subcommand." },
+        "expected_status": { "type": "integer", "default": 200 },
+        "timeout_seconds": { "type": "integer", "minimum": 1, "default": 30 }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": ["fast", "quick", "proof"],
+      "additionalProperties": false,
+      "description": "Step lists per validation tier. Each step name must be a key in commands{} OR one of the well-known names: 'doctor', 'health'. 'run' is allowed in lists but is always skipped at execution time (AC-15 long-running-boot lockdown).",
+      "properties": {
+        "fast":  { "type": "array", "items": { "type": "string" }, "default": ["test"] },
+        "quick": { "type": "array", "items": { "type": "string" }, "default": ["doctor", "build", "test"] },
+        "proof": { "type": "array", "items": { "type": "string" }, "default": ["doctor", "build", "test", "health", "smoke"] }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "proofs":    { "type": "string", "default": "harness/proofs" },
+        "state":     { "type": "string", "default": "harness/state" },
+        "templates": { "type": "string", "default": "harness/templates" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Governs the long-running-boot lockdown. allow_run=false (default) means 'run' is dry-run unless --execute is also passed.",
+      "properties": {
+        "allow_run":          { "type": "boolean", "default": false },
+        "allow_health_probe": { "type": "boolean", "default": true }
+      }
+    },
+    "notes": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Free-form notes the skill writes for posterity. Not parsed."
+    }
+  }
+}

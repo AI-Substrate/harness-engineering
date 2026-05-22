@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/engineering-harness-setup/cli-envelope.schema.json",
+  "title": "Engineering harness CLI envelope",
+  "description": "The JSON object every harness CLI subcommand prints on stdout. Process exit codes 0/1/2 are layered on top: 0 when status=pass, 2 when status=unconfigured, 1 otherwise. The error.code enum lets callers branch without parsing the human-readable message.",
+  "type": "object",
+  "required": ["command", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "command": {
+      "type": "string",
+      "description": "Subcommand name as the user invoked it (e.g. \"doctor\", \"validate\", \"onboard\")."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "fail", "unconfigured", "degraded", "dry-run", "running", "skipped", "unknown"],
+      "description": "High-level outcome. pass=worked; fail=ran and failed; unconfigured=cannot run because config missing (exit 2); degraded=ran with reduced guarantees (e.g. neither-runtime install path); dry-run=did not actually execute; running=async still in flight (rare); skipped=intentionally not run; unknown=fallback."
+    },
+    "data": {
+      "type": "object",
+      "description": "Optional structured payload specific to the subcommand. Schema is per-subcommand and documented in templates/cli-command-contract.md. Free-form JSON; never null."
+    },
+    "error": {
+      "type": "object",
+      "description": "Present when status in {fail, unconfigured, degraded}. Absent on pass/dry-run/skipped.",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "UNCONFIGURED",
+            "AUTH_MISSING",
+            "TIMEOUT",
+            "INVALID_ARGS",
+            "DEPENDENCY_MISSING",
+            "HEALTH_CHECK_FAILED",
+            "BUILD_FAILED",
+            "TEST_FAILED",
+            "PLACEHOLDER_LEAK",
+            "UNKNOWN"
+          ],
+          "description": "Machine-readable error code. See templates/cli-command-contract.md for per-subcommand subsets."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable, one-sentence error description. No stack traces; those go in messages[]."
+        },
+        "next_action": {
+          "type": "string",
+          "description": "Optional one-line suggestion for the user or agent on how to recover (e.g. \"Run engineering-harness-setup to materialise the onboarding guide.\")."
+        }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "description": "Optional log lines, warnings, and stack traces. Free-form strings, ordered by emission time.",
+      "items": { "type": "string" }
+    }
+  }
+}

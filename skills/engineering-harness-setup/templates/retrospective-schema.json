@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/engineering-harness-setup/retrospective-schema.json",
+  "title": "Engineering harness retrospective",
+  "description": "Schema for a single session-end retrospective. Designed to be filled in at the end of meaningful agent or human work and committed to harness/state/friction-log.md (or kept locally if the team prefers). The schema enforces concrete answers — minLength guards keep the form honest.",
+  "type": "object",
+  "required": ["workedWell", "confusing", "magicWand"],
+  "additionalProperties": false,
+  "properties": {
+    "workedWell": {
+      "type": "string",
+      "minLength": 10,
+      "description": "What materially helped this session — a command, a fixture, a diagnostic, a default that meant you didn't have to think. Concrete only; avoid generalities."
+    },
+    "confusing": {
+      "type": "string",
+      "minLength": 10,
+      "description": "What got in the way or sent the session sideways — an unclear error, a missing command, a stale doc, a flaky check. Concrete only; this becomes a friction-log entry candidate."
+    },
+    "magicWand": {
+      "type": "string",
+      "minLength": 20,
+      "description": "If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change."
+    },
+    "magicWandTarget": {
+      "type": "string",
+      "enum": ["project", "harness", "agent"],
+      "description": "Where the magic-wand change would live. project = the product code or its environment; harness = this repo's engineering harness (the most actionable category); agent = the model runtime or session control (usually out of this repo's reach)."
+    },
+    "proofLevel": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 6,
+      "description": "Optional. Highest proof level reached this session on the proof-level ladder (L0 nothing observed → L6 reproducible behavioural proof). Distinct from the harness-maturity ladder (L0–L4) in HARNESS.md."
+    },
+    "harnessCommandsRun": {
+      "type": "array",
+      "description": "Optional. Subcommands invoked this session (e.g. ['doctor', 'validate --tier quick', 'health']). Useful for review.",
+      "items": { "type": "string" }
+    }
+  }
+}

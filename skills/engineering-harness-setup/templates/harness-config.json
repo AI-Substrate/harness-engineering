@@ -1,0 +1,41 @@
+{
+  "version": "0.1",
+  "harness": {
+    "name": "{{HARNESS_NAME}}",
+    "cli_language": "{{CLI_LANGUAGE}}",
+    "cli_path": "{{CLI_PATH}}",
+    "created_by": "engineering-harness-setup"
+  },
+  "commands": {
+    "install": "{{INSTALL_COMMAND}}",
+    "build": "{{BUILD_COMMAND}}",
+    "test": "{{TEST_COMMAND}}",
+    "lint": "{{LINT_COMMAND}}",
+    "format_check": "{{FORMAT_CHECK_COMMAND}}",
+    "run": "{{RUN_COMMAND}}",
+    "smoke": "{{SMOKE_COMMAND}}"
+  },
+  "health": {
+    "url": "{{HEALTH_URL}}",
+    "expected_status": 200,
+    "timeout_seconds": 30
+  },
+  "validation": {
+    "fast": ["test"],
+    "quick": ["doctor", "build", "test"],
+    "proof": ["doctor", "build", "test", "health", "smoke"]
+  },
+  "paths": {
+    "proofs": "harness/proofs",
+    "state": "harness/state",
+    "templates": "harness/templates"
+  },
+  "permissions": {
+    "allow_run": false,
+    "allow_health_probe": true
+  },
+  "notes": {
+    "unset_command_policy": "An empty command string is an improvement opportunity, not proof of failure unless required for the selected validation tier.",
+    "safety": "Long-running boot is locked down by default: 'run' requires --execute to actually spawn the process; 'validate' never invokes 'run' under any tier."
+  }
+}

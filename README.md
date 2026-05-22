@@ -69,3 +69,7 @@ If the answer is no, the engineering harness is the product surface to improve.
 ## Publication boundary
 
 This repo distils private and public research into general, publication-safe principles. Raw notes and private source material live outside the public surface. Public content should avoid private names, internal codewords, local paths, unreleased details, and exact private metrics unless explicitly approved.
+
+## Skills authored here
+
+- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): a pi-runtime skill that installs the first useful version of a repo-local engineering harness in one invocation — `HARNESS.md`, a command-mapped CLI, friction log, retrospective schema, install report, and the `AGENTS.md` patch that routes future agents into the harness. Read `skills/engineering-harness-setup/SKILL.md` for the install flow and `skills/engineering-harness-setup/AUTHORING.md` for the maintenance contract.
