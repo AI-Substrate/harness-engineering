@@ -4,6 +4,31 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 default:
     @just --list
 
+# List skills discoverable from this working tree via Vercel's skills CLI.
+list-skills:
+    @npx skills@latest add "$(pwd)" -l
+
+# Install all repo skills project-local to supported CLIs from this working tree.
+install-skills-local:
+    @npx skills@latest add "$(pwd)" \
+        -a claude-code \
+        -a codex \
+        -a opencode \
+        -a github-copilot \
+        -a pi \
+        -y
+
+# Install all repo skills globally to supported CLIs from this working tree.
+install-skills-global:
+    @npx skills@latest add "$(pwd)" \
+        -a claude-code \
+        -a codex \
+        -a opencode \
+        -a github-copilot \
+        -a pi \
+        -g \
+        -y
+
 # Compact a path with generate-codebase-md.sh into scratch/compacted/NNN-<slug>.md.
 compact target="harness-foundations":
     @command -v generate-codebase-md.sh >/dev/null || { echo "generate-codebase-md.sh not found in PATH"; exit 1; }

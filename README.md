@@ -4,6 +4,18 @@ Harness engineering is the practice of productising the software-development loo
 
 This repo is a public foundation and tutorial project for teams that want faster, safer, more observable development loops in the age of AI-assisted engineering.
 
+## Install the skills
+
+This repo publishes engineering-harness skills consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills).
+
+```bash
+npx skills@latest add AI-Substrate/harness-engineering \
+  -a claude-code \
+  -g
+```
+
+For GitHub Copilot CLI, Codex CLI, OpenCode, Pi, project-local installs, local-branch testing, and single-skill installs, see [`INSTALL.md`](./INSTALL.md).
+
 ## Core thesis
 
 An engineering harness makes the **product-development loop** explicit and operable:
@@ -72,4 +84,9 @@ This repo distils private and public research into general, publication-safe pri
 
 ## Skills authored here
 
-- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): a pi-runtime skill that installs the first useful version of a repo-local engineering harness in one invocation — `HARNESS.md`, a command-mapped CLI, friction log, retrospective schema, install report, and the `AGENTS.md` patch that routes future agents into the harness. Read `skills/engineering-harness-setup/SKILL.md` for the install flow and `skills/engineering-harness-setup/AUTHORING.md` for the maintenance contract.
+- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness contract at `docs/project-rules/engineering-harness.md`, seeds known difficulties where available, and patches `AGENTS.md` so future agents route through the harness.
+- [`skills/boot-harness/`](skills/boot-harness/SKILL.md): a start-of-session skill that reads the repo-local harness contract, runs safe doctor/health checks, surfaces known difficulties, and reports whether the repo is ready for engineering work. It fails fast and recommends `engineering-harness-setup` if no harness exists.
+- [`skills/compound-0-setup/`](skills/compound-0-setup/SKILL.md): scaffolds `docs/compound/`, the durable ledger for the harness Improve stage.
+- [`skills/compound-1-track/`](skills/compound-1-track/SKILL.md): silently captures material friction or concrete improvement ideas into a per-agent session buffer.
+- [`skills/compound-2-bubble/`](skills/compound-2-bubble/SKILL.md): presents the one end-of-session triage prompt and saves selected entries as durable retros.
+- [`skills/compound-3-harvest/`](skills/compound-3-harvest/SKILL.md): scans saved retros, clusters recurring friction, and surfaces what the harness should encode next.

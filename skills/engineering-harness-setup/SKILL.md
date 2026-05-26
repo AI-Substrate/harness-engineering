@@ -1,8 +1,8 @@
 ---
-name: engineering-harness-v2
+name: engineering-harness-setup
 description: Create or validate the engineering harness for the current project — the broader substrate (justfile/Makefile/dev scripts, test runner, seed/fixture, env config) plus the Boot/Interact/Observe loop layered on top. Detects project type; generates `docs/project-rules/engineering-harness.md` (legacy names `agent-harness.md` / `harness.md` still supported on read); seeds `## Known Difficulties` from the compound ledger so boot-time reads see accumulated friction.
 ---
-# engineering-harness-v2
+# engineering-harness-setup
 
 Create or validate the **engineering harness** — the umbrella term covering both (1) the engineering substrate (`justfile`/`Makefile`/`package.json scripts`, test runner, seed scripts, env config — what developers and CI run) and (2) the Boot → Interact → Observe → Validate loop layered on top so agents can iterate on running software in 30-60 second cycles. This skill governs both as one cohesive thing.
 
@@ -111,7 +111,7 @@ Possible questions (ask only if needed):
 - Q: What port does the server listen on?
 - Q: How does auth work? (No auth / Persistent profile / API key / Token file)
 - Q: Primary interaction method? (HTTP API / Browser automation / Terminal / Both)
-- Q: Where should evidence files go? (default: `./scratch/evidence/`)
+- Q: Where should evidence files go? (default: `./harness/evidence/`)
 
 #### Step 4: Generate engineering-harness.md
 
@@ -148,15 +148,15 @@ Write to `docs/project-rules/engineering-harness.md` (new canonical path) using 
 - **Response capture**: [HTTP JSON | stdout | DOM snapshots]
 - **Screenshots**: [Playwright | Puppeteer | N/A]
 - **Logs**: [log file path or command]
-- **Evidence directory**: [path, default ./scratch/evidence/]
+- **Evidence directory**: [path, default ./harness/evidence/]
 
 ## Known Difficulties
 
-<!-- Auto-seeded by engineering-harness-v2 from the compound ledger. -->
+<!-- Auto-seeded by engineering-harness-setup from the compound ledger. -->
 <!-- Up to 10 most-relevant open entries, filtered by target: engineering-harness | tooling | infra | build | config | dependencies | env | auth | tests | observe. -->
 <!-- Sorted by recurrence (count of entries in the same cluster) descending, then by age (oldest first). -->
 <!-- Agents reading this file at boot see accumulated friction without scanning the whole ledger. -->
-<!-- Refresh: re-run engineering-harness-v2 (idempotent; re-reads compound and re-renders this section in place). -->
+<!-- Refresh: re-run engineering-harness-setup (idempotent; re-reads compound and re-renders this section in place). -->
 
 | # | Entry | Recurrence | Source retros |
 |---|-------|-----------|---------------|
@@ -227,25 +227,58 @@ After writing the template (or on every re-run of this skill), populate the `## 
 
 Re-running this skill always re-renders Section 4a in place — idempotent; never appends duplicates.
 
-If `docs/compound/` is missing or empty: write the placeholder row from the template (no harm; the section is informational and will populate once compound has data).
+If `docs/compound/` is missing: write the placeholder row from the template and report that the Improve ledger is not installed yet. Recommend `compound-0-setup` so future runs have a durable source for Known Difficulties.
+
+If `docs/compound/` exists but has no matching retros: write the placeholder row from the template (no harm; the section is informational and will populate once compound starts producing entries).
+
+#### Step 4b: Patch `AGENTS.md`
+
+After writing `docs/project-rules/engineering-harness.md`, create or update a short, sentinel-bracketed `AGENTS.md` section that signposts future agents to the engineering harness before non-trivial work.
+
+If `AGENTS.md` is missing, create it. If it exists, append the block unless the same sentinel block is already present; if present, refresh only the content inside the block and preserve the rest of the file.
+
+```markdown
+<!-- ENGINEERING-HARNESS-SETUP START -->
+## Engineering harness
+
+This repository has a project-side engineering harness. Read `docs/project-rules/engineering-harness.md` before non-trivial work.
+
+The engineering harness is the supported path for Boot → Interact → Observe → Validate → Improve: it records how to start the product, exercise real behaviour, capture evidence, validate results, and encode recurring friction back into the repo.
+
+Prefer the commands and evidence paths named in `docs/project-rules/engineering-harness.md` over inventing ad-hoc shell sequences. If the harness is missing a command, check, fixture, or diagnostic you need, record that gap as harness friction so it can be encoded.
+<!-- ENGINEERING-HARNESS-SETUP END -->
+```
+
+#### Step 4c: Recommend compound setup when missing
+
+If `docs/compound/` is missing and the user has not opted out, include this recommendation in the report:
+
+```md
+Improve loop: no `docs/compound/` ledger found.
+
+Recommended next step: run `compound-0-setup` so `boot-harness`, `compound-1-track`, `compound-2-bubble`, and `compound-3-harvest` can capture, bubble, harvest, and encode recurring harness friction.
+```
+
+Do not auto-create the compound tree unless the user explicitly asks. The first version should make the loop visible without surprising the repository owner with extra state.
 
 #### Step 5: Validate (post-create)
 
-After generating engineering-harness.md, run the VALIDATE flow (below) to confirm it works. Report results.
+After generating engineering-harness.md and patching `AGENTS.md`, run the VALIDATE flow (below) to confirm it works. Report results.
 
 #### Step 6: Report
 
 ```
-✅ Agent harness created:
+✅ Engineering harness created:
 
   Governance:   docs/project-rules/engineering-harness.md
+  Agent route:  AGENTS.md
   Type:         [type] ([framework])
   Maturity:     L[N] ([description])
   Checklist:    [X/15] items verified
 
   Next steps:
   - Review engineering-harness.md and adjust as needed
-  - Run /agent-harness-v2 --validate after changes
+  - Run /engineering-harness-setup --validate after changes
   - Pipeline commands (plan-1a, plan-5, plan-6) will auto-discover this file
 ```
 
@@ -261,11 +294,11 @@ If a legacy `docs/project-rules/agent-harness.md` or `docs/project-rules/harness
 
 ### VALIDATE Mode
 
-#### Step 1: Read Agent Harness Config
+#### Step 1: Read Engineering Harness Config
 
 Read `docs/project-rules/engineering-harness.md` (or fall back to legacy `docs/project-rules/harness.md` and emit the migration advisory). Parse: boot command, health check, interaction method, observe method, current maturity level.
 
-If both paths are missing or unparseable → error with suggestion to run `/agent-harness-v2 --create`.
+If both paths are missing or unparseable → error with suggestion to run `/engineering-harness-setup --create`.
 
 #### Step 2: Execute 3-Stage Validation
 
@@ -309,7 +342,7 @@ Append validation result to `## History` table.
 
 Report:
 ```
-🔍 Agent Harness Validation Report:
+🔍 Engineering Harness Validation Report:
 
   Boot:      [✅/❌] [detail] ([duration])
   Interact:  [✅/❌] [detail] ([duration])
