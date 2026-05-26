@@ -2,9 +2,17 @@
 
 There's been a lot of chatter around harness engineering recently, and I think the industry is starting to converge on some genuinely useful ideas.
 
-Birgitta Böckeler's [Harness engineering for coding agent users](https://martinfowler.com/articles/harness-engineering.html) and Moss Banay's [Don't waste your back pressure](https://banay.me/dont-waste-your-backpressure/) are two of the more interesting public reads right now. There are more, and there will be more — this is a space that's actively shaping itself.
+Birgitta Böckeler's [Harness engineering for coding agent users](https://martinfowler.com/articles/harness-engineering.html) and Moss Banay's [Don't waste your back pressure](https://banay.me/dont-waste-your-backpressure/) are two of the more interesting public reads right now. There are more, and there will be more — this is a space that's actively shaping itself. Broadly speaking, "self-improving AI loops" are so hot right now, and done right they can be put to work in the world of harness engineering too.
 
-This post is my take. More importantly, it's a tangible way to get a harness going in your own codebase. It's short on theory and long on practical moves you can try today. There will be more developments over time, but here is a simple starting point for understanding the concept and trying some of it out in your repo.
+This post is my take. More importantly, it's a tangible way to get an engineering harness going in your own codebase. There will be more developments over time, but here is a simple starting point for understanding the concept and trying some of it out in your repo.
+
+Before we get too much in to it however, it's important that you don't conflate an agent harness with an engineering harness. The **agent harness** is the runtime that drives the model: Copilot, Claude Code, Codex, Cursor, Cline, pi, or whatever you use. [Check out](https://code.visualstudio.com/blogs/2026/05/15/agent-harnesses-github-copilot-vscode) this article on the Github Copilot agent harness (coding harness).
+
+The **engineering harness** is the project-side loop helps the agent work *on* your codebase. That helps the agent prove the software works: build, boot, seed, run, observe, validate, improve.
+
+One other thing I would add is that whilst the engineering harness concept is not predicated on any particular workflow in an engineering team, I would highly suggest that teams have a very clear understanding of their AI driven workflow and importantly be self-evaluating and improving their flows via retrospectives etc. Teams that use something like Spec Driven Development will be in a good place to take their engineering process to the next level. That evaluation of value delivery in your teams loop is important, so then you can track and improve the entire process, including your shiny new engineering harness.
+
+On the topic of evaluation and value delivery - be aware that the engineering loop, the actual AI coding bit is just a small slice of where teams spend their time. A new engineering harness will not be a silver bullet, but for teams that measure metrics like DORA or similar should be tracking that overall quality goes up as the harness evolves over time and helps teams delivery more quality results.
 
 ## The problem
 
@@ -12,39 +20,35 @@ There are a couple of core problems that harness engineering is trying to addres
 
 I'm sure you've all felt the frustration. You've implemented a feature. You had the perfect plan. The tests are green. Everything has passed. The agent is telling you it's complete. And then you go and look at it, and there is something obviously wrong.
 
-An architectural boundary has been breached. A shared helper got reinvented instead of reused. A "done" that does not survive the first real user flow.
+An architectural boundary has been breached or a shared helper got reinvented instead of reused (multiple was to log to console anyone?). A "done" that does not survive the first real user flow. Every caught yourself asking the agent "did you even try to run this?"
 
-Or the other version of the same frustration: the agent did finish, but somewhere in the middle of the run it spent twenty-five minutes cycling on how to run up the code and validate that the endpoint was actually working.
+Or the other version of the same frustration: the agent did finish, but somewhere in the middle of the run it spent twenty-five minutes cycling on how to run up the code and validate that the endpoint was actually working. Burned tokens and time.
 
-The art of harness engineering is keeping track of these frictions the agent hits as it works, and the discoveries it makes along the way, and making sure we encode those discoveries — and the fixes for those frictions — back into the engineering harness.
+The art of harness engineering is keeping track of these frictions the agent hits as it works, and the discoveries it makes along the way, and making sure we encode those discoveries — and the fixes for those frictions — back into the engineering harness. We track our work, we learn from the friction and we look to feed it back in as data for the next iteration. But how we feed it is important.
 
-As a gift to our future selves.
+The goal here is that we take all this hard work figuring out **how** to work on our codebase, fix it for good and pay it forward as a gift to our future selves.
 
-Whilst doing this, we should be as deterministic as possible. Encode it in the CLI. Avoid, wherever possible, writing code in markdown.
+A rule to lock away nice and early as you think about how to approach this - our "fixes" should be as deterministic as possible. Why tell the agent how to fix it by extending our prompts, SKILLS.md and AGENT.md files when we can just fix it properly and encode it in the CLI. Wherever possible, avoid writing code in markdown.
 
 ## The idea
 
 Harness engineering is the practice of productising the development loop so a human or agent can move from intent to evidence, and then encode what they learn into the next run.
 
-Before we get too much in to it, it's important that you don't conflate an agent harness with an engineering harness. The **agent harness** is the runtime that drives the model: Copilot, Claude Code, Codex, Cursor, Cline, pi, or whatever you use.
+The agent harness drives the LLM. The engineering harness proves the work that was done is good, and it also helps save us a bunch of tokens and time while doing it.
 
-The **engineering harness** is the project-side loop helps the agent work *on* your codebase. That helps the agent prove the software works: build, boot, seed, run, observe, validate, improve.
-
-The agent harness drives. The engineering harness proves.
-
-**Back pressure** is the signal that tells the agent its work is wrong: build failures, type errors, tests, lint, runtime failures, smoke checks, architecture checks and more besides.
+**Back pressure** is the signal that provides the signal to eh agent on how its truly doing (not inferred but deterministically wherever possible): build failures, type errors, tests, lint, runtime failures, smoke checks, architecture checks and more besides are some of the more common things.
 
 If those signals are weak, the loop becomes overdependent on the human as the source of back pressure, catching the same mistakes over and over by hand.
 
 ## The simple version
 
-I'll pop a simple version of this here with a more expanded take below.
+The core concept is so simple you could realistically prompt an engineering harness nucleus in to your own codebase in a few minutes. Below this section is a more detailed take.
 
-An engineering harness can start out as such a simple idea. A few simple rules and you can start building out the beginnings of a harness. Over time this will snowball. You could of course attempt to encode all these [principles](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/first-principles.md) but in reality, you can start small in your experiments and get some hands on time with the concept.
+As I said, an engineering harness can start out as such a simple idea. A few simple rules and you can start building out the beginnings of a harness. Over time this will snowball. You could of course attempt to encode all these [principles](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/first-principles.md) but in reality, you can start small in your experiments and get some hands on time with the concept with very little initial setup time. Try this:
 
-1. Create a tiny CLI.
+1. Have your agent create a tiny CLI. I like doing them in node because a lot of the agentic harness stuff seems to work with it well.
 2. Tell the agent this CLI is the project harness.
-3. Tell the agent to keep a record of friction it encounters as it works.
+3. Tell the agent to keep a record of friction it encounters as it works. Then start doing some work on your codebase.
 4. At the end of the run, ask the agent "if you had a magic wand, what would you improve about your environment". Ask it to provide a retrospective of it's experience of working with the codebase and the harness.
 5. After human review, encode the best improvement into the harness. Prefer executable checks over instructions in markdown.
 
@@ -74,7 +78,7 @@ The point is not to reinvent your toolchain. The point is to make the supported 
 
 Once the CLI exists, prompt your agent that the CLI is the engineering harness, and that the harness is the preferred path. Bake that into `AGENTS.md`, your skill files, or whatever your agent harness uses for project-level instructions, so your whole team gets the same behaviour.
 
-The CLI does not need to do everything from day one. It needs to be the **one obvious place** to look (and fix if things are missing or wrong). It's a focal point. 
+The CLI does not need to do everything from day one. It needs to be the **one obvious place** to look (and fix if things are missing or wrong). It's a focal point.
 
 ### Rule 2. Encode the fix, not the memory
 
@@ -88,7 +92,7 @@ Documentation can orient. But the highest-value harness knowledge is executable.
 
 This is the rule that quietly does the most work. The instinct is always to write a new doc. Resist it. "Coding in markdown" is how harnesses stay stuck.
 
-I like to think of this as "instead of documenting how to work the problem, just fix it properly". Don't tell, do (when it makes sense!). 
+I like to think of this as "instead of documenting how to work the problem, just fix it properly". Don't tell, do (when it makes sense!).
 
 ### Rule 3. Prefer deterministic validation over agent inference
 
@@ -121,9 +125,9 @@ When something goes wrong, ask:
 - Was validation too weak to catch the real failure mode?
 - Was the supported path harder than the shortcut?
 
-Each of those is a fixable harness defect. The agent stumbling is the signal. 
+Each of those is a fixable harness defect. The agent stumbling is the signal.
 
-Prompting the agent to provide a retro of the harness after it's completed its work is highly effective I've found. 
+Prompting the agent to provide a retro of the harness after it's completed its work is highly effective I've found.
 
 ### Rule 5. Ask the magic-wand question, then close the loop
 
@@ -143,7 +147,7 @@ The first few harness improvements are usually basic. A clearer doctor check. A 
 
 But after a few iterations, something quietly shifts.
 
-The next agent session starts faster. The next human has less tribal knowledge to recover. The next validation run is more deterministic. The next review has better evidence. The next time someone hits the same friction, the harness catches it before a human has to. Developer onboarding is shorter. 
+The next agent session starts faster. The next human has less tribal knowledge to recover. The next validation run is more deterministic. The next review has better evidence. The next time someone hits the same friction, the harness catches it before a human has to. Developer onboarding is shorter.
 
 That is the whole idea. Do not just use agents to write code. Use agents to improve the loop that the agents themselves use to write your product and prove the code works. That's my take on the simple version of harness engineering.
 

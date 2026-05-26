@@ -1,145 +1,341 @@
 ---
-name: engineering-harness-setup
-description: Install a repo-local engineering harness in one invocation — front-door doc, command-mapped CLI, friction log, retrospective, install report. Use on a fresh greenfield repo or a brownfield repo that wants to establish a front door for human and agent contributors.
+name: engineering-harness-v2
+description: Create or validate the engineering harness for the current project — the broader substrate (justfile/Makefile/dev scripts, test runner, seed/fixture, env config) plus the Boot/Interact/Observe loop layered on top. Detects project type; generates `docs/project-rules/engineering-harness.md` (legacy names `agent-harness.md` / `harness.md` still supported on read); seeds `## Known Difficulties` from the compound ledger so boot-time reads see accumulated friction.
 ---
+# engineering-harness-v2
 
-**Version**: 0.1.0
+Create or validate the **engineering harness** — the umbrella term covering both (1) the engineering substrate (`justfile`/`Makefile`/`package.json scripts`, test runner, seed scripts, env config — what developers and CI run) and (2) the Boot → Interact → Observe → Validate loop layered on top so agents can iterate on running software in 30-60 second cycles. This skill governs both as one cohesive thing.
 
-## Section 0 — Preamble
+**Engineering harness governance**: `docs/project-rules/engineering-harness.md` (new projects). Legacy names `docs/project-rules/agent-harness.md` and `docs/project-rules/harness.md` are still read as fallbacks for projects that haven't migrated yet — see Step 0 for the read order and Step 6 for the migration advisory.
 
-### When to use this skill
+**Layering**: the agent harness sits **on top of** the engineering harness (the project's `justfile`/`Makefile`/`package.json scripts.dev` boot command, test runner, etc.). The Boot command this skill records IS the engineering harness substrate. If no engineering harness exists, raise that as a finding before attempting to build the agent harness — Boot can't work without something to boot.
 
-Invoke this skill when you are about to spend non-trivial time in a repository that doesn't yet have a clear engineering-harness front door. Concretely:
-
-- A fresh greenfield repo — install the harness *before* you start writing real code, so the build/test/run loop is encoded as you discover each command.
-- A brownfield repo where build/test/run knowledge is scattered across docs, scripts, and tribal memory — the harness becomes the place each command finally lands and stays.
-- A repo where future agent sessions need repeatable onboarding — `<CLI> onboard` becomes the one-line entry point.
-- A repo where repeated friction is solved by re-explaining the workaround — the friction log + magic-wand prompt convert that into encoded improvements over time.
-
-### The boundary this skill installs
-
-The agent harness drives. The engineering harness proves.
-
-This skill installs only the **engineering harness** — the project-side development loop. It does not configure the agent runtime, tool permissions, or session state; those are the agent harness's job. The boundary sentence ships byte-identically in every load-bearing template the skill writes so neither side gets collapsed.
-
-### Worked example (anchor)
-
-A team encoded a single new validation recipe after a class of bug bypassed every existing gate. The bug had slipped through unit tests (which passed), integration tests (which used a different bundler config), and human review (which read the diff but didn't run the binary). After the postmortem the team added a single `<CLI> verify` recipe that built the artifact the way the deploy pipeline builds it and then exercised the failing scenario directly. The next month, four PRs that would have shipped the same class of bug were caught by the recipe before merge. That is the harness pattern this skill installs: a *narrow, executable* check encoded next to the workflow that needed it, not a *wide, prose* doc explaining the trap.
-
-The first install of the harness rarely produces a recipe like `<CLI> verify`. It produces the place to put one when the team discovers the next bug class.
+**Agent harness dossier**: Three capabilities (Boot, Interact, Observe), maturity model (L0–L4), 7 design principles.
 
 ---
 
-## Section 1 — Principles
+## Input
 
-The skill embodies eight principles. Each ships as a section of `HARNESS.md`, but the skill itself enforces them through file structure, validation gates, and the install-flow's question wording.
-
-<!-- foundations: first-principles#10, #27 -->
-**P1. The harness boundary is non-negotiable.** The skill keeps the agent-harness vs engineering-harness boundary crisp in every template it writes. The canonical sentence — *"The agent harness drives. The engineering harness proves."* — appears byte-identically in at least five files. The skill rejects edits that collapse the boundary, and the AGENTS.md patch routes agents into the harness rather than dumping the manual into the agent's instruction file.
-
-<!-- foundations: first-principles#15, patterns-that-work#P3 -->
-**P2. The development loop is productised.** The skill assumes Boot → Interact → Observe → Validate → Improve as the operating loop. `HARNESS.md` documents it; `<CLI> validate` runs the layered tiers; `<CLI> doctor` reports readiness; `harness/state/friction-log.md` captures Improve.
-
-<!-- foundations: directives#D1, patterns-that-work#P11 -->
-**P3. The supported path is easier than the shortcut.** The skill installs `<CLI>` as the front door for build/test/run/health/lint commands and writes an AGENTS.md equivalence table mapping forbidden direct invocations to required harness equivalents. Going around the harness now requires more typing than going through it.
-
-<!-- foundations: first-principles#22, patterns-that-work#P10 -->
-**P4. The fix is encoded, not just documented.** The skill installs a friction-log workflow where each entry must name a *candidate encoded fix* — a command, flag, fixture, diagnostic, or template change. Documentation alone is a tombstone for an unsolved problem.
-
-<!-- foundations: first-principles#21, patterns-that-work#P12 -->
-**P5. Validation is deterministic where possible.** The skill installs `<CLI> validate --tier {fast,quick,proof}` with the step list read from `harness/config.json.validation`, not from agent inference. When commands are unconfigured, the verdict is `unconfigured` (process exit 2), not a confident `pass`. Agent confidence is never recorded as completion evidence.
-
-<!-- foundations: first-principles#48 -->
-**P6. Agent friction is harness feedback.** The skill installs the onboarding doc with a seven-layer friction classification (instructions, tools, environment, state, feedback, validation, product) so agents and humans triage failures away from "the model can't do this" before reaching for that explanation.
-
-<!-- foundations: first-principles#51, patterns-that-work#P10 -->
-**P7. The magic-wand question closes the loop.** The skill installs the magic-wand prompt as a load-bearing artefact: it ships in `harness/templates/magic-wand-prompt.md` and is echoed byte-identically by `HARNESS.md` Rule 5, the friction log, the proof-note template, the install report, and the retrospective schema. The CLI's `<CLI> magic-wand` subcommand reads from the prompt template so future drift is impossible.
-
-<!-- foundations: directives#D6, patterns-that-work#P13 -->
-**P8. The first harness is small.** The skill ships ~11 required files plus 2 optional. No giant ledgers, no dashboards, no required schemas beyond the retrospective + harness-config schemas. The first useful version is the goal; v0.2 evolutions live in the friction log until they earn their place.
+```
+$ARGUMENTS
+# Flags:
+# --create     Force CREATE mode (even if engineering-harness.md exists)
+# --validate   Force VALIDATE mode
+# --status     Quick maturity report (no changes)
+# (no flags)   Auto-detect: CREATE if missing, VALIDATE if exists
+```
 
 ---
 
-## Section 2 — Install flow
+## Execution Flow
 
-The skill performs these 14 steps in order. Each step is observable (an agent or human reading the install report can see which steps ran, with what input, and what changed).
+### Step 0: Mode Detection
 
-| # | Step | Purpose | Inputs read | Questions asked (verbatim) | Files written | Failure mode |
-|---|---|---|---|---|---|---|
-| 1 | **Orient** | Confirm target repo path and load prior install state if present | `pwd`, `git rev-parse --show-toplevel`, existing `harness/config.json` if any | (none) | (none) | exit 1 if no git repo and `--no-git-ok` flag absent |
-| 2 | **Inspect** | Detect host tooling, runtimes, existing harness artifacts | `package.json`, `pyproject.toml`, `Makefile`, `Justfile`, `Dockerfile`, root `HARNESS.md`, `docs/project-rules/harness.md`, `AGENTS.md`, Python version, Node version | (none) | (none) | (read-only step; never fails) |
-| 3 | **Decisions** | Resolve FR-01 (HARNESS.md location), FR-02 (CLI implementation), permission grants | (results of step 2) | *"Where should HARNESS.md live: repo root (recommended) or `docs/project-rules/harness.md`?"* (FR-01, only if both legal locations are unoccupied OR exactly one is occupied); *"Install new CLI at `harness/bin/`, OR wrap existing tooling (justfile, package.json scripts, Makefile)?"* (FR-02, only if host tooling is detected); *"Grant permission to write 11–13 files in this repo?"*; *"Grant permission to patch `AGENTS.md`?"* | (none) | exit 1 if user denies write permission |
-| 4 | **Propose** | Show candidate-command table (build/test/lint/format/run/health) detected from inspection; user confirms or edits | (results of step 2) | per-command confirm prompts: *"build: detected `pnpm build` — accept?"*, etc. | (none) | (never fails; unconfirmed commands become empty strings) |
-| 5 | **Substitute** | Resolve all placeholders strictly; abort if any required slot cannot be filled | (results of steps 3–4) | (none) | (in-memory) | exit 1 with `error.code: INVALID_ARGS` if a required placeholder cannot be resolved |
-| 6 | **Create harness skeleton** | Materialise `harness/{README.md, config.json, state/, templates/, proofs/, skills/}` | (template files) | (none) | `harness/README.md`, `harness/config.json`, `harness/state/{known-difficulties.md, friction-log.md}`, `harness/templates/{proof-note.md, friction-entry.md, retrospective-schema.json}`, `harness/proofs/.gitkeep`, `harness/skills/onboard-agent-session.md` | abort if any file already exists with non-empty USER-CONTENT region and user chose skip |
-| 7 | **Install CLI** | Either install new stdlib CLI (`harness/bin/harness.{py,mjs}`) or wrap-existing (`harness/bin/harness.sh`); honour AC-13 if neither runtime detected | (chosen branch from step 3) | (none) | one of `harness/bin/harness.{py,mjs,sh}`; **OR** if neither Python ≥ 3.10 nor Node ≥ 18 is detected: write no CLI, set `harness/config.json.harness.cli_language = ""`, exit 0 in degraded mode | exit 1 if write fails and runtime was available |
-| 8 | **Write HARNESS.md** | Place at root (default) or `docs/project-rules/harness.md` per FR-01; both-locations branch consolidates | (template + step 5 substitutions) | (only in both-locations branch) *"Both `HARNESS.md` and `docs/project-rules/harness.md` exist — which should be canonical? The other becomes a one-line pointer."* | `HARNESS.md` OR `docs/project-rules/harness.md` (+ optional pointer file at the non-canonical location) | abort if both-exist and user declines consolidation |
-| 9 | **Patch AGENTS.md** | Append the engineering-harness section with FR-03 equivalence-table scaffold and detected rows | existing `AGENTS.md` if present | (none) | `AGENTS.md` (append-only; sentinel-bracketed) | log a warning if `AGENTS.md` already contains the boundary sentence; do not duplicate |
-| 10 | **Validate** | Invoke `<CLI> --help`, `<CLI> doctor`, `<CLI> validate --dry-run` and capture verdicts | the newly installed CLI | (none) | (in-memory — captured for install report) | non-blocking: any failure becomes a row in the install report; skill does not exit on validate failure |
-| 11 | **Self-check placeholders** | Grep every written file for unsubstituted `{{NAME}}` markers | written files | (none) | (none) | exit 1 with `error.code: PLACEHOLDER_LEAK` if any literal remains |
-| 12 | **Seed friction** | Write one entry to `harness/state/friction-log.md` per detected install-time gap (unconfigured command, missing runtime, no-tool-for-wrap, etc.) | (results of steps 4, 7, 10) | (none) | append to `harness/state/friction-log.md` | (never fails; friction-log seeding is best-effort) |
-| 13 | **Emit install report** | Write the QT-04-style report with verdict columns + QT-06 ceiling sentence | (captured verdicts from steps 4, 10) | (none) | `harness/proofs/install-report-<timestamp>.md` | (never fails) |
-| 14 | **Magic-wand close-out** | Print the hybrid magic-wand prompt; optionally append answer to friction-log | (none) | the hybrid wording from `magic-wand-prompt.md`; *"Would you like to append your answer to `harness/state/friction-log.md`?"* | append to friction-log if user agrees | (never fails) |
+```
+Check governance file (read order: new path first, then legacy fallbacks in order of recency):
+  1. docs/project-rules/engineering-harness.md  ← new canonical path
+  2. docs/project-rules/agent-harness.md        ← legacy fallback (pre engineering-harness rename)
+  3. docs/project-rules/harness.md              ← older legacy fallback (pre agent-harness rename)
 
-### Per-file merge policy (re-runs)
+If found at either legacy path: log a one-line migration advisory in this skill's
+output (e.g. "📁 Legacy filename detected — consider `git mv agent-harness.md
+engineering-harness.md`") but do NOT modify the file. Continue normally.
 
-A second invocation of the skill against the same target with no changes must be safe. The skill follows this per-file policy:
-
-| File | First-install policy | Re-run, no edits | Re-run with user edits |
-|---|---|---|---|
-| `HARNESS.md` | overwrite | no-op | preserve USER-CONTENT-sentinel regions verbatim; refresh outside-sentinel content; surface diff |
-| `AGENTS.md` | append sentinel-bracketed section | no-op | preserve sentinel-bracketed user content; refresh equivalence-table rows additively (never delete user rows) |
-| `harness/config.json` | write substituted template | no-op | merge: preserve user-set values; add newly-detected commands; never delete a populated value automatically; surface diff |
-| `harness/state/friction-log.md` | write substituted template | no-op | **never overwrite** (preserve byte-for-byte) |
-| `harness/state/known-difficulties.md` | write substituted template | no-op | **never overwrite** |
-| `harness/bin/harness.{py,mjs,sh}` | write template | no-op (mtime unchanged) | diff and ask: refresh or keep edits |
-| `harness/templates/retrospective-schema.json` | write template | no-op | refresh on schema change; preserve user-added optional fields |
-| `harness/templates/{proof-note,friction-entry}.md` | write template | no-op | preserve user customisations |
-| `harness/skills/onboard-agent-session.md` | write template | no-op | preserve user customisations |
-| `harness/README.md` | write template | no-op | refresh on template change; surface diff |
-
-**Sentinel detection algorithm**: exact-string match on the two literal lines `<!-- USER CONTENT START -->` and `<!-- USER CONTENT END -->`. Each appearance must be paired; an unmatched sentinel is a parse error (skill aborts with `error.code: INVALID_ARGS` and `next_action: "User-content sentinels are malformed in <file>; please fix or remove the file before re-running."`). Content between paired sentinels is preserved verbatim on re-runs.
+Mode resolution:
+  ├── EXISTS + no --create flag  → VALIDATE mode
+  ├── MISSING + no --validate flag → CREATE mode
+  ├── --create                 → CREATE mode (writes to engineering-harness.md)
+  ├── --validate               → VALIDATE mode (error if missing at both paths)
+  └── --status                 → STATUS mode (read-only report)
+```
 
 ---
 
-## Section 3 — Non-goals
+### CREATE Mode
 
-The skill deliberately does not do these things in v0.1. They are not bugs; they are scope choices.
+#### Step 1: Parallel Discovery (2 subagents)
 
-1. **Create a fully featured universal CLI.** The CLI skeleton is small on purpose. v0.1 ships ~12 subcommands; growing the surface is friction-log work.
-2. **Replace CI/CD.** The harness CLI is for local and PR-time loops. CI may invoke harness commands but the harness does not provision pipelines.
-3. **Claim product validation without evidence.** `<CLI> validate` returns `unconfigured` when commands are empty; it never invents a `pass`.
-4. **Invent build/test/run commands without confirmation.** Every detected candidate is shown to the user before being written to config.
-5. **Run destructive commands without explicit approval.** No subcommand v0.1 mutates external state without explicit `--execute`.
-6. **Hide failures behind optimistic summaries.** The install report uses sharpened `Ran`/`Outcome` enums; "pass-with-warnings" is recorded as `degraded`, not `pass`.
-7. **Generate a markdown manual instead of executable affordances.** Every prose file the skill writes either documents a load-bearing invariant or wraps an executable command. There is no introductory chapter.
-8. **Treat agent review as product proof.** Agent self-assessment is never a substitute for a deterministic check.
-9. **Auto-apply magic-wand suggestions.** Magic-wand entries become friction-log rows requiring human review before encoding.
-10. **Make individual-productivity claims from harness activity metrics.** The skill does not track or report on per-author command counts; activity is not value.
-11. **Overfit to one ecosystem.** The CLI itself is Python or Node, but the wrapped commands are language-agnostic; the wrap-existing branch defers to whatever the repo already runs.
-12. **Configure long-running boot.** `<CLI> run` is dry-run by default and requires `--execute` to spawn the child process. `<CLI> validate` never invokes `run` under any tier.
-13. **Audit existing AGENTS.md content.** The skill appends a sentinel-bracketed section; it does not analyse or rewrite pre-existing content.
-14. **Multi-environment / multi-profile config.** v0.1 ships a single `harness/config.json`. `harness/profiles/` is a v0.2 evolution path.
-15. **Recover from partial install.** If the skill aborts mid-flow (e.g. user denies permission at step 9), v0.1 leaves whatever was written. v0.2 considers a resume flag.
-16. **Detect `CLAUDE.md` / `.cursorrules` / `.github/copilot-instructions.md`.** v0.1 only patches `AGENTS.md`. v0.2 may grow.
-17. **Generate language-specific test scaffolding.** The harness wraps existing test commands; it does not seed `test/`, `tests/`, or `__tests__/`.
-18. **Replace the team's existing PR templates, issue templates, or contribution docs.** The harness is the project-side development loop, not the project-side governance.
-19. **Self-update or auto-upgrade.** v0.1 does not check for newer versions of itself.
-20. **Cross-repo configuration.** Each invocation installs one harness in one repo.
-21. **Substitute for the agent harness.** Tool permissions, session state, and orchestration belong to the agent harness; the engineering harness assumes they exist and proves the product.
+Launch 2 subagents in parallel:
+
+**Subagent 1: Project Type Detection**
+Scan the codebase for signature files and classify:
+
+| Signature Files | Project Type |
+|----------------|-------------|
+| `package.json` + (`next.config.*` \| `vite.config.*` \| `nuxt.config.*` \| `angular.json`) | `web-app` |
+| Executable entry + no server config, CLI framework, `bin/` | `cli` |
+| MCP tool exports, stdio/HTTP transport config | `mcp-server` |
+| Server framework (express, fastapi, gin) without frontend | `api` |
+| `app.json` (Expo) \| `.xcodeproj` \| `build.gradle` \| Electron | `mobile` |
+| `terraform/` \| `pulumi/` \| `cloudformation/` \| `bicep/` | `iac` |
+
+Output: `{ type: string, confidence: 0-1, signature_files: string[] }`
+
+**Subagent 2: Interaction Surface Probe**
+Search for existing engineering-harness infrastructure that the agent harness will sit on top of:
+- Health endpoints (grep: `/health`, `/api/health`, `healthcheck`)
+- Boot scripts (`justfile`, `Makefile`, `docker-compose.yml`, `scripts/`)
+- Engineering test harnesses (`playwright.config`, `cypress.config`, etc.) — these are evidence the project already has a runnable substrate.
+- Existing `AGENT_BOOTSTRAP.md` or similar quick-start docs
+- Auth configuration (`.env`, token files, profile directories)
+
+Output: `{ boot_candidates: string[], health_urls: string[], existing_bootstrap: string|null, auth_hints: string[] }`
+
+**If `boot_candidates` is empty**: the engineering harness substrate is missing or undiscoverable. Raise as a finding in Step 2 before proceeding — agent harness creation needs at least one runnable boot command.
+
+#### Step 2: Present & Confirm
+
+Present discovery results to user via `ask_user`:
+
+```
+🔍 Project Analysis:
+
+  Type:        [detected type] ([framework])    confidence: [0-1]
+  Boot:        [candidate command]               from: [source]
+  Health:      [URL or "none detected"]          from: [source]
+  Auth:        [strategy or "none detected"]
+  Evidence:    [available tools]                 from: [source]
+
+  Is this correct?
+```
+
+Choices: "Yes" / "Adjust type" / "Adjust details"
+
+If user adjusts → ask follow-up questions for corrections.
+
+#### Step 3: Gather Remaining Details
+
+Only ask what couldn't be auto-detected. Skip questions where detection has high confidence.
+
+Possible questions (ask only if needed):
+- Q: What port does the server listen on?
+- Q: How does auth work? (No auth / Persistent profile / API key / Token file)
+- Q: Primary interaction method? (HTTP API / Browser automation / Terminal / Both)
+- Q: Where should evidence files go? (default: `./scratch/evidence/`)
+
+#### Step 4: Generate engineering-harness.md
+
+Write to `docs/project-rules/engineering-harness.md` (new canonical path) using this governance format. If a legacy `docs/project-rules/agent-harness.md` or `docs/project-rules/harness.md` exists, do NOT overwrite or migrate it automatically — write the new file alongside and emit the migration advisory in Step 6 so the user can choose when to `git mv` and remove the legacy.
+
+```markdown
+# Engineering Harness
+
+**Version**: 1.0.0
+**Created**: [TODAY]
+**Maturity Level**: [assessed level]
+**Project Type**: [detected type]
+
+## Purpose
+[1-2 sentences: what this harness enables for agents in this project. Covers both the engineering substrate (justfile/Makefile/dev scripts) and the agent-facing Boot/Interact/Observe loop on top.]
+
+## Boot
+- **Command**: [single boot command]
+- **Health Check**: [health check command, e.g. curl -sf http://localhost:PORT/health]
+- **Expected Response**: [what healthy looks like, e.g. {"ok":true}]
+- **Boot Time**: ~[N]s (target: 30-60s)
+- **Idempotent**: [Yes/No] — [how: check health before spawning / kill stale]
+
+## Interact
+- **Primary**: [HTTP API | Terminal stdin | Browser automation | JSON-RPC]
+- **Endpoints / Commands**:
+  - [primary interaction example]
+  - [secondary if applicable]
+- **Auth Strategy**: [Persistent profile | API key | Token file | None]
+- **Auth Expiry**: [~24h | N/A | Token refresh mechanism]
+- **Auth Detection**: [How agent detects expired auth, e.g. 401 response]
+
+## Observe
+- **Response capture**: [HTTP JSON | stdout | DOM snapshots]
+- **Screenshots**: [Playwright | Puppeteer | N/A]
+- **Logs**: [log file path or command]
+- **Evidence directory**: [path, default ./scratch/evidence/]
+
+## Known Difficulties
+
+<!-- Auto-seeded by engineering-harness-v2 from the compound ledger. -->
+<!-- Up to 10 most-relevant open entries, filtered by target: engineering-harness | tooling | infra | build | config | dependencies | env | auth | tests | observe. -->
+<!-- Sorted by recurrence (count of entries in the same cluster) descending, then by age (oldest first). -->
+<!-- Agents reading this file at boot see accumulated friction without scanning the whole ledger. -->
+<!-- Refresh: re-run engineering-harness-v2 (idempotent; re-reads compound and re-renders this section in place). -->
+
+| # | Entry | Recurrence | Source retros |
+|---|-------|-----------|---------------|
+| _ | _If the compound ledger is empty (no `docs/compound/agents/**/*.retro.md` files matching the filter), this table stays empty — that's normal for a fresh install._ | _ | _ |
+
+## Maturity Assessment
+| Level | Status | Notes |
+|-------|--------|-------|
+| L0: No harness | | Agent writes code, human tests |
+| L1: Manual boot + API | | Human starts stack, agent sends requests |
+| L2: Auto boot + API | | Agent starts stack, health check, API interaction |
+| L3: Full interaction + evidence | | Agent boots, drives UI/CLI, captures screenshots |
+| L4: Self-healing | | Auto-recovery from stale processes, auth expiry |
+
+Current: **L[N]** — [brief justification]
+
+## Validation Checklist
+### Boot
+- [ ] Single command starts full stack
+- [ ] Health check endpoint/command exists and returns expected response
+- [ ] Boot is idempotent (safe to run twice)
+- [ ] Handles port conflicts (kill stale or fail fast)
+- [ ] Clean shutdown on SIGTERM/SIGINT
+
+### Interact
+- [ ] Agent can send input (HTTP/stdin/keystrokes)
+- [ ] Agent can trigger all user-facing actions
+- [ ] Auth is automated (persistent profile, token file, API key)
+- [ ] Auth expiry is detected with clear error message
+
+### Observe
+- [ ] Agent can read output (responses, stdout, DOM)
+- [ ] Evidence capture works (screenshots, logs, response files)
+- [ ] Structured output available (JSON, not just visual)
+
+### Operate
+- [ ] Bootstrap doc explains harness to new agents
+- [ ] Example validation script exists (copy-paste ready)
+- [ ] Named commands exist (justfile, Makefile, or scripts/)
+
+## History
+| Date | Plan | Change | Maturity Before → After |
+|------|------|--------|------------------------|
+
+<!-- USER CONTENT START -->
+<!-- Project-specific harness notes, custom boot sequences, domain-specific setup -->
+<!-- USER CONTENT END -->
+```
+
+Mark the current maturity level based on what's actually working (not aspirational).
+
+#### Step 4a: Seed `## Known Difficulties` from the compound ledger
+
+After writing the template (or on every re-run of this skill), populate the `## Known Difficulties` section:
+
+1. **Read** `docs/compound/agents/**/*.retro.md` files (skip if `docs/compound/` doesn't exist — the section stays empty until compound starts producing entries).
+2. **Filter** entries to:
+   - `entry.system.compound.status == "open"` OR `entry.system.compound.status == "suggested"` (closed/resolved entries are noise here)
+   - `entry.target` in: `engineering-harness | tooling | infra | build | config | dependencies | env | auth | tests | observe` (relevance filter — these are the target classes a fresh agent hits during boot/install/health-check; entries outside this set are not boot-time concerns)
+3. **Cluster** by `(entry.kind, entry.target)` and count recurrence (how many entries fall in each cluster across all retros).
+4. **Sort** clusters by recurrence (descending), then by oldest entry in the cluster.
+5. **Take top 10** clusters (cap to keep the boot read manageable).
+6. **Render** as a table row per cluster:
+   - `#` — sequential 1..N
+   - `Entry` — one-line summary (longest representative `entry.description`)
+   - `Recurrence` — count
+   - `Source retros` — link list of `retro_id`s contributing to the cluster (cap at 3, then `+M more`)
+
+Re-running this skill always re-renders Section 4a in place — idempotent; never appends duplicates.
+
+If `docs/compound/` is missing or empty: write the placeholder row from the template (no harm; the section is informational and will populate once compound has data).
+
+#### Step 5: Validate (post-create)
+
+After generating engineering-harness.md, run the VALIDATE flow (below) to confirm it works. Report results.
+
+#### Step 6: Report
+
+```
+✅ Agent harness created:
+
+  Governance:   docs/project-rules/engineering-harness.md
+  Type:         [type] ([framework])
+  Maturity:     L[N] ([description])
+  Checklist:    [X/15] items verified
+
+  Next steps:
+  - Review engineering-harness.md and adjust as needed
+  - Run /agent-harness-v2 --validate after changes
+  - Pipeline commands (plan-1a, plan-5, plan-6) will auto-discover this file
+```
+
+If a legacy `docs/project-rules/agent-harness.md` or `docs/project-rules/harness.md` was found during Step 0, append:
+
+```
+  📁 Legacy filename detected: docs/project-rules/<legacy-name> still present.
+     Consider migrating: git mv docs/project-rules/<legacy-name> docs/project-rules/engineering-harness.md
+     (Old file is still read as fallback; this advisory is informational, not blocking.)
+```
 
 ---
 
-## Section 4 — Known limitations (v0.1)
+### VALIDATE Mode
 
-These are real friction points in v0.1, surfaced honestly so they can become friction-log entries during dogfood.
+#### Step 1: Read Agent Harness Config
 
-**Runtime requirement.** The new-CLI branch requires Python ≥ 3.10 OR Node ≥ 18 on the target host. Python 3.9 is detected but treated as missing (the new-CLI branch falls back to neither-runtime degraded mode); the v0.2 friction-log entry is "detect Python 3.9 explicitly and offer the wrap-existing branch instead". The wrap-existing branch requires only POSIX shell, which is universal on macOS and Linux.
+Read `docs/project-rules/engineering-harness.md` (or fall back to legacy `docs/project-rules/harness.md` and emit the migration advisory). Parse: boot command, health check, interaction method, observe method, current maturity level.
 
-**Agent-runtime portability.** v0.1 assumes pi runtime conventions (frontmatter `name` + `description` only). Other runtimes (Claude Code, Cursor, Cline) may parse skill packages differently. The `check.sh --inline-fallback` produces a single-file SKILL.md variant if multi-file packaging is rejected.
+If both paths are missing or unparseable → error with suggestion to run `/agent-harness-v2 --create`.
 
-**Equivalence-table catalogue.** The AGENTS.md equivalence-row catalogue covers seven common host-tool signals (pnpm/npm/yarn test, build; just test, build; pytest; make test; harness proofs). Exotic tooling — Bazel, Pants, gradle, dotnet, Cargo — falls through with zero rows. v0.2 grows the catalogue based on dogfood friction-log entries.
+#### Step 2: Execute 3-Stage Validation
 
-**Multi-environment targets.** Production repos sometimes need `harness/profiles/{dev,staging,prod}/config.json`. v0.1 ships a single config. v0.2 considers a `--profile` flag.
+Run checks using bash tool:
 
-**Partial-install recovery.** If the skill aborts mid-install (e.g. user denies permission at step 9 of 14), v0.1 leaves whatever was written and does not roll back. The friction is visible — the install report row is missing — but the user must manually clean up. v0.2 considers an `install-state.json` + resume flag.
+**Stage 1: Boot Check** (5s if running, 60s cold boot)
+```
+1. Check if already running: run health check command from engineering-harness.md
+   ├── Healthy → "Already running" (skip boot)
+   └── Not responding → Run boot command, retry health check (30 × 2s = 60s max)
+```
+
+**Stage 2: Interact Check** (5s, single attempt)
+```
+1. Send test input per engineering-harness.md § Interact
+   ├── Response received → ✅
+   └── No response / error → ❌ (log specific error)
+```
+
+**Stage 3: Observe Check** (5s, single attempt)
+```
+1. Capture evidence per engineering-harness.md § Observe
+   ├── Evidence non-empty and readable → ✅
+   └── Empty or failed → ❌
+```
+
+#### Step 3: Classify Verdict
+
+| Verdict | Criteria |
+|---------|----------|
+| **✅ HEALTHY** | All 3 checks pass, boot ≤ 45s |
+| **⚠️ SLOW** | All 3 checks pass, boot > 45s |
+| **❌ UNHEALTHY** | Any check fails |
+| **🔴 UNAVAILABLE** | No engineering-harness.md (or legacy agent-harness.md / harness.md) and no boot command |
+
+#### Step 4: Update Maturity & Report
+
+Update engineering-harness.md `## Maturity Assessment` to reflect current reality.
+Update `**Maturity Level**` header field.
+Append validation result to `## History` table.
+
+Report:
+```
+🔍 Agent Harness Validation Report:
+
+  Boot:      [✅/❌] [detail] ([duration])
+  Interact:  [✅/❌] [detail] ([duration])
+  Observe:   [✅/❌] [detail] ([duration])
+
+  Verdict:   [verdict]
+  Maturity:  L[N] ([description])
+  Checklist: [X/15] items passing
+  Missing:   [list unchecked items]
+```
+
+---
+
+### STATUS Mode
+
+Quick read-only report — no validation, no changes.
+
+Read engineering-harness.md (or legacy agent-harness.md / harness.md, with migration advisory) and report: project type, maturity level, last validation date, checklist completion. No agent harness boots or health checks.
+
+---
+
+## Anti-Patterns (from agent harness dossier)
+
+When generating engineering-harness.md, warn against:
+- **"Tests Are Enough"** — unit tests (engineering harness signal) pass while the running app the agent harness exercises is broken. These are different signals; you need both.
+- **"The Agent Can Figure It Out"** — agents need explicit Boot/Interact/Observe instructions
+- **"We'll Add the Agent Harness Later"** — agent harness first (after engineering harness exists), features second
+- **"Screenshot Everything"** — prefer structured output over screenshots
+- **"One Process Per Terminal"** — single entry point, single shutdown handler
