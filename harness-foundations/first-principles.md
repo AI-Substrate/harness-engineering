@@ -1,5 +1,7 @@
 Harness engineering is the practice of productising the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run. Agent harnesses make models operable; engineering harnesses make products operable. Productive agentic engineering needs both, but the project-side engineering harness is what proves real behaviour.
 
+Note this is a very early attempt at creating such a list.
+
 ## Boundary and ontology
 
 #### 1. Engineering harness and agent harness are distinct layers

@@ -44,13 +44,16 @@ If those signals are weak, the loop becomes overdependent on the human as the so
 
 The core concept is so simple you could realistically prompt an engineering harness nucleus in to your own codebase in a few minutes. Below this section is a more detailed take.
 
-As I said, an engineering harness can start out as such a simple idea. A few simple rules and you can start building out the beginnings of a harness. Over time this will snowball. You could of course attempt to encode all these [principles](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/first-principles.md) but in reality, you can start small in your experiments and get some hands on time with the concept with very little initial setup time. Try this:
+As I said earlier, an engineering harness can start out as such a simple idea. A few simple rules and you can start building out the beginnings of a harness. Over time this will snowball. You could of course attempt to encode all these [principles](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/first-principles.md) but in reality, you can start small in your experiments and get some hands on time with the concept with very little initial setup time. Try this:
 
 1. Have your agent create a tiny CLI. I like doing them in node because a lot of the agentic harness stuff seems to work with it well.
 2. Tell the agent this CLI is the project harness.
 3. Tell the agent to keep a record of friction it encounters as it works. Then start doing some work on your codebase.
 4. At the end of the run, ask the agent "if you had a magic wand, what would you improve about your environment". Ask it to provide a retrospective of it's experience of working with the codebase and the harness.
 5. After human review, encode the best improvement into the harness. Prefer executable checks over instructions in markdown.
+6. Repeat.
+
+That's basically it. Obviously we encode all this in SKILLS.md or similar concept, but the bones of it are the loop above.
 
 ## Why a tiny CLI is the right starting point
 
@@ -58,7 +61,7 @@ Every new agent session is a fresh developer onboarding into your codebase.
 
 If the only way to operate your repo is scattered `AGENTS.md` paragraphs, half-remembered package scripts, tribal setup steps, and a Miro page from last quarter, the agent has to infer too much. Sometimes it infers well. Sometimes it hallucinates confidence. Either way, you are paying for the inference.
 
-A CLI gives the harness a front door. Agents are unreasonably good at using them. They get verbs, help text, stable arguments, exit codes, examples, and structured output. They can ask `--help` instead of guessing. They can probe before acting. They can read a clean error and decide what to do.
+A CLI gives the harness a front door. Agents are very good at using them. They get verbs, help text, stable arguments, exit codes, examples, and structured output. They can ask `--help` instead of guessing. They can probe before acting. They can read a clean error and decide what to do.
 
 Your first version does not need to be clever. It can wrap things you already have:
 
@@ -72,6 +75,8 @@ Your first version does not need to be clever. It can wrap things you already ha
 
 The point is not to reinvent your toolchain. The point is to make the supported path obvious, both for humans joining the team and for every agent session that starts cold.
 
+Sure these examples might seem a little pedestrian, but they are just the start. I've seen some really fantastic additions to the harness come out of just... using the harness.
+
 ## The five rules
 
 ### Rule 1. Make the harness the front door
@@ -82,15 +87,13 @@ The CLI does not need to do everything from day one. It needs to be the **one ob
 
 ### Rule 2. Encode the fix, not the memory
 
-If the agent discovers the app only starts after three obscure setup steps, do not just add another paragraph to `AGENTS.md` explaining the dance.
-
-Ask whether the harness can do the dance.
+If the agent discovers the app only starts after three obscure setup steps, do not just add another paragraph to `AGENTS.md` explaining the dance. Ask whether the harness can do the dance.
 
 If the agent keeps forgetting a migration step, add a preflight check. If it keeps misreading an architecture rule, add an architecture check. If it keeps needing the same seed data, add a seed command. If it keeps misusing an internal API, add a lint rule or a typed wrapper.
 
-Documentation can orient. But the highest-value harness knowledge is executable. Markdown explains the trap. Code prevents you falling in it.
+Documentation can orient. But the highest-value harness knowledge is executable. Markdown explains the trap. Code prevents you falling into it.
 
-This is the rule that quietly does the most work. The instinct is always to write a new doc. Resist it. "Coding in markdown" is how harnesses stay stuck.
+This encode-the-fix-not-the-memory is the rule that quietly does the most work. The instinct is always to write a new doc. Resist it. "Coding in markdown" is how you stay stuck.
 
 I like to think of this as "instead of documenting how to work the problem, just fix it properly". Don't tell, do (when it makes sense!).
 
@@ -100,13 +103,13 @@ Do not ask the agent to infer whether it is done when the repo can prove it.
 
 A prompt that says *"follow our architecture"* is a start. A deterministic architecture check that fails when the rule is violated is much better.
 
-A prompt that says *"make sure the app still works"* is risky. A `harness boot` and a smoke check is much better.
+A prompt that says *"make sure the app still works and you can build it"* is risky. A `harness boot` and a smoke check is much better.
 
-A prompt that says *"do high quality work"* is not particularly useful. A validation path that catches the specific failure modes your team actually sees in production is much better.
+A prompt that says *"do high quality work"* is not particularly useful. A validation path that catches the specific failure modes your team actually catches is much better.
 
 The agent can say it is done. The harness should decide whether that claim is supported by evidence.
 
-This is where back pressure stops being a human review habit and becomes part of the repo. Compilers, type systems, schemas, linters, tests, architecture checks, boot probes, and smoke tests can all refuse weak work directly, without needing the agent to remember a rule. Unit tests matter, but they are one sensor, not the whole harness. Aim for checks that catch the failures your team experiences, not just the failures that are easy to write tests for.
+This is where back pressure stops being a human review habit and becomes part of the repo. Compilers, type systems, schemas, linters, tests, architecture checks, boot probes, and smoke tests can all refuse weak work directly, without needing the agent to remember a rule. Unit tests matter, but they are one dimension, not the whole harness. Aim for checks that catch the failures your team experiences, not just the failures that are easy to write tests for.
 
 This rule is the one most teams underinvest in. It is also the one that earns the most trust over time.
 
@@ -114,7 +117,7 @@ This rule is the one most teams underinvest in. It is also the one that earns th
 
 Agents are useful because they expose the rough edges that humans have learned to ignore.
 
-Humans accumulate tribal knowledge. Agents do not, at least not across sessions. So when the agent gets stuck, that is not just an agent failure. It is often **usability research on your engineering harness**.
+Humans accumulate tribal knowledge. Agents do not, at least not across sessions. So when the agent gets stuck, that is not just an agent failure. It is often actually performing **usability research on your engineering harness**.
 
 When something goes wrong, ask:
 
