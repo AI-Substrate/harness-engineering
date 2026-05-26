@@ -4,7 +4,9 @@ description: Create or validate the engineering harness for the current project 
 ---
 # engineering-harness-setup
 
-Create or validate the **engineering harness** — the umbrella term covering both (1) the engineering substrate (`justfile`/`Makefile`/`package.json scripts`, test runner, seed scripts, env config — what developers and CI run) and (2) the Boot → Interact → Observe → Validate loop layered on top so agents can iterate on running software in 30-60 second cycles. This skill governs both as one cohesive thing.
+Create or validate the **engineering harness** — the umbrella term covering both (1) the engineering substrate (`justfile`/`Makefile`/`package.json scripts`, test runner, seed scripts, env config — what developers and CI run) and (2) the Boot → Interact → Observe → Validate → Improve loop layered on top so agents can iterate on running software in 30-60 second cycles. This skill governs both as one cohesive thing.
+
+This skill should create the **nucleus of a self-improving engineering harness**: a governance file, an `AGENTS.md` route, a starter command surface under `harness/cli/`, and a path into the compound loop so future work can turn friction into encoded harness improvements.
 
 **Engineering harness governance**: `docs/project-rules/engineering-harness.md` (new projects). Legacy names `docs/project-rules/agent-harness.md` and `docs/project-rules/harness.md` are still read as fallbacks for projects that haven't migrated yet — see Step 0 for the read order and Step 6 for the migration advisory.
 
@@ -112,6 +114,15 @@ Possible questions (ask only if needed):
 - Q: How does auth work? (No auth / Persistent profile / API key / Token file)
 - Q: Primary interaction method? (HTTP API / Browser automation / Terminal / Both)
 - Q: Where should evidence files go? (default: `./harness/evidence/`)
+- Q: Which starter harness CLI should be created under `harness/cli/`? (Python stdlib / Node stdlib / Other or existing tool)
+
+For the CLI question:
+
+- Prefer **Python stdlib** when Python 3 is available and the repo is not primarily Node.
+- Prefer **Node stdlib** when Node is available and the repo is JavaScript/TypeScript-heavy.
+- Use **Other or existing tool** when the repo already has a strong command surface (`just`, `make`, package scripts, project CLI) and the user wants `harness/cli/` to document/wrap that instead of adding a new executable.
+
+The selected CLI is not expected to be complete. It is a starter front door that wraps or records the best known commands and gives future agents a single place to improve.
 
 #### Step 4: Generate engineering-harness.md
 
@@ -127,6 +138,12 @@ Write to `docs/project-rules/engineering-harness.md` (new canonical path) using 
 
 ## Purpose
 [1-2 sentences: what this harness enables for agents in this project. Covers both the engineering substrate (justfile/Makefile/dev scripts) and the agent-facing Boot/Interact/Observe loop on top.]
+
+## Harness CLI
+- **Path**: `harness/cli/`
+- **Invocation**: [e.g. `python3 harness/cli/harness.py` or `node harness/cli/harness.mjs` or `just harness`]
+- **Command Map**: `harness/cli/commands.json`
+- **Purpose**: starter command surface for `doctor`, `boot`, `health`, `build`, `test`, `lint`, `smoke`, `seed`, and `validate`.
 
 ## Boot
 - **Command**: [single boot command]
@@ -231,7 +248,130 @@ If `docs/compound/` is missing: write the placeholder row from the template and 
 
 If `docs/compound/` exists but has no matching retros: write the placeholder row from the template (no harm; the section is informational and will populate once compound starts producing entries).
 
-#### Step 4b: Patch `AGENTS.md`
+#### Step 4b: Create starter CLI under `harness/cli/`
+
+Create a tiny harness command surface under `harness/cli/`. This is the concrete front door from the simple harness pattern: agents should have a command to inspect before inventing raw shell sequences.
+
+Always create:
+
+```txt
+harness/cli/
+├── README.md
+└── commands.json
+```
+
+Create exactly one of these depending on the user's choice:
+
+```txt
+harness/cli/harness.py    # Python stdlib
+harness/cli/harness.mjs   # Node stdlib
+harness/cli/README.md     # Other or existing tool only, with explicit invocation instructions
+```
+
+`harness/cli/commands.json` should contain the detected or user-confirmed command map:
+
+```json
+{
+  "version": "0.1",
+  "commands": {
+    "doctor": "",
+    "boot": "",
+    "health": "",
+    "build": "",
+    "test": "",
+    "lint": "",
+    "smoke": "",
+    "seed": "",
+    "validate": ""
+  },
+  "evidence": {
+    "directory": "./harness/evidence/"
+  },
+  "notes": {
+    "purpose": "Starter engineering-harness command map. Empty strings are improvement opportunities, not success."
+  }
+}
+```
+
+For Python or Node, the starter CLI should:
+
+- support `--help`;
+- support `doctor`;
+- support `validate --dry-run`;
+- support `run <command-name> --dry-run`;
+- read `harness/cli/commands.json`;
+- report empty command slots as `unconfigured`;
+- print agent-friendly help: command list, what each command proves, examples, evidence path, and what to do when a command is unconfigured;
+- print actionable errors with `status`, `error.code`, `message`, and `next_action` fields or clearly labeled equivalents;
+- avoid starting long-running services unless the user explicitly runs a configured command without `--dry-run`;
+- print clear next actions when a command is missing.
+
+Minimum command set:
+
+| Command | Purpose |
+|---------|---------|
+| `doctor` | Show configured and missing command slots, plus the next useful setup action. |
+| `run <name>` | Run one configured command, or dry-run it. Missing names must list available names. |
+| `validate --dry-run` | Show the validation sequence without running it and mark missing commands as improvement opportunities. |
+| `help` / `--help` | Explain the CLI, command map, examples, evidence path, and how agents should use the harness. |
+
+Agent-friendly `--help` should be short but complete:
+
+```txt
+Engineering harness CLI
+
+Use this CLI as the front door before inventing raw shell commands.
+
+Commands:
+  doctor                 Show configured/missing harness commands
+  run <name> [--dry-run] Run a configured command from commands.json
+  validate [--dry-run]   Show or run the default validation sequence
+
+Examples:
+  harness doctor
+  harness validate --dry-run
+  harness run test --dry-run
+
+Evidence:
+  ./harness/evidence/
+
+If a command is unconfigured, treat it as harness friction and propose an encoded fix.
+```
+
+Error output should be useful to an agent. Prefer this shape for JSON-capable CLIs:
+
+```json
+{
+  "command": "run test",
+  "status": "unconfigured",
+  "error": {
+    "code": "UNCONFIGURED_COMMAND",
+    "message": "commands.test is empty in harness/cli/commands.json",
+    "next_action": "Set commands.test to the repo's supported test command, then rerun harness run test --dry-run."
+  }
+}
+```
+
+Human-readable errors should carry the same information:
+
+```txt
+status: unconfigured
+error.code: UNCONFIGURED_COMMAND
+message: commands.test is empty in harness/cli/commands.json
+next_action: Set commands.test to the repo's supported test command, then rerun harness run test --dry-run.
+```
+
+For **Other or existing tool**, do not invent a runtime. Instead, create `harness/cli/README.md` with:
+
+- the existing command surface the user chose (`just`, `make`, npm scripts, project CLI, etc.);
+- the equivalent harness invocation;
+- which commands are configured;
+- which commands remain missing;
+- how future agents should add a wrapper if repeated friction appears.
+
+After creating the CLI files, update `docs/project-rules/engineering-harness.md` `## Harness CLI` with the chosen invocation.
+
+#### Step 4c: Patch `AGENTS.md`
 
 After writing `docs/project-rules/engineering-harness.md`, create or update a short, sentinel-bracketed `AGENTS.md` section that signposts future agents to the engineering harness before non-trivial work.
 
@@ -245,11 +385,11 @@ This repository has a project-side engineering harness. Read `docs/project-rules
 
 The engineering harness is the supported path for Boot → Interact → Observe → Validate → Improve: it records how to start the product, exercise real behaviour, capture evidence, validate results, and encode recurring friction back into the repo.
 
-Prefer the commands and evidence paths named in `docs/project-rules/engineering-harness.md` over inventing ad-hoc shell sequences. If the harness is missing a command, check, fixture, or diagnostic you need, record that gap as harness friction so it can be encoded.
+Prefer the commands and evidence paths named in `docs/project-rules/engineering-harness.md` and `harness/cli/` over inventing ad-hoc shell sequences. If the harness is missing a command, check, fixture, or diagnostic you need, record that gap as harness friction so it can be encoded.
 <!-- ENGINEERING-HARNESS-SETUP END -->
 ```
 
-#### Step 4c: Recommend compound setup when missing
+#### Step 4d: Recommend compound setup when missing
 
 If `docs/compound/` is missing and the user has not opted out, include this recommendation in the report:
 
@@ -263,7 +403,7 @@ Do not auto-create the compound tree unless the user explicitly asks. The first 
 
 #### Step 5: Validate (post-create)
 
-After generating engineering-harness.md and patching `AGENTS.md`, run the VALIDATE flow (below) to confirm it works. Report results.
+After generating engineering-harness.md, creating the starter CLI, and patching `AGENTS.md`, run the VALIDATE flow (below) to confirm it works. Report results.
 
 #### Step 6: Report
 
@@ -271,6 +411,7 @@ After generating engineering-harness.md and patching `AGENTS.md`, run the VALIDA
 ✅ Engineering harness created:
 
   Governance:   docs/project-rules/engineering-harness.md
+  CLI:          harness/cli/ ([python|node|other])
   Agent route:  AGENTS.md
   Type:         [type] ([framework])
   Maturity:     L[N] ([description])

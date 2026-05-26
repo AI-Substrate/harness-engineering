@@ -14,6 +14,18 @@ npx skills@latest add AI-Substrate/harness-engineering \
   -g
 ```
 
+To install the skills from remote GitHub into the **current repository** for GitHub Copilot CLI and Cursor, omit `-g`:
+
+```bash
+npx skills@latest add AI-Substrate/harness-engineering \
+  -a github-copilot \
+  -a cursor \
+  -y \
+  --copy
+```
+
+This writes the skills to `./.agents/skills/`, the project-local location used by both targets.
+
 For GitHub Copilot CLI, Codex CLI, OpenCode, Pi, project-local installs, local-branch testing, and single-skill installs, see [`INSTALL.md`](./INSTALL.md).
 
 ## Core thesis
@@ -84,7 +96,9 @@ This repo distils private and public research into general, publication-safe pri
 
 ## Skills authored here
 
-- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness contract at `docs/project-rules/engineering-harness.md`, seeds known difficulties where available, and patches `AGENTS.md` so future agents route through the harness.
+For a practical guide to when to run each skill and how the suite fits together, see [`skills/README.md`](skills/README.md).
+
+- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface, known difficulties where available, and an `AGENTS.md` route for future agents.
 - [`skills/boot-harness/`](skills/boot-harness/SKILL.md): a start-of-session skill that reads the repo-local harness contract, runs safe doctor/health checks, surfaces known difficulties, and reports whether the repo is ready for engineering work. It fails fast and recommends `engineering-harness-setup` if no harness exists.
 - [`skills/compound-0-setup/`](skills/compound-0-setup/SKILL.md): scaffolds `docs/compound/`, the durable ledger for the harness Improve stage.
 - [`skills/compound-1-track/`](skills/compound-1-track/SKILL.md): silently captures material friction or concrete improvement ideas into a per-agent session buffer.

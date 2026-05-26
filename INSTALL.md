@@ -80,6 +80,26 @@ npx skills@latest add AI-Substrate/harness-engineering \
 
 Project-local installs are useful when a repository wants to pin the skill alongside the codebase.
 
+### Install project-local for GitHub Copilot CLI and Cursor
+
+GitHub Copilot CLI and Cursor both use the project-local `.agents/skills/` target through `npx skills`.
+
+```bash
+npx skills@latest add AI-Substrate/harness-engineering \
+  -a github-copilot \
+  -a cursor \
+  -y \
+  --copy
+```
+
+This installs all skills from the remote GitHub repository into:
+
+```txt
+./.agents/skills/
+```
+
+Use `--copy` when you want the installed skill files to be physically present in the current repo for review or commit.
+
 ### Install selected skills
 
 Use `-s` / `--skill` to install one skill or repeat it to install a subset:
