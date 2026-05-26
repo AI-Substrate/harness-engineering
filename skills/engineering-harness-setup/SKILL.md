@@ -122,7 +122,7 @@ For the CLI question:
 - Prefer **Node stdlib** when Node is available and the repo is JavaScript/TypeScript-heavy.
 - Use **Other or existing tool** when the repo already has a strong command surface (`just`, `make`, package scripts, project CLI) and the user wants `harness/cli/` to document/wrap that instead of adding a new executable.
 
-The selected CLI is not expected to be complete. It is a starter front door that wraps or records the best known commands and gives future agents a single place to improve.
+The selected CLI is not expected to be complete. It is a starter front door that wraps or records the best known commands and gives future agents a single place to improve. The harness is a focal point, not a rewrite: wrap existing build/test/run/seed/health commands wherever they exist, and implement original CLI behavior only for harness affordances the repo does not already provide.
 
 #### Step 4: Generate engineering-harness.md
 
@@ -138,6 +138,12 @@ Write to `docs/project-rules/engineering-harness.md` (new canonical path) using 
 
 ## Purpose
 [1-2 sentences: what this harness enables for agents in this project. Covers both the engineering substrate (justfile/Makefile/dev scripts) and the agent-facing Boot/Interact/Observe loop on top.]
+
+## First Principles
+- **Focal point, not replacement**: the harness is the obvious place to discover how to work, not a parallel reimplementation of the repo's toolchain.
+- **Wrap before inventing**: if a build, test, lint, boot, seed, smoke, or health command already exists, the harness should call it and make it easier to discover.
+- **Invent only at the gaps**: implement original harness behavior only when the repo lacks an equivalent command, check, fixture, diagnostic, evidence path, or error message.
+- **Improve by use**: empty command slots and missing checks are harness friction. Capture them, then encode the smallest useful fix.
 
 ## Harness CLI
 - **Path**: `harness/cli/`
@@ -252,6 +258,8 @@ If `docs/compound/` exists but has no matching retros: write the placeholder row
 
 Create a tiny harness command surface under `harness/cli/`. This is the concrete front door from the simple harness pattern: agents should have a command to inspect before inventing raw shell sequences.
 
+The CLI must be a focal point over the existing toolchain, not a competing toolchain. Prefer wrapping existing repo commands in `commands.json`; implement original CLI logic only for the generic harness shell (`help`, `doctor`, `run`, `validate --dry-run`) and for genuinely missing harness affordances.
+
 Always create:
 
 ```txt
@@ -288,7 +296,8 @@ harness/cli/README.md     # Other or existing tool only, with explicit invocatio
     "directory": "./harness/evidence/"
   },
   "notes": {
-    "purpose": "Starter engineering-harness command map. Empty strings are improvement opportunities, not success."
+    "purpose": "Starter engineering-harness command map. Empty strings are improvement opportunities, not success.",
+    "rule": "Wrap existing repo commands first. Implement original harness commands only where no supported command already exists."
   }
 }
 ```

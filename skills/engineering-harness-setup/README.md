@@ -21,6 +21,7 @@ Use it before feature work if the repo is missing:
 - Creates or validates `docs/project-rules/engineering-harness.md`.
 - Asks whether the starter CLI should use Python stdlib, Node stdlib, or an existing/other tool.
 - Creates `harness/cli/` with a starter command map and either a tiny Python/Node CLI or instructions for the chosen existing tool.
+- Treats the harness as a focal point over existing commands: wrap before inventing, and implement original behavior only where the repo has a real gap.
 - Requires the starter CLI to have agent-friendly `--help` and actionable errors with clear next actions.
 - Records Boot, Interact, Observe, Validate, and Improve guidance.
 - Seeds Known Difficulties from `docs/compound/` if compound retros exist.

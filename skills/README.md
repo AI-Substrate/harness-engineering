@@ -111,6 +111,7 @@ The skills make that thesis operational:
 | Foundation idea | Skill-suite affordance |
 |---|---|
 | Boot -> Interact -> Observe -> Validate -> Improve | `engineering-harness-setup` records the loop; `boot-harness` starts sessions through it. |
+| The harness is the front door, not a replacement toolchain | `engineering-harness-setup` creates `harness/cli/` as a discovery/wrapper surface over existing commands first. |
 | Encode the fix, not the memory | Compound entries must name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `compound-1-track` treats agent friction as product feedback for the harness. |
 | Retrospectives need a lifecycle | `compound-2-bubble` and `compound-3-harvest` move entries from buffer to durable retro to prioritized improvement. |
@@ -124,6 +125,7 @@ The skills make that thesis operational:
 - Track friction quietly during work; do not nag the user mid-flow.
 - Bubble once at a natural pause.
 - Harvest when recurring friction should influence planning or harness maintenance.
+- Wrap existing build/test/run/seed/health commands before inventing new harness behavior.
 - Prefer encoded fixes: commands, checks, fixtures, diagnostics, templates, defaults, or evidence paths.
 
 ## Installable skills
