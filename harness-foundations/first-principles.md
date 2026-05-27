@@ -80,7 +80,7 @@ A useful harness turns observations into explicit pass, fail, degraded, expected
 
 #### 16. Improve is what makes the harness compound
 
-Without Improve the harness is only a test rig, but with Improve each run can make the next run faster, clearer, or safer.
+Without Improve the harness is only a test rig, but with Improve each run can make the next run faster, clearer, safer, or backed by stronger signals. Improving the harness means reducing friction and increasing deterministic back pressure.
 
 #### 17. Loop time is a first-class metric
 
@@ -152,7 +152,7 @@ A feature should move to passing only when the verification command succeeds, no
 
 #### 33. Verification must cover experienced failure modes
 
-A green unit or typecheck suite is insufficient if the team’s real failures happen during startup, rendering, hydration, integration, or side effects.
+A green unit or typecheck suite is insufficient if the team’s real failures happen during startup, rendering, hydration, integration, side effects, architecture drift, or security-sensitive boundaries.
 
 #### 34. End-to-end tests change agent behaviour
 
@@ -200,7 +200,7 @@ Predictable ports, slots, environments, and worktrees prevent hidden coupling be
 
 #### 44. Friction is product feedback
 
-Agent confusion, flaky steps, missing fixtures, unclear errors, and slow validation are signals about the harness, not just annoyances.
+Agent confusion, flaky steps, missing fixtures, unclear errors, slow validation, and missing proof surfaces are signals about the harness, not just annoyances.
 
 #### 45. Agents are real users of the engineering harness
 
@@ -208,7 +208,7 @@ Agents expose UX failures because they do not naturally inherit local tribal kno
 
 #### 46. Magic-wand feedback is a harness-design primitive
 
-Asking what one concrete command, flag, output field, fixture, diagnostic, or workflow change would help turns usage into improvement signal.
+Asking what one concrete command, flag, output field, fixture, diagnostic, sensor, check, or workflow change would help turns usage into improvement signal. The companion question is: what did the agent or reviewer have to infer that the harness should have proved?
 
 #### 47. Retrospectives need a lifecycle
 
@@ -216,7 +216,7 @@ Feedback only compounds when it is captured, bubbled, harvested, prioritised, en
 
 #### 48. Ledgers are improvement backlogs, not diaries
 
-Friction logs should be structured, ranked, and harvested so the harness owner can see where velocity is leaking.
+Friction logs should be structured, ranked, and harvested so the harness owner can see where velocity is leaking and where the repo needs stronger back pressure.
 
 #### 49. Measure encoded improvement, not activity volume
 

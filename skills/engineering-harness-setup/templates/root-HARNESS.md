@@ -59,7 +59,7 @@ Boot → Interact → Observe → Validate → Improve
 - Interact: exercise meaningful behaviour through supported surfaces.
 - Observe: capture logs, responses, screenshots, generated files, events, or other evidence.
 - Validate: turn evidence into a verdict.
-- Improve: encode what was learned so the next run is better.
+- Improve: encode what was learned so the next run is easier, safer, or backed by stronger signals.
 
 ## Phase Gates
 
@@ -89,7 +89,7 @@ If a command is missing, consider whether adding a harness command is better tha
 
 Do not only document repeated workarounds.
 
-When practical, encode the solution as a command, check, fixture, default, diagnostic, template, error message, or validation path.
+When practical, encode the solution as a command, check, fixture, default, diagnostic, template, error message, validation path, sensor, or evidence path.
 
 Documentation can orient. Executable knowledge compounds.
 
@@ -97,7 +97,7 @@ Documentation can orient. Executable knowledge compounds.
 
 Do not ask the agent to infer whether it is done when the repository can prove it.
 
-Use build, test, lint, typecheck, boot, health, smoke, architecture, or other deterministic checks where possible.
+Use build, test, lint, typecheck, boot, health, smoke, architecture, security, schema, runtime-observe, or other deterministic checks where possible.
 
 If judgement remains non-executable, route it to a human with evidence.
 
@@ -111,6 +111,7 @@ When a human or agent gets stuck, classify the friction:
 - setup too slow;
 - seed data absent;
 - validation weak;
+- signal or sensor missing;
 - state not durable;
 - error message unhelpful;
 - supported path harder than shortcut.
@@ -121,7 +122,11 @@ Record material friction in `harness/state/friction-log.md`.
 
 At the end of meaningful work, ask:
 
-> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.
+> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
+
+Then ask:
+
+> What did the agent or reviewer have to infer that the harness should have proved?
 
 After human review, encode good suggestions into the harness.
 
@@ -141,6 +146,11 @@ Typical commands:
 {{HARNESS_CLI_INVOCATION}} test
 {{HARNESS_CLI_INVOCATION}} run
 {{HARNESS_CLI_INVOCATION}} health
+{{HARNESS_CLI_INVOCATION}} observe
+{{HARNESS_CLI_INVOCATION}} smoke
+{{HARNESS_CLI_INVOCATION}} arch
+{{HARNESS_CLI_INVOCATION}} security
+{{HARNESS_CLI_INVOCATION}} codeql
 {{HARNESS_CLI_INVOCATION}} validate
 {{HARNESS_CLI_INVOCATION}} onboard
 {{HARNESS_CLI_INVOCATION}} fft         # alias for validate --tier proof
@@ -159,8 +169,8 @@ Before claiming work is complete, an agent should report:
 4. Which checks failed or were not configured.
 5. What evidence was produced.
 6. What remains unproven.
-7. Any harness friction discovered.
-8. One concrete magic-wand improvement candidate, if any.
+7. Any harness friction or signal gap discovered.
+8. One concrete magic-wand improvement candidate or missing proof surface, if any.
 
 Agent confidence is not completion evidence.
 

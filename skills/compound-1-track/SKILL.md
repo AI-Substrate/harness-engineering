@@ -1,10 +1,10 @@
 ---
 name: compound-1-track
-description: Silent producer-side capture for the compounding-value loop. Appends one friction, insight, magic-wand, or improvement entry to docs/compound/_buffers/<agent>.session-buffer.md without interrupting the user.
+description: Silent producer-side capture for the compounding-value loop. Appends one friction, signal-gap, insight, magic-wand, or improvement entry to docs/compound/_buffers/<agent>.session-buffer.md without interrupting the user.
 ---
 # compound-1-track
 
-Run this skill silently during work when the agent observes material friction or a concrete improvement idea.
+Run this skill silently during work when the agent observes material friction, a concrete improvement idea, or a missing back-pressure signal the harness should provide.
 
 No user-facing output. No prompting. No fixing. This skill only appends to the current agent's session buffer so `compound-2-bubble` can present one end-of-session decision point later.
 
@@ -22,7 +22,11 @@ Run for material friction:
 - a build/test/boot failure requires guesswork to interpret;
 - a harness command is missing, unclear, unsafe, or not discoverable;
 - evidence capture, health checks, fixtures, auth, data, or observation paths are missing;
-- the agent has a concrete magic-wand thought: "if only there were a command, flag, output field, fixture, diagnostic, template, or workflow change."
+- the agent has to infer what a deterministic check or sensor should prove;
+- the website/app cannot be booted, inspected, screenshotted, or smoke-tested through a supported path;
+- an architecture, security, schema, dependency, migration, or boundary rule is enforced only by prose or human review;
+- tests pass but a real user-flow or runtime signal is missing;
+- the agent has a concrete magic-wand thought: "if only there were a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change."
 
 Do not run for:
 
@@ -85,6 +89,9 @@ Recommended IDs:
 | `coordination` | `COORD` |
 | `improvement-suggestion` | `SUGG` |
 | `confusion` | `CONF` |
+| `signal-gap` | `SIG` |
+| `sensor-gap` | `SNS` |
+| `weak-back-pressure` | `BP` |
 
 Generate IDs by scanning the current buffer for the highest matching prefix and incrementing it. Keep counters scoped to the buffer file.
 
@@ -92,8 +99,8 @@ Recommended values:
 
 | Field | Values |
 |---|---|
-| `kind` | `difficulty`, `magic-wand`, `gift`, `insight`, `coordination`, `improvement-suggestion`, `confusion` |
-| `target` | `engineering-harness`, `tooling`, `infra`, `build`, `config`, `dependencies`, `env`, `auth`, `tests`, `observe`, `docs`, `skill`, `project`, `coordination` |
+| `kind` | `difficulty`, `magic-wand`, `gift`, `insight`, `coordination`, `improvement-suggestion`, `confusion`, `signal-gap`, `sensor-gap`, `weak-back-pressure` |
+| `target` | `engineering-harness`, `tooling`, `infra`, `build`, `config`, `dependencies`, `env`, `auth`, `tests`, `observe`, `runtime-observe`, `smoke`, `architecture`, `static-analysis`, `security`, `schema`, `user-flow`, `evidence`, `docs`, `skill`, `project`, `coordination` |
 | `severity` | `blocking`, `degrading`, `annoying` |
 | `system.compound.status` | `open` |
 | `system.compound.source` | `agent-self`, `user` |
@@ -111,7 +118,7 @@ Append entries. Do not rewrite, sort, validate, or drain the buffer. `compound-2
 At a natural pause:
 
 - if the buffer is empty, ask the agent-internal magic-wand question once and track only if the answer is concrete;
+- also ask once: "What did I have to infer that the harness should have proved?" Track the answer only if it names a concrete missing signal or sensor;
 - if the buffer is non-empty, do not self-prompt again.
 
 The point is to capture learning without turning the loop into nagware.
-

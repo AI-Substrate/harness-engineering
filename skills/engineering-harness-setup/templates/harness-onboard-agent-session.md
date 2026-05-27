@@ -72,7 +72,7 @@ The agent harness drives the model. The engineering harness proves the product.
 
 8. If the failure is likely harness friction, propose one concrete encoded improvement. Use the magic-wand prompt from `harness/templates/magic-wand-prompt.md` (also available via `{{HARNESS_CLI_INVOCATION}} magic-wand`) to frame the proposal:
 
-   > If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.
+   > If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
 
 ## Completion rule
 

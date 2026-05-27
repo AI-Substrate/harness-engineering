@@ -11,7 +11,7 @@ Run this at a natural pause:
 - before handoff;
 - before merge/review close-out;
 - start of a new session if the prior buffer is non-empty;
-- when the user asks to review captured friction.
+- when the user asks to review captured friction or missing back-pressure signals.
 
 If the buffer is empty, it should be silent.
 
@@ -22,6 +22,7 @@ If the buffer is empty, it should be silent.
 - Lets the user save, task, plan, stage an encoding, dismiss, or all-save.
 - Writes selected entries to `docs/compound/agents/<agent>/<date>/*.retro.md`.
 - Clears the session buffer after handling it.
+- For signal gaps, nudges the encoding toward the smallest useful deterministic check, sensor, smoke flow, or evidence path.
 
 ## Where it fits
 
@@ -32,4 +33,3 @@ compound-1-track -> compound-2-bubble -> durable retros -> compound-3-harvest
 ```
 
 It preserves user control. Captured entries do not become work until the user saves, tasks, plans, or encodes them.
-

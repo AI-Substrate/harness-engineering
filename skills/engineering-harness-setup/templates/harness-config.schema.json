@@ -33,7 +33,7 @@
     "commands": {
       "type": "object",
       "description": "Each value is the shell command (possibly empty string). Empty commands are skipped by validate and reported as 'unconfigured' by doctor.",
-      "required": ["install", "build", "test", "lint", "format_check", "run", "smoke"],
+      "required": ["install", "build", "test", "lint", "format_check", "run", "observe", "smoke", "arch", "security", "codeql"],
       "additionalProperties": false,
       "properties": {
         "install": { "type": "string" },
@@ -42,7 +42,11 @@
         "lint": { "type": "string" },
         "format_check": { "type": "string" },
         "run": { "type": "string" },
-        "smoke": { "type": "string" }
+        "observe": { "type": "string" },
+        "smoke": { "type": "string" },
+        "arch": { "type": "string" },
+        "security": { "type": "string" },
+        "codeql": { "type": "string" }
       }
     },
     "health": {

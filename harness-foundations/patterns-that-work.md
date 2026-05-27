@@ -122,11 +122,11 @@ Friction only compounds when it enters a lifecycle.
 
 A practical lifecycle is capture, bubble, harvest, prioritise, encode, and validate. Capture friction while it is fresh. Bubble it at a natural pause so it does not interrupt flow. Harvest entries periodically so repeated pain becomes visible. Prioritise by recurrence, severity, and age. Encode the chosen fix into the harness. Validate that a later run is actually better.
 
-The magic-wand question is a simple trigger: “What one concrete command, flag, output field, fixture, diagnostic, template, or workflow change would make the next run easier?”
+The magic-wand question is a simple trigger: “What one concrete command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change would make the next run easier, safer, or better proven?” Pair it with: “What did the agent or reviewer have to infer that the harness should have proved?”
 
-Minimal version: ask the magic-wand question at the end of meaningful agent runs and convert the best answers into small harness tasks.
+Minimal version: ask the magic-wand and back-pressure questions at the end of meaningful agent runs and convert the best answers into small harness tasks.
 
-Watch for: retrospectives becoming diaries. The value is not the number of notes. The value is how many recurring frictions become encoded fixes.
+Watch for: retrospectives becoming diaries. The value is not the number of notes. The value is how many recurring frictions become encoded fixes or stronger sensors.
 
 ## Pattern 11. Make the CLI explorable
 

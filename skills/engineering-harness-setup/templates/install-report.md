@@ -83,6 +83,6 @@ The proof-level ladder is distinct from the harness-maturity ladder (L0–L4) in
 
 ## Magic-wand close-out
 
-> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.
+> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
 
 Record the answer in `harness/state/friction-log.md` with `magicWandTarget: project | harness | agent`. The harness ones are the most actionable; encode them.

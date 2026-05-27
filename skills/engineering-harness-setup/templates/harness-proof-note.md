@@ -36,6 +36,6 @@ Use these enums verbatim. `Ran` records whether the command actually executed (`
 
 At the end of this proof, ask:
 
-> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.
+> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
 
 Record the answer here and file it in `harness/state/friction-log.md` with `magicWandTarget: project | harness | agent`. Good candidates: a missing diagnostic that would have caught the failure, a flag that would have shortened the proof, a fixture that would have made the test deterministic, an output field that would have made the verdict machine-readable.

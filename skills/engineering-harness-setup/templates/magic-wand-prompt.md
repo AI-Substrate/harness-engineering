@@ -6,13 +6,13 @@ The single canonical wording of the magic-wand prompt. Every other surface in th
 
 ## Canonical wording
 
-> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.
+> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
 
 ## Why this wording
 
 - **"ONE thing"** — forces the answerer to prioritise. A list of five vague wishes is worth less than one concrete one.
-- **"Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change"** — names the seven categories that historically produce the highest-leverage harness improvements. Anything outside these categories is still allowed, but the enumeration anchors the answerer.
-- **"easier, safer, faster, or higher quality"** — keeps the dimension of improvement open. The same prompt works after a smooth run (where the answerer probably picks "faster" or "easier") and after a painful run (where they probably pick "safer" or "higher quality").
+- **"Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change"** — names the categories that historically produce the highest-leverage harness improvements. Anything outside these categories is still allowed, but the enumeration anchors the answerer.
+- **"easier, safer, faster, higher quality, or better proven"** — keeps the dimension of improvement open. The same prompt works after a smooth run (where the answerer probably picks "faster" or "easier") and after a painful run (where they probably pick "safer", "higher quality", or "better proven").
 
 ## Where it appears
 
@@ -33,6 +33,8 @@ A good answer is something the team or the next agent run could **act on in unde
 - *"Change the `validate` envelope to include a `proof_level` field so install-report can show the ceiling without re-parsing."*
 - *"Seed `harness/state/known-difficulties.md` with the macOS / Python 3.9 case so the next agent doesn't re-discover it."*
 - *"Make the install fail fast when `package.json` exists without a `test` script — currently the install completes and `<CLI> test --tier fast` returns unconfigured."*
+- *"Add a `<CLI> arch` check for the boundary reviewers keep catching by hand."*
+- *"Add `<CLI> observe --screenshot` so the agent can prove the app rendered instead of guessing from build output."*
 
 A weak answer is a wish for something outside the harness's reach (*"make pytest faster"*, *"buy more RAM"*). These are still valid friction-log entries, but they should be marked `magicWandTarget: project` instead of `harness`.
 
@@ -41,5 +43,9 @@ A weak answer is a wish for something outside the harness's reach (*"make pytest
 1. The harness CLI's `<CLI> magic-wand` subcommand prints this prompt (read from this template file).
 2. The install flow's Step 14 prints this prompt and asks whether to append the answer to `harness/state/friction-log.md`.
 3. The retrospective schema (`harness/templates/retrospective-schema.json`) makes `magicWand` a required string of minimum length 20, with this prompt as the `description` field.
+
+Use the companion back-pressure question when the answer hints at weak proof:
+
+> What did the agent or reviewer have to infer that the harness should have proved?
 
 The wording is **load-bearing**. Drift erodes the signal. `check.sh magic-wand` runs `grep -rcF` against the canonical sentence across the six surfaces above and expects ≥6 matches with zero variants.

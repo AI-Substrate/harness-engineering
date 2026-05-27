@@ -5,7 +5,7 @@ This directory contains the installable skills this repo publishes through `npx 
 The skills are designed as a small operating loop:
 
 ```text
-Install skills -> setup harness -> boot session -> do work -> track friction -> bubble learning -> harvest improvements -> encode fixes
+Install skills -> setup harness -> boot session -> do work -> track friction/signal gaps -> bubble learning -> harvest improvements -> encode fixes/checks
 ```
 
 The broader plan is to make harness engineering practical for people who have not used the concept before. The user should not need to understand every principle up front. They install the skills, run the setup skill if the repo has no harness, start each session with `boot-harness`, and let the compound skills keep the Improve stage alive.
@@ -58,7 +58,7 @@ Expected outcomes:
 - The starter CLI has agent-friendly `--help` and actionable errors that say what to do next.
 - `AGENTS.md` signposts future agents to the harness.
 - Known difficulties can be seeded from `docs/compound/` once the compound loop exists.
-- Missing boot, health, observe, or validation surfaces are named as harness gaps.
+- Missing boot, health, observe, validation, sensor, or back-pressure surfaces are named as harness gaps.
 
 ### 3. Boot the harness at session start
 
@@ -69,6 +69,7 @@ Expected outcomes:
 - The agent reads the harness contract instead of guessing commands.
 - Safe doctor, health, or dry-run checks are attempted where configured.
 - Known difficulties and Improve-loop storage are reviewed.
+- Runtime inspectability, smoke paths, architecture/static checks, and security/dependency/schema checks are surfaced where the harness names them.
 - If no harness exists, the skill fails fast and recommends `engineering-harness-setup`.
 - If no compound ledger exists, the skill recommends `compound-0-setup`.
 
@@ -81,6 +82,7 @@ Use `compound-1-track` silently when the agent sees meaningful friction:
 - slow or missing commands;
 - unclear errors;
 - missing fixtures, seed data, evidence paths, or validation checks;
+- missing sensors or deterministic checks that would have caught runtime, architecture, security, schema, or user-flow risk;
 - a concrete "if only there were..." improvement idea.
 
 This skill should not interrupt the user. It is the quiet capture side of the loop.
@@ -100,7 +102,8 @@ Harvest answers:
 - what keeps recurring;
 - which issues are stale;
 - which targets leak the most attention;
-- what should be encoded next.
+- what should be encoded next;
+- whether the next improvement should reduce friction, add back pressure, or both.
 
 ## How this fits the broader plan
 
@@ -114,8 +117,9 @@ The skills make that thesis operational:
 | The harness is the front door, not a replacement toolchain | `engineering-harness-setup` creates `harness/cli/` as a discovery/wrapper surface over existing commands first. |
 | Encode the fix, not the memory | Compound entries must name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `compound-1-track` treats agent friction as product feedback for the harness. |
+| Back pressure is a product feature | Signal gaps are tracked and harvested so repeated inference or review-only rules can become checks, sensors, smoke flows, or evidence paths. |
 | Retrospectives need a lifecycle | `compound-2-bubble` and `compound-3-harvest` move entries from buffer to durable retro to prioritized improvement. |
-| Known difficulties should be visible at boot | `engineering-harness-setup` can seed Known Difficulties from compound retros; `boot-harness` reviews them before work starts. |
+| Known difficulties and weak signals should be visible at boot | `engineering-harness-setup` can seed Known Difficulties from compound retros; `boot-harness` reviews both friction and signal readiness before work starts. |
 
 ## Operating rules
 
@@ -127,6 +131,7 @@ The skills make that thesis operational:
 - Harvest when recurring friction should influence planning or harness maintenance.
 - Wrap existing build/test/run/seed/health commands before inventing new harness behavior.
 - Prefer encoded fixes: commands, checks, fixtures, diagnostics, templates, defaults, or evidence paths.
+- Treat weak or missing signals as harness defects: if the agent had to infer runtime behaviour, architecture compliance, security posture, schema validity, or user-flow correctness, consider adding a deterministic sensor.
 
 ## Installable skills
 

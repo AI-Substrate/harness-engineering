@@ -21,6 +21,7 @@ If no harness exists, this skill fails fast and recommends `engineering-harness-
 - Locates the Improve loop (`docs/compound/`, friction logs, magic-wand prompts).
 - Extracts boot, health, interaction, observation, and validation guidance.
 - Runs safe doctor/health/dry-run checks where configured.
+- Reports signal readiness: runtime inspectability, smoke paths, architecture/static checks, and security/dependency/schema checks.
 - Reviews Known Difficulties.
 - Produces a harness boot report.
 
@@ -34,3 +35,4 @@ install skills -> engineering-harness-setup -> boot-harness -> work through the 
 
 The key rule is that boot is not only startup. Boot orients the agent to the loop it must improve. If `boot-harness` finds no Improve ledger, run `compound-0-setup`.
 
+Improve means reducing friction and increasing back pressure. If the agent has no supported way to inspect the running app, prove a user flow, check architecture boundaries, or capture structured evidence, `boot-harness` should name that as harness friction.

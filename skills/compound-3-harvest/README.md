@@ -10,7 +10,7 @@ Run this when the team wants to know what to improve next:
 - before planning large work if many entries exist;
 - at merge/review/phase debrief;
 - after several sessions have produced retros;
-- whenever the user asks what recurring friction should be fixed.
+- whenever the user asks what recurring friction or missing signal should be fixed.
 
 ## What it does
 
@@ -18,6 +18,7 @@ Run this when the team wants to know what to improve next:
 - Clusters open/suggested entries by kind and target.
 - Prioritizes by recurrence, severity, and age.
 - Surfaces stale or blocking friction.
+- Distinguishes ease improvements from back-pressure improvements such as runtime sensors, smoke flows, architecture checks, static analysis, security scans, and evidence capture.
 - Supports explicit lifecycle updates such as encoded, dismissed, and wontfix.
 - Does not write derived index files.
 
@@ -29,5 +30,4 @@ This is the **harvest** step:
 durable retros -> compound-3-harvest -> prioritized harness improvements -> encoded fixes
 ```
 
-Harvest is how the repo turns individual agent friction into a practical improvement backlog.
-
+Harvest is how the repo turns individual agent friction and missing proof surfaces into a practical improvement backlog.

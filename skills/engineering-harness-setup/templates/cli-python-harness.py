@@ -382,8 +382,8 @@ def cmd_magic_wand(args: argparse.Namespace) -> int:
         # Inline canonical wording as a last-resort fallback.
         prompt = (
             "If you had a magic wand, what ONE thing would you change to make the next run "
-            "easier, safer, faster, or higher quality? Be concrete — name a command, flag, "
-            "output field, fixture, diagnostic, template, or workflow change."
+            "easier, safer, faster, higher quality, or better proven? Be concrete — name a command, "
+            "flag, output field, fixture, diagnostic, template, sensor, check, or workflow change."
         )
     else:
         content = MAGIC_WAND_PROMPT_PATH.read_text(encoding="utf-8")
@@ -396,6 +396,8 @@ def cmd_magic_wand(args: argparse.Namespace) -> int:
     if args.json:
         return print_envelope("magic-wand", "pass", data={"prompt": prompt}, as_json=True)
     print(prompt)
+    print()
+    print("Back-pressure companion: What did the agent or reviewer have to infer that the harness should have proved?")
     print()
     print("Record reviewed candidates in harness/state/friction-log.md.")
     return 0
@@ -412,7 +414,7 @@ def main(argv: list[str] | None = None) -> int:
     p_doctor.add_argument("--wait", type=int, default=0, help="Retry doctor for up to <sec> seconds while config or commands are missing")
     p_doctor.set_defaults(func=cmd_doctor)
 
-    for name in ["install", "build", "test", "lint", "format_check", "smoke"]:
+    for name in ["install", "build", "test", "lint", "format_check", "observe", "smoke", "arch", "security", "codeql"]:
         p = sub.add_parser(name, help=f"Run configured '{name}' command")
         p.add_argument("--dry-run", action="store_true", help="Show command without running it")
         p.set_defaults(func=cmd_wrapped(name))

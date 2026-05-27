@@ -13,6 +13,7 @@ Use it before feature work if the repo is missing:
 - a clear boot command;
 - a health check;
 - an interaction/observe path;
+- a runtime, smoke, architecture, static-analysis, security, schema, or evidence signal;
 - an `AGENTS.md` signpost that tells future agents where the harness lives.
 
 ## What it does
@@ -24,6 +25,7 @@ Use it before feature work if the repo is missing:
 - Treats the harness as a focal point over existing commands: wrap before inventing, and implement original behavior only where the repo has a real gap.
 - Requires the starter CLI to have agent-friendly `--help` and actionable errors with clear next actions.
 - Records Boot, Interact, Observe, Validate, and Improve guidance.
+- Records signals and back pressure: what the harness can prove deterministically, and what the agent still has to infer.
 - Seeds Known Difficulties from `docs/compound/` if compound retros exist.
 - Patches `AGENTS.md` with a pointer to the engineering harness.
 - Recommends `compound-0-setup` when the Improve ledger is missing.

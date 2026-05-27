@@ -95,7 +95,7 @@ EOF
         | sed 's/^> //'
     else
       printf '%s\n' \
-        'If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.'
+        'If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.'
     fi
     exit 0
     ;;

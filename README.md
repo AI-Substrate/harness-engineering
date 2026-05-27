@@ -40,7 +40,7 @@ Boot → Interact → Observe → Validate → Improve
 - **Interact** exercises real product behaviour through supported surfaces.
 - **Observe** captures what happened in inspectable forms.
 - **Validate** turns evidence into a verdict.
-- **Improve** encodes what was learned so the next run is faster, clearer, or safer.
+- **Improve** encodes what was learned so the next run is faster, clearer, safer, or backed by stronger signals.
 
 The harness is not throwaway scaffolding. It is a **productised development surface**: the repo-local commands, fixtures, docs, checks, state, workflows, proof paths, and feedback loops every future feature, experiment, human, and agent passes through.
 
@@ -98,9 +98,9 @@ This repo distils private and public research into general, publication-safe pri
 
 For a practical guide to when to run each skill and how the suite fits together, see [`skills/README.md`](skills/README.md).
 
-- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface, known difficulties where available, and an `AGENTS.md` route for future agents.
-- [`skills/boot-harness/`](skills/boot-harness/SKILL.md): a start-of-session skill that reads the repo-local harness contract, runs safe doctor/health checks, surfaces known difficulties, and reports whether the repo is ready for engineering work. It fails fast and recommends `engineering-harness-setup` if no harness exists.
+- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface, known difficulties and signal gaps where available, and an `AGENTS.md` route for future agents.
+- [`skills/boot-harness/`](skills/boot-harness/SKILL.md): a start-of-session skill that reads the repo-local harness contract, runs safe doctor/health checks, surfaces known difficulties and back-pressure gaps, and reports whether the repo is ready for engineering work. It fails fast and recommends `engineering-harness-setup` if no harness exists.
 - [`skills/compound-0-setup/`](skills/compound-0-setup/SKILL.md): scaffolds `docs/compound/`, the durable ledger for the harness Improve stage.
-- [`skills/compound-1-track/`](skills/compound-1-track/SKILL.md): silently captures material friction or concrete improvement ideas into a per-agent session buffer.
+- [`skills/compound-1-track/`](skills/compound-1-track/SKILL.md): silently captures material friction, signal gaps, or concrete improvement ideas into a per-agent session buffer.
 - [`skills/compound-2-bubble/`](skills/compound-2-bubble/SKILL.md): presents the one end-of-session triage prompt and saves selected entries as durable retros.
-- [`skills/compound-3-harvest/`](skills/compound-3-harvest/SKILL.md): scans saved retros, clusters recurring friction, and surfaces what the harness should encode next.
+- [`skills/compound-3-harvest/`](skills/compound-3-harvest/SKILL.md): scans saved retros, clusters recurring friction and weak signals, and surfaces what the harness should encode next.

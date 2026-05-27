@@ -1,6 +1,6 @@
 ---
 name: boot-harness
-description: Boot the repo-local engineering harness at the start of an engineering session. Reads the harness contract, runs safe doctor/health checks, surfaces known difficulties, and produces a readiness report. Fails fast with a recommendation to run engineering-harness-setup if no harness is present.
+description: Boot the repo-local engineering harness at the start of an engineering session. Reads the harness contract, runs safe doctor/health checks, surfaces known difficulties and back-pressure gaps, checks signal readiness, and produces a readiness report.
 ---
 # boot-harness
 
@@ -8,7 +8,7 @@ Use this skill when a user says "boot the harness", "start the harness", "get re
 
 This skill is the **clock-in ritual** for harness engineering. It does not create the harness. It proves whether the current repository already has enough harness surface to start work safely, and it reminds the agent that every session must feed the self-improving loop.
 
-The agent must leave the harness better informed than it found it: use the supported path, capture friction, and propose one concrete encoded improvement when the harness is missing a command, check, fixture, diagnostic, evidence path, or instruction route.
+The agent must leave the harness better informed than it found it: use the supported path, capture friction, and propose one concrete encoded improvement when the harness is missing a command, check, fixture, diagnostic, evidence path, sensor, or deterministic validation signal.
 
 If no harness is present, stop and recommend `engineering-harness-setup`.
 
@@ -79,6 +79,10 @@ The agent must internalize this rule before work begins:
 
 > Boot is not just startup. Boot orients the agent to the loop it must improve. If the session exposes repeated pain, missing commands, unclear errors, weak validation, missing fixtures, or absent evidence paths, the agent must name the gap and propose an encoded harness fix.
 
+Also internalize the back-pressure rule:
+
+> Improve is not only "make the agent experience easier." Improve also means adding sensors and checks that let the harness prove more. If the agent must infer runtime behaviour, architecture compliance, security posture, schema validity, or user-flow correctness, record the missing signal as harness friction.
+
 ---
 
 ## Step 4: Extract the boot contract
@@ -94,6 +98,10 @@ From the harness contract, extract:
 - primary interaction surface;
 - observation/evidence paths;
 - validation tiers or checklist;
+- signals/back-pressure section if present;
+- runtime inspectability path;
+- smoke/user-flow checks;
+- architecture, static-analysis, CodeQL, security, dependency, or schema checks;
 - known difficulties;
 - friction log or retro location;
 - magic-wand / improvement prompt;
@@ -113,6 +121,7 @@ Preferred order:
 2. Health check, if configured.
 3. Dry-run validation, if configured.
 4. Fast validation tier, if the user asked for it or the harness says it is safe.
+5. Dry-run signal checks, if configured (`observe`, `smoke`, `arch`, `security`, `codeql`, or equivalent).
 
 Rules:
 
@@ -120,6 +129,7 @@ Rules:
 - If the health check fails, inspect the boot command and idempotence notes before running it.
 - Do not start long-running services unless the user has granted permission or the harness explicitly marks the boot command as idempotent and safe.
 - Prefer dry-run validation before real validation when the configured commands are unfamiliar.
+- Do not run heavyweight static/security scans unless the harness marks them as safe for session start or the user asks for them. Report configured availability instead.
 - Capture exact commands run and outcomes.
 
 ---
@@ -138,6 +148,7 @@ Also report the session's improvement obligation:
 - what counts as friction in this repo;
 - what form an encoded fix should take;
 - which validation command should prove the fix later.
+- which missing signal, if any, made the agent depend on inference or human review.
 
 Use this framing:
 
@@ -145,7 +156,7 @@ Use this framing:
 Self-improving loop for this session:
 1. Use the harness-supported path.
 2. If the harness blocks, confuses, slows, or fails to prove the work, name the friction.
-3. Prefer an encoded fix: command, check, fixture, diagnostic, default, template, or evidence path.
+3. Prefer an encoded fix: command, check, fixture, diagnostic, default, template, evidence path, sensor, or deterministic validation signal.
 4. Before claiming done, report what harness friction was found and what should be encoded next.
 ```
 
@@ -165,6 +176,11 @@ End with a compact report:
 - Health: pass / fail / unconfigured / not run
 - Interact surface: configured / missing
 - Observe/evidence path: configured / missing
+- Runtime inspectability: configured / missing
+- Product smoke path: configured / missing
+- Architecture/static checks: configured / missing
+- Security/dependency/schema checks: configured / missing
+- Back-pressure gaps:
 - Known difficulties reviewed: yes / no
 - Improve loop location: found / missing
 - Magic-wand prompt or equivalent: found / missing
@@ -184,7 +200,7 @@ The recommended next action should be one of:
 - run a stronger validation tier first;
 - ask for permission to start the boot command;
 - run `engineering-harness-setup` because no harness exists;
-- update the harness because a required command, health check, evidence path, or AGENTS.md signpost is missing.
+- update the harness because a required command, health check, evidence path, sensor, deterministic check, or AGENTS.md signpost is missing.
 - record a concrete harness improvement before starting feature work because the Improve stage is missing.
 
 ---
@@ -198,6 +214,7 @@ Readiness is evidence-backed:
 - the harness contract was found;
 - the route for future agents was checked;
 - safe doctor/health/dry-run checks were attempted where configured;
+- signal coverage was checked for runtime inspection, smoke/user-flow proof, architecture/static analysis, and security/dependency/schema checks;
 - known difficulties were reviewed;
 - the friction / retro / magic-wand location was identified or reported missing;
 - missing surfaces were named as harness friction;

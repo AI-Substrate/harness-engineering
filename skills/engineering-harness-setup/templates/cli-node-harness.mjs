@@ -336,10 +336,12 @@ async function cmdMagicWand({ flags }) {
     if (line) prompt = line.replace(/^>\s*/, "").trim();
   }
   if (!prompt) {
-    prompt = "If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.";
+    prompt = "If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.";
   }
   if (flags.json) return printEnvelope("magic-wand", "pass", { data: { prompt }, asJson: true });
   console.log(prompt);
+  console.log();
+  console.log("Back-pressure companion: What did the agent or reviewer have to infer that the harness should have proved?");
   console.log();
   console.log("Record reviewed candidates in harness/state/friction-log.md.");
   return 0;
@@ -352,7 +354,11 @@ const COMMANDS = {
   test: ({ flags }) => runShell("test", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   lint: ({ flags }) => runShell("lint", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   format_check: ({ flags }) => runShell("format_check", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  observe: ({ flags }) => runShell("observe", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   smoke: ({ flags }) => runShell("smoke", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  arch: ({ flags }) => runShell("arch", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  security: ({ flags }) => runShell("security", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  codeql: ({ flags }) => runShell("codeql", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   run: cmdRun,
   health: cmdHealth,
   validate: cmdValidate,
@@ -369,7 +375,8 @@ function printHelp() {
   console.log("");
   console.log("Commands:");
   console.log("  doctor [--wait <sec>]      Check harness readiness");
-  console.log("  install | build | test | lint | format_check | smoke   Run configured command");
+  console.log("  install | build | test | lint | format_check            Run configured command");
+  console.log("  observe | smoke | arch | security | codeql              Run configured signal/check");
   console.log("  run [--execute]            Start the product (dry-run by default; --execute to spawn)");
   console.log("  health                     Check configured health URL");
   console.log("  validate --tier <t>        Layered validation (default tier: quick)");

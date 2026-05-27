@@ -4,7 +4,7 @@
 
 This is an improvement backlog, not a diary.
 
-Record material friction that made the repo harder to enter, run, validate, or improve.
+Record material friction that made the repo harder to enter, run, validate, observe, prove, or improve.
 
 Prioritise entries that are recurring, severe, stale, or easy to encode.
 
@@ -22,7 +22,7 @@ _No entries yet._
 - Status: open | planned | encoded | dismissed
 - Severity: blocker | degrading | annoying
 - Recurrence: first-seen | repeated | frequent
-- Layer: instructions | tools | environment | state | feedback | validation | product
+- Layer: instructions | tools | environment | state | feedback | validation | signal | product
 - What happened:
 - Evidence:
 - Workaround used:
@@ -37,6 +37,10 @@ Required fields: **status, severity, recurrence, layer** plus at least one of {c
 
 At the end of meaningful work, ask:
 
-> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, or higher quality? Be concrete — name a command, flag, output field, fixture, diagnostic, template, or workflow change.
+> If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
+
+Then ask:
+
+> What did the agent or reviewer have to infer that the harness should have proved?
 
 Append the answer here with a `magicWandTarget` annotation: `project` (the answer is about the product itself), `harness` (the answer is about this harness — most likely to be encoded), or `agent` (the answer is about the model runtime — usually out of this repo's reach).

@@ -11,7 +11,9 @@ Run this silently when the agent observes meaningful friction:
 - the same operation is retried more than once;
 - a boot/build/test failure is hard to interpret;
 - a harness command, fixture, diagnostic, evidence path, or validation check is missing;
-- the agent has a concrete "if only there were..." magic-wand idea.
+- a missing signal forces the agent to infer runtime behaviour, architecture compliance, security posture, schema validity, or user-flow correctness;
+- the app cannot be inspected through a supported boot/observe/smoke path;
+- the agent has a concrete "if only there were..." magic-wand idea for a command, fixture, diagnostic, sensor, check, or workflow change.
 
 Do not use it for trivial preferences or constant self-reflection.
 
@@ -33,3 +35,4 @@ work -> compound-1-track -> compound-2-bubble
 
 The user should usually only see the captured entries later through `compound-2-bubble`.
 
+Capture both kinds of improvement: things that make the harness easier to use, and things that create stronger back pressure through checks, sensors, smoke flows, or evidence.

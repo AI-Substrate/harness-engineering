@@ -8,7 +8,7 @@ Run this once per repo when:
 
 - `boot-harness` reports the Improve loop is missing;
 - `engineering-harness-setup` recommends creating the compound ledger;
-- the repo wants to capture and harvest harness friction over time;
+- the repo wants to capture and harvest harness friction and missing proof signals over time;
 - `compound-1-track` cannot find `docs/compound/_buffers/`.
 
 ## What it does
@@ -28,5 +28,4 @@ This creates the **place** where the Improve loop can land:
 compound-0-setup -> compound-1-track -> compound-2-bubble -> compound-3-harvest
 ```
 
-Run it early if you want Known Difficulties and recurring friction to become visible at boot.
-
+Run it early if you want Known Difficulties, recurring friction, and missing back-pressure signals to become visible at boot.

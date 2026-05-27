@@ -1,6 +1,6 @@
 ---
 name: compound-2-bubble
-description: Session-end triage for the compounding-value loop. Reads docs/compound/_buffers/<agent>.session-buffer.md, presents one soft prompt if non-empty, saves selected entries as durable retros, and clears the buffer.
+description: Session-end triage for the compounding-value loop. Reads docs/compound/_buffers/<agent>.session-buffer.md, presents one soft prompt if non-empty, saves selected friction/signal entries as durable retros, and clears the buffer.
 ---
 # compound-2-bubble
 
@@ -42,7 +42,7 @@ If non-empty, parse the YAML list entries. Skip malformed entries with a warning
 Use a compact prompt:
 
 ```txt
-compound - 3 entries from this session:
+compound - 4 entries from this session:
 
 1. [difficulty/observe] Health check failed without dependency-level diagnosis
    encode as: add failure category to health output
@@ -50,7 +50,10 @@ compound - 3 entries from this session:
 2. [magic-wand/tooling] A single boot-and-health command would shorten startup
    encode as: harness command or just recipe
 
-3. [insight/docs] AGENTS.md pointed at the harness correctly
+3. [signal-gap/architecture] Architecture boundary was review-only, not checked
+   encode as: lint rule, CodeQL query, or harness arch command
+
+4. [insight/docs] AGENTS.md pointed at the harness correctly
    encode as: no action unless repeated
 
 [s]elect save  [t]ask  [p]lan  [e]ncode  [d]ismiss  [a]ll-save
@@ -90,7 +93,7 @@ agent: github-copilot
 plan_id: "002-engineering-harness-setup-skill"
 started_at: "2026-05-26T00:00:00Z"
 ended_at: "2026-05-26T00:30:00Z"
-summary: "compound-2-bubble save (3 entries)"
+summary: "compound-2-bubble save (4 entries)"
 system:
   compound:
     bubble_action: "all-save"
@@ -136,6 +139,15 @@ Compound lifecycle:
 
 The footer makes "encoded" mean the loop changed and has a proof path.
 
+For signal-gap, sensor-gap, or weak-back-pressure entries, suggested encodings should name the smallest deterministic signal that would have changed the prior run. Examples:
+
+| Gap | Encoding candidate |
+|---|---|
+| Agent could not inspect the website | `harness run observe`, Playwright smoke, screenshot/evidence path |
+| Human caught the same architecture issue again | lint rule, custom static check, CodeQL query, `harness run arch` |
+| Tests passed but the app failed a user flow | `harness run smoke` for the core journey |
+| Error required log spelunking | structured diagnostic field or dependency-level health output |
+
 ---
 
 ## What this skill does not do
@@ -144,4 +156,3 @@ The footer makes "encoded" mean the loop changed and has a proof path.
 - No auto-applying fixes.
 - No global harvest or clustering.
 - No status mutation after save. `compound-3-harvest` owns curation.
-

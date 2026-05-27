@@ -1,12 +1,17 @@
 ---
 name: compound-3-harvest
-description: Curate the compounding-value ledger. Scans docs/compound/agents/**/*.retro.md, clusters recurring entries by kind and target, surfaces stale or severe friction, and supports explicit lifecycle updates such as encoded, dismissed, and wontfix.
+description: Curate the compounding-value ledger. Scans docs/compound/agents/**/*.retro.md, clusters recurring entries by kind and target, surfaces stale or severe friction and weak signals, and supports lifecycle updates such as encoded, dismissed, and wontfix.
 ---
 # compound-3-harvest
 
 Run this skill when the team wants to understand what the harness should improve next.
 
 The harvest reads durable retros and computes a prioritized view. It should not write derived index files. Retros are the source of truth; views are computed at read time.
+
+Harvest should prioritize two improvement shapes:
+
+1. **Ease improvements**: commands, diagnostics, fixtures, docs, defaults, or paths that reduce agent/human friction.
+2. **Back-pressure improvements**: sensors, smoke flows, architecture checks, static/security scans, schema checks, and evidence capture that make weak work fail earlier.
 
 If `docs/compound/.disabled` exists, print one line that compound is disabled and stop.
 
@@ -88,6 +93,7 @@ Within each cluster compute:
 - representative description;
 - source retros;
 - whether any entry is stale.
+- whether the cluster is an ease gap, a back-pressure/signal gap, or both.
 
 Stale defaults:
 
@@ -117,15 +123,17 @@ Scanned: 12 retros, 31 entries
 Open: 14  Suggested: 3  Encoded: 10  Dismissed: 4
 
 Top clusters:
-1. [difficulty/observe] weak health diagnostics - 4 entries, oldest 2026-05-01
-2. [magic-wand/tooling] missing one-command proof loop - 3 entries, oldest 2026-05-08
-3. [confusion/docs] AGENTS.md harness signpost unclear - 2 entries, oldest 2026-05-12
+1. [difficulty/observe] weak health diagnostics - 4 entries, oldest 2026-05-01 - ease + signal
+2. [signal-gap/architecture] boundary enforced only in review - 3 entries, oldest 2026-05-08 - back-pressure
+3. [magic-wand/tooling] missing one-command proof loop - 3 entries, oldest 2026-05-08 - ease
+4. [confusion/docs] AGENTS.md harness signpost unclear - 2 entries, oldest 2026-05-12 - ease
 
 Stale:
 - DL-004 [difficulty/build] Build failure lacks next action
 
 Recommended next actions:
 - encode a diagnostic or command for the top repeated cluster
+- encode a deterministic check for the top repeated signal gap
 - run engineering-harness-setup --validate after updating the harness
 ```
 
@@ -150,7 +158,8 @@ Optional `--json` shape if the host supports arguments:
       "target": "observe",
       "count": 4,
       "oldest": "2026-05-01",
-      "representative": "weak health diagnostics"
+      "representative": "weak health diagnostics",
+      "improvement_shape": "ease + signal"
     }
   ]
 }
@@ -181,5 +190,4 @@ Default harvest is read-only.
 - No mid-session prompting.
 - No productivity scoring.
 
-The value is recurrence, severity, age, and encoded-fix visibility.
-
+The value is recurrence, severity, age, encoded-fix visibility, and seeing when the harness needs stronger back pressure instead of more instructions.

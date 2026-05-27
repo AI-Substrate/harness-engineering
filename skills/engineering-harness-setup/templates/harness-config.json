@@ -13,7 +13,11 @@
     "lint": "{{LINT_COMMAND}}",
     "format_check": "{{FORMAT_CHECK_COMMAND}}",
     "run": "{{RUN_COMMAND}}",
-    "smoke": "{{SMOKE_COMMAND}}"
+    "observe": "{{OBSERVE_COMMAND}}",
+    "smoke": "{{SMOKE_COMMAND}}",
+    "arch": "{{ARCH_COMMAND}}",
+    "security": "{{SECURITY_COMMAND}}",
+    "codeql": "{{CODEQL_COMMAND}}"
   },
   "health": {
     "url": "{{HEALTH_URL}}",
@@ -36,6 +40,7 @@
   },
   "notes": {
     "unset_command_policy": "An empty command string is an improvement opportunity, not proof of failure unless required for the selected validation tier.",
+    "signal_policy": "Empty observe, smoke, arch, security, or codeql commands are signal/back-pressure gaps to consider when the agent or reviewer had to infer what the harness should prove.",
     "safety": "Long-running boot is locked down by default: 'run' requires --execute to actually spawn the process; 'validate' never invokes 'run' under any tier."
   }
 }
