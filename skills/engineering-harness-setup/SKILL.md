@@ -283,7 +283,7 @@ After writing the template (or on every re-run of this skill), populate the `## 
 
 Re-running this skill always re-renders Section 4a in place — idempotent; never appends duplicates.
 
-If `docs/compound/` is missing: write the placeholder row from the template and report that the Improve ledger is not installed yet. Recommend `compound-0-setup` so future runs have a durable source for Known Difficulties.
+If `docs/compound/` is missing: write the placeholder row from the template and report that the Improve ledger is not installed yet. The upstream runtime loop will no-op gracefully until the Improve surface is provisioned.
 
 If `docs/compound/` exists but has no matching retros: write the placeholder row from the template (no harm; the section is informational and will populate once compound starts producing entries).
 
@@ -437,14 +437,14 @@ Prefer the commands, evidence paths, and back-pressure signals named in `docs/pr
 <!-- ENGINEERING-HARNESS-SETUP END -->
 ```
 
-#### Step 4d: Recommend compound setup when missing
+#### Step 4d: Report missing Improve surface
 
-If `docs/compound/` is missing and the user has not opted out, include this recommendation in the report:
+If `docs/compound/` is missing and the user has not opted out, include this note in the report:
 
 ```md
 Improve loop: no `docs/compound/` ledger found.
 
-Recommended next step: run `compound-0-setup` so `boot-harness`, `compound-1-track`, `compound-2-bubble`, and `compound-3-harvest` can capture, bubble, harvest, and encode recurring harness friction.
+Runtime loop: install/use `harness-1-boot`, `harness-2-observe`, and `harness-3-retro` from `jakkaj/tools`; they will report `UNAVAILABLE` or no-op gracefully until the Improve surface exists.
 ```
 
 Do not auto-create the compound tree unless the user explicitly asks. The first version should make the loop visible without surprising the repository owner with extra state.

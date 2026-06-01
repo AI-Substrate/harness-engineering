@@ -1,6 +1,6 @@
 # Magic-wand prompt (canonical source of truth)
 
-The single canonical wording of the magic-wand prompt. Every other surface in this skill — `templates/root-HARNESS.md` Rule 5, `templates/harness-friction-log.md`, `templates/harness-proof-note.md`, `templates/install-report.md`, `templates/retrospective-schema.json` (`magicWand.description`) — must echo this string byte-for-byte. `check.sh magic-wand` enforces this.
+The single canonical wording of the magic-wand prompt. Every other surface in this skill — `templates/root-HARNESS.md` Rule 5, `templates/harness-friction-log.md`, `templates/harness-proof-note.md`, `templates/install-report.md`, `templates/retrospective-schema.json` (`magicWand.description`) — should echo this string byte-for-byte.
 
 <!-- foundations: first-principles#48, patterns-that-work#P10 -->
 
@@ -48,4 +48,4 @@ Use the companion back-pressure question when the answer hints at weak proof:
 
 > What did the agent or reviewer have to infer that the harness should have proved?
 
-The wording is **load-bearing**. Drift erodes the signal. `check.sh magic-wand` runs `grep -rcF` against the canonical sentence across the six surfaces above and expects ≥6 matches with zero variants.
+The wording is **load-bearing**. Drift erodes the signal; review the surfaces above when this prompt changes.

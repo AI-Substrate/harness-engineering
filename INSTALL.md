@@ -1,19 +1,14 @@
-# INSTALL.md - Skill Installation Reference
+# INSTALL.md - Setup Skill Installation Reference
 
-> **For AI agents reading this**: this is the canonical install reference for the skills in this repository. If a user asks you to install them, identify which CLI they use and whether they want a global install or project-local install, then run the matching `npx skills@latest add ...` command below.
+> **For AI agents reading this**: this is the canonical install reference for the setup skill in this repository. If a user asks you to install it, identify which CLI they use and whether they want a global install or project-local install, then run the matching `npx skills@latest add ...` command below.
 
-This repository publishes engineering-harness skills through the [`npx skills@latest`](https://github.com/vercel-labs/skills) installer. There is no separate repository-specific installer.
+This repository publishes `engineering-harness-setup` through the [`npx skills@latest`](https://github.com/vercel-labs/skills) installer. There is no separate repository-specific installer. Runtime loop skills (`harness-1-boot`, `harness-2-observe`, `harness-3-retro`) are installed from `jakkaj/tools`.
 
 ## Skill
 
 | Skill | Purpose |
 |---|---|
 | `engineering-harness-setup` | Create or validate a repo-local engineering harness governance file and route future agents to it. |
-| `boot-harness` | Start an engineering session by reading the harness contract, running safe boot/health checks, and reporting readiness. |
-| `compound-0-setup` | Scaffold `docs/compound/`, the durable Improve-stage ledger. |
-| `compound-1-track` | Silently capture friction or improvement ideas into a per-agent session buffer. |
-| `compound-2-bubble` | Bubble captured entries once at session end and save selected retros. |
-| `compound-3-harvest` | Harvest saved retros into a prioritized view of recurring harness improvements. |
 
 ## Canonical install patterns
 
@@ -92,7 +87,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
   --copy
 ```
 
-This installs all skills from the remote GitHub repository into:
+This installs the setup skill from the remote GitHub repository into:
 
 ```txt
 ./.agents/skills/
@@ -100,30 +95,13 @@ This installs all skills from the remote GitHub repository into:
 
 Use `--copy` when you want the installed skill files to be physically present in the current repo for review or commit.
 
-### Install selected skills
+### Install selected skill
 
-Use `-s` / `--skill` to install one skill or repeat it to install a subset:
-
-```bash
-npx skills@latest add AI-Substrate/harness-engineering \
-  -s boot-harness \
-  -a claude-code \
-  -g
-```
+Use `-s` / `--skill` to install only the setup skill explicitly:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
   -s engineering-harness-setup \
-  -a claude-code \
-  -g
-```
-
-```bash
-npx skills@latest add AI-Substrate/harness-engineering \
-  -s compound-0-setup \
-  -s compound-1-track \
-  -s compound-2-bubble \
-  -s compound-3-harvest \
   -a claude-code \
   -g
 ```
@@ -136,7 +114,7 @@ From this repository:
 npx skills@latest add "$(pwd)" -l
 ```
 
-Install the local working tree globally to all supported CLIs:
+Install the local working tree setup skill globally to all supported CLIs:
 
 ```bash
 npx skills@latest add "$(pwd)" \
@@ -149,7 +127,7 @@ npx skills@latest add "$(pwd)" \
   -y
 ```
 
-Install the local working tree project-locally:
+Install the local working tree setup skill project-locally:
 
 ```bash
 npx skills@latest add "$(pwd)" \

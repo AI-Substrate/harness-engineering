@@ -4,11 +4,11 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 default:
     @just --list
 
-# List skills discoverable from this working tree via Vercel's skills CLI.
+# List the skill discoverable from this working tree via Vercel's skills CLI.
 list-skills:
     @npx skills@latest add "$(pwd)" -l
 
-# Install all repo skills project-local to supported CLIs from this working tree.
+# Install the repo skill project-local to supported CLIs from this working tree.
 install-skills-local:
     @npx skills@latest add "$(pwd)" \
         -a claude-code \
@@ -18,7 +18,7 @@ install-skills-local:
         -a pi \
         -y
 
-# Install all repo skills globally to supported CLIs from this working tree.
+# Install the repo skill globally to supported CLIs from this working tree.
 install-skills-global:
     @npx skills@latest add "$(pwd)" \
         -a claude-code \
