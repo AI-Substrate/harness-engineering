@@ -29,6 +29,85 @@ install-skills-global:
         -g \
         -y
 
+# Install the repo skill globally from this working tree, matching the tools repo command name.
+install-skills-from-source: install-skills-global
+
+# Diagnose skill deployment: canonical store, per-CLI views, and stale legacy stores.
+doctor-skills:
+    #!/usr/bin/env bash
+    set -eu
+    canonical="$HOME/.agents/skills"
+    echo "Skills doctor"
+    echo
+    if [ -d "$canonical" ]; then
+        count=$(ls "$canonical" | wc -l | tr -d ' ')
+        echo "OK canonical store: $canonical ($count skills)"
+    else
+        echo "WARN canonical store missing: $canonical - run 'just install-skills-from-source'"
+    fi
+    echo
+    echo "Per-CLI views:"
+    for path in "$HOME/.claude/skills" "$HOME/.pi/skills"; do
+        if [ -L "$path" ]; then
+            echo "  OK $path -> $(readlink "$path") (whole-dir symlink)"
+        elif [ -d "$path" ]; then
+            symlinks=$(find "$path" -mindepth 1 -maxdepth 1 -type l 2>/dev/null | wc -l | tr -d ' ')
+            real_dirs=$(find "$path" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$real_dirs" -eq 0 ] && [ "$symlinks" -eq 0 ]; then
+                echo "  INFO $path is empty"
+                continue
+            fi
+            if [ "$real_dirs" -eq 0 ]; then
+                echo "  OK $path ($symlinks symlinked skills)"
+                continue
+            fi
+            duplicates=""
+            handlocal=""
+            for d in $(find "$path" -mindepth 1 -maxdepth 1 -type d 2>/dev/null); do
+                slug=$(basename "$d")
+                if [ -e "$canonical/$slug" ]; then
+                    duplicates="$duplicates $slug"
+                else
+                    handlocal="$handlocal $slug"
+                fi
+            done
+            echo "  INFO $path: $symlinks symlinks + $real_dirs real subdirs"
+            if [ -n "$duplicates" ]; then
+                echo "      WARN duplicates of canonical (will drift):$duplicates"
+                echo "      Fix per slug: rm -rf $path/<slug> && ln -s $canonical/<slug> $path/<slug>"
+            fi
+            if [ -n "$handlocal" ]; then
+                echo "      OK hand-installed local-only (not in canonical):$handlocal"
+            fi
+        else
+            echo "  INFO $path missing (CLI may not have initialized yet)"
+        fi
+    done
+    echo
+    echo "Orphan real-dir stores at legacy paths:"
+    found=0
+    for path in "$HOME/.copilot/skills" "$HOME/.codex/skills" "$HOME/.config/opencode/skills"; do
+        if [ -e "$path" ] && [ ! -L "$path" ] && [ -d "$path" ]; then
+            count=$(ls "$path" 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$count" -gt 0 ]; then
+                echo "  WARN $path ($count entries) - likely orphan from older npx skills"
+                echo "      Fix: rm -rf $path  (or: rm -rf $path && ln -s $canonical $path)"
+                found=1
+            fi
+        fi
+    done
+    [ "$found" -eq 0 ] && echo "  OK none found"
+    echo
+    echo "Dangling symlinks under $HOME/.claude/skills:"
+    if [ -d "$HOME/.claude/skills" ]; then
+        dangling=$(find "$HOME/.claude/skills" -maxdepth 1 -type l ! -exec test -e {} \; -print 2>/dev/null || true)
+        if [ -n "$dangling" ]; then
+            echo "$dangling" | sed 's/^/  WARN /'
+        else
+            echo "  OK none"
+        fi
+    fi
+
 # Compact a path with generate-codebase-md.sh into scratch/compacted/NNN-<slug>.md.
 compact target="harness-foundations":
     @command -v generate-codebase-md.sh >/dev/null || { echo "generate-codebase-md.sh not found in PATH"; exit 1; }
