@@ -3,7 +3,7 @@
 /**
  * Minimal repo-local engineering harness CLI (Node 18+ stdlib only).
  *
- * Companion to harness/bin/harness.py. All subcommands emit envelopes that
+ * Companion to harness/cli/harness.py. All subcommands emit envelopes that
  * conform to harness/templates/cli-envelope.schema.json — see printEnvelope().
  *
  * Process exit codes (per FR-04):
@@ -22,7 +22,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "../..");
 const HARNESS_DIR = path.join(ROOT, "harness");
-const CONFIG_PATH = path.join(HARNESS_DIR, "config.json");
+const CONFIG_PATH = path.join(HARNESS_DIR, "cli", "commands.json");
 const ONBOARD_DOC_PATH = path.join(HARNESS_DIR, "skills", "onboard-agent-session.md");
 const MAGIC_WAND_PROMPT_PATH = path.join(HARNESS_DIR, "templates", "magic-wand-prompt.md");
 
@@ -38,8 +38,8 @@ const STATUSES = new Set([
 ]);
 
 function exitCodeFor(status) {
-  if (status === "pass") return 0;
-  if (status === "unconfigured") return 2;
+  if (status === "pass" || status === "dry-run" || status === "skipped") return 0;
+  if (status === "unconfigured" || status === "degraded") return 2;
   return 1;
 }
 
@@ -88,7 +88,7 @@ const PLACEHOLDER_RE = /\{\{[A-Z_][A-Z0-9_]*\}\}/;
 
 function assertNoPlaceholderLeaks() {
   const leaks = [];
-  const checked = [path.join(HARNESS_DIR, "config.json"), path.join(ROOT, "HARNESS.md"), path.join(ROOT, "AGENTS.md")];
+  const checked = [path.join(HARNESS_DIR, "cli", "commands.json"), path.join(ROOT, "docs", "project-rules", "engineering-harness.md"), path.join(ROOT, "AGENTS.md")];
   for (const p of checked) {
     if (fs.existsSync(p) && PLACEHOLDER_RE.test(fs.readFileSync(p, "utf8"))) {
       leaks.push(path.relative(ROOT, p));
@@ -146,14 +146,14 @@ async function cmdDoctor({ flags }) {
 
   const messages = [
     `Repository root: ${ROOT}`,
-    `Harness config: ${configExists ? "found" : "missing"} at ${CONFIG_PATH}`
+    `Harness command map: ${configExists ? "found" : "missing"} at ${CONFIG_PATH}`
   ];
   if (configured.length) messages.push("Configured commands: " + configured.sort().join(", "));
   if (unconfigured.length) messages.push("Unconfigured commands: " + unconfigured.sort().join(", "));
   messages.push("Health URL: " + (healthUrl || "not configured"));
 
   let status = "pass", errorCode, errorMessage;
-  if (!configExists) { status = "unconfigured"; errorCode = "UNCONFIGURED"; errorMessage = "harness/config.json is missing"; }
+  if (!configExists) { status = "unconfigured"; errorCode = "UNCONFIGURED"; errorMessage = "harness/cli/commands.json is missing"; }
   else if (!configured.length) { status = "degraded"; errorCode = "DEPENDENCY_MISSING"; errorMessage = "config loaded but no commands are configured yet"; }
 
   return printEnvelope("doctor", status, {
@@ -165,14 +165,14 @@ async function cmdDoctor({ flags }) {
   });
 }
 
-function runShell(name, { dryRun, asJson }) {
+function runShell(name, { dryRun, asJson, quiet = false }) {
   return new Promise((resolve) => {
     const cmd = commandString(name);
     if (!cmd) {
       resolve(printEnvelope(name, "unconfigured", {
         errorCode: "UNCONFIGURED",
-        errorMessage: `No command configured for '${name}' in harness/config.json.`,
-        nextAction: `Set commands.${name} in harness/config.json.`,
+        errorMessage: `No command configured for '${name}' in harness/cli/commands.json.`,
+        nextAction: `Set commands.${name} in harness/cli/commands.json.`,
         asJson
       }));
       return;
@@ -181,7 +181,7 @@ function runShell(name, { dryRun, asJson }) {
       resolve(printEnvelope(name, "dry-run", { data: { would_run: cmd }, messages: [`Would run: ${cmd}`], asJson }));
       return;
     }
-    const child = spawn(cmd, { cwd: ROOT, shell: true, stdio: "inherit" });
+    const child = spawn(cmd, { cwd: ROOT, shell: true, stdio: (quiet || asJson) ? "ignore" : "inherit" });
     child.on("close", (code) => {
       if (code === 0) {
         resolve(printEnvelope(name, "pass", { data: { ran: cmd }, asJson }));
@@ -200,9 +200,18 @@ function runShell(name, { dryRun, asJson }) {
 
 async function cmdRun({ flags }) {
   const cfg = loadConfig();
+  const runCommand = commandString("run");
+  if (!runCommand) {
+    return printEnvelope("run", "unconfigured", {
+      errorCode: "UNCONFIGURED",
+      errorMessage: "No command configured for 'run' in harness/cli/commands.json.",
+      nextAction: "Set commands.run to the repo's supported start command.",
+      asJson: Boolean(flags.json)
+    });
+  }
   if (!(cfg?.permissions?.allow_run) && !flags.execute) {
     return printEnvelope("run", "dry-run", {
-      data: { would_run: commandString("run") },
+      data: { would_run: runCommand },
       messages: [
         "run is long-running and is dry-run by default.",
         "Pass --execute to actually start the product, or set permissions.allow_run=true."
@@ -221,10 +230,11 @@ async function cmdHealth({ flags }) {
   const expected = Number(healthCfg.expected_status ?? 200);
 
   if (!url) {
+    if (commandString("health")) return runShell("health", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json), quiet: Boolean(flags.quiet) });
     return printEnvelope("health", "unconfigured", {
       errorCode: "UNCONFIGURED",
-      errorMessage: "No health URL configured in harness/config.json.",
-      nextAction: "Add health.url, then re-run.",
+      errorMessage: "No health URL or commands.health configured in harness/cli/commands.json.",
+      nextAction: "Add health.url or commands.health, then re-run.",
       asJson: Boolean(flags.json)
     });
   }
@@ -269,10 +279,21 @@ async function cmdValidate({ flags }) {
   if (!Array.isArray(steps) || !steps.length) {
     return printEnvelope("validate", "unconfigured", {
       errorCode: "UNCONFIGURED",
-      errorMessage: `validation.${tier} is empty or missing in harness/config.json.`,
-      nextAction: `Add steps to validation.${tier} in harness/config.json.`,
+      errorMessage: `validation.${tier} is empty or missing in harness/cli/commands.json.`,
+      nextAction: `Add steps to validation.${tier} in harness/cli/commands.json.`,
       asJson: Boolean(flags.json)
     });
+  }
+
+  async function callStep(fn) {
+    if (!flags.json) return await fn();
+    const originalLog = console.log;
+    console.log = () => {};
+    try {
+      return await fn();
+    } finally {
+      console.log = originalLog;
+    }
   }
 
   const results = [];
@@ -284,9 +305,9 @@ async function cmdValidate({ flags }) {
       continue;
     }
     let code;
-    if (step === "doctor") code = await cmdDoctor({ flags: { json: false, wait: 0 } });
-    else if (step === "health") code = await cmdHealth({ flags: { "dry-run": flags["dry-run"], json: false } });
-    else code = await runShell(step, { dryRun: Boolean(flags["dry-run"]), asJson: false });
+    if (step === "doctor") code = await callStep(() => cmdDoctor({ flags: { json: false, wait: 0 } }));
+    else if (step === "health") code = await callStep(() => cmdHealth({ flags: { "dry-run": flags["dry-run"], json: false, quiet: Boolean(flags.json) } }));
+    else code = await callStep(() => runShell(step, { dryRun: Boolean(flags["dry-run"]), asJson: false, quiet: Boolean(flags.json) }));
     results.push({ step, exit_code: code });
     if (code === 1) overall = "fail";
     else if (code === 2 && overall === "pass") overall = "degraded";
@@ -303,7 +324,13 @@ async function cmdValidate({ flags }) {
     });
   }
 
-  return printEnvelope("validate", overall, { data: { tier, results }, asJson: Boolean(flags.json) });
+  return printEnvelope("validate", overall, {
+    data: { tier, results },
+    errorCode: overall === "degraded" ? "DEPENDENCY_MISSING" : undefined,
+    errorMessage: overall === "degraded" ? "One or more validation steps are unconfigured." : undefined,
+    nextAction: overall === "degraded" ? "Configure the missing command slots in harness/cli/commands.json or remove them from the selected validation tier." : undefined,
+    asJson: Boolean(flags.json)
+  });
 }
 
 async function cmdFft({ flags }) {
@@ -343,22 +370,26 @@ async function cmdMagicWand({ flags }) {
   console.log();
   console.log("Back-pressure companion: What did the agent or reviewer have to infer that the harness should have proved?");
   console.log();
-  console.log("Record reviewed candidates in harness/state/friction-log.md.");
+  console.log("Route reviewed candidates through docs/harness.");
   return 0;
 }
 
 const COMMANDS = {
   doctor: cmdDoctor,
   install: ({ flags }) => runShell("install", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  boot: ({ flags }) => runShell("boot", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   build: ({ flags }) => runShell("build", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   test: ({ flags }) => runShell("test", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   lint: ({ flags }) => runShell("lint", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  typecheck: ({ flags }) => runShell("typecheck", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   format_check: ({ flags }) => runShell("format_check", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   observe: ({ flags }) => runShell("observe", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   smoke: ({ flags }) => runShell("smoke", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   arch: ({ flags }) => runShell("arch", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   security: ({ flags }) => runShell("security", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  schema: ({ flags }) => runShell("schema", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   codeql: ({ flags }) => runShell("codeql", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
+  seed: ({ flags }) => runShell("seed", { dryRun: Boolean(flags["dry-run"]), asJson: Boolean(flags.json) }),
   run: cmdRun,
   health: cmdHealth,
   validate: cmdValidate,
@@ -371,12 +402,12 @@ function printHelp() {
   console.log("Repo-local engineering harness CLI");
   console.log("");
   console.log("Usage:");
-  console.log("  node harness/bin/harness.mjs <command> [--json] [--dry-run] [--tier fast|quick|proof] [--wait <sec>]");
+  console.log("  node harness/cli/harness.mjs <command> [--json] [--dry-run] [--tier fast|quick|proof] [--wait <sec>]");
   console.log("");
   console.log("Commands:");
   console.log("  doctor [--wait <sec>]      Check harness readiness");
-  console.log("  install | build | test | lint | format_check            Run configured command");
-  console.log("  observe | smoke | arch | security | codeql              Run configured signal/check");
+  console.log("  install | boot | build | test | lint | typecheck | format_check  Run configured command");
+  console.log("  health | observe | smoke | arch | security | schema | codeql | seed  Run configured signal/check");
   console.log("  run [--execute]            Start the product (dry-run by default; --execute to spawn)");
   console.log("  health                     Check configured health URL");
   console.log("  validate --tier <t>        Layered validation (default tier: quick)");

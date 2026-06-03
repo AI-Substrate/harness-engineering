@@ -4,7 +4,7 @@
 
 ## Why this skill exists
 
-The skill's job is to make the engineering harness materially exist in a target repository in one invocation. "Engineering harness" here means the project-side development loop: a front-door doc (`HARNESS.md`), a command-mapped CLI (`harness/bin/harness.{py,mjs,sh}`), a friction log, a retrospective schema, an install report, and the AGENTS.md patch that points agents at the harness instead of letting them invent their own commands. The skill is the agent-installable form of the principles in `harness-foundations/` (this repo's foundational research).
+The skill's job is to make the engineering harness nucleus materially exist in a target repository in one invocation. "Engineering harness" here means the project-side development loop: a front-door governance doc, a command-mapped CLI under `harness/cli/`, deterministic sensor slots in `harness/cli/commands.json`, canonical improvement surfaces under `docs/harness`, an install report, and the AGENTS.md patch that points agents at the harness instead of letting them invent their own commands. The skill is the agent-installable form of the principles in `harness-foundations/` (this repo's foundational research).
 
 The skill answers a specific failure mode: when a fresh team — or a fresh agent in a fresh target repo — wants to start the engineering-harness practice, they should not have to read 2000 lines of source material first. They should be able to invoke one skill, answer a handful of inspection questions, and end up with a working harness on disk that can be `git diff`'d in one PR.
 
@@ -52,26 +52,26 @@ The hybrid magic-wand wording from `templates/magic-wand-prompt.md` is the singl
 
 Every `{{XXX}}` marker in `templates/` must match the canonical form `{{[A-Z_][A-Z0-9_]*}}` (uppercase letters, digits, and underscores; starts with a letter or underscore). This catches authoring typos like `{XX}}`, `{{XX}`, `{{lower}}`, or `{{Mixed_Case}}`.
 
-A separate **runtime** check, `assert_no_placeholder_leaks()` inside the CLI skeletons, verifies that no `{{XXX}}` markers survived install-time substitution into the target repo's `HARNESS.md`, `AGENTS.md`, or `harness/config.json`. That check runs as the final step of `<CLI> validate` and returns `error.code: PLACEHOLDER_LEAK` on failure. The two checks are deliberately separated: pre-commit catches *authoring* mistakes; runtime catches *substitution* mistakes.
+A separate **runtime** check, `assert_no_placeholder_leaks()` inside the CLI skeletons, verifies that no `{{XXX}}` markers survived install-time substitution into the target repo's `docs/project-rules/engineering-harness.md`, `AGENTS.md`, or `harness/cli/commands.json`. That check runs as the final step of `<CLI> validate` and returns `error.code: PLACEHOLDER_LEAK` on failure. The two checks are deliberately separated: pre-commit catches *authoring* mistakes; runtime catches *substitution* mistakes.
 
 ### 5. `cli-envelope.schema.json` conformance
 
-Every CLI subcommand documented in `templates/cli-command-contract.md` must produce stdout that conforms to `templates/cli-envelope.schema.json`. The two CLI skeletons (`cli-python-harness.py`, `cli-node-harness.mjs`) and the wrapper recipe (`wrapper-recipe.template`) all emit envelopes through a single helper function so the conformance is structural, not by convention.
+Every CLI subcommand documented in `templates/cli-command-contract.md` must produce stdout that conforms to `templates/cli-envelope.schema.json`. The two CLI skeletons (`cli-python-harness.py`, `cli-node-harness.mjs`) emit envelopes through a single helper function so the conformance is structural, not by convention.
 
 There is no automated check for this in v0.1 (no JSON-Schema runtime in the package); the dogfood run is the verification.
 
 ## Drift checklist for v0.2
 
-These are known evolution paths that v0.1 deliberately defers. They become friction-log entries in the target repo during dogfood; v0.2 promotes them to feature work.
+These are known evolution paths that v0.1 deliberately defers. They become `docs/harness` entries in the target repo during dogfood; v0.2 promotes them to feature work.
 
 - **Single-file SKILL.md fallback** — deferred unless a runtime rejects multi-file packages.
 - **Richer exit-code semantics** — chainglass-style numeric codes (`E100`–`E126`) for finer-grained CI branching. v0.1 keeps process exits as 0/1/2 with `error.code` enum inside the envelope.
 - **Wrap-existing improvements** — v0.1 supports POSIX-shell wrappers only. v0.2 candidates: justfile-target generation, Python-shim wrapper, npm-script wrapper, Makefile-target wrapper.
 - **Portability beyond pi** — v0.1 assumes pi runtime conventions (frontmatter `name`+`description` only). v0.2 considers Claude Code skill packaging.
-- **Multi-environment / multi-profile targets** — production repos sometimes need `harness/profiles/{dev,staging,prod}/config.json`. v0.1 ships a single `harness/config.json`; v0.2 considers a `--profile` flag.
+- **Multi-environment / multi-profile targets** — production repos sometimes need `harness/cli/profiles/{dev,staging,prod}/commands.json`. v0.1 ships a single `harness/cli/commands.json`; v0.2 considers a `--profile` flag.
 - **Partial-install recovery** — if the skill aborts mid-install (e.g. user denies permission at step 9 of 14), v0.1 leaves whatever was written. v0.2 considers an `install-state.json` + resume flag.
 - **AGENTS.md duplicate-sentence dedup** — v0.1 logs a warning if `AGENTS.md` already contains the boundary sentence. v0.2 considers replacing the duplicate with a pointer comment.
-- **Equivalence-row catalogue expansion** — v0.1 ships a 7-row catalogue (see `templates/agents-md-snippet.md`). Exotic tooling (Bazel, Pants, dotnet, gradle) falls through. v0.2 grows the catalogue based on dogfood friction-log entries.
+- **Equivalence-row catalogue expansion** — v0.1 ships a 7-row catalogue (see `templates/agents-md-snippet.md`). Exotic tooling (Bazel, Pants, dotnet, gradle) falls through. v0.2 grows the catalogue based on dogfood `docs/harness` entries.
 - **`CLAUDE.md` / `.cursorrules` co-installation** — v0.1 only patches `AGENTS.md`. v0.2 considers detecting and patching `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`.
 
 ## How to extend this skill

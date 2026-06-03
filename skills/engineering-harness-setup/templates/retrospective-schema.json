@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/engineering-harness-setup/retrospective-schema.json",
   "title": "Engineering harness retrospective",
-  "description": "Schema for a single session-end retrospective. Designed to be filled in at the end of meaningful agent or human work and committed to harness/state/friction-log.md (or kept locally if the team prefers). The schema enforces concrete answers — minLength guards keep the form honest.",
+  "description": "Schema for a single session-end retrospective. Designed to be filled in at the end of meaningful agent or human work and routed through docs/harness. The schema enforces concrete answers — minLength guards keep the form honest.",
   "type": "object",
   "required": ["workedWell", "confusing", "magicWand", "inferenceGap"],
   "additionalProperties": false,
@@ -36,7 +36,7 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 6,
-      "description": "Optional. Highest proof level reached this session on the proof-level ladder (L0 nothing observed → L6 reproducible behavioural proof). Distinct from the harness-maturity ladder (L0–L4) in HARNESS.md."
+      "description": "Optional. Highest proof level reached this session on the proof-level ladder (L0 nothing observed → L6 reproducible behavioural proof). Distinct from the harness-maturity ladder (L0–L4) in docs/project-rules/engineering-harness.md."
     },
     "harnessCommandsRun": {
       "type": "array",

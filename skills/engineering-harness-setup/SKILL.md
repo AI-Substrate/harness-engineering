@@ -1,12 +1,20 @@
 ---
 name: engineering-harness-setup
-description: Create or validate the engineering harness for the current project — the broader substrate plus the Boot/Interact/Observe/Validate/Improve loop. Generates `docs/project-rules/engineering-harness.md`, scaffolds `harness/cli/`, seeds Known Difficulties, and makes missing signals/back-pressure gaps visible.
+description: Create or validate the engineering harness nucleus for the current project — governance, command-map front door, deterministic sensor inventory, docs/harness improvement surfaces, and agent routing. Generates `docs/project-rules/engineering-harness.md`, scaffolds `harness/cli/`, and makes missing signals/back-pressure gaps visible for tools runtime skills to operate.
 ---
 # engineering-harness-setup
 
-Create or validate the **engineering harness** — the umbrella term covering both (1) the engineering substrate (`justfile`/`Makefile`/`package.json scripts`, test runner, seed scripts, env config — what developers and CI run) and (2) the Boot → Interact → Observe → Validate → Improve loop layered on top so agents can iterate on running software in 30-60 second cycles. This skill governs both as one cohesive thing.
+Create or validate the **engineering harness nucleus** — the repo-local substrate that makes the project operable by humans, agents, and upstream tools skills. The nucleus records the working command surface (`justfile`/`Makefile`/`package.json` scripts, test runner, seed scripts, env config), creates a governance file and command-map front door, exposes deterministic sensor slots, and prepares `docs/harness` improvement surfaces.
 
-This skill should create the **nucleus of a self-improving engineering harness**: a governance file, an `AGENTS.md` route, a starter command surface under `harness/cli/`, and a path into the compound loop so future work can turn friction into encoded harness improvements.
+This skill provisions the local surfaces for the canonical loop:
+
+```txt
+Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve
+```
+
+It does **not** own every runtime behaviour in that loop. It creates the map, sockets, and placeholders; tools skills and the repo-local CLI operate those surfaces in a later context.
+
+This skill should create the **nucleus of a self-improving engineering harness**: a governance file, an `AGENTS.md` route, a starter command surface under `harness/cli/`, a deterministic sensor inventory, and a path into `docs/harness` so future work can turn friction into encoded harness improvements.
 
 Self-improving means two things:
 
@@ -15,9 +23,9 @@ Self-improving means two things:
 
 **Engineering harness governance**: `docs/project-rules/engineering-harness.md` (new projects). Legacy names `docs/project-rules/agent-harness.md` and `docs/project-rules/harness.md` are still read as fallbacks for projects that haven't migrated yet — see Step 0 for the read order and Step 6 for the migration advisory.
 
-**Layering**: the agent harness sits **on top of** the engineering harness (the project's `justfile`/`Makefile`/`package.json scripts.dev` boot command, test runner, etc.). The Boot command this skill records IS the engineering harness substrate. If no engineering harness exists, raise that as a finding before attempting to build the agent harness — Boot can't work without something to boot.
+**Layering**: the agent harness is the model/runtime control plane. It can drive the engineering harness, but it does not replace it. The Boot command this skill records is part of the engineering harness substrate. If no runnable substrate exists, raise that as a finding before claiming the loop is operable — tools skills cannot boot what the project cannot start.
 
-**Agent harness dossier**: Three capabilities (Boot, Interact, Observe), maturity model (L0–L4), 7 design principles.
+**Backpressure Check**: this is not a deterministic core harness command. It is an LLM-assisted, advisory tools-skill activity that compares the current scoped work with the deterministic sensors this harness exposes. The proof comes from sensors such as build, test, lint, typecheck, health, smoke, architecture, security, schema, and observe commands.
 
 ---
 
@@ -79,17 +87,17 @@ Scan the codebase for signature files and classify:
 Output: `{ type: string, confidence: 0-1, signature_files: string[] }`
 
 **Subagent 2: Interaction Surface Probe**
-Search for existing engineering-harness infrastructure that the agent harness will sit on top of:
+Search for existing engineering-harness infrastructure that tools skills and future agents will operate:
 - Health endpoints (grep: `/health`, `/api/health`, `healthcheck`)
 - Boot scripts (`justfile`, `Makefile`, `docker-compose.yml`, `scripts/`)
 - Engineering test harnesses (`playwright.config`, `cypress.config`, etc.) — these are evidence the project already has a runnable substrate.
-- Back-pressure and sensor surfaces (`codeql`, architecture tests, lint rules, dependency/security scans, smoke tests, visual/browser checks, logs/traces, screenshot/evidence capture).
+- Back-pressure and deterministic sensor surfaces (`codeql`, architecture tests, lint rules, typecheck, dependency/security scans, schema checks, smoke tests, visual/browser checks, logs/traces, screenshot/evidence capture).
 - Existing `AGENT_BOOTSTRAP.md` or similar quick-start docs
 - Auth configuration (`.env`, token files, profile directories)
 
 Output: `{ boot_candidates: string[], health_urls: string[], existing_bootstrap: string|null, auth_hints: string[], signal_candidates: string[] }`
 
-**If `boot_candidates` is empty**: the engineering harness substrate is missing or undiscoverable. Raise as a finding in Step 2 before proceeding — agent harness creation needs at least one runnable boot command.
+**If `boot_candidates` is empty**: the engineering harness substrate is missing or undiscoverable. Raise as a finding in Step 2 before proceeding — tools runtime skills need at least one runnable boot command.
 
 #### Step 2: Present & Confirm
 
@@ -144,7 +152,7 @@ Write to `docs/project-rules/engineering-harness.md` (new canonical path) using 
 **Project Type**: [detected type]
 
 ## Purpose
-[1-2 sentences: what this harness enables for agents in this project. Covers both the engineering substrate (justfile/Makefile/dev scripts) and the agent-facing Boot/Interact/Observe loop on top.]
+[1-2 sentences: what this harness enables for humans, agents, and tools skills in this project. Covers the engineering substrate (justfile/Makefile/dev scripts), the deterministic sensor inventory, and the local surfaces used by the canonical loop.]
 
 ## First Principles
 - **Focal point, not replacement**: the harness is the obvious place to discover how to work, not a parallel reimplementation of the repo's toolchain.
@@ -153,12 +161,13 @@ Write to `docs/project-rules/engineering-harness.md` (new canonical path) using 
 - **Improve by use**: empty command slots and missing checks are harness friction. Capture them, then encode the smallest useful fix.
 - **Back pressure is a product feature**: the harness should not only make work easier; it should make weak work harder to miss.
 - **Prefer sensors over reminders**: if agents or reviewers repeatedly infer the same thing, add a deterministic signal where practical: smoke flow, runtime probe, architecture check, static analysis, security scan, schema check, fixture, or evidence capture.
+- **Backpressure Check is advisory**: the tools backpressure skill can survey the scoped work and this repo's sensor inventory, but the deterministic proof comes from the sensors themselves.
 
 ## Harness CLI
 - **Path**: `harness/cli/`
 - **Invocation**: [e.g. `python3 harness/cli/harness.py` or `node harness/cli/harness.mjs` or `just harness`]
 - **Command Map**: `harness/cli/commands.json`
-- **Purpose**: starter command surface for `doctor`, `boot`, `health`, `build`, `test`, `lint`, `observe`, `smoke`, `arch`, `security`, `codeql`, `seed`, and `validate`.
+- **Purpose**: starter command surface and deterministic sensor inventory for `doctor`, `boot`, `health`, `build`, `test`, `lint`, `typecheck`, `observe`, `smoke`, `arch`, `security`, `schema`, `codeql`, `seed`, and `validate`.
 
 ## Boot
 - **Command**: [single boot command]
@@ -193,7 +202,14 @@ The harness should not only make the agent experience easier; it should make wea
 | Structured evidence | [e.g. logs, API responses, DOM snapshot, screenshots] | [missing artifact or path] |
 | Architecture boundaries | [e.g. lint rule, CodeQL, custom check, review only] | [boundary to encode] |
 | Static/security checks | [e.g. CodeQL, dependency scan, typecheck, secret scan] | [missing deterministic check] |
+| Schema/data checks | [e.g. JSON schema, migration dry-run, data validation script] | [missing deterministic check] |
 | Recurring review failures | [e.g. encoded / prose-only / unknown] | [review comment that should become a check] |
+
+## Backpressure Check
+
+Backpressure Check is performed by the tools backpressure skill as an LLM-assisted, advisory survey over the current scope and this harness's deterministic sensor inventory.
+
+It is not a core harness command and should not be represented as a `backpressure` command. If the survey finds missing proof, encode that as a sensor slot or harness improvement.
 
 Back-pressure prompt for retros:
 
@@ -201,24 +217,24 @@ Back-pressure prompt for retros:
 
 ## Known Difficulties
 
-<!-- Auto-seeded by engineering-harness-setup from the compound ledger. -->
+<!-- Auto-seeded by engineering-harness-setup from the docs/harness ledger. -->
 <!-- Up to 10 most-relevant open entries, filtered by boot-time and signal-readiness targets such as engineering-harness, tooling, build, tests, observe, runtime-observe, smoke, architecture, static-analysis, security, schema, user-flow, and evidence. -->
 <!-- Sorted by recurrence (count of entries in the same cluster) descending, then by age (oldest first). -->
 <!-- Agents reading this file at boot see accumulated friction without scanning the whole ledger. -->
-<!-- Refresh: re-run engineering-harness-setup (idempotent; re-reads compound and re-renders this section in place). -->
+<!-- Refresh: re-run engineering-harness-setup (idempotent; re-reads docs/harness retros, with docs/compound as legacy input if present, and re-renders this section in place). -->
 
 | # | Entry | Recurrence | Source retros |
 |---|-------|-----------|---------------|
-| _ | _If the compound ledger is empty (no `docs/compound/agents/**/*.retro.md` files matching the filter), this table stays empty — that's normal for a fresh install._ | _ | _ |
+| _ | _If the harness ledger is empty (no `docs/harness/agents/**/*.retro.md` files matching the filter), this table stays empty — that's normal for a fresh install._ | _ | _ |
 
 ## Maturity Assessment
 | Level | Status | Notes |
 |-------|--------|-------|
-| L0: No harness | | Agent writes code, human tests |
-| L1: Manual boot + API | | Human starts stack, agent sends requests |
-| L2: Auto boot + API | | Agent starts stack, health check, API interaction |
-| L3: Full interaction + evidence | | Agent boots, drives UI/CLI, captures screenshots |
-| L4: Self-healing | | Auto-recovery from stale processes, auth expiry |
+| L0: No harness | | Commands live in tribal knowledge, scattered docs, or ad-hoc scripts |
+| L1: Front door installed | | Governance doc, `harness/cli/`, command map, `docs/harness`, and AGENTS route exist |
+| L2: Commands encoded | | Build/test/run/health/sensor commands are confirmed and runnable where available |
+| L3: Improvement loop active | | Friction or missing-signal entries are captured and at least one has been encoded |
+| L4: Self-improving | | The harness regularly produces improvements during normal work and new agents onboard reliably |
 
 Current: **L[N]** — [brief justification]
 
@@ -264,11 +280,11 @@ Current: **L[N]** — [brief justification]
 
 Mark the current maturity level based on what's actually working (not aspirational).
 
-#### Step 4a: Seed `## Known Difficulties` from the compound ledger
+#### Step 4a: Seed `## Known Difficulties` from the harness ledger
 
 After writing the template (or on every re-run of this skill), populate the `## Known Difficulties` section:
 
-1. **Read** `docs/compound/agents/**/*.retro.md` files (skip if `docs/compound/` doesn't exist — the section stays empty until compound starts producing entries).
+1. **Read** `docs/harness/agents/**/*.retro.md` files (skip if `docs/harness/` doesn't exist — the section stays empty until the harness loop starts producing entries). Read legacy `docs/compound/agents/**/*.retro.md` only as back-compat input if present.
 2. **Filter** entries to:
    - `entry.system.compound.status == "open"` OR `entry.system.compound.status == "suggested"` (closed/resolved entries are noise here)
    - `entry.target` in: `engineering-harness | tooling | infra | build | config | dependencies | env | auth | tests | observe | runtime-observe | smoke | architecture | static-analysis | security | schema | user-flow | evidence` (relevance filter — these are the target classes a fresh agent hits during boot/install/health-check and signal-readiness checks; entries outside this set are not boot-time concerns)
@@ -283,9 +299,25 @@ After writing the template (or on every re-run of this skill), populate the `## 
 
 Re-running this skill always re-renders Section 4a in place — idempotent; never appends duplicates.
 
-If `docs/compound/` is missing: write the placeholder row from the template and report that the Improve ledger is not installed yet. The upstream runtime loop will no-op gracefully until the Improve surface is provisioned.
+If `docs/harness/` is missing: create the canonical `docs/harness` scaffold described below. If only legacy `docs/compound/` exists, report that it is legacy/back-compat and continue reading it as input only.
 
-If `docs/compound/` exists but has no matching retros: write the placeholder row from the template (no harm; the section is informational and will populate once compound starts producing entries).
+If `docs/harness/` exists but has no matching retros: write the placeholder row from the template (no harm; the section is informational and will populate once harness retros start producing entries).
+
+#### Step 4a.1: Create `docs/harness` scaffold
+
+Create the canonical harness improvement tree:
+
+```txt
+docs/harness/
+├── _buffers/
+├── agents/
+└── backpressure/
+    └── README.md
+```
+
+`docs/harness/_buffers/` holds per-agent session buffers. `docs/harness/agents/` holds raw per-agent/day retro records. Curated harness concepts live under `docs/harness/<thing>/<slug>`. `docs/compound` is legacy/back-compat only and should not be written as canonical output.
+
+`docs/harness/backpressure/README.md` explains that Backpressure Check is an advisory tools-skill survey over current scope and the deterministic sensors in `harness/cli/commands.json`.
 
 #### Step 4b: Create starter CLI under `harness/cli/`
 
@@ -309,33 +341,60 @@ harness/cli/harness.mjs   # Node stdlib
 harness/cli/README.md     # Other or existing tool only, with explicit invocation instructions
 ```
 
-`harness/cli/commands.json` should contain the detected or user-confirmed command map:
+`harness/cli/commands.json` should be materialised from `templates/harness-config.json` with the detected or user-confirmed command map. The important contract is that `commands` is the deterministic sensor inventory: missing key means unsupported/not declared, empty string means known but unconfigured, and non-empty string means command to run.
 
 ```json
 {
   "version": "0.1",
+  "harness": {
+    "name": "[project name]",
+    "cli_language": "[python|node|wrap|]",
+    "cli_path": "[chosen invocation]",
+    "created_by": "engineering-harness-setup"
+  },
   "commands": {
-    "doctor": "",
+    "install": "",
     "boot": "",
     "health": "",
     "build": "",
     "test": "",
     "lint": "",
+    "typecheck": "",
+    "format_check": "",
+    "run": "",
     "observe": "",
     "smoke": "",
     "arch": "",
     "security": "",
+    "schema": "",
     "codeql": "",
-    "seed": "",
-    "validate": ""
+    "seed": ""
   },
-  "evidence": {
-    "directory": "./harness/evidence/"
+  "health": {
+    "url": "",
+    "expected_status": 200,
+    "timeout_seconds": 30
+  },
+  "validation": {
+    "fast": ["test"],
+    "quick": ["doctor", "build", "test"],
+    "proof": ["doctor", "build", "test", "health", "smoke"]
+  },
+  "paths": {
+    "proofs": "harness/proofs",
+    "harness_docs": "docs/harness",
+    "buffers": "docs/harness/_buffers",
+    "retros": "docs/harness/agents",
+    "templates": "harness/templates"
+  },
+  "permissions": {
+    "allow_run": false,
+    "allow_health_probe": true
   },
   "notes": {
     "purpose": "Starter engineering-harness command map. Empty strings are improvement opportunities, not success.",
     "rule": "Wrap existing repo commands first. Implement original harness commands only where no supported command already exists.",
-    "signal_rule": "Missing observe, smoke, architecture, security, or static-analysis commands are back-pressure gaps to consider encoding when they affect trust."
+    "signal_rule": "Missing observe, smoke, architecture, security, schema, typecheck, or static-analysis commands are deterministic-sensor gaps. Backpressure Check may recommend adding them for scoped work, but it is not itself a core harness command."
   }
 }
 ```
@@ -345,7 +404,7 @@ For Python or Node, the starter CLI should:
 - support `--help`;
 - support `doctor`;
 - support `validate --dry-run`;
-- support `run <command-name> --dry-run`;
+- support first-class subcommands for configured command-map entries (for example `build --dry-run`, `test --dry-run`, `observe --dry-run`);
 - read `harness/cli/commands.json`;
 - report empty command slots as `unconfigured`;
 - print agent-friendly help: command list, what each command proves, examples, evidence path, and what to do when a command is unconfigured;
@@ -358,7 +417,8 @@ Minimum command set:
 | Command | Purpose |
 |---------|---------|
 | `doctor` | Show configured and missing command slots, plus the next useful setup action. |
-| `run <name>` | Run one configured command, or dry-run it. Missing names must list available names. |
+| `<sensor-command>` | Run one configured command, or dry-run it. Examples: `build`, `test`, `observe`, `smoke`, `schema`. |
+| `run` | Start the product command only; long-running and dry-run by default unless explicitly executed. |
 | `validate --dry-run` | Show the validation sequence without running it and mark missing commands as improvement opportunities. |
 | `help` / `--help` | Explain the CLI, command map, examples, evidence path, and how agents should use the harness. |
 
@@ -371,31 +431,32 @@ Use this CLI as the front door before inventing raw shell commands.
 
 Commands:
   doctor                 Show configured/missing harness commands
-  run <name> [--dry-run] Run a configured command from commands.json
+  build/test/etc [--dry-run] Run a configured command from commands.json
+  run [--dry-run|--execute] Start the product command only
   validate [--dry-run]   Show or run the default validation sequence
 
 Examples:
   harness doctor
   harness validate --dry-run
-  harness run test --dry-run
-  harness run observe --dry-run
+  harness test --dry-run
+  harness observe --dry-run
 
 Evidence:
   ./harness/evidence/
 
-If a command is unconfigured, treat it as harness friction. If it would have caught real product, architecture, runtime, or security risk, treat it as a back-pressure gap and propose an encoded signal.
+If a command is unconfigured, treat it as harness friction. If it would have caught real product, architecture, runtime, security, schema, or user-flow risk, treat it as a deterministic-sensor gap and propose an encoded signal. Do not add a `backpressure` command; Backpressure Check is an advisory tools-skill activity over this inventory.
 ```
 
 Error output should be useful to an agent. Prefer this shape for JSON-capable CLIs:
 
 ```json
 {
-  "command": "run test",
+  "command": "test",
   "status": "unconfigured",
   "error": {
-    "code": "UNCONFIGURED_COMMAND",
+    "code": "UNCONFIGURED",
     "message": "commands.test is empty in harness/cli/commands.json",
-    "next_action": "Set commands.test to the repo's supported test command, then rerun harness run test --dry-run."
+    "next_action": "Set commands.test to the repo's supported test command, then rerun harness test --dry-run."
   }
 }
 ```
@@ -404,9 +465,9 @@ Human-readable errors should carry the same information:
 
 ```txt
 status: unconfigured
-error.code: UNCONFIGURED_COMMAND
+error.code: UNCONFIGURED
 message: commands.test is empty in harness/cli/commands.json
-next_action: Set commands.test to the repo's supported test command, then rerun harness run test --dry-run.
+next_action: Set commands.test to the repo's supported test command, then rerun harness test --dry-run.
 ```
 
 For **Other or existing tool**, do not invent a runtime. Instead, create `harness/cli/README.md` with:
@@ -431,7 +492,7 @@ If `AGENTS.md` is missing, create it. If it exists, append the block unless the 
 
 This repository has a project-side engineering harness. Read `docs/project-rules/engineering-harness.md` before non-trivial work.
 
-The engineering harness is the supported path for Boot → Interact → Observe → Validate → Improve: it records how to start the product, exercise real behaviour, capture evidence, validate results, and encode recurring friction back into the repo.
+The engineering harness is the supported path for Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve: it records how to start the product, expose deterministic sensors, capture evidence, validate results, and encode recurring friction back into the repo.
 
 Prefer the commands, evidence paths, and back-pressure signals named in `docs/project-rules/engineering-harness.md` and `harness/cli/` over inventing ad-hoc shell sequences. If the harness is missing a command, check, fixture, diagnostic, sensor, or deterministic validation signal you need, record that gap as harness friction so it can be encoded.
 <!-- ENGINEERING-HARNESS-SETUP END -->
@@ -439,15 +500,15 @@ Prefer the commands, evidence paths, and back-pressure signals named in `docs/pr
 
 #### Step 4d: Report missing Improve surface
 
-If `docs/compound/` is missing and the user has not opted out, include this note in the report:
+If `docs/harness/` is missing and the user has not opted out, include this note in the report:
 
 ```md
-Improve loop: no `docs/compound/` ledger found.
+Improve loop: no `docs/harness/` ledger found.
 
-Runtime loop: install/use `harness-1-boot`, `harness-2-observe`, and `harness-3-retro` from `jakkaj/tools`; they will report `UNAVAILABLE` or no-op gracefully until the Improve surface exists.
+Runtime loop: install/use `harness-1-boot`, `harness-2-observe`, and `harness-3-retro` from `jakkaj/tools`; they will report `UNAVAILABLE` or no-op gracefully until the Improve surface exists. `docs/compound/` is legacy/back-compat only.
 ```
 
-Do not auto-create the compound tree unless the user explicitly asks. The first version should make the loop visible without surprising the repository owner with extra state.
+Create only the canonical `docs/harness` scaffold. Do not create `docs/compound` except as an explicitly requested migration shim.
 
 #### Step 5: Validate (post-create)
 
@@ -483,64 +544,58 @@ If a legacy `docs/project-rules/agent-harness.md` or `docs/project-rules/harness
 
 ### VALIDATE Mode
 
-#### Step 1: Read Engineering Harness Config
+#### Step 1: Read Engineering Harness Nucleus
 
-Read `docs/project-rules/engineering-harness.md` (or fall back to legacy `docs/project-rules/harness.md` and emit the migration advisory). Parse: boot command, health check, interaction method, observe method, signals/back-pressure section, current maturity level.
+Read `docs/project-rules/engineering-harness.md` (or fall back to legacy `docs/project-rules/agent-harness.md`, then legacy `docs/project-rules/harness.md`, and emit the migration advisory). Parse: harness CLI invocation, command-map path, deterministic sensor inventory, `docs/harness` paths, signals/back-pressure section, and current nucleus maturity level.
 
 If both paths are missing or unparseable → error with suggestion to run `/engineering-harness-setup --create`.
 
-#### Step 2: Execute 3-Stage Validation
+#### Step 2: Validate nucleus surfaces
 
-Run checks using bash tool:
+This mode validates that the setup surfaces exist and are internally coherent. It does **not** run the live runtime loop. Live Boot / Interact / Observe validation belongs to `harness-1-boot` and the repo-local harness CLI in a later session.
 
-**Stage 1: Boot Check** (5s if running, 60s cold boot)
-```
-1. Check if already running: run health check command from engineering-harness.md
-   ├── Healthy → "Already running" (skip boot)
-   └── Not responding → Run boot command, retry health check (30 × 2s = 60s max)
-```
+Check:
 
-**Stage 2: Interact Check** (5s, single attempt)
-```
-1. Send test input per engineering-harness.md § Interact
-   ├── Response received → ✅
-   └── No response / error → ❌ (log specific error)
-```
-
-**Stage 3: Observe Check** (5s, single attempt)
-```
-1. Capture evidence per engineering-harness.md § Observe
-   ├── Evidence non-empty and readable → ✅
-   └── Empty or failed → ❌
-```
+- `docs/project-rules/engineering-harness.md` exists and uses the canonical loop wording.
+- `harness/cli/commands.json` exists, parses as JSON, and has a top-level `commands` object.
+- `commands` exposes deterministic sensor slots where known: build/test/lint/typecheck/health/smoke/arch/security/schema/observe and similar.
+- `commands` does not include a core `backpressure` command.
+- `docs/harness/_buffers/`, `docs/harness/agents/`, and `docs/harness/backpressure/README.md` exist or are explicitly reported missing as setup gaps.
+- `docs/compound` is not written as canonical output; if present, report it as legacy/back-compat input.
+- `harness/state/friction-log.md` and `harness/state/known-difficulties.md`, if present, say they are compatibility summaries/pointers to `docs/harness`.
+- Generated files do not contain unresolved `{{PLACEHOLDER}}` markers.
 
 #### Step 3: Classify Verdict
 
 | Verdict | Criteria |
 |---------|----------|
-| **✅ HEALTHY** | All 3 checks pass, boot ≤ 45s |
-| **⚠️ SLOW** | All 3 checks pass, boot > 45s |
-| **❌ UNHEALTHY** | Any check fails |
-| **🔴 UNAVAILABLE** | No engineering-harness.md (or legacy agent-harness.md / harness.md) and no boot command |
+| **✅ READY** | Nucleus surfaces exist, parse, and use canonical contracts |
+| **⚠️ DEGRADED** | Nucleus exists but optional sensors or `docs/harness` surfaces are missing |
+| **❌ INCOMPLETE** | Required governance or command-map surfaces are missing or invalid |
+| **🔴 UNAVAILABLE** | No engineering-harness.md (or legacy agent-harness.md / harness.md) |
 
 #### Step 4: Update Maturity & Report
 
-Update engineering-harness.md `## Maturity Assessment` to reflect current reality.
-Update `**Maturity Level**` header field.
-Append validation result to `## History` table.
+Update engineering-harness.md `## Maturity Assessment` to reflect nucleus maturity only. Do not claim live runtime health from this setup validation.
+Update `**Maturity Level**` header field if the nucleus maturity changed.
+Append validation result to `## History` table if the file has one.
 
 Report:
 ```
 🔍 Engineering Harness Validation Report:
 
-  Boot:      [✅/❌] [detail] ([duration])
-  Interact:  [✅/❌] [detail] ([duration])
-  Observe:   [✅/❌] [detail] ([duration])
+  Governance:       [✅/❌] docs/project-rules/engineering-harness.md
+  Command map:      [✅/❌] harness/cli/commands.json
+  Sensor inventory: [✅/⚠️/❌] [configured/unconfigured/missing slots]
+  Harness ledger:   [✅/⚠️/❌] docs/harness
+  Legacy paths:     [none / present as back-compat / drift]
 
   Verdict:   [verdict]
   Maturity:  L[N] ([description])
   Checklist: [X/20] items passing
   Missing:   [list unchecked items]
+
+  Runtime validation: not run by setup. Use harness-1-boot / repo-local harness CLI.
 ```
 
 ---
@@ -549,16 +604,16 @@ Report:
 
 Quick read-only report — no validation, no changes.
 
-Read engineering-harness.md (or legacy agent-harness.md / harness.md, with migration advisory) and report: project type, maturity level, last validation date, checklist completion. No agent harness boots or health checks.
+Read engineering-harness.md (or legacy agent-harness.md / harness.md, with migration advisory) and report: project type, maturity level, last validation date, checklist completion. No agent harness/runtime-control-plane checks.
 
 ---
 
-## Anti-Patterns (from agent harness dossier)
+## Anti-Patterns
 
 When generating engineering-harness.md, warn against:
-- **"Tests Are Enough"** — unit tests (engineering harness signal) pass while the running app the agent harness exercises is broken. These are different signals; you need both.
-- **"The Agent Can Figure It Out"** — agents need explicit Boot/Interact/Observe instructions
-- **"We'll Add the Agent Harness Later"** — agent harness first (after engineering harness exists), features second
+- **"Tests Are Enough"** — unit tests pass while the running product is broken. These are different signals; you need both.
+- **"The Agent Can Figure It Out"** — agents need explicit engineering-harness commands, sensors, and evidence paths.
+- **"We'll Add the Harness Later"** — the engineering harness nucleus should exist before feature work depends on it.
 - **"Screenshot Everything"** — prefer structured output over screenshots
 - **"One Process Per Terminal"** — single entry point, single shutdown handler
 - **"Human Review Is the Sensor"** — repeated review comments are back pressure trying to become a deterministic check.

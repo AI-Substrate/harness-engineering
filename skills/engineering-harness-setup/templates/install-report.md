@@ -16,14 +16,15 @@ The agent harness drives. The engineering harness proves.
 
 | Path | Action | Notes |
 |---|---|---|
-| `HARNESS.md` (or `docs/project-rules/harness.md`) | created / merged / skipped | per FR-01 |
+| `docs/project-rules/engineering-harness.md` | created / merged / skipped | canonical governance file |
 | `AGENTS.md` | created / appended | sentinel-bracketed addition |
 | `harness/README.md` | created | |
-| `harness/config.json` | created | per FR-CF-07 placeholder substitution |
-| `harness/bin/{{HARNESS_CLI_FILE}}` | created | one of `harness.py` / `harness.mjs` / `harness.sh` |
+| `harness/cli/commands.json` | created | deterministic sensor inventory and command map |
+| `harness/cli/{{HARNESS_CLI_FILE}}` | created | one of `harness.py` / `harness.mjs` / README-only existing-tool wrapper |
+| `docs/harness/` | created | canonical buffers, retros, and curated harness-improvement tree |
 | `harness/skills/onboard-agent-session.md` | created | read by `<CLI> onboard` |
-| `harness/state/known-difficulties.md` | created | empty seed |
-| `harness/state/friction-log.md` | created | seeded with install-time entries (if any) |
+| `harness/state/known-difficulties.md` | optional compatibility summary | points to `docs/harness` if generated |
+| `harness/state/friction-log.md` | optional compatibility summary | points to `docs/harness` if generated |
 | `harness/templates/proof-note.md` | created | |
 | `harness/templates/friction-entry.md` | created | |
 | `harness/templates/retrospective-schema.json` | created | session-end retrospective schema |
@@ -51,13 +52,13 @@ If neither Python ≥ 3.10 nor Node ≥ 18 was detected during install, the CLI 
 |---|---|---|---|---|
 | `<CLI>` | no | unconfigured | no supported runtime detected (need Python ≥ 3.10 or Node ≥ 18) | `install-report:cli-row` |
 
-The install still completes (`harness/` is materialised), but `harness/config.json.harness.cli_language` is `""` and a seed friction-log entry names the missing-runtime condition.
+The install still completes (`harness/` is materialised), but `harness/cli/commands.json.harness.cli_language` is `""` and a setup note names the missing-runtime condition.
 
 ## Proof-level ceiling (QT-06)
 
-> This setup proves at most L2 (harness commands ran and any approved build/test passed). It does not and cannot prove L3+ (product runtime behaviour). Use the harness loop — Boot → Interact → Observe → Validate — to reach higher proof levels in subsequent sessions.
+> This setup proves at most that the harness nucleus was installed and configured. It does not and cannot prove product runtime behaviour. Use the harness loop — Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve — to reach stronger proof in subsequent sessions.
 
-The proof-level ladder is distinct from the harness-maturity ladder (L0–L4) in `HARNESS.md`. The two ladders compose: a high-maturity harness can still produce low-proof-level results when the product doesn't run, and a low-maturity harness can briefly produce a high-proof-level result if a human carries the loop manually. Track both.
+The proof-level ladder is distinct from the harness-maturity ladder (L0–L4) in `docs/project-rules/engineering-harness.md`. The two ladders compose: a high-maturity harness can still produce low-proof-level results when the product doesn't run, and a low-maturity harness can briefly produce a high-proof-level result if a human carries the loop manually. Track both.
 
 ## What is proven
 
@@ -85,4 +86,4 @@ The proof-level ladder is distinct from the harness-maturity ladder (L0–L4) in
 
 > If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
 
-Record the answer in `harness/state/friction-log.md` with `magicWandTarget: project | harness | agent`. The harness ones are the most actionable; encode them.
+Record the reviewed answer in `docs/harness` via the runtime observe/retro flow. If `harness/state/friction-log.md` exists, it is only a compatibility summary or pointer.

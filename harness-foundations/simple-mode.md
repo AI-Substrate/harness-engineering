@@ -8,7 +8,7 @@ This post is my take. More importantly, it's a tangible way to get an engineerin
 
 Before we get too much into it however, it's important that you don't conflate an agent harness with an engineering harness. The **agent harness** is the runtime that drives the model: Copilot, Claude Code, Codex, Cursor, Cline, pi, or whatever you use. [Check out](https://code.visualstudio.com/blogs/2026/05/15/agent-harnesses-github-copilot-vscode) this article on the Github Copilot agent harness (coding harness).
 
-The **engineering harness** is the project-side loop that helps the agent work *on* your codebase. That helps the agent prove the software works: build, boot, seed, run, observe, validate, improve.
+The **engineering harness** is the project-side loop that helps the agent work *on* your codebase. It gives the agent and human a way to boot, check available back pressure for the scoped work, do the work through supported surfaces, observe what happened, retro/magic-wand the friction, and encode the selected improvement.
 
 ## The problem
 
@@ -33,6 +33,8 @@ Harness engineering is the practice of productising the development loop so a hu
 The agent harness drives the LLM. The engineering harness helps the agent prove the work that was done is good, and it also helps save us a bunch of tokens and time while doing it.
 
 **Back pressure** is the signal that tells the agent how it's truly doing (not inferred but deterministically wherever possible): build failures, type errors, tests, lint, runtime failures, smoke checks, architecture checks and more besides are some of the more common things.
+
+A **Backpressure Check** is different from the back pressure itself. It is an LLM-assisted, advisory look at the current scope and the deterministic sensors the repo exposes. The check asks whether the work can be proved well enough and what missing sensors should be added; the proof still comes from the sensors, not from the LLM saying things look good.
 
 If those signals are weak, the loop becomes overdependent on the human as the source of back pressure, catching the same mistakes over and over by hand.
 

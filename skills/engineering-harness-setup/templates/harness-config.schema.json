@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/engineering-harness-setup/harness-config.schema.json",
-  "title": "harness/config.json schema",
-  "description": "Schema for the per-repo harness/config.json. The schema is intentionally permissive about empty strings — an unconfigured command is an improvement opportunity, not a validation failure.",
+  "title": "harness/cli/commands.json schema",
+  "description": "Schema for the per-repo harness/cli/commands.json command map and deterministic sensor inventory. The schema is intentionally permissive about empty strings — an unconfigured command is an improvement opportunity, not a validation failure.",
   "type": "object",
   "required": ["version", "harness", "commands", "health", "validation", "paths", "permissions"],
   "additionalProperties": true,
@@ -21,11 +21,11 @@
         "cli_language": {
           "type": "string",
           "enum": ["python", "node", "wrap", ""],
-          "description": "Which CLI implementation the skill installed. \"wrap\" means the wrap-existing branch (harness/bin/harness.sh shim); \"\" means no runtime was detected and the install completed in degraded mode."
+          "description": "Which CLI implementation the skill installed. \"wrap\" means the wrap-existing branch uses an existing tool surface; \"\" means no runtime was detected and the install completed in degraded mode."
         },
         "cli_path": {
           "type": "string",
-          "description": "Path to the installed CLI, e.g. harness/bin/harness.py. Empty when cli_language is \"\"."
+          "description": "Path to the installed CLI, e.g. harness/cli/harness.py. Empty when cli_language is \"\"."
         },
         "created_by": { "type": "string" }
       }
@@ -33,20 +33,25 @@
     "commands": {
       "type": "object",
       "description": "Each value is the shell command (possibly empty string). Empty commands are skipped by validate and reported as 'unconfigured' by doctor.",
-      "required": ["install", "build", "test", "lint", "format_check", "run", "observe", "smoke", "arch", "security", "codeql"],
-      "additionalProperties": false,
+      "required": [],
+      "additionalProperties": { "type": "string" },
       "properties": {
         "install": { "type": "string" },
+        "boot": { "type": "string" },
+        "health": { "type": "string" },
         "build": { "type": "string" },
         "test": { "type": "string" },
         "lint": { "type": "string" },
+        "typecheck": { "type": "string" },
         "format_check": { "type": "string" },
         "run": { "type": "string" },
         "observe": { "type": "string" },
         "smoke": { "type": "string" },
         "arch": { "type": "string" },
         "security": { "type": "string" },
-        "codeql": { "type": "string" }
+        "schema": { "type": "string" },
+        "codeql": { "type": "string" },
+        "seed": { "type": "string" }
       }
     },
     "health": {
@@ -74,7 +79,9 @@
       "additionalProperties": false,
       "properties": {
         "proofs":    { "type": "string", "default": "harness/proofs" },
-        "state":     { "type": "string", "default": "harness/state" },
+        "harness_docs": { "type": "string", "default": "docs/harness" },
+        "buffers":   { "type": "string", "default": "docs/harness/_buffers" },
+        "retros":    { "type": "string", "default": "docs/harness/agents" },
         "templates": { "type": "string", "default": "harness/templates" }
       }
     },

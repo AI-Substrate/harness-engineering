@@ -4,7 +4,7 @@
 Minimal repo-local engineering harness CLI.
 
 This CLI is intentionally small. It provides a discoverable front door for the
-project harness and wraps commands configured in harness/config.json. All
+project harness and wraps commands configured in harness/cli/commands.json. All
 subcommands emit envelopes that conform to harness/templates/cli-envelope.schema.json
 (when the template is materialised) — see the print_envelope() helper.
 
@@ -17,6 +17,8 @@ Process exit codes (per FR-04):
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import re
@@ -29,7 +31,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 HARNESS_DIR = ROOT / "harness"
-CONFIG_PATH = HARNESS_DIR / "config.json"
+CONFIG_PATH = HARNESS_DIR / "cli" / "commands.json"
 ONBOARD_DOC_PATH = HARNESS_DIR / "skills" / "onboard-agent-session.md"
 MAGIC_WAND_PROMPT_PATH = HARNESS_DIR / "templates" / "magic-wand-prompt.md"
 
@@ -48,9 +50,9 @@ STATUSES = {
 
 
 def _exit_code_for(status: str) -> int:
-    if status == "pass":
+    if status in {"pass", "dry-run", "skipped"}:
         return 0
-    if status == "unconfigured":
+    if status in {"unconfigured", "degraded"}:
         return 2
     return 1
 
@@ -123,7 +125,7 @@ _PLACEHOLDER_RE = re.compile(r"\{\{[A-Z_][A-Z0-9_]*\}\}")
 def assert_no_placeholder_leaks() -> tuple[bool, list[str]]:
     """Return (ok, offending_paths). Called by validate at the end."""
     leaks: list[str] = []
-    for rel in [HARNESS_DIR / "config.json", ROOT / "HARNESS.md", ROOT / "AGENTS.md"]:
+    for rel in [HARNESS_DIR / "cli" / "commands.json", ROOT / "docs" / "project-rules" / "engineering-harness.md", ROOT / "AGENTS.md"]:
         if rel.exists() and _PLACEHOLDER_RE.search(rel.read_text(encoding="utf-8")):
             leaks.append(str(rel.relative_to(ROOT)))
     return (not leaks, leaks)
@@ -135,16 +137,17 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     config_exists = CONFIG_PATH.exists()
     cfg = load_config()
 
-    configured: list[str] = []
-    unconfigured: list[str] = []
-    for name, value in (cfg.get("commands") or {}).items():
-        if str(value).strip():
-            configured.append(name)
-        else:
-            unconfigured.append(name)
+    def command_slots(config: dict[str, Any]) -> tuple[list[str], list[str]]:
+        configured_slots: list[str] = []
+        unconfigured_slots: list[str] = []
+        for name, value in (config.get("commands") or {}).items():
+            if str(value).strip():
+                configured_slots.append(name)
+            else:
+                unconfigured_slots.append(name)
+        return configured_slots, unconfigured_slots
 
-    health = cfg.get("health") or {}
-    health_url = str(health.get("url", "")).strip()
+    configured, unconfigured = command_slots(cfg)
 
     deadline = time.monotonic() + (args.wait or 0)
     while True:
@@ -157,11 +160,14 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         # Re-load in case the user just finished editing config.json.
         cfg = load_config()
         config_exists = CONFIG_PATH.exists()
-        configured = [n for n, v in (cfg.get("commands") or {}).items() if str(v).strip()]
+        configured, unconfigured = command_slots(cfg)
+
+    health = cfg.get("health") or {}
+    health_url = str(health.get("url", "")).strip()
 
     messages = [
         f"Repository root: {ROOT}",
-        f"Harness config: {'found' if config_exists else 'missing'} at {CONFIG_PATH}",
+        f"Harness command map: {'found' if config_exists else 'missing'} at {CONFIG_PATH}",
     ]
     if configured:
         messages.append("Configured commands: " + ", ".join(sorted(configured)))
@@ -174,7 +180,7 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     error_message = None
     if status == "unconfigured":
         error_code = "UNCONFIGURED"
-        error_message = "harness/config.json is missing"
+        error_message = "harness/cli/commands.json is missing"
     elif status == "degraded":
         error_code = "DEPENDENCY_MISSING"
         error_message = "config loaded but no commands are configured yet"
@@ -191,15 +197,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     )
 
 
-def _run_shell(name: str, *, dry_run: bool, as_json: bool) -> int:
+def _run_shell(name: str, *, dry_run: bool, as_json: bool, quiet: bool = False) -> int:
     cmd = command_string(name)
     if not cmd:
         return print_envelope(
             name,
             "unconfigured",
             error_code="UNCONFIGURED",
-            error_message=f"No command configured for '{name}' in harness/config.json.",
-            next_action=f"Set commands.{name} in harness/config.json.",
+            error_message=f"No command configured for '{name}' in harness/cli/commands.json.",
+            next_action=f"Set commands.{name} in harness/cli/commands.json.",
             as_json=as_json,
         )
 
@@ -211,7 +217,14 @@ def _run_shell(name: str, *, dry_run: bool, as_json: bool) -> int:
             as_json=as_json,
         )
 
-    completed = subprocess.run(cmd, shell=True, cwd=ROOT)
+    effective_quiet = quiet or as_json
+    completed = subprocess.run(
+        cmd,
+        shell=True,
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL if effective_quiet else None,
+        stderr=subprocess.DEVNULL if effective_quiet else None,
+    )
     if completed.returncode == 0:
         return print_envelope(name, "pass", data={"ran": cmd}, as_json=as_json)
     err_code = "BUILD_FAILED" if name == "build" else ("TEST_FAILED" if name == "test" else "UNKNOWN")
@@ -233,10 +246,20 @@ def cmd_wrapped(name: str):
 def cmd_run(args: argparse.Namespace) -> int:
     """`run` is long-running. It refuses to spawn the child without --execute."""
     cfg = load_config()
+    run_command = command_string("run")
+    if not run_command:
+        return print_envelope(
+            "run",
+            "unconfigured",
+            error_code="UNCONFIGURED",
+            error_message="No command configured for 'run' in harness/cli/commands.json.",
+            next_action="Set commands.run to the repo's supported start command.",
+            as_json=args.json,
+        )
     if not (cfg.get("permissions") or {}).get("allow_run", False) and not args.execute:
         return print_envelope(
             "run", "dry-run",
-            data={"would_run": command_string("run")},
+            data={"would_run": run_command},
             messages=[
                 "run is long-running and is dry-run by default.",
                 "Pass --execute to actually start the product, or set permissions.allow_run=true.",
@@ -254,11 +277,13 @@ def cmd_health(args: argparse.Namespace) -> int:
     expected = int(health_cfg.get("expected_status", 200))
 
     if not url:
+        if command_string("health"):
+            return _run_shell("health", dry_run=args.dry_run, as_json=args.json, quiet=getattr(args, "quiet", False))
         return print_envelope(
             "health", "unconfigured",
             error_code="UNCONFIGURED",
-            error_message="No health URL configured in harness/config.json.",
-            next_action="Add health.url, then re-run.",
+            error_message="No health URL or commands.health configured in harness/cli/commands.json.",
+            next_action="Add health.url or commands.health, then re-run.",
             as_json=args.json,
         )
 
@@ -306,10 +331,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
         return print_envelope(
             "validate", "unconfigured",
             error_code="UNCONFIGURED",
-            error_message=f"validation.{tier} is empty or missing in harness/config.json.",
-            next_action=f"Add steps to validation.{tier} in harness/config.json.",
+            error_message=f"validation.{tier} is empty or missing in harness/cli/commands.json.",
+            next_action=f"Add steps to validation.{tier} in harness/cli/commands.json.",
             as_json=args.json,
         )
+
+    def call_step(fn):
+        if not args.json:
+            return fn()
+        with contextlib.redirect_stdout(io.StringIO()):
+            return fn()
 
     results: list[dict[str, Any]] = []
     overall_status = "pass"
@@ -319,11 +350,11 @@ def cmd_validate(args: argparse.Namespace) -> int:
             results.append({"step": step, "status": "skipped", "reason": "validate never invokes run; use --execute on run directly"})
             continue
         if step == "doctor":
-            code = cmd_doctor(argparse.Namespace(json=False, wait=0))
+            code = call_step(lambda: cmd_doctor(argparse.Namespace(json=False, wait=0)))
         elif step == "health":
-            code = cmd_health(argparse.Namespace(json=False, dry_run=args.dry_run))
+            code = call_step(lambda: cmd_health(argparse.Namespace(json=False, dry_run=args.dry_run, quiet=args.json)))
         else:
-            code = _run_shell(step, dry_run=args.dry_run, as_json=False)
+            code = call_step(lambda: _run_shell(step, dry_run=args.dry_run, as_json=False, quiet=args.json))
         results.append({"step": step, "exit_code": code})
         if code == 1:
             overall_status = "fail"
@@ -345,6 +376,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return print_envelope(
         "validate", overall_status,
         data={"tier": tier, "results": results},
+        error_code="DEPENDENCY_MISSING" if overall_status == "degraded" else None,
+        error_message="One or more validation steps are unconfigured." if overall_status == "degraded" else None,
+        next_action="Configure the missing command slots in harness/cli/commands.json or remove them from the selected validation tier." if overall_status == "degraded" else None,
         as_json=args.json,
     )
 
@@ -399,13 +433,18 @@ def cmd_magic_wand(args: argparse.Namespace) -> int:
     print()
     print("Back-pressure companion: What did the agent or reviewer have to infer that the harness should have proved?")
     print()
-    print("Record reviewed candidates in harness/state/friction-log.md.")
+    print("Route reviewed candidates through docs/harness.")
     return 0
 
 
 # --- argparse wiring ---------------------------------------------------------
 
 def main(argv: list[str] | None = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    json_requested = "--json" in argv
+    argv = [arg for arg in argv if arg != "--json"]
+
     parser = argparse.ArgumentParser(prog="harness", description="Repo-local engineering harness CLI")
     parser.add_argument("--json", action="store_true", help="Emit JSON envelopes on stdout")
     sub = parser.add_subparsers(dest="cmd")
@@ -414,7 +453,7 @@ def main(argv: list[str] | None = None) -> int:
     p_doctor.add_argument("--wait", type=int, default=0, help="Retry doctor for up to <sec> seconds while config or commands are missing")
     p_doctor.set_defaults(func=cmd_doctor)
 
-    for name in ["install", "build", "test", "lint", "format_check", "observe", "smoke", "arch", "security", "codeql"]:
+    for name in ["install", "boot", "build", "test", "lint", "typecheck", "format_check", "observe", "smoke", "arch", "security", "schema", "codeql", "seed"]:
         p = sub.add_parser(name, help=f"Run configured '{name}' command")
         p.add_argument("--dry-run", action="store_true", help="Show command without running it")
         p.set_defaults(func=cmd_wrapped(name))
@@ -444,6 +483,7 @@ def main(argv: list[str] | None = None) -> int:
     p_magic.set_defaults(func=cmd_magic_wand)
 
     args = parser.parse_args(argv)
+    args.json = bool(args.json or json_requested)
     if not hasattr(args, "func"):
         parser.print_help()
         return 0

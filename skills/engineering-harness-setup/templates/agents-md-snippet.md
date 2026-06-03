@@ -2,7 +2,7 @@
 
 ## The engineering harness is non-negotiable.
 
-This repository has a project-side engineering harness. Read `HARNESS.md` before starting non-trivial work.
+This repository has a project-side engineering harness. Read `docs/project-rules/engineering-harness.md` before starting non-trivial work.
 
 The agent harness drives. The engineering harness proves.
 
@@ -33,14 +33,14 @@ The skill detected the host tooling in this repository and populated this table.
 
 The skill populates `{{EQUIVALENCE_TABLE_ROWS}}` at install time from inspection of `package.json`, `pyproject.toml`, `Justfile`, `Makefile`, and `harness/proofs/`. The install pass adds at least three rows. Subsequent runs add rows additively — your own rows between the sentinels are never deleted.
 
-**Add a row when you find friction.** If you used `pnpm test` directly (or any other forbidden invocation) because no harness equivalent existed yet, file the missing equivalence as a friction-log entry and add the row to this table once the equivalent ships.
+**Add a row when you find friction.** If you used `pnpm test` directly (or any other forbidden invocation) because no harness equivalent existed yet, file the missing equivalence through the `docs/harness` observe/retro flow and add the row to this table once the equivalent ships.
 
 ## Self-check before you act
 
 Ask: *"Could `{{HARNESS_CLI_INVOCATION}} <subcommand>` answer this?"*
 
 - If yes, use that. The harness is the front door for a reason.
-- If no, the gap is the answer — file it as a magic-wand entry in `harness/state/friction-log.md` and propose the missing subcommand.
+- If no, the gap is the answer — file it as a magic-wand entry through `docs/harness` and propose the missing subcommand.
 
 ## Reporting when work is complete
 
@@ -48,4 +48,4 @@ When work is complete, report which harness commands were run, what passed, what
 
 If you discover repeated friction, do not only add prose instructions. Consider whether the fix belongs in the harness as a command, check, fixture, diagnostic, default, template, or validation step.
 
-At the end of meaningful work, ask the magic-wand question from `HARNESS.md` and record useful, concrete improvement candidates in `harness/state/friction-log.md` after human review.
+At the end of meaningful work, ask the magic-wand question from `docs/project-rules/engineering-harness.md` and record useful, concrete improvement candidates through `docs/harness` after human review.

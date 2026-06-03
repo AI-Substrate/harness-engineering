@@ -15,7 +15,7 @@ The agent harness drives the model. The engineering harness proves the product.
 ## Steps
 
 1. Read `AGENTS.md`.
-2. Read `HARNESS.md`.
+2. Read `docs/project-rules/engineering-harness.md`.
 3. Run or inspect:
 
    ```txt
@@ -26,9 +26,8 @@ The agent harness drives the model. The engineering harness proves the product.
 4. Read:
 
    ```txt
-   harness/config.json
-   harness/state/known-difficulties.md
-   harness/state/friction-log.md
+   harness/cli/commands.json
+   docs/harness/
    ```
 
 5. If the user approves command execution, run:
@@ -50,6 +49,7 @@ The agent harness drives the model. The engineering harness proves the product.
    - Test command configured: yes/no
    - Run/boot command configured: yes/no
    - Health or smoke check configured: yes/no
+   - Sensor inventory reviewed: yes/no
    - Known difficulties reviewed: yes/no
    - Commands run:
    - Passing evidence:
@@ -73,6 +73,8 @@ The agent harness drives the model. The engineering harness proves the product.
 8. If the failure is likely harness friction, propose one concrete encoded improvement. Use the magic-wand prompt from `harness/templates/magic-wand-prompt.md` (also available via `{{HARNESS_CLI_INVOCATION}} magic-wand`) to frame the proposal:
 
    > If you had a magic wand, what ONE thing would you change to make the next run easier, safer, faster, higher quality, or better proven? Be concrete — name a command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change.
+
+   Backpressure Check is an advisory tools-skill survey over the current scope and the deterministic sensors in `harness/cli/commands.json`. If it finds missing proof, encode the sensor; do not add a core `backpressure` command.
 
 ## Completion rule
 

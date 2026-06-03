@@ -4,7 +4,7 @@
 
 This file lists recurring project difficulties that a fresh human or agent should know at boot.
 
-Keep this file capped and useful. If an entry recurs, promote it into a harness command, check, fixture, diagnostic, or clearer error. The friction-log is where new difficulties arrive; this file is where stable, *active* difficulties live until they are encoded away.
+Keep this file capped and useful. If generated under `harness/state/`, this file is a compatibility summary only; canonical entries live under `docs/harness`. If an entry recurs, promote it into a harness command, check, fixture, diagnostic, or clearer error.
 
 ## Active known difficulties
 

@@ -1,17 +1,29 @@
 <!-- foundations: patterns-that-work#P10, first-principles#48, #51 -->
 
-# Harness Friction Log
+# Harness Friction Log Compatibility Summary
 
-This is an improvement backlog, not a diary.
+Canonical harness friction and improvement records live in `docs/harness`.
 
-Record material friction that made the repo harder to enter, run, validate, observe, prove, or improve.
+If this file is generated under `harness/state/`, it is a compatibility summary or pointer only. Do not append authoritative raw session buffers or retros here.
+
+Use the runtime observe/retro flow instead:
+
+```txt
+docs/harness/_buffers/<agent>.session-buffer.md
+docs/harness/agents/<agent>/<date>/*.retro.md
+docs/harness/<thing>/<slug>
+```
+
+The harness ledger is an improvement backlog, not a diary.
+
+Record material friction that made the repo harder to enter, run, validate, observe, prove, or improve through `docs/harness`.
 
 Prioritise entries that are recurring, severe, stale, or easy to encode.
 
-## Open entries
+## Open entries summary
 
 <!-- USER CONTENT START -->
-_No entries yet._
+_No compatibility summary entries yet. See `docs/harness` for canonical records._
 <!-- USER CONTENT END -->
 
 ## Entry template
@@ -43,4 +55,4 @@ Then ask:
 
 > What did the agent or reviewer have to infer that the harness should have proved?
 
-Append the answer here with a `magicWandTarget` annotation: `project` (the answer is about the product itself), `harness` (the answer is about this harness — most likely to be encoded), or `agent` (the answer is about the model runtime — usually out of this repo's reach).
+Route the reviewed answer through `docs/harness` with a `magicWandTarget` annotation: `project` (the answer is about the product itself), `harness` (the answer is about this harness — most likely to be encoded), or `agent` (the answer is about the model runtime — usually out of this repo's reach).

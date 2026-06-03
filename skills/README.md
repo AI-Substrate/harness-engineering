@@ -55,7 +55,7 @@ Expected outcomes:
 - `harness/cli/` exists with a starter command map and Python, Node, or existing-tool entry point.
 - The starter CLI has agent-friendly `--help` and actionable errors that say what to do next.
 - `AGENTS.md` signposts future agents to the harness.
-- Known difficulties can be seeded from `docs/compound/` once the compound loop exists.
+- Known difficulties can be surfaced from `docs/harness/` once the harness improvement loop exists.
 - Missing boot, health, observe, validation, sensor, or back-pressure surfaces are named as harness gaps.
 
 ### 3. Boot the harness at session start
@@ -69,7 +69,7 @@ Expected outcomes:
 - Known difficulties and Improve-loop storage are reviewed.
 - Runtime inspectability, smoke paths, architecture/static checks, and security/dependency/schema checks are surfaced where the harness names them.
 - If no harness exists, the runtime skill reports `UNAVAILABLE` and recommends `engineering-harness-setup`.
-- If no compound ledger exists, the runtime loop reports the missing Improve surface without scaffolding it.
+- If no `docs/harness` ledger exists, the runtime loop reports the missing Improve surface without falling back to legacy paths.
 
 ### 4. Track friction during work
 
@@ -89,7 +89,7 @@ This skill should not interrupt the user. It is the quiet capture side of the lo
 
 Run `harness-3-retro --drain` from `jakkaj/tools` at session end, phase end, before handoff, or when a new session starts with leftover buffer entries.
 
-This is the one normal user-facing compound prompt. The user can save, task, plan, stage an encoding, dismiss, or all-save entries.
+This is the one normal user-facing harness retro prompt. The user can save, task, plan, stage an encoding, dismiss, or all-save entries.
 
 ### 6. Harvest periodically
 
@@ -111,13 +111,13 @@ The setup skill and upstream runtime skills make that thesis operational:
 
 | Foundation idea | Skill-suite affordance |
 |---|---|
-| Boot -> Interact -> Observe -> Validate -> Improve | `engineering-harness-setup` records the loop; tools runtime skills start sessions through it. |
+| Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve | `engineering-harness-setup` records the local nucleus; tools runtime skills operate the loop through it. |
 | The harness is the front door, not a replacement toolchain | `engineering-harness-setup` creates `harness/cli/` as a discovery/wrapper surface over existing commands first. |
-| Encode the fix, not the memory | Compound entries must name a candidate encoded fix, not just a complaint. |
+| Encode the fix, not the memory | Harness entries should name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `harness-2-observe` treats agent friction as product feedback for the harness. |
-| Back pressure is a product feature | Signal gaps are tracked and harvested so repeated inference or review-only rules can become checks, sensors, smoke flows, or evidence paths. |
+| Back pressure is a product feature | The harness exposes deterministic sensors; the advisory Backpressure Check asks whether scoped work has enough proof and what sensors are missing. |
 | Retrospectives need a lifecycle | `harness-3-retro --drain` and `--harvest` move entries from buffer to durable retro to prioritized improvement. |
-| Known difficulties and weak signals should be visible at boot | `engineering-harness-setup` can seed Known Difficulties from compound retros; `harness-1-boot` reviews both friction and signal readiness before work starts. |
+| Known difficulties and weak signals should be visible at boot | `engineering-harness-setup` can seed Known Difficulties from `docs/harness` retros; `harness-1-boot` reviews both friction and signal readiness before work starts. |
 
 ## Operating rules
 

@@ -33,13 +33,13 @@ For GitHub Copilot CLI, Codex CLI, OpenCode, Pi, project-local installs, local-b
 An engineering harness makes the **product-development loop** explicit and operable:
 
 ```text
-Boot → Interact → Observe → Validate → Improve
+Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve
 ```
 
 - **Boot** proves the product can start from a known state.
-- **Interact** exercises real product behaviour through supported surfaces.
-- **Observe** captures what happened in inspectable forms.
-- **Validate** turns evidence into a verdict.
+- **Backpressure Check** is an LLM-assisted, advisory survey of the current scope against the deterministic sensors the repo exposes.
+- **Do Work and Observe** exercises real product behaviour through supported surfaces and captures what happened in inspectable forms.
+- **Retro and Magic Wand** turns friction, missing signals, and improvement wishes into reviewable candidates.
 - **Improve** encodes what was learned so the next run is faster, clearer, safer, or backed by stronger signals.
 
 The harness is not throwaway scaffolding. It is a **productised development surface**: the repo-local commands, fixtures, docs, checks, state, workflows, proof paths, and feedback loops every future feature, experiment, human, and agent passes through.
@@ -98,11 +98,12 @@ This repo distils private and public research into general, publication-safe pri
 
 For a practical guide to when to run this setup skill and how it fits the upstream runtime loop, see [`skills/README.md`](skills/README.md).
 
-- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface, known difficulties and signal gaps where available, and an `AGENTS.md` route for future agents.
+- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface and sensor inventory, `docs/harness` improvement surfaces, and an `AGENTS.md` route for future agents.
 
 Runtime loop skills now live upstream in `jakkaj/tools`:
 
 - `harness-1-boot`
+- `plan-2d-backpressure-survey` (the advisory Backpressure Check)
 - `harness-2-observe`
 - `harness-3-retro`
 

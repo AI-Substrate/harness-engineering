@@ -14,9 +14,9 @@ The agent harness can drive the engineering harness, but it cannot replace it. A
 
 ## Directive 2. Close the loop from intent to evidence
 
-The engineering harness exists to move a human or agent from intent to evidence through **Boot → Interact → Observe → Validate → Improve**.
+The engineering harness exists to move a human or agent from intent to evidence and improvement through **Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve**.
 
-Boot proves the product can start from a known state. Interact exercises real product behaviour through supported surfaces. Observe captures what happened. Validate turns that evidence into a verdict. Improve encodes the lesson so the next run is faster, clearer, or safer.
+Boot proves the product can start from a known state. Backpressure Check is an advisory, LLM-assisted survey of the current scope against the deterministic sensors the repo exposes. Do Work and Observe exercises real behaviour and captures what happened. Retro and Magic Wand surface friction, missing proof, and concrete improvement candidates. Improve encodes the selected lesson so the next run is faster, clearer, or safer.
 
 If the loop stops at validation, the harness is only a test rig. If the loop includes improvement, the harness compounds.
 

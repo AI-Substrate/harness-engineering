@@ -23,7 +23,7 @@ This harness self-reports its maturity on the **harness-maturity ladder** (L0–
 | Level | Meaning |
 |---|---|
 | L0 | No harness. Commands live in tribal knowledge, scattered docs, or ad-hoc scripts. |
-| L1 | Front door installed. `HARNESS.md`, `harness/`, CLI skeleton, AGENTS.md pointer exist. Commands may be unconfigured. **(this repo, just installed)** |
+| L1 | Front door installed. `docs/project-rules/engineering-harness.md`, `harness/`, CLI skeleton, AGENTS.md pointer, and `docs/harness` exist. Commands may be unconfigured. **(this repo, just installed)** |
 | L2 | Commands encoded. Build/test/run/health are confirmed and runnable. `<CLI> validate --tier quick` returns useful verdicts. |
 | L3 | Improvement loop active. Friction log has entries; at least one entry has been encoded into the harness; magic-wand prompts have resulted in shipped harness changes. |
 | L4 | Self-improving. The harness regularly produces improvements during normal work; new agents reliably onboard without human help; proof-level ceilings are tracked. |
@@ -52,13 +52,13 @@ Start with:
 Use the harness to move from intent to evidence:
 
 ```txt
-Boot → Interact → Observe → Validate → Improve
+Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve
 ```
 
 - Boot: prove the product can start from a known state.
-- Interact: exercise meaningful behaviour through supported surfaces.
-- Observe: capture logs, responses, screenshots, generated files, events, or other evidence.
-- Validate: turn evidence into a verdict.
+- Backpressure Check: use the tools backpressure skill to survey the current scope against available deterministic sensors. This is advisory and inferential; it is not a core harness command.
+- Do Work and Observe: exercise meaningful behaviour through supported surfaces and capture logs, responses, screenshots, generated files, events, or other evidence.
+- Retro and Magic Wand: capture friction, missing proof, and concrete improvement candidates.
 - Improve: encode what was learned so the next run is easier, safer, or backed by stronger signals.
 
 ## Phase Gates
@@ -116,7 +116,7 @@ When a human or agent gets stuck, classify the friction:
 - error message unhelpful;
 - supported path harder than shortcut.
 
-Record material friction in `harness/state/friction-log.md`.
+Record material friction in `docs/harness/_buffers/<agent>.session-buffer.md` via the runtime observe skill. If `harness/state/friction-log.md` exists, treat it only as a compatibility summary or pointer to `docs/harness`.
 
 ### Rule 5. Ask the magic-wand question
 
@@ -135,7 +135,7 @@ After human review, encode good suggestions into the harness.
 The canonical command map lives in:
 
 ```txt
-harness/config.json
+harness/cli/commands.json
 ```
 
 Typical commands:
@@ -183,20 +183,22 @@ Where completion requires judgement, give the human the evidence needed to decid
 Known project difficulties live in:
 
 ```txt
-harness/state/known-difficulties.md
+docs/harness/known-difficulties/
 ```
 
-Do not let this become a dumping ground. Promote repeated difficulties into commands, checks, fixtures, or diagnostics.
+If `harness/state/known-difficulties.md` exists, treat it only as a compatibility summary or pointer to `docs/harness`. Do not let either surface become a dumping ground. Promote repeated difficulties into commands, checks, fixtures, or diagnostics.
 
 ## Friction log
 
 Session friction and improvement candidates live in:
 
 ```txt
-harness/state/friction-log.md
+docs/harness/_buffers/<agent>.session-buffer.md
+docs/harness/agents/<agent>/<date>/*.retro.md
+docs/harness/<thing>/<slug>
 ```
 
-The friction log is an improvement backlog, not a diary.
+The harness ledger is an improvement backlog, not a diary.
 
 Prioritise recurring, severe, or old issues.
 

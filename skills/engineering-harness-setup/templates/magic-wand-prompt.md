@@ -31,17 +31,17 @@ A good answer is something the team or the next agent run could **act on in unde
 
 - *"Add a `<CLI> doctor --wait 60` flag so I don't have to retry by hand after a slow boot."*
 - *"Change the `validate` envelope to include a `proof_level` field so install-report can show the ceiling without re-parsing."*
-- *"Seed `harness/state/known-difficulties.md` with the macOS / Python 3.9 case so the next agent doesn't re-discover it."*
+- *"Add a curated `docs/harness/known-difficulties/<slug>` entry for the macOS / Python 3.9 case so the next agent doesn't re-discover it."*
 - *"Make the install fail fast when `package.json` exists without a `test` script — currently the install completes and `<CLI> test --tier fast` returns unconfigured."*
 - *"Add a `<CLI> arch` check for the boundary reviewers keep catching by hand."*
 - *"Add `<CLI> observe --screenshot` so the agent can prove the app rendered instead of guessing from build output."*
 
-A weak answer is a wish for something outside the harness's reach (*"make pytest faster"*, *"buy more RAM"*). These are still valid friction-log entries, but they should be marked `magicWandTarget: project` instead of `harness`.
+A weak answer is a wish for something outside the harness's reach (*"make pytest faster"*, *"buy more RAM"*). These are still valid harness entries, but they should be marked `magicWandTarget: project` instead of `harness`.
 
 ## How it is used
 
 1. The harness CLI's `<CLI> magic-wand` subcommand prints this prompt (read from this template file).
-2. The install flow's Step 14 prints this prompt and asks whether to append the answer to `harness/state/friction-log.md`.
+2. The install flow's close-out prints this prompt and asks whether to route the answer through `docs/harness`.
 3. The retrospective schema (`harness/templates/retrospective-schema.json`) makes `magicWand` a required string of minimum length 20, with this prompt as the `description` field.
 
 Use the companion back-pressure question when the answer hints at weak proof:

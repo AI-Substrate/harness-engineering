@@ -44,7 +44,9 @@ Instructions, tools, environment, state, and feedback all contribute to whether 
 
 #### 10. The engineering harness closes the product-development loop
 
-Its core job is to move a human or agent from intent to evidence through Boot → Interact → Observe → Validate → Improve.
+Its core job is to move a human or agent from intent to evidence and improvement through Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve.
+
+Backpressure Check is an advisory, LLM-assisted survey over the current scope and the deterministic sensors the repo exposes. The check itself is not the proof. Proof comes from the build, test, lint, typecheck, health, smoke, architecture, security, schema, observe, or other sensors it inventories or recommends.
 
 #### 11. Boot is the first proof
 
@@ -66,7 +68,7 @@ A composite command should build or install if needed, start the product, wait f
 
 A boot or doctor command both validates readiness and reminds the agent how the project wants to be operated.
 
-#### 13. Interact through supported product surfaces
+#### 13. Do work through supported product surfaces
 
 The harness should expose repeatable ways to exercise real user or system behaviour instead of relying on private implementation shortcuts.
 

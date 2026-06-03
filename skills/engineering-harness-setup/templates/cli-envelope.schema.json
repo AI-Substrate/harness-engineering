@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/engineering-harness-setup/cli-envelope.schema.json",
   "title": "Engineering harness CLI envelope",
-  "description": "The JSON object every harness CLI subcommand prints on stdout. Process exit codes 0/1/2 are layered on top: 0 when status=pass, 2 when status=unconfigured, 1 otherwise. The error.code enum lets callers branch without parsing the human-readable message.",
+  "description": "The JSON object every harness CLI subcommand prints on stdout. Process exit codes 0/1/2 are layered on top: 0 when status is pass, dry-run, or skipped; 2 when status is unconfigured or degraded; 1 for hard failures. The error.code enum lets callers branch without parsing the human-readable message.",
   "type": "object",
   "required": ["command", "status"],
   "additionalProperties": false,
