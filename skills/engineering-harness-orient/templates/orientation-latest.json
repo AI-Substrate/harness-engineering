@@ -1,0 +1,171 @@
+{
+  "schema_version": "engineering-harness-orientation.v0.1",
+  "generated_at": "2026-06-03T04:30:00Z",
+  "repo": {
+    "root": ".",
+    "name": "sample-service",
+    "branch": "main",
+    "commit": "unknown",
+    "is_monorepo": false,
+    "package_roots": []
+  },
+  "run": {
+    "mode": "read_only",
+    "probes_executed": false,
+    "commands_executed": [],
+    "commands_skipped": ["service boot", "dependency install", "external calls"],
+    "safety_notes": [
+      "No secret values read",
+      "No dependency installation attempted",
+      "No service boot attempted",
+      "No product-code changes applied"
+    ]
+  },
+  "verdict": {
+    "status": "partial",
+    "harnessability_level": "H2",
+    "score": 58,
+    "confidence": 0.74,
+    "summary": "The harness front door is present and command candidates are mapped, but no meaningful smoke scenario has been verified."
+  },
+  "harness_surfaces": {
+    "governance_file": { "path": "docs/project-rules/engineering-harness.md", "status": "present" },
+    "agent_route": { "path": "AGENTS.md", "status": "present" },
+    "command_map": { "path": "harness/cli/commands.json", "status": "present" }
+  },
+  "project_detection": {
+    "primary_type": "api",
+    "confidence": 0.7,
+    "evidence": [
+      { "path": "package.json", "signal": "scripts present", "confidence": 0.8 }
+    ]
+  },
+  "command_tiers": {
+    "fast": [
+      {
+        "tier": "fast",
+        "command": "npm test",
+        "source": "package.json#scripts.test",
+        "status": "candidate_unverified",
+        "confidence": 0.78,
+        "executed": false
+      }
+    ],
+    "proof": []
+  },
+  "services": {
+    "compose_files": [],
+    "ports": [],
+    "unknowns": ["No service boot was attempted in read-only mode"]
+  },
+  "environment": {
+    "env_files": [".env.example"],
+    "required_env_var_names": ["DATABASE_URL"],
+    "secret_values_read": false,
+    "missing_prerequisites": []
+  },
+  "app_surfaces": {
+    "health_urls": [],
+    "api_specs": [],
+    "browser_routes": [],
+    "primary_interaction": "unknown"
+  },
+  "auth": {
+    "strategy_detected": "unknown",
+    "manual_flow_required": "unknown",
+    "automated_local_path": "unknown",
+    "candidate_affordances": []
+  },
+  "state_and_fixtures": {
+    "seed_commands": [],
+    "reset_commands": [],
+    "fixture_files": [],
+    "canonical_scenario": null,
+    "idempotency": "unknown"
+  },
+  "observability": {
+    "logs": [],
+    "traces": [],
+    "screenshots": [],
+    "test_reports": [],
+    "runtime_diagnostics": []
+  },
+  "proof_model": {
+    "highest_detected_proof_level": "L2 Static/build/test",
+    "target_initial_proof_level": "L3 Runtime interaction",
+    "health_check": null,
+    "smoke_scenario": null,
+    "side_effect_check": null,
+    "evidence_paths": [],
+    "rerun_command": null
+  },
+  "gaps": [
+    {
+      "id": "G001",
+      "subsystem": "feedback",
+      "loop_stage": "validate",
+      "target_layer": "harness",
+      "encoding_type": "sensor",
+      "severity": "high",
+      "status": "open",
+      "finding": "No meaningful smoke scenario detected.",
+      "why_it_matters": "A server starting is not enough; the harness needs one product behavior proof.",
+      "recommended_encoding": "Add or map one fixture-backed smoke scenario.",
+      "provenance": "inference",
+      "confidence": 0.68,
+      "next_action": "Ask the human for the smallest meaningful smoke path."
+    }
+  ],
+  "codebase_affordance_recommendations": [
+    {
+      "id": "CBA001",
+      "title": "Add local/test auth bootstrap path",
+      "category": "auth",
+      "target_layer": "product_code",
+      "harness_loop_stage": "interact",
+      "problem": "Authenticated smoke flows appear to require a manual browser login.",
+      "why_it_matters": "The harness cannot run non-interactive proof for authenticated behavior.",
+      "recommended_change": "Add a local/test-only auth provider for a seeded fixture user.",
+      "candidate_files": ["src/auth/*", "tests/fixtures/users.*"],
+      "environment_scope": ["local", "test", "ci-preview"],
+      "must_not_apply_in": ["production"],
+      "safety_requirements": [
+        "Disabled unless explicit local/test profile is active",
+        "Fails startup if enabled in production",
+        "Does not weaken production auth",
+        "Uses fixture identities only"
+      ],
+      "harness_command_unblocked": "harness run smoke-authenticated-flow",
+      "proof_unblocked": "L3 authenticated runtime interaction",
+      "risk": "high",
+      "requires_human_review": true,
+      "status": "proposed"
+    }
+  ],
+  "human_questions": [
+    {
+      "id": "Q001",
+      "question": "What is the smallest meaningful smoke path for this repo?",
+      "reason": "Repository evidence did not identify a product behavior scenario.",
+      "answer_type": "health_endpoint | api_call | browser_route | cli_command | queue_event | fixture_flow"
+    }
+  ],
+  "recommended_next_actions": {
+    "before_feature_work": ["Answer Q001 before claiming product behavior proof."],
+    "safe_to_encode_now": ["Document the selected smoke path in the command map."],
+    "ask_human": ["Q001"],
+    "backlog": []
+  },
+  "proposed_patches": [
+    {
+      "id": "P001",
+      "path": "harness/cli/commands.json",
+      "target_layer": "harness",
+      "risk": "low",
+      "type": "suggested",
+      "summary": "Populate candidate fast/proof command tiers from detected scripts.",
+      "requires_human_review": true
+    }
+  ]
+}
+

@@ -37,10 +37,10 @@ Use it before feature work if the repo is missing:
 This is the **setup** step in the broader loop:
 
 ```text
-engineering-harness-setup -> harness-1-boot -> Backpressure Check -> work+observe -> harness-3-retro --drain/--harvest -> encode fixes
+engineering-harness-setup -> engineering-harness-orient -> harness-1-boot -> Backpressure Check -> work+observe -> harness-3-retro --drain/--harvest -> encode fixes
 ```
 
-Use it to establish the harness nucleus. Use the runtime loop skills from `jakkaj/tools` to start day-to-day sessions through that harness.
+Use setup to establish the harness nucleus. Use `engineering-harness-orient` when the front door exists but the repo needs a target-aware harnessability report before feature work. Use the runtime loop skills from `jakkaj/tools` to start day-to-day sessions through that harness.
 
 ## Recommended workflow
 

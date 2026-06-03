@@ -35,6 +35,7 @@ just list-skills
 | Situation | Run | Why |
 |---|---|---|
 | The repo has no engineering harness contract or starter command surface | `engineering-harness-setup` | Creates or validates `docs/project-rules/engineering-harness.md`, scaffolds `harness/cli/`, and points future agents at it from `AGENTS.md`. |
+| The harness front door exists, but the repo still needs target-aware orientation | `engineering-harness-orient` | Produces `harness/orientation/latest.md` and `latest.json` with command tiers, proof readiness, first-session guidance, and proposal-only affordance recommendations. |
 | Starting an engineering session after setup | `harness-1-boot` from `jakkaj/tools` | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, and reports readiness. |
 | Capturing friction during work | `harness-2-observe` from `jakkaj/tools` | Silently records material friction, signal gaps, or concrete improvement ideas. |
 | Draining or harvesting retros | `harness-3-retro` from `jakkaj/tools` | Presents the end-of-session triage prompt and harvests recurring improvement candidates. |
@@ -58,7 +59,18 @@ Expected outcomes:
 - Known difficulties can be surfaced from `docs/harness/` once the harness improvement loop exists.
 - Missing boot, health, observe, validation, sensor, or back-pressure surfaces are named as harness gaps.
 
-### 3. Boot the harness at session start
+### 3. Orient the harness around the target repository
+
+Run `engineering-harness-orient` after setup when the front door exists but the repo still needs target-aware readiness information.
+
+Expected outcomes:
+
+- `harness/orientation/latest.md` and `latest.json` explain how harnessable the repository is.
+- Candidate command tiers are separated from verified commands.
+- The report names proof readiness, missing smoke/evidence paths, and first-session steps.
+- Product-code affordance recommendations are proposal-only by default.
+
+### 4. Boot the harness at session start
 
 Run `harness-1-boot` from `jakkaj/tools` when getting ready to work.
 
@@ -71,7 +83,7 @@ Expected outcomes:
 - If no harness exists, the runtime skill reports `UNAVAILABLE` and recommends `engineering-harness-setup`.
 - If no `docs/harness` ledger exists, the runtime loop reports the missing Improve surface without falling back to legacy paths.
 
-### 4. Track friction during work
+### 5. Track friction during work
 
 Use `harness-2-observe` from `jakkaj/tools` silently when the agent sees meaningful friction:
 
@@ -85,13 +97,13 @@ Use `harness-2-observe` from `jakkaj/tools` silently when the agent sees meaning
 
 This skill should not interrupt the user. It is the quiet capture side of the loop.
 
-### 5. Bubble once at a natural pause
+### 6. Bubble once at a natural pause
 
 Run `harness-3-retro --drain` from `jakkaj/tools` at session end, phase end, before handoff, or when a new session starts with leftover buffer entries.
 
 This is the one normal user-facing harness retro prompt. The user can save, task, plan, stage an encoding, dismiss, or all-save entries.
 
-### 6. Harvest periodically
+### 7. Harvest periodically
 
 Run `harness-3-retro --harvest` from `jakkaj/tools` when there are enough saved retros to reveal patterns, or before planning harness improvement work.
 
@@ -113,6 +125,7 @@ The setup skill and upstream runtime skills make that thesis operational:
 |---|---|
 | Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve | `engineering-harness-setup` records the local nucleus; tools runtime skills operate the loop through it. |
 | The harness is the front door, not a replacement toolchain | `engineering-harness-setup` creates `harness/cli/` as a discovery/wrapper surface over existing commands first. |
+| Cold-start orientation should be repository evidence, not private memory | `engineering-harness-orient` writes a target-aware report that separates evidence, inference, unknowns, and next safe actions. |
 | Encode the fix, not the memory | Harness entries should name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `harness-2-observe` treats agent friction as product feedback for the harness. |
 | Back pressure is a product feature | The harness exposes deterministic sensors; the advisory Backpressure Check asks whether scoped work has enough proof and what sensors are missing. |
@@ -136,6 +149,7 @@ The setup skill and upstream runtime skills make that thesis operational:
 | Skill | Path |
 |---|---|
 | `engineering-harness-setup` | [`engineering-harness-setup/SKILL.md`](engineering-harness-setup/SKILL.md) |
+| `engineering-harness-orient` | [`engineering-harness-orient/SKILL.md`](engineering-harness-orient/SKILL.md) |
 
 ## Runtime loop skills
 

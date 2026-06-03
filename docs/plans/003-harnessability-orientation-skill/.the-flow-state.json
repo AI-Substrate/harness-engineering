@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "harnessability-orientation-skill",
+  "plan_dir": "docs/plans/003-harnessability-orientation-skill",
+  "mode": "Simple",
+  "current_stage": "awaiting-7",
+  "pending_command": "/plan-7-v2-code-review --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/003-harnessability-orientation-skill/harnessability-orientation-skill-plan.md\"",
+  "intent": "Build an engineering-harness-orient skill from scratch/paste/20260603T033048.md.",
+  "milestones_total": 6,
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-03T04:02:38Z",
+  "compacted_seams": [],
+  "status": "active"
+}
