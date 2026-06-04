@@ -99,7 +99,7 @@ This repo distils private and public research into general, publication-safe pri
 For a practical guide to when to run this setup skill and how it fits the upstream runtime loop, see [`skills/README.md`](skills/README.md).
 
 - [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface and sensor inventory, `docs/harness` improvement surfaces, and an `AGENTS.md` route for future agents.
-- [`skills/engineering-harness-orient/`](skills/engineering-harness-orient/SKILL.md): runs after setup to produce a target-aware harnessability report with command tiers, proof readiness, first-session guidance, and proposal-only codebase affordance recommendations.
+- [`skills/harnessability-assessment/`](skills/harnessability-assessment/SKILL.md): runs after setup to score a repository's harnessability across Operate-Today and Adaptability, mapping back-pressure surfaces, proof ceilings, external-dependency exposure, command tiers, first-session guidance, and proposal-only codebase affordance recommendations.
 
 Runtime loop skills now live upstream in `jakkaj/tools`:
 

@@ -35,7 +35,7 @@ just list-skills
 | Situation | Run | Why |
 |---|---|---|
 | The repo has no engineering harness contract or starter command surface | `engineering-harness-setup` | Creates or validates `docs/project-rules/engineering-harness.md`, scaffolds `harness/cli/`, and points future agents at it from `AGENTS.md`. |
-| The harness front door exists, but the repo still needs target-aware orientation | `engineering-harness-orient` | Produces `harness/orientation/latest.md` and `latest.json` with command tiers, proof readiness, first-session guidance, and proposal-only affordance recommendations. |
+| The harness front door exists, but the repo still needs a target-aware harnessability assessment | `harnessability-assessment` | Produces `harness/assessment/latest.md` and `latest.json` scoring Operate-Today and Adaptability, with command tiers, proof ceilings, back-pressure surfaces, first-session guidance, and proposal-only affordance recommendations. |
 | Starting an engineering session after setup | `harness-1-boot` from `jakkaj/tools` | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, and reports readiness. |
 | Capturing friction during work | `harness-2-observe` from `jakkaj/tools` | Silently records material friction, signal gaps, or concrete improvement ideas. |
 | Draining or harvesting retros | `harness-3-retro` from `jakkaj/tools` | Presents the end-of-session triage prompt and harvests recurring improvement candidates. |
@@ -59,13 +59,13 @@ Expected outcomes:
 - Known difficulties can be surfaced from `docs/harness/` once the harness improvement loop exists.
 - Missing boot, health, observe, validation, sensor, or back-pressure surfaces are named as harness gaps.
 
-### 3. Orient the harness around the target repository
+### 3. Assess the repository's harnessability
 
-Run `engineering-harness-orient` after setup when the front door exists but the repo still needs target-aware readiness information.
+Run `harnessability-assessment` after setup when the front door exists but the repo still needs a target-aware readiness picture.
 
 Expected outcomes:
 
-- `harness/orientation/latest.md` and `latest.json` explain how harnessable the repository is.
+- `harness/assessment/latest.md` and `latest.json` score how harnessable the repository is across Operate-Today and Adaptability.
 - Candidate command tiers are separated from verified commands.
 - The report names proof readiness, missing smoke/evidence paths, and first-session steps.
 - Product-code affordance recommendations are proposal-only by default.
@@ -125,7 +125,7 @@ The setup skill and upstream runtime skills make that thesis operational:
 |---|---|
 | Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve | `engineering-harness-setup` records the local nucleus; tools runtime skills operate the loop through it. |
 | The harness is the front door, not a replacement toolchain | `engineering-harness-setup` creates `harness/cli/` as a discovery/wrapper surface over existing commands first. |
-| Cold-start orientation should be repository evidence, not private memory | `engineering-harness-orient` writes a target-aware report that separates evidence, inference, unknowns, and next safe actions. |
+| Cold-start orientation should be repository evidence, not private memory | `harnessability-assessment` writes a target-aware report that separates evidence, inference, unknowns, and next safe actions. |
 | Encode the fix, not the memory | Harness entries should name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `harness-2-observe` treats agent friction as product feedback for the harness. |
 | Back pressure is a product feature | The harness exposes deterministic sensors; the advisory Backpressure Check asks whether scoped work has enough proof and what sensors are missing. |
@@ -149,7 +149,7 @@ The setup skill and upstream runtime skills make that thesis operational:
 | Skill | Path |
 |---|---|
 | `engineering-harness-setup` | [`engineering-harness-setup/SKILL.md`](engineering-harness-setup/SKILL.md) |
-| `engineering-harness-orient` | [`engineering-harness-orient/SKILL.md`](engineering-harness-orient/SKILL.md) |
+| `harnessability-assessment` | [`harnessability-assessment/SKILL.md`](harnessability-assessment/SKILL.md) |
 
 ## Runtime loop skills
 

@@ -528,7 +528,7 @@ After generating engineering-harness.md, creating the starter CLI, and patching 
 
   Next steps:
   - Review engineering-harness.md and adjust as needed
-  - Run /engineering-harness-orient to produce the target-aware harnessability report
+  - Run /harnessability-assessment to score Operate-Today and Adaptability and map the harnessability gaps
   - Run /engineering-harness-setup --validate after changes
   - Pipeline commands (plan-1a, plan-5, plan-6) will auto-discover this file
 ```
@@ -597,7 +597,7 @@ Report:
   Missing:   [list unchecked items]
 
   Runtime validation: not run by setup. Use harness-1-boot / repo-local harness CLI.
-  Target-aware orientation: run /engineering-harness-orient to map command tiers, proof readiness, first-session steps, and proposal-only codebase affordance gaps.
+  Target-aware assessment: run /harnessability-assessment to score Operate-Today and Adaptability and map command tiers, proof ceilings, first-session steps, and proposal-only codebase affordance gaps.
 ```
 
 ---

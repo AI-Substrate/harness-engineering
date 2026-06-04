@@ -2,13 +2,14 @@
 
 > **For AI agents reading this**: this is the canonical install reference for the setup skill in this repository. If a user asks you to install it, identify which CLI they use and whether they want a global install or project-local install, then run the matching `npx skills@latest add ...` command below.
 
-This repository publishes `engineering-harness-setup` through the [`npx skills@latest`](https://github.com/vercel-labs/skills) installer. There is no separate repository-specific installer. Runtime loop skills (`harness-1-boot`, `harness-2-observe`, `harness-3-retro`) are installed from `jakkaj/tools`.
+This repository publishes `engineering-harness-setup` and `harnessability-assessment` through the [`npx skills@latest`](https://github.com/vercel-labs/skills) installer. There is no separate repository-specific installer. Runtime loop skills (`harness-1-boot`, `harness-2-observe`, `harness-3-retro`) are installed from `jakkaj/tools`.
 
-## Skill
+## Skills
 
 | Skill | Purpose |
 |---|---|
 | `engineering-harness-setup` | Create or validate a repo-local engineering harness governance file and route future agents to it. |
+| `harnessability-assessment` | Score a repository's harnessability (Operate-Today and Adaptability) and report back-pressure surfaces, proof ceilings, command tiers, and proposal-only affordances. |
 
 ## Canonical install patterns
 
@@ -97,11 +98,18 @@ Use `--copy` when you want the installed skill files to be physically present in
 
 ### Install selected skill
 
-Use `-s` / `--skill` to install only the setup skill explicitly:
+Use `-s` / `--skill` to install only one skill explicitly:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
   -s engineering-harness-setup \
+  -a claude-code \
+  -g
+```
+
+```bash
+npx skills@latest add AI-Substrate/harness-engineering \
+  -s harnessability-assessment \
   -a claude-code \
   -g
 ```
