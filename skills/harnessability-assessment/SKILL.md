@@ -812,6 +812,48 @@ Prefer remediations that encode the fix into executable harness surfaces over ad
 
 Write Markdown, JSON, and schema files according to the output contract.
 
+## Parallel execution: subsystem fan-out
+
+This skill can run as a single linear pass (the execution flow above) or fan out across read-only subsystem subagents for speed and depth. Both models produce the same report; only the orchestration differs.
+
+### Orchestrator pre-wave (serial, shared context)
+
+Run execution steps 1-3 once: repo context, harness surfaces, and topology. Detect the repository type a single time and pass it to every subagent so they do not re-derive it. Hand each subagent: the repo root, the detected topology, the dimension band rubric (Strong, Partial, Weak, Absent, Not applicable, Unknown), the safety defaults, and the schema slice it must return.
+
+The orchestrator owns these top-level keys from the pre-wave: `schema_version`, `run`, `harness_surfaces`, and `topology`.
+
+### Fan-out: six read-only inspector subagents
+
+Each subagent is read-only, inspects only its subsystem, and returns a JSON fragment plus its own `evidence_log` entries. No subagent may boot services, install dependencies, mutate state, read secrets, or call external services. Ownership:
+
+| Subagent | Inspects | Owns (schema slices) |
+|---|---|---|
+| 1. Commands and sensors | command runners, CI, deterministic checks | `command_tiers[]`, static `backpressure_surfaces[]`, dimensions A4, A5, A8 |
+| 2. Environment and dependencies | env var names, services, remote/local exposure | `environment_variables[]`, `external_dependencies[]`, dimensions A2, A3 |
+| 3. State, interaction, and observability | seed/reset/fixtures, interaction surfaces, auth, evidence paths | runtime/consequence/observability/external-effect `backpressure_surfaces[]`, dimensions A6, A7, A9 |
+| 4. Test reconnaissance and seams | how tests mock, inject, seed, restore, and make behaviour real; sinks; substitution | dimensions B4, B5, B6; reusable-mechanism `harness_recommendations[]`; related `gaps[]` |
+| 5. Structure and adaptability | coupling, cohesion, complexity, boundaries, inner loop | dimensions B1-B3, B7-B10 |
+| 6. Cold-start and compounding loop | repo map, first-session orientation, friction/improve loop | dimensions A1, A10; `first_safe_session_plan` candidates |
+
+Every subagent also emits `gaps[]` and `evidence_log[]` for its subsystem, each finding carrying provenance (`evidence`, `inference`, `human_supplied`, or `unknown`) and confidence.
+
+The test-reconnaissance lens is cross-cutting: subagent 4 owns it, but subagents 1 (A8 sensors) and 3 (A6 state) will surface overlapping test signals. Subagents should report what they see and not suppress overlap; the orchestrator dedups at merge.
+
+### Orchestrator synthesis (serial)
+
+1. Merge all fragments into one document.
+2. Validate the merged document against `templates/assessment-report.schema.json`. The schema is the merge contract: a fragment that does not fit its slice is a subagent defect, not a reason to change the schema.
+3. Compute axis percentages, letter grades, the optional Harnessability Index, the readiness H-level, and the highest and target proof levels from the merged dimensions and sensors.
+4. Select scenario probes, which require the whole-repo view.
+5. Rank gaps and remediations across subsystems, and derive product-code affordance recommendations from cross-cutting gaps.
+6. Write the reports once. The orchestrator is the only writer; if `--apply-safe-harness-patches` is set, only the orchestrator applies harness-only patches.
+
+### Why fan out
+
+- The two axes and most dimensions are independently inspectable, so parallel subagents cut wall-clock time and allow deeper per-subsystem inspection.
+- The v0.1 JSON schema doubles as the merge contract, so fragments compose without ad-hoc glue.
+- Read-only subagents plus a single orchestrator writer preserve the safe-by-default posture even under parallelism.
+
 ## Markdown report template
 
 The Markdown report must include:
