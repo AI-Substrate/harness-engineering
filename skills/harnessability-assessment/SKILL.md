@@ -32,6 +32,20 @@ Do **not** overfit harnessability to databases. A database migration/seed/reset 
 
 A **Backpressure Check** is advisory. It surveys whether enough deterministic sensors exist for the scoped work. It is not itself proof. Proof comes from the sensors, commands, evidence artifacts, and observed consequences.
 
+## Read the tests as harness reconnaissance
+
+The test suite is the strongest evidence of how a codebase already solves the hard harness problems. Whatever the tests do to make behavior real is a proven, in-repo mechanism the engineering harness can reuse instead of inventing.
+
+When inspecting tests, ask:
+
+- How do they isolate dependencies — mocks, fakes, stubs, in-memory implementations, contract tests?
+- How do they inject or substitute behavior — dependency injection, ports/adapters, provider overrides, test-only configuration?
+- How do they handle datastores and state — seed, snapshot, restore, reset, factories, fixtures, Testcontainers, ephemeral schemas?
+- How do they make behavior real — spin up real or containerized services, exercise true interactions, and assert observable consequences?
+- How do they stay deterministic — fixed clocks, IDs, ports, ordered teardown, idempotent setup?
+
+Every mechanism the tests already use is a candidate harness affordance. An existing integration or E2E suite that provisions a real or containerized datastore, seeds it, exercises behavior, verifies the consequence, and tears down is itself a reusable change-to-evidence surface — often the cheapest existing path to L4 proof, because the harness can wrap it rather than build new scaffolding. Treat "expose what the tests already do as a supported harness command" as a first-class, high-leverage remediation.
+
 ## When to use
 
 Use this skill when the user asks to:
@@ -331,6 +345,7 @@ Measures what the repo already proves on every change or on demand.
 Evidence signals:
 
 - build, compile, typecheck, lint, format, unit, integration, smoke, E2E, schema, contract, security, dependency, architecture, performance, accessibility, visual regression, migration, static analysis, code coverage, mutation testing;
+- integration/E2E suites that provision, seed, and reset real or containerized datastores or services — these are reusable change-to-evidence surfaces, not just a slow lane;
 - CI workflows, pre-commit hooks, required checks, local equivalents for CI.
 
 Prefer sensors that produce actionable, agent-readable failure output.
@@ -405,7 +420,7 @@ Evidence signals:
 - local adapters for external systems;
 - boundaries between domain logic and infrastructure.
 
-This is a core modifiability signal: good seams make it easier to add local proof without standing up the whole integrated world.
+This is a core modifiability signal: good seams make it easier to add local proof without standing up the whole integrated world. The seams the tests already inject at are the seams the harness can reuse — inventory them as candidate harness affordances.
 
 ### B5. Hermetic, offline, and isolated testability
 
@@ -418,7 +433,7 @@ Evidence signals:
 - tests that do not require network, remote credentials, shared databases, or production-like tenants;
 - clear markers for integration tests.
 
-Score hermeticity as a gradient, not a binary. Some valuable proof requires integration; the question is whether cheap self-correction paths exist before expensive proof.
+Score hermeticity as a gradient, not a binary. Some valuable proof requires integration; the question is whether cheap self-correction paths exist before expensive proof. Do not treat an existing integration harness as only a cost: if the suite already stands up, seeds, and resets a real or containerized datastore, that lifecycle is a high-leverage surface the harness can wrap to reach real-consequence proof cheaply.
 
 ### B6. Side-effect isolation and external-effect sinks
 
@@ -745,6 +760,8 @@ Map how the repo supports:
 
 Use the broad consequence model. Do not privilege databases unless the repo does.
 
+Read the test suite as the primary evidence of these mechanisms: how tests mock, inject, substitute, seed, restore, reset, and make behavior real shows exactly which seams and state lifecycles the harness can reuse. Record each reusable mechanism as a candidate harness affordance.
+
 ### 7. Assess Operate-Today
 
 Score A1-A10. Each band must include evidence, inference, or unknown status.
@@ -789,7 +806,7 @@ Rank by:
 5. effort;
 6. safety/risk.
 
-Prefer remediations that encode the fix into executable harness surfaces over adding prose. Documentation is acceptable when orientation is the actual missing surface, but executable commands, checks, fixtures, diagnostics, fakes, sinks, schemas, and evidence artifacts are usually stronger.
+Prefer remediations that encode the fix into executable harness surfaces over adding prose. Documentation is acceptable when orientation is the actual missing surface, but executable commands, checks, fixtures, diagnostics, fakes, sinks, schemas, and evidence artifacts are usually stronger. Prefer reusing mechanisms the tests already rely on — seeding, restore/reset, injection seams, fakes, sinks, containerized services — by exposing them as supported harness commands, rather than building new scaffolding from scratch.
 
 ### 11. Write reports
 

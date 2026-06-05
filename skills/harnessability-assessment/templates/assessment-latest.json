@@ -160,6 +160,7 @@
     "Read docs/project-rules/engineering-harness.md.",
     "Inspect harness/cli/commands.json.",
     "Confirm prerequisites and env var names without reading secret values.",
+    "Read the test suite to see how it mocks, injects, seeds, and resets state, and record reusable mechanisms as candidate harness affordances.",
     "Run the candidate fast check only if safe and permitted.",
     "Ask the human for the smallest meaningful smoke path before claiming runtime proof."
   ],

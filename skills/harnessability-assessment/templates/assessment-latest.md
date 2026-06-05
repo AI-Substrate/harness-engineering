@@ -30,6 +30,7 @@ The harness front door is present and command candidates are mapped, but no prod
 
 ## Highest-leverage improvements
 
+- Inspect the integration/migration test setup for an existing seed/reset or restore path that can be wrapped as a harness `proof` command (reuse before building).
 - Add one fixture-backed smoke test hitting a single route (unblocks L3).
 - Add a containerized local database plus idempotent seed/reset (unblocks L4).
 - Add a local email sink so external-effect payloads are observable.
@@ -40,8 +41,9 @@ The harness front door is present and command candidates are mapped, but no prod
 1. Read `docs/project-rules/engineering-harness.md`.
 2. Inspect `harness/cli/commands.json`.
 3. Confirm prerequisites and env var names without reading secret values.
-4. Run the candidate fast check only if safe and permitted.
-5. Ask the human for the smallest meaningful smoke path before claiming runtime proof.
+4. Read the test suite to see how it mocks, injects, seeds, and resets state — those mechanisms are candidate harness affordances.
+5. Run the candidate fast check only if safe and permitted.
+6. Ask the human for the smallest meaningful smoke path before claiming runtime proof.
 
 ## Harness surfaces
 
