@@ -26,6 +26,15 @@ npx skills@latest add AI-Substrate/harness-engineering \
 
 This writes the skill to `./.agents/skills/`, the project-local location used by both targets.
 
+Both generic commands above install every skill this repo publishes (`engineering-harness-setup` and `harnessability-assessment`). To install a single skill, add `-s <skill-name>` — for example the harnessability assessment skill, project-local for GitHub Copilot CLI:
+
+```bash
+npx skills@latest add AI-Substrate/harness-engineering \
+  -s harnessability-assessment \
+  -a github-copilot \
+  -y
+```
+
 For GitHub Copilot CLI, Codex CLI, OpenCode, Pi, project-local installs, local-branch testing, and single-skill installs, see [`INSTALL.md`](./INSTALL.md).
 
 ## Core thesis

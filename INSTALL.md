@@ -98,7 +98,9 @@ Use `--copy` when you want the installed skill files to be physically present in
 
 ### Install selected skill
 
-Use `-s` / `--skill` to install only one skill explicitly:
+Use `-s` / `--skill` to install only one skill explicitly. Swap `-a <agent>` for your CLI and use `-g` for a global install or omit it for a project-local install into `./.agents/skills/`.
+
+Setup skill, global, Claude Code:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
@@ -107,11 +109,22 @@ npx skills@latest add AI-Substrate/harness-engineering \
   -g
 ```
 
+Harnessability assessment skill, global, Claude Code:
+
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
   -s harnessability-assessment \
   -a claude-code \
   -g
+```
+
+Harnessability assessment skill, project-local, GitHub Copilot CLI:
+
+```bash
+npx skills@latest add AI-Substrate/harness-engineering \
+  -s harnessability-assessment \
+  -a github-copilot \
+  -y
 ```
 
 ### Test from a local checkout
