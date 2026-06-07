@@ -70,7 +70,7 @@ export function formatDegraded<T>(
 
 /**
  * Honest "not built". `next_action` REQUIRED; `data` is optional so a command can
- * carry context (e.g. `run --dry-run` → `{dry_run:true,slot,mapped_command:null}`,
+ * carry context (e.g. `harness run smoke --dry-run` → `{dry_run:true,slot,mapped_command:null}`,
  * workshop 001 worked example #4). Always maps to exit 2.
  */
 export function formatUnconfigured(

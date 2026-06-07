@@ -80,13 +80,13 @@ describe('formatUnconfigured', () => {
   it('given_dry_run_when_formatUnconfigured_with_data_then_carries_data_and_exits_2', () => {
     /*
     Test Doc:
-    - Why: workshop 001 worked example #4 — `run --dry-run` on an unconfigured slot returns an
-      unconfigured envelope that ALSO carries data {dry_run,slot,mapped_command} (companion F001a).
+    - Why: workshop 001 worked example #4 — `harness run smoke --dry-run` on an unconfigured slot
+      returns an unconfigured envelope that ALSO carries data {dry_run,slot,mapped_command} (companion F001a).
     - Contract: formatUnconfigured(cmd, next_action, clock, {data}) keeps status 'unconfigured',
       required next_action, exit 2, and surfaces the data payload.
     - Usage Notes: dry-run never executes; safe at session start.
     - Quality Contribution: proves the kernel can represent unconfigured-with-data, not just bare unconfigured.
-    - Worked Example: run --dry-run smoke → data {dry_run:true, slot:'smoke', mapped_command:null}, exit 2.
+    - Worked Example: harness run smoke --dry-run → data {dry_run:true, slot:'smoke', mapped_command:null}, exit 2.
     */
     const env = formatUnconfigured(
       'run',
