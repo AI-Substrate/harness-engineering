@@ -5,8 +5,10 @@ import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
 import { registerRunAct } from './acts/run.js';
 import { registerSlotAct } from './acts/unconfigured-slot.js';
+import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
-import { type Envelope, formatOk } from './output/envelope.js';
+import { type Envelope, formatError, formatOk } from './output/envelope.js';
+import { ErrorCodes } from './output/error-codes.js';
 import { exitWithEnvelope } from './output/exit.js';
 import { type CliIo, createOutputPort, processWriters, selectMode } from './output/output-port.js';
 import { validateCommandMap } from './services/config/load-config.js';
@@ -42,6 +44,33 @@ function orientationEnvelope(version: string): Envelope {
 }
 
 /**
+ * Map a thrown commander error (raised because `exitOverride` is set) to an
+ * actionable envelope. Returns `null` for help/version display (commander
+ * already printed; the caller exits 0). Unknown command/option/missing-arg →
+ * `E108`; anything else (an unexpected bug) → `E100` — so no raw stack trace
+ * ever escapes (AC-11).
+ */
+export function commanderErrorEnvelope(
+  err: { code?: string; message?: string },
+  clock: Clock,
+): Envelope | null {
+  if (
+    err.code === 'commander.helpDisplayed' ||
+    err.code === 'commander.version' ||
+    err.code === 'commander.help'
+  ) {
+    return null;
+  }
+  const code =
+    typeof err.code === 'string' && err.code.startsWith('commander.')
+      ? ErrorCodes.INVALID_ARGS
+      : ErrorCodes.UNKNOWN;
+  return formatError('harness', code, err.message ?? 'Unexpected error.', clock, {
+    next_action: 'Run `harness help` for usage.',
+  });
+}
+
+/**
  * Build the composition root: global flags + every act registered with the
  * pre-resolved `io`. The 7 non-`run` slots register through the factory; `run`
  * is the `run <slot>` dispatcher. No business logic, no fs/process/git here.
@@ -52,7 +81,8 @@ export function buildProgram(version: string, io: CliIo): Command {
     .description("The agent-friendly front door to this repo's engineering harness.")
     .version(version, '-v, --version')
     .option('--json', 'force JSON output')
-    .option('--no-json', 'force human output');
+    .option('--no-json', 'force human output')
+    .exitOverride();
 
   registerHelpAct(program, io);
   registerDoctorAct(program, io);
@@ -78,7 +108,19 @@ export function main(argv: string[] = process.argv): void {
     exitWithEnvelope(check, createOutputPort(io.mode, io.writers));
   }
 
-  buildProgram(readVersion(), io).parse(argv);
+  try {
+    buildProgram(readVersion(), io).parse(argv);
+  } catch (err) {
+    const envelope = commanderErrorEnvelope(
+      err as { code?: string; message?: string },
+      new SystemClock(),
+    );
+    if (envelope === null) {
+      // help/version already displayed by commander.
+      process.exit((err as { exitCode?: number }).exitCode ?? 0);
+    }
+    exitWithEnvelope(envelope, createOutputPort(io.mode, io.writers));
+  }
 }
 
 // Only auto-run when invoked as the CLI entry, so tests can import this module.
