@@ -54,3 +54,14 @@
 - Working dirs explicit: biome from repo root (where `biome.json` is), vitest from `harness/cli` (where `vitest.config.ts` is).
 - **Evidence**: `just --list` shows all four recipes; `just fft` → biome checked 2 files clean, formatted clean, vitest exited 0 with coverage summary. Green end-to-end.
 - **AC**: AC-3, AC-5. **Stage 1 (package + toolchain) complete.**
+
+### T005 — Clock adapter (port/system/fake) [Stage 2]
+**Status**: ✅ complete
+
+- `src/adapters/clock/clock-port.ts`: `Clock { nowIso(): string }`.
+- `src/adapters/clock/system-clock.ts`: `SystemClock` (only place wall-clock time is read).
+- `src/adapters/clock/fake-clock.ts`: `FakeClock` — fixed instant, `advance(ms)`, `set(instant)`, records `calls[]` (fakes over mocks). Default instant `2026-06-08T07:20:00.000Z`.
+- `test/adapters/clock/fake-clock.test.ts`: 5 tests (determinism, call history, advance, set, SystemClock ISO shape). All Test-Doc commented.
+- All relative imports use `.js` extensions; type-only imports use `import type` (verbatimModuleSyntax).
+- **Evidence**: `just fft` green — 5/5 tests pass; **100% coverage** on the Clock files. Pulled ahead of the kernel because the envelope constructors take an injected `Clock` (Finding 04).
+- **AC**: contributes to AC-4 (kernel determinism foundation).
