@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1",
+  "slug": "code-review-companion",
+  "source": {
+    "type": "registry",
+    "registrySlug": "code-review-companion",
+    "url": "github:AI-Substrate/minih",
+    "ref": "main",
+    "subpath": "agents/code-review-companion",
+    "commitSha": "51e8fc17f3ac2f896bd5eecc7a33ac7f52cc2861"
+  },
+  "installedAt": "2026-06-07T22:14:38.073Z",
+  "manifestVersion": "0.2.0",
+  "fileChecksums": {
+    "prompt.md": "sha256:60d4e88734cfc06e1fae097e25e425bf1fbb5fa84b731540dc42b863f6ef9168",
+    "instructions.md": "sha256:0d824321527a01a7ccc952e6fd72788310dbfa7484d2f12e28b07ed8d00fe222",
+    "outside.md": "sha256:e917ff49c56ca280c492b6407eab434524451740401b38cf197157c771d41a0c",
+    "input-schema.json": "sha256:9bf13bd7bc3adf0619f99f3d9bdbc0a1bb23a0bf9750316bf5dc60a04377455a",
+    "output-schema.json": "sha256:553c6980d7ba180df64a94ca6eb20807fecdda64123e7a10c1a2c2ab2a2b4624",
+    "inside-state.schema.json": "sha256:8b73d6d40d075090955d4063c61327f3e3180f4e4e40a4cf3c92d0252201b59b",
+    "outside-state.schema.json": "sha256:98dcfc4f1e59be06a3d765388237df90deea93bfd0caf010f3c9e97f45a65e53",
+    "agent.json": "sha256:31478f1d657954df096fd63908054ae6aa7a822f8d58a4c93a1213dff549ff95"
+  },
+  "lockedDefault": "restricted",
+  "lockedDefaultRecordedAt": "2026-06-07T22:14:38.073Z",
+  "lockedDefaultReason": "minih-default"
+}

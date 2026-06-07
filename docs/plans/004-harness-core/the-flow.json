@@ -4,10 +4,10 @@
   "slug": "harness-core",
   "plan_dir": "docs/plans/004-harness-core",
   "mode": "Full",
-  "cursor": "plan",
+  "cursor": "p1",
   "recommended_next": "p1",
-  "now": "Constitution established \u2014 ready for Phase 1 tasks",
-  "next": "Phase 1 tasks",
+  "now": "Phase 1 tasks tabled + validated \u2014 ready for build",
+  "next": "Phase 1 build (/plan-6)",
   "agents": [],
   "nodes": [
     {
@@ -94,6 +94,14 @@
       "phase": 1,
       "label": "Phase 1 \u00b7 scaffold + engineering kernel",
       "status": "known",
+      "command": "/plan-5",
+      "ran_at": "2026-06-07T21:49:22Z",
+      "user_input": "run /5 stage please thne validation",
+      "note": "Tasks dossier T001-T009 (9 tasks) + flight plan. Clock ordered before kernel tests (envelope depends on Clock, Finding 04). Validated via validate-v2.",
+      "artifacts": [
+        "tasks/phase-1-package-scaffold-engineering-kernel/tasks.md",
+        "tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md"
+      ],
       "next": [
         "p2"
       ]

@@ -12,11 +12,13 @@ flowchart TD
 
   research["Research · chainglass + minih harness CLI"]:::done
   spec["Spec"]:::done
-  plan["Plan"]:::wip
-  build["Build · 3 phases (revealed at /plan-3)"]:::assumed
+  plan["Plan"]:::done
+  p1["Phase 1 · scaffold + engineering kernel · tasks tabled"]:::known
+  p2["Phase 2 · CLI command surface + architecture"]:::known
+  p3["Phase 3 · CI + release + branch protection"]:::known
   merge["Merge"]:::assumed
 
-  research --> spec --> plan --> build --> merge
+  research --> spec --> plan --> p1 --> p2 --> p3 --> merge
 
   ws1["Workshop 1 · envelope + exit-code contract"]:::done
   ws2["Workshop 2 · CLI composition pattern (minih captured)"]:::done
@@ -26,8 +28,10 @@ flowchart TD
   said_research -.- research
   said_ws>"🗣 do 1 and 2, bring in the minih stuff as a workshop showing the composition pattern; dont assume it's available"]:::done
   said_ws -.- ws2
+  said_p1>"🗣 run /5 stage please thne validation"]:::known
+  said_p1 -.- p1
 ```
 
 **Legend**: 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · companion (wraps phases) · worker (side build)
 
-**Now**: Plan → **Next**: Build (3 phases)
+**Now**: Phase 1 tasks tabled + validating → **Next**: Phase 1 build (`/plan-6`)
