@@ -38,3 +38,11 @@
 - **Note**: Biome 2.x config keys differ from 1.x — `files.includes` (negated globs) replaces `files.ignore`; `organizeImports` lives under `assist.actions.source`.
 - **Evidence**: `npx biome check harness/cli` → "Checked 1 file. No fixes applied." (config valid, scaffold clean).
 - **AC**: AC-3 (biome portion).
+
+### T003 — vitest.config.ts (coverage, report-only)
+**Status**: ✅ complete
+
+- Created `harness/cli/vitest.config.ts`: `include: ['test/**/*.test.ts']`, `passWithNoTests: true`, coverage provider `v8`, reporters `text-summary` + `lcov`, coverage `include: src/**/*.ts` (excludes the thin `src/index.ts`). **No thresholds** (R5 — report-only).
+- devDeps already installed in T001 (`npm install`); vitest is `^4.1.8`.
+- **Evidence**: `cd harness/cli && npx vitest run --coverage` → vitest 4.1.8, "No test files found, exiting with code 0", coverage summary printed. No threshold failure.
+- **AC**: AC-3 (vitest portion).
