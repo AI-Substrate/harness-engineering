@@ -4,11 +4,20 @@
   "slug": "harness-core",
   "plan_dir": "docs/plans/004-harness-core",
   "mode": "Full",
-  "cursor": "p1",
-  "recommended_next": "p1",
-  "now": "Phase 1 tasks tabled + validated \u2014 ready for build",
-  "next": "Phase 1 build (/plan-6)",
-  "agents": [],
+  "cursor": "p2",
+  "recommended_next": "p2",
+  "now": "Phase 1 BUILT + companion-reviewed (2 HIGH fixed) \u2014 ready for Phase 2 tasks",
+  "next": "Phase 2 tasks (/plan-5)",
+  "agents": [
+    {
+      "slug": "code-review-companion",
+      "kind": "companion",
+      "run_id": "2026-06-08T08-17-59-139Z-9157",
+      "covers": ["p1"],
+      "render": "wrap",
+      "result": "APPROVE \u2014 2 HIGH (F001/F002) fixed + re-verified"
+    }
+  ],
   "nodes": [
     {
       "id": "research",
@@ -93,14 +102,26 @@
       "type": "phase",
       "phase": 1,
       "label": "Phase 1 \u00b7 scaffold + engineering kernel",
-      "status": "known",
-      "command": "/plan-5",
-      "ran_at": "2026-06-07T21:49:22Z",
-      "user_input": "run /5 stage please thne validation",
-      "note": "Tasks dossier T001-T009 (9 tasks) + flight plan. Clock ordered before kernel tests (envelope depends on Clock, Finding 04). Validated via validate-v2.",
+      "status": "done",
+      "command": "/plan-6-companion",
+      "ran_at": "2026-06-07T22:44:10Z",
+      "user_input": "commit and push, then run /6 companion mode",
+      "note": "Built T001-T009: npx-able package + biome/vitest+cov/justfile + output kernel (envelope/error-codes/exit/output-port) + Clock adapter + entrypoint. 30 tests, 94% cov, just fft green, npm pack smoke OK. code-review-companion (Power-On-Mode) raised 2 HIGH (F001 dry-run, F002 degraded), both fixed in dac64fa + re-verified; final sweep APPROVE. /plan-7 superseded by companion.",
       "artifacts": [
-        "tasks/phase-1-package-scaffold-engineering-kernel/tasks.md",
-        "tasks/phase-1-package-scaffold-engineering-kernel/tasks.fltplan.md"
+        "harness/cli/**",
+        "package.json",
+        "biome.json",
+        "tasks/phase-1-package-scaffold-engineering-kernel/execution.log.md"
+      ],
+      "agents": [
+        {
+          "slug": "code-review-companion",
+          "kind": "companion",
+          "run_id": "2026-06-08T08-17-59-139Z-9157",
+          "covers": ["p1"],
+          "render": "wrap",
+          "result": "APPROVE \u2014 2 HIGH fixed + re-verified"
+        }
       ],
       "next": [
         "p2"

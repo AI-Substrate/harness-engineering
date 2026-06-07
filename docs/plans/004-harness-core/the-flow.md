@@ -13,7 +13,9 @@ flowchart TD
   research["Research · chainglass + minih harness CLI"]:::done
   spec["Spec"]:::done
   plan["Plan"]:::done
-  p1["Phase 1 · scaffold + engineering kernel · tasks tabled"]:::known
+  subgraph companion["🤖 code-review-companion (Power-On-Mode) · APPROVE"]
+    p1["Phase 1 · scaffold + engineering kernel · BUILT"]:::done
+  end
   p2["Phase 2 · CLI command surface + architecture"]:::known
   p3["Phase 3 · CI + release + branch protection"]:::known
   merge["Merge"]:::assumed
@@ -28,10 +30,10 @@ flowchart TD
   said_research -.- research
   said_ws>"🗣 do 1 and 2, bring in the minih stuff as a workshop showing the composition pattern; dont assume it's available"]:::done
   said_ws -.- ws2
-  said_p1>"🗣 run /5 stage please thne validation"]:::known
+  said_p1>"🗣 run /5 stage; then commit and push, then run /6 companion mode"]:::done
   said_p1 -.- p1
 ```
 
-**Legend**: 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · companion (wraps phases) · worker (side build)
+**Legend**: 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · 🤖 companion (wraps phases) · worker (side build)
 
-**Now**: Phase 1 tasks tabled + validating → **Next**: Phase 1 build (`/plan-6`)
+**Now**: Phase 1 BUILT + companion-reviewed (2 HIGH fixed) → **Next**: Phase 2 tasks (`/plan-5`)

@@ -15,8 +15,10 @@
 
 | Finding ID | ackOf (review-request) | Severity | Disposition | Notes |
 |-----------|------------------------|----------|-------------|-------|
-| F001a | T006 | HIGH | ✅ fixed inline | dry-run unconfigured worked example (#4) was untested + `formatUnconfigured` couldn't carry `data`. Added `opts.data` + a dry-run test (exit 2). |
-| F001b | T006 | HIGH | ✅ fixed inline | `formatOk({status:'degraded'})` left `next_action` optional, violating the contract. Split out `formatDegraded` (requires `next_action`); removed degraded from `formatOk`. |
+| F001 | T006 | HIGH | ✅ fixed in `dac64fa`, re-verified | dry-run unconfigured worked example (#4) was untested + `formatUnconfigured` couldn't carry `data`. Added `opts.data` + a dry-run test (exit 2). |
+| F002 | T007 | HIGH | ✅ fixed in `dac64fa`, re-verified | `formatOk({status:'degraded'})` left `next_action` optional, violating the contract. Split out `formatDegraded` (requires `next_action`); removed degraded from `formatOk`. |
+
+> Note: the in-flight log first called these F001a/F001b; the companion's canonical inbox IDs are **F001** (dry-run) and **F002** (degraded). Both map to the same fix commit `dac64fa`.
 
 ---
 
@@ -119,3 +121,11 @@
 - **Tests**: 30 passing across 5 files; coverage 94.28% (index.ts excluded).
 - **Companion**: 1 finding bundle (F001, 2×HIGH) raised + fixed inline + re-verified. All other commits approved.
 - **Deviations logged**: scaffold stub in T001; vitest→^4 for security; output-port.ts interface created in T007; commander tri-state flag fix in T009.
+
+## Companion Debrief (Power-On-Mode)
+
+- **Run**: `code-review-companion` `2026-06-08T08-17-59-139Z-9157` (read-only). 10 review-requests, 2 HIGH findings, 0 questions.
+- **Verdict**: APPROVE — final range sweep `09c2e4c..d9f6435` clean, no open findings. Confirmed: output contract matches workshop 001 (unconfigured exit 2, dry-run `data`, required `next_action` for degraded/error/unconfigured), `commander` is a runtime dependency, relative imports use `.js`, `process.exit` limited to `exit.ts`, scope within T001–T009.
+- **Findings**: F001 + F002 (both HIGH, both resolved by `dac64fa`, re-verified).
+- **Companion magicWand** (→ target **minih**, not this repo): "Expose one canonical merged report template in `minih check --template <slug>` so agents write exactly the schema that will be validated." Logged here as a minih follow-up candidate; not actioned in this plan.
+- **Note**: `/plan-7-v2-code-review` is intentionally NOT run — the companion performed live review of every commit and the final range. Farewell envelope: `agents/code-review-companion/runs/<run>/output/report.json` (runtime artifact, gitignored).

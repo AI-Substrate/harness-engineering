@@ -147,3 +147,6 @@ scratch/
 
 # Local agent tool state (activity logs, etc.)
 .chainglass/
+
+# minih agent runtime artifacts (per-run logs/events/state)
+agents/*/runs/
