@@ -73,3 +73,13 @@
 - `test/output/exit.test.ts`: `exitCodeFor` status→exit map (ok=0, degraded=0, unconfigured=2, error=1) + explicit "unconfigured is 2 never 0".
 - **Evidence (RED)**: `vitest run` → 2 failed (envelope.js/exit.js "Cannot find module"), 1 passed (clock). This is the intended TDD red step; T007 turns it green.
 - **AC**: AC-4 (tests-first portion).
+
+### T007 — Implement output kernel (GREEN) [Stage 3 complete]
+**Status**: ✅ complete
+
+- `src/output/envelope.ts`: `Status`, `Evidence`, `Envelope`, `formatOk`/`formatUnconfigured`/`formatError` (clock injected; conditional spread so unset fields are absent, not undefined).
+- `src/output/error-codes.ts`: `ErrorCodes` table (E100/E108/E110/E120/E130) + `ErrorCode` type. Added `test/output/error-codes.test.ts` (table values + uniqueness/format) to document + cover the contract.
+- `src/output/exit.ts`: `exitCodeFor` (ok=0, degraded=0, unconfigured=2, error=1) + `exitWithEnvelope` (single `process.exit`).
+- `src/output/output-port.ts`: created with the `OutputPort { emit(env) }` interface here (exit.ts depends on it). **Minor split vs dossier** (which scoped output-port.ts to T008): the interface had to exist for exit.ts to compile; `selectMode` + renderers are added in T008.
+- **Evidence**: `just fft` green — 18/18 tests pass; coverage 87.5% (remaining gap = `exitWithEnvelope`, covered in T008). T006 red → green.
+- **AC**: AC-4 (envelope + exit policy).
