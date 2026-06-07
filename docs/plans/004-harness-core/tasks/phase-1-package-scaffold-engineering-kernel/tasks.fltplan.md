@@ -56,7 +56,8 @@ stateDiagram-v2
     S4 --> S5
     S5 --> [*]
 
-    class S1,S2,S3,S4,S5 pending
+    class S1 active
+    class S2,S3,S4,S5 pending
 ```
 
 **Legend**: grey = pending | yellow = active | red = blocked/needs input | green = done
@@ -67,7 +68,7 @@ stateDiagram-v2
 
 <!-- Updated by /plan-6-v2 during implementation: [ ] → [~] → [x] -->
 
-- [ ] **Stage 1: Scaffold package + toolchain** — root manifest, tsconfig, biome, vitest+coverage, and `just fft` (`/package.json`, `/biome.json`, `harness/cli/tsconfig.json`, `harness/cli/vitest.config.ts`, `/justfile`) — T001–T004
+- [~] **Stage 1: Scaffold package + toolchain** — root manifest, tsconfig, biome, vitest+coverage, and `just fft` (`/package.json`, `/biome.json`, `harness/cli/tsconfig.json`, `harness/cli/vitest.config.ts`, `/justfile`) — T001–T004
 - [ ] **Stage 2: Ship the Clock adapter** — port/system/fake + a determinism test, ahead of the kernel because the envelope depends on it (`harness/cli/src/adapters/clock/*` — new) — T005
 - [ ] **Stage 3: TDD the output kernel** — red kernel tests, then envelope/error-codes/exit green (`harness/cli/test/output/*`, `harness/cli/src/output/{envelope,error-codes,exit}.ts` — new) — T006–T007
 - [ ] **Stage 4: OutputPort + mode selection + renderers** — `selectMode` precedence + JSON/human renderers + tests (`harness/cli/src/output/output-port.ts` — new) — T008
@@ -124,7 +125,7 @@ flowchart LR
 
 ## Checklist
 
-- [ ] T001: Root `package.json` + `harness/cli/tsconfig.json`
+- [x] T001: Root `package.json` + `harness/cli/tsconfig.json`
 - [ ] T002: Root `biome.json`
 - [ ] T003: `vitest.config.ts` + `@vitest/coverage-v8` + devDep pins (commander is a runtime `dependency`, added in T001)
 - [ ] T004: Extend `justfile` with `fix`/`format`/`test`/`fft` (explicit working dirs)

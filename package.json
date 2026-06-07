@@ -1,0 +1,34 @@
+{
+  "name": "harness-engineering",
+  "version": "0.1.0",
+  "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
+  "type": "module",
+  "bin": {
+    "harness": "./harness/cli/dist/index.js"
+  },
+  "files": [
+    "harness/cli/dist",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p harness/cli/tsconfig.json",
+    "prepare": "npm run build",
+    "test": "cd harness/cli && vitest run --coverage",
+    "lint": "biome check harness/cli",
+    "format": "biome format --write harness/cli",
+    "fix": "biome check --write harness/cli"
+  },
+  "dependencies": {
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
+    "@types/node": "^22",
+    "@vitest/coverage-v8": "^4.1.8",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.8"
+  }
+}
