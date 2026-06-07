@@ -27,15 +27,19 @@ export interface Envelope {
   next_action?: string;
 }
 
+/**
+ * Success. `next_action` is optional for `ok` only — every non-`ok` status has a
+ * dedicated constructor below that REQUIRES `next_action` (workshop 001 field-presence rule).
+ */
 export function formatOk<T>(
   command: string,
   data: T,
   clock: Clock,
-  opts?: { status?: 'ok' | 'degraded'; evidence?: Evidence[]; next_action?: string },
+  opts?: { evidence?: Evidence[]; next_action?: string },
 ): Envelope {
   return {
     command,
-    status: opts?.status ?? 'ok',
+    status: 'ok',
     timestamp: clock.nowIso(),
     data,
     ...(opts?.evidence && { evidence: opts.evidence }),
@@ -43,11 +47,43 @@ export function formatOk<T>(
   };
 }
 
-export function formatUnconfigured(command: string, next_action: string, clock: Clock): Envelope {
+/**
+ * Succeeded with caveats (exit 0 by default). `next_action` is REQUIRED — the
+ * contract guarantees a non-`ok` envelope always tells an agent what to do next.
+ */
+export function formatDegraded<T>(
+  command: string,
+  data: T,
+  next_action: string,
+  clock: Clock,
+  opts?: { evidence?: Evidence[] },
+): Envelope {
+  return {
+    command,
+    status: 'degraded',
+    timestamp: clock.nowIso(),
+    data,
+    ...(opts?.evidence && { evidence: opts.evidence }),
+    next_action,
+  };
+}
+
+/**
+ * Honest "not built". `next_action` REQUIRED; `data` is optional so a command can
+ * carry context (e.g. `run --dry-run` → `{dry_run:true,slot,mapped_command:null}`,
+ * workshop 001 worked example #4). Always maps to exit 2.
+ */
+export function formatUnconfigured(
+  command: string,
+  next_action: string,
+  clock: Clock,
+  opts?: { data?: unknown },
+): Envelope {
   return {
     command,
     status: 'unconfigured',
     timestamp: clock.nowIso(),
+    ...(opts?.data !== undefined && { data: opts.data }),
     next_action,
   };
 }

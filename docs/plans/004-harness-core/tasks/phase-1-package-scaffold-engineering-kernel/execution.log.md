@@ -15,7 +15,8 @@
 
 | Finding ID | ackOf (review-request) | Severity | Disposition | Notes |
 |-----------|------------------------|----------|-------------|-------|
-| _(none yet)_ | | | | |
+| F001a | T006 | HIGH | ✅ fixed inline | dry-run unconfigured worked example (#4) was untested + `formatUnconfigured` couldn't carry `data`. Added `opts.data` + a dry-run test (exit 2). |
+| F001b | T006 | HIGH | ✅ fixed inline | `formatOk({status:'degraded'})` left `next_action` optional, violating the contract. Split out `formatDegraded` (requires `next_action`); removed degraded from `formatOk`. |
 
 ---
 
@@ -83,3 +84,11 @@
 - `src/output/output-port.ts`: created with the `OutputPort { emit(env) }` interface here (exit.ts depends on it). **Minor split vs dossier** (which scoped output-port.ts to T008): the interface had to exist for exit.ts to compile; `selectMode` + renderers are added in T008.
 - **Evidence**: `just fft` green — 18/18 tests pass; coverage 87.5% (remaining gap = `exitWithEnvelope`, covered in T008). T006 red → green.
 - **AC**: AC-4 (envelope + exit policy).
+
+### FIX (companion F001) — degraded + dry-run contract gaps
+**Status**: ✅ fixed (both HIGH)
+
+- **F001b**: added `formatDegraded(command, data, next_action, clock, {evidence?})` with `next_action` **required**; removed the `status:'degraded'` path from `formatOk` (now `ok`-only). Makes "next_action required when status≠ok" unbreakable by construction.
+- **F001a**: `formatUnconfigured` now takes `opts.data` so it can represent the `run --dry-run` worked example (`data:{dry_run,slot,mapped_command}`); added a dry-run test asserting the full envelope + `exitCodeFor === 2`.
+- Updated `test/output/envelope.test.ts` (degraded → `formatDegraded`, new dry-run test, field-presence uses `formatDegraded`).
+- **Evidence**: `just fft` green — 19/19 tests; coverage 88%. Re-pinged companion to verify.

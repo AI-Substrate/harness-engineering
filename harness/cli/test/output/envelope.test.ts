@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import {
   type Envelope,
+  formatDegraded,
   formatError,
   formatOk,
   formatUnconfigured,
 } from '../../src/output/envelope.js';
+import { exitCodeFor } from '../../src/output/exit.js';
 
 const TS = '2026-06-08T07:20:00.000Z';
 const clockAt = () => new FakeClock(TS);
@@ -29,15 +31,28 @@ describe('formatOk', () => {
     });
   });
 
-  it('supports degraded + evidence + next_action (doctor worked example)', () => {
-    const env = formatOk('doctor', { layers: [{ id: 0, name: 'toolchain', ok: true }] }, clockAt(), {
-      status: 'degraded',
-      evidence: [{ label: 'doctor report', none: true }],
-      next_action: 'Run `harness help` to see the slot map.',
-    });
+  it('formatDegraded requires next_action and carries evidence (doctor worked example)', () => {
+    /*
+    Test Doc:
+    - Why: workshop 001 requires next_action for EVERY non-ok status, incl. degraded;
+      a degraded envelope without next_action violates the agent contract (companion F001b).
+    - Contract: formatDegraded(command, data, next_action, clock, {evidence?}) => status 'degraded'
+      with next_action ALWAYS present; exit 0.
+    - Usage Notes: there is no formatOk({status:'degraded'}) path — degraded only via this ctor.
+    - Quality Contribution: makes "next_action required when status!=ok" unbreakable by construction.
+    - Worked Example: doctor degraded with evidence [{label,none:true}] + a next_action.
+    */
+    const env = formatDegraded(
+      'doctor',
+      { layers: [{ id: 0, name: 'toolchain', ok: true }] },
+      'Run `harness help` to see the slot map.',
+      clockAt(),
+      { evidence: [{ label: 'doctor report', none: true }] },
+    );
     expect(env.status).toBe('degraded');
     expect(env.evidence).toEqual([{ label: 'doctor report', none: true }]);
     expect(env.next_action).toBe('Run `harness help` to see the slot map.');
+    expect(exitCodeFor(env)).toBe(0);
   });
 });
 
@@ -60,6 +75,33 @@ describe('formatUnconfigured', () => {
     });
     expect(env.data).toBeUndefined();
     expect(env.error).toBeUndefined();
+  });
+
+  it('given_dry_run_when_formatUnconfigured_with_data_then_carries_data_and_exits_2', () => {
+    /*
+    Test Doc:
+    - Why: workshop 001 worked example #4 — `run --dry-run` on an unconfigured slot returns an
+      unconfigured envelope that ALSO carries data {dry_run,slot,mapped_command} (companion F001a).
+    - Contract: formatUnconfigured(cmd, next_action, clock, {data}) keeps status 'unconfigured',
+      required next_action, exit 2, and surfaces the data payload.
+    - Usage Notes: dry-run never executes; safe at session start.
+    - Quality Contribution: proves the kernel can represent unconfigured-with-data, not just bare unconfigured.
+    - Worked Example: run --dry-run smoke → data {dry_run:true, slot:'smoke', mapped_command:null}, exit 2.
+    */
+    const env = formatUnconfigured(
+      'run',
+      "Dry-run: slot 'smoke' has no mapped command. Nothing would execute.",
+      clockAt(),
+      { data: { dry_run: true, slot: 'smoke', mapped_command: null } },
+    );
+    expect(env).toEqual({
+      command: 'run',
+      status: 'unconfigured',
+      timestamp: TS,
+      data: { dry_run: true, slot: 'smoke', mapped_command: null },
+      next_action: "Dry-run: slot 'smoke' has no mapped command. Nothing would execute.",
+    });
+    expect(exitCodeFor(env)).toBe(2);
   });
 });
 
@@ -87,7 +129,7 @@ describe('field-presence rule', () => {
     const envs: Envelope[] = [
       formatUnconfigured('run', 'x', clockAt()),
       formatError('run', 'E100', 'y', clockAt()),
-      formatOk('run', {}, clockAt(), { status: 'degraded', next_action: 'z' }),
+      formatDegraded('run', {}, 'z', clockAt()),
     ];
     for (const env of envs) {
       expect(env.status === 'ok' || typeof env.next_action === 'string').toBe(true);
