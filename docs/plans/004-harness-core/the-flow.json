@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-core",
+  "plan_dir": "docs/plans/004-harness-core",
+  "mode": "Full",
+  "cursor": "plan",
+  "recommended_next": "p1",
+  "now": "Constitution established \u2014 ready for Phase 1 tasks",
+  "next": "Phase 1 tasks",
+  "agents": [],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research \u00b7 chainglass + minih harness CLI",
+      "status": "done",
+      "command": "/plan-1a",
+      "ran_at": "2026-06-07T20:53:30Z",
+      "user_input": "We're going to be working on a physical part of our engineering harness and it's going to take the form of a node CLI ... the harness front door (help/doctor/run/validate/build/lint/test/smoke/health/observe), NPX install, extension system later. Mirror chainglass + minih.",
+      "note": "Explore ~/substrate/chainglass + ~/substrate/minih for CLI architecture (act/service/adapter), biome, justfile fft, CI, release-please, npm audit. Source-not-copy.",
+      "artifacts": [
+        "research-dossier.md"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec",
+      "status": "done",
+      "command": "/plan-1b",
+      "next": [
+        "ws1"
+      ],
+      "user_input": "no need for observe just yet, or to do too much with the harness loop itself. let's just focus on a well structured cli, with some unit tests with vitest, linting, biome etc. a build in ci, semver + release please. (again minih has this).",
+      "note": "Scope narrowed: help+doctor real; other slots unconfigured stubs; vitest + biome + justfile fft + CI build + release-please. Harness-loop behaviour deferred.",
+      "ran_at": "2026-06-07T21:10:17Z",
+      "artifacts": [
+        "harness-core-spec.md"
+      ]
+    },
+    {
+      "id": "ws1",
+      "type": "workshop",
+      "label": "Workshop 1 \u00b7 envelope + exit-code contract",
+      "status": "done",
+      "branch_of": "spec",
+      "ran_at": "2026-06-07T21:19:49Z",
+      "user_input": "do 1 and 2, make sure we bring in the minih stuff to here, dont assume it will be available. (the knowledge in the form of a workshop showing the composition pattern)",
+      "note": "Pins Envelope superset {evidence,next_action}, status set incl. unconfigured, exit 0/1/2, TTY/--json selection.",
+      "artifacts": [
+        "workshops/001-output-envelope-and-exit-codes.md"
+      ],
+      "next": [
+        "ws2"
+      ]
+    },
+    {
+      "id": "ws2",
+      "type": "workshop",
+      "label": "Workshop 2 \u00b7 CLI composition pattern (minih captured)",
+      "status": "done",
+      "branch_of": "spec",
+      "ran_at": "2026-06-07T21:19:49Z",
+      "note": "Captures minih entrypoint/act/service/adapter + param-DI + one-fake-per-adapter + slot-registry extension seam, self-contained.",
+      "artifacts": [
+        "workshops/002-cli-composition-pattern.md"
+      ],
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/plan-3",
+      "note": "Status READY; 3 phases, 22 tasks; gates PASS/N-A. validate-v2: VALIDATED WITH FIXES (1 HIGH ordering + MEDIUM/LOW fixed inline).",
+      "next": [
+        "p1"
+      ],
+      "ran_at": "2026-06-07T21:29:38Z",
+      "artifacts": [
+        "harness-core-plan.md"
+      ]
+    },
+    {
+      "id": "p1",
+      "type": "phase",
+      "phase": 1,
+      "label": "Phase 1 \u00b7 scaffold + engineering kernel",
+      "status": "known",
+      "next": [
+        "p2"
+      ]
+    },
+    {
+      "id": "p2",
+      "type": "phase",
+      "phase": 2,
+      "label": "Phase 2 \u00b7 CLI command surface + architecture",
+      "status": "known",
+      "next": [
+        "p3"
+      ]
+    },
+    {
+      "id": "p3",
+      "type": "phase",
+      "phase": 3,
+      "label": "Phase 3 \u00b7 CI + release + branch protection",
+      "status": "known",
+      "next": [
+        "merge"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "command": "/plan-8",
+      "next": []
+    }
+  ]
+}
