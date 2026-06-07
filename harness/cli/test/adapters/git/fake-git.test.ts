@@ -26,10 +26,13 @@ describe('FakeGit', () => {
 });
 
 describe('ExecGit', () => {
-  it('reports the real repo as a work tree with a branch', () => {
-    // This suite runs inside the project's own git repo.
+  it('reports the real repo as a work tree with a string-or-null branch', () => {
+    // This suite runs inside the project's own git repo. currentBranch() is
+    // null under detached HEAD (common in CI/packaging checkouts) — accept both;
+    // the null contract is covered explicitly by the FakeGit case above.
     const git = new ExecGit();
     expect(git.isRepo()).toBe(true);
-    expect(typeof git.currentBranch()).toBe('string');
+    const branch = git.currentBranch();
+    expect(branch === null || typeof branch === 'string').toBe(true);
   });
 });
