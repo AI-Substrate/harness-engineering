@@ -114,8 +114,9 @@ export function main(argv: string[] = process.argv): void {
       new SystemClock(),
     );
     if (envelope === null) {
-      // help/version already displayed by commander.
-      process.exit((err as { exitCode?: number }).exitCode ?? 0);
+      // help/version: commander already printed the output; returning lets Node
+      // exit 0 naturally. Keeps `process.exit` confined to output/exit.ts.
+      return;
     }
     exitWithEnvelope(envelope, createOutputPort(io.mode, io.writers));
   }
