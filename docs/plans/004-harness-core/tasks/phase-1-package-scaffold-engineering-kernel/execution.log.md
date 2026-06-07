@@ -65,3 +65,11 @@
 - All relative imports use `.js` extensions; type-only imports use `import type` (verbatimModuleSyntax).
 - **Evidence**: `just fft` green — 5/5 tests pass; **100% coverage** on the Clock files. Pulled ahead of the kernel because the envelope constructors take an injected `Clock` (Finding 04).
 - **AC**: contributes to AC-4 (kernel determinism foundation).
+
+### T006 — Kernel tests (RED) [Stage 3]
+**Status**: ✅ complete (red as intended)
+
+- `test/output/envelope.test.ts`: formatOk (ok + degraded/evidence/next_action), formatUnconfigured (required next_action, no data/error), formatError (code+message, next_action defaults to message, explicit override), field-presence rule (next_action present when status≠ok). Test-Doc commented; FakeClock for deterministic timestamps.
+- `test/output/exit.test.ts`: `exitCodeFor` status→exit map (ok=0, degraded=0, unconfigured=2, error=1) + explicit "unconfigured is 2 never 0".
+- **Evidence (RED)**: `vitest run` → 2 failed (envelope.js/exit.js "Cannot find module"), 1 passed (clock). This is the intended TDD red step; T007 turns it green.
+- **AC**: AC-4 (tests-first portion).

@@ -131,7 +131,7 @@ flowchart LR
 - [x] T003: `vitest.config.ts` + `@vitest/coverage-v8` + devDep pins (commander is a runtime `dependency`, added in T001)
 - [x] T004: Extend `justfile` with `fix`/`format`/`test`/`fft` (explicit working dirs)
 - [x] T005: `Clock` adapter (port/system/fake) + determinism test
-- [ ] T006: Kernel tests (red) — envelope + exit
+- [x] T006: Kernel tests (red) — envelope + exit
 - [ ] T007: Implement envelope/error-codes/exit (green)
 - [ ] T008: `output-port.ts` — `selectMode` + renderers + tests
 - [ ] T009: Minimal `index.ts` (version from shipped `package.json`) + build smoke + `npm pack --dry-run`
