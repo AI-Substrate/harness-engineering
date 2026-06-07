@@ -124,3 +124,22 @@ compact target="harness-foundations":
       git check-ignore -q "$out" && echo "Ignored by git: yes" || echo "Ignored by git: no"; \
       wc -l "$out"; \
       du -h "$out"
+
+# --- Harness CLI engineering loop (Phase 1) ---
+# Working dirs are explicit: biome runs from repo root (where biome.json lives);
+# vitest runs from harness/cli (where vitest.config.ts lives).
+
+# Auto-fix lint + safe fixes on the CLI source.
+fix:
+    npx biome check --write harness/cli
+
+# Format the CLI source in place.
+format:
+    npx biome format --write harness/cli
+
+# Run the CLI unit tests with coverage (report-only).
+test:
+    cd harness/cli && npx vitest run --coverage
+
+# fix -> format -> test (the engineering loop).
+fft: fix format test

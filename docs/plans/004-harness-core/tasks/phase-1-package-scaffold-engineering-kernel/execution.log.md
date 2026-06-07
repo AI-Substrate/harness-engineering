@@ -46,3 +46,11 @@
 - devDeps already installed in T001 (`npm install`); vitest is `^4.1.8`.
 - **Evidence**: `cd harness/cli && npx vitest run --coverage` → vitest 4.1.8, "No test files found, exiting with code 0", coverage summary printed. No threshold failure.
 - **AC**: AC-3 (vitest portion).
+
+### T004 — justfile fft loop (Stage 1 complete)
+**Status**: ✅ complete
+
+- Appended to the existing root `justfile` (skill-ops recipes preserved): `fix` (`npx biome check --write harness/cli`), `format` (`npx biome format --write harness/cli`), `test` (`cd harness/cli && npx vitest run --coverage`), `fft: fix format test` (just-native prerequisite chaining → runs in order).
+- Working dirs explicit: biome from repo root (where `biome.json` is), vitest from `harness/cli` (where `vitest.config.ts` is).
+- **Evidence**: `just --list` shows all four recipes; `just fft` → biome checked 2 files clean, formatted clean, vitest exited 0 with coverage summary. Green end-to-end.
+- **AC**: AC-3, AC-5. **Stage 1 (package + toolchain) complete.**
