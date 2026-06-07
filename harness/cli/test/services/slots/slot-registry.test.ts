@@ -5,6 +5,7 @@ import { exitCodeFor } from '../../../src/output/exit.js';
 import {
   type CommandSlot,
   loadSlotRegistry,
+  runSlot,
   slotEnvelope,
 } from '../../../src/services/slots/slot-registry.js';
 
@@ -96,5 +97,32 @@ describe('slotEnvelope', () => {
     }
     const env = slotEnvelope(validate, {}, clock);
     expect(env.data).toBeUndefined();
+  });
+});
+
+describe('runSlot — dispatcher (workshop 001)', () => {
+  it("known unconfigured slot → command 'run', unconfigured, exit 2", () => {
+    const clock = new FakeClock('2026-06-08T07:20:00.000Z');
+    const env = runSlot(loadSlotRegistry(new FakeFs()), 'smoke', {}, clock);
+    expect(env.command).toBe('run');
+    expect(env.status).toBe('unconfigured');
+    expect(env.next_action).toContain('smoke');
+    expect(exitCodeFor(env)).toBe(2);
+  });
+
+  it("--dry-run carries {dry_run, slot, mapped_command:null} with command 'run', exit 2", () => {
+    const clock = new FakeClock('2026-06-08T07:20:00.000Z');
+    const env = runSlot(loadSlotRegistry(new FakeFs()), 'smoke', { dryRun: true }, clock);
+    expect(env.command).toBe('run');
+    expect(env.data).toEqual({ dry_run: true, slot: 'smoke', mapped_command: null });
+    expect(exitCodeFor(env)).toBe(2);
+  });
+
+  it('unknown slot → E110 error envelope, exit 1', () => {
+    const clock = new FakeClock('2026-06-08T07:20:00.000Z');
+    const env = runSlot(loadSlotRegistry(new FakeFs()), 'bogus', {}, clock);
+    expect(env.status).toBe('error');
+    expect(env.error?.code).toBe('E110');
+    expect(exitCodeFor(env)).toBe(1);
   });
 });

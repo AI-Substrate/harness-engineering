@@ -1,19 +1,17 @@
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerHelpAct } from '../../src/acts/help.js';
-import type { Writers } from '../../src/output/output-port.js';
+import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 
-function capture(): { writers: Writers; out: () => string } {
+function ioFor(mode: OutputMode): { io: CliIo; out: () => string } {
   let o = '';
-  return {
-    writers: {
-      out: (t) => {
-        o += t;
-      },
-      err: () => {},
+  const writers: Writers = {
+    out: (t) => {
+      o += t;
     },
-    out: () => o,
+    err: () => {},
   };
+  return { io: { mode, writers }, out: () => o };
 }
 
 describe('registerHelpAct', () => {
@@ -21,22 +19,22 @@ describe('registerHelpAct', () => {
     vi.restoreAllMocks();
   });
 
-  function run(argv: string[], writers: Writers): number {
+  function run(io: CliIo): number {
     let code = -1;
     vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
       code = c ?? 0;
       throw new Error(`exit:${code}`);
     }) as never);
-    const program = new Command().name('harness').option('--json').option('--no-json');
-    registerHelpAct(program, writers);
-    expect(() => program.parse(['node', 'harness', ...argv])).toThrow(/^exit:/);
+    const program = new Command().name('harness');
+    registerHelpAct(program, io);
+    expect(() => program.parse(['node', 'harness', 'help'])).toThrow(/^exit:/);
     return code;
   }
 
-  it('help --json emits a stable envelope with machine-readable data.slots[] and exits 0', () => {
-    const cap = capture();
-    const code = run(['--json', 'help'], cap.writers);
-    const env = JSON.parse(cap.out());
+  it('json mode emits a stable envelope with machine-readable data.slots[] and exits 0', () => {
+    const { io, out } = ioFor('json');
+    const code = run(io);
+    const env = JSON.parse(out());
     expect(env.command).toBe('help');
     expect(env.status).toBe('ok');
     expect(Array.isArray(env.data.slots)).toBe(true);
@@ -47,12 +45,12 @@ describe('registerHelpAct', () => {
     expect(code).toBe(0);
   });
 
-  it('help (human) prints rich text and exits 0', () => {
-    const cap = capture();
-    const code = run(['--no-json', 'help'], cap.writers);
-    expect(cap.out()).toContain('Commands:');
-    expect(cap.out()).toContain('doctor');
-    expect(cap.out()).toContain('Safe first actions:');
+  it('human mode prints rich text and exits 0', () => {
+    const { io, out } = ioFor('human');
+    const code = run(io);
+    expect(out()).toContain('Commands:');
+    expect(out()).toContain('doctor');
+    expect(out()).toContain('Safe first actions:');
     expect(code).toBe(0);
   });
 });

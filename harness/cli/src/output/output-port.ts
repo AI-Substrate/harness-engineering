@@ -11,6 +11,17 @@ export interface OutputPort {
 export type OutputMode = 'json' | 'human';
 
 /**
+ * Resolved per-invocation I/O, computed ONCE by the entrypoint and threaded to
+ * acts. Acts must NOT re-derive the mode from `program.opts()` — commander
+ * collapses `--json`/`--no-json` to a boolean and loses the "flag absent" state
+ * that lets env/TTY decide. The entrypoint resolves it via `jsonFlag(argv)`.
+ */
+export interface CliIo {
+  mode: OutputMode;
+  writers: Writers;
+}
+
+/**
  * Where rendered text goes. Injected so renderers are unit-testable without
  * touching real process streams.
  */

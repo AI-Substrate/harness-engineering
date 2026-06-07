@@ -1,23 +1,20 @@
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerDoctorAct } from '../../src/acts/doctor.js';
-import type { Writers } from '../../src/output/output-port.js';
+import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 
-function capture(): { writers: Writers; out: () => string; err: () => string } {
+function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => string } {
   let o = '';
   let e = '';
-  return {
-    writers: {
-      out: (t) => {
-        o += t;
-      },
-      err: (t) => {
-        e += t;
-      },
+  const writers: Writers = {
+    out: (t) => {
+      o += t;
     },
-    out: () => o,
-    err: () => e,
+    err: (t) => {
+      e += t;
+    },
   };
+  return { io: { mode, writers }, out: () => o, err: () => e };
 }
 
 describe('registerDoctorAct', () => {
@@ -25,26 +22,25 @@ describe('registerDoctorAct', () => {
     vi.restoreAllMocks();
   });
 
-  function run(argv: string[], writers: Writers): number {
+  function run(io: CliIo): number {
     let code = -1;
     vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
       code = c ?? 0;
       throw new Error(`exit:${code}`);
     }) as never);
-    const program = new Command().name('harness').option('--json').option('--no-json');
-    registerDoctorAct(program, writers, {});
-    expect(() => program.parse(['node', 'harness', ...argv])).toThrow(/^exit:/);
+    const program = new Command().name('harness');
+    registerDoctorAct(program, io);
+    expect(() => program.parse(['node', 'harness', 'doctor'])).toThrow(/^exit:/);
     return code;
   }
 
-  it('doctor --json emits a degraded envelope with data.layers and exits 0', () => {
-    const cap = capture();
-    const code = run(['--json', 'doctor'], cap.writers);
-    const env = JSON.parse(cap.out());
+  it('json mode emits a degraded envelope with data.layers and exits 0', () => {
+    const { io, out } = ioFor('json');
+    const code = run(io);
+    const env = JSON.parse(out());
     expect(env.command).toBe('doctor');
-    // In this repo the slots are all unconfigured, so doctor is degraded (still exit 0).
+    // In this repo every slot is unconfigured, so doctor is degraded (still exit 0).
     expect(env.status).toBe('degraded');
-    expect(Array.isArray(env.data.layers)).toBe(true);
     expect(env.data.layers.map((l: { name: string }) => l.name)).toEqual([
       'toolchain',
       'cli-build',
@@ -54,12 +50,12 @@ describe('registerDoctorAct', () => {
     expect(code).toBe(0);
   });
 
-  it('doctor (human) writes the layered report to stderr and a summary to stdout, exits 0', () => {
-    const cap = capture();
-    const code = run(['--no-json', 'doctor'], cap.writers);
-    expect(cap.err()).toContain('toolchain');
-    expect(cap.err()).toContain('command-slots');
-    expect(cap.out()).toContain('doctor:');
+  it('human mode writes the layered report to stderr and a summary to stdout, exits 0', () => {
+    const { io, out, err } = ioFor('human');
+    const code = run(io);
+    expect(err()).toContain('toolchain');
+    expect(err()).toContain('command-slots');
+    expect(out()).toContain('doctor:');
     expect(code).toBe(0);
   });
 });

@@ -1,6 +1,7 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
-import { type Envelope, formatUnconfigured } from '../../output/envelope.js';
+import { type Envelope, formatError, formatUnconfigured } from '../../output/envelope.js';
+import { ErrorCodes } from '../../output/error-codes.js';
 
 /** Whether a command slot has real behaviour mapped yet. */
 export type SlotStatus = 'configured' | 'unconfigured';
@@ -95,9 +96,11 @@ export function loadSlotRegistry(_fs: FsPort): SlotRegistry {
 }
 
 /**
- * Pure slot behaviour (the logic the factory act renders). An unconfigured slot
- * NEVER fakes success: it returns `status: unconfigured` + `next_action` (exit 2).
- * `--dry-run` carries `{dry_run, slot, mapped_command:null}` per workshop 001 #4.
+ * Pure slot behaviour for the TOP-LEVEL convenience commands (`harness <slot>`,
+ * e.g. `harness smoke`). An unconfigured slot NEVER fakes success: it returns
+ * `status: unconfigured` + `next_action` (exit 2). `--dry-run` carries
+ * `{dry_run, slot, mapped_command:null}` per workshop 001 #4. `command` is the
+ * slot's own name.
  */
 export function slotEnvelope(
   slot: CommandSlot,
@@ -111,5 +114,41 @@ export function slotEnvelope(
     slot.next_action,
     clock,
     data !== undefined ? { data } : undefined,
+  );
+}
+
+/**
+ * The `run <slot>` DISPATCHER behaviour (workshop 001 worked examples). `command`
+ * is always `run`; the named slot is the argument.
+ * - missing slot → caller handles E108 (commander arg) before reaching here.
+ * - unknown slot (not in registry) → `error` E110, exit 1.
+ * - known but unconfigured slot → `unconfigured` + next_action, exit 2.
+ * - `--dry-run` → `{dry_run, slot, mapped_command:null}`, exit 2, never executes.
+ */
+export function runSlot(
+  registry: SlotRegistry,
+  slotName: string,
+  opts: { dryRun?: boolean },
+  clock: Clock,
+): Envelope {
+  const slot = registry.find((entry) => entry.name === slotName);
+  if (!slot) {
+    return formatError('run', ErrorCodes.SLOT_UNKNOWN, `Unknown slot '${slotName}'.`, clock, {
+      next_action: 'Run `harness help` to see the available slots.',
+    });
+  }
+  // FUTURE: if (slot.status === 'configured' && slot.handler) return slot.handler(ctx);
+  if (opts.dryRun) {
+    return formatUnconfigured(
+      'run',
+      `Dry-run: slot '${slotName}' has no mapped command. Nothing would execute.`,
+      clock,
+      { data: { dry_run: true, slot: slotName, mapped_command: null } },
+    );
+  }
+  return formatUnconfigured(
+    'run',
+    `No command is mapped to slot '${slotName}' yet. This will be provided by a harness extension. Run \`harness doctor\` to see configured slots.`,
+    clock,
   );
 }
