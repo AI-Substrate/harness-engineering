@@ -30,3 +30,11 @@
 - **Discovery (decision)**: `npm install` reported **2 critical** advisories in `vitest <4.1.0` (`@vitest/coverage-v8` transitively) — the Vitest UI dev-server arbitrary-file advisory (GHSA-5xrq-8626-4rwp). Dev-only, but Phase 3 plans an `npm audit` gate, so bumped `vitest` + `@vitest/coverage-v8` from `^3.2` → **`^4.1.8`**. Re-audit: **0 vulnerabilities**. No migration cost (test surface is net-new).
 - **Evidence**: `npm install` succeeded; `prepare`→`tsc` emitted `harness/cli/dist/index.js`; `node harness/cli/dist/index.js` → `harness CLI — scaffold`; `npm audit` → `found 0 vulnerabilities`.
 - **AC**: AC-1, AC-2 (partial — full surface lands across the phase).
+
+### T002 — Root biome.json
+**Status**: ✅ complete
+
+- Created `biome.json` (schema 2.4.16): formatter (2-space, lineWidth 100), linter recommended, `javascript.formatter` single quotes + semicolons + trailing commas, `assist.actions.source.organizeImports: on`, `files.includes` scoped to `harness/cli/**/*.ts` with `!**/dist/**` + `!**/node_modules/**`, `vcs.useIgnoreFile`.
+- **Note**: Biome 2.x config keys differ from 1.x — `files.includes` (negated globs) replaces `files.ignore`; `organizeImports` lives under `assist.actions.source`.
+- **Evidence**: `npx biome check harness/cli` → "Checked 1 file. No fixes applied." (config valid, scaffold clean).
+- **AC**: AC-3 (biome portion).
