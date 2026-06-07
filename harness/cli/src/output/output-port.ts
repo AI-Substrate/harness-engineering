@@ -80,3 +80,17 @@ export function createOutputPort(mode: OutputMode, writers: Writers = processWri
     },
   };
 }
+
+/**
+ * Convenience composition of `selectMode` + `createOutputPort` — the one call
+ * acts use to turn resolved flags/env/TTY into an OutputPort. Keeps acts free
+ * of mode-selection details.
+ */
+export function makeOutputPort(
+  flags: { json?: boolean },
+  env: NodeJS.ProcessEnv,
+  isTty: boolean,
+  writers: Writers = processWriters,
+): OutputPort {
+  return createOutputPort(selectMode(flags, env, isTty), writers);
+}
