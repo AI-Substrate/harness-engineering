@@ -56,9 +56,8 @@ stateDiagram-v2
     S4 --> S5
     S5 --> [*]
 
-    class S1,S2,S3 done
-    class S4 active
-    class S5 pending
+    class S1,S2,S3,S4 done
+    class S5 active
 ```
 
 **Legend**: grey = pending | yellow = active | red = blocked/needs input | green = done
@@ -72,8 +71,8 @@ stateDiagram-v2
 - [x] **Stage 1: Scaffold package + toolchain** — root manifest, tsconfig, biome, vitest+coverage, and `just fft` (`/package.json`, `/biome.json`, `harness/cli/tsconfig.json`, `harness/cli/vitest.config.ts`, `/justfile`) — T001–T004
 - [x] **Stage 2: Ship the Clock adapter** — port/system/fake + a determinism test, ahead of the kernel because the envelope depends on it (`harness/cli/src/adapters/clock/*` — new) — T005
 - [x] **Stage 3: TDD the output kernel** — red kernel tests, then envelope/error-codes/exit green (`harness/cli/test/output/*`, `harness/cli/src/output/{envelope,error-codes,exit}.ts` — new) — T006–T007
-- [~] **Stage 4: OutputPort + mode selection + renderers** — `selectMode` precedence + JSON/human renderers + tests (`harness/cli/src/output/output-port.ts` — new) — T008
-- [ ] **Stage 5: Prove the npx wiring** — minimal `index.ts`, build smoke + `npm pack --dry-run` (`harness/cli/src/index.ts` — new) — T009
+- [x] **Stage 4: OutputPort + mode selection + renderers** — `selectMode` precedence + JSON/human renderers + tests (`harness/cli/src/output/output-port.ts` — new) — T008
+- [~] **Stage 5: Prove the npx wiring** — minimal `index.ts`, build smoke + `npm pack --dry-run` (`harness/cli/src/index.ts` — new) — T009
 
 ---
 
@@ -133,5 +132,5 @@ flowchart LR
 - [x] T005: `Clock` adapter (port/system/fake) + determinism test
 - [x] T006: Kernel tests (red) — envelope + exit
 - [x] T007: Implement envelope/error-codes/exit (green)
-- [ ] T008: `output-port.ts` — `selectMode` + renderers + tests
+- [x] T008: `output-port.ts` — `selectMode` + renderers + tests
 - [ ] T009: Minimal `index.ts` (version from shipped `package.json`) + build smoke + `npm pack --dry-run`

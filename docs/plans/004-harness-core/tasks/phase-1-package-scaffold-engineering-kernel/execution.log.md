@@ -92,3 +92,11 @@
 - **F001a**: `formatUnconfigured` now takes `opts.data` so it can represent the `run --dry-run` worked example (`data:{dry_run,slot,mapped_command}`); added a dry-run test asserting the full envelope + `exitCodeFor === 2`.
 - Updated `test/output/envelope.test.ts` (degraded → `formatDegraded`, new dry-run test, field-presence uses `formatDegraded`).
 - **Evidence**: `just fft` green — 19/19 tests; coverage 88%. Re-pinged companion to verify.
+
+### T008 — OutputPort: selectMode + renderers [Stage 4 complete]
+**Status**: ✅ complete
+
+- `src/output/output-port.ts`: `OutputMode`, `Writers` (injected for testability), `processWriters` (real streams), `selectMode(flags, env, isTty)` with precedence flag → `HARNESS_JSON` env → TTY, `renderJson` (one parseable line → stdout), `renderHuman` (next_action → stderr, `"<cmd>: <status>"` summary → stdout), `createOutputPort(mode, writers)`.
+- `test/output/output-port.test.ts` (11 tests): all 5 selectMode precedence cases; renderJson stdout-only; renderHuman stdout/stderr split; createOutputPort dispatch; **exitWithEnvelope** (spied process.exit → emits + exit 2).
+- **Evidence**: `just fft` green — 30/30 tests; coverage **94.28%** (exitWithEnvelope now covered).
+- **AC**: AC-4 (human/JSON renderers + mode selection). **Stage 4 complete.**
