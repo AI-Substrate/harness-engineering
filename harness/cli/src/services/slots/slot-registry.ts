@@ -87,12 +87,21 @@ const BUILTIN_SLOTS: readonly CommandSlot[] = [
 ];
 
 /**
+ * The built-in slot seed set, no I/O — used by the entrypoint to enumerate which
+ * commands to register (keeps `index.ts` free of adapter construction). Returns
+ * fresh copies so callers can't mutate the seed.
+ */
+export function builtinSlots(): SlotRegistry {
+  return BUILTIN_SLOTS.map((slot) => ({ ...slot }));
+}
+
+/**
  * Load the command-slot registry. Takes `FsPort` so a future loader can read
  * repo-local extension config and merge handlers (Q3) — unused this slice.
  * Returns fresh copies so callers can't mutate the built-in seed set.
  */
 export function loadSlotRegistry(_fs: FsPort): SlotRegistry {
-  return BUILTIN_SLOTS.map((slot) => ({ ...slot }));
+  return builtinSlots();
 }
 
 /**

@@ -1,25 +1,31 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { registerDoctorAct } from './acts/doctor.js';
+import { registerHelpAct } from './acts/help.js';
+import { registerRunAct } from './acts/run.js';
+import { registerSlotAct } from './acts/unconfigured-slot.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
 import { type Envelope, formatOk } from './output/envelope.js';
 import { exitWithEnvelope } from './output/exit.js';
-import { createOutputPort, selectMode } from './output/output-port.js';
-
-interface PackageManifest {
-  version: string;
-}
+import { type CliIo, createOutputPort, processWriters, selectMode } from './output/output-port.js';
+import { validateCommandMap } from './services/config/load-config.js';
+import { builtinSlots } from './services/slots/slot-registry.js';
+import { readVersion } from './version.js';
 
 /**
- * Read the version from the repo-root `package.json`. npm always ships
- * `package.json` in the tarball; from `harness/cli/dist/index.js` it is three
- * levels up — a path that holds both in-repo and when installed via npx.
+ * Tri-state read of the output flag from argv. The entrypoint resolves this
+ * ONCE — commander collapses `--json`/`--no-json` to a single boolean and loses
+ * the "absent" state that lets env/TTY decide, so acts must never re-derive it.
  */
-function readVersion(): string {
-  const manifestUrl = new URL('../../../package.json', import.meta.url);
-  const manifest = JSON.parse(readFileSync(fileURLToPath(manifestUrl), 'utf8')) as PackageManifest;
-  return manifest.version;
+export function jsonFlag(argv: string[]): boolean | undefined {
+  if (argv.includes('--no-json')) {
+    return false;
+  }
+  if (argv.includes('--json')) {
+    return true;
+  }
+  return undefined;
 }
 
 function orientationEnvelope(version: string): Envelope {
@@ -31,41 +37,51 @@ function orientationEnvelope(version: string): Envelope {
       next_steps: ['harness help', 'harness doctor'],
     },
     new SystemClock(),
-    { next_action: 'Run `harness help` for the command surface (coming in Phase 2).' },
+    { next_action: 'Run `harness help` for the command surface.' },
   );
 }
 
-export function buildProgram(version: string): Command {
-  return new Command()
+/**
+ * Build the composition root: global flags + every act registered with the
+ * pre-resolved `io`. The 7 non-`run` slots register through the factory; `run`
+ * is the `run <slot>` dispatcher. No business logic, no fs/process/git here.
+ */
+export function buildProgram(version: string, io: CliIo): Command {
+  const program = new Command()
     .name('harness')
     .description("The agent-friendly front door to this repo's engineering harness.")
     .version(version, '-v, --version')
     .option('--json', 'force JSON output')
     .option('--no-json', 'force human output');
-}
 
-/** Tri-state read of the output flag from argv (so env/TTY can decide when absent). */
-export function jsonFlag(argv: string[]): boolean | undefined {
-  if (argv.includes('--no-json')) {
-    return false;
+  registerHelpAct(program, io);
+  registerDoctorAct(program, io);
+  registerRunAct(program, io);
+  for (const slot of builtinSlots().filter((slot) => slot.name !== 'run')) {
+    registerSlotAct(program, slot, io);
   }
-  if (argv.includes('--json')) {
-    return true;
-  }
-  return undefined;
+
+  // Bare `harness` (no subcommand) prints an orientation envelope.
+  program.action(() => {
+    exitWithEnvelope(orientationEnvelope(version), createOutputPort(io.mode, io.writers));
+  });
+  return program;
 }
 
 export function main(argv: string[] = process.argv): void {
-  const version = readVersion();
-  const program = buildProgram(version);
-  // Command surface (help/doctor/slots) lands in Phase 2. Until then the root
-  // action prints an orientation envelope (for `harness`, `harness --json`, etc.),
-  // while commander still handles --version / --help and exits.
-  program.action(() => {
-    const mode = selectMode({ json: jsonFlag(argv) }, process.env, Boolean(process.stdout.isTTY));
-    exitWithEnvelope(orientationEnvelope(version), createOutputPort(mode));
-  });
-  program.parse(argv);
+  const mode = selectMode({ json: jsonFlag(argv) }, process.env, Boolean(process.stdout.isTTY));
+  const io: CliIo = { mode, writers: processWriters };
+
+  // Validate the in-code command-map before use — bail with E120 if malformed.
+  const check = validateCommandMap(builtinSlots(), new SystemClock());
+  if (check.status === 'error') {
+    exitWithEnvelope(check, createOutputPort(io.mode, io.writers));
+  }
+
+  buildProgram(readVersion(), io).parse(argv);
 }
 
-main();
+// Only auto-run when invoked as the CLI entry, so tests can import this module.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main();
+}
