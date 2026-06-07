@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProgram, jsonFlag } from '../src/index.js';
+import { buildProgram, jsonFlag } from '../src/app.js';
 import { type CliIo, selectMode } from '../src/output/output-port.js';
 
 const io: CliIo = { mode: 'json', writers: { out: () => {}, err: () => {} } };

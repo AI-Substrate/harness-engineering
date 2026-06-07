@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
-import { buildProgram, commanderErrorEnvelope } from '../../src/index.js';
+import { buildProgram, commanderErrorEnvelope } from '../../src/app.js';
 import type { CliIo, Writers } from '../../src/output/output-port.js';
 
 const clock = () => new FakeClock('2026-06-08T07:20:00.000Z');
