@@ -3,7 +3,7 @@
 **Plan**: [../../harness-core-plan.md](../../harness-core-plan.md)
 **Phase**: Phase 1: Package scaffold + engineering kernel
 **Generated**: 2026-06-08
-**Status**: Ready for takeoff
+**Status**: Landed ✅
 
 ---
 
@@ -56,8 +56,7 @@ stateDiagram-v2
     S4 --> S5
     S5 --> [*]
 
-    class S1,S2,S3,S4 done
-    class S5 active
+    class S1,S2,S3,S4,S5 done
 ```
 
 **Legend**: grey = pending | yellow = active | red = blocked/needs input | green = done
@@ -72,7 +71,7 @@ stateDiagram-v2
 - [x] **Stage 2: Ship the Clock adapter** — port/system/fake + a determinism test, ahead of the kernel because the envelope depends on it (`harness/cli/src/adapters/clock/*` — new) — T005
 - [x] **Stage 3: TDD the output kernel** — red kernel tests, then envelope/error-codes/exit green (`harness/cli/test/output/*`, `harness/cli/src/output/{envelope,error-codes,exit}.ts` — new) — T006–T007
 - [x] **Stage 4: OutputPort + mode selection + renderers** — `selectMode` precedence + JSON/human renderers + tests (`harness/cli/src/output/output-port.ts` — new) — T008
-- [~] **Stage 5: Prove the npx wiring** — minimal `index.ts`, build smoke + `npm pack --dry-run` (`harness/cli/src/index.ts` — new) — T009
+- [x] **Stage 5: Prove the npx wiring** — minimal `index.ts`, build smoke + `npm pack --dry-run` (`harness/cli/src/index.ts` — new) — T009
 
 ---
 
@@ -133,4 +132,4 @@ flowchart LR
 - [x] T006: Kernel tests (red) — envelope + exit
 - [x] T007: Implement envelope/error-codes/exit (green)
 - [x] T008: `output-port.ts` — `selectMode` + renderers + tests
-- [ ] T009: Minimal `index.ts` (version from shipped `package.json`) + build smoke + `npm pack --dry-run`
+- [x] T009: Minimal `index.ts` (version from shipped `package.json`) + build smoke + `npm pack --dry-run`

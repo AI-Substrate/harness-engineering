@@ -100,3 +100,22 @@
 - `test/output/output-port.test.ts` (11 tests): all 5 selectMode precedence cases; renderJson stdout-only; renderHuman stdout/stderr split; createOutputPort dispatch; **exitWithEnvelope** (spied process.exit → emits + exit 2).
 - **Evidence**: `just fft` green — 30/30 tests; coverage **94.28%** (exitWithEnvelope now covered).
 - **AC**: AC-4 (human/JSON renderers + mode selection). **Stage 4 complete.**
+
+### T009 — Minimal entrypoint + smokes [Stage 5 — PHASE LANDED]
+**Status**: ✅ complete
+
+- `src/index.ts`: commander root, `-v, --version` (reads version from the repo-root `package.json` via `new URL('../../../package.json', import.meta.url)` — holds in dev + installed), root `.action()` prints an **orientation envelope** through the kernel (`formatOk` + `selectMode` + `createOutputPort`).
+- **In-build fix**: first cut guarded orientation on `argv.slice(2).length===0`, so `harness --json` (a global flag, no subcommand) emitted nothing. Reworked to a commander root action + `jsonFlag(argv)` tri-state read → orientation fires for `harness`, `harness --json`, `harness --no-json`; commander still owns `--version`/`--help`.
+- **Evidence**:
+  - `npm run build` clean; `node dist/index.js --version` → `0.1.0`.
+  - no-args (piped) → JSON envelope, exit 0; `--json` → JSON envelope; `--no-json` → `harness: ok` on **stdout**, `→ <next_action>` on **stderr** (contract split verified).
+  - `npm pack --dry-run` lists `harness/cli/dist/index.js` (2.4kB) + LICENSE; `bin.harness` resolves.
+  - `just fft` green — 30 tests, coverage 94%.
+- **AC**: AC-1..AC-5 all satisfied. **Phase 1 LANDED.**
+
+## Phase 1 Result
+
+- **Acceptance**: AC-1 ✅ (root manifest/bin/prepare/files/engines), AC-2 ✅ (source under harness/cli, tsc src→dist), AC-3 ✅ (biome + vitest+coverage + justfile fft), AC-4 ✅ (output kernel envelope/renderers/exit policy, unit-tested), AC-5 ✅ (`just fft` green).
+- **Tests**: 30 passing across 5 files; coverage 94.28% (index.ts excluded).
+- **Companion**: 1 finding bundle (F001, 2×HIGH) raised + fixed inline + re-verified. All other commits approved.
+- **Deviations logged**: scaffold stub in T001; vitest→^4 for security; output-port.ts interface created in T007; commander tri-state flag fix in T009.
