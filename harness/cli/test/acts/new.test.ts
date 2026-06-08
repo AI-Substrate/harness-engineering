@@ -77,7 +77,18 @@ describe('registerNewAct', () => {
   it('--wrap emits the wrap variant', () => {
     const { io, out } = ioFor('json');
     const code = run(['test', '--wrap', 'npm test'], io, new FakeFs());
-    expect(JSON.parse(out()).data.variant).toBe('wrap-ts');
+    const env = JSON.parse(out());
+    expect(env.data.variant).toBe('wrap-ts');
+    // wrap scaffolds already have a working run() — next_action must NOT say "implement run()" (MH-003)
+    expect(env.next_action).not.toContain('implement run()');
+    expect(env.next_action).toContain('harness test');
+    expect(code).toBe(0);
+  });
+
+  it('a minimal stub tells the author to implement run()', () => {
+    const { io, out } = ioFor('json');
+    const code = run(['greet'], io, new FakeFs());
+    expect(JSON.parse(out()).next_action).toContain('implement run()');
     expect(code).toBe(0);
   });
 

@@ -15,6 +15,18 @@ export interface NewActDeps {
 }
 
 /**
+ * Variant-aware "what next". A `--wrap` scaffold already has a working `run()`,
+ * so telling the author to "implement run()" is misleading (MH-003) — point them
+ * at running/reviewing it instead. A minimal stub genuinely needs implementing.
+ */
+function nextActionFor(variant: string, path: string, verb: string): string {
+  const isWrap = variant.startsWith('wrap');
+  return isWrap
+    ? `Run \`harness ${verb}\` to try it (run() already wraps your command); edit ${path} to tweak. \`harness doctor\` confirms it loaded.`
+    : `Edit ${path} to implement run(), then run \`harness ${verb}\`. \`harness doctor\` confirms it loaded.`;
+}
+
+/**
  * Register the `new` command — scaffolds a fresh, loadable extension into the
  * repo's `.harness/extensions/`. A CORE command (reserved, like `help`/`doctor`,
  * runs even in `--no-extensions` mode); it owns no business logic — the
@@ -41,9 +53,7 @@ export function registerNewAct(program: Command, io: CliIo, deps: NewActDeps): v
             'new',
             { path: outcome.path, verb: outcome.verb, variant: outcome.variant },
             deps.clock,
-            {
-              next_action: `Edit ${outcome.path} to implement run(), then run \`harness ${outcome.verb}\`. \`harness doctor\` confirms it loaded.`,
-            },
+            { next_action: nextActionFor(outcome.variant, outcome.path, outcome.verb) },
           )
         : formatError('new', outcome.code, outcome.message, deps.clock, {
             next_action: outcome.next_action,
