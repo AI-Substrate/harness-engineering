@@ -17,6 +17,14 @@ export const ErrorCodes = {
   EXTENSION_RUNTIME_ERROR: 'E141',
   /** Two extensions (or an extension + a reserved core name) declared the same verb name. */
   EXTENSION_VERB_CONFLICT: 'E142',
+  /** `harness new`: the requested verb name fails the name rules (empty, spaces, separators, etc.). */
+  SCAFFOLD_INVALID_NAME: 'E150',
+  /** `harness new`: the requested name is reserved by a core command (`help`/`doctor`/`new`). */
+  SCAFFOLD_NAME_RESERVED: 'E151',
+  /** `harness new`: a file already exists at the target path and `--force` was not passed. */
+  SCAFFOLD_FILE_EXISTS: 'E152',
+  /** `harness new`: the directory create or file write itself failed (permissions, etc.). */
+  SCAFFOLD_WRITE_FAILED: 'E153',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
