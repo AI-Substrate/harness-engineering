@@ -206,3 +206,59 @@ Groups (ordered): **A** ports/adapters → **B** contract → **C** loader core 
 **Standalone?**: No — concrete downstream consumers exist (`/plan-6` build, WS-A contract, the 11 ACs, CI/packaging, the extension author).
 
 Overall: VALIDATED WITH FIXES
+
+---
+
+## Validation Record — Code Changes (2026-06-08)
+
+Validates the **shipped implementation** (28 tasks + 7 companion-finding fixes + 1 validate-fix), not the plan. Run via `/validate-v2`, 4 parallel agents.
+
+### Validation Thesis
+
+**Raison d'être**: Let a developer who `npx`-installed the harness core extend it by dropping an extension file into their repo's `.harness/extensions/` — the core discovers + loads it at runtime; each contributes a top-level `harness <verb>` (own `--help`/options/Envelope/exit codes). Retires `BUILTIN_SLOTS` (P10). North star: extending the harness is "super easy."
+
+**Value claim**: Authoring an extension is trivial and safe — drop a `.ts`/`.js` file, return intent via `ctx` helpers; the kernel owns command/timestamp/exit/`process.exit`; one broken extension never breaks the CLI or others; `doctor` enumerates every extension (P7); verbs wrap real commands (P8).
+
+**Artifact promise**: Authors import only `harness-engineering/contract` (types-only, runtime-erased — even a plain `.js` extension needs no runtime dep); the loader isolates failures; the verb-name key is an open `string` (no closed union).
+
+**Intended beneficiaries**: extension authors; agents driving the CLI (machine-readable Envelopes + deterministic exit codes); the `doctor` diagnostic; future maintainers.
+
+**Proof target**: Validated Evidence.
+
+**Evidence standard**: 146 unit tests; real-jiti integration (incl. a plain-`.js` extension end-to-end); installed-bin `--omit=dev` smoke matching WS-A worked examples; source match to the WS-A contract.
+
+**Thesis source**: `harness-extension-system-plan.md` + `workshops/001-extension-contract-and-loader.md` + spec.
+
+**Thesis verdict**: Advanced.
+
+**Main thesis risk**: The plain-`.js` authoring path was asserted-but-unproven (now closed by `greetjs.js` integration test, commit `dd850e7`).
+
+---
+
+| Agent | Lenses Covered | Thesis Axes | Issues | Verdict |
+|-------|---------------|-------------|--------|---------|
+| Correctness | Edge Cases, System Behavior, Hidden Assumptions, Technical Constraints | Implementation Readiness | 0 | ✅ |
+| Regression + Domain | Integration & Ripple, Domain Boundaries, Concept Docs, Deployment & Ops, Test boundary | Safety to Change | 0 (grounded: F005/F008/F002 ripple + arch guards verified) | ✅ |
+| Thesis Alignment | Thesis Alignment, Evidence Sufficiency, Proof-Level Fit, User/Product Value, Agent Readiness | Thesis Alignment | 1 MED — fixed (`dd850e7`) | ⚠️→✅ |
+| Forward-Compatibility | Forward-Compatibility, Contract Integrity, Security & Privacy, Hidden Assumptions | Contract Integrity | 1 MED — accepted/deferred (F003 symlink) | ⚠️ |
+
+**Lens coverage**: 12/15 (Thesis Alignment ✓, Forward-Compatibility ✓ engaged — not STANDALONE).
+
+### Forward-Compatibility Matrix
+
+| Consumer | Requirement | Failure Mode | Verdict | Evidence |
+|----------|-------------|--------------|---------|----------|
+| Extension AUTHORS | Types-only self-contained contract via `harness-engineering/contract` | encapsulation lockout, shape mismatch | ✅ | `contract.ts:17-21,44-112`; `package.json` `exports['./contract']`; examples import only the contract type |
+| `doctor` command | Stable machine-readable `ExtensionRecord` (incl. `shadows: string[]`) | contract drift, shape mismatch | ✅ | `doctor-service.ts:35-37,109`; `contract.ts:102-112`; `registry.ts:67-76` |
+| CI package-smoke | Built package resolves `./contract` + a `.ts` extension loads under `--omit=dev` | exports/`.d.ts` failure | ✅ | `package.json:9-15`; `tsconfig.json` `declaration:true`; `.github/workflows/ci.yml` package-smoke |
+| NEXT PHASE (this branch) | Open `string` verb-name key; extensible registry/contract | closed-union drift | ✅ | `registry.ts` open key; `contract.ts` `HarnessVerb` |
+
+**Thesis alignment**: Value claim **advanced** at the **Validated Evidence** proof target with **Strong** evidence; the one residual thesis risk (unproven plain-`.js` path) is now closed by an integration test.
+
+**Outcome alignment**: The shipped code advances "developers can extend their installed harness super easily — drop a file in `.harness/extensions/` and get a first-class `harness <verb>`"; the only open item is the consciously-deferred symlink-realpath containment (F003), an accepted v1 non-goal for a developer-trusted local extension tree.
+
+**Accepted/deferred**: F003 — discovery containment is lexical (`path.relative`), so a symlink **inside** `.harness/extensions/` can still point outside. Deferred for v1: the extension tree is the developer's own trusted local code (no privilege escalation beyond what they already have), and true realpath needs a new `FsPort.realpath` capability. Documented inline in `discovery.ts` and in the thesis non-goals.
+
+**Standalone?**: No — concrete downstream consumers exist (authors, `doctor`, CI smoke, next phase).
+
+Overall: VALIDATED WITH FIXES
