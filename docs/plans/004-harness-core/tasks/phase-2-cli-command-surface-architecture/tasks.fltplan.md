@@ -76,7 +76,7 @@ stateDiagram-v2
 - [x] **Stage 3: Make `help` real** — service + act; `help --json` machine-readable slot list (`services/help/`, `acts/help.ts` — new). [T006]
 - [x] **Stage 4: Make `doctor` real** — layered checks via injected fakes; consumes the registry (`services/doctor/`, `acts/doctor.ts` — new). [T007]
 - [x] **Stage 5: Validate the command-map** — in-code map shape validation → `E120` envelope (`services/config/load-config.ts` — new). [T008]
-- [~] **Stage 6: Wire the composition root** — full commander entrypoint, tri-state `--json` resolved once, all acts registered; add `makeOutputPort` (`src/index.ts` — replace, `output-port.ts` — modify). [T009]
+- [x] **Stage 6: Wire the composition root** — full commander entrypoint, tri-state `--json` resolved once into `CliIo {mode,writers}` (this **superseded** the planned `makeOutputPort` helper — see F002/F005 in the execution log), all acts registered (`src/index.ts`+`src/app.ts`, `output-port.ts` — modify). [T009]
 - [x] **Stage 7: Harden + document + integrate** — actionable errors, CLI README, integration (automated `test/integration/cli-commands.test.ts` + manual smoke) + coverage pass (`acts/*`, `README.md` — new). [T010–T012]
 
 ---
@@ -139,7 +139,7 @@ flowchart LR
 - [x] T002: process adapter (port/impl/fake + smoke)
 - [x] T003: git adapter (port/impl/fake + smoke)
 - [x] T004: env adapter (port/impl/fake + smoke)
-- [x] T005: slot registry + unconfigured-slot factory act (test-first) + `makeOutputPort` helper
+- [x] T005: slot registry + unconfigured-slot factory act (test-first) — `CliIo {mode,writers}` threading superseded the planned `makeOutputPort` helper (F002)
 - [x] T006: help service + act (`help --json` machine-readable)
 - [x] T007: doctor service + act (test-first, consumes registry)
 - [x] T008: command-map validation (E120)

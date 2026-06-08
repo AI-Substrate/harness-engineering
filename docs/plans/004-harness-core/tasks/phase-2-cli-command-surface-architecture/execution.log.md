@@ -113,6 +113,7 @@
 - **Evidence**: `just fft` green — 87 tests, coverage 91.28% (drop = app.ts `main()` now counted, previously excluded as index.ts; report-only).
 
 | F006 | T010 | MEDIUM | ✅ fixed in `7c8fae8`, re-pinged | `main()` help/version branch called `process.exit` directly, drifting from the single-exit-point rule. Now `return`s (Node exits 0 naturally); added `test/architecture/no-direct-exit.test.ts` enforcing only `output/exit.ts` calls `process.exit`. |
+| F007 | drain | MEDIUM | ✅ fixed in docs | Phase 2 docs still told future agents to add/use the removed `makeOutputPort` and showed stale Stage-6/approval status. Added a Build-reconciliation note (makeOutputPort → CliIo; flat-slot → run-dispatcher+factory), set Stage 6 `[x]`, corrected the companion status. |
 
 ### T011 — CLI README [Stage 7]
 **Status**: ✅ complete · **sha**: `617444f` · companion **APPROVE**
@@ -130,5 +131,5 @@
 
 - **Acceptance**: AC-6 ✅ (thin entrypoint, no business logic, no fs/process/git imports), AC-7 ✅ (acts inject services+adapters; fs/process/git/env/clock each have a fake), AC-8 ✅ (help + per-command --help; `help --json` machine-readable `data.slots[]`), AC-9 ✅ (doctor layered report, next_action per layer, human stderr/JSON stdout, exit 0), AC-10 ✅ (`run <slot>` + 7 top-level slots → unconfigured + next_action + exit 2; run/validate accept --dry-run), AC-11 ✅ (actionable errors E108/E110/E120/E100, no raw stack traces), AC-12 ✅ (services/acts unit-tested via fakes; command-map validated before use).
 - **Tests**: 96 passing across 18 files; coverage 92.2% (app.ts `main()` is integration-tested; report-only).
-- **Companion**: 6 findings (F001 MEDIUM, F002 HIGH, F003 HIGH, F004 MEDIUM, F005 HIGH, F006 MEDIUM) — ALL raised, fixed inline, and re-verified. Final approvals pending on T012/F006.
+- **Companion**: 7 findings (F001 MEDIUM, F002 HIGH, F003 HIGH, F004 MEDIUM, F005 HIGH, F006 MEDIUM, F007 MEDIUM docs-drift) — ALL raised, fixed inline, and verified/approved by the companion. Final sweep clean.
 - **Deviations logged**: F001 detached-HEAD smoke; F003 run-dispatcher vs flat-slot reconciliation (run + 7 factory); F002 CliIo threading; F005 app.ts/index.ts split for the bin symlink; F006 single-exit-point.

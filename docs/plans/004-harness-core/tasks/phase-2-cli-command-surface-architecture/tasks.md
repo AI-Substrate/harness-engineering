@@ -7,6 +7,8 @@
 **Acceptance**: AC-6 … AC-12 (spec)
 **Testing approach**: Hybrid — **test-first** for services/registry (logic); lighter validation for acts/wiring.
 
+> **Build reconciliation (post-validation)**: during the companion build the planned `makeOutputPort` helper was **superseded** by an entrypoint-resolved `CliIo {mode, writers}` injected into every act (companion finding F002) — references to `makeOutputPort` below are historical planning guidance. The flat 8-slot factory was also split into a `run <slot>` dispatcher + a 7-slot top-level factory to honour workshop 001 (F003). See `execution.log.md` for the full deviation record.
+
 ---
 
 ## Executive Briefing
