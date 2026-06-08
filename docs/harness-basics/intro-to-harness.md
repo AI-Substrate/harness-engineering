@@ -2,6 +2,27 @@
 
 
 
+# Sound familiar?
+
+- The agent says "done" — you take a look and wonder what it was up to the whole time. (→ backpressure)
+- How many times has your team solved the same setup problem? (→ tokens / pay it forward)
+- Tests are green, everything passed… first real run, instantly broken. (→ evidence)
+- "Did you even try to run this?" (→ backpressure)
+- Can your agent even run and interact with your project? (→ harnessability)
+- 25 minutes of the agent looping just to boot the app and hit one endpoint. (→ tokens)
+
+## Speaker Notes
+
+
+
+The agent is confident, the tests look green, and then you actually open it and something obvious is wrong. Or it did finish, but burned twenty-five minutes mid-run cycling on how to start the app and check an endpoint. Burned tokens and time.
+
+each of these is a fixable harness defect, not just "the agent being dumb". The agent stumbling is usability research on your engineering environment. We'll spend the rest of the session on how to capture that and pay it forward.
+
+And here's the thing — you've probably already fixed some of these. Maybe all of them. Maybe the fix lived in a script someone wrote, or a message in a thread. Most likely its in instructions in a markdown file.  An engineering harness takes that instinct — encoding the answer so the problem never bites again — and makes it a first-class concept: it gives it a defined home. discoverable, runnable, and shared with everyone (and every agent) on the repo. 
+
+It is the productisation of the engineering environment. 
+
 # Agenda
 
 - Framing the problem: what an engineering harness actually is
