@@ -3,12 +3,12 @@
   "slug": "harness-setup-flow",
   "plan_dir": "docs/plans/008-harness-setup-flow",
   "mode": "Simple",
-  "current_stage": "awaiting-6",
-  "pending_command": "/plan-6-v2-implement-phase-companion --plan \"docs/plans/008-harness-setup-flow/harness-setup-flow-plan.md\"",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/008-harness-setup-flow/harness-setup-flow-plan.md\"",
   "intent": "Rework engineering-harness-setup into a lean npx-install flow that calls harnessability-assessment then add-extension(boot); drop the templates/retro scaffolding now handled by the harness CLI.",
   "milestones_total": 5,
-  "milestones_done": 3,
-  "last_checkpoint_at": "2026-06-08T22:34:45Z",
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-08T23:06:33Z",
   "compacted_seams": [],
   "status": "active"
 }
