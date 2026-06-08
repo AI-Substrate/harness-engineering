@@ -25,3 +25,8 @@
 - References `.harness/reports/harnessability/latest.json`; no generated-governance/CLI/template prose remains.
 - Companion: T001 acked on inside lane (oriented + ack); no findings yet.
 - ACs advanced: AC7, AC1.
+
+### T003 — Update AUTHORING.md to orchestration-only ✅
+- Replaced the 91-line template-invariant authoring notes (byte-identity / magic-wand / placeholder-syntax / CLI-envelope-schema invariants) with 34 lines of orchestration-era invariants: orchestrate-don't-generate, chain-the-siblings, report-sentinel contract, boot-stays-basic, public-safe, envelope-only, canonical boundary, `harness init` forward dependency.
+- Removed the private codename reference that was in the old Sources list (P12).
+- ACs advanced: AC6, AC7.

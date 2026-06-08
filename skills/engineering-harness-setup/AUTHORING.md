@@ -1,90 +1,34 @@
 # Authoring notes — engineering-harness-setup
 
-**This file is repo-internal and NOT installed by the skill.** It documents the conventions the skill maintains so future editors can extend it without regressing on the load-bearing invariants.
+**This file is repo-internal and NOT installed by the skill.** It documents the conventions future editors must preserve.
 
-## Why this skill exists
+## What this skill is now
 
-The skill's job is to make the engineering harness nucleus materially exist in a target repository in one invocation. "Engineering harness" here means the project-side development loop: a front-door governance doc, a command-mapped CLI under `harness/cli/`, deterministic sensor slots in `harness/cli/commands.json`, canonical improvement surfaces under `docs/harness`, an install report, and the AGENTS.md patch that points agents at the harness instead of letting them invent their own commands. The skill is the agent-installable form of the principles in `harness-foundations/` (this repo's foundational research).
+A **lean orchestration flow**. It installs the harness CLI from npx and drives a 3-step journey — install → (conditional) harnessability-assessment → stand up a basic `boot` via add-extension. It **generates no artifacts of its own**.
 
-The skill answers a specific failure mode: when a fresh team — or a fresh agent in a fresh target repo — wants to start the engineering-harness practice, they should not have to read 2000 lines of source material first. They should be able to invoke one skill, answer a handful of inspection questions, and end up with a working harness on disk that can be `git diff`'d in one PR.
-
-The skill **embodies** the principles; it does not just describe them.
+This is a deliberate, breaking simplification of the earlier skill, which generated a governance doc, a placeholder `harness/cli/`, a `docs/harness/` scaffold, an `AGENTS.md` block, and seeded known-difficulties from 19 templates. All of that deterministic substrate now lives in the **harness CLI** as real code (and in a future `harness init`). The skill orchestrates those surfaces; it no longer reimplements them.
 
 ## Sources
 
-- `docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md` — the spec. Authoritative for the package contract.
-- `docs/plans/002-engineering-harness-setup-skill/decisions.md` — the decision log. Authoritative for resolved ambiguities.
-- `docs/plans/002-engineering-harness-setup-skill/source-prompt.md` — the original 2236-line research brief. Authoritative for template bodies; the spec's Group B table maps brief sections to template filenames.
-- `docs/plans/002-engineering-harness-setup-skill/field-research-minih-chainglass.md` — the production-pattern validation. Authoritative for the deltas between the brief and real-world harness implementations.
-- `harness-foundations/` — the foundational research. Source for the citation references in template bodies.
-
-## Foundation citation discipline
-
-Every template paraphrasing a foundation principle must carry an HTML-comment citation near the top:
-
-```html
-<!-- foundations: first-principles#NN, patterns-that-work#PNN, directives#DN -->
-```
-
-These citations exist so a curious agent or human can trace any installed text back to the foundational claim. The citations are HTML comments because they ship into the target repo as part of the installed file; HTML-comment form keeps them out of rendered markdown while still being grep-friendly.
-
-The citation must reference foundation IDs only — never source IDs (`S001`, `N2-S001`, `M00`, etc.) and never private-source identifiers. Review shipped surfaces (`SKILL.md` and `templates/`) for this before committing.
+- `docs/plans/008-harness-setup-flow/harness-setup-flow-spec.md` — the spec (authoritative for the contract + clarifications).
+- `docs/plans/008-harness-setup-flow/harness-setup-flow-plan.md` — the implementation plan + validation record.
+- `docs/plans/008-harness-setup-flow/research-dossier.md` — the research behind the rework.
+- `harness-foundations/first-principles.md` — #11 "Boot is the first proof", #12 "boot is orientation" (the `boot` framing).
 
 ## Load-bearing invariants
 
-Five invariants must hold across the package.
-
-**Scope rule for shipped surfaces.** Invariants 1–4 apply to **shipped surfaces only** — `SKILL.md` and everything under `templates/`. Repo-internal authoring notes may legitimately reference foundation paths, source-ID patterns, and substitution syntax in prose; they are not installed to target repos.
-
-### 1. Canonical boundary sentence
-
-The sentence *"The agent harness drives. The engineering harness proves."* appears byte-identically in at least five files: `SKILL.md`, `templates/root-HARNESS.md`, `templates/agents-md-snippet.md`, `templates/harness-onboard-agent-session.md`, `templates/install-report.md`. The canonical form lives in `templates/canonical-boundary.txt` (one line, single trailing newline, no commentary). Any drift erodes the front-door contract.
-
-### 2. No private-source contamination
-
-Shipped prose must never reference `harness-foundations/`, `docs/plans/`, `scratch/`, `source-notes/`, the source IDs `S001|S002|S003|S004|N2-S00|M00`, or private substrate names outside HTML comments.
-
-### 3. Magic-wand wording byte-identity
-
-The hybrid magic-wand wording from `templates/magic-wand-prompt.md` is the single source of truth. Six surfaces echo it byte-for-byte: the prompt template itself, `templates/root-HARNESS.md` Rule 5, `templates/harness-friction-log.md`, `templates/harness-proof-note.md`, `templates/install-report.md`, and `templates/retrospective-schema.json` (the `magicWand.description` field).
-
-### 4. Placeholder syntax is well-formed
-
-Every `{{XXX}}` marker in `templates/` must match the canonical form `{{[A-Z_][A-Z0-9_]*}}` (uppercase letters, digits, and underscores; starts with a letter or underscore). This catches authoring typos like `{XX}}`, `{{XX}`, `{{lower}}`, or `{{Mixed_Case}}`.
-
-A separate **runtime** check, `assert_no_placeholder_leaks()` inside the CLI skeletons, verifies that no `{{XXX}}` markers survived install-time substitution into the target repo's `docs/project-rules/engineering-harness.md`, `AGENTS.md`, or `harness/cli/commands.json`. That check runs as the final step of `<CLI> validate` and returns `error.code: PLACEHOLDER_LEAK` on failure. The two checks are deliberately separated: pre-commit catches *authoring* mistakes; runtime catches *substitution* mistakes.
-
-### 5. `cli-envelope.schema.json` conformance
-
-Every CLI subcommand documented in `templates/cli-command-contract.md` must produce stdout that conforms to `templates/cli-envelope.schema.json`. The two CLI skeletons (`cli-python-harness.py`, `cli-node-harness.mjs`) emit envelopes through a single helper function so the conformance is structural, not by convention.
-
-There is no automated check for this in v0.1 (no JSON-Schema runtime in the package); the dogfood run is the verification.
-
-## Drift checklist for v0.2
-
-These are known evolution paths that v0.1 deliberately defers. They become `docs/harness` entries in the target repo during dogfood; v0.2 promotes them to feature work.
-
-- **Single-file SKILL.md fallback** — deferred unless a runtime rejects multi-file packages.
-- **Richer exit-code semantics** — chainglass-style numeric codes (`E100`–`E126`) for finer-grained CI branching. v0.1 keeps process exits as 0/1/2 with `error.code` enum inside the envelope.
-- **Wrap-existing improvements** — v0.1 supports POSIX-shell wrappers only. v0.2 candidates: justfile-target generation, Python-shim wrapper, npm-script wrapper, Makefile-target wrapper.
-- **Portability beyond pi** — v0.1 assumes pi runtime conventions (frontmatter `name`+`description` only). v0.2 considers Claude Code skill packaging.
-- **Multi-environment / multi-profile targets** — production repos sometimes need `harness/cli/profiles/{dev,staging,prod}/commands.json`. v0.1 ships a single `harness/cli/commands.json`; v0.2 considers a `--profile` flag.
-- **Partial-install recovery** — if the skill aborts mid-install (e.g. user denies permission at step 9 of 14), v0.1 leaves whatever was written. v0.2 considers an `install-state.json` + resume flag.
-- **AGENTS.md duplicate-sentence dedup** — v0.1 logs a warning if `AGENTS.md` already contains the boundary sentence. v0.2 considers replacing the duplicate with a pointer comment.
-- **Equivalence-row catalogue expansion** — v0.1 ships a 7-row catalogue (see `templates/agents-md-snippet.md`). Exotic tooling (Bazel, Pants, dotnet, gradle) falls through. v0.2 grows the catalogue based on dogfood `docs/harness` entries.
-- **`CLAUDE.md` / `.cursorrules` co-installation** — v0.1 only patches `AGENTS.md`. v0.2 considers detecting and patching `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`.
+1. **Orchestrate, don't generate.** The skill must not write governance docs, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or retro/known-difficulties/back-pressure files. If a future need looks like generation, it belongs in the CLI (`harness init`) — not here.
+2. **Chain the sibling skills, don't inline them.** `harnessability-assessment` and `add-extension` are invoked, never reimplemented.
+3. **The report sentinel is exactly `.harness/reports/harnessability/latest.json`** (directory fallback allowed). This is a cross-skill contract with `harnessability-assessment`; keep both sides in sync.
+4. **`boot` stays a basic nucleus.** A thin wrapper over the repo's existing readiness commands. Resist seed/reset/observe/sensor scope creep — those are later, loop-driven improvements.
+5. **Public-safe.** Shipped surfaces (`SKILL.md`, `README.md`) must never contain a private repo name/path, person, or internal codeword — this is a public repo. Describe boot shapes generically. (`AI-Substrate/harness-engineering` is the public CLI repo URL and is fine.)
+6. **Envelope-only consumption.** Any programmatic read of CLI output uses `--json` envelope fields + exit codes, never scraped prose — so a future MCP server reuses the same surfaces unchanged.
+7. **Canonical boundary sentence.** *"The agent harness drives. The engineering harness proves."* appears verbatim in `SKILL.md` and `README.md`. Don't drift it.
+8. **`harness init` is a forward dependency.** The flow documents calling it but must degrade gracefully when the installed CLI predates it (`.harness/extensions/` is created lazily by `harness new`).
 
 ## How to extend this skill
 
-If you are adding a new template or a new CLI subcommand:
-
-1. Author the new file under `templates/`.
-2. Add an HTML-comment foundation citation at the top.
-3. If the file contains the boundary sentence: read it byte-for-byte from `templates/canonical-boundary.txt`; do not re-type.
-4. If the file contains the magic-wand prompt: read it byte-for-byte from `templates/magic-wand-prompt.md`'s "Canonical wording" block.
-5. If the file is a CLI source: emit envelopes via the shared helper; do not invent a new envelope shape.
-6. Review shipped surfaces for the invariants above before committing.
-7. Run one dogfood pass against a real target.
-8. Append a one-line entry to the spec's "Known limitations" or "v0.2 evolution paths" section if the change suggests a future generalisation.
-
-The skill is small on purpose. New surfaces become new templates; new branches become new install-flow steps; new error modes become new `error.code` enum entries. Resist adding configuration knobs — strong defaults beat options (see `harness-foundations/patterns-that-work.md`).
+- Keep it a flow. New capability is usually a new step or a sharper hand-off, not a new generated file.
+- If you touch the report-location contract, update `harnessability-assessment` in the same change.
+- If you change the install recipe, keep it in lockstep with the `agents/install-and-validate-test-extension` e2e agent (the acceptance proof).
+- Strong defaults beat options — resist configuration knobs (`harness-foundations/patterns-that-work.md`).
