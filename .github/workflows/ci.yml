@@ -45,6 +45,14 @@ jobs:
       - name: Test with coverage
         run: cd harness/cli && npx vitest run --coverage
 
+      - name: Upload coverage (lcov)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov-node${{ matrix.node }}
+          path: harness/cli/coverage/lcov.info
+          if-no-files-found: error
+
       - name: Audit (advisory)
         run: npm audit --audit-level=high || true
 

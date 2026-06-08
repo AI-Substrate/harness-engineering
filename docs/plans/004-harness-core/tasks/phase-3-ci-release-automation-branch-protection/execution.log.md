@@ -35,3 +35,9 @@
 - Added a stable **`ci-required`** gather job (`needs: [build-test]`, `if: always()`, fails if any needed job failed/cancelled) so branch protection (T005) references one matrix-independent check name. `ci-required` will gain `package-smoke` as a dependency in T003 (keeps every intermediate commit a valid workflow).
 - YAML validated with PyYAML (the `KeyError: 'on'` is the PyYAML-1.1 boolean-key quirk, not a workflow error). Local CI mirror proven green: biome clean (52 files), `npm run build` OK, `tsc --noEmit` exit 0, **96 tests pass, 92.2% coverage** (text-summary prints → AC-14 partial).
 - **Done-When met**: workflow parses; checkout precedes `npm ci`; each step runs green locally; `ci-required` gather job exists with a fixed name.
+
+### T002 — coverage surfacing + lcov artifact (done)
+- Added `Upload coverage (lcov)` step to `build-test` (`actions/upload-artifact@v4`, `if: always()`), artifact name `coverage-lcov-node${{ matrix.node }}` (per-matrix → no upload-v4 duplicate-name error), path `harness/cli/coverage/lcov.info`, `if-no-files-found: error` (fails the job if coverage didn't generate).
+- text-summary already prints via the vitest reporter (`['text-summary','lcov']`) — no config change needed (AC-14).
+- Verified locally: `harness/cli/coverage/lcov.info` present (9 KB). YAML re-validated.
+- **Done-When met**: a CI run will show the coverage summary in the log and a downloadable `lcov.info` artifact.
