@@ -49,3 +49,7 @@
 - Discovery: test bug — `not.toContain('"status"')` collided with a JSON example inside extend-the-harness.md. Replaced with `startsWith('{"command"')===false`; full-equality `out()===content` already proves raw-dump.
 - Added EPIPE guard in `index.ts` (swallow broken-pipe on stdout via process.exitCode, re-throw other stream errors) so `harness docs <id> | head` never stack-traces — makes the act's EPIPE-safe comment true.
 - 6 act tests green; tsc + biome + architecture(single-exit) green.
+
+### T010 — register docs in composition root ✅
+- app.ts: import registerDocsAct (biome organizeImports placed it before doctor), call `registerDocsAct(program, io)` after registerNewAct → command order help, doctor, new, docs, <verbs>.
+- Updated frozen command-list snapshots: app.test.ts (2 sites) + index.test.ts (1 site) → ['help','doctor','new','docs',...]. Integration test asserts core cmds individually (no full-list snapshot). 16 tests green; tsc + biome clean.

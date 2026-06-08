@@ -81,20 +81,20 @@ describe('loadRegistry', () => {
 });
 
 describe('buildProgram — composition root wiring', () => {
-  it('registers help, doctor, one command per registry verb, and the --no-extensions option', () => {
+  it('registers help, doctor, new, docs, one command per registry verb, and the --no-extensions option', () => {
     const registry = { verbs: [mkVerb('hello'), mkVerb('build')], records: [] };
     const program = buildProgram('1.2.3', io, deps(), registry);
     const names = program.commands.map((c) => c.name());
-    expect(names).toEqual(['help', 'doctor', 'new', 'hello', 'build']);
+    expect(names).toEqual(['help', 'doctor', 'new', 'docs', 'hello', 'build']);
     const longs = program.options.map((o) => o.long);
     expect(longs).toContain('--json');
     expect(longs).toContain('--no-extensions');
     expect(program.version()).toBe('1.2.3');
   });
 
-  it('registers core help/doctor even with an empty registry', () => {
+  it('registers core help/doctor/new/docs even with an empty registry', () => {
     const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
-    expect(program.commands.map((c) => c.name())).toEqual(['help', 'doctor', 'new']);
+    expect(program.commands.map((c) => c.name())).toEqual(['help', 'doctor', 'new', 'docs']);
   });
 });
 

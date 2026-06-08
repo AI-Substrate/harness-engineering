@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
 import { registerNewAct } from './acts/new.js';
@@ -146,6 +147,7 @@ export function buildProgram(
   registerHelpAct(program, io, registry);
   registerDoctorAct(program, io, registry);
   registerNewAct(program, io, deps);
+  registerDocsAct(program, io);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
   }
