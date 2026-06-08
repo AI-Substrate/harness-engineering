@@ -159,6 +159,7 @@ Synthesized from `research-dossier.md` and the two Implementation-Ready workshop
 - Branch protection on `main` via documented `gh` step.
 **Depends on**: Phase 2 (there is a real CLI + tests to run).
 **Key risks**: branch protection needs admin rights (Finding 06) → documented `gh api` step, mark applied or deferred.
+**Forward note — verbs are dynamic (Constitution P10, v1.1.0)**: the 8 `BUILTIN_SLOTS` are *temporary scaffolding* to be removed when the extension system lands; verbs will be extension-owned (each bundles its verb + help text). Phase 3 must not encode a fixed slot set — CI/smoke checks should exercise `doctor`/`help` **generically** (e.g. "doctor exits 0 and reports the command-slots layer"), never assert the hardcoded 8-slot list, which would break once scaffolding is removed. Slot removal itself is out of scope for this plan.
 
 | # | Task | Domain | Success Criteria | Notes |
 |---|------|--------|-----------------|-------|
