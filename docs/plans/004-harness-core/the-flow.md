@@ -19,8 +19,10 @@ flowchart TD
   subgraph companion2["🤖 code-review-companion · Phase 2 · APPROVE (7 findings fixed)"]
     p2["Phase 2 · CLI command surface + architecture · BUILT"]:::done
   end
-  p3["Phase 3 · CI + release + branch protection · TASKS+VALIDATED"]:::wip
-  merge["Merge"]:::assumed
+  subgraph companion3["🤖 code-review-companion · Phase 3 · APPROVE (0 findings)"]
+    p3["Phase 3 · CI + release + branch protection · BUILT"]:::done
+  end
+  merge["Merge"]:::known
 
   research --> spec --> plan --> p1 --> p2 --> p3 --> merge
 
@@ -36,10 +38,10 @@ flowchart TD
   said_p1 -.- p1
   said_p2>"🗣 build the brief, then run validation; run it now"]:::done
   said_p2 -.- p2
-  said_p3>"🗣 add forward note; run the /5 then validate"]:::wip
+  said_p3>"🗣 add forward note; run the /5 then validate; live review"]:::done
   said_p3 -.- p3
 ```
 
 **Legend**: 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · 🤖 companion (wraps phases) · worker (side build)
 
-**Now**: Phase 3 tasks tabled (T001–T006) + validated (VALIDATED WITH FIXES) → **Next**: Phase 3 build (`/plan-6` companion)
+**Now**: Phase 3 BUILT + companion-reviewed (0 findings) · CI green on PR #1 · `main` branch-protected · all 3 phases done → **Next**: Merge (`/plan-8` — `PROCEED` gate)

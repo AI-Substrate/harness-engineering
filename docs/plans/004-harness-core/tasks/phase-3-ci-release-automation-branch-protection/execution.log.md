@@ -90,3 +90,11 @@
 | AC-16 (main branch-protected, required CI before merge) | ✅ | `gh api .../branches/main/protection` → required check `ci-required`; documented in CLI README. |
 
 **Build reconciliation**: 6 tasks (T001–T006) built across 5 commits + 1 live `gh api` action; companion reviewed every commit.
+
+## Companion debrief (run 2026-06-08T11-04-06-731Z-0c5a)
+
+- **Verdict**: APPROVE — **0 findings** across T001–T006 + final sweep. Every commit reviewed live (ackOf-linked summaries).
+- **Findings reconciliation**: none to reconcile — clean phase.
+- **MH-003 (companion catch, applied)**: the T006 evidence commit `b7c7af8` triggered a *newer* CI run than the documented `27110680201`. The companion verified the final HEAD run **27110754122** before approving. Confirmed here: `gh pr checks 1` for HEAD `b7c7af8` → build-test (20/22), package-smoke, ci-required **all pass** (run 27110754122). Evidence integrity intact.
+- **Companion magicWand** (→ backlog candidate): a minih coordination summary endpoint returning run output path, project root, acked-task count, findings/questions/peer-update counts as JSON + schema validation in one command. Target: coordination (minih runtime, not this repo).
+- **Difficulties logged**: MH-001 (MINIH_PROJECT_ROOT not in shell env), MH-002 (gh pager blocked; fixed with `GH_PAGER=cat`), MH-003 (timing — newer CI run; resolved). All minih-runtime, not harness-CLI issues.

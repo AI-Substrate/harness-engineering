@@ -4,10 +4,10 @@
   "slug": "harness-core",
   "plan_dir": "docs/plans/004-harness-core",
   "mode": "Full",
-  "cursor": "p3",
-  "recommended_next": "p3",
-  "now": "Phase 3 tasks tabled (T001-T006) + validated (VALIDATED WITH FIXES: 2 MEDIUM checkout + 1 check-name risk fixed) \u2014 ready for Phase 3 build",
-  "next": "Phase 3 build (/plan-6 companion)",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Phase 3 BUILT + companion-reviewed (0 findings) \u2014 CI green on PR #1, main branch-protected. All 3 phases done.",
+  "next": "Merge (/plan-8) \u2014 PROCEED gate",
   "agents": [
     {
       "slug": "code-review-companion",
@@ -24,6 +24,14 @@
       "covers": ["p2"],
       "render": "wrap",
       "result": "APPROVE \u2014 7 findings (3 HIGH/4 MEDIUM) all fixed + verified"
+    },
+    {
+      "slug": "code-review-companion",
+      "kind": "companion",
+      "run_id": "2026-06-08T11-04-06-731Z-0c5a",
+      "covers": ["p3"],
+      "render": "wrap",
+      "result": "APPROVE \u2014 0 findings"
     }
   ],
   "nodes": [
@@ -172,14 +180,28 @@
       "type": "phase",
       "phase": 3,
       "label": "Phase 3 \u00b7 CI + release + branch protection",
-      "status": "in_progress",
-      "command": "/plan-5",
-      "ran_at": "2026-06-08T00:40:00Z",
-      "user_input": "add forward note; run the /5 then validate",
-      "note": "Tasks dossier T001-T006 generated (CI matrix+checkout+ci-required gather job, coverage lcov artifact, package-smoke F005 guard, release-please no-publish, branch protection live [admin confirmed], gh end-to-end validation) + flight plan. validate-v2 (4 agents): Source-Truth clean, Thesis Advanced/Implementation/Strong, Forward-Compat all-green. VALIDATED WITH FIXES \u2014 added actions/checkout to T001/T004 + a stable ci-required aggregation job to close the matrix check-name risk. Next: /plan-6 companion build.",
+      "status": "done",
+      "command": "/plan-6-companion",
+      "ran_at": "2026-06-08T01:21:00Z",
+      "user_input": "live review",
+      "note": "Built T001-T006: ci.yml (Node 20/22 matrix checkout->biome->build->tsc--noEmit->vitest--coverage->audit) + ci-required gather job + coverage lcov artifact + package-smoke (F005 npx/bin-symlink guard, proven locally then green in CI) + release-please (no publish, vX.Y.Z tags) + branch protection applied LIVE on main (required check ci-required) + end-to-end CI validation on PR #1. CI green (run 27110754122): build-test 20/22 + package-smoke + ci-required all pass, coverage 92.2%, lcov artifacts. code-review-companion (Power-On-Mode) reviewed every commit: APPROVE, 0 findings. Companion MH-003 catch: re-verified final HEAD CI run. /plan-7 superseded by companion.",
       "artifacts": [
-        "tasks/phase-3-ci-release-automation-branch-protection/tasks.md",
-        "tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md"
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        "release-please-config.json",
+        ".release-please-manifest.json",
+        "harness/cli/README.md",
+        "tasks/phase-3-ci-release-automation-branch-protection/execution.log.md"
+      ],
+      "agents": [
+        {
+          "slug": "code-review-companion",
+          "kind": "companion",
+          "run_id": "2026-06-08T11-04-06-731Z-0c5a",
+          "covers": ["p3"],
+          "render": "wrap",
+          "result": "APPROVE \u2014 0 findings"
+        }
       ],
       "next": [
         "merge"
@@ -189,7 +211,7 @@
       "id": "merge",
       "type": "merge",
       "label": "Merge",
-      "status": "assumed",
+      "status": "known",
       "command": "/plan-8",
       "next": []
     }
