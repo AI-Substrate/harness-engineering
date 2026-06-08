@@ -20,7 +20,7 @@ export interface HelpContent {
 const PURPOSE =
   "The agent-friendly front door to this repo's engineering harness. " +
   'Verbs are owned by extensions: drop a file in `./.harness/extensions/` and it ' +
-  'becomes a `harness <verb>` command. `help` and `doctor` are always available.';
+  'becomes a `harness <verb>` command. `help`, `doctor`, and `new` are always available.';
 
 const OUTPUT_MODES = [
   '--json forces JSON output',
@@ -36,8 +36,8 @@ const EXIT_CODES: Record<string, string> = {
 };
 
 const EMPTY_HINT =
-  'No extensions installed yet. Add one by dropping a file in `./.harness/extensions/` ' +
-  '(e.g. `hello.ts` that default-exports a HarnessVerb). See the authoring guide.';
+  'No extensions installed yet. Run `harness new <name>` to scaffold one (or drop a file ' +
+  'in `./.harness/extensions/`, e.g. `hello.ts` that default-exports a HarnessVerb). See the authoring guide.';
 
 /** Build the help payload from the assembled verb registry (pure — no I/O). */
 export function buildHelp(registry: VerbRegistry): HelpContent {
@@ -47,6 +47,7 @@ export function buildHelp(registry: VerbRegistry): HelpContent {
 
   const safeFirstActions = [
     'harness doctor — see which extensions loaded (and any that failed)',
+    'harness new <name> — scaffold a new extension (add --wrap "<cmd>" to wrap a real command)',
     'harness help --json — the machine-readable verb list',
   ];
   if (registry.verbs.length > 0) {
@@ -81,6 +82,7 @@ export function renderHelpText(content: HelpContent): string {
   lines.push('Commands:');
   lines.push('  help                explain the harness (this output)');
   lines.push('  doctor              report what is configured + which extensions loaded');
+  lines.push('  new <name>          scaffold a new extension into ./.harness/extensions/');
   if (content.verbs.length === 0) {
     lines.push('  (no extensions installed yet)');
   }

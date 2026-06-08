@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
+import { registerNewAct } from './acts/new.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
@@ -144,6 +145,7 @@ export function buildProgram(
 
   registerHelpAct(program, io, registry);
   registerDoctorAct(program, io, registry);
+  registerNewAct(program, io, deps);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
   }
