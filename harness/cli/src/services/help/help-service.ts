@@ -1,11 +1,10 @@
-import type { SlotRegistry, SlotStatus } from '../slots/slot-registry.js';
+import type { VerbRegistry } from '../extensions/registry.js';
 
-/** Machine-readable per-slot summary surfaced by `help --json` (AC-8/PL-02). */
-export interface SlotSummary {
+/** Machine-readable per-verb summary surfaced by `help` (AC-1/AC-6). */
+export interface VerbSummary {
   name: string;
-  status: SlotStatus;
-  description: string;
-  next_action: string;
+  summary: string;
+  status: 'loaded';
 }
 
 /** The full help payload — human-rendered as text, JSON-rendered as an envelope `data`. */
@@ -14,13 +13,14 @@ export interface HelpContent {
   output_modes: string[];
   exit_codes: Record<string, string>;
   safe_first_actions: string[];
-  slots: SlotSummary[];
+  verbs: VerbSummary[];
+  extensions: { installed: number; failed: number; conflicts: number };
 }
 
 const PURPOSE =
   "The agent-friendly front door to this repo's engineering harness. " +
-  'Two commands work today (help, doctor); the rest are honest unconfigured stubs ' +
-  'an extension will fill later.';
+  'Verbs are owned by extensions: drop a file in `./.harness/extensions/` and it ' +
+  'becomes a `harness <verb>` command. `help` and `doctor` are always available.';
 
 const OUTPUT_MODES = [
   '--json forces JSON output',
@@ -32,29 +32,46 @@ const OUTPUT_MODES = [
 const EXIT_CODES: Record<string, string> = {
   '0': 'ok or degraded (the command reported successfully)',
   '1': 'error (something failed; see error.code + next_action)',
-  '2': 'unconfigured (no behaviour mapped to this slot yet)',
+  '2': 'unconfigured (no behaviour mapped to this verb yet)',
 };
 
-const SAFE_FIRST_ACTIONS = [
-  'harness doctor — check what is configured vs unconfigured',
-  'harness help --json — the machine-readable command map',
-  'harness run validate --dry-run — see a slot without executing anything',
-];
+const EMPTY_HINT =
+  'No extensions installed yet. Add one by dropping a file in `./.harness/extensions/` ' +
+  '(e.g. `hello.ts` that default-exports a HarnessVerb). See the authoring guide.';
 
-/** Build the help payload from the live slot registry (pure — no I/O). */
-export function buildHelp(registry: SlotRegistry): HelpContent {
+/** Build the help payload from the assembled verb registry (pure — no I/O). */
+export function buildHelp(registry: VerbRegistry): HelpContent {
+  const installed = registry.records.filter((r) => r.status === 'loaded').length;
+  const failed = registry.records.filter((r) => r.status === 'failed').length;
+  const conflicts = registry.records.filter((r) => r.status === 'conflict').length;
+
+  const safeFirstActions = [
+    'harness doctor — see which extensions loaded (and any that failed)',
+    'harness help --json — the machine-readable verb list',
+  ];
+  if (registry.verbs.length > 0) {
+    safeFirstActions.push(
+      `harness ${registry.verbs[0]?.name} --help — usage for a contributed verb`,
+    );
+  }
+
   return {
     purpose: PURPOSE,
     output_modes: OUTPUT_MODES,
     exit_codes: EXIT_CODES,
-    safe_first_actions: SAFE_FIRST_ACTIONS,
-    slots: registry.map((slot) => ({
-      name: slot.name,
-      status: slot.status,
-      description: slot.description,
-      next_action: slot.next_action,
+    safe_first_actions: safeFirstActions,
+    verbs: registry.verbs.map((verb) => ({
+      name: verb.name,
+      summary: verb.summary,
+      status: 'loaded' as const,
     })),
+    extensions: { installed, failed, conflicts },
   };
+}
+
+/** The honest "no extensions installed yet" next_action, or undefined when verbs exist. */
+export function helpEmptyHint(content: HelpContent): string | undefined {
+  return content.verbs.length === 0 ? EMPTY_HINT : undefined;
 }
 
 /** Render the help payload as human-readable text (pure — returns a string). */
@@ -63,10 +80,16 @@ export function renderHelpText(content: HelpContent): string {
   lines.push('harness — engineering harness front door', '', content.purpose, '');
   lines.push('Commands:');
   lines.push('  help                explain the harness (this output)');
-  lines.push('  doctor              report what is configured vs unconfigured');
-  for (const slot of content.slots) {
-    const mark = slot.status === 'configured' ? ' ' : '·';
-    lines.push(`  ${mark} ${slot.name.padEnd(16)}${slot.description} [${slot.status}]`);
+  lines.push('  doctor              report what is configured + which extensions loaded');
+  if (content.verbs.length === 0) {
+    lines.push('  (no extensions installed yet)');
+  }
+  for (const verb of content.verbs) {
+    lines.push(`  ${verb.name.padEnd(18)}${verb.summary} [${verb.status}]`);
+  }
+  const { failed, conflicts } = content.extensions;
+  if (failed > 0 || conflicts > 0) {
+    lines.push('', `⚠ ${failed} failed, ${conflicts} conflict(s) — run \`harness doctor\`.`);
   }
   lines.push('', 'Output modes:');
   for (const mode of content.output_modes) {

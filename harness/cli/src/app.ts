@@ -142,7 +142,7 @@ export function buildProgram(
     .option('--no-extensions', 'skip loading repo extensions (core commands only)')
     .exitOverride();
 
-  registerHelpAct(program, io);
+  registerHelpAct(program, io, registry);
   registerDoctorAct(program, io);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
