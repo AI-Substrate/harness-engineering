@@ -54,3 +54,11 @@
 - `.github/workflows/release.yml`: `on: push: [main]`; `permissions: contents:write + pull-requests:write`; steps checkout → `googleapis/release-please-action@v4` (config-file + manifest-file). **No npm publish step** (AC-15) — installs use npx-from-repo.
 - JSON + YAML validated; version-match confirmed.
 - **Done-When met**: workflow parses; config/manifest valid JSON with matching version; a conventional-commit push to `main` would open a release PR; no publish step.
+
+### T005 — branch protection on main (applied live) (done)
+- **Applied live** (admin confirmed) via `gh api -X PUT .../branches/main/protection`:
+  `required_status_checks: { strict:false, contexts:["ci-required"] }`, `enforce_admins:false`, `required_pull_request_reviews:null`, `restrictions:null`.
+- **Verified** via GET: required check `ci-required`, strict `false`, enforce_admins `false`, required_reviews `null`, force-pushes disabled.
+- Design choices: **no required human review** + **enforce_admins:false** so the feature PR can still be merged in `/plan-8` (the `ci-required` check is the gate, not a second reviewer); `strict:false` avoids forcing rebases. AC-16 met: required CI must pass before merge.
+- Documented the exact `gh api` apply + verify commands in `harness/cli/README.md` (new "Continuous Integration & Release" section).
+- **Done-When met**: `gh api` returns protection with the `ci-required` check required; command documented in README.

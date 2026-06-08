@@ -57,8 +57,8 @@ stateDiagram-v2
     S5 --> S6
     S6 --> [*]
 
-    class S1,S2,S3,S4 done
-    class S5,S6 pending
+    class S1,S2,S3,S4,S5 done
+    class S6 pending
 ```
 
 **Legend**: grey = pending | yellow = active | red = blocked/needs input | green = done
@@ -73,7 +73,7 @@ stateDiagram-v2
 - [x] **Stage 2: Surface coverage** — text-summary in log + upload `harness/cli/coverage/lcov.info` artifact (`ci.yml`).
 - [x] **Stage 3: Packaging smoke** — `package-smoke` job: pack→install→`harness --version`/`doctor` proving the npx/bin-symlink contract (`ci.yml`).
 - [x] **Stage 4: Release automation** — `release-please` config + manifest + workflow, no npm publish (`release-please-config.json`, `.release-please-manifest.json`, `release.yml` — new).
-- [ ] **Stage 5: Protect main** — apply branch protection live (admin confirmed) + document the `gh api` command (`README.md`).
+- [x] **Stage 5: Protect main** — apply branch protection live (admin confirmed) + document the `gh api` command (`README.md`).
 - [ ] **Stage 6: Validate end-to-end** — push the PR, capture `gh pr checks` / `gh run view` evidence into the execution log.
 
 ---
@@ -129,5 +129,5 @@ flowchart LR
 - [x] T002: Coverage surfacing — text-summary in log + `lcov.info` artifact.
 - [x] T003: `package-smoke` job — pack→install→`harness --version`/`doctor` (F005 guard, generic invocation).
 - [x] T004: `release-please` config + manifest + `release.yml` (no publish).
-- [ ] T005: Branch protection on `main` — apply live + document `gh api` command.
+- [x] T005: Branch protection on `main` — apply live + document `gh api` command.
 - [ ] T006: Validate CI end-to-end on the PR — capture `gh` evidence.

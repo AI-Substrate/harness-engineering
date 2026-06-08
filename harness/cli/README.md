@@ -82,3 +82,28 @@ Selection precedence (highest wins):
 ## Architecture
 
 Ports & Adapters (Hexagonal): a thin commander **entrypoint** → per-command **acts** → adapter-agnostic **services** → injected **adapters** (`fs` / `process` / `git` / `env` / `clock`), each with a fake for testing. Business logic lives in services and is unit-tested through fakes with zero real I/O. See [`docs/plans/004-harness-core/workshops/002-cli-composition-pattern.md`](../../docs/plans/004-harness-core/workshops/002-cli-composition-pattern.md) and [`001-output-envelope-and-exit-codes.md`](../../docs/plans/004-harness-core/workshops/001-output-envelope-and-exit-codes.md).
+
+## Continuous Integration & Release
+
+CI runs on every pull request and on pushes to `main` (`.github/workflows/ci.yml`):
+
+- **`build-test`** — Node 20 & 22 matrix: `npm ci` → Biome check → build → `tsc --noEmit` → `vitest run --coverage` → `npm audit` (advisory). Coverage prints a text summary and uploads `harness/cli/coverage/lcov.info` as an artifact.
+- **`package-smoke`** — packs the tarball, installs it into a clean temp project, and invokes the installed `harness` bin through its symlink (`--version`, `doctor`) — proves the npx/bin-symlink contract end-to-end.
+- **`ci-required`** — a stable aggregation job that fails if any required job failed. Branch protection requires this one matrix-independent check.
+
+**Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release. There is **no npm publish** — install pins a tag: `npx github:AI-Substrate/harness-engineering#vX.Y.Z`.
+
+**Branch protection** on `main` requires the `ci-required` check to pass before merge. Applied with (requires repo admin):
+
+```bash
+gh api -X PUT repos/AI-Substrate/harness-engineering/branches/main/protection --input - <<'JSON'
+{
+  "required_status_checks": { "strict": false, "contexts": ["ci-required"] },
+  "enforce_admins": false,
+  "required_pull_request_reviews": null,
+  "restrictions": null
+}
+JSON
+```
+
+Verify with `gh api repos/AI-Substrate/harness-engineering/branches/main/protection`.
