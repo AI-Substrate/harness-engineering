@@ -67,3 +67,13 @@
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory and MINIH_OUTPUT_PATH was unavailable in the shell, despite the prompt saying to use them. (workaround: Used git rev-parse --show-toplevel for project-root commands and wrote to the literal output path from the prompt.)
   - [annoying] tooling: Broad drift greps over optional paths produced missing-path errors or very noisy output. (workaround: Repeated the searches with existing paths and narrower patterns.)
   - [degrading] debug: I issued F004 from an incorrect mental model of JavaScript array join behavior on absolute paths. (workaround: Verified the path behavior empirically when challenged, accepted the correction, and withdrew the finding.)
+
+## 2026-06-08T12:53:34.017Z — code-review-companion / 2026-06-08T22-08-20-158Z-d7d0
+
+- runId: 2026-06-08T22-08-20-158Z-d7d0
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T22-08-20-158Z-d7d0
+- summary: Reviewed plan 007's first-class documentation implementation across 17 task commits, covering the docs contract, generator, bundled corpus, DocsService, CLI act, help/README/docs surfaces, drift guards, CI wiring, and final fixes. I sent five findings (one HIGH, four MEDIUM); the follow-up fix commit a08fbe7 addressed all five and the focused regression tests I ran for docs act/output exit/integration/purity/curation passed.
+- **magicWand** (target: coordination): Add a `minih outside finish` workflow that sends the final drain ping, immediately follows with control:stop after the companion replies, waits for the farewell, and runs validation automatically so companion sessions do not drift into the idle check-in window at the end.
+- difficulties:
+  - [annoying] debug: Searches and git-show commands that included the generated docs-content.ts produced very large or truncated output, and one scan over the generated bundle had to be stopped. (workaround: Narrowed subsequent reads to authored source files, excluded generated/runs paths in rg globs, and used targeted view ranges for the generated module only when needed.)
+  - [annoying] coordination: The final stop arrived after the post-task idle threshold, causing a still-needed question even though the orchestrator was preparing to stop. (workaround: Followed the companion protocol: sent one ack-linked still-needed question, reset on the subsequent fix task, then exited on the later stop control.)
