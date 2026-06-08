@@ -13,7 +13,7 @@ Manual acceptance check of the reworked `engineering-harness-setup` skill agains
 | AC6 | All 19 templates deleted; skill generates nothing | `ls templates/` → GONE; "What this skill does not do" enumerates no-generation | ✅ PASS |
 | AC7 | README mermaid DAG; AUTHORING + skills/README updated + report location | README has 2 mermaid blocks; AUTHORING orchestration-only; skills/README rows + `.harness/reports/harnessability/` updated | ✅ PASS |
 | AC8 | Depend only on CLI command/envelope surface (no prose scraping) | "Read only the envelope … use `--json` … never scrape human prose" (Step 1) + guardrail; no bespoke parsing of `doctor`/`help`/assessment prose anywhere in the skill | ✅ PASS |
-| AC9 | e2e agent demonstrates install → add-extension → verify | Deferred to T007 (run the `install-and-validate-test-extension` agent) | ⏳ T007 |
+| AC9 | e2e agent demonstrates install → add-extension → verify | Ran `install-and-validate-test-extension` (verbName=boot, variant=wrap, local) → **PASS**: scaffolded `.harness/extensions/boot.ts` via `add-extension`/`harness new`; `doctor` loaded it, `help` listed it, `npx harness boot --json` = status ok / exit 0 | ✅ PASS |
 
 ## Lockstep with the e2e agent (`install-and-validate-test-extension`)
 
@@ -32,4 +32,9 @@ Recipes are in lockstep — the human-guided flow and the automated proof exerci
 
 Reviewed the full SKILL.md for non-envelope coupling: the only programmatic-output guidance is "use `--json` (status/data/error/next_action) and exit codes — never scrape human prose," reinforced in the guardrails. No step parses human-readable `doctor`/`help`/assessment text. The flow is therefore forward-compatible with a future MCP server over the same command/envelope surface.
 
-**Verdict**: AC1–AC8 PASS by inspection; AC9 pending the T007 e2e run.
+**Verdict**: AC1–AC9 PASS. AC9 proven by the e2e run (run `2026-06-09T08-54-42-126Z-7d46`, verdict PASS).
+
+## e2e learnings (folded back)
+
+1. **doctor is `degraded` in a consumer repo** — the e2e showed `npx harness doctor --json` returns top-level `status: degraded` in a throwaway repo (a `cli-build` layer that only applies inside the CLI's own repo) even though the `boot` extension loaded and ran. Folded into SKILL Step 1.4: gate on "the CLI runs and returns an envelope (exit 0)" and read `data.layers`/`data.extensions`, not a top-level `ok`.
+2. **local source install packaged no `dist`** — the e2e's `local` file-install path lacked a built `harness/cli/dist`, so the agent built a copy first. This is specific to the *local-source* path; the SKILL's documented **github** path (`npm install github:AI-Substrate/harness-engineering`) builds `dist` via the package `prepare` step, so the documented recipe is unaffected. (Captured as harness-CLI friction for a future fix.)

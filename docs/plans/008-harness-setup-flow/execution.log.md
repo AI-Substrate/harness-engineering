@@ -53,3 +53,11 @@
 - Wrote `verification.md`: AC1–AC9 table (each AC → concrete check → PASS), an explicit AC8 envelope-only confirmation, and a lockstep table showing the skill's install+verify recipe matches the `install-and-validate-test-extension` e2e agent (`npm install github:AI-Substrate/...`, `npx harness doctor --json`, drives add-extension, verifies via doctor/help/verb).
 - AC1–AC8 PASS by inspection; AC9 deferred to T007 (the e2e run).
 - ACs advanced: AC8, AC9 (setup).
+
+### T007 — e2e acceptance proof ✅ PASS
+- Ran `install-and-validate-test-extension` (verbName=boot, variant=wrap, harnessSource=local), run `2026-06-09T08-54-42-126Z-7d46` → **verdict PASS**.
+- Proof: in a throwaway repo the `add-extension` skill scaffolded `.harness/extensions/boot.ts` (wraps `npm run demo`) via `harness new`; independent checks: `doctor` loaded it, `help` listed `boot`, `boot --help` rendered usage, `npx harness boot --json` = status ok / exit 0. Temp repo cleaned up.
+- This proves the install → add-extension(boot) → verify chain the SKILL orchestrates (AC9).
+- Folded learning into SKILL Step 1.4: `harness doctor` is `degraded` in a fresh consumer repo (cli-build layer) — gate on "CLI runs + returns envelope (exit 0)" and read data.layers/extensions, not top-level `ok`.
+- Friction (harness-CLI, out of scope here): local-source install packaged no `dist` (agent built a copy); the documented github path builds via `prepare`, so unaffected.
+- ACs advanced: AC9. **All 9 ACs PASS.**
