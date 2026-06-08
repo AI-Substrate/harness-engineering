@@ -15,6 +15,11 @@ import { renderStarter, type ScaffoldVariant } from './templates.js';
 
 const EXTENSIONS_DIR = ['.harness', 'extensions'] as const;
 const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+// A --wrap value is embedded verbatim into the generated file. v1 supports a
+// simple `cmd arg arg` line only; reject anything that could break the emitted
+// JS (quotes, backticks, `$`, backslash, shell operators) rather than write
+// invalid code (F002). Quoting/operators are a documented v1 non-goal.
+const SAFE_WRAP_PATTERN = /^[\w\-./:= ]+$/;
 
 export interface ScaffoldOptions {
   name: string;
@@ -50,6 +55,16 @@ export function scaffoldExtension(
       code: ErrorCodes.SCAFFOLD_NAME_RESERVED,
       message: `'${name}' is a reserved core command and cannot be an extension verb.`,
       next_action: 'Choose a different verb name (reserved: help, doctor, new).',
+    };
+  }
+
+  if (wrap !== undefined && (wrap.trim().length === 0 || !SAFE_WRAP_PATTERN.test(wrap))) {
+    return {
+      ok: false,
+      code: ErrorCodes.INVALID_ARGS,
+      message: `Unsupported --wrap command: ${JSON.stringify(wrap)}`,
+      next_action:
+        'Use a simple "cmd arg arg" form (letters, digits, - _ . / : =). For quotes/operators, scaffold without --wrap and edit the generated run() by hand.',
     };
   }
 

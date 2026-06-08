@@ -35,7 +35,13 @@ export class FakeFs implements FsPort {
 
   mkdirp(path: string): void {
     this.mkdirs.push(path);
-    this.madeDirs.add(path);
+    // Register each ancestor segment so exists() models a recursive create
+    // (matches NodeFs.mkdirSync({ recursive: true }); F001).
+    const parts = path.split('/');
+    for (let i = 1; i <= parts.length; i++) {
+      const seg = parts.slice(0, i).join('/');
+      if (seg) this.madeDirs.add(seg);
+    }
   }
 
   writeText(path: string, contents: string): void {

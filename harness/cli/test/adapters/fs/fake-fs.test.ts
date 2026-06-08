@@ -83,6 +83,8 @@ describe('FakeFs', () => {
     fs.mkdirp('.harness/extensions');
     expect(fs.mkdirs).toEqual(['.harness/extensions', '.harness/extensions']);
     expect(fs.exists('.harness/extensions')).toBe(true);
+    // recursive: the parent segment is created too (F001 — matches NodeFs recursive mkdir)
+    expect(fs.exists('.harness')).toBe(true);
   });
 });
 

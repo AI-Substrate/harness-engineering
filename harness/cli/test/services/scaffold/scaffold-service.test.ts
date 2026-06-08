@@ -142,4 +142,37 @@ describe('scaffoldExtension — error paths (no file written on validation failu
     expect(out.ok).toBe(false);
     if (!out.ok) expect(out.code).toBe(ErrorCodes.SCAFFOLD_WRITE_FAILED);
   });
+
+  it.each([
+    'node -e "x"',
+    "echo 'hi'",
+    'echo `date`',
+    'a && b',
+    'echo $' + '{HOME}',
+    '  ',
+  ])('rejects an unsafe --wrap command %j with E108 and writes nothing', (wrap) => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'greet', wrap },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.code).toBe(ErrorCodes.INVALID_ARGS);
+      expect(out.next_action.length).toBeGreaterThan(0);
+    }
+    expect(fs.writes).toEqual([]);
+  });
+
+  it('accepts a simple multi-token --wrap command', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'demo', wrap: 'npm run demo' },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out.ok).toBe(true);
+    expect(fs.readText('/repo/.harness/extensions/demo.ts')).toContain(
+      "ctx.exec('npm', ['run', 'demo'])",
+    );
+  });
 });

@@ -4,6 +4,7 @@ import {
   minimalTs,
   renderStarter,
   toIdentifier,
+  wrapJs,
   wrapTs,
 } from '../../../src/services/scaffold/templates.js';
 
@@ -64,6 +65,24 @@ const greet = {
 export default greet;
 `;
 
+const WRAP_JS_TEST = `/** @type {import('harness-engineering/contract').HarnessVerb} */
+const test = {
+  name: 'test',
+  summary: 'TODO: summary (wraps \`npm test\`).',
+  async run(ctx) {
+    const r = await ctx.exec('npm', ['test']);
+    return r.ok
+      ? ctx.ok({ command: 'npm test' })
+      : ctx.error('E1', \`npm test failed (exit \${r.code})\`, {
+          details: r.stderr,
+          next_action: 'Fix the failure above, then re-run \`harness test\`.',
+        });
+  },
+};
+
+export default test;
+`;
+
 describe('scaffold templates', () => {
   it('toIdentifier camelCases a kebab verb name into a valid const identifier', () => {
     expect(toIdentifier('greet')).toBe('greet');
@@ -81,6 +100,12 @@ describe('scaffold templates', () => {
 
   it('minimalJs emits the workshop §4c starter verbatim (JSDoc, no runtime import)', () => {
     expect(minimalJs('greet')).toBe(MINIMAL_JS_GREET);
+  });
+
+  it('wrapJs emits the workshop §4d starter verbatim (JSDoc header + wrap body + .js path)', () => {
+    expect(wrapJs('test', 'npm test')).toBe(WRAP_JS_TEST);
+    // and the dispatcher returns the same bytes for the wrap-js variant
+    expect(renderStarter({ name: 'test', js: true, wrap: 'npm test' }).contents).toBe(WRAP_JS_TEST);
   });
 
   it('wrap splits multi-token commands and camelCases the identifier', () => {
