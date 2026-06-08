@@ -30,3 +30,8 @@
 - Replaced the 91-line template-invariant authoring notes (byte-identity / magic-wand / placeholder-syntax / CLI-envelope-schema invariants) with 34 lines of orchestration-era invariants: orchestrate-don't-generate, chain-the-siblings, report-sentinel contract, boot-stays-basic, public-safe, envelope-only, canonical boundary, `harness init` forward dependency.
 - Removed the private codename reference that was in the old Sources list (P12).
 - ACs advanced: AC6, AC7.
+
+### T004 — Delete all 19 templates ✅
+- `git rm -r skills/engineering-harness-setup/templates/` — 19 files removed (cli-python-harness.py, cli-node-harness.mjs, root-HARNESS.md, harness-config{.json,.schema.json}, cli-{command-contract.md,envelope.schema.json}, agents-md-snippet.md, magic-wand-prompt.md, retrospective-schema.json, harness-{known-difficulties,friction-log,proof-note,README,onboard-agent-session}.md, friction-entry.md, docs-harness-backpressure-README.md, install-report.md, canonical-boundary.txt).
+- The skill now ships only SKILL.md + README.md (+ repo-internal AUTHORING.md). Reference sweep is T005.
+- ACs advanced: AC6.
