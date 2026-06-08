@@ -33,3 +33,8 @@
 
 ### T006 — build wiring ✅
 - package.json: added `"gen:docs": "node scripts/gen-docs.mjs"`; `"build"` now `npm run gen:docs && tsc -p harness/cli/tsconfig.json`. `files` UNCHANGED (["harness/cli/dist","LICENSE"]) — Option C ships docs via compiled src, no asset dir.
+
+### T007 — generate + commit docs-content.ts ✅
+- `npm run gen:docs` → committed `harness/cli/src/services/docs/docs-content.ts` (4 docs, `as const`). tsc clean.
+- D2 (purity guard): updated `test/architecture/no-direct-node-io.test.ts` to skip files with the `@generated` header (generated doc data can legitimately quote `from 'node:fs'` in prose). Guard green.
+- D3 (biome): docs contain literal `${...}` in code examples → `noTemplateCurlyInString` warnings. Added a biome `overrides` entry disabling the linter for `docs-content.ts` (formatter stays on). `biome check --error-on-warnings harness/cli` now exit 0; formatter no-op; regen drift-stable.
