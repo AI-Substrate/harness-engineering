@@ -42,3 +42,10 @@
 ### T008 — TDD DocsService ✅ (RED→GREEN)
 - RED: wrote docs-service.test.ts (5 tests, fakes-only) → import-fail.
 - GREEN: `docs-service.ts` — pure `listDocs(docs=DOCS)` (strips content) + `getDoc(id, docs=DOCS)` (→DocContent w/ format:'markdown' | {notFound,id}). Imports DOCS only; no node:fs/cwd (P2/Finding 03). Optional corpus param = test seam + MCP-reuse. `DocRecord` exported. 5 tests green; tsc + biome clean.
+
+### T009 — TDD registerDocsAct ✅ (RED→GREEN)
+- RED: docs.test.ts (6 tests) → import-fail.
+- GREEN: `acts/docs.ts` — list→formatOk {docs} (+human table); `<id>`→raw markdown to stdout (no envelope) exit 0; `<unknown>`→formatError E160 exit 1. All exits via exitWithEnvelope (single-exit guard intact).
+- Discovery: test bug — `not.toContain('"status"')` collided with a JSON example inside extend-the-harness.md. Replaced with `startsWith('{"command"')===false`; full-equality `out()===content` already proves raw-dump.
+- Added EPIPE guard in `index.ts` (swallow broken-pipe on stdout via process.exitCode, re-throw other stream errors) so `harness docs <id> | head` never stack-traces — makes the act's EPIPE-safe comment true.
+- 6 act tests green; tsc + biome + architecture(single-exit) green.
