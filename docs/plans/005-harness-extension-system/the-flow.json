@@ -5,10 +5,10 @@
   "plan_dir": "docs/plans/005-harness-extension-system",
   "mode": "Simple",
   "cursor": "impl",
-  "recommended_next": "impl",
-  "now": "Plan written + validated — Status READY (4 agents, 5 issues found & fixed)",
-  "next": "Build the single Implementation phase (/plan-6)",
-  "_comment": "Plan 005. /plan-3 landed Status:READY (Simple, single Implementation phase, 28 ordered test-first tasks T001-T028). validate-v2: 4 agents, thesis ADVANCED @ Implementation/Strong; forward-compat engaged (not standalone); 3 HIGH + 3 MED/LOW found & ALL fixed. No engineering-harness governance doc => harness loop nodes omitted. the-flow.md is generated FROM this file.",
+  "recommended_next": "validate",
+  "now": "Implementation DONE (companion variant) — 28 tasks + 7 finding-fixes; 145 tests green, 92.44% cov",
+  "next": "/validate-v2 on the code changes (user: 'Then validate when completed'), then next phase on the same branch",
+  "_comment": "Plan 005. Implementation phase built via /plan-6 companion variant. Companion run 2026-06-08T16-56-36-144Z-a9ad sent 8 findings (1 HIGH F006 + 7 MED); 7 fixed test-first, F003 deferred (symlink realpath). Rubber-duck reviewed the triage pre-impl. 145 tests green, tsc+biome clean, 92.44% stmt cov; installed-bin smokes pass. MERGE DEFERRED (shared branch feat/harness-cli-core). the-flow.md is generated FROM this file.",
   "agents": [],
   "nodes": [
     { "id": "research", "type": "research", "label": "Research", "status": "done",
@@ -37,10 +37,13 @@
       "note": "Status: READY. Simple, single Implementation phase, 28 ordered test-first tasks (groups A-F). G1/G5/G6/G7 PASS, G2/G3 PASS (doctrine-sync T025), G4 N/A. validate-v2: 4 agents, thesis ADVANCED @ Implementation/Strong; 3 HIGH + 3 MED/LOW found & ALL fixed. Decisions D1-D4 fold WS-B/WS-C micro-calls.",
       "artifacts": ["harness-extension-system-plan.md"], "next": ["impl"] },
 
-    { "id": "impl", "type": "phase", "label": "Phase: Implementation (the extension system)", "status": "known",
-      "command": "/plan-6", "note": "Single Simple-mode phase. 28 tasks T001-T028, test-first: A ports/adapters -> B contract -> C loader core -> D composition-root + scaffolding removal -> E dynamic help/doctor -> F packaging/docs/doctrine/integration. Recommend the COMPANION variant (live code-review) given CS-4. Compact first if context heavy.", "next": ["merge"] },
+    { "id": "impl", "type": "phase", "label": "Phase: Implementation (the extension system)", "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion", "ran_at": "2026-06-08T08:00:00Z",
+      "user_input": "implement now with companion mode. Then validate when completed.",
+      "note": "Single Simple-mode phase, 28 test-first tasks T001-T028 (groups A-F): ports/adapters -> contract -> loader core -> composition-root + BUILTIN_SLOTS/run removal (T017) -> dynamic help/doctor -> packaging/docs/doctrine/integration. Companion run 2026-06-08T16-56-36-144Z-a9ad (live per-commit review) sent 8 findings (1 HIGH F006 invalid-status->undefined crash + 7 MED); 7 fixed test-first in the resumed session, F003 (symlink realpath) deferred. Rubber-duck reviewed the triage pre-impl. 145 tests green, tsc+biome clean, 92.44% stmt coverage; installed-bin smokes pass (hello ok; invalid-status E141; named-only E140).",
+      "artifacts": ["execution.log.md"], "next": ["merge"] },
 
     { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
-      "command": "/plan-8", "note": "shares branch feat/harness-cli-core with plan 004 (merge deferred). All 005 artifacts currently UNCOMMITTED.", "next": [] }
+      "command": "/plan-8", "note": "DEFERRED by user ('no merge yet, continue on this branch to next phase'). Shares branch feat/harness-cli-core with plan 004. Next: /validate-v2, then next phase on the same branch.", "next": [] }
   ]
 }
