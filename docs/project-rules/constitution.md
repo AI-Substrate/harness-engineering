@@ -3,8 +3,14 @@
 <!--
 Sync Impact Report:
 - Mode: AMEND
-- Version: 1.0.0 → 1.1.0
+- Version: 1.0.0 → 1.1.0 → 1.1.1
 - Creation Date: 2026-06-08
+- Amendment (2026-06-08, v1.1.1, PATCH): factual sync — the extension system
+  (plan 005) LANDED. The temporary `BUILTIN_SLOTS` / `run` / slot scaffolding is
+  removed; `.harness/extensions/` is discovered + loaded at runtime; verbs are
+  top-level `harness <verb>`. Principle 10 itself is unchanged (verbs dynamic +
+  extension-owned); only the "scaffolding exists today" factual notes are updated
+  to past tense and the dead `services/slots/slot-registry.ts` reference retired.
 - Amendment (2026-06-08, v1.1.0): Principle 10 reframed — verbs are DYNAMIC and
   extension-owned; the core hardcodes NO verb list. The built-in `unconfigured`
   command stubs are temporary scaffolding slated for removal when the extension
@@ -21,7 +27,7 @@ Sync Impact Report:
 - Domain system: Not yet initialized (domain governance is additive; applies once domains are established via /plan-v2-extract-domain)
 -->
 
-**Version**: 1.1.0
+**Version**: 1.1.1
 **Ratification Date**: 2026-06-08
 **Last Amended**: 2026-06-08
 
@@ -37,9 +43,9 @@ This repository is two things at once:
 **What the Harness CLI Core is** (the product this constitution governs):
 
 - It is **installed onto a developer's or agent's machine via `npx`** (straight from the repo URL) to provide the *core* of the harness.
-- The core is intentionally small. The **customisable behaviour comes from extensions** added in the *target* repo and loaded at runtime — the extension system is a later, separate effort (out of scope today), but the core MUST NOT preclude it.
+- The core is intentionally small. The **customisable behaviour comes from extensions** added in the *target* repo and loaded at runtime — the extension system (plan 005) has landed, and the core's verb surface is sourced entirely from it.
 - Everything the core does is grounded in **`harness-foundations/`** — the first principles, directives, and patterns are the doctrine the tooling makes executable.
-- This slice ships two real commands (`help`, `doctor`), plus a small set of **temporary `unconfigured` command stubs** that demonstrate the output/exit contract. Those stubs are scaffolding only — the core hardcodes **no** verb list; dynamic verbs arrive with the extension system (see Principle 10) — alongside a stable human+JSON output contract and the repo's own engineering fundamentals (Biome, vitest+coverage, `justfile`, CI, release-please).
+- This slice ships two core commands (`help`, `doctor`) plus the **runtime extension system**: a developer's own repo holds `.harness/extensions/`, which the core discovers + loads so each extension contributes `harness <verb>` commands — alongside a stable human+JSON output contract and the repo's own engineering fundamentals (Biome, vitest+coverage, `justfile`, CI, release-please).
 
 **Harness layer boundary** (load-bearing — never collapse these, per `harness-foundations/directives.md` Directive 1):
 
@@ -121,9 +127,9 @@ Entrypoint (parse args, render, exit)
 
 **MUST**: Any dependency the harness needs **at runtime inside a user's repo** (a future loader, a transpiler such as `jiti`) is a runtime `dependency`, never a `devDependency` (distributed/`npx` installs run `--omit=dev`).
 
-**MUST NOT**: hardcode a verb list, a closed `SlotName`/verb union, or otherwise assume the set of verbs is fixed. When the extension system lands, the current built-in `unconfigured` stubs (`run`, `validate`, `build`, `lint`, `test`, `smoke`, `health`, `observe`) **are removed** — they exist today only as temporary scaffolding to demonstrate the output/exit contract before the loader exists.
+**MUST NOT**: hardcode a verb list, a closed `VerbName`/verb union, or otherwise assume the set of verbs is fixed. The earlier built-in `unconfigured` stubs (`run`, `validate`, `build`, `lint`, `test`, `smoke`, `health`, `observe`) were temporary scaffolding and **have been removed** now that the extension system provides the verb surface.
 
-> **Temporary-scaffolding note**: today's `services/slots/slot-registry.ts` `BUILTIN_SLOTS` is scaffolding with a removal plan, *not* a "seed set" to build the verb surface on. Keep the registry keyed by `name: string` (no closed union) so the loader can register verbs freely, and treat the hardcoded entries as throwaway.
+> **History note**: the verb surface is now built by `services/extensions/registry.ts` from extensions discovered under `<cwd>/.harness/extensions/`. The registry is keyed by `name: string` (no closed union) so any extension can register verbs freely. (The retired `services/slots/slot-registry.ts` `BUILTIN_SLOTS` scaffolding was deleted in plan 005.)
 
 **Rationale**: Developers will add many verbs over time; bundling verb + help with the extension that provides it (a pi-style microkernel direction, surveyed and confirmed compatible) keeps the core small and avoids a later unpick. `doctor` (Principle 7) remains the core diagnostic that lists and validates whatever extensions are installed.
 

@@ -31,14 +31,14 @@ Normative MUST/SHOULD statements. These operationalize the Constitution; on conf
 - **MUST** include a `next_action` whenever `status !== 'ok'`.
 - **MUST** map exit codes exactly: `ok → 0`, `degraded → 0` (unless a command documents otherwise), `unconfigured → 2`, `error → 1`, and document them in `--help`.
 - **MUST** surface failures as actionable messages (what failed, why, what to try next) — never a raw stack trace.
-- **MUST** return `status: unconfigured` + `next_action` (exit `2`) for any command slot with no mapped behaviour; never fake success (Constitution P5).
+- **MUST** return `status: unconfigured` + `next_action` (exit `2`) for any verb with no mapped behaviour; never fake success (Constitution P5).
 - **MUST** report evidence paths for commands that produce proof, or explicitly state none was produced (Constitution P9).
 
 ## 4. Extension-Readiness Rules
 
-- **MUST** keep the command-slot registry open-capable: slots keyed by `name: string`; the built-in slots are a seed set.
-- **MUST NOT** introduce a closed `SlotName` union as the registry's only key, or otherwise assume the slot set is fixed.
-- **MUST** place any dependency the harness needs at runtime inside a user's repo (future loader, `jiti`) in `dependencies`, never `devDependencies`.
+- **MUST** keep the verb registry open-capable: verbs keyed by `name: string`; the verb surface is sourced entirely from discovered extensions (the core hardcodes **no** verb list).
+- **MUST NOT** introduce a closed `VerbName` union as the registry's only key, or otherwise assume the verb set is fixed.
+- **MUST** place any dependency the harness needs at runtime inside a user's repo (the extension loader's `jiti`) in `dependencies`, never `devDependencies`.
 
 ## 5. Tooling & Automation
 
@@ -52,7 +52,7 @@ Normative MUST/SHOULD statements. These operationalize the Constitution; on conf
 
 ### 6.1 Philosophy
 - Tests are **executable documentation** (TAD). Favour comprehension value over raw coverage numbers; a test must "pay rent."
-- Apply **TDD smartly**: test-first for logic with real branching (output kernel, exit mapping, doctor checks, slot/config handling); it MAY be skipped for trivial wrappers and config.
+- Apply **TDD smartly**: test-first for logic with real branching (output kernel, exit mapping, doctor checks, extension discovery/registry/config handling); it MAY be skipped for trivial wrappers and config.
 - **MUST** test services and acts through **injected fakes** — zero real fs/process/git/clock in unit tests.
 
 ### 6.2 Fakes over mocks (Constitution P3)
@@ -65,14 +65,14 @@ Every promoted test **MUST** carry a Test Doc block with five fields: **Why** (b
 
 Example:
 ```typescript
-test('given_unconfigured_slot_when_run_then_status_unconfigured_exit_2', () => {
+test('given_unconfigured_verb_when_run_then_status_unconfigured_exit_2', () => {
   /*
   Test Doc:
-  - Why: Constitution P5 — unbuilt slots must never fake success.
-  - Contract: runSlot('smoke') returns {status:'unconfigured', next_action} and exitCodeFor === 2.
-  - Usage Notes: Inject a FakeClock for a deterministic timestamp; slot name is a plain string.
+  - Why: Constitution P5 — a verb with no mapped behaviour must never fake success.
+  - Contract: a handler returning ctx.unconfigured(next_action) finalizes to {status:'unconfigured', next_action} and exitCodeFor === 2.
+  - Usage Notes: Inject a FakeClock for a deterministic timestamp; the verb name is a plain string.
   - Quality Contribution: Catches regressions that turn a stub into a false 'ok'/exit 0.
-  - Worked Example: runSlot('smoke') → {status:'unconfigured', next_action:'No command mapped…'}; exit 2
+  - Worked Example: runVerb(verb, ctx, clock) → {status:'unconfigured', next_action:'No behaviour mapped…'}; exit 2
   */
 });
 ```
