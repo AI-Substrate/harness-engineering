@@ -50,10 +50,15 @@ export interface HarnessVerb {
   summary: string;         // one line — shown in `help` + `doctor`
   description?: string;    // longer body shown by `harness <verb> --help`
   options?: VerbOption[];  // commander-style flags: { flags: '--name <name>', description, defaultValue? }
-  args?: VerbArg[];        // commander-style: { name: '<target>', description }
+  args?: VerbArg[];        // commander-style: { name: '<target>', description } — no variadics in v1
   run(ctx: VerbContext): VerbResult | Promise<VerbResult>;
 }
 ```
+
+> **v1 limitation:** positional args are single-valued — a variadic arg
+> (`<files...>`) is rejected at load time (the extension is reported as `failed`
+> by `doctor`) because `ctx.args` values are `string | undefined`. Use a
+> repeatable option or a comma-separated value instead.
 
 Your `run` handler receives a `VerbContext` and returns a `VerbResult`. You
 never build the Envelope or call `process.exit` yourself — the kernel finalizes
