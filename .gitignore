@@ -148,5 +148,8 @@ scratch/
 # Local agent tool state (activity logs, etc.)
 .chainglass/
 
+# FlowSpace MCP local index
+.fs2/
+
 # minih agent runtime artifacts (per-run logs/events/state)
 agents/*/runs/
