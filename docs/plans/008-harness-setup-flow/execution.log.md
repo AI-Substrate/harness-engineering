@@ -12,6 +12,7 @@
 | F002 | review-request: T001 3c9bcbc | MEDIUM | FIXED — copyable commands now use `npx harness …` (matches the e2e recipe; bin not always on PATH after npm install). |
 | F003 | review-request: fix-T001-F001-F002 38a9975 | MEDIUM | FIXED — README "What it does" realigned to the post-fix contract (`npx harness init`/`doctor`, directory fallback, doctor-degraded note). |
 | F004 | review-request: T006 7c2b5f9 | MEDIUM | RESOLVED — AC7 PASS is now honest after the F003 README fix; verification.md AC7 row annotated. |
+| F005 | review-request: T007 5fb8efc | MEDIUM | RESOLVED — final-overclaim finding that crossed with the F003/F004 fix commit (dc20748); companion confirmed resolved on review. |
 
 ## Task log
 

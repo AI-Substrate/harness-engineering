@@ -4,10 +4,10 @@
   "slug": "harness-setup-flow",
   "plan_dir": "docs/plans/008-harness-setup-flow",
   "mode": "Simple",
-  "cursor": "build",
+  "cursor": "merge",
   "recommended_next": "merge",
-  "now": "Build (companion) starting",
-  "next": "Build (companion)",
+  "now": "Build landed",
+  "next": "Merge",
   "agents": [],
   "nodes": [
     {
@@ -84,19 +84,23 @@
       "type": "phase",
       "phase": 1,
       "label": "Build \u00b7 rework skill (companion)",
-      "status": "in_progress",
+      "status": "done",
       "command": "/plan-6",
       "next": [
         "merge"
       ],
-      "note": "plan-6 companion mode (code-review-companion reviews each commit).",
-      "ran_at": "2026-06-08T22:40:54Z"
+      "note": "Companion mode: T001-T007 done, AC1-AC9 PASS. e2e (install-and-validate-test-extension, verbName=boot) PASSED. Companion findings F001-F004 all fixed.",
+      "ran_at": "2026-06-08T23:01:30Z",
+      "artifacts": [
+        "execution.log.md",
+        "verification.md"
+      ]
     },
     {
       "id": "merge",
       "type": "merge",
       "label": "Merge",
-      "status": "assumed",
+      "status": "known",
       "command": "/plan-8",
       "next": []
     }

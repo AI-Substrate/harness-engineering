@@ -1,6 +1,6 @@
 # Flight Plan — harness-setup-flow (plan level)
 
-**Status**: Ready for takeoff (plan READY)  ·  **Mode**: Simple  ·  **CS**: CS-3 (medium)
+**Status**: Landed (all 7 tasks + AC1-AC9 ✅)  ·  **Mode**: Simple  ·  **CS**: CS-3 (medium)
 
 ## Journey Map
 
@@ -32,7 +32,7 @@ flowchart TD
 
 | # | Phase | Status | Summary |
 |---|-------|--------|---------|
-| 1 | Rework setup skill into lean flow | pending | Rewrite SKILL.md/README.md (mermaid DAG) + AUTHORING.md; delete all 19 templates + CREATE/VALIDATE/STATUS machinery; update skills/README.md catalog; validate via the install-and-validate-test-extension e2e agent. |
+| 1 | Rework setup skill into lean flow | done | Rewrite SKILL.md/README.md (mermaid DAG) + AUTHORING.md; delete all 19 templates + CREATE/VALIDATE/STATUS machinery; update skills/README.md catalog; validate via the install-and-validate-test-extension e2e agent. |
 
 ## Flight Log
 
@@ -40,3 +40,4 @@ flowchart TD
 |------|-------|
 | 2026-06-09 | Research dossier written (research-dossier.md). |
 | 2026-06-09 | Spec written + clarified (Simple, pure orchestration, future `harness init`, manual + e2e-agent proof). |
+| 2026-06-09 | Build complete (companion mode): T001-T007 done, AC1-AC9 PASS, e2e proof PASS, companion findings F001-F004 fixed. |
