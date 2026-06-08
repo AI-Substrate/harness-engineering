@@ -29,9 +29,15 @@ export interface CommandSlot {
 export type SlotRegistry = CommandSlot[];
 
 /**
- * The eight built-in slots — a SEED SET, not a closed universe. All start
- * `unconfigured`; the extension loader (out of scope) later flips a status or
- * appends a slot. `run`/`validate` accept a safe `--dry-run`.
+ * ⚠️ TEMPORARY SCAFFOLDING — NOT the permanent design (Constitution P10).
+ *
+ * Verbs are dynamic and owned by extensions (each extension bundles its verb +
+ * help text); the core hardcodes NO verb list. These eight `unconfigured` stubs
+ * exist only to demonstrate the output/exit contract before the extension
+ * loader exists, and are SLATED FOR REMOVAL when the extension system lands —
+ * they are throwaway, not a "seed set" to grow the verb surface on. Keep the
+ * registry keyed by `name: string` so the future loader can register verbs
+ * freely. `run`/`validate` accept a safe `--dry-run`.
  */
 const BUILTIN_SLOTS: readonly CommandSlot[] = [
   {

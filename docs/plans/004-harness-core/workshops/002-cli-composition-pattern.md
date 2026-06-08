@@ -411,7 +411,9 @@ This is the whole point of the architecture: a real business assertion with **ze
 
 ## The extension seam (shape only — loader is out of scope)
 
-The later extension system must fill command slots **without reshaping the core**. We provide the seam now: a **slot registry**.
+> **Update (2026-06-08) — design intent sharpened.** Verbs are **dynamic and owned by extensions** (each extension bundles its verb + help text); the core hardcodes **no** verb list. The 8 `BUILTIN_SLOTS` below are **temporary scaffolding** that demonstrate the `unconfigured` output/exit contract before the loader exists, and are **slated for removal when the extension system lands** — read "seed set" in this section as "throwaway scaffolding", not a base to grow the verb surface on. `doctor` stays core and will enumerate/validate installed extensions. Authority: Constitution **Principle 10**.
+
+The later extension system must register command verbs **without reshaping the core**. We provide the seam now: a **registration registry**.
 
 ```ts
 // services/slots/slot-registry.ts

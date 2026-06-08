@@ -2,9 +2,15 @@
 
 <!--
 Sync Impact Report:
-- Mode: CREATE
-- Version: 1.0.0
+- Mode: AMEND
+- Version: 1.0.0 → 1.1.0
 - Creation Date: 2026-06-08
+- Amendment (2026-06-08, v1.1.0): Principle 10 reframed — verbs are DYNAMIC and
+  extension-owned; the core hardcodes NO verb list. The built-in `unconfigured`
+  command stubs are temporary scaffolding slated for removal when the extension
+  system lands (were previously framed as an open "seed set"). P5/P7/P8 and the
+  intro updated to match; doctor reaffirmed as a core diagnostic that enumerates
+  + validates installed extensions. Driver: user clarification 2026-06-08.
 - Source Documents:
   * harness-foundations/{directives.md, first-principles.md, patterns-that-work.md}
   * docs/plans/004-harness-core/{harness-core-spec.md, harness-core-plan.md}
@@ -15,7 +21,7 @@ Sync Impact Report:
 - Domain system: Not yet initialized (domain governance is additive; applies once domains are established via /plan-v2-extract-domain)
 -->
 
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Ratification Date**: 2026-06-08
 **Last Amended**: 2026-06-08
 
@@ -33,7 +39,7 @@ This repository is two things at once:
 - It is **installed onto a developer's or agent's machine via `npx`** (straight from the repo URL) to provide the *core* of the harness.
 - The core is intentionally small. The **customisable behaviour comes from extensions** added in the *target* repo and loaded at runtime — the extension system is a later, separate effort (out of scope today), but the core MUST NOT preclude it.
 - Everything the core does is grounded in **`harness-foundations/`** — the first principles, directives, and patterns are the doctrine the tooling makes executable.
-- This slice ships two real commands (`help`, `doctor`), honest `unconfigured` stubs for the remaining command slots, a stable human+JSON output contract, and the repo's own engineering fundamentals (Biome, vitest+coverage, `justfile`, CI, release-please).
+- This slice ships two real commands (`help`, `doctor`), plus a small set of **temporary `unconfigured` command stubs** that demonstrate the output/exit contract. Those stubs are scaffolding only — the core hardcodes **no** verb list; dynamic verbs arrive with the extension system (see Principle 10) — alongside a stable human+JSON output contract and the repo's own engineering fundamentals (Biome, vitest+coverage, `justfile`, CI, release-please).
 
 **Harness layer boundary** (load-bearing — never collapse these, per `harness-foundations/directives.md` Directive 1):
 
@@ -81,7 +87,7 @@ Entrypoint (parse args, render, exit)
 
 ### Principle 5: Honesty over fake success (unconfigured, never pretend)
 
-**MUST**: A command slot with no mapped behaviour returns `status: unconfigured` with a `next_action`, and exits non-zero (`2`). Missing capability is represented as a **gap to improve**, never as a passing check.
+**MUST**: A command with no mapped behaviour (a scaffolding stub today, an installed-but-unconfigured extension tomorrow) returns `status: unconfigured` with a `next_action`, and exits non-zero (`2`). Missing capability is represented as a **gap to improve**, never as a passing check.
 
 **Rationale**: A harness that pretends unbuilt things work destroys the trust agents place in it. Treat friction and gaps as product feedback (Directives 4, 5).
 
@@ -93,13 +99,13 @@ Entrypoint (parse args, render, exit)
 
 ### Principle 7: Diagnostics prescribe the fix
 
-**MUST**: Every failure and every `doctor` finding explains **what** failed, **why** it matters, and **what to do next** (`next_action`). `doctor` is executable orientation: report configured vs unconfigured layers and the next action for each.
+**MUST**: Every failure and every `doctor` finding explains **what** failed, **why** it matters, and **what to do next** (`next_action`). `doctor` is executable orientation and a **core** capability (not a verb): it reports core readiness layers and, once the extension system exists, **enumerates and validates the installed extensions** so the operator can diagnose whether the harness is wired correctly.
 
 **Rationale**: A boot/doctor command both validates readiness and reminds the operator how the project wants to be worked with (`first-principles.md`).
 
 ### Principle 8: Wrap, don't rebuild
 
-**MUST**: The harness CLI wraps existing repo commands and tools; it implements original behaviour only where a real gap exists. Extensions map the core's slots onto real project commands.
+**MUST**: The harness CLI wraps existing repo commands and tools; it implements original behaviour only where a real gap exists. Verbs (e.g. `run`, `build`, `test`) are provided **dynamically by extensions**, each of which maps its verb onto a real project command — the core does not own or hardcode that mapping.
 
 **Rationale**: The harness is a façade over repo-local commands, fixtures, checks, and workflows (Directive 6) — not a re-implementation of the world.
 
@@ -109,13 +115,17 @@ Entrypoint (parse args, render, exit)
 
 **Rationale**: The repo is the system of record; return structured evidence, not logs to scrape (`patterns-that-work.md`).
 
-### Principle 10: Extension-ready core (do not preclude the plugin future)
+### Principle 10: Dynamic, extension-owned verbs (the core hardcodes no command list)
 
-**MUST**: Keep the core open to a future runtime extension system. The command-slot registry stays **open-capable** (slots keyed by `name: string`; the built-in slots are a seed set, not a closed universe). Any dependency the harness needs **at runtime inside a user's repo** (a future loader, a transpiler such as `jiti`) MUST be a runtime `dependency`, never a `devDependency` (distributed/`npx` installs run `--omit=dev`).
+**MUST**: Verbs are **dynamic and owned by extensions**, not by the core. Each extension supplies its own verb name, help text, and behaviour, registered at runtime in the *target* repo. The command registry the core exposes is a **discovery/registration surface** populated from installed extensions — it carries no built-in verb list.
 
-**MUST NOT**: bake in a closed `SlotName` union as the registry's only key, or assume the slot set is fixed at exactly the current built-ins.
+**MUST**: Any dependency the harness needs **at runtime inside a user's repo** (a future loader, a transpiler such as `jiti`) is a runtime `dependency`, never a `devDependency` (distributed/`npx` installs run `--omit=dev`).
 
-**Rationale**: A pi-style microkernel extension system is a known future direction (surveyed and confirmed compatible). These two guardrails keep that door open at zero cost and avoid a later unpick.
+**MUST NOT**: hardcode a verb list, a closed `SlotName`/verb union, or otherwise assume the set of verbs is fixed. When the extension system lands, the current built-in `unconfigured` stubs (`run`, `validate`, `build`, `lint`, `test`, `smoke`, `health`, `observe`) **are removed** — they exist today only as temporary scaffolding to demonstrate the output/exit contract before the loader exists.
+
+> **Temporary-scaffolding note**: today's `services/slots/slot-registry.ts` `BUILTIN_SLOTS` is scaffolding with a removal plan, *not* a "seed set" to build the verb surface on. Keep the registry keyed by `name: string` (no closed union) so the loader can register verbs freely, and treat the hardcoded entries as throwaway.
+
+**Rationale**: Developers will add many verbs over time; bundling verb + help with the extension that provides it (a pi-style microkernel direction, surveyed and confirmed compatible) keeps the core small and avoids a later unpick. `doctor` (Principle 7) remains the core diagnostic that lists and validates whatever extensions are installed.
 
 ### Principle 11: Fast, repeatable local feedback
 

@@ -104,10 +104,12 @@ interface Envelope {
 
 ## 5. Extension Seam (future-facing, not built today)
 
-Authoritative design: [`workshops/002-cli-composition-pattern.md`](../../docs/plans/004-harness-core/workshops/002-cli-composition-pattern.md) (§ extension seam + Q4).
+Authoritative design: [`workshops/002-cli-composition-pattern.md`](../../docs/plans/004-harness-core/workshops/002-cli-composition-pattern.md) (§ extension seam + Q4), as sharpened by Constitution **Principle 10** (verbs are dynamic and extension-owned; the core hardcodes no verb list).
 
-- Command slots live in a **slot registry** (`services/slots/slot-registry.ts`). Today every slot is `unconfigured`; a `CommandSlot` carries `{ name, status, next_action }` with a reserved future `handler?`.
-- The registry is **open-capable**: slots are keyed by `name: string`; the 8 built-ins are a **seed set**, not a closed universe. A future loader can flip a known slot's status *or* append a new command without a schema change.
+- **Verbs are dynamic and owned by extensions.** Each extension supplies its own verb name, help text, and behaviour, registered at runtime. The core ships **no** built-in verb list.
+- The registry (`services/slots/slot-registry.ts`) is the **registration/discovery surface** the loader populates; a `CommandSlot` carries `{ name, status, next_action }` with a reserved future `handler?`. It stays keyed by `name: string` (no closed union) so the loader can register verbs freely.
+- **Temporary scaffolding**: today's `BUILTIN_SLOTS` (`run`/`validate`/`build`/`lint`/`test`/`smoke`/`health`/`observe`) are `unconfigured` stubs that demonstrate the output/exit contract **before** the loader exists. They are **slated for removal when the extension system lands** — they are not a "seed set" to build the verb surface on.
+- `doctor` is **core** (not a verb): once the extension system exists it **enumerates and validates the installed extensions** so the harness can be diagnosed.
 - A surveyed **pi-style microkernel** model (discovery → collect → bind → dispatch; capability injection via ports; module substitution) is confirmed compatible with this design — the ports *are* the capability surface a plugin `ctx` would expose.
 
 ---
@@ -135,7 +137,7 @@ Reject changes that:
 - Return success (or exit `0`) for an unconfigured/unbuilt slot. ❌
 - Emit unstructured text from a status/reporting command in JSON mode, or omit `next_action` on a non-`ok` status. ❌
 - Mock internal modules (`vi.mock`) instead of injecting a fake adapter. ❌
-- Introduce a closed `SlotName` union as the registry's only key, foreclosing the extension future. ❌
+- Introduce a closed `SlotName`/verb union as the registry's only key, or hardcode a built-in verb list as if it were permanent — verbs are dynamic and extension-owned (Constitution P10). ❌
 - Place a runtime-needed dependency in `devDependencies`. ❌
 - Re-implement a command the target repo already provides instead of wrapping it. ❌
 - Add private/sensitive content to tracked files (publication boundary). ❌
