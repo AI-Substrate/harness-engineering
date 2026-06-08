@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import type { FsPort } from './fs-port.js';
 
 /** Real filesystem — the only place `node:fs` is touched. */
@@ -21,5 +21,13 @@ export class NodeFs implements FsPort {
     } catch {
       return [];
     }
+  }
+
+  mkdirp(path: string): void {
+    mkdirSync(path, { recursive: true });
+  }
+
+  writeText(path: string, contents: string): void {
+    writeFileSync(path, contents, 'utf8');
   }
 }

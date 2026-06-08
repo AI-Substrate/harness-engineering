@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
@@ -46,6 +49,41 @@ describe('FakeFs', () => {
     expect(fs.readdir('.harness/extensions')).toEqual([]);
     expect(fs.reads).toContain('.harness/extensions');
   });
+
+  it('writeText stores content (readable back) and records the write', () => {
+    /*
+    Test Doc:
+    - Why: the scaffolder (plan 006 T011) writes a new extension file; the service must be
+      unit-testable with zero real fs (Constitution P3 — fakes over mocks).
+    - Contract: FakeFs.writeText stores `{path: contents}` so a later exists/readText sees it,
+      and pushes the path to `writes[]` for call-history assertions.
+    - Usage Notes: assert on `writes` for what was written; on `exists`/`readText` for content.
+    - Quality Contribution: pins the write seam the scaffold-service tests depend on.
+    - Worked Example: fs.writeText('a.ts', 'x'); fs.readText('a.ts') === 'x'.
+    */
+    const fs = new FakeFs();
+    fs.writeText('.harness/extensions/greet.ts', '// stub');
+    expect(fs.writes).toEqual(['.harness/extensions/greet.ts']);
+    expect(fs.exists('.harness/extensions/greet.ts')).toBe(true);
+    expect(fs.readText('.harness/extensions/greet.ts')).toBe('// stub');
+  });
+
+  it('mkdirp registers the directory, is idempotent, and records each call', () => {
+    /*
+    Test Doc:
+    - Why: scaffolding the first extension must create `.harness/extensions/` if absent
+      (plan 006 Finding 01); a no-op when it already exists.
+    - Contract: FakeFs.mkdirp records the path on `mkdirs[]` and makes `exists(dir)` true;
+      calling twice does not throw and records twice (idempotent behavior, honest history).
+    - Quality Contribution: pins the recursive-create seam with zero real fs.
+    - Worked Example: fs.mkdirp('a/b'); fs.exists('a/b') === true.
+    */
+    const fs = new FakeFs();
+    fs.mkdirp('.harness/extensions');
+    fs.mkdirp('.harness/extensions');
+    expect(fs.mkdirs).toEqual(['.harness/extensions', '.harness/extensions']);
+    expect(fs.exists('.harness/extensions')).toBe(true);
+  });
 });
 
 describe('NodeFs', () => {
@@ -67,5 +105,20 @@ describe('NodeFs', () => {
     const fs = new NodeFs();
     expect(fs.readdir('src')).toContain('app.ts');
     expect(fs.readdir('definitely/not/here')).toEqual([]);
+  });
+
+  it('mkdirp + writeText create nested dirs and a readable file on the real fs', () => {
+    // Writes under the OS temp dir, then cleans up — proves the real adapter path.
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-fs-'));
+    try {
+      const target = join(base, 'nested', 'deep', 'greet.ts');
+      fs.mkdirp(join(base, 'nested', 'deep'));
+      fs.writeText(target, '// real');
+      expect(fs.exists(target)).toBe(true);
+      expect(fs.readText(target)).toBe('// real');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 });

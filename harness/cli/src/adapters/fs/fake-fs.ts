@@ -2,11 +2,16 @@ import type { FsPort } from './fs-port.js';
 
 /**
  * Deterministic filesystem for tests. Seeded with a `{path: contents}` map and
- * an optional `{dir: entryNames[]}` map; records every probed path on `reads`
- * (fakes over mocks — assert on history).
+ * an optional `{dir: entryNames[]}` map; records every probed path on `reads`,
+ * every written path on `writes`, and every `mkdirp` on `mkdirs` (fakes over
+ * mocks — assert on history). Writes mutate the in-memory file map so a later
+ * `exists`/`readText` sees what was written.
  */
 export class FakeFs implements FsPort {
   readonly reads: string[] = [];
+  readonly writes: string[] = [];
+  readonly mkdirs: string[] = [];
+  private readonly madeDirs = new Set<string>();
 
   constructor(
     private readonly files: Record<string, string> = {},
@@ -15,7 +20,7 @@ export class FakeFs implements FsPort {
 
   exists(path: string): boolean {
     this.reads.push(path);
-    return path in this.files;
+    return path in this.files || this.madeDirs.has(path);
   }
 
   readText(path: string): string | null {
@@ -26,5 +31,15 @@ export class FakeFs implements FsPort {
   readdir(path: string): string[] {
     this.reads.push(path);
     return this.dirs[path] ?? [];
+  }
+
+  mkdirp(path: string): void {
+    this.mkdirs.push(path);
+    this.madeDirs.add(path);
+  }
+
+  writeText(path: string, contents: string): void {
+    this.writes.push(path);
+    this.files[path] = contents;
   }
 }
