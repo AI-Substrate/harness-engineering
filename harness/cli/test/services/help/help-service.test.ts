@@ -74,6 +74,7 @@ describe('renderHelpText', () => {
   it('covers core commands, the verb list, output modes, exit codes, first actions', () => {
     const text = renderHelpText(buildHelp(registry([mkVerb('hello')], [loadedRecord('hello')])));
     expect(text).toContain('doctor');
+    expect(text).toContain('docs');
     expect(text).toContain('hello');
     expect(text).toContain('Output modes:');
     expect(text).toContain('Exit codes:');

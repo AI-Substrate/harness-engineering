@@ -58,3 +58,6 @@
 - registry.ts: RESERVED_NAMES += 'docs'; added a parallel `docs`-reserved test (extension `docs` verb → conflict, shadows ['docs']).
 - Coupled fixes: scaffold-service.ts next_action message now "(reserved: help, doctor, new, docs)"; scaffold reserved-name it.each += 'docs' (E151).
 - Coupled doc accuracy: extend-the-harness.md + authoring-verbs.md "reserved core commands" lines now include docs → regenerated docs-content.ts (2 lines changed). tsc + biome + 43 tests green.
+
+### T012 — advertise docs in help ✅
+- help-service.ts: PURPOSE now "help, doctor, new, and docs are always available"; safe_first_actions += a `harness docs` line; renderHelpText Commands list += `docs [id]`. Pinned with a `text.toContain('docs')` assertion. 8 help tests green; biome clean.
