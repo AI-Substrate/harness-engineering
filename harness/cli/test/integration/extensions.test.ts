@@ -78,12 +78,12 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     vi.restoreAllMocks();
   });
 
-  it('loads hello + build, isolates the broken extension (E140)', async () => {
+  it('loads hello + build + a plain .js verb, isolates the broken extension (E140)', async () => {
     const { registry } = await run(REPO, ['help']);
     const byStatus = (s: string) =>
       registry.records.filter((r) => r.status === s).map((r) => r.entryPath.split('/').pop());
-    expect(registry.verbs.map((v) => v.name).sort()).toEqual(['build', 'hello']);
-    expect(byStatus('loaded').sort()).toEqual(['build.ts', 'hello.ts']);
+    expect(registry.verbs.map((v) => v.name).sort()).toEqual(['build', 'greetjs', 'hello']);
+    expect(byStatus('loaded').sort()).toEqual(['build.ts', 'greetjs.js', 'hello.ts']);
     expect(byStatus('failed')).toEqual(['broken.ts']);
     const broken = registry.records.find((r) => r.entryPath.endsWith('broken.ts'));
     expect(broken?.error).toContain('E140');
@@ -96,6 +96,24 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     expect(env.command).toBe('hello');
     expect(env.status).toBe('ok');
     expect(env.data.greeting).toBe('hello, pi');
+    expect(code).toBe(0);
+  });
+
+  it('runs a plain .js extension (JSDoc contract, no runtime import) → ok, exit 0 (D4)', async () => {
+    /*
+    Test Doc:
+    - Why: plan D4 promises a plain-.js author can extend the harness with NO runtime dependency on
+      the core — referencing the contract via a JSDoc @type only. This proves that end-to-end via the
+      native import() fast path (not jiti), closing the validation evidence gap.
+    - Contract: a .js default-export HarnessVerb loads, registers, and runs to an ok Envelope, exit 0.
+    - Quality Contribution: pins the .js authoring path the docs/contract claim but no other test proved.
+    - Worked Example: `harness greetjs` → { greeting: 'hi from a .js extension' }, exit 0.
+    */
+    const { out, code } = await run(REPO, ['greetjs']);
+    const env = JSON.parse(out);
+    expect(env.command).toBe('greetjs');
+    expect(env.status).toBe('ok');
+    expect(env.data.greeting).toBe('hi from a .js extension');
     expect(code).toBe(0);
   });
 
@@ -153,7 +171,7 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     const env = JSON.parse(out);
     expect(env.command).toBe('doctor');
     const ext = env.data.layers.find((l: { name: string }) => l.name === 'extensions');
-    expect(ext.detail).toContain('2 loaded');
+    expect(ext.detail).toContain('3 loaded');
     expect(ext.detail).toContain('1 failed');
   });
 });
