@@ -17,6 +17,21 @@ describe('FakeProcess', () => {
     expect(proc.which('missing')).toBeNull();
     expect(proc.lookups).toEqual(['node', 'missing']);
   });
+
+  it('cwd returns the seeded working directory (defaults to /repo)', () => {
+    /*
+    Test Doc:
+    - Why: discovery resolves `<cwd>/.harness/extensions/` — the cwd must come through a port
+      so the service is unit-testable without depending on the real process cwd (plan D1).
+    - Contract: FakeProcess.cwd() returns the seeded value; an unseeded fake falls back to a
+      stable default so tests never couple to the runner's actual directory.
+    - Usage Notes: pass `{ cwd: '/some/repo' }` as the second constructor arg.
+    - Quality Contribution: pins the cwd seam discovery + ctx rely on.
+    - Worked Example: new FakeProcess({}, '/my/repo').cwd() === '/my/repo'.
+    */
+    expect(new FakeProcess({}, '/my/repo').cwd()).toBe('/my/repo');
+    expect(new FakeProcess().cwd()).toBe('/repo');
+  });
 });
 
 describe('NodeProcess', () => {

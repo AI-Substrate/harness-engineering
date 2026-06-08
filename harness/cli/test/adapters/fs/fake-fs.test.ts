@@ -24,6 +24,28 @@ describe('FakeFs', () => {
     expect(fs.readText('missing')).toBeNull();
     expect(fs.reads).toContain('missing');
   });
+
+  it('readdir returns seeded entry names and records the probed dir', () => {
+    /*
+    Test Doc:
+    - Why: discovery scans `.harness/extensions/` one level — it needs a directory listing
+      behind the FsPort so the service stays unit-testable (WS-A Decision 4, plan T007/T008).
+    - Contract: FakeFs.readdir returns the seeded entry-name list for a directory and pushes
+      the probed path to reads[]; an unseeded directory yields [] (never throws).
+    - Usage Notes: seed directories via a second `{dir: string[]}` constructor map.
+    - Quality Contribution: pins the readdir seam discovery relies on with zero real fs.
+    - Worked Example: new FakeFs({}, {'.harness/extensions': ['a.ts','b.ts']}).readdir(...) → names.
+    */
+    const fs = new FakeFs({}, { '.harness/extensions': ['hello.ts', 'build.js'] });
+    expect(fs.readdir('.harness/extensions')).toEqual(['hello.ts', 'build.js']);
+    expect(fs.reads).toContain('.harness/extensions');
+  });
+
+  it('readdir returns [] for an unseeded directory (no throw)', () => {
+    const fs = new FakeFs();
+    expect(fs.readdir('.harness/extensions')).toEqual([]);
+    expect(fs.reads).toContain('.harness/extensions');
+  });
 });
 
 describe('NodeFs', () => {
@@ -38,5 +60,12 @@ describe('NodeFs', () => {
     const fs = new NodeFs();
     expect(fs.exists('definitely/not/here.xyz')).toBe(false);
     expect(fs.readText('definitely/not/here.xyz')).toBeNull();
+  });
+
+  it('readdir lists a real directory and returns [] for a missing one (no throw)', () => {
+    // cwd is harness/cli (vitest runs there); the `src` directory exists.
+    const fs = new NodeFs();
+    expect(fs.readdir('src')).toContain('app.ts');
+    expect(fs.readdir('definitely/not/here')).toEqual([]);
   });
 });

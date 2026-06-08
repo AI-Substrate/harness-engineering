@@ -7,10 +7,17 @@ import type { ProcessPort } from './process-port.js';
 export class FakeProcess implements ProcessPort {
   readonly lookups: string[] = [];
 
-  constructor(private readonly paths: Record<string, string> = {}) {}
+  constructor(
+    private readonly paths: Record<string, string> = {},
+    private readonly cwdPath = '/repo',
+  ) {}
 
   which(command: string): string | null {
     this.lookups.push(command);
     return this.paths[command] ?? null;
+  }
+
+  cwd(): string {
+    return this.cwdPath;
   }
 }

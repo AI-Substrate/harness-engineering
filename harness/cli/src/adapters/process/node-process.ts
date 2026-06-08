@@ -12,4 +12,8 @@ export class NodeProcess implements ProcessPort {
     }
     return null;
   }
+
+  cwd(): string {
+    return process.cwd();
+  }
 }

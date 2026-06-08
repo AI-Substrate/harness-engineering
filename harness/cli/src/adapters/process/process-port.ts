@@ -8,4 +8,6 @@
 export interface ProcessPort {
   /** Absolute path to `command` if found on PATH, else null. */
   which(command: string): string | null;
+  /** The current working directory — the root discovery resolves `.harness/extensions/` against. */
+  cwd(): string;
 }
