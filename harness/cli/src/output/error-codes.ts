@@ -7,8 +7,6 @@ export const ErrorCodes = {
   UNKNOWN: 'E100',
   /** Missing/invalid argument or flag. */
   INVALID_ARGS: 'E108',
-  /** Named slot is not a known command slot. */
-  SLOT_UNKNOWN: 'E110',
   /** `.harness`/command-map config failed validation. */
   CONFIG_INVALID: 'E120',
   /** A doctor check raised an unexpected error (vs. reporting a failing layer). */

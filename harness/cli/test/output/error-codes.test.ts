@@ -14,7 +14,6 @@ describe('ErrorCodes table', () => {
     expect(ErrorCodes).toEqual({
       UNKNOWN: 'E100',
       INVALID_ARGS: 'E108',
-      SLOT_UNKNOWN: 'E110',
       CONFIG_INVALID: 'E120',
       DOCTOR_CHECK_FAILED: 'E130',
       EXTENSION_LOAD_FAILED: 'E140',
