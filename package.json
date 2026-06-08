@@ -22,7 +22,8 @@
     "fix": "biome check --write harness/cli"
   },
   "dependencies": {
-    "commander": "^13.1.0"
+    "commander": "^13.1.0",
+    "jiti": "2.7.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.10",
