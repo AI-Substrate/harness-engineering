@@ -59,6 +59,23 @@ Really an engineering harness is the productisation of your engineering environm
 
 Two main reasons (there are more) but these two are the most important. a) We want to create the best possible engineering environment for agents and humans to work together - we want the best possible way to encode learnings and structure back into our engineering environment and b) we want to systemise the creation and use of deterministic backpressure in our engineering system to raise quality and speed - e.g. create the best possible and easiest way to encode tribal knowledge into the core engineering environment so the agent can use it as "backpressure"
 
+# Encoding your team project memory
+
+- The engineering harness is about building the thing that builds the thing.
+- Creating and encoding team/project memory as deterministic code where possible, with markdown as fallback.
+- Encoding learnings and fixing friction.
+- Pushing for creative, innovative ways to create deterministic back-pressure in the codebase.
+- The harness is the focal point for this team memory — your engineering environment.
+
+## Speaker Notes
+
+The engineering harness is about building the thing that builds the thing.
+
+The engineering harness is about creating and encoding team/project memory as deterministic code where possible, with markdown as fallback. It is about encoding learnings, and fixing friction etc.
+
+It is about pushing for creative and innovative ways to create deterministic back-pressure in the codebase. The engineering harness gives a focal point for this team memory - this engineering environment. It creates the focal point for this activity we see here.
+
+
 
 # Engineering Harness vs Agent Harness
 - The harness word is hot right now, probably overused.
@@ -91,6 +108,7 @@ Highly cohesive: a better engineering harness means better agent outcomes, whate
   - CodeQL or .NET Roslyn — encode architecture rules into a command the agent runs: yes/no, no guessing.
   - Closing the loop (middle of the road): a harness command to build, host, and connect a Playwright browser so the agent physically tests the shiny new button it just added.
 - The point: move as much back pressure from the inferred world to the deterministic world.
+- We should push as much as possible on creating creative and innovating ways to create backpressure we can trust
 
 ## Speaker Notes
 
