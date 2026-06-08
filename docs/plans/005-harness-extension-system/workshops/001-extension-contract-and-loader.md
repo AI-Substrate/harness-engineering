@@ -223,7 +223,7 @@ export interface ExtensionRecord {
   status: 'loaded' | 'failed' | 'conflict';
   verbs: HarnessVerb[];                      // declared verbs (empty if failed)
   error?: string;                            // load/validation message (status != loaded)
-  shadows?: string;                          // for 'conflict': the verb name shadowed
+  shadows?: string[];                        // for 'conflict': the verb name(s) shadowed
 }
 export interface ModuleLoaderPort {
   /** Import by absolute path → default export. `.ts/.tsx` via jiti; `.js/.mjs/.cjs` via dynamic import(). */

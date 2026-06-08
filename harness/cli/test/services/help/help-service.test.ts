@@ -62,7 +62,7 @@ describe('buildHelp', () => {
         [
           loadedRecord('ok'),
           { entryPath: '/x/bad.ts', status: 'failed', verbs: [], error: 'E140: boom' },
-          { entryPath: '/x/dup.ts', status: 'conflict', verbs: [], shadows: 'ok' },
+          { entryPath: '/x/dup.ts', status: 'conflict', verbs: [], shadows: ['ok'] },
         ],
       ),
     );

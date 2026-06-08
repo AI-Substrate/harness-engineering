@@ -107,6 +107,6 @@ export interface ExtensionRecord {
   verbs: HarnessVerb[];
   /** Load/validation message (present when status !== 'loaded'). */
   error?: string;
-  /** For 'conflict': the verb name that was shadowed by an earlier extension. */
-  shadows?: string;
+  /** For 'conflict': the verb name(s) shadowed by a core command or earlier extension. */
+  shadows?: string[];
 }

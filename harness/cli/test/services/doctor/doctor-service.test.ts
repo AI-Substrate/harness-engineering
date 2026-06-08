@@ -104,7 +104,7 @@ describe('buildDoctorReport', () => {
   it('reports a verb conflict (E142)', () => {
     const reg = registry([
       { entryPath: '/x/a.ts', status: 'loaded', verbs: [mkVerb('dup')] },
-      { entryPath: '/x/b.ts', status: 'conflict', verbs: [], shadows: 'dup' },
+      { entryPath: '/x/b.ts', status: 'conflict', verbs: [], shadows: ['dup'] },
     ]);
     const report = buildDoctorReport(deps(), reg);
     const ext = report.layers.find((l) => l.name === 'extensions');

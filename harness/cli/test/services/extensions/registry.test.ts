@@ -62,7 +62,7 @@ describe('buildVerbRegistry', () => {
     expect(reg.verbs.map((v) => v.name)).toEqual(['dup']);
     const second = reg.records.find((r) => r.entryPath === '/x/second.ts');
     expect(second?.status).toBe('conflict');
-    expect(second?.shadows).toBe('dup');
+    expect(second?.shadows).toEqual(['dup']);
     expect(second?.error).toContain('E142');
   });
 
@@ -71,7 +71,27 @@ describe('buildVerbRegistry', () => {
     const reg = await buildVerbRegistry(['/x/evil.ts'], loader);
     expect(reg.verbs).toEqual([]);
     expect(reg.records[0]?.status).toBe('conflict');
-    expect(reg.records[0]?.shadows).toBe('help');
+    expect(reg.records[0]?.shadows).toEqual(['help']);
+  });
+
+  it('records ALL shadowed names from a multi-verb export, not just the first (F005)', async () => {
+    /*
+    Test Doc:
+    - Why: an extension exporting several reserved/duplicate verbs must surface EVERY shadowed
+      name so doctor can report it honestly; the old `??=` kept only the first, silently dropping
+      the rest (F005).
+    - Contract: shadows is a string[] listing every shadowed verb; the error message lists all.
+    - Quality Contribution: pins the all-conflicts collection the doctor report depends on.
+    - Worked Example: export [help, doctor] → shadows ['help','doctor'], both in the E142 message.
+    */
+    const loader = new FakeModuleLoader({ '/x/greedy.ts': [mkVerb('help'), mkVerb('doctor')] });
+    const reg = await buildVerbRegistry(['/x/greedy.ts'], loader);
+    expect(reg.verbs).toEqual([]);
+    const rec = reg.records[0];
+    expect(rec?.status).toBe('conflict');
+    expect(rec?.shadows).toEqual(['help', 'doctor']);
+    expect(rec?.error).toContain('help');
+    expect(rec?.error).toContain('doctor');
   });
 
   it('preserves an open name:string key (no closed verb-name union)', async () => {
@@ -87,6 +107,6 @@ describe('buildVerbRegistry', () => {
     const rec = reg.records[0];
     expect(rec?.status).toBe('conflict');
     expect(rec?.verbs.map((v) => v.name)).toEqual(['one']);
-    expect(rec?.shadows).toBe('help');
+    expect(rec?.shadows).toEqual(['help']);
   });
 });

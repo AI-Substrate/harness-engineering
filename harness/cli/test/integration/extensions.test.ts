@@ -136,7 +136,7 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     const shadowed = registry.records.find((r) => r.entryPath.endsWith('beta.ts'));
     expect(winner?.status).toBe('loaded');
     expect(shadowed?.status).toBe('conflict');
-    expect(shadowed?.shadows).toBe('greet');
+    expect(shadowed?.shadows).toEqual(['greet']);
     expect(shadowed?.error).toContain('E142');
   });
 
