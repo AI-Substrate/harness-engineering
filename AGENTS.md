@@ -34,6 +34,11 @@ Workflow:
 4. Promote only generalized, publication-safe synthesis into tracked repo content.
 5. Keep traceability from public claims back to private source IDs in the private notes until claims are replaced by public citations or approved wording.
 
-## Maintenance note
+## minih agents (engineering-harness testing loop)
 
-Update this file whenever the repo’s intent, publication boundary, or research workflow changes.
+This repo uses [`minih`](https://github.com/AI-Substrate/minih) agents to exercise the harness end-to-end. minih agents live under `agents/<slug>/` (per-run artifacts in `agents/*/runs/` are gitignored).
+
+- **Passing skills into a minih agent**: minih does **not** load global skills implicitly. Wire repo-local skills via the root `.minih.json` `skills` block — `{ "skills": { "sources": ["path:skills"], "include": ["<slug>"] } }` — where `path:skills` points at this repo's `skills/<name>/SKILL.md`. Equivalent one-off form: `minih run <agent> --skill-source path:skills --skill <slug>`. Verify resolution with `minih skills doctor` / `minih inspect <agent>`. Source aliases: `.agents`, `.claude`, `.github`, `global:*`, `path:<path>`.
+- **Always collect feedback + magic wand after EVERY minih agent run.** Every minih agent emits a `retrospective` (`workedWell`, `confusing`, `magicWand`, plus self-numbered `difficulties` MH-NNN). After any run completes, the calling agent/human MUST review that feedback (and `minih difficulties` across runs), then act on it: route project-layer friction into harness/CLI/skill improvements and the difficulty ledger, and minih-layer friction upstream. Encode fixes so the next run never hits the same friction — the harness is a self-improving product, not a static test tool.
+
+

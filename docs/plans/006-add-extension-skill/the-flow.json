@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "add-extension-skill",
+  "plan_dir": "docs/plans/006-add-extension-skill",
+  "mode": "Simple",
+  "cursor": "phase1",
+  "recommended_next": "phase1",
+  "now": "Implementing (companion)",
+  "next": "Manual temp-dir test, then minih e2e",
+  "_comment": "No engineering-harness governance doc present -> harness loop nodes omitted; standard testing fallback. Spine only. Two workshop opportunities flagged in the spec (skill context-awareness contract; scaffold template set) \u2014 optional excursions before /plan-3.",
+  "agents": [
+    {
+      "id": "crc",
+      "kind": "companion",
+      "slug": "code-review-companion",
+      "runtime": "minih",
+      "status": "queued",
+      "covers": [
+        "phase1"
+      ],
+      "render": "wrap",
+      "driver": "/plan-6-v2-implement-phase-companion",
+      "note": "live per-commit review during the build; supersedes /plan-7."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-08T08:49:51Z",
+      "user_input": "first yes, we need to have a cli command to template out the empty extension ... so the skill should be context aware",
+      "note": "CS-3 -> Simple. Split into (1) harness new core scaffold command (TDD) + (2) context-aware add-extension skill. 2 workshop opportunities flagged.",
+      "artifacts": [
+        "add-extension-skill-spec.md"
+      ],
+      "next": [
+        "ws1"
+      ]
+    },
+    {
+      "id": "ws1",
+      "type": "workshop",
+      "label": "Workshop - skill context-awareness contract",
+      "status": "done",
+      "branch_of": "spec",
+      "note": "DECIDED: keep the skill thin (obvious->use, ambiguous->ask). No workshop run.",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "ws2",
+      "type": "workshop",
+      "label": "Workshop - scaffold template set + flags",
+      "status": "done",
+      "branch_of": "spec",
+      "note": "Implementation-Ready. Pinned verbatim starters, write path, templates-as-functions in CLI, FsPort write gap, E15x codes.",
+      "next": [
+        "plan"
+      ],
+      "ran_at": "2026-06-08T09:04:14Z",
+      "user_input": "i want to know details on what will be scaffold and where and where the templates live",
+      "artifacts": [
+        "workshops/001-scaffold-template-set-and-layout.md"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/plan-3",
+      "note": "Status READY, all 7 gates PASS. Simple/single-phase. 20 tasks, 13 ACs. Key finding: FsPort is read-only -> add write methods first.",
+      "next": [
+        "phase1"
+      ],
+      "ran_at": "2026-06-08T09:16:05Z",
+      "user_input": "yeah next",
+      "artifacts": [
+        "add-extension-skill-plan.md"
+      ]
+    },
+    {
+      "id": "phase1",
+      "type": "phase",
+      "label": "Implementation (20 tasks, TDD)",
+      "status": "in_progress",
+      "note": "Building with companion. 23 tasks: +T021 reusable test-repo setup, T022 minih e2e, T023 feedback.",
+      "next": [
+        "merge"
+      ],
+      "user_input": "implement with companion code review agent then try it in a temp location; reusable test-folder setup; then minih agent testing"
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "command": "/plan-8",
+      "next": []
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "harnessSource": {
+      "type": "string",
+      "enum": ["local", "github"],
+      "default": "local",
+      "description": "Where to install the harness core from. 'local' = the project root (file install, fast). 'github' = npx-from-repo path."
+    },
+    "verbName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "default": "greet",
+      "description": "The verb the skill should author (becomes `harness <verbName>`)."
+    },
+    "variant": {
+      "type": "string",
+      "enum": ["minimal", "wrap", "js"],
+      "default": "wrap",
+      "description": "Which starter variant to author. 'wrap' wraps the fixture's `npm run demo`."
+    },
+    "keepTempRepo": {
+      "type": "boolean",
+      "default": false,
+      "description": "Leave the temp repo on disk for inspection instead of deleting it."
+    }
+  }
+}
