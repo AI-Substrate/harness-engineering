@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "harness-extension-system",
+  "plan_dir": "docs/plans/005-harness-extension-system",
+  "mode": "Simple",
+  "current_stage": "awaiting-6",
+  "pending_command": "/plan-6-v2-implement-phase-companion --phase \"Implementation\" --plan \"docs/plans/005-harness-extension-system/harness-extension-system-plan.md\"",
+  "intent": "Harness extension system — repo-local .harness/extensions/ discovered + loaded at runtime by the npx-installed core CLI; each extension contributes CLI verbs + --help; the core focal point that lets developers extend their harness easily, retiring the temporary BUILTIN_SLOTS (P10).",
+  "milestones_total": 5,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-08T04:35:00Z",
+  "compacted_seams": [],
+  "status": "active",
+  "note": "PLAN DONE -> harness-extension-system-plan.md, Status: READY. Simple mode, single Implementation phase, 28 ordered test-first tasks (groups A-F). Gates: G1/G5/G6/G7 PASS, G2/G3 PASS (doctrine-sync T025), G4 N/A. validate-v2 (4 agents): thesis ADVANCED @ Implementation/Strong; forward-compat engaged (not standalone) all-PASS after fixes; 3 HIGH + 3 MED/LOW found & ALL fixed in-place (T017 removal scope+ordering incl app.ts/acts/help/acts/doctor; G6 gate wording; run/dynamic spec drift -> top-level verbs supersede run; exports types-condition; --omit=dev proof via .ts smoke fixture; idioms.md:111 BUILTIN_SLOTS snippet). Plan Decisions D1-D4 fold WS-B/WS-C: D1 cwd on ProcessPort; D2 remove run dispatcher (verbs top-level); D3 registry survives as verb registry (validateVerbRegistry); D4 exports['./contract'] + harness-engineering/contract specifier. Next: /plan-6 (COMPANION variant recommended given CS-4; compact first if heavy). Branch feat/harness-cli-core (shared w/ plan 004, merge deferred). ALL 005 artifacts UNCOMMITTED. No engineering-harness governance doc => harness loop omitted."
+}

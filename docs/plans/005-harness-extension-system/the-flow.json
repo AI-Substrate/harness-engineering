@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-extension-system",
+  "plan_dir": "docs/plans/005-harness-extension-system",
+  "mode": "Simple",
+  "cursor": "impl",
+  "recommended_next": "impl",
+  "now": "Plan written + validated — Status READY (4 agents, 5 issues found & fixed)",
+  "next": "Build the single Implementation phase (/plan-6)",
+  "_comment": "Plan 005. /plan-3 landed Status:READY (Simple, single Implementation phase, 28 ordered test-first tasks T001-T028). validate-v2: 4 agents, thesis ADVANCED @ Implementation/Strong; forward-compat engaged (not standalone); 3 HIGH + 3 MED/LOW found & ALL fixed. No engineering-harness governance doc => harness loop nodes omitted. the-flow.md is generated FROM this file.",
+  "agents": [],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research", "status": "done",
+      "command": "/plan-1a", "ran_at": "2026-06-08T02:18:00Z",
+      "note": "4 explore agents + first-hand kernel read. Seam was pre-built (open registry, FsPort-fed loadSlotRegistry, reserved ModuleLoaderPort; P10/P7/P8). Pivotal open decision: TS-loading mechanism.",
+      "artifacts": ["research-dossier.md"], "next": ["dr", "spec"] },
+
+    { "id": "dr", "type": "deep-research", "label": "Deep research (folded into WS-A)", "status": "done",
+      "branch_of": "research",
+      "note": "Perplexity grounded-reasoning + ask during WS-A: Node-TS/jiti/tsx comparison + plugin trust norm. Sourced the WS-A decisions.",
+      "next": ["spec"] },
+
+    { "id": "spec", "type": "spec", "label": "Spec", "status": "done",
+      "command": "/plan-1b", "ran_at": "2026-06-08T02:42:00Z",
+      "note": "Mode: Simple, CS-4. Loading mechanism routed to WS-A (resolved). 11 ACs; 3 Workshop Opportunities. Post-validation: 'run' surface clarified (top-level verbs supersede the run dispatcher).",
+      "artifacts": ["harness-extension-system-spec.md", "harness-extension-system.fltplan.md"], "next": ["wsa"] },
+
+    { "id": "wsa", "type": "workshop", "label": "Workshop WS-A · contract & loader architecture", "status": "done",
+      "command": "/plan-2c", "ran_at": "2026-06-08T03:05:00Z", "branch_of": "spec",
+      "note": "Contract Ready. loader=jiti v2 + .js fast-path; Node >=22 LTS; declarative HarnessVerb default export; ctx=ports + NEW ExecPort (P8); discovery=.harness/extensions one-level sorted first-wins; trust-the-repo + --no-extensions; E140/E141/E142; async main. WS-B + WS-C deferred.",
+      "artifacts": ["workshops/001-extension-contract-and-loader.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan", "status": "done",
+      "command": "/plan-3", "ran_at": "2026-06-08T04:30:00Z",
+      "user_input": "go. Then validate when completed.",
+      "note": "Status: READY. Simple, single Implementation phase, 28 ordered test-first tasks (groups A-F). G1/G5/G6/G7 PASS, G2/G3 PASS (doctrine-sync T025), G4 N/A. validate-v2: 4 agents, thesis ADVANCED @ Implementation/Strong; 3 HIGH + 3 MED/LOW found & ALL fixed. Decisions D1-D4 fold WS-B/WS-C micro-calls.",
+      "artifacts": ["harness-extension-system-plan.md"], "next": ["impl"] },
+
+    { "id": "impl", "type": "phase", "label": "Phase: Implementation (the extension system)", "status": "known",
+      "command": "/plan-6", "note": "Single Simple-mode phase. 28 tasks T001-T028, test-first: A ports/adapters -> B contract -> C loader core -> D composition-root + scaffolding removal -> E dynamic help/doctor -> F packaging/docs/doctrine/integration. Recommend the COMPANION variant (live code-review) given CS-4. Compact first if context heavy.", "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
+      "command": "/plan-8", "note": "shares branch feat/harness-cli-core with plan 004 (merge deferred). All 005 artifacts currently UNCOMMITTED.", "next": [] }
+  ]
+}
