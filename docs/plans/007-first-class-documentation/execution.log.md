@@ -65,3 +65,6 @@
 ### T013 — drift + curation tests ✅
 - docs-content.test.ts: (a) per-manifest-entry byte-equal `getDoc(id).content === source .md` (proves Option-C round-trip + catches stale regen/hand-edits); (b) set(DOCS ids)===set(manifest ids); (c) listDocs ids match; (d) P12 forbidden-path guard (AGENTS.md/docs/plans/scratch). 7 tests green; biome clean.
 - Follow-up: biome `it.each` formatting — ran `biome format --write` on the drift test (cosmetic). biome check green.
+
+### T014 — document docs in CLI README ✅
+- harness/cli/README.md: command-surface table += `harness new <name>` (was missing since plan 006) + `harness docs [id]`; intro + reserved-commands line now list help/doctor/new/docs; usage block += docs examples; exit-codes table += E160. README is a corpus member → regenerated docs-content.ts; drift test green; tsc clean.

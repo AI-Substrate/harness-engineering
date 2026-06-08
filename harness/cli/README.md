@@ -1,6 +1,6 @@
 # harness — engineering harness CLI
 
-The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: drop a file in your repo's `.harness/extensions/` folder and it becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. Two commands are always built in (`help`, `doctor`); everything else is contributed by extensions you add.
+The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: drop a file in your repo's `.harness/extensions/` folder and it becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. A few commands are always built in (`help`, `doctor`, `new`, `docs`); everything else is contributed by extensions you add.
 
 > This is the **engineering harness** (the project's development loop), not an agent runtime. It studies how a human or agent can boot, run, and prove the software safely and quickly.
 
@@ -69,13 +69,17 @@ See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract
 |---------|--------------|--------|
 | `harness help` | Explain purpose, the **dynamic verb list**, output modes, safe first actions. `help --json` is machine-readable (`data.verbs[]`). | ✅ core |
 | `harness doctor` | Report readiness (toolchain, cli-build) **and enumerate the installed extensions** (loaded / failed / conflict, with paths + errors) — without invoking any verb. Safe at session start. | ✅ core |
+| `harness new <name>` | Scaffold a new, immediately-loadable extension into `./.harness/extensions/`. | ✅ core |
+| `harness docs [id]` | List the bundled, curated docs (`harness docs`), or print one verbatim to stdout (`harness docs <id>`). Offline; ships with the CLI. | ✅ core |
 | `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
 
-`help` and `doctor` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
+`help`, `doctor`, `new`, and `docs` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
 
 ```bash
 harness help --json                     # machine-readable verb map (data.verbs[])
 harness doctor                          # readiness + extension enumeration
+harness docs                            # list the bundled docs
+harness docs extend-the-harness         # print one doc's markdown to stdout
 harness --no-extensions help            # core-only (skip discovery)
 ```
 
@@ -100,6 +104,7 @@ Selection precedence (highest wins):
 | `1` | `error` — something failed; see `error.code` + `next_action`. No raw stack traces. |
 | `2` | `unconfigured` — a verb reported it has no behaviour mapped yet. |
 | `E140/E141/E142` | (in `error.code`) extension load failure / runtime throw / verb-name conflict. |
+| `E160` | (in `error.code`) `harness docs <id>` — no curated doc with that id (exit 1). |
 
 `unconfigured → 2` is deliberate: a script or agent can distinguish "not built yet" (2) from "broke" (1), and `doctor` still exits `0` because it succeeded at *reporting*.
 
