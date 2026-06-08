@@ -84,6 +84,27 @@ describe('discoverExtensions', () => {
     expect(discoverExtensions(fs, new FakeProcess({}, '/repo'))).toEqual([`${BASE}/lint/main.ts`]);
   });
 
+  it('rejects manifest entries that escape the extension subdir (path traversal) (F004)', () => {
+    /*
+    Test Doc:
+    - Why: a package.json manifest must not be able to point the loader at files OUTSIDE its own
+      extension subdir (`../escape.ts`, or a sibling-prefix like `../lint-evil/x.ts`) (F004).
+    - Contract: manifest entries that resolve outside the subdir are dropped; in-subdir entries kept.
+    - Quality Contribution: pins lexical containment of manifest-resolved candidates.
+    - Worked Example: extensions ['../escape.ts','../lint-evil/x.ts','ok.ts'] → only ok.ts survives.
+    */
+    const fs = new FakeFs(
+      {
+        [`${BASE}/lint/package.json`]: JSON.stringify({
+          harness: { extensions: ['../escape.ts', '../lint-evil/x.ts', 'ok.ts'] },
+        }),
+        [`${BASE}/lint/ok.ts`]: '// ok',
+      },
+      { [BASE]: ['lint'] },
+    );
+    expect(discoverExtensions(fs, new FakeProcess({}, '/repo'))).toEqual([`${BASE}/lint/ok.ts`]);
+  });
+
   it('resolves the base against the process cwd', () => {
     const fs = new FakeFs({}, { '/other/.harness/extensions': ['x.ts'] });
     expect(discoverExtensions(fs, new FakeProcess({}, '/other'))).toEqual([

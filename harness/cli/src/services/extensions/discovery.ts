@@ -1,4 +1,4 @@
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 
@@ -16,12 +16,17 @@ const SUBDIR_INDEXES = ['index.ts', 'index.js'];
  * - A direct `*.ts|*.tsx|*.mjs|*.cjs|*.js` file → a candidate.
  * - A sub-directory → resolved by its `package.json` `harness.extensions[]`
  *   manifest, else `index.ts`, else `index.js`; anything else is ignored.
+ *   Manifest entries that resolve OUTSIDE their own subdir are rejected (no
+ *   `../escape.ts` path traversal — lexical containment only; see the realpath
+ *   note below for symlinks).
  * - Entries are processed in **sorted** name order (stable "first wins").
  * - Candidates are **deduped** by resolved absolute path (first occurrence kept).
  * - Absent / empty dir → `[]` (never an error).
  *
- * NOTE: dedup is by `path.resolve` of the candidate; symlink-following (true
- * realpath) is deferred — it would need a new `FsPort.realpath` capability.
+ * NOTE: dedup + containment are by `path.resolve` of the candidate; symlink-
+ * following (true realpath) is deferred — it would need a new `FsPort.realpath`
+ * capability, so the `../escape` guard is lexical and does NOT stop a symlink
+ * inside the subdir from pointing elsewhere.
  */
 export function discoverExtensions(fs: FsPort, proc: ProcessPort): string[] {
   const base = join(proc.cwd(), ...EXTENSIONS_DIR);
@@ -76,10 +81,17 @@ function readManifest(fs: FsPort, dir: string): string[] {
     }
     return list
       .filter((entry): entry is string => typeof entry === 'string')
-      .map((rel) => join(dir, rel));
+      .map((rel) => join(dir, rel))
+      .filter((candidate) => isWithin(dir, candidate));
   } catch {
     return [];
   }
+}
+
+/** True when `candidate` resolves to `dir` or a descendant of it (no `../` escape). */
+function isWithin(dir: string, candidate: string): boolean {
+  const rel = relative(resolve(dir), resolve(candidate));
+  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
 }
 
 /** Keep the first occurrence of each resolved absolute path (preserves order). */
