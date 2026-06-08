@@ -34,8 +34,8 @@ just list-skills
 
 | Situation | Run | Why |
 |---|---|---|
-| The repo has no engineering harness contract or starter command surface | `engineering-harness-setup` | Creates or validates `docs/project-rules/engineering-harness.md`, scaffolds `harness/cli/`, and points future agents at it from `AGENTS.md`. |
-| The harness front door exists, but the repo still needs a target-aware harnessability assessment | `harnessability-assessment` | Produces `harness/assessment/latest.md` and `latest.json` scoring Operate-Today and Adaptability, with command tiers, proof ceilings, back-pressure surfaces, first-session guidance, and proposal-only affordance recommendations. |
+| The repo has no working `harness boot` (or no harness front door at all) | `engineering-harness-setup` | Installs the harness CLI from npx and orchestrates a basic `boot`: install → (conditional) `harnessability-assessment` → `add-extension`. A lean flow that generates no files of its own. |
+| The harness front door exists, but the repo still needs a target-aware harnessability assessment | `harnessability-assessment` | Produces `.harness/reports/harnessability/latest.md` and `latest.json` scoring Operate-Today and Adaptability, with command tiers, proof ceilings, back-pressure surfaces, first-session guidance, and proposal-only affordance recommendations. |
 | Starting an engineering session after setup | `harness-1-boot` from `jakkaj/tools` | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, and reports readiness. |
 | Capturing friction during work | `harness-2-observe` from `jakkaj/tools` | Silently records material friction, signal gaps, or concrete improvement ideas. |
 | Draining or harvesting retros | `harness-3-retro` from `jakkaj/tools` | Presents the end-of-session triage prompt and harvests recurring improvement candidates. |
@@ -48,16 +48,14 @@ Install from the published repo or from a local checkout. See [`../INSTALL.md`](
 
 ### 2. Set up the engineering harness
 
-Run `engineering-harness-setup` when a target repo does not already have a harness contract.
+Run `engineering-harness-setup` when a target repo has no working `harness boot`.
 
 Expected outcomes:
 
-- `docs/project-rules/engineering-harness.md` exists or is validated.
-- `harness/cli/` exists with a starter command map and Python, Node, or existing-tool entry point.
-- The starter CLI has agent-friendly `--help` and actionable errors that say what to do next.
-- `AGENTS.md` signposts future agents to the harness.
-- Known difficulties can be surfaced from `docs/harness/` once the harness improvement loop exists.
-- Missing boot, health, observe, validation, sensor, or back-pressure surfaces are named as harness gaps.
+- the harness CLI is installed via npx and `harness doctor` passes;
+- a harnessability report exists at `.harness/reports/harnessability/` (the skill runs `harnessability-assessment` on demand when none is present);
+- a basic `boot` extension exists (authored via `add-extension`) that returns a ready/degraded/error verdict and re-orients the agent;
+- the skill writes **no** governance doc, `harness/cli/`, `AGENTS.md` block, or `docs/harness/` scaffold — that deterministic substrate is owned by the harness CLI (and a future `harness init`), not generated here.
 
 ### 3. Assess the repository's harnessability
 
@@ -65,7 +63,7 @@ Run `harnessability-assessment` after setup when the front door exists but the r
 
 Expected outcomes:
 
-- `harness/assessment/latest.md` and `latest.json` score how harnessable the repository is across Operate-Today and Adaptability.
+- `.harness/reports/harnessability/latest.md` and `latest.json` score how harnessable the repository is across Operate-Today and Adaptability.
 - Candidate command tiers are separated from verified commands.
 - The report names proof readiness, missing smoke/evidence paths, and first-session steps.
 - Product-code affordance recommendations are proposal-only by default.
@@ -123,20 +121,20 @@ The setup skill and upstream runtime skills make that thesis operational:
 
 | Foundation idea | Skill-suite affordance |
 |---|---|
-| Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve | `engineering-harness-setup` records the local nucleus; tools runtime skills operate the loop through it. |
-| The harness is the front door, not a replacement toolchain | `engineering-harness-setup` creates `harness/cli/` as a discovery/wrapper surface over existing commands first. |
+| Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Improve | `engineering-harness-setup` installs the harness CLI and stands up a basic `boot`; the CLI and runtime skills operate the loop through it. |
+| The harness is the front door, not a replacement toolchain | `engineering-harness-setup` installs the CLI and authors a `boot` that wraps existing commands first. |
 | Cold-start orientation should be repository evidence, not private memory | `harnessability-assessment` writes a target-aware report that separates evidence, inference, unknowns, and next safe actions. |
 | Encode the fix, not the memory | Harness entries should name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `harness-2-observe` treats agent friction as product feedback for the harness. |
 | Back pressure is a product feature | The harness exposes deterministic sensors; the advisory Backpressure Check asks whether scoped work has enough proof and what sensors are missing. |
 | Retrospectives need a lifecycle | `harness-3-retro --drain` and `--harvest` move entries from buffer to durable retro to prioritized improvement. |
-| Known difficulties and weak signals should be visible at boot | `engineering-harness-setup` can seed Known Difficulties from `docs/harness` retros; `harness-1-boot` reviews both friction and signal readiness before work starts. |
+| Known difficulties and weak signals should be visible at boot | The harness CLI surfaces known difficulties; `harness-1-boot` reviews both friction and signal readiness before work starts. |
 
 ## Operating rules
 
 - Use `harness-1-boot` from `jakkaj/tools` before non-trivial work in a repo that has a harness.
 - If `harness-1-boot` says no harness exists, run `engineering-harness-setup`.
-- If the runtime loop says the Improve surface is missing, run `engineering-harness-setup` to provision or validate the setup.
+- If a repo has no working `harness boot`, run `engineering-harness-setup`.
 - Track friction quietly during work; do not nag the user mid-flow.
 - Bubble once at a natural pause.
 - Harvest when recurring friction should influence planning or harness maintenance.

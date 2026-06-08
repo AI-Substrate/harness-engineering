@@ -35,3 +35,10 @@
 - `git rm -r skills/engineering-harness-setup/templates/` — 19 files removed (cli-python-harness.py, cli-node-harness.mjs, root-HARNESS.md, harness-config{.json,.schema.json}, cli-{command-contract.md,envelope.schema.json}, agents-md-snippet.md, magic-wand-prompt.md, retrospective-schema.json, harness-{known-difficulties,friction-log,proof-note,README,onboard-agent-session}.md, friction-entry.md, docs-harness-backpressure-README.md, install-report.md, canonical-boundary.txt).
 - The skill now ships only SKILL.md + README.md (+ repo-internal AUTHORING.md). Reference sweep is T005.
 - ACs advanced: AC6.
+
+### T005 — Catalog update + reference sweep + leak guard ✅
+- Updated `skills/README.md`: the `engineering-harness-setup` rows (situation/why, "set up" section, foundation→affordance rows, operating rule) now describe the lean install→assess→boot flow that generates nothing; report-location references updated to `.harness/reports/harnessability/`.
+- Guards: `engineering-harness-setup/templates` refs in `skills/` = CLEAN; CREATE/VALIDATE/STATUS in the skill = CLEAN; private-identifier leak guard in the published skill = CLEAN.
+- **Scope boundary (deviation note)**: `harness/assessment` still appears in `skills/harnessability-assessment/{README,SKILL}.md` — those are that skill's OWN current output paths and are the user's PARALLEL work (R2). Left untouched intentionally; the catalog now points at the agreed `.harness/reports/harnessability/` contract.
+- **Archival refs left as history**: `docs/plans/002-*` and `docs/plans/003-*` reference the deleted templates as they existed then — historical plan records, out of the `skills/`-scoped sweep; not rewritten.
+- ACs advanced: AC7; R3/R5 guards green.
