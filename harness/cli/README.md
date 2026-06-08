@@ -1,6 +1,6 @@
 # harness — engineering harness CLI
 
-The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI that reports how the repo wants to be worked with, checks readiness, and exposes command *slots* that later extensions fill. Two commands genuinely work today (`help`, `doctor`); the rest are honest **`unconfigured`** stubs — they never fake success.
+The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: drop a file in your repo's `.harness/extensions/` folder and it becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. Two commands are always built in (`help`, `doctor`); everything else is contributed by extensions you add.
 
 > This is the **engineering harness** (the project's development loop), not an agent runtime. It studies how a human or agent can boot, run, and prove the software safely and quickly.
 
@@ -13,7 +13,7 @@ npx github:AI-Substrate/harness-engineering help
 npx github:AI-Substrate/harness-engineering doctor
 ```
 
-`npx` clones the repo, runs the `prepare` build (`tsc` → `harness/cli/dist`), and invokes the `harness` bin (`./harness/cli/dist/index.js`). Requires Node `>= 20`.
+`npx` clones the repo, runs the `prepare` build (`tsc` → `harness/cli/dist`), and invokes the `harness` bin (`./harness/cli/dist/index.js`). Requires Node `>= 22`.
 
 For local development in this repo:
 
@@ -23,23 +23,60 @@ npm run build
 node harness/cli/dist/index.js doctor
 ```
 
+## Extensions: the focal point
+
+The core ships **no** built-in verb list. In your *own* repo, create a repo-local folder:
+
+```
+<your-repo>/
+└── .harness/
+    └── extensions/
+        ├── hello.ts        ← a direct file
+        └── build.ts
+```
+
+Each file **default-exports** a `HarnessVerb` (or an array of them). The installed core discovers `.harness/extensions/` at runtime, loads each file (`.ts`/`.tsx` via jiti, `.js` natively), and registers one `harness <verb>` command per declared verb.
+
+**Quick start — install an extension** (in your repo):
+
+```bash
+mkdir -p .harness/extensions
+cat > .harness/extensions/hello.ts <<'TS'
+import type { HarnessVerb } from 'harness-engineering/contract';
+
+const hello: HarnessVerb = {
+  name: 'hello',
+  summary: 'Say hello.',
+  options: [{ flags: '--name <name>', description: 'who to greet', defaultValue: 'world' }],
+  run(ctx) {
+    return ctx.ok({ greeting: `hello, ${ctx.options.name}` });
+  },
+};
+export default hello;
+TS
+
+harness hello --name pi      # → {"command":"hello","status":"ok","data":{"greeting":"hello, pi"}}
+harness hello --help         # commander-generated usage from the verb's options
+harness help                 # lists hello among the installed verbs
+harness doctor               # enumerates which extensions loaded / failed
+```
+
+See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract, and copyable starters in [`examples/extensions/`](./examples/extensions/).
+
 ## Command surface
 
 | Command | What it does | Status |
 |---------|--------------|--------|
-| `harness help` | Explain purpose, the command map, output modes, safe first actions. `help --json` is machine-readable (`data.slots[]`). | ✅ works |
-| `harness doctor` | Report what is configured vs unconfigured (toolchain, cli-build, command-slots) with a next action per layer. Safe at session start. | ✅ works |
-| `harness run <slot> [--dry-run]` | Run the command mapped to `<slot>`. Every slot is unconfigured in this slice, so this reports `unconfigured` (exit 2). `--dry-run` never executes anything. | 🟡 unconfigured |
-| `harness <slot> [--dry-run]` | Convenience top-level form for `validate` / `build` / `lint` / `test` / `smoke` / `health` / `observe`. Each returns `unconfigured` (exit 2); `validate` accepts `--dry-run`. | 🟡 unconfigured |
+| `harness help` | Explain purpose, the **dynamic verb list**, output modes, safe first actions. `help --json` is machine-readable (`data.verbs[]`). | ✅ core |
+| `harness doctor` | Report readiness (toolchain, cli-build) **and enumerate the installed extensions** (loaded / failed / conflict, with paths + errors) — without invoking any verb. Safe at session start. | ✅ core |
+| `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
 
-The slots (`run`, `validate`, `build`, `lint`, `test`, `smoke`, `health`, `observe`) are a **seed set**, not a closed universe — a future extension system can fill or add slots without reshaping the core.
+`help` and `doctor` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
 
 ```bash
-harness help --json                     # machine-readable command map
-harness doctor                          # readiness report
-harness run smoke                       # unconfigured slot → exit 2
-harness run smoke --dry-run             # shows it would do nothing → exit 2
-harness run                             # missing slot → E108 → exit 1
+harness help --json                     # machine-readable verb map (data.verbs[])
+harness doctor                          # readiness + extension enumeration
+harness --no-extensions help            # core-only (skip discovery)
 ```
 
 ## Output modes
@@ -61,7 +98,8 @@ Selection precedence (highest wins):
 |------|---------|
 | `0` | `ok` or `degraded` — the command reported successfully. |
 | `1` | `error` — something failed; see `error.code` + `next_action`. No raw stack traces. |
-| `2` | `unconfigured` — no behaviour is mapped to this slot yet. |
+| `2` | `unconfigured` — a verb reported it has no behaviour mapped yet. |
+| `E140/E141/E142` | (in `error.code`) extension load failure / runtime throw / verb-name conflict. |
 
 `unconfigured → 2` is deliberate: a script or agent can distinguish "not built yet" (2) from "broke" (1), and `doctor` still exits `0` because it succeeded at *reporting*.
 
@@ -81,14 +119,14 @@ Selection precedence (highest wins):
 
 ## Architecture
 
-Ports & Adapters (Hexagonal): a thin commander **entrypoint** → per-command **acts** → adapter-agnostic **services** → injected **adapters** (`fs` / `process` / `git` / `env` / `clock`), each with a fake for testing. Business logic lives in services and is unit-tested through fakes with zero real I/O. See [`docs/plans/004-harness-core/workshops/002-cli-composition-pattern.md`](../../docs/plans/004-harness-core/workshops/002-cli-composition-pattern.md) and [`001-output-envelope-and-exit-codes.md`](../../docs/plans/004-harness-core/workshops/001-output-envelope-and-exit-codes.md).
+Ports & Adapters (Hexagonal): a thin commander **entrypoint** (`index.ts` → `app.ts`'s async `main`) discovers + loads extensions, then registers per-command **acts** → adapter-agnostic **services** → injected **adapters** (`fs` / `process` / `git` / `env` / `clock` / **`exec`** for wrapping real commands / a **module loader** for jiti). Extension verbs receive a `VerbContext` of those ports + envelope helpers and return a `VerbResult` the kernel finalizes. Business logic lives in services and is unit-tested through fakes with zero real I/O. See the authoritative design in [`docs/plans/005-harness-extension-system/workshops/001-extension-contract-and-loader.md`](../../docs/plans/005-harness-extension-system/workshops/001-extension-contract-and-loader.md), the output/exit contract in [`docs/plans/004-harness-core/workshops/001-output-envelope-and-exit-codes.md`](../../docs/plans/004-harness-core/workshops/001-output-envelope-and-exit-codes.md), and the authoring guide in [`docs/authoring-verbs.md`](./docs/authoring-verbs.md).
 
 ## Continuous Integration & Release
 
 CI runs on every pull request and on pushes to `main` (`.github/workflows/ci.yml`):
 
-- **`build-test`** — Node 20 & 22 matrix: `npm ci` → Biome check → build → `tsc --noEmit` → `vitest run --coverage` → `npm audit` (advisory). Coverage prints a text summary and uploads `harness/cli/coverage/lcov.info` as an artifact.
-- **`package-smoke`** — packs the tarball, installs it into a clean temp project, and invokes the installed `harness` bin through its symlink (`--version`, `doctor`) — proves the npx/bin-symlink contract end-to-end.
+- **`build-test`** — Node 22 & 24 matrix: `npm ci` → Biome check → build → `tsc --noEmit` → `vitest run --coverage` → `npm audit` (advisory). Coverage prints a text summary and uploads `harness/cli/coverage/lcov.info` as an artifact.
+- **`package-smoke`** — packs the tarball, installs it into a clean temp project with `--omit=dev`, drops a real `.harness/extensions/hello.ts` fixture, and asserts the installed `harness` bin discovers + jiti-loads the verb and runs it (proving jiti resolves as a runtime dependency) — the npx/bin-symlink + extension contract end-to-end.
 - **`ci-required`** — a stable aggregation job that fails if any required job failed. Branch protection requires this one matrix-independent check.
 
 **Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release. There is **no npm publish** — install pins a tag: `npx github:AI-Substrate/harness-engineering#vX.Y.Z`.
