@@ -6,12 +6,20 @@
   "bin": {
     "harness": "./harness/cli/dist/index.js"
   },
+  "exports": {
+    ".": "./harness/cli/dist/index.js",
+    "./contract": {
+      "types": "./harness/cli/dist/services/extensions/contract.d.ts",
+      "import": "./harness/cli/dist/services/extensions/contract.js",
+      "default": "./harness/cli/dist/services/extensions/contract.js"
+    }
+  },
   "files": [
     "harness/cli/dist",
     "LICENSE"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsc -p harness/cli/tsconfig.json",
