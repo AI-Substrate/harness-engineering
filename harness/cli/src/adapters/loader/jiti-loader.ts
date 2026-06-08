@@ -10,7 +10,8 @@ const TS_FILE = /\.(ts|tsx)$/;
  * `.ts`/`.tsx` load through jiti with `moduleCache: false` (pi-parity): full TS
  * transpile (enums, etc.) and each extension resolves its own `node_modules`.
  * `.js`/`.mjs`/`.cjs` skip jiti entirely via native dynamic `import()`. Both
- * return the module's **default** export.
+ * return the module's **default** export (a module with no default → `undefined`,
+ * which the registry then rejects as a malformed export — never the namespace).
  */
 export class JitiLoader implements ModuleLoaderPort {
   private jiti: ReturnType<typeof createJiti> | undefined;
@@ -27,6 +28,6 @@ export class JitiLoader implements ModuleLoaderPort {
       return this.getJiti().import(absPath, { default: true });
     }
     const mod = (await import(pathToFileURL(absPath).href)) as { default?: unknown };
-    return mod.default ?? mod;
+    return mod.default;
   }
 }

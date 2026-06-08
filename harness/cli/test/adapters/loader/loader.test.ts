@@ -47,4 +47,19 @@ describe('JitiLoader (real jiti smoke)', () => {
     const mod = await loader.load(join(here, 'fixtures', 'plain.js'));
     expect(mod).toEqual({ name: 'plain-js', value: 42 });
   });
+
+  it('returns the default export only for a .js module — a named-only module yields undefined (F002)', async () => {
+    /*
+    Test Doc:
+    - Why: the native-import path must return the module's DEFAULT export (parity with the jiti
+      `{default:true}` path), never the whole namespace; a named-only module has no default, so the
+      registry can reject it cleanly as a malformed export instead of mis-reading the namespace (F002).
+    - Contract: load() of a .js module with only named exports resolves to undefined (no default).
+    - Quality Contribution: pins default-export-only semantics the loader JSDoc promises.
+    - Worked Example: load(named-only.js) → undefined (registry then records a clean E140).
+    */
+    const loader = new JitiLoader();
+    const mod = await loader.load(join(here, 'fixtures', 'named-only.js'));
+    expect(mod).toBeUndefined();
+  });
 });
