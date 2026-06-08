@@ -48,3 +48,8 @@
 - F001 (Contract Drift, MEDIUM): SKILL Step 2 check now `test -f latest.json || ls .../* ` and prose names the directory fallback — aligns with AC4/R2.
 - F002 (Impl Quality, MEDIUM): all copyable command blocks use `npx harness …` (init/doctor/new/help/boot), with a one-line note that bare `harness` is fine if on PATH. Matches the install-and-validate-test-extension recipe.
 - Companion T002/T003/T004 = APPROVE (0 issues).
+
+### T006 — Manual verification walkthrough ✅
+- Wrote `verification.md`: AC1–AC9 table (each AC → concrete check → PASS), an explicit AC8 envelope-only confirmation, and a lockstep table showing the skill's install+verify recipe matches the `install-and-validate-test-extension` e2e agent (`npm install github:AI-Substrate/...`, `npx harness doctor --json`, drives add-extension, verifies via doctor/help/verb).
+- AC1–AC8 PASS by inspection; AC9 deferred to T007 (the e2e run).
+- ACs advanced: AC8, AC9 (setup).
