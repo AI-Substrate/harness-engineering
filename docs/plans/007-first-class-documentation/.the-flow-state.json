@@ -3,12 +3,12 @@
   "slug": "first-class-documentation",
   "plan_dir": "docs/plans/007-first-class-documentation",
   "mode": "Simple",
-  "current_stage": "awaiting-6",
-  "pending_command": "/plan-6-v2-implement-phase-companion --phase \"Implementation\" --plan \"docs/plans/007-first-class-documentation/first-class-documentation-plan.md\"",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/007-first-class-documentation/first-class-documentation-plan.md\"",
   "intent": "First-class documentation support for the harness CLI \u2014 discoverable, locally-readable docs for humans and agents, without precluding a future MCP server.",
   "milestones_total": 5,
-  "milestones_done": 3,
-  "last_checkpoint_at": "2026-06-08T22:07:00Z",
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-08T22:51:00Z",
   "compacted_seams": [],
   "status": "active"
 }

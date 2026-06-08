@@ -3,8 +3,8 @@
   "slug": "first-class-documentation",
   "plan_dir": "docs/plans/007-first-class-documentation",
   "mode": "Simple",
-  "cursor": "phases",
-  "recommended_next": "phases",
+  "cursor": "merge",
+  "recommended_next": "merge",
   "milestones_total": 5,
   "milestones_done": 3,
   "nodes": [
@@ -71,18 +71,32 @@
       "id": "phases",
       "type": "phase",
       "title": "Build (single phase, 16 tasks)",
-      "status": "known",
+      "status": "done",
       "next": [
         "merge"
-      ]
+      ],
+      "ran_at": "2026-06-08T22:50:00Z",
+      "note": "16/16 tasks, 12/12 ACs, 213 tests pass. Built with code-review-companion (live per-commit review); 5 findings (1 HIGH+4 MEDIUM) all fixed + companion-approved. /plan-7 superseded.",
+      "user_input": "run the imlemetaiton wthteh companion please"
     },
     {
       "id": "merge",
       "type": "merge",
       "title": "Merge (/plan-8)",
-      "status": "assumed",
+      "status": "known",
       "next": []
     }
   ],
-  "agents": []
+  "agents": [
+    {
+      "slug": "code-review-companion",
+      "kind": "companion",
+      "render": "wrap",
+      "run_id": "2026-06-08T22-08-20-158Z-d7d0",
+      "covers": [
+        "phases"
+      ],
+      "note": "Power-On-Mode; 17 commits reviewed; APPROVED; farewell captured -> docs/retros/007-first-class-documentation.md"
+    }
+  ]
 }
