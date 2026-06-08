@@ -19,3 +19,9 @@
 - Guardrails: orchestrate-not-generate, wrap-don't-rebuild, don't-boil-the-ocean, public-safe, envelope-only (AC8).
 - Self-check: no stale mode refs (only the explicit "does not generate" line); no private identifiers (the `AI-Substrate` URL is the public repo); mermaid + sentinel + #11/#12 framing present.
 - ACs advanced: AC1, AC2, AC3, AC5, AC5a, AC8 (+AC6 framing). Findings 01,02,03,05 addressed in prose.
+
+### T002 — Rewrite README.md with the mermaid DAG ✅
+- Replaced the 147-line layered-harness/generation README with a 61-line lean view: same flow mermaid DAG, When to use, What it does (3 terse steps), What it does NOT do, Where it fits (setup -> assessment -> add-extension(boot) -> runtime loop), and the kept agent-vs-engineering-harness boundary diagram + sentence.
+- References `.harness/reports/harnessability/latest.json`; no generated-governance/CLI/template prose remains.
+- Companion: T001 acked on inside lane (oriented + ack); no findings yet.
+- ACs advanced: AC7, AC1.
