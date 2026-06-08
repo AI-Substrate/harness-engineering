@@ -59,9 +59,18 @@ describe('NodeExec', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('resolves (never rejects) when the binary cannot be spawned (code 127)', async () => {
+  it('resolves (never rejects) when spawn throws synchronously, e.g. a null byte (code 127)', async () => {
+    /*
+    Test Doc:
+    - Why: spawn() can throw SYNCHRONOUSLY (e.g. ERR_INVALID_ARG_VALUE for a null byte in the
+      command) inside the Promise executor, which would REJECT despite the never-reject contract
+      verb handlers rely on (F001).
+    - Contract: a synchronous spawn throw resolves to an ExecResult (code 127, ok=false), never rejects.
+    - Quality Contribution: pins the never-reject guarantee against the sync-throw edge.
+    - Worked Example: run('node\\u0000bad', []) → resolves { code: 127, ok: false }.
+    */
     const exec = new NodeExec();
-    const result = await exec.run('definitely-not-a-real-binary-xyz', [], { cwd: process.cwd() });
+    const result = await exec.run('node\u0000bad', [], { cwd: process.cwd() });
     expect(result.ok).toBe(false);
     expect(result.code).toBe(127);
   });
