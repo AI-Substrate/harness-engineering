@@ -38,3 +38,7 @@
 - `npm run gen:docs` → committed `harness/cli/src/services/docs/docs-content.ts` (4 docs, `as const`). tsc clean.
 - D2 (purity guard): updated `test/architecture/no-direct-node-io.test.ts` to skip files with the `@generated` header (generated doc data can legitimately quote `from 'node:fs'` in prose). Guard green.
 - D3 (biome): docs contain literal `${...}` in code examples → `noTemplateCurlyInString` warnings. Added a biome `overrides` entry disabling the linter for `docs-content.ts` (formatter stays on). `biome check --error-on-warnings harness/cli` now exit 0; formatter no-op; regen drift-stable.
+
+### T008 — TDD DocsService ✅ (RED→GREEN)
+- RED: wrote docs-service.test.ts (5 tests, fakes-only) → import-fail.
+- GREEN: `docs-service.ts` — pure `listDocs(docs=DOCS)` (strips content) + `getDoc(id, docs=DOCS)` (→DocContent w/ format:'markdown' | {notFound,id}). Imports DOCS only; no node:fs/cwd (P2/Finding 03). Optional corpus param = test seam + MCP-reuse. `DocRecord` exported. 5 tests green; tsc + biome clean.
