@@ -129,6 +129,17 @@ compact target="harness-foundations":
 # Working dirs are explicit: biome runs from repo root (where biome.json lives);
 # vitest runs from harness/cli (where vitest.config.ts lives).
 
+# The global link lives OUTSIDE the npm `build`/`prepare` script on purpose:
+# `prepare` runs for every npx/CI consumer, and `npm link` re-triggers `prepare`
+# (→ recursion). The link uses `--ignore-scripts` so it reuses the dist we just
+# built instead of rebuilding.
+#
+# Build the CLI (docs + tsc) and (re)link `harness` globally to this working tree.
+build:
+    npm run build
+    npm link --ignore-scripts
+    @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
+
 # Auto-fix lint + safe fixes on the CLI source.
 fix:
     npx biome check --write harness/cli
