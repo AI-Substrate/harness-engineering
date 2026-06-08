@@ -61,7 +61,7 @@ jobs:
   ci-required:
     name: ci-required
     runs-on: ubuntu-latest
-    needs: [build-test]
+    needs: [build-test, package-smoke]
     if: always()
     steps:
       - name: Verify required jobs passed
@@ -71,3 +71,44 @@ jobs:
           exit 1
       - name: All required jobs passed
         run: echo "All required jobs passed."
+
+  # Packaging / bin-symlink smoke (companion F005 guard): pack the tarball,
+  # install it into a clean temp project, and invoke the installed `harness`
+  # bin through its symlink. Generic invocation only — never asserts the
+  # temporary BUILTIN_SLOTS set (Constitution P10 / Phase 3 forward-note).
+  package-smoke:
+    name: package-smoke
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Pack and smoke-test the installed bin
+        run: |
+          set -euo pipefail
+          TARBALL="$(npm pack --silent)"
+          echo "Packed: $TARBALL"
+          SMOKE_DIR="$(mktemp -d)"
+          cd "$SMOKE_DIR"
+          npm init -y >/dev/null 2>&1
+          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          echo "Installed bin symlink:"
+          ls -l node_modules/.bin/harness
+          echo "harness --version:"
+          ./node_modules/.bin/harness --version
+          echo "harness doctor (generic, exit code only):"
+          ./node_modules/.bin/harness doctor
+

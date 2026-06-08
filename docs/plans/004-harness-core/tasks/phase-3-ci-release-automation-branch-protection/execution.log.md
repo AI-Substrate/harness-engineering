@@ -41,3 +41,9 @@
 - text-summary already prints via the vitest reporter (`['text-summary','lcov']`) — no config change needed (AC-14).
 - Verified locally: `harness/cli/coverage/lcov.info` present (9 KB). YAML re-validated.
 - **Done-When met**: a CI run will show the coverage summary in the log and a downloadable `lcov.info` artifact.
+
+### T003 — packaging / bin-symlink smoke job (F005 guard) (done)
+- Added `package-smoke` job (`needs: [build-test]`): checkout → setup-node(20) → npm ci → build → **pack + install + invoke**. Packs the tarball, `npm install`s it into a clean temp project, and runs the installed `harness` bin **through its `node_modules/.bin/harness` symlink** — exactly the F005 path an ESM `isMain` guard would silently break.
+- Updated `ci-required` to `needs: [build-test, package-smoke]` (now gates both).
+- **Proven locally end-to-end before wiring**: `npm pack` → `npm install` into a temp project → `node_modules/.bin/harness -> ../harness-engineering/harness/cli/dist/index.js` → `harness --version` = `0.1.0` (exit 0), `harness doctor` exit 0 (from a non-git temp dir → degraded layers still map to 0). Generic invocation only (no slot-list assertion → forward-note compliant).
+- **Done-When met**: job packs, installs from the tarball, and the installed `harness` bin runs (exit 0) — npx/bin-symlink contract proven.
