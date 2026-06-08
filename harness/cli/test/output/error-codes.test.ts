@@ -17,6 +17,9 @@ describe('ErrorCodes table', () => {
       SLOT_UNKNOWN: 'E110',
       CONFIG_INVALID: 'E120',
       DOCTOR_CHECK_FAILED: 'E130',
+      EXTENSION_LOAD_FAILED: 'E140',
+      EXTENSION_RUNTIME_ERROR: 'E141',
+      EXTENSION_VERB_CONFLICT: 'E142',
     });
   });
 
