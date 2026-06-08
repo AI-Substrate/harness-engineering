@@ -57,7 +57,8 @@ stateDiagram-v2
     S5 --> S6
     S6 --> [*]
 
-    class S1,S2,S3,S4,S5,S6 pending
+    class S1 done
+    class S2,S3,S4,S5,S6 pending
 ```
 
 **Legend**: grey = pending | yellow = active | red = blocked/needs input | green = done
@@ -68,7 +69,7 @@ stateDiagram-v2
 
 <!-- Updated by /plan-6-v2 during implementation: [ ] → [~] → [x] -->
 
-- [ ] **Stage 1: Wire CI core** — Node 20+22 matrix running lint → build → typecheck → test+coverage → audit (`.github/workflows/ci.yml` — new).
+- [x] **Stage 1: Wire CI core** — Node 20+22 matrix running lint → build → typecheck → test+coverage → audit (`.github/workflows/ci.yml` — new).
 - [ ] **Stage 2: Surface coverage** — text-summary in log + upload `harness/cli/coverage/lcov.info` artifact (`ci.yml`).
 - [ ] **Stage 3: Packaging smoke** — `package-smoke` job: pack→install→`harness --version`/`doctor` proving the npx/bin-symlink contract (`ci.yml`).
 - [ ] **Stage 4: Release automation** — `release-please` config + manifest + workflow, no npm publish (`release-please-config.json`, `.release-please-manifest.json`, `release.yml` — new).
@@ -124,7 +125,7 @@ flowchart LR
 
 ## Checklist
 
-- [ ] T001: `.github/workflows/ci.yml` core — Node 20+22 matrix, lint/build/typecheck/test+coverage/audit.
+- [x] T001: `.github/workflows/ci.yml` core — Node 20+22 matrix, lint/build/typecheck/test+coverage/audit.
 - [ ] T002: Coverage surfacing — text-summary in log + `lcov.info` artifact.
 - [ ] T003: `package-smoke` job — pack→install→`harness --version`/`doctor` (F005 guard, generic invocation).
 - [ ] T004: `release-please` config + manifest + `release.yml` (no publish).
