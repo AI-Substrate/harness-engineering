@@ -95,6 +95,59 @@ describe('finalizeVerbResult', () => {
     expect(env.next_action).toBeDefined();
     expect(env.next_action?.length).toBeGreaterThan(0);
   });
+
+  it('treats a blank/whitespace next_action as missing on a non-ok result (P5)', () => {
+    /*
+    Test Doc:
+    - Why: P5 guarantees every non-ok envelope tells an agent what to do next; a blank or
+      whitespace-only next_action from an author must NOT satisfy that (F007).
+    - Contract: degraded/unconfigured/error fall back to the kernel default when next_action is
+      blank; the error path also defaults a blank error.message before deriving next_action.
+    - Quality Contribution: pins the non-blank enforcement so a degraded result can't ship "  ".
+    - Worked Example: degraded with next_action:'   ' → a real default next_action.
+    */
+    const degraded = finalizeVerbResult(
+      { status: 'degraded', data: {}, next_action: '   ' },
+      'd',
+      new FakeClock(),
+    );
+    expect(degraded.next_action?.trim().length).toBeGreaterThan(0);
+
+    const unconfigured = finalizeVerbResult(
+      { status: 'unconfigured', next_action: '' },
+      'u',
+      new FakeClock(),
+    );
+    expect(unconfigured.next_action?.trim().length).toBeGreaterThan(0);
+
+    const blankError = finalizeVerbResult(
+      { status: 'error', error: { code: 'E1', message: '' }, next_action: '  ' },
+      'e',
+      new FakeClock(),
+    );
+    expect(blankError.next_action?.trim().length).toBeGreaterThan(0);
+  });
+
+  it('maps an invalid runtime status to an E141 error envelope (never undefined) (F006)', () => {
+    /*
+    Test Doc:
+    - Why: a plain JS extension can return any string for status; an unhandled status must not
+      fall through to `undefined` (which would crash exitWithEnvelope outside runVerb's catch).
+    - Contract: finalizeVerbResult maps an out-of-union status → an E141 error Envelope.
+    - Quality Contribution: closes the catastrophic-E100 crash path the companion flagged (F006).
+    - Worked Example: { status: 'bogus' } → status 'error', code 'E141', with a next_action.
+    */
+    const env = finalizeVerbResult(
+      { status: 'bogus' } as unknown as Parameters<typeof finalizeVerbResult>[0],
+      'weird',
+      new FakeClock(),
+    );
+    expect(env).toBeDefined();
+    expect(env.status).toBe('error');
+    expect(env.error?.code).toBe('E141');
+    expect(env.error?.message).toContain('invalid status');
+    expect(env.next_action?.length).toBeGreaterThan(0);
+  });
 });
 
 describe('runVerb', () => {

@@ -75,43 +75,57 @@ export function buildVerbContext(deps: VerbContextDeps, invocation: VerbInvocati
   };
 }
 
+/** Treat empty/whitespace-only strings as absent so a blank value can't satisfy P5. */
+function nonBlank(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
 /**
  * Finalize what a handler RETURNED into a canonical Envelope: the kernel adds
  * `command` (the verb name) + `timestamp` (from the clock) and maps status →
- * the right constructor, guaranteeing a `next_action` on every non-`ok` status
- * (P5) even if the author returned a raw object without one.
+ * the right constructor, guaranteeing a non-blank `next_action` on every non-`ok`
+ * status (P5) even if the author returned a raw object without one — a blank or
+ * whitespace-only `next_action` is treated as missing. A JS extension that returns
+ * an unknown `status` (outside the typed union) is mapped to an `E141` error
+ * Envelope rather than falling through to `undefined`.
  */
 export function finalizeVerbResult(result: VerbResult, name: string, clock: Clock): Envelope {
   switch (result.status) {
     case 'ok':
       return formatOk(name, result.data, clock, {
         ...(result.evidence && { evidence: result.evidence }),
-        ...(result.next_action && { next_action: result.next_action }),
+        ...(nonBlank(result.next_action) && { next_action: result.next_action }),
       });
     case 'degraded':
       return formatDegraded(
         name,
         result.data,
-        result.next_action ?? 'Review the degraded result above.',
+        nonBlank(result.next_action) ?? 'Review the degraded result above.',
         clock,
         result.evidence ? { evidence: result.evidence } : undefined,
       );
     case 'unconfigured':
       return formatUnconfigured(
         name,
-        result.next_action ?? 'No behaviour is mapped for this verb yet.',
+        nonBlank(result.next_action) ?? 'No behaviour is mapped for this verb yet.',
         clock,
         result.data !== undefined ? { data: result.data } : undefined,
       );
-    case 'error':
+    case 'error': {
+      const message = nonBlank(result.error?.message) ?? 'The verb reported an error.';
+      return formatError(name, result.error?.code ?? ErrorCodes.UNKNOWN, message, clock, {
+        ...(result.error?.details !== undefined && { details: result.error.details }),
+        next_action: nonBlank(result.next_action) ?? message,
+      });
+    }
+    default:
       return formatError(
         name,
-        result.error?.code ?? ErrorCodes.UNKNOWN,
-        result.error?.message ?? 'The verb reported an error.',
+        ErrorCodes.EXTENSION_RUNTIME_ERROR,
+        `Verb '${name}' returned an invalid status '${String(result.status)}'.`,
         clock,
         {
-          ...(result.error?.details !== undefined && { details: result.error.details }),
-          ...(result.next_action && { next_action: result.next_action }),
+          next_action: `This is a bug in the extension; a verb must return one of ok/degraded/unconfigured/error. Fix or remove the extension providing '${name}'.`,
         },
       );
   }
