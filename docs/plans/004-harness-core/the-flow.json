@@ -6,8 +6,8 @@
   "mode": "Full",
   "cursor": "merge",
   "recommended_next": "merge",
-  "now": "Phase 3 BUILT + companion-reviewed (0 findings) \u2014 CI green on PR #1, main branch-protected. All 3 phases done.",
-  "next": "Merge (/plan-8) \u2014 PROCEED gate",
+  "now": "All 3 phases BUILT + companion-reviewed. CI green on PR #1, main branch-protected. MERGE DEFERRED by user \u2014 continuing on feat/harness-cli-core to a next phase of work.",
+  "next": "Merge held (/plan-8 on demand). Branch stays open for next-phase work (e.g. extension system).",
   "agents": [
     {
       "slug": "code-review-companion",

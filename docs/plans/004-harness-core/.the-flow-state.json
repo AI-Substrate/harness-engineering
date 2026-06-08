@@ -8,7 +8,8 @@
   "intent": "Starter harness CLI core: agent-friendly Node CLI under harness/cli/ as the harness front door (help/doctor/run/validate/build/lint/test/smoke/health/observe), JSON+human output, unconfigured slots, clean act/service/adapter architecture, plus repo engineering fundamentals (biome, justfile fft, npm audit, GH Actions CI, release-please, branch protection, coverage).",
   "milestones_total": 7,
   "milestones_done": 6,
-  "last_checkpoint_at": "2026-06-08T01:23:30Z",
+  "last_checkpoint_at": "2026-06-08T01:30:00Z",
   "compacted_seams": [],
-  "status": "active"
+  "status": "active",
+  "note": "All 3 plan phases built + companion-reviewed; CI green on PR #1; main branch-protected. MERGE INTENTIONALLY DEFERRED (user: 'no merge yet, continue on this branch to the next phase'). /plan-8 is available on demand. Branch feat/harness-cli-core is clean and HEAD CI is green — ready to layer the next phase of work on top."
 }

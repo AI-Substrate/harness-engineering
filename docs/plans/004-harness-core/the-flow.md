@@ -44,4 +44,4 @@ flowchart TD
 
 **Legend**: 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · 🤖 companion (wraps phases) · worker (side build)
 
-**Now**: Phase 3 BUILT + companion-reviewed (0 findings) · CI green on PR #1 · `main` branch-protected · all 3 phases done → **Next**: Merge (`/plan-8` — `PROCEED` gate)
+**Now**: All 3 phases BUILT + companion-reviewed · CI green on PR #1 · `main` branch-protected · **merge deferred** → **Next**: continuing on `feat/harness-cli-core` to the next phase of work (`/plan-8` merge available on demand)
