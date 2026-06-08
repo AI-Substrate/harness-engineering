@@ -47,3 +47,10 @@
 - Updated `ci-required` to `needs: [build-test, package-smoke]` (now gates both).
 - **Proven locally end-to-end before wiring**: `npm pack` → `npm install` into a temp project → `node_modules/.bin/harness -> ../harness-engineering/harness/cli/dist/index.js` → `harness --version` = `0.1.0` (exit 0), `harness doctor` exit 0 (from a non-git temp dir → degraded layers still map to 0). Generic invocation only (no slot-list assertion → forward-note compliant).
 - **Done-When met**: job packs, installs from the tarball, and the installed `harness` bin runs (exit 0) — npx/bin-symlink contract proven.
+
+### T004 — release automation (release-please) (done)
+- `release-please-config.json`: `release-type: node`, `bump-minor-pre-major: true`, `include-component-in-tag: false` (→ clean `vX.Y.Z` tags for the spec's `npx github:…#vX.Y.Z` pin), `packages: { ".": {} }`.
+- `.release-please-manifest.json`: `{ ".": "0.1.0" }` — verified == root `package.json` version.
+- `.github/workflows/release.yml`: `on: push: [main]`; `permissions: contents:write + pull-requests:write`; steps checkout → `googleapis/release-please-action@v4` (config-file + manifest-file). **No npm publish step** (AC-15) — installs use npx-from-repo.
+- JSON + YAML validated; version-match confirmed.
+- **Done-When met**: workflow parses; config/manifest valid JSON with matching version; a conventional-commit push to `main` would open a release PR; no publish step.

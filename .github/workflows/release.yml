@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# release-please manages semver tags + CHANGELOG from conventional commits.
+# It opens/refreshes a Release PR; merging that PR tags + creates a GitHub
+# release. There is intentionally NO npm publish step (spec AC-15 — installs
+# use `npx github:AI-Substrate/harness-engineering#vX.Y.Z`).
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Release Please
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
