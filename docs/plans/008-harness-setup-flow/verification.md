@@ -11,7 +11,7 @@ Manual acceptance check of the reworked `engineering-harness-setup` skill agains
 | AC5 | Boot via `add-extension` (not hand-written), basic, verified via doctor/boot/help | `npx harness new boot --wrap …` shown as add-extension's under-the-hood call; boot-shape table; Verify block | ✅ PASS |
 | AC5a | Boot returns ready/degraded/error verdict + orientation | "return a clear verdict — ready / degraded / error (envelope + exit code)" + "print short orientation" | ✅ PASS |
 | AC6 | All 19 templates deleted; skill generates nothing | `ls templates/` → GONE; "What this skill does not do" enumerates no-generation | ✅ PASS |
-| AC7 | README mermaid DAG; AUTHORING + skills/README updated + report location | README has 2 mermaid blocks; AUTHORING orchestration-only; skills/README rows + `.harness/reports/harnessability/` updated | ✅ PASS |
+| AC7 | README mermaid DAG; AUTHORING + skills/README updated + report location | README has 2 mermaid blocks; AUTHORING orchestration-only; skills/README rows + `.harness/reports/harnessability/` updated; README "What it does" realigned to the post-fix contract (`npx harness …` + directory fallback) per companion F003/F004 | ✅ PASS |
 | AC8 | Depend only on CLI command/envelope surface (no prose scraping) | "Read only the envelope … use `--json` … never scrape human prose" (Step 1) + guardrail; no bespoke parsing of `doctor`/`help`/assessment prose anywhere in the skill | ✅ PASS |
 | AC9 | e2e agent demonstrates install → add-extension → verify | Ran `install-and-validate-test-extension` (verbName=boot, variant=wrap, local) → **PASS**: scaffolded `.harness/extensions/boot.ts` via `add-extension`/`harness new`; `doctor` loaded it, `help` listed it, `npx harness boot --json` = status ok / exit 0 | ✅ PASS |
 
