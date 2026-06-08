@@ -62,3 +62,31 @@
 - Design choices: **no required human review** + **enforce_admins:false** so the feature PR can still be merged in `/plan-8` (the `ci-required` check is the gate, not a second reviewer); `strict:false` avoids forcing rebases. AC-16 met: required CI must pass before merge.
 - Documented the exact `gh api` apply + verify commands in `harness/cli/README.md` (new "Continuous Integration & Release" section).
 - **Done-When met**: `gh api` returns protection with the `ci-required` check required; command documented in README.
+
+### T006 — validate CI end-to-end on the PR (done)
+- Pushed `feat/harness-cli-core`; opened **PR #1** → CI run **27110680201** triggered (`pull_request`).
+- **`gh pr checks 1` — all pass**: `build-test (20)` ✓, `build-test (22)` ✓, `package-smoke` ✓, `ci-required` ✓.
+- **Coverage in CI log** (AC-14): `96 passed`, `Statements 92.2% (201/218)`, `Branches 91.04%`, `Functions 94.59%`, `Lines 91.98%`.
+- **Artifacts uploaded**: `coverage-lcov-node20` (2667 B), `coverage-lcov-node22` (2667 B).
+- **Required-check name confirmed**: `ci-required` (matrix-independent) — matches what T005 protected; no drift.
+- **Done-When met**: `gh pr checks` lists CI jobs completed; coverage summary in the log; lcov artifacts present.
+
+## Discoveries & Learnings
+
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-08 | T001 | gotcha | PyYAML 1.1 parses bare `on:` as boolean `True` → `KeyError:'on'` when introspecting workflows locally. | Cosmetic only (GitHub parses `on` as a string key); read via `d.get('on', d.get(True))`. | execution.log T001 |
+| 2026-06-08 | T003 | insight | `harness doctor` exits 0 even from a **non-git temp dir** (degraded layers → exit 0), so the smoke's exit-0 assertion is safe in CI. | Verified locally before wiring. | execution.log T003 |
+| 2026-06-08 | T001/T005 | decision | Stable `ci-required` aggregation job (`if:always()` + `contains(needs.*.result,'failure')`) gives branch protection a matrix-independent required check. | Adopted from validation; confirmed green in CI. | ci.yml, T005 |
+| 2026-06-08 | T006 | debt | GitHub advisory: `actions/checkout@v4`/`setup-node@v4`/`upload-artifact@v4` run on the deprecated Node 20 **action runtime** (forced to Node 24 from 2026-06-16). | Non-blocking warning; `@v4` is current major. Bump when v5 lands. | CI run 27110680201 annotations |
+
+## Phase 3 Result — Acceptance Criteria
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-13 (CI on PR+main: build+biome+test+coverage+audit) | ✅ | CI run 27110680201 — build-test 20/22 pass with all steps; triggers `pull_request` + `push:[main]`. |
+| AC-14 (coverage reported) | ✅ | Coverage summary in job log (92.2% statements) + `coverage-lcov-node{20,22}` artifacts. |
+| AC-15 (release-please configured, release-type node, semver, no publish) | ✅ | `release-please-config.json` + manifest (0.1.0) + `release.yml` (release-please-action@v4); no publish step. |
+| AC-16 (main branch-protected, required CI before merge) | ✅ | `gh api .../branches/main/protection` → required check `ci-required`; documented in CLI README. |
+
+**Build reconciliation**: 6 tasks (T001–T006) built across 5 commits + 1 live `gh api` action; companion reviewed every commit.

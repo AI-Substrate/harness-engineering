@@ -3,7 +3,7 @@
 **Plan**: [../../harness-core-plan.md](../../harness-core-plan.md)
 **Phase**: Phase 3: CI, release automation, branch protection
 **Generated**: 2026-06-08
-**Status**: Ready for takeoff
+**Status**: Landed
 
 ---
 
@@ -57,8 +57,7 @@ stateDiagram-v2
     S5 --> S6
     S6 --> [*]
 
-    class S1,S2,S3,S4,S5 done
-    class S6 pending
+    class S1,S2,S3,S4,S5,S6 done
 ```
 
 **Legend**: grey = pending | yellow = active | red = blocked/needs input | green = done
@@ -74,7 +73,7 @@ stateDiagram-v2
 - [x] **Stage 3: Packaging smoke** — `package-smoke` job: pack→install→`harness --version`/`doctor` proving the npx/bin-symlink contract (`ci.yml`).
 - [x] **Stage 4: Release automation** — `release-please` config + manifest + workflow, no npm publish (`release-please-config.json`, `.release-please-manifest.json`, `release.yml` — new).
 - [x] **Stage 5: Protect main** — apply branch protection live (admin confirmed) + document the `gh api` command (`README.md`).
-- [ ] **Stage 6: Validate end-to-end** — push the PR, capture `gh pr checks` / `gh run view` evidence into the execution log.
+- [x] **Stage 6: Validate end-to-end** — push the PR, capture `gh pr checks` / `gh run view` evidence into the execution log.
 
 ---
 
@@ -110,11 +109,11 @@ flowchart LR
 
 ## Acceptance Criteria
 
-- [ ] **AC-13** CI runs on PRs and `main`: build + Biome check + tests + coverage + `npm audit`.
-- [ ] **AC-14** CI reports test coverage.
-- [ ] **AC-15** `release-please` configured (config + manifest + workflow), `release-type:node`, semver tags/changelog, no npm publish.
-- [ ] **AC-16** `main` branch-protected so required CI must pass before merge (documented `gh` step; applied — admin confirmed).
-- [ ] **(F005 guard)** Packaging smoke installs the packed tarball and runs the `harness` bin (exit 0) — npx contract proven.
+- [x] **AC-13** CI runs on PRs and `main`: build + Biome check + tests + coverage + `npm audit`.
+- [x] **AC-14** CI reports test coverage.
+- [x] **AC-15** `release-please` configured (config + manifest + workflow), `release-type:node`, semver tags/changelog, no npm publish.
+- [x] **AC-16** `main` branch-protected so required CI must pass before merge (documented `gh` step; applied — admin confirmed).
+- [x] **(F005 guard)** Packaging smoke installs the packed tarball and runs the `harness` bin (exit 0) — npx contract proven.
 
 ## Goals & Non-Goals
 
@@ -130,4 +129,4 @@ flowchart LR
 - [x] T003: `package-smoke` job — pack→install→`harness --version`/`doctor` (F005 guard, generic invocation).
 - [x] T004: `release-please` config + manifest + `release.yml` (no publish).
 - [x] T005: Branch protection on `main` — apply live + document `gh api` command.
-- [ ] T006: Validate CI end-to-end on the PR — capture `gh` evidence.
+- [x] T006: Validate CI end-to-end on the PR — capture `gh` evidence.
