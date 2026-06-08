@@ -23,6 +23,7 @@ describe('ErrorCodes table', () => {
       SCAFFOLD_NAME_RESERVED: 'E151',
       SCAFFOLD_FILE_EXISTS: 'E152',
       SCAFFOLD_WRITE_FAILED: 'E153',
+      DOC_NOT_FOUND: 'E160',
     });
   });
 

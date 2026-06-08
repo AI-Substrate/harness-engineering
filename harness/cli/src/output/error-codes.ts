@@ -25,6 +25,8 @@ export const ErrorCodes = {
   SCAFFOLD_FILE_EXISTS: 'E152',
   /** `harness new`: the directory create or file write itself failed (permissions, etc.). */
   SCAFFOLD_WRITE_FAILED: 'E153',
+  /** `harness docs <id>`: no curated doc is registered under that id. */
+  DOC_NOT_FOUND: 'E160',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

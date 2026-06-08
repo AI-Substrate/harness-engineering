@@ -18,3 +18,6 @@
 ### T001 — docs contract types ✅
 - Created `harness/cli/src/services/docs/contract.ts`: `DocEntry{id,title,summary,audience}`, `DocContent{id,title,content,format:'markdown'}`, `DocsListResult{docs}`, `DocLookup = DocContent | {notFound,id}`. Matches workshop §Contract + validation MEDIUM (format/audience pinned).
 - `tsc --noEmit` clean. No imports → pure types module.
+
+### T002 — E160 DOC_NOT_FOUND ✅
+- Added `DOC_NOT_FOUND: 'E160'` to `error-codes.ts`; updated frozen snapshot in `error-codes.test.ts`. Both tests green (E-prefix uniqueness check passes).
