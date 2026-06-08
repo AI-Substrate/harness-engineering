@@ -6,7 +6,7 @@ verb becomes a top-level `harness <verb>` command with its own `--help`,
 options, structured Envelope output, and exit code.
 
 > The core ships no built-in verbs. Everything you can run beyond `help`,
-> `doctor`, and `new` is something an extension contributed.
+> `doctor`, `new`, and `docs` is something an extension contributed.
 
 > **Start here:** the fastest way to create one is `harness new <name>` — it
 > scaffolds a loadable stub for you (see [`docs/how/extend-the-harness.md`](../../../docs/how/extend-the-harness.md)).

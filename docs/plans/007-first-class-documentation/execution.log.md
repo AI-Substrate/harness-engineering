@@ -77,3 +77,12 @@
 - Added `"check:docs": "npm run gen:docs && git diff --exit-code <generated>"`; CI step "Docs drift guard" after Build (runs `npm run check:docs`). Verified: passes clean; catches an edited-source-without-regen (exit 1).
 - Excluded the generated data file from coverage (vitest.config.ts) alongside src/index.ts.
 - FINAL GATE: biome(--error-on-warnings) 0 · tsc 0 · check:docs 0 · vitest 210/210 pass (35 files) · coverage 93.4%.
+
+### Companion findings reconciliation (inside-lane F001–F005)
+The companion reviewed every commit (inside lane); 12 APPROVE/APPROVE_WITH_NOTES + 1 REQUEST_CHANGES. All 5 findings adopted:
+- **F002 HIGH** (T009, REQUEST_CHANGES) — raw `docs <id>` used `exitWithEnvelope`→`process.exit`, which can truncate a large piped payload before stdout flushes. FIX: new kernel helper `emitRawAndExit` (writes stdout, sets `process.exitCode`, returns naturally — like the existing help/version path). Added a unit test (asserts `process.exit` NOT called) + a child-process integration test (`test/integration/docs.test.ts`: byte-for-byte through a real pipe + `| head` EPIPE survival) + an `emitRawAndExit` kernel unit test.
+- **F001 MEDIUM** (T007) — purity-guard `@generated` skip was too broad. FIX: narrowed to an explicit allow-list of one path (`src/services/docs/docs-content.ts`).
+- **F003 MEDIUM** (T011) — corpus intros (extend-the-harness, authoring-verbs) still said core = help/doctor/new. FIX: updated both to include `docs` + regenerated bundle.
+- **F004 MEDIUM** (T013) — P12 guard missed `docs/project-rules/**`. FIX: added the forbidden pattern.
+- **F005 MEDIUM** (T014) — README "Every command emits an envelope" contradicted raw `docs <id>`. FIX: reworded to call out the deliberate raw-stdout exception + regenerated bundle.
+Result: 213 tests pass (36 files), biome + tsc clean, drift guard clean post-commit.

@@ -97,18 +97,18 @@ Add a first-class, core `harness docs` command (peer of `help`/`doctor`/`new`) b
 
 ### Acceptance Criteria
 
-- [ ] AC1 — `harness docs` emits `ok` envelope listing `{id,title,summary}[]` (human table in human mode), exit 0.
-- [ ] AC2 — `harness docs <id>` (known) emits byte-faithful markdown content, exit 0.
-- [ ] AC3 — `harness docs <unknown>` emits `formatError` with `E160` + fix-prescribing message (P7), non-zero exit.
-- [ ] AC4 — Corpus is an explicit allow-list including `extend-the-harness`, `using-harness-docs`, the CLI README, and `authoring-verbs`; excludes `AGENTS.md`, `docs/plans/**`, `scratch/**` (P12) — asserted by a test.
-- [ ] AC5 — Built package (`harness/cli/dist`) contains the doc content so `harness docs <id>` works for an npm/npx consumer with no repo checkout (`files` unchanged).
-- [ ] AC6 — `DocsService` source imports no `node:fs` and reads no `process.cwd()`; returns the **full typed records** (`DocContent` with `format: 'markdown'`, `DocEntry` with `audience`) per the workshop contract; all formatting in the act.
-- [ ] AC7 — `docs` is a CORE command (registered in `buildProgram`), not an extension verb; reserved in `RESERVED_NAMES` (P8/P10 intact).
-- [ ] AC8 — `harness help` advertises `docs`; `harness/cli/README.md` documents it with exit codes (P6).
-- [ ] AC9 — `E160` added to the error-codes table and its frozen snapshot test updated.
-- [ ] AC10 — `docs/how/using-harness-docs.md` exists, reads standalone, and is itself listed/retrievable via `harness docs`.
-- [ ] AC11 — The guide/service comment documents `listDocs`/`getDoc` as the future `mcp/tools/docs_*` seam; no MCP code added; service couples to neither commander nor stdout.
-- [ ] AC12 — `biome` + `tsc` + vitest (with coverage) all green.
+- [x] AC1 — `harness docs` emits `ok` envelope listing `{id,title,summary}[]` (human table in human mode), exit 0.
+- [x] AC2 — `harness docs <id>` (known) emits byte-faithful markdown content, exit 0.
+- [x] AC3 — `harness docs <unknown>` emits `formatError` with `E160` + fix-prescribing message (P7), non-zero exit.
+- [x] AC4 — Corpus is an explicit allow-list including `extend-the-harness`, `using-harness-docs`, the CLI README, and `authoring-verbs`; excludes `AGENTS.md`, `docs/plans/**`, `scratch/**` (P12) — asserted by a test.
+- [x] AC5 — Built package (`harness/cli/dist`) contains the doc content so `harness docs <id>` works for an npm/npx consumer with no repo checkout (`files` unchanged).
+- [x] AC6 — `DocsService` source imports no `node:fs` and reads no `process.cwd()`; returns the **full typed records** (`DocContent` with `format: 'markdown'`, `DocEntry` with `audience`) per the workshop contract; all formatting in the act.
+- [x] AC7 — `docs` is a CORE command (registered in `buildProgram`), not an extension verb; reserved in `RESERVED_NAMES` (P8/P10 intact).
+- [x] AC8 — `harness help` advertises `docs`; `harness/cli/README.md` documents it with exit codes (P6).
+- [x] AC9 — `E160` added to the error-codes table and its frozen snapshot test updated.
+- [x] AC10 — `docs/how/using-harness-docs.md` exists, reads standalone, and is itself listed/retrievable via `harness docs`.
+- [x] AC11 — The guide/service comment documents `listDocs`/`getDoc` as the future `mcp/tools/docs_*` seam; no MCP code added; service couples to neither commander nor stdout.
+- [x] AC12 — `biome` + `tsc` + vitest (with coverage) all green.
 
 ### Risks
 

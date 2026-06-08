@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Envelope, Status } from '../../src/output/envelope.js';
-import { exitCodeFor } from '../../src/output/exit.js';
+import { emitRawAndExit, exitCodeFor } from '../../src/output/exit.js';
+import type { Writers } from '../../src/output/output-port.js';
 
 const env = (status: Status): Envelope => ({
   command: 'x',
@@ -28,5 +29,30 @@ describe('exitCodeFor (status -> exit code, authoritative map)', () => {
 
   it('unconfigured is 2, never 0 (honest "not built")', () => {
     expect(exitCodeFor(env('unconfigured'))).toBe(2);
+  });
+});
+
+describe('emitRawAndExit (verbatim passthrough, flush-safe)', () => {
+  it('writes the raw text and sets process.exitCode WITHOUT calling process.exit (F002)', () => {
+    /*
+    Test Doc:
+    - Why: a large raw payload (harness docs <id>) piped/redirected must not be truncated by an
+      early process.exit that races the stdout flush; the kernel sets exitCode and returns instead.
+    - Contract: emitRawAndExit writes the text to stdout and sets process.exitCode (default 0).
+    - Quality Contribution: pins the truncation-safe exit path the docs raw-dump relies on.
+    - Worked Example: emitRawAndExit('# Doc\n', writers) -> writers.out got '# Doc\n', exitCode 0.
+    */
+    let written = '';
+    const writers: Writers = {
+      out: (t) => {
+        written += t;
+      },
+      err: () => {},
+    };
+    const prev = process.exitCode;
+    emitRawAndExit('# Doc\n\nbody', writers);
+    expect(written).toBe('# Doc\n\nbody');
+    expect(process.exitCode).toBe(0);
+    process.exitCode = prev;
   });
 });

@@ -48,8 +48,13 @@ describe('docs corpus — curation (P12)', () => {
     expect(listed).toEqual(manifest.docs.map((entry) => entry.id).sort());
   });
 
-  it('never includes governance/private material (AGENTS.md, docs/plans, scratch)', () => {
-    const FORBIDDEN = [/(^|\/)AGENTS\.md$/i, /(^|\/)docs\/plans\//, /(^|\/)scratch\//];
+  it('never includes governance/private material (AGENTS.md, docs/plans, docs/project-rules, scratch)', () => {
+    const FORBIDDEN = [
+      /(^|\/)AGENTS\.md$/i,
+      /(^|\/)docs\/plans\//,
+      /(^|\/)docs\/project-rules\//,
+      /(^|\/)scratch\//,
+    ];
     for (const entry of manifest.docs) {
       for (const pattern of FORBIDDEN) {
         expect(entry.sourcePath).not.toMatch(pattern);

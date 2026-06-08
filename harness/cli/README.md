@@ -85,10 +85,15 @@ harness --no-extensions help            # core-only (skip discovery)
 
 ## Output modes
 
-Every command emits a stable **envelope** in one of two renderings:
+**Most** commands emit a stable **envelope** in one of two renderings:
 
 - **JSON** — one parseable line on stdout (for agents / pipes).
 - **Human** — a readable summary on stdout, diagnostics + next action on stderr.
+
+The one deliberate exception is `harness docs <id>`, which writes the doc's **raw
+markdown** to stdout (no envelope, in both modes) so it pipes/redirects cleanly —
+mirroring how a doc dump should behave. The doc **list** (`harness docs`) still
+uses the envelope.
 
 Selection precedence (highest wins):
 

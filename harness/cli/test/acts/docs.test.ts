@@ -73,15 +73,23 @@ describe('registerDocsAct', () => {
     expect(code).toBe(0);
   });
 
-  it('read <id>: writes raw markdown (not an envelope) to stdout, exit 0', () => {
+  it('read <id>: writes raw markdown to stdout and exits 0 NATURALLY (no early process.exit → flush-safe)', () => {
     const firstId = listDocs().docs[0]?.id ?? '';
     const lookup = getDoc(firstId);
     const expected = 'content' in lookup ? lookup.content : '';
     const { io, out } = ioFor('json'); // raw even in json mode (mirrors minih agent-readme)
-    const code = run(io, [firstId]);
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c}`);
+    }) as never);
+    const prevExitCode = process.exitCode;
+    const program = new Command().name('harness');
+    registerDocsAct(program, io);
+    expect(() => program.parse(['node', 'harness', 'docs', firstId])).not.toThrow();
     expect(out()).toBe(expected);
     expect(out().startsWith('{"command"')).toBe(false); // a raw dump, not an envelope line
-    expect(code).toBe(0);
+    expect(exitSpy).not.toHaveBeenCalled(); // never an early process.exit → stdout flushes (F002)
+    expect(process.exitCode).toBe(0);
+    process.exitCode = prevExitCode;
   });
 
   it('read <unknown>: error envelope with E160, exit 1', () => {

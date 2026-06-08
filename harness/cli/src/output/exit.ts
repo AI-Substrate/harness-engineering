@@ -1,5 +1,5 @@
 import type { Envelope, Status } from './envelope.js';
-import type { OutputPort } from './output-port.js';
+import type { OutputPort, Writers } from './output-port.js';
 
 /** Status → exit code (authoritative). Workshop 001 § Status → exit code mapping. */
 const EXIT_BY_STATUS: Record<Status, number> = {
@@ -17,4 +17,17 @@ export function exitCodeFor(env: Envelope): number {
 export function exitWithEnvelope(env: Envelope, io: OutputPort): never {
   io.emit(env);
   process.exit(exitCodeFor(env));
+}
+
+/**
+ * Verbatim passthrough exit: write raw text to stdout and let the process exit
+ * NATURALLY with `code` (0 by default) — set `process.exitCode` and return, never
+ * `process.exit`. A large raw payload (e.g. `harness docs <id>`) piped or
+ * redirected must not be truncated by an early `process.exit` that races the
+ * stdout flush; a natural return lets Node drain stdout first (companion F002).
+ * Envelope-bearing commands still use `exitWithEnvelope`.
+ */
+export function emitRawAndExit(text: string, writers: Writers, code = 0): void {
+  writers.out(text);
+  process.exitCode = code;
 }

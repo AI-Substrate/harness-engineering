@@ -2,7 +2,7 @@ import type { Command } from 'commander';
 import { SystemClock } from '../adapters/clock/system-clock.js';
 import { formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
-import { exitWithEnvelope } from '../output/exit.js';
+import { emitRawAndExit, exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import type { DocsListResult } from '../services/docs/contract.js';
 import { getDoc, listDocs } from '../services/docs/docs-service.js';
@@ -78,9 +78,10 @@ export function registerDocsAct(program: Command, io: CliIo): void {
         return;
       }
 
-      // Found → dump the raw markdown verbatim to stdout (no envelope), exit 0.
-      const envelope = formatOk('docs', { id: lookup.id }, clock);
-      const rawPort: OutputPort = { emit: () => io.writers.out(lookup.content) };
-      exitWithEnvelope(envelope, rawPort);
+      // Found → write the raw markdown verbatim to stdout and let the process
+      // exit NATURALLY with 0. We deliberately do NOT route this through
+      // process.exit: a large doc piped/redirected could be truncated if the
+      // process terminates before stdout flushes (companion F002 HIGH).
+      emitRawAndExit(lookup.content, io.writers);
     });
 }

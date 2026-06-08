@@ -11,8 +11,8 @@ How to add a new `harness <verb>` command to your repo — the fast path
 
 ## The model in one minute
 
-The harness core (installed via `npx`) ships only two built-in commands —
-`help` and `doctor` — plus `new`. **Every other command is an extension** you add
+The harness core (installed via `npx`) ships a few built-in commands —
+`help`, `doctor`, `new`, and `docs`. **Every other command is an extension** you add
 to your own repo:
 
 ```
