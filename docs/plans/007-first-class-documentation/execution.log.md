@@ -27,3 +27,6 @@
 
 ### T004 — using-harness-docs.md guide ✅
 - Authored `docs/how/using-harness-docs.md` (standalone, matches docs/how/ style): model, list/read usage + JSON, exit codes (0/E160), "offline by design" bundling, and the "DocsService seam → future MCP docs_*" note. Also a corpus member (manifest id using-harness-docs).
+
+### T005 — build-time generator ✅
+- Created `scripts/gen-docs.mjs` (pure node, zero deps): validates each manifest entry + source existence (fail-fast), reads each .md, emits `docs-content.ts` with `@generated` header + `DOCS = [...] as const`, content via `JSON.stringify` (KF-06 escaping). Final step biome-normalises the output when biome is present (drift-stable + lint-clean per D3). `node --check` OK.
