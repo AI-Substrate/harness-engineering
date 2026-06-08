@@ -56,3 +56,14 @@
 - difficulties:
   - [annoying] coordination: Manual counting in a long-running companion run was error-prone; I sent an initial farewell with 10 task reviews before noticing the actual count was 9. (workaround: Sent a corrected farewell message and wrote the validated report with the corrected counts.)
   - [annoying] coordination: The task protocol said to reply only if issues, but the companion prompt required a summary for every task. (workaround: Prioritized the companion prompt and sent summaries for each reviewed task.)
+
+## 2026-06-08T10:33:16.628Z — code-review-companion / 2026-06-08T19-55-47-799Z-3769
+
+- runId: 2026-06-08T19-55-47-799Z-3769
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T19-55-47-799Z-3769
+- summary: Reviewed eight plan 006 review requests, including the final drain across all 23 landed tasks. I found three real medium implementation/test issues early in the FsPort/template work, all resolved by follow-up commits, withdrew one false-positive follow-up after empirical verification, and found two final medium completion-hygiene issues: stale plan bookkeeping and an untracked unsanitized e2e retro artifact. No HIGH or CRITICAL issues were found.
+- **magicWand** (target: minih): Provide a minih env/status helper that exposes the canonical project root and output path to the agent shell, and have the boot prompt fail fast if MINIH_PROJECT_ROOT does not match the repository root.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory and MINIH_OUTPUT_PATH was unavailable in the shell, despite the prompt saying to use them. (workaround: Used git rev-parse --show-toplevel for project-root commands and wrote to the literal output path from the prompt.)
+  - [annoying] tooling: Broad drift greps over optional paths produced missing-path errors or very noisy output. (workaround: Repeated the searches with existing paths and narrower patterns.)
+  - [degrading] debug: I issued F004 from an incorrect mental model of JavaScript array join behavior on absolute paths. (workaround: Verified the path behavior empirically when challenged, accepted the correction, and withdrew the finding.)
