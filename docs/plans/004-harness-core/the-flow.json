@@ -6,8 +6,8 @@
   "mode": "Full",
   "cursor": "p3",
   "recommended_next": "p3",
-  "now": "Phase 2 BUILT + companion-reviewed (7 findings, all fixed) \u2014 ready for Phase 3 tasks",
-  "next": "Phase 3 tasks (/plan-5)",
+  "now": "Phase 3 tasks tabled (T001-T006) + validated (VALIDATED WITH FIXES: 2 MEDIUM checkout + 1 check-name risk fixed) \u2014 ready for Phase 3 build",
+  "next": "Phase 3 build (/plan-6 companion)",
   "agents": [
     {
       "slug": "code-review-companion",
@@ -172,7 +172,15 @@
       "type": "phase",
       "phase": 3,
       "label": "Phase 3 \u00b7 CI + release + branch protection",
-      "status": "known",
+      "status": "in_progress",
+      "command": "/plan-5",
+      "ran_at": "2026-06-08T00:40:00Z",
+      "user_input": "add forward note; run the /5 then validate",
+      "note": "Tasks dossier T001-T006 generated (CI matrix+checkout+ci-required gather job, coverage lcov artifact, package-smoke F005 guard, release-please no-publish, branch protection live [admin confirmed], gh end-to-end validation) + flight plan. validate-v2 (4 agents): Source-Truth clean, Thesis Advanced/Implementation/Strong, Forward-Compat all-green. VALIDATED WITH FIXES \u2014 added actions/checkout to T001/T004 + a stable ci-required aggregation job to close the matrix check-name risk. Next: /plan-6 companion build.",
+      "artifacts": [
+        "tasks/phase-3-ci-release-automation-branch-protection/tasks.md",
+        "tasks/phase-3-ci-release-automation-branch-protection/tasks.fltplan.md"
+      ],
       "next": [
         "merge"
       ]
