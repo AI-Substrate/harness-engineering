@@ -4,10 +4,10 @@
   "slug": "harness-core",
   "plan_dir": "docs/plans/004-harness-core",
   "mode": "Full",
-  "cursor": "p2",
-  "recommended_next": "p2",
-  "now": "Phase 1 BUILT + companion-reviewed (2 HIGH fixed) \u2014 ready for Phase 2 tasks",
-  "next": "Phase 2 tasks (/plan-5)",
+  "cursor": "p3",
+  "recommended_next": "p3",
+  "now": "Phase 2 BUILT + companion-reviewed (7 findings, all fixed) \u2014 ready for Phase 3 tasks",
+  "next": "Phase 3 tasks (/plan-5)",
   "agents": [
     {
       "slug": "code-review-companion",
@@ -16,6 +16,14 @@
       "covers": ["p1"],
       "render": "wrap",
       "result": "APPROVE \u2014 2 HIGH (F001/F002) fixed + re-verified"
+    },
+    {
+      "slug": "code-review-companion",
+      "kind": "companion",
+      "run_id": "2026-06-08T09-12-29-770Z-3f1f",
+      "covers": ["p2"],
+      "render": "wrap",
+      "result": "APPROVE \u2014 7 findings (3 HIGH/4 MEDIUM) all fixed + verified"
     }
   ],
   "nodes": [
@@ -132,7 +140,29 @@
       "type": "phase",
       "phase": 2,
       "label": "Phase 2 \u00b7 CLI command surface + architecture",
-      "status": "known",
+      "status": "done",
+      "command": "/plan-6-companion",
+      "ran_at": "2026-06-07T23:59:00Z",
+      "user_input": "build the brief, then run validation; run it now (Phase 2 build)",
+      "note": "Built T001-T012: fs/process/git/env adapters (port+impl+fake) -> slot registry + run<slot> dispatcher + 7-slot factory -> help service+act (help --json machine-readable) -> doctor service+act (layered, fakes) -> command-map validation (E120) -> entrypoint composition root (CliIo, no fs/process/git imports) + actionable errors (exitOverride, no stack traces) + README + integration. 96 tests, ~92% cov, just fft green, npm audit 0, dist smoke green incl symlink. code-review-companion (Power-On-Mode) raised 7 findings (F001-F007: 3 HIGH incl npx-symlink bin + run-dispatcher contract + tri-state json; 4 MEDIUM), ALL fixed inline + verified; final sweep APPROVE. /plan-7 superseded by companion.",
+      "artifacts": [
+        "harness/cli/src/acts/**",
+        "harness/cli/src/adapters/{fs,process,git,env}/**",
+        "harness/cli/src/services/**",
+        "harness/cli/src/{app,index,version}.ts",
+        "harness/cli/README.md",
+        "tasks/phase-2-cli-command-surface-architecture/execution.log.md"
+      ],
+      "agents": [
+        {
+          "slug": "code-review-companion",
+          "kind": "companion",
+          "run_id": "2026-06-08T09-12-29-770Z-3f1f",
+          "covers": ["p2"],
+          "render": "wrap",
+          "result": "APPROVE \u2014 7 findings all fixed + verified"
+        }
+      ],
       "next": [
         "p3"
       ]

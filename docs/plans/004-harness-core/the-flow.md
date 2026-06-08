@@ -13,10 +13,12 @@ flowchart TD
   research["Research · chainglass + minih harness CLI"]:::done
   spec["Spec"]:::done
   plan["Plan"]:::done
-  subgraph companion["🤖 code-review-companion (Power-On-Mode) · APPROVE"]
+  subgraph companion1["🤖 code-review-companion · Phase 1 · APPROVE"]
     p1["Phase 1 · scaffold + engineering kernel · BUILT"]:::done
   end
-  p2["Phase 2 · CLI command surface + architecture"]:::known
+  subgraph companion2["🤖 code-review-companion · Phase 2 · APPROVE (7 findings fixed)"]
+    p2["Phase 2 · CLI command surface + architecture · BUILT"]:::done
+  end
   p3["Phase 3 · CI + release + branch protection"]:::known
   merge["Merge"]:::assumed
 
@@ -32,8 +34,10 @@ flowchart TD
   said_ws -.- ws2
   said_p1>"🗣 run /5 stage; then commit and push, then run /6 companion mode"]:::done
   said_p1 -.- p1
+  said_p2>"🗣 build the brief, then run validation; run it now"]:::done
+  said_p2 -.- p2
 ```
 
 **Legend**: 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · 🤖 companion (wraps phases) · worker (side build)
 
-**Now**: Phase 1 BUILT + companion-reviewed (2 HIGH fixed) → **Next**: Phase 2 tasks (`/plan-5`)
+**Now**: Phase 2 BUILT + companion-reviewed (7 findings, all fixed) → **Next**: Phase 3 tasks (`/plan-5`)
