@@ -21,3 +21,6 @@
 
 ### T002 — E160 DOC_NOT_FOUND ✅
 - Added `DOC_NOT_FOUND: 'E160'` to `error-codes.ts`; updated frozen snapshot in `error-codes.test.ts`. Both tests green (E-prefix uniqueness check passes).
+
+### T003 — curated manifest ✅
+- Created `harness/cli/src/services/docs/docs-manifest.json` — 4 curated docs (extend-the-harness, using-harness-docs, authoring-verbs, cli-readme), each id/title/summary/audience/sourcePath (repo-root-relative). `$comment` documents the P12 curation rule (excludes AGENTS.md/plans/project-rules/scratch). Valid JSON.
