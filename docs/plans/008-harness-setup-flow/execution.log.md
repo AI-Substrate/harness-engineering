@@ -8,7 +8,8 @@
 
 | Finding | ackOf (review-request) | Severity | Disposition |
 |---------|------------------------|----------|-------------|
-| _(none yet)_ | | | |
+| F001 | review-request: T001 3c9bcbc | MEDIUM | FIXED — Step 2 now documents the AC4 directory fallback (sentinel `latest.json` OR any file under `.harness/reports/harnessability/`). |
+| F002 | review-request: T001 3c9bcbc | MEDIUM | FIXED — copyable commands now use `npx harness …` (matches the e2e recipe; bin not always on PATH after npm install). |
 
 ## Task log
 
@@ -42,3 +43,8 @@
 - **Scope boundary (deviation note)**: `harness/assessment` still appears in `skills/harnessability-assessment/{README,SKILL}.md` — those are that skill's OWN current output paths and are the user's PARALLEL work (R2). Left untouched intentionally; the catalog now points at the agreed `.harness/reports/harnessability/` contract.
 - **Archival refs left as history**: `docs/plans/002-*` and `docs/plans/003-*` reference the deleted templates as they existed then — historical plan records, out of the `skills/`-scoped sweep; not rewritten.
 - ACs advanced: AC7; R3/R5 guards green.
+
+### fix(T001 findings) — F001 + F002 ✅
+- F001 (Contract Drift, MEDIUM): SKILL Step 2 check now `test -f latest.json || ls .../* ` and prose names the directory fallback — aligns with AC4/R2.
+- F002 (Impl Quality, MEDIUM): all copyable command blocks use `npx harness …` (init/doctor/new/help/boot), with a one-line note that bare `harness` is fine if on PATH. Matches the install-and-validate-test-extension recipe.
+- Companion T002/T003/T004 = APPROVE (0 issues).

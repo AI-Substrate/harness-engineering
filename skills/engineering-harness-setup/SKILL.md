@@ -58,12 +58,12 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
    # npm install github:AI-Substrate/harness-engineering#vX.Y.Z
    ```
 
-   Afterwards use `npx harness <command>` (or `harness <command>` if it's on PATH).
+   Afterwards use `npx harness <command>` (it resolves the locally-installed CLI whether or not `harness` is on PATH). **All examples below use `npx harness …`; drop the `npx` prefix only if `harness` is already on your PATH.**
 
 3. **Initialise the nucleus** — run the deterministic bootstrap:
 
    ```bash
-   harness init
+   npx harness init
    ```
 
    > **Graceful fallback (important).** `harness init` is the planned bootstrap that creates the `.harness/` nucleus deterministically. If your installed CLI does **not** recognise it yet (unknown-command error), **do not fail** — continue. `.harness/extensions/` is created lazily by `harness new` (Step 3), so the flow still works today. Note the gap so it's encoded once `init` ships.
@@ -71,8 +71,8 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
 4. **Sanity-check** with the CLI's own front door:
 
    ```bash
-   harness doctor          # human-readable
-   harness doctor --json    # envelope: status / data / error / next_action
+   npx harness doctor          # human-readable
+   npx harness doctor --json    # envelope: status / data / error / next_action
    ```
 
    A healthy `doctor` with an **empty** `.harness/extensions/` is expected on a fresh repo — "no extensions installed" is not an error.
@@ -93,13 +93,15 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
 
 ## Step 2 — Assess harnessability (only if not already done)
 
-Check for an existing assessment report at the canonical location:
+Check for an existing assessment report. The canonical sentinel is `latest.json`; treat **any** file under the report directory as an existing report (the AC4 fallback):
 
 ```bash
-test -f .harness/reports/harnessability/latest.json   # the sentinel
+# reuse if the sentinel exists, OR any report file is present in the dir:
+test -f .harness/reports/harnessability/latest.json \
+  || ls .harness/reports/harnessability/* >/dev/null 2>&1
 ```
 
-- **Report exists** → reuse it. Read its recommendations (highest-leverage improvements / remediations) — they tell you what `boot` should prove first for *this* repo.
+- **Report exists** (sentinel `latest.json`, or any file under `.harness/reports/harnessability/`) → reuse it. Read its recommendations (highest-leverage improvements / remediations) — they tell you what `boot` should prove first for *this* repo.
 - **No report** → run the **`harnessability-assessment`** skill (read-only by default). It scores Operate-Today and Adaptability and emits the recommendations that drive Step 3.
 
 > The assessment is a separate skill — invoke it, don't reimplement it. The flow only needs its **recommendations** to choose the first `boot`.
@@ -122,7 +124,7 @@ Author it via the skill, e.g.:
 
 ```bash
 # the add-extension skill runs, under the hood, something like:
-harness new boot --wrap "<the readiness command for this repo>"
+npx harness new boot --wrap "<the readiness command for this repo>"
 ```
 
 Then **fill the handler only as much as needed** to:
@@ -135,9 +137,9 @@ Keep it minimal. Resist adding seed/reset/observe/sensors now — capture those 
 ### Verify
 
 ```bash
-harness doctor      # boot now shows as a loaded extension
-harness help        # the `boot` verb appears in the command surface
-harness boot        # runs it — inspect the envelope/exit code for the verdict
+npx harness doctor      # boot now shows as a loaded extension
+npx harness help        # the `boot` verb appears in the command surface
+npx harness boot        # runs it — inspect the envelope/exit code for the verdict
 ```
 
 When `harness boot` returns a usable verdict and re-orients the agent, the nucleus is in place. Stop here — the rest compounds through normal use.
