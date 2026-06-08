@@ -86,6 +86,21 @@ describe('FakeFs', () => {
     // recursive: the parent segment is created too (F001 — matches NodeFs recursive mkdir)
     expect(fs.exists('.harness')).toBe(true);
   });
+
+  it('mkdirp on an ABSOLUTE path registers every ancestor with the leading slash preserved', () => {
+    /*
+    Test Doc:
+    - Why: scaffold-service calls mkdirp(join(proc.cwd(), '.harness', 'extensions')) — an ABSOLUTE
+      path. The fake must model recursive create for that exact shape (F004 guard — confirms the
+      leading slash is preserved, matching NodeFs.mkdirSync({recursive:true})).
+    - Worked Example: mkdirp('/repo/.harness/extensions') → /repo, /repo/.harness, and the leaf exist.
+    */
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness/extensions');
+    expect(fs.exists('/repo')).toBe(true);
+    expect(fs.exists('/repo/.harness')).toBe(true);
+    expect(fs.exists('/repo/.harness/extensions')).toBe(true);
+  });
 });
 
 describe('NodeFs', () => {
