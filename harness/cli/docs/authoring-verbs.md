@@ -5,8 +5,13 @@ A **harness extension** is a TypeScript (or JavaScript) file in your repo's
 verb becomes a top-level `harness <verb>` command with its own `--help`,
 options, structured Envelope output, and exit code.
 
-> The core ships no built-in verbs. Everything you can run beyond `help` and
-> `doctor` is something an extension contributed.
+> The core ships no built-in verbs. Everything you can run beyond `help`,
+> `doctor`, and `new` is something an extension contributed.
+
+> **Start here:** the fastest way to create one is `harness new <name>` — it
+> scaffolds a loadable stub for you (see [`docs/how/extend-the-harness.md`](../../../docs/how/extend-the-harness.md)).
+> Add `--wrap "<command>"` to wrap a real repo command, or `--js` for a plain-JS
+> starter. This page documents the contract that scaffolded file follows.
 
 ## 1. Where extensions live
 
@@ -29,7 +34,7 @@ order:
   `import()` (no transpile, fastest).
 - If two extensions declare the same verb name, the **first (sorted) wins**; the
   duplicate is reported by `doctor` as a conflict (never silently dropped).
-- `help` and `doctor` are reserved — an extension can't shadow them.
+- `help`, `doctor`, and `new` are reserved core commands — an extension can't shadow them.
 - Absent / empty folder is **not** an error: `help` says "no extensions
   installed yet".
 
@@ -159,4 +164,6 @@ harness help            # lists the verbs your extensions contributed
 harness <verb> --help   # the commander-generated usage for one verb
 ```
 
-Copyable starters live in [`../examples/extensions/`](../examples/extensions/).
+The fastest way to get a starter is `harness new <name>` (see
+[`docs/how/extend-the-harness.md`](../../../docs/how/extend-the-harness.md)).
+Copyable static starters also live in [`../examples/extensions/`](../examples/extensions/).

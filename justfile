@@ -143,3 +143,7 @@ test:
 
 # fix -> format -> test (the engineering loop).
 fft: fix format test
+
+# Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
+test-repo dest="":
+    @bash scripts/new-test-repo.sh "{{dest}}"
