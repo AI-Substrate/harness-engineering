@@ -30,3 +30,6 @@
 
 ### T005 — build-time generator ✅
 - Created `scripts/gen-docs.mjs` (pure node, zero deps): validates each manifest entry + source existence (fail-fast), reads each .md, emits `docs-content.ts` with `@generated` header + `DOCS = [...] as const`, content via `JSON.stringify` (KF-06 escaping). Final step biome-normalises the output when biome is present (drift-stable + lint-clean per D3). `node --check` OK.
+
+### T006 — build wiring ✅
+- package.json: added `"gen:docs": "node scripts/gen-docs.mjs"`; `"build"` now `npm run gen:docs && tsc -p harness/cli/tsconfig.json`. `files` UNCHANGED (["harness/cli/dist","LICENSE"]) — Option C ships docs via compiled src, no asset dir.

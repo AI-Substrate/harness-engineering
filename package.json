@@ -22,7 +22,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p harness/cli/tsconfig.json",
+    "gen:docs": "node scripts/gen-docs.mjs",
+    "build": "npm run gen:docs && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
     "test": "cd harness/cli && vitest run --coverage",
     "lint": "biome check harness/cli",
