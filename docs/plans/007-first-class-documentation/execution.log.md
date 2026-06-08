@@ -24,3 +24,6 @@
 
 ### T003 — curated manifest ✅
 - Created `harness/cli/src/services/docs/docs-manifest.json` — 4 curated docs (extend-the-harness, using-harness-docs, authoring-verbs, cli-readme), each id/title/summary/audience/sourcePath (repo-root-relative). `$comment` documents the P12 curation rule (excludes AGENTS.md/plans/project-rules/scratch). Valid JSON.
+
+### T004 — using-harness-docs.md guide ✅
+- Authored `docs/how/using-harness-docs.md` (standalone, matches docs/how/ style): model, list/read usage + JSON, exit codes (0/E160), "offline by design" bundling, and the "DocsService seam → future MCP docs_*" note. Also a corpus member (manifest id using-harness-docs).
