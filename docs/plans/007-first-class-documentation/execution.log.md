@@ -72,3 +72,8 @@
 ### T015 — build + offline smoke ✅
 - `npm run build` (gen:docs && tsc) exit 0; `dist/services/docs/docs-content.js` = 26KB with embedded content (`files` unchanged → ships via dist).
 - Smoke (run from /tmp, offline, dist only): `docs`→ok envelope exit 0; `docs extend-the-harness`→raw md exit 0; `docs no-such-doc`→E160 exit 1; `docs <id> | head -2`→EPIPE-safe (no stack trace, exit 0); `docs --no-json`→human table. Proves npx ships docs offline (AC5).
+
+### T016 — full gate + CI drift guard ✅
+- Added `"check:docs": "npm run gen:docs && git diff --exit-code <generated>"`; CI step "Docs drift guard" after Build (runs `npm run check:docs`). Verified: passes clean; catches an edited-source-without-regen (exit 1).
+- Excluded the generated data file from coverage (vitest.config.ts) alongside src/index.ts.
+- FINAL GATE: biome(--error-on-warnings) 0 · tsc 0 · check:docs 0 · vitest 210/210 pass (35 files) · coverage 93.4%.

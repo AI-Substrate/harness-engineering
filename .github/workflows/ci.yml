@@ -39,6 +39,9 @@ jobs:
       - name: Build (tsc emit)
         run: npm run build
 
+      - name: Docs drift guard (generated bundle matches the .md sources)
+        run: npm run check:docs
+
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit -p harness/cli/tsconfig.json
 

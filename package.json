@@ -23,6 +23,7 @@
   },
   "scripts": {
     "gen:docs": "node scripts/gen-docs.mjs",
+    "check:docs": "npm run gen:docs && git diff --exit-code harness/cli/src/services/docs/docs-content.ts",
     "build": "npm run gen:docs && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
     "test": "cd harness/cli && vitest run --coverage",
