@@ -143,7 +143,7 @@ export function buildProgram(
     .exitOverride();
 
   registerHelpAct(program, io, registry);
-  registerDoctorAct(program, io);
+  registerDoctorAct(program, io, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
   }

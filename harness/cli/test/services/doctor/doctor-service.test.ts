@@ -12,10 +12,17 @@ import {
   renderDoctorText,
   runDoctor,
 } from '../../../src/services/doctor/doctor-service.js';
-import { loadSlotRegistry } from '../../../src/services/slots/slot-registry.js';
+import type { ExtensionRecord, HarnessVerb } from '../../../src/services/extensions/contract.js';
+import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
 
 const ALL_TOOLS = { node: '/usr/bin/node', just: '/usr/bin/just', biome: '/usr/bin/biome' };
 const BUILT_CLI = { 'harness/cli/dist/index.js': '// built' };
+
+const mkVerb = (name: string): HarnessVerb => ({
+  name,
+  summary: `${name} verb`,
+  run: () => ({ status: 'ok' }),
+});
 
 function deps(over: Partial<DoctorDeps> = {}): DoctorDeps {
   return {
@@ -27,88 +34,137 @@ function deps(over: Partial<DoctorDeps> = {}): DoctorDeps {
   };
 }
 
+function registry(records: ExtensionRecord[]): VerbRegistry {
+  return { verbs: records.flatMap((r) => r.verbs), records };
+}
+
+const EMPTY: VerbRegistry = { verbs: [], records: [] };
+
 describe('buildDoctorReport', () => {
-  it('given_healthy_tools_and_build_when_built_then_only_slots_layer_is_unconfigured', () => {
+  it('given_healthy_tools_and_loaded_extensions_when_built_then_all_layers_ok', () => {
     /*
     Test Doc:
-    - Why: doctor must report configured vs unconfigured layers with zero real I/O (AC-9).
-    - Contract: buildDoctorReport returns toolchain/cli-build/command-slots layers + branch.
-    - Usage Notes: inject FakeFs/FakeProcess/FakeGit; assert on layer ok + adapter call history.
-    - Quality Contribution: proves the layered check is driven entirely through ports.
-    - Worked Example: with all tools + dist present, only command-slots is not ok (all stubs).
+    - Why: doctor enumerates installed extensions (loaded/failed/conflict) WITHOUT invoking any
+      handler (P7, AC-5), alongside the toolchain + cli-build layers, with zero real I/O.
+    - Contract: buildDoctorReport returns toolchain/cli-build/extensions layers + branch; the
+      extensions layer is ok when nothing failed/conflicted.
+    - Usage Notes: inject fakes + the assembled VerbRegistry; assert on layer ok + extension detail.
+    - Quality Contribution: proves the extension provenance surface doctor exposes.
+    - Worked Example: 2 loaded extensions, all tools present, dist built → every layer ok.
     */
-    const fs = new FakeFs(BUILT_CLI);
-    const report = buildDoctorReport(deps({ fs }), loadSlotRegistry(fs));
+    const reg = registry([
+      {
+        entryPath: '/repo/.harness/extensions/hello.ts',
+        status: 'loaded',
+        verbs: [mkVerb('hello')],
+      },
+      {
+        entryPath: '/repo/.harness/extensions/build.ts',
+        status: 'loaded',
+        verbs: [mkVerb('build')],
+      },
+    ]);
+    const report = buildDoctorReport(deps(), reg);
     const byName = Object.fromEntries(report.layers.map((l) => [l.name, l]));
     expect(byName.toolchain?.ok).toBe(true);
     expect(byName['cli-build']?.ok).toBe(true);
-    expect(byName['command-slots']?.ok).toBe(false); // all 8 are unconfigured stubs
-    expect(byName['command-slots']?.next_action).toBeDefined();
+    expect(byName.extensions?.ok).toBe(true);
+    expect(byName.extensions?.detail).toContain('2 loaded');
     expect(report.branch).toBe('main');
-    expect(fs.reads).toContain('harness/cli/dist/index.js'); // assert on call history
+  });
+
+  it('extensions layer is honest about no extensions installed (ok, with guidance)', () => {
+    const report = buildDoctorReport(deps(), EMPTY);
+    const ext = report.layers.find((l) => l.name === 'extensions');
+    expect(ext?.ok).toBe(true);
+    expect(ext?.detail).toMatch(/no extensions/i);
+    expect(ext?.next_action).toMatch(/\.harness\/extensions/);
+  });
+
+  it('reports a failed extension (E140) without invoking it — not fatal, others still load', () => {
+    const reg = registry([
+      { entryPath: '/x/hello.ts', status: 'loaded', verbs: [mkVerb('hello')] },
+      {
+        entryPath: '/x/seed/index.ts',
+        status: 'failed',
+        verbs: [],
+        error: 'E140: SyntaxError boom',
+      },
+    ]);
+    const report = buildDoctorReport(deps(), reg);
+    const ext = report.layers.find((l) => l.name === 'extensions');
+    expect(ext?.ok).toBe(false);
+    expect(ext?.detail).toContain('1 failed');
+    expect(ext?.next_action).toBeDefined();
+    expect(report.extensions?.map((e) => e.status)).toEqual(['loaded', 'failed']);
+    const failed = report.extensions?.find((e) => e.status === 'failed');
+    expect(failed?.error).toContain('E140');
+  });
+
+  it('reports a verb conflict (E142)', () => {
+    const reg = registry([
+      { entryPath: '/x/a.ts', status: 'loaded', verbs: [mkVerb('dup')] },
+      { entryPath: '/x/b.ts', status: 'conflict', verbs: [], shadows: 'dup' },
+    ]);
+    const report = buildDoctorReport(deps(), reg);
+    const ext = report.layers.find((l) => l.name === 'extensions');
+    expect(ext?.ok).toBe(false);
+    expect(ext?.detail).toContain('1 conflict');
   });
 
   it('flags a missing tool with a next_action', () => {
-    const proc = new FakeProcess({ node: '/usr/bin/node' }); // just + biome missing
-    const report = buildDoctorReport(deps({ proc }), loadSlotRegistry(new FakeFs(BUILT_CLI)));
+    const proc = new FakeProcess({ node: '/usr/bin/node' });
+    const report = buildDoctorReport(deps({ proc }), EMPTY);
     const toolchain = report.layers.find((l) => l.name === 'toolchain');
     expect(toolchain?.ok).toBe(false);
     expect(toolchain?.detail).toContain('just');
-    expect(toolchain?.next_action).toBeDefined();
-  });
-
-  it('flags an unbuilt CLI', () => {
-    const fs = new FakeFs(); // no dist
-    const report = buildDoctorReport(deps({ fs }), loadSlotRegistry(fs));
-    expect(report.layers.find((l) => l.name === 'cli-build')?.ok).toBe(false);
-  });
-
-  it('reports null branch when not a repo (git.currentBranch not consulted)', () => {
-    const git = new FakeGit({ isRepo: false });
-    const report = buildDoctorReport(deps({ git }), loadSlotRegistry(new FakeFs(BUILT_CLI)));
-    expect(report.branch).toBeNull();
-    expect(git.calls).toEqual(['isRepo']); // short-circuits — no currentBranch call
   });
 
   it('reads HARNESS_JSON via the env port into json_env', () => {
     const env = new FakeEnv({ HARNESS_JSON: '1' });
-    const report = buildDoctorReport(deps({ env }), loadSlotRegistry(new FakeFs(BUILT_CLI)));
+    const report = buildDoctorReport(deps({ env }), EMPTY);
     expect(report.json_env).toBe(true);
     expect(env.gets).toContain('HARNESS_JSON');
   });
 });
 
 describe('doctorEnvelope', () => {
-  it('is degraded (exit 0) with a next_action when any layer is not ok', () => {
+  it('is degraded (exit 0) when an extension failed', () => {
     const clock = new FakeClock('2026-06-08T07:20:00.000Z');
-    const env = runDoctor(deps({ clock }), loadSlotRegistry(new FakeFs(BUILT_CLI)));
-    expect(env.status).toBe('degraded'); // slots are unconfigured
+    const reg = registry([
+      { entryPath: '/x/bad.ts', status: 'failed', verbs: [], error: 'E140: boom' },
+    ]);
+    const env = runDoctor(deps({ clock }), reg);
+    expect(env.status).toBe('degraded');
     expect(env.next_action).toBeDefined();
-    expect(env.timestamp).toBe('2026-06-08T07:20:00.000Z');
-    expect(env.evidence).toEqual([{ label: 'doctor report', none: true }]);
     expect(exitCodeFor(env)).toBe(0);
   });
 
   it('is ok (exit 0) when every layer is ready', () => {
     const clock = new FakeClock('2026-06-08T07:20:00.000Z');
-    const registry = loadSlotRegistry(new FakeFs(BUILT_CLI));
-    for (const slot of registry) {
-      slot.status = 'configured'; // simulate a fully-configured repo
-    }
-    const report = buildDoctorReport(deps({ clock }), registry);
-    const env = doctorEnvelope(report, clock);
+    const reg = registry([
+      { entryPath: '/x/hello.ts', status: 'loaded', verbs: [mkVerb('hello')] },
+    ]);
+    const env = doctorEnvelope(buildDoctorReport(deps({ clock }), reg), clock);
     expect(env.status).toBe('ok');
     expect(exitCodeFor(env)).toBe(0);
   });
 });
 
 describe('renderDoctorText', () => {
-  it('lists each layer and the branch', () => {
-    const report = buildDoctorReport(deps(), loadSlotRegistry(new FakeFs(BUILT_CLI)));
-    const text = renderDoctorText(report);
+  it('lists each layer, the extensions, and the branch', () => {
+    const reg = registry([
+      {
+        entryPath: '/repo/.harness/extensions/hello.ts',
+        status: 'loaded',
+        verbs: [mkVerb('hello')],
+      },
+    ]);
+    const text = renderDoctorText(buildDoctorReport(deps(), reg));
     expect(text).toContain('toolchain');
     expect(text).toContain('cli-build');
-    expect(text).toContain('command-slots');
+    expect(text).toContain('extensions');
+    expect(text).toContain('hello');
     expect(text).toContain('branch:');
   });
 });

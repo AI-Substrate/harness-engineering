@@ -4,7 +4,8 @@ import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
-import type { SlotRegistry } from '../slots/slot-registry.js';
+import type { ExtensionRecord } from '../extensions/contract.js';
+import type { VerbRegistry } from '../extensions/registry.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -31,6 +32,8 @@ export interface DoctorReport {
   branch: string | null;
   /** Whether HARNESS_JSON forces JSON output (read via the env port). */
   json_env: boolean;
+  /** Per-extension provenance enumerated WITHOUT invoking any handler (P7). */
+  extensions: ExtensionRecord[];
 }
 
 const REQUIRED_TOOLS = ['node', 'just', 'biome'];
@@ -60,33 +63,50 @@ function checkCliBuild(fs: FsPort): LayerReport {
   };
 }
 
-function checkCommandSlots(slots: SlotRegistry): LayerReport {
-  const configured = slots.filter((slot) => slot.status === 'configured').length;
-  const unconfigured = slots.length - configured;
-  const ok = unconfigured === 0;
+/**
+ * Enumerate the discovered extensions from the assembled registry (P7). A purely
+ * declarative pass — `doctor` NEVER invokes a verb handler; it only reports what
+ * the loader already recorded (loaded / failed / conflict). A failed or
+ * conflicting extension makes the layer not-ok (degraded), but is never fatal.
+ */
+function checkExtensions(registry: VerbRegistry): LayerReport {
+  const loaded = registry.records.filter((r) => r.status === 'loaded').length;
+  const failed = registry.records.filter((r) => r.status === 'failed').length;
+  const conflicts = registry.records.filter((r) => r.status === 'conflict').length;
+
+  if (registry.records.length === 0) {
+    return {
+      name: 'extensions',
+      ok: true,
+      detail: 'no extensions installed (from ./.harness/extensions)',
+      next_action: 'Add a verb by dropping a file in `./.harness/extensions/`.',
+    };
+  }
+
+  const ok = failed === 0 && conflicts === 0;
   return {
-    name: 'command-slots',
+    name: 'extensions',
     ok,
-    detail: `${configured} configured, ${unconfigured} unconfigured (of ${slots.length})`,
+    detail: `${loaded} loaded, ${failed} failed, ${conflicts} conflict(s) (from ./.harness/extensions)`,
     ...(ok
       ? {}
       : {
           next_action:
-            'Slots are honest stubs in this slice; an extension configures them. Run `harness help`.',
+            'Fix or remove the failed/conflicting extensions listed below; run `harness doctor` again.',
         }),
   };
 }
 
 /**
- * Gather the doctor report via the injected adapters. Pure of `process.exit`
- * and direct Node I/O — all side effects go through the ports, so the whole
- * thing is unit-testable with fakes.
+ * Gather the doctor report via the injected adapters + the assembled verb
+ * registry. Pure of `process.exit` and direct Node I/O — all side effects go
+ * through the ports, so the whole thing is unit-testable with fakes.
  */
-export function buildDoctorReport(deps: DoctorDeps, slots: SlotRegistry): DoctorReport {
-  const layers = [checkToolchain(deps.proc), checkCliBuild(deps.fs), checkCommandSlots(slots)];
+export function buildDoctorReport(deps: DoctorDeps, registry: VerbRegistry): DoctorReport {
+  const layers = [checkToolchain(deps.proc), checkCliBuild(deps.fs), checkExtensions(registry)];
   const branch = deps.git.isRepo() ? deps.git.currentBranch() : null;
   const json_env = deps.env.get('HARNESS_JSON') === '1';
-  return { layers, branch, json_env };
+  return { layers, branch, json_env, extensions: registry.records };
 }
 
 /**
@@ -101,7 +121,7 @@ export function doctorEnvelope(report: DoctorReport, clock: Clock): Envelope {
     ? formatDegraded(
         'doctor',
         report,
-        'Resolve the unconfigured/missing layers below; run `harness help` for the slot map.',
+        'Resolve the unconfigured/failing layers below; run `harness help` for the verb map.',
         clock,
         { evidence },
       )
@@ -109,15 +129,23 @@ export function doctorEnvelope(report: DoctorReport, clock: Clock): Envelope {
 }
 
 /** Convenience: gather + envelope in one call. */
-export function runDoctor(deps: DoctorDeps, slots: SlotRegistry): Envelope {
-  return doctorEnvelope(buildDoctorReport(deps, slots), deps.clock);
+export function runDoctor(deps: DoctorDeps, registry: VerbRegistry): Envelope {
+  return doctorEnvelope(buildDoctorReport(deps, registry), deps.clock);
 }
 
-/** Render the report as human diagnostics text (each layer + its next_action). */
+/** Render the report as human diagnostics text (each layer, the extensions, the branch). */
 export function renderDoctorText(report: DoctorReport): string {
   const lines: string[] = ['harness doctor — readiness report', ''];
   for (const layer of report.layers) {
     lines.push(`${layer.ok ? '✓' : '✗'} ${layer.name}: ${layer.detail}`);
+    if (layer.name === 'extensions') {
+      for (const ext of report.extensions) {
+        const mark = ext.status === 'loaded' ? '•' : '✗';
+        const names = ext.verbs.map((v) => v.name).join(', ') || '(none)';
+        const suffix = ext.error ? ` — ${ext.error}` : '';
+        lines.push(`    ${mark} ${names} [${ext.status}]  ${ext.entryPath}${suffix}`);
+      }
+    }
     if (layer.next_action) {
       lines.push(`    → ${layer.next_action}`);
     }

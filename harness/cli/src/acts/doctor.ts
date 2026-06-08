@@ -11,25 +11,32 @@ import {
   doctorEnvelope,
   renderDoctorText,
 } from '../services/doctor/doctor-service.js';
-import { loadSlotRegistry } from '../services/slots/slot-registry.js';
+import type { VerbRegistry } from '../services/extensions/registry.js';
 
 /**
  * Register the `doctor` command — safe to run at session start. Constructs the
- * real adapters, injects them into the doctor service, and renders: human mode
- * writes the layered report to stderr + a summary to stdout; JSON mode emits
- * the envelope to stdout. Always exits 0 (reporting succeeded). The resolved
- * `io` (mode + writers) is injected by the entrypoint.
+ * real adapters, injects them + the verb registry (provided by the composition
+ * root) into the doctor service, and renders: human mode writes the layered
+ * report to stderr + a summary to stdout; JSON mode emits the envelope to
+ * stdout. Always exits 0 (reporting succeeded). `doctor` enumerates extensions
+ * (P7) without invoking any handler — and is itself a CORE command, never an
+ * extension.
  */
-export function registerDoctorAct(program: Command, io: CliIo): void {
+export function registerDoctorAct(program: Command, io: CliIo, registry: VerbRegistry): void {
   program
     .command('doctor')
-    .description('Report what is configured vs unconfigured (safe at session start)')
+    .description('Report what is configured + which extensions loaded (safe at session start)')
     .action(() => {
-      const fs = new NodeFs();
       const clock = new SystemClock();
       const report = buildDoctorReport(
-        { fs, proc: new NodeProcess(), git: new ExecGit(), env: new NodeEnv(), clock },
-        loadSlotRegistry(fs),
+        {
+          fs: new NodeFs(),
+          proc: new NodeProcess(),
+          git: new ExecGit(),
+          env: new NodeEnv(),
+          clock,
+        },
+        registry,
       );
       const envelope = doctorEnvelope(report, clock);
       const port: OutputPort =
