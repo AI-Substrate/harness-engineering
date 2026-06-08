@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['20', '22']
+        node: ['22', '24']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,8 +74,10 @@ jobs:
 
   # Packaging / bin-symlink smoke (companion F005 guard): pack the tarball,
   # install it into a clean temp project, and invoke the installed `harness`
-  # bin through its symlink. Generic invocation only — never asserts the
-  # temporary BUILTIN_SLOTS set (Constitution P10 / Phase 3 forward-note).
+  # bin through its symlink. Drops a real `.harness/extensions/hello.ts` fixture
+  # (a .ts file — forcing the jiti path, which proves jiti resolved as a RUNTIME
+  # dependency under the packaged `--omit=dev` install) and asserts the verb runs
+  # + exits 0, plus a deliberately-failing fixture exits 1 (AC-8, AC-10, KF-07).
   package-smoke:
     name: package-smoke
     runs-on: ubuntu-latest
@@ -87,7 +89,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Install dependencies
@@ -96,7 +98,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Pack and smoke-test the installed bin
+      - name: Pack and smoke-test the installed bin (with a .ts extension fixture)
         run: |
           set -euo pipefail
           TARBALL="$(npm pack --silent)"
@@ -104,11 +106,62 @@ jobs:
           SMOKE_DIR="$(mktemp -d)"
           cd "$SMOKE_DIR"
           npm init -y >/dev/null 2>&1
-          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          # --omit=dev mirrors a real consumer install: jiti must resolve as a
+          # runtime dependency, not a devDependency, for the .ts fixture to load.
+          npm install --omit=dev "$GITHUB_WORKSPACE/$TARBALL"
           echo "Installed bin symlink:"
           ls -l node_modules/.bin/harness
+
+          # A repo-local .ts extension — discovered + jiti-loaded by the installed bin.
+          mkdir -p .harness/extensions
+          cat > .harness/extensions/hello.ts <<'TS'
+          import type { HarnessVerb } from 'harness-engineering/contract';
+          const hello: HarnessVerb = {
+            name: 'hello',
+            summary: 'Say hello (smoke fixture).',
+            options: [{ flags: '--name <name>', description: 'who to greet', defaultValue: 'world' }],
+            run(ctx) {
+              return ctx.ok({ greeting: `hello, ${ctx.options.name}` });
+            },
+          };
+          export default hello;
+          TS
+          cat > .harness/extensions/boom.ts <<'TS'
+          import type { HarnessVerb } from 'harness-engineering/contract';
+          const boom: HarnessVerb = {
+            name: 'boom',
+            summary: 'Always fails (smoke fixture).',
+            run(ctx) {
+              return ctx.error('E1', 'intentional failure', { next_action: 'expected' });
+            },
+          };
+          export default boom;
+          TS
+
           echo "harness --version:"
           ./node_modules/.bin/harness --version
-          echo "harness doctor (generic, exit code only):"
-          ./node_modules/.bin/harness doctor
+
+          echo "harness doctor (must enumerate the fixtures):"
+          ./node_modules/.bin/harness --json doctor | tee doctor.json
+          grep -q '"extensions"' doctor.json
+
+          echo "harness hello (the .ts fixture verb, via jiti, must exit 0):"
+          ./node_modules/.bin/harness --json hello --name pi | tee hello.json
+          grep -q '"greeting":"hello, pi"' hello.json
+
+          echo "harness boom (failing fixture must exit 1):"
+          if ./node_modules/.bin/harness --json boom; then
+            echo "ERROR: expected the failing fixture verb to exit non-zero"
+            exit 1
+          else
+            echo "OK: failing fixture exited non-zero as expected"
+          fi
+
+          echo "harness --no-extensions hello (safe mode → unknown command, non-zero):"
+          if ./node_modules/.bin/harness --no-extensions --json hello; then
+            echo "ERROR: --no-extensions should not expose the hello verb"
+            exit 1
+          else
+            echo "OK: --no-extensions skipped discovery as expected"
+          fi
 
