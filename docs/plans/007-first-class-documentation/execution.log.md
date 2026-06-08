@@ -68,3 +68,7 @@
 
 ### T014 — document docs in CLI README ✅
 - harness/cli/README.md: command-surface table += `harness new <name>` (was missing since plan 006) + `harness docs [id]`; intro + reserved-commands line now list help/doctor/new/docs; usage block += docs examples; exit-codes table += E160. README is a corpus member → regenerated docs-content.ts; drift test green; tsc clean.
+
+### T015 — build + offline smoke ✅
+- `npm run build` (gen:docs && tsc) exit 0; `dist/services/docs/docs-content.js` = 26KB with embedded content (`files` unchanged → ships via dist).
+- Smoke (run from /tmp, offline, dist only): `docs`→ok envelope exit 0; `docs extend-the-harness`→raw md exit 0; `docs no-such-doc`→E160 exit 1; `docs <id> | head -2`→EPIPE-safe (no stack trace, exit 0); `docs --no-json`→human table. Proves npx ships docs offline (AC5).

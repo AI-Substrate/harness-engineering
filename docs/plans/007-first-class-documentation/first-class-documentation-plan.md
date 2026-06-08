@@ -92,7 +92,7 @@ Add a first-class, core `harness docs` command (peer of `help`/`doctor`/`new`) b
 | [x] | T012 | Advertise `docs` in help | help | `src/services/help/help-service.ts`, `test/services/help/*.test.ts` | PURPOSE mentions `docs`; `safe_first_actions` includes a `harness docs` line; `renderHelpText` shows it; tests updated | Finding 05; AC8 |
 | [x] | T013 | **Drift + curation tests** | docs | `test/services/docs/docs-content.test.ts` | (a) for each manifest entry, `getDoc(id).content` byte-equals source `.md`; (b) `DOCS` ids ⊆ manifest; excludes AGENTS.md/`docs/plans/**`/`scratch/**` | R2/R3; AC4; snapshot index |
 | [x] | T014 | Document `docs` in CLI README | docs corpus | `harness/cli/README.md` | `harness docs` + `harness docs <id>` documented with exit codes (0/1, `E160`) | P6; AC8 |
-| [ ] | T015 | Build + offline smoke | build | (build output) | `npm run build` green; `node harness/cli/dist/index.js docs` lists; `… docs extend-the-harness` prints md; `dist/services/docs/docs-content.js` contains content | AC5; proves npx ships docs |
+| [x] | T015 | Build + offline smoke | build | (build output) | `npm run build` green; `node harness/cli/dist/index.js docs` lists; `… docs extend-the-harness` prints md; `dist/services/docs/docs-content.js` contains content | AC5; proves npx ships docs |
 | [ ] | T016 | Full gate + CI drift guard | all | `package.json`/CI | `biome check` + `tsc` + `vitest run --coverage` green; add/note `npm run gen:docs && git diff --exit-code <generated>` check | AC12; R2 |
 
 ### Acceptance Criteria
