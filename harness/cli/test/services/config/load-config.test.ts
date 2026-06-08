@@ -47,4 +47,38 @@ describe('validateVerbRegistry', () => {
     const details = env.error?.details as Array<{ problem: string }>;
     expect(details.some((d) => d.problem === 'duplicate name')).toBe(true);
   });
+
+  it('rejects a verb with a variadic positional arg (unsupported in v1) (F008)', () => {
+    /*
+    Test Doc:
+    - Why: a variadic positional `<files...>` makes commander hand the handler an ARRAY, breaking
+      the public `ctx.args: Record<string,string|undefined>` contract; v1 rejects it rather than
+      silently lying about the type (F008).
+    - Contract: a verb declaring a `...` arg surfaces a "variadic ... not supported" issue (E120).
+    - Quality Contribution: pins the v1 no-variadic rule the ctx.args type depends on.
+    - Worked Example: args:[{name:'<files...>'}] → an issue mentioning "variadic".
+    */
+    const variadic = {
+      name: 'cat',
+      summary: 's',
+      run: () => ({ status: 'ok' }),
+      args: [{ name: '<files...>', description: 'files' }],
+    } as unknown as HarnessVerb;
+    const env = validateVerbRegistry([variadic], clock());
+    expect(env.status).toBe('error');
+    const details = env.error?.details as Array<{ problem: string }>;
+    expect(details.some((d) => d.problem.includes('variadic'))).toBe(true);
+  });
+
+  it('rejects malformed args/options shapes before they reach commander', () => {
+    const bad = [
+      { name: 'a', summary: 's', run: () => ({ status: 'ok' }), args: 'nope' },
+      { name: 'b', summary: 's', run: () => ({ status: 'ok' }), options: [{ description: 'x' }] },
+    ] as unknown as HarnessVerb[];
+    const env = validateVerbRegistry(bad, clock());
+    expect(env.status).toBe('error');
+    const details = env.error?.details as Array<{ problem: string }>;
+    expect(details.some((d) => d.problem === 'args must be an array')).toBe(true);
+    expect(details.some((d) => d.problem.includes('flags'))).toBe(true);
+  });
 });

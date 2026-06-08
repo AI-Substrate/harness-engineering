@@ -109,4 +109,20 @@ describe('buildVerbRegistry', () => {
     expect(rec?.verbs.map((v) => v.name)).toEqual(['one']);
     expect(rec?.shadows).toEqual(['help']);
   });
+
+  it('isolates a verb with a variadic arg as a failed E140 record, not fatal (F008)', async () => {
+    const variadic = {
+      name: 'cat',
+      summary: 'cat verb',
+      run: () => ({ status: 'ok' }),
+      args: [{ name: '<files...>', description: 'files' }],
+    } as unknown as HarnessVerb;
+    const loader = new FakeModuleLoader({ '/x/cat.ts': variadic, '/x/ok.ts': mkVerb('ok') });
+    const reg = await buildVerbRegistry(['/x/cat.ts', '/x/ok.ts'], loader);
+    const cat = reg.records.find((r) => r.entryPath === '/x/cat.ts');
+    expect(cat?.status).toBe('failed');
+    expect(cat?.error).toContain('E140');
+    expect(cat?.error).toContain('variadic');
+    expect(reg.verbs.map((v) => v.name)).toEqual(['ok']);
+  });
 });
