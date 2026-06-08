@@ -64,3 +64,4 @@
 
 ### T013 — drift + curation tests ✅
 - docs-content.test.ts: (a) per-manifest-entry byte-equal `getDoc(id).content === source .md` (proves Option-C round-trip + catches stale regen/hand-edits); (b) set(DOCS ids)===set(manifest ids); (c) listDocs ids match; (d) P12 forbidden-path guard (AGENTS.md/docs/plans/scratch). 7 tests green; biome clean.
+- Follow-up: biome `it.each` formatting — ran `biome format --write` on the drift test (cosmetic). biome check green.

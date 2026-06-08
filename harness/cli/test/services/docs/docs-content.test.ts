@@ -22,17 +22,16 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
 };
 
 describe('docs corpus — drift guard', () => {
-  it.each(manifest.docs.map((entry) => [entry.id, entry.sourcePath] as const))(
-    'getDoc(%s).content byte-equals its source .md (regen is current)',
-    (id, sourcePath) => {
-      const lookup = getDoc(id);
-      expect('content' in lookup).toBe(true);
-      const source = readFileSync(join(repoRoot, sourcePath), 'utf8');
-      if ('content' in lookup) {
-        expect(lookup.content).toBe(source);
-      }
-    },
-  );
+  it.each(
+    manifest.docs.map((entry) => [entry.id, entry.sourcePath] as const),
+  )('getDoc(%s).content byte-equals its source .md (regen is current)', (id, sourcePath) => {
+    const lookup = getDoc(id);
+    expect('content' in lookup).toBe(true);
+    const source = readFileSync(join(repoRoot, sourcePath), 'utf8');
+    if ('content' in lookup) {
+      expect(lookup.content).toBe(source);
+    }
+  });
 });
 
 describe('docs corpus — curation (P12)', () => {
@@ -43,7 +42,9 @@ describe('docs corpus — curation (P12)', () => {
   });
 
   it('listDocs() surfaces exactly the curated ids', () => {
-    const listed = listDocs().docs.map((doc) => doc.id).sort();
+    const listed = listDocs()
+      .docs.map((doc) => doc.id)
+      .sort();
     expect(listed).toEqual(manifest.docs.map((entry) => entry.id).sort());
   });
 
