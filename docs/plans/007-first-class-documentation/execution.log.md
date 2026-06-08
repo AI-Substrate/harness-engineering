@@ -86,3 +86,9 @@ The companion reviewed every commit (inside lane); 12 APPROVE/APPROVE_WITH_NOTES
 - **F004 MEDIUM** (T013) — P12 guard missed `docs/project-rules/**`. FIX: added the forbidden pattern.
 - **F005 MEDIUM** (T014) — README "Every command emits an envelope" contradicted raw `docs <id>`. FIX: reworded to call out the deliberate raw-stdout exception + regenerated bundle.
 Result: 213 tests pass (36 files), biome + tsc clean, drift guard clean post-commit.
+
+### Phase-end ceremony ✅
+- Companion `control:stop` sent; farewell envelope written (agents/.../runs/.../output/report.json, gitignored). Verdict: APPROVED — 5 findings (1 HIGH + 4 MEDIUM), all fixed + verified on a08fbe7.
+- Paired companion + orchestrator retro written to `docs/retros/007-first-class-documentation.md` (FU-007-01 generated-artifact glob convention; FU-007-02/03 minih coordination magic wands).
+- Run artifacts confirmed gitignored; no transient/private data committed (publication boundary intact).
+- **Phase COMPLETE**: 16/16 tasks, 12/12 ACs, 213 tests pass (36 files), biome + tsc + check:docs all green. /plan-7 superseded by the live companion review.
