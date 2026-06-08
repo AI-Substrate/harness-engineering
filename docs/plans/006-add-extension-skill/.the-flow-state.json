@@ -3,12 +3,12 @@
   "slug": "add-extension-skill",
   "plan_dir": "docs/plans/006-add-extension-skill",
   "mode": "Simple",
-  "current_stage": "awaiting-6",
-  "pending_command": "/plan-6-v2-implement-phase-companion --phase \"Implementation\" --plan \"docs/plans/006-add-extension-skill/add-extension-skill-plan.md\"",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge \"docs/plans/006-add-extension-skill/add-extension-skill-plan.md\"",
   "intent": "a skill that scaffolds a new harness extension so teams can extend their harness easily",
   "milestones_total": 4,
-  "milestones_done": 2,
-  "last_checkpoint_at": "2026-06-08T09:51:33Z",
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-08T10:30:00Z",
   "compacted_seams": [],
   "status": "active"
 }
