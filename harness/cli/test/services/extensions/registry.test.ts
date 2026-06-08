@@ -110,6 +110,22 @@ describe('buildVerbRegistry', () => {
     expect(rec?.shadows).toEqual(['new']);
   });
 
+  it('treats `docs` as a reserved core name an extension cannot shadow', async () => {
+    /*
+    Test Doc:
+    - Why: `harness docs` (plan 007) is a core command like help/doctor/new; an extension verb
+      named `docs` must be reported as a conflict, never silently win.
+    - Contract: RESERVED_NAMES includes `docs`; a `docs` verb → status 'conflict', shadows ['docs'].
+    - Quality Contribution: pins the fourth reserved name so the core command can't be shadowed.
+    */
+    const loader = new FakeModuleLoader({ '/x/d.ts': mkVerb('docs') });
+    const reg = await buildVerbRegistry(['/x/d.ts'], loader);
+    expect(reg.verbs).toEqual([]);
+    const rec = reg.records[0];
+    expect(rec?.status).toBe('conflict');
+    expect(rec?.shadows).toEqual(['docs']);
+  });
+
   it('preserves an open name:string key (no closed verb-name union)', async () => {
     const loader = new FakeModuleLoader({ '/x/o.ts': mkVerb('my-custom_verb-99') });
     const reg = await buildVerbRegistry(['/x/o.ts'], loader);

@@ -54,7 +54,7 @@ export function scaffoldExtension(
       ok: false,
       code: ErrorCodes.SCAFFOLD_NAME_RESERVED,
       message: `'${name}' is a reserved core command and cannot be an extension verb.`,
-      next_action: 'Choose a different verb name (reserved: help, doctor, new).',
+      next_action: 'Choose a different verb name (reserved: help, doctor, new, docs).',
     };
   }
 

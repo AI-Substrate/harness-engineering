@@ -34,7 +34,7 @@ order:
   `import()` (no transpile, fastest).
 - If two extensions declare the same verb name, the **first (sorted) wins**; the
   duplicate is reported by `doctor` as a conflict (never silently dropped).
-- `help`, `doctor`, and `new` are reserved core commands — an extension can't shadow them.
+- `help`, `doctor`, `new`, and `docs` are reserved core commands — an extension can't shadow them.
 - Absent / empty folder is **not** an error: `help` says "no extensions
   installed yet".
 

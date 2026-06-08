@@ -53,3 +53,8 @@
 ### T010 — register docs in composition root ✅
 - app.ts: import registerDocsAct (biome organizeImports placed it before doctor), call `registerDocsAct(program, io)` after registerNewAct → command order help, doctor, new, docs, <verbs>.
 - Updated frozen command-list snapshots: app.test.ts (2 sites) + index.test.ts (1 site) → ['help','doctor','new','docs',...]. Integration test asserts core cmds individually (no full-list snapshot). 16 tests green; tsc + biome clean.
+
+### T011 — reserve docs core name ✅
+- registry.ts: RESERVED_NAMES += 'docs'; added a parallel `docs`-reserved test (extension `docs` verb → conflict, shadows ['docs']).
+- Coupled fixes: scaffold-service.ts next_action message now "(reserved: help, doctor, new, docs)"; scaffold reserved-name it.each += 'docs' (E151).
+- Coupled doc accuracy: extend-the-harness.md + authoring-verbs.md "reserved core commands" lines now include docs → regenerated docs-content.ts (2 lines changed). tsc + biome + 43 tests green.

@@ -94,6 +94,7 @@ describe('scaffoldExtension — error paths (no file written on validation failu
     'help',
     'doctor',
     'new',
+    'docs',
   ])('rejects reserved name %j with E151 and writes nothing', (name) => {
     const fs = new FakeFs();
     const out = scaffoldExtension({ name }, { fs, proc: new FakeProcess({}, '/repo') });

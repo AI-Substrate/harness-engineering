@@ -62,7 +62,7 @@ $ harness new greet
 
 - Lowercase, hyphenated, starting with a letter: `greet`, `ci-smoke`. (Invalid
   names — uppercase, leading digit, spaces, path separators — are rejected, `E150`.)
-- `help`, `doctor`, and `new` are reserved core commands and can't be used (`E151`).
+- `help`, `doctor`, `new`, and `docs` are reserved core commands and can't be used (`E151`).
 - `harness new` won't overwrite an existing file (`E152`) unless you pass `--force`.
 
 ### Then: implement it
