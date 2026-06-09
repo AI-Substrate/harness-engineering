@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-record-command",
+  "plan_dir": "docs/plans/012-harness-record-command",
+  "mode": "Simple",
+  "cursor": "build",
+  "recommended_next": "merge",
+  "now": "Build · harness record (22 tasks)",
+  "next": "Merge",
+  "_comment": "Design done as 3 front-loaded workshops (in place of a /plan-1a dossier). Next: spec, informed by the workshops. No harness nodes (no governance doc). Phases revealed at /plan-3.",
+  "agents": [],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Design (3 workshops)", "status": "done",
+      "ran_at": "2026-06-09T10:01Z",
+      "user_input": "workshop the record type (load/use, core + extension) + retro + a sample type; then CLI shape; then what needs updating across our skills",
+      "note": "Research/design done as three targeted workshops instead of a /plan-1a dossier; their decisions feed the spec.",
+      "artifacts": ["workshops/001-record-type-contract.md", "workshops/002-cli-shape.md", "workshops/003-skills-update-inventory.md"],
+      "next": ["spec"] },
+
+    { "id": "ws1", "type": "workshop", "label": "Workshop 1 · record-type contract (load/use, core + extension)", "status": "done",
+      "branch_of": "research", "ran_at": "2026-06-09T09:57Z",
+      "user_input": "workshop the record type and how they are loaded and used; core and extension; the retro record we have + a short sample of another type",
+      "note": "4-field contract {kind,type,description,template}; CLI is schema-agnostic (schema lives in template); core ∪ extension via the existing loader (kind discriminator); retro + dev-survey worked.",
+      "artifacts": ["workshops/001-record-type-contract.md"], "next": ["ws2"] },
+
+    { "id": "ws2", "type": "workshop", "label": "Workshop 2 · CLI shape", "status": "done",
+      "branch_of": "research", "ran_at": "2026-06-09T09:59Z",
+      "user_input": "second workshop is cli shape please",
+      "note": "harness record <type> (create) / --list (discover) / new <name> --record (author); reserved core name; envelope + E180/E181; placement .harness/records/<type>/<date>-<slug>.md + -NNN collision.",
+      "artifacts": ["workshops/002-cli-shape.md"], "next": ["ws3"] },
+
+    { "id": "ws3", "type": "workshop", "label": "Workshop 3 · skills update inventory (flow adaptation)", "status": "done",
+      "branch_of": "research", "ran_at": "2026-06-09T10:01Z",
+      "user_input": "third is what needs to be updated across our skills?",
+      "note": "Write-site inventory W1–W7 (+ external X1–X2); headline decision RESOLVED: gitignored scratch buffer .harness/temp/<agent>/ (crash-resilient working memory) feeds a committed record materialized at drain via `harness record`; path migration docs/harness → .harness/records with back-compat harvest globs.",
+      "artifacts": ["workshops/003-skills-update-inventory.md"], "next": ["spec"] },
+
+    { "id": "spec", "type": "spec", "label": "Spec", "status": "done", "command": "/plan-1b",
+      "ran_at": "2026-06-09T10:15Z",
+      "user_input": "Round 1: Mode Simple (override Full); Testing Hybrid; Avoid mocks; Docs Hybrid",
+      "note": "CS-3, Simple mode. Built from the 3 workshops; WS3 buffer/record split baked in. Agent-harness: N/A (this repo IS the harness). Workshop Opportunities all complete.",
+      "artifacts": ["harness-record-command-spec.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan · READY", "status": "done", "command": "/plan-3",
+      "ran_at": "2026-06-09T10:27Z",
+      "note": "Status READY; 7/7 gates PASS/N-A; 22 tasks, Simple single-phase. Validated (3 agents) — fixed 1 CRITICAL ordering bug (T006 merge before loader widened → split into T006 core-only + T009 merge).",
+      "artifacts": ["harness-record-command-plan.md"], "next": ["build"] },
+
+    { "id": "build", "type": "phase", "phase": 1, "label": "Build · harness record (22 tasks)", "status": "known",
+      "command": "/plan-6", "note": "Simple-mode single-phase implementation; TDD+fakes for CLI, manual for skill-markdown. Group B (loader widening) is the risk-concentrated cluster.", "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed", "command": "/plan-8", "next": [] }
+  ]
+}
