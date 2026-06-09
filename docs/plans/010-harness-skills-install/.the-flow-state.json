@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "harness-skills-install",
+  "plan_dir": "docs/plans/010-harness-skills-install",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/010-harness-skills-install/harness-skills-install-plan.md\"",
+  "intent": "First-class harness skills install core verb wrapping Vercel npx skills add; import 4 loop skills; rename ALL 7 skills into skills/eng-harness-{setup,loop}/; setup skill offers install; real temp-location install proof.",
+  "milestones_total": 4,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-09T14:20:00Z",
+  "compacted_seams": [],
+  "status": "active"
+}
