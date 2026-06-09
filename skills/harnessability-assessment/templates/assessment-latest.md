@@ -83,7 +83,7 @@ Single-package TypeScript HTTP service on Node. Package root `.`; service type `
 |------|------|----------|-----------|----------------|
 | Build/test | test | `npm test`, `npm run lint` | yes | `package.json#scripts` |
 | CI | ci | `.github/workflows/ci.yml` | yes | `.github/workflows/ci.yml` |
-| Spec-driven planning | sdd | — | no | not detected (no `docs/plans/`) |
+| Spec-driven planning | sdd | — | no | not detected (no `plans/` pipeline) |
 
 ### Pre-commit and local gates
 

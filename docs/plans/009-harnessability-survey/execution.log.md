@@ -59,3 +59,16 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - AUTHORING #8 → v0.2 contract (lists the optional arrays, final_grade, grade F; additionalProperties:false preserved); #9 notes the ownership map must cover every v0.2 array; checklist +2 items (summary.md terminal-sized; ownership map exhaustive); extension guidance "keep v0.2 focused".
 - skills/README.md catalog row reworded to v0.2 (survey + A–F + summary.md).
 - 008 reconcile: the sentinel block already accepts "any file under the dir" (history subdirs OK); added a clarifying line that root `latest.json` is kept current every run with per-run history under `<ordinal>-<slug>/`. No contract change — AC-2 satisfied.
+
+### T015 · G4 structural-validation sweep
+**Sweep result** (AC-11 + AC-12, AUTHORING checklist 1–11):
+1. `just list-skills` → discovers `harnessability-assessment`. ✅
+2. `assessment-report.schema.json` parses as valid Draft 2020-12; `assessment-latest.json` + `codebase-affordance-record.json` parse. ✅
+3. `assessment-latest.json` validates against the v0.2 schema. ✅
+4. Template placeholders all well-formed `{{UPPER_SNAKE}}`; filled examples carry **no** unresolved placeholders. ✅
+5. Canonical boundary sentence byte-identical (SKILL.md ↔ `canonical-boundary.txt`). ✅
+6. Private-source/source-ID leak grep on shipped surfaces → CLEAN. ✅ **(fix applied)**
+7. No generic core `backpressure` command key (only the legit `backpressure_surfaces[]` array + descriptive usage). ✅
+8. No `supersede`/`successor`/`legacy` framing. ✅
+
+**Fix during sweep**: my new survey content used the literal `docs/plans/` as a generic SDD-pattern example, which tripped the boundary leak grep (that token is on the AUTHORING #5 list). Reworded to "a `plans/` directory / `/plan-*` or `task-*` skills / RFC-ADR conventions" in SKILL.md (×2) + both examples — keeps the SDD-detection intent without emitting the flagged token. Example re-validated post-reword.

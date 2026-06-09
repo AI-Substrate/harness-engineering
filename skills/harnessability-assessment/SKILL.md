@@ -162,7 +162,7 @@ Do not add a generic `backpressure` command recommendation. If a gap is found, r
 
 | Survey dimension | What to inventory | JSON array |
 |---|---|---|
-| Engineering flows | Named development flows the repo already runs — build, test, release, review, CI, onboarding, and **SDD-like** flows (e.g. a `docs/plans/` spec→plan→tasks pipeline, `/plan-*` or `task-*` skills, RFC/ADR conventions). Record commands + whether the flow is canonical. | `engineering_flows[]` |
+| Engineering flows | Named development flows the repo already runs — build, test, release, review, CI, onboarding, and **SDD-like** flows (e.g. a spec→plan→tasks pipeline under a `plans/` directory, `/plan-*` or `task-*` skills, RFC/ADR conventions). Record commands + whether the flow is canonical. | `engineering_flows[]` |
 | Pre-commit & local gates | Hook mechanisms (husky, pre-commit, lefthook, git hooks), `just`/`make`/npm pre-commit paths, and what each gate actually checks; whether it runs locally and whether CI enforces the same. | `pre_commit_gates[]` |
 | CI / local equivalence | For each meaningful check, whether the local command and the CI command are identical, equivalent, partial, divergent, or one-sided. Divergence is friction; identity is backpressure an agent can trust locally. | `ci_local_equivalence[]` |
 | Existing harness concepts | Whether a **canonical** harness front door exists, or harness behaviour is **diffuse** (scattered scripts, ad-hoc Makefile targets, tribal commands). Canonical-vs-diffuse detection decides whether to recommend consolidation. | `existing_harness_concepts[]` |
@@ -808,7 +808,7 @@ Read the test suite as the primary evidence of these mechanisms: how tests mock,
 
 Before scoring or proposing anything, consolidate what steps 2–6 found into the existing-engineering-environment survey (see `## Existing engineering environment survey`). Populate the optional v0.2 arrays from evidence already gathered:
 
-- `engineering_flows[]` — including any SDD-like spec→plan→tasks pipeline (`docs/plans/`, `/plan-*` or `task-*` skills, RFC/ADR conventions);
+- `engineering_flows[]` — including any SDD-like spec→plan→tasks pipeline (a `plans/` directory, `/plan-*` or `task-*` skills, RFC/ADR conventions);
 - `pre_commit_gates[]` and `ci_local_equivalence[]` — from the command/CI inventory (step 4);
 - `existing_harness_concepts[]` — canonical vs diffuse, from step 2;
 - `test_mechanisms[]` — mock vs fake/sink/stub/contract/testcontainer, from step 6;

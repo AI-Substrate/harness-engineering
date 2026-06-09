@@ -195,7 +195,7 @@
   "engineering_flows": [
     { "name": "Build/test", "kind": "test", "commands": ["npm test", "npm run lint"], "where_detected": "package.json#scripts", "canonical": "yes", "provenance": "evidence", "notes": "Primary deterministic lane." },
     { "name": "CI", "kind": "ci", "commands": [".github/workflows/ci.yml"], "where_detected": ".github/workflows/ci.yml", "canonical": "yes", "provenance": "evidence", "notes": "Runs unit + lint." },
-    { "name": "Spec-driven planning", "kind": "sdd", "commands": [], "where_detected": "none", "canonical": "no", "provenance": "evidence", "notes": "No docs/plans/ pipeline detected." }
+    { "name": "Spec-driven planning", "kind": "sdd", "commands": [], "where_detected": "none", "canonical": "no", "provenance": "evidence", "notes": "No plans/ pipeline detected." }
   ],
   "pre_commit_gates": [
     { "name": "Lint", "mechanism": "npm_script", "checks": ["eslint"], "local_available": true, "ci_equivalent": true, "notes": "Run manually; no git-hook wiring." },
