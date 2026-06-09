@@ -1,6 +1,6 @@
 # harness — engineering harness CLI
 
-The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: drop a file in your repo's `.harness/extensions/` folder and it becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. A few commands are always built in (`help`, `doctor`, `new`, `docs`); everything else is contributed by extensions you add.
+The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: drop a file in your repo's `.harness/extensions/` folder and it becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. A few commands are always built in (`help`, `doctor`, `new`, `docs`, `skills`); everything else is contributed by extensions you add.
 
 > This is the **engineering harness** (the project's development loop), not an agent runtime. It studies how a human or agent can boot, run, and prove the software safely and quickly.
 
@@ -71,15 +71,17 @@ See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract
 | `harness doctor` | Report readiness (toolchain, cli-build) **and enumerate the installed extensions** (loaded / failed / conflict, with paths + errors) — without invoking any verb. Safe at session start. | ✅ core |
 | `harness new <name>` | Scaffold a new, immediately-loadable extension into `./.harness/extensions/`. | ✅ core |
 | `harness docs [id]` | List the bundled, curated docs (`harness docs`), or print one verbatim to stdout (`harness docs <id>`). Offline; ships with the CLI. | ✅ core |
+| `harness skills install` | Install **this harness's own skills** into a CLI — a transparent pass-through to Vercel's [`npx skills add`](https://github.com/vercel-labs/skills). Picks target(s) (`--target claude-code\|codex\|cursor\|github-copilot\|opencode\|pi`, repeatable) and scope (`--global` or project-local). **Announces the exact `npx` line before running** and always passes `-y` (the blocking picker never appears). Missing `--target` → `E108` (non-blocking). | ✅ core |
 | `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
 
-`help`, `doctor`, `new`, and `docs` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
+`help`, `doctor`, `new`, `docs`, and `skills` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
 
 ```bash
 harness help --json                     # machine-readable verb map (data.verbs[])
 harness doctor                          # readiness + extension enumeration
 harness docs                            # list the bundled docs
 harness docs extend-the-harness         # print one doc's markdown to stdout
+harness skills install --target github-copilot --global   # install this harness's skills (wraps npx skills add)
 harness --no-extensions help            # core-only (skip discovery)
 ```
 
