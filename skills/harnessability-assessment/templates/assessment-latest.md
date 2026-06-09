@@ -14,10 +14,26 @@ Run metadata
 - Operate-Today: C (62%)
 - Adaptability: C (55%)
 - Harnessability Index: 58.5% (C)
+- Final grade: C
 - Readiness: H2
 - Highest proof level detected: L2 Static/build/test
 - Target next proof level: L3 Runtime interaction
 - Confidence: medium
+
+> `final_grade` augments — it never replaces — the Operate-Today / Adaptability tuple above, which stays primary. Here both axes are C, so the headline grade matches; a weak axis would always be reported alongside it.
+
+## Assessment matrix
+
+| Area | Grade | Score | Rationale |
+|------|-------|------:|-----------|
+| Engineering flows | C | 60 | Build/test/CI present; no canonical SDD flow. |
+| Pre-commit & local gates | D | 45 | Lint/test exist but no pre-commit hook wiring. |
+| CI / local equivalence | B | 75 | Unit + lint identical local vs CI; no smoke either side. |
+| Existing harness concept | B | 72 | Canonical front door via `harness/cli/commands.json`. |
+| Test mechanisms | C | 58 | Unit tests hermetic; few fakes/sinks; direct SDK construction. |
+| External-dependency pressure | D | 42 | Database + email have no local substitute. |
+| Code composition & seams | C | 55 | Feature-grouped modules; few injection seams. |
+| Observability & evidence | D | 40 | Console logging only; no structured artifacts. |
 
 ## Plain-English assessment
 
@@ -56,6 +72,88 @@ The harness front door is present and command candidates are mapped, but no prod
 ## Repository topology
 
 Single-package TypeScript HTTP service on Node. Package root `.`; service type `api`; CI workflow at `.github/workflows/ci.yml`. Not a monorepo.
+
+## Existing engineering environment survey
+
+> Surveyed before scoring — what the repo already has comes first.
+
+### Engineering flows
+
+| Flow | Kind | Commands | Canonical | Where detected |
+|------|------|----------|-----------|----------------|
+| Build/test | test | `npm test`, `npm run lint` | yes | `package.json#scripts` |
+| CI | ci | `.github/workflows/ci.yml` | yes | `.github/workflows/ci.yml` |
+| Spec-driven planning | sdd | — | no | not detected (no `docs/plans/`) |
+
+### Pre-commit and local gates
+
+| Gate | Mechanism | Checks | Local | CI-equivalent |
+|------|-----------|--------|-------|---------------|
+| Lint | npm_script | eslint | yes | yes (run manually; no git-hook wiring) |
+| Unit tests | ci_only | `npm test` | yes | yes (enforced in CI, not pre-commit) |
+
+### CI / local equivalence
+
+| Check | CI command | Local command | Equivalence | Notes |
+|-------|-----------|---------------|-------------|-------|
+| Unit tests | `npm test` | `npm test` | identical | Same command both sides |
+| Lint | `npm run lint` | `npm run lint` | identical | Same command both sides |
+| Smoke | — | — | unknown | No smoke lane exists |
+
+### Existing harness concepts (canonical vs diffuse)
+
+| Concept | Kind | Surfaces | Coverage | Notes |
+|---------|------|----------|----------|-------|
+| Harness front door | canonical | `harness/cli/commands.json` | Partial | Maps some scripts; tiers not fully populated |
+| Ad-hoc onboarding | diffuse | `README.md` | Weak | Run/test steps live only in prose |
+
+### Test mechanisms
+
+| Mechanism | Type | Deterministic | Where detected |
+|-----------|------|---------------|----------------|
+| Unit tests | unit | yes | `test/*.test.ts` |
+| HTTP client mock | mock | yes | `test/routes.test.ts` (brittle under refactor) |
+| Email sink | sink | unknown | none — recommended affordance |
+
+### External-dependency pressure
+
+| Dependency | Pressure | Local substitute | Proof impact |
+|------------|----------|------------------|--------------|
+| Primary database | high | none | Blocks L4 state-consequence proof locally |
+| Transactional email | blocking | none | Blocks external-effect proof; production mutation risk |
+
+### Code composition and seams
+
+| Area | Kind | Test seam | Coupling |
+|------|------|-----------|----------|
+| Routes | layer | no | Handlers construct SDK clients directly |
+| Data layer | module | no | Shared util module is broad |
+| Notify | module | no | Email send called inline |
+
+### Deterministic-encoding opportunities
+
+| Opportunity | Current encoding | Proposed encoding | Proof level |
+|-------------|------------------|-------------------|-------------|
+| Run/test steps live in README prose | doc | Map into `harness/cli/commands.json` tiers | L2 |
+| Architecture boundaries in a context file | context_file | Add a boundary linter rule | L2 |
+
+### Manual / IDE-only signals
+
+> Advisory. Influences A4/A5/A7/A8/A9/B5/B10 only; never over-penalises desktop, mobile, hardware, or brownfield topologies.
+
+| Signal | Kind | Influences | Penalize |
+|--------|------|------------|----------|
+| Service started via README copy-paste, not a harness verb | manual_step | A4, A5 | yes (fixable: wrap as a boot verb) |
+| No manual/IDE-only blockers for this API topology | unknown | — | no (API service — no desktop/mobile penalty) |
+
+### Candidate first harness surfaces
+
+> Derived AFTER the survey above — never before existing flows and commands are inventoried.
+
+| Surface | Rationale | Proof level | Already exists | Priority |
+|---------|-----------|-------------|----------------|----------|
+| smoke | One fixture-backed route test unblocks L3 runtime proof | L3 | no | high |
+| seed/reset | Containerized DB + seed/reset unblocks L4 state proof | L4 | no | medium |
 
 ## Axis A — Operate-Today scorecard
 

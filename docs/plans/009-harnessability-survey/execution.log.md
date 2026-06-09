@@ -46,3 +46,9 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - T010: JSON-minimum-shape block → version v0.2, grade enums A–F everywhere, `final_grade` added, + prose note listing the optional v0.2 arrays.
 - T011: fan-out subagent→schema-slice ownership re-mapped in lockstep — subagent 1 owns `pre_commit_gates`/`ci_local_equivalence`, 2 owns `external_dependency_pressure`, 4 owns `test_mechanisms`, 5 owns `code_composition`, 6 owns `engineering_flows`/`existing_harness_concepts`/`manual_operation_signals`; orchestrator synthesizes `assessment_matrix`/`final_grade`/`deterministic_encoding_opportunities`/`candidate_first_harness_surfaces`/`report_paths`. Map is collectively exhaustive (every v0.2 array has one owner).
 **Evidence**: example still validates; no v0.1 / old-band stragglers in SKILL.md.
+
+### T012–T013 · G4 summary template + example regen
+**Files**: `templates/summary.md` (new), `templates/evidence-log.jsonl` (new), `templates/assessment-latest.{json,md}`
+- T012: created terminal-sized `summary.md` (verdict tuple + final_grade + one-line matrix + top blockers + encode-first + first-safe-session + paths) and an optional `evidence-log.jsonl` template.
+- T013: regenerated the `sample-service` example. Grades re-checked against new bands (62→C, 55→C — no regrade). Added `verdict.final_grade: C`, `report_paths`, `assessment_matrix[]` (8 rows), and all 10 survey arrays to the JSON; mirrored Final-grade line, `## Assessment matrix`, and the full `## Existing engineering environment survey` into the markdown.
+**Evidence**: enriched `assessment-latest.json` VALIDATES against v0.2 schema; 12/12 new keys present; no unresolved `{{}}` placeholders in the filled examples.
