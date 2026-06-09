@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "dogfood-harness-flow",
+  "plan_dir": "docs/plans/013-dogfood-harness-flow",
+  "mode": "Simple",
+  "cursor": "phases",
+  "recommended_next": "merge",
+  "now": "Plan written (Simple, READY, 12 tasks) — ready to build",
+  "next": "Build the phase (/plan-6)",
+  "_comment": "Fresh start. No engineering-harness governance doc in this repo -> harness loop nodes omitted (per the-flow sentinel). Mode unknown until /plan-1b; phase nodes are a single assumed placeholder until /plan-3 reveals the real count. the-flow.md is generated FROM this file.",
+  "agents": [],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research", "status": "done",
+      "command": "/plan-1a", "ran_at": "2026-06-09T11:42Z",
+      "user_input": "build a validate-harnessability-style minih extension that runs the FULL eng-harness-flow on 3 fresh public repos in parallel, collects retros, dogfood it ourselves, report back; never auto-implement retro improvements",
+      "note": "Dossier landed. Two near-perfect templates: validate-harnessability.ts (parallel orchestrator) + agents/install-and-validate-test-extension (setup-driving worker). Governance writer unshipped (hand-write harness.md). Retros are surfaced-not-applied (already guaranteed).",
+      "artifacts": ["research-dossier.md"], "next": ["spec"] },
+
+    { "id": "spec", "type": "spec", "label": "Spec", "status": "done",
+      "command": "/plan-1b", "ran_at": "2026-06-09T11:45Z",
+      "user_input": "Spec to be simple mode, accept other defaults",
+      "note": "Simple, CS-3. No NEEDS-CLARIFICATION left; Round 2 skipped. 11 ACs; defaults recorded for the 5 open questions. 4 workshop opportunities logged (WS-A..D), not run. validate-v2 ran (3 agents): VALIDATED WITH FIXES — tightened AC-5 (governance template pin), AC-6 (assessment->report field mapping), AC-8 (terminal-wait collection + DONE/TIMED_OUT/MISSING_REPORT), added AC-12 (culminating 3-parallel smoke). Thesis: advanced @ Contract.",
+      "artifacts": ["dogfood-harness-flow-spec.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan", "status": "done",
+      "command": "/plan-3", "ran_at": "2026-06-09T11:58Z",
+      "user_input": "go  +  remember we are to dogfood the skills (I will reload harness)",
+      "note": "Simple, READY. 7 gates PASS/N·A (G4 N/A). 12 tasks, single phase. No harness governance doc -> harness-loop rows omitted. Self-dogfooding made continuous (T010 across T001-T012).",
+      "artifacts": ["dogfood-harness-flow-plan.md"], "next": ["phases"] },
+
+    { "id": "phases", "type": "phase", "label": "Build (single phase, 12 tasks)", "status": "known",
+      "command": "/plan-6 --plan docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md",
+      "note": "T001-T012: worker agent -> orchestrator extension -> --collect -> smokes -> dogfood -> guide -> report.", "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
+      "command": "/plan-8", "next": [] }
+  ]
+}
