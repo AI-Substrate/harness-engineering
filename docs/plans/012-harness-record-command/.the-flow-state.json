@@ -3,12 +3,12 @@
   "slug": "harness-record-command",
   "plan_dir": "docs/plans/012-harness-record-command",
   "mode": "Simple",
-  "current_stage": "awaiting-6",
-  "pending_command": "/plan-6-v2-implement-phase-companion --plan docs/plans/012-harness-record-command/harness-record-command-plan.md",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan docs/plans/012-harness-record-command/harness-record-command-plan.md",
   "intent": "Add a core `harness record <type>` CLI command that scaffolds a record file from a template into .harness/records/<type>/<date>-<slug>.md and returns the path for the agent to fill; generic extensible record-type contract (core + extension), starting with retro; plus adapt existing loop skills to use it and define starting core record types + schema.",
   "milestones_total": 5,
-  "milestones_done": 3,
-  "last_checkpoint_at": "2026-06-09T10:27:00Z",
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-09T11:28:00Z",
   "compacted_seams": [],
   "status": "active"
 }

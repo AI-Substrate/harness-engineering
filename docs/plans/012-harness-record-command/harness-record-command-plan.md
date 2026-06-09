@@ -83,30 +83,30 @@ Grouped for readability (single-phase Simple plan). Order is dependency-correct;
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | T001 | Define `HarnessRecordType` (4 fields) + export via `harness/contract` | CLI core | `src/services/record/contract.ts`, root `package.json` exports map | Type compiles; `HarnessRecordType`/`HarnessExtensionExport` importable from `harness/contract` | Finding 02 |
-| [ ] | T002 | Author core `retro` type + `RETRO_TEMPLATE` (inline TS const, lean Q-A) | CLI core | `src/services/record/core-types/retro.ts` | `retroRecordType` exports `{kind,type:'retro',description,template}` | Finding 03; Q-A lean=inline |
-| [ ] | T003 | **RED** tests: record-service path resolution (date-slug via fake clock; collision `-001`/`-002`; mkdirp; never clobber) + `ensureTemp` (creates `.harness/temp/`, idempotent) + unconfigured when no `.harness/` | CLI core | `test/services/record/record-service.test.ts` | Tests fail (no impl) | Findings 05; ACs 1,2,4,17 |
-| [ ] | T004 | **RED+GREEN** test: `RETRO_TEMPLATE` parses as YAML frontmatter and its keys ⊇ `retro.schema.json` required (`schema_version,retro_id,agent,started_at`); uses only the open `system` object | CLI core | `test/services/record/retro-template.test.ts` | Test asserts superset; documents `system.compound` as convention | Finding 03; AC 9 |
-| [ ] | T005 | **GREEN** impl: `record-service.ts` — `resolveType`, `resolvePath` (clock+fs, collision counter), `renderTemplate`, `ensureTemp`, typed outcome | CLI core | `src/services/record/record-service.ts` | T003 passes | Pure; injected `fs`/`clock`/`proc` ports |
-| [ ] | T006 | **test→impl**: `registry.ts` — **core types only** (no extension merge yet); enumerate core `retro` | CLI core | `src/services/record/registry.ts`, `test/services/record/registry.test.ts` | Core enumeration test passes | Extension merge deferred to T009 — loader must widen first (Finding 01) |
+| [x] | T001 | Define `HarnessRecordType` (4 fields) + export via `harness/contract` | CLI core | `src/services/record/contract.ts`, root `package.json` exports map | Type compiles; `HarnessRecordType`/`HarnessExtensionExport` importable from `harness/contract` | Finding 02 |
+| [x] | T002 | Author core `retro` type + `RETRO_TEMPLATE` (inline TS const, lean Q-A) | CLI core | `src/services/record/core-types/retro.ts` | `retroRecordType` exports `{kind,type:'retro',description,template}` | Finding 03; Q-A lean=inline |
+| [x] | T003 | **RED** tests: record-service path resolution (date-slug via fake clock; collision `-001`/`-002`; mkdirp; never clobber) + `ensureTemp` (creates `.harness/temp/`, idempotent) + unconfigured when no `.harness/` | CLI core | `test/services/record/record-service.test.ts` | Tests fail (no impl) | Findings 05; ACs 1,2,4,17 |
+| [x] | T004 | **RED+GREEN** test: `RETRO_TEMPLATE` parses as YAML frontmatter and its keys ⊇ `retro.schema.json` required (`schema_version,retro_id,agent,started_at`); uses only the open `system` object | CLI core | `test/services/record/retro-template.test.ts` | Test asserts superset; documents `system.compound` as convention | Finding 03; AC 9 |
+| [x] | T005 | **GREEN** impl: `record-service.ts` — `resolveType`, `resolvePath` (clock+fs, collision counter), `renderTemplate`, `ensureTemp`, typed outcome | CLI core | `src/services/record/record-service.ts` | T003 passes | Pure; injected `fs`/`clock`/`proc` ports |
+| [x] | T006 | **test→impl**: `registry.ts` — **core types only** (no extension merge yet); enumerate core `retro` | CLI core | `src/services/record/registry.ts`, `test/services/record/registry.test.ts` | Core enumeration test passes | Extension merge deferred to T009 — loader must widen first (Finding 01) |
 
 **Group B — widen the extension loader for `kind:'record'`** (Finding 01 — do before the act)
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | T007 | **RED** routing tests: absent `kind` ⇒ verb (back-compat); `kind:'record'` routed to record registry; malformed record export skipped + recorded (`E140`); extension shadowing core `retro` → conflict, core wins | CLI core | `test/services/extensions/record-routing.test.ts` | Tests fail | ACs 6,15,16 |
-| [ ] | T008 | **GREEN** impl: widen `ExtensionExport` union + add `kind` discriminator (`kind?:'verb'` default) | CLI core | `src/services/extensions/contract.ts` | Existing verb extensions still type-check | Finding 01 |
-| [ ] | T009 | **GREEN** impl: registry dispatch verb-vs-record; **extend the record registry to merge extension-provided types (core ∪ extension)** with deterministic conflict (core wins; first-extension wins; recorded); isolation unchanged (`E140` non-fatal) | CLI core | `src/services/extensions/registry.ts`, `src/services/record/registry.ts`, `src/services/extensions/discovery.ts` (verify) | T007 passes; `doctor` reports provenance + conflicts for malformed/shadowed exports; `harness record --list` enumerates core ∪ extension; existing extension tests green | Findings 01,15; closes the T006 core-only seam |
+| [x] | T007 | **RED** routing tests: absent `kind` ⇒ verb (back-compat); `kind:'record'` routed to record registry; malformed record export skipped + recorded (`E140`); extension shadowing core `retro` → conflict, core wins | CLI core | `test/services/extensions/record-routing.test.ts` | Tests fail | ACs 6,15,16 |
+| [x] | T008 | **GREEN** impl: widen `ExtensionExport` union + add `kind` discriminator (`kind?:'verb'` default) | CLI core | `src/services/extensions/contract.ts` | Existing verb extensions still type-check | Finding 01 |
+| [x] | T009 | **GREEN** impl: registry dispatch verb-vs-record; **extend the record registry to merge extension-provided types (core ∪ extension)** with deterministic conflict (core wins; first-extension wins; recorded); isolation unchanged (`E140` non-fatal) | CLI core | `src/services/extensions/registry.ts`, `src/services/record/registry.ts`, `src/services/extensions/discovery.ts` (verify) | T007 passes; `doctor` reports provenance + conflicts for malformed/shadowed exports; `harness record --list` enumerates core ∪ extension; existing extension tests green | Findings 01,15; closes the T006 core-only seam |
 
 **Group C — `record` act + error codes + reserve + `--list` + bare + doctor + `new --record`**
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | T010 | Add `E180` (RECORD_TYPE_UNKNOWN) + `E181` (RECORD_WRITE_FAILED) | CLI core | `src/output/error-codes.ts` | Codes exported; no collision | AC 3 |
-| [ ] | T011 | **RED** act tests: create → `ok` envelope w/ `data.path`+evidence+next_action; collision `-001`; unknown type `E180` exit 1; no `.harness/` → `unconfigured` exit 2; type-name `^[a-z][a-z0-9-]*$` invalid → error; `--list` (human + `--json` payload `{type,description,source,entryPath?}`); bare `record` = orientation exit 0 | CLI core | `test/acts/record.test.ts` | Tests fail | ACs 1,2,3,4,5,14,18 |
-| [ ] | T012 | **GREEN** impl: `acts/record.ts` (`<type>` arg, `--slug`, `--list`); register in `app.ts`; **reserve** `record` (`RESERVED_NAMES` in `registry.ts`) | CLI core | `src/acts/record.ts`, `src/app.ts`, `src/services/extensions/registry.ts` | T011 passes; `record` runs under `--no-extensions` | ACs 5,8,18; depends on T011 (test-first) |
-| [ ] | T013 | **test→impl**: `doctor` enumerates record-types (core+extension provenance) without invoking handlers | CLI core | `src/services/doctor/doctor-service.ts`, `test/services/doctor/*` | Doctor shows record-types line | AC 5 |
-| [ ] | T014 | **test→impl**: `harness new <name> --record` scaffolds a record-type extension stub; `harness new record` rejected `E151` | CLI core | `src/services/scaffold/{scaffold-service,templates}.ts`, `src/acts/new.ts`, `test/services/scaffold/*` | Stub file created + loadable; reserved name rejected | ACs 7,8; Finding 04 |
+| [x] | T010 | Add `E180` (RECORD_TYPE_UNKNOWN) + `E181` (RECORD_WRITE_FAILED) | CLI core | `src/output/error-codes.ts` | Codes exported; no collision | AC 3 |
+| [x] | T011 | **RED** act tests: create → `ok` envelope w/ `data.path`+evidence+next_action; collision `-001`; unknown type `E180` exit 1; no `.harness/` → `unconfigured` exit 2; type-name `^[a-z][a-z0-9-]*$` invalid → error; `--list` (human + `--json` payload `{type,description,source,entryPath?}`); bare `record` = orientation exit 0 | CLI core | `test/acts/record.test.ts` | Tests fail | ACs 1,2,3,4,5,14,18 |
+| [x] | T012 | **GREEN** impl: `acts/record.ts` (`<type>` arg, `--slug`, `--list`); register in `app.ts`; **reserve** `record` (`RESERVED_NAMES` in `registry.ts`) | CLI core | `src/acts/record.ts`, `src/app.ts`, `src/services/extensions/registry.ts` | T011 passes; `record` runs under `--no-extensions` | ACs 5,8,18; depends on T011 (test-first) |
+| [x] | T013 | **test→impl**: `doctor` enumerates record-types (core+extension provenance) without invoking handlers | CLI core | `src/services/doctor/doctor-service.ts`, `test/services/doctor/*` | Doctor shows record-types line | AC 5 |
+| [x] | T014 | **test→impl**: `harness new <name> --record` scaffolds a record-type extension stub; `harness new record` rejected `E151` | CLI core | `src/services/scaffold/{scaffold-service,templates}.ts`, `src/acts/new.ts`, `test/services/scaffold/*` | Stub file created + loadable; reserved name rejected | ACs 7,8; Finding 04 |
 
 **Group D — skill adaptation (manual) + gitignore**
 
@@ -114,47 +114,47 @@ Grouped for readability (single-phase Simple plan). Order is dependency-correct;
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | T015 | Add `.harness/temp/` to `.gitignore` | substrate | `.gitignore` | `git check-ignore .harness/temp/x` matches; `.harness/records/` still tracked | ACs 12,17 |
-| [ ] | T016 | Adapt `eng-harness-3-observe`: scratch entries → `.harness/temp/<agent>/`; document path re-derivation on context loss | loop skills | `skills/eng-harness-loop/eng-harness-3-observe/SKILL.md` | No `docs/harness/_buffers` write path remains; scratch path documented | AC 10 (manual verify) |
-| [ ] | T017 | Adapt `eng-harness-4-retro`: `--drain` materialises a committed record via `harness record retro`; `--harvest` reads `.harness/records/retro/*` **and** legacy globs | loop skills | `skills/eng-harness-loop/eng-harness-4-retro/SKILL.md` | Drain/harvest paths updated; legacy back-compat retained | ACs 10,11 (manual) |
-| [ ] | T018 | Update `eng-harness-flow` SKILL + references: retro/record path narration (`docs/harness/agents` → `.harness/records/retro`) | loop skills | `skills/eng-harness-loop/eng-harness-flow/{SKILL.md,references/*}` | grep finds no stale `docs/harness/agents` retro paths | manual |
-| [ ] | T019 | Audit `eng-harness-1-boot` / `eng-harness-2-backpressure` for retro/record path refs; update if any | loop skills | `skills/eng-harness-loop/eng-harness-1-boot/SKILL.md`, `.../eng-harness-2-backpressure/SKILL.md` | grep clean | manual |
+| [x] | T015 | Add `.harness/temp/` to `.gitignore` | substrate | `.gitignore` | `git check-ignore .harness/temp/x` matches; `.harness/records/` still tracked | ACs 12,17 |
+| [x] | T016 | Adapt `eng-harness-3-observe`: scratch entries → `.harness/temp/<agent>/`; document path re-derivation on context loss | loop skills | `skills/eng-harness-loop/eng-harness-3-observe/SKILL.md` | No `docs/harness/_buffers` write path remains; scratch path documented | AC 10 (manual verify) |
+| [x] | T017 | Adapt `eng-harness-4-retro`: `--drain` materialises a committed record via `harness record retro`; `--harvest` reads `.harness/records/retro/*` **and** legacy globs | loop skills | `skills/eng-harness-loop/eng-harness-4-retro/SKILL.md` | Drain/harvest paths updated; legacy back-compat retained | ACs 10,11 (manual) |
+| [x] | T018 | Update `eng-harness-flow` SKILL + references: retro/record path narration (`docs/harness/agents` → `.harness/records/retro`) | loop skills | `skills/eng-harness-loop/eng-harness-flow/{SKILL.md,references/*}` | grep finds no stale `docs/harness/agents` retro paths | manual |
+| [x] | T019 | Audit `eng-harness-1-boot` / `eng-harness-2-backpressure` for retro/record path refs; update if any | loop skills | `skills/eng-harness-loop/eng-harness-1-boot/SKILL.md`, `.../eng-harness-2-backpressure/SKILL.md` | grep clean | manual |
 
 **Group E — docs**
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | T020 | Write `docs/how/record-and-record-types.md` (use `harness record`; placement/collision; authoring a type core+extension) | substrate | `docs/how/record-and-record-types.md` | Guide mirrors `docs/how/extend-the-harness.md` shape | Docs Hybrid |
-| [ ] | T021 | Update `README.md` + `skills/README.md` (add `harness record`; `.harness/records/` + gitignored `.harness/temp/`) | substrate | `README.md`, `skills/README.md` | Loop description mentions `harness record` | Docs Hybrid |
+| [x] | T020 | Write `docs/how/record-and-record-types.md` (use `harness record`; placement/collision; authoring a type core+extension) | substrate | `docs/how/record-and-record-types.md` | Guide mirrors `docs/how/extend-the-harness.md` shape | Docs Hybrid |
+| [x] | T021 | Update `README.md` + `skills/README.md` (add `harness record`; `.harness/records/` + gitignored `.harness/temp/`) | substrate | `README.md`, `skills/README.md` | Loop description mentions `harness record` | Docs Hybrid |
 
 **Group F — verify**
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |---|---|---|---|---|---|---|
-| [ ] | T022 | Full green: `cd harness/cli && just fft` (fix→format→test w/ coverage) | CLI core | — | Existing suite + new tests pass; biome clean | AC 13 |
+| [x] | T022 | Full green: `cd harness/cli && just fft` (fix→format→test w/ coverage) | CLI core | — | Existing suite + new tests pass; biome clean | AC 13 |
 
 ### Acceptance Criteria
 
 Derived from spec ACs 1–18 (all testable):
 
-- [ ] AC1 — `record retro --slug x --json` → `ok` envelope, `data.path` + evidence under `.harness/records/retro/`, `next_action` to fill.
-- [ ] AC2 — second same-day create → `…-x-001.md`; third → `…-x-002.md`; never clobbers.
-- [ ] AC3 — unknown type → `error` `E180` exit 1, next_action lists known types.
-- [ ] AC4 — no `.harness/` → `unconfigured` exit 2, next_action; nothing written.
-- [ ] AC5 — `--list` (human + `--json` with `{type,description,source,entryPath?}`) enumerates core ∪ extension; `doctor` shows the same.
-- [ ] AC6 — `.harness/extensions/*.record.ts` (`kind:'record'`) discovered + usable; load failure non-fatal (`E140`, in doctor).
-- [ ] AC7 — `new <name> --record` scaffolds a loadable record-type stub.
-- [ ] AC8 — `record` reserved (runs under `--no-extensions`; `new record` → `E151`).
-- [ ] AC9 — `RETRO_TEMPLATE` keys ⊇ schema required fields; uses open `system` object (T004).
-- [ ] AC10 — observe writes scratch to gitignored `.harness/temp/<agent>/`; drain materialises a committed record via `harness record retro`.
-- [ ] AC11 — harvest reads new + legacy globs.
-- [ ] AC12 — `.harness/temp/` gitignored; `.harness/records/` committed.
-- [ ] AC13 — full CLI suite passes; new behaviour covered by fake-adapter tests.
-- [ ] AC14 — type-name validated `^[a-z][a-z0-9-]*$`.
-- [ ] AC15 — deterministic registry merge + core-shadow/extension conflict recorded.
-- [ ] AC16 — malformed record export skipped + recorded, never crashes.
-- [ ] AC17 — `record` ensures `.harness/temp/` exists + gitignored on first use.
-- [ ] AC18 — bare `harness record` = orientation listing, exit 0.
+- [x] AC1 — `record retro --slug x --json` → `ok` envelope, `data.path` + evidence under `.harness/records/retro/`, `next_action` to fill.
+- [x] AC2 — second same-day create → `…-x-001.md`; third → `…-x-002.md`; never clobbers.
+- [x] AC3 — unknown type → `error` `E180` exit 1, next_action lists known types.
+- [x] AC4 — no `.harness/` → `unconfigured` exit 2, next_action; nothing written.
+- [x] AC5 — `--list` (human + `--json` with `{type,description,source,entryPath?}`) enumerates core ∪ extension; `doctor` shows the same.
+- [x] AC6 — `.harness/extensions/*.record.ts` (`kind:'record'`) discovered + usable; load failure non-fatal (`E140`, in doctor).
+- [x] AC7 — `new <name> --record` scaffolds a loadable record-type stub.
+- [x] AC8 — `record` reserved (runs under `--no-extensions`; `new record` → `E151`).
+- [x] AC9 — `RETRO_TEMPLATE` keys ⊇ schema required fields; uses open `system` object (T004).
+- [x] AC10 — observe writes scratch to gitignored `.harness/temp/<agent>/`; drain materialises a committed record via `harness record retro`.
+- [x] AC11 — harvest reads new + legacy globs.
+- [x] AC12 — `.harness/temp/` gitignored; `.harness/records/` committed.
+- [x] AC13 — full CLI suite passes; new behaviour covered by fake-adapter tests.
+- [x] AC14 — type-name validated `^[a-z][a-z0-9-]*$`.
+- [x] AC15 — deterministic registry merge + core-shadow/extension conflict recorded.
+- [x] AC16 — malformed record export skipped + recorded, never crashes.
+- [x] AC17 — `record` ensures `.harness/temp/` exists + gitignored on first use.
+- [x] AC18 — bare `harness record` = orientation listing, exit 0.
 
 ### Risks
 

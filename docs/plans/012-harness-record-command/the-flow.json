@@ -4,10 +4,10 @@
   "slug": "harness-record-command",
   "plan_dir": "docs/plans/012-harness-record-command",
   "mode": "Simple",
-  "cursor": "build",
+  "cursor": "merge",
   "recommended_next": "merge",
-  "now": "Build · harness record (22 tasks)",
-  "next": "Merge",
+  "now": "Merge",
+  "next": "Merge analysis (/plan-8)",
   "_comment": "Design done as 3 front-loaded workshops (in place of a /plan-1a dossier). Next: spec, informed by the workshops. No harness nodes (no governance doc). Phases revealed at /plan-3.",
   "agents": [],
   "nodes": [
@@ -47,9 +47,12 @@
       "note": "Status READY; 7/7 gates PASS/N-A; 22 tasks, Simple single-phase. Validated (3 agents) — fixed 1 CRITICAL ordering bug (T006 merge before loader widened → split into T006 core-only + T009 merge).",
       "artifacts": ["harness-record-command-plan.md"], "next": ["build"] },
 
-    { "id": "build", "type": "phase", "phase": 1, "label": "Build · harness record (22 tasks)", "status": "known",
-      "command": "/plan-6", "note": "Simple-mode single-phase implementation; TDD+fakes for CLI, manual for skill-markdown. Group B (loader widening) is the risk-concentrated cluster.", "next": ["merge"] },
+    { "id": "build", "type": "phase", "phase": 1, "label": "Build · harness record (22 tasks)", "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion", "ran_at": "2026-06-09T11:28Z",
+      "user_input": "yep do it (companion build)",
+      "note": "All 22 tasks done across 6 commits (d29a650 Group A, 5b48db7 Group B loader-widening, 0295f22 Group C act/doctor/new, b793573 Group D skills, 861b11e Group E docs, 5563b40 review fixes). just fft green (275 tests, 91.66% stmt coverage); real end-to-end smokes pass for core retro + extension dev-survey paths. Companion died after Group B (0 findings); backfilled with a code-review pass → 2 LOW fixes adopted (never-clobber exhaustion guard + E181 on permission failure).",
+      "artifacts": ["harness/cli/src/services/record/", "harness/cli/src/acts/record.ts", "harness/cli/src/services/extensions/registry.ts", "docs/how/record-and-record-types.md"], "next": ["merge"] },
 
-    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed", "command": "/plan-8", "next": [] }
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "known", "command": "/plan-8", "next": [] }
   ]
 }
