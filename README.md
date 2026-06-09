@@ -123,3 +123,8 @@ For a practical guide to when to run the setup skill and how the loop skills fit
 - `eng-harness-4-retro`
 
 The Observe/Retro stages are backed by a core CLI command: **`harness record <type>`** scaffolds a templated record (starting with `retro`) into `.harness/records/<type>/` and returns its path for the agent to fill. Observe jots crash-resilient working notes to the gitignored scratch buffer `.harness/temp/<agent>/`; `eng-harness-4-retro --drain` then materialises a **committed** record under `.harness/records/`. Record types are a generic 4-field contract loadable from core or extensions — see [`docs/how/record-and-record-types.md`](docs/how/record-and-record-types.md).
+
+### Dogfooding the harness on itself
+
+Two repo-local dogfood extensions exercise the harness against real, unfamiliar repos by firing parallel `minih` workers: `harness validate-harnessability` runs the *assessment* skill on each clone, and `harness validate-harness-flow` runs the **entire setup flow** (assess → governance → boot → retro), then `--collect` aggregates the workers' records + reports. See [`docs/how/dogfood-harness-flow.md`](docs/how/dogfood-harness-flow.md). Collected retros are **surfaced, never auto-implemented**.
+
