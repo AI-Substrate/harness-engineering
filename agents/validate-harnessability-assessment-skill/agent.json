@@ -1,0 +1,28 @@
+{
+  "$schema": "https://minih.dev/schemas/agent-manifest.json",
+  "name": "validate-harnessability-assessment-skill",
+  "version": "0.1.0",
+  "description": "Single-shot dogfood agent. Runs the harnessability-assessment skill (read-only, static, network off) against an already-cloned target repo, then INDEPENDENTLY verifies the outputs — report files exist (incl. root latest.json + a per-run history dir), report.json validates against the skill's schema, the two-axis tuple + grade are present, and 2-3 evidence claims are spot-checked against the real tree. Emits a PASS/FAIL verdict plus a dual-layer magic-wand retrospective (the harnessability-assessment skill vs minih).",
+  "author": "AI-Substrate",
+  "tags": ["test", "dogfood", "harnessability", "assessment", "skill", "harness"],
+  "minihVersion": ">=0.3.0",
+  "type": "minih-agent",
+  "files": [
+    {
+      "path": "prompt.md",
+      "description": "Mission: cd to project root, invoke the harnessability-assessment skill against targetRepo, independently validate its outputs, verdict + dual-layer retrospective. Documents how the skill is wired into minih (.minih.json skills block / --skill-source+--skill)."
+    },
+    {
+      "path": "instructions.md",
+      "description": "Rules: drive the skill (don't reimplement it), independent verification is mandatory (don't trust the self-report), prefer --json, static/read-only with network off, capture friction at the moment of friction tagged skill|minih."
+    },
+    {
+      "path": "input-schema.json",
+      "description": "Params: targetRepo (abs path to the clone), mode (static|safe-probe|deep, default static)."
+    },
+    {
+      "path": "output-schema.json",
+      "description": "Structured report: targetRepo, assessmentResult (report paths + grades + finalGrade), validation (per-check pass/fail), verdict (PASS|FAIL), summary, and retrospective (workedWell/confusing/magicWand/magicWandTarget/difficulties)."
+    }
+  ]
+}

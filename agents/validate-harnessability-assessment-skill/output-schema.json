@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validate Harnessability Assessment Skill Report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["targetRepo", "assessmentResult", "validation", "verdict", "summary", "retrospective"],
+  "properties": {
+    "targetRepo": {
+      "type": "string",
+      "description": "Absolute path of the target repo that was assessed."
+    },
+    "assessmentResult": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["ran", "reportDir"],
+      "properties": {
+        "ran": { "type": "boolean", "description": "The harnessability-assessment skill executed against the target repo." },
+        "reportDir": { "type": "string", "description": "The .harness/reports/harnessability/ directory written inside the target repo." },
+        "runDir": { "type": "string", "description": "The per-run <ordinal>-<slug>/ history directory." },
+        "operateTodayGrade": { "type": "string", "description": "A-F (or null if absent)." },
+        "adaptabilityGrade": { "type": "string", "description": "A-F (or null if absent)." },
+        "finalGrade": { "type": "string", "description": "The v0.2 final_grade A-F if present." }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "reportFilesExist",
+        "latestJsonPresent",
+        "runDirPresent",
+        "schemaValidates",
+        "tupleAndGradePresent",
+        "claimsSpotChecked"
+      ],
+      "properties": {
+        "reportFilesExist": { "type": "boolean", "description": "report.md / report.json / summary.md exist under the run dir." },
+        "latestJsonPresent": { "type": "boolean", "description": "Root .harness/reports/harnessability/latest.json exists and is readable (the 008 sentinel)." },
+        "runDirPresent": { "type": "boolean", "description": "A per-run <ordinal>-<slug>/ history dir exists alongside the root latest.* files." },
+        "schemaValidates": { "type": "boolean", "description": "report.json validates against skills/harnessability-assessment/templates/assessment-report.schema.json." },
+        "tupleAndGradePresent": { "type": "boolean", "description": "The two-axis Operate-Today/Adaptability tuple AND a letter grade are present in the report." },
+        "claimsSpotChecked": { "type": "boolean", "description": "2-3 evidence claims were independently cross-checked against the real tree and held." },
+        "notes": { "type": "string", "description": "Any per-check detail, especially for failures." }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"],
+      "description": "PASS only if the skill ran AND every validation check passed (report files + sentinel + history dir + schema + tuple/grade + spot-checked claims)."
+    },
+    "summary": { "type": "string", "minLength": 50 },
+    "retrospective": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["workedWell", "confusing", "magicWand", "magicWandTarget"],
+      "properties": {
+        "workedWell": { "type": "string", "minLength": 10 },
+        "confusing": { "type": "string", "minLength": 10 },
+        "magicWand": { "type": "string", "minLength": 10, "description": "The single highest-leverage change. Be specific." },
+        "magicWandTarget": {
+          "type": "string",
+          "enum": ["harnessability-assessment", "minih"],
+          "description": "Which system the magic wand targets: the harnessability-assessment skill, or minih itself."
+        },
+        "difficulties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["id", "layer", "description"],
+            "properties": {
+              "id": { "type": "string", "description": "Self-numbered VH-001, VH-002, …" },
+              "layer": { "type": "string", "enum": ["harnessability-assessment", "minih"] },
+              "category": { "type": "string", "description": "build | config | data | test | debug | knowledge | other" },
+              "description": { "type": "string" },
+              "mitigation": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
