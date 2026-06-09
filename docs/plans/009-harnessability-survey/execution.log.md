@@ -31,3 +31,10 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - Documented the **sentinel** verbatim: `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` (008 consumer); root `latest.json` kept present AND readable every run (detection + readability per AC-2).
 - Updated `--output-dir` default, "write reports under", and the "previous reports" evidence path; mirrored the new path block + v0.2 version into README.
 **Evidence**: `grep -rn "harness/assessment" skills/harnessability-assessment/` → NONE (clean); new path present 13× SKILL.md / 7× README.
+
+### T005–T008 · G2 survey sections + ordering + rules
+**Files**: `SKILL.md`, `templates/assessment-report.md`
+- T005: new `## Existing engineering environment survey` section in SKILL.md mapping 10 survey dimensions → their v0.2 JSON arrays (engineering flows incl. SDD-like, pre-commit/local gates, CI/local equivalence, existing harness concepts canonical-vs-diffuse, test mechanisms, external-dependency pressure, code composition/seams, deterministic-encoding opportunities, manual/IDE signals, candidate-first surfaces). Matching report sections added to `assessment-report.md` (placed after Repository topology, before Axis A — survey-before-score).
+- T006: new execution step `### 6b. Synthesize the existing engineering environment survey` + explicit **existing-flow-first rule**; step 10 now derives `candidate_first_harness_surfaces[]`/`deterministic_encoding_opportunities[]` only after the survey; step 11 writes `summary.md` + records `report_paths` + confirms the sentinel.
+- T007: "Prefer deterministic encoding over context-file accretion" rule — context files are orientation not proof; mocks vs fakes/sinks distinguished.
+- T008: manual/IDE-only scan documented as advisory, influences A4/A5/A7/A8/A9/B5/B10 only, never over-penalises desktop/mobile/hardware/brownfield (`penalize: no`).

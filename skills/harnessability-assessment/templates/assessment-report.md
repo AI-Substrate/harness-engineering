@@ -47,6 +47,74 @@ Run metadata
 
 {{REPOSITORY_TOPOLOGY}}
 
+## Existing engineering environment survey
+
+> Surveyed before scoring — what the repo already has comes first.
+
+### Engineering flows
+
+| Flow | Kind | Commands | Canonical | Where detected |
+|------|------|----------|-----------|----------------|
+{{ENGINEERING_FLOWS_TABLE}}
+
+### Pre-commit and local gates
+
+| Gate | Mechanism | Checks | Local | CI-equivalent |
+|------|-----------|--------|-------|---------------|
+{{PRE_COMMIT_GATES_TABLE}}
+
+### CI / local equivalence
+
+| Check | CI command | Local command | Equivalence | Notes |
+|-------|-----------|---------------|-------------|-------|
+{{CI_LOCAL_EQUIVALENCE_TABLE}}
+
+### Existing harness concepts (canonical vs diffuse)
+
+| Concept | Kind | Surfaces | Coverage | Notes |
+|---------|------|----------|----------|-------|
+{{EXISTING_HARNESS_CONCEPTS_TABLE}}
+
+### Test mechanisms
+
+| Mechanism | Type | Deterministic | Where detected |
+|-----------|------|---------------|----------------|
+{{TEST_MECHANISMS_TABLE}}
+
+### External-dependency pressure
+
+| Dependency | Pressure | Local substitute | Proof impact |
+|------------|----------|------------------|--------------|
+{{EXTERNAL_DEPENDENCY_PRESSURE_TABLE}}
+
+### Code composition and seams
+
+| Area | Kind | Test seam | Coupling |
+|------|------|-----------|----------|
+{{CODE_COMPOSITION_TABLE}}
+
+### Deterministic-encoding opportunities
+
+| Opportunity | Current encoding | Proposed encoding | Proof level |
+|-------------|------------------|-------------------|-------------|
+{{DETERMINISTIC_ENCODING_OPPORTUNITIES_TABLE}}
+
+### Manual / IDE-only signals
+
+> Advisory. Influences A4/A5/A7/A8/A9/B5/B10 only; never over-penalises desktop, mobile, hardware, or brownfield topologies.
+
+| Signal | Kind | Influences | Penalize |
+|--------|------|------------|----------|
+{{MANUAL_OPERATION_SIGNALS_TABLE}}
+
+### Candidate first harness surfaces
+
+> Derived AFTER the survey above — never before existing flows and commands are inventoried.
+
+| Surface | Rationale | Proof level | Already exists | Priority |
+|---------|-----------|-------------|----------------|----------|
+{{CANDIDATE_FIRST_HARNESS_SURFACES_TABLE}}
+
 ## Axis A — Operate-Today scorecard
 
 | Dimension | Band | Points | Evidence | Notes |

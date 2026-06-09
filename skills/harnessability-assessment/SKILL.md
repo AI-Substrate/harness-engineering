@@ -156,6 +156,35 @@ It still must not boot services, install dependencies, mutate state, read secret
 
 Do not add a generic `backpressure` command recommendation. If a gap is found, recommend the specific sensor, command, fixture, fake, sink, diagnostic, schema check, smoke path, architecture rule, evidence capture, or product-code affordance that would prove the scoped work.
 
+## Existing engineering environment survey
+
+**Survey what the repo already has before recommending anything.** A harnessability assessment is first a *factual survey* of the engineering environment that exists today — its flows, command surfaces, gates, test mechanisms, dependency pressure, and composition — and only then a set of candidate harness surfaces. Inventory the existing system first; propose second. Each survey dimension below populates an optional v0.2 JSON array; emit what you find, omit what does not apply.
+
+| Survey dimension | What to inventory | JSON array |
+|---|---|---|
+| Engineering flows | Named development flows the repo already runs — build, test, release, review, CI, onboarding, and **SDD-like** flows (e.g. a `docs/plans/` spec→plan→tasks pipeline, `/plan-*` or `task-*` skills, RFC/ADR conventions). Record commands + whether the flow is canonical. | `engineering_flows[]` |
+| Pre-commit & local gates | Hook mechanisms (husky, pre-commit, lefthook, git hooks), `just`/`make`/npm pre-commit paths, and what each gate actually checks; whether it runs locally and whether CI enforces the same. | `pre_commit_gates[]` |
+| CI / local equivalence | For each meaningful check, whether the local command and the CI command are identical, equivalent, partial, divergent, or one-sided. Divergence is friction; identity is backpressure an agent can trust locally. | `ci_local_equivalence[]` |
+| Existing harness concepts | Whether a **canonical** harness front door exists, or harness behaviour is **diffuse** (scattered scripts, ad-hoc Makefile targets, tribal commands). Canonical-vs-diffuse detection decides whether to recommend consolidation. | `existing_harness_concepts[]` |
+| Test mechanisms | How tests achieve determinism: **mock vs fake vs sink vs stub vs contract vs testcontainer vs in-memory**. These are reusable harness affordances, not just test code. | `test_mechanisms[]` |
+| External-dependency pressure | For each external dependency, how much it pressures local proof (none→blocking) and whether a local substitute exists. | `external_dependency_pressure[]` |
+| Code composition & seams | Module/package/service/layer boundaries, plugin/extension points, and whether each seam is test-substitutable. | `code_composition[]` |
+| Deterministic-encoding opportunities | Places where guidance currently lives in a context file / convention / manual step that could instead be encoded as an executable check, fixture, or schema. | `deterministic_encoding_opportunities[]` |
+| Manual / IDE-only signals | Operations that only happen by hand or inside an IDE/GUI (advisory — see below). | `manual_operation_signals[]` |
+| Candidate first harness surfaces | The verbs worth encoding **first**, derived *after* the survey above. | `candidate_first_harness_surfaces[]` |
+
+### Prefer deterministic encoding over context-file accretion
+
+A context file — `AGENTS.md`, `CLAUDE.md`, `.cursor/rules`, `.cursorrules`, `.github/copilot-instructions.md` — is **orientation, never deterministic proof**. It tells an agent what *should* be true; it cannot fail a build when something *is* wrong. When the assessment finds important behaviour encoded only as prose in a context file, record it as a `deterministic_encoding_opportunities[]` entry whose proposed encoding is an executable surface (a check, fixture, fake, sink, schema, smoke path, or diagnostic). Prefer recommending that encoding over recommending "add more documentation." Documentation is the right answer only when orientation itself is the missing surface.
+
+Distinguish **mocks** from **fakes/sinks**: a mock asserts an interaction and is brittle under refactor; a fake is a real working substitute that records state; a sink captures side effects for later assertion. Fakes and sinks are reusable harness affordances and stronger deterministic backpressure than mocks — surface them as such.
+
+### Manual / IDE-only operation scan (advisory)
+
+Scan for operations that only happen manually or inside an IDE/GUI — click-ops deploys, IDE-run-button-only entry points, undocumented manual steps, desktop/mobile/hardware interactions. Record them as `manual_operation_signals[]`.
+
+This scan is **advisory**. It may only influence dimensions **A4, A5, A7, A8, A9, B5, and B10** (front door, boot/health, interaction surfaces, deterministic sensors, observability, hermetic testability, inner-loop speed). It must **never over-penalise** a repo simply because its topology is desktop, mobile, hardware, or brownfield — those are legitimate topologies, not harnessability failures. Set `penalize: no` when a manual signal is intrinsic to the topology rather than a fixable gap.
+
 ## Scoring model
 
 The report has two primary axes:
@@ -766,6 +795,19 @@ Use the broad consequence model. Do not privilege databases unless the repo does
 
 Read the test suite as the primary evidence of these mechanisms: how tests mock, inject, substitute, seed, restore, reset, and make behavior real shows exactly which seams and state lifecycles the harness can reuse. Record each reusable mechanism as a candidate harness affordance.
 
+### 6b. Synthesize the existing engineering environment survey
+
+Before scoring or proposing anything, consolidate what steps 2–6 found into the existing-engineering-environment survey (see `## Existing engineering environment survey`). Populate the optional v0.2 arrays from evidence already gathered:
+
+- `engineering_flows[]` — including any SDD-like spec→plan→tasks pipeline (`docs/plans/`, `/plan-*` or `task-*` skills, RFC/ADR conventions);
+- `pre_commit_gates[]` and `ci_local_equivalence[]` — from the command/CI inventory (step 4);
+- `existing_harness_concepts[]` — canonical vs diffuse, from step 2;
+- `test_mechanisms[]` — mock vs fake/sink/stub/contract/testcontainer, from step 6;
+- `external_dependency_pressure[]` — from step 5;
+- `code_composition[]` — seams and boundaries.
+
+**Existing-flow-first rule**: inventory existing flows and command surfaces here, *before* any candidate harness surface is proposed. `candidate_first_harness_surfaces[]` and `deterministic_encoding_opportunities[]` are derived later (step 10), only after this survey and the scorecards exist.
+
 ### 7. Assess Operate-Today
 
 Score A1-A10. Each band must include evidence, inference, or unknown status.
@@ -812,9 +854,11 @@ Rank by:
 
 Prefer remediations that encode the fix into executable harness surfaces over adding prose. Documentation is acceptable when orientation is the actual missing surface, but executable commands, checks, fixtures, diagnostics, fakes, sinks, schemas, and evidence artifacts are usually stronger. Prefer reusing mechanisms the tests already rely on — seeding, restore/reset, injection seams, fakes, sinks, containerized services — by exposing them as supported harness commands, rather than building new scaffolding from scratch.
 
+After ranking, derive `candidate_first_harness_surfaces[]` — the verbs worth encoding *first* — strictly from the survey (step 6b) and the gaps above, never before the existing environment has been inventoried. Record `deterministic_encoding_opportunities[]` wherever behaviour currently lives only in a context file or manual step and could instead become an executable check, fixture, or schema (see `## Existing engineering environment survey`).
+
 ### 11. Write reports
 
-Write Markdown, JSON, and schema files according to the output contract.
+Write the Markdown report, the terminal-sized `summary.md`, the JSON report, and the schema copy according to the output contract: into `.harness/reports/harnessability/<ordinal>-<slug>/` and mirrored to the root `latest.*`/`schema.json`. Record the written paths in `report_paths`. Confirm the root `latest.json` is present and readable — it is the sentinel the `engineering-harness-setup` flow reads.
 
 ## Parallel execution: subsystem fan-out
 
