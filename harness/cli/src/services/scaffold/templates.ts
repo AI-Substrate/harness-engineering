@@ -48,11 +48,14 @@ export function wrapTs(name: string, command: string): string {
 
 const ${id}: HarnessVerb = {
   name: '${name}',
-  summary: 'TODO: summary (wraps \`${command}\`).',
+  summary: 'Wraps \`${command}\`.',
   async run(ctx) {
+    const started = Date.now();
     const r = await ctx.exec('${argv0}', ${argsLiteral(rest)});
+    const durationMs = Date.now() - started;
+    const tail = r.stdout.trimEnd().split('\\n').slice(-20).join('\\n');
     return r.ok
-      ? ctx.ok({ command: '${command}' })
+      ? ctx.ok({ command: '${command}', durationMs, stdout: tail })
       : ctx.error('E1', \`${command} failed (exit \${r.code})\`, {
           details: r.stderr,
           next_action: 'Fix the failure above, then re-run \`harness ${name}\`.',
@@ -88,11 +91,14 @@ export function wrapJs(name: string, command: string): string {
   return `/** @type {import('harness-engineering/contract').HarnessVerb} */
 const ${id} = {
   name: '${name}',
-  summary: 'TODO: summary (wraps \`${command}\`).',
+  summary: 'Wraps \`${command}\`.',
   async run(ctx) {
+    const started = Date.now();
     const r = await ctx.exec('${argv0}', ${argsLiteral(rest)});
+    const durationMs = Date.now() - started;
+    const tail = r.stdout.trimEnd().split('\\n').slice(-20).join('\\n');
     return r.ok
-      ? ctx.ok({ command: '${command}' })
+      ? ctx.ok({ command: '${command}', durationMs, stdout: tail })
       : ctx.error('E1', \`${command} failed (exit \${r.code})\`, {
           details: r.stderr,
           next_action: 'Fix the failure above, then re-run \`harness ${name}\`.',

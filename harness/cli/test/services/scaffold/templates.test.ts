@@ -37,11 +37,14 @@ const WRAP_TS_TEST = `import type { HarnessVerb } from 'harness-engineering/cont
 
 const test: HarnessVerb = {
   name: 'test',
-  summary: 'TODO: summary (wraps \`npm test\`).',
+  summary: 'Wraps \`npm test\`.',
   async run(ctx) {
+    const started = Date.now();
     const r = await ctx.exec('npm', ['test']);
+    const durationMs = Date.now() - started;
+    const tail = r.stdout.trimEnd().split('\\n').slice(-20).join('\\n');
     return r.ok
-      ? ctx.ok({ command: 'npm test' })
+      ? ctx.ok({ command: 'npm test', durationMs, stdout: tail })
       : ctx.error('E1', \`npm test failed (exit \${r.code})\`, {
           details: r.stderr,
           next_action: 'Fix the failure above, then re-run \`harness test\`.',
@@ -68,11 +71,14 @@ export default greet;
 const WRAP_JS_TEST = `/** @type {import('harness-engineering/contract').HarnessVerb} */
 const test = {
   name: 'test',
-  summary: 'TODO: summary (wraps \`npm test\`).',
+  summary: 'Wraps \`npm test\`.',
   async run(ctx) {
+    const started = Date.now();
     const r = await ctx.exec('npm', ['test']);
+    const durationMs = Date.now() - started;
+    const tail = r.stdout.trimEnd().split('\\n').slice(-20).join('\\n');
     return r.ok
-      ? ctx.ok({ command: 'npm test' })
+      ? ctx.ok({ command: 'npm test', durationMs, stdout: tail })
       : ctx.error('E1', \`npm test failed (exit \${r.code})\`, {
           details: r.stderr,
           next_action: 'Fix the failure above, then re-run \`harness test\`.',
