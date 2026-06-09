@@ -134,10 +134,7 @@ export function createRecord(
     slug = cleaned;
   }
 
-  // 4. Ensure the scratch buffer exists + is gitignored (AC-17, first use).
-  ensureTemp(deps);
-
-  // 5. Resolve a never-clobbering path: <date>[-<slug>][-NNN].md
+  // 4. Resolve a never-clobbering path: <date>[-<slug>][-NNN].md
   const dir = join(harnessDir, RECORDS_DIR, type);
   const base = slug ? `${dateStamp(clock)}-${slug}` : dateStamp(clock);
   let fileName = `${base}.md`;
@@ -147,8 +144,23 @@ export function createRecord(
   const fileAbs = join(dir, fileName);
   const relPath = join(HARNESS_DIR, RECORDS_DIR, type, fileName);
 
-  // 6. Write the template (the path is fresh — never clobbers).
+  // 5. Exhaustion guard: if every candidate up to the bound already exists, refuse
+  //    rather than clobber the last one — the never-clobber guarantee holds even at
+  //    the (practically unreachable) limit of MAX_COLLISION same-day records.
+  if (fs.exists(fileAbs)) {
+    return {
+      ok: false,
+      status: 'error',
+      code: ErrorCodes.RECORD_WRITE_FAILED,
+      message: `Collision counter exhausted for ${relPath} (${MAX_COLLISION}+ same-day records).`,
+      next_action: `Too many \`${base}\` records today — pass a more specific \`--slug\`.`,
+    };
+  }
+
+  // 6. Ensure the scratch buffer (AC-17) + write the template — both under ONE guard so
+  //    a permissions failure on `.harness/` surfaces as E181 (not a generic E100).
   try {
+    ensureTemp(deps);
     fs.mkdirp(dir);
     fs.writeText(fileAbs, entry.template);
   } catch (err) {

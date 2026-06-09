@@ -125,6 +125,45 @@ describe('createRecord — unconfigured / error states', () => {
     }
   });
 
+  it('refuses (never clobbers) when the collision counter is exhausted', () => {
+    // Seed base + base-001..base-999 so every candidate up to MAX_COLLISION exists.
+    const seed: Record<string, string> = {
+      '/repo/.harness/records/retro/2026-06-08-x.md': 'existing',
+    };
+    for (let n = 1; n <= 999; n += 1) {
+      seed[`/repo/.harness/records/retro/2026-06-08-x-${String(n).padStart(3, '0')}.md`] =
+        'existing';
+    }
+    const fs = configuredFs(seed);
+    const before = fs.writes.length;
+    const outcome = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs));
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.code).toBe(ErrorCodes.RECORD_WRITE_FAILED);
+    }
+    // Nothing was overwritten (no write into the records dir).
+    expect(fs.writes.filter((p) => p.includes('/records/retro/'))).toEqual([]);
+    expect(fs.writes.length).toBe(before); // not even the temp buffer (guard returns first)
+  });
+
+  it('a write/permission failure surfaces as E181 (not a generic throw)', () => {
+    // A FakeFs that throws on any write — models a read-only `.harness/`.
+    class ThrowingFs extends FakeFs {
+      override writeText(): void {
+        throw new Error('EACCES: permission denied');
+      }
+    }
+    const fs = new ThrowingFs();
+    fs.mkdirp('/repo/.harness');
+    const outcome = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs));
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.status).toBe('error');
+      expect(outcome.code).toBe(ErrorCodes.RECORD_WRITE_FAILED);
+      expect(outcome.next_action).toMatch(/writable/);
+    }
+  });
+
   it('a slug that empties after slugify → error E108', () => {
     const fs = configuredFs();
     const outcome = createRecord({ type: 'retro', slug: '!!!' }, CORE, depsAt(fs));
