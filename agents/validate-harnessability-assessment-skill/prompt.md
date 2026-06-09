@@ -30,8 +30,8 @@ You improve **two** systems and must report on both in your retrospective:
 
 **FIRST**: run `cd $MINIH_PROJECT_ROOT`. Your SDK session starts in this run's
 folder, not the project root. The skill lives at
-`$MINIH_PROJECT_ROOT/skills/harnessability-assessment/SKILL.md` and its schema at
-`skills/harnessability-assessment/templates/assessment-report.schema.json`.
+`$MINIH_PROJECT_ROOT/skills/eng-harness-setup/eng-harness-0-harnessability-assessment/SKILL.md` and its schema at
+`skills/eng-harness-setup/eng-harness-0-harnessability-assessment/templates/assessment-report.schema.json`.
 
 **Network is OFF and this is a STATIC, read-only assessment.** The target repo is
 already cloned for you — do not clone, install dependencies, boot services, or call
@@ -45,13 +45,13 @@ This agent invokes a **local repo skill**, `harnessability-assessment`. Skills a
 **not** loaded into a minih agent implicitly — they are wired one of two ways:
 
 1. **Repo config** — `.minih.json` at the project root declares
-   `{ "skills": { "sources": ["path:skills"], "include": [... , "harnessability-assessment"] } }`,
-   pointing minih at `skills/harnessability-assessment/SKILL.md`.
+   `{ "skills": { "sources": ["path:skills"], "include": [... , "eng-harness-0-harnessability-assessment"] } }`,
+   pointing minih at `skills/eng-harness-setup/eng-harness-0-harnessability-assessment/SKILL.md`.
 2. **One-off flags** (what the orchestrator verb uses):
    ```bash
    minih run validate-harnessability-assessment-skill \
      -p targetRepo=<abs path> \
-     --skill-source path:skills --skill harnessability-assessment
+     --skill-source path:skills --skill eng-harness-0-harnessability-assessment
    ```
 
 Confirm the skill resolved before relying on it: `minih skills doctor` (or
@@ -88,7 +88,7 @@ whole point is to exercise the skill.
    - **runDirPresent**: a per-run `<ordinal>-<slug>/` history dir exists alongside
      the root `latest.*` files.
    - **schemaValidates**: `report.json` (and root `latest.json`) validate against
-     `$MINIH_PROJECT_ROOT/skills/harnessability-assessment/templates/assessment-report.schema.json`.
+     `$MINIH_PROJECT_ROOT/skills/eng-harness-setup/eng-harness-0-harnessability-assessment/templates/assessment-report.schema.json`.
      Use a real validator (e.g. `python -m jsonschema` or `npx ajv`).
    - **tupleAndGradePresent**: the report carries the two-axis Operate-Today /
      Adaptability tuple AND a letter grade (and, for v0.2, `final_grade`). Confirm

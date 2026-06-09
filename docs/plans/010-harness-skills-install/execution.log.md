@@ -16,3 +16,6 @@ No `docs/project-rules/engineering-harness.md` → no agent-harness pre-flight; 
 
 ## Per-task log
 
+### T004 — live docs + configs rename (G2)
+- Updated: `.minih.json` (include → 7 new nested slugs), root `README.md` (install section + two-group skill listing), `INSTALL.md` (title + skills table → 7 slugs + `-s` examples), `docs/how/extend-the-harness.md` (add-extension path/slug), `skills/README.md` (full rewrite: two categories, `harness skills install`, loop now hosted here), `docs/.../docs-manifest.json` summary, regenerated `docs-content.ts` (`npm run gen:docs`).
+- **Dogfood agents** (`agents/validate-harnessability-assessment-skill/`, `agents/install-and-validate-test-extension/`): fixed the *hard wiring* in live definition files (non-`runs/`) — broken skill PATHs (`skills/<oldslug>/` → relocated), `--skill <slug>`, and `.minih.json include` examples now point at the new slugs/paths. **Intentional scope boundary**: their conceptual prose, agent NAMEs, and output-schema enum *labels* still say the old slug — these are not dangling filesystem links, and a full identity migration of these plan-006/009 agents is a follow-up (parallel to the accepted external `the-flow`/`plan-6` slug follow-up). `runs/**` history left untouched.

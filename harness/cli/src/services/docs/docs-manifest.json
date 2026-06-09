@@ -4,7 +4,7 @@
     {
       "id": "extend-the-harness",
       "title": "Extend the harness",
-      "summary": "Add a new `harness <verb>` command — the fast path (`harness new`) and the guided `add-extension` skill.",
+      "summary": "Add a new `harness <verb>` command — the fast path (`harness new`) and the guided `eng-harness-0-add-extension` skill.",
       "audience": "both",
       "sourcePath": "docs/how/extend-the-harness.md"
     },

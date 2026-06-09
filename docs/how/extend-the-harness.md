@@ -104,13 +104,13 @@ by hand.
 
 ---
 
-## Guided path: the `add-extension` skill
+## Guided path: the `eng-harness-0-add-extension` skill
 
-If you're working with an agent, the **`add-extension` skill** does the whole
+If you're working with an agent, the **`eng-harness-0-add-extension` skill** does the whole
 flow for you: it reuses any intent already gathered (a spec/plan/workshop or the
 conversation), runs `harness new`, fills the handler, and verifies. It only asks
 when something is genuinely unclear. See
-[`skills/add-extension/`](../../skills/add-extension/).
+[`skills/eng-harness-setup/eng-harness-0-add-extension/`](../../skills/eng-harness-setup/eng-harness-0-add-extension/).
 
 ---
 

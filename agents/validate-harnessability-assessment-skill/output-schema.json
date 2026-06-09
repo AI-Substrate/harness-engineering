@@ -37,7 +37,7 @@
         "reportFilesExist": { "type": "boolean", "description": "report.md / report.json / summary.md exist under the run dir." },
         "latestJsonPresent": { "type": "boolean", "description": "Root .harness/reports/harnessability/latest.json exists and is readable (the 008 sentinel)." },
         "runDirPresent": { "type": "boolean", "description": "A per-run <ordinal>-<slug>/ history dir exists alongside the root latest.* files." },
-        "schemaValidates": { "type": "boolean", "description": "report.json validates against skills/harnessability-assessment/templates/assessment-report.schema.json." },
+        "schemaValidates": { "type": "boolean", "description": "report.json validates against skills/eng-harness-setup/eng-harness-0-harnessability-assessment/templates/assessment-report.schema.json." },
         "tupleAndGradePresent": { "type": "boolean", "description": "The two-axis Operate-Today/Adaptability tuple AND a letter grade are present in the report." },
         "claimsSpotChecked": { "type": "boolean", "description": "2-3 evidence claims were independently cross-checked against the real tree and held." },
         "notes": { "type": "string", "description": "Any per-check detail, especially for failures." }

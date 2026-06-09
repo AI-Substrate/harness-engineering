@@ -40,14 +40,14 @@ this repo uses the first:
 
 1. **Repo config** — `.minih.json` at the project root declares:
    ```json
-   { "skills": { "sources": ["path:skills"], "include": ["add-extension"] } }
+   { "skills": { "sources": ["path:skills"], "include": ["eng-harness-0-add-extension"] } }
    ```
    `path:skills` points minih at this repo's `skills/` directory, where the
-   skill lives at `skills/add-extension/SKILL.md`.
+   skill lives at `skills/eng-harness-setup/eng-harness-0-add-extension/SKILL.md`.
 2. **One-off flags** (equivalent, for ad-hoc runs):
    ```bash
    minih run install-and-validate-test-extension \
-     --skill-source path:skills --skill add-extension
+     --skill-source path:skills --skill eng-harness-0-add-extension
    ```
 
 Confirm the skill resolved before relying on it: `minih skills doctor` (or
