@@ -21,9 +21,10 @@ flowchart TD
     C -- yes --> E["Read assessment recommendations"]
     E --> F["3 · eng-harness-0-add-extension skill →<br/>basic `boot` (wrap build / run / health)"]
     F --> V["Verify · harness doctor / harness boot / harness help"]
+    V --> S["4 · Offer (opt-in) · harness skills install<br/>→ install the eng-harness skills into the user's CLI"]
 ```
 
-Three steps. Each box is a CLI call or a hand-off to another skill. The goal is **a working boot, even if basic** — the nucleus a team self-improves from.
+Three steps to a working boot, plus an opt-in fourth that offers to install the harness's own skills. Each box is a CLI call or a hand-off to another skill. The goal is **a working boot, even if basic** — the nucleus a team self-improves from.
 
 ## When to use
 
@@ -143,6 +144,30 @@ npx harness boot        # runs it — inspect the envelope/exit code for the ver
 ```
 
 When `harness boot` returns a usable verdict and re-orients the agent, the nucleus is in place. Stop here — the rest compounds through normal use.
+
+---
+
+## Step 4 — Offer to install the harness skills (opt-in)
+
+The harness ships its own **skills** — the `eng-harness-*` setup + loop suite (`boot` / `backpressure` / `observe` / `retro`). Once the nucleus is in place, **offer** — never force — to install them into the user's CLI so they can run the loop directly.
+
+1. **Ask** which CLI target(s) and scope:
+   - Targets: `claude-code`, `codex`, `cursor`, `github-copilot`, `opencode`, `pi`.
+   - Scope: `--global` (available everywhere) or project-local (omit `--global`).
+2. **Only with the user's explicit go-ahead**, run the first-class command — a transparent pass-through to the Vercel `npx skills` installer. It **prints the exact `npx` line before running** and always passes `-y`, so nothing blocks on an interactive picker:
+
+   ```bash
+   npx harness skills install --target <cli> [--global]
+   # e.g.  npx harness skills install --target github-copilot --global
+   ```
+
+3. **If the user declines, do not install.** Tell them how to do it later:
+
+   > To install the harness skills later, run: `npx harness skills install --target <cli> [--global]`
+
+More about the underlying installer: <https://github.com/vercel-labs/skills>.
+
+> **Offer, don't force.** This step never runs the install unprompted. The CLI command takes explicit `--target`/`--global` flags and never blocks on a prompt — *this skill* is what asks the user, then runs the command with their answers.
 
 ---
 
