@@ -98,6 +98,11 @@ export interface HarnessVerb {
 /** A `.harness/extensions/*` entry's DEFAULT export. */
 export type ExtensionExport = HarnessVerb | HarnessVerb[];
 
+// Re-export the record-type contract so authors import BOTH verb and record types
+// from the single published entrypoint `harness-engineering/contract` (the package
+// `exports["./contract"]` map resolves to this module).
+export type { HarnessRecordType } from '../record/contract.js';
+
 /** What `doctor` enumerates per discovered extension file (P7). */
 export interface ExtensionRecord {
   /** Resolved absolute path. */

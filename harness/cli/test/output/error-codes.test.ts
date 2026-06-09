@@ -25,6 +25,8 @@ describe('ErrorCodes table', () => {
       SCAFFOLD_WRITE_FAILED: 'E153',
       DOC_NOT_FOUND: 'E160',
       SKILLS_INSTALL_FAILED: 'E170',
+      RECORD_TYPE_UNKNOWN: 'E180',
+      RECORD_WRITE_FAILED: 'E181',
     });
   });
 

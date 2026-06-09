@@ -29,6 +29,10 @@ export const ErrorCodes = {
   DOC_NOT_FOUND: 'E160',
   /** `harness skills install`: the underlying `npx skills add` pass-through failed (non-zero exit / spawn error). */
   SKILLS_INSTALL_FAILED: 'E170',
+  /** `harness record <type>`: no such record type in the merged registry (core ∪ extension). */
+  RECORD_TYPE_UNKNOWN: 'E180',
+  /** `harness record <type>`: the records directory create or file write itself failed (permissions, etc.). */
+  RECORD_WRITE_FAILED: 'E181',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
