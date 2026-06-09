@@ -1,3 +1,17 @@
+---
+schema_version: "1.0"
+record_kind: "worker-harvest"
+agent: "validate-harness-flow"
+plan_id: "013-dogfood-harness-flow"
+source: "minih run-completion harvest (relocated from docs/retros/ legacy location)"
+note: "Aggregated farewell envelopes from the validate-harness-flow worker runs (chalk x2, express, click, cobra). Surfaced for review, never auto-implemented. Canonical per-repo records also live under docs/plans/013-dogfood-harness-flow/runs/<repo>/retro/ and our own build retro at .harness/records/retro/2026-06-09-build-validate-harness-flow.md."
+---
+
+# validate-harness-flow — worker farewell harvest (plan 013)
+
+> Relocated from `docs/retros/validate-harness-flow.md` (minih's legacy harvest
+> location) into the canonical `.harness/records/` tree per plan-012. Each `##`
+> section is one worker run's farewell envelope, verbatim.
 
 ## 2026-06-09T12:47:30.018Z — validate-harness-flow / 2026-06-09T22-35-31-764Z-ab6a
 
