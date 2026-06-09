@@ -1,7 +1,7 @@
 # Flight Plan: Fix FX002 — `harness new --wrap` sparse boot Envelope
 
 **Fix**: [FX002-wrap-template-envelope-enrichment.md](FX002-wrap-template-envelope-enrichment.md)
-**Status**: Ready
+**Status**: Landed — `0aad609` (companion review in flight)
 
 ## What → Why
 
@@ -16,9 +16,9 @@
 
 ## Stages
 
-- [ ] Stage 1: Enrich `wrapTs` + `wrapJs` (summary, self-time, enriched `ok()`) (`templates.ts`)
-- [ ] Stage 2: Update byte-exact fixtures `WRAP_TS_TEST`/`WRAP_JS_TEST` + workshop §4b/§4d (`templates.test.ts`, workshop 001)
-- [ ] Stage 3: Build + full suite green, commit
+- [x] Stage 1: Enrich `wrapTs` + `wrapJs` (summary, self-time, enriched `ok()`) (`templates.ts`) — `0aad609`
+- [x] Stage 2: Update byte-exact fixtures `WRAP_TS_TEST`/`WRAP_JS_TEST` + workshop §4b (`templates.test.ts`, workshop 001) — `0aad609`
+- [x] Stage 3: Build + full suite green (277/277), commit `0aad609`
 
 ## Acceptance
 

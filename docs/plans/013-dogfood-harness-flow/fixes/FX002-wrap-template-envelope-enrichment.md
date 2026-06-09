@@ -1,7 +1,7 @@
 # Fix FX002: `harness new --wrap` scaffold emits a sparse boot Envelope
 
 **Created**: 2026-06-10
-**Status**: Proposed
+**Status**: Implemented (`0aad609`) — build clean, 277/277 vitest green; companion review in flight (run `2026-06-10T08-17-07-782Z-1e56`)
 **Plan**: [013-dogfood-harness-flow](../dogfood-harness-flow-plan.md)
 **Source**: Plan 013 dogfood finding FIND-3 (`scratch/handover-013-surfaced-findings.md` §Finding 3)
 **Domain(s)**: harness-cli (scaffold templates — internal, no contract change)
@@ -51,9 +51,9 @@ Explicit scope guards (the war-and-peace traps):
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |--------|-----|------|--------|---------|-----------|-------|
-| [ ] | FX002-1 | Enrich `wrapTs` + `wrapJs`: honest `summary` (no TODO), self-timed exec, success Envelope `ctx.ok({ command, durationMs, stdout: <20-line tail> })`; error branch byte-identical | harness-cli | /Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/scaffold/templates.ts | Both builders emit the enriched body; `summary` contains no `TODO`; success `ok()` carries `durationMs` + `stdout` | wrapTs ~44-65, wrapJs ~85-105. Keep `splitCommand`/`argsLiteral` usage as-is |
-| [ ] | FX002-2 | Update the byte-exact fixtures + workshop source to match: `WRAP_TS_TEST` (`templates.test.ts:36-53`), `WRAP_JS_TEST` (`:68-84`), and workshop §4b (ts) + §4d (js) blocks | harness-cli | /Users/jordanknight/substrate/harness-engineering/harness/cli/test/services/scaffold/templates.test.ts · /Users/jordanknight/substrate/harness-engineering/docs/plans/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md | `wrapTs`/`wrapJs` verbatim tests pass against new bytes; workshop "emit §4a–4d verbatim" claim stays true | The partial-match test (`templates.test.ts:111-116`, asserts the `ctx.exec('just',['ci-smoke'])` + `re-run` substrings) is UNAFFECTED — those substrings survive. Don't over-edit it |
-| [ ] | FX002-3 | Build + full suite + commit | harness-cli | — | `npm run build` exit 0; vitest all pass; conventional commit `feat(scaffold): …` referencing FIND-3 | Repo conventions: `-c commit.gpgsign=false`, Copilot co-author trailer |
+| [x] | FX002-1 | Enrich `wrapTs` + `wrapJs`: honest `summary` (no TODO), self-timed exec, success Envelope `ctx.ok({ command, durationMs, stdout: <20-line tail> })`; error branch byte-identical | harness-cli | /Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/scaffold/templates.ts | Both builders emit the enriched body; `summary` contains no `TODO`; success `ok()` carries `durationMs` + `stdout` | ✅ `0aad609`. wrapTs + wrapJs both enriched; `splitCommand`/`argsLiteral` kept |
+| [x] | FX002-2 | Update the byte-exact fixtures + workshop source to match: `WRAP_TS_TEST` (`templates.test.ts:36-53`), `WRAP_JS_TEST` (`:68-84`), and workshop §4b (ts) + §4d (js) blocks | harness-cli | /Users/jordanknight/substrate/harness-engineering/harness/cli/test/services/scaffold/templates.test.ts · /Users/jordanknight/substrate/harness-engineering/docs/plans/006-add-extension-skill/workshops/001-scaffold-template-set-and-layout.md | `wrapTs`/`wrapJs` verbatim tests pass against new bytes; workshop "emit §4a–4d verbatim" claim stays true | ✅ `0aad609`. Both fixtures updated; §4b code block synced; §4d is prose ("same body as 4b") — no block, left as-is; partial-match test untouched + passing |
+| [x] | FX002-3 | Build + full suite + commit | harness-cli | — | `npm run build` exit 0; vitest all pass; conventional commit `feat(scaffold): …` referencing FIND-3 | ✅ `0aad609` `feat(scaffold): enrich --wrap boot Envelope…`. Build clean; **277/277** vitest green (from `harness/cli` cwd) |
 
 ## Workshops Consumed
 
