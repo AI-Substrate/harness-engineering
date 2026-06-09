@@ -40,3 +40,13 @@
 ### T005 — Wiring gate (PASS)
 - `minih skills doctor`: both sources exist; `eng-harness-0-harnessability-assessment`, `eng-harness-0-add-extension`, `eng-harness-4-retro` all discovered + **selected**.
 - `minih list` shows `validate-harness-flow` with `requiredParams:["targetRepo"]`, `hasInputSchema/OutputSchema/Instructions: true`. `minih check` (output + input samples) → `ok`. Cleared to build the orchestrator.
+
+### T006 — Orchestrator fire path + manifest — sha 5ec8069
+- Fork of `validate-harnessability.ts`. Clones express/click/cobra, fires one detached worker per clone, captures runIds, persists `runs/.last-fire.json`.
+- **AC-1 verified**: `harness help` lists it `status: loaded` (installed 2, failed 0, conflicts 0); `--help` renders all options. Extension transpiles + loads via `harness doctor` (extensions aren't in the `biome check harness/cli` scope — same as the sibling).
+- Fixed an em-dash typo (`—collect` → `--collect`) in the degraded message before commit.
+
+### T007 — `--collect` mode — sha (this commit)
+- `runCollect`: reads `.last-fire.json`, polls each run to terminal (report.json w/ terminal verdict, or `completed.json`/`failed.json`) up to `--wait` seconds (default 120), classifies DONE / TIMED_OUT / MISSING_REPORT / NOT_FIRED, copies each DONE child's `report.json` + `harnessability/latest.{md,json}` + `engineering-harness.md` + `retro/*.md` into `runs/<repo>/`, writes `runs/ROLLUP.md`.
+- **Synthetic E2E test** (3 fake runs: done/missing/timeout): counts DONE 1 / TIMED_OUT 1 / MISSING_REPORT 1; ROLLUP table + surfaced magic-wand/difficulty clusters + no-auto-implement banner correct; **idempotent** (re-run identical, no error); **child records untouched** (read-only copy out). AC-8/AC-9.
+- Uses `ctx.fs` (read-only) for reads + `ctx.exec` for cp/mkdir + the `printf %s` argv-only writer for ROLLUP — no `node:*`, never throws.

@@ -1,4 +1,4 @@
-import type { HarnessVerb, VerbContext } from 'harness-engineering/contract';
+import type { HarnessVerb, VerbContext, VerbResult } from 'harness-engineering/contract';
 
 /**
  * Dogfood self-test verb (plan 013): run the FULL harness setup flow on freshly
@@ -119,6 +119,294 @@ async function writeFile(ctx: VerbContext, path: string, content: string): Promi
   return r.ok;
 }
 
+/** Read + parse a JSON file via the read-only fs port; null on any failure. */
+function readJson<T>(ctx: VerbContext, path: string): T | null {
+  if (!ctx.fs.exists(path)) return null;
+  const text = ctx.fs.readText(path);
+  if (text == null) return null;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+/** Copy one file into destDir (mkdir -p first). Returns true on success. */
+async function copyInto(ctx: VerbContext, src: string, destDir: string): Promise<boolean> {
+  if (!ctx.fs.exists(src)) return false;
+  const mk = await ctx.exec('mkdir', ['-p', destDir]);
+  if (!mk.ok) return false;
+  const cp = await ctx.exec('cp', [src, destDir]);
+  return cp.ok;
+}
+
+type CollectState = 'DONE' | 'TIMED_OUT' | 'MISSING_REPORT' | 'NOT_FIRED';
+const TERMINAL_VERDICTS = new Set(['PASS', 'FAIL', 'ABANDONED']);
+
+interface WorkerReport {
+  targetRepo?: string;
+  harnessabilityGrade?: string | null;
+  axisTuple?: {
+    operateTodayPercent?: number;
+    operateTodayGrade?: string;
+    adaptabilityPercent?: number;
+    adaptabilityGrade?: string;
+  };
+  abandoned?: boolean;
+  abandonReason?: string | null;
+  governanceWritten?: boolean;
+  bootAuthored?: boolean;
+  bootRuns?: boolean;
+  retroRecorded?: boolean;
+  retroRecordPaths?: string[];
+  verdict?: string;
+  summary?: string;
+  retrospective?: {
+    workedWell?: string;
+    confusing?: string;
+    magicWand?: string;
+    magicWandTarget?: string;
+    difficulties?: Array<{ id?: string; layer?: string; category?: string; description?: string }>;
+  };
+}
+
+interface CollectResult {
+  repo: string;
+  runId: string | null;
+  runDir: string | null;
+  dest: string;
+  state: CollectState;
+  reportPath: string | null;
+  report: WorkerReport | null;
+  copied: string[];
+}
+
+/** True when the run reached a minih terminal state (a `completed.json` was written). */
+function runTerminated(ctx: VerbContext, runDir: string | null): boolean {
+  if (!runDir) return false;
+  return ctx.fs.exists(`${runDir}/completed.json`) || ctx.fs.exists(`${runDir}/failed.json`);
+}
+
+/** Read a worker's report.json if present + terminal-verdict; else null. */
+function readWorkerReport(
+  ctx: VerbContext,
+  runDir: string | null,
+): { path: string; report: WorkerReport } | null {
+  if (!runDir) return null;
+  const path = `${runDir}/output/report.json`;
+  const report = readJson<WorkerReport>(ctx, path);
+  if (report && typeof report.verdict === 'string' && TERMINAL_VERDICTS.has(report.verdict)) {
+    return { path, report };
+  }
+  return null;
+}
+
+/**
+ * `--collect`: wait for each fired worker to reach a terminal state, classify it
+ * (DONE / TIMED_OUT / MISSING_REPORT / NOT_FIRED), copy each DONE child's records +
+ * reports into `<runsDir>/<repo>/`, and write `<runsDir>/ROLLUP.md`. Idempotent;
+ * reads child records (never mutates them). Retros are SURFACED, never applied.
+ */
+async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult> {
+  const manifestPath = `${runsDir}/${MANIFEST_NAME}`;
+  const manifest = readJson<FireManifest>(ctx, manifestPath);
+  if (!manifest || !Array.isArray(manifest.runs) || manifest.runs.length === 0) {
+    return ctx.unconfigured(
+      `No fire manifest at ${manifestPath}. Run \`harness validate-harness-flow\` first to fire the workers, then \`--collect\`.`,
+    );
+  }
+
+  const waitSeconds =
+    typeof ctx.options.wait === 'string' ? Math.max(0, parseInt(ctx.options.wait, 10) || 0) : 120;
+  const pollEveryMs = 5;
+  const maxPolls = Math.max(1, Math.ceil((waitSeconds * 1000) / (pollEveryMs * 1000)) || 1);
+
+  // Poll all runs to terminal (early-exit when none are still pending), up to the cap.
+  const pending = new Set(manifest.runs.filter((r) => r.runId && r.runDir).map((r) => r.repo));
+  for (let poll = 0; poll < maxPolls && pending.size > 0; poll++) {
+    for (const r of manifest.runs) {
+      if (!pending.has(r.repo)) continue;
+      if (readWorkerReport(ctx, r.runDir) || runTerminated(ctx, r.runDir)) {
+        pending.delete(r.repo);
+      }
+    }
+    if (pending.size > 0) await ctx.exec('sleep', [String(pollEveryMs)]);
+  }
+
+  // Classify + copy.
+  const results: CollectResult[] = [];
+  for (const r of manifest.runs) {
+    const res: CollectResult = {
+      repo: r.repo,
+      runId: r.runId,
+      runDir: r.runDir,
+      dest: r.dest,
+      state: 'NOT_FIRED',
+      reportPath: null,
+      report: null,
+      copied: [],
+    };
+
+    if (!r.runId || !r.runDir) {
+      results.push(res);
+      continue;
+    }
+
+    const found = readWorkerReport(ctx, r.runDir);
+    if (found) {
+      res.state = 'DONE';
+      res.reportPath = found.path;
+      res.report = found.report;
+    } else if (runTerminated(ctx, r.runDir)) {
+      res.state = 'MISSING_REPORT';
+    } else {
+      res.state = 'TIMED_OUT';
+    }
+
+    if (res.state === 'DONE') {
+      const destDir = `${runsDir}/${r.repo}`;
+      // (1) the worker report
+      if (res.reportPath && (await copyInto(ctx, res.reportPath, destDir))) {
+        res.copied.push('report.json');
+      }
+      // (2) the harnessability report (from the clone)
+      for (const f of ['latest.md', 'latest.json']) {
+        const src = `${r.dest}/.harness/reports/harnessability/${f}`;
+        if (await copyInto(ctx, src, destDir)) res.copied.push(`harnessability/${f}`);
+      }
+      // (3) the hand-written governance doc (from the clone)
+      const gov = `${r.dest}/.harness/engineering-harness.md`;
+      if (await copyInto(ctx, gov, destDir)) res.copied.push('engineering-harness.md');
+      // (4) every retro the worker recorded (from the clone)
+      const retroDir = `${r.dest}/.harness/records/retro`;
+      if (ctx.fs.exists(retroDir)) {
+        for (const name of ctx.fs.readdir(retroDir)) {
+          if (!name.endsWith('.md')) continue;
+          if (await copyInto(ctx, `${retroDir}/${name}`, `${destDir}/retro`)) {
+            res.copied.push(`retro/${name}`);
+          }
+        }
+      }
+    }
+    results.push(res);
+  }
+
+  // Roll up + write.
+  const rollup = buildRollup(ctx, manifest, results);
+  const rollupPath = `${runsDir}/ROLLUP.md`;
+  await ctx.exec('mkdir', ['-p', runsDir]);
+  const wroteRollup = await writeFile(ctx, rollupPath, rollup);
+
+  const counts = tally(results);
+  const data = { runsDir, rollupPath: wroteRollup ? rollupPath : null, counts, results };
+  const stillPending = counts.TIMED_OUT;
+  const next_action =
+    `Aggregated ${results.length} run(s) into ${runsDir}/ (see ROLLUP.md). ` +
+    (stillPending > 0
+      ? `${stillPending} run(s) are still in flight — re-run \`harness validate-harness-flow --collect\` later to pick them up. `
+      : '') +
+    `The collected magic-wand / difficulty notes are SURFACED for your review — nothing is auto-implemented.`;
+
+  if (counts.DONE === 0) {
+    return ctx.degraded(data, next_action);
+  }
+  return ctx.ok(data, { next_action });
+}
+
+function tally(results: CollectResult[]): Record<CollectState, number> {
+  const t: Record<CollectState, number> = { DONE: 0, TIMED_OUT: 0, MISSING_REPORT: 0, NOT_FIRED: 0 };
+  for (const r of results) t[r.state]++;
+  return t;
+}
+
+/** Build the human-readable ROLLUP.md (a table + merged magic-wand / difficulty clusters). */
+function buildRollup(
+  ctx: VerbContext,
+  manifest: FireManifest,
+  results: CollectResult[],
+): string {
+  const counts = tally(results);
+  const lines: string[] = [];
+  lines.push('# validate-harness-flow — Run Rollup');
+  lines.push('');
+  lines.push(`**Collected**: ${ctx.clock.nowIso()}  ·  **Fired**: ${manifest.firedAt}`);
+  lines.push(`**Agent**: ${manifest.agentSlug}  ·  **Temp root**: ${manifest.tmpRoot}`);
+  lines.push('');
+  lines.push(
+    `**Totals**: DONE ${counts.DONE} · TIMED_OUT ${counts.TIMED_OUT} · MISSING_REPORT ${counts.MISSING_REPORT} · NOT_FIRED ${counts.NOT_FIRED}`,
+  );
+  lines.push('');
+  lines.push(
+    '> Retros + magic-wands below are **surfaced for review, never auto-implemented**. The only corrective change made during this work is repairing a broken record-write path.',
+  );
+  lines.push('');
+  lines.push('## Runs');
+  lines.push('');
+  lines.push('| Repo | State | Verdict | Grade | Operate/Adapt | Abandoned | Gov | Boot | Retro | Copied |');
+  lines.push('|------|-------|---------|-------|---------------|-----------|-----|------|-------|--------|');
+  for (const r of results) {
+    const rep = r.report;
+    const grade = rep?.harnessabilityGrade ?? '—';
+    const axis = rep?.axisTuple
+      ? `${rep.axisTuple.operateTodayGrade ?? '?'}/${rep.axisTuple.adaptabilityGrade ?? '?'}`
+      : '—';
+    const verdict = rep?.verdict ?? '—';
+    const abandoned = rep?.abandoned ? `yes${rep.abandonReason ? ` (${rep.abandonReason})` : ''}` : 'no';
+    const gov = rep ? (rep.governanceWritten ? '✓' : '✗') : '—';
+    const boot = rep ? (rep.bootAuthored && rep.bootRuns ? '✓' : rep.bootAuthored ? '~' : '✗') : '—';
+    const retro = rep ? (rep.retroRecorded ? '✓' : '✗') : '—';
+    lines.push(
+      `| ${r.repo} | ${r.state} | ${verdict} | ${grade} | ${axis} | ${abandoned} | ${gov} | ${boot} | ${retro} | ${r.copied.length} files |`,
+    );
+  }
+  lines.push('');
+
+  // Merged magic-wand wishes.
+  const wands = results
+    .filter((r) => r.report?.retrospective?.magicWand)
+    .map(
+      (r) =>
+        `- **${r.repo}** (${r.report?.retrospective?.magicWandTarget ?? 'project'}): ${r.report?.retrospective?.magicWand}`,
+    );
+  lines.push('## Magic-wand wishes (surfaced)');
+  lines.push('');
+  lines.push(wands.length ? wands.join('\n') : '_None recorded._');
+  lines.push('');
+
+  // Merged difficulties, grouped by layer.
+  lines.push('## Difficulties (surfaced)');
+  lines.push('');
+  const byLayer: Record<string, string[]> = {};
+  for (const r of results) {
+    for (const d of r.report?.retrospective?.difficulties ?? []) {
+      const layer = d.layer ?? 'project';
+      (byLayer[layer] ??= []).push(
+        `- **${r.repo}** \`${d.id ?? '?'}\`${d.category ? ` [${d.category}]` : ''}: ${d.description ?? ''}`,
+      );
+    }
+  }
+  const layers = Object.keys(byLayer);
+  if (layers.length === 0) {
+    lines.push('_None recorded._');
+  } else {
+    for (const layer of layers.sort()) {
+      lines.push(`### ${layer}`);
+      lines.push('');
+      lines.push(byLayer[layer].join('\n'));
+      lines.push('');
+    }
+  }
+  lines.push('');
+  lines.push('## Per-run artifacts');
+  lines.push('');
+  for (const r of results) {
+    if (r.copied.length === 0) continue;
+    lines.push(`- **${r.repo}/** — ${r.copied.join(', ')}`);
+  }
+  lines.push('');
+  return lines.join('\n');
+}
+
 const validateHarnessFlow: HarnessVerb = {
   name: 'validate-harness-flow',
   summary:
@@ -141,6 +429,10 @@ const validateHarnessFlow: HarnessVerb = {
       description: 'aggregate finished workers’ records + reports into the runs/ folder',
     },
     {
+      flags: '--wait <seconds>',
+      description: 'with --collect: max seconds to poll workers to a terminal state (default 120)',
+    },
+    {
       flags: '--out <dir>',
       description: `collection sink dir (default ${RUNS_DIR_DEFAULT})`,
     },
@@ -157,11 +449,9 @@ const validateHarnessFlow: HarnessVerb = {
 
     const runsDir = typeof ctx.options.out === 'string' ? ctx.options.out : RUNS_DIR_DEFAULT;
 
-    // --collect mode lands in T007.
+    // --collect mode: wait for terminal children, classify, copy records, write ROLLUP.
     if (ctx.options.collect === true) {
-      return ctx.unconfigured('`--collect` is implemented in T007; run the fire path first.', {
-        data: { runsDir },
-      });
+      return runCollect(ctx, runsDir);
     }
 
     // 1. Resolve targets + flags.
