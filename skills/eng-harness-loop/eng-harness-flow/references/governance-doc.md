@@ -65,7 +65,7 @@ Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity s
 
 | Event | What changes | Who |
 |---|---|---|
-| **Inception** (once) | the doc is *created* with the BIO headings, the signal inventory skeleton, evidence paths, and the seed maturity snapshot | **setup** — provisioned at inception. *(The deterministic writer, a `harness init` CLI command, is **deferred to a later plan**; until it ships, this rung is **owed, not provisioned** — setup attempts `npx harness init` with a graceful fallback, and boot/router degrade to `UNAVAILABLE` rather than erroring.)* |
+| **Inception** (once) | the doc is *created* with the BIO headings, the signal inventory skeleton, evidence paths, and the seed maturity snapshot | **the deferred `harness init` writer** (a CLI command). It is **deferred to a later plan**; until it ships, this rung is **owed, not provisioned** — setup attempts `npx harness init` with a graceful fallback, and boot/router degrade to `UNAVAILABLE` rather than erroring. (Setup *drives* setup; it does not itself generate the governance doc.) |
 | **Improve beat** (on a capability change) | the **body** (boot cmd / signals / evidence paths / back-pressure gaps) **and** the **current maturity snapshot** are edited to match new reality; a row is appended to `.harness/history.md` | the Improve beat — when the harness gains or changes a capability |
 | **Every other loop run** | **nothing** — boot reads, observe writes its buffer, retro writes `.retro.md`; the governance doc is untouched | — |
 

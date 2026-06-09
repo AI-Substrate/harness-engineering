@@ -33,7 +33,7 @@ Two grouped concepts, kept separate:
 - **🧰 Harness setup & installation** — the one-time *process* (`eng-harness-0-setup`) that *establishes* the substrate: install, scout, a **working boot command + governance**, and the injection point. **Boot is built LAST** in setup, deliberately, so the moment it's built you *run* it and flow straight into the dev loop ("build boot, run boot, then try the shiny new harness").
 - **⚙️ Engineering flows** — the repeated ready-for-coding loop that *runs* it. Its first step **re-runs** the boot that setup built; it never *creates* boot.
 
-The router doesn't sit *inside* either zone — it sits *beside* them and points the caller at the right step. A single "harness functional?" gate is **not** enough to enter the engineering loop: the 🧰 setup process must have *established* the substrate, in order, ending with boot. The router walks the rungs and routes the **first missing one** to the setup step that provisions it.
+The router doesn't sit *inside* either zone — it sits *beside* them and points the caller at the right step. A single "harness functional?" gate is **not** enough to enter the engineering loop: the 🧰 setup process must have *established* the substrate, in order, ending with boot. The router walks the rungs and routes the **first missing one** to the setup step that owns it — though provisioning the governance/boot rungs is the deferred `harness init` writer's job (see *owed, not provisioned* below), so for those the router routes/attempts rather than claiming setup provisions them now.
 
 ### The 🧰 setup gate (in order; boot LAST)
 
@@ -92,7 +92,7 @@ The router decides purely from signals it can **read** (no state of its own). Th
 
 ### Decision order
 
-1. **Parent hint first (J).** An explicit `at=`/`--event` is honoured **only if its precondition holds** (validated by the setup gate + the conflict matrix). Otherwise the router **redirects** to the setup step that provisions it and says why — it never blindly runs the named stage when signals contradict it.
+1. **Parent hint first (J).** An explicit `at=`/`--event` is honoured **only if its precondition holds** (validated by the setup gate + the conflict matrix). Otherwise the router **redirects** to the setup step that owns the missing rung and says why — it never blindly runs the named stage when signals contradict it. (For the governance/boot rungs, "owns" means routes-or-attempts the deferred `harness init` writer, not "provisions now" — see *owed, not provisioned*.)
 2. **Then the 🧰 setup gate** (S0 → S1 → S2 → S3 → **S4 boot last**). Route the first missing **required** rung (S0, S2, S4); *offer* the skippable rungs (S1, S3) without blocking.
 3. **Then the ⚙️ engineering dispatch** (the table above), keyed on `--event` / signals H · I, with drain-before-harvest and ambiguous-not-guessed.
 
@@ -280,7 +280,7 @@ This is the inversion of `the-flow`'s hard-coded harness cues: instead of a pare
 
 ## Relationship to existing skills (anti-reinvention)
 
-- **`eng-harness-0-setup`** already *is* a flow (install → assess → basic boot). This router does **not** duplicate it — when any setup rung is incomplete it **delegates** to setup. Setup owns the *establishment* of the harness (governance + the boot command); the router owns "which setup rung is owed, or are we past setup and into engineering?"
+- **`eng-harness-0-setup`** already *is* a flow (install → assess → basic boot). This router does **not** duplicate it — when any setup rung is incomplete it **delegates** to setup. Setup *drives* the establishment of the harness (it installs, scouts, helps author boot); the governance doc itself is provisioned by the deferred `harness init` writer — until it ships, setup routes/attempts it and the governance rung stays **owed, not provisioned**. The router owns "which setup rung is owed, or are we past setup and into engineering?"
 - **`the-flow`** owns the **SDD** journey (stateful) and already narrates harness cues. Clean separation: `the-flow` = pipeline guide; `eng-harness-flow` = loop router (stateless).
 - **The four loop skills** (`eng-harness-1-boot`, `-2-backpressure`, `-3-observe`, `-4-retro`) stay exactly as they are — the router only chooses *which* to surface and *when*.
 
