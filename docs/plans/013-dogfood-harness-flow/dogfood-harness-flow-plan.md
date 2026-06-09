@@ -82,22 +82,22 @@ Add a second dogfood extension, `harness validate-harness-flow`, that mirrors `v
 | [x] | T009 | **Culminating 3-parallel smoke** (AC-12): run the default 3 targets (Node/Python/Go) concurrently, wait for terminal, then `--collect` | dogfood extensions | `.harness/extensions/validate-harness-flow.ts`, `docs/plans/013-…/runs/` | All 3 fire; after terminal, `--collect` yields three `runs/<repo>/` dirs + `runs/ROLLUP.md`; ≥1 PASS, abandonment path exercised if any repo scores poorly | Default pool: `expressjs/express`, `pallets/click`, `spf13/cobra` (alternates held for re-fire on ABANDONED) |
 | [x] | T010 | **Dogfood the flow on THIS repo, continuously** (AC-10): as we build (across T001–T012) use the harness loop ourselves — `eng-harness-3-observe` to capture friction live, `harness record retro` to author our own retros at task/phase seams, `eng-harness-flow`/`doctor` for orientation; collect our own records alongside the children's | harness record | `.harness/records/retro/`, `docs/plans/013-…/runs/` | ≥1 `.harness/records/retro/*.md` authored by us **during** the build (not only at the end); included in the final rollup/report | Continuous process task; uses the reloaded harness/skills; **our own records are snapshotted once in T12 (after build tasks cease), not via a mid-flight `--collect`** — avoids racing in-flight writers; retros surfaced, never auto-implemented (AC-9) |
 | [x] | T011 | Write the `docs/how/` guide (AC-11): what the extension does, the recipe, the `--collect`/rollup flow, the no-auto-implement guarantee | docs | `docs/how/dogfood-harness-flow.md` | Guide present, links the extension + agent + `runs/ROLLUP.md`; pointer added from `README`/`skills/README` if a discoverability gap exists | Matches existing `docs/how/` guides |
-| [ ] | T012 | **Report back** (AC-10 culmination): summarize the children's + our own collected records (counts, key magic-wand/difficulty clusters), present improvement options — **do not implement them** | collection sink | `docs/plans/013-…/runs/ROLLUP.md` | A final summary presented to the user; options surfaced for the user to optionally pursue deeper; nothing auto-applied | Closes the loop; AC-9 |
+| [x] | T012 | **Report back** (AC-10 culmination): summarize the children's + our own collected records (counts, key magic-wand/difficulty clusters), present improvement options — **do not implement them** | collection sink | `docs/plans/013-…/runs/ROLLUP.md` | A final summary presented to the user; options surfaced for the user to optionally pursue deeper; nothing auto-applied | Closes the loop; AC-9 |
 
 ### Acceptance Criteria
 
-- [ ] AC-1 — `harness validate-harness-flow` registered (`help`/`doctor` loaded; `--help` renders). *(T006)*
-- [ ] AC-2 — Clones default 3 (Node/Python/Go), fires one detached worker per clone, returns immediately with runIds + `next_action`. *(T006, T009)*
-- [ ] AC-3 — Options `--repo`, `--keep`, `--model`, `--github`, `--collect`; never throws; every non-ok carries `next_action`. *(T006, T007)*
-- [ ] AC-4 — Worker agent folder defines all 5 files with the specified frontmatter/rules. *(T001–T004)*
-- [ ] AC-5 — One worker completes the recipe end-to-end (install→assess→governance(8 BIO fields)→boot boots→retro), schema-valid report + on-disk artifacts. *(T008)*
-- [ ] AC-6 — Report carries the full field set incl. the fixed assessment→report mapping. *(T002, T008)*
-- [ ] AC-7 — Abandonment path: poor harnessability ⇒ `verdict: ABANDONED` + reason, reported not FAILed; operator re-fires via `--repo`. *(T003, T009)*
-- [ ] AC-8 — `--collect` waits for terminal children, classifies DONE/TIMED_OUT/MISSING_REPORT, copies records/reports into `runs/<repo>/`, writes `runs/ROLLUP.md`; never mutates child records. *(T007, T009)*
-- [ ] AC-9 — No auto-implement anywhere; only a broken record-write path may be fixed mid-work. *(T007, T008, T012)*
-- [ ] AC-10 — We dogfood the flow on this repo, record our own retros, and report all records back. *(T010, T012)*
-- [ ] AC-11 — `docs/how/` guide documents extension + recipe + collection/report. *(T011)*
-- [ ] AC-12 — Culminating 3-parallel fire-and-collect smoke proves the full path. *(T009)*
+- [x] AC-1 — `harness validate-harness-flow` registered (`help`/`doctor` loaded; `--help` renders). *(T006)*
+- [x] AC-2 — Clones default 3 (Node/Python/Go), fires one detached worker per clone, returns immediately with runIds + `next_action`. *(T006, T009)*
+- [x] AC-3 — Options `--repo`, `--keep`, `--model`, `--github`, `--collect`; never throws; every non-ok carries `next_action`. *(T006, T007)*
+- [x] AC-4 — Worker agent folder defines all 5 files with the specified frontmatter/rules. *(T001–T004)*
+- [x] AC-5 — One worker completes the recipe end-to-end (install→assess→governance(8 BIO fields)→boot boots→retro), schema-valid report + on-disk artifacts. *(T008)*
+- [x] AC-6 — Report carries the full field set incl. the fixed assessment→report mapping. *(T002, T008)*
+- [x] AC-7 — Abandonment path: poor harnessability ⇒ `verdict: ABANDONED` + reason, reported not FAILed; operator re-fires via `--repo`. *(T003, T009)*
+- [x] AC-8 — `--collect` waits for terminal children, classifies DONE/TIMED_OUT/MISSING_REPORT, copies records/reports into `runs/<repo>/`, writes `runs/ROLLUP.md`; never mutates child records. *(T007, T009)*
+- [x] AC-9 — No auto-implement anywhere; only a broken record-write path may be fixed mid-work. *(T007, T008, T012)*
+- [x] AC-10 — We dogfood the flow on this repo, record our own retros, and report all records back. *(T010, T012)*
+- [x] AC-11 — `docs/how/` guide documents extension + recipe + collection/report. *(T011)*
+- [x] AC-12 — Culminating 3-parallel fire-and-collect smoke proves the full path. *(T009)*
 
 ### Risks
 

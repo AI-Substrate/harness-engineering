@@ -1,0 +1,85 @@
+{
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-09T13-13-49-111Z/chalk",
+  "harnessSource": "local",
+  "harnessInstalled": true,
+  "harnessabilityGrade": "B",
+  "axisTuple": {
+    "operateTodayPercent": 77.8,
+    "operateTodayGrade": "B",
+    "adaptabilityPercent": 77.8,
+    "adaptabilityGrade": "B"
+  },
+  "assessmentReportPaths": {
+    "latestJson": ".harness/reports/harnessability/latest.json",
+    "latestMd": ".harness/reports/harnessability/latest.md",
+    "runDir": ".harness/reports/harnessability/001-chalk"
+  },
+  "abandoned": false,
+  "abandonReason": null,
+  "governanceWritten": true,
+  "governancePath": ".harness/engineering-harness.md",
+  "bootAuthored": true,
+  "bootRuns": true,
+  "bootPath": ".harness/extensions/boot.ts",
+  "retroRecorded": true,
+  "retroRecordPaths": [
+    ".harness/records/retro/2026-06-09-chalk-flow.md"
+  ],
+  "verdict": "PASS",
+  "summary": "Ran the full harness setup flow on the fresh Chalk clone: installed the local harness core, verified `harness doctor`, produced a skill-driven harnessability assessment with final grade B and a B/B two-axis tuple, hand-wrote the required BIO governance doc from the template, scaffolded the boot extension with `harness new boot --wrap \"npm test\"`, verified `boot` in doctor/help and executed `harness boot --json` successfully against `npm test`, then scaffolded and filled a retro record through `harness record retro`.",
+  "harnessDoctorStatus": "degraded",
+  "harnessDoctorNotes": "The post-install and final doctor runs reported degraded because the consumer clone lacks `harness/cli/dist`; extensions and record types loaded, so this was treated as the known consumer-mode wart rather than an install failure.",
+  "bootResult": {
+    "status": "ok",
+    "exitCode": 0,
+    "wrappedCommand": "npm test",
+    "proofLane": "xo && c8 ava && tsd",
+    "observedTests": "32 AVA tests passed; c8 coverage and tsd completed under npm test."
+  },
+  "retrospective": {
+    "workedWell": "Repo-local skill resolution worked through `.minih.json`, local package installation with `--prefix` kept dependencies inside the clone, `harness new --wrap` produced a loadable boot extension, and `harness record retro --json` returned a deterministic retro path.",
+    "confusing": "`harness doctor` reports a degraded `cli-build` layer in package-consumer mode even when the installed `npx harness` works, and the setup flow still requires hand-writing governance because `harness init` is deferred.",
+    "magicWand": "Ship `harness init` so `.harness/engineering-harness.md` can be generated from the BIO template and repo evidence instead of being hand-written during the setup flow.",
+    "magicWandTarget": "project",
+    "coordination": {
+      "peerUpdatesSent": 0,
+      "unresolvedPeerRequests": 0,
+      "statePublished": false,
+      "notes": "No cross-agent coordination was used in this single-shot run."
+    },
+    "difficulties": [
+      {
+        "id": "VF-001",
+        "layer": "project",
+        "category": "config",
+        "description": "`harness doctor --json` in the consumer clone reported degraded `cli-build` because it expected `harness/cli/dist/index.js` in the target repo, even though `npx harness` and extension loading worked.",
+        "mitigation": "Recorded it as the known consumer-mode wart and independently verified install, doctor layers, help, boot execution, and record creation.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-002",
+        "layer": "minih",
+        "category": "data",
+        "description": "A broad file glob after installing dependencies traversed `node_modules`, timed out, and produced a huge partial result.",
+        "mitigation": "Switched to tracked-file inspection with `git ls-files` and narrow file reads.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-003",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "There is no shipped `harness init` writer, so governance had to be hand-written from the BIO template even though the rest of setup is skill-driven.",
+        "mitigation": "Used the governance template and verified all eight required BIO headings in `.harness/engineering-harness.md`.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-004",
+        "layer": "project",
+        "category": "config",
+        "description": "`harness new boot --wrap \"npm test\"` scaffolded a working extension but left a TODO summary and minimal success data, which was too sparse for an observable boot Envelope.",
+        "mitigation": "Kept the scaffolded handler and filled in a real summary, description, command, exit code, proof lane, and output tails.",
+        "severity": "annoying"
+      }
+    ]
+  }
+}

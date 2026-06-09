@@ -66,3 +66,18 @@
 - **Cross-repo signal (surfaced, not implemented):** all 3 independently wished for a shipped `harness init` / headless `harness setup` (the governance writer); all 3 hit `harness doctor` reporting `cli-build degraded` in the consumer clone (dist not built there); cobra flagged `npm install $MINIH_PROJECT_ROOT` is unsafe in a no-package.json Go repo (npm picked /tmp prefix); all 3 flagged a VF-NNN vs MH-NNN numbering-example conflict in the record template.
 - **Retro-copy timing nuance (dogfood finding about THIS tool):** a single `--collect` run copies whatever exists when `report.json` first shows a terminal verdict; if a worker flushes its retro a moment after the report, the first pass can miss it. The **idempotent re-run** (the designed TIMED_OUT safety net) picks it up — verified: re-run copied all 3 retros. Per Finding 03 this is **surfaced, not auto-fixed** (it is a copy-timing nuance, not a broken record-WRITE path).
 - No worker reported `harness record` itself erroring, so no carve-out record-path repair was needed.
+
+### Companion debrief + fixes (F001–F008)
+- The `code-review-companion` (run ef6f) wrote a farewell with **8 findings** (filed in its report, not inbox) + a retro. All addressed as **build-quality fixes to our own new code** (distinct from the harvested dogfood retros, which we only surface):
+  - **F003 (HIGH)** worker prompt trusted `$MINIH_PROJECT_ROOT` (empty in minih shells) → now resolves PROJECT_ROOT via `git rev-parse --show-toplevel` + fail-fast, installs with `--prefix "$targetRepo"` (+ `npm init -y` for no-package.json repos). Confirmed by express/cobra VF-001.
+  - F001/F004 abandonment gate reconciled to **D/E/F (below C)** across spec + plan.
+  - F002 output-schema requires `retroRecordPaths` + conditionally `abandonReason` (verified rejects abandoned-without-reason).
+  - F005 instructions exit-code mapping fixed (degraded→0, unconfigured→2, error→1).
+  - F006 retro setsid wording corrected. F007 `.last-fire.json` untracked + gitignored. F008 ROLLUP banner reworded ("permitted", not "made").
+
+### Regression — hardened prompt re-run (chalk) — PASS
+- Re-fired one chalk worker AFTER the F003 fix: **verdict PASS**, B/B, schema-valid, governance/boot/retro all ✓.
+- **The fix worked:** the regression run's difficulties **no longer include** the `MINIH_PROJECT_ROOT`-empty or npm `/tmp`-prefix friction; only the persistent product findings remain (consumer-mode `cli-build degraded`, no `harness init`, boot-scaffold TODO summary). Collected to `runs/smoke-regression/`.
+
+### Build complete
+- All 12 tasks done; all 12 ACs met. 4 worker runs total, **all PASS** (chalk ×2, express, click, cobra). No abandonment occurred (all repos graded B). No record-write path was broken (no carve-out fix needed). Retros surfaced in `runs/ROLLUP.md` + `docs/retros/validate-harness-flow.md`, **none auto-implemented**.
