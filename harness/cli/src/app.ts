@@ -3,6 +3,7 @@ import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
 import { registerNewAct } from './acts/new.js';
+import { registerSkillsAct } from './acts/skills.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
@@ -148,6 +149,7 @@ export function buildProgram(
   registerDoctorAct(program, io, registry);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
+  registerSkillsAct(program, io, deps);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
   }
