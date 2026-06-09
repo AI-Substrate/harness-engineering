@@ -1,7 +1,7 @@
 ---
 name: eng-harness-4-retro
 description: |
-  Retro and Magic Wand stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). One skill, two modes. `--drain` (session-end soft prompt) reads `docs/harness/_buffers/<agent>.session-buffer.md`; if non-empty, presents a single soft prompt with `[s/t/p/e/d/a]` action menu and a one-line encoding hint per entry; routes saved entries into per-run `.retro.md` files under `docs/harness/agents/<agent>/<date>/`. `--harvest` (long-horizon curation) scans `docs/harness/agents/**/*.retro.md` (canonical) plus legacy `docs/retros/*.md` (back-compat), validates against the universal schema, dedups, clusters by kind + target, ages stale entries, and prints a prioritized terminal view (`--json` for tooling). Encode, don't document. Empty buffer / empty tree = silent. NO on-disk index files — views computed at read time.
+  Retro and Magic Wand stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). One skill, two modes. `--drain` (session-end soft prompt) reads the gitignored scratch buffer `.harness/temp/<agent>/session-buffer.md`; if non-empty, presents a single soft prompt with `[s/t/p/e/d/a]` action menu and a one-line encoding hint per entry; materializes saved entries into a committed record via `harness record retro` under `.harness/records/retro/`. `--harvest` (long-horizon curation) scans `.harness/records/retro/*.md` (new canonical) plus legacy `docs/harness/agents/**/*.retro.md` and `docs/retros/*.md` (back-compat), validates against the universal schema, dedups, clusters by kind + target, ages stale entries, and prints a prioritized terminal view (`--json` for tooling). Encode, don't document. Empty buffer / empty tree = silent. NO on-disk index files — views computed at read time.
 ---
 
 # eng-harness-4-retro
@@ -15,8 +15,8 @@ The **Retro** stage of the harness loop. The place the loop turns observation in
 ```
 $ARGUMENTS
 # Modes:
-# --drain      Session-end: read the per-agent buffer, present the soft prompt, route entries to .retro.md
-# --harvest    Long-horizon: scan + cluster + prioritize .retro.md files; print the curated view
+# --drain      Session-end: read the per-agent scratch buffer, present the soft prompt, materialize saved entries into a committed record via `harness record retro`
+# --harvest    Long-horizon: scan + cluster + prioritize record/retro files; print the curated view
 # --harvest --json   Machine-readable render of the harvest view (for `just compound-value`, CI hooks)
 # Plus --harvest runtime filters: --plan <slug> / --agent <slug> / --since <date> / --kind <kind>
 # Plus --harvest --prune --older-than <Nd> [--apply]   Reversible stale-retro pruning (dry-run by default)
@@ -24,8 +24,8 @@ $ARGUMENTS
 
 | Mode | Replaces | When | What it does |
 |------|----------|------|--------------|
-| `--drain` | session-end bubble | end of session / logical pause / cross-session leftover | Drains the per-agent buffer via the `[s/t/p/e/d/a]` menu into `.retro.md` |
-| `--harvest` | long-horizon curate | FINAL phase / merge end / review end / ad-hoc | Scans + clusters + prioritizes `.retro.md` files; prints the curated view (or `--json`) |
+| `--drain` | session-end bubble | end of session / logical pause / cross-session leftover | Drains the per-agent scratch buffer via the `[s/t/p/e/d/a]` menu into a committed `harness record retro` |
+| `--harvest` | long-horizon curate | FINAL phase / merge end / review end / ad-hoc | Scans + clusters + prioritizes record/retro files (`.harness/records/retro/*` + legacy); prints the curated view (or `--json`) |
 
 The producer that fills the buffer `--drain` reads is `eng-harness-3-observe`. The Boot stage is `eng-harness-1-boot`.
 
@@ -49,9 +49,9 @@ This skill is always on. There is no `.disabled` opt-out — if a user doesn't w
 
 ### Step 1 — Read the buffer
 
-Path: `docs/harness/_buffers/<agent>.session-buffer.md`
+Path: `.harness/temp/<agent>/session-buffer.md` (gitignored crash-resilient scratch)
 
-Where `<agent>` is the calling CLI's slug (claude-code, codex, github-copilot, opencode, pi, or a companion slug like plan-6-companion).
+Where `<agent>` is the calling CLI's slug (claude-code, codex, github-copilot, opencode, pi, or a companion slug like plan-6-companion). The path is deterministic — re-derive it from your agent slug after a `/compact` or lost context window.
 
 If the file is missing or empty → silent (no prompt). Exit.
 
@@ -97,7 +97,14 @@ Notes on the prompt:
 
 #### `[a]ll-save` (default)
 
-Wrap all buffer entries in a single universal retro envelope and write one `.retro.md` file:
+Wrap all buffer entries in a single universal retro envelope and write one **committed** record. Don't hand-compute the path — call the core CLI to scaffold the file, then fill it:
+
+```bash
+harness record retro --slug "<plan-id-or-session-label>" --json
+# → { "status":"ok", "data": { "path": ".harness/records/retro/<date>-<slug>.md", ... } }
+```
+
+Use the returned `data.path` (under `.harness/records/retro/`, collision-suffixed `-NNN` automatically — never clobbers) and write the universal retro envelope into it:
 
 ```yaml
 ---
@@ -116,11 +123,11 @@ system:
 ---
 ```
 
-File path via `resolvePath()` (workshop 006 § Path Resolver):
+The committed record lands at:
 
-`docs/harness/agents/<slugified-agent>/<YYYY-MM-DD>/T<HH-MM-SS>Z-<hash>.retro.md`
+`.harness/records/retro/<YYYY-MM-DD>-<slug>.md` (the CLI owns placement + the never-clobber collision counter)
 
-Then **clear the buffer** (truncate to empty; keep the file).
+If `harness record` reports `unconfigured` (no `.harness/` here) treat it as `UNAVAILABLE` and stay silent — the buffer scratch is preserved for a later drain. Then **clear the buffer** (truncate to empty; keep the file) once the record is written.
 
 #### `[s]ave` (selective save)
 
@@ -205,7 +212,7 @@ When saving, populate `frontmatter.plan_id` from:
 
 At the start of any auto-firing skill, before doing its primary work, check the buffer:
 
-- If `_buffers/<agent>.session-buffer.md` is non-empty → fire `eng-harness-4-retro --drain` immediately
+- If `.harness/temp/<agent>/session-buffer.md` is non-empty → fire `eng-harness-4-retro --drain` immediately
 - Then proceed with the skill's primary work
 
 This catches entries left over from a prior session (e.g. the user pressed Ctrl-C before the auto-drain fired).
@@ -257,15 +264,17 @@ The reader/curator side of the loop. Auto-fires at long-horizon reflection momen
 
 ### Buffer-non-empty advisory
 
-At start, check `docs/harness/_buffers/<agent>.session-buffer.md` for the calling agent. If non-empty → print one line before scanning:
+At start, check `.harness/temp/<agent>/session-buffer.md` for the calling agent. If non-empty → print one line before scanning:
 
 > ℹ️ Buffer has N unbubbled entries. Consider running `/eng-harness-4-retro --drain` first so they land in the harvest view.
 
-Then proceed with the scan anyway (the harvest reads `.retro.md` files; buffer entries are unrelated).
+Then proceed with the scan anyway (the harvest reads committed record/retro files; buffer scratch is unrelated).
 
 ### Step 1 — Scan + validate
 
-**Canonical path**: `docs/harness/agents/**/*.retro.md`
+**Canonical path (new)**: `.harness/records/retro/*.md` — the committed records created by `harness record retro` (the path `--drain` materializes).
+
+**Legacy canonical path (back-compat)**: `docs/harness/agents/**/*.retro.md` — pre-`harness record` per-run retro files. Still scanned so no existing retro becomes invisible.
 
 For each file:
 - Parse the YAML frontmatter (between the first two `---` lines)
@@ -283,7 +292,7 @@ For each file (skip `*.legacy.md` — those are post-migration archives):
 
 ### Step 2 — Dedup by `retro_id`
 
-If the same `retro_id` appears in both the canonical and back-compat paths (rare; happens during minih dual-write phase), the **canonical (universal) version wins**. Skip the back-compat copy.
+If the same `retro_id` appears in more than one source (new `.harness/records/retro/`, legacy `docs/harness/agents/**`, or back-compat `docs/retros/*`), the newest-canonical universal version wins, in precedence order `.harness/records/retro/` → `docs/harness/agents/**` → `docs/retros/*`. Skip the lower-precedence copies.
 
 ### Step 3 — Schema-version skew handling
 
@@ -487,13 +496,13 @@ The harvest computes the view in <1s for typical repos (≤100 retros). Re-compu
 For ad-hoc shell-level browsing without the skill:
 
 ```bash
-ls docs/harness/agents/*/$(date -u +%Y-%m-%d)/                # today's retros
-ls docs/harness/agents/<agent>/                                # one agent's date dirs
-cat docs/harness/agents/<agent>/<date>/*.retro.md              # the files themselves
-grep -l 'plan_id: "023-' docs/harness/agents/*/*/*.retro.md    # all plan-023 retros
+ls .harness/records/retro/                                    # all retro records (new canonical)
+cat .harness/records/retro/$(date -u +%Y-%m-%d)-*.md          # today's records
+grep -l 'plan_id: "012-' .harness/records/retro/*.md          # all plan-012 records
+ls docs/harness/agents/*/                                      # legacy per-run retros (back-compat)
 ```
 
-The tree IS the browse surface. Harvest is for clustered/prioritized views; shell tools are for raw browsing.
+The record dir IS the browse surface. Harvest is for clustered/prioritized views; shell tools are for raw browsing.
 
 ---
 

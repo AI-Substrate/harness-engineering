@@ -1,7 +1,7 @@
 ---
 name: eng-harness-3-observe
 description: |
-  Observe stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve) — the Observe half of Do Work and Observe. Silent producer: called silently during a session whenever friction or insight arises — logs one entry per call to `docs/harness/_buffers/<agent>.session-buffer.md`. No user output during work; the only user surface is `eng-harness-4-retro --drain` at session end. Tracks compounding value — every difficulty catalogued is a gift to your future self. Calibrated for ≤1 self-prompt per 5 minutes and ≤5 entries per session (anti-vibe 7 mitigation).
+  Observe stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve) — the Observe half of Do Work and Observe. Silent producer: called silently during a session whenever friction or insight arises — logs one entry per call to the crash-resilient scratch buffer at `.harness/temp/<agent>/session-buffer.md` (gitignored). No user output during work; the only user surface is `eng-harness-4-retro --drain` at session end, which materializes a committed record via `harness record retro`. Tracks compounding value — every difficulty catalogued is a gift to your future self. Calibrated for ≤1 self-prompt per 5 minutes and ≤5 entries per session (anti-vibe 7 mitigation).
 ---
 
 # eng-harness-3-observe
@@ -45,26 +45,30 @@ After finishing a discrete task, sharpen that reflex into a **proof-gap self-che
 
 These are soft targets, not enforced. The Compounding Test signal at the 1-week mark will tell us if they need adjustment.
 
-## Sentinel check
+## Always on (no opt-out)
 
-If `docs/harness/.disabled` exists → silently no-op. Do not log, do not prompt, do not error. The opt-out is absolute.
+This skill is always on. There is no `.disabled` opt-out — if a user doesn't want friction observed, they simply say so in chat; the calling agent stops invoking this skill.
 
 ## Buffer path
 
-`docs/harness/_buffers/<agent>.session-buffer.md`
+`.harness/temp/<agent>/session-buffer.md`
+
+This is **crash-resilient scratch** — gitignored working memory that survives `/compact` or a lost context window. It is NOT the durable output: at session end `eng-harness-4-retro --drain` reads this buffer and materializes a **committed** record via `harness record retro` under `.harness/records/retro/`. (Buffer = ephemeral scratch in `.harness/temp/`; record = committed output in `.harness/records/`.)
 
 Where `<agent>` is the calling CLI's slug (lowercase kebab-case):
 
-- Claude Code → `claude-code.session-buffer.md`
-- Codex → `codex.session-buffer.md`
-- GitHub Copilot → `github-copilot.session-buffer.md`
-- OpenCode → `opencode.session-buffer.md`
-- Pi → `pi.session-buffer.md`
-- Minih companion → `<companion-slug>.session-buffer.md` (e.g. `plan-6-companion.session-buffer.md`)
+- Claude Code → `.harness/temp/claude-code/session-buffer.md`
+- Codex → `.harness/temp/codex/session-buffer.md`
+- GitHub Copilot → `.harness/temp/github-copilot/session-buffer.md`
+- OpenCode → `.harness/temp/opencode/session-buffer.md`
+- Pi → `.harness/temp/pi/session-buffer.md`
+- Minih companion → `.harness/temp/<companion-slug>/session-buffer.md` (e.g. `.harness/temp/plan-6-companion/session-buffer.md`)
 
 Per-agent buffer means two simultaneous agents on the same repo don't trample each other's entries.
 
-If the buffer file doesn't exist, create it (touch). If `_buffers/` doesn't exist, **no-op gracefully** — this skill never scaffolds. A missing `docs/harness/` ledger tree means the harness ledger isn't provisioned yet; provisioning it is the separate engineering-harness setup effort's job, not the producer's. Report `UNAVAILABLE` and exit silently.
+`.harness/temp/` is gitignored scratch you may freely create and use as a general working-storage spot. If the buffer file (or its `<agent>/` dir) doesn't exist, create it (`mkdir -p .harness/temp/<agent>/` then touch) — unlike the committed ledger, creating gitignored scratch is always safe. The CLI also ensures `.harness/temp/` exists + is gitignored on first `harness record` use.
+
+**Path re-derivation on context loss**: the buffer path is deterministic — `.harness/temp/<agent>/session-buffer.md` — so after a `/compact` or a dropped context window, re-derive it from your own agent slug and resume appending (or drain) without losing prior entries. This is the whole point of putting the buffer on disk in a gitignored scratch dir.
 
 ## Entry format
 
@@ -159,10 +163,9 @@ The point is: ask once per natural pause, only when otherwise silent.
 
 ## Edge cases
 
-- **Sentinel mid-write**: if `.disabled` appears between two calls, subsequent calls no-op. Already-written entries stay until next bubble.
-- **Concurrent agents**: per-agent buffer files mean no collision. Two agents call eng-harness-3-observe simultaneously → two different files.
+- **Concurrent agents**: per-agent buffer files mean no collision. Two agents call eng-harness-3-observe simultaneously → two different files under `.harness/temp/<agent>/`.
 - **Malformed entry**: if the agent constructs an invalid entry (missing required field), the write fails. Better to skip the entry than to corrupt the buffer.
-- **Buffer file missing**: create it (touch). The first entry initializes it. If `_buffers/` is also missing, **no-op gracefully** (report `UNAVAILABLE`, exit silently) — the producer never auto-scaffolds; provisioning `docs/harness/` is the separate engineering-harness setup effort's job.
+- **Buffer file missing**: create it (`mkdir -p .harness/temp/<agent>/` then touch). The first entry initializes it. `.harness/temp/` is gitignored scratch — creating it is always safe, even before the harness ledger is otherwise provisioned.
 - **Inference gap discovered late**: log the missing signal as the friction, not just the symptom. Prefer "no smoke/evidence path proved X" over "I was confused", because the former is encodable into deterministic back-pressure.
 
 ## Producer-side annotation
