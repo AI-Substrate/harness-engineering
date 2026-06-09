@@ -20,7 +20,7 @@ export interface HelpContent {
 const PURPOSE =
   "The agent-friendly front door to this repo's engineering harness. " +
   'Verbs are owned by extensions: drop a file in `./.harness/extensions/` and it ' +
-  'becomes a `harness <verb>` command. `help`, `doctor`, `new`, and `docs` are always available.';
+  'becomes a `harness <verb>` command. `help`, `doctor`, `new`, `docs`, and `skills` are always available.';
 
 const OUTPUT_MODES = [
   '--json forces JSON output',
@@ -49,6 +49,7 @@ export function buildHelp(registry: VerbRegistry): HelpContent {
     'harness doctor — see which extensions loaded (and any that failed)',
     'harness docs — list the bundled docs (then `harness docs <id>` to read one)',
     'harness new <name> — scaffold a new extension (add --wrap "<cmd>" to wrap a real command)',
+    "harness skills install --target <cli> — install this harness's skills into your CLI",
     'harness help --json — the machine-readable verb list',
   ];
   if (registry.verbs.length > 0) {
