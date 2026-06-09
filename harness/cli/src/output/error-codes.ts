@@ -27,6 +27,8 @@ export const ErrorCodes = {
   SCAFFOLD_WRITE_FAILED: 'E153',
   /** `harness docs <id>`: no curated doc is registered under that id. */
   DOC_NOT_FOUND: 'E160',
+  /** `harness skills install`: the underlying `npx skills add` pass-through failed (non-zero exit / spawn error). */
+  SKILLS_INSTALL_FAILED: 'E170',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
