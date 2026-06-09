@@ -54,3 +54,15 @@
   - [annoying] debug: npx harness doctor --json worked but reported cli-build degraded because it looked for harness/cli/dist inside the target clone. (workaround: Relied on command-specific verification (`harness help`, `harness boot`) instead of doctor being fully green.)
   - [degrading] test: The first plain `npx harness boot` invocation returned error even though `npx harness boot --json` and direct `npm test` passed immediately afterward. (workaround: Used JSON and direct command verification to establish the boot exercised the repo and returned an honest ok Envelope.)
   - [degrading] test: A duplicate final `npx harness boot --json` verification hung in Mocha after earlier successful boot verification. (workaround: Killed PIDs 10988, 10955, and 10936 after confirming they belonged to the duplicate target-repo boot check.)
+
+## 2026-06-09T13:23:08.278Z — validate-harness-flow / 2026-06-09T23-13-52-588Z-bb00
+
+- runId: 2026-06-09T23-13-52-588Z-bb00
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T23-13-52-588Z-bb00
+- summary: Ran the full harness setup flow on the fresh Chalk clone: installed the local harness core, verified `harness doctor`, produced a skill-driven harnessability assessment with final grade B and a B/B two-axis tuple, hand-wrote the required BIO governance doc from the template, scaffolded the boot extension with `harness new boot --wrap "npm test"`, verified `boot` in doctor/help and executed `harness boot --json` successfully against `npm test`, then scaffolded and filled a retro record through `harness record retro`.
+- **magicWand** (target: project): Ship `harness init` so `.harness/engineering-harness.md` can be generated from the BIO template and repo evidence instead of being hand-written during the setup flow.
+- difficulties:
+  - [degrading] config: `harness doctor --json` in the consumer clone reported degraded `cli-build` because it expected `harness/cli/dist/index.js` in the target repo, even though `npx harness` and extension loading worked.
+  - [annoying] data: A broad file glob after installing dependencies traversed `node_modules`, timed out, and produced a huge partial result.
+  - [degrading] knowledge: There is no shipped `harness init` writer, so governance had to be hand-written from the BIO template even though the rest of setup is skill-driven.
+  - [annoying] config: `harness new boot --wrap "npm test"` scaffolded a working extension but left a TODO summary and minimal success data, which was too sparse for an observable boot Envelope.
