@@ -1,7 +1,7 @@
 # Fix FX002: `harness new --wrap` scaffold emits a sparse boot Envelope
 
 **Created**: 2026-06-10
-**Status**: Implemented (`0aad609`) — build clean, 277/277 vitest green; companion review in flight (run `2026-06-10T08-17-07-782Z-1e56`)
+**Status**: Closed — implemented `0aad609` (build clean, 277/277 vitest green); companion **APPROVE, 0 findings** (run `2026-06-10T08-17-07-782Z-1e56`, farewell drained + harvested). No follow-ups.
 **Plan**: [013-dogfood-harness-flow](../dogfood-harness-flow-plan.md)
 **Source**: Plan 013 dogfood finding FIND-3 (`scratch/handover-013-surfaced-findings.md` §Finding 3)
 **Domain(s)**: harness-cli (scaffold templates — internal, no contract change)

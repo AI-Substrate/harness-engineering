@@ -23,5 +23,19 @@ _Created by plan-5 fix mode; populated by plan-6-companion during implementation
 
 ### Companion timeline
 - 22:18:23Z — briefing sent (msg `01KTQ7E7ZXJWT3RKCY6PJ2C0T5`); included the FX001 retro lesson (MH-003): I will drain the inbox before `control:stop` and reflect real finding history.
-- 22:1x:xxZ — review-request `FX002-1/2/3 0aad609` sent (msg `01KTQ7JEEFTEJZ33RBXE18TA58`, peer listening; fire-and-forget).
-- _(companion verdict appended below once drained.)_
+- 22:18:30Z — review-request `FX002-1/2/3 0aad609` sent (msg `01KTQ7JEEFTEJZ33RBXE18TA58`, peer listening; fire-and-forget).
+- 22:20:52→22:22:52Z — companion read commit `0aad609`, transitioned reading→reviewing ("auditing FX002 diff for contract and fixture drift"), ran drift `rg` sweeps for the old `TODO: summary` / `ctx.ok({ command })` patterns, inspected `0aad609` + `d58ce54` + the dossier, then sent a `summary`.
+- 22:28:57Z — `control:stop` honoured; farewell `report.json` written (`exitReason: stop_requested`).
+
+### Companion verdict (drained) — APPROVE, 0 findings
+- **Verdict** (msg `01KTQ7PFHK5E5KVR7FX9K5DH3V`): "**APPROVE. Findings: 0.** The commit changes only the intended scaffold builder, byte fixtures, and workshop §4b code block; wrapTs/wrapJs now emit the exact requested summary, Date.now() duration, and bounded stdout tail while preserving the error branch, partial-match substrings, and minimal/record templates. Drift scan found the old sparse-envelope wording only in intentional FX002 problem/history context, not live scaffold docs; the scaffold template test passes when run with the correct vitest-root-relative filter."
+- Session counts: 1 task received, **0 findings**, 1 summary (APPROVE), 0 questions.
+- **MH-003 lesson applied (and confirmed)**: I drained the inbox and sent a `control:stop` body reflecting the *real* finding history (1 task / 0 findings / APPROVE), not a blanket "clean". The companion's farewell `workedWell` explicitly credits this: *"the outside peer sent an accurate stop message with the real finding history."*
+
+### Companion retrospective (harvested → `docs/retros/code-review-companion.md`)
+- **Worked well**: precise hazard briefing; **accurate stop message with real finding history**; coordination inbox/state tools made it easy to correlate the APPROVE summary back to the review request.
+- **Confusing / difficulty MH-001 (test)**: the root `npm test` script does `cd harness/cli && vitest run`, so a filter path of `harness/cli/test/...` matches **no** files yet still exits 0 — the same cwd nuance I hit. Workaround: filter relative to the vitest root (`npm test -- --run test/services/scaffold/templates.test.ts`). _Carry-forward: this cwd/filter trap has now bitten two consecutive runs — a candidate harness papercut (see FX001 log's analogous cwd note)._
+- **Magic wand** (target: coordination): a farewell helper that auto-summarizes tasks/findings/summaries/unresolved-inbox for the run, so counts aren't reconstructed from memory at stop time.
+
+### Closure
+FX002 is **CLOSED**: code committed `0aad609` (build clean, 277/277 green), companion **APPROVE with zero findings**, farewell drained + auto-harvested. No follow-ups spun off.
