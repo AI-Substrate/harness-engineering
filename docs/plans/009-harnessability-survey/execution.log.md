@@ -52,3 +52,10 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - T012: created terminal-sized `summary.md` (verdict tuple + final_grade + one-line matrix + top blockers + encode-first + first-safe-session + paths) and an optional `evidence-log.jsonl` template.
 - T013: regenerated the `sample-service` example. Grades re-checked against new bands (62→C, 55→C — no regrade). Added `verdict.final_grade: C`, `report_paths`, `assessment_matrix[]` (8 rows), and all 10 survey arrays to the JSON; mirrored Final-grade line, `## Assessment matrix`, and the full `## Existing engineering environment survey` into the markdown.
 **Evidence**: enriched `assessment-latest.json` VALIDATES against v0.2 schema; 12/12 new keys present; no unresolved `{{}}` placeholders in the filled examples.
+
+### T014 · G4 docs + catalog + 008 reconcile
+**Files**: `README.md`, `AUTHORING.md`, `skills/README.md`, `skills/engineering-harness-setup/SKILL.md`
+- README: added a v0.2 capability paragraph (survey-first, A–F matrix, summary.md, deterministic-encoding preference).
+- AUTHORING #8 → v0.2 contract (lists the optional arrays, final_grade, grade F; additionalProperties:false preserved); #9 notes the ownership map must cover every v0.2 array; checklist +2 items (summary.md terminal-sized; ownership map exhaustive); extension guidance "keep v0.2 focused".
+- skills/README.md catalog row reworded to v0.2 (survey + A–F + summary.md).
+- 008 reconcile: the sentinel block already accepts "any file under the dir" (history subdirs OK); added a clarifying line that root `latest.json` is kept current every run with per-run history under `<ordinal>-<slug>/`. No contract change — AC-2 satisfied.

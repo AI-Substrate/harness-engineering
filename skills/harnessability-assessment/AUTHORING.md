@@ -76,11 +76,11 @@ Backpressure Check is advisory over deterministic sensors. Shipped surfaces may 
 
 ### 8. Schema is authoritative
 
-`templates/assessment-report.schema.json` is the v0.1 contract. Top-level `additionalProperties` is `false` with the required minimum-shape keys plus the carried-back keys (`harness_surfaces`, `topology`, `applied_patches`, `onboarding_consolidation`, `first_safe_session_plan`). Nested record `$defs` keep `additionalProperties: true` (except `environmentVariable`, which is `false` so values can never sneak in) to stay non-brittle. The example JSON must validate against the schema. Prefer additive optional fields over changing the core schema.
+`templates/assessment-report.schema.json` is the v0.2 contract. Top-level `additionalProperties` is `false` with the required minimum-shape keys plus the carried-back keys (`harness_surfaces`, `topology`, `applied_patches`, `onboarding_consolidation`, `first_safe_session_plan`). v0.2 adds **optional** top-level survey arrays (`report_paths`, `assessment_matrix`, `engineering_flows`, `pre_commit_gates`, `ci_local_equivalence`, `existing_harness_concepts`, `deterministic_encoding_opportunities`, `test_mechanisms`, `external_dependency_pressure`, `code_composition`, `candidate_first_harness_surfaces`, `manual_operation_signals`), the optional `verdict.final_grade`, and grade `F` — none of the additions are `required`, and `additionalProperties: false` is preserved. Nested record `$defs` keep `additionalProperties: true` (except `environmentVariable`, which is `false` so values can never sneak in) to stay non-brittle. The example JSON must validate against the schema. Prefer additive optional fields over changing the core schema.
 
 ### 9. Fan-out merge contract
 
-The skill may run linearly or fan out across six read-only subsystem subagents (see SKILL.md "Parallel execution: subsystem fan-out"). When editing that section, preserve three invariants: (a) the schema is the merge contract — each subagent returns a fragment validating against its slice, and the orchestrator validates the merged whole; (b) subagents are read-only and the orchestrator is the only writer (and the only applier of `--apply-safe-harness-patches`); (c) the subagent-to-schema-slice ownership map stays collectively exhaustive over dimensions A1-A10 and B1-B10 and over the top-level array keys. Changing the schema and changing the ownership map must stay in lockstep.
+The skill may run linearly or fan out across six read-only subsystem subagents (see SKILL.md "Parallel execution: subsystem fan-out"). When editing that section, preserve three invariants: (a) the schema is the merge contract — each subagent returns a fragment validating against its slice, and the orchestrator validates the merged whole; (b) subagents are read-only and the orchestrator is the only writer (and the only applier of `--apply-safe-harness-patches`); (c) the subagent-to-schema-slice ownership map stays collectively exhaustive over dimensions A1-A10 and B1-B10 and over the top-level array keys — **including every v0.2 survey array**. Changing the schema and changing the ownership map must stay in lockstep.
 
 ## Structural validation checklist
 
@@ -98,7 +98,9 @@ Run these checks before committing changes to this package:
 7. Confirm example reports have no unresolved placeholders.
 8. Confirm no generic core `backpressure` command key appears in shipped surfaces.
 9. Confirm no `supersede`/`successor`/`legacy` replacement framing appears in shipped surfaces.
+10. Confirm `templates/summary.md` is terminal-sized and the filled examples carry no unresolved placeholders.
+11. Confirm the fan-out subagent→schema-slice ownership map covers every v0.2 survey array (collectively exhaustive).
 
 ## Extension guidance
 
-Keep v0.1 focused. Add new report fields only when they are needed by a named downstream consumer. Prefer additive optional fields over changing the core schema.
+Keep v0.2 focused. Add new report fields only when they are needed by a named downstream consumer. Prefer additive optional fields over changing the core schema.
