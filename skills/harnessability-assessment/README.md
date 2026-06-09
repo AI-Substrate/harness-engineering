@@ -8,17 +8,21 @@ The agent harness drives. The engineering harness proves.
 
 ## What it produces
 
-The skill writes stable latest files and timestamped run files:
+The skill writes a per-run history directory plus stable root "latest" files:
 
 ```text
-harness/assessment/latest.md
-harness/assessment/latest.json
-harness/assessment/schema.json
-harness/assessment/runs/<UTC_TIMESTAMP>.md
-harness/assessment/runs/<UTC_TIMESTAMP>.json
+.harness/reports/harnessability/<ordinal>-<slug>/report.md
+.harness/reports/harnessability/<ordinal>-<slug>/report.json
+.harness/reports/harnessability/<ordinal>-<slug>/summary.md
+.harness/reports/harnessability/<ordinal>-<slug>/evidence.jsonl
+.harness/reports/harnessability/latest.md
+.harness/reports/harnessability/latest.json
+.harness/reports/harnessability/schema.json
 ```
 
-The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `harnessability-assessment.v0.1`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
+Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `engineering-harness-setup` reads to decide whether an assessment already exists.
+
+The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
 
 ## Default safety posture
 

@@ -71,7 +71,7 @@ $ARGUMENTS
 # --repo <path>                         Repository root. Defaults to current working directory.
 # --markdown                            Emphasize the Markdown report path in the final answer.
 # --json                                Emphasize the JSON report path in the final answer.
-# --output-dir <path>                   Defaults to harness/assessment/.
+# --output-dir <path>                   Defaults to .harness/reports/harnessability/.
 # --execute-safe-probes                 Allow safe local read-only probes such as help/list/version/dry-run commands.
 # --deep                                Allow slower read-only analysis such as dependency graph inspection and git-history mining.
 # --compare <previous.json>             Compare against a previous assessment JSON file.
@@ -87,21 +87,25 @@ No flags means read-only static assessment plus report generation.
 
 ## Output contract
 
-Write stable latest files and timestamped run files:
+Each run writes a per-run history directory plus stable root "latest" files:
 
 ```text
-harness/assessment/latest.md
-harness/assessment/latest.json
-harness/assessment/schema.json
-harness/assessment/runs/<UTC_TIMESTAMP>.md
-harness/assessment/runs/<UTC_TIMESTAMP>.json
+.harness/reports/harnessability/<ordinal>-<slug>/report.md
+.harness/reports/harnessability/<ordinal>-<slug>/report.json
+.harness/reports/harnessability/<ordinal>-<slug>/summary.md
+.harness/reports/harnessability/<ordinal>-<slug>/evidence.jsonl
+.harness/reports/harnessability/latest.md
+.harness/reports/harnessability/latest.json
+.harness/reports/harnessability/schema.json
 ```
 
-Use UTC timestamp format `YYYYMMDDTHHMMSSZ` for run filenames.
+`<ordinal>` is the next free 3-digit number (`001`, `002`, …) found by scanning existing `.harness/reports/harnessability/<NNN>-*/` directories; `<slug>` is a short kebab-case label for the run (e.g. the repo name, or `assessment`).
 
-The Markdown report follows `templates/assessment-report.md`. The JSON report follows `templates/assessment-report.schema.json`, which is the authoritative v0.1 contract; write a copy of it to `harness/assessment/schema.json`. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples. If the repo already contains earlier assessment reports or onboarding docs, read them as evidence, but write this run's reports under `harness/assessment/`.
+**Every run overwrites the three root files** (`latest.md`, `latest.json`, `schema.json`) so they mirror the newest run. The root `latest.json` is a load-bearing **sentinel**: the `engineering-harness-setup` flow detects an existing assessment with `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` and then reads `latest.json` for recommendations. Keep it present **and** readable on every run — never write only the history directory (that would satisfy detection but leave nothing stable to read).
 
-Keep the JSON schema version at `harnessability-assessment.v0.1` until the core contract changes.
+The Markdown report follows `templates/assessment-report.md`. The JSON report follows `templates/assessment-report.schema.json`, the authoritative v0.2 contract; write a copy of it to `.harness/reports/harnessability/schema.json`. The terminal-sized `summary.md` follows `templates/summary.md`; keep detailed evidence in `report.md`. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples. If the repo already contains earlier assessment reports or onboarding docs, read them as evidence, but write this run's reports under `.harness/reports/harnessability/`.
+
+Keep the JSON schema version at `harnessability-assessment.v0.2` until the core contract changes.
 
 ## Safety defaults
 
@@ -115,7 +119,7 @@ Allowed by default:
 - inspect non-secret environment variable names and example values from safe example files;
 - identify required secrets by name only;
 - classify evidence, inference, human-supplied facts, and unknowns;
-- write assessment reports under `harness/assessment/`.
+- write assessment reports under `.harness/reports/harnessability/`.
 
 Not allowed by default:
 
@@ -695,7 +699,7 @@ Check:
 - `docs/project-rules/harness.md`;
 - `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.cursorrules`, `.github/copilot-instructions.md`;
 - existing onboarding or readiness docs;
-- previous `harness/assessment/` reports.
+- previous `.harness/reports/harnessability/` reports.
 
 Report which surfaces are canonical. If only ad-hoc onboarding docs exist, recommend folding the useful parts into the engineering harness front door and assessment reports.
 

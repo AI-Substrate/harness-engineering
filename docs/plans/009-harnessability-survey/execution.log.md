@@ -24,3 +24,10 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - Example `assessment-latest.json` version bumped to v0.2 so it stays valid every commit (full A–F/matrix regen deferred to T013).
 
 **Evidence**: `jsonschema.Draft202012Validator` — schema valid Draft 2020-12; example VALIDATES; grade enum includes F; required count 21 (unchanged); new keys all optional; `additionalProperties:false` intact.
+
+### T004 · G1 output-path + sentinel migration
+**Files**: `SKILL.md`, `README.md`
+- Rewrote the SKILL.md `## Output contract`: history dir `.harness/reports/harnessability/<ordinal>-<slug>/{report.md,report.json,summary.md,evidence.jsonl}` + root `latest.{md,json}`/`schema.json` overwritten every run. Documented `<ordinal>` = next free 3-digit by scanning report dirs.
+- Documented the **sentinel** verbatim: `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` (008 consumer); root `latest.json` kept present AND readable every run (detection + readability per AC-2).
+- Updated `--output-dir` default, "write reports under", and the "previous reports" evidence path; mirrored the new path block + v0.2 version into README.
+**Evidence**: `grep -rn "harness/assessment" skills/harnessability-assessment/` → NONE (clean); new path present 13× SKILL.md / 7× README.
