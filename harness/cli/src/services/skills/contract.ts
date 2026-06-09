@@ -24,8 +24,6 @@ export interface SkillsInstallOptions {
   targets: string[];
   /** Global install (`-g`) vs project-local (omit `-g`). */
   global: boolean;
-  /** Skip the blocking interactive picker. Defaults to `true` and should stay true (AC3). */
-  yes?: boolean;
   /** Optional single-skill filters → repeated `-s <slug>`. */
   skills?: string[];
 }

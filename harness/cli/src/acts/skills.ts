@@ -119,7 +119,6 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
         source: opts.source,
         targets,
         global: Boolean(opts.global),
-        yes: true,
         skills: opts.skill,
       };
       const argv = buildInstallArgv(installOpts);

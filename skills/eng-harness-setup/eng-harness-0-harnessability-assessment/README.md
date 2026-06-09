@@ -22,7 +22,7 @@ The skill writes a per-run history directory plus stable root "latest" files:
 
 Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `eng-harness-0-setup` reads to decide whether an assessment already exists.
 
-The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `eng-harness-0-harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
+The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
 
 v0.2 **surveys the repo's existing engineering environment first** — engineering flows (including SDD-like pipelines), pre-commit/local gates, CI/local equivalence, test mechanisms (mock vs fake/sink/stub/contract/testcontainer), external-dependency pressure, code composition, canonical-vs-diffuse harnesses, and advisory manual/IDE-only signals — then layers an **A–F assessment matrix** over the two axes and emits a terminal-sized `summary.md` alongside the detailed `report.md`. It prefers recommending **deterministic encoding** over context-file accretion: a context file is orientation, never proof.
 

@@ -105,7 +105,7 @@ Each run writes a per-run history directory plus stable root "latest" files:
 
 The Markdown report follows `templates/assessment-report.md`. The JSON report follows `templates/assessment-report.schema.json`, the authoritative v0.2 contract; write a copy of it to `.harness/reports/harnessability/schema.json`. The terminal-sized `summary.md` follows `templates/summary.md`; keep detailed evidence in `report.md`. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples. If the repo already contains earlier assessment reports or onboarding docs, read them as evidence, but write this run's reports under `.harness/reports/harnessability/`.
 
-Keep the JSON schema version at `eng-harness-0-harnessability-assessment.v0.2` until the core contract changes.
+Keep the JSON schema version at `harnessability-assessment.v0.2` until the core contract changes.
 
 ## Safety defaults
 
@@ -1007,7 +1007,7 @@ The JSON report must include at least:
 
 ```json
 {
-  "schema_version": "eng-harness-0-harnessability-assessment.v0.2",
+  "schema_version": "harnessability-assessment.v0.2",
   "run": {
     "timestamp_utc": "YYYYMMDDTHHMMSSZ",
     "repo_root": "",

@@ -1,7 +1,7 @@
 # Extend the harness
 
 How to add a new `harness <verb>` command to your repo — the fast path
-(`harness new`) and the guided path (the `add-extension` skill).
+(`harness new`) and the guided path (the `eng-harness-0-add-extension` skill).
 
 > **Where docs live (for now):** user guides live under `docs/how/`. Documentation
 > is planned to become a first-class, CLI-surfaced concept later; this guide is
@@ -12,7 +12,7 @@ How to add a new `harness <verb>` command to your repo — the fast path
 ## The model in one minute
 
 The harness core (installed via `npx`) ships a few built-in commands —
-`help`, `doctor`, `new`, and `docs`. **Every other command is an extension** you add
+`help`, `doctor`, `new`, `docs`, and `skills`. **Every other command is an extension** you add
 to your own repo:
 
 ```
@@ -62,7 +62,7 @@ $ harness new greet
 
 - Lowercase, hyphenated, starting with a letter: `greet`, `ci-smoke`. (Invalid
   names — uppercase, leading digit, spaces, path separators — are rejected, `E150`.)
-- `help`, `doctor`, `new`, and `docs` are reserved core commands and can't be used (`E151`).
+- `help`, `doctor`, `new`, `docs`, and `skills` are reserved core commands and can't be used (`E151`).
 - `harness new` won't overwrite an existing file (`E152`) unless you pass `--force`.
 
 ### Then: implement it

@@ -1,9 +1,10 @@
 {
   "$schema": "https://minih.dev/schemas/minih-config.json",
   "skills": {
-    "comment": "Repo-local skills minih agents may invoke. minih does NOT load global skills implicitly — they must be listed here (or passed via --skill-source/--skill). Skills now live under two category folders: skills/eng-harness-setup/<slug>/SKILL.md and skills/eng-harness-loop/<slug>/SKILL.md, so the source is path:skills.",
+    "comment": "Repo-local skills minih agents may invoke. minih's path: source searches a directory's DIRECT children, so with the two-level layout (skills/<category>/<slug>/SKILL.md) the sources must point at the category folders, not skills/.",
     "sources": [
-      "path:skills"
+      "path:skills/eng-harness-setup",
+      "path:skills/eng-harness-loop"
     ],
     "include": [
       "eng-harness-0-setup",

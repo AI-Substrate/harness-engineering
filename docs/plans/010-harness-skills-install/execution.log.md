@@ -10,9 +10,24 @@ No `docs/project-rules/engineering-harness.md` → no agent-harness pre-flight; 
 
 ## Companion findings disposition
 
-| Finding | ackOf (task/sha) | Severity | Disposition |
-|---------|------------------|----------|-------------|
-| _(none yet)_ | | | |
+Companion `code-review-companion` run `2026-06-09T13-48-38-077Z-bc4a` — 11 tasks reviewed, **7 findings** (surfaced in the farewell envelope; final verdict REQUEST_CHANGES). All resolved post-phase in a `fix:` commit:
+
+| Finding | ackOf (task) | Severity | Disposition |
+|---------|--------------|----------|-------------|
+| F001 — schema_version contract drift (T003 sed wrongly rewrote `harnessability-assessment.v0.2` → `eng-harness-0-…` in assessment SKILL/README prose, breaking match with the shipped schema + example) | T003 | HIGH | **FIXED** — reverted the 3 prose occurrences to `harnessability-assessment.v0.2`; verified consistent with `assessment-report.schema.json` const + `assessment-latest.json`. |
+| F002 — `.minih.json` `path:skills` does not recurse the new 2-level layout; `minih skills doctor` discovered 0 (E211 ×7) | T004 | HIGH | **FIXED** — sources now `path:skills/eng-harness-setup` + `path:skills/eng-harness-loop`; `minih skills doctor` → status ok, 7 discovered/selected, no diagnostics. |
+| F003 — `extend-the-harness.md` intro still said `add-extension` | T004 | MEDIUM | **FIXED** — intro → `eng-harness-0-add-extension`; gen:docs re-run. |
+| F004 — `buildInstallArgv` `yes:false` opt-out could omit `-y` (violates AC3) | T006 | HIGH | **FIXED** — removed `yes` from the contract; `-y` is now appended unconditionally (builder cannot construct a blocking invocation). |
+| F005 — live docs (`extend-the-harness.md`, `authoring-verbs.md`) still listed core set as help/doctor/new/docs only | T008 | MEDIUM | **FIXED** — added `skills` to the built-in/reserved lists in both; gen:docs re-run. |
+| F006 — `skills.test.ts` locked in the `-y` opt-out (contradicts AC3) | T009 | HIGH | **FIXED** — replaced with an invariant test asserting `-y` is always present. |
+| F007 — execution-log disposition table still `(none yet)` while findings were open | — | MEDIUM | **FIXED** — this table. |
+
+### Companion debrief (farewell envelope)
+- Verdict at stop: REQUEST_CHANGES (7 open findings) → **all 7 now fixed + re-verified** (build/lint/227 tests/check:docs green; `minih skills doctor` ok; real install still lands 7 skills).
+- Worked well: inbox `ackOf` correlation tied each finding to its task; the final drain gave a clean re-audit point.
+- Companion **magic-wand** (target: coordination): "Add a companion-mode findings-ledger command that renders all inside findings + their ackOf + disposition + whether they appear in the plan execution log — to prevent final logs saying 'none yet' while findings are open." → candidate follow-up.
+- Companion difficulties: MH-001 `MINIH_PROJECT_ROOT` resolved to the run dir not repo root (used `git rev-parse --show-toplevel`); MH-002 `minih skills doctor` exits 0 while status degraded (read the envelope, not exit code); MH-003 large `git show` output truncation (bounded checks).
+
 
 ## Per-task log
 

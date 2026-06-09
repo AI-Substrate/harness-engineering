@@ -8,10 +8,14 @@ import type { SkillsInstallOptions } from './contract.js';
  * `['skills@latest', 'add', <source>, '-a', <t>, …, '-g'?, '-s', <slug>, …, '-y']`.
  *
  * Invariants (AC3/AC4):
- *   - always pins `skills@latest` and always appends `-y` (unless `yes === false`)
- *     so the blocking interactive picker never appears;
+ *   - always pins `skills@latest` and always appends `-y` (UNCONDITIONALLY — the
+ *     builder makes it impossible to construct a blocking invocation, so the
+ *     interactive picker never appears regardless of caller input);
  *   - each target fans out as a repeated `-a <target>`;
  *   - `-g` is present iff `global` is true.
+ *
+ * Precondition: `targets` is non-empty — enforced by the act (missing `--target`
+ * → `E108`) before this is ever called.
  */
 export function buildInstallArgv(opts: SkillsInstallOptions): string[] {
   const argv: string[] = ['skills@latest', 'add', opts.source];
@@ -24,9 +28,8 @@ export function buildInstallArgv(opts: SkillsInstallOptions): string[] {
   for (const slug of opts.skills ?? []) {
     argv.push('-s', slug);
   }
-  if (opts.yes !== false) {
-    argv.push('-y');
-  }
+  // Unconditional: never let the Vercel interactive picker block (AC3).
+  argv.push('-y');
   return argv;
 }
 

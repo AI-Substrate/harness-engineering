@@ -78,10 +78,10 @@ describe('buildInstallArgv (pure)', () => {
     ).toEqual(['skills@latest', 'add', 's', '-a', 'codex', '-s', 'eng-harness-1-boot', '-y']);
   });
 
-  it('omits -y only when yes is explicitly false', () => {
-    expect(
-      buildInstallArgv({ source: 's', targets: ['codex'], global: false, yes: false }),
-    ).not.toContain('-y');
+  it('appends -y unconditionally — the builder cannot construct a blocking invocation (AC3)', () => {
+    // No `yes` opt-out exists on the contract; -y is always present.
+    expect(buildInstallArgv({ source: 's', targets: ['codex'], global: true })).toContain('-y');
+    expect(buildInstallArgv({ source: 's', targets: ['a', 'b'], global: false })).toContain('-y');
   });
 
   it('formatInstallCommand prefixes npx', () => {
