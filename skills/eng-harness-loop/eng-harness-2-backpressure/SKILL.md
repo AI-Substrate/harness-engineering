@@ -1,7 +1,7 @@
 ---
 name: eng-harness-2-backpressure
 description: |
-  Advisory deterministic-backpressure coverage survey. Runs AFTER the spec (plan-1b / plan-2c) and BEFORE the architect (plan-3). Inventories the deterministic sensors a repo already has (build / type / test / lint / smoke / boot / architecture checks, CodeQL / Roslyn / dependency-rules / data-scripts), derives the feature's experienced failure modes from the spec's acceptance criteria + target domains + risks, maps each criterion/failure-mode to a sensor (EXISTS / BUILDABLE / ABSENT × computational / inferential / human-judgement), emits a qualitative certainty rating (Strong / Partial / Weak), and — only when material behaviour/architecture gaps exist — recommends a "Phase 0: Establish Backpressure". Writes docs/plans/<ordinal>-<slug>/backpressure-coverage.md, which plan-3-v3-architect consumes. ADVISORY / best-effort only: never blocks, never flips a plan to DRAFT, no numeric thresholds, no persisted index. Honours docs/harness/.disabled.
+  Advisory deterministic-backpressure coverage survey. Runs AFTER the spec (plan-1b / plan-2c) and BEFORE the architect (plan-3). Inventories the deterministic sensors a repo already has (build / type / test / lint / smoke / boot / architecture checks, CodeQL / Roslyn / dependency-rules / data-scripts), derives the feature's experienced failure modes from the spec's acceptance criteria + target domains + risks, maps each criterion/failure-mode to a sensor (EXISTS / BUILDABLE / ABSENT × computational / inferential / human-judgement), emits a qualitative certainty rating (Strong / Partial / Weak), and — only when material behaviour/architecture gaps exist — recommends a "Phase 0: Establish Backpressure". Writes docs/plans/<ordinal>-<slug>/backpressure-coverage.md, which plan-3-v3-architect consumes. ADVISORY / best-effort only: never blocks, never flips a plan to DRAFT, no numeric thresholds, no persisted index.
 ---
 Please deep think / ultrathink as this is a complex task.
 
@@ -36,9 +36,9 @@ If a future change to this skill adds a threshold, a gate, a blocking behaviour,
 
 ---
 
-## Sentinel check
+## Always on (no opt-out)
 
-If `docs/harness/.disabled` exists → **silently no-op**: do not run the survey, do not create or modify `backpressure-coverage.md`, do not log, do not prompt, do not error. The opt-out is absolute. (Mirrors `eng-harness-3-observe`.)
+This skill is always on. There is no `.disabled` opt-out — if a user doesn't want a backpressure survey, they simply don't invoke it (or say so in chat).
 
 ---
 
@@ -53,14 +53,13 @@ Inputs:
     - test/e2e signatures: `**/playwright.config.*`, `**/cypress.config.*`, `**/vitest.*.config.*`, `**/jest.config.*`, `**/*.spec.*`, `**/*.e2e.*`, `connectOverCDP`
     - CI config (`.github/workflows/*`, `.gitlab-ci.yml`, etc.) — the de-facto PR proof gate
     - analyzer/architecture configs (`.dependency-cruiser.*`, `archunit`, Roslyn `.editorconfig`/`*.ruleset`, `codeql/`, JSON-schema files)
-    - docs/governance (`engineering-harness.md` and legacy names) — CORROBORATION ONLY, never a precondition
+    - docs/governance (`.harness/engineering-harness.md` canonical, then legacy `docs/project-rules/engineering-harness.md` and older names) — CORROBORATION ONLY, never a precondition
   today {{TODAY}}.
 
 ## PHASE 0 — Setup
 
-1. Sentinel: if `docs/harness/.disabled` exists → silent no-op, STOP.
-2. Resolve SPEC_FILE (from --spec/--plan arg, the current plan folder, or an ordinal branch). If no spec exists → tell the user to run `/plan-1b-v3-specify-and-clarify` first and STOP. (This skill surveys against a spec; it does not invent one.)
-3. Read the spec's `## Acceptance Criteria`, `## Target Domains`, and `## Risks & Assumptions`. These are the things the work must make true — the survey's subject.
+1. Resolve SPEC_FILE (from --spec/--plan arg, the current plan folder, or an ordinal branch). If no spec exists → tell the user to run `/plan-1b-v3-specify-and-clarify` first and STOP. (This skill surveys against a spec; it does not invent one.)
+2. Read the spec's `## Acceptance Criteria`, `## Target Domains`, and `## Risks & Assumptions`. These are the things the work must make true — the survey's subject.
 
 ## STEP 1 — Inventory existing deterministic sensors
 
@@ -99,7 +98,7 @@ If the spec or `research-dossier.md` cites a **precedent feature** (a prior plan
 
 ### 1d — Corroborate with docs + CI (optional, last)
 
-Now read `engineering-harness.md` (or legacy), CI config (`.github/workflows/*` — the de-facto PR proof gate), and recipe comments to *enrich* what 1a–1c found: boot / health / validate / smoke / doctor commands, stated maturity. **If a doc disagrees with the filesystem, the filesystem wins.**
+Now read `.harness/engineering-harness.md` (canonical, or a legacy `docs/project-rules/` location), CI config (`.github/workflows/*` — the de-facto PR proof gate), and recipe comments to *enrich* what 1a–1c found: boot / health / validate / smoke / doctor commands, stated maturity. **If a doc disagrees with the filesystem, the filesystem wins.**
 
 For each sensor found, capture: **name**, **command** (how to run it), the **dimension** it guards (Pattern 19: `maintainability` | `architecture-fitness` | `behaviour`), and **where it was found** (root or which package).
 
@@ -186,7 +185,7 @@ Overwrite if it exists (regeneration-safe). Use this template:
 
 ## Graceful degradation
 
-A missing `engineering-harness.md` is **not** evidence of missing sensors — undocumented repos are exactly where de-facto sensors are most likely present-but-undocumented. When the governance doc is absent, the STEP 1b signature sweep is the *only* ground truth, so run it thoroughly across all workspace roots (STEP 1a) before concluding anything. Only after that sweep comes back empty across every root do you report "no deterministic sensors found" (with the probe trail), classify the behaviour/architecture criteria honestly (mostly `BUILDABLE`/`ABSENT`), let certainty trend **Weak**, and recommend a Phase 0. Either way the survey is useful — it either finds the nested harness or tells the user the repo genuinely has weak backpressure for this work.
+A missing governance doc (`.harness/engineering-harness.md` or any legacy location) is **not** evidence of missing sensors — undocumented repos are exactly where de-facto sensors are most likely present-but-undocumented. When the governance doc is absent, the STEP 1b signature sweep is the *only* ground truth, so run it thoroughly across all workspace roots (STEP 1a) before concluding anything. Only after that sweep comes back empty across every root do you report "no deterministic sensors found" (with the probe trail), classify the behaviour/architecture criteria honestly (mostly `BUILDABLE`/`ABSENT`), let certainty trend **Weak**, and recommend a Phase 0. Either way the survey is useful — it either finds the nested harness or tells the user the repo genuinely has weak backpressure for this work.
 ```
 
 Next step:

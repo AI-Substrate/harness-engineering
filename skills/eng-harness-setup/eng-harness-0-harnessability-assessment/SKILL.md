@@ -732,6 +732,7 @@ Check:
 - `harness/cli/`;
 - `harness/cli/commands.json`;
 - `docs/harness/`;
+- `.harness/engineering-harness.md`;
 - `docs/project-rules/engineering-harness.md`;
 - `docs/project-rules/agent-harness.md`;
 - `docs/project-rules/harness.md`;

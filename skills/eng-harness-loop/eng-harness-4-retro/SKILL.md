@@ -43,9 +43,9 @@ The consumer-side surface of the loop. The ONE place retro talks to the user.
 
 Each firing handles entries accumulated since the last drain. Once drained, the buffer is empty; the next firing on an unchanged buffer is silent.
 
-### Sentinel check
+### Always on (no opt-out)
 
-If `docs/harness/.disabled` exists → silently no-op. No prompt, no output.
+This skill is always on. There is no `.disabled` opt-out — if a user doesn't want a retro drain, they simply say so in chat and the calling agent skips it.
 
 ### Step 1 — Read the buffer
 
@@ -220,7 +220,6 @@ This catches entries left over from a prior session (e.g. the user pressed Ctrl-
 ### `--drain` edge cases
 
 - **Empty buffer**: silent. No prompt. Exit cleanly.
-- **Sentinel during drain**: if `.disabled` appears mid-drain, abort (don't write). Buffer stays as-is.
 - **Concurrent drains** (two agents simultaneously): each has its own buffer, no collision.
 - **Save to a path that already exists** (extremely rare hash collision): append `-2`, `-3`, etc. to the filename per workshop 006 § EC3.
 - **User interrupts mid-prompt**: buffer stays unchanged. Next drain will see the same entries.
@@ -255,10 +254,6 @@ The reader/curator side of the loop. Auto-fires at long-horizon reflection momen
   - `plan-1a-explore` (if ≥5 unharvested entries — print invocation as one-liner; do NOT auto-fire)
   - `plan-3-architect` (if ≥10 unharvested entries — same)
 - **Manually** by the user at any time: `/eng-harness-4-retro --harvest [--plan <slug>] [--agent <slug>] [--since <date>] [--kind <kind>]`
-
-### Sentinel check
-
-If `docs/harness/.disabled` exists → print one line: `"📴 the harness retro ledger is disabled (docs/harness/.disabled present). Remove the sentinel to re-enable."` and exit. Do not scan, do not print views.
 
 ### Buffer-non-empty advisory
 
@@ -402,9 +397,9 @@ Default format:
   ],
   "harness": {
     "maturity": "L2",
-    "last_validation": "2026-05-18",
-    "boot_ms": 18000,
-    "verdict": "healthy"
+    "last_validation": null,
+    "boot_ms": null,
+    "verdict": null
   }
 }
 ```
@@ -416,12 +411,11 @@ Field semantics:
 - `retros` — count of `.retro.md` files scanned (post dedup + version-skew filter).
 - `entries.*` — counts by `system.compound.status` (plus `total` = sum of all entries seen). Missing-status entries count as `open`.
 - `top_clusters` — top-10 clusters by the same priority order as the default view (recurrence > severity > back-pressure leverage > age). Cap at 10; consumers wanting fewer should slice.
-- `harness` — if `docs/project-rules/engineering-harness.md` (or legacy `agent-harness.md` / `harness.md`) exists, parse its `## Maturity Assessment` + `## History` for the most recent validation. If absent, emit `{"maturity": null, "last_validation": null, "boot_ms": null, "verdict": null}`.
+- `harness` — read the **current maturity snapshot** from the governance doc, canonical-first: `.harness/engineering-harness.md` → legacy `docs/project-rules/engineering-harness.md` / `agent-harness.md` / `harness.md`. Populate `maturity` from that snapshot. The `last_validation` / `boot_ms` / `verdict` fields have **no live source** under the current model — boot is read-only and no longer appends a per-validate `## History` table (see [`../eng-harness-flow/references/governance-doc.md`](../eng-harness-flow/references/governance-doc.md)); `.harness/history.md` is a *sparse* changelog (one row per encoded improvement, not per validation), so use it for trajectory context if present but `null` any of these three fields it does not supply. If no governance doc exists at all, emit `{"maturity": null, "last_validation": null, "boot_ms": null, "verdict": null}`.
 
 **Missing/empty cases**:
 
 - Empty tree → `{..., "retros": 0, "entries": {"total": 0, ...}, "top_clusters": [], "harness": {...or null}}`. Still valid JSON; consumers handle.
-- Sentinel `docs/harness/.disabled` present → emit the disabled-line on stderr; exit non-zero; **no JSON on stdout** (consumers can detect by exit code).
 - Schema-version skew on a retro → still emit JSON; skipped retros contribute to neither counts nor clusters.
 
 Consumed by `scripts/compound-value.sh` (the cross-CLI portable pretty-printer) and `just compound-value`. Other consumers should pipe `<their-CLI invokes the skill> --harvest --json | jq ...`.
@@ -477,7 +471,6 @@ User responsibility — best-effort framing; no auto-pruning ever.
 ### `--harvest` edge cases
 
 - **Empty tree** (no `.retro.md` files anywhere): print `"🌾 No retros found. Start logging via eng-harness-3-observe during sessions."` and exit.
-- **Sentinel mid-harvest**: if `.disabled` appears mid-scan, abort. Don't write any pending lifecycle mutations.
 - **Concurrent harvests**: lifecycle mutations are last-write-wins per file. Unlikely to collide because both readers compute identical views.
 - **Hash collision in retro_id** (two retros, same ID): dedup keeps the canonical one. Print warning if both are canonical (`agents/**`); skip the second.
 - **Schema-version skew**: see Step 3 above.

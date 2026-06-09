@@ -54,7 +54,7 @@ The harness front door is present and command candidates are mapped, but no prod
 
 ## First safe agent session plan
 
-1. Read `docs/project-rules/engineering-harness.md`.
+1. Read `.harness/engineering-harness.md` (canonical; fall back to legacy `docs/project-rules/engineering-harness.md` → `agent-harness.md` → `harness.md`).
 2. Inspect `harness/cli/commands.json`.
 3. Confirm prerequisites and env var names without reading secret values.
 4. Read the test suite to see how it mocks, injects, seeds, and resets state — those mechanisms are candidate harness affordances.
@@ -65,7 +65,7 @@ The harness front door is present and command candidates are mapped, but no prod
 
 | Surface | Path | Kind | Status | Notes |
 |---------|------|------|--------|-------|
-| Governance file | `docs/project-rules/engineering-harness.md` | canonical | present | Canonical governance file |
+| Governance file | `.harness/engineering-harness.md` | canonical | present | Canonical governance file |
 | Agent route | `AGENTS.md` | canonical | present | Routes agents to the harness |
 | Command map | `harness/cli/commands.json` | canonical | present | Sensor inventory |
 

@@ -30,7 +30,7 @@
     "final_grade": "C"
   },
   "harness_surfaces": [
-    { "name": "Governance file", "path": "docs/project-rules/engineering-harness.md", "kind": "canonical", "status": "present", "notes": "Canonical governance file." },
+    { "name": "Governance file", "path": ".harness/engineering-harness.md", "kind": "canonical", "status": "present", "notes": "Canonical governance file." },
     { "name": "Agent route", "path": "AGENTS.md", "kind": "canonical", "status": "present", "notes": "Routes agents to the harness." },
     { "name": "Command map", "path": "harness/cli/commands.json", "kind": "canonical", "status": "present", "notes": "Sensor inventory." }
   ],
@@ -158,7 +158,7 @@
     { "item": "Run-and-test steps currently in README", "action": "fold_in", "source_path": "README.md", "notes": "Promote into the harness front door and assessment report." }
   ],
   "first_safe_session_plan": [
-    "Read docs/project-rules/engineering-harness.md.",
+    "Read .harness/engineering-harness.md (canonical; fall back to legacy docs/project-rules/engineering-harness.md).",
     "Inspect harness/cli/commands.json.",
     "Confirm prerequisites and env var names without reading secret values.",
     "Read the test suite to see how it mocks, injects, seeds, and resets state, and record reusable mechanisms as candidate harness affordances.",
