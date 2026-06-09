@@ -33,5 +33,5 @@ export interface HarnessRecordType {
 
   // ── Deferred (NOT built in v1; reserved so the contract can grow without a break) ──
   // schema?: object;            // JSON Schema for later OPTIONAL runtime validation.
-  // placement?: PlacementRule;  // override the uniform .harness/records/<type>/<date>-<slug>.md.
+  // placement?: PlacementRule;  // override the uniform .harness/records/<type>/<date>/<NNN>-<slug>.md.
 }

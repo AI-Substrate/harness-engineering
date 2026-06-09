@@ -47,28 +47,31 @@ The success Envelope reports the path — that's where your agent "hops to" next
 ```bash
 $ harness record retro --slug "harness-flow-skill" --json
 {"command":"record","status":"ok","timestamp":"…",
- "data":{"type":"retro","path":".harness/records/retro/2026-06-09-harness-flow-skill.md","source":"core"},
- "evidence":[{"label":"retro record","path":".harness/records/retro/2026-06-09-harness-flow-skill.md"}],
- "next_action":"Open and fill .harness/records/retro/2026-06-09-harness-flow-skill.md, then save."}
+ "data":{"type":"retro","path":".harness/records/retro/2026-06-09/001-harness-flow-skill.md","source":"core"},
+ "evidence":[{"label":"retro record","path":".harness/records/retro/2026-06-09/001-harness-flow-skill.md"}],
+ "next_action":"Open and fill .harness/records/retro/2026-06-09/001-harness-flow-skill.md, then save."}
 ```
 
 Fire-and-fill: the CLI does placement + creation; the agent reads the returned
 file and fills the values.
 
-### Placement & collision (the locked rule)
+### Placement & ordinal (the locked rule)
 
 ```
-.harness/records/<type>/<YYYY-MM-DD>-<slug>.md          ← base (UTC date)
-.harness/records/<type>/<YYYY-MM-DD>-<slug>-001.md      ← base exists → -001
-.harness/records/<type>/<YYYY-MM-DD>-<slug>-002.md      ← next clash → -002
+.harness/records/<type>/<YYYY-MM-DD>/001-<slug>.md      ← first record that day
+.harness/records/<type>/<YYYY-MM-DD>/002-<slug>.md      ← next → 002
+.harness/records/<type>/<YYYY-MM-DD>/003-<other>.md     ← a different slug shares the per-day sequence
 ```
 
-- The date comes from the system clock (UTC). `--slug` is optional and is
-  slugified to `[a-z0-9-]`; absent → a date-only filename.
-- The `<type>/` directory is created if missing. `.harness/` itself is **not**
-  scaffolded — if there's no `.harness/`, `record` reports `unconfigured` (exit 2)
-  with a `next_action`, and writes nothing.
-- It **never clobbers**: the collision counter always yields a fresh path.
+- The date comes from the system clock (UTC) and is the **directory**; `<NNN>`
+  is a per-day, per-type **ordinal** (`001`, `002`, …) = 1 + the highest already
+  present, so records sort chronologically within the day.
+- `--slug` is optional and is slugified to `[a-z0-9-]`; absent → an ordinal-only
+  filename (`<NNN>.md`).
+- The `<type>/<date>/` directories are created if missing. `.harness/` itself is
+  **not** scaffolded — if there's no `.harness/`, `record` reports `unconfigured`
+  (exit 2) with a `next_action`, and writes nothing.
+- It **never clobbers**: the ordinal always yields a fresh path.
 
 ### Status & exit codes
 

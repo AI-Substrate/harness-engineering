@@ -9,16 +9,17 @@ import type { RecordRegistry } from './registry.js';
  * Pure record-scaffolding logic behind injected ports (`fs`/`clock`/`proc`). Like
  * `services/scaffold`, it never imports `node:fs` or `process.cwd()` (Constitution
  * P2), so it is unit-testable with fakes. The CLI owns placement uniformly:
- * `.harness/records/<type>/<YYYY-MM-DD>-<slug>.md` (UTC date via the Clock;
- * collision → zero-padded `-NNN`), never clobbering an existing file.
+ * `.harness/records/<type>/<YYYY-MM-DD>/<NNN>-<slug>.md` — the UTC date (via the
+ * Clock) is a directory and `<NNN>` is a per-day, per-type ordinal (001, 002, …),
+ * so records sort chronologically within the day and never clobber an existing file.
  */
 
 const HARNESS_DIR = '.harness';
 const RECORDS_DIR = 'records';
 const TEMP_DIR = 'temp';
 const TYPE_PATTERN = /^[a-z][a-z0-9-]*$/;
-/** Safety bound so a pathological fs.exists can never loop forever. */
-const MAX_COLLISION = 999;
+/** Max per-day ordinal (keeps `<NNN>` 3 digits); refuse beyond rather than clobber. */
+const MAX_ORDINAL = 999;
 
 const TEMP_GITIGNORE = '# Crash-resilient agent scratch — never committed.\n*\n';
 
@@ -31,7 +32,7 @@ export interface RecordDeps {
 export interface RecordCreateOptions {
   /** The record type (the `<type>` arg). */
   type?: string;
-  /** Optional slug for the filename; slugified to `[a-z0-9-]`. Absent → date-only name. */
+  /** Optional slug for the filename; slugified to `[a-z0-9-]`. Absent → ordinal-only name (`<NNN>.md`). */
   slug?: string;
 }
 
@@ -59,6 +60,22 @@ export function slugify(raw: string): string {
 /** `YYYY-MM-DD` from the injected Clock's UTC ISO instant (deterministic in tests). */
 function dateStamp(clock: Clock): string {
   return clock.nowIso().slice(0, 10);
+}
+
+/**
+ * Next 1-based ordinal for a date dir: 1 + the highest `NNN` prefix already
+ * present (files are named `<NNN>[-slug].md`). Missing/empty dir → 1.
+ */
+function nextOrdinal(fs: FsPort, dateDir: string): number {
+  let max = 0;
+  for (const name of fs.readdir(dateDir)) {
+    const m = /^(\d+)(?:-|\.)/.exec(name);
+    if (m) {
+      const n = Number.parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  return max + 1;
 }
 
 /**
@@ -134,26 +151,34 @@ export function createRecord(
     slug = cleaned;
   }
 
-  // 4. Resolve a never-clobbering path: <date>[-<slug>][-NNN].md
-  const dir = join(harnessDir, RECORDS_DIR, type);
-  const base = slug ? `${dateStamp(clock)}-${slug}` : dateStamp(clock);
-  let fileName = `${base}.md`;
-  for (let n = 1; fs.exists(join(dir, fileName)) && n <= MAX_COLLISION; n += 1) {
-    fileName = `${base}-${String(n).padStart(3, '0')}.md`;
+  // 4. Resolve a never-clobbering path: <date>/<NNN>[-<slug>].md — the date is a
+  //    directory and <NNN> is a per-day, per-type ordinal = 1 + the highest already
+  //    present, so a fresh higher ordinal can't collide with an existing record.
+  const date = dateStamp(clock);
+  const dir = join(harnessDir, RECORDS_DIR, type, date);
+  const fileFor = (ord: number): string => {
+    const nnn = String(ord).padStart(3, '0');
+    return slug ? `${nnn}-${slug}.md` : `${nnn}.md`;
+  };
+  let ordinal = nextOrdinal(fs, dir);
+  let fileName = fileFor(ordinal);
+  // Defensive: if readdir lagged and the computed name somehow exists, bump on.
+  while (fs.exists(join(dir, fileName)) && ordinal < MAX_ORDINAL) {
+    ordinal += 1;
+    fileName = fileFor(ordinal);
   }
   const fileAbs = join(dir, fileName);
-  const relPath = join(HARNESS_DIR, RECORDS_DIR, type, fileName);
+  const relPath = join(HARNESS_DIR, RECORDS_DIR, type, date, fileName);
 
-  // 5. Exhaustion guard: if every candidate up to the bound already exists, refuse
-  //    rather than clobber the last one — the never-clobber guarantee holds even at
-  //    the (practically unreachable) limit of MAX_COLLISION same-day records.
-  if (fs.exists(fileAbs)) {
+  // 5. Exhaustion guard: refuse rather than clobber (or overflow to 4 digits) at the
+  //    practically-unreachable limit of MAX_ORDINAL same-day records of this type.
+  if (ordinal > MAX_ORDINAL || fs.exists(fileAbs)) {
     return {
       ok: false,
       status: 'error',
       code: ErrorCodes.RECORD_WRITE_FAILED,
-      message: `Collision counter exhausted for ${relPath} (${MAX_COLLISION}+ same-day records).`,
-      next_action: `Too many \`${base}\` records today — pass a more specific \`--slug\`.`,
+      message: `Ordinal space exhausted for ${join(HARNESS_DIR, RECORDS_DIR, type, date)} (${MAX_ORDINAL}+ same-day ${type} records).`,
+      next_action: `Too many \`${type}\` records on ${date} — start a new day or prune the folder.`,
     };
   }
 

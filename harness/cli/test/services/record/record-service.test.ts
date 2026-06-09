@@ -17,8 +17,9 @@ Test Doc:
   never-clobber collision counter, the scratch-buffer guarantee, and the honest unconfigured state.
   All side effects go through injected fakes (P2/P3), so the date + paths are deterministic.
 - Contract: createRecord(opts, registry, deps) → ok outcome with a repo-relative path under
-  .harness/records/<type>/<date>[-slug][-NNN].md (never clobbers); unconfigured when no .harness/;
-  E180 for unknown type; E108 for an empty slug; ensureTemp creates a gitignored .harness/temp/.
+  .harness/records/<type>/<date>/<NNN>[-slug].md (per-day ordinal, never clobbers); unconfigured
+  when no .harness/; E180 for unknown type; E108 for an empty slug; ensureTemp creates a gitignored
+  .harness/temp/.
 - Quality Contribution: pins the deterministic placement/collision/ensureTemp behaviour with fakes.
 */
 
@@ -33,9 +34,17 @@ function depsAt(fs: FakeFs): RecordDeps {
   };
 }
 
-/** A FakeFs whose `.harness/` directory already exists (so we're "configured"). */
-function configuredFs(seedFiles: Record<string, string> = {}): FakeFs {
-  const fs = new FakeFs(seedFiles);
+/**
+ * A FakeFs whose `.harness/` directory already exists (so we're "configured").
+ * `seedDirs` seeds `readdir` listings — needed because the per-day ordinal is
+ * computed from the date dir's existing entries (FakeFs.readdir reads the dirs
+ * map, separate from written files).
+ */
+function configuredFs(
+  seedFiles: Record<string, string> = {},
+  seedDirs: Record<string, string[]> = {},
+): FakeFs {
+  const fs = new FakeFs(seedFiles, seedDirs);
   fs.mkdirp('/repo/.harness');
   return fs;
 }
@@ -54,41 +63,54 @@ describe('slugify', () => {
 });
 
 describe('createRecord — happy path', () => {
-  it('writes the template to .harness/records/<type>/<date>-<slug>.md and returns it', () => {
+  it('writes the template to .harness/records/<type>/<date>/<NNN>-<slug>.md and returns it', () => {
     const fs = configuredFs();
     const outcome = createRecord({ type: 'retro', slug: 'my-note' }, CORE, depsAt(fs));
     expect(outcome).toMatchObject({
       ok: true,
       type: 'retro',
-      path: '.harness/records/retro/2026-06-08-my-note.md',
+      path: '.harness/records/retro/2026-06-08/001-my-note.md',
       source: 'core',
     });
-    expect(fs.writes).toContain('/repo/.harness/records/retro/2026-06-08-my-note.md');
+    expect(fs.writes).toContain('/repo/.harness/records/retro/2026-06-08/001-my-note.md');
     // The template (not an empty file) was written.
-    expect(fs.readText('/repo/.harness/records/retro/2026-06-08-my-note.md')).toContain(
+    expect(fs.readText('/repo/.harness/records/retro/2026-06-08/001-my-note.md')).toContain(
       'schema_version',
     );
   });
 
-  it('without a slug uses a date-only filename', () => {
+  it('without a slug uses an ordinal-only filename', () => {
     const fs = configuredFs();
     const outcome = createRecord({ type: 'retro' }, CORE, depsAt(fs));
-    expect(outcome).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08.md' });
+    expect(outcome).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08/001.md' });
   });
 });
 
-describe('createRecord — collision counter (never clobbers)', () => {
-  it('a second same-day create gets -001, a third gets -002', () => {
-    const fs = configuredFs({
-      '/repo/.harness/records/retro/2026-06-08-x.md': 'existing',
-    });
-    const first = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs));
-    expect(first).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08-x-001.md' });
+describe('createRecord — per-day ordinal (never clobbers)', () => {
+  it('a fresh day starts at 001; the next gets 002, and a different slug shares the sequence (003)', () => {
+    // Empty date dir → first record is 001.
+    const first = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(configuredFs()));
+    expect(first).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08/001-x.md' });
 
-    // Now both base + -001 exist → next is -002.
-    fs.writeText('/repo/.harness/records/retro/2026-06-08-x-001.md', 'existing');
-    const second = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs));
-    expect(second).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08-x-002.md' });
+    // 001 present (seed the date-dir listing) → next is 002.
+    const fs2 = configuredFs(
+      { '/repo/.harness/records/retro/2026-06-08/001-x.md': 'existing' },
+      { '/repo/.harness/records/retro/2026-06-08': ['001-x.md'] },
+    );
+    const second = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs2));
+    expect(second).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08/002-x.md' });
+
+    // 001-x + 002-x present → a record with a *different* slug still gets 003
+    // (the ordinal is a per-day sequence, not per-slug).
+    const fs3 = configuredFs(
+      {
+        '/repo/.harness/records/retro/2026-06-08/001-x.md': 'existing',
+        '/repo/.harness/records/retro/2026-06-08/002-x.md': 'existing',
+      },
+      { '/repo/.harness/records/retro/2026-06-08': ['001-x.md', '002-x.md'] },
+    );
+    const third = createRecord({ type: 'retro', slug: 'y' }, CORE, depsAt(fs3));
+    expect(third).toMatchObject({ ok: true, path: '.harness/records/retro/2026-06-08/003-y.md' });
   });
 });
 
@@ -125,16 +147,13 @@ describe('createRecord — unconfigured / error states', () => {
     }
   });
 
-  it('refuses (never clobbers) when the collision counter is exhausted', () => {
-    // Seed base + base-001..base-999 so every candidate up to MAX_COLLISION exists.
-    const seed: Record<string, string> = {
-      '/repo/.harness/records/retro/2026-06-08-x.md': 'existing',
-    };
-    for (let n = 1; n <= 999; n += 1) {
-      seed[`/repo/.harness/records/retro/2026-06-08-x-${String(n).padStart(3, '0')}.md`] =
-        'existing';
-    }
-    const fs = configuredFs(seed);
+  it('refuses (never clobbers) when the per-day ordinal space is exhausted', () => {
+    // A date dir whose highest ordinal is already 999 → nextOrdinal = 1000 > MAX.
+    // (nextOrdinal takes the max prefix, so one 999-entry listing is enough.)
+    const fs = configuredFs(
+      { '/repo/.harness/records/retro/2026-06-08/999-x.md': 'existing' },
+      { '/repo/.harness/records/retro/2026-06-08': ['999-x.md'] },
+    );
     const before = fs.writes.length;
     const outcome = createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs));
     expect(outcome.ok).toBe(false);

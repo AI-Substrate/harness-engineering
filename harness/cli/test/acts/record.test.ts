@@ -58,9 +58,10 @@ function depsWith(fs: FakeFs) {
   };
 }
 
-/** A FakeFs whose `.harness/` directory exists. */
-function configuredFs(seed: Record<string, string> = {}): FakeFs {
-  const fs = new FakeFs(seed);
+/** A FakeFs whose `.harness/` directory exists. `dirs` seeds `readdir` listings
+ * (the per-day ordinal is derived from the date dir's existing entries). */
+function configuredFs(seed: Record<string, string> = {}, dirs: Record<string, string[]> = {}): FakeFs {
+  const fs = new FakeFs(seed, dirs);
   fs.mkdirp('/repo/.harness');
   return fs;
 }
@@ -91,20 +92,23 @@ describe('registerRecordAct', () => {
     expect(env.status).toBe('ok');
     expect(env.data).toMatchObject({
       type: 'retro',
-      path: '.harness/records/retro/2026-06-08-my-note.md',
+      path: '.harness/records/retro/2026-06-08/001-my-note.md',
       source: 'core',
     });
-    expect(env.evidence[0].path).toBe('.harness/records/retro/2026-06-08-my-note.md');
+    expect(env.evidence[0].path).toBe('.harness/records/retro/2026-06-08/001-my-note.md');
     expect(env.next_action).toMatch(/fill/i);
-    expect(fs.writes).toContain('/repo/.harness/records/retro/2026-06-08-my-note.md');
+    expect(fs.writes).toContain('/repo/.harness/records/retro/2026-06-08/001-my-note.md');
     expect(code).toBe(0);
   });
 
-  it('a second same-day create gets the -001 collision suffix', () => {
+  it('a second same-day create gets the next ordinal (002)', () => {
     const { io, out } = ioFor('json');
-    const fs = configuredFs({ '/repo/.harness/records/retro/2026-06-08-x.md': 'existing' });
+    const fs = configuredFs(
+      { '/repo/.harness/records/retro/2026-06-08/001-x.md': 'existing' },
+      { '/repo/.harness/records/retro/2026-06-08': ['001-x.md'] },
+    );
     const code = run(['retro', '--slug', 'x'], io, fs);
-    expect(JSON.parse(out()).data.path).toBe('.harness/records/retro/2026-06-08-x-001.md');
+    expect(JSON.parse(out()).data.path).toBe('.harness/records/retro/2026-06-08/002-x.md');
     expect(code).toBe(0);
   });
 
@@ -167,7 +171,7 @@ describe('registerRecordAct', () => {
   it('human mode prints a Created line and exits 0', () => {
     const { io, out } = ioFor('human');
     const code = run(['retro', '--slug', 'x'], io, configuredFs());
-    expect(out()).toContain('Created .harness/records/retro/2026-06-08-x.md');
+    expect(out()).toContain('Created .harness/records/retro/2026-06-08/001-x.md');
     expect(code).toBe(0);
   });
 });
