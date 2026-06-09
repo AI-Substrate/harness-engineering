@@ -25,7 +25,9 @@ started_at: "<ISO8601Z>"
 ended_at: "<ISO8601Z>"
 summary: "<one paragraph: what happened this session>"
 entries:
-  # One block per observation. id = <PREFIX>-<3+ digits> (DL/MW/GFT/INS/COORD/SUGG/CONF).
+  # One block per observation. id = <PREFIX>-<3+ digits>. Any uppercase prefix is valid;
+  # DL/MW/GFT/INS/COORD/SUGG/CONF are the recommended per-kind defaults, and run-scoped
+  # prefixes (e.g. VF- for a flow worker's own numbering) are equally fine.
   # kind in difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion
   - id: DL-001
     kind: difficulty
