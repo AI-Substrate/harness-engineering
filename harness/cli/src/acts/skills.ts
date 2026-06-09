@@ -69,7 +69,7 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
         : {
             emit: () =>
               io.writers.out(
-                'harness skills — install this harness\'s skills.\n' +
+                "harness skills — install this harness's skills.\n" +
                   '  harness skills install --target <cli> [--global]\n',
               ),
           };
@@ -78,11 +78,10 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
 
   skills
     .command('install')
-    .description('Install this repo\'s skills into a CLI (pass-through to `npx skills add`, always -y)')
-    .option(
-      '-t, --target <cli...>',
-      `CLI target(s), repeatable: ${KNOWN_SKILL_TARGETS.join(', ')}`,
+    .description(
+      "Install this repo's skills into a CLI (pass-through to `npx skills add`, always -y)",
     )
+    .option('-t, --target <cli...>', `CLI target(s), repeatable: ${KNOWN_SKILL_TARGETS.join(', ')}`)
     .option('-g, --global', 'install globally (omit for a project-local install)')
     .option('--source <repo>', 'skills source (owner/repo or local path)', DEFAULT_SKILLS_SOURCE)
     .option('-s, --skill <slug...>', 'install only specific skill slug(s)')

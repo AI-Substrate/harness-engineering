@@ -24,6 +24,7 @@ describe('ErrorCodes table', () => {
       SCAFFOLD_FILE_EXISTS: 'E152',
       SCAFFOLD_WRITE_FAILED: 'E153',
       DOC_NOT_FOUND: 'E160',
+      SKILLS_INSTALL_FAILED: 'E170',
     });
   });
 

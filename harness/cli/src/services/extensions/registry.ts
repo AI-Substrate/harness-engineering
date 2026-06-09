@@ -12,7 +12,13 @@ export interface VerbRegistry {
 }
 
 /** Core command names an extension may NOT shadow (`help`/`doctor`/`new`/`docs` are core commands). */
-export const RESERVED_NAMES: ReadonlySet<string> = new Set(['help', 'doctor', 'new', 'docs', 'skills']);
+export const RESERVED_NAMES: ReadonlySet<string> = new Set([
+  'help',
+  'doctor',
+  'new',
+  'docs',
+  'skills',
+]);
 
 /**
  * Build the verb registry from discovered candidate paths (already sorted by
