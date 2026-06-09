@@ -1,7 +1,7 @@
 # Fix FX001: Consumer-mode `harness doctor` falsely reports `cli-build` degraded
 
 **Created**: 2026-06-10
-**Status**: Proposed
+**Status**: Closed — implemented `b0613e1` (277/277 green), companion review clean on the code. Companion raised one out-of-scope finding **F001** (stale docs still describe the old consumer `cli-build degraded` wart) → surfaced as candidate follow-up **FX003**, not folded here (surfaced-never-auto-implemented guardrail).
 **Plan**: [013-dogfood-harness-flow](../dogfood-harness-flow-plan.md)
 **Source**: Plan 013 dogfood finding FIND-2 (hit by ALL worker repos — chalk, express, click, cobra; see `runs/ROLLUP.md` and `scratch/handover-013-surfaced-findings.md`)
 **Domain(s)**: harness-cli (internal change, no contract impact)

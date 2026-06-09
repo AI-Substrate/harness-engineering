@@ -132,3 +132,14 @@
   - [degrading] config: MINIH_PROJECT_ROOT was empty in the shell, so the required initial cd did not reach the repository root and the first orientation lookup would have treated the run folder as the project. (workaround: Used git rev-parse --show-toplevel and absolute repository paths for project reads, then recorded the mismatch in findings and this retrospective.)
   - [annoying] debug: A bash exact-commit check hung after JS backticks inside a double-quoted command were interpreted by the shell. (workaround: Stopped the shell session and reran the check with plain grep over git show output instead of embedding backticks in shell-evaluated JavaScript.)
   - [annoying] knowledge: Some reviews needed exact commit scope because the working tree already contained later commits, so current-file searches could surface future changes outside the requested task. (workaround: Used git show <sha> -- path and git show <sha>:path for scoped review, and treated current-tree searches only as drift checks.)
+
+## 2026-06-09T22:12:58.615Z — code-review-companion / 2026-06-10T07-51-13-436Z-c845
+
+- runId: 2026-06-10T07-51-13-436Z-c845
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T07-51-13-436Z-c845
+- summary: Reviewed FX001 commit b0613e1 for the doctor consumer-mode cli-build fix, including the tsconfig file-marker gate, dev-repo parity, doctor act assertion change, targeted tests, and contract drift surfaces. The implementation path was sound and the final drain found no new code issues; one MEDIUM contract-drift finding was sent for stale shipped guidance/prompt text that still describes the old consumer cli-build degraded wart.
+- **magicWand** (target: coordination): Add an outside-side stop preflight that summarizes unresolved inside findings by ackOf before sending control:stop, so the orchestrator cannot accidentally close a run as clean when the companion has already sent a finding.
+- difficulties:
+  - [annoying] debug: A broad drift search produced an oversized rg tool result and saved temporary output instead of immediately surfacing the relevant references. (workaround: Reran narrower searches against explicit subtrees and cleaned up the generated temporary output files before finishing.)
+  - [degrading] debug: A shell rg pattern containing backticked text triggered shell command substitution and produced an invalid regex error. (workaround: Reran the search with a single-quoted, escaped pattern and avoided backticks in the shell regex.)
+  - [degrading] coordination: The outside stop message described the review as clean/no findings even though the companion had sent F001 earlier. (workaround: Preserved F001 in the farewell envelope and noted the contradiction in the coordination retrospective.)

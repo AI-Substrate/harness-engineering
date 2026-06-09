@@ -161,4 +161,5 @@ Overall: ⚠️ VALIDATED WITH FIXES → Status remains **READY**
 
 | ID | Created | Summary | Domain(s) | Status | Source |
 |----|---------|---------|-----------|--------|--------|
-| [FX001](fixes/FX001-doctor-consumer-mode-cli-build.md) | 2026-06-10 | Consumer-mode `doctor` falsely reports `cli-build` degraded | harness-cli | Proposed | Dogfood finding FIND-2 (all 4 worker repos) |
+| [FX001](fixes/FX001-doctor-consumer-mode-cli-build.md) | 2026-06-10 | Consumer-mode `doctor` falsely reports `cli-build` degraded | harness-cli | Closed (b0613e1) — companion clean on code; spun off F001 → FX003 | Dogfood finding FIND-2 (all 4 worker repos) |
+| [FX002](fixes/FX002-wrap-template-envelope-enrichment.md) | 2026-06-10 | `harness new --wrap` scaffold emits a sparse boot Envelope (TODO summary, no stdout/duration) | harness-cli | Proposed | Dogfood finding FIND-3 |
