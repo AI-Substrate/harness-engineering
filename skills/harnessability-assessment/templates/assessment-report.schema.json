@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/harnessability-assessment/assessment-report.schema.json",
   "title": "Harnessability assessment report",
-  "description": "Core v0.1 JSON contract for harnessability-assessment reports.",
+  "description": "Core v0.2 JSON contract for harnessability-assessment reports. v0.2 adds optional survey arrays (engineering flows, pre-commit gates, CI/local equivalence, existing harness concepts, deterministic-encoding opportunities, test mechanisms, external-dependency pressure, code composition, candidate-first harness surfaces, manual/IDE-only signals), an A-F assessment matrix, and report-path metadata. All v0.2 additions are optional; existing required keys are unchanged.",
   "type": "object",
   "required": [
     "schema_version",
@@ -31,7 +31,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "harnessability-assessment.v0.1"
+      "const": "harnessability-assessment.v0.2"
     },
     "run": {
       "type": "object",
@@ -81,7 +81,8 @@
         "readiness_level": { "$ref": "#/$defs/readinessLevel" },
         "highest_proof_level": { "$ref": "#/$defs/proofLevel" },
         "target_proof_level": { "$ref": "#/$defs/proofLevel" },
-        "confidence": { "$ref": "#/$defs/confidence" }
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "final_grade": { "oneOf": [{ "$ref": "#/$defs/grade" }, { "type": "null" }] }
       }
     },
     "harness_surfaces": {
@@ -152,10 +153,55 @@
     "evidence_log": {
       "type": "array",
       "items": { "$ref": "#/$defs/evidenceLogEntry" }
+    },
+    "report_paths": { "$ref": "#/$defs/reportPaths" },
+    "assessment_matrix": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assessmentMatrixRow" }
+    },
+    "engineering_flows": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/engineeringFlow" }
+    },
+    "pre_commit_gates": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/preCommitGate" }
+    },
+    "ci_local_equivalence": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ciLocalEquivalenceEntry" }
+    },
+    "existing_harness_concepts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/existingHarnessConcept" }
+    },
+    "deterministic_encoding_opportunities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/deterministicEncodingOpportunity" }
+    },
+    "test_mechanisms": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testMechanism" }
+    },
+    "external_dependency_pressure": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/externalDependencyPressureEntry" }
+    },
+    "code_composition": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/codeCompositionEntry" }
+    },
+    "candidate_first_harness_surfaces": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/candidateFirstHarnessSurface" }
+    },
+    "manual_operation_signals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/manualOperationSignal" }
     }
   },
   "$defs": {
-    "grade": { "type": "string", "enum": ["A", "B", "C", "D", "E"] },
+    "grade": { "type": "string", "enum": ["A", "B", "C", "D", "E", "F"] },
     "readinessLevel": { "type": "string", "pattern": "^H[0-5]$" },
     "proofLevel": { "type": "string", "pattern": "^L[0-6]" },
     "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
@@ -451,6 +497,182 @@
         "claim": { "type": "string" },
         "provenance": { "$ref": "#/$defs/provenance" },
         "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "reportPaths": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "run_dir": { "type": "string" },
+        "report_md": { "type": "string" },
+        "report_json": { "type": "string" },
+        "summary_md": { "type": "string" },
+        "evidence_jsonl": { "type": "string" },
+        "latest_md": { "type": "string" },
+        "latest_json": { "type": "string" },
+        "schema_json": { "type": "string" }
+      }
+    },
+    "assessmentMatrixRow": {
+      "type": "object",
+      "required": ["area", "grade"],
+      "additionalProperties": true,
+      "properties": {
+        "area": { "type": "string" },
+        "grade": { "$ref": "#/$defs/grade" },
+        "score_percent": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "weight": { "type": ["number", "null"] },
+        "rationale": { "type": "string" },
+        "evidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "engineeringFlow": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["sdd", "build", "test", "release", "review", "ci", "local", "onboarding", "deploy", "custom", "unknown"]
+        },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "where_detected": { "type": "string" },
+        "canonical": { "$ref": "#/$defs/yesNoUnknown" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "notes": { "type": "string" }
+      }
+    },
+    "preCommitGate": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "mechanism": {
+          "type": "string",
+          "enum": ["husky", "pre-commit", "lefthook", "git_hook", "just", "make", "npm_script", "ci_only", "none", "unknown"]
+        },
+        "checks": { "type": "array", "items": { "type": "string" } },
+        "local_available": { "type": ["boolean", "string"] },
+        "ci_equivalent": { "type": ["boolean", "string"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "ciLocalEquivalenceEntry": {
+      "type": "object",
+      "required": ["check", "equivalence"],
+      "additionalProperties": true,
+      "properties": {
+        "check": { "type": "string" },
+        "ci_command": { "type": "string" },
+        "local_command": { "type": "string" },
+        "equivalence": {
+          "type": "string",
+          "enum": ["identical", "equivalent", "partial", "divergent", "ci_only", "local_only", "unknown"]
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "existingHarnessConcept": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["canonical", "diffuse", "prior", "generic", "none", "unknown"] },
+        "surfaces": { "type": "array", "items": { "type": "string" } },
+        "coverage": { "$ref": "#/$defs/band" },
+        "notes": { "type": "string" }
+      }
+    },
+    "deterministicEncodingOpportunity": {
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "current_encoding": {
+          "type": "string",
+          "enum": ["context_file", "doc", "convention", "manual", "ide_only", "none", "deterministic", "unknown"]
+        },
+        "proposed_encoding": { "type": "string" },
+        "proof_level": { "$ref": "#/$defs/proofLevel" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "testMechanism": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["mock", "fake", "sink", "stub", "contract", "testcontainer", "in_memory", "golden", "snapshot", "e2e", "integration", "unit", "property", "none", "unknown"]
+        },
+        "where_detected": { "type": "string" },
+        "deterministic": { "$ref": "#/$defs/yesNoUnknown" },
+        "notes": { "type": "string" }
+      }
+    },
+    "externalDependencyPressureEntry": {
+      "type": "object",
+      "required": ["dependency", "pressure"],
+      "additionalProperties": true,
+      "properties": {
+        "dependency": { "type": "string" },
+        "pressure": { "type": "string", "enum": ["none", "low", "medium", "high", "blocking", "unknown"] },
+        "local_substitute": {
+          "type": "string",
+          "enum": ["native", "container", "fake", "in_memory", "testcontainers", "sandbox", "dry_run", "none", "unknown"]
+        },
+        "proof_impact": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "codeCompositionEntry": {
+      "type": "object",
+      "required": ["area"],
+      "additionalProperties": true,
+      "properties": {
+        "area": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["module", "package", "service", "layer", "boundary", "plugin", "extension_point", "seam", "monolith", "other", "unknown"]
+        },
+        "coupling": { "type": "string" },
+        "test_seam": { "$ref": "#/$defs/yesNoUnknown" },
+        "notes": { "type": "string" }
+      }
+    },
+    "candidateFirstHarnessSurface": {
+      "type": "object",
+      "required": ["surface"],
+      "additionalProperties": true,
+      "properties": {
+        "surface": { "type": "string" },
+        "rationale": { "type": "string" },
+        "proof_level": { "$ref": "#/$defs/proofLevel" },
+        "already_exists": { "$ref": "#/$defs/yesNoUnknown" },
+        "priority": { "type": "string", "enum": ["high", "medium", "low", "unknown"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "manualOperationSignal": {
+      "type": "object",
+      "required": ["signal"],
+      "additionalProperties": true,
+      "properties": {
+        "signal": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["ide_only", "manual_step", "gui_required", "desktop", "mobile", "hardware", "brownfield", "click_ops", "undocumented", "unknown"]
+        },
+        "influences": { "type": "array", "items": { "type": "string", "pattern": "^[AB][0-9]+$" } },
+        "penalize": { "$ref": "#/$defs/yesNoUnknown" },
+        "notes": { "type": "string" }
       }
     }
   }

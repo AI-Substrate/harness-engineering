@@ -1,5 +1,5 @@
 {
-  "schema_version": "harnessability-assessment.v0.1",
+  "schema_version": "harnessability-assessment.v0.2",
   "run": {
     "timestamp_utc": "20260604T224407Z",
     "repo_root": ".",
