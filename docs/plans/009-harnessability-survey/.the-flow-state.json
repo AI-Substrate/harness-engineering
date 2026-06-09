@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "harnessability-survey",
+  "plan_dir": "docs/plans/009-harnessability-survey",
+  "mode": "Simple",
+  "current_stage": "awaiting-6",
+  "pending_command": "/plan-6-v2-implement-phase --plan \"docs/plans/009-harnessability-survey/harnessability-survey-plan.md\"",
+  "intent": "Rework the harnessability-assessment skill (v0.2) to survey existing engineering flows + deterministic harness opportunities, move output to .harness/reports/harnessability/, add A-F matrix + terminal summary, and a manual/IDE-only operation signals scan.",
+  "milestones_total": 5,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-09T10:52:00Z",
+  "compacted_seams": [],
+  "status": "active"
+}
