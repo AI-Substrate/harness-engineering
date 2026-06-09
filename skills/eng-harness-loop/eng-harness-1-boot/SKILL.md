@@ -1,6 +1,6 @@
 ---
 name: eng-harness-1-boot
-description: Boot stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). Validate that the engineering harness is healthy at session start and report its maturity. VALIDATE mode runs the Boot → Interact → Observe health check; STATUS mode gives a quick read-only maturity report. Reads `docs/project-rules/engineering-harness.md` (legacy `agent-harness.md` / `harness.md` read as fallback, canonical-first). Reports `UNAVAILABLE` gracefully when no governance doc and no boot command exist — the governance doc is provisioned by the separate engineering-harness setup effort, not by this skill.
+description: Boot stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). Validate that the engineering harness is healthy at session start and report its maturity. VALIDATE mode runs the Boot → Interact → Observe health check; STATUS mode gives a quick read-only maturity report. Reads `.harness/engineering-harness.md` (canonical), falling back to legacy `docs/project-rules/engineering-harness.md` / `agent-harness.md` / `harness.md` in that order (canonical-first). Boot is read-only — it never writes governance or history. Reports `UNAVAILABLE` gracefully when no governance doc and no boot command exist — the governance doc is provisioned by the separate engineering-harness setup effort, not by this skill.
 ---
 # eng-harness-1-boot
 
@@ -8,7 +8,7 @@ The **Boot** stage of the harness loop. Run it at session start to confirm the e
 
 > **The harness IS the product.** Development infrastructure — CLI tools, build scripts, test harnesses, `just`/`make` recipes, seed scripts, environment setup, plus the agent-facing Boot/Interact/Observe loop on top — is not scaffolding. It is the first-class product of engineering work. Boot exists because if a brand-new agent session can't reach a healthy, observable running system in 30-60 seconds using only the governance doc, that is the most important thing to fix before any feature work. Every "no" here is harness work to do.
 
-**Engineering harness governance**: `docs/project-rules/engineering-harness.md` (canonical). Legacy names `docs/project-rules/agent-harness.md` and `docs/project-rules/harness.md` are still read as fallbacks for projects that haven't migrated — see Step 0 for the read order. This skill never *creates* the governance doc; provisioning it is the separate engineering-harness setup effort's job. If it is absent, boot degrades gracefully (reports `UNAVAILABLE`) rather than blocking the session.
+**Engineering harness governance**: `.harness/engineering-harness.md` (canonical). Legacy locations `docs/project-rules/engineering-harness.md`, `docs/project-rules/agent-harness.md`, and `docs/project-rules/harness.md` are still read as fallbacks for projects that haven't migrated — see Step 0 for the canonical-first read order. This skill never *creates* the governance doc; provisioning it is the separate engineering-harness setup effort's job. If it is absent, boot degrades gracefully (reports `UNAVAILABLE`) rather than blocking the session. See [`../eng-harness-flow/references/governance-doc.md`](../eng-harness-flow/references/governance-doc.md) for what the governance doc contains and when it is written.
 
 **Layering**: the agent-facing Boot/Interact/Observe loop sits **on top of** the engineering substrate (the project's `justfile`/`Makefile`/`package.json scripts.dev` boot command, test runner, etc.). The Boot command the governance doc records IS the engineering harness substrate. If no substrate exists, the verdict is `UNAVAILABLE` — Boot can't work without something to boot.
 
@@ -32,18 +32,19 @@ $ARGUMENTS
 
 ```
 Check governance file (read order: canonical path first, then legacy fallbacks in order of recency):
-  1. docs/project-rules/engineering-harness.md  ← canonical path
-  2. docs/project-rules/agent-harness.md         ← legacy fallback (pre engineering-harness rename)
-  3. docs/project-rules/harness.md               ← older legacy fallback (pre agent-harness rename)
+  1. .harness/engineering-harness.md               ← canonical path
+  2. docs/project-rules/engineering-harness.md     ← legacy fallback (pre .harness/ move)
+  3. docs/project-rules/agent-harness.md           ← older legacy fallback (pre engineering-harness rename)
+  4. docs/project-rules/harness.md                 ← oldest legacy fallback (pre agent-harness rename)
 
-If found at either legacy path: log a one-line migration advisory in this skill's
-output (e.g. "📁 Legacy filename detected — consider `git mv agent-harness.md
-engineering-harness.md`") but do NOT modify the file. Continue normally.
+If found at any legacy path: log a one-line migration advisory in this skill's
+output (e.g. "📁 Legacy location detected — consider `git mv` to
+.harness/engineering-harness.md") but do NOT modify the file. Continue normally.
 
 Mode resolution:
   ├── EXISTS + no --status flag → VALIDATE mode
   ├── EXISTS + --status         → STATUS mode (read-only report)
-  └── MISSING at all 3 paths    → report UNAVAILABLE gracefully (no governance doc to validate;
+  └── MISSING at all 4 paths    → report UNAVAILABLE gracefully (no governance doc to validate;
                                    it is provisioned by the separate engineering-harness setup effort)
 ```
 
@@ -53,9 +54,9 @@ Mode resolution:
 
 ### Step 1: Read the engineering harness governance doc
 
-Read the governance doc using the canonical-first fallback chain from Step 0: `docs/project-rules/engineering-harness.md` → `agent-harness.md` → `harness.md` (emit the migration advisory if a legacy name was used). Parse: boot command, health check, interaction method, observe method, current maturity level, deterministic signal inventory, evidence paths, and any declared back-pressure gaps.
+Read the governance doc using the canonical-first fallback chain from Step 0: `.harness/engineering-harness.md` → `docs/project-rules/engineering-harness.md` → `agent-harness.md` → `harness.md` (emit the migration advisory if a legacy location was used). Parse: boot command, health check, interaction method, observe method, current maturity level, deterministic signal inventory, evidence paths, and any declared back-pressure gaps.
 
-If all three paths are missing or unparseable → report `UNAVAILABLE` (verdict table below). The governance doc is provisioned by the separate engineering-harness setup effort, not by this skill — boot does not block the session; it notes the harness is not yet provisioned and proceeds.
+If all four paths are missing or unparseable → report `UNAVAILABLE` (verdict table below). The governance doc is provisioned by the separate engineering-harness setup effort, not by this skill — boot does not block the session; it notes the harness is not yet provisioned and proceeds.
 
 If the governance doc exists but omits signal-readiness sections, continue normally and report those dimensions as "not declared". Do not scaffold or rewrite the doc just to add them.
 
@@ -91,7 +92,7 @@ Run checks using bash tool:
 | **✅ HEALTHY** | All 3 checks pass, boot ≤ 45s |
 | **⚠️ SLOW** | All 3 checks pass, boot > 45s |
 | **❌ UNHEALTHY** | Any check fails |
-| **🔴 UNAVAILABLE** | No engineering-harness.md (or legacy agent-harness.md / harness.md) and no boot command |
+| **🔴 UNAVAILABLE** | No governance doc at any path (`.harness/engineering-harness.md` or legacy `docs/project-rules/engineering-harness.md` / `agent-harness.md` / `harness.md`) and no boot command |
 
 ### Step 4: Read signal/back-pressure readiness
 
@@ -108,13 +109,11 @@ Build a short signal-readiness summary from the governance doc and observed evid
 
 Treat absent dimensions as harness-improvement signals for Observe/Retro. They do not change `HEALTHY` to `UNHEALTHY` unless the actual Boot, Interact, or Observe checks fail.
 
-### Step 5: Update Maturity & Report
+### Step 5: Report
 
-Update engineering-harness.md `## Maturity Assessment` to reflect current reality.
-Update `**Maturity Level**` header field.
-Append validation result to `## History` table.
+Boot is **read-only**: it reports the current maturity it *read* from the governance doc — it does **not** write governance or history. (Provisioning happens at inception; the body + maturity snapshot change only at the Improve beat — see [`../eng-harness-flow/references/governance-doc.md`](../eng-harness-flow/references/governance-doc.md).)
 
-(If the verdict is `UNAVAILABLE`, there is no governance doc to update — skip this step and report the gap.)
+(If the verdict is `UNAVAILABLE`, there is no governance doc — report the gap.)
 
 Report:
 ```
@@ -138,27 +137,19 @@ Report:
 
 Quick read-only report — no validation, no changes.
 
-Read engineering-harness.md (or legacy agent-harness.md / harness.md, with migration advisory) and report: project type, maturity level, last validation date, checklist completion. No harness boots or health checks. If all three paths are absent → report `UNAVAILABLE`.
+Read the governance doc (canonical-first: `.harness/engineering-harness.md` → legacy `docs/project-rules/engineering-harness.md` / `agent-harness.md` / `harness.md`, with a migration advisory if a legacy location is used) and report: project type, maturity level (the current snapshot in the doc), and checklist completion. If a `.harness/history.md` changelog exists, the most recent encoded-improvement row is the last *trajectory* change; boot does not itself track a "last validation date" (it writes nothing), so report that only if `history.md` supplies it, otherwise omit it. No harness boots or health checks. If all four paths are absent → report `UNAVAILABLE`.
 
 ---
 
 ## Measure compounding value
 
-> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `## History` table the validation appends is the trajectory; a maturity level that climbs (or a boot time that shrinks) over successive sessions is the compounding value made visible. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`eng-harness-4-retro --harvest`).
+> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `.harness/history.md` changelog — one row **per encoded improvement** (the Improve beat), written when a harness change actually ships, **not** per session/boot — is the trajectory; a maturity level that climbs (or a boot time that shrinks) across those rows is the compounding value made visible. Boot only *reads* this trajectory; it never appends to it. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`eng-harness-4-retro --harvest`).
 
 ---
 
 ## Maturity model (reference)
 
-The canonical maturity ladder is the **nucleus / self-improving** ladder — the same one the engineering-harness setup effort provisions into the governance doc. Boot reports the level that is *actually working* (not aspirational), reading it from the governance doc's `## Maturity Assessment`.
-
-| Level | Meaning |
-|-------|---------|
-| L0: No harness | Commands live in tribal knowledge, scattered docs, or ad-hoc scripts |
-| L1: Front door | Governance doc, harness/, CLI skeleton, AGENTS.md pointer exist; commands may be unconfigured |
-| L2: Commands encoded | Build/test/run/health are confirmed and runnable |
-| L3: Improvement loop active | Friction log has entries; ≥1 has been encoded into the harness; magic-wand prompts have shipped harness changes |
-| L4: Self-improving | The harness regularly produces improvements during normal work; new agents onboard without human help; proof-level ceilings are tracked |
+The canonical maturity ladder is the **nucleus / self-improving** ladder — the same one the engineering-harness setup effort provisions into the governance doc. Boot reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc. The single canonical **L0–L4 ladder** (and how to assess which rung holds) now lives in one place — see [`../eng-harness-flow/references/maturity-assessment.md`](../eng-harness-flow/references/maturity-assessment.md). Boot does not restate it.
 
 ### Agent-harness capability axis (separate from maturity)
 
@@ -168,6 +159,6 @@ This is a **capability axis**, not the maturity ladder — it describes what the
 
 ## What Boot does NOT do
 
-- **No setup or scaffolding**. It never creates `docs/project-rules/engineering-harness.md`, `docs/harness/`, command maps, fixtures, or harness CLI scripts. Those are provisioned by the separate engineering-harness setup effort.
+- **No setup or scaffolding**. It never creates `.harness/engineering-harness.md` (or any legacy location), `docs/harness/`, command maps, fixtures, or harness CLI scripts. Those are provisioned by the separate engineering-harness setup effort.
 - **No gates, scores, or thresholds for back-pressure**. Signal-readiness gaps are advisory improvement candidates. Boot only fails when the live Boot, Interact, or Observe checks fail.
 - **No product-specific sensor implementation**. It reports whether sensors are present or missing; it does not invent downstream project checks.
