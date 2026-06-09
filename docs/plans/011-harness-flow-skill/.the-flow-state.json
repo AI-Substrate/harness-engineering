@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "harness-flow-skill",
+  "plan_dir": "docs/plans/011-harness-flow-skill",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/011-harness-flow-skill/harness-flow-skill-plan.md\"",
+  "intent": "Build eng-harness-flow (stateless harness-loop router) + the no-new-CLI governance refactor G1-G5. DEFERRED to next plan: D9 governance inception via harness init; D9b inject step.",
+  "milestones_total": 5,
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-09T08:51:37Z",
+  "compacted_seams": [],
+  "status": "active",
+  "adopted": true
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-flow-skill",
+  "plan_dir": "docs/plans/011-harness-flow-skill",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build done — 16/16 tasks, companion APPROVE, 227/227 CLI tests green",
+  "next": "Merge (/plan-8 analyze upstream + merge plan; merge needs typed PROCEED)",
+  "_comment": "Adopted by /the-flow from existing artifacts (original-ask.md + a 46KB design workshop). No engineering-harness governance doc in this repo, so ALL harness loop nodes are omitted (spine + workshop only). the-flow.md is generated FROM this file. Back-filled nodes carry reconstructed:true — the user never spoke to the-flow for these. Build ran via /plan-6 COMPANION variant — the code-review-companion reviewed every commit and supersedes /plan-7, so the flow skips review and goes spec→plan→build→merge.",
+  "agents": [
+    { "id": "code-review-companion", "kind": "companion", "render": "wrap",
+      "run_id": "2026-06-09T18-22-26-936Z-7ddf", "covers": ["build"], "status": "completed",
+      "note": "Power-On-Mode live reviewer over 9 task pings. 5 MEDIUM findings, all one theme (deferred-writer wording drift: governance 'owed' not 'provisioned' until the deferred harness init writer ships); all resolved in c67d8b1 + f9f82cf. Final verdict APPROVE, 0 open. Farewell + reconciliation in docs/retros/011-harness-flow-skill.md. Supersedes /plan-7." }
+  ],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Manual exploration", "status": "done",
+      "reconstructed": true, "ran_at": "2026-06-09T05:40Z",
+      "user_input": "Review the flow skill in the tools repo ... We need this for our harness skills. Note how it is re entrant and that it can run at any phase.",
+      "note": "Studied the-flow (SKILL.md + getting-started.md) and surveyed the seven eng-harness-* skills + directives.md. Captured verbatim ask.",
+      "artifacts": ["original-ask.md"], "next": ["spec"] },
+
+    { "id": "ws1", "type": "workshop", "label": "Workshop 1 · entry points + decision flow", "status": "done",
+      "branch_of": "spec", "ran_at": "2026-06-09T07:12Z",
+      "user_input": "start with a workshop that includes mermaid of what a workflow graph for our harness loop would look like ... the various dynamic entry points and how this skill would assist the harness flow.",
+      "note": "Recommended direction: STATELESS dispatcher. 5 validated Mermaid diagrams; setup gate (install+scout -> governance -> inject -> build+run boot LAST); conflict matrix; full the-flow-style UX (rail/now-next/flag beat); D1-D13 decision table; companion decision-flow.md.",
+      "artifacts": ["workshops/001-harness-flow-entry-points.md", "decision-flow.md"], "next": ["spec"] },
+
+    { "id": "spec", "type": "spec", "label": "Spec", "status": "done",
+      "command": "/plan-1b", "ran_at": "2026-06-09T07:53Z",
+      "user_input": "yes [run /plan-1b]; Simple mode; Lightweight testing; the flow skill will be in the loop skill folder",
+      "note": "CS-3 Simple. Scope = eng-harness-flow stateless router + no-new-CLI governance refactor G1-G5. D2 placement = skills/eng-harness-loop/eng-harness-flow/ (+ .minih.json include). D8 = detect-any + note. D9/D9b DEFERRED to next plan. 16 acceptance criteria.",
+      "artifacts": ["harness-flow-skill-spec.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan", "status": "done",
+      "command": "/plan-3", "ran_at": "2026-06-09T08:05Z",
+      "user_input": "yep [run /plan-3]",
+      "note": "Status READY. Simple single-phase, 16 tasks (T001-T016). Gate matrix all PASS/N-A (constitution/architecture govern CLI source, untouched). Rubber-duck pass caught 3 gaps -> added T015 (retro semantics reconciliation, G3/G4), T016 (deferred-writer honesty + governance-doc links), extended T010/T012 for assessment-latest.json fixture. No harness scaffolding (sentinel: no governance doc).",
+      "artifacts": ["harness-flow-skill-plan.md"], "next": ["build"] },
+
+    { "id": "build", "type": "phase", "label": "Build · single phase (Simple)", "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion", "ran_at": "2026-06-09T08:49Z",
+      "user_input": "yea implement with companion enabled please",
+      "note": "Implemented all 16 tasks (T001-T016) across 10 commits a840a0b..a61cb3b with a live code-review-companion. eng-harness-flow router authored (stateless contract, signals A-J, setup gate boot-last, conflict matrix, --json envelope, two-zone rail UX); 2 reference docs (governance-doc.md, maturity-assessment.md); .minih.json include; boot G1/G2/G4 (canonical-first read order, L0-L4 ladder moved out, read-only); G1 across retro/backpressure/harnessability(+both templates); retro semantics reconciled (T015); deferred-writer honesty (T016 + companion F001-F005 fixes). 227/227 CLI tests green. All 16 ACs met.",
+      "artifacts": ["skills/eng-harness-loop/eng-harness-flow/SKILL.md", "skills/eng-harness-loop/eng-harness-flow/references/governance-doc.md", "skills/eng-harness-loop/eng-harness-flow/references/maturity-assessment.md", "docs/retros/011-harness-flow-skill.md"], "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "known",
+      "command": "/plan-8", "cursor": true, "next": [] }
+  ]
+}
