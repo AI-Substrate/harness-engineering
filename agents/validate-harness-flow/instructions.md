@@ -25,9 +25,11 @@
   through the rest of the flow, and do not pick the next candidate yourself — the
   orchestrator/operator re-fires an alternate.
 
-- **Honest statuses.** A boot verb that returns `degraded`/`unconfigured` (exit 2)
-  with a `next_action` is correct behaviour, not a bug — only `bootRuns: false`
-  if it crashed, never ran the repo, or lied about success.
+- **Honest statuses.** A boot verb that returns `degraded` (exit 0, with a
+  `next_action`) when the repo's own tests are flaky, or `unconfigured` (exit 2,
+  with a `next_action`) when left as a stub, is correct behaviour, not a bug
+  (`error` exits 1). Only `bootRuns: false` if it crashed, never ran the repo, or
+  lied about success.
 
 - **Throwaway only.** All writes happen **inside `targetRepo`** (the clone) — the
   harness install, the governance doc, the boot extension, the assessment reports,

@@ -21,7 +21,7 @@ entries:
         first_seen_at: "2026-06-09T12:21:00Z"
   - id: DL-002
     kind: difficulty
-    description: "`setsid` is not available on macOS, so the documented `setsid nohup minih run ...` companion-boot pattern silently failed (the run never started; `minih status` showed a stale earlier run as 'completed')."
+    description: "`setsid` is not available on macOS. The companion-boot doc shows plain `minih run <slug> &` backgrounding; I reached for a `setsid nohup minih run ...` detach instead, which silently failed (the run never started; `minih status` showed a stale earlier run as 'completed')."
     target: minih
     severity: degrading
     workaround: "Booted the companion via the agent runtime's own detached/async background mode instead of setsid; confirmed `verdict: active` before briefing."

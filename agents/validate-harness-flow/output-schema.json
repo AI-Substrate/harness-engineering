@@ -12,10 +12,19 @@
     "bootAuthored",
     "bootRuns",
     "retroRecorded",
+    "retroRecordPaths",
     "verdict",
     "summary",
     "retrospective"
   ],
+  "if": {
+    "properties": { "abandoned": { "const": true } },
+    "required": ["abandoned"]
+  },
+  "then": {
+    "required": ["abandonReason"],
+    "properties": { "abandonReason": { "type": "string", "minLength": 1 } }
+  },
   "properties": {
     "targetRepo": {
       "type": "string",

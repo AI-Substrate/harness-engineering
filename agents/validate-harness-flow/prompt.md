@@ -28,10 +28,27 @@ You improve **two** systems and must report on both in your retrospective:
 2. **minih itself** — the runner, skill passing, permissions, timeouts. Friction
    here is *minih* feedback.
 
-**FIRST**: run `cd $MINIH_PROJECT_ROOT`. Your SDK session starts in this run's
-folder, not the project root. The harness core source lives at
-`$MINIH_PROJECT_ROOT` (the CLI under `harness/cli/`). The setup skills live under
-`$MINIH_PROJECT_ROOT/skills/eng-harness-setup/` and `.../eng-harness-loop/`.
+**FIRST — resolve the project root robustly.** `$MINIH_PROJECT_ROOT` *should*
+point at the harness repo, but in some minih runtimes it is empty and your SDK
+session starts in this run's folder, not the project root. So resolve it
+defensively and **fail clearly** if you cannot:
+
+```bash
+PROJECT_ROOT="${MINIH_PROJECT_ROOT:-}"
+# Fall back to the enclosing git repo of wherever the harness source actually is.
+if [ -z "$PROJECT_ROOT" ] || [ ! -e "$PROJECT_ROOT/harness/cli" ]; then
+  PROJECT_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+# Last resort: search upward from cwd for a checkout that has harness/cli + skills/.
+[ -n "$PROJECT_ROOT" ] && [ -e "$PROJECT_ROOT/harness/cli" ] || {
+  echo "FATAL: cannot resolve the harness project root (MINIH_PROJECT_ROOT empty and no enclosing checkout)."; exit 1; }
+cd "$PROJECT_ROOT"
+```
+
+Use **`$PROJECT_ROOT`** (not a bare `$MINIH_PROJECT_ROOT`) everywhere below for
+the local harness install and the skill/template paths. The harness core source
+lives at `$PROJECT_ROOT` (the CLI under `harness/cli/`); the setup skills live
+under `$PROJECT_ROOT/skills/eng-harness-setup/` and `.../eng-harness-loop/`.
 
 ---
 
@@ -56,7 +73,7 @@ step succeeded just because a skill said so — re-check with `harness doctor`,
 
 The skills are **repo-local** and are wired two ways; this repo uses the first:
 
-1. **Repo config** — `$MINIH_PROJECT_ROOT/.minih.json` declares two `path:`
+1. **Repo config** — `$PROJECT_ROOT/.minih.json` declares two `path:`
    sources (one per category — minih's `path:` source matches a directory's
    *direct* children, and the layout is two-level `skills/<category>/<slug>/`):
    ```json
@@ -85,7 +102,7 @@ that is a reportable FAIL (skills mis-wired) — say so, do not work around it.
   the flow against. The orchestrator clones it and passes this; you operate
   **inside** this clone (`cd "$targetRepo"` for the per-repo steps).
 - `harnessSource` (default `local`): `local` installs the core from
-  `$MINIH_PROJECT_ROOT` (a file install — fast, deterministic). `github` installs
+  `$PROJECT_ROOT` (a file install — fast, deterministic). `github` installs
   from `github:AI-Substrate/harness-engineering` (proves the npx path).
 - `keepTarget` (default `false`): the orchestrator owns the clone's lifecycle;
   honour this only for any extra scratch you create yourself.
@@ -97,12 +114,23 @@ that is a reportable FAIL (skills mis-wired) — say so, do not work around it.
 ### S0 — Install the harness core into the target
 
 - `cd "$targetRepo"`.
-- `local`: `npm install "$MINIH_PROJECT_ROOT" --no-audit --no-fund` (the root
-  `package.json` is the manifest; its `prepare` builds `dist/`). Exposes
-  `npx harness`.
-- `github`: `npm install github:AI-Substrate/harness-engineering`.
+- **Ensure the clone is an npm-install target.** Repos with no `package.json`
+  (typical for Python/Go) make `npm install` walk *up* and pick the wrong prefix
+  (e.g. `/tmp`), writing `node_modules` outside the clone. Guard against it:
+  pin the prefix to the clone, and seed a minimal manifest if none exists:
+  ```bash
+  [ -f package.json ] || npm init -y >/dev/null 2>&1
+  ```
+- `local`: `npm install "$PROJECT_ROOT" --prefix "$targetRepo" --no-audit --no-fund`
+  (the root `package.json` is the manifest; its `prepare` builds `dist/`). Exposes
+  `npx harness`. The `--prefix` keeps `node_modules` inside the clone regardless
+  of any parent `package.json`.
+- `github`: `npm install github:AI-Substrate/harness-engineering --prefix "$targetRepo"`.
 - **Sanity (independent):** `npx harness doctor --json` runs and reports. An
-  empty `.harness/extensions/` is **not** an error. Record `harnessInstalled`.
+  empty `.harness/extensions/` is **not** an error. (A `cli-build degraded`
+  note about a missing `harness/cli/dist` in the *consumer* clone is a known
+  consumer-mode wart — record it as a difficulty, it does not block install.)
+  Record `harnessInstalled`.
 
 ### S1 — Harnessability assessment (drive `eng-harness-0-harnessability-assessment`)
 
@@ -139,8 +167,9 @@ Decide **right after S1**, before writing anything else:
     cannot operate it today even if it is adaptable.
 - On abandon: set `abandoned: true`, `abandonReason` (grade + which axis tripped,
   e.g. *"final_grade=D (brownfield); operate_today=E — not operable as-is"*),
-  `verdict: "ABANDONED"`, **stop the recipe here**, and emit your report. Do
-  **not** FAIL — a poor repo correctly identified is a *successful* dogfood run.
+  `verdict: "ABANDONED"`, `governanceWritten/bootAuthored/bootRuns/retroRecorded:
+  false`, `retroRecordPaths: []`, **stop the recipe here**, and emit your report.
+  Do **not** FAIL — a poor repo correctly identified is a *successful* dogfood run.
   The orchestrator/operator re-fires a held-back alternate via `--repo`; you do
   **not** pick the next candidate yourself.
 - Otherwise (`C` or better, Operate-Today not lowest): continue to S3.
@@ -150,7 +179,7 @@ Decide **right after S1**, before writing anything else:
 There is **no `harness init`** command (it is a deferred CLI writer — Key
 Finding 02). So you **hand-write** the governance doc yourself, from the BIO
 contract template at
-`$MINIH_PROJECT_ROOT/skills/eng-harness-loop/eng-harness-flow/references/governance-doc.md`.
+`$PROJECT_ROOT/skills/eng-harness-loop/eng-harness-flow/references/governance-doc.md`.
 
 Write `.harness/engineering-harness.md` in the clone with **all 8 BIO fields**,
 grounded in what you actually found in this repo (not boilerplate):

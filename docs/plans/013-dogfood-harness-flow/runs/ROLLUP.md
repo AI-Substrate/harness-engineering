@@ -1,11 +1,11 @@
 # validate-harness-flow — Run Rollup
 
-**Collected**: 2026-06-09T13:05:14.100Z  ·  **Fired**: 2026-06-09T12:48:32.854Z
+**Collected**: 2026-06-09T13:12:49.227Z  ·  **Fired**: 2026-06-09T12:48:32.854Z
 **Agent**: validate-harness-flow  ·  **Temp root**: /tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z
 
 **Totals**: DONE 3 · TIMED_OUT 0 · MISSING_REPORT 0 · NOT_FIRED 0
 
-> Retros + magic-wands below are **surfaced for review, never auto-implemented**. The only corrective change made during this work is repairing a broken record-write path.
+> Retros + magic-wands below are **surfaced for review, never auto-implemented**. The only corrective change a dogfood run is *permitted* to make is repairing a broken record-write path (none was needed here unless noted).
 
 ## Runs
 

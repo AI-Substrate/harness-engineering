@@ -337,7 +337,7 @@ function buildRollup(
   );
   lines.push('');
   lines.push(
-    '> Retros + magic-wands below are **surfaced for review, never auto-implemented**. The only corrective change made during this work is repairing a broken record-write path.',
+    '> Retros + magic-wands below are **surfaced for review, never auto-implemented**. The only corrective change a dogfood run is *permitted* to make is repairing a broken record-write path (none was needed here unless noted).',
   );
   lines.push('');
   lines.push('## Runs');
