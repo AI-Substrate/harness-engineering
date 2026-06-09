@@ -1,0 +1,28 @@
+{
+  "$schema": "https://minih.dev/schemas/agent-manifest.json",
+  "name": "validate-harness-flow",
+  "version": "0.1.0",
+  "description": "Single-shot dogfood agent. Given a freshly-cloned public repo (targetRepo), it drives the FULL harness setup flow end-to-end by invoking the child setup skills directly (NOT the interactive eng-harness-flow router): install the harness core, run eng-harness-0-harnessability-assessment, gate on the grade (abandon D/E/F or lowest Operate-Today band), hand-write .harness/engineering-harness.md governance from the 8 BIO fields, author a `boot` extension via eng-harness-0-add-extension, prove it boots, then record a retro via eng-harness-4-retro. Emits a structured PASS|FAIL|ABANDONED report plus a dual-layer (project|minih) retrospective.",
+  "author": "AI-Substrate",
+  "tags": ["test", "dogfood", "harness", "flow", "setup", "boot", "governance"],
+  "minihVersion": ">=0.3.0",
+  "type": "minih-agent",
+  "files": [
+    {
+      "path": "prompt.md",
+      "description": "Mission: cd to project root, install the harness into targetRepo, then drive the ordered setup skills (assess -> hand-written governance -> add-extension boot -> boot --validate -> record retro) directly. Encodes the abandonment gate, the 8 BIO governance fields, and the assessment->report field mapping. Documents skill wiring (.minih.json / --skill-source+--skill)."
+    },
+    {
+      "path": "instructions.md",
+      "description": "Rules: drive the setup skills (don't bypass or reimplement them), independent verification is mandatory (re-check via harness doctor/boot, never trust skill self-reports), prefer --json, throwaway writes only (the clone), capture friction at the moment of friction tagged project|minih."
+    },
+    {
+      "path": "input-schema.json",
+      "description": "Params: targetRepo (required abs path to the clone), harnessSource (local|github, default local), keepTarget (leave the clone on disk)."
+    },
+    {
+      "path": "output-schema.json",
+      "description": "Structured report: targetRepo, harnessabilityGrade + axisTuple, abandoned + abandonReason, governanceWritten, bootAuthored, bootRuns, retroRecorded + retroRecordPaths[], verdict (PASS|FAIL|ABANDONED), summary, and a dual-layer retrospective (workedWell/confusing/magicWand/magicWandTarget/difficulties). Consumed by the orchestrator's --collect rollup."
+    }
+  ]
+}

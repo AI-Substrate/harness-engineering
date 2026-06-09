@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targetRepo"],
+  "properties": {
+    "targetRepo": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Absolute path to the freshly-cloned target repo the worker runs the full harness setup flow against. The orchestrator always supplies this (one detached worker per clone)."
+    },
+    "harnessSource": {
+      "type": "string",
+      "enum": ["local", "github"],
+      "default": "local",
+      "description": "Where to install the harness core into the target repo from. 'local' = the project root at $MINIH_PROJECT_ROOT (file install, fast, deterministic). 'github' = npm install github:AI-Substrate/harness-engineering (proves the npx-from-repo path)."
+    },
+    "keepTarget": {
+      "type": "boolean",
+      "default": false,
+      "description": "Leave the cloned target repo (with its written .harness/ artifacts) on disk for inspection instead of deleting it. The orchestrator owns clone lifecycle; the worker honours this only if it created throwaway scratch of its own."
+    }
+  }
+}
