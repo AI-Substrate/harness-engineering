@@ -1,0 +1,121 @@
+{
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk",
+  "harnessSource": "local",
+  "harnessInstalled": true,
+  "harnessDoctorStatus": "degraded",
+  "harnessDoctorNotes": "npx harness doctor --json ran in the target clone and reported the installed CLI plus extension loader, but its source-checkout cli-build layer was degraded because harness/cli/dist/index.js is not present inside the consumer repo.",
+  "skillsResolved": true,
+  "harnessabilityGrade": "B",
+  "axisTuple": {
+    "operateTodayPercent": 74.1,
+    "operateTodayGrade": "B",
+    "adaptabilityPercent": 76.7,
+    "adaptabilityGrade": "B"
+  },
+  "assessmentReportPaths": {
+    "latestJson": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/.harness/reports/harnessability/latest.json",
+    "latestMd": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/.harness/reports/harnessability/latest.md",
+    "runDir": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/.harness/reports/harnessability/001-chalk"
+  },
+  "abandoned": false,
+  "abandonReason": null,
+  "governanceWritten": true,
+  "governancePath": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/.harness/engineering-harness.md",
+  "governanceFieldsVerified": [
+    "Boot command",
+    "Health check",
+    "Interact method",
+    "Observe method",
+    "Deterministic signal inventory",
+    "Evidence paths",
+    "Back-pressure gaps",
+    "Current maturity snapshot"
+  ],
+  "bootAuthored": true,
+  "bootRuns": true,
+  "bootPath": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/.harness/extensions/boot.ts",
+  "bootVerification": {
+    "doctorExtensionStatus": "loaded",
+    "helpHasBoot": true,
+    "bootStatus": "ok",
+    "bootCommand": "npm test",
+    "bootEvidencePaths": [
+      "coverage/lcov.info",
+      "coverage/lcov-report/"
+    ]
+  },
+  "retroRecorded": true,
+  "retroRecordPaths": [
+    "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/.harness/records/retro/2026-06-09-chalk-flow.md"
+  ],
+  "verdict": "PASS",
+  "summary": "Installed the local harness core into the fresh Chalk clone, produced a B/B harnessability assessment, continued past the abandonment gate, wrote the BIO governance document, authored and independently verified a boot extension around npm test, and recorded the retro via harness record retro. The flow passed, with notable project friction around the missing harness init writer and consumer-mode doctor degradation.",
+  "retrospective": {
+    "workedWell": "The target repo had a compact, verified npm test lane and no remote-service pressure, so assessment, governance, and boot could all be grounded in deterministic local evidence.",
+    "confusing": "The shell MINIH_PROJECT_ROOT pointed at the run folder rather than the harness source root, harness doctor reported a source-build degradation in a consumer clone, and harness new had no description flag even though the generated summary needed editing.",
+    "magicWand": "Ship `harness init` so it can read `.harness/reports/harnessability/latest.json` and generate `.harness/engineering-harness.md` with the eight BIO fields instead of requiring hand-written governance during setup-flow dogfood runs.",
+    "magicWandTarget": "project",
+    "coordination": {
+      "peerUpdatesSent": 0,
+      "unresolvedPeerRequests": 0,
+      "statePublished": false,
+      "notes": "No peer coordination was used in this single-shot run."
+    },
+    "difficulties": [
+      {
+        "id": "VF-001",
+        "layer": "minih",
+        "category": "config",
+        "description": "The task said to start with `cd $MINIH_PROJECT_ROOT`, but the shell variable pointed at the run folder where skills were disabled; the actual harness source root was only available from runtime context.",
+        "workaround": "Ran `minih skills doctor` from `/Users/jordanknight/substrate/harness-engineering` and used that path for the local harness install.",
+        "mitigation": "Expose separate unambiguous variables such as MINIH_PROJECT_ROOT and MINIH_RUN_ROOT, or make the prompt match the variable value.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-002",
+        "layer": "project",
+        "category": "debug",
+        "description": "`npx harness doctor --json` in the consumer clone reported `cli-build` degraded because it checked for `harness/cli/dist/index.js` in the target repo even though the installed npx harness binary was usable.",
+        "workaround": "Treated harnessInstalled as true because doctor ran and reported, then independently checked extension loading, help output, and boot execution.",
+        "mitigation": "Teach doctor to distinguish source-checkout mode from installed-consumer mode.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-003",
+        "layer": "project",
+        "category": "config",
+        "description": "The local harness install added a file dependency to Chalk's package.json, which is acceptable in the throwaway clone but noisy for assessing the original repo state.",
+        "workaround": "Read `git show HEAD:package.json` for original repo evidence and kept all writes inside the target clone.",
+        "mitigation": "Document the mutation explicitly in the flow recipe or provide a no-save install path for local dogfood installs.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-004",
+        "layer": "minih",
+        "category": "data",
+        "description": "A broad file glob after npm install traversed node_modules and timed out, producing dependency noise during assessment.",
+        "workaround": "Switched to targeted file reads and a pruned file listing that excluded node_modules and .git.",
+        "mitigation": "Add a prompt note or helper pattern to exclude dependency directories after the required install step.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-005",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "`harness new boot --wrap \"npm test\" --description ...` failed because the scaffold command has no description option, and the generated extension initially contained a TODO summary.",
+        "workaround": "Retried with the documented `--wrap` form, then edited the scaffolded summary and returned evidence paths.",
+        "mitigation": "Add a `--summary` or `--description` flag to `harness new`, or document that generated summaries must be filled after scaffolding.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-006",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "Governance had to be hand-written from the BIO template because there is no shipped `harness init` writer.",
+        "workaround": "Used the governance reference template and grounded all eight fields in the assessment and verified npm test lane.",
+        "mitigation": "Implement `harness init` to generate the governance document from assessment facts and repo command evidence.",
+        "severity": "degrading"
+      }
+    ]
+  }
+}

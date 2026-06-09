@@ -50,3 +50,12 @@
 - `runCollect`: reads `.last-fire.json`, polls each run to terminal (report.json w/ terminal verdict, or `completed.json`/`failed.json`) up to `--wait` seconds (default 120), classifies DONE / TIMED_OUT / MISSING_REPORT / NOT_FIRED, copies each DONE child's `report.json` + `harnessability/latest.{md,json}` + `engineering-harness.md` + `retro/*.md` into `runs/<repo>/`, writes `runs/ROLLUP.md`.
 - **Synthetic E2E test** (3 fake runs: done/missing/timeout): counts DONE 1 / TIMED_OUT 1 / MISSING_REPORT 1; ROLLUP table + surfaced magic-wand/difficulty clusters + no-auto-implement banner correct; **idempotent** (re-run identical, no error); **child records untouched** (read-only copy out). AC-8/AC-9.
 - Uses `ctx.fs` (read-only) for reads + `ctx.exec` for cp/mkdir + the `printf %s` argv-only writer for ROLLUP — no `node:*`, never throws.
+
+### T008 — Single-worker real smoke (chalk) — PASS
+- Fired `--repo chalk.git --keep --out runs/smoke-t008`. Worker ran the FULL recipe autonomously (~6.5 min): install → assess → governance → boot → retro.
+- Report (`output/report.json`) **schema-valid** (`minih check` → ok), `verdict: PASS`, `harnessabilityGrade: B`, axisTuple B/B (74.1% / 76.7%), `abandoned:false`, `governanceWritten/bootAuthored/bootRuns/retroRecorded: true`.
+- **Independently verified on disk (AC-5)**: harness binary installed in clone; harnessability `latest.{md,json}` present; `engineering-harness.md` has all 8 BIO fields; `boot.ts` loads (`doctor` → loaded) and wraps `npm test` with honest ok/error+next_action; retro `2026-06-09-chalk-flow.md` recorded.
+- `--collect` on REAL data → chalk DONE, 5 artifacts copied into `runs/smoke-t008/chalk/`, `ROLLUP.md` surfaces the worker's real magic-wand ("ship `harness init`") + difficulties. AC-8 proven on real data.
+
+### T009 — Culminating 3-parallel smoke (express/click/cobra) — FIRED
+- Fired the default pool, 3 detached workers in parallel (runIds 0228/aba7/cc7b), tmpRoot kept. Polling to terminal, then `--collect`. (AC-12)

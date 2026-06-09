@@ -1,0 +1,20 @@
+{
+  "firedAt": "2026-06-09T12:35:32.055Z",
+  "agentSlug": "validate-harness-flow",
+  "tmpRoot": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z",
+  "keepTemp": true,
+  "runs": [
+    {
+      "repo": "chalk",
+      "url": "https://github.com/chalk/chalk.git",
+      "dest": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk",
+      "cloned": true,
+      "fired": true,
+      "runId": "2026-06-09T22-35-31-764Z-ab6a",
+      "runDir": "/Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-35-31-764Z-ab6a",
+      "logPath": "/tmp/harness-flow-selftest-2026-06-09T12-35-28-091Z/chalk/run.log",
+      "pid": "93364",
+      "harnessSource": "local"
+    }
+  ]
+}
