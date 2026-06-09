@@ -85,3 +85,14 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - Permissions: `preset: read-only` + overrides `shell: allow`, `write: allow`, **`network: deny`**; `allowedRoots` extend to `/tmp,/private/tmp,/var/folders`.
 - Mission: `cd $MINIH_PROJECT_ROOT` → invoke the `harnessability-assessment` skill against `targetRepo` (static) → **independently verify** outputs (report files exist, root `latest.json` present+readable = the 008 sentinel, per-run history dir, `report.json` schema-validates, tuple+grade present, 2-3 claims spot-checked — don't trust the self-report) → PASS/FAIL → **dual-layer magic-wand retro** (`magicWandTarget`: `harnessability-assessment` | `minih`).
 **Evidence**: all 3 JSON files parse; input/output schemas valid Draft 2020-12; `minih list` shows the agent with `requiredParams:["targetRepo"]` + hasOutputSchema/Instructions/InputSchema.
+
+### T018 · G5 wire + smoke-verify
+**Files**: `.minih.json` (added `harnessability-assessment` to `include`)
+**Smoke evidence** (AC-14 / AC-15):
+- (a) **Skill resolves**: `minih skills discover` lists `harnessability-assessment`; the live worker `run.log` shows `skills loaded: harnessability-assessment` + `🔧 skill {"skill":"harnessability-assessment"}` — end-to-end resolution proven.
+- (b) **Returns runs[] fast**: `harness validate-harnessability --repo https://github.com/spf13/pflag.git --keep` → `status: ok`, `data.runs[0]` = { repo:pflag, cloned:true, fired:true, runId:2026-06-09T12-28-12-132Z-d68d, pid:9619, runDir:absolute }. Launch-time run-ID capture worked.
+- (c) **Agent survives verb exit**: `minih status … --run <id>` → `verdict: active` AFTER the verb returned (fire-and-forget confirmed).
+- (d) **Bad URL degrades**: `--repo <nonexistent>.git` → `status: error`, `error.code: E_NO_CLONES`, `next_action` present, no crash.
+- (e) **--keep preserves temp**: `/tmp/harnessability-selftest-*/pflag` left on disk.
+- Defaults are the 3 small public cross-language repos (chalk/JS, byteorder/Rust, pflag/Go), `--depth=1`, overridable via `--repo <urls...>` (AC-15).
+- Note: the fired worker (gpt-5.5, static, network-off) keeps running detached — its completed report + magic-wand retro is reviewed by the calling agent per the verb's `next_action` (the dogfood evidence loop).
