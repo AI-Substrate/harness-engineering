@@ -150,7 +150,7 @@ Read the governance doc (canonical-first: `.harness/engineering-harness.md` → 
 
 ## Maturity model (reference)
 
-The canonical maturity ladder is the **nucleus / self-improving** ladder — the same one the engineering-harness setup effort provisions into the governance doc. Boot reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc. The single canonical **L0–L4 ladder** (and how to assess which rung holds) now lives in one place — see [`../eng-harness-flow/references/maturity-assessment.md`](../eng-harness-flow/references/maturity-assessment.md). Boot does not restate it.
+The canonical maturity ladder is the **nucleus / self-improving** ladder — the same one the deferred `harness init` writer will seed into the governance doc at inception (owed until it ships). Boot reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc. The single canonical **L0–L4 ladder** (and how to assess which rung holds) now lives in one place — see [`../eng-harness-flow/references/maturity-assessment.md`](../eng-harness-flow/references/maturity-assessment.md). Boot does not restate it.
 
 ### Agent-harness capability axis (separate from maturity)
 
