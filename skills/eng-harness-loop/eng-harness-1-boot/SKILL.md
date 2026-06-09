@@ -1,8 +1,8 @@
 ---
-name: harness-1-boot
+name: eng-harness-1-boot
 description: Boot stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). Validate that the engineering harness is healthy at session start and report its maturity. VALIDATE mode runs the Boot → Interact → Observe health check; STATUS mode gives a quick read-only maturity report. Reads `docs/project-rules/engineering-harness.md` (legacy `agent-harness.md` / `harness.md` read as fallback, canonical-first). Reports `UNAVAILABLE` gracefully when no governance doc and no boot command exist — the governance doc is provisioned by the separate engineering-harness setup effort, not by this skill.
 ---
-# harness-1-boot
+# eng-harness-1-boot
 
 The **Boot** stage of the harness loop. Run it at session start to confirm the engineering harness is healthy and to report where it sits on the maturity curve. Two modes: `--validate` (run the live Boot → Interact → Observe checks) and `--status` (read-only maturity report).
 
@@ -144,7 +144,7 @@ Read engineering-harness.md (or legacy agent-harness.md / harness.md, with migra
 
 ## Measure compounding value
 
-> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `## History` table the validation appends is the trajectory; a maturity level that climbs (or a boot time that shrinks) over successive sessions is the compounding value made visible. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`harness-4-retro --harvest`).
+> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `## History` table the validation appends is the trajectory; a maturity level that climbs (or a boot time that shrinks) over successive sessions is the compounding value made visible. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`eng-harness-4-retro --harvest`).
 
 ---
 

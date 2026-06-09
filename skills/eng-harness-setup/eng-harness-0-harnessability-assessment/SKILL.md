@@ -1,8 +1,8 @@
 ---
-name: harnessability-assessment
+name: eng-harness-0-harnessability-assessment
 description: Assess a Git repository's harnessability — how easily a human or agent can enter, operate, modify, observe, prove, and improve it through an engineering harness. Produces evidence-first Markdown and JSON reports scoring Operate-Today and Adaptability, mapping back-pressure surfaces, proof ceilings, external-dependency exposure, scenario probes, and highest-leverage harness/product-code affordances.
 ---
-# harnessability-assessment
+# eng-harness-0-harnessability-assessment
 
 Assess how easy a repository is for a human or agent to **enter, operate, modify, observe, prove, and improve** through an engineering harness.
 
@@ -101,11 +101,11 @@ Each run writes a per-run history directory plus stable root "latest" files:
 
 `<ordinal>` is the next free 3-digit number (`001`, `002`, …) found by scanning existing `.harness/reports/harnessability/<NNN>-*/` directories; `<slug>` is a short kebab-case label for the run (e.g. the repo name, or `assessment`).
 
-**Every run overwrites the three root files** (`latest.md`, `latest.json`, `schema.json`) so they mirror the newest run. The root `latest.json` is a load-bearing **sentinel**: the `engineering-harness-setup` flow detects an existing assessment with `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` and then reads `latest.json` for recommendations. Keep it present **and** readable on every run — never write only the history directory (that would satisfy detection but leave nothing stable to read).
+**Every run overwrites the three root files** (`latest.md`, `latest.json`, `schema.json`) so they mirror the newest run. The root `latest.json` is a load-bearing **sentinel**: the `eng-harness-0-setup` flow detects an existing assessment with `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` and then reads `latest.json` for recommendations. Keep it present **and** readable on every run — never write only the history directory (that would satisfy detection but leave nothing stable to read).
 
 The Markdown report follows `templates/assessment-report.md`. The JSON report follows `templates/assessment-report.schema.json`, the authoritative v0.2 contract; write a copy of it to `.harness/reports/harnessability/schema.json`. The terminal-sized `summary.md` follows `templates/summary.md`; keep detailed evidence in `report.md`. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples. If the repo already contains earlier assessment reports or onboarding docs, read them as evidence, but write this run's reports under `.harness/reports/harnessability/`.
 
-Keep the JSON schema version at `harnessability-assessment.v0.2` until the core contract changes.
+Keep the JSON schema version at `eng-harness-0-harnessability-assessment.v0.2` until the core contract changes.
 
 ## Safety defaults
 
@@ -868,7 +868,7 @@ After ranking, derive `candidate_first_harness_surfaces[]` — the verbs worth e
 
 ### 11. Write reports
 
-Write the Markdown report, the terminal-sized `summary.md`, the JSON report, and the schema copy according to the output contract: into `.harness/reports/harnessability/<ordinal>-<slug>/` and mirrored to the root `latest.*`/`schema.json`. Record the written paths in `report_paths`. Confirm the root `latest.json` is present and readable — it is the sentinel the `engineering-harness-setup` flow reads.
+Write the Markdown report, the terminal-sized `summary.md`, the JSON report, and the schema copy according to the output contract: into `.harness/reports/harnessability/<ordinal>-<slug>/` and mirrored to the root `latest.*`/`schema.json`. Record the written paths in `report_paths`. Confirm the root `latest.json` is present and readable — it is the sentinel the `eng-harness-0-setup` flow reads.
 
 ## Parallel execution: subsystem fan-out
 
@@ -1007,7 +1007,7 @@ The JSON report must include at least:
 
 ```json
 {
-  "schema_version": "harnessability-assessment.v0.2",
+  "schema_version": "eng-harness-0-harnessability-assessment.v0.2",
   "run": {
     "timestamp_utc": "YYYYMMDDTHHMMSSZ",
     "repo_root": "",

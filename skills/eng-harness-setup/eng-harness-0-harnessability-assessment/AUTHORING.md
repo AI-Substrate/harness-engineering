@@ -1,10 +1,10 @@
-# Authoring notes - harnessability-assessment
+# Authoring notes - eng-harness-0-harnessability-assessment
 
 **This file is repo-internal and NOT installed by the skill.** It documents conventions future editors should preserve.
 
 ## Why this skill exists
 
-`engineering-harness-setup` creates or validates the repo-local engineering harness nucleus. `harnessability-assessment` runs after setup and answers a different question: how harnessable is this target repository now (Operate-Today and Adaptability), what can a fresh agent safely do first, what proof level is reachable, and what should be encoded next?
+`eng-harness-0-setup` creates or validates the repo-local engineering harness nucleus. `eng-harness-0-harnessability-assessment` runs after setup and answers a different question: how harnessable is this target repository now (Operate-Today and Adaptability), what can a fresh agent safely do first, what proof level is reachable, and what should be encoded next?
 
 Do not turn the assessment into setup v2. Do not turn it into a runtime loop. It is a whole-repo, structural, evidence-first read.
 

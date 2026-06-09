@@ -1,4 +1,4 @@
-# add-extension skill
+# eng-harness-0-add-extension skill
 
 Scaffold and validate a new `harness <verb>` extension for the current repo.
 

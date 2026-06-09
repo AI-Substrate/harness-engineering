@@ -1,8 +1,8 @@
 ---
-name: add-extension
+name: eng-harness-0-add-extension
 description: Scaffold and validate a new harness extension. Reuses already-gathered intent (spec/plan/workshop/conversation) when it is obvious, otherwise asks; calls `harness new` to create a loadable extension skeleton in .harness/extensions/, fills the verb handler from that intent, and verifies with `harness doctor`/`harness help`.
 ---
-# add-extension
+# eng-harness-0-add-extension
 
 Add a new `harness <verb>` extension to the current repo with near-zero friction.
 The deterministic scaffolding is owned by the CLI (`harness new`); this skill owns

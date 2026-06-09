@@ -1,10 +1,10 @@
-# Authoring notes — engineering-harness-setup
+# Authoring notes — eng-harness-0-setup
 
 **This file is repo-internal and NOT installed by the skill.** It documents the conventions future editors must preserve.
 
 ## What this skill is now
 
-A **lean orchestration flow**. It installs the harness CLI from npx and drives a 3-step journey — install → (conditional) harnessability-assessment → stand up a basic `boot` via add-extension. It **generates no artifacts of its own**.
+A **lean orchestration flow**. It installs the harness CLI from npx and drives a 3-step journey — install → (conditional) eng-harness-0-harnessability-assessment → stand up a basic `boot` via eng-harness-0-add-extension. It **generates no artifacts of its own**.
 
 This is a deliberate, breaking simplification of the earlier skill, which generated a governance doc, a placeholder `harness/cli/`, a `docs/harness/` scaffold, an `AGENTS.md` block, and seeded known-difficulties from 19 templates. All of that deterministic substrate now lives in the **harness CLI** as real code (and in a future `harness init`). The skill orchestrates those surfaces; it no longer reimplements them.
 
@@ -18,8 +18,8 @@ This is a deliberate, breaking simplification of the earlier skill, which genera
 ## Load-bearing invariants
 
 1. **Orchestrate, don't generate.** The skill must not write governance docs, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or retro/known-difficulties/back-pressure files. If a future need looks like generation, it belongs in the CLI (`harness init`) — not here.
-2. **Chain the sibling skills, don't inline them.** `harnessability-assessment` and `add-extension` are invoked, never reimplemented.
-3. **The report sentinel is exactly `.harness/reports/harnessability/latest.json`** (directory fallback allowed). This is a cross-skill contract with `harnessability-assessment`; keep both sides in sync.
+2. **Chain the sibling skills, don't inline them.** `eng-harness-0-harnessability-assessment` and `eng-harness-0-add-extension` are invoked, never reimplemented.
+3. **The report sentinel is exactly `.harness/reports/harnessability/latest.json`** (directory fallback allowed). This is a cross-skill contract with `eng-harness-0-harnessability-assessment`; keep both sides in sync.
 4. **`boot` stays a basic nucleus.** A thin wrapper over the repo's existing readiness commands. Resist seed/reset/observe/sensor scope creep — those are later, loop-driven improvements.
 5. **Public-safe.** Shipped surfaces (`SKILL.md`, `README.md`) must never contain a private repo name/path, person, or internal codeword — this is a public repo. Describe boot shapes generically. (`AI-Substrate/harness-engineering` is the public CLI repo URL and is fine.)
 6. **Envelope-only consumption.** Any programmatic read of CLI output uses `--json` envelope fields + exit codes, never scraped prose — so a future MCP server reuses the same surfaces unchanged.
@@ -29,6 +29,6 @@ This is a deliberate, breaking simplification of the earlier skill, which genera
 ## How to extend this skill
 
 - Keep it a flow. New capability is usually a new step or a sharper hand-off, not a new generated file.
-- If you touch the report-location contract, update `harnessability-assessment` in the same change.
+- If you touch the report-location contract, update `eng-harness-0-harnessability-assessment` in the same change.
 - If you change the install recipe, keep it in lockstep with the `agents/install-and-validate-test-extension` e2e agent (the acceptance proof).
 - Strong defaults beat options — resist configuration knobs (`harness-foundations/patterns-that-work.md`).

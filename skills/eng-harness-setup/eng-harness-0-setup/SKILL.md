@@ -1,12 +1,12 @@
 ---
-name: engineering-harness-setup
-description: Install the repo-local engineering harness from npx and guide the user to a working basic `boot`. A lean flow that orchestrates other skills — it installs/initialises the harness CLI, runs harnessability-assessment when no report exists yet, then stands up a basic `boot` extension via add-extension. It generates no artifacts of its own; the CLI (and a future `harness init`) own the deterministic substrate.
+name: eng-harness-0-setup
+description: Install the repo-local engineering harness from npx and guide the user to a working basic `boot`. A lean flow that orchestrates other skills — it installs/initialises the harness CLI, runs eng-harness-0-harnessability-assessment when no report exists yet, then stands up a basic `boot` extension via eng-harness-0-add-extension. It generates no artifacts of its own; the CLI (and a future `harness init`) own the deterministic substrate.
 ---
-# engineering-harness-setup
+# eng-harness-0-setup
 
 Get a repo's **engineering harness** installed and working, then leave behind the one thing every engineering task starts from: a **basic `boot`**.
 
-This skill is a **flow**, not a generator. It installs the harness CLI from npx, then **orchestrates other skills** — `harnessability-assessment` to size up the repo, and `add-extension` to author the first extension. It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (and by a future `harness init`), not re-generated here.
+This skill is a **flow**, not a generator. It installs the harness CLI from npx, then **orchestrates other skills** — `eng-harness-0-harnessability-assessment` to size up the repo, and `eng-harness-0-add-extension` to author the first extension. It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (and by a future `harness init`), not re-generated here.
 
 > **The agent harness drives. The engineering harness proves.**
 
@@ -17,9 +17,9 @@ flowchart TD
     A["1 · Install harness<br/>npx + (future) harness init"] --> Ad{harness doctor OK?}
     Ad -- no --> At["Troubleshoot<br/>Node · network/gh · build"] --> A
     Ad -- yes --> C{".harness/reports/harnessability/latest.json<br/>exists?"}
-    C -- no --> D["2 · Run harnessability-assessment skill"] --> E
+    C -- no --> D["2 · Run eng-harness-0-harnessability-assessment skill"] --> E
     C -- yes --> E["Read assessment recommendations"]
-    E --> F["3 · add-extension skill →<br/>basic `boot` (wrap build / run / health)"]
+    E --> F["3 · eng-harness-0-add-extension skill →<br/>basic `boot` (wrap build / run / health)"]
     F --> V["Verify · harness doctor / harness boot / harness help"]
 ```
 
@@ -102,7 +102,7 @@ test -f .harness/reports/harnessability/latest.json \
 ```
 
 - **Report exists** (sentinel `latest.json`, or any file under `.harness/reports/harnessability/`) → reuse it. Read its recommendations (highest-leverage improvements / remediations) — they tell you what `boot` should prove first for *this* repo. (The producer keeps the root `latest.json` current on every run and stores per-run history under `.harness/reports/harnessability/<ordinal>-<slug>/`; reading the root `latest.json` always gives the newest run.)
-- **No report** → run the **`harnessability-assessment`** skill (read-only by default). It scores Operate-Today and Adaptability and emits the recommendations that drive Step 3.
+- **No report** → run the **`eng-harness-0-harnessability-assessment`** skill (read-only by default). It scores Operate-Today and Adaptability and emits the recommendations that drive Step 3.
 
 > The assessment is a separate skill — invoke it, don't reimplement it. The flow only needs its **recommendations** to choose the first `boot`.
 
@@ -110,7 +110,7 @@ test -f .harness/reports/harnessability/latest.json \
 
 ## Step 3 — Stand up a basic `boot`
 
-Use the assessment's recommendations to pick the **cheapest, most valuable** readiness proof for this repo, then author it with the **`add-extension`** skill (which drives `harness new` under the hood — never hand-write the file).
+Use the assessment's recommendations to pick the **cheapest, most valuable** readiness proof for this repo, then author it with the **`eng-harness-0-add-extension`** skill (which drives `harness new` under the hood — never hand-write the file).
 
 Pick the boot shape from what the repo actually has:
 
@@ -123,7 +123,7 @@ Pick the boot shape from what the repo actually has:
 Author it via the skill, e.g.:
 
 ```bash
-# the add-extension skill runs, under the hood, something like:
+# the eng-harness-0-add-extension skill runs, under the hood, something like:
 npx harness new boot --wrap "<the readiness command for this repo>"
 ```
 
@@ -149,7 +149,7 @@ When `harness boot` returns a usable verdict and re-orients the agent, the nucle
 ## What this skill does **not** do
 
 - It does **not** generate a governance doc, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or known-difficulties/retro/back-pressure files. Those are deterministic CLI concerns (`harness init` + the CLI), not this skill's output.
-- It does **not** reimplement `harnessability-assessment` or `add-extension` — it calls them.
+- It does **not** reimplement `eng-harness-0-harnessability-assessment` or `eng-harness-0-add-extension` — it calls them.
 - It does **not** build a comprehensive boot. Basic nucleus only.
 
 ## Guardrails

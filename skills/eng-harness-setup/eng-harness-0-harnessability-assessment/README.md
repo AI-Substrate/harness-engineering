@@ -1,4 +1,4 @@
-# harnessability-assessment
+# eng-harness-0-harnessability-assessment
 
 Assess how harnessable a repository is: how easily a human or agent can enter, operate, modify, observe, prove, and improve it through an engineering harness.
 
@@ -20,9 +20,9 @@ The skill writes a per-run history directory plus stable root "latest" files:
 .harness/reports/harnessability/schema.json
 ```
 
-Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `engineering-harness-setup` reads to decide whether an assessment already exists.
+Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `eng-harness-0-setup` reads to decide whether an assessment already exists.
 
-The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
+The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `eng-harness-0-harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
 
 v0.2 **surveys the repo's existing engineering environment first** — engineering flows (including SDD-like pipelines), pre-commit/local gates, CI/local equivalence, test mechanisms (mock vs fake/sink/stub/contract/testcontainer), external-dependency pressure, code composition, canonical-vs-diffuse harnesses, and advisory manual/IDE-only signals — then layers an **A–F assessment matrix** over the two axes and emits a terminal-sized `summary.md` alongside the detailed `report.md`. It prefers recommending **deterministic encoding** over context-file accretion: a context file is orientation, never proof.
 
@@ -35,11 +35,11 @@ It does not install dependencies, boot services, mutate state, read secrets, cal
 ## Where it fits
 
 ```text
-engineering-harness-setup -> harnessability-assessment -> tools runtime skills
+eng-harness-0-setup -> eng-harness-0-harnessability-assessment -> tools runtime skills
 ```
 
-- `engineering-harness-setup` creates or validates the local harness nucleus.
-- `harnessability-assessment` reports target-aware harnessability and next safe actions.
+- `eng-harness-0-setup` creates or validates the local harness nucleus.
+- `eng-harness-0-harnessability-assessment` reports target-aware harnessability and next safe actions.
 - tools runtime skills operate the loop: boot, observe, retro, harvest, and advisory Backpressure Check.
 
 The advisory Backpressure Check surveys whether enough deterministic sensors exist for scoped work. It is not itself proof, and this skill never introduces a generic core `backpressure` command. When a gap is found, it recommends the specific sensor, command, fixture, fake, sink, diagnostic, schema check, smoke path, architecture rule, or evidence capture that would prove the scoped work.

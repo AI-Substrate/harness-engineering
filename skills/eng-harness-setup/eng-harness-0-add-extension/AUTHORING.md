@@ -1,4 +1,4 @@
-# Authoring notes — add-extension skill
+# Authoring notes — eng-harness-0-add-extension skill
 
 Guidance for maintaining this skill (not for end users).
 
