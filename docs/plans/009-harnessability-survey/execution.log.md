@@ -38,3 +38,11 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - T006: new execution step `### 6b. Synthesize the existing engineering environment survey` + explicit **existing-flow-first rule**; step 10 now derives `candidate_first_harness_surfaces[]`/`deterministic_encoding_opportunities[]` only after the survey; step 11 writes `summary.md` + records `report_paths` + confirms the sentinel.
 - T007: "Prefer deterministic encoding over context-file accretion" rule — context files are orientation not proof; mocks vs fakes/sinks distinguished.
 - T008: manual/IDE-only scan documented as advisory, influences A4/A5/A7/A8/A9/B5/B10 only, never over-penalises desktop/mobile/hardware/brownfield (`penalize: no`).
+
+### T009–T011 (+ T003 bands) · G3 A–F matrix + scoring + fan-out re-map
+**Files**: `SKILL.md`, `templates/assessment-report.md`
+- T003 (band text, deferred from the schema commit): `### Letter grades` table → A 85-100 / B 70-84 / C 55-69 / D 40-54 / E 25-39 / F 0-24.
+- T009: new `### Assessment matrix (A–F)` subsection — `assessment_matrix[]` + `verdict.final_grade` augment (never replace) the axes; rule that `final_grade` must not hide a poor axis. Report template gains a Final-grade line + `## Assessment matrix` table + an augment-not-replace note.
+- T010: JSON-minimum-shape block → version v0.2, grade enums A–F everywhere, `final_grade` added, + prose note listing the optional v0.2 arrays.
+- T011: fan-out subagent→schema-slice ownership re-mapped in lockstep — subagent 1 owns `pre_commit_gates`/`ci_local_equivalence`, 2 owns `external_dependency_pressure`, 4 owns `test_mechanisms`, 5 owns `code_composition`, 6 owns `engineering_flows`/`existing_harness_concepts`/`manual_operation_signals`; orchestrator synthesizes `assessment_matrix`/`final_grade`/`deterministic_encoding_opportunities`/`candidate_first_harness_surfaces`/`report_paths`. Map is collectively exhaustive (every v0.2 array has one owner).
+**Evidence**: example still validates; no v0.1 / old-band stragglers in SKILL.md.

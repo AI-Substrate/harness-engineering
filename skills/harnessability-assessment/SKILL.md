@@ -223,11 +223,20 @@ axis_percent = earned_points / applicable_max_points * 100
 
 | Grade | Axis percent | Reading |
 |---|---:|---|
-| A | >= 85% | Agent-ready / highly modifiable |
+| A | 85-100% | Agent-ready / highly modifiable |
 | B | 70-84% | Good; targeted gaps remain |
-| C | 50-69% | Workable but friction-heavy |
-| D | 30-49% | Brownfield; adaptation likely needed first |
-| E | < 30% | Hostile to agent operation as-is |
+| C | 55-69% | Workable but friction-heavy |
+| D | 40-54% | Brownfield; adaptation likely needed first |
+| E | 25-39% | Hostile to agent operation as-is |
+| F | 0-24% | Not operable by an agent without harness work first |
+
+### Assessment matrix (A–F)
+
+In addition to the two-axis tuple, v0.2 emits an **assessment matrix**: an A–F grade per surveyed area (`assessment_matrix[]`) plus an overall `final_grade` (in `verdict`). The matrix is a readability layer over the dimensions and the survey — it **augments, never replaces** the A1–A10/B1–B10 scorecards or the Operate-Today/Adaptability tuple, which remain primary.
+
+- Each `assessment_matrix[]` row carries an `area`, an A–F `grade`, an optional `score_percent`/`weight`, and a rationale.
+- `final_grade` is the single headline A–F grade. Derive it from the matrix and axis percentages using the band thresholds above.
+- `final_grade` **must not hide a poor axis**: if Operate-Today and Adaptability differ by two or more grades, report the weaker axis next to `final_grade` and never let the blend mask it. The tuple and per-dimension evidence always travel with the grade.
 
 ### Optional Harnessability Index
 
@@ -868,7 +877,7 @@ This skill can run as a single linear pass (the execution flow above) or fan out
 
 Run execution steps 1-3 once: repo context, harness surfaces, and topology. Detect the repository type a single time and pass it to every subagent so they do not re-derive it. Hand each subagent: the repo root, the detected topology, the dimension band rubric (Strong, Partial, Weak, Absent, Not applicable, Unknown), the safety defaults, and the schema slice it must return.
 
-The orchestrator owns these top-level keys from the pre-wave: `schema_version`, `run`, `harness_surfaces`, and `topology`.
+The orchestrator owns these top-level keys from the pre-wave: `schema_version`, `run`, `harness_surfaces`, `topology`, and `report_paths`.
 
 ### Fan-out: six read-only inspector subagents
 
@@ -876,12 +885,14 @@ Each subagent is read-only, inspects only its subsystem, and returns a JSON frag
 
 | Subagent | Inspects | Owns (schema slices) |
 |---|---|---|
-| 1. Commands and sensors | command runners, CI, deterministic checks | `command_tiers[]`, static `backpressure_surfaces[]`, dimensions A4, A5, A8 |
-| 2. Environment and dependencies | env var names, services, remote/local exposure | `environment_variables[]`, `external_dependencies[]`, dimensions A2, A3 |
+| 1. Commands and sensors | command runners, CI, deterministic checks, hooks | `command_tiers[]`, static `backpressure_surfaces[]`, `pre_commit_gates[]`, `ci_local_equivalence[]`, candidate inputs for `candidate_first_harness_surfaces[]`, dimensions A4, A5, A8 |
+| 2. Environment and dependencies | env var names, services, remote/local exposure | `environment_variables[]`, `external_dependencies[]`, `external_dependency_pressure[]`, dimensions A2, A3 |
 | 3. State, interaction, and observability | seed/reset/fixtures, interaction surfaces, auth, evidence paths | runtime/consequence/observability/external-effect `backpressure_surfaces[]`, dimensions A6, A7, A9 |
-| 4. Test reconnaissance and seams | how tests mock, inject, seed, restore, and make behaviour real; sinks; substitution | dimensions B4, B5, B6; reusable-mechanism `harness_recommendations[]`; related `gaps[]` |
-| 5. Structure and adaptability | coupling, cohesion, complexity, boundaries, inner loop | dimensions B1-B3, B7-B10 |
-| 6. Cold-start and compounding loop | repo map, first-session orientation, friction/improve loop | dimensions A1, A10; `first_safe_session_plan` candidates |
+| 4. Test reconnaissance and seams | how tests mock, inject, seed, restore, and make behaviour real; sinks; substitution | `test_mechanisms[]`; dimensions B4, B5, B6; reusable-mechanism `harness_recommendations[]`; related `gaps[]` |
+| 5. Structure and adaptability | coupling, cohesion, complexity, boundaries, inner loop | `code_composition[]`, dimensions B1-B3, B7-B10 |
+| 6. Cold-start and compounding loop | repo map, first-session orientation, engineering flows, canonical-vs-diffuse harness, manual/IDE signals, friction/improve loop | `engineering_flows[]`, `existing_harness_concepts[]`, `manual_operation_signals[]`, dimensions A1, A10; `first_safe_session_plan` candidates |
+
+The orchestrator synthesizes the remaining cross-cutting v0.2 slices at merge — `assessment_matrix[]` + `verdict.final_grade` (computed from merged dimensions), `deterministic_encoding_opportunities[]` and `candidate_first_harness_surfaces[]` (derived from the survey + ranked gaps), and `report_paths` (known at write time). With the subagent table above this keeps the map **collectively exhaustive**: every v0.2 array has exactly one owner.
 
 Every subagent also emits `gaps[]` and `evidence_log[]` for its subsystem, each finding carrying provenance (`evidence`, `inference`, `human_supplied`, or `unknown`) and confidence.
 
@@ -891,15 +902,15 @@ The test-reconnaissance lens is cross-cutting: subagent 4 owns it, but subagents
 
 1. Merge all fragments into one document.
 2. Validate the merged document against `templates/assessment-report.schema.json`. The schema is the merge contract: a fragment that does not fit its slice is a subagent defect, not a reason to change the schema.
-3. Compute axis percentages, letter grades, the optional Harnessability Index, the readiness H-level, and the highest and target proof levels from the merged dimensions and sensors.
+3. Compute axis percentages, letter grades, the optional Harnessability Index, the readiness H-level, the highest and target proof levels, and the A–F `assessment_matrix[]` + `verdict.final_grade` from the merged dimensions and sensors.
 4. Select scenario probes, which require the whole-repo view.
-5. Rank gaps and remediations across subsystems, and derive product-code affordance recommendations from cross-cutting gaps.
-6. Write the reports once. The orchestrator is the only writer; if `--apply-safe-harness-patches` is set, only the orchestrator applies harness-only patches.
+5. Rank gaps and remediations across subsystems; derive product-code affordance recommendations, `deterministic_encoding_opportunities[]`, and `candidate_first_harness_surfaces[]` from cross-cutting gaps and the existing-environment survey.
+6. Write the reports once, recording `report_paths` and refreshing the root `latest.*`/`schema.json` sentinel. The orchestrator is the only writer; if `--apply-safe-harness-patches` is set, only the orchestrator applies harness-only patches.
 
 ### Why fan out
 
 - The two axes and most dimensions are independently inspectable, so parallel subagents cut wall-clock time and allow deeper per-subsystem inspection.
-- The v0.1 JSON schema doubles as the merge contract, so fragments compose without ad-hoc glue.
+- The v0.2 JSON schema doubles as the merge contract, so fragments compose without ad-hoc glue.
 - Read-only subagents plus a single orchestrator writer preserve the safe-by-default posture even under parallelism.
 
 ## Markdown report template
@@ -995,7 +1006,7 @@ The JSON report must include at least:
 
 ```json
 {
-  "schema_version": "harnessability-assessment.v0.1",
+  "schema_version": "harnessability-assessment.v0.2",
   "run": {
     "timestamp_utc": "YYYYMMDDTHHMMSSZ",
     "repo_root": "",
@@ -1009,11 +1020,12 @@ The JSON report must include at least:
   },
   "verdict": {
     "operate_today_percent": 0,
-    "operate_today_grade": "A|B|C|D|E",
+    "operate_today_grade": "A|B|C|D|E|F",
     "adaptability_percent": 0,
-    "adaptability_grade": "A|B|C|D|E",
+    "adaptability_grade": "A|B|C|D|E|F",
     "harnessability_index_percent": 0,
-    "harnessability_index_grade": "A|B|C|D|E",
+    "harnessability_index_grade": "A|B|C|D|E|F",
+    "final_grade": "A|B|C|D|E|F",
     "readiness_level": "H0|H1|H2|H3|H4|H5",
     "highest_proof_level": "L0|L1|L2|L3|L4|L5|L6",
     "target_proof_level": "L0|L1|L2|L3|L4|L5|L6",
@@ -1039,6 +1051,8 @@ The JSON report must include at least:
   "evidence_log": []
 }
 ```
+
+v0.2 may additionally include the optional survey arrays and report metadata: `report_paths`, `assessment_matrix` (plus `verdict.final_grade`), `engineering_flows`, `pre_commit_gates`, `ci_local_equivalence`, `existing_harness_concepts`, `deterministic_encoding_opportunities`, `test_mechanisms`, `external_dependency_pressure`, `code_composition`, `candidate_first_harness_surfaces`, and `manual_operation_signals`. All are optional — emit what the survey found.
 
 ## Stop conditions
 

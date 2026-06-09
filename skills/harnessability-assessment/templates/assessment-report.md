@@ -16,10 +16,19 @@ Run metadata
 - Operate-Today: {{OPERATE_TODAY_GRADE}} ({{OPERATE_TODAY_PERCENT}}%)
 - Adaptability: {{ADAPTABILITY_GRADE}} ({{ADAPTABILITY_PERCENT}}%)
 - Harnessability Index: {{HARNESSABILITY_INDEX}}
+- Final grade: {{FINAL_GRADE}}
 - Readiness: {{READINESS_LEVEL}}
 - Highest proof level detected: {{HIGHEST_PROOF_LEVEL}}
 - Target next proof level: {{TARGET_PROOF_LEVEL}}
 - Confidence: {{CONFIDENCE}}
+
+> `final_grade` augments — it never replaces — the Operate-Today / Adaptability tuple above, which stays primary. A weak axis is always reported alongside the headline grade.
+
+## Assessment matrix
+
+| Area | Grade | Score | Rationale |
+|------|-------|------:|-----------|
+{{ASSESSMENT_MATRIX_TABLE}}
 
 ## Plain-English assessment
 
