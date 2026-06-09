@@ -89,3 +89,46 @@
   - [annoying] tooling: The prompt's suggested `minih validate --file` command is not supported by this minih CLI version. (workaround: Ran `minih check <slug> --file <path>` after checking the command help.)
   - [annoying] tooling: `git grep` entered a pager during review, producing stuck `(END)` output in the tool session. (workaround: Stopped the shell session and reran targeted checks with `GIT_PAGER=cat git --no-pager grep`.)
   - [annoying] coordination: The stop control body began with `^stop`, which does not satisfy the prompt's literal `/^stop\b/` stop-body match despite the control subject clearly requesting stop. (workaround: Treated the message as stop based on `type=control` and the stop subject, then acknowledged and wrote the farewell envelope.)
+
+## 2026-06-09T02:36:19.445Z — code-review-companion / 2026-06-09T12-00-15-857Z-e2a9
+
+- runId: 2026-06-09T12-00-15-857Z-e2a9
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T12-00-15-857Z-e2a9
+- summary: Reviewed 10 commit-boundary tasks across plan 009, from the harnessability-assessment v0.2 schema/path/survey/matrix/template work through the G5 validate-harnessability dogfood verb and worker agent. I sent four findings: F003 was resolved by the AUTHORING.md v0.2 update, while F001 and F002 remain MEDIUM contract/validation drift and F004 remains a HIGH implementation issue in the dogfood verb's bash launch path. The final T018 wiring and skill discovery looked correct, but my phase verdict remains REQUEST_CHANGES until F004 is fixed.
+- **magicWand** (target: coordination): Add a first-class finding disposition channel to companion mode: the outside actor should be able to mark finding IDs fixed, deferred, or accepted, and the final farewell should automatically include open/resolved status by ackOf.
+- difficulties:
+  - [degrading] coordination: Finding status was not represented as structured coordination state, so final open/resolved status had to be inferred manually from later commits and greps. (workaround: Tracked finding IDs in-session and re-ran focused greps on final state before the stop report.)
+  - [annoying] debug: A literal brace search pattern for rg failed until the braces were escaped. (workaround: Reran the search with escaped braces.)
+  - [annoying] debug: One focused diff shell command had an unmatched quote and waited for more input. (workaround: Stopped the shell session with stop_bash and reran the corrected command.)
+
+## 2026-06-09T04:17:18.172Z — code-review-companion / 2026-06-09T13-48-38-077Z-bc4a
+
+- runId: 2026-06-09T13-48-38-077Z-bc4a
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T13-48-38-077Z-bc4a
+- summary: Reviewed plan 010 per-commit pings from T001 through the final drain sweep. T001, T002, T007, and T010 were approved, but the final range ended at REQUEST_CHANGES because seven findings remained outstanding on 5dc0d46: schema-version drift, broken minih skill discovery for the new two-level skills layout, stale old-slug/core-command docs, an argv builder/test path that can omit -y, and an execution log that still records no companion findings.
+- **magicWand** (target: coordination): Add a companion-mode findings ledger command that renders all inside finding messages, their ackOf task, current disposition, and whether they were mentioned in the plan execution log; this would prevent final logs from saying 'none yet' while findings are still open.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory instead of the repository root, which made the required orient-default plan lookup initially appear empty. (workaround: Used git rev-parse --show-toplevel and absolute repository paths for the rest of the review.)
+  - [annoying] test: minih skills doctor returned process exit 0 even while reporting status degraded and E211 errors for every requested skill. (workaround: Read the human output and JSON envelope status/diagnostics rather than relying on the process exit code.)
+  - [annoying] debug: Several git show and audit commands exceeded the tool output limit and were written to temporary tool-output files. (workaround: Split review into bounded rg/view checks focused on the exact contract surfaces under review.)
+
+## 2026-06-09T08:50:27.020Z — code-review-companion / 2026-06-09T18-22-26-936Z-7ddf
+
+- runId: 2026-06-09T18-22-26-936Z-7ddf
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T18-22-26-936Z-7ddf
+- summary: Reviewed the full Plan 011 implementation phase as a long-running companion across 9 task pings. I sent 5 MEDIUM findings, all centered on deferred-writer wording drift around governance being owed rather than provisioned until harness init exists. Follow-up commits c67d8b1 and f9f82cf resolved the outstanding F001-F005 theme; final checks found no remaining issues in router statelessness, canonical-first governance read order, the L0-L4 single-source rule, backpressure's corroboration-only stance, or retro harness-field null semantics.
+- **magicWand** (target: minih): Ensure MINIH_PROJECT_ROOT always points to the repository root for coordinated agents, or expose a separate verified projectRoot field in the coordination context so agents do not have to recover it manually.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory even though the companion prompt required using it as the project root. (workaround: Used git rev-parse --show-toplevel and absolute paths under the repository root for orientation and reviews.)
+  - [annoying] debug: Large git show outputs were truncated into temporary files, which made full-diff review noisy for markdown-heavy commits. (workaround: Switched to targeted rg searches and view ranges around the contractual lines under review.)
+
+## 2026-06-09T13:02:55.385Z — code-review-companion / 2026-06-09T22-19-16-664Z-ef6f
+
+- runId: 2026-06-09T22-19-16-664Z-ef6f
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T22-19-16-664Z-ef6f
+- summary: Reviewed eight coordinated commit-boundary tasks for plan 013 as a long-running companion. I found eight issues total: one HIGH default-path execution risk around MINIH_PROJECT_ROOT, five MEDIUM contract/schema/artifact issues, and two LOW evidence claim issues. Clean reviews were sent for the T006 fire path and T011 guide; the run ended cleanly after a post-task still-needed check-in received no reply within the configured idle window.
+- **magicWand** (target: minih): Guarantee MINIH_PROJECT_ROOT points to the repository root in every minih agent shell and expose a separate MINIH_RUN_DIR for the run folder; fail fast with a clear runner error if the project root cannot be exported.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was empty in the shell, so the required initial cd did not reach the repository root and the first orientation lookup would have treated the run folder as the project. (workaround: Used git rev-parse --show-toplevel and absolute repository paths for project reads, then recorded the mismatch in findings and this retrospective.)
+  - [annoying] debug: A bash exact-commit check hung after JS backticks inside a double-quoted command were interpreted by the shell. (workaround: Stopped the shell session and reran the check with plain grep over git show output instead of embedding backticks in shell-evaluated JavaScript.)
+  - [annoying] knowledge: Some reviews needed exact commit scope because the working tree already contained later commits, so current-file searches could surface future changes outside the requested task. (workaround: Used git show <sha> -- path and git show <sha>:path for scoped review, and treated current-tree searches only as drift checks.)
