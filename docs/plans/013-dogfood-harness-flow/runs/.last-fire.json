@@ -1,0 +1,44 @@
+{
+  "firedAt": "2026-06-09T12:48:32.854Z",
+  "agentSlug": "validate-harness-flow",
+  "tmpRoot": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z",
+  "keepTemp": true,
+  "runs": [
+    {
+      "repo": "express",
+      "url": "https://github.com/expressjs/express.git",
+      "dest": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/express",
+      "cloned": true,
+      "fired": true,
+      "runId": "2026-06-09T22-48-25-492Z-0228",
+      "runDir": "/Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-25-492Z-0228",
+      "logPath": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/express/run.log",
+      "pid": "84136",
+      "harnessSource": "local"
+    },
+    {
+      "repo": "click",
+      "url": "https://github.com/pallets/click.git",
+      "dest": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click",
+      "cloned": true,
+      "fired": true,
+      "runId": "2026-06-09T22-48-28-963Z-aba7",
+      "runDir": "/Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-28-963Z-aba7",
+      "logPath": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/run.log",
+      "pid": "84505",
+      "harnessSource": "local"
+    },
+    {
+      "repo": "cobra",
+      "url": "https://github.com/spf13/cobra.git",
+      "dest": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/cobra",
+      "cloned": true,
+      "fired": true,
+      "runId": "2026-06-09T22-48-32-849Z-cc7b",
+      "runDir": "/Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-32-849Z-cc7b",
+      "logPath": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/cobra/run.log",
+      "pid": "84909",
+      "harnessSource": "local"
+    }
+  ]
+}

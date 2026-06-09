@@ -1,0 +1,147 @@
+{
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click",
+  "harnessSource": "local",
+  "harnessInstalled": true,
+  "harnessDoctorStatusAfterInstall": "degraded",
+  "harnessDoctorDegradation": "npx harness doctor --json ran after install, but reported cli-build degraded because harness/cli/dist/index.js was not built in the consumer clone; core commands still executed.",
+  "skillsResolved": true,
+  "requiredSkills": [
+    "eng-harness-0-harnessability-assessment",
+    "eng-harness-0-add-extension",
+    "eng-harness-4-retro"
+  ],
+  "harnessabilityGrade": "B",
+  "axisTuple": {
+    "operateTodayPercent": 80,
+    "operateTodayGrade": "B",
+    "adaptabilityPercent": 77,
+    "adaptabilityGrade": "B"
+  },
+  "harnessabilityIndexPercent": 78.5,
+  "assessmentReportPaths": {
+    "latestJson": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/latest.json",
+    "latestMd": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/latest.md",
+    "runDir": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click",
+    "reportJson": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click/report.json",
+    "reportMd": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click/report.md"
+  },
+  "abandoned": false,
+  "abandonReason": null,
+  "governanceWritten": true,
+  "governancePath": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/engineering-harness.md",
+  "governanceBioFieldsVerified": [
+    "Boot command",
+    "Health check",
+    "Interact method",
+    "Observe method",
+    "Deterministic signal inventory",
+    "Evidence paths",
+    "Back-pressure gaps",
+    "Current maturity snapshot"
+  ],
+  "bootAuthored": true,
+  "bootRuns": true,
+  "bootPath": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/extensions/boot.ts",
+  "bootVerification": {
+    "doctorExtensionStatus": "loaded",
+    "helpListedBoot": true,
+    "invocationStatus": "ok",
+    "invocationCommand": "uv run --locked --no-default-groups --group tests pytest -q",
+    "exercisedRepoEvidence": ".pytest_cache/v/cache/nodeids existed after boot with 1697 node IDs"
+  },
+  "retroRecorded": true,
+  "retroRecordPaths": [
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/records/retro/2026-06-09-click-flow.md"
+  ],
+  "authoredFiles": [
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click/report.json",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click/report.md",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click/summary.md",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/001-click/evidence.jsonl",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/latest.json",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/latest.md",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/reports/harnessability/schema.json",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/engineering-harness.md",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/extensions/boot.ts",
+    "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click/.harness/records/retro/2026-06-09-click-flow.md"
+  ],
+  "verdict": "PASS",
+  "summary": "PASS: The full harness setup flow completed on the fresh Click clone. The local harness core installed and ran, the harnessability assessment produced a B final grade with a B/B two-axis tuple, the abandonment gate did not trip, the BIO governance contract was written with all eight fields, the add-extension flow produced a loaded boot verb, boot exercised the repo pytest lane successfully, and a retro was scaffolded and filled through the harness record path.",
+  "retrospective": {
+    "workedWell": "Repo-local skill resolution worked through minih skills doctor, the local npm install exposed npx harness quickly, harness new created a loadable boot extension, and harness record retro returned a deterministic record path inside the clone.",
+    "confusing": "Several setup surfaces are still prose-driven rather than command-driven: the assessment skill describes the report contract but has no deterministic writer, governance must be hand-written because harness init is absent, and the wrapped boot success envelope was too sparse to prove the pytest run without checking side-effect artifacts.",
+    "magicWand": "Ship npx harness init --from-assessment .harness/reports/harnessability/latest.json so governance is generated from the assessment and the setup flow no longer requires hand-writing the BIO contract.",
+    "magicWandTarget": "project",
+    "coordination": {
+      "peerUpdatesSent": 0,
+      "unresolvedPeerRequests": 0,
+      "statePublished": false,
+      "notes": "Single-shot validation run; no peer coordination channel was used."
+    },
+    "difficulties": [
+      {
+        "id": "VF-001",
+        "layer": "project",
+        "category": "build",
+        "description": "The local file install made npx harness callable, but harness doctor reported cli-build degraded because harness/cli/dist/index.js was not present in the consumer clone.",
+        "workaround": "Treated the degraded doctor layer as friction because core commands still ran, then verified help, doctor, and boot independently.",
+        "mitigation": "Make doctor distinguish installed package mode from source-checkout CLI build checks.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-002",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "The harnessability assessment skill is a prose skill with a rich schema but no deterministic command, so producing the report required manual report assembly while still following the skill contract.",
+        "workaround": "Used the skill context and schema templates to write the required assessment files, then read latest.json independently.",
+        "mitigation": "Ship a harnessability assessment CLI writer that performs schema validation and writes latest/report artifacts.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-003",
+        "layer": "project",
+        "category": "config",
+        "description": "There is no harness init writer, so the governance contract had to be hand-written from the BIO template.",
+        "workaround": "Created .harness/engineering-harness.md manually with all eight BIO fields grounded in Click evidence.",
+        "mitigation": "Ship harness init to write the BIO governance skeleton from discovered assessment data.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-004",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "harness new --wrap generated a loadable boot extension with a TODO summary, requiring a manual metadata edit before the verb looked production-ready in help.",
+        "workaround": "Edited the scaffolded summary to describe the Click pytest health check.",
+        "mitigation": "Let harness new accept --summary or derive a non-TODO summary from the wrapped command.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-005",
+        "layer": "project",
+        "category": "debug",
+        "description": "The successful wrapped boot envelope only reported the command, not stdout, duration, test count, or artifact paths, so independent proof required checking pytest cache side effects.",
+        "workaround": "Checked .pytest_cache/v/cache/nodeids and found 1697 node IDs after boot.",
+        "mitigation": "Have wrap-generated verbs include stdout/stderr snippets, duration, exit code, and configurable evidence labels in the ok envelope.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-006",
+        "layer": "minih",
+        "category": "config",
+        "description": "The generic output instructions used MH-001 examples, but the Validate Harness Flow rules required VF-001 numbering, creating a small reporting convention conflict.",
+        "workaround": "Followed the flow-specific VF-001 numbering required by the validation rules.",
+        "mitigation": "Make minih prompt templates parameterize the difficulty ID prefix for each agent.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-007",
+        "layer": "project",
+        "category": "debug",
+        "description": "While filling the retro record, a delete-only patch briefly removed the scaffolded file before it was immediately restored at the same returned harness record path.",
+        "workaround": "Restored the record path with the filled retro envelope and verified the file contents afterward.",
+        "mitigation": "Prefer an edit/update patch path for scaffold-filled records or add a fill-record helper to harness record.",
+        "severity": "annoying"
+      }
+    ]
+  }
+}

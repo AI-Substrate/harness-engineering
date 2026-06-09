@@ -1,0 +1,948 @@
+{
+  "schema_version": "harnessability-assessment.v0.2",
+  "run": {
+    "timestamp_utc": "20260609T125450Z",
+    "repo_root": "/private/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click",
+    "repo_name": "click",
+    "branch": "main",
+    "commit": "8a1b1a33d739be05b7e91251e3c0dde77c5e152f",
+    "mode": "static",
+    "commands_executed": [
+      "minih skills doctor",
+      "npm install /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund",
+      "npx harness doctor --json",
+      "npx harness help",
+      "static file inspection of pyproject.toml, README.md, docs/contributing.md, CI workflows, pre-commit config, devcontainer, and tests"
+    ],
+    "commands_skipped": [
+      "Service boot skipped during static assessment",
+      "Dependency installation beyond required harness core install skipped during assessment",
+      "Deep git-history mining skipped"
+    ],
+    "safety_notes": [
+      "Did not read secret values",
+      "Did not call external services",
+      "Did not run migrations, seeds, or destructive cleanup"
+    ]
+  },
+  "verdict": {
+    "operate_today_percent": 80,
+    "operate_today_grade": "B",
+    "adaptability_percent": 77,
+    "adaptability_grade": "B",
+    "harnessability_index_percent": 78.5,
+    "harnessability_index_grade": "B",
+    "final_grade": "B",
+    "readiness_level": "H2",
+    "highest_proof_level": "L2",
+    "target_proof_level": "L3",
+    "confidence": "high"
+  },
+  "harness_surfaces": [
+    {
+      "name": "Harness CLI installed by flow",
+      "path": "node_modules/.bin/harness",
+      "kind": "canonical",
+      "status": "installed during run",
+      "notes": "npx harness doctor/help are callable; no pre-existing project .harness front door was found."
+    },
+    {
+      "name": "Tox/uv command surface",
+      "path": "pyproject.toml",
+      "kind": "generic",
+      "status": "configured_unverified",
+      "notes": "Existing repo command surface used by CI and suitable to wrap."
+    }
+  ],
+  "topology": {
+    "primary_type": "python-library-cli-toolkit",
+    "languages": [
+      "Python"
+    ],
+    "runtimes": [
+      "Python >=3.10"
+    ],
+    "package_roots": [
+      "src/click"
+    ],
+    "service_types": [
+      "library",
+      "CLI toolkit"
+    ],
+    "frameworks": [
+      "pytest",
+      "tox",
+      "uv",
+      "ruff",
+      "mypy",
+      "pyright",
+      "pre-commit",
+      "Sphinx docs"
+    ],
+    "ci": [
+      "GitHub Actions tests",
+      "GitHub Actions pre-commit",
+      "GitHub Actions nightly race tests"
+    ],
+    "is_monorepo": false,
+    "notes": "Single Python package with examples and documentation."
+  },
+  "axis_a_operate_today": [
+    {
+      "id": "A1",
+      "name": "Cold-start orientation and repo map",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "README describes Click; docs/contributing.md lists development notes; docs/ contains user and contributor documentation."
+      ],
+      "notes": "The project purpose and broad layout are easy to identify.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A2",
+      "name": "Setup and environment contract",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "pyproject.toml declares Python >=3.10, dependency groups, tox envs, uv.lock; .devcontainer/on-create-command.sh creates .venv and installs development dependencies."
+      ],
+      "notes": "Runtime and dependency contract is explicit through uv/tox and devcontainer.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A3",
+      "name": "Locality of infrastructure and external dependency exposure",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "No database, queue, cache, object store, auth provider, payment, or remote service required by pyproject/test configuration."
+      ],
+      "notes": "Proof is mostly local Python execution.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A4",
+      "name": "Harness front door and command discoverability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "pyproject.toml exposes tox envs and pytest configuration; CI runs uv/tox; no .harness front door existed before this run."
+      ],
+      "notes": "Commands are discoverable but diffuse across pyproject, docs, and CI rather than one canonical harness verb.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A5",
+      "name": "Boot and health/readiness path",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "tox env_run_base runs pytest; CI invokes uv run --locked --no-default-groups --group dev tox run."
+      ],
+      "notes": "Tests are a practical health check for a library, but no dedicated boot/doctor command existed before harness setup.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A6",
+      "name": "Seed, fixture, reset, and cleanup state",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "tests/conftest.py provides CliRunner; tests use runner.invoke and isolated filesystem/tmp mechanisms."
+      ],
+      "notes": "State needs are light and test-local; there is no separate seed/reset command, mostly because persistent state is not central.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A7",
+      "name": "Supported interaction surfaces",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Click is itself a CLI toolkit; tests exercise commands with CliRunner.invoke; examples/ contains example CLIs."
+      ],
+      "notes": "Agents can exercise real CLI behavior through the same public surfaces tests use.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A8",
+      "name": "Existing deterministic back-pressure sensors",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "pytest, tox, ruff, pre-commit, mypy, pyright, coverage configuration, GitHub Actions test/pre-commit/typing workflows."
+      ],
+      "notes": "Multiple deterministic sensors exist locally and in CI.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A9",
+      "name": "Observability and evidence artifacts",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "pytest output, exit codes, coverage config, stdout/stderr assertions in tests."
+      ],
+      "notes": "Evidence is mostly terminal output and test assertions; no first-class JSON run report/artifact path is documented for local runs.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A10",
+      "name": "Compounding harness loop",
+      "band": "Weak",
+      "points": 1,
+      "evidence": [
+        "No pre-existing .harness governance, retrospectives, or difficulty ledger in the clone."
+      ],
+      "notes": "The repo had strong engineering checks but no explicit harness-retro improvement loop before this flow.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "axis_b_adaptability": [
+    {
+      "id": "B1",
+      "name": "Structural coupling and blast radius",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "src/click/ is a compact library package with focused modules such as core.py, types.py, parser.py, testing.py."
+      ],
+      "notes": "Single package topology keeps blast radius understandable.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B2",
+      "name": "Temporal/change coupling",
+      "band": "Weak",
+      "points": 1,
+      "evidence": [
+        "Deep git co-change mining was skipped in static mode."
+      ],
+      "notes": "Temporal coupling was not proven; defaulted weak rather than inferred strong.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B3",
+      "name": "Cohesion and locality of change",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Tests are grouped by behavior area under tests/test_*.py near the src/click package."
+      ],
+      "notes": "Feature behavior and tests are navigable by topic.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B4",
+      "name": "Seams, substitution, and dependency inversion",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "click.testing.CliRunner and pytest fixture in tests/conftest.py provide a reusable command invocation seam."
+      ],
+      "notes": "The test harness exposes a strong seam for CLI behavior.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B5",
+      "name": "Hermetic, offline, and isolated testability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "pytest tests operate on local Python code and use CliRunner/tmp isolation; no remote service dependency was detected."
+      ],
+      "notes": "Useful proof can run offline after dependencies are available.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B6",
+      "name": "Side-effect isolation and external-effect sinks",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "CLI tests capture stdout/stderr and use isolated filesystem patterns; no risky external side effects detected."
+      ],
+      "notes": "Side effects are mostly local process/file/terminal effects and are capturable.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B7",
+      "name": "State evolution and consequence verification",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Tests assert outputs, exceptions, exit codes, and local file interactions for CLI behavior."
+      ],
+      "notes": "State consequence verification exists for CLI/file outcomes, but no broader fixture lifecycle is needed or encoded as a harness command.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B8",
+      "name": "Architecture boundary enforceability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "ruff, mypy, pyright, and import convention linting are configured."
+      ],
+      "notes": "Static checks exist, but explicit architecture boundary rules are not visible.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B9",
+      "name": "Complexity, size, and navigability thresholds",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "ruff and type checkers are configured; package is relatively compact."
+      ],
+      "notes": "General static quality gates exist; complexity-specific thresholds were not found.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B10",
+      "name": "Inner-loop speed and repeatability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "pytest/tox lanes are local and repeatable; uv.lock pins dependencies."
+      ],
+      "notes": "The loop is repeatable, but first-run dependency environment setup can dominate time.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "backpressure_surfaces": [
+    {
+      "category": "static",
+      "name": "pytest via tox",
+      "command_or_check": "uv run --locked --no-default-groups --group dev tox run",
+      "scope": "test suite",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "pyproject.toml tox env_run_base and .github/workflows/tests.yaml"
+    },
+    {
+      "category": "static",
+      "name": "pre-commit style gate",
+      "command_or_check": "uv run --locked --no-default-groups --group pre-commit pre-commit run --show-diff-on-failure --color=always --all-files",
+      "scope": "style, lockfile, whitespace, codespell",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".pre-commit-config.yaml and .github/workflows/pre-commit.yaml"
+    },
+    {
+      "category": "static",
+      "name": "typing gate",
+      "command_or_check": "uv run --locked --no-default-groups --group dev tox run -e typing",
+      "scope": "mypy and pyright",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "pyproject.toml tox typing env and .github/workflows/tests.yaml"
+    },
+    {
+      "category": "runtime",
+      "name": "CliRunner interaction seam",
+      "command_or_check": "pytest tests using click.testing.CliRunner.invoke",
+      "scope": "CLI behavior",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L3",
+      "status": "configured_unverified",
+      "evidence": "tests/conftest.py and tests/test_testing.py"
+    },
+    {
+      "category": "consequence",
+      "name": "stdout/stderr/exit-code assertions",
+      "command_or_check": null,
+      "scope": "CLI observable consequences",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L4",
+      "status": "configured_unverified",
+      "evidence": "tests assert result.output, exceptions, and exit codes"
+    }
+  ],
+  "scenario_probes": [
+    {
+      "name": "CLI behavior loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "CliRunner",
+        "pytest"
+      ],
+      "likely_edit_target": "src/click/core.py or src/click/testing.py",
+      "required_setup": "uv dependency environment",
+      "supported_interaction": "runner.invoke(command, input=...)",
+      "expected_observable_consequence": "stdout/stderr, exit code, exception, file output",
+      "deterministic_verdict": "pytest",
+      "reset_cleanup_path": "pytest tmp_path/CliRunner isolated filesystem",
+      "local_substitute_available": "native/in-memory process",
+      "remote_or_secret_blockers": "none detected",
+      "highest_plausible_proof_level": "L4",
+      "what_agent_would_infer": "Which subset of tests is the fastest proof lane for a given behavior",
+      "highest_leverage_missing_sensor": "harness boot/quick wrapper around uv pytest"
+    },
+    {
+      "name": "Typing/API contract loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "mypy",
+        "pyright",
+        "py.typed"
+      ],
+      "likely_edit_target": "src/click/*.py",
+      "required_setup": "typing dependency group",
+      "supported_interaction": "tox -e typing",
+      "expected_observable_consequence": "type-check pass/fail",
+      "deterministic_verdict": "mypy and pyright exit codes",
+      "reset_cleanup_path": "none beyond rerun",
+      "local_substitute_available": "native",
+      "remote_or_secret_blockers": "none detected",
+      "highest_plausible_proof_level": "L2",
+      "what_agent_would_infer": "Whether typing is sufficient for behavioral compatibility",
+      "highest_leverage_missing_sensor": "contract/example smoke harness for public CLI API"
+    },
+    {
+      "name": "Documentation build loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "Sphinx docs tox env"
+      ],
+      "likely_edit_target": "docs/*.md",
+      "required_setup": "docs dependency group",
+      "supported_interaction": "sphinx-build via tox -e docs",
+      "expected_observable_consequence": "generated dirhtml docs",
+      "deterministic_verdict": "sphinx-build -W exit code",
+      "reset_cleanup_path": "remove docs/_build if needed",
+      "local_substitute_available": "native",
+      "remote_or_secret_blockers": "none detected",
+      "highest_plausible_proof_level": "L2",
+      "what_agent_would_infer": "Which docs page covers a changed API",
+      "highest_leverage_missing_sensor": "harness docs-check wrapper"
+    }
+  ],
+  "command_tiers": [
+    {
+      "command_or_check": "uv run --locked --no-default-groups --group tests pytest -q",
+      "tier": "quick",
+      "category": "test",
+      "local_available": true,
+      "ci_available": "partial",
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "local env/cache only",
+      "expected_duration_if_known": "unknown; expected short after dependencies installed",
+      "output_artifact": "terminal output/exit code",
+      "proof_level": "L2",
+      "status": "candidate_unverified",
+      "evidence": "pyproject.toml pytest configuration"
+    },
+    {
+      "command_or_check": "uv run --locked --no-default-groups --group dev tox run",
+      "tier": "ci_equivalent",
+      "category": "test",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "local env/cache only",
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "tox/pytest output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".github/workflows/tests.yaml"
+    },
+    {
+      "command_or_check": "uv run --locked --no-default-groups --group dev tox run -e typing",
+      "tier": "proof",
+      "category": "typing",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "local env/cache only",
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "mypy/pyright output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "pyproject.toml and .github/workflows/tests.yaml"
+    },
+    {
+      "command_or_check": "uv run --locked --no-default-groups --group pre-commit pre-commit run --all-files",
+      "tier": "proof",
+      "category": "style",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "may rewrite formatting/lockfile if invoked in default hook mode",
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "pre-commit output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".pre-commit-config.yaml"
+    }
+  ],
+  "environment_variables": [
+    {
+      "name": "TOX_ENV",
+      "required": "optional",
+      "purpose_inferred": "Selects CI tox environment from matrix",
+      "source_files": [
+        ".github/workflows/tests.yaml",
+        ".github/workflows/nightly.yaml"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Only needed to mirror specific CI matrix entries."
+    }
+  ],
+  "external_dependencies": [],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "title": "No pre-existing canonical harness governance/front door",
+      "axis": "operate_today",
+      "subsystem": "tools",
+      "loop_stage": "boot",
+      "backpressure_category": "human_inferential",
+      "scenario_impacted": "CLI behavior loop",
+      "target_layer": "harness",
+      "encoding_type": "command",
+      "severity": "medium",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Add .harness/engineering-harness.md and harness boot wrapper around the existing pytest lane.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-002",
+      "title": "Local evidence artifacts are mostly terminal text",
+      "axis": "both",
+      "subsystem": "observability",
+      "loop_stage": "observe",
+      "backpressure_category": "observability",
+      "scenario_impacted": "All local proof lanes",
+      "target_layer": "harness",
+      "encoding_type": "evidence",
+      "severity": "low",
+      "status": "partial",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Capture harness boot output and exit status as a JSON envelope/run artifact.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-003",
+      "title": "No compounding retro/difficulty loop before setup",
+      "axis": "operate_today",
+      "subsystem": "human_process",
+      "loop_stage": "improve",
+      "backpressure_category": "human_inferential",
+      "scenario_impacted": "Harness improvement loop",
+      "target_layer": "harness",
+      "encoding_type": "workflow",
+      "severity": "low",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Use harness record retro for setup friction and future improvement candidates.",
+      "proof_level_unblocked": "L1",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    }
+  ],
+  "remediations": [
+    {
+      "id": "REM-001",
+      "title": "Wrap the existing quick pytest lane as harness boot",
+      "recommended_encoding": "harness boot command running uv run --locked --no-default-groups --group tests pytest -q",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-001",
+        "GAP-002"
+      ]
+    },
+    {
+      "id": "REM-002",
+      "title": "Add governance contract from BIO template",
+      "recommended_encoding": ".harness/engineering-harness.md",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L1",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-001"
+      ]
+    },
+    {
+      "id": "REM-003",
+      "title": "Record setup retro after flow",
+      "recommended_encoding": "harness record retro",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L1",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-003"
+      ]
+    }
+  ],
+  "product_code_affordances": [],
+  "harness_recommendations": [
+    {
+      "id": "HR-001",
+      "title": "Create harness boot wrapper",
+      "path": ".harness/extensions/boot.ts",
+      "risk": "low",
+      "type": "command",
+      "summary": "Expose existing pytest lane through harness boot.",
+      "rationale": "Wraps a proven local test sensor without changing product code.",
+      "requires_human_review": false
+    },
+    {
+      "id": "HR-002",
+      "title": "Create governance contract",
+      "path": ".harness/engineering-harness.md",
+      "risk": "low",
+      "type": "governance",
+      "summary": "Document Boot/Interact/Observe contract.",
+      "rationale": "Turns discovered setup and proof surfaces into a canonical harness contract.",
+      "requires_human_review": false
+    }
+  ],
+  "applied_patches": [],
+  "onboarding_consolidation": [
+    {
+      "item": "Development commands from docs/contributing.md and pyproject.toml",
+      "action": "fold_in",
+      "source_path": "docs/contributing.md, pyproject.toml",
+      "notes": "Assessment identifies tox/pytest/style/typing surfaces as candidate harness verbs."
+    }
+  ],
+  "first_safe_session_plan": [
+    "Install harness core if absent and run npx harness doctor --json.",
+    "Run the quick pytest lane through the boot wrapper once created.",
+    "For behavior changes, start with focused pytest tests using CliRunner, then run typing/style as needed.",
+    "Record friction with harness record retro rather than leaving it in chat."
+  ],
+  "human_questions": [
+    {
+      "id": "HQ-001",
+      "question": "Which local command should be the official fastest proof lane: raw pytest, tox default, or a focused tox env?",
+      "reason": "The repo exposes several correct candidates with different speed/coverage tradeoffs.",
+      "answer_type": "choice"
+    }
+  ],
+  "evidence_log": [
+    {
+      "source": "pyproject.toml",
+      "claim": "Python >=3.10, uv dependency groups, pytest configuration, tox envs, ruff/mypy/pyright settings are declared.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": ".github/workflows/tests.yaml",
+      "claim": "CI runs uv/tox across Python versions and a typing job.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": ".github/workflows/pre-commit.yaml and .pre-commit-config.yaml",
+      "claim": "pre-commit style/format/lockfile/spellcheck hooks are CI-enforced.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "tests/conftest.py and tests/test_testing.py",
+      "claim": "CliRunner is the core reusable test interaction seam for CLI behavior.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "static scan",
+      "claim": "No remote database, queue, cache, auth, or external service is required for local proof.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    }
+  ],
+  "report_paths": {
+    "run_dir": ".harness/reports/harnessability/001-click",
+    "report_md": ".harness/reports/harnessability/001-click/report.md",
+    "report_json": ".harness/reports/harnessability/001-click/report.json",
+    "summary_md": ".harness/reports/harnessability/001-click/summary.md",
+    "evidence_jsonl": ".harness/reports/harnessability/001-click/evidence.jsonl",
+    "latest_md": ".harness/reports/harnessability/latest.md",
+    "latest_json": ".harness/reports/harnessability/latest.json",
+    "schema_json": ".harness/reports/harnessability/schema.json"
+  },
+  "assessment_matrix": [
+    {
+      "area": "Operate-Today",
+      "grade": "B",
+      "score_percent": 80,
+      "weight": 0.5,
+      "rationale": "Strong local Python checks and clear setup, but no pre-existing canonical harness front door.",
+      "evidence": [
+        "pyproject.toml",
+        "GitHub Actions",
+        "tests/"
+      ]
+    },
+    {
+      "area": "Adaptability",
+      "grade": "B",
+      "score_percent": 77,
+      "weight": 0.5,
+      "rationale": "Compact package, strong test seam, and low external pressure; temporal coupling and artifact capture are less explicit.",
+      "evidence": [
+        "src/click",
+        "tests/conftest.py",
+        "pyproject.toml"
+      ]
+    },
+    {
+      "area": "Harness front door",
+      "grade": "C",
+      "score_percent": 60,
+      "weight": null,
+      "rationale": "Good commands exist, but before setup they are diffuse rather than harness-native.",
+      "evidence": [
+        "pyproject.toml",
+        "docs/contributing.md"
+      ]
+    },
+    {
+      "area": "External dependency exposure",
+      "grade": "A",
+      "score_percent": 95,
+      "weight": null,
+      "rationale": "No remote infrastructure blocker detected for local proof.",
+      "evidence": [
+        "pyproject.toml",
+        "tests/"
+      ]
+    }
+  ],
+  "engineering_flows": [
+    {
+      "name": "Local test flow",
+      "kind": "test",
+      "commands": [
+        "uv run --locked --no-default-groups --group tests pytest -q",
+        "uv run --locked --no-default-groups --group dev tox run"
+      ],
+      "where_detected": "pyproject.toml and .github/workflows/tests.yaml",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "CI uses tox via uv; raw pytest is a faster candidate."
+    },
+    {
+      "name": "Typing flow",
+      "kind": "test",
+      "commands": [
+        "uv run --locked --no-default-groups --group dev tox run -e typing"
+      ],
+      "where_detected": "pyproject.toml and .github/workflows/tests.yaml",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "Runs mypy and pyright."
+    },
+    {
+      "name": "Pre-commit flow",
+      "kind": "review",
+      "commands": [
+        "uv run --locked --no-default-groups --group pre-commit pre-commit run --all-files"
+      ],
+      "where_detected": ".pre-commit-config.yaml and .github/workflows/pre-commit.yaml",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "Formatting/style/lockfile/spellcheck hooks."
+    }
+  ],
+  "pre_commit_gates": [
+    {
+      "name": "pre-commit",
+      "mechanism": "pre-commit",
+      "checks": [
+        "ruff-check",
+        "ruff-format",
+        "uv-lock",
+        "codespell",
+        "check-merge-conflict",
+        "debug-statements",
+        "fix-byte-order-marker",
+        "trailing-whitespace",
+        "end-of-file-fixer"
+      ],
+      "local_available": true,
+      "ci_equivalent": true,
+      "notes": "CI runs pre-commit over all files."
+    }
+  ],
+  "ci_local_equivalence": [
+    {
+      "check": "tests",
+      "ci_command": "uv run --locked --no-default-groups --group dev tox run",
+      "local_command": "uv run --locked --no-default-groups --group dev tox run",
+      "equivalence": "identical",
+      "notes": "CI selects TOX_ENV per matrix."
+    },
+    {
+      "check": "typing",
+      "ci_command": "uv run --locked --no-default-groups --group dev tox run -e typing",
+      "local_command": "uv run --locked --no-default-groups --group dev tox run -e typing",
+      "equivalence": "identical",
+      "notes": "Uses pyproject tox typing env."
+    },
+    {
+      "check": "pre-commit",
+      "ci_command": "uv run --locked --no-default-groups --group pre-commit pre-commit run --show-diff-on-failure --color=always --all-files",
+      "local_command": "uv run --locked --no-default-groups --group pre-commit pre-commit run --all-files",
+      "equivalence": "equivalent",
+      "notes": "Same hooks, CI adds display flags."
+    }
+  ],
+  "existing_harness_concepts": [
+    {
+      "name": "Diffuse Python toolchain harness",
+      "kind": "diffuse",
+      "surfaces": [
+        "pyproject.toml tox envs",
+        "GitHub Actions",
+        "pre-commit",
+        "docs/contributing.md"
+      ],
+      "coverage": "Partial",
+      "notes": "Strong underlying flows, not yet one harness command surface before this run."
+    }
+  ],
+  "deterministic_encoding_opportunities": [
+    {
+      "id": "DEO-001",
+      "title": "Promote fastest local proof lane to harness boot",
+      "current_encoding": "doc",
+      "proposed_encoding": "harness boot wrapper around uv pytest",
+      "proof_level": "L2",
+      "rationale": "Executable wrapper gives agents a canonical verdict instead of inferring from pyproject/CI."
+    },
+    {
+      "id": "DEO-002",
+      "title": "Capture proof output as harness evidence",
+      "current_encoding": "manual",
+      "proposed_encoding": "JSON envelope from harness boot",
+      "proof_level": "L2",
+      "rationale": "Makes exit status and command output portable."
+    }
+  ],
+  "test_mechanisms": [
+    {
+      "name": "CliRunner",
+      "type": "fake",
+      "where_detected": "click.testing and tests/conftest.py",
+      "deterministic": "yes",
+      "notes": "In-process CLI runner captures stdout/stderr, exceptions, exit codes, and isolated filesystem behavior."
+    },
+    {
+      "name": "pytest tmp isolation",
+      "type": "in_memory",
+      "where_detected": "tests using runner/tmp patterns",
+      "deterministic": "yes",
+      "notes": "Tests isolate local process/file state."
+    },
+    {
+      "name": "Random/stress tox lanes",
+      "type": "integration",
+      "where_detected": "pyproject.toml and nightly workflow",
+      "deterministic": "optional",
+      "notes": "Designed to detect test pollution and race conditions."
+    }
+  ],
+  "external_dependency_pressure": [
+    {
+      "dependency": "Python package index/cache for first dependency sync",
+      "pressure": "low",
+      "local_substitute": "native",
+      "proof_impact": "First run may need dependency downloads or cache; no live service is needed after environment resolution.",
+      "notes": "uv.lock improves repeatability."
+    }
+  ],
+  "code_composition": [
+    {
+      "area": "src/click package",
+      "kind": "package",
+      "coupling": "compact single package with focused modules",
+      "test_seam": "yes",
+      "notes": "Tests exercise public CLI behavior through package APIs."
+    },
+    {
+      "area": "click.testing.CliRunner",
+      "kind": "seam",
+      "coupling": "low external coupling",
+      "test_seam": "yes",
+      "notes": "Primary reusable harness affordance."
+    }
+  ],
+  "candidate_first_harness_surfaces": [
+    {
+      "surface": "boot",
+      "rationale": "Wrap the fastest existing pytest lane as the canonical health/proof command.",
+      "proof_level": "L2",
+      "already_exists": "no",
+      "priority": "high",
+      "notes": "Needed for setup flow."
+    },
+    {
+      "surface": "typing",
+      "rationale": "Expose mypy/pyright tox env as a stable proof verb.",
+      "proof_level": "L2",
+      "already_exists": "yes",
+      "priority": "medium",
+      "notes": "Already in tox/CI but not harness-native."
+    },
+    {
+      "surface": "style",
+      "rationale": "Expose pre-commit all-files gate as a stable proof verb.",
+      "proof_level": "L2",
+      "already_exists": "yes",
+      "priority": "medium",
+      "notes": "Already in pre-commit/CI but not harness-native."
+    }
+  ],
+  "manual_operation_signals": []
+}

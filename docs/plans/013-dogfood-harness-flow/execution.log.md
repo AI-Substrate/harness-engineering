@@ -59,3 +59,10 @@
 
 ### T009 — Culminating 3-parallel smoke (express/click/cobra) — FIRED
 - Fired the default pool, 3 detached workers in parallel (runIds 0228/aba7/cc7b), tmpRoot kept. Polling to terminal, then `--collect`. (AC-12)
+
+### T009 — Culminating 3-parallel smoke — ALL PASS (AC-12)
+- express / click / cobra fired concurrently, all reached terminal with **verdict PASS**, all **B/B** (Operate-Today/Adaptability), governance + boot + retro all ✓. All 3 reports schema-valid.
+- `--collect` → DONE 3 / TIMED_OUT 0 / MISSING_REPORT 0; copied 5 artifacts each into `runs/<repo>/` + `runs/ROLLUP.md`.
+- **Cross-repo signal (surfaced, not implemented):** all 3 independently wished for a shipped `harness init` / headless `harness setup` (the governance writer); all 3 hit `harness doctor` reporting `cli-build degraded` in the consumer clone (dist not built there); cobra flagged `npm install $MINIH_PROJECT_ROOT` is unsafe in a no-package.json Go repo (npm picked /tmp prefix); all 3 flagged a VF-NNN vs MH-NNN numbering-example conflict in the record template.
+- **Retro-copy timing nuance (dogfood finding about THIS tool):** a single `--collect` run copies whatever exists when `report.json` first shows a terminal verdict; if a worker flushes its retro a moment after the report, the first pass can miss it. The **idempotent re-run** (the designed TIMED_OUT safety net) picks it up — verified: re-run copied all 3 retros. Per Finding 03 this is **surfaced, not auto-fixed** (it is a copy-timing nuance, not a broken record-WRITE path).
+- No worker reported `harness record` itself erroring, so no carve-out record-path repair was needed.
