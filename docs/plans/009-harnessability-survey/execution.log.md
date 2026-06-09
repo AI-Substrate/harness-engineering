@@ -96,3 +96,18 @@ Companion onboarding: `minih agent-readme` · companion-mode protocol: https://g
 - (e) **--keep preserves temp**: `/tmp/harnessability-selftest-*/pflag` left on disk.
 - Defaults are the 3 small public cross-language repos (chalk/JS, byteorder/Rust, pflag/Go), `--depth=1`, overridable via `--repo <urls...>` (AC-15).
 - Note: the fired worker (gpt-5.5, static, network-off) keeps running detached — its completed report + magic-wand retro is reviewed by the calling agent per the verb's `next_action` (the dogfood evidence loop).
+
+---
+
+## Companion review — finding disposition (phase end)
+
+Companion `code-review-companion` reviewed 10 task pings, sent per-commit summaries, and 4 findings. Farewell exitReason=`stop_requested`.
+
+| Finding | Severity | Disposition | Fix |
+|---------|----------|-------------|-----|
+| **F004** — dogfood verb backgrounds `minih` via `bash -c` with unquoted `dest`/`model`/`logPath` (shell-injection / temp-escape) | HIGH | **FIXED** | Rewrote the fire to a positional-arg wrapper (`bash -c 'log="$1"; shift; nohup "$@" > "$log" 2>&1 & echo $!' …`) so no user value is ever shell-parsed; sanitized `repoName()` to a safe basename + de-dupe. Verified: injection payload `…; touch /tmp/PWNED` stays literal (no file created); e2e re-fire still captures runId. |
+| **F002** — `manualOperationSignal.influences` accepted any `^[AB][0-9]+$`, not the A4/A5/A7/A8/A9/B5/B10 advisory whitelist | MEDIUM | **FIXED** | Tightened schema `influences.items` to an enum of the 7 allowed dimensions; added a step-6b bullet populating `manual_operation_signals[]` before scoring with `penalize: no` for topology-intrinsic cases. Example still validates. |
+| **F001** — tracked plan docs still say the producer "still writes" the old path (stale current-state) | MEDIUM | **PARTIAL (accepted)** | Added resolved-markers to the two authoritative docs (spec Research Context + plan Key Finding 01); left raw research-dossier/original-ask as point-in-time historical capture (planning artifacts, not shipped surfaces). |
+| **F003** — AUTHORING.md still described v0.1 contract | MEDIUM | **Already resolved** by T014 (AUTHORING #8/#9 → v0.2). Companion confirmed in the T014 summary. |
+
+Companion magicWand candidates surfaced in per-commit summaries; folded into the retro (`docs/retros/009-harnessability-survey.md`).

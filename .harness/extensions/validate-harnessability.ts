@@ -35,10 +35,12 @@ interface RunRecord {
   error?: string;
 }
 
-/** `https://github.com/chalk/chalk.git` -> `chalk`. */
+/** `https://github.com/chalk/chalk.git` -> `chalk`, sanitized to a safe basename. */
 function repoName(url: string): string {
-  const tail = url.split('/').pop() ?? 'repo';
-  return tail.replace(/\.git$/, '') || 'repo';
+  const tail = (url.split('/').pop() ?? 'repo').replace(/\.git$/, '');
+  // Keep only safe basename chars so `dest`/`logPath` can never escape tmpRoot.
+  const safe = tail.replace(/[^A-Za-z0-9._-]/g, '-').replace(/^[-.]+|[-.]+$/g, '');
+  return safe || 'repo';
 }
 
 /** ISO -> filesystem-safe (`:`/`.` -> `-`). */
@@ -127,8 +129,16 @@ const validateHarnessability: HarnessVerb = {
 
     // 3 + 4. Clone, fire (background), and capture each run's id — one repo at a time.
     const runs: RunRecord[] = [];
+    const usedNames = new Set<string>();
     for (const url of urls) {
-      const repo = repoName(url);
+      let repo = repoName(url);
+      // De-dupe so two URLs with the same tail never clone into the same dest.
+      if (usedNames.has(repo)) {
+        let n = 2;
+        while (usedNames.has(`${repo}-${n}`)) n++;
+        repo = `${repo}-${n}`;
+      }
+      usedNames.add(repo);
       const dest = `${tmpRoot}/${repo}`;
       const logPath = `${dest}/run.log`;
       const rec: RunRecord = {
@@ -153,11 +163,26 @@ const validateHarnessability: HarnessVerb = {
 
       const before = await lastRunId(ctx);
 
-      const modelFlag = model ? `-m ${model} ` : '';
-      const fireCmd =
-        `nohup minih run ${AGENT_SLUG} -p targetRepo=${dest} ${modelFlag}` +
-        `--skill-source path:skills --skill harnessability-assessment > ${logPath} 2>&1 & echo $!`;
-      const fire = await ctx.exec('bash', ['-c', fireCmd]);
+      // Fire detached WITHOUT interpolating any user-controlled value into shell
+      // syntax: the script reads only `"$@"` (literal argv), so `dest`/`model`/
+      // `logPath` can never be re-parsed by the shell (no injection).
+      const fireArgv = [
+        '-c',
+        'log="$1"; shift; nohup "$@" > "$log" 2>&1 & echo $!',
+        'validate-harnessability', // $0 label
+        logPath, // $1 -> log (then shifted away)
+        'minih',
+        'run',
+        AGENT_SLUG,
+        '-p',
+        `targetRepo=${dest}`,
+        ...(model ? ['-m', model] : []),
+        '--skill-source',
+        'path:skills',
+        '--skill',
+        'harnessability-assessment',
+      ];
+      const fire = await ctx.exec('bash', fireArgv);
       if (!fire.ok) {
         rec.error = `background fire failed (exit ${fire.code})`;
         runs.push(rec);

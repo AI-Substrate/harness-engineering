@@ -813,7 +813,8 @@ Before scoring or proposing anything, consolidate what steps 2–6 found into th
 - `existing_harness_concepts[]` — canonical vs diffuse, from step 2;
 - `test_mechanisms[]` — mock vs fake/sink/stub/contract/testcontainer, from step 6;
 - `external_dependency_pressure[]` — from step 5;
-- `code_composition[]` — seams and boundaries.
+- `code_composition[]` — seams and boundaries;
+- `manual_operation_signals[]` — advisory; populate here, **before** scoring, scoped to A4/A5/A7/A8/A9/B5/B10 only, with `penalize: no` for topology-intrinsic desktop/mobile/hardware/brownfield cases.
 
 **Existing-flow-first rule**: inventory existing flows and command surfaces here, *before* any candidate harness surface is proposed. `candidate_first_harness_surfaces[]` and `deterministic_encoding_opportunities[]` are derived later (step 10), only after this survey and the scorecards exist.
 

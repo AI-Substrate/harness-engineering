@@ -670,7 +670,7 @@
           "type": "string",
           "enum": ["ide_only", "manual_step", "gui_required", "desktop", "mobile", "hardware", "brownfield", "click_ops", "undocumented", "unknown"]
         },
-        "influences": { "type": "array", "items": { "type": "string", "pattern": "^[AB][0-9]+$" } },
+        "influences": { "type": "array", "items": { "type": "string", "enum": ["A4", "A5", "A7", "A8", "A9", "B5", "B10"] } },
         "penalize": { "$ref": "#/$defs/yesNoUnknown" },
         "notes": { "type": "string" }
       }
