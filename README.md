@@ -4,6 +4,8 @@ Harness engineering is the practice of productising the software-development loo
 
 This repo is a public foundation and tutorial project for teams that want faster, safer, more observable development loops in the age of AI-assisted engineering.
 
+It is also the **home of the harness product itself**: the harness CLI (`harness/cli/`) and the engineering-harness skills (`skills/`) are authored here and deployed into *other* repos — which consume them via `npx skills` / `harness skills install`. We also **dogfood** the harness on this repo. When working here, keep the two modes distinct: *editing* the CLI or skills is product development that ships to every consumer, whereas *running* the loop skills is dogfooding this checkout. See [`AGENTS.md`](./AGENTS.md#this-repos-dual-role) and the constitution (`docs/project-rules/constitution.md` §1) for the full framing.
+
 ## Install the skills
 
 This repo publishes its engineering-harness skills — a **setup group** (`skills/eng-harness-setup/`) and the **interactive loop group** (`skills/eng-harness-loop/`) — consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills). The harness CLI also wraps this in a first-class `harness skills install` command (a transparent pass-through to the same installer — see [`INSTALL.md`](./INSTALL.md)).
@@ -119,3 +121,5 @@ For a practical guide to when to run the setup skill and how the loop skills fit
 - `eng-harness-2-backpressure` (the advisory Backpressure Check)
 - `eng-harness-3-observe`
 - `eng-harness-4-retro`
+
+The Observe/Retro stages are backed by a core CLI command: **`harness record <type>`** scaffolds a templated record (starting with `retro`) into `.harness/records/<type>/` and returns its path for the agent to fill. Observe jots crash-resilient working notes to the gitignored scratch buffer `.harness/temp/<agent>/`; `eng-harness-4-retro --drain` then materialises a **committed** record under `.harness/records/`. Record types are a generic 4-field contract loadable from core or extensions — see [`docs/how/record-and-record-types.md`](docs/how/record-and-record-types.md).

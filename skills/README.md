@@ -59,8 +59,10 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 |---|---|---|
 | `eng-harness-1-boot` | Boot | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, reports readiness. `UNAVAILABLE` (not an error) when no harness exists → recommends `eng-harness-0-setup`. |
 | `eng-harness-2-backpressure` | Backpressure Check | Advisory survey of whether scoped work can be *proven by deterministic sensors*; names missing sensors. Never blocks. |
-| `eng-harness-3-observe` | Observe | Silently records material friction, signal gaps, and concrete improvement ideas during work. |
-| `eng-harness-4-retro` | Retro / Magic Wand | `--drain` presents the end-of-session triage prompt; `--harvest` clusters recurring improvement candidates. |
+| `eng-harness-3-observe` | Observe | Silently records material friction, signal gaps, and concrete improvement ideas during work, to the gitignored scratch buffer `.harness/temp/<agent>/`. |
+| `eng-harness-4-retro` | Retro / Magic Wand | `--drain` presents the end-of-session triage prompt and materialises a committed record via `harness record retro` (under `.harness/records/`); `--harvest` clusters recurring improvement candidates. |
+
+> **Backed by `harness record`**: the Observe/Retro stages call the core CLI command `harness record <type>` (starting with the `retro` type) to scaffold a templated record into `.harness/records/<type>/`. Scratch lives in gitignored `.harness/temp/`; committed records live in tracked `.harness/records/`. See [`docs/how/record-and-record-types.md`](../docs/how/record-and-record-types.md).
 
 ## The intended loop
 

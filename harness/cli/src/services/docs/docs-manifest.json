@@ -9,6 +9,13 @@
       "sourcePath": "docs/how/extend-the-harness.md"
     },
     {
+      "id": "record-and-record-types",
+      "title": "Record and record types",
+      "summary": "Use `harness record <type>` to scaffold a templated record file, and add a new record type (core or extension) with the 4-field contract.",
+      "audience": "both",
+      "sourcePath": "docs/how/record-and-record-types.md"
+    },
+    {
       "id": "using-harness-docs",
       "title": "Using harness docs",
       "summary": "Discover and read the harness's bundled docs offline with `harness docs` (and the future MCP `docs_*` seam).",
