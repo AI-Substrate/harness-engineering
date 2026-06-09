@@ -25,7 +25,7 @@ Run this when a repo has no working `harness boot` (or no harness front door at 
 
 ## What it does
 
-1. **Install the harness** via `npx github:AI-Substrate/harness-engineering`, make it resolve locally (`npm install github:AI-Substrate/harness-engineering`), initialise the nucleus with `npx harness init` (graceful fallback if your CLI predates it), and sanity-check with `npx harness doctor` (a fresh consumer repo may report `degraded` — the signal is that the CLI runs and returns an envelope).
+1. **Install the harness** via `npx github:AI-Substrate/harness-engineering`, make it resolve locally (`npm install github:AI-Substrate/harness-engineering`), initialise the nucleus with `npx harness init` (graceful fallback if your CLI predates it), and sanity-check with `npx harness doctor` (a fresh consumer repo can still report `degraded` on individual layers — the signal is that the CLI runs and returns an envelope, exit 0).
 2. **Assess harnessability** — only if no report exists at `.harness/reports/harnessability/latest.json` (or any file under `.harness/reports/harnessability/`). Runs the `eng-harness-0-harnessability-assessment` skill and reads its recommendations.
 3. **Stand up a basic `boot`** — via the `eng-harness-0-add-extension` skill, wrapping the repo's real readiness command (build / run / health) chosen from the assessment. Boot returns a ready/degraded/error verdict and re-orients the agent.
 

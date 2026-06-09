@@ -127,10 +127,11 @@ that is a reportable FAIL (skills mis-wired) — say so, do not work around it.
   of any parent `package.json`.
 - `github`: `npm install github:AI-Substrate/harness-engineering --prefix "$targetRepo"`.
 - **Sanity (independent):** `npx harness doctor --json` runs and reports. An
-  empty `.harness/extensions/` is **not** an error. (A `cli-build degraded`
-  note about a missing `harness/cli/dist` in the *consumer* clone is a known
-  consumer-mode wart — record it as a difficulty, it does not block install.)
-  Record `harnessInstalled`.
+  empty `.harness/extensions/` is **not** an error, and the `cli-build` layer
+  reports **ok (n/a)** in a consumer clone (FX001 — it only checks the dev
+  build inside the CLI's own repo), so it is **not** a difficulty to record.
+  `doctor` returning an envelope (exit 0) is the signal; it does not block
+  install. Record `harnessInstalled`.
 
 ### S1 — Harnessability assessment (drive `eng-harness-0-harnessability-assessment`)
 

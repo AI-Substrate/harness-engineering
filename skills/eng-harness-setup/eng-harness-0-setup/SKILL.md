@@ -76,7 +76,7 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
    npx harness doctor --json    # envelope: status / data / error / next_action
    ```
 
-   On a fresh consumer repo, `doctor` may report top-level `status: degraded` (e.g. a `cli-build` layer that only applies inside the CLI's own repo) and an **empty** `.harness/extensions/` — both are expected, not failures. The signal you need is that the CLI **runs and returns an envelope** (exit 0); read `data.layers` / `data.extensions` rather than gating on a top-level `ok`.
+   On a fresh consumer repo, the `cli-build` layer reports **ok (n/a)** — it only runs a real build check inside the CLI's own repo (FX001) — and `.harness/extensions/` is **empty**; both are expected, not failures. `doctor` can still go `status: degraded` for other reasons (a missing tool, a failed extension), so the signal you need is that the CLI **runs and returns an envelope** (exit 0); read `data.layers` / `data.extensions` rather than gating on a top-level `ok`.
 
 ### Troubleshooting
 

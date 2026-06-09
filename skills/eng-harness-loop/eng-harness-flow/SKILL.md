@@ -80,7 +80,7 @@ The router decides purely from signals it can **read** (no state of its own). Th
 | # | Signal | How it's read | Tells us |
 |---|---|---|---|
 | A | **Harness CLI present** | `harness --version` resolves; or `.harness/` dir exists; or a `package.json`/`npx` target is present | Is there a harness at all? |
-| B | **CLI healthy** | `harness doctor` **JSON envelope** read by `exit_code`/`status` field (not prose — a fresh consumer repo can legitimately report *degraded*) | Does the CLI itself load/run? |
+| B | **CLI healthy** | `harness doctor` **JSON envelope** read by `exit_code`/`status` field (not prose — the CLI loading and returning an envelope is the signal; a consumer repo can still show *degraded* on individual layers, but `cli-build` is `ok`/n/a there since FX001) | Does the CLI itself load/run? |
 | C | **Working boot command** | a `boot` verb/recipe exists (`.harness/extensions/boot.*`, a `justfile`/`package.json` boot, or governance declares it) **and** boots cleanly | Did setup establish a boot we can run? |
 | D | **Governance doc** | `.harness/engineering-harness.md` (canonical) → legacy `docs/project-rules/engineering-harness.md` → `agent-harness.md` → `harness.md` | Is the Boot/Interact/Observe contract present? (Boot needs this or it reports `UNAVAILABLE`) |
 | E | **Loop substrate** | `.harness/temp/` (gitignored observe scratch) + `.harness/records/retro/` (committed retro records, created via `harness record retro`) — legacy `docs/harness/agents/` retros are still read by harvest for back-compat | Can Observe/Retro actually record anything? |
