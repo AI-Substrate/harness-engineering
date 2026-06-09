@@ -1,6 +1,7 @@
-
-
-
+- As you work, you may find things annoying or repetitive, or just want to standardise for the team
+- So you build scripts. As a human we do this all the time
+- Agents don't always do this well, or if they do it can be a bit adhoc etc. 
+- This concept is encoding stuff in to the engineering environment to make it easier for us to live.  
 
 # Sound familiar?
 
@@ -13,15 +14,13 @@
 
 ## Speaker Notes
 
-
-
 The agent is confident, the tests look green, and then you actually open it and something obvious is wrong. Or it did finish, but burned twenty-five minutes mid-run cycling on how to start the app and check an endpoint. Burned tokens and time.
 
 each of these is a fixable harness defect, not just "the agent being dumb". The agent stumbling is usability research on your engineering environment. We'll spend the rest of the session on how to capture that and pay it forward.
 
-And here's the thing — you've probably already fixed some of these. Maybe all of them. Maybe the fix lived in a script someone wrote, or a message in a thread. Most likely its in instructions in a markdown file.  An engineering harness takes that instinct — encoding the answer so the problem never bites again — and makes it a first-class concept: it gives it a defined home. discoverable, runnable, and shared with everyone (and every agent) on the repo. 
+And here's the thing — you've probably already fixed some of these. Maybe all of them. Maybe the fix lived in a script someone wrote, or a message in a thread. Most likely its in instructions in a markdown file. An engineering harness takes that instinct — encoding the answer so the problem never bites again — and makes it a first-class concept: it gives it a defined home. discoverable, runnable, and shared with everyone (and every agent) on the repo.
 
-It is the productisation of the engineering environment. 
+It is the productisation of the engineering environment.
 
 # Agenda
 
@@ -35,12 +34,6 @@ It is the productisation of the engineering environment.
 - The harness in your development flow
 - Retrospective and the magic wand
 - Installing the harness
-
-
-
-
-
-
 
 # Framing the problem
 
@@ -75,9 +68,8 @@ The engineering harness is about creating and encoding team/project memory as de
 
 It is about pushing for creative and innovative ways to create deterministic back-pressure in the codebase. The engineering harness gives a focal point for this team memory - this engineering environment. It creates the focal point for this activity we see here.
 
-
-
 # Engineering Harness vs Agent Harness
+
 - The harness word is hot right now, probably overused.
 - We mean engineering harnesses here, not agent harnesses.
 - Don't conflate the two:
@@ -95,10 +87,8 @@ Don't conflate the two harnesses. The agent harness is the runtime that drives t
 
 Highly cohesive: a better engineering harness means better agent outcomes, whatever agent runtime you use. Invest in the loop, not just the model.
 
-
-
-
 # Backpressure
+
 - The agent says it's done — but did it even run the code? That review reflex is back pressure, the human kind.
 - There are many kinds of back-pressure, some more reliable than others:
   - Inferred / LLM-driven: e.g. "do a code review" — non-deterministic, even with an advanced prompt that checks architecture.
@@ -126,12 +116,11 @@ But that will not validate the architecture properly. Linters can help etc.
 
 Other things are using tech like CodeQL or .NET Roslyn to encode deterministic architecture rules into a command that the agent can run - straight up no guessing - yes or no this is correct.
 
-There are also middle of the road ones between deterministic and inferred, that all form up under the umbrella of closing the loop -> for example you might create a harness command that makes it super easy to build, host and then connect a Playwright browser to the running app so the agent can physically test the shiny new button that it just added.
+There are also middle of the road ones between deterministic and inferred, that all form up under the umbrella of closing the loop -&gt; for example you might create a harness command that makes it super easy to build, host and then connect a Playwright browser to the running app so the agent can physically test the shiny new button that it just added.
 
 The point is, we should strive to move as much back pressure from inferred world to deterministic world.
 
-
-# Do as much work deterministically as possible. 
+# Do as much work deterministically as possible.
 
 - Deterministic = code and scripts: something runnable as code, probably idempotent, and can have unit tests.
 - Tokens are expensive — the more we do in code, the better our token usage.
@@ -149,8 +138,8 @@ Deterministic processes are inherently more trustable. And... if they are not wo
 
 As you are working with the agent it is going to work things out. It might loop for 20 turns trying to get something going, why not just encode that into a script / CLI? Rather than write the learning in a file, just build the actual learning as a fix or feature. Don't tell me how to fix it, just fix it.
 
-
 # Tokens are expensive
+
 - Tokens are expensive — make sure you never have to re-discover something twice (even on different developer machines).
 - If something loops 20 times to figure something out, that's a strong signal the engineering environment needs improvement.
 
@@ -161,6 +150,7 @@ Tokens are expensive, how can we make sure we ensure that we never have to re-di
 Again, if something loops 20 times to figure something out, that is a strong signal the engineering environment needs improvement.
 
 # Harnessability
+
 - The engineering environment isn't the only thing to improve — your codebase may need to change so agents can operate more freely.
 - Agent onboarding: how easy is it to run your system?
   - Peak: an environment fully set up in an isolated CI run, where an agent pulls a PR and just works — with all the deterministic backpressure and tools you'd get on a local machine. It just works.
@@ -180,6 +170,7 @@ What does your codebase need to have done to it to make it able to be fully stoo
 If the engineering environment is being stretched thin by the codebase, maybe it's time to think about updating the codebase.
 
 # Focal Point
+
 - Reduce diffuse information to a single focal point:
   - a) make the features of your engineering environment as discoverable as possible.
   - b) give a target for improvement — something that would have made it easier next time? Add it to the harness. A deterministic check not working as expected? Fix it.
@@ -196,8 +187,9 @@ b) Give a target for improvement. Identify something that would have made it way
 You can also pre-check things. "If we do this work, how will the system deterministically validate it?" The engineering harness platform gives this question far more context and affordance. Folks on the team will gather the concept quickly.
 
 # CLI as the front door
+
 - CLI is a great focal-point mechanism — agents understand them.
-- --help lets the agent explore commands as needed, without polluting context with documentation from md files.
+- \--help lets the agent explore commands as needed, without polluting context with documentation from md files.
 - Every session is a cold onboarding — wrap what you already have (build/test/lint/doctor/boot/smoke/seed) to give a front door.
 - If it's designed well, pointing the agent at the CLI is *almost* enough to get started.
 
@@ -222,9 +214,10 @@ If it's designed well, pointing the agent at the CLI is *almost* enough to get s
 - Encode the chosen fix into the engineering environment (via harness)
 - Repeat.
 
-[CLI focal point + required agent use of said CLI] + [deterministic back pressure] + [friction capture] + [human-selected encoding] = engineering harness nucleus.
+\[CLI focal point + required agent use of said CLI\] + \[deterministic back pressure\] + \[friction capture\] + \[human-selected encoding\] = engineering harness nucleus.
 
-# Engineering harness in your development flow. 
+# Engineering harness in your development flow.
+
 - A good engineering harness adapts to your existing environment and flows, shaping to your repo and process as you build. Your flows should only adapt a little.
 - The harness has a loop of its own that lives inside your existing flow (spec-driven development flows are best).
 - Canonical flow: boot → backpressure check → do-work and observe → retro → encode → repeat.
@@ -249,7 +242,7 @@ During the do-work portion where the agent is coding and such, the agent will ta
 When the work is done, the agent will retro the work. It will collate findings and difficulties. It will also ask the question "if I had a magic wand, what would I improve about the engineering environment". This might include improvements to the harness, or maybe even to the codebase itself to make it easier to work on.
 
 The human will review the suggestions, and then if deemed appropriate will encode them back into the engineering environment / harness.
- 
+
 # Retrospective and Magic Wand and the compounding pay off
 
 - The magic-wand question really is magic — well-prompted, the agent makes great suggestions. I've re-encoded some fantastic ones.
@@ -261,7 +254,7 @@ Just calling out the magic wand concept in more detail. It really is magic, when
 
 After even just a few iterations in the team you will start to see the payoffs compound.
 
-# Installing the harness. 
+# Installing the harness.
 
 - Two parts:
   - Core — installed via NPX, upgradeable.

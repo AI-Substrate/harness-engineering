@@ -2,6 +2,24 @@
 
 This repository is a public-facing engineering-harness first-principles and tutorial project.
 
+## This repo's dual role
+
+This repository is **two things at once** — keep them distinct (the full version is in `docs/project-rules/constitution.md` §1):
+
+1. **The home/source of the harness product.** The harness CLI (`harness/cli/`) and the engineering-harness skills (`skills/eng-harness-setup/`, `skills/eng-harness-loop/`) are *authored here* and *deployed out to other repos* via `npx skills` / `harness skills install`. A change here propagates to every consumer.
+2. **A dogfooding site.** We also *use* the harness on this repo: `.minih.json` wires the loop skills as `minih` agents, and `.harness/extensions/` holds extensions this repo authored for itself.
+
+Other repos are **consumers**: they install the CLI + skills, and *their* harness substrate (`.harness/extensions/`, governance doc, fixtures) lives in *their* tree — not here.
+
+### Build mode vs. dogfood mode (do not conflate)
+
+- **Editing** `skills/eng-harness-*/SKILL.md` or `harness/cli/` is **product development** — it changes the harness shipped to every consumer. Treat it as source work, governed by the repo's tests/checks/constitution.
+- **Running** a loop skill (e.g. `eng-harness-1-boot`) is **dogfooding** — it operates on *this* repo only. Friction or improvements found while dogfooding usually belong in the **product source** (the skill or CLI), because that is where the fix helps every consumer, not just this checkout.
+
+### Self-reference caveat (boot / setup)
+
+The loop skills expect a governance doc at `.harness/engineering-harness.md`. This repo does **not** have one yet — its governance lives in `docs/project-rules/{constitution,architecture,rules,idioms}.md`. So `eng-harness-1-boot` will report `UNAVAILABLE` here and suggest `eng-harness-0-setup`. **Do not run setup against this repo to "fix" that** — this is the harness's own home, not a target repo. (A deterministic `harness init` writer that would reconcile this is a deferred next-plan item.)
+
 ## Repo framing
 
 - Build a reusable, evidence-backed guide for harness engineering: how teams create fast, observable, repeatable development loops.
