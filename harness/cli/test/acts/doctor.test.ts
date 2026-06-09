@@ -49,7 +49,12 @@ describe('registerDoctorAct', () => {
       'extensions',
       'record-types',
     ]);
-    expect(env.next_action.length).toBeGreaterThan(0);
+    // Envelope contract: degraded always carries a next_action; ok need not (FX001 —
+    // pre-fix this cwd was perpetually degraded via the false consumer cli-build check,
+    // which made next_action look unconditional).
+    if (env.status === 'degraded') {
+      expect(env.next_action.length).toBeGreaterThan(0);
+    }
     expect(code).toBe(0);
   });
 

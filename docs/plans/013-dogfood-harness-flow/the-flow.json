@@ -4,12 +4,15 @@
   "slug": "dogfood-harness-flow",
   "plan_dir": "docs/plans/013-dogfood-harness-flow",
   "mode": "Simple",
-  "cursor": "phases",
+  "cursor": "fix-fx001",
   "recommended_next": "merge",
-  "now": "Plan written (Simple, READY, 12 tasks) — ready to build",
-  "next": "Build the phase (/plan-6)",
-  "_comment": "Fresh start. No engineering-harness governance doc in this repo -> harness loop nodes omitted (per the-flow sentinel). Mode unknown until /plan-1b; phase nodes are a single assumed placeholder until /plan-3 reveals the real count. the-flow.md is generated FROM this file.",
-  "agents": [],
+  "now": "FX001 fix (validated) — implementing with code-review-companion",
+  "next": "Merge analysis (/plan-8) once the fix lands",
+  "_comment": "No engineering-harness governance doc in this repo -> harness loop nodes omitted (per the-flow sentinel). the-flow.md is generated FROM this file.",
+  "agents": [
+    { "id": "code-review-companion", "kind": "companion", "render": "wrap", "covers": ["fix-fx001"],
+      "note": "Power-On-Mode live reviewer over FX001 commits; supersedes /plan-7 for this fix." }
+  ],
   "nodes": [
     { "id": "research", "type": "research", "label": "Research", "status": "done",
       "command": "/plan-1a", "ran_at": "2026-06-09T11:42Z",
@@ -29,11 +32,20 @@
       "note": "Simple, READY. 7 gates PASS/N·A (G4 N/A). 12 tasks, single phase. No harness governance doc -> harness-loop rows omitted. Self-dogfooding made continuous (T010 across T001-T012).",
       "artifacts": ["dogfood-harness-flow-plan.md"], "next": ["phases"] },
 
-    { "id": "phases", "type": "phase", "label": "Build (single phase, 12 tasks)", "status": "known",
+    { "id": "phases", "type": "phase", "label": "Build (single phase, 12 tasks)", "status": "done",
       "command": "/plan-6 --plan docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md",
-      "note": "T001-T012: worker agent -> orchestrator extension -> --collect -> smokes -> dogfood -> guide -> report.", "next": ["merge"] },
+      "ran_at": "2026-06-09T13:15Z", "reconstructed": true,
+      "note": "T001-T012 done, 12/12. 4 worker runs PASS B/B (chalk x2, express, click, cobra); --collect rollup written. Companion findings F001-F008 addressed. Findings FIND-1..4 + bonus SURFACED (not implemented) per standing rule; worker harvest relocated to .harness/records/retro/.",
+      "artifacts": ["execution.log.md", "runs/ROLLUP.md"], "next": ["merge"] },
 
-    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
-      "command": "/plan-8", "next": [] }
+    { "id": "fix-fx001", "type": "fix-loop", "label": "Fix FX001: doctor consumer-mode cli-build", "status": "in_progress",
+      "branch_of": "phases",
+      "command": "/plan-6-v2-implement-phase-companion --fix \"FX001\" --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md\"",
+      "user_input": "implement with code review companion please.",
+      "note": "From dogfood finding FIND-2 (hit by all 4 worker repos). Dossier validated (3 agents): VALIDATED WITH FIXES — 1 CRITICAL fixed pre-implementation (directory gate untestable with FakeFs exact-path semantics -> harness/cli/tsconfig.json file-marker gate). FIND-4 fixed separately (ea58be3); bonus raised as AI-Substrate/minih#39; FIND-1 (init) reserved for its own plan.",
+      "artifacts": ["fixes/FX001-doctor-consumer-mode-cli-build.md", "fixes/FX001-doctor-consumer-mode-cli-build.fltplan.md"], "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "known",
+      "command": "/plan-8", "note": "Read-only analysis; executes only on explicit PROCEED.", "next": [] }
   ]
 }

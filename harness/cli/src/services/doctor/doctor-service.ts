@@ -40,7 +40,16 @@ export interface DoctorReport {
 }
 
 const REQUIRED_TOOLS = ['node', 'just', 'biome'];
-/** Relative to cwd — the dev-repo build check; installed/loop behaviour is out of scope. */
+/**
+ * Relative to cwd. Two modes (FX001 / plan-013 FIND-2):
+ * - Dev (this repo, the harness's home): `CLI_DEV_MARKER` present → check the build output.
+ * - Consumer (installed clone): marker absent → the dev build check does not apply; the
+ *   layer reports ok with a `consumer` detail instead of falsely degrading the envelope.
+ * The marker is a FILE (not the `harness/cli/` dir) so both NodeFs and FakeFs resolve it
+ * with plain exists(); there is no `harness/cli/package.json` — the CLI builds from the
+ * root package, so its tsconfig is the stable dev-tree marker.
+ */
+const CLI_DEV_MARKER = 'harness/cli/tsconfig.json';
 const CLI_BUILD_PATH = 'harness/cli/dist/index.js';
 
 function checkToolchain(proc: ProcessPort): LayerReport {
@@ -57,6 +66,13 @@ function checkToolchain(proc: ProcessPort): LayerReport {
 }
 
 function checkCliBuild(fs: FsPort): LayerReport {
+  if (!fs.exists(CLI_DEV_MARKER)) {
+    return {
+      name: 'cli-build',
+      ok: true,
+      detail: `consumer install — dev build check n/a (no ${CLI_DEV_MARKER})`,
+    };
+  }
   const built = fs.exists(CLI_BUILD_PATH);
   return {
     name: 'cli-build',

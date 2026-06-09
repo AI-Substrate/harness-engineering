@@ -17,7 +17,12 @@ import type { VerbRegistry } from '../../../src/services/extensions/registry.js'
 import { buildRecordRegistry, coreRecordTypes } from '../../../src/services/record/registry.js';
 
 const ALL_TOOLS = { node: '/usr/bin/node', just: '/usr/bin/just', biome: '/usr/bin/biome' };
-const BUILT_CLI = { 'harness/cli/dist/index.js': '// built' };
+// Dev-mode seed (FX001): the tsconfig marker makes checkCliBuild treat the fake tree as
+// the harness's home; dist present → built. Without the marker the tree reads as a consumer.
+const BUILT_CLI = {
+  'harness/cli/tsconfig.json': '{}',
+  'harness/cli/dist/index.js': '// built',
+};
 
 const mkVerb = (name: string): HarnessVerb => ({
   name,
@@ -72,6 +77,36 @@ describe('buildDoctorReport', () => {
     expect(byName.extensions?.ok).toBe(true);
     expect(byName.extensions?.detail).toContain('2 loaded');
     expect(report.branch).toBe('main');
+  });
+
+  it('cli-build: dev repo without dist → not-ok with the npm run build next_action', () => {
+    const fs = new FakeFs({ 'harness/cli/tsconfig.json': '{}' });
+    const report = buildDoctorReport(deps({ fs }), EMPTY);
+    const layer = report.layers.find((l) => l.name === 'cli-build');
+    expect(layer?.ok).toBe(false);
+    expect(layer?.detail).toContain('not built');
+    expect(layer?.next_action).toContain('npm run build');
+  });
+
+  it('cli-build: consumer install (no dev marker) → ok with honest consumer detail (FX001)', () => {
+    /*
+    Test Doc:
+    - Why: plan-013 dogfood finding FIND-2 — every installed consumer saw a false
+      `cli-build` degraded because doctor checked the dev-repo dist path relative to cwd.
+      FX001 gates the check on the dev-tree marker (harness/cli/tsconfig.json) so the very
+      first diagnostic a consumer runs tells the truth.
+    - Contract: marker absent → layer ok:true, detail mentions `consumer`, no next_action;
+      with healthy tools the whole envelope is ok (not falsely degraded).
+    - Quality Contribution: pins consumer-mode honesty without changing dev-repo behaviour.
+    */
+    const fs = new FakeFs(); // empty tree = consumer clone, no harness/cli/
+    const report = buildDoctorReport(deps({ fs }), EMPTY);
+    const layer = report.layers.find((l) => l.name === 'cli-build');
+    expect(layer?.ok).toBe(true);
+    expect(layer?.detail).toMatch(/consumer/);
+    expect(layer?.next_action).toBeUndefined();
+    const env = doctorEnvelope(report, new FakeClock('2026-06-08T07:20:00.000Z'));
+    expect(env.status).toBe('ok');
   });
 
   it('extensions layer is honest about no extensions installed (ok, with guidance)', () => {

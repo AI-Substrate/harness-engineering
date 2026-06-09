@@ -156,3 +156,9 @@ Not applicable as a build gate for **this** repo — there is no `docs/project-r
 **Standalone?**: No — downstream consumers (`/plan-6`, the worker runtime, `--collect` rollup, `/plan-8`) exist.
 
 Overall: ⚠️ VALIDATED WITH FIXES → Status remains **READY**
+
+## Fixes
+
+| ID | Created | Summary | Domain(s) | Status | Source |
+|----|---------|---------|-----------|--------|--------|
+| [FX001](fixes/FX001-doctor-consumer-mode-cli-build.md) | 2026-06-10 | Consumer-mode `doctor` falsely reports `cli-build` degraded | harness-cli | Proposed | Dogfood finding FIND-2 (all 4 worker repos) |

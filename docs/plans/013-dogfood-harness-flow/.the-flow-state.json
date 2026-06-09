@@ -8,7 +8,7 @@
   "intent": "A new minih-driven harness extension that dogfoods the FULL eng-harness-flow (assess -> governance -> boot) across 3 freshly-cloned public repos in parallel, collects their retros/records, while we also dogfood the flow ourselves and report back \u2014 retros are surfaced, never auto-implemented.",
   "milestones_total": 5,
   "milestones_done": 4,
-  "last_checkpoint_at": "2026-06-09T13:15:31Z",
+  "last_checkpoint_at": "2026-06-10T07:55:00Z",
   "compacted_seams": [],
   "status": "active"
 }
