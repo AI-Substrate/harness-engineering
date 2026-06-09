@@ -132,5 +132,22 @@ describe('scaffold templates', () => {
       variant: 'wrap-js',
       ext: 'js',
     });
+    // --record wins over --wrap/--js: a record-type stub is always a TS file.
+    expect(renderStarter({ name: 'dev-survey', js: true, wrap: 'x', record: true })).toMatchObject({
+      variant: 'record-ts',
+      ext: 'ts',
+    });
+  });
+
+  it('the record-ts starter exports a HarnessRecordType with the 4 fields', () => {
+    const contents = renderStarter({ name: 'dev-survey', js: false, record: true }).contents;
+    expect(contents).toContain(
+      "import type { HarnessRecordType } from 'harness-engineering/contract'",
+    );
+    expect(contents).toContain("kind: 'record'");
+    expect(contents).toContain("type: 'dev-survey'");
+    expect(contents).toContain('description:');
+    expect(contents).toContain('template:');
+    expect(contents).toContain('export default');
   });
 });

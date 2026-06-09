@@ -20,6 +20,9 @@ export interface NewActDeps {
  * at running/reviewing it instead. A minimal stub genuinely needs implementing.
  */
 function nextActionFor(variant: string, path: string, verb: string): string {
+  if (variant === 'record-ts') {
+    return `Edit the template body in ${path}, then run \`harness record ${verb}\`. \`harness doctor\` confirms it loaded.`;
+  }
   const isWrap = variant.startsWith('wrap');
   return isWrap
     ? `Run \`harness ${verb}\` to try it (run() already wraps your command); edit ${path} to tweak. \`harness doctor\` confirms it loaded.`
@@ -42,36 +45,42 @@ export function registerNewAct(program: Command, io: CliIo, deps: NewActDeps): v
     .argument('<name>', 'verb name (lowercase, hyphenated — becomes `harness <name>`)')
     .option('--wrap <command>', 'wrap a real repo command, e.g. --wrap "npm test"')
     .option('--js', 'emit a plain .js starter (JSDoc contract, no TypeScript)')
+    .option(
+      '--record',
+      'scaffold a record-type extension (`harness record <name>`) instead of a verb',
+    )
     .option('--force', 'overwrite an existing extension file')
-    .action((name: string, opts: { wrap?: string; js?: boolean; force?: boolean }) => {
-      const outcome = scaffoldExtension(
-        { name, wrap: opts.wrap, js: opts.js, force: opts.force },
-        { fs: deps.fs, proc: deps.proc },
-      );
-      const envelope = outcome.ok
-        ? formatOk(
-            'new',
-            { path: outcome.path, verb: outcome.verb, variant: outcome.variant },
-            deps.clock,
-            { next_action: nextActionFor(outcome.variant, outcome.path, outcome.verb) },
-          )
-        : formatError('new', outcome.code, outcome.message, deps.clock, {
-            next_action: outcome.next_action,
-          });
-      const port: OutputPort =
-        io.mode === 'json'
-          ? createOutputPort('json', io.writers)
-          : {
-              emit: (e) => {
-                if (e.status === 'ok' && outcome.ok) {
-                  io.writers.out(`Created ${outcome.path}\n`);
-                } else {
-                  io.writers.err(`harness new: ${e.error?.message ?? 'failed'}\n`);
-                  if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
-                }
-                io.writers.out(`new: ${e.status}\n`);
-              },
-            };
-      exitWithEnvelope(envelope, port);
-    });
+    .action(
+      (name: string, opts: { wrap?: string; js?: boolean; record?: boolean; force?: boolean }) => {
+        const outcome = scaffoldExtension(
+          { name, wrap: opts.wrap, js: opts.js, record: opts.record, force: opts.force },
+          { fs: deps.fs, proc: deps.proc },
+        );
+        const envelope = outcome.ok
+          ? formatOk(
+              'new',
+              { path: outcome.path, verb: outcome.verb, variant: outcome.variant },
+              deps.clock,
+              { next_action: nextActionFor(outcome.variant, outcome.path, outcome.verb) },
+            )
+          : formatError('new', outcome.code, outcome.message, deps.clock, {
+              next_action: outcome.next_action,
+            });
+        const port: OutputPort =
+          io.mode === 'json'
+            ? createOutputPort('json', io.writers)
+            : {
+                emit: (e) => {
+                  if (e.status === 'ok' && outcome.ok) {
+                    io.writers.out(`Created ${outcome.path}\n`);
+                  } else {
+                    io.writers.err(`harness new: ${e.error?.message ?? 'failed'}\n`);
+                    if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
+                  }
+                  io.writers.out(`new: ${e.status}\n`);
+                },
+              };
+        exitWithEnvelope(envelope, port);
+      },
+    );
 }

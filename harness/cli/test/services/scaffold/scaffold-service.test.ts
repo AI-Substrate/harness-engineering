@@ -68,6 +68,24 @@ describe('scaffoldExtension — happy paths', () => {
       path: '.harness/extensions/test.js',
     });
   });
+
+  it('--record scaffolds a loadable record-type stub at <name>.record.ts', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'dev-survey', record: true },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out).toMatchObject({
+      ok: true,
+      path: '.harness/extensions/dev-survey.record.ts',
+      verb: 'dev-survey',
+      variant: 'record-ts',
+    });
+    const contents = fs.readText('/repo/.harness/extensions/dev-survey.record.ts');
+    expect(contents).toContain("kind: 'record'");
+    expect(contents).toContain("type: 'dev-survey'");
+    expect(contents).toContain('HarnessRecordType');
+  });
 });
 
 describe('scaffoldExtension — error paths (no file written on validation failure)', () => {
@@ -96,6 +114,7 @@ describe('scaffoldExtension — error paths (no file written on validation failu
     'new',
     'docs',
     'skills',
+    'record',
   ])('rejects reserved name %j with E151 and writes nothing', (name) => {
     const fs = new FakeFs();
     const out = scaffoldExtension({ name }, { fs, proc: new FakeProcess({}, '/repo') });

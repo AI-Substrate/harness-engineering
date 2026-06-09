@@ -3,6 +3,7 @@ import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
 import { registerNewAct } from './acts/new.js';
+import { registerRecordAct } from './acts/record.js';
 import { registerSkillsAct } from './acts/skills.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
@@ -26,7 +27,16 @@ import {
 } from './output/output-port.js';
 import { validateVerbRegistry } from './services/config/load-config.js';
 import { discoverExtensions } from './services/extensions/discovery.js';
-import { buildVerbRegistry, type VerbRegistry } from './services/extensions/registry.js';
+import {
+  buildExtensionRegistry,
+  type ExtensionRegistry,
+  type VerbRegistry,
+} from './services/extensions/registry.js';
+import {
+  buildRecordRegistry,
+  coreRecordTypes,
+  type ExtensionRecordType,
+} from './services/record/registry.js';
 import { readVersion } from './version.js';
 
 /**
@@ -109,8 +119,10 @@ function unexpectedEnvelope(err: unknown, clock: Clock): Envelope {
 }
 
 /**
- * Discover + load the repo's extensions into a verb registry, unless safe mode
- * is on (then the registry is empty — core commands only). Runs BEFORE parse so
+ * Discover + load the repo's extensions into the extension registry (verbs +
+ * record types + provenance) in one pass, unless safe mode is on (then the
+ * registry is empty — core commands + core record types only). Core record-type
+ * names are reserved so an extension can never shadow them. Runs BEFORE parse so
  * each verb is a registered command (WS-A Decision 6).
  */
 export async function loadRegistry(
@@ -118,23 +130,26 @@ export async function loadRegistry(
   env: NodeJS.ProcessEnv,
   deps: VerbActDeps,
   loader: ModuleLoaderPort,
-): Promise<VerbRegistry> {
+): Promise<ExtensionRegistry> {
   if (isExtensionsDisabled(argv, env)) {
-    return { verbs: [], records: [] };
+    return { verbs: [], recordTypes: [], records: [] };
   }
-  return buildVerbRegistry(discoverExtensions(deps.fs, deps.proc), loader);
+  return buildExtensionRegistry(discoverExtensions(deps.fs, deps.proc), loader, {
+    reservedRecordTypes: new Set(coreRecordTypes.map((t) => t.type)),
+  });
 }
 
 /**
- * Build the composition root: global flags + core `help`/`doctor` + one
- * subcommand per discovered verb, each registered with the pre-resolved `io` +
- * injected ports. No business logic, no fs/process/git here.
+ * Build the composition root: global flags + core commands (incl. `record`, built
+ * from the merged record registry = core ∪ extension) + one subcommand per
+ * discovered verb, each registered with the pre-resolved `io` + injected ports. No
+ * business logic, no fs/process/git here.
  */
 export function buildProgram(
   version: string,
   io: CliIo,
   deps: VerbActDeps,
-  registry: VerbRegistry,
+  registry: VerbRegistry & { recordTypes?: ExtensionRecordType[] },
 ): Command {
   const program = new Command()
     .name('harness')
@@ -145,11 +160,14 @@ export function buildProgram(
     .option('--no-extensions', 'skip loading repo extensions (core commands only)')
     .exitOverride();
 
+  const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
+
   registerHelpAct(program, io, registry);
-  registerDoctorAct(program, io, registry);
+  registerDoctorAct(program, io, registry, recordRegistry);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
   registerSkillsAct(program, io, deps);
+  registerRecordAct(program, io, deps, recordRegistry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
   }

@@ -14,6 +14,7 @@ import {
 } from '../../../src/services/doctor/doctor-service.js';
 import type { ExtensionRecord, HarnessVerb } from '../../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
+import { buildRecordRegistry, coreRecordTypes } from '../../../src/services/record/registry.js';
 
 const ALL_TOOLS = { node: '/usr/bin/node', just: '/usr/bin/just', biome: '/usr/bin/biome' };
 const BUILT_CLI = { 'harness/cli/dist/index.js': '// built' };
@@ -166,5 +167,39 @@ describe('renderDoctorText', () => {
     expect(text).toContain('extensions');
     expect(text).toContain('hello');
     expect(text).toContain('branch:');
+  });
+});
+
+describe('record-types layer', () => {
+  it('enumerates the merged record types (core ∪ extension) without invoking anything', () => {
+    const recordReg = buildRecordRegistry(coreRecordTypes, [
+      {
+        recordType: {
+          kind: 'record',
+          type: 'dev-survey',
+          description: 'DX survey.',
+          template: '---\n---\n',
+        },
+        entryPath: '.harness/extensions/dev-survey.record.ts',
+      },
+    ]);
+    const report = buildDoctorReport(deps(), EMPTY, recordReg);
+    const layer = report.layers.find((l) => l.name === 'record-types');
+    expect(layer?.ok).toBe(true);
+    expect(layer?.detail).toContain('2 available');
+    expect(layer?.detail).toContain('1 core');
+    expect(layer?.detail).toContain('1 extension');
+    expect(report.recordTypes.map((t) => t.type)).toEqual(['retro', 'dev-survey']);
+
+    const text = renderDoctorText(report);
+    expect(text).toContain('record-types');
+    expect(text).toContain('retro [core]');
+    expect(text).toContain('dev-survey [extension] .harness/extensions/dev-survey.record.ts');
+  });
+
+  it('without a record registry shows zero record types (back-compat 2-arg call)', () => {
+    const report = buildDoctorReport(deps(), EMPTY);
+    const layer = report.layers.find((l) => l.name === 'record-types');
+    expect(layer?.detail).toContain('0 available');
   });
 });

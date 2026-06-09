@@ -26,6 +26,8 @@ export interface ScaffoldOptions {
   wrap?: string;
   js?: boolean;
   force?: boolean;
+  /** Scaffold a record-type extension (`kind:'record'`) instead of a verb. */
+  record?: boolean;
 }
 
 export type ScaffoldOutcome =
@@ -36,7 +38,7 @@ export function scaffoldExtension(
   opts: ScaffoldOptions,
   deps: { fs: FsPort; proc: ProcessPort },
 ): ScaffoldOutcome {
-  const { name, wrap, js = false, force = false } = opts;
+  const { name, wrap, js = false, force = false, record = false } = opts;
   const { fs, proc } = deps;
 
   if (!NAME_PATTERN.test(name)) {
@@ -54,11 +56,16 @@ export function scaffoldExtension(
       ok: false,
       code: ErrorCodes.SCAFFOLD_NAME_RESERVED,
       message: `'${name}' is a reserved core command and cannot be an extension verb.`,
-      next_action: 'Choose a different verb name (reserved: help, doctor, new, docs, skills).',
+      next_action:
+        'Choose a different verb name (reserved: help, doctor, new, docs, skills, record).',
     };
   }
 
-  if (wrap !== undefined && (wrap.trim().length === 0 || !SAFE_WRAP_PATTERN.test(wrap))) {
+  if (
+    !record &&
+    wrap !== undefined &&
+    (wrap.trim().length === 0 || !SAFE_WRAP_PATTERN.test(wrap))
+  ) {
     return {
       ok: false,
       code: ErrorCodes.INVALID_ARGS,
@@ -68,8 +75,9 @@ export function scaffoldExtension(
     };
   }
 
-  const { contents, variant, ext } = renderStarter({ name, js, wrap });
-  const fileName = `${name}.${ext}`;
+  const { contents, variant, ext } = renderStarter({ name, js, wrap, record });
+  // Record-type extensions use a `.record.ts` suffix (a human hint — routing is by `kind`).
+  const fileName = record ? `${name}.record.ts` : `${name}.${ext}`;
   const relPath = join(...EXTENSIONS_DIR, fileName);
   const dirAbs = join(proc.cwd(), ...EXTENSIONS_DIR);
   const fileAbs = join(dirAbs, fileName);

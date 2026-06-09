@@ -47,6 +47,7 @@ describe('registerDoctorAct', () => {
       'toolchain',
       'cli-build',
       'extensions',
+      'record-types',
     ]);
     expect(env.next_action.length).toBeGreaterThan(0);
     expect(code).toBe(0);

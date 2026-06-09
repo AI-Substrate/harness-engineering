@@ -6,6 +6,7 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
+import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -34,6 +35,8 @@ export interface DoctorReport {
   json_env: boolean;
   /** Per-extension provenance enumerated WITHOUT invoking any handler (P7). */
   extensions: ExtensionRecord[];
+  /** The merged record types (core ∪ extension) enumerated declaratively. */
+  recordTypes: RecordTypeEntry[];
 }
 
 const REQUIRED_TOOLS = ['node', 'just', 'biome'];
@@ -98,15 +101,43 @@ function checkExtensions(registry: VerbRegistry): LayerReport {
 }
 
 /**
+ * Enumerate the merged record types (core ∪ extension) declaratively — `doctor`
+ * NEVER invokes anything; it just reports what the registry resolved. Informational
+ * (always ok): an extension type that shadowed a core/earlier type already surfaces
+ * as a `conflict` in the extensions layer above (recordShadows), so this line need
+ * not re-flag it.
+ */
+function checkRecordTypes(recordTypes: RecordTypeEntry[]): LayerReport {
+  const core = recordTypes.filter((t) => t.source === 'core').length;
+  const ext = recordTypes.filter((t) => t.source === 'extension').length;
+  return {
+    name: 'record-types',
+    ok: true,
+    detail: `${recordTypes.length} available (${core} core, ${ext} extension)`,
+  };
+}
+
+/**
  * Gather the doctor report via the injected adapters + the assembled verb
  * registry. Pure of `process.exit` and direct Node I/O — all side effects go
- * through the ports, so the whole thing is unit-testable with fakes.
+ * through the ports, so the whole thing is unit-testable with fakes. The optional
+ * `recordRegistry` adds the record-types enumeration (core ∪ extension).
  */
-export function buildDoctorReport(deps: DoctorDeps, registry: VerbRegistry): DoctorReport {
-  const layers = [checkToolchain(deps.proc), checkCliBuild(deps.fs), checkExtensions(registry)];
+export function buildDoctorReport(
+  deps: DoctorDeps,
+  registry: VerbRegistry,
+  recordRegistry?: RecordRegistry,
+): DoctorReport {
+  const recordTypes = recordRegistry?.types ?? [];
+  const layers = [
+    checkToolchain(deps.proc),
+    checkCliBuild(deps.fs),
+    checkExtensions(registry),
+    checkRecordTypes(recordTypes),
+  ];
   const branch = deps.git.isRepo() ? deps.git.currentBranch() : null;
   const json_env = deps.env.get('HARNESS_JSON') === '1';
-  return { layers, branch, json_env, extensions: registry.records };
+  return { layers, branch, json_env, extensions: registry.records, recordTypes };
 }
 
 /**
@@ -129,8 +160,12 @@ export function doctorEnvelope(report: DoctorReport, clock: Clock): Envelope {
 }
 
 /** Convenience: gather + envelope in one call. */
-export function runDoctor(deps: DoctorDeps, registry: VerbRegistry): Envelope {
-  return doctorEnvelope(buildDoctorReport(deps, registry), deps.clock);
+export function runDoctor(
+  deps: DoctorDeps,
+  registry: VerbRegistry,
+  recordRegistry?: RecordRegistry,
+): Envelope {
+  return doctorEnvelope(buildDoctorReport(deps, registry, recordRegistry), deps.clock);
 }
 
 /** Render the report as human diagnostics text (each layer, the extensions, the branch). */
@@ -141,9 +176,18 @@ export function renderDoctorText(report: DoctorReport): string {
     if (layer.name === 'extensions') {
       for (const ext of report.extensions) {
         const mark = ext.status === 'loaded' ? '•' : '✗';
-        const names = ext.verbs.map((v) => v.name).join(', ') || '(none)';
+        const verbNames = ext.verbs.map((v) => v.name);
+        const recordNames = (ext.recordTypes ?? []).map((t) => `${t.type} (record)`);
+        const names = [...verbNames, ...recordNames].join(', ') || '(none)';
         const suffix = ext.error ? ` — ${ext.error}` : '';
         lines.push(`    ${mark} ${names} [${ext.status}]  ${ext.entryPath}${suffix}`);
+      }
+    }
+    if (layer.name === 'record-types') {
+      for (const rt of report.recordTypes) {
+        const provenance =
+          rt.source === 'extension' ? `[extension] ${rt.entryPath ?? ''}`.trim() : '[core]';
+        lines.push(`    • ${rt.type} ${provenance}`);
       }
     }
     if (layer.next_action) {

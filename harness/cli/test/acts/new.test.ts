@@ -104,6 +104,31 @@ describe('registerNewAct', () => {
     expect(code).toBe(1);
   });
 
+  it('--record scaffolds a record-type stub and points at `harness record <name>`', () => {
+    const { io, out } = ioFor('json');
+    const fs = new FakeFs();
+    const code = run(['dev-survey', '--record'], io, fs);
+    const env = JSON.parse(out());
+    expect(env.status).toBe('ok');
+    expect(env.data).toMatchObject({
+      path: '.harness/extensions/dev-survey.record.ts',
+      verb: 'dev-survey',
+      variant: 'record-ts',
+    });
+    expect(env.next_action).toContain('harness record dev-survey');
+    expect(fs.writes).toContain('/repo/.harness/extensions/dev-survey.record.ts');
+    expect(code).toBe(0);
+  });
+
+  it('`new record` is rejected as a reserved name (E151)', () => {
+    const { io, out } = ioFor('json');
+    const fs = new FakeFs();
+    const code = run(['record'], io, fs);
+    expect(JSON.parse(out()).error.code).toBe(ErrorCodes.SCAFFOLD_NAME_RESERVED);
+    expect(fs.writes).toEqual([]);
+    expect(code).toBe(1);
+  });
+
   it('an existing file without --force is rejected (E152, exit 1)', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs({ '/repo/.harness/extensions/greet.ts': '// existing' });

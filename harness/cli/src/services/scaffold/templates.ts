@@ -5,7 +5,7 @@
  * runtime). Authors never see this module — only the file it writes.
  */
 
-export type ScaffoldVariant = 'minimal-ts' | 'minimal-js' | 'wrap-ts' | 'wrap-js';
+export type ScaffoldVariant = 'minimal-ts' | 'minimal-js' | 'wrap-ts' | 'wrap-js' | 'record-ts';
 
 /** kebab/lower verb name → a valid camelCase JS identifier for the local const. */
 export function toIdentifier(name: string): string {
@@ -104,13 +104,53 @@ export default ${id};
 `;
 }
 
+/**
+ * Record-type extension starter (`harness new <name> --record`). Exports a
+ * {@link HarnessRecordType} the loader discovers by its `kind:'record'`. The
+ * record's "schema" lives in the `template` body (frontmatter + comments); the
+ * CLI is schema-agnostic, so editing the template is all it takes to design a type.
+ */
+export function recordTs(name: string): string {
+  const id = toIdentifier(name);
+  return `import type { HarnessRecordType } from 'harness-engineering/contract';
+
+const ${id}: HarnessRecordType = {
+  kind: 'record',
+  type: '${name}',
+  description: 'TODO: one-line description of the ${name} record type.',
+  // The record's schema lives HERE — frontmatter keys + commented guidance.
+  template: \`---
+record_type: ${name}
+captured_at: "<ISO8601Z>"
+# TODO: add the fields this record captures.
+---
+
+# ${name} — <subject>
+
+<!-- TODO: optional narrative; the frontmatter above is the durable signal. -->
+\`,
+};
+
+export default ${id};
+`;
+}
+
 /** Pick the starter + extension from the `harness new` flags. */
-export function renderStarter(opts: { name: string; js: boolean; wrap?: string }): {
+export function renderStarter(opts: {
+  name: string;
+  js: boolean;
+  wrap?: string;
+  record?: boolean;
+}): {
   contents: string;
   variant: ScaffoldVariant;
   ext: 'ts' | 'js';
 } {
-  const { name, js, wrap } = opts;
+  const { name, js, wrap, record } = opts;
+  if (record) {
+    // Record types are TS stubs (they import the record contract); --wrap/--js don't apply.
+    return { contents: recordTs(name), variant: 'record-ts', ext: 'ts' };
+  }
   if (wrap !== undefined) {
     return js
       ? { contents: wrapJs(name, wrap), variant: 'wrap-js', ext: 'js' }

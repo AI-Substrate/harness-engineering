@@ -12,17 +12,23 @@ import {
   renderDoctorText,
 } from '../services/doctor/doctor-service.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
+import type { RecordRegistry } from '../services/record/registry.js';
 
 /**
  * Register the `doctor` command — safe to run at session start. Constructs the
- * real adapters, injects them + the verb registry (provided by the composition
- * root) into the doctor service, and renders: human mode writes the layered
- * report to stderr + a summary to stdout; JSON mode emits the envelope to
- * stdout. Always exits 0 (reporting succeeded). `doctor` enumerates extensions
- * (P7) without invoking any handler — and is itself a CORE command, never an
- * extension.
+ * real adapters, injects them + the verb registry + the merged record registry
+ * (provided by the composition root) into the doctor service, and renders: human
+ * mode writes the layered report to stderr + a summary to stdout; JSON mode emits
+ * the envelope to stdout. Always exits 0 (reporting succeeded). `doctor`
+ * enumerates extensions + record types (P7) without invoking any handler — and is
+ * itself a CORE command, never an extension.
  */
-export function registerDoctorAct(program: Command, io: CliIo, registry: VerbRegistry): void {
+export function registerDoctorAct(
+  program: Command,
+  io: CliIo,
+  registry: VerbRegistry,
+  recordRegistry?: RecordRegistry,
+): void {
   program
     .command('doctor')
     .description('Report what is configured + which extensions loaded (safe at session start)')
@@ -37,6 +43,7 @@ export function registerDoctorAct(program: Command, io: CliIo, registry: VerbReg
           clock,
         },
         registry,
+        recordRegistry,
       );
       const envelope = doctorEnvelope(report, clock);
       const port: OutputPort =
