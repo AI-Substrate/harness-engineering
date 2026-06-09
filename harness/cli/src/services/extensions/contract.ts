@@ -16,9 +16,11 @@
 
 import type { ExecResult } from '../../adapters/exec/exec-port.js';
 import type { Evidence } from '../../output/envelope.js';
+import type { HarnessRecordType } from '../record/contract.js';
 
 export type { ExecResult } from '../../adapters/exec/exec-port.js';
 export type { Evidence } from '../../output/envelope.js';
+export type { HarnessRecordType } from '../record/contract.js';
 
 /** The four states a verb can report — mirrors the kernel's Envelope statuses. */
 export type VerbStatus = 'ok' | 'degraded' | 'unconfigured' | 'error';
@@ -84,6 +86,12 @@ export interface VerbContext {
 
 /** The verb an extension declares. */
 export interface HarnessVerb {
+  /**
+   * Discriminator — distinguishes a verb export from a {@link HarnessRecordType}.
+   * OPTIONAL and defaults to `'verb'` when absent, so every existing verb
+   * extension (which never set it) keeps working unchanged.
+   */
+  kind?: 'verb';
   /** e.g. 'build' → `harness build`. */
   name: string;
   /** One line — shown in `help`'s list + `doctor`. */
@@ -95,23 +103,32 @@ export interface HarnessVerb {
   run(ctx: VerbContext): VerbResult | Promise<VerbResult>;
 }
 
-/** A `.harness/extensions/*` entry's DEFAULT export. */
+/** A `.harness/extensions/*` entry's DEFAULT export (verb-only — kept for back-compat). */
 export type ExtensionExport = HarnessVerb | HarnessVerb[];
 
-// Re-export the record-type contract so authors import BOTH verb and record types
-// from the single published entrypoint `harness-engineering/contract` (the package
-// `exports["./contract"]` map resolves to this module).
-export type { HarnessRecordType } from '../record/contract.js';
+/**
+ * The widened default-export union: a `.harness/extensions/*` file may declare a
+ * verb, a record type, or an array mixing both. The loader routes each by `kind`
+ * (`kind:'record'` → record registry; absent/`'verb'` → verb registry).
+ */
+export type HarnessExtensionExport =
+  | HarnessVerb
+  | HarnessRecordType
+  | Array<HarnessVerb | HarnessRecordType>;
 
 /** What `doctor` enumerates per discovered extension file (P7). */
 export interface ExtensionRecord {
   /** Resolved absolute path. */
   entryPath: string;
   status: 'loaded' | 'failed' | 'conflict';
-  /** Declared verbs (empty when `failed`). */
+  /** Declared verbs accepted from this file (empty when `failed` or record-only). */
   verbs: HarnessVerb[];
+  /** Declared record types accepted from this file (present only when non-empty). */
+  recordTypes?: HarnessRecordType[];
   /** Load/validation message (present when status !== 'loaded'). */
   error?: string;
-  /** For 'conflict': the verb name(s) shadowed by a core command or earlier extension. */
+  /** For 'conflict': the VERB name(s) shadowed by a core command or earlier extension. */
   shadows?: string[];
+  /** For 'conflict': the RECORD-TYPE name(s) shadowed by a core type or earlier extension. */
+  recordShadows?: string[];
 }
