@@ -86,3 +86,7 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 
 - `ci.yml`: `TARBALL="$(npm pack --json | jq -r '.[0].filename')"` + loud `[[ "$TARBALL" == *.tgz ]]` guard (any future stdout leak fails visibly, never silently); flat `legacy.ts` fixture created between the boom heredoc and the doctor invocation — the E143 greps (`:169-170`) and `harness legacy` unknown-command check (`:173-178`) now exercise a fixture that actually exists.
 - **Local replication of the full repaired script: ALL GREEN** — real `npm pack`, consumer-style `--omit=dev` install into a temp dir, doctor greps (E143 + `unsupported flat layout`) hit, `harness legacy` correctly refused, `harness hello` (jiti `.ts` fixture) exit 0. CI proof lands at T014's push.
+
+### T012 — .gitattributes
+
+- `* text=auto eol=lf` landed. Zero-churn re-proven at commit time: `git add --renormalize .` modified nothing; `git ls-files --eol` shows only `i/lf` / `i/-text` (binary). `git status` clean immediately after the commit.
