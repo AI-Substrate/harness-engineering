@@ -60,7 +60,10 @@ function depsWith(fs: FakeFs) {
 
 /** A FakeFs whose `.harness/` directory exists. `dirs` seeds `readdir` listings
  * (the per-day ordinal is derived from the date dir's existing entries). */
-function configuredFs(seed: Record<string, string> = {}, dirs: Record<string, string[]> = {}): FakeFs {
+function configuredFs(
+  seed: Record<string, string> = {},
+  dirs: Record<string, string[]> = {},
+): FakeFs {
   const fs = new FakeFs(seed, dirs);
   fs.mkdirp('/repo/.harness');
   return fs;
