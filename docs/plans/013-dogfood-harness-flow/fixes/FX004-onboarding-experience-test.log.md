@@ -37,7 +37,15 @@
 ## Stage 6 — FX004-8 (E2E smoke)
 
 - Fired: `harness validate-harness-flow --repo https://github.com/chalk/chalk.git --keep` → runId `2026-06-10T15-03-58-372Z-07c4`, clone at `/tmp/harness-flow-selftest-2026-06-10T05-03-54-224Z/chalk`.
-- _Results appended after collect._
+- **Terminal in ~12.7 min** (760s watcher; 86+ tool calls). `--collect`: DONE 1, 4 files copied, report **schema-valid** (`minih check` green, no `governanceWritten`).
+- **Journey (goal brief only — no recipe)**: product README → installed CLI into clone → assessment skill (grade B, axis C/B, "workable, not abandoned") → `harness new boot --wrap "npm test"` via the add-extension flow → independent verification (`doctor`/`help`/`instructions boot`/`boot --json`) → **discovered `harness observe` unaided, captured 3 entries, drained them into a retro record** via `harness record retro`.
+- **Probes: 7/8 ✓, 0 discrepancies.** Boot extension judged real, not echo (chalk's actual xo/c8-AVA/tsd lane + orientation + coverage evidence). In-clone retro: 3 frontmatter-valid entries with workarounds + suggested encodings, self-derived magic wand. Buffer drained (0 pending / 3 recorded INFO).
+- **Skills-local ✗ — the run's headline finding.** Not classic mount-suppression: the worker read INSTALL.md/README/setup Step 4 (22 doc-read mentions in events) and obeyed the product's own guardrail — Step 4 is *opt-in* ("offer, never force; only with the user's explicit go-ahead"), and a headless worker has no user to ask. The clone-stands-alone requirement and the human-gated install step are in tension → SUGG-005, user decision.
+- **Findings surfaced (never auto-implemented), captured via our own `harness observe`**: SUGG-003 local-source install ran the harness `prepare` script inside chalk's dep graph (worker isolated-build + `--ignore-scripts` workaround; magic wand = deterministic pack-artifact install) · SUGG-004 `harness init` emits generic E108 vs the documented graceful init-unavailable fallback · SUGG-005 skills-install opt-in vs autonomous onboarding (above) · SUGG-006 minor pair: `instructions` auto-JSON on non-TTY pipes; observe doc examples should single-quote backtick-bearing text.
+
+## Verdict
+
+FX004 acceptance: **10/10 ticked**. The test now measures onboarding: the worker navigated by the product's own docs/skills with zero recipe, the extension graded the clone deterministically, and the one probe failure produced exactly the kind of product-design finding the rework exists to surface.
 
 ## Regression
 
