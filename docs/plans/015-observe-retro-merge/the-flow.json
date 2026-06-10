@@ -4,12 +4,21 @@
   "slug": "observe-retro-merge",
   "plan_dir": "docs/plans/015-observe-retro-merge",
   "mode": "Simple",
-  "cursor": "build",
-  "recommended_next": "build",
-  "now": "Plan READY + VALIDATED WITH FIXES (single phase T000–T014, D1–D10) — every spec-deferred decision resolved",
-  "next": "/plan-6 build (companion recommended) — compact first at this seam",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build COMPLETE — T000–T014 done, suite 374/374 both cwds, dogfood drain proved AC-9, companion reviewed every commit (supersedes /plan-7)",
+  "next": "/plan-8 merge analysis — executes only on typed PROCEED",
   "_comment": "Harness exists (.harness/engineering-harness.md, L3; no docs/harness/.disabled) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
-  "agents": [],
+  "agents": [
+    {
+      "id": "code-review-companion",
+      "kind": "companion",
+      "render": "wrap",
+      "covers": ["build"],
+      "run_id": "2026-06-10T12-44-41-380Z-6236",
+      "note": "Power-On-Mode live reviewer — briefed at phase start, pinged at every commit boundary (5 review-requests + final drain), supersedes /plan-7; farewell harvested at debrief."
+    }
+  ],
   "nodes": [
     {
       "id": "discussion",
@@ -74,10 +83,12 @@
     {
       "id": "build",
       "type": "phase",
-      "label": "Build — single phase (T000–T014)",
-      "status": "known",
-      "command": "/plan-6 or /plan-6-companion",
-      "note": "Confirmed by /plan-3: one phase. Strand A = CLI TDD pairs (observe service/codec/act, doctor probe, briefing); Strand B = merged skill rewrite (<703 lines, AC-14 inventory); Strand C = reference sweep + docs regen + dogfood drain (T013 doubles as the harness-loop retro seam) + dual-cwd suite proof.",
+      "label": "Build — single phase (T000–T014) ✅",
+      "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion",
+      "ran_at": "2026-06-10T02:43Z",
+      "user_input": "implement with companion",
+      "note": "T000–T014 complete in 5 atomic RED/GREEN commits (421de53, e4a943a, 3f1cee9, b0cef6f, b57d7b1 + evidence commit). Strand A: observe service/codec/shared-temp relocation (record tests untouched-green), act + RESERVED_NAMES + E146, doctor temp-hygiene probe, briefing capture+drain. Strand B: merged skill 386 lines (<703), D-13 strings ×2, AC-14 9/9 mapped w/ line numbers. Strand C: slug retired (repo-root grep zero hits; flow re-pointed per D7 naming `harness observe`), docs/how + gen:docs order held, T013 real dogfood drain (SUGG-001 user note + DL-001 FakeFs gap → committed record 002 via data.path → clear → empty sweep), T014 suite 374/374 BOTH cwds + doctor ok + smoke. Mid-build discovery: FakeFs.readdir lacked NodeFs fidelity for mkdirp-created dirs — fixed + pinned, captured as DL-001 via the new verb itself. Companion: code-review-companion run 2026-06-10T12-44-41-380Z-6236, briefed + pinged per commit, no findings raised mid-phase; debrief at phase end.",
       "next": [
         "merge"
       ]
@@ -86,7 +97,7 @@
       "id": "merge",
       "type": "merge",
       "label": "Merge",
-      "status": "assumed",
+      "status": "known",
       "command": "/plan-8",
       "note": "Read-only analysis; executes only on explicit typed PROCEED.",
       "next": []

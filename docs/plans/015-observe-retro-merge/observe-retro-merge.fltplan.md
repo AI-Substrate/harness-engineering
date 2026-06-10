@@ -2,7 +2,7 @@
 
 **Spec**: [observe-retro-merge-spec.md](./observe-retro-merge-spec.md) · **Plan**: [observe-retro-merge-plan.md](./observe-retro-merge-plan.md)
 **Mode**: Simple · **CS**: 3 · **Generated**: 2026-06-10
-**Status**: Plan **READY** + VALIDATED WITH FIXES (single phase, T000–T014, D1–D10) — awaiting /plan-6 (build)
+**Status**: Build **COMPLETE** (T000–T014 all done; suite 374/374 from both cwds; live companion review — supersedes /plan-7) — awaiting /plan-8 merge (typed PROCEED only)
 
 ---
 
@@ -27,9 +27,8 @@ stateDiagram-v2
     S4 --> S5
     S5 --> [*]
 
-    class S1,S2,S3 done
-    class S4 active
-    class S5 pending
+    class S1,S2,S3,S4 done
+    class S5 active
 ```
 
 **Legend**: grey = pending | yellow = active | green = done
@@ -51,7 +50,7 @@ stateDiagram-v2
 | Spec | ✅ done | `observe-retro-merge-spec.md` (15 ACs; D-1..D-13; validate-v2: **VALIDATED WITH FIXES** — 4 agents, 1 CRITICAL [agent identity → D-11] + 4 HIGH fixed; spec's own drift claim corrected: `ensureTemp()` nested gitignore already exists, gap is capture-time + doctor only) |
 | Backpressure Check (optional) | — skipped | user went straight to architect; spec validation had already confirmed AC-1..AC-8 sensor-mappable |
 | Plan (/plan-3) | ✅ done | `observe-retro-merge-plan.md` — **READY**, gates 6 PASS / 1 N/A; D1–D10 resolve all spec-deferred choices; validate-v2: **VALIDATED WITH FIXES** (3 agents; 1 CRITICAL — AC-14 verification hooks — + 5 HIGH fixed; FC 4/4 PASS, confidence 0.88) |
-| Build (next) | pending | single phase confirmed: T000–T014 (TDD pairs for CLI, dogfood drain proof) |
+| Build | ✅ done | T000–T014 complete (5 commits, RED/GREEN pairs atomic): `observe` core act (capture/list/clear, E146, reserved name), doctor temp-hygiene probe, briefing capture+drain section, merged 386-line friction-lifecycle skill (AC-14 9/9 mapped), slug retired (repo-root grep zero hits), docs/how + gen:docs; dogfood drain proved AC-9 end-to-end; suite 374/374 both cwds; companion-reviewed every commit |
 | Merge | pending | /plan-8, explicit PROCEED |
 
 ---

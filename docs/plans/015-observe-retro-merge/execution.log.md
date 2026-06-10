@@ -60,3 +60,41 @@ Convention: RED/GREEN pairs are committed atomically (014 precedent — every co
 
 - `record-and-record-types.md`: "Records vs the scratch buffer" → "Two storage classes" with the capture verb, drain materialization, malformed honesty, doctor convention check.
 - Order held: edit → `npm run gen:docs` → `npm run build` → suite **374/374 from harness/cli** (finding 06 / 014 OH-003 lesson). `docs-content.ts` regenerated, never hand-edited.
+
+## T012 — Verification sweep ✅
+
+- **AC-12 grep (fresh, repo root)**: `grep -rn "harness-3-observe" --exclude-dir=docs/plans --exclude-dir=.git .` → **exit 1, zero hits**. Flow-row proof: `grep -c "harness observe" skills/eng-harness-loop/eng-harness-flow/SKILL.md` → **5** (≥1 required).
+- **Line count**: `wc -l skills/eng-harness-loop/eng-harness-4-retro/SKILL.md` → **386** (< 703).
+- **D-13 strings**: magic-wand question ×**2**; proof-gap question at lines **46** (headline capture section) and **159** (drain beat) — both placements, locked wording.
+
+### AC-14 mapping table (mandatory — one row per preserved behavior, section + line in the merged SKILL.md)
+
+| Item | Behavior | Section heading | Line(s) |
+|---|---|---|---|
+| (a) | Calibration targets: ≤1 self-prompt/5 min, ≤5 entries/session, soft | § Calibration (soft targets, anti-over-introspection) | 104–105 |
+| (b) | Task-boundary heuristic — self-prompt only when buffer empty | § Calibration → **Task-boundary heuristic** | 107–109 |
+| (c) | Cross-session leftover check at auto-firing skill start (bucket-sweeping via `--list` all-buckets default) | § `--drain` → When to fire → **Cross-session leftover check** | 129 |
+| (d) | Drain menu `[s/t/p/e/d/a]`: selective save · `/plan-5 --fix` emission · `/plan-1b` emission · encode staging w/ mandatory Validation footer · dismiss | § `--drain` Step 2 (menu 162–165) + Step 3 (`[s]ave` 206, `[t]ask` 212, `[p]lan` 216, `[e]ncode` 220–246 incl. footer template 229, `[d]ismiss all` 248) | 162–250 |
+| (e) | Harvest lifecycle ops `[r]esolved` / `[w]ontfix` / `[s]tale` (in-place status mutations) | § `--harvest` Step 5 — Action menu | 360–362 |
+| (f) | Three-tier encoding-hint generation (entry field → kind/target templates → fallback) | § Encoding-hint generation (one line per entry) | 256–260 |
+| (g) | Plan-id detection (cwd → branch → null) | § `--drain` Step 4 — Plan-ID detection | 252–254 |
+| (h) | Harvest clustering/prioritization, stale thresholds (4w/2w), `--json` contract, prune dry-run | § `--harvest` Step 3 (stale 307, top-10 order 308) + `--json` (334–346) + Pruning (364–366) | 305–366 |
+| (i) | Buffer-non-empty advisory at harvest start | § Buffer-non-empty advisory | 285–289 |
+
+All 9 rows locatable — no empty rows; sign-off proceeds.
+
+- **AC-13 no-overclaim pass** (every CLI behavior the skill names, verified in code): capture flags incl. `--suggested-encoding`/`--agent` (acts/observe.ts) ✓; per-kind sequential IDs + ISO timestamps + full `system.compound` (observe-service + codec, D10) ✓; validation w/ allowed values, `unconfigured` exit 2 (D6) ✓; identity chain never fails (resolveBucket, D4) ✓; gitignore self-heal at capture + doctor convention check (ensureTemp + checkConventions) ✓; `--list --json` all-buckets/bucket-annotated/`malformed_skipped` (D9) ✓; `--clear` truncate-files-kept ✓; `record retro` dated-subdir `data.path` (record-service) ✓; `harness instructions` teaches capture+drain (CORE_INSTRUCTIONS) ✓. No claim without an implementation.
+
+## T013 — Dogfood drain session ✅ (the harness-loop retro seam, run for real)
+
+- Pending before drain: `--list --json` → 2 entries (`SUGG-001` user note + `DL-001` FakeFs gap), bucket `agent`, `malformed_skipped: 0`.
+- `[a]ll-save` (autonomous default at a phase seam): `npx harness record retro --slug "015-observe-retro-merge-build-drain" --json` → **`data.path = .harness/records/retro/2026-06-10/002-015-observe-retro-merge-build-drain.md`** (CLI-owned dated-subdir placement; ordinal 002 after a pre-existing 001). Envelope written with entries verbatim; DL-001 marked `status: encoded, resolved_by: e4a943a` (fixed within this same build); SUGG-001 stays `open` (`source: user`).
+- `npx harness observe --clear` → `{cleared: 2, buckets_scanned: ["agent"], malformed_skipped: 0}`; follow-up `--list` → **0 observations**. AC-9 proven end-to-end against the real CLI in this repo.
+- Template note: the scaffolded retro template's status enum is `open|suggested|encoded|wontfix|stale|dismissed` — "resolved" is not a status; `[r]esolved` maps to `encoded` (the merged skill states this correctly).
+
+## T014 — Final validation ✅
+
+- `just fft` → green (suite + coverage; 91.9% functions / 92.3% lines).
+- `npm run test` from **repo root** → 374/374. `cd harness/cli && npx vitest run` → 374/374 (**AC-15 both cwds**).
+- `npx harness doctor --json` → `status: ok`, 2 extensions loaded.
+- Smoke: `npx harness observe "T014 smoke entry…" --kind insight` → `INS-001`; `--list` → 1; `--clear` → 1 cleared, sweep empty after.

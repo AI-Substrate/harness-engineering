@@ -9,13 +9,19 @@ flowchart TD
   classDef assumed fill:#ECEFF1,stroke:#90A4AE,color:#455A64,stroke-dasharray:5 5;
   classDef said fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
   classDef harness fill:#EDE7F6,stroke:#673AB7,color:#311B92;
+  classDef companion fill:#FFF8E1,stroke:#F9A825,color:#5D4037;
 
   discussion["Design discussion (in-session research)"]:::done
   spec["Spec + validate-v2 ✅ (15 ACs · D-1..D-13 · VALIDATED WITH FIXES)"]:::done
   backpressure["Backpressure Check (/plan-2d — optional, skipped)"]:::harness
   plan["Plan + validate-v2 ✅ READY (T000–T014 · D1–D10 · VALIDATED WITH FIXES)"]:::done
-  build["Build — single phase (T000–T014, /plan-6)"]:::known
-  merge["Merge (/plan-8, typed PROCEED only)"]:::assumed
+
+  subgraph companion_wrap ["🧑‍⚖️ code-review-companion (run 2026-06-10T12-44-41-380Z-6236) — reviewed every commit, supersedes /plan-7"]
+    build["Build ✅ — single phase T000–T014 (5 atomic RED/GREEN commits · 374/374 both cwds · dogfood drain proved AC-9)"]:::done
+  end
+  class companion_wrap companion
+
+  merge["Merge (/plan-8, typed PROCEED only)"]:::known
 
   discussion --> spec --> backpressure --> plan --> build --> merge
 
@@ -25,8 +31,10 @@ flowchart TD
   said_spec -.- spec
   said_plan>"🗣 proceed to architect phase please"]:::said
   said_plan -.- plan
+  said_build>"🗣 implement with companion · (mid-build) note for later: add our own harness boot extension… we should be dogfooding more… add the dogfood requirement to AGENTS.md"]:::said
+  said_build -.- build
 ```
 
-**Legend** — 🟩 done · 🟧 in progress · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop
+**Legend** — 🟩 done · 🟧 in progress · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 user input · 🟨 companion · 🟪 harness loop
 
-**Now**: Plan **READY** + VALIDATED WITH FIXES — single phase T000–T014; design decisions D1–D10 resolve every choice the spec deferred (dedicated observe service with `ensureTemp` relocated to a shared module; YAML-in-md buffer format kept so legacy hand-written entries parse natively, **no new runtime dependency**; doctor probe rides the E144 conventions pattern; flow dispatch re-pointed to the merged skill). The validators' headline catch: T012's AC-14 check was upgraded from a "read-through" to a **mandatory 9-row mapping table** (section + line per preserved behavior) — the concrete defense against the spec's stated main thesis risk, silent preservation drift · **Next**: `/plan-6` build (companion recommended; `/compact` first at this seam)
+**Now**: Build **COMPLETE** — T000–T014 in 5 atomic RED/GREEN commits: the `harness observe` core act (capture/list/clear, all-buckets sweep, E146, reserved name), doctor temp-hygiene probe, briefing capture+drain section, and the merged **386-line** friction-lifecycle skill (vs 703 across the two it replaces; AC-14 inventory 9/9 mapped with line numbers; D-13 question pair verbatim ×2). The slug is retired from every live surface (repo-root grep: zero hits). T013 was the **first real dogfood drain**: two mid-build observations (the user's harness-boot-extension note + the FakeFs readdir fidelity gap) captured via the new verb itself, materialized into committed record `002-015-observe-retro-merge-build-drain.md` via the CLI-returned `data.path`, then cleared. Suite **374/374 from both cwds**; companion reviewed every commit · **Next**: `/plan-8` merge analysis — executes only on typed `PROCEED`
