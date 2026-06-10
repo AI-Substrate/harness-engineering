@@ -184,4 +184,65 @@ describe('arch-check mapping — § Envelope & Exit Contract', () => {
       expect(mapToDecision(valid.parsed, rules).status).toBe('ok');
     }
   });
+
+  it('given_parseable_but_drifted_schema_when_parsed_then_rejected_not_fake_ok', () => {
+    /*
+    Test Doc:
+    - Why: companion finding F004 — JSON that parses but is NOT depcruise's shape
+      (renamed counts, violations not an array) previously slipped through the
+      `summary`-key check and could surface as `ok` with undefined counts: a fake
+      green, the exact failure mode P5 exists to prevent.
+    - Contract: parseDepcruiseJson rejects ({ok:false, non-empty detail}) any
+      document whose summary lacks numeric totalCruised/totalDependenciesCruised
+      or whose violations is not an array — these route to the error/exit-1 state.
+    - Usage Notes: drift documents are handcrafted strings (no fixture file —
+      the shapes are degenerate variants of clean.json, not real captures).
+    - Quality Contribution: catches depcruise major-version schema drift turning
+      the sensor silently green instead of failing loudly.
+    - Worked Example: '{"summary":{"violations":{}}}' → {ok:false};
+      '{"summary":{"violations":[],"error":0,"warn":0,"info":0}}' (counts absent)
+      → {ok:false}
+    */
+    const driftCases = [
+      '{"summary": {"violations": {}}}',
+      '{"summary": {"violations": [], "error": 0, "warn": 0, "info": 0}}',
+      '{"summary": {"violations": [], "totalCruised": "66", "totalDependenciesCruised": 112}}',
+    ];
+    for (const doc of driftCases) {
+      const result = parseDepcruiseJson(doc);
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.detail.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('given_violation_whose_rule_is_missing_from_ruleset_when_mapped_then_comment_falls_back_not_blank', () => {
+    /*
+    Test Doc:
+    - Why: companion finding F004 — a violation whose rule name has no match in
+      summary.ruleSetUsed.forbidden previously joined an EMPTY comment, producing
+      blank guidance in next_action ('Fix `x`:  (rules: …)').
+    - Contract: the comment join falls back to a non-empty pointer at the config
+      file when the rule set carries no comment for the violated rule.
+    - Usage Notes: built from the warn-only fixture with the rule name rewritten
+      to one absent from the rule set.
+    - Quality Contribution: catches comment-join regressions and rule-set/output
+      mismatches degrading next_action to unactionable blanks.
+    - Worked Example: rule 'ghost-rule' not in rules → comment
+      'no comment found for this rule — see .dependency-cruiser.cjs'
+    */
+    const { parsed, rules } = parsedWithRules('warn-only.json');
+    const doc = parsed as {
+      summary: { violations: Array<{ rule: { name: string; severity: string } }> };
+    };
+    for (const v of doc.summary.violations) {
+      v.rule.name = 'ghost-rule';
+    }
+    const decision = mapToDecision(doc, rules);
+    expect(decision.status).toBe('degraded');
+    for (const v of decision.data.violations) {
+      expect(v.comment).toBe('no comment found for this rule — see .dependency-cruiser.cjs');
+    }
+  });
 });

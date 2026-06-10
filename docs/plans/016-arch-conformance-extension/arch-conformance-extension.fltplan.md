@@ -129,7 +129,7 @@ flowchart LR
 
 ### Phase 1: arch-check end-to-end — Complete (2026-06-10)
 
-**What was done**: Shipped the third exemplar extension end-to-end with a live `code-review-companion` reviewing every commit (11 review-request pings, 0 findings raised). dependency-cruiser ^17.4.3 installed; 7 hexagonal rules committed at root at `warn` severity (warn-launch); pure `mapToDecision(parsed, rules)` TDD-proven over 4 real-capture fixtures; extension shell with honest preflight/degradation; CI runs the verb as the final `build-test` step with `::warning::` on degraded; how-guide + briefing framed in the harness-foundations vocabulary (user direction mid-build); governance doc reads 3 loaded; phase-seam drain materialised 12 entries (SUGG-010 P12-sanitized).
+**What was done**: Shipped the third exemplar extension end-to-end with a live `code-review-companion` reviewing every commit (13 review-request pings; the farewell delivered 7 findings — 5 HIGH/2 MEDIUM — after a minih channel failure suppressed its in-phase replies; all reconciled post-debrief: 5 fixed, 1 partially fixed with reasoned deferral, 1 refuted with evidence). dependency-cruiser ^17.4.3 installed; 7 hexagonal rules committed at root at `warn` severity (warn-launch); pure `mapToDecision(parsed, rules)` TDD-proven over 4 real-capture fixtures; extension shell with honest preflight/degradation; CI runs the verb as the final `build-test` step with `::warning::` on degraded; how-guide + briefing framed in the harness-foundations vocabulary (user direction mid-build); governance doc reads 3 loaded; phase-seam drain materialised 12 entries (SUGG-010 P12-sanitized).
 
 **Key changes**:
 - `.dependency-cruiser.cjs` — NEW: the rule contract (7 rules, all `warn`, agent-readable comments)
@@ -140,3 +140,10 @@ flowchart LR
 - `.harness/engineering-harness.md` — 3 loaded, hexagonal-conformance sensor row
 
 **Decisions made**: error-violation state returns a literal `VerbResult` (error factory lacks a data slot; spec pins `data.violations` whenever depcruise ran). Discovery encoded same-session: depcruise 17.4.3 json reporter exits 0 even on error violations → parse-first design (gotcha #3 in guide + briefing + tests).
+
+#### Orchestrator Retrospective
+
+- **magicWand** (target: `agent-harness`/minih): a cheap companion ack/heartbeat surface — per-message read/processed state on `minih outside inbox list` — so the orchestrator can distinguish reviewed-clean from never-read without breaking fire-and-forget.
+- **Difficulties**: OH-001 (tooling, annoying) — depcruise 17.4.3 exits 0 from `--output-type json` even with error-severity violations; the PoC note implied exit 1. Workaround: parse-first design, pure `parseDepcruiseJson`, malformed-fixture test, gotcha #3 in guide + briefing — encoded same-session.
+- **Worked well**: the validated plan executed with zero re-research (every pinned decision simply applied); seed→capture→revert fixture generation kept fixtures real and caught a wrong test expectation (112 vs 113 deps).
+- **Companion farewell**: see `.harness/records/retro/2026-06-10/` paired records (companion + orchestrator).

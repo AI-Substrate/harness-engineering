@@ -4,10 +4,10 @@
   "slug": "arch-conformance-extension",
   "plan_dir": "docs/plans/016-arch-conformance-extension",
   "mode": "Simple",
-  "cursor": "build",
-  "recommended_next": "build",
-  "now": "Build IN PROGRESS — /plan-6 companion variant launched post-compact; code-review-companion reviews every commit (supersedes /plan-7)",
-  "next": "Phase lands -> /plan-8 merge analysis (typed PROCEED only); companion reviews replace the separate /plan-7 step",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build DONE (companion-reviewed) — T000-T012, 13 commits, 12/12 ACs, 378/378 both cwds, doctor 3-loaded, warn-launch sensor live in CI",
+  "next": "/plan-8 merge analysis — executes ONLY on explicit typed PROCEED; /plan-7 superseded by the companion",
   "_comment": "Harness exists (.harness/engineering-harness.md; loop opt-out is conversational) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
   "agents": [
     {
@@ -18,7 +18,9 @@
       "covers": [
         "build"
       ],
-      "started_at": "2026-06-10T07:50:36Z"
+      "started_at": "2026-06-10T07:50:36Z",
+      "stopped_at": "2026-06-10T08:20:44Z",
+      "note": "13 review-request pings; in-phase replies suppressed by a minih channel failure (observe-filed) — farewell delivered 7 findings (5 HIGH/2 MEDIUM, verdict REQUEST_CHANGES), reconciled post-debrief: F001/F004/F006 fixed, F003 partial, F002 refuted with evidence, F005/F007 record corrections; post-fix 380/380 + doctor ok"
     }
   ],
   "nodes": [
@@ -89,12 +91,18 @@
     {
       "id": "build",
       "type": "phase",
-      "label": "Build — single phase (T000–T012) ⏳",
-      "status": "in_progress",
-      "command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/016-arch-conformance-extension/arch-conformance-extension-plan.md\"",
-      "ran_at": "2026-06-10T07:50:36Z",
-      "user_input": "impleent with companion please",
-      "note": "Launched post-compact with live code-review-companion (reviews every commit; supersedes /plan-7). One phase, 11 real tasks (T001–T011) + boot/retro harness rows. TDD lane T003→T004 before shell T005. Warn-launch posture: all 7 rules at warn.",
+      "label": "Build — single phase (T000–T012) ✅ companion-reviewed",
+      "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion --plan \"docs/plans/016-arch-conformance-extension/arch-conformance-extension-plan.md\"",
+      "ran_at": "2026-06-10T08:20:44Z",
+      "user_input": "impleent with companion please · look at docs/harness-basics/intro-to-harness.md and harness-foundations/simple-mode.md to help frame the doco",
+      "note": "T000-T012 complete, 13 commits af3b8b5..e27c6c4, 12/12 ACs evidenced. Sensor live: arch-check ok/0 on clean tree (66/112); seeded violation -> degraded/0 naming the right rule with comment quoted; missing tool/config -> unconfigured/2; CI final step warn-annotates. Discovery encoded same-session: depcruise json reporter exits 0 on error violations -> parse-first (gotcha #3). Mid-build user direction: guide+briefing reframed in harness-foundations vocabulary (inferred->deterministic worlds, encode-the-fix-not-the-memory, Rule 3 epigraph). T012 drain: 12 entries materialised, SUGG-010 P12-sanitized, buffer cleared. Companion debrief: farewell delivered 7 findings (in-phase replies lost to a minih channel failure) — F001 abs-path leak + F004 schema-guard + F006 stale-doc fixed, F003 partial, F002 refuted (engines >=22 predates 016), F005/F007 record corrections; post-fix 380/380.",
+      "artifacts": [
+        ".dependency-cruiser.cjs",
+        ".harness/extensions/arch-check/",
+        "execution.log.md",
+        "docs/how/architecture-conformance.md"
+      ],
       "next": [
         "merge"
       ]

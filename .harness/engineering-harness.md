@@ -40,7 +40,7 @@ Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 ## Observe method
 
 - Envelope `data` + `evidence[]` on every command (`--json`).
-- `npx vitest run --coverage` output (315 tests, v8 coverage table) — run from `harness/cli/`.
+- `npx vitest run --coverage` output (full suite + v8 coverage table) — run from `harness/cli/`; the include also collects `.harness/extensions/**/*.test.ts`.
 - `harness doctor --json` layer report (toolchain / cli-build / extensions / instructions / record-types).
 - Dogfood worker artifacts collected by `harness validate-harness-flow --collect` (per-repo reports + ROLLUP.md).
 
@@ -54,7 +54,7 @@ Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 | Lint/format | `just fix` / `just format` (biome) | style + correctness rules |
 | Type build | `npm run build` (tsc) | the published surface compiles |
 | Docs drift guard | `npm run check:docs` | `docs-content.ts` matches `docs/how/` sources |
-| CI | `.github/workflows/ci.yml` | build + lint + test + check:docs + arch-check (via the verb) on PR; doctor (non-blocking) |
+| CI | `.github/workflows/ci.yml` | build-test: lint + build + check:docs + typecheck + test + arch-check (via the verb); package-smoke: packed-install doctor/extension fixture checks |
 
 ## Evidence paths
 

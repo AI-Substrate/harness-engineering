@@ -180,3 +180,12 @@
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder instead of the repository root, contradicting the companion prompt's first instruction. (workaround: Used the repository root from the session context for all project-relative file and git operations.)
   - [annoying] coordination: The stop message cited commit ff310da after the final review request and final summary had covered b57d7b1, with no separate review request for ff310da before stop. (workaround: Recorded the reviewed-through boundary in this report and did not start new review work after control:stop, per stop-wins protocol.)
   - [annoying] debug: A broad grep for retired-skill references hit generated docs/run material and produced oversized output. (workaround: Narrowed subsequent searches to live surfaces and capped output with rg/view ranges.)
+
+## 2026-06-10T08:22:50.383Z — code-review-companion / 2026-06-10T17-53-04-600Z-0c63
+
+- runId: 2026-06-10T17-53-04-600Z-0c63
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T17-53-04-600Z-0c63
+- summary: Reviewed the 016 arch-check phase as a long-running companion across 14 task requests, including per-commit reviews and a final full-range sweep. I sent 7 findings total (5 HIGH, 2 MEDIUM). The implementation largely builds the intended arch-check extension, rules, CI step, guide, briefing, governance update, and retro drain, but the final verdict remains REQUEST_CHANGES because unresolved blockers remain in the tree and the phase record falsely reports zero companion findings.
+- **magicWand** (target: coordination): Auto-materialize companion findings into the execution log or provide a minih command that exports an ackOf-grouped findings ledger for the orchestrator before phase close.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder rather than the repository root, contrary to the companion prompt's boot instruction. (workaround: Used the known Git repository root from the environment context and git-root fallback for all project-relative orientation and review commands.)

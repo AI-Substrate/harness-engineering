@@ -1,6 +1,11 @@
 // PoC rule set — proven 2026-06-10 against harness/cli/src (66 modules, 112
 // dependencies, 0 violations, exit 0; seeded violation in help-service.ts
-// caught by services-only-adapter-ports with exit 1, then reverted).
+// caught by services-only-adapter-ports, then reverted).
+// Build-time correction (T003, companion F003): with `--output-type json`,
+// dependency-cruiser 17.4.3 exits 0 EVEN WITH error-severity violations — the
+// PoC's "exit 1" reading came from the default (err) reporter. The harness
+// verb's error/exit-1 mapping is its own contract, derived by parsing
+// summary.violations, never from depcruise's exit code.
 // This is the committed source of truth for the investigation evidence; the
 // shipping copy will live at the repo root as .dependency-cruiser.cjs.
 // Run with: ./node_modules/.bin/depcruise --config <this file> --output-type json harness/cli/src

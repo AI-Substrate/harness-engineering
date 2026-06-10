@@ -64,6 +64,22 @@ export function parseDepcruiseJson(stdout: string): ParseResult {
     if (typeof parsed !== 'object' || parsed === null || !('summary' in parsed)) {
       return { ok: false, detail: 'parsed JSON but found no `summary` — not depcruise output' };
     }
+    // Schema guard (companion finding F004): JSON that parses but has drifted
+    // shape must fail LOUDLY, never surface as ok with undefined counts.
+    const summary = (parsed as { summary: unknown }).summary;
+    if (typeof summary !== 'object' || summary === null) {
+      return { ok: false, detail: '`summary` is not an object — not depcruise output' };
+    }
+    const s = summary as Record<string, unknown>;
+    if (!Array.isArray(s.violations)) {
+      return { ok: false, detail: '`summary.violations` is not an array — schema drift' };
+    }
+    if (typeof s.totalCruised !== 'number' || typeof s.totalDependenciesCruised !== 'number') {
+      return {
+        ok: false,
+        detail: '`summary.totalCruised`/`totalDependenciesCruised` missing or non-numeric — schema drift',
+      };
+    }
     return { ok: true, parsed };
   } catch (e) {
     return { ok: false, detail: e instanceof Error ? e.message : String(e) };
@@ -80,8 +96,15 @@ function byFromToRule(a: ArchViolation, b: ArchViolation): number {
 
 export function mapToDecision(parsed: unknown, rules: DepcruiseRule[]): ArchDecision {
   const { summary } = parsed as DepcruiseSummary;
-  const commentFor = (name: string): string =>
-    rules.find((r) => r.name === name)?.comment ?? '';
+  // Fallback keeps next_action actionable when the rule set carries no comment
+  // for a violated rule (companion finding F004 — blank guidance is worse than
+  // a pointer at the config).
+  const commentFor = (name: string): string => {
+    const comment = rules.find((r) => r.name === name)?.comment;
+    return comment && comment.length > 0
+      ? comment
+      : 'no comment found for this rule — see .dependency-cruiser.cjs';
+  };
 
   const violations: ArchViolation[] = (summary.violations ?? [])
     .map((v) => ({

@@ -3,13 +3,13 @@
   "slug": "arch-conformance-extension",
   "plan_dir": "docs/plans/016-arch-conformance-extension",
   "mode": "Simple",
-  "current_stage": "awaiting-6",
-  "pending_command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/016-arch-conformance-extension/arch-conformance-extension-plan.md\"",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/016-arch-conformance-extension/arch-conformance-extension-plan.md\"",
   "intent": "Add an exemplar `harness arch-check` extension that uses dependency-cruiser as deterministic back pressure to validate the CLI's hexagonal (ports & adapters) architecture — investigation done in-session: 7 rules PoC-proven (66 modules clean; seeded violation caught by the right rule, exit 1)",
   "milestones_total": 5,
-  "milestones_done": 3,
-  "last_checkpoint_at": "2026-06-10T07:50:36Z",
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-10T08:20:44Z",
   "compacted_seams": [],
   "status": "active",
-  "_note": "Spec VALIDATED WITH FIXES (validate-v2, 4 agents): poc-arch-rules.cjs committed (evidence durability), § Envelope & Exit Contract pins 6 states, mapping TDD mandatory, CI through the verb. Round 2: verb = arch-check; no examples starter; future cross-repo extension-install noted (SUGG-009 in buffer). Exemplar comparison added severity-ramp + proof-boundary to AC-11 and pinned violations[] sort (SUGG-010 for roadmap). Grill pass locked WARN-LAUNCH: all rules warn -> degraded/0 + CI ::warning::; promotion to error deliberate; rule-change discipline (changes ship alone) in instructions.md + how-guide; ACs 2/4/9 updated. Backpressure recommended next; /plan-3 is the skip-ahead alternative."
+  "_note": "BUILD COMPLETE (companion variant, 2026-06-10): T000-T012 all [x], 13 commits af3b8b5..e27c6c4, all 12 ACs evidenced. 378/378 both cwds; doctor ok 3-loaded; CI step dry-run proven (live reading on PR). Mid-build user direction applied: guide+briefing reframed against docs/harness-basics/intro-to-harness.md + harness-foundations/simple-mode.md (a289697). Discovery encoded same-session: depcruise 17.4.3 json reporter exits 0 on error violations -> parse-first (gotcha #3). T012 drain: 12 entries -> .harness/records/retro/2026-06-10/005-*; SUGG-010 P12-sanitized; buffer 0. Companion: 13 review-request pings, 0 inline findings; farewell records pending pairing. NEXT: /plan-8 merge analysis — execute ONLY on typed PROCEED. Warn-launch posture live: all 7 rules warn."
 }

@@ -91,8 +91,25 @@ All 12 ACs met — see the plan's checked § Acceptance Criteria for per-AC evid
 
 ---
 
-## Companion findings ledger
+## Companion findings ledger (rebuilt post-farewell — see debrief note below)
 
-| # | ackOf (review-request) | Severity | Finding | Disposition |
-|---|---|---|---|---|
-| _none yet_ | | | | |
+> **Channel failure, then correction (F005/F007 context)**: every inbox poll
+> during the phase returned zero inbound messages, so in-phase records honestly
+> reported "no findings so far" — but the farewell revealed the companion HAD
+> sent 7 findings (each carrying a real `ackOf` id); they never appeared in the
+> `minih outside inbox list` output. The in-phase "0 findings" reads were
+> observations of a broken channel, not of a clean review. Filed as an observe
+> entry (minih bug candidate) and corrected here, per the
+> never-ignore-a-finding rule.
+
+| # | Severity | Finding (condensed) | Disposition |
+|---|---|---|---|
+| F001 | HIGH | Machine-specific `/Users/<user>/…` absolute paths committed in `.the-flow-state.json` `pending_command` + `the-flow.json` build `command` — reintroduced a previously-sanitized leak class | **ADDRESSED** (fix commit): both now repo-relative; flow-writer pattern noted for future sessions |
+| F002 | HIGH | Claimed T001 narrowed `engines.node` >=20 → >=22 without a decision | **DISAGREE (refuted with evidence)**: `package.json` engines was already `>=22` before T001 — set deliberately by `74c0f37` ("Node 22 floor", prior plan). T001's `npm install` only synced the lockfile's *stale root metadata* to the existing committed contract. No support change occurred in 016 |
+| F003 | MEDIUM | Stale "exit 1" claims in PoC header/spec vs measured json-reporter exit-0 | **ADDRESSED (partial)**: `poc-arch-rules.cjs` header now carries the build-time correction (err-reporter vs json-reporter exits). Spec's Research Context left as-is — it is a historical record of the PoC-time reading; the correction lives in every operative doc (guide gotcha #3, briefing, mapping.ts comment, this log) |
+| F004 | HIGH | `parseDepcruiseJson` accepted any JSON with a `summary` key — parseable schema drift could yield `ok` with undefined counts; missing rule comments joined as blank guidance | **ADDRESSED** (fix commit): schema guards (violations must be array; counts must be numeric) route drift to the loud error path; comment join falls back to a non-empty config pointer; 2 new Test-Doc'd tests (suite 380/380) |
+| F005 | HIGH | T007 record claimed no companion findings while F001–F004 had been sent | **ADDRESSED**: ledger rebuilt (this table); channel-failure root cause documented above; in-phase claims annotated rather than silently rewritten |
+| F006 | MEDIUM | Governance doc: hard-coded "315 tests" stale; CI row implied a non-existent non-blocking doctor step | **ADDRESSED** (fix commit): count un-hard-coded (+ extension-tests note); CI row now matches the real workflow shape (build-test steps + package-smoke doctor fixtures) |
+| F007 | HIGH | Final phase record claimed zero findings + all ACs met while HIGH issues were observable | **ADDRESSED**: all corrections in the fix commit; ACs re-verified post-fix (380/380 both cwds, doctor `ok`, arch-check `ok`/0). AC table stands with this ledger as its companion record |
+
+**Verdict reconciliation**: the companion's farewell verdict was REQUEST_CHANGES on two grounds — unresolved findings in the tree and a false zero-findings record. Both grounds are now resolved (F001/F004/F006 fixed; F003 partially fixed with reasoned deferral; F002 refuted with evidence; F005/F007 corrected by this ledger). Post-fix regression: 380/380 both cwds, doctor `ok`, live verb `ok`/0.

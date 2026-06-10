@@ -16,12 +16,12 @@ flowchart TD
   backpressure["Backpressure Check — SKIPPED, user call (the plan IS the sensor)"]:::harness
   plan["Plan (/plan-3) ✅ READY + validate-v2 (gates 6 PASS / 1 N/A · VALIDATED WITH FIXES)"]:::done
 
-  subgraph companion_review["🤝 code-review-companion — reviews every commit (supersedes /plan-7)"]
-    build["Build — single phase, T000–T012 (/plan-6 companion) ⏳ in progress"]:::wip
+  subgraph companion_review["🤝 code-review-companion — 13 reviews · 7 farewell findings, all reconciled (supersedes /plan-7)"]
+    build["Build ✅ — T000–T012, 13 commits, 12/12 ACs (sensor live: ok/degraded/unconfigured all proven)"]:::done
   end
   class companion_review companion
 
-  merge["Merge (/plan-8, typed PROCEED only)"]:::known
+  merge["Merge (/plan-8, typed PROCEED only) ← next"]:::known
 
   investigation --> spec --> backpressure --> plan --> build --> merge
 
@@ -33,10 +33,10 @@ flowchart TD
   said_bp -.- backpressure
   said_plan>"🗣 run it"]:::said
   said_plan -.- plan
-  said_build>"🗣 impleent with companion please"]:::said
+  said_build>"🗣 impleent with companion please · look at intro-to-harness.md + simple-mode.md to help frame the doco"]:::said
   said_build -.- build
 ```
 
 **Legend** — 🟩 done · 🟧 in progress · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop · 🩷 companion (live reviewer)
 
-**Now**: **Build IN PROGRESS** — `/plan-6` companion variant launched post-compact on the READY plan (gates 6 PASS / 1 N/A; validate-v2 VALIDATED WITH FIXES). A live `code-review-companion` reviews every commit as it lands, superseding the separate `/plan-7` review step. Single phase: T000 boot → T001 devDependency → T002 rules config (all 7 at `warn` — warn-launch posture) → T003 RED fixtures/tests → T004 GREEN `mapToDecision` → T005 extension shell → T006 instructions → T007 manual E2E walk → T008 CI final step → T009 how-guide → T010 governance doc → T011 regression both cwds → T012 retro drain. Carried-in guardrails: vitest include widened **two** levels (`'../../.harness/extensions/**/*.test.ts'`), always `./node_modules/.bin/depcruise` (bare-npx scans 0 modules), violations sorted from→to→rule, rule changes ship alone · **Next**: phase lands → `/plan-8` merge analysis (typed `PROCEED` only)
+**Now**: **Build DONE, companion-reviewed** — T000–T012 in 13 commits (`af3b8b5..e27c6c4`), all 12 ACs evidenced. The sensor is live: `harness arch-check` reads `ok`/0 on the clean tree (66 modules / 112 deps); the seeded violation landed as `degraded`/0 naming `services-only-adapter-ports` with its comment quoted (warn-launch exactly as grilled); missing tool/config read `unconfigured`/2; CI runs the verb as the final `build-test` step with a `::warning::` on degraded. 378/378 tests from both cwds; doctor `ok` "3 loaded". Build discovery encoded same-session (gotcha #3): depcruise 17.4.3's json reporter exits 0 even on error violations → parse-first design. Mid-build user direction applied: the how-guide + briefing are framed in the harness-foundations vocabulary (inferred→deterministic worlds; encode-the-fix-not-the-memory; simple-mode Rule 3 epigraph). T012 drain materialised 12 entries (SUGG-010 P12-sanitized); buffer cleared. **Companion debrief**: a minih channel failure suppressed the companion's in-phase replies (silence read as clean) — its farewell then delivered 7 findings (5 HIGH / 2 MEDIUM, verdict REQUEST_CHANGES), all reconciled in a post-debrief fix commit: F001 absolute-path leak in flow files fixed (repo-relative), F004 parse schema-guards + comment fallback added (380/380), F006 stale governance claims fixed, F003 PoC header corrected (partial; spec stays historical), F002 refuted with evidence (engines ≥22 predates 016), F005/F007 ledger rebuilt honestly. Channel failure observe-filed as a minih bug candidate · **Next**: `/plan-8` merge analysis — executes **only** on explicit typed `PROCEED`
