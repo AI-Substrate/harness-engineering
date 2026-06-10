@@ -66,7 +66,12 @@ jobs:
       # tool/config (exit 2) still fail the step.
       - name: Architecture conformance (harness arch-check)
         run: |
-          out=$(npx --no-install harness arch-check --json) || code=$?
+          # Invoke the bin via node directly (plan 017): `npx --no-install harness`
+          # resolves the root package's own bin nondeterministically across npm
+          # majors (npm 10 green / npm 11.13 "Permission denied" on identical
+          # trees). node + the committed wrapper is the same verb code path
+          # with zero install-time-chmod dependence.
+          out=$(node harness/cli/bin/harness.js arch-check --json) || code=$?
           echo "$out"
           status=$(echo "$out" | jq -r .status)
           if [ "$status" = "degraded" ]; then
