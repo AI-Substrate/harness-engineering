@@ -54,6 +54,11 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
 2. **Make `harness` resolve locally** for repeated use — install it into the target repo (its `prepare` step builds the CLI):
 
    ```bash
+   # Repos with no package.json (typical for Python/Go): npm walks UP to the
+   # nearest manifest and installs OUTSIDE the repo. Seed a manifest first
+   # (or pin the prefix: `npm install … --prefix "$PWD"`):
+   [ -f package.json ] || npm init -y
+
    npm install github:AI-Substrate/harness-engineering
    # pin a release if you want reproducibility:
    # npm install github:AI-Substrate/harness-engineering#vX.Y.Z
