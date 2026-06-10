@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "observe-retro-merge",
+  "plan_dir": "docs/plans/015-observe-retro-merge",
+  "mode": "Simple",
+  "cursor": "backpressure",
+  "recommended_next": "backpressure",
+  "now": "Spec VALIDATED WITH FIXES (15 ACs, D-1..D-13) — the user's pre-authorized 'validated spec stage' is reached",
+  "next": "/plan-2d backpressure check (recommended, optional) or /plan-3 architect",
+  "_comment": "Harness exists (.harness/engineering-harness.md, L3; no docs/harness/.disabled) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
+  "agents": [],
+  "nodes": [
+    {
+      "id": "discussion",
+      "type": "research",
+      "label": "Design discussion (in-session)",
+      "status": "done",
+      "command": "(conversation — no /plan-1a)",
+      "ran_at": "2026-06-10T01:30Z",
+      "user_input": "We're going to look at how to combine observe and retro skills into one… what did the agent have to infer that the harness should have proved deterministically… Do we need a new record type in the harness itself?… these inflight logs should probably not be committed… part of this process is about token usage… combine them into a more simple concept without watering them down. + alignment read: docs/harness-basics/intro-to-harness.md, harness-foundations/simple-mode.md",
+      "note": "Agreed direction: (1) merge is canon-restoring — observe is ambient in do-work-and-observe, not a stage; (2) elevate the simple-mode Rule 5 question pair to headline signal, asked in-flight AND at drain; (3) CLI-owned capture verb `harness observe`; (4) storage classes: committed records vs transient temp + doctor convention check; (5) token framing already canon — recurrence = leak detector; (6) merged skill must be SHORTER than the two it replaces (703-line baseline).",
+      "artifacts": [
+        "original-ask.md"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec (+ validate-v2)",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-10T02:05Z",
+      "user_input": "fire up a flow and pgoress to a vlidated spec stage",
+      "note": "Simple, CS-3 (P=5), 15 ACs, clarifications D-1..D-13 (Round 1 settled from precedent + discussion per user instruction; D-5 slug, D-6 verb, D-11 agent identity, D-12 read/clear flags, D-13 question wording — all vetoable). validate-v2 (4 agents): VALIDATED WITH FIXES — 1 CRITICAL (agent-identity resolution → D-11: --agent flag → HARNESS_AGENT env → unconfigured exit 2) + 4 HIGH fixed (unconfigured-repo contract, preserved-behaviors inventory AC-14, flow-dispatch decision, P2 gitignore concern DISSOLVED: FC agent found record-service ensureTemp() already writes a nested .harness/temp/.gitignore — which also corrected the spec's own overstated drift claim; real gap = capture-time trigger + doctor check only). FC matrix ✅×5 post-fix; thesis Advanced @ Contract.",
+      "artifacts": [
+        "observe-retro-merge-spec.md",
+        "observe-retro-merge.fltplan.md"
+      ],
+      "next": [
+        "backpressure"
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure Check (optional, recommended)",
+      "status": "known",
+      "command": "/plan-2d",
+      "note": "Harness exists (L3) — recommended pre-architect step; advisory, skippable. ACs are sensor-rich (validation confirmed AC-1..AC-8 mappable to deterministic sensors).",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (/plan-3)",
+      "status": "known",
+      "command": "/plan-3",
+      "note": "Architect from the validated spec. Open items explicitly assigned: D-7 mechanism route (placement hook vs service), buffer storage format (YAML-md vs JSONL).",
+      "next": [
+        "build"
+      ]
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "label": "Build (single phase expected)",
+      "status": "assumed",
+      "command": "/plan-6 or /plan-6-companion",
+      "note": "Placeholder — real phase nodes revealed by /plan-3.",
+      "next": [
+        "merge"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "command": "/plan-8",
+      "note": "Read-only analysis; executes only on explicit typed PROCEED.",
+      "next": []
+    }
+  ]
+}
