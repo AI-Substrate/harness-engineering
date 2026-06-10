@@ -12,7 +12,7 @@ entries:
     description: "The shell did not expose MINIH_PROJECT_ROOT even though the run instructions require starting from it."
     target: minih
     severity: annoying
-    workaround: "Used the literal project root from the execution context: /Users/jordanknight/substrate/harness-engineering."
+    workaround: "Used the literal project root from the execution context: ~/substrate/harness-engineering."
     suggested_encoding: "Ensure minih exports MINIH_PROJECT_ROOT into agent tool shells or pass an explicit fallback variable."
     system:
       compound:

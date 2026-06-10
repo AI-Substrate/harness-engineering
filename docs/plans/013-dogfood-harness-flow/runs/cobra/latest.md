@@ -5,7 +5,7 @@ Run metadata
 - Repo root: /private/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/cobra
 - Branch / commit: main / ad460ea8f249db69c943a365fb84f3a59042d54e
 - Mode: safe-probe
-- Commands executed: git status --short; git branch --show-current; git rev-parse HEAD; npm install --prefix . /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund; ./node_modules/.bin/harness doctor --json; go env GOVERSION GOPATH GOMODCACHE; static file inspection and ripgrep searches
+- Commands executed: git status --short; git branch --show-current; git rev-parse HEAD; npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund; ./node_modules/.bin/harness doctor --json; go env GOVERSION GOPATH GOMODCACHE; static file inspection and ripgrep searches
 - Commands skipped: service boot: not applicable for Go library; go test ./... during assessment: reserved for the boot extension verification step; make test: skipped because Makefile install_deps runs go get; external service calls: none needed
 - Safety notes: No secret values read.; No product-code changes applied.; No services booted during assessment.; Assessment writes limited to .harness/reports/harnessability/.
 

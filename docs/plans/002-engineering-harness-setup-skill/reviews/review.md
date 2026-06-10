@@ -1,6 +1,6 @@
 # Code Review: Engineering Harness Setup Skill (v0.1)
 
-**Plan**: `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md`
+**Plan**: `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md`
 **Spec**: same (Simple Mode — spec is the plan)
 **Phase**: Simple Mode (single phase, Groups A–G)
 **Date**: 2026-05-22
@@ -206,7 +206,7 @@ If desired, the user's separate dogfood could install the skill into this very r
 ## G) Commands Executed
 
 ```bash
-cd /Users/jordanknight/substrate/harness-engineering
+cd ~/substrate/harness-engineering
 
 # Mode + artefact resolution
 grep -E '\*\*Mode\*\*:' docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md
@@ -260,47 +260,47 @@ Subagents NOT launched (in-parent review chosen because):
 
 **Review result**: APPROVE WITH NOTES
 
-**Plan**: `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md`
+**Plan**: `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md`
 **Spec**: same (Simple Mode)
 **Phase**: Simple Mode (Phase 1: Groups A–G; F deferred)
 **Tasks dossier**: inline in plan (§Implementation Outline)
-**Execution log**: `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/execution.log.md`
-**Review file**: `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/reviews/review.md`
-**Computed diff**: `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/reviews/_computed.diff`
+**Execution log**: `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/execution.log.md`
+**Review file**: `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/reviews/review.md`
+**Computed diff**: `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/reviews/_computed.diff`
 
 ### Files Reviewed
 
 | File (absolute path) | Status | Domain | Action Needed |
 |---------------------|--------|--------|---------------|
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/SKILL.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/AUTHORING.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/check.sh` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/canonical-boundary.txt` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/magic-wand-prompt.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-envelope.schema.json` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/root-HARNESS.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/agents-md-snippet.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-README.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-config.json` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-python-harness.py` | created | skills (new) | F001 (LOW) — User-Agent header for `urlopen` in v0.2 |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-node-harness.mjs` | created | skills (new) | F002 (LOW) — migrate to `node:util` `parseArgs` in v0.2 |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-onboard-agent-session.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-known-difficulties.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-friction-log.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-proof-note.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/friction-entry.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-command-contract.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/install-report.md` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/retrospective-schema.json` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-config.schema.json` | created | skills (new) | none |
-| `/Users/jordanknight/substrate/harness-engineering/skills/engineering-harness-setup/templates/wrapper-recipe.template` | created | skills (new) | F003, F004 (LOW) — `json_escape` perf + `--dry-run` arg position in v0.2 |
-| `/Users/jordanknight/substrate/harness-engineering/README.md` | modified | (repo root) | none |
-| `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/decisions.md` | created | (plan artefacts) | none |
-| `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md` | created | (plan artefacts) | none |
-| `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/execution.log.md` | created | (plan artefacts) | none |
-| `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/research-dossier.md` | created | (plan artefacts) | none |
-| `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/field-research-minih-chainglass.md` | created | (plan artefacts) | none |
-| `/Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/lenses/*` (8 files) | created | (plan artefacts) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/SKILL.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/AUTHORING.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/check.sh` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/canonical-boundary.txt` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/magic-wand-prompt.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-envelope.schema.json` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/root-HARNESS.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/agents-md-snippet.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-README.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-config.json` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-python-harness.py` | created | skills (new) | F001 (LOW) — User-Agent header for `urlopen` in v0.2 |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-node-harness.mjs` | created | skills (new) | F002 (LOW) — migrate to `node:util` `parseArgs` in v0.2 |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-onboard-agent-session.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-known-difficulties.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-friction-log.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-proof-note.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/friction-entry.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/cli-command-contract.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/install-report.md` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/retrospective-schema.json` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/harness-config.schema.json` | created | skills (new) | none |
+| `~/substrate/harness-engineering/skills/engineering-harness-setup/templates/wrapper-recipe.template` | created | skills (new) | F003, F004 (LOW) — `json_escape` perf + `--dry-run` arg position in v0.2 |
+| `~/substrate/harness-engineering/README.md` | modified | (repo root) | none |
+| `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/decisions.md` | created | (plan artefacts) | none |
+| `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md` | created | (plan artefacts) | none |
+| `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/execution.log.md` | created | (plan artefacts) | none |
+| `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/research-dossier.md` | created | (plan artefacts) | none |
+| `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/field-research-minih-chainglass.md` | created | (plan artefacts) | none |
+| `~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/lenses/*` (8 files) | created | (plan artefacts) | none |
 
 ### Required Fixes (if REQUEST_CHANGES)
 
@@ -324,4 +324,4 @@ When the user dogfoods in a new target repo, the 4 LOW findings (F001, F002, F00
 - **Immediate**: User dogfoods the skill against a new greenfield repo (the deferred Group F). This exercises the runtime halves of AC-6, AC-7, AC-8, AC-9, AC-10, AC-12, AC-13.
 - **After dogfood**: Append a one-line entry to `decisions.md` pointing at the dogfood target's `harness/state/friction-log.md`; runtime AC verification can then be marked in this review file (or in a follow-up review).
 - **If the dogfood passes**: this commit is sign-off-complete. The skill ships as v0.1.
-- **If the dogfood surfaces real issues**: those become friction-log entries in the dogfood target AND optionally trigger fix-tasks here. Re-run `/plan-7-v2-code-review --plan /Users/jordanknight/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md` after any fixes.
+- **If the dogfood surfaces real issues**: those become friction-log entries in the dogfood target AND optionally trigger fix-tasks here. Re-run `/plan-7-v2-code-review --plan ~/substrate/harness-engineering/docs/plans/002-engineering-harness-setup-skill/engineering-harness-setup-skill-spec.md` after any fixes.

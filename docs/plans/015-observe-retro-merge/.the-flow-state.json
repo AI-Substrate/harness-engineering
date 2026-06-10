@@ -4,7 +4,7 @@
   "plan_dir": "docs/plans/015-observe-retro-merge",
   "mode": "Simple",
   "current_stage": "awaiting-8",
-  "pending_command": "/plan-8-v2-merge --plan /Users/jordanknight/substrate/harness-engineering/docs/plans/015-observe-retro-merge/observe-retro-merge-plan.md",
+  "pending_command": "/plan-8-v2-merge --plan ~/substrate/harness-engineering/docs/plans/015-observe-retro-merge/observe-retro-merge-plan.md",
   "intent": "Combine the observe and retro skills into one simpler friction-lifecycle skill, move in-flight friction capture into the harness CLI (compaction-proof, gitignored transient storage), elevate the inference-vs-determinism question to a strong signal, with token usage as an explicit secondary goal",
   "milestones_total": 5,
   "milestones_done": 4,

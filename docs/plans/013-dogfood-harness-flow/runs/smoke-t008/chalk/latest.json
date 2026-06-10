@@ -9,7 +9,7 @@
     "mode": "safe-probe",
     "commands_executed": [
       "minih skills doctor",
-      "npm install /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund --ignore-scripts",
+      "npm install ~/substrate/harness-engineering --no-audit --no-fund --ignore-scripts",
       "npx harness doctor --json",
       "npm test",
       "static file inspection of package.json, readme.md, contributing.md, .github/workflows/main.yml, source/, test/"

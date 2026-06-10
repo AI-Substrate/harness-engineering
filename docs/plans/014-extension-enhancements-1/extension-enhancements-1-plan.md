@@ -36,7 +36,7 @@ The harness CLI gains **agent instructions** — a queryable role-briefing chann
 
 ## Domain Manifest
 
-> Paths relative to repo root `/Users/jordanknight/substrate/harness-engineering`.
+> Paths relative to repo root `~/substrate/harness-engineering`.
 
 | File | Domain | Classification | Rationale |
 |------|--------|---------------|-----------|
@@ -97,7 +97,7 @@ The harness CLI gains **agent instructions** — a queryable role-briefing chann
 
 ### Tasks
 
-> Paths relative to repo root `/Users/jordanknight/substrate/harness-engineering`. Strand A = CLI core (TDD), Strand B = dogfood extensions, Strand C = skills/governance/docs.
+> Paths relative to repo root `~/substrate/harness-engineering`. Strand A = CLI core (TDD), Strand B = dogfood extensions, Strand C = skills/governance/docs.
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |--------|-----|------|--------|---------|-----------|-------|

@@ -40,7 +40,7 @@
 
     { "id": "fix-fx001", "type": "fix-loop", "label": "Fix FX001: doctor consumer-mode cli-build", "status": "in_progress",
       "branch_of": "phases",
-      "command": "/plan-6-v2-implement-phase-companion --fix \"FX001\" --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md\"",
+      "command": "/plan-6-v2-implement-phase-companion --fix \"FX001\" --plan \"~/substrate/harness-engineering/docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md\"",
       "user_input": "implement with code review companion please.",
       "note": "From dogfood finding FIND-2 (hit by all 4 worker repos). Dossier validated (3 agents): VALIDATED WITH FIXES — 1 CRITICAL fixed pre-implementation (directory gate untestable with FakeFs exact-path semantics -> harness/cli/tsconfig.json file-marker gate). FIND-4 fixed separately (ea58be3); bonus raised as AI-Substrate/minih#39; FIND-1 (init) reserved for its own plan.",
       "artifacts": ["fixes/FX001-doctor-consumer-mode-cli-build.md", "fixes/FX001-doctor-consumer-mode-cli-build.fltplan.md"], "next": ["merge"] },

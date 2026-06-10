@@ -22,7 +22,7 @@ entries:
     description: "The shell MINIH_PROJECT_ROOT pointed at the run folder even though the task said the harness source lived at MINIH_PROJECT_ROOT; skills only resolved after manually using the repository root from the runtime context."
     target: minih
     severity: degrading
-    workaround: "Ran minih skills doctor from /Users/jordanknight/substrate/harness-engineering and used that as the harness source for installation."
+    workaround: "Ran minih skills doctor from ~/substrate/harness-engineering and used that as the harness source for installation."
     suggested_encoding: "make MINIH_PROJECT_ROOT unambiguously point at the project root or expose a separate MINIH_RUN_ROOT"
     system:
       compound:

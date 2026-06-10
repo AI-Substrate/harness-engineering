@@ -4,7 +4,7 @@
   "plan_dir": "docs/plans/014-extension-enhancements-1",
   "mode": "Simple",
   "current_stage": "awaiting-8",
-  "pending_command": "/plan-8-v2-merge --plan /Users/jordanknight/substrate/harness-engineering/docs/plans/014-extension-enhancements-1/extension-enhancements-1-plan.md",
+  "pending_command": "/plan-8-v2-merge --plan ~/substrate/harness-engineering/docs/plans/014-extension-enhancements-1/extension-enhancements-1-plan.md",
   "intent": "agent_instructions (core baked + per-extension runtime-loaded .md) via `harness instructions [verb]`, plus extensions/<name>/extension.ts folder layout",
   "milestones_total": 5,
   "milestones_done": 4,

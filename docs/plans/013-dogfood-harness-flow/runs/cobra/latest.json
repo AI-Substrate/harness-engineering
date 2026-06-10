@@ -11,7 +11,7 @@
       "git status --short",
       "git branch --show-current",
       "git rev-parse HEAD",
-      "npm install --prefix . /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund",
+      "npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund",
       "./node_modules/.bin/harness doctor --json",
       "go env GOVERSION GOPATH GOMODCACHE",
       "static file inspection and ripgrep searches"

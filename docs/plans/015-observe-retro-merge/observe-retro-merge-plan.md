@@ -35,7 +35,7 @@ The harness CLI gains a core **`harness observe`** act — capture one friction 
 
 ## Domain Manifest
 
-> Paths relative to repo root `/Users/jordanknight/substrate/harness-engineering`.
+> Paths relative to repo root `~/substrate/harness-engineering`.
 
 | File | Domain | Classification | Rationale |
 |------|--------|---------------|-----------|

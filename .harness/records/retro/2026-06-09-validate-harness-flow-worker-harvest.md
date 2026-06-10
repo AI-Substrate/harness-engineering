@@ -16,11 +16,11 @@ note: "Aggregated farewell envelopes from the validate-harness-flow worker runs 
 ## 2026-06-09T12:47:30.018Z — validate-harness-flow / 2026-06-09T22-35-31-764Z-ab6a
 
 - runId: 2026-06-09T22-35-31-764Z-ab6a
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-35-31-764Z-ab6a
+- runDir: ~/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-35-31-764Z-ab6a
 - summary: Installed the local harness core into the fresh Chalk clone, produced a B/B harnessability assessment, continued past the abandonment gate, wrote the BIO governance document, authored and independently verified a boot extension around npm test, and recorded the retro via harness record retro. The flow passed, with notable project friction around the missing harness init writer and consumer-mode doctor degradation.
 - **magicWand** (target: project): Ship `harness init` so it can read `.harness/reports/harnessability/latest.json` and generate `.harness/engineering-harness.md` with the eight BIO fields instead of requiring hand-written governance during setup-flow dogfood runs.
 - difficulties:
-  - [degrading] config: The task said to start with `cd $MINIH_PROJECT_ROOT`, but the shell variable pointed at the run folder where skills were disabled; the actual harness source root was only available from runtime context. (workaround: Ran `minih skills doctor` from `/Users/jordanknight/substrate/harness-engineering` and used that path for the local harness install.)
+  - [degrading] config: The task said to start with `cd $MINIH_PROJECT_ROOT`, but the shell variable pointed at the run folder where skills were disabled; the actual harness source root was only available from runtime context. (workaround: Ran `minih skills doctor` from `~/substrate/harness-engineering` and used that path for the local harness install.)
   - [degrading] debug: `npx harness doctor --json` in the consumer clone reported `cli-build` degraded because it checked for `harness/cli/dist/index.js` in the target repo even though the installed npx harness binary was usable. (workaround: Treated harnessInstalled as true because doctor ran and reported, then independently checked extension loading, help output, and boot execution.)
   - [annoying] config: The local harness install added a file dependency to Chalk's package.json, which is acceptable in the throwaway clone but noisy for assessing the original repo state. (workaround: Read `git show HEAD:package.json` for original repo evidence and kept all writes inside the target clone.)
   - [annoying] data: A broad file glob after npm install traversed node_modules and timed out, producing dependency noise during assessment. (workaround: Switched to targeted file reads and a pruned file listing that excluded node_modules and .git.)
@@ -30,7 +30,7 @@ note: "Aggregated farewell envelopes from the validate-harness-flow worker runs 
 ## 2026-06-09T12:58:52.874Z — validate-harness-flow / 2026-06-09T22-48-28-963Z-aba7
 
 - runId: 2026-06-09T22-48-28-963Z-aba7
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-28-963Z-aba7
+- runDir: ~/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-28-963Z-aba7
 - summary: PASS: The full harness setup flow completed on the fresh Click clone. The local harness core installed and ran, the harnessability assessment produced a B final grade with a B/B two-axis tuple, the abandonment gate did not trip, the BIO governance contract was written with all eight fields, the add-extension flow produced a loaded boot verb, boot exercised the repo pytest lane successfully, and a retro was scaffolded and filled through the harness record path.
 - **magicWand** (target: project): Ship npx harness init --from-assessment .harness/reports/harnessability/latest.json so governance is generated from the assessment and the setup flow no longer requires hand-writing the BIO contract.
 - difficulties:
@@ -45,7 +45,7 @@ note: "Aggregated farewell envelopes from the validate-harness-flow worker runs 
 ## 2026-06-09T12:59:04.778Z — validate-harness-flow / 2026-06-09T22-48-32-849Z-cc7b
 
 - runId: 2026-06-09T22-48-32-849Z-cc7b
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-32-849Z-cc7b
+- runDir: ~/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-32-849Z-cc7b
 - summary: Ran the full harness setup flow against the fresh Cobra clone without using the interactive router. The local harness core installed and `harness doctor --json` produced a parseable Envelope; the harnessability assessment graded the repo B with Operate-Today B (74%) and Adaptability B (70%), so the abandonment gate did not trip. I hand-wrote the BIO governance document, used the add-extension flow to scaffold and fill a `boot` verb, independently verified `doctor`, `help`, and `harness boot --json`, and recorded a retro via `harness record retro`.
 - **magicWand** (target: project): Ship a headless `harness setup --repo <path> --boot "go test ./..." --json` command that handles repo-local npm prefixing, writes the harnessability reports, generates `.harness/engineering-harness.md`, scaffolds/fills/verifies `boot`, and returns all authored paths in one Envelope.
 - difficulties:
@@ -59,7 +59,7 @@ note: "Aggregated farewell envelopes from the validate-harness-flow worker runs 
 ## 2026-06-09T13:04:26.785Z — validate-harness-flow / 2026-06-09T22-48-25-492Z-0228
 
 - runId: 2026-06-09T22-48-25-492Z-0228
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-25-492Z-0228
+- runDir: ~/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T22-48-25-492Z-0228
 - summary: Ran the full harness setup flow against the fresh Express clone. The local harness installed and `harness doctor --json` returned an Envelope, the harnessability assessment produced grade B with Operate-Today B (76.7%) and Adaptability B (73.3%), the repo passed the abandonment gate, governance was hand-written with all eight BIO fields, a `boot` extension was scaffolded through `harness new` and verified loaded/runnable, and a retro record was scaffolded and filled through `harness record retro`.
 - **magicWand** (target: project): Ship a non-interactive `harness setup --json --repo <path>` orchestrator that delegates to the same child setup skills, emits step Envelopes, and includes a real `harness init` writer for the BIO governance doc.
 - difficulties:
@@ -72,7 +72,7 @@ note: "Aggregated farewell envelopes from the validate-harness-flow worker runs 
 ## 2026-06-09T13:23:08.278Z — validate-harness-flow / 2026-06-09T23-13-52-588Z-bb00
 
 - runId: 2026-06-09T23-13-52-588Z-bb00
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T23-13-52-588Z-bb00
+- runDir: ~/substrate/harness-engineering/agents/validate-harness-flow/runs/2026-06-09T23-13-52-588Z-bb00
 - summary: Ran the full harness setup flow on the fresh Chalk clone: installed the local harness core, verified `harness doctor`, produced a skill-driven harnessability assessment with final grade B and a B/B two-axis tuple, hand-wrote the required BIO governance doc from the template, scaffolded the boot extension with `harness new boot --wrap "npm test"`, verified `boot` in doctor/help and executed `harness boot --json` successfully against `npm test`, then scaffolded and filled a retro record through `harness record retro`.
 - **magicWand** (target: project): Ship `harness init` so `.harness/engineering-harness.md` can be generated from the BIO template and repo evidence instead of being hand-written during the setup flow.
 - difficulties:

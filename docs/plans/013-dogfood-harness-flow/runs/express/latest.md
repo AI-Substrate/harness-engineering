@@ -5,7 +5,7 @@ Run metadata
 - Repo root: `/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/express`
 - Branch / commit: `master` / `dae209ae6559c29cfca2a1f4414c51d89ea643d5`
 - Mode: static
-- Commands executed: `minih skills doctor`; `npm install /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund`; `npx harness doctor --json`; static inspection of README, package scripts, CI, tests, examples, and env references.
+- Commands executed: `minih skills doctor`; `npm install ~/substrate/harness-engineering --no-audit --no-fund`; `npx harness doctor --json`; static inspection of README, package scripts, CI, tests, examples, and env references.
 - Commands skipped: service boot, real example server startup, migrations/seeds/reset, queue/cron workers, external services, deep history mining.
 - Safety notes: no secret values were read; Redis references are optional examples only.
 

@@ -67,7 +67,7 @@
         "layer": "minih",
         "category": "config",
         "description": "The task said to start with `cd $MINIH_PROJECT_ROOT`, but the shell variable pointed at the run folder where skills were disabled; the actual harness source root was only available from runtime context.",
-        "workaround": "Ran `minih skills doctor` from `/Users/jordanknight/substrate/harness-engineering` and used that path for the local harness install.",
+        "workaround": "Ran `minih skills doctor` from `~/substrate/harness-engineering` and used that path for the local harness install.",
         "mitigation": "Expose separate unambiguous variables such as MINIH_PROJECT_ROOT and MINIH_RUN_ROOT, or make the prompt match the variable value.",
         "severity": "degrading"
       },

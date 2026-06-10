@@ -9,7 +9,7 @@
     "mode": "static",
     "commands_executed": [
       "minih skills doctor",
-      "npm install /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund",
+      "npm install ~/substrate/harness-engineering --no-audit --no-fund",
       "npx harness doctor --json",
       "npx harness help",
       "static file inspection of pyproject.toml, README.md, docs/contributing.md, CI workflows, pre-commit config, devcontainer, and tests"

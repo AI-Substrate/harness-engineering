@@ -21,7 +21,7 @@ Map the implementation landscape: where the skill artifact lives in the authorin
 
 ### Finding IA-01: Placement options for the skill package in this authoring repo
 **Evidence**:
-- `ls -la /Users/jordanknight/substrate/harness-engineering` → top-level dirs are `harness-foundations/`, `docs/`, `scratch/`, plus `AGENTS.md`, `README.md`, `LICENSE`, `justfile`. No `skills/`, `agents/`, `templates/`, or `dist/` folder exists.
+- `ls -la ~/substrate/harness-engineering` → top-level dirs are `harness-foundations/`, `docs/`, `scratch/`, plus `AGENTS.md`, `README.md`, `LICENSE`, `justfile`. No `skills/`, `agents/`, `templates/`, or `dist/` folder exists.
 - `docs/plans/001-backpressure-harness-foundations/` contains only `research-dossier.md` — the `docs/plans/NNN-slug/` convention is for **research + planning artefacts**, not deliverables.
 - `.gitignore` line `scratch/` → anything under `scratch/` is excluded from tracking.
 - `AGENTS.md:7` frames the repo as a "public-facing engineering-harness first-principles and tutorial project."

@@ -12,7 +12,7 @@ entries:
     description: "The documented local install command `npm install $MINIH_PROJECT_ROOT` is unsafe in a Go repo with no package.json because npm chose /tmp as the prefix and tried to write /private/tmp/node_modules instead of the target clone."
     target: project
     severity: degrading
-    workaround: "Used `npm install --prefix . /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund` so node_modules stayed inside the target clone."
+    workaround: "Used `npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund` so node_modules stayed inside the target clone."
     suggested_encoding: "Document or encode `npm install --prefix . <harnessSource>` for non-Node target repos."
     system:
       compound:

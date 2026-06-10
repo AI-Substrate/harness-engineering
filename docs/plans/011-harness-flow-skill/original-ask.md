@@ -10,7 +10,7 @@
 >
 > If it detects are are in a plan thanks to conversation history then it might detect to run harness boot skill or other skills in the harness loop. Start a new plan folder and start with a workshop that includes mermaid of what a workflow graph for our harness loop would look like of this - the various dynamic entry points and how this skill would assist the Hamess flow. Also this skill could be called at various points along an externally managed spec driven flow, with it called at regular points again and again maybe with some basic parameter prompting from the parent agent. Unlike the flow will probably not store data or Md or have other artefacts that it tracks with (child skills will though etc the harness ability skill).
 >
-> Skill is at: /Users/jordanknight/github/tools/skills/SDD/the-flow/SKILL.md and readme is : /Users/jordanknight/github/tools/skills/SDD/the-flow/references/getting-started.md.
+> Skill is at: ~/github/tools/skills/SDD/the-flow/SKILL.md and readme is : ~/github/tools/skills/SDD/the-flow/references/getting-started.md.
 
 ## Reference material studied
 

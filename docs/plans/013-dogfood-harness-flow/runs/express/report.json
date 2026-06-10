@@ -61,7 +61,7 @@
         "layer": "minih",
         "category": "config",
         "description": "The shell did not expose MINIH_PROJECT_ROOT even though the run instructions required starting from it.",
-        "mitigation": "Used the literal project root from the execution context: /Users/jordanknight/substrate/harness-engineering.",
+        "mitigation": "Used the literal project root from the execution context: ~/substrate/harness-engineering.",
         "workaround": "Used the literal project root from the execution context.",
         "severity": "annoying"
       },

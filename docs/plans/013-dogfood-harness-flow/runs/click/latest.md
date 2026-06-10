@@ -5,7 +5,7 @@ Run metadata
 - Repo root: /private/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/click
 - Branch / commit: main / 8a1b1a33d739be05b7e91251e3c0dde77c5e152f
 - Mode: static
-- Commands executed: minih skills doctor; npm install /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund; npx harness doctor --json; npx harness help; static file inspection of pyproject.toml, README.md, docs/contributing.md, CI workflows, pre-commit config, devcontainer, and tests
+- Commands executed: minih skills doctor; npm install ~/substrate/harness-engineering --no-audit --no-fund; npx harness doctor --json; npx harness help; static file inspection of pyproject.toml, README.md, docs/contributing.md, CI workflows, pre-commit config, devcontainer, and tests
 - Commands skipped: Service boot skipped during static assessment; Dependency installation beyond required harness core install skipped during assessment; Deep git-history mining skipped
 - Safety notes: Did not read secret values; Did not call external services; Did not run migrations, seeds, or destructive cleanup
 

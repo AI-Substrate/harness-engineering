@@ -2,7 +2,7 @@
   "targetRepo": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/cobra",
   "harnessSource": "local",
   "harnessInstalled": true,
-  "harnessInstallCommand": "npm install --prefix . /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund",
+  "harnessInstallCommand": "npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund",
   "harnessDoctorStatusAfterInstall": "degraded",
   "harnessDoctorDegradedReason": "The local file install exposed a runnable npx harness, but doctor reported cli-build degraded because harness/cli/dist/index.js was not built in the source tree.",
   "skillsResolved": true,
@@ -72,7 +72,7 @@
         "layer": "project",
         "category": "config",
         "description": "The documented local install command `npm install $MINIH_PROJECT_ROOT` is unsafe in a Go repo with no package.json because npm chose /tmp as the prefix and tried to write /private/tmp/node_modules instead of the target clone.",
-        "mitigation": "Used `npm install --prefix . /Users/jordanknight/substrate/harness-engineering --no-audit --no-fund` so node_modules stayed inside the target clone.",
+        "mitigation": "Used `npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund` so node_modules stayed inside the target clone.",
         "severity": "degrading"
       },
       {

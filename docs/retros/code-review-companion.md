@@ -30,7 +30,7 @@
 ## 2026-06-08T01:23:02.255Z — code-review-companion / 2026-06-08T11-04-06-731Z-0c5a
 
 - runId: 2026-06-08T11-04-06-731Z-0c5a
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T11-04-06-731Z-0c5a
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T11-04-06-731Z-0c5a
 - summary: Reviewed Phase 3 of plan 004-harness-core as a long-running companion: T001 through T006 plus the final drain sweep. Approved the CI workflow, coverage artifact upload, package-smoke npx/bin-symlink guard, release-please no-publish setup, live branch protection, and end-to-end PR validation. No review findings were sent; the final PR checks were green on run 27110754122 with coverage and lcov artifacts present.
 - **magicWand** (target: coordination): Add a coordination summary endpoint that returns the run output path, project root, acked task count, findings sent, questions asked, and peer-update count as structured JSON, then validates the final envelope against the active schema in one command.
 - difficulties:
@@ -50,7 +50,7 @@
 ## 2026-06-08T07:31:54.286Z — code-review-companion / 2026-06-08T16-56-36-144Z-a9ad
 
 - runId: 2026-06-08T16-56-36-144Z-a9ad
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T16-56-36-144Z-a9ad
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T16-56-36-144Z-a9ad
 - summary: Oriented on Plan 005 and reviewed nine commit pings for the harness extension system. I sent eight findings total: one HIGH around invalid runtime VerbResult statuses returning undefined, and seven MEDIUM issues covering exec never-reject behavior, default-export enforcement, discovery contract edges, registry conflict honesty, next_action enforcement, and variadic arg contract drift. I exited via idle_budget after the post-task still-needed check-in received no reply and a final unread drain found no unresolved outside requests.
 - **magicWand** (target: coordination): Add a minih companion-report scaffold that derives tasksReceived, findingsSent, questionsAsked, and finding records from the inbox transcript before farewell, so counters and report JSON are generated rather than manually counted.
 - difficulties:
@@ -60,7 +60,7 @@
 ## 2026-06-08T10:33:16.628Z — code-review-companion / 2026-06-08T19-55-47-799Z-3769
 
 - runId: 2026-06-08T19-55-47-799Z-3769
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T19-55-47-799Z-3769
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T19-55-47-799Z-3769
 - summary: Reviewed eight plan 006 review requests, including the final drain across all 23 landed tasks. I found three real medium implementation/test issues early in the FsPort/template work, all resolved by follow-up commits, withdrew one false-positive follow-up after empirical verification, and found two final medium completion-hygiene issues: stale plan bookkeeping and an untracked unsanitized e2e retro artifact. No HIGH or CRITICAL issues were found.
 - **magicWand** (target: minih): Provide a minih env/status helper that exposes the canonical project root and output path to the agent shell, and have the boot prompt fail fast if MINIH_PROJECT_ROOT does not match the repository root.
 - difficulties:
@@ -71,7 +71,7 @@
 ## 2026-06-08T12:53:34.017Z — code-review-companion / 2026-06-08T22-08-20-158Z-d7d0
 
 - runId: 2026-06-08T22-08-20-158Z-d7d0
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T22-08-20-158Z-d7d0
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-08T22-08-20-158Z-d7d0
 - summary: Reviewed plan 007's first-class documentation implementation across 17 task commits, covering the docs contract, generator, bundled corpus, DocsService, CLI act, help/README/docs surfaces, drift guards, CI wiring, and final fixes. I sent five findings (one HIGH, four MEDIUM); the follow-up fix commit a08fbe7 addressed all five and the focused regression tests I ran for docs act/output exit/integration/purity/curation passed.
 - **magicWand** (target: coordination): Add a `minih outside finish` workflow that sends the final drain ping, immediately follows with control:stop after the companion replies, waits for the farewell, and runs validation automatically so companion sessions do not drift into the idle check-in window at the end.
 - difficulties:
@@ -81,11 +81,11 @@
 ## 2026-06-08T23:05:49.835Z — code-review-companion / 2026-06-09T08-41-51-347Z-f8e3
 
 - runId: 2026-06-09T08-41-51-347Z-f8e3
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T08-41-51-347Z-f8e3
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T08-41-51-347Z-f8e3
 - summary: Reviewed plan 008 across 9 task messages from T001 through the final F003/F004 fix. I sent 5 medium-severity findings covering assessment-report fallback drift, `npx harness` command drift, README contract drift, and verification overclaims. The final fix resolved the open issues, the e2e report validated successfully through minih surfaces, and the run stopped on outside request.
 - **magicWand** (target: minih): minih should guarantee `MINIH_PROJECT_ROOT` points to the project git root in every agent run and expose a separate `MINIH_RUN_DIR` for the run folder; if the project-root env cannot be set, the runner should fail fast with a clear coordination error.
 - difficulties:
-  - [degrading] config: `MINIH_PROJECT_ROOT` resolved to the run directory, not the repository root, even though the prompt requires starting with `cd $MINIH_PROJECT_ROOT`. (workaround: Used `/Users/jordanknight/substrate/harness-engineering` from git/repository context for all project file reads and recorded the mismatch in the retrospective.)
+  - [degrading] config: `MINIH_PROJECT_ROOT` resolved to the run directory, not the repository root, even though the prompt requires starting with `cd $MINIH_PROJECT_ROOT`. (workaround: Used `~/substrate/harness-engineering` from git/repository context for all project file reads and recorded the mismatch in the retrospective.)
   - [annoying] tooling: The prompt's suggested `minih validate --file` command is not supported by this minih CLI version. (workaround: Ran `minih check <slug> --file <path>` after checking the command help.)
   - [annoying] tooling: `git grep` entered a pager during review, producing stuck `(END)` output in the tool session. (workaround: Stopped the shell session and reran targeted checks with `GIT_PAGER=cat git --no-pager grep`.)
   - [annoying] coordination: The stop control body began with `^stop`, which does not satisfy the prompt's literal `/^stop\b/` stop-body match despite the control subject clearly requesting stop. (workaround: Treated the message as stop based on `type=control` and the stop subject, then acknowledged and wrote the farewell envelope.)
@@ -93,7 +93,7 @@
 ## 2026-06-09T02:36:19.445Z — code-review-companion / 2026-06-09T12-00-15-857Z-e2a9
 
 - runId: 2026-06-09T12-00-15-857Z-e2a9
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T12-00-15-857Z-e2a9
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T12-00-15-857Z-e2a9
 - summary: Reviewed 10 commit-boundary tasks across plan 009, from the harnessability-assessment v0.2 schema/path/survey/matrix/template work through the G5 validate-harnessability dogfood verb and worker agent. I sent four findings: F003 was resolved by the AUTHORING.md v0.2 update, while F001 and F002 remain MEDIUM contract/validation drift and F004 remains a HIGH implementation issue in the dogfood verb's bash launch path. The final T018 wiring and skill discovery looked correct, but my phase verdict remains REQUEST_CHANGES until F004 is fixed.
 - **magicWand** (target: coordination): Add a first-class finding disposition channel to companion mode: the outside actor should be able to mark finding IDs fixed, deferred, or accepted, and the final farewell should automatically include open/resolved status by ackOf.
 - difficulties:
@@ -104,7 +104,7 @@
 ## 2026-06-09T04:17:18.172Z — code-review-companion / 2026-06-09T13-48-38-077Z-bc4a
 
 - runId: 2026-06-09T13-48-38-077Z-bc4a
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T13-48-38-077Z-bc4a
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T13-48-38-077Z-bc4a
 - summary: Reviewed plan 010 per-commit pings from T001 through the final drain sweep. T001, T002, T007, and T010 were approved, but the final range ended at REQUEST_CHANGES because seven findings remained outstanding on 5dc0d46: schema-version drift, broken minih skill discovery for the new two-level skills layout, stale old-slug/core-command docs, an argv builder/test path that can omit -y, and an execution log that still records no companion findings.
 - **magicWand** (target: coordination): Add a companion-mode findings ledger command that renders all inside finding messages, their ackOf task, current disposition, and whether they were mentioned in the plan execution log; this would prevent final logs from saying 'none yet' while findings are still open.
 - difficulties:
@@ -115,7 +115,7 @@
 ## 2026-06-09T08:50:27.020Z — code-review-companion / 2026-06-09T18-22-26-936Z-7ddf
 
 - runId: 2026-06-09T18-22-26-936Z-7ddf
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T18-22-26-936Z-7ddf
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T18-22-26-936Z-7ddf
 - summary: Reviewed the full Plan 011 implementation phase as a long-running companion across 9 task pings. I sent 5 MEDIUM findings, all centered on deferred-writer wording drift around governance being owed rather than provisioned until harness init exists. Follow-up commits c67d8b1 and f9f82cf resolved the outstanding F001-F005 theme; final checks found no remaining issues in router statelessness, canonical-first governance read order, the L0-L4 single-source rule, backpressure's corroboration-only stance, or retro harness-field null semantics.
 - **magicWand** (target: minih): Ensure MINIH_PROJECT_ROOT always points to the repository root for coordinated agents, or expose a separate verified projectRoot field in the coordination context so agents do not have to recover it manually.
 - difficulties:
@@ -125,7 +125,7 @@
 ## 2026-06-09T13:02:55.385Z — code-review-companion / 2026-06-09T22-19-16-664Z-ef6f
 
 - runId: 2026-06-09T22-19-16-664Z-ef6f
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T22-19-16-664Z-ef6f
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-09T22-19-16-664Z-ef6f
 - summary: Reviewed eight coordinated commit-boundary tasks for plan 013 as a long-running companion. I found eight issues total: one HIGH default-path execution risk around MINIH_PROJECT_ROOT, five MEDIUM contract/schema/artifact issues, and two LOW evidence claim issues. Clean reviews were sent for the T006 fire path and T011 guide; the run ended cleanly after a post-task still-needed check-in received no reply within the configured idle window.
 - **magicWand** (target: minih): Guarantee MINIH_PROJECT_ROOT points to the repository root in every minih agent shell and expose a separate MINIH_RUN_DIR for the run folder; fail fast with a clear runner error if the project root cannot be exported.
 - difficulties:
@@ -136,7 +136,7 @@
 ## 2026-06-09T22:12:58.615Z — code-review-companion / 2026-06-10T07-51-13-436Z-c845
 
 - runId: 2026-06-10T07-51-13-436Z-c845
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T07-51-13-436Z-c845
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T07-51-13-436Z-c845
 - summary: Reviewed FX001 commit b0613e1 for the doctor consumer-mode cli-build fix, including the tsconfig file-marker gate, dev-repo parity, doctor act assertion change, targeted tests, and contract drift surfaces. The implementation path was sound and the final drain found no new code issues; one MEDIUM contract-drift finding was sent for stale shipped guidance/prompt text that still describes the old consumer cli-build degraded wart.
 - **magicWand** (target: coordination): Add an outside-side stop preflight that summarizes unresolved inside findings by ackOf before sending control:stop, so the orchestrator cannot accidentally close a run as clean when the companion has already sent a finding.
 - difficulties:
@@ -147,7 +147,7 @@
 ## 2026-06-09T22:30:06.316Z — code-review-companion / 2026-06-10T08-17-07-782Z-1e56
 
 - runId: 2026-06-10T08-17-07-782Z-1e56
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T08-17-07-782Z-1e56
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T08-17-07-782Z-1e56
 - summary: Reviewed the FX002 scaffold-template enrichment commit 0aad609 for wrapTs/wrapJs behavior, byte-exact fixture sync, workshop drift, preserved error branch behavior, and scope boundaries. I sent one APPROVE summary with zero findings; no finding messages were emitted and the outside peer confirmed the inbox was drained before stop.
 - **magicWand** (target: coordination): Add a coordination-level farewell helper that auto-summarizes tasks, findings, summaries, and unresolved inbox messages for the current run so the companion does not manually reconstruct counts from memory at stop time.
 - difficulties:
@@ -156,14 +156,14 @@
 ## 2026-06-10T01:29:17.338Z — code-review-companion / 2026-06-10T10-44-33-424Z-8149
 
 - runId: 2026-06-10T10-44-33-424Z-8149
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T10-44-33-424Z-8149
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T10-44-33-424Z-8149
 - summary: Reviewed the Plan 014 Build phase across 12 review tasks and one final range sweep. The core folder-only discovery, instructions, help, doctor, scaffold, fixture, and governance surfaces are mostly coherent and `contract.ts` remained untouched, but the session closed REQUEST_CHANGES because two high-severity issues remain: collect mode misses the current dated retro layout, and required CI package-smoke still exercises the retired flat extension layout. Six medium contract/quality drifts were also reported for path wording, scaffold naming, stale schema/governance/setup wording, and bundled docs that still teach flat examples.
 - **magicWand** (target: coordination): The companion loop should expose a first-class transcript/query surface for sent findings and task IDs; reconstructing report ack mappings from inbox metadata is still too manual at shutdown.
 
 ## 2026-06-10T01:55:00.000Z — code-review-companion / 2026-06-10T10-44-33-424Z-8149
 
 - runId: 2026-06-10T10-44-33-424Z-8149
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T10-44-33-424Z-8149
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T10-44-33-424Z-8149
 - summary: Reviewed the Plan 014 Build phase across 12 review tasks and one final range sweep. The core folder-only discovery, instructions, help, doctor, scaffold, fixture, and governance surfaces are mostly coherent and `contract.ts` remained untouched, but the session closed REQUEST_CHANGES because two high-severity issues remained at stop time: collect mode missed the current dated retro layout, and the required CI package-smoke still exercised the retired flat extension layout. Six medium contract/quality drifts were also reported for path wording, scaffold naming, stale schema/governance/setup wording, and bundled docs that still taught flat examples. **Orchestrator disposition: all 8 findings ADDRESSED INLINE in commit `1a6d5c9` post-farewell (see plan 014 execution log).**
 - **magicWand** (target: coordination): The companion loop should expose a first-class transcript/query surface for sent findings and task IDs; reconstructing report ack mappings from inbox metadata is still too manual at shutdown.
 - workedWell: Per-commit review pings made it easy to catch localized contract drift early, and the final range sweep caught a CI sensor mismatch that per-commit local tests did not expose.
@@ -173,7 +173,7 @@
 ## 2026-06-10T03:25:19.712Z — code-review-companion / 2026-06-10T12-44-41-380Z-6236
 
 - runId: 2026-06-10T12-44-41-380Z-6236
-- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T12-44-41-380Z-6236
+- runDir: ~/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T12-44-41-380Z-6236
 - summary: Reviewed the plan 015 build sequence as a long-running companion: T001-T011 plus a final range sweep. The strongest positive signals were broad CLI test coverage for capture/list/clear, exit mappings, FakeFs compaction simulation, reserved observe, doctor temp-hygiene, and old-slug retirement. Final verdict remained REQUEST_CHANGES because F001 (malformed observations can be deleted by clear after list skips them) and F003 (temp gitignore self-heal overclaim across briefing/docs/setup) were still open; F002 was addressed by the T003/T004 follow-up.
 - **magicWand** (target: coordination): Add a coordination stop guard that compares outside lastReviewedSha with the stop commit and warns or requires an explicit reviewedThrough field before control:stop completes.
 - difficulties:

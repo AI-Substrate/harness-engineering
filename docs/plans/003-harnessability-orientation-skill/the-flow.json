@@ -17,7 +17,7 @@
       "label": "Research existing setup skill and harnessability brief",
       "status": "done",
       "command": "/plan-1a-v2-explore \"Build an engineering-harness-orient skill from scratch/paste/20260603T033048.md. Focus on how it should fit after engineering-harness-setup, what existing skill/template patterns it should reuse, and how to preserve the setup/orient boundary.\"",
-      "user_input": "Use the skill tool to invoke the \"the-flow\" skill, then follow the skill's instructions to help with: /Users/jordanknight/substrate/harness-engineering/scratch/paste/20260603T033048.md <-- we're going to look at this... please prepare a flow",
+      "user_input": "Use the skill tool to invoke the \"the-flow\" skill, then follow the skill's instructions to help with: ~/substrate/harness-engineering/scratch/paste/20260603T033048.md <-- we're going to look at this... please prepare a flow",
       "note": "Research is the first step because the brief is implementation-rich but must be grounded in this repo's existing skill layout, templates, and harness authority model.",
       "artifacts": [
         "docs/plans/003-harnessability-orientation-skill/original-ask.md",
@@ -90,7 +90,7 @@
       "phase": 1,
       "label": "Simple implementation",
       "status": "done",
-      "command": "/plan-6-v2-implement-phase --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/003-harnessability-orientation-skill/harnessability-orientation-skill-plan.md\"",
+      "command": "/plan-6-v2-implement-phase --plan \"~/substrate/harness-engineering/docs/plans/003-harnessability-orientation-skill/harnessability-orientation-skill-plan.md\"",
       "note": "Created engineering-harness-orient skill package, report schema/templates, sanitized examples, docs handoff updates, execution log, and structural validation evidence.",
       "artifacts": [
         "skills/engineering-harness-orient/SKILL.md",
@@ -108,7 +108,7 @@
       "type": "review",
       "label": "Review",
       "status": "known",
-      "command": "/plan-7-v2-code-review --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/003-harnessability-orientation-skill/harnessability-orientation-skill-plan.md\"",
+      "command": "/plan-7-v2-code-review --plan \"~/substrate/harness-engineering/docs/plans/003-harnessability-orientation-skill/harnessability-orientation-skill-plan.md\"",
       "command": "/plan-7-v2-code-review",
       "note": "Review after implementation unless companion mode is chosen during /plan-6.",
       "next": [
