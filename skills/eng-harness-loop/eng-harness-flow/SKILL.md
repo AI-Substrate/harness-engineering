@@ -5,7 +5,7 @@ description: |
 ---
 # eng-harness-flow
 
-The **front door** to the harness loop. `the-flow` does this for the **SDD pipeline** (a linear journey: spec → plan → tasks → code → review → merge). `eng-harness-flow` does it for the **harness loop** (a *cycle* re-entered wherever the work is: Boot → Backpressure → Observe → Retro → Improve → Boot). On each call it figures out *where on the loop you are* and hands back the **one right harness command** — whether you are on an empty repo (set it up), a full repo with no harness (set it up), or mid-plan in a healthy harness (boot / backpressure / retro).
+The **front door** to the harness loop (the loop drawn in [`references/getting-started.md`](./references/getting-started.md), bundled with this skill — read that first if the skill family is new to you). `the-flow` does this for the **SDD pipeline** (a linear journey: spec → plan → tasks → code → review → merge). `eng-harness-flow` does it for the **harness loop** (a *cycle* re-entered wherever the work is: Boot → Backpressure → Observe → Retro → Improve → Boot). On each call it figures out *where on the loop you are* and hands back the **one right harness command** — whether you are on an empty repo (set it up), a full repo with no harness (set it up), or mid-plan in a healthy harness (boot / backpressure / retro).
 
 > **Stateless by design.** Unlike `the-flow`, this skill **stores nothing** — no state file, no `.json`/`.md` journey, no artifacts of its own. The harness loop has no single journey to checkpoint; *its* position is already observable in deterministic substrate (`harness doctor`, the governance doc, a harnessability report, plan-dir artifacts, the retro buffer). The router **re-derives** position every call from those signals, which is more robust than a parallel state file that can drift — and "prefer deterministic observation over remembered state" is itself a harness principle. The moment the router would need to *remember* something across calls, that something belongs in substrate a child skill owns — not here.
 
@@ -286,5 +286,6 @@ This is the inversion of `the-flow`'s hard-coded harness cues: instead of a pare
 
 ## References
 
+- [`references/getting-started.md`](./references/getting-started.md) — the visual guide to the whole skill family: the two-zone big picture, who pulls each trigger, a worked walkthrough, quick reference, and the `.harness/` directory map. The on-ramp for anyone new to the loop.
 - [`references/governance-doc.md`](./references/governance-doc.md) — what the governance doc (`​.harness/engineering-harness.md`) contains, the `.harness/history.md` changelog semantics, and the write conditions.
 - [`references/maturity-assessment.md`](./references/maturity-assessment.md) — the canonical L0–L4 maturity ladder and how to assess which rung a harness sits on.
