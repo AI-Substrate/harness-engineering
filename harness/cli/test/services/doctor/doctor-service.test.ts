@@ -60,17 +60,22 @@ describe('buildDoctorReport', () => {
     */
     const reg = registry([
       {
-        entryPath: '/repo/.harness/extensions/hello.ts',
+        entryPath: '/repo/.harness/extensions/hello/extension.ts',
         status: 'loaded',
         verbs: [mkVerb('hello')],
       },
       {
-        entryPath: '/repo/.harness/extensions/build.ts',
+        entryPath: '/repo/.harness/extensions/build/extension.ts',
         status: 'loaded',
         verbs: [mkVerb('build')],
       },
     ]);
-    const report = buildDoctorReport(deps(), reg);
+    const fs = new FakeFs({
+      ...BUILT_CLI,
+      '/repo/.harness/extensions/hello/instructions.md': '# Hello',
+      '/repo/.harness/extensions/build/instructions.md': '# Build',
+    });
+    const report = buildDoctorReport(deps({ fs }), reg);
     const byName = Object.fromEntries(report.layers.map((l) => [l.name, l]));
     expect(byName.toolchain?.ok).toBe(true);
     expect(byName['cli-build']?.ok).toBe(true);
@@ -179,9 +184,10 @@ describe('doctorEnvelope', () => {
   it('is ok (exit 0) when every layer is ready', () => {
     const clock = new FakeClock('2026-06-08T07:20:00.000Z');
     const reg = registry([
-      { entryPath: '/x/hello.ts', status: 'loaded', verbs: [mkVerb('hello')] },
+      { entryPath: '/x/hello/extension.ts', status: 'loaded', verbs: [mkVerb('hello')] },
     ]);
-    const env = doctorEnvelope(buildDoctorReport(deps({ clock }), reg), clock);
+    const fs = new FakeFs({ ...BUILT_CLI, '/x/hello/instructions.md': '# Hello' });
+    const env = doctorEnvelope(buildDoctorReport(deps({ clock, fs }), reg), clock);
     expect(env.status).toBe('ok');
     expect(exitCodeFor(env)).toBe(0);
   });
@@ -202,6 +208,74 @@ describe('renderDoctorText', () => {
     expect(text).toContain('extensions');
     expect(text).toContain('hello');
     expect(text).toContain('branch:');
+  });
+});
+
+describe('package-convention validation (plan 014 D2)', () => {
+  const FLOW = '/repo/.harness/extensions/flow';
+
+  it('an extension carrying instructions.md gets a clean bill — layer ok, envelope ok', () => {
+    const reg = registry([
+      { entryPath: `${FLOW}/extension.ts`, status: 'loaded', verbs: [mkVerb('flow')] },
+    ]);
+    const fs = new FakeFs({ ...BUILT_CLI, [`${FLOW}/instructions.md`]: '# Flow briefing' });
+    const report = buildDoctorReport(deps({ fs }), reg);
+    expect(report.conventions).toEqual([]);
+    expect(report.layers.find((l) => l.name === 'extensions')?.ok).toBe(true);
+    expect(doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z')).status).toBe('ok');
+  });
+
+  it('missing instructions.md → per-extension E144 complaint + next_action + overall degraded, exit 0 (the wail, AC-5/AC-9)', () => {
+    /*
+    Test Doc:
+    - Why: extensions are little packages with convention-required files; doctor must WAIL
+      about a missing briefing while the verb keeps running (plan 014 D2 — degraded exits 0,
+      a complaint, never a refusal).
+    - Contract: a loaded record whose folder lacks instructions.md yields a conventions[]
+      entry (E144 detail + author-this next_action), flips the extensions layer !ok and the
+      envelope to degraded (exit 0); the record itself STAYS status 'loaded'.
+    - Quality Contribution: pins the wail semantics consumers (CI, skills) rely on being
+      consequence-free.
+    */
+    const reg = registry([
+      { entryPath: `${FLOW}/extension.ts`, status: 'loaded', verbs: [mkVerb('flow')] },
+    ]);
+    const report = buildDoctorReport(deps(), reg);
+    expect(report.conventions).toHaveLength(1);
+    expect(report.conventions[0]?.detail).toContain('E144');
+    expect(report.conventions[0]?.detail).toContain('instructions.md');
+    expect(report.conventions[0]?.next_action).toContain(`${FLOW}/instructions.md`);
+    expect(report.conventions[0]?.next_action).toContain('harness instructions');
+    const ext = report.layers.find((l) => l.name === 'extensions');
+    expect(ext?.ok).toBe(false);
+    expect(ext?.detail).toContain('missing instructions.md');
+    expect(report.extensions[0]?.status).toBe('loaded');
+    const env = doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z'));
+    expect(env.status).toBe('degraded');
+    expect(exitCodeFor(env)).toBe(0);
+  });
+
+  it('the core instructions row is ALWAYS present and ok (the baked briefing ships with the CLI)', () => {
+    const report = buildDoctorReport(deps(), EMPTY);
+    const layer = report.layers.find((l) => l.name === 'instructions');
+    expect(layer?.ok).toBe(true);
+    expect(layer?.detail).toMatch(/baked/i);
+  });
+
+  it('renders the complaint and the flat-layout rejection through the standard record path', () => {
+    const reg = registry([
+      { entryPath: `${FLOW}/extension.ts`, status: 'loaded', verbs: [mkVerb('flow')] },
+      {
+        entryPath: '/repo/.harness/extensions/legacy.ts',
+        status: 'failed',
+        verbs: [],
+        error: 'E143: unsupported flat layout — move to legacy/extension.ts',
+      },
+    ]);
+    const text = renderDoctorText(buildDoctorReport(deps(), reg));
+    expect(text).toContain('missing instructions.md');
+    expect(text).toContain(`author ${FLOW}/instructions.md`);
+    expect(text).toContain('unsupported flat layout — move to legacy/extension.ts');
   });
 });
 

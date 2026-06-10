@@ -47,6 +47,7 @@ describe('registerDoctorAct', () => {
       'toolchain',
       'cli-build',
       'extensions',
+      'instructions',
       'record-types',
     ]);
     // Envelope contract: degraded always carries a next_action; ok need not (FX001 —

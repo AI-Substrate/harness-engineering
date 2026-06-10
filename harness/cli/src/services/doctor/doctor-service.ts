@@ -1,9 +1,11 @@
+import { dirname, join } from 'node:path';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
+import { ErrorCodes } from '../../output/error-codes.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
@@ -27,6 +29,20 @@ export interface LayerReport {
   next_action?: string;
 }
 
+/**
+ * A package-convention violation for one loaded extension (plan 014 D2). The
+ * record itself STAYS `loaded` (the verb runs — AC-9); the complaint lives here
+ * so the contract's `ExtensionRecord` shape is untouched (D5).
+ */
+export interface ConventionComplaint {
+  /** The extension folder in violation. */
+  folder: string;
+  /** E144-prefixed complaint line. */
+  detail: string;
+  /** What to do about it (P7). */
+  next_action: string;
+}
+
 /** The full doctor report (the envelope `data`). */
 export interface DoctorReport {
   layers: LayerReport[];
@@ -35,6 +51,8 @@ export interface DoctorReport {
   json_env: boolean;
   /** Per-extension provenance enumerated WITHOUT invoking any handler (P7). */
   extensions: ExtensionRecord[];
+  /** Package-convention complaints (missing `instructions.md`) — the doctor wail (plan 014 D2). */
+  conventions: ConventionComplaint[];
   /** The merged record types (core ∪ extension) enumerated declaratively. */
   recordTypes: RecordTypeEntry[];
 }
@@ -83,12 +101,36 @@ function checkCliBuild(fs: FsPort): LayerReport {
 }
 
 /**
+ * Probe each LOADED extension folder for its convention-required
+ * `instructions.md` (plan 014 D2 — extensions are little packages; doctor wails
+ * about missing convention files but the verb keeps running, AC-9).
+ */
+function checkConventions(fs: FsPort, registry: VerbRegistry): ConventionComplaint[] {
+  const complaints: ConventionComplaint[] = [];
+  for (const record of registry.records) {
+    if (record.status !== 'loaded') {
+      continue;
+    }
+    const folder = dirname(record.entryPath);
+    if (!fs.exists(join(folder, 'instructions.md'))) {
+      complaints.push({
+        folder,
+        detail: `${ErrorCodes.EXTENSION_INSTRUCTIONS_MISSING}: missing instructions.md (the agent briefing for this extension's verbs)`,
+        next_action: `author ${folder}/instructions.md — see \`harness instructions\` for the pattern`,
+      });
+    }
+  }
+  return complaints;
+}
+
+/**
  * Enumerate the discovered extensions from the assembled registry (P7). A purely
  * declarative pass — `doctor` NEVER invokes a verb handler; it only reports what
  * the loader already recorded (loaded / failed / conflict). A failed or
- * conflicting extension makes the layer not-ok (degraded), but is never fatal.
+ * conflicting extension — or a package-convention violation (plan 014 D2) —
+ * makes the layer not-ok (degraded), but is never fatal.
  */
-function checkExtensions(registry: VerbRegistry): LayerReport {
+function checkExtensions(registry: VerbRegistry, conventions: ConventionComplaint[]): LayerReport {
   const loaded = registry.records.filter((r) => r.status === 'loaded').length;
   const failed = registry.records.filter((r) => r.status === 'failed').length;
   const conflicts = registry.records.filter((r) => r.status === 'conflict').length;
@@ -98,21 +140,39 @@ function checkExtensions(registry: VerbRegistry): LayerReport {
       name: 'extensions',
       ok: true,
       detail: 'no extensions installed (from ./.harness/extensions)',
-      next_action: 'Add a verb by dropping a file in `./.harness/extensions/`.',
+      next_action:
+        'Add a verb with `harness new <name>` (a package at `./.harness/extensions/<name>/`).',
     };
   }
 
-  const ok = failed === 0 && conflicts === 0;
+  const broken = failed > 0 || conflicts > 0;
+  const ok = !broken && conventions.length === 0;
+  const conventionSuffix =
+    conventions.length > 0 ? `, ${conventions.length} missing instructions.md` : '';
   return {
     name: 'extensions',
     ok,
-    detail: `${loaded} loaded, ${failed} failed, ${conflicts} conflict(s) (from ./.harness/extensions)`,
+    detail: `${loaded} loaded, ${failed} failed, ${conflicts} conflict(s)${conventionSuffix} (from ./.harness/extensions)`,
     ...(ok
       ? {}
       : {
-          next_action:
-            'Fix or remove the failed/conflicting extensions listed below; run `harness doctor` again.',
+          next_action: broken
+            ? 'Fix or remove the failed/conflicting extensions listed below; run `harness doctor` again.'
+            : 'Author the missing instructions.md briefings listed below — see `harness instructions`.',
         }),
+  };
+}
+
+/**
+ * The core agent briefing ships baked into the CLI, so this row is always
+ * present and always ok (plan 014 D2) — it exists to make the briefing channel
+ * discoverable from doctor output.
+ */
+function checkCoreInstructions(): LayerReport {
+  return {
+    name: 'instructions',
+    ok: true,
+    detail: 'core agent briefing baked into the CLI — run `harness instructions`',
   };
 }
 
@@ -145,15 +205,17 @@ export function buildDoctorReport(
   recordRegistry?: RecordRegistry,
 ): DoctorReport {
   const recordTypes = recordRegistry?.types ?? [];
+  const conventions = checkConventions(deps.fs, registry);
   const layers = [
     checkToolchain(deps.proc),
     checkCliBuild(deps.fs),
-    checkExtensions(registry),
+    checkExtensions(registry, conventions),
+    checkCoreInstructions(),
     checkRecordTypes(recordTypes),
   ];
   const branch = deps.git.isRepo() ? deps.git.currentBranch() : null;
   const json_env = deps.env.get('HARNESS_JSON') === '1';
-  return { layers, branch, json_env, extensions: registry.records, recordTypes };
+  return { layers, branch, json_env, extensions: registry.records, conventions, recordTypes };
 }
 
 /**
@@ -197,6 +259,11 @@ export function renderDoctorText(report: DoctorReport): string {
         const names = [...verbNames, ...recordNames].join(', ') || '(none)';
         const suffix = ext.error ? ` — ${ext.error}` : '';
         lines.push(`    ${mark} ${names} [${ext.status}]  ${ext.entryPath}${suffix}`);
+        const complaint = report.conventions.find((c) => dirname(ext.entryPath) === c.folder);
+        if (complaint && ext.status === 'loaded') {
+          lines.push(`      ✗ ${complaint.detail}`);
+          lines.push(`        → ${complaint.next_action}`);
+        }
       }
     }
     if (layer.name === 'record-types') {
