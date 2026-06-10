@@ -13,14 +13,7 @@ This is the **one canonical description** of the engineering-harness governance 
 
 The canonical governance doc is **`.harness/engineering-harness.md`** — kept alongside the other harness artifacts in `.harness/` (which already holds `extensions/`, is tracked, and is not gitignored).
 
-Every reader uses the **canonical-first** read order, falling back to legacy locations only for repos that haven't migrated:
-
-1. `.harness/engineering-harness.md` ← **canonical**
-2. `docs/project-rules/engineering-harness.md` ← legacy (pre-`.harness/` move)
-3. `docs/project-rules/agent-harness.md` ← older legacy (pre engineering-harness rename)
-4. `docs/project-rules/harness.md` ← oldest legacy
-
-A reader that finds the doc at a legacy path should emit a one-line migration advisory (e.g. "📁 Legacy location — consider `git mv` to `.harness/engineering-harness.md`") but **must not** modify the file. A reader must never point **only** at a legacy path.
+Every reader reads **exactly one** location: `.harness/engineering-harness.md`. The legacy `docs/project-rules/*` fallback chain is retired (plan 014) — a repo whose doc lives anywhere else should `git mv` it to the canonical path.
 
 ---
 
@@ -30,6 +23,7 @@ The doc is a thin **Boot / Interact / Observe contract** plus a signal inventory
 
 | Section | What it holds |
 |---|---|
+| **AGENTS START HERE breadcrumb** | the doc's opening line points agents at the CLI's self-briefing channel: `AGENTS START HERE → npx harness instructions` (then `harness instructions <verb>` per verb). The briefing system is the *live* role contract; the governance doc carries the pointer so a zero-context reader finds it in one hop (plan 014 AC-12). |
 | **Boot command** | the exact command that boots the system to a healthy, observable state (`<60s` target); the engineering-harness substrate the agent-facing loop runs on. |
 | **Health check** | the command/endpoint that proves the system is up (read by boot's Stage 1). |
 | **Interact method** | how an agent sends input to the running system (boot's Stage 2). |

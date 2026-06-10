@@ -69,7 +69,7 @@ Once the required setup rungs hold, the router crosses into the loop and dispatc
 - **Improve is where the loop compounds.** The loop only *compounds* when a retro leads to an encoded improvement; most loop runs encode nothing and that is fine.
 - **Ambiguous, never guessed.** With >1 candidate plan and no `--plan-dir`, the router returns `ambiguous` and **asks** — it does not guess the loop position from conversation alone.
 
-> **This repo is the worked example.** Right now `harness-engineering` has the CLI **and** one extension (`.harness/extensions/validate-harnessability.ts`) but **no governance doc and no working `boot` command** → S0 holds, **S2 fails** (S1 scout is partial — a harnessability *skill* exists but no committed report; S3 inject + S4 boot are still owed). The router routes to `eng-harness-0-setup` to **establish governance** (owed), then inject, then **build + run boot last**. The repo is still in 🧰; it has not reached the ⚙️ re-run-boot step.
+> **This repo is the worked example.** `harness-engineering` has the CLI **and** two extension packages (`.harness/extensions/validate-harness-flow/` and `.harness/extensions/validate-harnessability/` — each a folder with `extension.ts` + `instructions.md`) **and**, since plan 014, its own governance doc at `.harness/engineering-harness.md` (boot = the CLI's vitest suite via `just test`). S0–S2 hold here; use it as the reference shape when routing other repos.
 
 ---
 
@@ -81,8 +81,8 @@ The router decides purely from signals it can **read** (no state of its own). Th
 |---|---|---|---|
 | A | **Harness CLI present** | `harness --version` resolves; or `.harness/` dir exists; or a `package.json`/`npx` target is present | Is there a harness at all? |
 | B | **CLI healthy** | `harness doctor` **JSON envelope** read by `exit_code`/`status` field (not prose — the CLI loading and returning an envelope is the signal; a consumer repo can still show *degraded* on individual layers, but `cli-build` is `ok`/n/a there since FX001) | Does the CLI itself load/run? |
-| C | **Working boot command** | a `boot` verb/recipe exists (`.harness/extensions/boot.*`, a `justfile`/`package.json` boot, or governance declares it) **and** boots cleanly | Did setup establish a boot we can run? |
-| D | **Governance doc** | `.harness/engineering-harness.md` (canonical) → legacy `docs/project-rules/engineering-harness.md` → `agent-harness.md` → `harness.md` | Is the Boot/Interact/Observe contract present? (Boot needs this or it reports `UNAVAILABLE`) |
+| C | **Working boot command** | a `boot` verb/recipe exists (`.harness/extensions/boot/`, a `justfile`/`package.json` boot, or governance declares it) **and** boots cleanly | Did setup establish a boot we can run? |
+| D | **Governance doc** | `.harness/engineering-harness.md` (the canonical and only location) | Is the Boot/Interact/Observe contract present? (Boot needs this or it reports `UNAVAILABLE`) |
 | E | **Loop substrate** | `.harness/temp/` (gitignored observe scratch) + `.harness/records/retro/` (committed retro records, created via `harness record retro`) — legacy `docs/harness/agents/` retros are still read by harvest for back-compat | Can Observe/Retro actually record anything? |
 | F | **Harnessability report** | any report under `.harness/reports/harnessability/` (path inconsistency noted — see "limits"; the router detects *any* report present) | Has the repo been sized up? |
 | G | **Repo shape** | source tree empty vs. has source (e.g. `src/`, `package.json`, a language toolchain) | Fresh on-ramp vs. adopt-existing |

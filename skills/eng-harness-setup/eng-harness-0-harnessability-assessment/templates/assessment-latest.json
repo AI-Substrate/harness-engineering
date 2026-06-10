@@ -158,7 +158,7 @@
     { "item": "Run-and-test steps currently in README", "action": "fold_in", "source_path": "README.md", "notes": "Promote into the harness front door and assessment report." }
   ],
   "first_safe_session_plan": [
-    "Read .harness/engineering-harness.md (canonical; fall back to legacy docs/project-rules/engineering-harness.md).",
+    "Read .harness/engineering-harness.md (the canonical governance doc — the only location).",
     "Inspect harness/cli/commands.json.",
     "Confirm prerequisites and env var names without reading secret values.",
     "Read the test suite to see how it mocks, injects, seeds, and resets state, and record reusable mechanisms as candidate harness affordances.",

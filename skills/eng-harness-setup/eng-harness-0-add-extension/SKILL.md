@@ -47,9 +47,12 @@ harness new <name>
 harness new <name> --js
 ```
 
-The file lands at `.harness/extensions/<name>.ts` (or `.js`). Confirm the `ok`
-envelope and note the `data.path`. The stub already loads and returns
-`unconfigured` ("not built yet") until you fill it.
+The extension lands as a little package at `.harness/extensions/<name>/` —
+`extension.ts` (or `.js`) plus a starter `instructions.md` (the briefing for the
+calling agent; author it as part of this skill, then check it with
+`harness instructions <name>`). Confirm the `ok` envelope and note `data.path` +
+`data.instructionsPath`. The stub already loads and returns `unconfigured`
+("not built yet") until you fill it.
 
 > `harness` is the npx-installed core. If it isn't on PATH, the repo installed it
 > via `npm install github:AI-Substrate/harness-engineering` (or a local path);

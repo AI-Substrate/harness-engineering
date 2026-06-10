@@ -301,7 +301,7 @@ Measures whether a fresh agent can answer:
 
 Evidence signals:
 
-- `README`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/`, `docs/`, `docs/project-rules/`, `docs/harness/`;
+- `README`, `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, `.cursor/rules/`, `docs/` (including any rule/harness subfolders);
 - repo maps, architecture docs, package maps, service maps;
 - clear first-session instructions and known-trap notes.
 
@@ -732,10 +732,7 @@ Check:
 - `harness/cli/`;
 - `harness/cli/commands.json`;
 - `docs/harness/`;
-- `.harness/engineering-harness.md`;
-- `docs/project-rules/engineering-harness.md`;
-- `docs/project-rules/agent-harness.md`;
-- `docs/project-rules/harness.md`;
+- `.harness/engineering-harness.md` (the canonical governance doc — the only location);
 - `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.cursorrules`, `.github/copilot-instructions.md`;
 - existing onboarding or readiness docs;
 - previous `.harness/reports/harnessability/` reports.

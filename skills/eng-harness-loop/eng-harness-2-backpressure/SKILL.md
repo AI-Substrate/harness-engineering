@@ -53,7 +53,7 @@ Inputs:
     - test/e2e signatures: `**/playwright.config.*`, `**/cypress.config.*`, `**/vitest.*.config.*`, `**/jest.config.*`, `**/*.spec.*`, `**/*.e2e.*`, `connectOverCDP`
     - CI config (`.github/workflows/*`, `.gitlab-ci.yml`, etc.) — the de-facto PR proof gate
     - analyzer/architecture configs (`.dependency-cruiser.*`, `archunit`, Roslyn `.editorconfig`/`*.ruleset`, `codeql/`, JSON-schema files)
-    - docs/governance (`.harness/engineering-harness.md` canonical, then legacy `docs/project-rules/engineering-harness.md` and older names) — CORROBORATION ONLY, never a precondition
+    - docs/governance (`.harness/engineering-harness.md` — the canonical and only governance location) — CORROBORATION ONLY, never a precondition
   today {{TODAY}}.
 
 ## PHASE 0 — Setup
@@ -98,7 +98,7 @@ If the spec or `research-dossier.md` cites a **precedent feature** (a prior plan
 
 ### 1d — Corroborate with docs + CI (optional, last)
 
-Now read `.harness/engineering-harness.md` (canonical, or a legacy `docs/project-rules/` location), CI config (`.github/workflows/*` — the de-facto PR proof gate), and recipe comments to *enrich* what 1a–1c found: boot / health / validate / smoke / doctor commands, stated maturity. **If a doc disagrees with the filesystem, the filesystem wins.**
+Now read `.harness/engineering-harness.md` (the canonical governance doc), CI config (`.github/workflows/*` — the de-facto PR proof gate), and recipe comments to *enrich* what 1a–1c found: boot / health / validate / smoke / doctor commands, stated maturity. **If a doc disagrees with the filesystem, the filesystem wins.**
 
 For each sensor found, capture: **name**, **command** (how to run it), the **dimension** it guards (Pattern 19: `maintainability` | `architecture-fitness` | `behaviour`), and **where it was found** (root or which package).
 
