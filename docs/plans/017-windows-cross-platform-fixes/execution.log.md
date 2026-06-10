@@ -63,3 +63,9 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - `extensions.test.ts:91` → two-segment form `posix.join(posix.basename(posix.dirname(p)), posix.basename(p))`; `:235` → `posix.basename(c.folder)`.
 - Suite-wide `split('/')` sweep: only remaining hits are **git URL** splits in `.harness/extensions/{validate-harness-flow,validate-harnessability}/extension.ts` — URLs are forward-slash by definition, not filesystem paths; out of AC-5 scope, left untouched.
 - Biome reflowed the long mapper line. Suite 423/423.
+
+### T008 — Windows-shape sensor (the CI-leg replacement)
+
+- `test/services/windows-shape.test.ts` — 11 tests, all `FakeProcess.cwd()='C:\repo'` (plus a `'c:\work/repo'` mixed-separator/lower-drive variant), FakeFs seeded with **post-`toPosix` keys**. Surfaces: discovery candidates/rejected (incl. manifest `../escape` containment on drive-letter paths), record `data.path` + unconfigured-cwd message + exhaustion message, scaffold `path`/`instructionsPath` + write keys, doctor convention `folder`/`next_action` + the `renderDoctorText` `:291` pairing (8-space arrow indent proves the both-sides-POSIX match), instructions resolution + a discovery→instructions pipeline wiring test.
+- **Revert-proof (sensor proven)**: temporarily reverted the discovery boundary to the pre-017 native form (`const base = join(proc.cwd(), ...EXTENSIONS_DIR)`, native `node:path` import) → sensor failed **1 failed | 10 passed** (`normalizes a mixed-separator, lower-case-drive cwd at the boundary`); restored → 11/11. Honest nuance: the pure-backslash cases were partially self-healed by defense-in-depth (`posixJoin` converts segments on the way in, T003 FakeFs tolerates the probe), but the boundary's **drive-letter case normalization is unique to `toPosix`** and its loss is caught deterministically. The sensor fails on boundary regressions — exactly the class that shipped the original 40 failures.
+- Full suite **434/434** (50 files).
