@@ -63,6 +63,34 @@ doctor: `ok`, **"3 loaded, 0 failed, 0 conflict(s)"** — arch-check loaded with
 
 ---
 
+## T008 — CI step (`0fb8325`)
+
+Final step of `build-test` (after Audit): verb-invoked, `out=$(…) || code=$?` capture, `::warning::` + count on `degraded`, `exit ${code:-0}` propagation. Both paths dry-run locally under `bash -e`: clean → exit 0; seeded → annotation + exit 0; tree reverted clean. Live CI reading lands on the PR.
+
+## T009 — how-guide + README pointer (`6a0cbf1`), reframed (`a289697`)
+
+All 7 AC-11 items; `check:docs` green (gen-docs bundles from a curated manifest — the contingency never triggered). **Mid-build user direction**: frame the guide + briefing against `docs/harness-basics/intro-to-harness.md` and `harness-foundations/simple-mode.md` — reframe commit adds the Rule 3 epigraph, inferred-world→deterministic-world framing, encode-the-fix-not-the-memory (rules as executable team memory), and the "what did you have to infer that the harness should have proved?" loop-closer.
+
+## T010 — governance doc (`80fc1f2`)
+
+`.harness/engineering-harness.md`: healthy reading 2→3 loaded; arch-check in the Interact verb list; hexagonal-conformance sensor row (warn-launch noted); CI inventory row. Doctor re-verified `ok`.
+
+## T011 — regression sweep (verification only)
+
+`just fft` exit 0, no dirty files; 378/378 from repo root AND `harness/cli`; doctor `ok`; CI-mirror extras: `tsc --noEmit` ok, `npm run build` ok. AC-12 satisfied.
+
+## T012 — retro drain
+
+`harness record retro` scaffolded `.harness/records/retro/2026-06-10/005-016-arch-check-build-drain.md`; all 10 buffered SUGGs + this build's GFT-001 (seed→capture→revert fixture pattern) + INS-001 (depcruise exit-0 gotcha, status `encoded`) materialised with `bubble_action: all-save`; **SUGG-010 P12-sanitized on the way out** (private exemplar identifier in the gitignored buffer → committed record carries only the `scratch/` path). `harness observe --clear` → 10 cleared, 0 pending.
+
+---
+
+## Acceptance criteria — final status
+
+All 12 ACs met — see the plan's checked § Acceptance Criteria for per-AC evidence. Honest scope notes: AC-5 rows 2/6 are unit-fixture-proven (per plan); AC-9's live CI reading lands when this branch goes to PR (both paths dry-run proven locally under `bash -e` semantics).
+
+---
+
 ## Companion findings ledger
 
 | # | ackOf (review-request) | Severity | Finding | Disposition |

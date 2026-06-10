@@ -3,7 +3,7 @@
 **Spec**: [arch-conformance-extension-spec.md](./arch-conformance-extension-spec.md)
 **Plan**: [arch-conformance-extension-plan.md](./arch-conformance-extension-plan.md)
 **Generated**: 2026-06-10 (enriched by /plan-3)
-**Status**: In Progress — build underway with code-review-companion (T000 boot HEALTHY)
+**Status**: Build complete (companion-reviewed) — merge pending (`/plan-8`, typed PROCEED)
 
 ---
 
@@ -84,7 +84,7 @@ flowchart LR
     classDef ready fill:#9E9E9E,stroke:#757575,color:#fff
 
     S[Specify ✓ validated]:::done --> BP[Backpressure Check<br/>skipped — user call]:::done
-    BP --> P[Plan ✓ READY]:::done --> B[Build<br/>single phase]:::active --> D[Done]:::ready
+    BP --> P[Plan ✓ READY]:::done --> B[Build ✓<br/>companion-reviewed]:::done --> D[Done<br/>merge pending]:::ready
 ```
 
 **Legend**: green = done | yellow = active | grey = not started
@@ -95,20 +95,20 @@ flowchart LR
 
 | Phase | Title | Tasks | CS | Status |
 |-------|-------|-------|----|--------|
-| 1 | arch-check end-to-end (Simple mode) | 11 (+2 harness-loop rows) | CS-2 overall | In Progress |
+| 1 | arch-check end-to-end (Simple mode) | 11 (+2 harness-loop rows) | CS-2 overall | Complete |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `dependency-cruiser` installed as devDependency; rules committed at root `.dependency-cruiser.cjs` with agent-readable comments (no `tsConfig` option)
-- [ ] Clean tree: `harness arch-check --json` → `ok`, exit 0, real module/dependency counts, empty violations
-- [ ] Seeded violation caught by `services-only-adapter-ports`: `degraded`, exit 0 (warn-launch), rule comment quoted in `next_action`; blocking path proven by fixtures
-- [ ] All six envelope states demonstrable (incl. `unconfigured`/exit 2 for missing tool/config, `degraded`/0 for warn-only)
-- [ ] Always `./node_modules/.bin/depcruise` — the bare-npx 0-modules gotcha encoded in source comment + briefing
-- [ ] `doctor` loads the extension clean; `harness instructions arch-check` prints the briefing
-- [ ] CI runs the verb (never raw depcruise); any non-zero exit fails the build; `degraded` emits a `::warning::` annotation; green on current tree
-- [ ] Mapping unit-tested over 4 fixtures (TDD half); `docs/how/` guide shipped; full suite green from both cwds
+- [x] `dependency-cruiser` installed as devDependency; rules committed at root `.dependency-cruiser.cjs` with agent-readable comments (no `tsConfig` option)
+- [x] Clean tree: `harness arch-check --json` → `ok`, exit 0, real module/dependency counts (66/112), empty violations
+- [x] Seeded violation caught by `services-only-adapter-ports`: `degraded`, exit 0 (warn-launch), rule comment quoted in `next_action`; blocking path proven by fixtures
+- [x] All six envelope states demonstrated (rows 1/3/4/5 live; rows 2/6 unit-fixture-proven)
+- [x] Always `./node_modules/.bin/depcruise` — the bare-npx 0-modules gotcha encoded in source comment + briefing (+ a third gotcha discovered: json reporter exits 0 on violations — parse-first)
+- [x] `doctor` loads the extension clean ("3 loaded, 0 failed"); `harness instructions arch-check` prints the briefing
+- [x] CI runs the verb (never raw depcruise); any non-zero exit fails the build; `degraded` emits a `::warning::` annotation; both paths dry-run proven locally (live reading on the PR)
+- [x] Mapping unit-tested over 4 fixtures (TDD half); `docs/how/` guide shipped; full suite green from both cwds (378/378)
 
 ---
 
@@ -127,4 +127,16 @@ flowchart LR
 
 <!-- Updated by /plan-6 and /plan-6a after each phase completes -->
 
-_No phases completed yet._
+### Phase 1: arch-check end-to-end — Complete (2026-06-10)
+
+**What was done**: Shipped the third exemplar extension end-to-end with a live `code-review-companion` reviewing every commit (11 review-request pings, 0 findings raised). dependency-cruiser ^17.4.3 installed; 7 hexagonal rules committed at root at `warn` severity (warn-launch); pure `mapToDecision(parsed, rules)` TDD-proven over 4 real-capture fixtures; extension shell with honest preflight/degradation; CI runs the verb as the final `build-test` step with `::warning::` on degraded; how-guide + briefing framed in the harness-foundations vocabulary (user direction mid-build); governance doc reads 3 loaded; phase-seam drain materialised 12 entries (SUGG-010 P12-sanitized).
+
+**Key changes**:
+- `.dependency-cruiser.cjs` — NEW: the rule contract (7 rules, all `warn`, agent-readable comments)
+- `.harness/extensions/arch-check/` — NEW: `extension.ts`, pure `mapping.ts`, 4-fixture test suite, `instructions.md`
+- `harness/cli/vitest.config.ts` — include widened two-levels-up to collect extension tests
+- `.github/workflows/ci.yml` — final arch-check step (verb-invoked, warn-annotating)
+- `docs/how/architecture-conformance.md` — NEW: the copyable pattern guide; `README.md` pointer
+- `.harness/engineering-harness.md` — 3 loaded, hexagonal-conformance sensor row
+
+**Decisions made**: error-violation state returns a literal `VerbResult` (error factory lacks a data slot; spec pins `data.violations` whenever depcruise ran). Discovery encoded same-session: depcruise 17.4.3 json reporter exits 0 even on error violations → parse-first design (gotcha #3 in guide + briefing + tests).
