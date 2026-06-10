@@ -143,20 +143,49 @@ the `.record.ts` suffix is just a human hint.)
 
 ---
 
-## Records vs the scratch buffer (`.harness/temp/`)
-
-Two storage tiers, easy to mix up:
+## Two storage classes: committed records vs transient observations
 
 | | `.harness/records/` | `.harness/temp/` |
 |---|---|---|
-| What | Committed records you fill (`harness record <type>` output) | Gitignored crash-resilient agent scratch |
-| Git | **Tracked** | **Ignored** |
+| What | Committed records you fill (`harness record <type>` output) | Gitignored crash-resilient agent scratch — incl. observation buffers (`harness observe` output) |
+| Git | **Tracked** — team memory | **Ignored** — never committed |
 | Lifetime | Durable | Survives `/compact`, then drained |
 
-The loop's Observe stage (`eng-harness-3-observe`) jots working notes to
-`.harness/temp/<agent>/session-buffer.md`; at session end `eng-harness-4-retro
---drain` materializes a **committed** record via `harness record retro`. `harness
-record` ensures `.harness/temp/` exists + is gitignored on first use.
+### Capturing observations: `harness observe`
+
+In-flight friction is captured with one command — the CLI owns the buffer path,
+per-kind sequential IDs, ISO timestamps, schema validation, and the gitignore
+guarantee; the agent supplies only the noticing:
+
+```bash
+harness observe "grep on src/ took 47s — should use ripgrep" \
+  --kind difficulty --target tooling --severity degrading --json
+# → data: { "bucket":"agent", "id":"DL-001", "kind":"difficulty",
+#           "path":".harness/temp/agent/session-buffer.md" }
+```
+
+- Kinds: `difficulty | magic-wand | gift | insight | coordination |
+  improvement-suggestion | confusion`; severities `blocking | degrading | annoying`.
+- Identity is optional provenance: `--agent <slug>` → `HARNESS_AGENT` env → a
+  shared `agent` bucket. Capture never fails on identity.
+- Bad input (`unconfigured`, exit 2) names the allowed values and leaves the
+  buffer untouched; an unreadable buffer is `error` exit 1 (`E146`) — never
+  silent data loss.
+
+### Draining observations into a committed record
+
+```bash
+harness observe --list --json   # all buckets by default; --agent <slug> scopes
+harness record retro --slug "<label>" --json   # scaffold the committed record
+# … write the drained entries into the returned data.path …
+harness observe --clear         # truncate the buffers (files kept)
+```
+
+`--list` returns entries bucket-annotated plus a `malformed_skipped` count
+(deviant hand-written blocks are skipped and counted, never silently dropped).
+Both `harness observe` and `harness record` self-heal the `.harness/temp/`
+nested `.gitignore` on every use, and `harness doctor` reports a convention
+complaint (degraded, exit 0) if the temp dir ever exists unprotected.
 
 ---
 

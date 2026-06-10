@@ -59,8 +59,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 |---|---|---|
 | `eng-harness-1-boot` | Boot | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, reports readiness. `UNAVAILABLE` (not an error) when no harness exists → recommends `eng-harness-0-setup`. |
 | `eng-harness-2-backpressure` | Backpressure Check | Advisory survey of whether scoped work can be *proven by deterministic sensors*; names missing sensors. Never blocks. |
-| `eng-harness-3-observe` | Observe | Silently records material friction, signal gaps, and concrete improvement ideas during work, to the gitignored scratch buffer `.harness/temp/<agent>/`. |
-| `eng-harness-4-retro` | Retro / Magic Wand | `--drain` presents the end-of-session triage prompt and materialises a committed record via `harness record retro` (under `.harness/records/`); `--harvest` clusters recurring improvement candidates. |
+| `eng-harness-4-retro` | Do Work and Observe + Retro / Magic Wand | The one friction-lifecycle skill. In-flight capture is a CLI verb — `npx harness observe` logs one entry per call to the gitignored buffer (`.harness/temp/<bucket>/`), with IDs/timestamps/validation/gitignore owned by the CLI; `--drain` presents the end-of-session triage prompt and materialises a committed record via `harness record retro` (under `.harness/records/`); `--harvest` clusters recurring improvement candidates and frames recurrence as token cost. |
 
 > **Backed by `harness record`**: the Observe/Retro stages call the core CLI command `harness record <type>` (starting with the `retro` type) to scaffold a templated record into `.harness/records/<type>/`. Scratch lives in gitignored `.harness/temp/`; committed records live in tracked `.harness/records/`. See [`docs/how/record-and-record-types.md`](../docs/how/record-and-record-types.md).
 
@@ -70,7 +69,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 2. **Set up** the harness with `eng-harness-0-setup` when a repo has no working `harness boot` — installs the CLI (`harness doctor` passes), ensures a harnessability report exists, and stands up a basic `boot` extension. Writes no governance doc / `harness/cli/` / `AGENTS.md` / `docs/harness/` scaffold — that substrate is owned by the harness CLI (and a future `harness init`).
 3. **Assess** with `eng-harness-0-harnessability-assessment` for a target-aware readiness report (evidence vs inference vs unknowns vs next safe actions; affordance recommendations are proposal-only).
 4. **Boot** with `eng-harness-1-boot` at session start — read the contract instead of guessing commands.
-5. **Observe** with `eng-harness-3-observe` quietly during work — confusing failures, retries/backtracking, slow/missing commands, missing fixtures/sensors, "if only there were…" ideas. Don't nag mid-flow.
+5. **Observe** quietly during work with one CLI call per noticing — `npx harness observe "<what>" --kind <kind>` — for confusing failures, retries/backtracking, slow/missing commands, missing fixtures/sensors, "if only there were…" ideas (capture judgment lives in `eng-harness-4-retro`). Don't nag mid-flow.
 6. **Drain** with `eng-harness-4-retro --drain` once at a natural pause (session/phase end, handoff). The one normal user-facing retro prompt.
 7. **Harvest** with `eng-harness-4-retro --harvest` periodically — what recurs, what's stale, which targets leak attention, what to encode next.
 
@@ -84,7 +83,7 @@ The foundation documents explain the thesis: the engineering harness is the proj
 | The harness is the front door, not a replacement toolchain | `eng-harness-0-setup` installs the CLI and authors a `boot` that wraps existing commands first. |
 | Cold-start orientation should be repository evidence, not private memory | `eng-harness-0-harnessability-assessment` writes a target-aware report separating evidence, inference, unknowns, and next safe actions. |
 | Encode the fix, not the memory | Harness entries name a candidate encoded fix, not just a complaint. |
-| Agents are real harness users | `eng-harness-3-observe` treats agent friction as product feedback for the harness. |
+| Agents are real harness users | `eng-harness-4-retro`'s in-flight capture (`npx harness observe`) treats agent friction as product feedback for the harness. |
 | Back pressure is a product feature | `eng-harness-2-backpressure` asks whether scoped work has enough deterministic proof and what sensors are missing. |
 | Retrospectives need a lifecycle | `eng-harness-4-retro --drain` / `--harvest` move entries from buffer to durable retro to prioritized improvement. |
 | Known difficulties and weak signals should be visible at boot | The harness CLI surfaces known difficulties; `eng-harness-1-boot` reviews friction and signal readiness before work starts. |

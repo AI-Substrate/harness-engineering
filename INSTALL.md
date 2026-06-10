@@ -13,8 +13,7 @@ This repository publishes two skill groups through the [`npx skills@latest`](htt
 | `eng-harness-0-add-extension` | setup | Guided authoring of a new `harness <verb>` extension. |
 | `eng-harness-1-boot` | loop | Boot stage — validate the harness is healthy at session start. |
 | `eng-harness-2-backpressure` | loop | Backpressure Check — advisory deterministic-sensor coverage survey. |
-| `eng-harness-3-observe` | loop | Observe stage — silent friction capture during work. |
-| `eng-harness-4-retro` | loop | Retro / Magic-Wand stage — drain + harvest improvements. |
+| `eng-harness-4-retro` | loop | The friction lifecycle — in-flight capture (via the `harness observe` CLI verb), session-end drain, long-horizon harvest. |
 
 ## Canonical install patterns
 

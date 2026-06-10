@@ -119,8 +119,7 @@ For a practical guide to when to run the setup skill and how the loop skills fit
 
 - `eng-harness-1-boot`
 - `eng-harness-2-backpressure` (the advisory Backpressure Check)
-- `eng-harness-3-observe`
-- `eng-harness-4-retro`
+- `eng-harness-4-retro` (the friction lifecycle — in-flight capture via the `harness observe` CLI verb, drain, harvest)
 
 The Observe/Retro stages are backed by a core CLI command: **`harness record <type>`** scaffolds a templated record (starting with `retro`) into `.harness/records/<type>/` and returns its path for the agent to fill. Observe jots crash-resilient working notes to the gitignored scratch buffer `.harness/temp/<agent>/`; `eng-harness-4-retro --drain` then materialises a **committed** record under `.harness/records/`. Record types are a generic 4-field contract loadable from core or extensions — see [`docs/how/record-and-record-types.md`](docs/how/record-and-record-types.md).
 

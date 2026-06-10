@@ -69,6 +69,8 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
 
    > **Graceful fallback (important).** `harness init` is the planned bootstrap that creates the `.harness/` nucleus deterministically. If your installed CLI does **not** recognise it yet (unknown-command error), **do not fail** — continue. `.harness/extensions/` is created lazily by `harness new` (Step 3), so the flow still works today. Note the gap so it's encoded once `init` ships.
 
+   `.harness/temp/` is transient agent scratch — never committed; the CLI self-heals its nested `.gitignore` and `harness doctor` checks the convention.
+
 4. **Sanity-check** with the CLI's own front door:
 
    ```bash

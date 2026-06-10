@@ -1,61 +1,142 @@
 ---
 name: eng-harness-4-retro
 description: |
-  Retro and Magic Wand stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). One skill, two modes. `--drain` (session-end soft prompt) reads the gitignored scratch buffer `.harness/temp/<agent>/session-buffer.md`; if non-empty, presents a single soft prompt with `[s/t/p/e/d/a]` action menu and a one-line encoding hint per entry; materializes saved entries into a committed record via `harness record retro` under `.harness/records/retro/`. `--harvest` (long-horizon curation) scans `.harness/records/retro/*.md` (new canonical) plus legacy `docs/harness/agents/**/*.retro.md` and `docs/retros/*.md` (back-compat), validates against the universal schema, dedups, clusters by kind + target, ages stale entries, and prints a prioritized terminal view (`--json` for tooling). Encode, don't document. Empty buffer / empty tree = silent. NO on-disk index files — views computed at read time.
+  The friction lifecycle of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve): notice → hold safely → present at the seam → route to encoding. One skill, three surfaces. IN-FLIGHT CAPTURE is one CLI call — `npx harness observe "<what>" --kind <kind>` — into the gitignored transient buffer `.harness/temp/<bucket>/session-buffer.md`; the CLI owns path, identity, IDs, timestamps, schema validation, and the gitignore guarantee; you bring only the noticing (this subsumes the retired standalone observe skill — loop stage 3 is the work itself, supported by the CLI verb, not a skill). `--drain` (session-end soft prompt) reads pending entries via `harness observe --list --json` (all buckets), presents the `[s/t/p/e/d/a]` menu with a one-line encoding hint per entry, materializes saved entries into a committed record via `harness record retro`, then `harness observe --clear`. `--harvest` (long-horizon curation) scans `.harness/records/retro/**` (canonical) plus legacy paths, validates, dedups, clusters by kind+target, ages stale entries, and prints a prioritized view (`--json` for tooling) where recurrence is framed as token cost. Encode, don't document. Empty buffer / empty tree = silent. No on-disk index files.
 ---
 
 # eng-harness-4-retro
 
-The **Retro** stage of the harness loop. The place the loop turns observation into encoded improvement. Two modes:
+One skill, the whole **friction lifecycle**: *notice → hold safely → present at the seam → route to encoding.* Three surfaces:
 
-> **Encode, don't document.** A wiki paragraph that says "remember to do X" is worth nothing; an automated step that does X for you is worth everything. The whole point of retro is that friction observed during work becomes *executable knowledge* — a justfile recipe, a skill edit, a staged diff — not a prose note that rots. The `[e]ncode` action stages the change as a diff; that diff IS the encoding. Prefer an automated command over a wiki paragraph, a seed script over a manual setup step, a pre-flight check over a "remember to…". Executable knowledge > prose.
+| Surface | When | What |
+|---|---|---|
+| **In-flight capture** | during work, silent | one `npx harness observe` call per noticing — the CLI does the rest |
+| **`--drain`** | session end / logical pause | read pending via `harness observe --list --json`, soft prompt `[s/t/p/e/d/a]`, materialize via `harness record retro`, then `harness observe --clear` |
+| **`--harvest`** | long-horizon (final debrief, merge end, ad-hoc) | scan committed retros, cluster, prioritize, lifecycle ops |
+
+> **Encode, don't document.** A wiki paragraph that says "remember to do X" is worth nothing; an automated step that does X for you is worth everything. Friction observed during work becomes *executable knowledge* — a justfile recipe, a skill edit, a staged diff — not a prose note that rots. Executable knowledge > prose.
+
+> **Track compounding value.** Every difficulty catalogued is a gift to your future self. The meta-question is never whether one task succeeded; it is whether the development infrastructure gets cheaper, safer, and clearer every iteration.
 
 ## Input
 
 ```
 $ARGUMENTS
-# Modes:
-# --drain      Session-end: read the per-agent scratch buffer, present the soft prompt, materialize saved entries into a committed record via `harness record retro`
-# --harvest    Long-horizon: scan + cluster + prioritize record/retro files; print the curated view
-# --harvest --json   Machine-readable render of the harvest view (for `just compound-value`, CI hooks)
+# Surfaces:
+# (no flag)   In-flight capture guidance lives in § The two questions / § Capture is one command —
+#             there is nothing to "run"; you call `npx harness observe` directly as you work.
+# --drain     Session-end: read pending observations (all buckets), present the soft prompt,
+#             materialize saved entries into a committed record via `harness record retro`
+# --harvest   Long-horizon: scan + cluster + prioritize committed retro records; print the curated view
+# --harvest --json   Machine-readable render (for `just compound-value`, CI hooks)
 # Plus --harvest runtime filters: --plan <slug> / --agent <slug> / --since <date> / --kind <kind>
 # Plus --harvest --prune --older-than <Nd> [--apply]   Reversible stale-retro pruning (dry-run by default)
 ```
 
-| Mode | Replaces | When | What it does |
-|------|----------|------|--------------|
-| `--drain` | session-end bubble | end of session / logical pause / cross-session leftover | Drains the per-agent scratch buffer via the `[s/t/p/e/d/a]` menu into a committed `harness record retro` |
-| `--harvest` | long-horizon curate | FINAL phase / merge end / review end / ad-hoc | Scans + clusters + prioritizes record/retro files (`.harness/records/retro/*` + legacy); prints the curated view (or `--json`) |
-
-The producer that fills the buffer `--drain` reads is `eng-harness-3-observe`. The Boot stage is `eng-harness-1-boot`.
+Always on, no opt-out file — if a user doesn't want capture or a drain, they say so in chat and the calling agent stops.
 
 ---
 
-## Mode: `--drain` (session-end)
+## The two questions (ask them as you work — this is the strong signal)
 
-The consumer-side surface of the loop. The ONE place retro talks to the user.
+Locked wording — ask both, verbatim. They are the headline capture trigger, not item 7 of a checklist:
+
+> **"If you had a magic wand, what one command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change would make the next run easier, safer, or higher quality?"**
+
+> **"What did you have to infer that the harness should have proved?"**
+
+The second question is the harness thesis pointed at yourself: every place you *inferred* instead of *proved* is a missing sensor — and you (the agent) are paying tokens for that inference every single session until someone encodes it away. A magic-wand wish is a feature request from a real user of the infrastructure. Treat it that way.
+
+**Worked examples** — what an answer looks like as a capture:
+
+1. **The boot dance re-derived.** You spent ten minutes re-discovering how to start the app and prove it's healthy, because nothing wrote it down as a command:
+
+   ```bash
+   npx harness observe "re-derived the boot+healthcheck dance from scratch; no single boot command exists" \
+     --kind difficulty --target project-sensor --severity degrading \
+     --suggested-encoding "a 'just boot' recipe + harness doctor health layer"
+   ```
+
+2. **The architecture rule eyeballed.** You checked dependency direction by reading imports, because no deterministic check exists:
+
+   ```bash
+   npx harness observe "had to eyeball that services don't import adapters directly — no dependency-direction check fails the build" \
+     --kind difficulty --target architecture-fitness --severity degrading \
+     --workaround "read the imports manually" --suggested-encoding "architecture test or lint rule"
+   ```
+
+3. **The endpoint inferred, no smoke path.** You shipped a change to an endpoint whose behavior you could only infer, because there's no smoke route or evidence capture:
+
+   ```bash
+   npx harness observe "inferred the /export endpoint's behavior from code; no smoke path or response fixture proves it" \
+     --kind difficulty --target project-sensor --severity degrading \
+     --suggested-encoding "smoke command hitting /export with a recorded expected shape"
+   ```
+
+Prefer "no smoke/evidence path proved X" over "I was confused" — the former is encodable into deterministic back-pressure. Don't invent new kinds (`signal-gap`, `sensor-gap`): use `kind: difficulty` or `improvement-suggestion` with targets like `project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `tooling`.
+
+## Capture is one command
+
+```bash
+npx harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
+  [--target <t>] [--severity <s>] [--workaround <w>] [--suggested-encoding <hint>] [--agent <slug>]
+```
+
+- **Kinds**: `difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion`. **Severities**: `blocking | degrading | annoying` (recommended for difficulties).
+- **The CLI owns the mechanics** — buffer path, per-kind sequential IDs (`DL-001`, `MW-001`, …), ISO timestamps, schema validation at write, the full `system.compound` lifecycle block, and the gitignore guarantee (`.harness/temp/` is created self-gitignored on first capture; `harness doctor` checks the protection). You supply no path, no ID, no timestamp.
+- **Identity is optional** (provenance, not ceremony): `--agent <slug>` → `HARNESS_AGENT` env → a shared `agent` bucket. Capture never fails on identity. Distinct agents that opt in get distinct buckets, so simultaneous agents never trample each other.
+- **Crash-resilient by construction**: the entry is on disk the moment you notice it. After `/compact` or a lost context window, nothing is re-derived — capture again with the same one command; drain finds everything.
+- A bad kind/severity/too-short description is rejected with the allowed values named (`unconfigured`, exit 2) and the buffer untouched. The CLI appends, never rewrites: malformed text already in a buffer is skipped (and counted) by every read, never destroyed by a write.
+
+### When to fire (trigger heuristics)
+
+- A tool call took >30 seconds and you were waiting on it
+- A search returned zero results where you expected matches
+- You retried the same operation more than once, or backtracked from a wrong assumption
+- A test/build failure required guesswork to interpret
+- You had to infer runtime behavior with no smoke path, screenshot, log, trace, or health evidence
+- You eyeballed an architecture, dependency, security, schema, or data constraint a deterministic check could have proved
+- Boot reported a missing signal-readiness dimension that affected the work
+- You caught yourself muttering "if only there were a…" (the magic-wand reflex)
+
+### Calibration (soft targets, anti-over-introspection)
+
+- Self-prompt rate: **≤ 1 per 5 minutes** of clock time
+- Entries per session: **≤ 5** on average
+
+**Task-boundary heuristic**: at a natural pause (phase complete, file written, test passed), check whether you've captured anything yet (`harness observe --list --json` shows the pending set):
+- Buffer **empty** → fire the question pair once, pointed at provability. If nothing concrete comes to mind, don't force it.
+- Buffer **non-empty** → do NOT additionally prompt; the existing entries are sufficient signal. Ask once per pause, only when otherwise silent.
+
+### What in-flight capture does NOT do
+
+- **No user-facing output** — not even "logged". The drain at session end is the only user surface.
+- **No fix application, no sensor implementation** — entries describe friction; encoding happens at the drain/harvest.
+- **No mid-session prompting of the user.**
+
+**Accepted race**: capture during an in-progress drain can land an entry after the drain's read and before its clear — that entry is lost with the clear. Accepted under the per-agent single-session model (the buffer is not file-locked); drains run at session pauses precisely so the window is empty.
+
+---
+
+## Mode: `--drain` (session end)
+
+The consumer-side surface. The ONE place this skill talks to the user.
 
 ### When to fire
 
 - **Auto-fired** by pipeline skills at natural logical pauses (plan-1a end, plan-3 end, plan-6 end-of-phase, plan-6-companion end-of-phase, plan-7 end, plan-8 end)
-- **Manually fired** by the user (`/eng-harness-4-retro --drain`) at any time
-- **Start-of-skill** check on any auto-firing skill — if the buffer has leftover entries from a prior session (cross-session carryover), drain immediately
+- **Manually** by the user at any time
+- **Cross-session leftover check**: at the start of any auto-firing skill, run `harness observe --list --json` — the sweep covers **all buckets by default**, so entries stranded by a prior session (or another agent's bucket) surface immediately. Non-empty → drain first, then proceed.
 
-Each firing handles entries accumulated since the last drain. Once drained, the buffer is empty; the next firing on an unchanged buffer is silent.
+### Step 1 — Read the pending set
 
-### Always on (no opt-out)
+```bash
+harness observe --list --json
+# data: { observations: [{bucket, id, kind, description, target?, severity?,
+#         workaround?, suggested_encoding?, first_seen_at}], buckets_scanned, malformed_skipped }
+```
 
-This skill is always on. There is no `.disabled` opt-out — if a user doesn't want a retro drain, they simply say so in chat and the calling agent skips it.
-
-### Step 1 — Read the buffer
-
-Path: `.harness/temp/<agent>/session-buffer.md` (gitignored crash-resilient scratch)
-
-Where `<agent>` is the calling CLI's slug (claude-code, codex, github-copilot, opencode, pi, or a companion slug like plan-6-companion). The path is deterministic — re-derive it from your agent slug after a `/compact` or lost context window.
-
-If the file is missing or empty → silent (no prompt). Exit.
-
-If non-empty → parse it as a sequence of YAML entry blocks (each prefixed with `- id: …`).
+All buckets by default (`--agent <slug>` narrows). Empty `observations` → **silent, no prompt, exit.** If `malformed_skipped > 0`, say so in the prompt header (deviant text is preserved on disk until the clear — and lost with it, which beats corrupting a committed record).
 
 ### Step 2 — Present the soft prompt
 
@@ -64,111 +145,88 @@ Single prompt at end of session. **Never asks twice.** Format:
 ```
 💡 harness retro — 3 entries from this session:
 
-  1. [difficulty/tooling] grep on src/ took 47s
+  1. [difficulty/tooling] agent: grep on src/ took 47s
      → encode as: justfile recipe wrapping ripgrep
 
-  2. [magic-wand/project] A `just rg <pattern>` recipe would shave 40+s per search
+  2. [magic-wand/project] agent: a `just rg <pattern>` recipe would shave 40s per search
      → encode as: justfile recipe
 
-  3. [gift/compound] harness ledger scaffolded cleanly
-     → no encoding needed (it's a gift)
+  3. [difficulty/project-sensor] claude-code: inferred the render result; no smoke path
+     → encode as: smoke command or visual evidence capture
 
-  4. [difficulty/project-sensor] Had to infer whether the website rendered correctly because no smoke path or screenshot evidence was available
-     → encode as: add smoke command or visual evidence capture
+Before you choose — the two questions, one last pass:
+"If you had a magic wand, what one command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change would make the next run easier, safer, or higher quality?"
+"What did you have to infer that the harness should have proved?"
+(Anything new → capture it now with `npx harness observe …`; it joins this drain.)
 
-[s]ave all to scope file
-[t]ask: emit /plan-5 --fix invocations for the encodable ones
-[p]lan: emit /plan-1b invocations for the bigger ones
-[e]ncode: stage diffs in scratch/encode-<id>-<target>.diff
-[d]ismiss all (entries dropped, not saved)
-[a]ll-save (default — press Enter)
+[s]ave selected · [t]ask: /plan-5 --fix emits · [p]lan: /plan-1b emits
+[e]ncode: stage diffs · [d]ismiss all · [a]ll-save (default — press Enter)
 
 [s/t/p/e/d/a]: ▮
 ```
 
-Notes on the prompt:
-- One line per entry, prefixed `[kind/target]`
-- One-line encoding hint per entry (from `suggested_encoding` or a sensible default)
-- Action menu fits in two screen-lines
-- Pressing Enter without typing = `[a]ll-save` (the default)
-- Drain should make both improvement shapes visible: ease/friction improvements (faster, clearer, less annoying) and proof/back-pressure improvements (new deterministic signals, sensors, evidence paths, architecture checks). Both use the same schema; distinguish them by `target`, description, and encoding hint, not by new `kind` values.
+One line per entry, `[kind/target] bucket:` prefixed, with a one-line encoding hint. The **drain beat of the question pair uses the same locked wording** as the in-flight section — the seam is the last cheap moment to catch what the session never wrote down.
 
 ### Step 3 — Route by action
 
 #### `[a]ll-save` (default)
 
-Wrap all buffer entries in a single universal retro envelope and write one **committed** record. Don't hand-compute the path — call the core CLI to scaffold the file, then fill it:
+Wrap the pending entries in one universal retro envelope per bucket (the bucket is the envelope's `agent:`; usually there's exactly one). Never hand-compute the committed path — scaffold it:
 
 ```bash
 harness record retro --slug "<plan-id-or-session-label>" --json
-# → { "status":"ok", "data": { "path": ".harness/records/retro/<date>-<slug>.md", ... } }
+# → { "status":"ok", "data": { "path": ".harness/records/retro/<YYYY-MM-DD>/<NNN>-<slug>.md", ... } }
 ```
 
-Use the returned `data.path` (under `.harness/records/retro/`, collision-suffixed `-NNN` automatically — never clobbers) and write the universal retro envelope into it:
+Write the envelope into the returned **`data.path`** (the CLI owns placement + the never-clobber ordinal):
 
 ```yaml
 ---
 schema_version: "1.0"
 retro_id: "<ISO>-<agent>-<short-hash>"
-agent: <agent>
-plan_id: <plan-id-from-cwd-or-branch-detection-or-null>
-started_at: "<ISO of first entry's first_seen_at, or session start>"
-ended_at: "<now in ISO UTC>"
+agent: <bucket>
+plan_id: <plan-id-or-null>
+started_at: "<first entry's first_seen_at>"
+ended_at: "<now ISO UTC>"
 summary: "eng-harness-4-retro --drain session-end save (N entries)"
 entries:
-  # ... all buffer entries verbatim
+  # ... the drained entries verbatim (id/kind/description/…/system.compound)
 system:
   compound:
     bubble_action: "all-save"
 ---
 ```
 
-The committed record lands at:
+If `harness record` reports `unconfigured` (no `.harness/` here), treat it as UNAVAILABLE and stay silent — the transient entries are preserved for a later drain. Otherwise, once the record is written:
 
-`.harness/records/retro/<YYYY-MM-DD>-<slug>.md` (the CLI owns placement + the never-clobber collision counter)
-
-If `harness record` reports `unconfigured` (no `.harness/` here) treat it as `UNAVAILABLE` and stay silent — the buffer scratch is preserved for a later drain. Then **clear the buffer** (truncate to empty; keep the file) once the record is written.
-
-#### `[s]ave` (selective save)
-
-Prompt: "Which entries to save? [1,2,3 or a]". Save the selected ones into a `.retro.md` (same envelope as `[a]ll-save`); discard the rest. Clear buffer.
-
-#### `[t]ask` — emit copy-pasteable `/plan-5 --fix` invocations
-
-For each encodable entry, print:
-
-```
-/plan-5 --fix --description "<entry.description>" --target <entry.target>
+```bash
+harness observe --clear
 ```
 
-The user copy-pastes one or more of these. The entries are ALSO saved to a `.retro.md` (so the suggestion is captured even if the user doesn't run all of them). Clear buffer.
+#### `[s]ave` (selective)
 
-#### `[p]lan` — emit copy-pasteable `/plan-1b` invocations
+Prompt "Which entries to save? [1,2,3 or a]". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
 
-For each entry suggesting a larger piece of work, print:
+#### `[t]ask` — emit copy-pasteable fix dossiers
 
-```
-/plan-1b "<one-line spec derived from entry.description + entry.suggested_encoding>"
-```
+For each encodable entry print `/plan-5 --fix --description "<entry.description>" --target <entry.target>`. Entries are ALSO saved to the record (the suggestion is captured even if the user runs none of them). Clear.
 
-User copy-pastes the ones they want. Entries also saved to `.retro.md`. Clear buffer.
+#### `[p]lan` — emit copy-pasteable specs
 
-#### `[e]ncode` — stage diffs
+For each entry suggesting larger work print `/plan-1b "<one-line spec from description + suggested_encoding>"`. Entries also saved. Clear.
 
-For each entry where the encoding is a small mechanical edit (frequently true for `kind: difficulty` with a clear `suggested_encoding`):
+#### `[e]ncode` — stage diffs (nothing auto-applies)
 
-1. Generate the diff (the agent makes a best-effort guess at the change)
-2. Append the **Validation footer** (mandatory — see template below) so the staged diff documents how a reviewer verifies the encoded fix actually works
+For each entry whose encoding is a small mechanical edit:
+
+1. Generate the diff (best-effort guess at the change)
+2. Append the **Validation footer** (mandatory — below)
 3. Write to `scratch/encode-<entry-id>-<target-slug>.diff`
-4. Print the file path: "Staged scratch/encode-DL-001-tooling.diff — review and `git apply` to land"
+4. Print: "Staged scratch/encode-DL-001-tooling.diff — review and `git apply` to land"
 
-**Nothing is auto-applied.** The diff is staged for user review. This is the "encode, don't document" mechanism — the encoding is in the diff, not in a doc.
-
-Entries are also saved to `.retro.md` with `system.compound.status: suggested` and `system.compound.resolved_by: scratch/encode-<id>-<target>.diff`. Clear buffer.
+Entries are also saved to the record with `system.compound.status: suggested` and `resolved_by: scratch/encode-<id>-<target>.diff`. Clear.
 
 ##### Validation footer template (mandatory on every encoded diff)
-
-Every staged `scratch/encode-<id>-<target>.diff` MUST end with a literal `## Validation` block of this shape:
 
 ```markdown
 ## Validation
@@ -179,339 +237,150 @@ Run:
 
 Expected:
   - <observable outcome 1>
-  - <observable outcome 2 — optional>
 
 Compound lifecycle:
   <entry-id> transitions system.compound.status: suggested → encoded when this diff lands.
   resolved_by: <commit-sha-after-land>
 ```
 
-How the three sub-sections are filled:
-
-- **`Run:`** — best-effort shell command(s) that exercise the encoded change. If the entry's `suggested_encoding` mentions a recipe/command, use it; otherwise the agent picks a sensible reproduction or verification command (compile / test / grep / curl). If genuinely unknown, write `Run: (manual review only)`.
-- **`Expected:`** — observable outcomes (file content matches, command exits 0, output contains substring). Plain bullets — no full test framework needed.
-- **`Compound lifecycle:`** — names the entry id and the transition the `--harvest [r]esolved` lifecycle action will execute on this entry. The `resolved_by` line is a placeholder the user fills with the actual SHA after the diff lands.
-
-The footer makes "encoded" mean *the loop changed AND we can prove it*, not just *we wrote a patch*. Reviewers see the verification path inline with the change.
+`Run:` = best-effort command(s) exercising the change (from `suggested_encoding` when it names one; `(manual review only)` if genuinely unknown). `Expected:` = observable outcomes. The footer makes "encoded" mean *the loop changed AND we can prove it*.
 
 #### `[d]ismiss all`
 
-Truncate the buffer. Entries are dropped — not saved anywhere. Print one line: "✓ buffer dismissed (3 entries dropped)".
+`harness observe --clear` without saving anything. Print one line: "✓ buffer dismissed (3 entries dropped)". Unrecoverable — use sparingly.
 
-This is the "I don't want this captured" escape hatch. Use sparingly — entries dismissed here can't be recovered.
+### Step 4 — Plan-ID detection
 
-### Step 4 — Plan ID detection
+`frontmatter.plan_id` resolves: (1) cwd matches `docs/plans/<NNN-slug>/` → that slug; (2) else git branch matches `<NNN>-<slug>` → the branch name; (3) else `null`.
 
-When saving, populate `frontmatter.plan_id` from:
+### Encoding-hint generation (one line per entry)
 
-1. Current working directory: if cwd matches `docs/plans/<NNN-slug>/`, set `plan_id: <NNN-slug>`
-2. Else: current git branch: if branch matches `<NNN>-<slug>`, set `plan_id: <branch-name>`
-3. Else: `plan_id: null` (no plan context)
-
-### Cross-session leftover check
-
-At the start of any auto-firing skill, before doing its primary work, check the buffer:
-
-- If `.harness/temp/<agent>/session-buffer.md` is non-empty → fire `eng-harness-4-retro --drain` immediately
-- Then proceed with the skill's primary work
-
-This catches entries left over from a prior session (e.g. the user pressed Ctrl-C before the auto-drain fired).
-
-### What `--drain` does NOT do
-
-- **No mid-session prompting**. Only at end-of-session / logical pauses / next-session leftover.
-- **No auto-applying** any encoded diff. Staged-only.
-- **No editing of `.retro.md` files** after writing them. (That's `--harvest`'s job for lifecycle status mutations.)
-- **No reading or aggregating** retros from other sessions. Each drain handles its OWN buffer; cross-session aggregation is `--harvest`.
+1. `entry.suggested_encoding` set → use it verbatim
+2. Else derive from kind + target: `difficulty/tooling` → "wrap in a justfile recipe" · `difficulty/skill` → "edit the SKILL.md" · `magic-wand/*` → "encode as the suggestion above" · `gift/*` → "no encoding needed" · `insight/*` → "document in AGENTS.md or a docs/how article"
+3. Else → "(no encoding hint — review manually)"
 
 ### `--drain` edge cases
 
-- **Empty buffer**: silent. No prompt. Exit cleanly.
-- **Concurrent drains** (two agents simultaneously): each has its own buffer, no collision.
-- **Save to a path that already exists** (extremely rare hash collision): append `-2`, `-3`, etc. to the filename per workshop 006 § EC3.
-- **User interrupts mid-prompt**: buffer stays unchanged. Next drain will see the same entries.
-- **Malformed entry in buffer**: skip with a warning ("⚠ skipped 1 malformed entry"); save the valid ones; clear buffer (the malformed one is lost — better than corrupting a `.retro.md`).
+- **Nothing pending**: silent, no prompt.
+- **User interrupts mid-prompt**: nothing was cleared; the next drain sees the same entries.
+- **Malformed buffer text**: surfaced as `malformed_skipped` in the list envelope; warn before the clear wipes it.
+- **No `.harness/` in this repo**: `harness observe --list` itself reports `unconfigured` — stay silent.
 
-### One-line encoding hint generation
+### What `--drain` does NOT do
 
-For each entry, the prompt shows a one-line encoding hint. Source:
-
-1. If `entry.suggested_encoding` is set → use it verbatim
-2. Else, derive from `entry.kind` + `entry.target`:
-   - `difficulty/tooling` → "wrap in a justfile recipe"
-   - `difficulty/skill` → "edit the SKILL.md"
-   - `magic-wand/<any>` → "encode as the suggestion above"
-   - `gift/<any>` → "no encoding needed"
-   - `insight/<any>` → "document in AGENTS.md or a docs/how article"
-3. Else → "(no encoding hint — review manually)"
+No mid-session prompting · no auto-applying encoded diffs · no editing committed `.retro.md` files after writing them (lifecycle mutations are `--harvest`'s job) · no cross-session aggregation (that's `--harvest`).
 
 ---
 
 ## Mode: `--harvest` (long-horizon)
 
-The reader/curator side of the loop. Auto-fires at long-horizon reflection moments (plan-6-companion FINAL-phase debrief, plan-8 merge end, plan-7 end). Can also be run manually for ad-hoc curation.
+The reader/curator side. Auto-fires at long-horizon reflection moments; runnable ad-hoc any time.
 
 ### When to fire
 
-- **AUTO-fired** at:
-  - `plan-6-companion` FINAL-phase debrief (the dominant flow — replaces /plan-7 as harvest anchor)
-  - `plan-8-merge` end (plan-completion reflection)
-  - `plan-7-code-review` end (preserved for rare solo /plan-6 flow)
-- **SUGGESTED at the start of**:
-  - `plan-1a-explore` (if ≥5 unharvested entries — print invocation as one-liner; do NOT auto-fire)
-  - `plan-3-architect` (if ≥10 unharvested entries — same)
-- **Manually** by the user at any time: `/eng-harness-4-retro --harvest [--plan <slug>] [--agent <slug>] [--since <date>] [--kind <kind>]`
+- **AUTO**: `plan-6-companion` FINAL-phase debrief (the dominant flow), `plan-8-merge` end, `plan-7-code-review` end (rare solo flow)
+- **SUGGESTED**: at `plan-1a` start (≥5 unharvested entries) or `plan-3` start (≥10) — print the invocation as a one-liner, don't auto-fire
+- **Manually**: `--harvest [--plan <slug>] [--agent <slug>] [--since <date>] [--kind <kind>]`
 
 ### Buffer-non-empty advisory
 
-At start, check `.harness/temp/<agent>/session-buffer.md` for the calling agent. If non-empty → print one line before scanning:
+At start, run `harness observe --list --json`. Pending entries anywhere → print one line before scanning:
 
-> ℹ️ Buffer has N unbubbled entries. Consider running `/eng-harness-4-retro --drain` first so they land in the harvest view.
+> ℹ️ Buffer has N unbubbled entries. Consider running `--drain` first so they land in the harvest view.
 
-Then proceed with the scan anyway (the harvest reads committed record/retro files; buffer scratch is unrelated).
+Then proceed anyway (harvest reads committed records; transient scratch is unrelated).
 
 ### Step 1 — Scan + validate
 
-**Canonical path (new)**: `.harness/records/retro/*.md` — the committed records created by `harness record retro` (the path `--drain` materializes).
+- **Canonical**: `.harness/records/retro/**/*.md` — the records `--drain` materializes (dated subdirs).
+- **Legacy (back-compat)**: `docs/harness/agents/**/*.retro.md`, then `docs/retros/*.md` (minih's old per-agent format; skip `*.legacy.md`; map blocks via workshop 005 § D9 `minihToUniversal`).
 
-**Legacy canonical path (back-compat)**: `docs/harness/agents/**/*.retro.md` — pre-`harness record` per-run retro files. Still scanned so no existing retro becomes invisible.
+Per file: parse the YAML frontmatter; validate against the bundled `references/retro.schema.json` (mirror of the frozen `docs/harness/schemas/retro.schema.json`; neither present → `⚠ retro schema not found — skipping validation`, never block). Invalid → warn with the path, skip the whole retro (no half-parse).
 
-For each file:
-- Parse the YAML frontmatter (between the first two `---` lines)
-- Validate against the bundled `references/retro.schema.json` (a deployment mirror of the canonical, frozen `docs/harness/schemas/retro.schema.json` — copied into this skill folder so it travels with the skill via `npx skills add`; in a source checkout either path is identical). If neither is present, skip validation and print `⚠ retro schema not found — skipping validation` (best-effort: a missing schema never blocks the harvest).
-- If invalid → print a warning naming the file path + the validation error; SKIP the entire retro (strict — no half-parse)
-- If valid → add to the in-memory view
+### Step 2 — Dedup, version skew
 
-**Back-compat path**: `docs/retros/*.md` (minih's legacy single-big-file-per-agent format)
+Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harness/records/retro/` → `docs/harness/agents/**` → `docs/retros/*`. Unknown **major** `schema_version` → `⚠ Skipped 1 retro with unsupported schema_version: <path>`; minor skew is silent.
 
-For each file (skip `*.legacy.md` — those are post-migration archives):
-- Parse the file as a sequence of `## <ISO timestamp> — <slug> / <runId>` blocks (regex on `/^## \d{4}-\d{2}-\d{2}T/m`)
-- For each block:
-  - Run the minih block → universal retro mapping inline (workshop 005 § D9 `minihToUniversal`)
-  - Add to the in-memory view
+### Step 3 — Curate
 
-### Step 2 — Dedup by `retro_id`
+- **Cluster** open entries by `(kind, target)`; count, age-order (oldest `first_seen_at` first), track source agents.
+- **Stale flags** (observational, never enforced): `open` > **4 weeks** → stale; `suggested` > **2 weeks** without `resolved_by` → stale.
+- **Prioritize top-10**: recurrence (count) → severity (`blocking` > `degrading` > `annoying` > none) → back-pressure leverage (clusters indicating missing proof/sensors/evidence/architecture/security/schema checks stay legible as proof-improvement candidates — display guidance only, no gate, no score, no index) → age.
+- **Token-cost framing (the leak detector)**: a recurring cluster is **the same inference being re-paid in tokens every session until someone encodes it** into the environment. Label recurrence with that cost. Display wording only — schema, statuses, and clustering logic are unchanged.
+- Recognize proof/back-pressure candidates by targets (`project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `infra`, `tooling`), by mentions of smoke/screenshot/log/trace/health/dependency-rule/CodeQL/schema checks, and by workarounds like "read code manually" / "eyeballed". Keep original fields intact; never rewrite kinds.
 
-If the same `retro_id` appears in more than one source (new `.harness/records/retro/`, legacy `docs/harness/agents/**`, or back-compat `docs/retros/*`), the newest-canonical universal version wins, in precedence order `.harness/records/retro/` → `docs/harness/agents/**` → `docs/retros/*`. Skip the lower-precedence copies.
-
-### Step 3 — Schema-version skew handling
-
-If a retro has `schema_version` starting with a major number this reader doesn't know (e.g. `2.x` when the reader supports `1.x`):
-
-- Print: `"⚠ Skipped 1 retro with unsupported schema_version: <path>"`
-- Skip the retro
-
-Minor-version skew (`1.1` when reader is `1.0`) is silent — forward-compat per workshop 005 § D8.
-
-### Step 4 — Curate
-
-Build the in-memory view:
-
-#### Cluster open entries
-
-Group entries by `(kind, target)`. Within each cluster:
-
-- Count entries
-- Age-order (oldest first by `system.compound.first_seen_at` or fallback to retro's `started_at`)
-- Track which agents/retros they came from
-
-#### Stale flag
-
-- `open` entries older than **4 weeks** → tag as stale
-- `suggested` entries older than **2 weeks** without `resolved_by` → tag as stale
-
-These thresholds are observational hints (printed in the view), not enforced. No auto-mutations.
-
-#### Prioritize top-10
-
-Sort clusters by:
-
-1. Recurrence (count of entries) — highest first
-2. Severity (entries with `severity: blocking` rank higher; then `degrading`; then `annoying`; entries with no severity rank lowest)
-3. Back-pressure leverage (clusters whose target or representative entry indicates missing proof/sensors/evidence/architecture/security/schema checks should stay legible as proof-improvement candidates)
-4. Age (older clusters rank higher)
-
-Cap at top-10 for the default view. Filtered views may show more.
-
-Back-pressure leverage is advisory display guidance only. It does not create a gate, score, persisted index, or threshold, and it must not mutate entries.
-
-#### Recognize proof/back-pressure clusters
-
-Treat these as proof/back-pressure improvement candidates when printing labels or choosing representative wording:
-
-- Targets such as `project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `infra`, or `tooling`
-- Descriptions or `suggested_encoding` values that mention smoke paths, screenshots, logs, traces, health checks, dependency-direction rules, CodeQL/Roslyn/ArchUnit, schema validation, data checks, or missing evidence
-- `difficulty` entries where the workaround was "manual review", "read code manually", "inferred", or "eyeballed"
-
-Keep the original schema fields intact. Do not rewrite kinds to `signal-gap`, `sensor-gap`, or `weak-back-pressure`.
-
-### Step 5 — Print terminal view (NO on-disk writes)
-
-Default format:
+### Step 4 — Print the view (NO on-disk writes)
 
 ```
-🌾 Harness retro harvest — 2026-05-18T15:30:00Z
+🌾 Harness retro harvest — 2026-06-10T03:30:00Z
 
-📚 Scanned 27 retros across 3 agents (claude-code, plan-6-companion, minih-my-agent)
-   Date range: 2026-04-10 → 2026-05-18
+📚 Scanned 27 retros across 3 agents · Date range: 2026-04-10 → 2026-06-10
    Total entries: 47 (28 open, 17 encoded, 2 wontfix)
 
 📊 Open clusters (top 10 by recurrence > severity > back-pressure leverage > age):
-   1. [tooling] grep/search slowness — 4 entries (claude-code: 3, plan-6-companion: 1)  [r/w/s]
+   1. [tooling] grep/search slowness — 4 entries across 5 sessions
+      ↻ re-paid every session since 2026-05-14 — encode it and stop paying  [r/w/s]
    2. [proof/project-sensor] missing smoke or visual evidence — 3 entries  [r/w/s]
-   3. [pipeline] missing example patterns — 3 entries  [r/w/s]
-   4. [config] env var contract guessing — 2 entries  [r/w/s]
    ...
 
-⏰ Stale (>4 weeks open): 3 entries
-   - DL-061 (2026-04-10): "spec template § Domain Manifest unclear"  [r/w/s]
-   ...
-
-✅ Recently encoded (last 7 days): 6 entries — see scratch/encode-*.diff for the diffs
-
-[s/t/p/e/d/a/r/w/s]: ▮
+⏰ Stale (>4 weeks open): 3 entries  [r/w/s]
+✅ Recently encoded (last 7 days): 6 entries — see scratch/encode-*.diff
 ```
 
-**Nothing is written to disk by the harvest itself** (per workshop 006 § D4 KISS revision — no `_LEDGER.md`, no `_AGENT.md`, no rollup files). The view is transient terminal output.
+Nothing is written to disk by the harvest itself (workshop 006 § D4 KISS: no `_LEDGER.md`, no rollups — drift, git noise, and ceremony cost more than a <1s recompute). For raw browsing: `ls .harness/records/retro/` — the record dir IS the browse surface.
 
-#### `--json` output (machine-readable read interface)
+#### `--json` (machine-readable, same computed view)
 
-`/eng-harness-4-retro --harvest --json` emits the same computed view as the default render but as a single JSON document on stdout. This is a **read-time render of transient computation** — still no on-disk index, still no persisted state. Use it for `just compound-value`, CI hooks, or any downstream skill that wants programmatic access to loop status.
-
-**Schema** (stable contract — bump compound v1.x if changed):
+Stable contract (`schema_version` semver, bump on breaking change):
 
 ```json
 {
   "schema_version": "1.0.0",
-  "generated_at": "2026-05-19T01:30:00Z",
+  "generated_at": "<ISO>",
   "retros": 27,
-  "entries": {
-    "total": 47,
-    "open": 28,
-    "suggested": 2,
-    "encoded": 17,
-    "wontfix": 0,
-    "dismissed": 0,
-    "escalated": 0,
-    "stale": 0
-  },
-  "top_clusters": [
-    {
-      "kind": "difficulty",
-      "target": "tooling",
-      "count": 4,
-      "oldest": "2026-05-14T11:22:00Z",
-      "representative": "grep on src/ took 47s — should use ripgrep"
-    }
-  ],
-  "harness": {
-    "maturity": "L2",
-    "last_validation": null,
-    "boot_ms": null,
-    "verdict": null
-  }
+  "entries": { "total": 47, "open": 28, "suggested": 2, "encoded": 17,
+               "wontfix": 0, "dismissed": 0, "escalated": 0, "stale": 0 },
+  "top_clusters": [ { "kind": "difficulty", "target": "tooling", "count": 4,
+                      "oldest": "<ISO>", "representative": "<description>" } ],
+  "harness": { "maturity": "L2", "last_validation": null, "boot_ms": null, "verdict": null }
 }
 ```
 
-Field semantics:
+- `entries.*` counts by `system.compound.status` (missing status counts as `open`).
+- `top_clusters` capped at 10, same priority order as the default view.
+- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever `.harness/history.md` doesn't supply; no governance doc → all four `null`.
+- Empty tree → `{"retros": 0, "entries": {"total": 0, …}, "top_clusters": []}` — still valid JSON.
 
-- `schema_version` — semver for the JSON contract itself; bump on breaking shape change.
-- `generated_at` — ISO-8601 UTC timestamp of THIS render.
-- `retros` — count of `.retro.md` files scanned (post dedup + version-skew filter).
-- `entries.*` — counts by `system.compound.status` (plus `total` = sum of all entries seen). Missing-status entries count as `open`.
-- `top_clusters` — top-10 clusters by the same priority order as the default view (recurrence > severity > back-pressure leverage > age). Cap at 10; consumers wanting fewer should slice.
-- `harness` — read the **current maturity snapshot** from the governance doc at `.harness/engineering-harness.md` (the canonical and only location). Populate `maturity` from that snapshot. The `last_validation` / `boot_ms` / `verdict` fields have **no live source** under the current model — boot is read-only and no longer appends a per-validate `## History` table (see [`../eng-harness-flow/references/governance-doc.md`](../eng-harness-flow/references/governance-doc.md)); `.harness/history.md` is a *sparse* changelog (one row per encoded improvement, not per validation), so use it for trajectory context if present but `null` any of these three fields it does not supply. If no governance doc exists at all, emit `{"maturity": null, "last_validation": null, "boot_ms": null, "verdict": null}`.
+Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harvest --json | jq …` elsewhere.
 
-**Missing/empty cases**:
+### Step 5 — Action menu
 
-- Empty tree → `{..., "retros": 0, "entries": {"total": 0, ...}, "top_clusters": [], "harness": {...or null}}`. Still valid JSON; consumers handle.
-- Schema-version skew on a retro → still emit JSON; skipped retros contribute to neither counts nor clusters.
+The drain's `[s/t/p/e/d/a]` actions (operating on cluster selections; save/all-save are usually no-ops here since entries are already committed), plus three **lifecycle ops** that mutate `system.compound.status` IN-PLACE in the source record (file's `schema_version`/`retro_id` untouched; last-write-wins on the rare concurrent harvest):
 
-Consumed by `scripts/compound-value.sh` (the cross-CLI portable pretty-printer) and `just compound-value`. Other consumers should pipe `<their-CLI invokes the skill> --harvest --json | jq ...`.
-
-### Step 6 — Action menu
-
-The same `[s/t/p/e/d/a]` actions as `--drain`, plus three lifecycle ops:
-
-- `[s]ave` (selective save) — typically a no-op here (entries already saved); operates on top-10 cluster selection
-- `[t]ask` — emit `/plan-5 --fix` invocations for selected entries
-- `[p]lan` — emit `/plan-1b` invocations
-- `[e]ncode` — stage `scratch/encode-<id>-<target>.diff` files (same as `--drain`)
-- `[d]ismiss` — mutate `system.compound.status: dismissed` IN-PLACE in the source `.retro.md`
-- `[a]ll-save` — typically a no-op (entries already saved)
-- **`[r]esolved`** — mutate `system.compound.status: encoded`; prompt for `resolved_by:` (free-text; user pastes a commit hash / PR URL / scratch diff path)
-- **`[w]ontfix`** — mutate `system.compound.status: wontfix`
-- **`[s]tale`** — mutate `system.compound.status: stale`
-
-For lifecycle ops, the harvest reads the source file, updates the entry's `system.compound.status`, writes back. The file's overall `schema_version`, `retro_id`, etc. are untouched.
-
-### Runtime filters
-
-All combinable. Each filters the scan + view to matching retros:
-
-- `--plan <slug>` → only retros where `frontmatter.plan_id == <slug>`
-- `--agent <slug>` → only retros where `frontmatter.agent == <slug>` (slugified match)
-- `--since <YYYY-MM-DD>` → only retros where the directory date >= `<date>` (or `started_at` if directory not date-sliced)
-- `--kind <kind>` → only entries (not retros) where `entry.kind == <kind>`; retros with no matching entries are omitted
-
-Example: `/eng-harness-4-retro --harvest --plan 023-difficulty-ledger-skill --since 2026-05-15 --kind difficulty` — show only difficulty entries from plan 023 retros newer than May 15.
+- **`[r]esolved`** → `status: encoded`; prompt for `resolved_by:` (commit hash / PR URL / diff path)
+- **`[w]ontfix`** → `status: wontfix`
+- **`[s]tale`** → `status: stale`
 
 ### Pruning (`--prune`)
 
-`/eng-harness-4-retro --harvest --prune --older-than 90d` → **dry-run by default**:
-
-1. List all retros older than 90 days
-2. Show what would be deleted
-3. Print: `"This is a dry run. Add --apply to actually delete (and recommend running on a clean git working tree)."`
-
-`/eng-harness-4-retro --harvest --prune --older-than 90d --apply` → actually delete the files. Single-confirmation prompt before deletion.
-
-User responsibility — best-effort framing; no auto-pruning ever.
-
-### What `--harvest` does NOT do
-
-- **No on-disk index files written**. Every cross-cutting view is terminal print, computed at read time.
-- **No auto-applying** any encoded diff. Staged-only via `[e]ncode`.
-- **No buffer reading**. Buffer is `--drain`'s territory; this mode reads `.retro.md` files only.
-- **No mid-session firing**. The auto-firing sites are at logical pauses (end of plan-N, debrief, merge).
-- **No schema expansion**. Missing-signal and back-pressure entries stay schema-compatible by using existing `kind` values plus targets and encoding hints.
-- **No proof gates**. Harvest can surface missing sensors as high-leverage improvement candidates, but it never blocks a plan, applies a threshold, or declares compliance.
+`--harvest --prune --older-than 90d` → **dry-run by default**: list what would be deleted, then print "This is a dry run. Add `--apply` to actually delete (recommend a clean git working tree)." With `--apply` → single confirmation, then delete. Never auto-prunes.
 
 ### `--harvest` edge cases
 
-- **Empty tree** (no `.retro.md` files anywhere): print `"🌾 No retros found. Start logging via eng-harness-3-observe during sessions."` and exit.
-- **Concurrent harvests**: lifecycle mutations are last-write-wins per file. Unlikely to collide because both readers compute identical views.
-- **Hash collision in retro_id** (two retros, same ID): dedup keeps the canonical one. Print warning if both are canonical (`agents/**`); skip the second.
-- **Schema-version skew**: see Step 3 above.
-- **`docs/retros/` absent**: just skip the back-compat path. No error.
+- **Empty tree**: `🌾 No retros found. Capture friction via npx harness observe during sessions.` and exit.
+- **`docs/retros/` absent**: skip the back-compat path, no error.
+- **retro_id collision, both canonical**: keep the first, warn.
 
-### Why no on-disk index files
+### What `--harvest` does NOT do
 
-Per workshop 006 § D4 KISS revision (the user demanded this in review):
-
-> Persisting derived state creates four problems the system doesn't need: drift between index and source, git diff noise on every harvest, agent maintenance burden, and bureaucratic ceremony.
-
-The harvest computes the view in <1s for typical repos (≤100 retros). Re-computation per invocation is cheap; persistence is expensive (in attention and git noise).
-
-For ad-hoc shell-level browsing without the skill:
-
-```bash
-ls .harness/records/retro/                                    # all retro records (new canonical)
-cat .harness/records/retro/$(date -u +%Y-%m-%d)-*.md          # today's records
-grep -l 'plan_id: "012-' .harness/records/retro/*.md          # all plan-012 records
-ls docs/harness/agents/*/                                      # legacy per-run retros (back-compat)
-```
-
-The record dir IS the browse surface. Harvest is for clustered/prioritized views; shell tools are for raw browsing.
+No on-disk index files · no auto-applied diffs · no transient-buffer reads beyond the advisory (drain owns the buffer) · no mid-session firing · no schema expansion · **no proof gates** — it surfaces missing sensors as high-leverage candidates but never blocks a plan, applies a threshold, or declares compliance.
 
 ---
 
 ## References
 
-- Workshop 001 — Self-improvement vibe (§ Anti-vibe 1 nag-ware; § D5 terse one-line hints)
-- Workshop 004 — SDD pipeline integration (§ Walkthrough D)
-- Workshop 005 — Universal retro contract (§ envelope; § validation; § D8 versioning; § D9 round-trip)
-- Workshop 006 — Compound folder layout (§ Path Resolver; § Runtime Views; § D4 KISS no-indexes; § D6 pruning; § D7 minih back-compat; § EC2 cross-session carryover; § EC9 dual-source dedup)
-- Spec § Acceptance Criteria #7-17, #23
-- Spec § Q5.3 (stale heuristics — calibrate during dogfood)
-- Spec § Q6.1 (task-boundary check only when buffer empty)
+- `harness/cli` — the `observe` act (capture/list/clear), `record` act (committed placement), doctor temp-hygiene check; `npx harness instructions` carries the zero-context briefing
+- Workshop 001 — self-improvement vibe (anti-vibe 7 over-introspection; terse one-line hints)
+- Workshop 005 — universal retro contract (entry schema; D5 kinds; D6 identity; D9 minih round-trip)
+- Workshop 006 — compound folder layout (D4 KISS no-indexes; D6 pruning; D7 minih back-compat)
+- `docs/harness-basics/` + `harness-foundations/simple-mode.md` — Rule 2 (encode the fix, not the memory) and Rule 5 (the question pair this skill headlines)

@@ -60,7 +60,7 @@ Once the required setup rungs hold, the router crosses into the loop and dispatc
 |---|---|---|
 | session start / unknown | `eng-harness-1-boot --validate` (re-run the boot setup built) | a boot verdict (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
 | spec done, pre-architect | `eng-harness-2-backpressure` | `backpressure-coverage.md` |
-| mid-build (doing work) | `eng-harness-3-observe` *(silent — only with a payload; otherwise guidance only)* | one ledger entry per call |
+| mid-build (doing work) | capture is one CLI call — `npx harness observe "<what>" --kind <kind>` *(silent; judgment guidance lives in `eng-harness-4-retro` § in-flight capture)* | one buffer entry per call |
 | phase / session end · **buffer non-empty** | `eng-harness-4-retro --drain` | buffer drained → `.retro.md` (`next_suggested: --harvest`) |
 | phase / session / plan end · **buffer empty** | `eng-harness-4-retro --harvest` | curated cross-plan view |
 | improvement chosen | route the improvement → retro `[e]ncode` / `eng-harness-0-add-extension` / emit a fix-plan command | the encoded harness change |
@@ -116,7 +116,7 @@ at=auto            (default) detect from signals A–J
 at=setup           force the on-ramp (install / finish setup / provision governance — owed)
 at=boot            force eng-harness-1-boot --validate
 at=backpressure    force eng-harness-2-backpressure (post-spec seam)
-at=observe         guidance only; with --entry-* it silently calls eng-harness-3-observe
+at=observe         guidance only; with --entry-* it silently runs `npx harness observe`
 at=retro-drain     force eng-harness-4-retro --drain (phase/session end)
 at=retro-harvest   force eng-harness-4-retro --harvest (plan complete)
 at=improve         route a chosen improvement (retro [e]ncode / add-extension / fix-plan)
@@ -132,7 +132,7 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 ```
 
 - **`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the setup gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
-- **Observe needs a payload to do anything.** `eng-harness-3-observe` is a *silent producer that logs one entry per call*. So `at=observe` with no payload is **guidance only** ("observe fires silently — here's how friction gets logged"); to actually record, the parent passes the observe entry fields and the router calls observe silently.
+- **Observe needs a payload to do anything.** In-flight capture is a *silent CLI producer that logs one entry per call* — `npx harness observe "<what>" --kind <kind>` (the merged `eng-harness-4-retro` skill carries the capture judgment). So `at=observe` with no payload is **guidance only** ("observe fires silently — here's how friction gets logged"); to actually record, the parent passes the entry fields and the router runs the capture command silently.
 - **Optional offers don't self-suppress.** Because the router is stateless, a skipped optional (scout, an offered backpressure) is *re-offered next call* unless the parent sets `--prompt-optional=false` or the child artifact now exists. The router treats only **child artifacts** as durable completion — never its own memory.
 - **`--repo` is reserved for v2.** Multi-repo execution is documented but not implemented in v1; the router operates on `cwd`.
 
@@ -147,7 +147,7 @@ Like `the-flow`'s alias table, the router maps friendly stage names → the **ex
 | `add-extension` | `eng-harness-0-add-extension` |
 | `boot` | `eng-harness-1-boot` |
 | `backpressure` | `eng-harness-2-backpressure` |
-| `observe` | `eng-harness-3-observe` |
+| `observe` | `eng-harness-4-retro` *(in-flight capture section — the capture itself is `npx harness observe`, a CLI verb, not a skill)* |
 | `retro` | `eng-harness-4-retro` |
 
 If a slug fails to resolve at runtime, **do not guess a suffix** — fall back to printing the bare stage name and point at `skills/eng-harness-*`.
@@ -282,7 +282,7 @@ This is the inversion of `the-flow`'s hard-coded harness cues: instead of a pare
 
 - **`eng-harness-0-setup`** already *is* a flow (install → assess → basic boot). This router does **not** duplicate it — when any setup rung is incomplete it **delegates** to setup. Setup *drives* the establishment of the harness (it installs, scouts, helps author boot); the governance doc itself is provisioned by the deferred `harness init` writer — until it ships, setup routes/attempts it and the governance rung stays **owed, not provisioned**. The router owns "which setup rung is owed, or are we past setup and into engineering?"
 - **`the-flow`** owns the **SDD** journey (stateful) and already narrates harness cues. Clean separation: `the-flow` = pipeline guide; `eng-harness-flow` = loop router (stateless).
-- **The four loop skills** (`eng-harness-1-boot`, `-2-backpressure`, `-3-observe`, `-4-retro`) stay exactly as they are — the router only chooses *which* to surface and *when*.
+- **The loop skills** (`eng-harness-1-boot`, `-2-backpressure`, `-4-retro` — the last carrying the whole friction lifecycle, with in-flight capture as the `npx harness observe` CLI verb) stay exactly as they are — the router only chooses *which* to surface and *when*.
 
 ## References
 
