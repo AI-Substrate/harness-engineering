@@ -10,5 +10,6 @@
   "milestones_done": 3,
   "last_checkpoint_at": "2026-06-09T14:20:00Z",
   "compacted_seams": [],
-  "status": "active"
+  "status": "complete",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
 }

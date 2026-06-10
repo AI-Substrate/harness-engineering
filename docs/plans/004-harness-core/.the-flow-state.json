@@ -10,6 +10,7 @@
   "milestones_done": 6,
   "last_checkpoint_at": "2026-06-08T01:30:00Z",
   "compacted_seams": [],
-  "status": "active",
-  "note": "All 3 plan phases built + companion-reviewed; CI green on PR #1; main branch-protected. MERGE INTENTIONALLY DEFERRED (user: 'no merge yet, continue on this branch to the next phase'). /plan-8 is available on demand. Branch feat/harness-cli-core is clean and HEAD CI is green — ready to layer the next phase of work on top."
+  "status": "complete",
+  "note": "All 3 plan phases built + companion-reviewed; CI green on PR #1; main branch-protected. MERGE INTENTIONALLY DEFERRED (user: 'no merge yet, continue on this branch to the next phase'). /plan-8 is available on demand. Branch feat/harness-cli-core is clean and HEAD CI is green — ready to layer the next phase of work on top.",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
 }
