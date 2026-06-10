@@ -163,10 +163,7 @@ describe('FakeFs', () => {
   it('readdir handles UNC-shaped dirs end-to-end', () => {
     const fs = new FakeFs({}, { '//server/share/repo/.harness/extensions': ['hello'] });
     fs.mkdirp('//server/share/repo/.harness/extensions/world');
-    expect(fs.readdir('\\\\server\\share\\repo\\.harness\\extensions')).toEqual([
-      'hello',
-      'world',
-    ]);
+    expect(fs.readdir('\\\\server\\share\\repo\\.harness\\extensions')).toEqual(['hello', 'world']);
   });
 
   it('mkdirp on an ABSOLUTE path registers every ancestor with the leading slash preserved', () => {
