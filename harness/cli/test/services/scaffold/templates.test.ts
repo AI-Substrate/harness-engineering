@@ -26,7 +26,7 @@ const greet: HarnessVerb = {
   // options: [{ flags: '--example <value>', description: 'an example flag' }],
   run(ctx) {
     // TODO: implement this verb. Until you do, it honestly reports "not built yet".
-    return ctx.unconfigured('Implement run() in .harness/extensions/greet.ts');
+    return ctx.unconfigured('Implement run() in .harness/extensions/greet/extension.ts');
   },
 };
 
@@ -61,7 +61,7 @@ const greet = {
   summary: 'TODO: one-line summary of what \`harness greet\` does.',
   run(ctx) {
     // TODO: implement this verb.
-    return ctx.unconfigured('Implement run() in .harness/extensions/greet.js');
+    return ctx.unconfigured('Implement run() in .harness/extensions/greet/extension.js');
   },
 };
 

@@ -11,8 +11,10 @@ import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js
 Test Doc:
 - Why: `harness new` is a CORE act; it must turn the scaffold-service outcome into the canonical
   Envelope (ok → exit 0; error → exit 1) and inject the real ports, with no business logic.
-- Contract: `new <name> [--wrap <cmd>] [--js] [--force]` → ok envelope with data.{path,verb,variant}
-  on success; error envelope (E15x/E108) with next_action on failure; never throws to the user.
+- Contract: `new <name> [--wrap <cmd>] [--js] [--force]` → ok envelope with
+  data.{path,verb,variant,instructionsPath} on success (folder form since plan 014 AC-8: entry +
+  starter instructions.md; there is NO --flat flag); error envelope (E15x/E108) with next_action
+  on failure; never throws to the user.
 - Quality Contribution: pins the act/envelope/exit wiring with fakes (P3).
 */
 
@@ -51,7 +53,7 @@ describe('registerNewAct', () => {
     return code;
   }
 
-  it('scaffolds a minimal .ts and emits an ok envelope (exit 0) with the created path', () => {
+  it('scaffolds <name>/extension.ts + instructions.md and emits an ok envelope (exit 0) with both paths', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs();
     const code = run(['greet'], io, fs);
@@ -59,18 +61,31 @@ describe('registerNewAct', () => {
     expect(env.command).toBe('new');
     expect(env.status).toBe('ok');
     expect(env.data).toMatchObject({
-      path: '.harness/extensions/greet.ts',
+      path: '.harness/extensions/greet/extension.ts',
+      instructionsPath: '.harness/extensions/greet/instructions.md',
       verb: 'greet',
       variant: 'minimal-ts',
     });
-    expect(fs.writes).toContain('/repo/.harness/extensions/greet.ts');
+    expect(fs.writes).toContain('/repo/.harness/extensions/greet/extension.ts');
+    expect(fs.writes).toContain('/repo/.harness/extensions/greet/instructions.md');
     expect(code).toBe(0);
+  });
+
+  it('exposes no --flat flag (the flat layout is retired, plan 014 AC-8)', () => {
+    const { io } = ioFor('json');
+    vi.spyOn(process, 'exit').mockImplementation((() => {
+      throw new Error('exit');
+    }) as never);
+    const program = new Command().name('harness').exitOverride();
+    registerNewAct(program, io, depsWith(new FakeFs()));
+    const newCmd = program.commands.find((c) => c.name() === 'new');
+    expect(newCmd?.options.map((o) => o.long)).not.toContain('--flat');
   });
 
   it('--js scaffolds a .js file', () => {
     const { io, out } = ioFor('json');
     const code = run(['greet', '--js'], io, new FakeFs());
-    expect(JSON.parse(out()).data.path).toBe('.harness/extensions/greet.js');
+    expect(JSON.parse(out()).data.path).toBe('.harness/extensions/greet/extension.js');
     expect(code).toBe(0);
   });
 
@@ -111,12 +126,12 @@ describe('registerNewAct', () => {
     const env = JSON.parse(out());
     expect(env.status).toBe('ok');
     expect(env.data).toMatchObject({
-      path: '.harness/extensions/dev-survey.record.ts',
+      path: '.harness/extensions/dev-survey/extension.ts',
       verb: 'dev-survey',
       variant: 'record-ts',
     });
     expect(env.next_action).toContain('harness record dev-survey');
-    expect(fs.writes).toContain('/repo/.harness/extensions/dev-survey.record.ts');
+    expect(fs.writes).toContain('/repo/.harness/extensions/dev-survey/extension.ts');
     expect(code).toBe(0);
   });
 
@@ -131,7 +146,7 @@ describe('registerNewAct', () => {
 
   it('an existing file without --force is rejected (E152, exit 1)', () => {
     const { io, out } = ioFor('json');
-    const fs = new FakeFs({ '/repo/.harness/extensions/greet.ts': '// existing' });
+    const fs = new FakeFs({ '/repo/.harness/extensions/greet/extension.ts': '// existing' });
     const code = run(['greet'], io, fs);
     expect(JSON.parse(out()).error.code).toBe(ErrorCodes.SCAFFOLD_FILE_EXISTS);
     expect(code).toBe(1);
@@ -140,7 +155,8 @@ describe('registerNewAct', () => {
   it('human mode prints a friendly Created line and exits 0', () => {
     const { io, out } = ioFor('human');
     const code = run(['greet'], io, new FakeFs());
-    expect(out()).toContain('Created .harness/extensions/greet.ts');
+    expect(out()).toContain('Created .harness/extensions/greet/extension.ts');
+    expect(out()).toContain('.harness/extensions/greet/instructions.md');
     expect(code).toBe(0);
   });
 });

@@ -3,14 +3,16 @@ import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { RESERVED_NAMES } from '../extensions/registry.js';
-import { renderStarter, type ScaffoldVariant } from './templates.js';
+import { renderStarter, type ScaffoldVariant, starterInstructions } from './templates.js';
 
 /**
- * Scaffold a new extension file for `harness new` (plan 006). Pure harness logic
- * behind injected ports: validates the verb name, roots the target the SAME way
- * discovery does (`join(proc.cwd(), '.harness', 'extensions', …)` — Finding 07),
- * picks a starter template, and writes it via `FsPort`. Never imports `node:fs`
- * or `process.cwd()` (Constitution P2), so it is unit-testable with fakes.
+ * Scaffold a new extension PACKAGE for `harness new` (plan 006; folder form
+ * since plan 014 AC-8): `<name>/extension.<ext>` + a starter `instructions.md`
+ * beside it. Pure harness logic behind injected ports: validates the verb name,
+ * roots the target the SAME way discovery does
+ * (`join(proc.cwd(), '.harness', 'extensions', …)` — Finding 07), picks a
+ * starter template, and writes via `FsPort`. Never imports `node:fs` or
+ * `process.cwd()` (Constitution P2), so it is unit-testable with fakes.
  */
 
 const EXTENSIONS_DIR = ['.harness', 'extensions'] as const;
@@ -31,7 +33,15 @@ export interface ScaffoldOptions {
 }
 
 export type ScaffoldOutcome =
-  | { ok: true; path: string; verb: string; variant: ScaffoldVariant }
+  | {
+      ok: true;
+      /** Relative path of the entry file (`.harness/extensions/<name>/extension.<ext>`). */
+      path: string;
+      /** Relative path of the starter briefing (`.harness/extensions/<name>/instructions.md`). */
+      instructionsPath: string;
+      verb: string;
+      variant: ScaffoldVariant;
+    }
   | { ok: false; code: string; message: string; next_action: string };
 
 export function scaffoldExtension(
@@ -56,8 +66,7 @@ export function scaffoldExtension(
       ok: false,
       code: ErrorCodes.SCAFFOLD_NAME_RESERVED,
       message: `'${name}' is a reserved core command and cannot be an extension verb.`,
-      next_action:
-        'Choose a different verb name (reserved: help, doctor, new, docs, skills, record).',
+      next_action: `Choose a different verb name (reserved: ${[...RESERVED_NAMES].join(', ')}).`,
     };
   }
 
@@ -76,11 +85,14 @@ export function scaffoldExtension(
   }
 
   const { contents, variant, ext } = renderStarter({ name, js, wrap, record });
-  // Record-type extensions use a `.record.ts` suffix (a human hint — routing is by `kind`).
-  const fileName = record ? `${name}.record.ts` : `${name}.${ext}`;
-  const relPath = join(...EXTENSIONS_DIR, fileName);
-  const dirAbs = join(proc.cwd(), ...EXTENSIONS_DIR);
+  // Folder form (plan 014 AC-8): every variant lands at <name>/extension.<ext>
+  // (the `.record.ts` filename convention is retired — routing is by `kind`).
+  const fileName = `extension.${ext}`;
+  const relPath = join(...EXTENSIONS_DIR, name, fileName);
+  const relInstructions = join(...EXTENSIONS_DIR, name, 'instructions.md');
+  const dirAbs = join(proc.cwd(), ...EXTENSIONS_DIR, name);
   const fileAbs = join(dirAbs, fileName);
+  const instructionsAbs = join(dirAbs, 'instructions.md');
 
   if (!force && fs.exists(fileAbs)) {
     return {
@@ -94,6 +106,10 @@ export function scaffoldExtension(
   try {
     fs.mkdirp(dirAbs);
     fs.writeText(fileAbs, contents);
+    // Never clobber an authored briefing — --force replaces code, not judgment.
+    if (!fs.exists(instructionsAbs)) {
+      fs.writeText(instructionsAbs, starterInstructions(name));
+    }
   } catch (err) {
     return {
       ok: false,
@@ -103,5 +119,5 @@ export function scaffoldExtension(
     };
   }
 
-  return { ok: true, path: relPath, verb: name, variant };
+  return { ok: true, path: relPath, instructionsPath: relInstructions, verb: name, variant };
 }

@@ -74,21 +74,23 @@ describe('`harness new` — scaffold then load end-to-end via real jiti', () => 
     if (workdir) rmSync(workdir, { recursive: true, force: true });
   });
 
-  it('scaffolds greet.ts into an empty repo, then doctor/help see it loaded and `greet` runs unconfigured (exit 2)', async () => {
+  it('scaffolds the greet package into an empty repo, then doctor/help see it loaded and `greet` runs unconfigured (exit 2)', async () => {
     workdir = mkdtempSync(join(tmpdir(), 'harness-new-'));
     const deps = realDeps(workdir);
 
     // 1. Scaffold (the `new` core command needs no registry).
     const scaffold = await runIn(deps, EMPTY, ['new', 'greet']);
     expect(scaffold.code).toBe(0);
-    expect(JSON.parse(scaffold.out).data.path).toBe('.harness/extensions/greet.ts');
-
-    // 2. Discover + load the freshly written file through real jiti.
-    const registry = await buildVerbRegistry(
-      discoverExtensions(deps.fs, deps.proc),
-      new JitiLoader(),
+    expect(JSON.parse(scaffold.out).data.path).toBe('.harness/extensions/greet/extension.ts');
+    expect(JSON.parse(scaffold.out).data.instructionsPath).toBe(
+      '.harness/extensions/greet/instructions.md',
     );
-    const greetRecord = registry.records.find((r) => r.entryPath.endsWith('greet.ts'));
+
+    // 2. Discover + load the freshly written package through real jiti (folder form, AC-8).
+    const discovery = discoverExtensions(deps.fs, deps.proc);
+    expect(discovery.rejected).toEqual([]);
+    const registry = await buildVerbRegistry(discovery.candidates, new JitiLoader());
+    const greetRecord = registry.records.find((r) => r.entryPath.endsWith('greet/extension.ts'));
     expect(greetRecord?.status).toBe('loaded');
     expect(registry.verbs.map((v) => v.name)).toContain('greet');
 
@@ -101,7 +103,7 @@ describe('`harness new` — scaffold then load end-to-end via real jiti', () => 
     const env = JSON.parse(invoked.out);
     expect(env.command).toBe('greet');
     expect(env.status).toBe('unconfigured');
-    expect(env.next_action).toContain('.harness/extensions/greet.ts');
+    expect(env.next_action).toContain('.harness/extensions/greet/extension.ts');
     expect(invoked.code).toBe(2);
   });
 
@@ -115,7 +117,7 @@ describe('`harness new` — scaffold then load end-to-end via real jiti', () => 
     expect(JSON.parse(scaffold.out).data.variant).toBe('wrap-ts');
 
     const registry = await buildVerbRegistry(
-      discoverExtensions(deps.fs, deps.proc),
+      discoverExtensions(deps.fs, deps.proc).candidates,
       new JitiLoader(),
     );
     expect(registry.verbs.map((v) => v.name)).toContain('ver');

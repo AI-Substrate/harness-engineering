@@ -32,7 +32,7 @@ const ${id}: HarnessVerb = {
   // options: [{ flags: '--example <value>', description: 'an example flag' }],
   run(ctx) {
     // TODO: implement this verb. Until you do, it honestly reports "not built yet".
-    return ctx.unconfigured('Implement run() in .harness/extensions/${name}.ts');
+    return ctx.unconfigured('Implement run() in .harness/extensions/${name}/extension.ts');
   },
 };
 
@@ -76,7 +76,7 @@ const ${id} = {
   summary: 'TODO: one-line summary of what \`harness ${name}\` does.',
   run(ctx) {
     // TODO: implement this verb.
-    return ctx.unconfigured('Implement run() in .harness/extensions/${name}.js');
+    return ctx.unconfigured('Implement run() in .harness/extensions/${name}/extension.js');
   },
 };
 
@@ -138,6 +138,36 @@ captured_at: "<ISO8601Z>"
 };
 
 export default ${id};
+`;
+}
+
+/**
+ * Starter `instructions.md` for a scaffolded extension package (plan 014 AC-8).
+ * A guided TODO addressed to the CALLING agent: what the verb computes
+ * deterministically, and what judgment it expects back. Served verbatim by
+ * `harness instructions <name>` once authored.
+ */
+export function starterInstructions(name: string): string {
+  return `# \`harness ${name}\` — agent briefing
+
+<!-- TODO: author this briefing for the CALLING agent (not a human README).
+     \`harness instructions ${name}\` serves this file verbatim, freshly read
+     on every invocation — edit it any time, no rebuild. -->
+
+## What this verb computes (the deterministic part)
+
+TODO: state exactly what \`harness ${name}\` runs or collects, and what its
+envelope \`data\` contains.
+
+## Your role (the inference part)
+
+TODO: state the judgment the calling agent is expected to apply to the output —
+what to review, what to compare against, what verdict to reach.
+
+## Watch out for
+
+TODO: list failure modes or misleading outputs an agent should not take at
+face value.
 `;
 }
 

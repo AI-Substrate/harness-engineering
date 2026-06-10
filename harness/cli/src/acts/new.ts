@@ -40,7 +40,7 @@ export function registerNewAct(program: Command, io: CliIo, deps: NewActDeps): v
   program
     .command('new')
     .description(
-      'Scaffold a new extension into .harness/extensions/ (a loadable `harness <verb>` stub)',
+      'Scaffold a new extension package into .harness/extensions/<name>/ (entry + instructions.md)',
     )
     .argument('<name>', 'verb name (lowercase, hyphenated — becomes `harness <name>`)')
     .option('--wrap <command>', 'wrap a real repo command, e.g. --wrap "npm test"')
@@ -59,7 +59,12 @@ export function registerNewAct(program: Command, io: CliIo, deps: NewActDeps): v
         const envelope = outcome.ok
           ? formatOk(
               'new',
-              { path: outcome.path, verb: outcome.verb, variant: outcome.variant },
+              {
+                path: outcome.path,
+                instructionsPath: outcome.instructionsPath,
+                verb: outcome.verb,
+                variant: outcome.variant,
+              },
               deps.clock,
               { next_action: nextActionFor(outcome.variant, outcome.path, outcome.verb) },
             )
@@ -73,6 +78,9 @@ export function registerNewAct(program: Command, io: CliIo, deps: NewActDeps): v
                 emit: (e) => {
                   if (e.status === 'ok' && outcome.ok) {
                     io.writers.out(`Created ${outcome.path}\n`);
+                    io.writers.out(
+                      `Created ${outcome.instructionsPath} (author the agent briefing)\n`,
+                    );
                   } else {
                     io.writers.err(`harness new: ${e.error?.message ?? 'failed'}\n`);
                     if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
