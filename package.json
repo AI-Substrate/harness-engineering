@@ -4,7 +4,7 @@
   "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
   "type": "module",
   "bin": {
-    "harness": "./harness/cli/dist/index.js"
+    "harness": "./harness/cli/bin/harness.js"
   },
   "exports": {
     ".": "./harness/cli/dist/index.js",
@@ -15,6 +15,7 @@
     }
   },
   "files": [
+    "harness/cli/bin",
     "harness/cli/dist",
     "LICENSE"
   ],

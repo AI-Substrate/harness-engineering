@@ -96,14 +96,14 @@ The harness CLI runs correctly on Windows but 40 of 277 tests fail there — all
 
 ### Acceptance Criteria
 
-- [ ] **AC-1 POSIX envelopes**: no `\` in any surfaced path on any OS; literal shapes `.harness/extensions/...` and `.harness/records/<type>/<date>/...` unit-asserted (T004–T006, T008)
-- [ ] **AC-2 One construction pattern**: discovery, record, scaffold, doctor, instructions all build/derive logical paths via the shared helper; read-verified — no native `join`/`dirname`/`relative` on surfaced-or-compared paths in those five files (T002, T004–T006)
-- [ ] **AC-3 Traversal guard + dedupe in POSIX space**: `isWithin` via `posix.relative` + literal `'../'`; `toPosix` drive-letter case normalization; dedupe keys POSIX-normalized, case-folded via explicit parameter — unit-tested with mixed-separator, mixed-case, UNC, and `../`-escape inputs (T001/T002)
-- [ ] **AC-4 FakeFs separator-tolerant**: `mkdirp` and `readdir` child-name extraction handle `\` and `/` equivalently, each unit-tested (T003)
-- [ ] **AC-5 Path-safe assertions**: two-segment form at `extensions.test.ts:91`, `basename` at `:235`; no raw `split('/')` on absolute paths in the suite (T007)
-- [ ] **AC-6 Shell-free EPIPE test**: Node-primitive rewrite proves first-line delivery + no EPIPE stack trace; `npm` build guard Windows-safe, not skipped (T009)
-- [ ] **AC-7 gen-docs hygiene**: progress output to stderr; cross-platform biome invocation, guarded (T010)
-- [ ] **AC-8 Windows-shape proof on ubuntu**: the `FakeProcess.cwd() = 'C:\repo'` fixture set passes on ubuntu and deterministically catches native-join regressions; manual re-port residual explicitly accepted (T008)
+- [x] **AC-1 POSIX envelopes**: no `\` in any surfaced path on any OS; literal shapes `.harness/extensions/...` and `.harness/records/<type>/<date>/...` unit-asserted (T004–T006, T008)
+- [x] **AC-2 One construction pattern**: discovery, record, scaffold, doctor, instructions all build/derive logical paths via the shared helper; read-verified — no native `join`/`dirname`/`relative` on surfaced-or-compared paths in those five files (T002, T004–T006)
+- [x] **AC-3 Traversal guard + dedupe in POSIX space**: `isWithin` via `posix.relative` + literal `'../'`; `toPosix` drive-letter case normalization; dedupe keys POSIX-normalized, case-folded via explicit parameter — unit-tested with mixed-separator, mixed-case, UNC, and `../`-escape inputs (T001/T002)
+- [x] **AC-4 FakeFs separator-tolerant**: `mkdirp` and `readdir` child-name extraction handle `\` and `/` equivalently, each unit-tested (T003)
+- [x] **AC-5 Path-safe assertions**: two-segment form at `extensions.test.ts:91`, `basename` at `:235`; no raw `split('/')` on absolute paths in the suite (T007)
+- [x] **AC-6 Shell-free EPIPE test**: Node-primitive rewrite proves first-line delivery + no EPIPE stack trace; `npm` build guard Windows-safe, not skipped (T009)
+- [x] **AC-7 gen-docs hygiene**: progress output to stderr; cross-platform biome invocation, guarded (T010)
+- [x] **AC-8 Windows-shape proof on ubuntu**: the `FakeProcess.cwd() = 'C:\repo'` fixture set passes on ubuntu and deterministically catches native-join regressions (revert-proof recorded); manual re-port residual explicitly accepted (T008)
 - [ ] **AC-9 package-smoke green**: deterministic tarball capture (`--json` + `jq` + `*.tgz` assert, with the stderr move as the load-bearing decontamination) AND the flat `legacy.ts` fixture restored (T010, T011, T014)
 - [ ] **AC-10 No Linux regression**: full suite green on Node 22/24; `arch-check` still `ok` (T014)
 

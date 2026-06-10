@@ -91,6 +91,12 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 
 - `* text=auto eol=lf` landed. Zero-churn re-proven at commit time: `git add --renormalize .` modified nothing; `git ls-files --eol` shows only `i/lf` / `i/-text` (binary). `git status` clean immediately after the commit.
 
+### T014 (discovery) — CI red: `sh: 1: harness: Permission denied` → committed bin wrapper
+
+- First T014 push (`e259e15`) failed CI: **build-test (22/24) red at the arch-check step**, exit 127, `sh: 1: harness: Permission denied`; package-smoke skipped. The same step was green on the previous run (`b57c7b4`) with the **same npm 10.9.8 / node 22.22.3** — not version drift.
+- Root cause class: `package.json#bin` pointed at the tsc output `harness/cli/dist/index.js`, which tsc emits **without the execute bit** and git doesn't track. Whether `npx --no-install harness` works then depends on npm's install-time bin fixup chmodding the build output — empirically unreliable (fresh-clone `npm ci` at BOTH commits leaves it 644 locally on npm 11; CI npm 10 was green at 08:36 and red at 10:12 with identical inputs). A bin that needs someone else to chmod it is nondeterministic by construction.
+- Fix (in-theme: packaging robustness): committed wrapper `harness/cli/bin/harness.js` (git mode **100755** — survives every checkout), `bin` re-pointed, `files` += `harness/cli/bin`. Verified under the exact CI failure condition (dist 644, no `.bin` link, cold npx cache): `npx --no-install harness --version` → 0.1.0, arch-check `ok`. Tarball includes the wrapper; consumer install symlinks `.bin/harness` → wrapper and runs. Suite 434/434.
+
 ### T013 — idiom encoded
 
 - `idioms.md` § 11 "Logical paths are POSIX on every OS" — logical vs physical, boundary-conversion DO/DON'T (native join + `posix.resolve` hazards), the stdout-is-data corollary, cross-references to the helper docstring and the Windows-shape sensor. Matches the helper docstring's allowed surface.
