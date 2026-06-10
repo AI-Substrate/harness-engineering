@@ -3,17 +3,19 @@ import type { HarnessVerb, VerbContext, VerbResult } from 'harness-engineering/c
 import { captureNewRun, copyInto, lastRunId, readJson, writeFile } from './lib/worker-io.ts';
 
 /**
- * Dogfood self-test verb (plan 013): run the FULL harness setup flow on freshly
- * cloned public repos, in parallel.
+ * Dogfood self-test verb (plan 013, regeared by FX004): prove the harness's
+ * ONBOARDING experience on freshly cloned public repos, in parallel.
  *
  * Mirrors `validate-harnessability.ts`, but each detached, fire-and-forget
- * `minih` worker (`validate-harness-flow`) drives the *entire* setup flow against
- * its clone — install → harnessability assessment → hand-written governance →
- * author + validate a `boot` extension → record a retro — and writes a structured
- * report. The verb returns IMMEDIATELY with the run IDs + a runnable `next_action`;
- * the agents keep running after it exits. A `--collect` mode (added in T007) waits
- * for the children to reach terminal states and aggregates their records + reports
- * into the plan folder.
+ * `minih` worker (`validate-harness-flow`) gets a goal brief — not a runbook:
+ * "this clone has no harness; using the product's own README, docs, and
+ * installed skills, set up a working engineering harness, prove it works, and
+ * record your experience" — and writes a structured report. The verb returns
+ * IMMEDIATELY with the run IDs + a runnable `next_action`; the agents keep
+ * running after it exits. A `--collect` mode waits for the children to reach
+ * terminal states, aggregates their records + reports into the plan folder,
+ * and grades each DONE clone with deterministic probes (FX004-5) — the worker
+ * self-report stays as an advisory cross-check, discrepancies flagged.
  *
  * Guardrails (Constitution P2/P4/P5/P8): no `node:*` imports; all I/O via
  * `ctx.exec`/`ctx.fs`; never throws; every non-ok result carries a `next_action`.
@@ -28,18 +30,30 @@ const DEFAULT_REPOS = [
   'https://github.com/spf13/cobra.git', // Go
 ];
 
-/** The skill flags every worker fires with (Finding 05 — two sources, eng-harness-0-* names). */
+/**
+ * The skill flags every worker fires with — the FULL installed surface, parity
+ * with `.minih.json` `include` (FX004-4). The interactive router is mounted for
+ * realism; the worker-rules rail covers the don't-drive-it-headless hazard.
+ */
 const SKILL_FLAGS = [
   '--skill-source',
   'path:skills/eng-harness-setup',
   '--skill-source',
   'path:skills/eng-harness-loop',
   '--skill',
+  'eng-harness-0-setup',
+  '--skill',
   'eng-harness-0-harnessability-assessment',
   '--skill',
   'eng-harness-0-add-extension',
   '--skill',
+  'eng-harness-1-boot',
+  '--skill',
+  'eng-harness-2-backpressure',
+  '--skill',
   'eng-harness-4-retro',
+  '--skill',
+  'eng-harness-flow',
 ];
 
 /** Default collection sink (plan-scoped). Overridable with --out. */
@@ -94,7 +108,6 @@ interface WorkerReport {
   };
   abandoned?: boolean;
   abandonReason?: string | null;
-  governanceWritten?: boolean;
   bootAuthored?: boolean;
   bootRuns?: boolean;
   retroRecorded?: boolean;
@@ -119,6 +132,259 @@ interface CollectResult {
   reportPath: string | null;
   report: WorkerReport | null;
   copied: string[];
+  probes: CloneProbes | null;
+}
+
+/** One deterministic probe outcome. `na` = not applicable for this run's state. */
+interface ProbeOutcome {
+  v: 'pass' | 'fail' | 'na';
+  note?: string;
+}
+
+/**
+ * Deterministic probes run by `--collect` against each DONE clone (FX004-5).
+ * Graded probes check the CLONE, not the worker's claims; the observe counts
+ * are INFO only (we watch how workers discover the capture verb before grading
+ * discovery). Probe-vs-self-report disagreements on `bootRuns` /
+ * `retroRecorded` land in `discrepancies` — drift data for a future verdict
+ * inversion, no verdict change in this fix.
+ */
+interface CloneProbes {
+  assessment: ProbeOutcome;
+  doctor: ProbeOutcome;
+  boot: ProbeOutcome;
+  retro: ProbeOutcome;
+  drained: ProbeOutcome;
+  tempIgnore: ProbeOutcome;
+  tempClean: ProbeOutcome;
+  skillsLocal: ProbeOutcome;
+  /** INFO, not graded. */
+  observePending: number | null;
+  observeRecorded: number;
+  discrepancies: string[];
+}
+
+const NA: ProbeOutcome = { v: 'na' };
+
+/** Project-local skills dirs the installer targets (per `-a`/CLI target). */
+const LOCAL_SKILL_DIRS = [
+  '.agents/skills',
+  '.claude/skills',
+  '.cursor/skills',
+  '.github/skills',
+  '.opencode/skills',
+  '.pi/skills',
+];
+
+/** Parse a CLI `--json` Envelope from stdout; null when it isn't one. */
+function parseEnvelope(
+  stdout: string,
+): { command?: string; status?: string; next_action?: string; data?: unknown } | null {
+  try {
+    const j: unknown = JSON.parse(stdout);
+    return j && typeof j === 'object'
+      ? (j as { command?: string; status?: string; next_action?: string; data?: unknown })
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Every retro-record .md under `.harness/records/retro` (flat + one dated level). */
+function retroRecordFiles(ctx: VerbContext, dest: string): string[] {
+  const root = `${dest}/.harness/records/retro`;
+  if (!ctx.fs.exists(root)) return [];
+  const out: string[] = [];
+  for (const name of ctx.fs.readdir(root)) {
+    if (name.endsWith('.md')) {
+      out.push(`${root}/${name}`);
+      continue;
+    }
+    for (const inner of ctx.fs.readdir(`${root}/${name}`)) {
+      if (inner.endsWith('.md')) out.push(`${root}/${name}/${inner}`);
+    }
+  }
+  return out;
+}
+
+/** True when the file opens with a closed `---` frontmatter block. */
+function hasFrontmatter(text: string | null): boolean {
+  if (!text || !text.startsWith('---')) return false;
+  return text.indexOf('\n---', 3) > 0;
+}
+
+/**
+ * Run the deterministic probes against one DONE clone. Applicability per
+ * terminal verdict: PASS/FAIL ⇒ full probes; ABANDONED ⇒ assessment-exists
+ * only (the worker is *supposed* to stop there). Non-DONE states never reach
+ * this function — their probes render `—` in the rollup.
+ */
+async function probeClone(
+  ctx: VerbContext,
+  dest: string,
+  report: WorkerReport,
+): Promise<CloneProbes> {
+  const probes: CloneProbes = {
+    assessment: NA,
+    doctor: NA,
+    boot: NA,
+    retro: NA,
+    drained: NA,
+    tempIgnore: NA,
+    tempClean: NA,
+    skillsLocal: NA,
+    observePending: null,
+    observeRecorded: 0,
+    discrepancies: [],
+  };
+
+  if (!ctx.fs.exists(dest)) {
+    probes.assessment = { v: 'na', note: 'clone missing (temp cleaned?) — probes skipped' };
+    return probes;
+  }
+
+  // Assessment left a report? (the only probe an ABANDONED run is graded on.)
+  const assessDir = `${dest}/.harness/reports/harnessability`;
+  const assessFiles = ctx.fs.exists(assessDir) ? ctx.fs.readdir(assessDir) : [];
+  probes.assessment =
+    assessFiles.length > 0
+      ? { v: 'pass' }
+      : { v: 'fail', note: 'no assessment report in the clone' };
+
+  if (report.verdict === 'ABANDONED') return probes;
+
+  const bin = `${dest}/node_modules/.bin/harness`;
+  const cliInstalled = ctx.fs.exists(bin);
+  const noCli: ProbeOutcome = { v: 'fail', note: 'harness CLI not installed in the clone' };
+
+  // doctor --json parses + conventions clean (incl. the 015 temp-hygiene check).
+  if (!cliInstalled) {
+    probes.doctor = noCli;
+  } else {
+    const r = await ctx.exec(bin, ['doctor', '--json'], { cwd: dest });
+    const env = parseEnvelope(r.stdout);
+    const conventions = (env?.data as { conventions?: unknown[] } | undefined)?.conventions;
+    if (!env) probes.doctor = { v: 'fail', note: 'doctor --json did not parse' };
+    else if (!Array.isArray(conventions))
+      probes.doctor = { v: 'fail', note: 'no conventions report in the doctor envelope' };
+    else
+      probes.doctor =
+        conventions.length === 0
+          ? { v: 'pass' }
+          : { v: 'fail', note: `${conventions.length} convention complaint(s)` };
+  }
+
+  // A boot verb exists + its envelope is honest (status/exit legal, next_action on non-ok).
+  if (!cliInstalled) {
+    probes.boot = noCli;
+  } else {
+    const r = await ctx.exec(bin, ['boot', '--json'], { cwd: dest });
+    const env = parseEnvelope(r.stdout);
+    if (!env || typeof env.status !== 'string') {
+      probes.boot = { v: 'fail', note: `boot --json returned no envelope (exit ${r.code})` };
+    } else if (env.command !== 'boot') {
+      // An unknown-verb error envelope is stamped `command: "harness"` — a real
+      // boot run stamps its own name. No boot verb ⇒ fail, however honest E108 is.
+      probes.boot = { v: 'fail', note: 'no boot verb in the clone' };
+    } else {
+      const hasNext = typeof env.next_action === 'string' && env.next_action.length > 0;
+      const legal =
+        (env.status === 'ok' && r.code === 0) ||
+        (env.status === 'degraded' && r.code === 0 && hasNext) ||
+        (env.status === 'unconfigured' && r.code === 2 && hasNext) ||
+        (env.status === 'error' && r.code === 1 && hasNext);
+      probes.boot = legal
+        ? { v: 'pass', note: `${env.status}/exit ${r.code}` }
+        : {
+            v: 'fail',
+            note: `illegal pair ${env.status}/exit ${r.code}${hasNext ? '' : ', no next_action'}`,
+          };
+    }
+  }
+
+  // A retro record exists with parseable frontmatter; count entries as INFO.
+  const records = retroRecordFiles(ctx, dest);
+  const withFm = records.filter((p) => hasFrontmatter(ctx.fs.readText(p)));
+  probes.retro =
+    withFm.length > 0
+      ? { v: 'pass', note: `${withFm.length} record(s)` }
+      : { v: 'fail', note: records.length > 0 ? 'records lack frontmatter' : 'no retro records' };
+  for (const p of withFm) {
+    probes.observeRecorded += ((ctx.fs.readText(p) ?? '').match(/^\s+- id:/gm) ?? []).length;
+  }
+
+  // Observe buffer drained (0 pending) — pending count rides along as INFO.
+  if (!cliInstalled) {
+    probes.drained = noCli;
+  } else {
+    const r = await ctx.exec(bin, ['observe', '--list', '--json'], { cwd: dest });
+    const env = parseEnvelope(r.stdout);
+    const obs = (env?.data as { observations?: unknown[] } | undefined)?.observations;
+    if (Array.isArray(obs)) {
+      probes.observePending = obs.length;
+      probes.drained =
+        obs.length === 0 ? { v: 'pass' } : { v: 'fail', note: `${obs.length} pending undrained` };
+    } else if (env && typeof env.status === 'string') {
+      probes.drained = { v: 'fail', note: `observe --list returned ${env.status} (no list)` };
+    } else {
+      probes.drained = { v: 'fail', note: 'observe --list --json did not parse' };
+    }
+  }
+
+  // temp/.gitignore intact (when temp exists) + no temp residue in git status.
+  const tempDir = `${dest}/.harness/temp`;
+  if (!ctx.fs.exists(tempDir)) {
+    probes.tempIgnore = { v: 'pass', note: 'no temp dir' };
+  } else {
+    const gi = ctx.fs.readText(`${tempDir}/.gitignore`);
+    probes.tempIgnore = gi?.includes('*')
+      ? { v: 'pass' }
+      : { v: 'fail', note: 'temp/.gitignore missing or not ignoring' };
+  }
+  const st = await ctx.exec('git', ['status', '--porcelain'], { cwd: dest });
+  probes.tempClean = !st.ok
+    ? { v: 'fail', note: 'git status failed' }
+    : st.stdout.includes('.harness/temp')
+      ? { v: 'fail', note: '.harness/temp appears in git status' }
+      : { v: 'pass' };
+
+  // Skills installed PROJECT-LOCAL in the clone (the minih mount does not count).
+  let skillsNote = 'no project-local eng-harness-* skills (the minih mount does not count)';
+  let skillsPass = false;
+  for (const dir of LOCAL_SKILL_DIRS) {
+    const full = `${dest}/${dir}`;
+    if (!ctx.fs.exists(full)) continue;
+    const entries = ctx.fs.readdir(full);
+    const setup = entries.filter((e) => e.startsWith('eng-harness-0-'));
+    const loop = entries.filter(
+      (e) => e.startsWith('eng-harness-') && !e.startsWith('eng-harness-0-'),
+    );
+    if (setup.length > 0 && loop.length > 0) {
+      skillsPass = true;
+      skillsNote = `${dir}: ${setup.length} setup + ${loop.length} loop`;
+      break;
+    }
+    if (entries.some((e) => e.startsWith('eng-harness-'))) {
+      skillsNote = `${dir}: one group only`;
+    }
+  }
+  probes.skillsLocal = { v: skillsPass ? 'pass' : 'fail', note: skillsNote };
+
+  // Probe-vs-self-report cross-check (advisory — flagged, never verdict-changing).
+  const cross: Array<[string, boolean | undefined, ProbeOutcome]> = [
+    ['bootRuns', report.bootRuns, probes.boot],
+    ['retroRecorded', report.retroRecorded, probes.retro],
+  ];
+  for (const [field, claimed, probe] of cross) {
+    if (probe.v === 'na' || typeof claimed !== 'boolean') continue;
+    const proven = probe.v === 'pass';
+    if (claimed !== proven) {
+      probes.discrepancies.push(
+        `worker reported \`${field}: ${claimed}\` but the probe says ${proven ? 'pass' : `fail (${probe.note ?? 'no detail'})`}`,
+      );
+    }
+  }
+  return probes;
 }
 
 /** True when the run reached a minih terminal state (a `completed.json` was written). */
@@ -185,6 +451,7 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
       reportPath: null,
       report: null,
       copied: [],
+      probes: null,
     };
 
     if (!r.runId || !r.runDir) {
@@ -214,10 +481,7 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
         const src = `${r.dest}/.harness/reports/harnessability/${f}`;
         if (await copyInto(ctx, src, destDir)) res.copied.push(`harnessability/${f}`);
       }
-      // (3) the hand-written governance doc (from the clone)
-      const gov = `${r.dest}/.harness/engineering-harness.md`;
-      if (await copyInto(ctx, gov, destDir)) res.copied.push('engineering-harness.md');
-      // (4) every retro the worker recorded (from the clone). `harness record
+      // (3) every retro the worker recorded (from the clone). `harness record
       // retro` writes dated subdirectories (.harness/records/retro/<YYYY-MM-DD>/
       // <ord>-<slug>.md), so walk one level of subdirs as well as any flat .md
       // (companion F003) — keeping the date segment so filenames never collide.
@@ -239,6 +503,9 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
           }
         }
       }
+      // (4) deterministic probes against the clone (FX004-5) — DONE runs only;
+      // ABANDONED reports get the assessment probe alone inside probeClone.
+      if (res.report) res.probes = await probeClone(ctx, r.dest, res.report);
     }
     results.push(res);
   }
@@ -294,8 +561,8 @@ function buildRollup(
   lines.push('');
   lines.push('## Runs');
   lines.push('');
-  lines.push('| Repo | State | Verdict | Grade | Operate/Adapt | Abandoned | Gov | Boot | Retro | Copied |');
-  lines.push('|------|-------|---------|-------|---------------|-----------|-----|------|-------|--------|');
+  lines.push('| Repo | State | Verdict | Grade | Operate/Adapt | Abandoned | Boot | Retro | Copied |');
+  lines.push('|------|-------|---------|-------|---------------|-----------|------|-------|--------|');
   for (const r of results) {
     const rep = r.report;
     const grade = rep?.harnessabilityGrade ?? '—';
@@ -304,13 +571,69 @@ function buildRollup(
       : '—';
     const verdict = rep?.verdict ?? '—';
     const abandoned = rep?.abandoned ? `yes${rep.abandonReason ? ` (${rep.abandonReason})` : ''}` : 'no';
-    const gov = rep ? (rep.governanceWritten ? '✓' : '✗') : '—';
     const boot = rep ? (rep.bootAuthored && rep.bootRuns ? '✓' : rep.bootAuthored ? '~' : '✗') : '—';
     const retro = rep ? (rep.retroRecorded ? '✓' : '✗') : '—';
     lines.push(
-      `| ${r.repo} | ${r.state} | ${verdict} | ${grade} | ${axis} | ${abandoned} | ${gov} | ${boot} | ${retro} | ${r.copied.length} files |`,
+      `| ${r.repo} | ${r.state} | ${verdict} | ${grade} | ${axis} | ${abandoned} | ${boot} | ${retro} | ${r.copied.length} files |`,
     );
   }
+  lines.push('');
+
+  // The deterministic probes table (FX004-5). Boot/Retro above are the worker's
+  // CLAIMS; the table below is what the clone PROVES.
+  lines.push('## Probes (deterministic, per clone)');
+  lines.push('');
+  lines.push(
+    "> Probes grade the **clone**, not the worker's claims. **Skills local** is graded because the clone must stand alone — the next agent that opens it gets the `eng-harness-*` skills project-local (the minih mount does not count). **Observe** is INFO, not graded — we watch how workers discover the capture verb before grading discovery. A Skills-local ✗ can be **mount-suppression** (the worker never *needed* a project-local install because minih mounted the skills) rather than a product failure — read the worker retrospective to tell them apart. Applicability: PASS/FAIL runs get full probes; ABANDONED runs are graded on Assessed only; TIMED_OUT / MISSING_REPORT / NOT_FIRED render `—`.",
+  );
+  lines.push('');
+  lines.push(
+    '| Repo | Assessed | Doctor | Boot env | Retro rec | Drained | Temp ignore | Temp clean | Skills local | Observe (INFO) |',
+  );
+  lines.push(
+    '|------|----------|--------|----------|-----------|---------|-------------|------------|--------------|----------------|',
+  );
+  const mark = (p?: ProbeOutcome) => (!p || p.v === 'na' ? '—' : p.v === 'pass' ? '✓' : '✗');
+  for (const r of results) {
+    const p = r.probes;
+    const info =
+      p && p.observePending !== null
+        ? `${p.observePending} pending / ${p.observeRecorded} recorded`
+        : '—';
+    lines.push(
+      `| ${r.repo} | ${mark(p?.assessment)} | ${mark(p?.doctor)} | ${mark(p?.boot)} | ${mark(p?.retro)} | ${mark(p?.drained)} | ${mark(p?.tempIgnore)} | ${mark(p?.tempClean)} | ${mark(p?.skillsLocal)} | ${info} |`,
+    );
+  }
+  lines.push('');
+  const noteRows: string[] = [];
+  for (const r of results) {
+    const p = r.probes;
+    if (!p) continue;
+    const named: Array<[string, ProbeOutcome]> = [
+      ['assessed', p.assessment],
+      ['doctor', p.doctor],
+      ['boot', p.boot],
+      ['retro', p.retro],
+      ['drained', p.drained],
+      ['temp-ignore', p.tempIgnore],
+      ['temp-clean', p.tempClean],
+      ['skills-local', p.skillsLocal],
+    ];
+    for (const [name, o] of named) {
+      if (o.v === 'fail') noteRows.push(`- **${r.repo}** ${name} ✗ — ${o.note ?? 'no detail'}`);
+    }
+  }
+  if (noteRows.length > 0) {
+    lines.push(noteRows.join('\n'));
+    lines.push('');
+  }
+
+  lines.push('### ⚠️ Probe vs self-report discrepancies');
+  lines.push('');
+  const flags = results.flatMap((r) =>
+    (r.probes?.discrepancies ?? []).map((d) => `- **${r.repo}**: ${d}`),
+  );
+  lines.push(flags.length > 0 ? flags.join('\n') : '_None — self-reports and probes agree._');
   lines.push('');
 
   // Merged magic-wand wishes.
@@ -362,9 +685,9 @@ function buildRollup(
 const validateHarnessFlow: HarnessVerb = {
   name: 'validate-harness-flow',
   summary:
-    'Dogfood self-test: clone cross-language repos and fire background minih agents that run the FULL harness setup flow (assess → governance → boot → retro) on each; --collect aggregates their records.',
+    'Dogfood self-test: clone cross-language repos and fire goal-briefed minih workers that must onboard the harness via the product’s own README/docs/skills; --collect aggregates records and grades each clone with deterministic probes.',
   description:
-    'Clones the default repos (express/Node, click/Python, cobra/Go) — or --repo overrides — to a temp dir, then fires one detached, fire-and-forget `minih validate-harness-flow` worker per clone that drives the entire harness setup flow against it (install → harnessability assessment → hand-written engineering-harness.md governance → author + validate a `boot` extension → record a retro) and writes a structured report. Returns immediately with run IDs + a runnable next_action; the agents keep running after this verb exits. Re-run with --collect to wait for the children to reach terminal states and aggregate their records + reports into the plan folder.',
+    'Clones the default repos (express/Node, click/Python, cobra/Go) — or --repo overrides — to a temp dir, then fires one detached, fire-and-forget `minih validate-harness-flow` worker per clone. Each worker gets a goal brief, not a runbook: set up a working engineering harness in the clone using the product’s own documentation and installed skills, prove it works, and report. Returns immediately with run IDs + a runnable next_action; the agents keep running after this verb exits. Re-run with --collect to wait for the children to reach terminal states, aggregate their records + reports into the plan folder, and grade each DONE clone with deterministic probes (doctor conventions, boot envelope honesty, retro records, observe drain, temp hygiene, project-local skills install) — the worker self-report stays as an advisory cross-check with discrepancies flagged.',
   options: [
     {
       flags: '--repo <urls...>',
