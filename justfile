@@ -140,6 +140,24 @@ build:
     npm link --ignore-scripts
     @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
 
+# Install the harness CLI globally from THIS working tree (npm link).
+# Builds first (gen:docs + tsc -> dist), then symlinks `harness` onto your PATH
+# at $(npm prefix -g)/bin, pointing at harness/cli/bin/harness.js. The link is
+# LIVE: re-run this (or `just build`) after changes to refresh the dist it serves.
+# Undo with `just uninstall-cli`.
+install-cli:
+    npm run build
+    npm link --ignore-scripts
+    @command -v harness >/dev/null 2>&1 \
+        && echo "✓ harness installed globally: $(command -v harness) — $(harness --version 2>/dev/null)" \
+        || echo "⚠ linked at $(npm prefix -g)/bin/harness, but it is not on PATH. Add '$(npm prefix -g)/bin' to PATH, then reopen your shell."
+
+# Remove the globally linked harness CLI (reverse of install-cli).
+uninstall-cli:
+    @npm rm -g harness-engineering >/dev/null 2>&1 \
+        && echo "✓ removed global harness link." \
+        || echo "harness was not linked (nothing to remove)."
+
 # Auto-fix lint + safe fixes on the CLI source.
 fix:
     npx biome check --write harness/cli
