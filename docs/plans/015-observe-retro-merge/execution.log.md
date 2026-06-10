@@ -98,3 +98,16 @@ All 9 rows locatable — no empty rows; sign-off proceeds.
 - `npm run test` from **repo root** → 374/374. `cd harness/cli && npx vitest run` → 374/374 (**AC-15 both cwds**).
 - `npx harness doctor --json` → `status: ok`, 2 extensions loaded.
 - Smoke: `npx harness observe "T014 smoke entry…" --kind insight` → `INS-001`; `--list` → 1; `--clear` → 1 cleared, sweep empty after.
+
+## Companion debrief (plan-6a Step 9) — run 2026-06-10T12-44-41-380Z-6236
+
+- Drain ping sent post-T014; **silent all phase on the inbox** (15 peer updates were ack-style; no finding-typed messages surfaced outside) — but the farewell envelope (`output/report.json`) carried **3 findings + REQUEST_CHANGES**. Lesson captured as OH-002 (companion silence is ambiguous; findings should also land as inbox messages at review time).
+- **Findings reconciliation**:
+  - **F001 (HIGH)** — `--clear` destroyed deviant blocks `--list` skipped, contradicting D3. **ADDRESSED** in `21bdfcc`: `parseBuffer` now returns raw `deviant[]` chunks; `clearObservations` writes them back (only valid entries removed); tests pin deviant survival; merged skill + docs/how prose aligned. *This catch is the companion earning its keep: the plan/skill had documented the loss as accepted — the companion noticed the documentation contradicted the plan's own D3 promise.*
+  - **F002 (MEDIUM)** — list/clear before RED tests + FakeFs readdir blindness. **ADDRESSED in-session** at `e4a943a` (companion marked it addressed).
+  - **F003 (MEDIUM)** — "self-heals on every use" overclaim. **ADDRESSED** in `21bdfcc`: doctor `next_action`, core briefing, and docs/how narrowed to the implemented contract (capture + `record` heal; `--list`/`--clear` read/rewrite); regen chain held.
+  - **MH-002** — `ff310da`/`21bdfcc` outside the reviewed range (stop-wins protocol). **ACCEPTED**: docs-only + the post-stop fix itself, self-verified by pinned tests (374/374). The companion's stop-guard magic wand is seconded in the orchestrator retro (MW-001).
+- **Farewell mapped to universal retro** (minihToUniversal): committed record `004-015-build-code-review-companion.md` (gift/confusion/magic-wand/3 difficulties/coordination). Orchestrator retro: `003-015-build-orchestrator.md` (OH-001 biome-in-the-loop, OH-002 silence ambiguity, OH-003 gift, MW-001 stop guard). Legacy `docs/harness/agents/` path absent → committed-record path used (graceful per 6a Step 8c.ii).
+- **User notes captured live during close-out** (dogfood): SUGG-001 (#2 of the session, fresh counter post-drain) — extend `.harness/extensions/validate-harness-flow` to deterministically validate this flow (records used as guided, drain materialized via `data.path`, buffer cleared, AC evidence present). Joins the earlier harness-boot-extension + AGENTS.md-dogfood-clause suggestion (drained into record 002). Both are encode candidates for the harvest.
+
+**Phase verdict: COMPLETE.** T000–T014 + 2 companion findings fixed. 7 code/docs commits. Suite 374/374 both cwds. Records 002/003/004 committed under `.harness/records/retro/2026-06-10/`.
