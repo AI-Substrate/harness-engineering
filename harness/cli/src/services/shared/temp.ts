@@ -1,6 +1,6 @@
-import { join } from 'node:path';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
+import { posixJoin, toPosix } from './posix-path.js';
 
 /**
  * Shared transient-storage mechanics for `.harness/temp/` — the gitignored,
@@ -28,11 +28,11 @@ export interface TempDeps {
  * missing. Returns the absolute temp dir.
  */
 export function ensureTemp(deps: TempDeps): string {
-  const tempDir = join(deps.proc.cwd(), HARNESS_DIR, TEMP_DIR);
+  const tempDir = posixJoin(toPosix(deps.proc.cwd()), HARNESS_DIR, TEMP_DIR);
   if (!deps.fs.exists(tempDir)) {
     deps.fs.mkdirp(tempDir);
   }
-  const gitignore = join(tempDir, '.gitignore');
+  const gitignore = posixJoin(tempDir, '.gitignore');
   if (!deps.fs.exists(gitignore)) {
     deps.fs.writeText(gitignore, TEMP_GITIGNORE);
   }

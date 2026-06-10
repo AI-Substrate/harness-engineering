@@ -1,9 +1,9 @@
-import { join } from 'node:path';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
+import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp, HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 import {
   OBSERVATION_KINDS,
@@ -101,8 +101,8 @@ export function resolveBucket(agentFlag: string | undefined, env: EnvPort): stri
 
 /** Capture ONE observation: validate → resolve identity → assign ID → append. */
 export function captureObservation(opts: CaptureOptions, deps: ObserveDeps): CaptureOutcome {
-  const cwd = deps.proc.cwd();
-  if (!deps.fs.exists(join(cwd, HARNESS_DIR))) {
+  const cwd = toPosix(deps.proc.cwd());
+  if (!deps.fs.exists(posixJoin(cwd, HARNESS_DIR))) {
     return unconfiguredRepo(cwd);
   }
 
@@ -139,9 +139,9 @@ export function captureObservation(opts: CaptureOptions, deps: ObserveDeps): Cap
   }
 
   const bucket = resolveBucket(opts.agent, deps.env);
-  const bucketDir = join(cwd, HARNESS_DIR, TEMP_DIR, bucket);
-  const bufferAbs = join(bucketDir, BUFFER_FILE);
-  const relPath = join(HARNESS_DIR, TEMP_DIR, bucket, BUFFER_FILE);
+  const bucketDir = posixJoin(cwd, HARNESS_DIR, TEMP_DIR, bucket);
+  const bufferAbs = posixJoin(bucketDir, BUFFER_FILE);
+  const relPath = posixJoin(HARNESS_DIR, TEMP_DIR, bucket, BUFFER_FILE);
 
   let existing = '';
   if (deps.fs.exists(bufferAbs)) {
@@ -256,11 +256,11 @@ function sweepBuckets(
   opts: { agent?: string },
   deps: ObserveDeps,
 ): { buckets: SweptBucket[] } | { failure: ObserveFailure } {
-  const cwd = deps.proc.cwd();
-  if (!deps.fs.exists(join(cwd, HARNESS_DIR))) {
+  const cwd = toPosix(deps.proc.cwd());
+  if (!deps.fs.exists(posixJoin(cwd, HARNESS_DIR))) {
     return { failure: unconfiguredRepo(cwd) };
   }
-  const tempDir = join(cwd, HARNESS_DIR, TEMP_DIR);
+  const tempDir = posixJoin(cwd, HARNESS_DIR, TEMP_DIR);
 
   const scoped = opts.agent !== undefined ? sanitizeBucket(opts.agent) : undefined;
   const candidates =
@@ -268,13 +268,13 @@ function sweepBuckets(
 
   const buckets: SweptBucket[] = [];
   for (const name of candidates) {
-    const bufferAbs = join(tempDir, name, BUFFER_FILE);
+    const bufferAbs = posixJoin(tempDir, name, BUFFER_FILE);
     if (!deps.fs.exists(bufferAbs)) {
       continue; // not a bucket (e.g. the nested .gitignore) or nothing captured yet
     }
     const content = deps.fs.readText(bufferAbs);
     if (content === null) {
-      return { failure: unreadableBuffer(join(HARNESS_DIR, TEMP_DIR, name, BUFFER_FILE)) };
+      return { failure: unreadableBuffer(posixJoin(HARNESS_DIR, TEMP_DIR, name, BUFFER_FILE)) };
     }
     buckets.push({ name, bufferAbs, content });
   }

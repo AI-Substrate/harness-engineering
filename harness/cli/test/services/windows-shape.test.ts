@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -260,7 +260,7 @@ describe('instructions under a Windows-shaped cwd', () => {
   });
 });
 
-describe('AC-2 source guard — the five converted services never import node:path', () => {
+describe('AC-2 source guard — NO service imports node:path (repo-wide invariant)', () => {
   /*
   Test Doc:
   - Why: the revert-proof showed a single-site native-join reversion is partially
@@ -268,19 +268,26 @@ describe('AC-2 source guard — the five converted services never import node:pa
     boundary regressions, but a re-introduced `node:path` import deeper in a
     service could slip through (companion F002). This guard makes AC-2's
     "read-verified" claim a deterministic sensor instead of a one-time review.
-  - Contract: none of the five services imports `node:path` — all logical path
+  - Contract: NO file under src/services imports `node:path`; all logical path
     math goes through services/shared/posix-path.ts.
+  - GLOBBED, not enumerated: the original guard listed five named files, so it
+    was structurally blind to any service it forgot to list — exactly how
+    observe-service.ts + shared/temp.ts shipped a node:path leak past a green
+    suite. Walking every `.ts` under src/services asserts the *invariant*,
+    not a roster.
+  - The ONE sanctioned exception is the posix-path helper itself: it wraps
+    node:path's `posix` API and IS the boundary every other service routes
+    through. Keep ALLOWED minimal and justified.
   */
   const SERVICES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'services');
-  const FIVE = [
-    'extensions/discovery.ts',
-    'record/record-service.ts',
-    'scaffold/scaffold-service.ts',
-    'doctor/doctor-service.ts',
-    'instructions/instructions-service.ts',
-  ];
+  const ALLOWED = new Set(['shared/posix-path.ts']);
 
-  it.each(FIVE)('%s has no node:path import', (rel) => {
+  const services = readdirSync(SERVICES_DIR, { recursive: true })
+    .map((entry) => String(entry).replace(/\\/g, '/'))
+    .filter((rel) => rel.endsWith('.ts') && !ALLOWED.has(rel))
+    .sort();
+
+  it.each(services)('%s has no node:path import', (rel) => {
     const source = readFileSync(join(SERVICES_DIR, rel), 'utf8');
     expect(
       source,
