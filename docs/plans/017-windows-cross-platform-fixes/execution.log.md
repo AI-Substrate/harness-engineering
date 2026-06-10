@@ -90,3 +90,7 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 ### T012 — .gitattributes
 
 - `* text=auto eol=lf` landed. Zero-churn re-proven at commit time: `git add --renormalize .` modified nothing; `git ls-files --eol` shows only `i/lf` / `i/-text` (binary). `git status` clean immediately after the commit.
+
+### T013 — idiom encoded
+
+- `idioms.md` § 11 "Logical paths are POSIX on every OS" — logical vs physical, boundary-conversion DO/DON'T (native join + `posix.resolve` hazards), the stdout-is-data corollary, cross-references to the helper docstring and the Windows-shape sensor. Matches the helper docstring's allowed surface.

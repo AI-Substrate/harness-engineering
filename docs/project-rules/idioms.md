@@ -153,6 +153,23 @@ Always pair a CS with assumptions, dependencies, risks, and phases. Never use ti
 
 `doctor` does double duty: it validates readiness **and** teaches the operator how the repo wants to be worked with. Report layered checks, each with a `next_action`; human progress on stderr, JSON envelope on stdout; safe to run at session start.
 
+## 11. Logical paths are POSIX on every OS
+
+Every path the CLI **surfaces or compares** — envelope `data.path`, record messages, extension `entryPath`/`folder`, doctor hints, dedupe keys — is a *logical* path: forward slashes only, `.harness/...` shapes literal, identical on Windows and POSIX hosts. *Physical* I/O (NodeFs syscalls) keeps native separators. Convert ONCE at the boundary, then stay in POSIX space (see the `services/shared/posix-path.ts` docstring — the enforcement point).
+
+```ts
+// DO — convert at the boundary, build logical paths with the shared helper
+import { posixJoin, toPosix } from '../shared/posix-path.js';
+const base = posixJoin(toPosix(proc.cwd()), '.harness', 'extensions');   // 'C:/repo/.harness/extensions' on Windows
+
+// DON'T — native node:path on surfaced/compared paths (backslashes leak into envelopes on Windows)
+// const base = join(proc.cwd(), '.harness', 'extensions');  ❌
+// DON'T — posix.resolve on logical paths ('C:/repo' reads as RELATIVE → host cwd prepended)
+// const key = posix.resolve(p);  ❌ use dedupeKey(p) (posix.normalize-based)
+```
+
+Corollary (stdout is data, P4): anything that runs inside an npm lifecycle (`prepack` etc.) logs to **stderr** — a stdout line corrupts `npm pack` captures, *including* the `--json` form. The Windows-shape sensor (`test/services/windows-shape.test.ts`, `FakeProcess.cwd()='C:\\repo'`) catches convention regressions deterministically on ubuntu.
+
 <!-- USER CONTENT START -->
 <!-- Add project-specific idioms and examples here; preserved across regenerations. -->
 <!-- USER CONTENT END -->
