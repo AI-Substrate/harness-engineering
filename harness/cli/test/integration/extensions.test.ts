@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { VerbActDeps } from '../../src/acts/verb.js';
@@ -85,10 +85,14 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
 
   it('loads the hello/build/greetjs/subby packages, isolates broken (E140), rejects flat-legacy (E143)', async () => {
     const { registry } = await run(REPO, ['help']);
+    // Two-segment form via posix basename/dirname — entryPath is a POSIX
+    // logical path on every OS (plan 017 AC-5), never re-split on raw '/'.
     const byStatus = (s: string) =>
       registry.records
         .filter((r) => r.status === s)
-        .map((r) => r.entryPath.split('/').slice(-2).join('/'));
+        .map((r) =>
+          posix.join(posix.basename(posix.dirname(r.entryPath)), posix.basename(r.entryPath)),
+        );
     expect(registry.verbs.map((v) => v.name).sort()).toEqual([
       'build',
       'greetjs',
@@ -232,7 +236,7 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     // hello carries a briefing; build/greetjs/subby do not → 3 convention wails (D2).
     expect(ext.detail).toContain('3 missing instructions.md');
     const folders = (env.data.conventions as { folder: string }[]).map((c) =>
-      c.folder.split('/').pop(),
+      posix.basename(c.folder),
     );
     expect(folders?.sort()).toEqual(['build', 'greetjs', 'subby']);
     expect(env.status).toBe('degraded');

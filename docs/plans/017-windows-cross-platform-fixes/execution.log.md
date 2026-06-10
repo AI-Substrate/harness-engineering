@@ -57,3 +57,9 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - doctor `renderDoctorText` `:291`/`:300`: **both sides** of `dirname(entryPath) === c.folder` now `posixDirname` vs POSIX-computed `c.folder` — the partial-normalization hazard validate-v2 flagged is closed.
 - instructions `:36`: `posixJoin(posixDirname(entryPath), 'instructions.md')` — surfaced briefing path forward-slash on every OS.
 - AC-2 sweep: zero `node:path` imports across all five services. Suite 423/423.
+
+### T007 — path-safe test assertions
+
+- `extensions.test.ts:91` → two-segment form `posix.join(posix.basename(posix.dirname(p)), posix.basename(p))`; `:235` → `posix.basename(c.folder)`.
+- Suite-wide `split('/')` sweep: only remaining hits are **git URL** splits in `.harness/extensions/{validate-harness-flow,validate-harnessability}/extension.ts` — URLs are forward-slash by definition, not filesystem paths; out of AC-5 scope, left untouched.
+- Biome reflowed the long mapper line. Suite 423/423.
