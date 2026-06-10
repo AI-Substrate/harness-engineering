@@ -97,6 +97,35 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - Root cause class: `package.json#bin` pointed at the tsc output `harness/cli/dist/index.js`, which tsc emits **without the execute bit** and git doesn't track. Whether `npx --no-install harness` works then depends on npm's install-time bin fixup chmodding the build output — empirically unreliable (fresh-clone `npm ci` at BOTH commits leaves it 644 locally on npm 11; CI npm 10 was green at 08:36 and red at 10:12 with identical inputs). A bin that needs someone else to chmod it is nondeterministic by construction.
 - Fix (in-theme: packaging robustness): committed wrapper `harness/cli/bin/harness.js` (git mode **100755** — survives every checkout), `bin` re-pointed, `files` += `harness/cli/bin`. Verified under the exact CI failure condition (dist 644, no `.bin` link, cold npx cache): `npx --no-install harness --version` → 0.1.0, arch-check `ok`. Tarball includes the wrapper; consumer install symlinks `.bin/harness` → wrapper and runs. Suite 434/434.
 
+### T014 (discovery 2) — npm-11 leg still red → node-direct invocation in CI
+
+- The wrapper fixed the **npm 10.9.8** leg (Node 22 green, arch-check envelope `ok`), but the **Node 24 / npm 11.13.0** leg failed identically (`sh: 1: harness: Permission denied`). Version drift ruled out: the green 08:36 run used the *same* node v24.16.0 / npm 11.13.0. Conclusion: `npx --no-install <own-bin>` resolution for the **root package's own bin** is nondeterministic across npm majors and inputs we could not isolate (npm 10 and 11 implement different link/exec paths; the morning run was green on both with identical versions and a 644 target — the mechanism that made it work is not reproducible locally on npm 11.10 either).
+- Second fix (`b789ddf`): the CI arch-check step invokes **`node harness/cli/bin/harness.js arch-check --json`** — the same verb code path (016's "through the VERB" intent intact), zero dependence on PATH, npx caches, or install-time chmod. Verified locally (`status: ok`, 67 modules).
+- **Residual flagged**: `npx --no-install harness` *inside this repo's fresh checkout* is unreliable on npm 11.13 even with the 755 wrapper (consumer installs via the tarball are unaffected — npm chmods dependency bins reliably). Dev docs that recommend `npx --no-install harness` may need a note or a `just harness` recipe. Carried as a follow-up candidate.
+
+### T014 — full verification COMPLETE
+
+- `just fft` green (434/434, coverage 91.8% stmts); `arch-check` `ok` (67 modules, 113 deps, 0 violations).
+- **CI run 27269892006 (`b789ddf`): ALL GREEN** — build-test (22) ✓, build-test (24) ✓, **package-smoke ✓ (first green in the job's recent history — AC-9 closed)**, ci-required ✓. Three pushes total: `e259e15` (red: bin permission, both legs), `bd317e3` (wrapper: npm-10 leg green), `b789ddf` (node-direct invocation: all green).
+
+### T015 — retro drain (phase seam)
+
+- Session frictions captured via `harness observe` (4 new: DL-002 npx root-bin nondeterminism · CONF-001 arch-check cwd/`--json` traps · GFT-001 zero-re-research plan · MW-001 packaging-integrity sensor wish) + DL-001 (minih channel bug, carried in the buffer from 016).
+- Drained `[a]` (save all) → **`.harness/records/retro/2026-06-10/008-017-windows-build-drain.md`** (universal schema, entries filled); buffer cleared (5). This satisfies the phase-end harness seam — the drain *is* the `--event phase-end` action.
+
+## Companion reconciliation (phase end)
+
+**Run** `2026-06-10T19-47-11-847Z-ee10` · 16 review pings (T001–T013 + 3×T014 fixes + final range sweep) · farewell: 25 peer updates, 0 unresolved requests. **Channel note (DL-001 recurrence, second observed instance)**: the companion's replies/findings never appeared in `minih outside inbox list` during the phase — all four findings arrived only via the farewell envelope. Treated per protocol: read farewell after `control:stop`, reconciled below, fixed post-farewell (suite re-proof + CI re-push).
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| **F001** UNC root-kind conflation — `isWithin('//server/…', '/server/…')` could return true once `relative()` collapses the doubled slash | MEDIUM | **ADDRESSED INLINE** — root-kind guard in `isWithin` (UNC-ness of both sides must match) + 3 new tests (UNC descendant, UNC escape, mismatch both directions) |
+| **F002** AC-2 "read-verified" is a one-time review, not a sensor — helper defense-in-depth can mask a re-introduced deep `node:path` import | MEDIUM | **ADDRESSED INLINE** — AC-2 source guard added to `windows-shape.test.ts`: `it.each` over the five services asserting no `node:path` import (5 tests) |
+| **F003** idioms §11 overclaimed the fixture sensor's reach ("catches convention regressions") | MEDIUM | **ADDRESSED INLINE** — idiom now names the two paired sensors: fixture set = cwd-boundary regressions; source guard = deep native-path reintroduction |
+| **F004** self-repo invocation drift: docs recommend `npx --no-install harness` without the self-repo caveat the T014 saga proved | MEDIUM | **ADDRESSED INLINE** — `AGENTS.md` zero-context start switched to `node harness/cli/bin/harness.js …` with the npm-major rationale; `AGENTS_README.md` consumer note now scopes npx to installed-dependency repos. Broader `just harness` recipe left as follow-up (SUGG) |
+
+Suite after fixes: **442/442** (434 + 3 UNC + 5 source-guard). Companion **magicWand** (target: coordination/minih): *"Make the companion farewell transition atomic — one coordination command that checks for unread messages and only then transitions to stopping."* Surfaced as a follow-up candidate (pairs with DL-001 and 016's OH-series inbox-visibility friction). Companion retro materialized at `.harness/records/retro/2026-06-10/009-017-companion-farewell.md`; orchestrator-side retro = the T015 drain record (`008-017-windows-build-drain.md` — magicWand MW-001, difficulties DL-002/CONF-001, workedWell GFT-001).
+
 ### T013 — idiom encoded
 
 - `idioms.md` § 11 "Logical paths are POSIX on every OS" — logical vs physical, boundary-conversion DO/DON'T (native join + `posix.resolve` hazards), the stdout-is-data corollary, cross-references to the helper docstring and the Windows-shape sensor. Matches the helper docstring's allowed surface.

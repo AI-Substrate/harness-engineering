@@ -4,10 +4,10 @@
   "slug": "windows-cross-platform-fixes",
   "plan_dir": "docs/plans/017-windows-cross-platform-fixes",
   "mode": "Simple",
-  "cursor": "build",
-  "recommended_next": "build",
-  "now": "Plan written + validated (2026-06-10): /plan-3-v3-architect → READY v1.1.0, all gates PASS (G4 N/A). Single phase, 16 task rows (T000 boot · T001–T014 · T015 retro). validate-v2 (3 agents) confirmed all 22 factual claims; 4 task specs tightened (UNC '//' pin, T008 seeding form + revert-proof, doctor :291 both-sides-POSIX, CI fixture placement)",
-  "next": "/plan-6 implement — companion variant recommended (Simple mode: no --phase flag). Compact seam first is the cleaner path.",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build complete (2026-06-10): /plan-6-v2-implement-phase-companion, single phase T000–T015 all done. Suite 380→434 green throughout; arch-check ok; CI fully green at b789ddf (run 27269892006) — build-test 22+24 AND package-smoke (first green). Companion reviewed all 16 commits; its 4 MEDIUM findings arrived via the farewell only (inbox channel asymmetry — DL-001 recurrence) and were ALL addressed inline post-farewell (UNC root-kind guard, AC-2 source guard, idiom scope, self-repo invocation docs) — suite 442/442. Retros: 008-017-windows-build-drain.md (orchestrator) + 009-017-companion-farewell.md (companion)",
+  "next": "/plan-8 merge analysis — executes ONLY on a typed PROCEED.",
   "_comment": "Harness exists (.harness/engineering-harness.md) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
   "agents": [],
   "nodes": [
@@ -80,10 +80,20 @@
     {
       "id": "build",
       "type": "phase",
-      "label": "Build (/plan-6) — single phase: T000–T015",
-      "status": "known",
-      "command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-plan.md\" (companion recommended; plain /plan-6-v2-implement-phase also valid)",
-      "note": "Simple mode — inline 7-column task table in the plan, no /plan-5 expansion. Sensor tasks lead (T001-T003, T008 = backpressure Phase 0 folded in).",
+      "label": "Build (/plan-6 companion) ✅ — single phase T000–T015",
+      "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-plan.md\"",
+      "ran_at": "2026-06-10T10:35:00Z",
+      "user_input": "implementn with companion",
+      "note": "All 16 tasks done; suite 380→434 green throughout; arch-check ok (67 modules). Delivered: posix-path helper (normalize/join-only, UNC-guarded, explicit caseInsensitive) · separator-tolerant FakeFs · five services POSIX (discovery = single POSIX origin) · path-safe assertions · Windows-shape sensor (11 tests, REVERT-PROVEN: native-join boundary reversion fails it) · shell-free EPIPE + Windows-safe npm guard · gen-docs stderr + execPath biome · package-smoke repair · .gitattributes (zero churn) · idioms §11. CI: 3 pushes — e259e15 red (sh: harness: Permission denied — bin pointed at untracked 644 tsc output; npx root-bin resolution nondeterministic across npm majors), bd317e3 wrapper (npm-10 leg green), b789ddf node-direct invocation → ALL GREEN incl. package-smoke FIRST green (AC-9) + Node 22/24 (AC-10). All 10 ACs checked. Companion: 16 review pings; 4 MEDIUM farewell findings (F001 UNC root-kind conflation, F002 AC-2 source guard missing, F003 idiom overclaim, F004 self-repo npx doc drift) ALL ADDRESSED INLINE post-farewell — final suite 442/442. Inbox channel asymmetry recurred (DL-001): findings reached the orchestrator only via the farewell. T015 drain → 008-017-windows-build-drain.md (4 new entries + DL-001 carried); companion retro → 009-017-companion-farewell.md.",
+      "artifacts": [
+        "execution.log.md",
+        "harness/cli/src/services/shared/posix-path.ts",
+        "harness/cli/test/services/windows-shape.test.ts",
+        "harness/cli/bin/harness.js",
+        ".gitattributes",
+        ".harness/records/retro/2026-06-10/008-017-windows-build-drain.md"
+      ],
       "next": [
         "merge"
       ]
@@ -92,7 +102,7 @@
       "id": "merge",
       "type": "merge",
       "label": "Merge (/plan-8)",
-      "status": "assumed",
+      "status": "known",
       "command": "/plan-8 (typed PROCEED only)",
       "note": "014/015/016 merges are parked at the same gate; this flow is independent of them.",
       "next": []

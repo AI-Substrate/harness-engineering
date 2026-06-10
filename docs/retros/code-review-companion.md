@@ -189,3 +189,12 @@
 - **magicWand** (target: coordination): Auto-materialize companion findings into the execution log or provide a minih command that exports an ackOf-grouped findings ledger for the orchestrator before phase close.
 - difficulties:
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder rather than the repository root, contrary to the companion prompt's boot instruction. (workaround: Used the known Git repository root from the environment context and git-root fallback for all project-relative orientation and review commands.)
+
+## 2026-06-10T10:33:31.926Z — code-review-companion / 2026-06-10T19-47-11-847Z-ee10
+
+- runId: 2026-06-10T19-47-11-847Z-ee10
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T19-47-11-847Z-ee10
+- summary: Reviewed the plan 017 implementation stream from helper/test setup through the final CI repair, responding to 15 review tasks plus a final range sweep. The phase is broadly coherent and CI was reported green, with four medium findings sent: one UNC comparison edge case, two proof/documentation overclaims around the ubuntu Windows-shape sensor, and one self-repo invocation documentation drift after the npx workaround.
+- **magicWand** (target: coordination): Make the companion farewell transition atomic: provide a single coordination command that checks for unread messages and conditionally transitions to stopping only when the inbox is still empty.
+- difficulties:
+  - [degrading] coordination: A late task arrived during the final pre-completion inbox check while I had already emitted the idle-budget farewell path in parallel. (workaround: Acknowledged the task, transitioned back from stopping to reading, sent a superseding progress note, completed the review, and waited for an explicit stop.)

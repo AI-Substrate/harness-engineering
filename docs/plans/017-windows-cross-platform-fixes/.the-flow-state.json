@@ -3,14 +3,13 @@
   "slug": "windows-cross-platform-fixes",
   "plan_dir": "docs/plans/017-windows-cross-platform-fixes",
   "mode": "Simple",
-  "current_stage": "awaiting-6",
-  "pending_command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-plan.md\"",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-plan.md\"",
   "intent": "Fix the Windows cross-platform failures catalogued in scratch/cross-system-failure.md (40 failing tests / 5 root causes; runtime works, tests assume POSIX) + the pre-existing package-smoke CI failure (gen-docs stdout pollutes npm pack capture). Validate via the harness loop with deterministic backpressure when done — user verbatim: 'we shoud use our harness loop to validate them using determinitic back pressure when done'",
   "milestones_total": 5,
-  "milestones_done": 3,
-  "last_checkpoint_at": "2026-06-10T09:40:15Z",
-  "compacted_seams": [],
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-10T10:35:00Z",
+  "compacted_seams": ["pre-build"],
   "status": "active",
-  "_note": "PLAN READY v1.1.0 (2026-06-10, /plan-3-v3-architect + validate-v2 3 agents). Single phase, 16 tasks T000-T015, sensor tasks lead (backpressure Phase 0 folded in). Key empirical corrections baked into the plan: npm pack --json NOT immune to lifecycle stdout (npm 11.10.0, verified live) -> T010 stderr move is load-bearing, T011 jq+*.tgz assert is the loud guard; posix.resolve corrupts drive-letter paths -> helper normalize/join-only; Node posix.normalize collapses UNC leading // -> guard pinned in T001/T002. NEXT: /plan-6 (companion variant recommended; plain also fine; offer /compact seam first — heavy build turn). After build: companion supersedes /plan-7 if used; then /plan-8 merge gate (typed PROCEED only). NOTE: 014/015/016 remain parked at awaiting-8 (typed PROCEED only); this flow is independent. Residual one-off manual Windows re-port (verify-port.ps1) is NOT a plan task — recorded in execution log at next re-port.",
-  "compact_recommended": true
+  "_note": "BUILD DONE (plan-6 companion, T000-T015): suite 380->434 green throughout; CI ALL GREEN at b789ddf (run 27269892006) incl. package-smoke FIRST green (AC-9) + Node 22/24 (AC-10); all 10 ACs checked in the plan. Windows-shape sensor revert-proven. Unplanned in-theme fix: committed 100755 bin wrapper harness/cli/bin/harness.js + node-direct arch-check invocation in CI (npx root-bin resolution nondeterministic across npm majors — npm 10 vs 11.13; residual: docs recommending 'npx --no-install harness' in fresh checkouts may need a note/just recipe). Companion run 2026-06-10T19-47-11-847Z-ee10: 16 pings; 4 MEDIUM farewell findings ALL addressed inline post-farewell (UNC root-kind guard, AC-2 source guard, idiom scope, self-repo invocation docs) -> final suite 442/442; inbox channel asymmetry recurred (DL-001 — findings arrived via farewell only); companion exited after control:stop; companion supersedes /plan-7 — do NOT run plan-7. T015 drain -> .harness/records/retro/2026-06-10/008-017-windows-build-drain.md. NEXT: /plan-8 merge analysis; merge EXECUTES ONLY on typed PROCEED (never a generic yes). NOTE: 014/015/016 also parked at awaiting-8 (independent flows). Manual Windows re-port (verify-port.ps1) recorded as residual at next re-port."
 }

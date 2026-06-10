@@ -168,7 +168,7 @@ const base = posixJoin(toPosix(proc.cwd()), '.harness', 'extensions');   // 'C:/
 // const key = posix.resolve(p);  ❌ use dedupeKey(p) (posix.normalize-based)
 ```
 
-Corollary (stdout is data, P4): anything that runs inside an npm lifecycle (`prepack` etc.) logs to **stderr** — a stdout line corrupts `npm pack` captures, *including* the `--json` form. The Windows-shape sensor (`test/services/windows-shape.test.ts`, `FakeProcess.cwd()='C:\\repo'`) catches convention regressions deterministically on ubuntu.
+Corollary (stdout is data, P4): anything that runs inside an npm lifecycle (`prepack` etc.) logs to **stderr** — a stdout line corrupts `npm pack` captures, *including* the `--json` form. Two paired sensors keep the convention honest on ubuntu (`test/services/windows-shape.test.ts`): the `FakeProcess.cwd()='C:\\repo'` fixture set catches **cwd-boundary** regressions, and the AC-2 source guard bans `node:path` imports outright in the five converted services (deeper regressions that helper defense-in-depth would otherwise mask).
 
 <!-- USER CONTENT START -->
 <!-- Add project-specific idioms and examples here; preserved across regenerations. -->

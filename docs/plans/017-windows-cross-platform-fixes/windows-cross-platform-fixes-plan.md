@@ -89,8 +89,8 @@ The harness CLI runs correctly on Windows but 40 of 277 tests fail there — all
 | [x] | T011 | **package-smoke repair** — `TARBALL="$(npm pack --json \| jq -r '.[0].filename')"`; mechanical guard `[[ "$TARBALL" == *.tgz ]] \|\| exit 1`; create the flat `.harness/extensions/legacy.ts` fixture **after the hello/boom fixtures and before the doctor invocation** (between `ci.yml:161` and `:167`) so `E143`/`unsupported flat layout` (`ci.yml:169-170`) and the `harness legacy` unknown-command check (`:172-178`) exercise what they claim | repo-substrate | `.github/workflows/ci.yml` | package-smoke job green on the PR | AC-9; Findings 01/02 |
 | [x] | T012 | **`.gitattributes`** — `* text=auto eol=lf` (zero-churn verified: all tracked files already `i/lf`) | repo-substrate | `.gitattributes` | File committed; `git status` clean immediately after (no renormalization diff) | Risk: autocrlf at re-port; Finding 06 |
 | [x] | T013 | **Encode the convention** — `idioms.md` gains a short "Logical paths are POSIX" idiom (logical vs physical paths; stdout is data, logs to stderr) cross-referencing the helper docstring | repo-substrate | `docs/project-rules/idioms.md` | Idiom present; matches helper docstring | Documentation Strategy |
-| [ ] | T014 | **Full verification** — `just fft` green; `arch-check` `ok`; push branch; confirm CI: build-test (Node 22 + 24) green AND package-smoke green | both | — | All listed signals green on the PR run | AC-10 + AC-9 final evidence |
-| [ ] | T015 | **Harness retro** — `/harness-4-retro --drain` the session buffer | — | — | Friction notes drained at the phase seam (`[s/t/p/e/d/a]`) | Harness loop — advisory |
+| [x] | T014 | **Full verification** — `just fft` green; `arch-check` `ok`; push branch; confirm CI: build-test (Node 22 + 24) green AND package-smoke green | both | — | All listed signals green on the PR run | AC-10 + AC-9 final evidence |
+| [x] | T015 | **Harness retro** — `/harness-4-retro --drain` the session buffer | — | — | Friction notes drained at the phase seam (`[s/t/p/e/d/a]`) | Harness loop — advisory |
 
 > **Residual (not a task here)**: the one-off manual on-Windows re-verification of the dossier's 9-file inventory (`verify-port.ps1` flow: pull → `npm ci` → `npm test`) happens at the **next re-port** on the user's machine and is recorded in the execution log then — explicitly human-tier, explicitly accepted (spec AC-8, user decision 2026-06-10).
 
@@ -104,8 +104,8 @@ The harness CLI runs correctly on Windows but 40 of 277 tests fail there — all
 - [x] **AC-6 Shell-free EPIPE test**: Node-primitive rewrite proves first-line delivery + no EPIPE stack trace; `npm` build guard Windows-safe, not skipped (T009)
 - [x] **AC-7 gen-docs hygiene**: progress output to stderr; cross-platform biome invocation, guarded (T010)
 - [x] **AC-8 Windows-shape proof on ubuntu**: the `FakeProcess.cwd() = 'C:\repo'` fixture set passes on ubuntu and deterministically catches native-join regressions (revert-proof recorded); manual re-port residual explicitly accepted (T008)
-- [ ] **AC-9 package-smoke green**: deterministic tarball capture (`--json` + `jq` + `*.tgz` assert, with the stderr move as the load-bearing decontamination) AND the flat `legacy.ts` fixture restored (T010, T011, T014)
-- [ ] **AC-10 No Linux regression**: full suite green on Node 22/24; `arch-check` still `ok` (T014)
+- [x] **AC-9 package-smoke green**: deterministic tarball capture (`--json` + `jq` + `*.tgz` assert, with the stderr move as the load-bearing decontamination) AND the flat `legacy.ts` fixture restored — CI run 27269892006 (`b789ddf`): package-smoke **success** (T010, T011, T014)
+- [x] **AC-10 No Linux regression**: full suite green on Node 22 AND 24 (CI run 27269892006); `arch-check` `ok` (67 modules, 0 violations) (T014)
 
 ### Risks
 

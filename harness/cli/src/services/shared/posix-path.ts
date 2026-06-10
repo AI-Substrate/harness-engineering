@@ -80,7 +80,15 @@ export function posixRelative(from: string, to: string): string {
  * guard, computed entirely in POSIX space (literal `'../'`, never `sep`).
  */
 export function isWithin(dir: string, candidate: string): boolean {
-  const rel = posixRelative(posixNormalize(dir), posixNormalize(candidate));
+  const d = posixNormalize(dir);
+  const c = posixNormalize(candidate);
+  // Root kinds must match: a UNC tree (`//server/…`) never contains a
+  // single-slash path (or vice versa). Without this, Node's relative()
+  // collapses the doubled slash and conflates the two roots (companion F001).
+  if (UNC_ROOT.test(d) !== UNC_ROOT.test(c)) {
+    return false;
+  }
+  const rel = posixRelative(d, c);
   return rel === '' || (!rel.startsWith('../') && rel !== '..' && !posix.isAbsolute(rel));
 }
 

@@ -1,6 +1,6 @@
 # Flight Plan — windows-cross-platform-fixes (017)
 
-**Status**: In Progress — /plan-6 companion build running (single phase, T000–T015; boot healthy 380/380 + doctor ok)
+**Status**: Landed — build complete (T000–T015 all done; CI fully green incl. package-smoke first green); next: /plan-8 merge (typed PROCEED only)
 **Plan**: [windows-cross-platform-fixes-plan.md](./windows-cross-platform-fixes-plan.md)
 **Mode**: Simple
 **Spec**: [windows-cross-platform-fixes-spec.md](./windows-cross-platform-fixes-spec.md)
@@ -13,14 +13,14 @@ flowchart LR
   classDef active fill:#FFE0B2,stroke:#EF6C00;
   classDef pending fill:#ECEFF1,stroke:#90A4AE;
 
-  R["Research (external dossier)"]:::done --> S["Spec /plan-1b ✅ validated"]:::done --> BP["Backpressure /plan-2d ✅ Partial"]:::done --> P["Plan /plan-3 ✅ READY"]:::done --> B["Build /plan-6"]:::active --> M["Merge /plan-8"]:::pending
+  R["Research (external dossier)"]:::done --> S["Spec /plan-1b ✅ validated"]:::done --> BP["Backpressure /plan-2d ✅ Partial"]:::done --> P["Plan /plan-3 ✅ READY"]:::done --> B["Build /plan-6 ✅ companion"]:::done --> M["Merge /plan-8"]:::active
 ```
 
 ## Phases Overview
 
 | Phase | Title | Status |
 |-------|-------|--------|
-| 1 | POSIX logical paths + Windows-shape sensors + package-smoke repair (T000–T015) | Ready |
+| 1 | POSIX logical paths + Windows-shape sensors + package-smoke repair (T000–T015) | **Complete** |
 
 ## Flight Log
 
@@ -38,3 +38,9 @@ User (verbatim): *"we will not have a windows server in ci... remove anyting tha
 
 ### 2026-06-10 — Plan written (/plan-3-v3-architect → READY, v1.1.0)
 Single-phase Simple plan, 16 task rows (T000 boot · T001–T014 working tasks · T015 retro drain); all gates PASS (G4 N/A — no ADRs). Backpressure Phase 0 folded in as the leading sensor tasks (helper tests RED → helper GREEN → FakeFs tolerance → Windows-shape fixture set). Research subagents contributed two empirical corrections before validation even ran: **`npm pack --json` is NOT immune to lifecycle stdout** (verified live on npm 11.10.0 — the gen-docs `console.log` interleaves into the JSON stream, so the stderr move T010 is the load-bearing fix and `--json`+`jq`+`*.tgz`-assert is the loud guard), and **`posix.resolve()` corrupts drive-letter paths** (treats `C:/repo` as relative — helper is normalize/join-only). E143 fixture shape confirmed from `discovery.ts:66-71` (flat `legacy.ts`); `.gitattributes` zero-churn verified. validate-v2 (3 agents) then confirmed all 22 factual claims and tightened four task specs: UNC leading-`//` collapse under `posix.normalize` pinned (guard/reattach), T008's FakeFs seeding form + revert-proof made explicit, doctor `:291` both-sides-POSIX comparison clause, CI fixture placement pinned between `ci.yml:161` and `:167`. Next: `/plan-6` (companion variant recommended).
+
+### 2026-06-10 — Build complete (/plan-6 companion, single phase T000–T015) ✅
+
+All 16 tasks landed; suite grew 380 → **434 tests, green throughout** (every commit suite-clean); `arch-check` ok (67 modules, 0 violations). Delivered: `services/shared/posix-path.ts` (normalize/join-only, UNC-guarded, explicit `caseInsensitive` — 37 tests incl. the raw `posix.normalize('//server/share')` collapse pin) · separator-tolerant FakeFs · five services converted with **discovery as the single POSIX origin** · path-safe assertions · the **Windows-shape sensor** (11 tests, `FakeProcess.cwd()='C:\repo'`, **revert-proven**: native-join boundary reversion fails it — drive-letter normalization is unique to `toPosix`) · shell-free EPIPE test + Windows-safe npm guard · gen-docs stderr + `process.execPath` biome · package-smoke repair (`npm pack --json`+`jq`+`*.tgz` assert; flat `legacy.ts` fixture restored) · `.gitattributes` (zero churn) · idioms §11.
+
+**CI: fully green at `b789ddf` (run 27269892006) — build-test (22) + (24) AND package-smoke (its first green), ci-required ✓.** Getting there surfaced an unplanned defect class: `package.json#bin` pointed at untracked 644 tsc output, and `npx --no-install` resolution of the root package's own bin proved **nondeterministic across npm majors** (green→red on identical trees/versions; wrapper fixed npm 10 only). Fixed in-theme: committed `harness/cli/bin/harness.js` at git mode **100755** + CI invokes the verb node-direct. Retro drain (T015) materialized 5 buffer entries → `.harness/records/retro/2026-06-10/008-017-windows-build-drain.md`. Companion reviewed every commit (16 pings); its farewell carried **4 MEDIUM findings** (inbox never surfaced them mid-phase — DL-001 channel asymmetry recurrence), **all addressed inline post-farewell**: UNC root-kind guard in `isWithin` (+3 tests), AC-2 source guard banning `node:path` in the five services (+5 tests), idiom §11 scope fix, self-repo invocation docs (`node harness/cli/bin/harness.js` in AGENTS.md / AGENTS_README.md). Final suite **442/442**; companion retro → `009-017-companion-farewell.md`. Next: `/plan-8` merge (typed PROCEED only).

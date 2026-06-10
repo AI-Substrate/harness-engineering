@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
@@ -254,5 +257,34 @@ describe('instructions under a Windows-shaped cwd', () => {
       expect(out.path).toBe('C:/repo/.harness/extensions/hello/instructions.md');
       expect(out.path).not.toContain('\\');
     }
+  });
+});
+
+describe('AC-2 source guard — the five converted services never import node:path', () => {
+  /*
+  Test Doc:
+  - Why: the revert-proof showed a single-site native-join reversion is partially
+    self-healed by helper defense-in-depth — the fixture sensor above catches
+    boundary regressions, but a re-introduced `node:path` import deeper in a
+    service could slip through (companion F002). This guard makes AC-2's
+    "read-verified" claim a deterministic sensor instead of a one-time review.
+  - Contract: none of the five services imports `node:path` — all logical path
+    math goes through services/shared/posix-path.ts.
+  */
+  const SERVICES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'services');
+  const FIVE = [
+    'extensions/discovery.ts',
+    'record/record-service.ts',
+    'scaffold/scaffold-service.ts',
+    'doctor/doctor-service.ts',
+    'instructions/instructions-service.ts',
+  ];
+
+  it.each(FIVE)('%s has no node:path import', (rel) => {
+    const source = readFileSync(join(SERVICES_DIR, rel), 'utf8');
+    expect(
+      source,
+      `${rel} must use services/shared/posix-path.ts, never node:path (AC-2)`,
+    ).not.toMatch(/from 'node:path'/);
   });
 });

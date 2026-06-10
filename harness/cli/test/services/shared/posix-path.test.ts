@@ -178,6 +178,21 @@ describe('isWithin', () => {
   it('rejects an unrelated absolute path', () => {
     expect(isWithin('/repo/ext/a', '/etc/passwd')).toBe(false);
   });
+
+  it('accepts UNC descendants', () => {
+    expect(isWithin('//server/share/ext/a', '//server/share/ext/a/extension.ts')).toBe(true);
+  });
+
+  it('rejects UNC traversal escapes', () => {
+    expect(isWithin('//server/share/ext/a', '//server/share/ext/a/../escape.ts')).toBe(false);
+  });
+
+  it('rejects a UNC-vs-single-slash root-kind mismatch (either direction)', () => {
+    // Without the root-kind guard, relative() collapses '//' and conflates
+    // the two trees (companion F001).
+    expect(isWithin('//server/share/a', '/server/share/a/x.ts')).toBe(false);
+    expect(isWithin('/server/share/a', '//server/share/a/x.ts')).toBe(false);
+  });
 });
 
 describe('dedupeKey', () => {

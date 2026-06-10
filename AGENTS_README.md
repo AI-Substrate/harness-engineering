@@ -57,7 +57,7 @@ Verify — this must print the CLI's usage:
 npx --no-install harness --help
 ```
 
-> **Never run bare `npx harness`** — that fetches an unrelated `harness` package from the npm registry. After the install above, always use `npx --no-install harness …` (or `./node_modules/.bin/harness …`) so you get the repo-local binary.
+> **Never run bare `npx harness`** — that fetches an unrelated `harness` package from the npm registry. After the install above, always use `npx --no-install harness …` (or `./node_modules/.bin/harness …`) so you get the repo-local binary. This applies to **consumer installs** (harness as a dependency — the bin link is proven by the package-smoke CI job); inside the harness-engineering source repo itself, invoke the bin via node directly (`node harness/cli/bin/harness.js …`) — `npx` resolution of a root package's *own* bin is unreliable across npm majors.
 
 **If the install fails in the `prepare` build step** (the package compiles TypeScript on install, and a consumer repo's own toolchain can interfere): build a clean tarball outside the repo and vendor it —
 
