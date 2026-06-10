@@ -18,7 +18,7 @@ Other repos are **consumers**: they install the CLI + skills, and *their* harnes
 
 ### Self-reference caveat (boot / setup)
 
-The loop skills expect a governance doc at `.harness/engineering-harness.md`. This repo does **not** have one yet — its governance lives in `docs/project-rules/{constitution,architecture,rules,idioms}.md`. So `eng-harness-1-boot` will report `UNAVAILABLE` here and suggest `eng-harness-0-setup`. **Do not run setup against this repo to "fix" that** — this is the harness's own home, not a target repo. (A deterministic `harness init` writer that would reconcile this is a deferred next-plan item.)
+This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-written in plan 014; boot = the CLI's vitest suite via `just test`) — `eng-harness-1-boot` reads it and reports normally here. The repo's *rules* (constitution, architecture, idioms) still live separately in `docs/project-rules/`. **Do not run `eng-harness-0-setup` against this repo** — this is the harness's own home, not a target repo; its governance doc is maintained by hand like any other repo's. For a zero-context start: `npx harness instructions` (the agent briefing), then `harness help` / `harness doctor --json`.
 
 ## Repo framing
 
