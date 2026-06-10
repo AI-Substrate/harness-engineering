@@ -30,7 +30,18 @@ export class FakeFs implements FsPort {
 
   readdir(path: string): string[] {
     this.reads.push(path);
-    return this.dirs[path] ?? [];
+    // Seeded names first, then immediate child dirs created via mkdirp — so a
+    // dir made DURING the test is visible to a later listing, as NodeFs would
+    // be (plan 015: capture mkdirps a bucket; a later sweep readdirs its parent).
+    const names = [...(this.dirs[path] ?? [])];
+    const prefix = path.endsWith('/') ? path : `${path}/`;
+    for (const dir of this.madeDirs) {
+      if (dir.startsWith(prefix)) {
+        const name = dir.slice(prefix.length).split('/')[0];
+        if (name && !names.includes(name)) names.push(name);
+      }
+    }
+    return names;
   }
 
   mkdirp(path: string): void {

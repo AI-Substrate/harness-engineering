@@ -12,6 +12,8 @@ import {
 } from '../../../src/services/observe/buffer-codec.js';
 import {
   captureObservation,
+  clearObservations,
+  listObservations,
   type ObserveDeps,
 } from '../../../src/services/observe/observe-service.js';
 
@@ -439,5 +441,125 @@ describe('buffer-codec — the entry grammar (D2/D3)', () => {
       suggested_encoding: 'none needed',
       first_seen_at: '2026-06-08T07:20:00.000Z',
     });
+  });
+});
+
+/** Two seeded buckets (one with a malformed block) + the nested .gitignore beside them. */
+function sweepFs(): FakeFs {
+  return configuredFs(
+    {
+      '/repo/.harness/temp/.gitignore': '*\n',
+      [AGENT_BUFFER]: `${legacyEntry('DL-001', 'difficulty')}- id: DL-XXX\n  garbage: yes\n`,
+      '/repo/.harness/temp/claude-code/session-buffer.md': legacyEntry('MW-001', 'magic-wand'),
+    },
+    { '/repo/.harness/temp': ['claude-code', '.gitignore', 'agent'] },
+  );
+}
+
+describe('listObservations — the all-buckets sweep (AC-7, D9, D-12)', () => {
+  it('sweeps every bucket by default, annotating entries and counting deviants', () => {
+    const outcome = listObservations({}, depsAt(sweepFs()));
+    expect(outcome).toMatchObject({
+      ok: true,
+      buckets_scanned: ['agent', 'claude-code'],
+      malformed_skipped: 1,
+    });
+    if (outcome.ok) {
+      expect(outcome.observations).toHaveLength(2);
+      expect(outcome.observations[0]).toMatchObject({ bucket: 'agent', id: 'DL-001' });
+      expect(outcome.observations[1]).toMatchObject({ bucket: 'claude-code', id: 'MW-001' });
+    }
+  });
+
+  it('--agent scopes to one bucket; a nonexistent bucket is an honest empty ok', () => {
+    const scoped = listObservations({ agent: 'claude-code' }, depsAt(sweepFs()));
+    expect(scoped).toMatchObject({ ok: true, buckets_scanned: ['claude-code'] });
+    if (scoped.ok) expect(scoped.observations.map((o) => o.id)).toEqual(['MW-001']);
+
+    const missing = listObservations({ agent: 'nobody-here' }, depsAt(sweepFs()));
+    expect(missing).toMatchObject({
+      ok: true,
+      observations: [],
+      buckets_scanned: [],
+      malformed_skipped: 0,
+    });
+  });
+
+  it('nothing captured yet (no temp dir) → ok with an empty array (D6)', () => {
+    const outcome = listObservations({}, depsAt(configuredFs()));
+    expect(outcome).toMatchObject({ ok: true, observations: [], buckets_scanned: [] });
+  });
+
+  it('no .harness/ → unconfigured; unreadable buffer mid-sweep → E146', () => {
+    const bare = listObservations({}, depsAt(new FakeFs()));
+    expect(bare.ok).toBe(false);
+    if (!bare.ok) expect(bare.status).toBe('unconfigured');
+
+    class UnreadableFs extends FakeFs {
+      override readText(path: string): string | null {
+        if (path.endsWith('claude-code/session-buffer.md')) return null;
+        return super.readText(path);
+      }
+    }
+    const fs = new UnreadableFs(
+      {
+        [AGENT_BUFFER]: legacyEntry('DL-001', 'difficulty'),
+        '/repo/.harness/temp/claude-code/session-buffer.md': 'present but unreadable',
+      },
+      { '/repo/.harness/temp': ['agent', 'claude-code'] },
+    );
+    fs.mkdirp('/repo/.harness');
+    const outcome = listObservations({}, depsAt(fs));
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.code).toBe(ErrorCodes.OBSERVE_BUFFER_UNREADABLE);
+  });
+});
+
+describe('clearObservations — truncate what list returns, files kept (AC-7, D6)', () => {
+  it('truncates every bucket by default, counting cleared valid entries + deviants', () => {
+    const fs = sweepFs();
+    const outcome = clearObservations({}, depsAt(fs));
+    expect(outcome).toMatchObject({
+      ok: true,
+      cleared: 2,
+      buckets_scanned: ['agent', 'claude-code'],
+      malformed_skipped: 1,
+    });
+    expect(fs.readText(AGENT_BUFFER)).toBe('');
+    expect(fs.readText('/repo/.harness/temp/claude-code/session-buffer.md')).toBe('');
+  });
+
+  it('--agent scopes the truncation; the other bucket is untouched', () => {
+    const fs = sweepFs();
+    const outcome = clearObservations({ agent: 'claude-code' }, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, cleared: 1 });
+    expect(fs.readText('/repo/.harness/temp/claude-code/session-buffer.md')).toBe('');
+    expect(fs.readText(AGENT_BUFFER)).toContain('DL-001');
+  });
+
+  it('nothing to clear → ok with cleared: 0 (D6)', () => {
+    const outcome = clearObservations({}, depsAt(configuredFs()));
+    expect(outcome).toMatchObject({ ok: true, cleared: 0 });
+  });
+
+  it('an unreadable buffer fails the sweep BEFORE any truncation happens', () => {
+    class UnreadableFs extends FakeFs {
+      override readText(path: string): string | null {
+        if (path.endsWith('claude-code/session-buffer.md')) return null;
+        return super.readText(path);
+      }
+    }
+    const fs = new UnreadableFs(
+      {
+        [AGENT_BUFFER]: legacyEntry('DL-001', 'difficulty'),
+        '/repo/.harness/temp/claude-code/session-buffer.md': 'present but unreadable',
+      },
+      { '/repo/.harness/temp': ['agent', 'claude-code'] },
+    );
+    fs.mkdirp('/repo/.harness');
+    const outcome = clearObservations({}, depsAt(fs));
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) expect(outcome.code).toBe(ErrorCodes.OBSERVE_BUFFER_UNREADABLE);
+    expect(fs.readText(AGENT_BUFFER)).toContain('DL-001'); // nothing truncated
   });
 });

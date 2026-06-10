@@ -4,6 +4,7 @@ import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
 import { registerInstructionsAct } from './acts/instructions.js';
 import { registerNewAct } from './acts/new.js';
+import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerSkillsAct } from './acts/skills.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
@@ -171,6 +172,7 @@ export function buildProgram(
   registerDocsAct(program, io);
   registerSkillsAct(program, io, deps);
   registerRecordAct(program, io, deps, recordRegistry);
+  registerObserveAct(program, io, deps);
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);

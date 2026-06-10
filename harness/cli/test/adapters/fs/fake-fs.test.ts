@@ -51,6 +51,22 @@ describe('FakeFs', () => {
     expect(fs.reads).toContain('.harness/extensions');
   });
 
+  it('readdir lists immediate child dirs created via mkdirp during the test (NodeFs fidelity)', () => {
+    /*
+    Test Doc:
+    - Why: plan 015 — `harness observe` mkdirps a bucket dir at capture; a later `--list`
+      sweep readdirs the parent. NodeFs sees the new dir; the fake must too, or
+      write-then-list integration flows falsely come back empty.
+    - Contract: mkdirp('<parent>/<child>/…') makes '<child>' appear in readdir('<parent>'),
+      deduped against seeded names; only the immediate segment is listed.
+    */
+    const fs = new FakeFs({}, { '/repo/.harness/temp': ['seeded'] });
+    fs.mkdirp('/repo/.harness/temp/agent');
+    fs.mkdirp('/repo/.harness/temp/seeded'); // dedup against the seeded name
+    expect(fs.readdir('/repo/.harness/temp')).toEqual(['seeded', 'agent']);
+    expect(fs.readdir('/repo/.harness')).toContain('temp');
+  });
+
   it('writeText stores content (readable back) and records the write', () => {
     /*
     Test Doc:
