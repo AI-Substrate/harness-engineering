@@ -3,7 +3,7 @@
 **Spec**: [arch-conformance-extension-spec.md](./arch-conformance-extension-spec.md)
 **Plan**: [arch-conformance-extension-plan.md](./arch-conformance-extension-plan.md)
 **Generated**: 2026-06-10 (enriched by /plan-3)
-**Status**: Ready — plan READY (gates: 6 PASS / 1 N/A); single phase, build next
+**Status**: In Progress — build underway with code-review-companion (T000 boot HEALTHY)
 
 ---
 
@@ -84,7 +84,7 @@ flowchart LR
     classDef ready fill:#9E9E9E,stroke:#757575,color:#fff
 
     S[Specify ✓ validated]:::done --> BP[Backpressure Check<br/>skipped — user call]:::done
-    BP --> P[Plan ✓ READY]:::done --> B[Build<br/>single phase]:::ready --> D[Done]:::ready
+    BP --> P[Plan ✓ READY]:::done --> B[Build<br/>single phase]:::active --> D[Done]:::ready
 ```
 
 **Legend**: green = done | yellow = active | grey = not started
@@ -95,7 +95,7 @@ flowchart LR
 
 | Phase | Title | Tasks | CS | Status |
 |-------|-------|-------|----|--------|
-| 1 | arch-check end-to-end (Simple mode) | 11 (+2 harness-loop rows) | CS-2 overall | Pending |
+| 1 | arch-check end-to-end (Simple mode) | 11 (+2 harness-loop rows) | CS-2 overall | In Progress |
 
 ---
 
