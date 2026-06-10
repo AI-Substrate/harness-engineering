@@ -32,3 +32,9 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - Helper surface: `toPosix`, `posixNormalize`, `posixJoin`, `posixDirname`, `posixRelative`, `isWithin`, `dedupeKey(p, caseInsensitive = IS_WIN32)` — normalize/join-only, `resolve` forbidden by docstring (Finding 03); case-folding is an explicit parameter (Finding 04, P3).
 - `arch-check` → `status: ok` after adding the module.
 - **Discovery**: `harness arch-check` must run from the **repo root** — extensions are discovered under `<cwd>/.harness/extensions`, so invoking from `harness/cli` yields E108 `too many arguments` (the verb never registers). Also: the verb takes no `--json` flag — JSON envelope is the default stdout shape. The plan's T002 done-when wrote `arch-check --json`; actual invocation is `npx --no-install harness arch-check` from root.
+
+### T003 — FakeFs separator tolerance
+
+- `mkdirp` splits on `/[\\/]/` and registers ancestors in canonical POSIX form; `readdir` tolerates Windows-shaped probes (POSIX-canonical key fallback for the seeded map, normalized prefix match for mkdirp-created children, child-name split on either separator).
+- 6 new unit tests (backslash, slash-equivalence, UNC in both shapes, Windows-shaped probes, end-to-end UNC list). fake-fs suite 18/18; **full suite 423/423**.
+- Design note: registered state is canonical POSIX, probes are tolerant — `exists()` untouched (post-T004–T006 all service probes are POSIX; scope kept to the two plan-named sites).

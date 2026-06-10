@@ -33,11 +33,14 @@ export class FakeFs implements FsPort {
     // Seeded names first, then immediate child dirs created via mkdirp — so a
     // dir made DURING the test is visible to a later listing, as NodeFs would
     // be (plan 015: capture mkdirps a bucket; a later sweep readdirs its parent).
-    const names = [...(this.dirs[path] ?? [])];
-    const prefix = path.endsWith('/') ? path : `${path}/`;
+    // Probes tolerate Windows-shaped paths; registered state is canonical
+    // POSIX (plan 017 — Windows-shaped-input sensors run on every OS).
+    const posixPath = path.replace(/\\/g, '/');
+    const names = [...(this.dirs[path] ?? this.dirs[posixPath] ?? [])];
+    const prefix = posixPath.endsWith('/') ? posixPath : `${posixPath}/`;
     for (const dir of this.madeDirs) {
       if (dir.startsWith(prefix)) {
-        const name = dir.slice(prefix.length).split('/')[0];
+        const name = dir.slice(prefix.length).split(/[\\/]/)[0];
         if (name && !names.includes(name)) names.push(name);
       }
     }
@@ -47,8 +50,9 @@ export class FakeFs implements FsPort {
   mkdirp(path: string): void {
     this.mkdirs.push(path);
     // Register each ancestor segment so exists() models a recursive create
-    // (matches NodeFs.mkdirSync({ recursive: true }); F001).
-    const parts = path.split('/');
+    // (matches NodeFs.mkdirSync({ recursive: true }); F001). Segments split on
+    // either separator and are stored in canonical POSIX form (plan 017).
+    const parts = path.split(/[\\/]/);
     for (let i = 1; i <= parts.length; i++) {
       const seg = parts.slice(0, i).join('/');
       if (seg) this.madeDirs.add(seg);

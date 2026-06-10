@@ -104,6 +104,71 @@ describe('FakeFs', () => {
     expect(fs.exists('.harness')).toBe(true);
   });
 
+  it('mkdirp tolerates Windows-shaped input — ancestors registered in canonical POSIX form', () => {
+    /*
+    Test Doc:
+    - Why: the Windows-shape sensor (plan 017 AC-4/AC-8) seeds FakeProcess.cwd()='C:\\repo';
+      until the service converts at the boundary, a Windows-shaped path may reach mkdirp.
+      The fake must register the same canonical POSIX state for either separator shape,
+      or write-then-probe flows falsely diverge between the two shapes.
+    - Contract: mkdirp splits on / and \\ equivalently; exists() answers true for the
+      canonical POSIX form of every ancestor.
+    - Worked Example: mkdirp('C:\\repo\\.harness') → exists('C:/repo/.harness') === true.
+    */
+    const fs = new FakeFs();
+    fs.mkdirp('C:\\repo\\.harness\\extensions');
+    expect(fs.exists('C:/repo')).toBe(true);
+    expect(fs.exists('C:/repo/.harness')).toBe(true);
+    expect(fs.exists('C:/repo/.harness/extensions')).toBe(true);
+  });
+
+  it('mkdirp registers identical state for / and \\ input shapes', () => {
+    const fromBackslash = new FakeFs();
+    fromBackslash.mkdirp('C:\\repo\\x');
+    const fromSlash = new FakeFs();
+    fromSlash.mkdirp('C:/repo/x');
+    expect(fromBackslash.exists('C:/repo/x')).toBe(true);
+    expect(fromSlash.exists('C:/repo/x')).toBe(true);
+  });
+
+  it('mkdirp tolerates UNC-shaped input (both separator forms)', () => {
+    const fs = new FakeFs();
+    fs.mkdirp('\\\\server\\share\\repo\\.harness');
+    expect(fs.exists('//server/share')).toBe(true);
+    expect(fs.exists('//server/share/repo/.harness')).toBe(true);
+    fs.mkdirp('//server/share/repo/.harness/extensions');
+    expect(fs.exists('//server/share/repo/.harness/extensions')).toBe(true);
+  });
+
+  it('readdir tolerates a Windows-shaped probe of a POSIX-seeded dir', () => {
+    /*
+    Test Doc:
+    - Why: plan 017 Cat B — readdir child-name extraction split on '/' only, so
+      Windows-shaped probes (or mkdirp-registered children) vanished from listings.
+    - Contract: probing with \\ or / yields the same listing; mkdirp-created children
+      appear under either probe shape; UNC dirs work end-to-end.
+    */
+    const fs = new FakeFs({}, { 'C:/repo/.harness/extensions': ['hello'] });
+    expect(fs.readdir('C:\\repo\\.harness\\extensions')).toEqual(['hello']);
+    expect(fs.readdir('C:/repo/.harness/extensions')).toEqual(['hello']);
+  });
+
+  it('readdir lists mkdirp-created children when probed with either separator shape', () => {
+    const fs = new FakeFs();
+    fs.mkdirp('C:\\repo\\.harness\\temp\\agent');
+    expect(fs.readdir('C:/repo/.harness/temp')).toEqual(['agent']);
+    expect(fs.readdir('C:\\repo\\.harness\\temp')).toEqual(['agent']);
+  });
+
+  it('readdir handles UNC-shaped dirs end-to-end', () => {
+    const fs = new FakeFs({}, { '//server/share/repo/.harness/extensions': ['hello'] });
+    fs.mkdirp('//server/share/repo/.harness/extensions/world');
+    expect(fs.readdir('\\\\server\\share\\repo\\.harness\\extensions')).toEqual([
+      'hello',
+      'world',
+    ]);
+  });
+
   it('mkdirp on an ABSOLUTE path registers every ancestor with the leading slash preserved', () => {
     /*
     Test Doc:
