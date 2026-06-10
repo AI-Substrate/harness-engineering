@@ -59,6 +59,22 @@ jobs:
       - name: Audit (advisory)
         run: npm audit --audit-level=high || true
 
+      # Architecture conformance through the VERB (never raw depcruise) so the
+      # envelope mapping is continuously proven on the same code path devs use
+      # (plan 016, AC-9). Warn-launch: degraded (warn-only violations) exits 0
+      # and surfaces as a ::warning:: annotation; crash (exit 1) or missing
+      # tool/config (exit 2) still fail the step.
+      - name: Architecture conformance (harness arch-check)
+        run: |
+          out=$(npx --no-install harness arch-check --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.violations | length')
+            echo "::warning title=arch-check::${count} architecture violation(s) at warn severity — see the envelope in this step's log; promote severities in .dependency-cruiser.cjs once they should block"
+          fi
+          exit ${code:-0}
+
   # Stable, matrix-independent required check for branch protection (T005).
   # Always runs and fails if any required job failed/cancelled.
   ci-required:
