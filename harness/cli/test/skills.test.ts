@@ -10,7 +10,11 @@ import { buildProgram } from '../src/app.js';
 import type { CliIo, OutputMode, Writers } from '../src/output/output-port.js';
 import type { VerbRegistry } from '../src/services/extensions/registry.js';
 import { DEFAULT_SKILLS_SOURCE } from '../src/services/skills/contract.js';
-import { buildInstallArgv, formatInstallCommand } from '../src/services/skills/skills-service.js';
+import {
+  buildInstallArgv,
+  formatInstallCommand,
+  resolveSkillsSource,
+} from '../src/services/skills/skills-service.js';
 
 /**
  * Test Doc:
@@ -88,6 +92,79 @@ describe('buildInstallArgv (pure)', () => {
     expect(formatInstallCommand(['skills@latest', 'add', 's', '-a', 'codex', '-y'])).toBe(
       'npx skills@latest add s -a codex -y',
     );
+  });
+});
+
+describe('resolveSkillsSource (pure — branch → GitHub tree URL)', () => {
+  /*
+  Test Doc:
+  - Why: `npx skills add` has NO --branch/--ref flag and NO `owner/repo#ref` shorthand
+    (vercel-labs/skills#42); its only branch mechanism is a `/tree/<ref>` GitHub URL. This
+    resolver is the single place that translation lives, so its branch matrix is pinned here.
+  - Contract: resolveSkillsSource(source, branch?) → {ok,source,branch?} | {ok:false,reason}.
+  - Quality Contribution: locks back-compat pass-through + the tree-URL rewrite + the
+    slashed-branch / non-GitHub rejections so a downstream `npx skills add` never sees a
+    specifier it would silently mis-parse.
+  */
+  it('no branch → verbatim pass-through (default-branch behaviour, unchanged)', () => {
+    expect(resolveSkillsSource('AI-Substrate/harness-engineering')).toEqual({
+      ok: true,
+      source: 'AI-Substrate/harness-engineering',
+    });
+    expect(resolveSkillsSource('./local/skills')).toEqual({ ok: true, source: './local/skills' });
+  });
+
+  it('--branch rewrites owner/repo shorthand → https://github.com/owner/repo/tree/<ref>', () => {
+    expect(
+      resolveSkillsSource('AI-Substrate/harness-engineering', '005-harness-core-refactor'),
+    ).toEqual({
+      ok: true,
+      source: 'https://github.com/AI-Substrate/harness-engineering/tree/005-harness-core-refactor',
+      branch: '005-harness-core-refactor',
+    });
+  });
+
+  it('keeps a subdir tail after the ref: owner/repo/subdir → /tree/<ref>/subdir', () => {
+    expect(resolveSkillsSource('owner/repo/skills/loop', 'dev')).toEqual({
+      ok: true,
+      source: 'https://github.com/owner/repo/tree/dev/skills/loop',
+      branch: 'dev',
+    });
+  });
+
+  it('accepts a `#ref` suffix on the source (matches npx muscle memory)', () => {
+    expect(resolveSkillsSource('owner/repo#dev')).toEqual({
+      ok: true,
+      source: 'https://github.com/owner/repo/tree/dev',
+      branch: 'dev',
+    });
+  });
+
+  it('explicit --branch wins over a `#ref` suffix', () => {
+    expect(resolveSkillsSource('owner/repo#ignored', 'wins')).toEqual({
+      ok: true,
+      source: 'https://github.com/owner/repo/tree/wins',
+      branch: 'wins',
+    });
+  });
+
+  it('rewrites a bare https://github.com/owner/repo URL too (.git/trailing slash tolerated)', () => {
+    expect(resolveSkillsSource('https://github.com/owner/repo.git', 'dev')).toEqual({
+      ok: true,
+      source: 'https://github.com/owner/repo/tree/dev',
+      branch: 'dev',
+    });
+  });
+
+  it('rejects a slashed branch — the tree-URL form cannot express it', () => {
+    const r = resolveSkillsSource('owner/repo', 'feat/harness-cli-core');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toMatch(/slashed branch|contains a '\/'/);
+  });
+
+  it('rejects --branch against a non-GitHub source (local path / generic URL)', () => {
+    expect(resolveSkillsSource('./local/skills', 'dev').ok).toBe(false);
+    expect(resolveSkillsSource('https://gitlab.com/org/repo', 'dev').ok).toBe(false);
   });
 });
 
@@ -217,5 +294,47 @@ describe('harness skills install (pass-through act)', () => {
       'json',
     );
     expect(exec.calls[0]?.args).toContain('owner/repo/skills/eng-harness-loop');
+  });
+
+  it('--branch rewrites the default source to a /tree/<ref> URL in the shelled argv', async () => {
+    const { exec, out, code } = await runSkills(
+      ['skills', 'install', '--target', 'codex', '--branch', '005-harness-core-refactor'],
+      'json',
+    );
+    expect(code).toBe(0);
+    expect(exec.calls[0]?.args).toEqual([
+      'skills@latest',
+      'add',
+      'https://github.com/AI-Substrate/harness-engineering/tree/005-harness-core-refactor',
+      '-a',
+      'codex',
+      '-y',
+    ]);
+    const env = JSON.parse(out);
+    expect(env.data.branch).toBe('005-harness-core-refactor');
+    expect(env.data.source).toBe(
+      'https://github.com/AI-Substrate/harness-engineering/tree/005-harness-core-refactor',
+    );
+  });
+
+  it('accepts a `#ref` suffix on --source', async () => {
+    const { exec, code } = await runSkills(
+      ['skills', 'install', '--target', 'codex', '--source', 'owner/repo#dev'],
+      'json',
+    );
+    expect(code).toBe(0);
+    expect(exec.calls[0]?.args).toContain('https://github.com/owner/repo/tree/dev');
+  });
+
+  it('slashed branch → E108, exit 1, no exec call (deterministic backpressure)', async () => {
+    const { out, code, exec } = await runSkills(
+      ['skills', 'install', '--target', 'codex', '--branch', 'feat/harness-cli-core'],
+      'json',
+    );
+    expect(exec.calls).toHaveLength(0);
+    expect(code).toBe(1);
+    const env = JSON.parse(out);
+    expect(env.status).toBe('error');
+    expect(env.error.code).toBe('E108');
   });
 });

@@ -1,6 +1,95 @@
 import type { SkillsInstallOptions } from './contract.js';
 
 /**
+ * Outcome of resolving a `--source` (+ optional branch) into a specifier `npx
+ * skills add` actually understands. Discriminated so the act can map a bad
+ * combination onto an `E108` envelope without the pure layer doing any I/O.
+ */
+export type SkillsSourceResolution =
+  | { ok: true; source: string; branch?: string }
+  | { ok: false; reason: string };
+
+/** GitHub `owner/repo` shorthand, optionally with a `/subdir` tail. */
+const GH_SHORTHAND = /^([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)(?:\/(.+))?$/;
+/** A bare GitHub repo URL (`https://github.com/owner/repo`, optional `.git` / trailing slash) — no further path. */
+const GH_URL = /^https?:\/\/github\.com\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?\/?$/;
+
+/**
+ * Translate a friendly `--source` (+ optional `--branch`, or a `#ref` suffix on
+ * the source) into the specifier the Vercel installer truly accepts.
+ *
+ * Why this exists: `npx skills add` has NO `--branch`/`--ref` flag and NO
+ * `owner/repo#ref` shorthand (vercel-labs/skills#42 is an open request for it).
+ * Its ONLY documented branch mechanism is a GitHub *tree URL*:
+ * `https://github.com/<owner>/<repo>/tree/<ref>[/<subdir>]`. So when the user
+ * names a branch, we rewrite the GitHub shorthand into that URL form.
+ *
+ * Invariants:
+ *   - **No ref → verbatim pass-through.** The source is returned unchanged (the
+ *     default `owner/repo` shorthand installs the default branch, exactly as
+ *     before this flag existed) — so every existing call site is untouched.
+ *   - **Ref precedence**: an explicit `branch` arg wins over a `#ref` suffix.
+ *   - **Slashed refs are rejected** (`ok:false`). The installer reads the first
+ *     path segment after `/tree/` as the *entire* ref, so `feat/x` would silently
+ *     mis-resolve to branch `feat` + subdir `x`. Failing fast (deterministic
+ *     backpressure) beats handing the installer a URL it will mis-parse.
+ *   - **Branch only applies to GitHub sources** (`owner/repo[/subdir]` or
+ *     `https://github.com/owner/repo`). A branch against a local path / GitLab /
+ *     generic git URL is rejected with guidance rather than ignored.
+ */
+export function resolveSkillsSource(rawSource: string, branch?: string): SkillsSourceResolution {
+  const hashIdx = rawSource.indexOf('#');
+  const base = hashIdx === -1 ? rawSource : rawSource.slice(0, hashIdx);
+  const refFromHash = hashIdx === -1 ? undefined : rawSource.slice(hashIdx + 1);
+  const ref = (branch ?? refFromHash)?.trim() || undefined;
+
+  // No ref → preserve today's verbatim pass-through (installs the default branch).
+  if (!ref) {
+    return { ok: true, source: base };
+  }
+
+  if (ref.includes('/')) {
+    return {
+      ok: false,
+      reason:
+        `branch '${ref}' contains a '/': the \`npx skills add\` GitHub tree-URL form cannot ` +
+        'express a slashed branch name (it reads the first path segment after /tree/ as the ' +
+        'whole ref). Use a single-segment branch, merge the skills to the default branch, or ' +
+        'pass a local --source path.',
+    };
+  }
+
+  // Local path or non-GitHub URL → branch translation doesn't apply.
+  const looksLocalOrUrl =
+    base.startsWith('.') || base.startsWith('/') || (base.includes('://') && !GH_URL.test(base));
+
+  const shorthand = looksLocalOrUrl ? null : base.match(GH_SHORTHAND);
+  if (shorthand) {
+    const [, owner, repo, subdir] = shorthand;
+    const tail = subdir ? `/${subdir}` : '';
+    return {
+      ok: true,
+      source: `https://github.com/${owner}/${repo}/tree/${ref}${tail}`,
+      branch: ref,
+    };
+  }
+
+  const url = base.match(GH_URL);
+  if (url) {
+    const [, owner, repo] = url;
+    return { ok: true, source: `https://github.com/${owner}/${repo}/tree/${ref}`, branch: ref };
+  }
+
+  return {
+    ok: false,
+    reason:
+      `--branch only applies to a GitHub \`owner/repo\` (optionally \`owner/repo/subdir\`) or ` +
+      `\`https://github.com/owner/repo\` source; '${base}' isn't one. Drop --branch, or point ` +
+      '--source at a GitHub repo.',
+  };
+}
+
+/**
  * Pure `npx skills add …` argv builder — the one place the Vercel `skills` flag
  * surface is encoded (Principle 8: wrap, don't rebuild). No I/O, no child spawn:
  * the act feeds the returned argv to the injected `ExecPort`, and tests assert

@@ -11,7 +11,11 @@ import {
   KNOWN_SKILL_TARGETS,
   type SkillsInstallOptions,
 } from '../services/skills/contract.js';
-import { buildInstallArgv, formatInstallCommand } from '../services/skills/skills-service.js';
+import {
+  buildInstallArgv,
+  formatInstallCommand,
+  resolveSkillsSource,
+} from '../services/skills/skills-service.js';
 
 const SKILLS_DOCS_URL = 'https://github.com/vercel-labs/skills';
 const MAX_STDERR_TAIL = 800;
@@ -27,6 +31,7 @@ interface InstallOpts {
   target?: string[];
   global?: boolean;
   source: string;
+  branch?: string;
   skill?: string[];
 }
 
@@ -84,24 +89,21 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
     .option('-t, --target <cli...>', `CLI target(s), repeatable: ${KNOWN_SKILL_TARGETS.join(', ')}`)
     .option('-g, --global', 'install globally (omit for a project-local install)')
     .option('--source <repo>', 'skills source (owner/repo or local path)', DEFAULT_SKILLS_SOURCE)
+    .option(
+      '-b, --branch <ref>',
+      'install from a branch (single-segment; rewrites a GitHub source to /tree/<ref>). Also accepted as --source owner/repo#ref',
+    )
     .option('-s, --skill <slug...>', 'install only specific skill slug(s)')
     .action(async (opts: InstallOpts) => {
       const targets = opts.target ?? [];
       const jsonPort = () => createOutputPort('json', io.writers);
 
-      // No target → fail fast with an actionable envelope. Never block on a prompt.
-      if (targets.length === 0) {
-        const envelope = formatError(
-          'skills',
-          ErrorCodes.INVALID_ARGS,
-          'no --target given: at least one CLI target is required.',
-          deps.clock,
-          {
-            next_action: `Pass --target <cli> (one or more of: ${KNOWN_SKILL_TARGETS.join(
-              ', ',
-            )}). Example: harness skills install --target github-copilot --global`,
-          },
-        );
+      // Fail fast with an actionable E108 envelope. Never block on a prompt — the
+      // CLI is agent-first, so a bad flag combo returns guidance, not a hang.
+      const failInvalidArgs = (message: string, next_action: string): void => {
+        const envelope = formatError('skills', ErrorCodes.INVALID_ARGS, message, deps.clock, {
+          next_action,
+        });
         const port: OutputPort =
           io.mode === 'json'
             ? jsonPort()
@@ -112,11 +114,29 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
                 },
               };
         exitWithEnvelope(envelope, port);
+      };
+
+      // No target → at least one CLI target is required.
+      if (targets.length === 0) {
+        failInvalidArgs(
+          'no --target given: at least one CLI target is required.',
+          `Pass --target <cli> (one or more of: ${KNOWN_SKILL_TARGETS.join(
+            ', ',
+          )}). Example: harness skills install --target github-copilot --global`,
+        );
+        return;
+      }
+
+      // Resolve --source (+ --branch / a `#ref` suffix) into the specifier the
+      // Vercel installer truly accepts (a GitHub /tree/<ref> URL for a branch).
+      const resolved = resolveSkillsSource(opts.source, opts.branch);
+      if (!resolved.ok) {
+        failInvalidArgs(resolved.reason, `Re-run with a valid source/branch. ${resolved.reason}`);
         return;
       }
 
       const installOpts: SkillsInstallOptions = {
-        source: opts.source,
+        source: resolved.source,
         targets,
         global: Boolean(opts.global),
         skills: opts.skill,
@@ -142,7 +162,8 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
             command,
             targets,
             global: Boolean(opts.global),
-            source: opts.source,
+            source: resolved.source,
+            ...(resolved.branch ? { branch: resolved.branch } : {}),
             installer: SKILLS_DOCS_URL,
           },
           deps.clock,
