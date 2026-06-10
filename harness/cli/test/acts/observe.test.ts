@@ -74,12 +74,7 @@ describe('registerObserveAct', () => {
     vi.restoreAllMocks();
   });
 
-  function run(
-    args: string[],
-    io: CliIo,
-    fs: FakeFs,
-    env: FakeEnv = new FakeEnv(),
-  ): number {
+  function run(args: string[], io: CliIo, fs: FakeFs, env: FakeEnv = new FakeEnv()): number {
     let code = -1;
     vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
       code = c ?? 0;
@@ -202,7 +197,11 @@ describe('registerObserveAct', () => {
 
     it('--agent narrows the sweep; a nonexistent bucket is an honest empty ok (exit 0)', () => {
       const { io, out } = ioFor('json');
-      const code = run(['--list', '--agent', 'nobody-here'], io, configuredFs(SWEEP_SEED, SWEEP_DIRS));
+      const code = run(
+        ['--list', '--agent', 'nobody-here'],
+        io,
+        configuredFs(SWEEP_SEED, SWEEP_DIRS),
+      );
       const env = JSON.parse(out());
       expect(env.status).toBe('ok');
       expect(env.data).toMatchObject({

@@ -38,10 +38,7 @@ function fakeDeps(fs: FakeFs): VerbActDeps {
 }
 
 /** One simulated CLI process: a FRESH buildProgram over the (persistent) deps. */
-async function runIn(
-  deps: VerbActDeps,
-  argv: string[],
-): Promise<{ out: string; code: number }> {
+async function runIn(deps: VerbActDeps, argv: string[]): Promise<{ out: string; code: number }> {
   let out = '';
   let code = -1;
   const writers: Writers = {
