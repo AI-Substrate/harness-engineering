@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { FakeModuleLoader } from '../../../src/adapters/loader/fake-loader.js';
 import type { HarnessVerb } from '../../../src/services/extensions/contract.js';
-import { buildVerbRegistry } from '../../../src/services/extensions/registry.js';
+import {
+  buildExtensionRegistry,
+  buildVerbRegistry,
+} from '../../../src/services/extensions/registry.js';
 
 const mkVerb = (name: string): HarnessVerb => ({
   name,
@@ -156,5 +159,51 @@ describe('buildVerbRegistry', () => {
     expect(cat?.error).toContain('E140');
     expect(cat?.error).toContain('variadic');
     expect(reg.verbs.map((v) => v.name)).toEqual(['ok']);
+  });
+});
+
+describe('buildExtensionRegistry — rejected discovery entries (plan 014 D1)', () => {
+  it('synthesizes a failed record (E143) per rejected entry, with NO load attempt', async () => {
+    /*
+    Test Doc:
+    - Why: discovery now reports flat-layout files as rejected[] instead of loading them;
+      doctor surfaces them through its EXISTING failed-record rendering, so the registry
+      must turn each rejection into a standard `failed` ExtensionRecord (plan 014 D1, AC-6).
+    - Contract: options.rejected entries become records with status 'failed', empty verbs,
+      and error 'E143: <reason>'; the loader is never invoked for them.
+    - Quality Contribution: pins the zero-new-render-path design — flat files reach doctor
+      as ordinary failed records.
+    - Worked Example: one good folder candidate + one rejected flat file.
+    */
+    const loader = new FakeModuleLoader({ '/x/good/extension.ts': mkVerb('good') });
+    const reg = await buildExtensionRegistry(['/x/good/extension.ts'], loader, {
+      rejected: [
+        {
+          path: '/x/legacy.ts',
+          reason: 'unsupported flat layout — move to legacy/extension.ts',
+        },
+      ],
+    });
+    expect(reg.verbs.map((v) => v.name)).toEqual(['good']);
+    const flat = reg.records.find((r) => r.entryPath === '/x/legacy.ts');
+    expect(flat?.status).toBe('failed');
+    expect(flat?.verbs).toEqual([]);
+    expect(flat?.error).toContain('E143');
+    expect(flat?.error).toContain('unsupported flat layout — move to legacy/extension.ts');
+    expect(loader.loads).toEqual(['/x/good/extension.ts']);
+  });
+
+  it('rejected-only discovery still yields an empty verb surface plus the failed records', async () => {
+    const loader = new FakeModuleLoader({});
+    const reg = await buildExtensionRegistry([], loader, {
+      rejected: [
+        { path: '/x/a.ts', reason: 'unsupported flat layout — move to a/extension.ts' },
+        { path: '/x/b.js', reason: 'unsupported flat layout — move to b/extension.ts' },
+      ],
+    });
+    expect(reg.verbs).toEqual([]);
+    expect(reg.records.map((r) => r.entryPath)).toEqual(['/x/a.ts', '/x/b.js']);
+    expect(reg.records.every((r) => r.status === 'failed')).toBe(true);
+    expect(loader.loads).toEqual([]);
   });
 });

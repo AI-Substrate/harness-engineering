@@ -29,6 +29,12 @@ export interface ExtensionRegistryOptions {
   reservedVerbs?: ReadonlySet<string>;
   /** Record-type names an extension may NOT claim (core types). Defaults to empty. */
   reservedRecordTypes?: ReadonlySet<string>;
+  /**
+   * Entries discovery refused (e.g. unsupported flat layout). Each becomes a
+   * synthesized `failed` record (E143) with NO load attempt, so doctor surfaces
+   * it through the existing record rendering (plan 014 D1).
+   */
+  rejected?: readonly { path: string; reason: string }[];
 }
 
 /**
@@ -64,7 +70,9 @@ export async function buildExtensionRegistry(
 ): Promise<ExtensionRegistry> {
   const reservedVerbs = options.reservedVerbs ?? RESERVED_NAMES;
   const reservedRecordTypes = options.reservedRecordTypes ?? new Set<string>();
-  const records: ExtensionRecord[] = [];
+  const records: ExtensionRecord[] = (options.rejected ?? []).map((entry) =>
+    failed(entry.path, entry.reason, ErrorCodes.EXTENSION_FLAT_LAYOUT),
+  );
   const verbs: HarnessVerb[] = [];
   const recordTypes: ExtensionRecordType[] = [];
   const claimedVerbs = new Set<string>();
@@ -203,12 +211,16 @@ function conflictError(verbShadows: string[], recordShadows: string[]): string {
   return `${ErrorCodes.EXTENSION_VERB_CONFLICT}: ${parts.join(' and ')} already provided (core command/type or earlier extension); duplicate(s) ignored.`;
 }
 
-function failed(entryPath: string, reason: string): ExtensionRecord {
+function failed(
+  entryPath: string,
+  reason: string,
+  code: string = ErrorCodes.EXTENSION_LOAD_FAILED,
+): ExtensionRecord {
   return {
     entryPath,
     status: 'failed',
     verbs: [],
-    error: `${ErrorCodes.EXTENSION_LOAD_FAILED}: ${reason}`,
+    error: `${code}: ${reason}`,
   };
 }
 

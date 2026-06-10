@@ -134,8 +134,10 @@ export async function loadRegistry(
   if (isExtensionsDisabled(argv, env)) {
     return { verbs: [], recordTypes: [], records: [] };
   }
-  return buildExtensionRegistry(discoverExtensions(deps.fs, deps.proc), loader, {
+  const discovery = discoverExtensions(deps.fs, deps.proc);
+  return buildExtensionRegistry(discovery.candidates, loader, {
     reservedRecordTypes: new Set(coreRecordTypes.map((t) => t.type)),
+    rejected: discovery.rejected,
   });
 }
 

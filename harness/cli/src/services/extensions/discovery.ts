@@ -4,60 +4,89 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 
 const EXTENSIONS_DIR = ['.harness', 'extensions'];
 const CODE_FILE = /\.(ts|tsx|mjs|cjs|js)$/;
-const SUBDIR_INDEXES = ['index.ts', 'index.js'];
+/** Per-folder convention chain, probed in order after the manifest (plan 014 AC-6). */
+const ENTRY_CHAIN = ['extension.ts', 'extension.js', 'index.ts', 'index.js'];
+
+/** A directory entry discovery refused, with the reason doctor should surface. */
+export interface RejectedExtension {
+  /** Resolved absolute path of the refused entry. */
+  path: string;
+  /** Human-actionable reason (becomes the E143 record detail). */
+  reason: string;
+}
+
+/** What one discovery pass yields: loadable entry paths + refused entries (plan 014 D1). */
+export interface DiscoveryResult {
+  /** Sorted, deduped entry-file paths the loader should import. */
+  candidates: string[];
+  /** Entries refused with a reason (e.g. unsupported flat layout) — never loaded. */
+  rejected: RejectedExtension[];
+}
 
 /**
- * Scan `<cwd>/.harness/extensions/` ONE level and return the candidate extension
- * file paths the loader should import (WS-A Decision 4). Pure of direct Node I/O
- * — the directory listing comes from `FsPort.readdir`, the cwd from
- * `ProcessPort.cwd`, so the whole thing is unit-testable with fakes.
+ * Scan `<cwd>/.harness/extensions/` ONE level and resolve each entry to the
+ * extension entry file the loader should import (WS-A Decision 4; folder-only
+ * since plan 014). Pure of direct Node I/O — the directory listing comes from
+ * `FsPort.readdir`, the cwd from `ProcessPort.cwd`, so the whole thing is
+ * unit-testable with fakes.
  *
- * Rules:
- * - A direct `*.ts|*.tsx|*.mjs|*.cjs|*.js` file → a candidate.
- * - A sub-directory → resolved by its `package.json` `harness.extensions[]`
- *   manifest, else `index.ts`, else `index.js`; anything else is ignored.
- *   Manifest entries that resolve OUTSIDE their own subdir are rejected (no
+ * Rules (plan 014 AC-6 / D1):
+ * - An extension is a FOLDER (a little package). Per folder, the first hit of
+ *   `package.json` `harness.extensions[]` manifest → `extension.ts` →
+ *   `extension.js` → `index.ts` → `index.js` is the entry. `.tsx`/`.mjs`/`.cjs`
+ *   entries are reachable only via the manifest.
+ * - A direct `*.ts|*.tsx|*.mjs|*.cjs|*.js` file is the retired flat layout →
+ *   `rejected[]` with reason `unsupported flat layout — move to <name>/extension.ts`
+ *   (the registry turns each into a `failed` E143 record for doctor).
+ * - Other direct files (`README`, `*.md`, …) and unresolvable folders are
+ *   silently ignored, as before.
+ * - Manifest entries that resolve OUTSIDE their own subdir are dropped (no
  *   `../escape.ts` path traversal — lexical containment only; see the realpath
  *   note below for symlinks).
  * - Entries are processed in **sorted** name order (stable "first wins").
  * - Candidates are **deduped** by resolved absolute path (first occurrence kept).
- * - Absent / empty dir → `[]` (never an error).
+ * - Absent / empty dir → empty result (never an error).
  *
  * NOTE: dedup + containment are by `path.resolve` of the candidate; symlink-
  * following (true realpath) is deferred — it would need a new `FsPort.realpath`
  * capability, so the `../escape` guard is lexical and does NOT stop a symlink
  * inside the subdir from pointing elsewhere.
  */
-export function discoverExtensions(fs: FsPort, proc: ProcessPort): string[] {
+export function discoverExtensions(fs: FsPort, proc: ProcessPort): DiscoveryResult {
   const base = join(proc.cwd(), ...EXTENSIONS_DIR);
   const entries = fs.readdir(base);
   if (entries.length === 0) {
-    return [];
+    return { candidates: [], rejected: [] };
   }
 
   const candidates: string[] = [];
+  const rejected: RejectedExtension[] = [];
   for (const entry of [...entries].sort()) {
     const entryPath = join(base, entry);
     if (CODE_FILE.test(entry)) {
-      candidates.push(entryPath);
+      const name = entry.replace(CODE_FILE, '');
+      rejected.push({
+        path: entryPath,
+        reason: `unsupported flat layout — move to ${name}/extension.ts`,
+      });
       continue;
     }
     candidates.push(...resolveSubdir(fs, entryPath));
   }
 
-  return dedupeByAbsolutePath(candidates);
+  return { candidates: dedupeByAbsolutePath(candidates), rejected };
 }
 
-/** Resolve a sub-directory to its entry file(s): manifest → index.ts → index.js → none. */
+/** Resolve a sub-directory to its entry file(s): manifest → extension.ts → extension.js → index.ts → index.js → none. */
 function resolveSubdir(fs: FsPort, dir: string): string[] {
   const manifestPaths = readManifest(fs, dir);
   if (manifestPaths.length > 0) {
     return manifestPaths;
   }
-  for (const index of SUBDIR_INDEXES) {
-    const indexPath = join(dir, index);
-    if (fs.exists(indexPath)) {
-      return [indexPath];
+  for (const entry of ENTRY_CHAIN) {
+    const entryPath = join(dir, entry);
+    if (fs.exists(entryPath)) {
+      return [entryPath];
     }
   }
   return [];

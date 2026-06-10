@@ -17,6 +17,12 @@ export const ErrorCodes = {
   EXTENSION_RUNTIME_ERROR: 'E141',
   /** Two extensions (or an extension + a reserved core name) declared the same verb name. */
   EXTENSION_VERB_CONFLICT: 'E142',
+  /** A flat code file sits directly under `.harness/extensions/` — unsupported layout since plan 014; move it to `<name>/extension.ts`. */
+  EXTENSION_FLAT_LAYOUT: 'E143',
+  /** An extension folder is missing its conventional `instructions.md` agent briefing (doctor wails; the verb still runs). */
+  EXTENSION_INSTRUCTIONS_MISSING: 'E144',
+  /** `harness instructions <verb>`: the extension's `instructions.md` exists but could not be read. */
+  INSTRUCTIONS_UNREADABLE: 'E145',
   /** `harness new`: the requested verb name fails the name rules (empty, spaces, separators, etc.). */
   SCAFFOLD_INVALID_NAME: 'E150',
   /** `harness new`: the requested name is reserved by a core command (`help`/`doctor`/`new`). */

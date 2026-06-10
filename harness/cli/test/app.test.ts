@@ -55,20 +55,31 @@ describe('loadRegistry', () => {
       via the injected loader; returns {verbs, records}.
     - Usage Notes: tested with seeded fakes — no real jiti / fs.
     - Quality Contribution: pins discovery+load wiring without invoking commander/exit.
-    - Worked Example: a seeded hello.ts → registry.verbs = [hello].
+    - Worked Example: a seeded hello/extension.ts → registry.verbs = [hello].
     */
     const base = '/repo/.harness/extensions';
-    const fs = new FakeFs({}, { [base]: ['hello.ts'] });
-    const loader = new FakeModuleLoader({ [`${base}/hello.ts`]: mkVerb('hello') });
+    const fs = new FakeFs({ [`${base}/hello/extension.ts`]: '// hello' }, { [base]: ['hello'] });
+    const loader = new FakeModuleLoader({ [`${base}/hello/extension.ts`]: mkVerb('hello') });
     const reg = await loadRegistry(['node', 'h', 'hello'], {}, deps({ fs }), loader);
     expect(reg.verbs.map((v) => v.name)).toEqual(['hello']);
-    expect(loader.loads).toEqual([`${base}/hello.ts`]);
+    expect(loader.loads).toEqual([`${base}/hello/extension.ts`]);
+  });
+
+  it('a flat legacy file surfaces as a rejected E143 record, never loaded (plan 014 D1)', async () => {
+    const base = '/repo/.harness/extensions';
+    const fs = new FakeFs({}, { [base]: ['hello.ts'] });
+    const loader = new FakeModuleLoader({});
+    const reg = await loadRegistry(['node', 'h', 'help'], {}, deps({ fs }), loader);
+    expect(reg.verbs).toEqual([]);
+    expect(reg.records[0]?.status).toBe('failed');
+    expect(reg.records[0]?.error).toContain('E143');
+    expect(loader.loads).toEqual([]);
   });
 
   it('safe mode returns an empty registry and never touches the loader', async () => {
     const base = '/repo/.harness/extensions';
-    const fs = new FakeFs({}, { [base]: ['hello.ts'] });
-    const loader = new FakeModuleLoader({ [`${base}/hello.ts`]: mkVerb('hello') });
+    const fs = new FakeFs({ [`${base}/hello/extension.ts`]: '// hello' }, { [base]: ['hello'] });
+    const loader = new FakeModuleLoader({ [`${base}/hello/extension.ts`]: mkVerb('hello') });
     const reg = await loadRegistry(
       ['node', 'h', '--no-extensions', 'help'],
       {},
