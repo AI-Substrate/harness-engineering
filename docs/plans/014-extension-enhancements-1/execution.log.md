@@ -36,6 +36,8 @@ Pre-existing uncommitted changes (013 closeout files, 11 closed flow states, 014
 | F007 cli README + authoring-verbs + examples still taught flat layout (bundled into docs-content) | MEDIUM | harness/cli docs | **ADDRESSED INLINE** — package-form rewrite, examples `git mv`'d to folders, gen:docs regen |
 | F008 CI package-smoke scaffolded FLAT fixtures — would fail (or mis-assert) under folder-only discovery | **HIGH** | .github/workflows/ci.yml | **ADDRESSED INLINE** — folder packages + briefings + explicit flat-E143 rejection assertion |
 
+**Upstream issue filed**: the `wait_for_any` gotcha (queued task messages invisible until `inbox_list`; idle-budget farewell superseded by queued work) is reported as [AI-Substrate/minih#40](https://github.com/AI-Substrate/minih/issues/40) for the minih agent to work on — includes repro sketch, telemetry evidence, and the companion's transcript-surface magic wand as related context.
+
 **Companion farewell** (run `2026-06-10T10-44-33-424Z-8149`, exited `completed`): workedWell = per-commit pings catch localized drift early; the final range sweep caught the CI sensor mismatch local tests can't see. magicWand (target: coordination/minih) = first-class transcript/query surface for sent findings + ack mappings at shutdown. Full retro appended to `docs/retros/code-review-companion.md` (compound `docs/harness/agents/` tree absent in this repo → legacy ledger used, consistent with 013 precedent).
 
 ## User addendum (mid-build, 2026-06-10) — scope note for T012
