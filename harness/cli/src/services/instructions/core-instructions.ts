@@ -54,7 +54,8 @@ compaction (the buffer lives on disk):
   \`agent\` bucket. Capture never fails on identity.
 - Two storage classes: \`.harness/records/\` is COMMITTED team memory;
   \`.harness/temp/\` is TRANSIENT session scratch — gitignored, never
-  committed (the CLI self-heals the protection; \`harness doctor\` checks it).
+  committed (capture and \`harness record\` calls self-heal the protection;
+  \`harness doctor\` checks it).
 - Drain at session end: \`harness observe --list --json\` sweeps all buckets →
   save what matters via \`harness record retro\` (use the returned
   \`data.path\`) → \`harness observe --clear\`.

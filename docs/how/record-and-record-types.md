@@ -178,14 +178,16 @@ harness observe "grep on src/ took 47s — should use ripgrep" \
 harness observe --list --json   # all buckets by default; --agent <slug> scopes
 harness record retro --slug "<label>" --json   # scaffold the committed record
 # … write the drained entries into the returned data.path …
-harness observe --clear         # truncate the buffers (files kept)
+harness observe --clear         # remove the drained entries (files kept)
 ```
 
 `--list` returns entries bucket-annotated plus a `malformed_skipped` count
-(deviant hand-written blocks are skipped and counted, never silently dropped).
-Both `harness observe` and `harness record` self-heal the `.harness/temp/`
-nested `.gitignore` on every use, and `harness doctor` reports a convention
-complaint (degraded, exit 0) if the temp dir ever exists unprotected.
+(deviant hand-written blocks are skipped and counted, never silently dropped —
+`--clear` removes only valid entries and leaves deviant text in place for
+manual review). Capture (`harness observe "<desc>" …`) and `harness record
+<type>` self-heal the `.harness/temp/` nested `.gitignore`; `--list`/`--clear`
+only read and rewrite buffers. `harness doctor` reports a convention complaint
+(degraded, exit 0) if the temp dir ever exists unprotected.
 
 ---
 

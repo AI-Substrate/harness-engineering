@@ -401,9 +401,10 @@ describe('buffer-codec — the entry grammar (D2/D3)', () => {
 
   it('counts deviant blocks as malformed without dropping the valid ones', () => {
     const mixed = `${legacyEntry('DL-001', 'difficulty')}- id: DL-XXX\n  garbage: yes\n`;
-    const { entries, malformed } = parseBuffer(mixed);
+    const { entries, malformed, deviant } = parseBuffer(mixed);
     expect(entries).toHaveLength(1);
     expect(malformed).toBe(1);
+    expect(deviant.join('')).toContain('- id: DL-XXX'); // raw text preserved for the clear to keep
   });
 
   it('an unknown kind in a legacy block is malformed (schema enum is fixed), not silently accepted', () => {
@@ -415,7 +416,7 @@ describe('buffer-codec — the entry grammar (D2/D3)', () => {
   });
 
   it('parses an empty buffer to zero entries, zero malformed', () => {
-    expect(parseBuffer('')).toEqual({ entries: [], malformed: 0 });
+    expect(parseBuffer('')).toEqual({ entries: [], malformed: 0, deviant: [] });
   });
 
   it('round-trips its own serialized form', () => {
@@ -525,7 +526,9 @@ describe('clearObservations — truncate what list returns, files kept (AC-7, D6
       buckets_scanned: ['agent', 'claude-code'],
       malformed_skipped: 1,
     });
-    expect(fs.readText(AGENT_BUFFER)).toBe('');
+    // F001: only VALID entries are removed — deviant text stays on disk for manual review.
+    expect(fs.readText(AGENT_BUFFER)).toContain('- id: DL-XXX');
+    expect(fs.readText(AGENT_BUFFER)).not.toContain('DL-001');
     expect(fs.readText('/repo/.harness/temp/claude-code/session-buffer.md')).toBe('');
   });
 

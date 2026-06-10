@@ -74,15 +74,21 @@ export function serializeEntry(entry: ObservationEntry): string {
 /**
  * Tolerant parse of a whole buffer: split on `- id:` block starts; a block that
  * fails to parse or lacks a required field (valid id, known kind, non-empty
- * description) counts as *malformed* — skipped and counted, never rewritten on
- * disk (D3: nothing is silently dropped). Non-blank content before the first
- * block counts as one malformed chunk.
+ * description) counts as *malformed* — skipped, counted, and returned RAW in
+ * `deviant` so callers can preserve it on disk (D3: nothing is silently
+ * dropped, not even by `--clear`). Non-blank content before the first block
+ * counts as one malformed chunk.
  */
-export function parseBuffer(content: string): { entries: ObservationEntry[]; malformed: number } {
+export function parseBuffer(content: string): {
+  entries: ObservationEntry[];
+  malformed: number;
+  deviant: string[];
+} {
   const entries: ObservationEntry[] = [];
+  const deviant: string[] = [];
   let malformed = 0;
   if (content.trim().length === 0) {
-    return { entries, malformed };
+    return { entries, malformed, deviant };
   }
 
   const lines = content.split('\n');
@@ -92,7 +98,10 @@ export function parseBuffer(content: string): { entries: ObservationEntry[]; mal
   });
 
   const preamble = lines.slice(0, starts[0] ?? lines.length).join('\n');
-  if (preamble.trim().length > 0) malformed += 1;
+  if (preamble.trim().length > 0) {
+    malformed += 1;
+    deviant.push(preamble);
+  }
 
   for (let s = 0; s < starts.length; s++) {
     const startLine = starts[s] as number;
@@ -100,11 +109,12 @@ export function parseBuffer(content: string): { entries: ObservationEntry[]; mal
     const entry = parseBlock(block);
     if (entry === null) {
       malformed += 1;
+      deviant.push(block.join('\n'));
     } else {
       entries.push(entry);
     }
   }
-  return { entries, malformed };
+  return { entries, malformed, deviant };
 }
 
 function parseBlock(block: string[]): ObservationEntry | null {

@@ -214,9 +214,11 @@ export function listObservations(opts: { agent?: string }, deps: ObserveDeps): L
 }
 
 /**
- * Truncate what `--list` would return (all buckets by default, `--agent`-scoped;
- * files kept). `cleared` counts the valid entries removed; deviant blocks are
- * reported in `malformed_skipped` so their (now wiped) presence is never silent.
+ * Remove what `--list` would return (all buckets by default, `--agent`-scoped;
+ * files kept). `cleared` counts the valid entries removed. Deviant blocks are
+ * NOT destroyed: they are written back in place (and reported in
+ * `malformed_skipped`) so hand-written-but-unparseable text survives the drain
+ * for manual inspection (D3 — nothing is silently dropped, companion F001).
  */
 export function clearObservations(opts: { agent?: string }, deps: ObserveDeps): ClearOutcome {
   const swept = sweepBuckets(opts, deps);
@@ -225,10 +227,11 @@ export function clearObservations(opts: { agent?: string }, deps: ObserveDeps): 
   let cleared = 0;
   let malformed = 0;
   for (const bucket of swept.buckets) {
-    const { entries, malformed: m } = parseBuffer(bucket.content);
+    const { entries, malformed: m, deviant } = parseBuffer(bucket.content);
     cleared += entries.length;
     malformed += m;
-    deps.fs.writeText(bucket.bufferAbs, '');
+    const kept = deviant.map((chunk) => (chunk.endsWith('\n') ? chunk : `${chunk}\n`)).join('');
+    deps.fs.writeText(bucket.bufferAbs, kept);
   }
   return {
     ok: true,

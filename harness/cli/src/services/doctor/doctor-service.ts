@@ -137,7 +137,7 @@ function checkConventions(
     complaints.push({
       folder: tempDir,
       detail: `transient scratch ${HARNESS_DIR}/${TEMP_DIR}/ exists without its nested .gitignore — session buffers risk being committed`,
-      next_action: `create ${HARNESS_DIR}/${TEMP_DIR}/.gitignore (any \`harness observe\` or \`harness record\` call restores it)`,
+      next_action: `create ${HARNESS_DIR}/${TEMP_DIR}/.gitignore (a \`harness observe\` capture or \`harness record <type>\` call restores it)`,
     });
   }
   return complaints;

@@ -136,7 +136,7 @@ harness observe --list --json
 #         workaround?, suggested_encoding?, first_seen_at}], buckets_scanned, malformed_skipped }
 ```
 
-All buckets by default (`--agent <slug>` narrows). Empty `observations` → **silent, no prompt, exit.** If `malformed_skipped > 0`, say so in the prompt header (deviant text is preserved on disk until the clear — and lost with it, which beats corrupting a committed record).
+All buckets by default (`--agent <slug>` narrows). Empty `observations` → **silent, no prompt, exit.** If `malformed_skipped > 0`, say so in the prompt header — deviant text is preserved on disk, and `--clear` removes only valid entries, leaving the deviant blocks in place for manual review.
 
 ### Step 2 — Present the soft prompt
 
@@ -263,7 +263,7 @@ Compound lifecycle:
 
 - **Nothing pending**: silent, no prompt.
 - **User interrupts mid-prompt**: nothing was cleared; the next drain sees the same entries.
-- **Malformed buffer text**: surfaced as `malformed_skipped` in the list envelope; warn before the clear wipes it.
+- **Malformed buffer text**: surfaced as `malformed_skipped` in the list envelope; `--clear` keeps the deviant text in place — point the user at the named buffer file for manual review.
 - **No `.harness/` in this repo**: `harness observe --list` itself reports `unconfigured` — stay silent.
 
 ### What `--drain` does NOT do
