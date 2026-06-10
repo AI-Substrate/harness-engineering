@@ -9,6 +9,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
+import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -127,6 +128,18 @@ function checkConventions(
       });
     }
   }
+
+  // Temp-hygiene probe (plan 015 D5, AC-6): the transient storage class is only
+  // safe while its nested self-.gitignore exists. Complaint ONLY when the temp
+  // dir exists unprotected; no temp dir yet → silent; no `.harness/` → silent.
+  const tempDir = join(proc.cwd(), HARNESS_DIR, TEMP_DIR);
+  if (fs.exists(tempDir) && !fs.exists(join(tempDir, '.gitignore'))) {
+    complaints.push({
+      folder: tempDir,
+      detail: `transient scratch ${HARNESS_DIR}/${TEMP_DIR}/ exists without its nested .gitignore — session buffers risk being committed`,
+      next_action: `create ${HARNESS_DIR}/${TEMP_DIR}/.gitignore (any \`harness observe\` or \`harness record\` call restores it)`,
+    });
+  }
   return complaints;
 }
 
@@ -142,20 +155,27 @@ function checkExtensions(registry: VerbRegistry, conventions: ConventionComplain
   const failed = registry.records.filter((r) => r.status === 'failed').length;
   const conflicts = registry.records.filter((r) => r.status === 'conflict').length;
 
+  const instrMissing = conventions.filter((c) => c.detail.includes('instructions.md')).length;
+  const tempUnprotected = conventions.length - instrMissing;
+  const suffixParts: string[] = [];
+  if (instrMissing > 0) suffixParts.push(`${instrMissing} missing instructions.md`);
+  if (tempUnprotected > 0) suffixParts.push('transient scratch unprotected');
+  const conventionSuffix = suffixParts.length > 0 ? `, ${suffixParts.join(', ')}` : '';
+
   if (registry.records.length === 0) {
+    const ok = conventions.length === 0;
     return {
       name: 'extensions',
-      ok: true,
-      detail: 'no extensions installed (from ./.harness/extensions)',
-      next_action:
-        'Add a verb with `harness new <name>` (a package at `./.harness/extensions/<name>/`).',
+      ok,
+      detail: `no extensions installed (from ./.harness/extensions)${conventionSuffix}`,
+      next_action: ok
+        ? 'Add a verb with `harness new <name>` (a package at `./.harness/extensions/<name>/`).'
+        : 'Restore the convention files listed below; run `harness doctor` again.',
     };
   }
 
   const broken = failed > 0 || conflicts > 0;
   const ok = !broken && conventions.length === 0;
-  const conventionSuffix =
-    conventions.length > 0 ? `, ${conventions.length} missing instructions.md` : '';
   return {
     name: 'extensions',
     ok,
@@ -165,7 +185,9 @@ function checkExtensions(registry: VerbRegistry, conventions: ConventionComplain
       : {
           next_action: broken
             ? 'Fix or remove the failed/conflicting extensions listed below; run `harness doctor` again.'
-            : 'Author the missing instructions.md briefings listed below — see `harness instructions`.',
+            : instrMissing > 0
+              ? 'Author the missing instructions.md briefings listed below — see `harness instructions`.'
+              : 'Restore the convention files listed below; run `harness doctor` again.',
         }),
   };
 }
@@ -270,6 +292,14 @@ export function renderDoctorText(report: DoctorReport): string {
         if (complaint && ext.status === 'loaded') {
           lines.push(`      ✗ ${complaint.detail}`);
           lines.push(`        → ${complaint.next_action}`);
+        }
+      }
+      // Complaints not tied to an extension folder (e.g. the temp-hygiene probe,
+      // plan 015 D5) — the prescription must still be visible (P7).
+      for (const complaint of report.conventions) {
+        if (!report.extensions.some((ext) => dirname(ext.entryPath) === complaint.folder)) {
+          lines.push(`    ✗ ${complaint.detail}`);
+          lines.push(`      → ${complaint.next_action}`);
         }
       }
     }

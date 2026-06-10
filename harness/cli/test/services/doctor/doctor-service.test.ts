@@ -281,6 +281,74 @@ describe('package-convention validation (plan 014 D2)', () => {
   });
 });
 
+describe('temp-hygiene convention check (plan 015 D5, AC-6)', () => {
+  const FLOW = '/repo/.harness/extensions/flow';
+
+  /** A tree whose `.harness/temp/` exists WITHOUT its nested .gitignore. */
+  function unprotectedTempFs(extra: Record<string, string> = {}): FakeFs {
+    const fs = new FakeFs({ ...BUILT_CLI, ...extra });
+    fs.mkdirp('/repo/.harness/temp');
+    return fs;
+  }
+
+  it('temp dir without its nested .gitignore → complaint + next_action + overall degraded (exit 0)', () => {
+    /*
+    Test Doc:
+    - Why: the transient storage class (.harness/temp/) is only safe while its nested
+      self-.gitignore exists; doctor must PROVE the protection is in place instead of the
+      old skill's prose claim (spec AC-6). Same wail semantics as E144: a complaint with a
+      prescription, degraded, exit 0 — never a refusal.
+    - Contract: fs.exists(temp) && !fs.exists(temp/.gitignore) → one conventions[] entry
+      naming the missing file with a restore next_action; the extensions layer flips !ok;
+      envelope degraded, exit 0.
+    */
+    const report = buildDoctorReport(deps({ fs: unprotectedTempFs() }), EMPTY);
+    const complaint = report.conventions.find((c) => c.folder.includes('.harness/temp'));
+    expect(complaint?.detail).toContain('.gitignore');
+    expect(complaint?.next_action).toContain('.harness/temp/.gitignore');
+    expect(complaint?.next_action).toContain('harness observe');
+    const ext = report.layers.find((l) => l.name === 'extensions');
+    expect(ext?.ok).toBe(false);
+    const env = doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z'));
+    expect(env.status).toBe('degraded');
+    expect(exitCodeFor(env)).toBe(0);
+  });
+
+  it('fires alongside loaded extensions too (complaint coexists with a clean package)', () => {
+    const reg = registry([
+      { entryPath: `${FLOW}/extension.ts`, status: 'loaded', verbs: [mkVerb('flow')] },
+    ]);
+    const fs = unprotectedTempFs({ [`${FLOW}/instructions.md`]: '# Flow briefing' });
+    const report = buildDoctorReport(deps({ fs }), reg);
+    expect(report.conventions).toHaveLength(1);
+    expect(report.conventions[0]?.folder).toContain('.harness/temp');
+    expect(report.layers.find((l) => l.name === 'extensions')?.ok).toBe(false);
+  });
+
+  it('protection present → no complaint, layer ok', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, '/repo/.harness/temp/.gitignore': '*\n' });
+    fs.mkdirp('/repo/.harness/temp');
+    const report = buildDoctorReport(deps({ fs }), EMPTY);
+    expect(report.conventions).toEqual([]);
+    expect(report.layers.find((l) => l.name === 'extensions')?.ok).toBe(true);
+    expect(doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z')).status).toBe('ok');
+  });
+
+  it('no temp dir yet → ok; no .harness/ at all → existing doctor output unchanged', () => {
+    // No temp dir (and no .harness at all) — the probe stays silent.
+    const report = buildDoctorReport(deps(), EMPTY);
+    expect(report.conventions).toEqual([]);
+    expect(report.layers.find((l) => l.name === 'extensions')?.ok).toBe(true);
+    expect(doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z')).status).toBe('ok');
+  });
+
+  it('renders the temp complaint in the text view (the prescription must be visible, P7)', () => {
+    const text = renderDoctorText(buildDoctorReport(deps({ fs: unprotectedTempFs() }), EMPTY));
+    expect(text).toContain('.gitignore');
+    expect(text).toContain('create .harness/temp/.gitignore');
+  });
+});
+
 describe('record-types layer', () => {
   it('enumerates the merged record types (core ∪ extension) without invoking anything', () => {
     const recordReg = buildRecordRegistry(coreRecordTypes, [
