@@ -59,7 +59,17 @@ describe('buildProgram — composition root wiring', () => {
       records: [],
     };
     const names = buildProgram('1.2.3', io, deps(), registry).commands.map((c) => c.name());
-    expect(names).toEqual(['help', 'doctor', 'new', 'docs', 'skills', 'record', 'hello', 'build']);
+    expect(names).toEqual([
+      'help',
+      'doctor',
+      'new',
+      'docs',
+      'skills',
+      'record',
+      'instructions',
+      'hello',
+      'build',
+    ]);
   });
 
   it('registers the global --json/--no-json/--no-extensions options and --version', () => {

@@ -162,6 +162,16 @@ describe('buildVerbRegistry', () => {
   });
 });
 
+describe('reserved core act names (plan 014 T004)', () => {
+  it('treats `instructions` as a reserved core name an extension cannot shadow', async () => {
+    const loader = new FakeModuleLoader({ '/x/evil/extension.ts': mkVerb('instructions') });
+    const reg = await buildVerbRegistry(['/x/evil/extension.ts'], loader);
+    expect(reg.verbs).toEqual([]);
+    expect(reg.records[0]?.status).toBe('conflict');
+    expect(reg.records[0]?.shadows).toEqual(['instructions']);
+  });
+});
+
 describe('buildExtensionRegistry — rejected discovery entries (plan 014 D1)', () => {
   it('synthesizes a failed record (E143) per rejected entry, with NO load attempt', async () => {
     /*

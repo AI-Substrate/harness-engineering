@@ -39,7 +39,8 @@ export interface ExtensionRegistryOptions {
 
 /**
  * Core command names an extension may NOT shadow. `help`/`doctor`/`new`/`docs`/
- * `skills`/`record` are all reserved core commands.
+ * `skills`/`record`/`instructions` are all reserved core commands
+ * (`instructions` reserved since plan 014 — the agent-briefing act).
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'help',
@@ -48,6 +49,7 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'docs',
   'skills',
   'record',
+  'instructions',
 ]);
 
 /**
