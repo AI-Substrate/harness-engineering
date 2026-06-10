@@ -1,11 +1,18 @@
 # `harness arch-check` — agent briefing
 
-This verb is **deterministic architectural back pressure**: it proves the
-CLI's hexagonal (ports & adapters) contract by running dependency-cruiser
-over `harness/cli/src` against the committed rules at the repo root
-(`.dependency-cruiser.cjs`) and reporting an honest envelope. Run it after
-any change that adds or moves an import; CI runs it on every PR through this
+This verb is **deterministic architectural back pressure**: architecture
+conformance moved out of the inferred world (reviewer eyeballs, "follow our
+architecture" prompts) into the deterministic one — yes or no, no guessing.
+It proves the CLI's hexagonal (ports & adapters) contract by running
+dependency-cruiser over `harness/cli/src` against the committed rules at the
+repo root (`.dependency-cruiser.cjs`) and reporting an honest envelope. You
+never need to *infer* whether the layering holds: run this verb after any
+change that adds or moves an import. CI runs it on every PR through this
 same verb (one config, one code path).
+
+The rules are encoded team memory: each one carries its rationale as a
+`comment`, and that comment travels into the violation — the fix is explained
+at the point of failure, no doc lookup, no re-inference.
 
 ## What it proves — and the proof boundary
 
@@ -21,6 +28,10 @@ missing rule stays silently green. The rule set's authority is **empirical**
 (PoC-proven on this tree), not derived from a doc cross-walk. The complement
 is `harness/cli/test/architecture/` — point checks on specific idioms (single
 `process.exit` site, no `node:fs` in services) that an import graph can't see.
+
+If you find yourself *inferring* an architectural invariant this sensor
+doesn't prove, that's harness feedback — note it (`harness observe`) so the
+missing rule can be encoded.
 
 ## Outcome states
 

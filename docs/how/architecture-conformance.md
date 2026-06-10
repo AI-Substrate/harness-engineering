@@ -1,11 +1,29 @@
 # Architecture conformance — deterministic back pressure with `arch-check`
 
-This repo's hexagonal (ports & adapters) architecture is not enforced by
-reviewer eyeballs: it is encoded as 7 dependency-cruiser rules at
-[`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs) and proven by the
+> *"A prompt that says 'follow our architecture' is a start. A deterministic
+> architecture check that fails when the rule is violated is much better."*
+> — [Harness engineering, the simple version](../../harness-foundations/simple-mode.md), Rule 3
+
+This is that rule made concrete. Architecture conformance is the textbook
+case of back pressure stuck in the **inferred world**: a reviewer eyeballs
+the diff, a code-review prompt says "check the layering", and both are
+non-deterministic — they catch the violation sometimes. This repo moves it
+to the **deterministic world**: the hexagonal (ports & adapters) contract is
+encoded as 7 dependency-cruiser rules at
+[`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs), and the
 [`harness arch-check`](../../.harness/extensions/arch-check/extension.ts)
-exemplar extension on every run and every PR. This guide explains the rules,
-the pattern, and how to copy it into your own repo.
+exemplar extension turns them into a command the agent runs — yes or no, no
+guessing — on every run and every PR.
+
+The rule file is **encoded team memory** ("encode the fix, not the memory" —
+[intro to harness](../harness-basics/intro-to-harness.md)): instead of a
+markdown paragraph explaining the layering that every fresh session must
+re-infer, the invariant is executable, and its explanation travels with the
+violation. The agent can say the architecture holds; the harness decides
+whether that claim is supported by evidence.
+
+This guide explains the rules, the pattern, and how to copy it into your own
+repo.
 
 ## 1. The rules and why each exists
 
@@ -43,8 +61,11 @@ The exemplar shape, adaptable in an afternoon:
 
 ## 3. Writing agent-actionable rule comments
 
-The `comment` is the agent-facing error message. Write it as the *instruction
-that fixes the violation*, not a restatement of the rule name:
+The `comment` is the agent-facing error message — tribal knowledge encoded as
+data. Tokens are expensive: a violation that explains itself at the point of
+failure costs nothing to act on; one that sends the agent off to re-discover
+the layering doc costs a re-inference every session. Write the comment as the
+*instruction that fixes the violation*, not a restatement of the rule name:
 
 - ❌ `"services must not import adapters"` (restates the rule)
 - ✅ `"Services may depend on adapter PORT interfaces only, never concrete
@@ -95,6 +116,11 @@ sensor.
 - Complement, not replacement: `harness/cli/test/architecture/` keeps the
   point checks an import graph can't express (single `process.exit` site; no
   `node:fs` inside services). Both sensors stay.
+
+When you hit the boundary — an invariant you had to *infer* because no sensor
+proved it — that's the harness loop's feedback question ("what did you have
+to infer that the harness should have proved?"): capture it, and encode the
+missing rule.
 
 ## 7. Rule-change discipline
 
