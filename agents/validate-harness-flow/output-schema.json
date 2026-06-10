@@ -8,7 +8,6 @@
     "harnessabilityGrade",
     "axisTuple",
     "abandoned",
-    "governanceWritten",
     "bootAuthored",
     "bootRuns",
     "retroRecorded",
@@ -37,7 +36,7 @@
     },
     "harnessInstalled": {
       "type": "boolean",
-      "description": "`harness doctor` ran against the target after install (empty .harness/extensions/ is not an error)."
+      "description": "`harness doctor` ran against the target after install and returned an envelope."
     },
     "harnessabilityGrade": {
       "oneOf": [{ "$ref": "#/$defs/grade" }, { "type": "null" }],
@@ -72,23 +71,15 @@
     },
     "abandoned": {
       "type": "boolean",
-      "description": "True when the harnessability gate tripped (final_grade D/E/F, or Operate-Today in the lowest band) — the worker stopped after assessment. Not a hard failure; a valid, useful outcome."
+      "description": "True when the worker stopped after the assessment because its report judged the repo poorly harnessable. Not a hard failure; a valid, useful outcome."
     },
     "abandonReason": {
       "type": ["string", "null"],
       "description": "Human-readable reason for abandonment (e.g. grade + which axis failed). Null when not abandoned."
     },
-    "governanceWritten": {
-      "type": "boolean",
-      "description": "True when .harness/engineering-harness.md was hand-written into the target with all 8 BIO fields (Finding 02 — there is no `harness init`)."
-    },
-    "governancePath": {
-      "type": ["string", "null"],
-      "description": "Path to the written engineering-harness.md in the clone, or null."
-    },
     "bootAuthored": {
       "type": "boolean",
-      "description": "True when a `boot` extension was authored via eng-harness-0-add-extension and loads in `harness doctor`."
+      "description": "True when a `boot` extension was authored via the harness's own tooling (not hand-written) and shows as loaded in `harness doctor`."
     },
     "bootRuns": {
       "type": "boolean",
@@ -100,17 +91,17 @@
     },
     "retroRecorded": {
       "type": "boolean",
-      "description": "True when a retro was scaffolded + filled via `harness record retro` in the clone."
+      "description": "True when a retro record was created and filled in the clone via the harness's own retro mechanism."
     },
     "retroRecordPaths": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Paths to the .harness/records/retro/*.md files this run authored in the clone (consumed by the orchestrator --collect rollup)."
+      "description": "Paths to the retro record files this run authored in the clone (consumed by the orchestrator --collect rollup)."
     },
     "verdict": {
       "type": "string",
       "enum": ["PASS", "FAIL", "ABANDONED"],
-      "description": "PASS only if install + assessment + governance(8 BIO) + boot(authored & runs) + retro all succeeded. ABANDONED when the harnessability gate tripped (reported, not FAILed). FAIL on any other broken step."
+      "description": "PASS only when the clone ends with a working, proven harness (installed + assessed + a boot that runs honestly + a retro recorded). ABANDONED when the worker stopped on its assessment's judgement (reported, not FAILed). FAIL on any other broken step."
     },
     "summary": {
       "type": "string",
