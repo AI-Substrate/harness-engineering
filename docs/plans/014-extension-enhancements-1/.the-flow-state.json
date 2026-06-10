@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "extension-enhancements-1",
+  "plan_dir": "docs/plans/014-extension-enhancements-1",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan /Users/jordanknight/substrate/harness-engineering/docs/plans/014-extension-enhancements-1/extension-enhancements-1-plan.md",
+  "intent": "agent_instructions (core baked + per-extension runtime-loaded .md) via `harness instructions [verb]`, plus extensions/<name>/extension.ts folder layout",
+  "milestones_total": 5,
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-10T01:45:00Z",
+  "compacted_seams": [],
+  "status": "active"
+}

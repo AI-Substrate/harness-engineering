@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "extension-enhancements-1",
+  "plan_dir": "docs/plans/014-extension-enhancements-1",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build + companion review complete — 8 farewell findings (2 HIGH) all fixed @ 1a6d5c9; 317/317; awaiting merge",
+  "next": "/plan-8 merge analysis (executes only on typed PROCEED)",
+  "_comment": "No .harness/engineering-harness.md governance doc in this repo YET (T015 authors it) -> harness loop nodes omitted (per the-flow sentinel). the-flow.md is generated FROM this file.",
+  "agents": [
+    {
+      "id": "code-review-companion",
+      "kind": "companion",
+      "runtime": "minih",
+      "run_id": "2026-06-10T10-44-33-424Z-8149",
+      "covers": [
+        "phases"
+      ],
+      "render": "wrap",
+      "note": "12 review tasks + final range sweep; farewell REQUEST_CHANGES with 8 findings (2 HIGH) — all addressed inline @ 1a6d5c9; run exited completed. minih wait_for_any missed live pings (companion note) so findings arrived at the farewell. Supersedes /plan-7."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-10T00:30Z",
+      "user_input": "need a new plan for botht eh general agent instructiosn and the instructions per extension stuff. THey should be in md and loaded dynamically at runtime for extensions from filesystem. Core agent_instructions coudl be baked. Also in this, i want to move extensiosn to extensions/<extension_name>/extension.ts... then we can pop any other files in this same folder and break our extensions up a bit. call the new plan extension_enhancements_1 (there will be more extension_ehnacements plans later :)).  +  what abouout extensions/<extension>/instructions.md. use convention?  +  tehy all get moved to folder mode. old mode is no longer supportd.  +  [governance] that check is old we no longer have that file anywhere, its legacy, we can remove the check... verify, and yes we shoudl have one  +  [addendum] extensions act more like little packages: convention-required files doctor wails about + free-form internals; installer OOS; instructions authored for current extensions",
+      "note": "Simple, CS-3 (P=7), 14 ACs (post-validation addendum: package convention, doctor wails, AC-14 internal imports). Three strands: (1) agent instructions (core baked + per-extension instructions.md, runtime-loaded) via `harness instructions [verb]`; (2) folder-ONLY layout extensions/<name>/extension.ts; (3) governance-path normalization + this repo's own .harness/engineering-harness.md.",
+      "artifacts": [
+        "extension-enhancements-1-spec.md",
+        "extension-enhancements-1.fltplan.md"
+      ],
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/plan-3",
+      "ran_at": "2026-06-10T00:37Z",
+      "user_input": "proceed to architect then validation",
+      "note": "READY — G1–G7: 6 PASS, G4 N/A. 1 phase, 17 tasks (TDD RED/GREEN pairs for CLI core). Deferred choices resolved: D1 discovery returns {candidates, rejected[]}, registry synthesizes E143 failed records; D2 missing instructions.md -> doctor degraded (exit 0, verified consequence-free); D3 act statuses (unconfigured/2, error E145/1); D4 lazy load at invocation; D5 contract untouched (verb->folder via record entryPath). Scaffold entry = extension.ts (scout's index.ts overruled by spec). validate-v2 (3 agents): VALIDATED WITH FIXES — 4 small fixes applied (T011 fixture pinned, Finding 07 wording, T014 checklist Done-When, accepted assumptions recorded); 12+ findings dismissed as pre-implementation category errors or already-present content. Status stays READY.",
+      "artifacts": [
+        "extension-enhancements-1-plan.md"
+      ],
+      "next": [
+        "phases"
+      ]
+    },
+    {
+      "id": "phases",
+      "type": "phase",
+      "label": "Build (single phase, T001–T017)",
+      "status": "done",
+      "command": "/plan-6-companion",
+      "note": "T001–T017 in 9 atomic commits (46c3c8a…18942c5). Folder-only discovery + E143; instructions act (E144/E145, D1–D5 honored, contract.ts untouched); help AGENTS START HERE; doctor convention wail; folder scaffold + starter briefings; fixtures migrated + flat-legacy.ts permanent + subby AC-14 real-jiti proof; both dogfood extensions packaged w/ genuine briefings (user addendum: target-repo retro check vs separate minih retro check); skills canonical-only + breadcrumb; .harness/engineering-harness.md authored (L2); docs rewritten + gen:docs clean. just fft 315/315; 14/14 ACs smoke-verified. Post-farewell: 8 companion findings (2 HIGH: F003 collect dated-retro layout; F008 CI flat smoke) all fixed @ 1a6d5c9 — suite 317/317.",
+      "artifacts": [
+        "execution.log.md"
+      ],
+      "next": [
+        "merge"
+      ],
+      "ran_at": "2026-06-10T01:40Z",
+      "user_input": "plan-6-v2-implement-phase-companion (chosen over plain /plan-6)"
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "command": "/plan-8",
+      "note": "Read-only analysis; executes only on explicit PROCEED.",
+      "next": []
+    }
+  ]
+}
