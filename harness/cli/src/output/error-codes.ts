@@ -23,6 +23,8 @@ export const ErrorCodes = {
   EXTENSION_INSTRUCTIONS_MISSING: 'E144',
   /** `harness instructions <verb>`: the extension's `instructions.md` exists but could not be read. */
   INSTRUCTIONS_UNREADABLE: 'E145',
+  /** `harness observe`: a bucket's session buffer exists but could not be read (never silent data loss). */
+  OBSERVE_BUFFER_UNREADABLE: 'E146',
   /** `harness new`: the requested verb name fails the name rules (empty, spaces, separators, etc.). */
   SCAFFOLD_INVALID_NAME: 'E150',
   /** `harness new`: the requested name is reserved by a core command (`help`/`doctor`/`new`). */

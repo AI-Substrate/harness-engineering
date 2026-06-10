@@ -3,7 +3,12 @@ import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
+import { ensureTemp, HARNESS_DIR } from '../shared/temp.js';
 import type { RecordRegistry } from './registry.js';
+
+// Relocated to services/shared/temp.ts (plan 015 D1); re-exported so existing
+// consumers (and tests) keep their import path.
+export { ensureTemp };
 
 /**
  * Pure record-scaffolding logic behind injected ports (`fs`/`clock`/`proc`). Like
@@ -14,14 +19,10 @@ import type { RecordRegistry } from './registry.js';
  * so records sort chronologically within the day and never clobber an existing file.
  */
 
-const HARNESS_DIR = '.harness';
 const RECORDS_DIR = 'records';
-const TEMP_DIR = 'temp';
 const TYPE_PATTERN = /^[a-z][a-z0-9-]*$/;
 /** Max per-day ordinal (keeps `<NNN>` 3 digits); refuse beyond rather than clobber. */
 const MAX_ORDINAL = 999;
-
-const TEMP_GITIGNORE = '# Crash-resilient agent scratch — never committed.\n*\n';
 
 export interface RecordDeps {
   fs: FsPort;
@@ -76,24 +77,6 @@ function nextOrdinal(fs: FsPort, dateDir: string): number {
     }
   }
   return max + 1;
-}
-
-/**
- * Ensure `.harness/temp/` exists and is self-gitignored on first use (AC-17):
- * the crash-resilient scratch buffer is never committed even in a consumer repo
- * that hasn't added the root `.gitignore` rule. Idempotent — only writes what's
- * missing. Returns the absolute temp dir.
- */
-export function ensureTemp(deps: RecordDeps): string {
-  const tempDir = join(deps.proc.cwd(), HARNESS_DIR, TEMP_DIR);
-  if (!deps.fs.exists(tempDir)) {
-    deps.fs.mkdirp(tempDir);
-  }
-  const gitignore = join(tempDir, '.gitignore');
-  if (!deps.fs.exists(gitignore)) {
-    deps.fs.writeText(gitignore, TEMP_GITIGNORE);
-  }
-  return tempDir;
 }
 
 /**
