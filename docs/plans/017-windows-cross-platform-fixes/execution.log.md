@@ -24,3 +24,11 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 ## Task entries
 
 (appended per task — sha, evidence, companion ping, findings)
+
+### T001 + T002 — helper tests (RED) → helper (GREEN)
+
+- **RED evidence**: `npx vitest run test/services/shared/posix-path.test.ts` → `Test Files 1 failed` (module `src/services/shared/posix-path.js` not yet present). Committed together with the GREEN implementation so every commit stays suite-green; RED state recorded here instead.
+- **GREEN evidence**: 37/37 tests pass. Includes the raw-Node hazard pin `posix.normalize('//server/share') === '/server/share'` and the UNC guard counterpart in every normalize-based helper op.
+- Helper surface: `toPosix`, `posixNormalize`, `posixJoin`, `posixDirname`, `posixRelative`, `isWithin`, `dedupeKey(p, caseInsensitive = IS_WIN32)` — normalize/join-only, `resolve` forbidden by docstring (Finding 03); case-folding is an explicit parameter (Finding 04, P3).
+- `arch-check` → `status: ok` after adding the module.
+- **Discovery**: `harness arch-check` must run from the **repo root** — extensions are discovered under `<cwd>/.harness/extensions`, so invoking from `harness/cli` yields E108 `too many arguments` (the verb never registers). Also: the verb takes no `--json` flag — JSON envelope is the default stdout shape. The plan's T002 done-when wrote `arch-check --json`; actual invocation is `npx --no-install harness arch-check` from root.
