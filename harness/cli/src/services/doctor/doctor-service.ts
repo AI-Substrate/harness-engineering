@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
@@ -103,9 +103,15 @@ function checkCliBuild(fs: FsPort): LayerReport {
 /**
  * Probe each LOADED extension folder for its convention-required
  * `instructions.md` (plan 014 D2 — extensions are little packages; doctor wails
- * about missing convention files but the verb keeps running, AC-9).
+ * about missing convention files but the verb keeps running, AC-9). The
+ * `next_action` path is repo-relative (companion F001 — matches the E143
+ * guidance and the public docs); `folder` in the report stays absolute (data).
  */
-function checkConventions(fs: FsPort, registry: VerbRegistry): ConventionComplaint[] {
+function checkConventions(
+  fs: FsPort,
+  proc: ProcessPort,
+  registry: VerbRegistry,
+): ConventionComplaint[] {
   const complaints: ConventionComplaint[] = [];
   for (const record of registry.records) {
     if (record.status !== 'loaded') {
@@ -113,10 +119,11 @@ function checkConventions(fs: FsPort, registry: VerbRegistry): ConventionComplai
     }
     const folder = dirname(record.entryPath);
     if (!fs.exists(join(folder, 'instructions.md'))) {
+      const relFolder = relative(proc.cwd(), folder) || folder;
       complaints.push({
         folder,
         detail: `${ErrorCodes.EXTENSION_INSTRUCTIONS_MISSING}: missing instructions.md (the agent briefing for this extension's verbs)`,
-        next_action: `author ${folder}/instructions.md — see \`harness instructions\` for the pattern`,
+        next_action: `author ${join(relFolder, 'instructions.md')} — see \`harness instructions\` for the pattern`,
       });
     }
   }
@@ -205,7 +212,7 @@ export function buildDoctorReport(
   recordRegistry?: RecordRegistry,
 ): DoctorReport {
   const recordTypes = recordRegistry?.types ?? [];
-  const conventions = checkConventions(deps.fs, registry);
+  const conventions = checkConventions(deps.fs, deps.proc, registry);
   const layers = [
     checkToolchain(deps.proc),
     checkCliBuild(deps.fs),

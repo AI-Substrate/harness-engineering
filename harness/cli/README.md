@@ -1,6 +1,6 @@
 # harness — engineering harness CLI
 
-The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: drop a file in your repo's `.harness/extensions/` folder and it becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. A few commands are always built in (`help`, `doctor`, `new`, `docs`, `skills`); everything else is contributed by extensions you add.
+The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: each is a little package at `.harness/extensions/<name>/` (entry `extension.ts`, agent briefing `instructions.md`) and becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. A few commands are always built in (`help`, `doctor`, `instructions`, `new`, `docs`, `skills`, `record`); everything else is contributed by extensions you add.
 
 > This is the **engineering harness** (the project's development loop), not an agent runtime. It studies how a human or agent can boot, run, and prove the software safely and quickly.
 
@@ -25,23 +25,27 @@ node harness/cli/dist/index.js doctor
 
 ## Extensions: the focal point
 
-The core ships **no** built-in verb list. In your *own* repo, create a repo-local folder:
+The core ships **no** built-in verb list. In your *own* repo, each extension is a little **package folder**:
 
 ```
 <your-repo>/
 └── .harness/
     └── extensions/
-        ├── hello.ts        ← a direct file
-        └── build.ts
+        ├── hello/
+        │   ├── extension.ts      ← the entry (default-exports a HarnessVerb)
+        │   └── instructions.md   ← the agent briefing (`harness instructions hello`)
+        └── build/
+            ├── extension.ts
+            └── instructions.md
 ```
 
-Each file **default-exports** a `HarnessVerb` (or an array of them). The installed core discovers `.harness/extensions/` at runtime, loads each file (`.ts`/`.tsx` via jiti, `.js` natively), and registers one `harness <verb>` command per declared verb.
+Each entry **default-exports** a `HarnessVerb` (or an array of them). The installed core discovers `.harness/extensions/` at runtime, resolves each folder's entry (manifest → `extension.ts` → `extension.js` → `index.ts` → `index.js`), loads it (`.ts`/`.tsx` via jiti, `.js` natively — package-internal relative imports like `./lib/helper.ts` just work), and registers one `harness <verb>` command per declared verb. Flat files directly under `extensions/` are rejected (`E143`) with doctor guidance.
 
 **Quick start — install an extension** (in your repo):
 
 ```bash
-mkdir -p .harness/extensions
-cat > .harness/extensions/hello.ts <<'TS'
+mkdir -p .harness/extensions/hello
+cat > .harness/extensions/hello/extension.ts <<'TS'
 import type { HarnessVerb } from 'harness-engineering/contract';
 
 const hello: HarnessVerb = {
@@ -58,7 +62,7 @@ TS
 harness hello --name pi      # → {"command":"hello","status":"ok","data":{"greeting":"hello, pi"}}
 harness hello --help         # commander-generated usage from the verb's options
 harness help                 # lists hello among the installed verbs
-harness doctor               # enumerates which extensions loaded / failed
+harness doctor               # enumerates which extensions loaded / failed (and wails if instructions.md is missing)
 ```
 
 See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract, and copyable starters in [`examples/extensions/`](./examples/extensions/).
@@ -69,7 +73,7 @@ See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract
 |---------|--------------|--------|
 | `harness help` | Explain purpose, the **dynamic verb list**, output modes, safe first actions. `help --json` is machine-readable (`data.verbs[]`). | ✅ core |
 | `harness doctor` | Report readiness (toolchain, cli-build) **and enumerate the installed extensions** (loaded / failed / conflict, with paths + errors) — without invoking any verb. Safe at session start. | ✅ core |
-| `harness new <name>` | Scaffold a new, immediately-loadable extension into `./.harness/extensions/`. | ✅ core |
+| `harness new <name>` | Scaffold a new, immediately-loadable extension package into `./.harness/extensions/<name>/` (entry + starter `instructions.md`). | ✅ core |
 | `harness docs [id]` | List the bundled, curated docs (`harness docs`), or print one verbatim to stdout (`harness docs <id>`). Offline; ships with the CLI. | ✅ core |
 | `harness skills install` | Install **this harness's own skills** into a CLI — a transparent pass-through to Vercel's [`npx skills add`](https://github.com/vercel-labs/skills). Picks target(s) (`--target claude-code\|codex\|cursor\|github-copilot\|opencode\|pi`, repeatable) and scope (`--global` or project-local). **Announces the exact `npx` line before running** and always passes `-y` (the blocking picker never appears). Missing `--target` → `E108` (non-blocking). | ✅ core |
 | `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
@@ -138,7 +142,7 @@ Ports & Adapters (Hexagonal): a thin commander **entrypoint** (`index.ts` → `a
 CI runs on every pull request and on pushes to `main` (`.github/workflows/ci.yml`):
 
 - **`build-test`** — Node 22 & 24 matrix: `npm ci` → Biome check → build → `tsc --noEmit` → `vitest run --coverage` → `npm audit` (advisory). Coverage prints a text summary and uploads `harness/cli/coverage/lcov.info` as an artifact.
-- **`package-smoke`** — packs the tarball, installs it into a clean temp project with `--omit=dev`, drops a real `.harness/extensions/hello.ts` fixture, and asserts the installed `harness` bin discovers + jiti-loads the verb and runs it (proving jiti resolves as a runtime dependency) — the npx/bin-symlink + extension contract end-to-end.
+- **`package-smoke`** — packs the tarball, installs it into a clean temp project with `--omit=dev`, drops a real `.harness/extensions/hello/extension.ts` package fixture, and asserts the installed `harness` bin discovers + jiti-loads the verb and runs it (proving jiti resolves as a runtime dependency), plus a flat `legacy.ts` file is rejected with `E143` — the npx/bin-symlink + extension contract end-to-end.
 - **`ci-required`** — a stable aggregation job that fails if any required job failed. Branch protection requires this one matrix-independent check.
 
 **Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release. There is **no npm publish** — install pins a tag: `npx github:AI-Substrate/harness-engineering#vX.Y.Z`.

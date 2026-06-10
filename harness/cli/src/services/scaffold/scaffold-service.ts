@@ -16,7 +16,9 @@ import { renderStarter, type ScaffoldVariant, starterInstructions } from './temp
  */
 
 const EXTENSIONS_DIR = ['.harness', 'extensions'] as const;
-const NAME_PATTERN = /^[a-z][a-z0-9-]*$/;
+// Hyphen-separated alphanumeric segments — no trailing/doubled hyphens, since
+// the name is now also a directory name (companion F002).
+const NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 // A --wrap value is embedded verbatim into the generated file. v1 supports a
 // simple `cmd arg arg` line only; reject anything that could break the emitted
 // JS (quotes, backticks, `$`, backslash, shell operators) rather than write

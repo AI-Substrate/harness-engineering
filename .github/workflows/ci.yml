@@ -77,10 +77,12 @@ jobs:
 
   # Packaging / bin-symlink smoke (companion F005 guard): pack the tarball,
   # install it into a clean temp project, and invoke the installed `harness`
-  # bin through its symlink. Drops a real `.harness/extensions/hello.ts` fixture
-  # (a .ts file — forcing the jiti path, which proves jiti resolved as a RUNTIME
-  # dependency under the packaged `--omit=dev` install) and asserts the verb runs
-  # + exits 0, plus a deliberately-failing fixture exits 1 (AC-8, AC-10, KF-07).
+  # bin through its symlink. Drops a real `.harness/extensions/hello/extension.ts`
+  # package fixture (a .ts entry — forcing the jiti path, which proves jiti
+  # resolved as a RUNTIME dependency under the packaged `--omit=dev` install) and
+  # asserts the verb runs + exits 0, a deliberately-failing package exits 1, and
+  # a FLAT legacy file is rejected with E143 (plan 014 folder-only layout)
+  # (AC-8, AC-10, KF-07; 014 AC-6).
   package-smoke:
     name: package-smoke
     runs-on: ubuntu-latest
@@ -115,9 +117,9 @@ jobs:
           echo "Installed bin symlink:"
           ls -l node_modules/.bin/harness
 
-          # A repo-local .ts extension — discovered + jiti-loaded by the installed bin.
-          mkdir -p .harness/extensions
-          cat > .harness/extensions/hello.ts <<'TS'
+          # A repo-local .ts extension PACKAGE — discovered + jiti-loaded by the installed bin.
+          mkdir -p .harness/extensions/hello .harness/extensions/boom
+          cat > .harness/extensions/hello/extension.ts <<'TS'
           import type { HarnessVerb } from 'harness-engineering/contract';
           const hello: HarnessVerb = {
             name: 'hello',
@@ -129,7 +131,8 @@ jobs:
           };
           export default hello;
           TS
-          cat > .harness/extensions/boom.ts <<'TS'
+          echo '# `harness hello` — agent briefing (smoke fixture)' > .harness/extensions/hello/instructions.md
+          cat > .harness/extensions/boom/extension.ts <<'TS'
           import type { HarnessVerb } from 'harness-engineering/contract';
           const boom: HarnessVerb = {
             name: 'boom',
@@ -144,9 +147,19 @@ jobs:
           echo "harness --version:"
           ./node_modules/.bin/harness --version
 
-          echo "harness doctor (must enumerate the fixtures):"
+          echo "harness doctor (must enumerate the packages + reject the flat file with E143):"
           ./node_modules/.bin/harness --json doctor | tee doctor.json
           grep -q '"extensions"' doctor.json
+          grep -q 'E143' doctor.json
+          grep -q 'unsupported flat layout' doctor.json
+
+          echo "harness legacy (flat file must NOT register — unknown command, non-zero):"
+          if ./node_modules/.bin/harness --json legacy; then
+            echo "ERROR: the flat legacy.ts fixture registered a verb (folder-only layout regressed)"
+            exit 1
+          else
+            echo "OK: flat fixture rejected as expected"
+          fi
 
           echo "harness hello (the .ts fixture verb, via jiti, must exit 0):"
           ./node_modules/.bin/harness --json hello --name pi | tee hello.json

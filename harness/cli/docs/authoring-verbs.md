@@ -1,7 +1,7 @@
 # Authoring a harness verb
 
 A **harness extension** is a TypeScript (or JavaScript) file in your repo's
-`.harness/extensions/` folder that default-exports one or more **verbs**. Each
+`.harness/extensions/<name>/` package folder whose entry default-exports one or more **verbs**. Each
 verb becomes a top-level `harness <verb>` command with its own `--help`,
 options, structured Envelope output, and exit code.
 
@@ -16,25 +16,36 @@ options, structured Envelope output, and exit code.
 ## 1. Where extensions live
 
 Discovery scans `<cwd>/.harness/extensions/` **one level deep**, in sorted name
-order:
+order. Every extension is a **folder** (a little package); within it the entry
+resolves manifest → `extension.ts` → `extension.js` → `index.ts` → `index.js`:
 
 ```
 .harness/extensions/
-├── hello.ts                 # a direct file            → loaded
-├── build.js                 # a .js file               → loaded (no transpile)
+├── hello/
+│   ├── extension.ts         # the canonical entry      → loaded
+│   └── instructions.md      # agent briefing (`harness instructions hello`)
+├── build/
+│   └── extension.js         # a .js entry              → loaded (no transpile)
 ├── seed/
-│   └── index.ts             # a subdir with index.ts   → loaded
-└── lint/
-    ├── package.json         # { "harness": { "extensions": ["main.ts"] } }
-    └── main.ts              # resolved via the manifest → loaded
+│   └── index.ts             # index fallback           → loaded
+├── lint/
+│   ├── package.json         # { "harness": { "extensions": ["main.ts"] } }
+│   ├── main.ts              # resolved via the manifest → loaded
+│   └── lib/extra.ts         # free-form internals, imported relatively
+└── legacy.ts                # a FLAT file              → rejected (E143; move to legacy/extension.ts)
 ```
 
-- `.ts` / `.tsx` files are loaded with [jiti](https://github.com/unjs/jiti)
+- `.ts` / `.tsx` entries are loaded with [jiti](https://github.com/unjs/jiti)
   (full transpile — enums, etc.); `.js` / `.mjs` / `.cjs` load via native
-  `import()` (no transpile, fastest).
+  `import()` (no transpile, fastest). `.tsx`/`.mjs`/`.cjs` entries are reachable
+  only via the manifest. Package-internal relative imports
+  (`./lib/extra.ts`) resolve through the same loader.
+- Beside the entry, the convention requires an `instructions.md` — the briefing
+  for the calling agent, served verbatim by `harness instructions <verb>`.
+  Missing it never blocks the verb, but `harness doctor` wails (`E144`).
 - If two extensions declare the same verb name, the **first (sorted) wins**; the
   duplicate is reported by `doctor` as a conflict (never silently dropped).
-- `help`, `doctor`, `new`, `docs`, and `skills` are reserved core commands — an extension can't shadow them.
+- `help`, `doctor`, `new`, `docs`, `skills`, `record`, and `instructions` are reserved core commands — an extension can't shadow them.
 - Absent / empty folder is **not** an error: `help` says "no extensions
   installed yet".
 
@@ -99,7 +110,7 @@ machine-readable "what to do next" on every failure.
 
 ## 4. Two worked examples
 
-### `hello.ts` — the minimal verb
+### `hello/extension.ts` — the minimal verb
 
 ```ts
 import type { HarnessVerb } from 'harness-engineering/contract';
@@ -120,7 +131,7 @@ $ harness hello --name pi
 {"command":"hello","status":"ok","timestamp":"…","data":{"greeting":"hello, pi"}}   # exit 0
 ```
 
-### `build.ts` — wrapping a real command (the point)
+### `build/extension.ts` — wrapping a real command (the point)
 
 ```ts
 import type { HarnessVerb } from 'harness-engineering/contract';

@@ -111,7 +111,7 @@ For a practical guide to when to run the setup skill and how the loop skills fit
 
 **Setup group** — [`skills/eng-harness-setup/`](skills/eng-harness-setup/):
 
-- [`eng-harness-0-setup`](skills/eng-harness-setup/eng-harness-0-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: the `.harness/engineering-harness.md` governance doc, a starter command surface and sensor inventory, improvement surfaces, and an `AGENTS.md` route for future agents.
+- [`eng-harness-0-setup`](skills/eng-harness-setup/eng-harness-0-setup/SKILL.md): installs and validates the repo-local engineering harness nucleus — the CLI command surface, sensor inventory, improvement surfaces, and an `AGENTS.md` route — and coordinates the governance doc at `.harness/engineering-harness.md` (provisioning it is the deferred `harness init` writer; the doc itself stays hand-maintained).
 - [`eng-harness-0-harnessability-assessment`](skills/eng-harness-setup/eng-harness-0-harnessability-assessment/SKILL.md): scores a repository's harnessability across Operate-Today and Adaptability, mapping back-pressure surfaces, proof ceilings, external-dependency exposure, command tiers, first-session guidance, and proposal-only codebase affordance recommendations.
 - [`eng-harness-0-add-extension`](skills/eng-harness-setup/eng-harness-0-add-extension/SKILL.md): the guided path for authoring a new `harness <verb>` extension.
 

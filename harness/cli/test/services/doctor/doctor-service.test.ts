@@ -33,7 +33,7 @@ const mkVerb = (name: string): HarnessVerb => ({
 function deps(over: Partial<DoctorDeps> = {}): DoctorDeps {
   return {
     fs: over.fs ?? new FakeFs(BUILT_CLI),
-    proc: over.proc ?? new FakeProcess(ALL_TOOLS),
+    proc: over.proc ?? new FakeProcess(ALL_TOOLS, '/repo'),
     git: over.git ?? new FakeGit({ isRepo: true, branch: 'main' }),
     env: over.env ?? new FakeEnv(),
     clock: over.clock ?? new FakeClock('2026-06-08T07:20:00.000Z'),
@@ -244,7 +244,9 @@ describe('package-convention validation (plan 014 D2)', () => {
     expect(report.conventions).toHaveLength(1);
     expect(report.conventions[0]?.detail).toContain('E144');
     expect(report.conventions[0]?.detail).toContain('instructions.md');
-    expect(report.conventions[0]?.next_action).toContain(`${FLOW}/instructions.md`);
+    expect(report.conventions[0]?.next_action).toContain(
+      'author .harness/extensions/flow/instructions.md',
+    );
     expect(report.conventions[0]?.next_action).toContain('harness instructions');
     const ext = report.layers.find((l) => l.name === 'extensions');
     expect(ext?.ok).toBe(false);
@@ -274,7 +276,7 @@ describe('package-convention validation (plan 014 D2)', () => {
     ]);
     const text = renderDoctorText(buildDoctorReport(deps(), reg));
     expect(text).toContain('missing instructions.md');
-    expect(text).toContain(`author ${FLOW}/instructions.md`);
+    expect(text).toContain('author .harness/extensions/flow/instructions.md');
     expect(text).toContain('unsupported flat layout — move to legacy/extension.ts');
   });
 });

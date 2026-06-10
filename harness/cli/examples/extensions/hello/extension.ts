@@ -12,7 +12,7 @@ const hello: HarnessVerb = {
   run(ctx) {
     return ctx.ok(
       { greeting: `hello, ${ctx.options.name}` },
-      { next_action: 'Edit .harness/extensions/hello.ts to customise.' },
+      { next_action: 'Edit .harness/extensions/hello/extension.ts to customise.' },
     );
   },
 };

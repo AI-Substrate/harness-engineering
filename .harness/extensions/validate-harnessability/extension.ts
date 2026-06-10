@@ -178,9 +178,9 @@ const validateHarnessability: HarnessVerb = {
         `targetRepo=${dest}`,
         ...(model ? ['-m', model] : []),
         '--skill-source',
-        'path:skills',
+        'path:skills/eng-harness-setup',
         '--skill',
-        'harnessability-assessment',
+        'eng-harness-0-harnessability-assessment',
       ];
       const fire = await ctx.exec('bash', fireArgv);
       if (!fire.ok) {
@@ -217,7 +217,7 @@ const validateHarnessability: HarnessVerb = {
       'When a run shows completed, read its report (output/report.json) and validate: ' +
       '(1) verdict === PASS; ' +
       '(2) the assessment wrote .harness/reports/harnessability/latest.json AND a <ordinal>-<slug>/ run dir in the clone; ' +
-      '(3) report.json validates against skills/harnessability-assessment/templates/assessment-report.schema.json; ' +
+      '(3) report.json validates against skills/eng-harness-setup/eng-harness-0-harnessability-assessment/templates/assessment-report.schema.json; ' +
       '(4) spot-check 2-3 evidence claims against the real tree. ' +
       'Then fold each retrospective magicWand/difficulties into plan 009 (v0.2 evidence).';
 
