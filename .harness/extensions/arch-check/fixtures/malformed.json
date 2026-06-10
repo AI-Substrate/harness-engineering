@@ -1,0 +1,2 @@
+depcruise crashed before emitting JSON: ERR_MODULE_NOT_FOUND somewhere
+{"summary": {"violations": [
