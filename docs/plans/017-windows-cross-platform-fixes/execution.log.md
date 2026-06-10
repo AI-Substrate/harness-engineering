@@ -75,3 +75,9 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - Early-close test rewritten with Node primitives: `spawn(process.execPath, [distEntry, 'docs', id, '--no-extensions'])`, read to first `\n`, `stdout.destroy()` (the `head -1` analogue), await `close`. Asserts the CLI's documented behaviour — first line delivered + stderr free of `EPIPE|Error:` — **not** a blanket exit-0 (the old form asserted *head's* pipeline status). Parent-side `stdout.on('error')` swallowed (destroyed-pipe noise).
 - Build guard: `execFileSync(win32 ? 'npm.cmd' : 'npm', ['run','build'], { shell: win32 })` — works on win32 instead of being skipped.
 - Done-when nuance: zero `bash`/`head` **invocations** remain; 3 grep hits are comments documenting the old form (kept deliberately as context). Suite 434/434.
+
+### T010 — gen-docs hygiene (prerequisite of T011)
+
+- `console.log` → `console.error` (stdout is data — the line runs inside the `prepack` lifecycle).
+- biome via `execFileSync(process.execPath, ['node_modules/@biomejs/biome/bin/biome', …])` with `existsSync` guard + try/catch — missing OR failing biome warns to stderr, never breaks the build.
+- Evidence: `npm run build` stdout = npm's own banners only (script output zero); `check:docs` exit 0, `docs-content.ts` **byte-identical** (no diff); **`npm pack --json --dry-run | jq -r '.[0].filename'` → `harness-engineering-0.1.0.tgz`, jq exit 0** — the exact pipeline that parse-errored before this fix (Finding 01, verified live at plan time).

@@ -66,11 +66,25 @@ const body = rows
 const source = `${header}\nexport const DOCS = [\n${body}\n] as const;\n`;
 writeFileSync(outPath, source, 'utf8');
 
-const biomeBin = join(repoRoot, 'node_modules/.bin/biome');
-if (existsSync(biomeBin)) {
-  execFileSync(biomeBin, ['format', '--write', outPath], { stdio: 'ignore' });
+// Cross-platform biome target (plan 017 Finding 05): the package bin script
+// (a Node shebang file) run via process.execPath — node_modules/.bin/biome is
+// a sh shim that can't execFileSync on Windows. Output is byte-identical, so
+// the check:docs drift gate is unaffected. Missing/failing biome warns to
+// stderr and never breaks the build.
+const biomeBinJs = join(repoRoot, 'node_modules/@biomejs/biome/bin/biome');
+if (existsSync(biomeBinJs)) {
+  try {
+    execFileSync(process.execPath, [biomeBinJs, 'format', '--write', outPath], { stdio: 'ignore' });
+  } catch (err) {
+    console.warn(
+      `gen-docs: biome format failed (${err instanceof Error ? err.message : err}) — emitted file may not be biome-canonical (run \`npm run fix\`).`,
+    );
+  }
 } else {
   console.warn('gen-docs: biome not found — emitted file may not be biome-canonical (run `npm run fix`).');
 }
 
-console.log(`gen-docs: wrote ${rows.length} docs → ${outPath.replace(`${repoRoot}/`, '')}`);
+// stderr, not stdout (plan 017 Finding 01): this runs in npm lifecycles
+// (prepack) where stdout is data — a stdout line here corrupts `npm pack`
+// captures, including the --json form (empirically verified, npm 11.10.0).
+console.error(`gen-docs: wrote ${rows.length} docs → ${outPath.replace(`${repoRoot}/`, '')}`);
