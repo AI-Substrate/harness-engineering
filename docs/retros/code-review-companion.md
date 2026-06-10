@@ -169,3 +169,14 @@
 - workedWell: Per-commit review pings made it easy to catch localized contract drift early, and the final range sweep caught a CI sensor mismatch that per-commit local tests did not expose.
 - confusing: The public output schema did not mention the system-required `workedWell` and `confusing` retrospective fields, so the first report passed schema validation but failed system validation.
 - notes: During this run, `wait_for_any` missed queued task messages that `inbox_list` later returned, and an idle-budget farewell was superseded by queued work. Future companion runs should prefer the documented `inbox_list` long-poll until the wait-for-any behavior is proven equivalent. (Net effect this run: zero live finding messages reached the orchestrator during the phase; everything arrived in the farewell after the final range sweep.)
+
+## 2026-06-10T03:25:19.712Z — code-review-companion / 2026-06-10T12-44-41-380Z-6236
+
+- runId: 2026-06-10T12-44-41-380Z-6236
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-10T12-44-41-380Z-6236
+- summary: Reviewed the plan 015 build sequence as a long-running companion: T001-T011 plus a final range sweep. The strongest positive signals were broad CLI test coverage for capture/list/clear, exit mappings, FakeFs compaction simulation, reserved observe, doctor temp-hygiene, and old-slug retirement. Final verdict remained REQUEST_CHANGES because F001 (malformed observations can be deleted by clear after list skips them) and F003 (temp gitignore self-heal overclaim across briefing/docs/setup) were still open; F002 was addressed by the T003/T004 follow-up.
+- **magicWand** (target: coordination): Add a coordination stop guard that compares outside lastReviewedSha with the stop commit and warns or requires an explicit reviewedThrough field before control:stop completes.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder instead of the repository root, contradicting the companion prompt's first instruction. (workaround: Used the repository root from the session context for all project-relative file and git operations.)
+  - [annoying] coordination: The stop message cited commit ff310da after the final review request and final summary had covered b57d7b1, with no separate review request for ff310da before stop. (workaround: Recorded the reviewed-through boundary in this report and did not start new review work after control:stop, per stop-wins protocol.)
+  - [annoying] debug: A broad grep for retired-skill references hit generated docs/run material and produced oversized output. (workaround: Narrowed subsequent searches to live surfaces and capped output with rg/view ranges.)

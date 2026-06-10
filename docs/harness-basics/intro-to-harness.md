@@ -1,7 +1,7 @@
 - As you work, you may find things annoying or repetitive, or just want to standardise for the team
 - So you build scripts. As a human we do this all the time
-- Agents don't always do this well, or if they do it can be a bit adhoc etc. 
-- This concept is encoding stuff in to the engineering environment to make it easier for us to live.  
+- Agents don't always do this well, or if they do it can be a bit adhoc etc.
+- This concept is encoding stuff in to the engineering environment to make it easier for us to live.
 
 # Sound familiar?
 
@@ -59,6 +59,7 @@ Two main reasons (there are more) but these two are the most important. a) We wa
 - Encoding learnings and fixing friction.
 - Pushing for creative, innovative ways to create deterministic back-pressure in the codebase.
 - The harness is the focal point for this team memory — your engineering environment.
+- It's a team sport, that is akin to a chess game played by mail. The game is to create an executable version of the team's memory and learnings.
 
 ## Speaker Notes
 
