@@ -81,3 +81,8 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - `console.log` → `console.error` (stdout is data — the line runs inside the `prepack` lifecycle).
 - biome via `execFileSync(process.execPath, ['node_modules/@biomejs/biome/bin/biome', …])` with `existsSync` guard + try/catch — missing OR failing biome warns to stderr, never breaks the build.
 - Evidence: `npm run build` stdout = npm's own banners only (script output zero); `check:docs` exit 0, `docs-content.ts` **byte-identical** (no diff); **`npm pack --json --dry-run | jq -r '.[0].filename'` → `harness-engineering-0.1.0.tgz`, jq exit 0** — the exact pipeline that parse-errored before this fix (Finding 01, verified live at plan time).
+
+### T011 — package-smoke repair
+
+- `ci.yml`: `TARBALL="$(npm pack --json | jq -r '.[0].filename')"` + loud `[[ "$TARBALL" == *.tgz ]]` guard (any future stdout leak fails visibly, never silently); flat `legacy.ts` fixture created between the boom heredoc and the doctor invocation — the E143 greps (`:169-170`) and `harness legacy` unknown-command check (`:173-178`) now exercise a fixture that actually exists.
+- **Local replication of the full repaired script: ALL GREEN** — real `npm pack`, consumer-style `--omit=dev` install into a temp dir, doctor greps (E143 + `unsupported flat layout`) hit, `harness legacy` correctly refused, `harness hello` (jiti `.ts` fixture) exit 0. CI proof lands at T014's push.

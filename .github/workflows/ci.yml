@@ -122,7 +122,13 @@ jobs:
       - name: Pack and smoke-test the installed bin (with a .ts extension fixture)
         run: |
           set -euo pipefail
-          TARBALL="$(npm pack --silent)"
+          # Deterministic tarball capture (plan 017 AC-9): --json + jq, with a
+          # mechanical *.tgz assert so ANY lifecycle stdout leak fails loudly
+          # instead of silently corrupting $TARBALL. The load-bearing fix is
+          # gen-docs logging to stderr (017 T010) — --json is NOT immune to
+          # lifecycle stdout (verified on npm 11.10.0).
+          TARBALL="$(npm pack --json | jq -r '.[0].filename')"
+          [[ "$TARBALL" == *.tgz ]] || { echo "ERROR: npm pack capture corrupt: '$TARBALL'"; exit 1; }
           echo "Packed: $TARBALL"
           SMOKE_DIR="$(mktemp -d)"
           cd "$SMOKE_DIR"
@@ -158,6 +164,16 @@ jobs:
             },
           };
           export default boom;
+          TS
+
+          # FLAT legacy file (plan 017 Finding 02): the retired flat layout must
+          # be REJECTED with E143 and its verb must never register — this fixture
+          # is what the doctor greps and the `harness legacy` check below
+          # actually exercise (it was never created before, so those checks
+          # could not pass).
+          cat > .harness/extensions/legacy.ts <<'TS'
+          // Flat-layout fixture — discovery must reject it (E143 unsupported flat layout).
+          export default { name: 'legacy', summary: 'flat fixture', run: () => ({ status: 'ok' }) };
           TS
 
           echo "harness --version:"
