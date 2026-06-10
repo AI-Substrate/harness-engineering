@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "slug": "windows-cross-platform-fixes",
+  "plan_dir": "docs/plans/017-windows-cross-platform-fixes",
+  "mode": "Simple",
+  "current_stage": "awaiting-6",
+  "pending_command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-plan.md\"",
+  "intent": "Fix the Windows cross-platform failures catalogued in scratch/cross-system-failure.md (40 failing tests / 5 root causes; runtime works, tests assume POSIX) + the pre-existing package-smoke CI failure (gen-docs stdout pollutes npm pack capture). Validate via the harness loop with deterministic backpressure when done — user verbatim: 'we shoud use our harness loop to validate them using determinitic back pressure when done'",
+  "milestones_total": 5,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-10T09:40:15Z",
+  "compacted_seams": [],
+  "status": "active",
+  "_note": "PLAN READY v1.1.0 (2026-06-10, /plan-3-v3-architect + validate-v2 3 agents). Single phase, 16 tasks T000-T015, sensor tasks lead (backpressure Phase 0 folded in). Key empirical corrections baked into the plan: npm pack --json NOT immune to lifecycle stdout (npm 11.10.0, verified live) -> T010 stderr move is load-bearing, T011 jq+*.tgz assert is the loud guard; posix.resolve corrupts drive-letter paths -> helper normalize/join-only; Node posix.normalize collapses UNC leading // -> guard pinned in T001/T002. NEXT: /plan-6 (companion variant recommended; plain also fine; offer /compact seam first — heavy build turn). After build: companion supersedes /plan-7 if used; then /plan-8 merge gate (typed PROCEED only). NOTE: 014/015/016 remain parked at awaiting-8 (typed PROCEED only); this flow is independent. Residual one-off manual Windows re-port (verify-port.ps1) is NOT a plan task — recorded in execution log at next re-port.",
+  "compact_recommended": true
+}
