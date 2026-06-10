@@ -44,3 +44,9 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - `node:path` import removed entirely; `toPosix(proc.cwd())` at the boundary; all joins via `posixJoin`; local `isWithin` deleted in favour of the helper (POSIX-space `'../'` literal); dedupe keyed by `dedupeKey` (POSIX-normalized, win32 case-fold default).
 - Header doc now declares discovery the **single POSIX origin** — downstream (doctor/instructions/registry) receives POSIX `entryPath`/`folder`/rejected `path` and never re-normalizes per site.
 - Read-verified: `grep -E "from 'node:path'|join\(|relative\(|resolve\(|sep"` → zero native hits. Suite 423/423.
+
+### T005 — record-service + scaffold-service → POSIX
+
+- record: `toPosix(proc.cwd())` boundary (also fixes the `unconfigured` message's surfaced cwd); `posixJoin` for harnessDir/dir/fileAbs/`relPath` (envelope `:184` + write-failure message `:179` + exhaustion message). `ensureTemp` (shared/temp.ts) deliberately untouched — physical scratch-dir path, not surfaced; FakeFs tolerance covers its mixed-separator joins under Windows-shaped cwds.
+- scaffold: `posixJoin(toPosix(proc.cwd()), …)` for dirAbs; `relPath`/`relInstructions` in POSIX space — envelope `.harness/extensions/<name>/...` literal.
+- Both files: zero `node:path` imports. Suite 423/423.

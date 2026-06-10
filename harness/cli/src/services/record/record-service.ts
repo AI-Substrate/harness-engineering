@@ -1,8 +1,8 @@
-import { join } from 'node:path';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
+import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp, HARNESS_DIR } from '../shared/temp.js';
 import type { RecordRegistry } from './registry.js';
 
@@ -91,8 +91,9 @@ export function createRecord(
   deps: RecordDeps,
 ): RecordOutcome {
   const { fs, clock, proc } = deps;
-  const cwd = proc.cwd();
-  const harnessDir = join(cwd, HARNESS_DIR);
+  // Logical paths are POSIX on every OS (plan 017) — convert once at the boundary.
+  const cwd = toPosix(proc.cwd());
+  const harnessDir = posixJoin(cwd, HARNESS_DIR);
 
   // 1. Honest `unconfigured` when there's no harness to record into.
   if (!fs.exists(harnessDir)) {
@@ -138,7 +139,7 @@ export function createRecord(
   //    directory and <NNN> is a per-day, per-type ordinal = 1 + the highest already
   //    present, so a fresh higher ordinal can't collide with an existing record.
   const date = dateStamp(clock);
-  const dir = join(harnessDir, RECORDS_DIR, type, date);
+  const dir = posixJoin(harnessDir, RECORDS_DIR, type, date);
   const fileFor = (ord: number): string => {
     const nnn = String(ord).padStart(3, '0');
     return slug ? `${nnn}-${slug}.md` : `${nnn}.md`;
@@ -146,12 +147,12 @@ export function createRecord(
   let ordinal = nextOrdinal(fs, dir);
   let fileName = fileFor(ordinal);
   // Defensive: if readdir lagged and the computed name somehow exists, bump on.
-  while (fs.exists(join(dir, fileName)) && ordinal < MAX_ORDINAL) {
+  while (fs.exists(posixJoin(dir, fileName)) && ordinal < MAX_ORDINAL) {
     ordinal += 1;
     fileName = fileFor(ordinal);
   }
-  const fileAbs = join(dir, fileName);
-  const relPath = join(HARNESS_DIR, RECORDS_DIR, type, date, fileName);
+  const fileAbs = posixJoin(dir, fileName);
+  const relPath = posixJoin(HARNESS_DIR, RECORDS_DIR, type, date, fileName);
 
   // 5. Exhaustion guard: refuse rather than clobber (or overflow to 4 digits) at the
   //    practically-unreachable limit of MAX_ORDINAL same-day records of this type.
@@ -160,7 +161,7 @@ export function createRecord(
       ok: false,
       status: 'error',
       code: ErrorCodes.RECORD_WRITE_FAILED,
-      message: `Ordinal space exhausted for ${join(HARNESS_DIR, RECORDS_DIR, type, date)} (${MAX_ORDINAL}+ same-day ${type} records).`,
+      message: `Ordinal space exhausted for ${posixJoin(HARNESS_DIR, RECORDS_DIR, type, date)} (${MAX_ORDINAL}+ same-day ${type} records).`,
       next_action: `Too many \`${type}\` records on ${date} — start a new day or prune the folder.`,
     };
   }
