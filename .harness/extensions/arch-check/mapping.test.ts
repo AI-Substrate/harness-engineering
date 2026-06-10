@@ -135,8 +135,10 @@ describe('arch-check mapping — § Envelope & Exit Contract', () => {
     expect(decision.status).toBe('degraded');
     expect(decision.exitIntent).toBe(0);
     expect(decision.error).toBeUndefined();
+    // 113, not 112: this fixture is the SEEDED-tree capture — the seeded import
+    // itself is one extra dependency. Real capture, real count.
     expect(decision.data.modules).toBe(66);
-    expect(decision.data.dependencies).toBe(112);
+    expect(decision.data.dependencies).toBe(113);
     expect(decision.data.violations.map((v) => v.from)).toEqual([
       'harness/cli/src/services/help/help-service.ts',
       'harness/cli/src/services/instructions/instructions-service.ts',
