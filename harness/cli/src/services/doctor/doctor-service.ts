@@ -1,4 +1,3 @@
-import { dirname, join, relative } from 'node:path';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
@@ -9,6 +8,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
+import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
@@ -118,13 +118,15 @@ function checkConventions(
     if (record.status !== 'loaded') {
       continue;
     }
-    const folder = dirname(record.entryPath);
-    if (!fs.exists(join(folder, 'instructions.md'))) {
-      const relFolder = relative(proc.cwd(), folder) || folder;
+    // entryPath is POSIX from discovery (the single POSIX origin, plan 017);
+    // these stay in POSIX space so `folder` matches it shape-for-shape.
+    const folder = posixDirname(record.entryPath);
+    if (!fs.exists(posixJoin(folder, 'instructions.md'))) {
+      const relFolder = posixRelative(toPosix(proc.cwd()), folder) || folder;
       complaints.push({
         folder,
         detail: `${ErrorCodes.EXTENSION_INSTRUCTIONS_MISSING}: missing instructions.md (the agent briefing for this extension's verbs)`,
-        next_action: `author ${join(relFolder, 'instructions.md')} — see \`harness instructions\` for the pattern`,
+        next_action: `author ${posixJoin(relFolder, 'instructions.md')} — see \`harness instructions\` for the pattern`,
       });
     }
   }
@@ -132,8 +134,8 @@ function checkConventions(
   // Temp-hygiene probe (plan 015 D5, AC-6): the transient storage class is only
   // safe while its nested self-.gitignore exists. Complaint ONLY when the temp
   // dir exists unprotected; no temp dir yet → silent; no `.harness/` → silent.
-  const tempDir = join(proc.cwd(), HARNESS_DIR, TEMP_DIR);
-  if (fs.exists(tempDir) && !fs.exists(join(tempDir, '.gitignore'))) {
+  const tempDir = posixJoin(toPosix(proc.cwd()), HARNESS_DIR, TEMP_DIR);
+  if (fs.exists(tempDir) && !fs.exists(posixJoin(tempDir, '.gitignore'))) {
     complaints.push({
       folder: tempDir,
       detail: `transient scratch ${HARNESS_DIR}/${TEMP_DIR}/ exists without its nested .gitignore — session buffers risk being committed`,
@@ -288,7 +290,8 @@ export function renderDoctorText(report: DoctorReport): string {
         const names = [...verbNames, ...recordNames].join(', ') || '(none)';
         const suffix = ext.error ? ` — ${ext.error}` : '';
         lines.push(`    ${mark} ${names} [${ext.status}]  ${ext.entryPath}${suffix}`);
-        const complaint = report.conventions.find((c) => dirname(ext.entryPath) === c.folder);
+        // Both comparison sides in POSIX space (plan 017 — no partial-normalization mismatch).
+        const complaint = report.conventions.find((c) => posixDirname(ext.entryPath) === c.folder);
         if (complaint && ext.status === 'loaded') {
           lines.push(`      ✗ ${complaint.detail}`);
           lines.push(`        → ${complaint.next_action}`);
@@ -297,7 +300,7 @@ export function renderDoctorText(report: DoctorReport): string {
       // Complaints not tied to an extension folder (e.g. the temp-hygiene probe,
       // plan 015 D5) — the prescription must still be visible (P7).
       for (const complaint of report.conventions) {
-        if (!report.extensions.some((ext) => dirname(ext.entryPath) === complaint.folder)) {
+        if (!report.extensions.some((ext) => posixDirname(ext.entryPath) === complaint.folder)) {
           lines.push(`    ✗ ${complaint.detail}`);
           lines.push(`      → ${complaint.next_action}`);
         }

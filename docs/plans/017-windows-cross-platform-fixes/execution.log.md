@@ -50,3 +50,10 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - record: `toPosix(proc.cwd())` boundary (also fixes the `unconfigured` message's surfaced cwd); `posixJoin` for harnessDir/dir/fileAbs/`relPath` (envelope `:184` + write-failure message `:179` + exhaustion message). `ensureTemp` (shared/temp.ts) deliberately untouched — physical scratch-dir path, not surfaced; FakeFs tolerance covers its mixed-separator joins under Windows-shaped cwds.
 - scaffold: `posixJoin(toPosix(proc.cwd()), …)` for dirAbs; `relPath`/`relInstructions` in POSIX space — envelope `.harness/extensions/<name>/...` literal.
 - Both files: zero `node:path` imports. Suite 423/423.
+
+### T006 — doctor-service + instructions-service → POSIX
+
+- doctor `checkConventions`: `posixDirname(entryPath)`, `posixJoin(folder, 'instructions.md')`, `posixRelative(toPosix(cwd), folder)` for the repo-relative `next_action`; temp-hygiene probe via `posixJoin(toPosix(cwd), …)`.
+- doctor `renderDoctorText` `:291`/`:300`: **both sides** of `dirname(entryPath) === c.folder` now `posixDirname` vs POSIX-computed `c.folder` — the partial-normalization hazard validate-v2 flagged is closed.
+- instructions `:36`: `posixJoin(posixDirname(entryPath), 'instructions.md')` — surfaced briefing path forward-slash on every OS.
+- AC-2 sweep: zero `node:path` imports across all five services. Suite 423/423.

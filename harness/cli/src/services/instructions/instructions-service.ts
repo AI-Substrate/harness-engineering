@@ -1,6 +1,6 @@
-import { dirname, join } from 'node:path';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { VerbRegistry } from '../extensions/registry.js';
+import { posixDirname, posixJoin } from '../shared/posix-path.js';
 import { CORE_INSTRUCTIONS } from './core-instructions.js';
 
 /** The bare `harness instructions` payload (plan 014 AC-1). */
@@ -33,7 +33,9 @@ export function instructionsPathFor(verbName: string, registry: VerbRegistry): s
   if (record === undefined) {
     return null;
   }
-  return join(dirname(record.entryPath), 'instructions.md');
+  // entryPath is POSIX from discovery (plan 017) — derive in POSIX space so the
+  // surfaced briefing path stays forward-slash on every OS.
+  return posixJoin(posixDirname(record.entryPath), 'instructions.md');
 }
 
 /**
