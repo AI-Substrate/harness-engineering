@@ -12,7 +12,10 @@ import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import { buildProgram } from '../../src/app.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 import { discoverExtensions } from '../../src/services/extensions/discovery.js';
-import { buildVerbRegistry, type VerbRegistry } from '../../src/services/extensions/registry.js';
+import {
+  buildExtensionRegistry,
+  type VerbRegistry,
+} from '../../src/services/extensions/registry.js';
 
 /**
  * End-to-end integration through REAL jiti: discover + load on-disk fixture
@@ -40,8 +43,10 @@ function realDeps(cwd: string): VerbActDeps {
 }
 
 async function loadFixtureRegistry(deps: VerbActDeps): Promise<VerbRegistry> {
-  const candidates = discoverExtensions(deps.fs, deps.proc);
-  return buildVerbRegistry(candidates, new JitiLoader());
+  const discovery = discoverExtensions(deps.fs, deps.proc);
+  return buildExtensionRegistry(discovery.candidates, new JitiLoader(), {
+    rejected: discovery.rejected,
+  });
 }
 
 async function run(
@@ -78,16 +83,67 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     vi.restoreAllMocks();
   });
 
-  it('loads hello + build + a plain .js verb, isolates the broken extension (E140)', async () => {
+  it('loads the hello/build/greetjs/subby packages, isolates broken (E140), rejects flat-legacy (E143)', async () => {
     const { registry } = await run(REPO, ['help']);
     const byStatus = (s: string) =>
-      registry.records.filter((r) => r.status === s).map((r) => r.entryPath.split('/').pop());
-    expect(registry.verbs.map((v) => v.name).sort()).toEqual(['build', 'greetjs', 'hello']);
-    expect(byStatus('loaded').sort()).toEqual(['build.ts', 'greetjs.js', 'hello.ts']);
-    expect(byStatus('failed')).toEqual(['broken.ts']);
-    const broken = registry.records.find((r) => r.entryPath.endsWith('broken.ts'));
+      registry.records
+        .filter((r) => r.status === s)
+        .map((r) => r.entryPath.split('/').slice(-2).join('/'));
+    expect(registry.verbs.map((v) => v.name).sort()).toEqual([
+      'build',
+      'greetjs',
+      'hello',
+      'subby',
+    ]);
+    expect(byStatus('loaded').sort()).toEqual([
+      'build/extension.ts',
+      'greetjs/extension.js',
+      'hello/extension.ts',
+      'subby/extension.ts',
+    ]);
+    expect(byStatus('failed').sort()).toEqual(['broken/extension.ts', 'extensions/flat-legacy.ts']);
+    const broken = registry.records.find((r) => r.entryPath.endsWith('broken/extension.ts'));
     expect(broken?.error).toContain('E140');
     expect(broken?.error).toContain('boom');
+  });
+
+  it('the flat-legacy fixture is REJECTED with E143 and its verb never registers (AC-6, permanent)', async () => {
+    const { registry } = await run(REPO, ['help']);
+    expect(registry.verbs.map((v) => v.name)).not.toContain('flat-legacy');
+    const flat = registry.records.find((r) => r.entryPath.endsWith('flat-legacy.ts'));
+    expect(flat?.status).toBe('failed');
+    expect(flat?.error).toContain('E143');
+    expect(flat?.error).toContain('unsupported flat layout — move to flat-legacy/extension.ts');
+  });
+
+  it('subby runs — its entry imports ./lib/helper.ts from a subfolder via real jiti (AC-14)', async () => {
+    /*
+    Test Doc:
+    - Why: extensions are little packages — free-form internals imported relatively must load
+      through the REAL jiti loader (plan 014 AC-14; Finding 05 said this was unproven).
+    - Contract: subby/extension.ts imports craftGreeting from ./lib/helper.ts and runs to ok.
+    - Quality Contribution: the early sensor for the T012 production split (lib/worker-io.ts).
+    */
+    const { out, code } = await run(REPO, ['subby']);
+    const env = JSON.parse(out);
+    expect(env.status).toBe('ok');
+    expect(env.data.greeting).toBe('hello from the subfolder helper');
+    expect(code).toBe(0);
+  });
+
+  it('help --json marks hello has_instructions:true (briefing fixture) and build false', async () => {
+    const { out } = await run(REPO, ['help']);
+    const verbs = JSON.parse(out).data.verbs as { name: string; has_instructions: boolean }[];
+    expect(verbs.find((v) => v.name === 'hello')?.has_instructions).toBe(true);
+    expect(verbs.find((v) => v.name === 'build')?.has_instructions).toBe(false);
+  });
+
+  it('harness instructions hello serves the fixture briefing end-to-end', async () => {
+    const { out, code } = await run(REPO, ['instructions', 'hello']);
+    const env = JSON.parse(out);
+    expect(env.status).toBe('ok');
+    expect(env.data.instructions).toContain('Fixture briefing');
+    expect(code).toBe(0);
   });
 
   it('runs the hello verb → ok envelope, exit 0', async () => {
@@ -150,8 +206,8 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
   it('first-sorted extension wins a verb conflict; the duplicate is recorded (E142)', async () => {
     const { registry } = await run(REPO_CONFLICT, ['help']);
     expect(registry.verbs.map((v) => v.name)).toEqual(['greet']);
-    const winner = registry.records.find((r) => r.entryPath.endsWith('alpha.ts'));
-    const shadowed = registry.records.find((r) => r.entryPath.endsWith('beta.ts'));
+    const winner = registry.records.find((r) => r.entryPath.endsWith('alpha/extension.ts'));
+    const shadowed = registry.records.find((r) => r.entryPath.endsWith('beta/extension.ts'));
     expect(winner?.status).toBe('loaded');
     expect(shadowed?.status).toBe('conflict');
     expect(shadowed?.shadows).toEqual(['greet']);
@@ -166,12 +222,19 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     expect(code).toBe(0);
   });
 
-  it('doctor enumerates the fixtures (loaded + failed) without invoking them', async () => {
+  it('doctor enumerates the fixtures (loaded + failed + convention wails) without invoking them', async () => {
     const { out } = await run(REPO, ['doctor']);
     const env = JSON.parse(out);
     expect(env.command).toBe('doctor');
     const ext = env.data.layers.find((l: { name: string }) => l.name === 'extensions');
-    expect(ext.detail).toContain('3 loaded');
-    expect(ext.detail).toContain('1 failed');
+    expect(ext.detail).toContain('4 loaded');
+    expect(ext.detail).toContain('2 failed');
+    // hello carries a briefing; build/greetjs/subby do not → 3 convention wails (D2).
+    expect(ext.detail).toContain('3 missing instructions.md');
+    const folders = (env.data.conventions as { folder: string }[]).map((c) =>
+      c.folder.split('/').pop(),
+    );
+    expect(folders?.sort()).toEqual(['build', 'greetjs', 'subby']);
+    expect(env.status).toBe('degraded');
   });
 });
