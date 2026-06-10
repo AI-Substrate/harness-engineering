@@ -165,7 +165,7 @@ export function buildProgram(
 
   const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
 
-  registerHelpAct(program, io, registry);
+  registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);

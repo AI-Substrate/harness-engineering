@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerHelpAct } from '../../src/acts/help.js';
+import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
@@ -34,7 +35,7 @@ describe('registerHelpAct', () => {
       throw new Error(`exit:${code}`);
     }) as never);
     const program = new Command().name('harness');
-    registerHelpAct(program, io, registry);
+    registerHelpAct(program, io, registry, new FakeFs());
     expect(() => program.parse(['node', 'harness', 'help'])).toThrow(/^exit:/);
     return code;
   }
@@ -50,7 +51,13 @@ describe('registerHelpAct', () => {
     expect(env.command).toBe('help');
     expect(env.status).toBe('ok');
     expect(Array.isArray(env.data.verbs)).toBe(true);
-    expect(env.data.verbs[0]).toEqual({ name: 'hello', summary: 'hello verb', status: 'loaded' });
+    expect(env.data.verbs[0]).toEqual({
+      name: 'hello',
+      summary: 'hello verb',
+      status: 'loaded',
+      has_instructions: false,
+    });
+    expect(env.data.agents_start_here).toContain('harness instructions');
     expect(out()).not.toContain('BUILTIN_SLOTS');
     expect(code).toBe(0);
   });
