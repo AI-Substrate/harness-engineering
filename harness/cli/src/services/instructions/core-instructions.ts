@@ -39,6 +39,26 @@ Every command emits ONE envelope. Pass \`--json\` to get it machine-readable:
    It states what the verb computes deterministically and what judgment it
    expects back from you.
 
+## Friction capture (observe as you work)
+
+Notice friction while you work? Capture it the moment it happens — one
+command, no path/ID/timestamp bookkeeping, and it survives context
+compaction (the buffer lives on disk):
+
+  harness observe "<what happened, 10+ chars>" --kind difficulty --severity degrading
+
+- Kinds: difficulty | magic-wand | gift | insight | coordination |
+  improvement-suggestion | confusion. Severities: blocking | degrading |
+  annoying. \`--target\`, \`--workaround\`, \`--suggested-encoding\` optional.
+- Identity is optional: \`--agent <slug>\` → \`HARNESS_AGENT\` env → a shared
+  \`agent\` bucket. Capture never fails on identity.
+- Two storage classes: \`.harness/records/\` is COMMITTED team memory;
+  \`.harness/temp/\` is TRANSIENT session scratch — gitignored, never
+  committed (the CLI self-heals the protection; \`harness doctor\` checks it).
+- Drain at session end: \`harness observe --list --json\` sweeps all buckets →
+  save what matters via \`harness record retro\` (use the returned
+  \`data.path\`) → \`harness observe --clear\`.
+
 ## Where briefings live
 
 Each extension is a little package: \`.harness/extensions/<name>/\` with

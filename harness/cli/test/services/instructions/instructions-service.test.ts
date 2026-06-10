@@ -69,6 +69,32 @@ describe('buildCoreInstructions', () => {
   });
 });
 
+describe('CORE_INSTRUCTIONS — friction capture + drain (plan 015 AC-8)', () => {
+  it('teaches the capture verb, the drain path, and the two storage classes', () => {
+    /*
+    Test Doc:
+    - Why: the baked briefing is the ONLY zero-context channel (finding 09) — a fresh agent
+      knowing nothing but `npx harness instructions` must learn how to capture friction and
+      how to drain it after a context wipe, or AC-8 fails.
+    - Contract: CORE_INSTRUCTIONS names `harness observe`, the `--list --json`/`--clear`
+      drain path, `harness record retro` materialization, and both storage classes.
+    */
+    expect(CORE_INSTRUCTIONS).toContain('harness observe');
+    expect(CORE_INSTRUCTIONS).toContain('--list --json');
+    expect(CORE_INSTRUCTIONS).toContain('--clear');
+    expect(CORE_INSTRUCTIONS).toContain('harness record retro');
+    expect(CORE_INSTRUCTIONS).toContain('.harness/temp/');
+    expect(CORE_INSTRUCTIONS).toContain('.harness/records/');
+  });
+
+  it('the envelope contract still leads — the capture section comes after it', () => {
+    const envelopeAt = CORE_INSTRUCTIONS.indexOf('## The envelope contract');
+    const captureAt = CORE_INSTRUCTIONS.indexOf('harness observe');
+    expect(envelopeAt).toBeGreaterThanOrEqual(0);
+    expect(captureAt).toBeGreaterThan(envelopeAt);
+  });
+});
+
 describe('loadVerbInstructions', () => {
   it('returns the entire unmodified file content for a known verb (AC-2)', () => {
     const content = '# Flow briefing\n\nYou bring the inference; the verb brings determinism.\n';
