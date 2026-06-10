@@ -25,14 +25,15 @@ Cold start after clone: `npm install` (the `prepare` hook builds: gen:docs + tsc
 npx harness doctor --json    # envelope status "ok" = healthy (toolchain, build, extensions, conventions)
 ```
 
-Exit 0 with `status: "ok"` and `extensions: 2 loaded, 0 failed` is the healthy
+Exit 0 with `status: "ok"` and `extensions: 3 loaded, 0 failed` is the healthy
 reading for this repo. `degraded` names exactly what to fix in `next_action`.
 
 ## Interact method
 
 The CLI is the interaction surface: `npx harness <verb> --json` — core acts
 (`help`, `doctor`, `instructions`, `new`, `docs`, `skills`, `record`) plus this
-repo's extension verbs (`validate-harness-flow`, `validate-harnessability`).
+repo's extension verbs (`validate-harness-flow`, `validate-harnessability`,
+`arch-check`).
 Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 `next_action?`/`timestamp`); statuses map to exits 0/0/2/1.
 
@@ -49,10 +50,11 @@ Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 |---|---|---|
 | Unit + integration suite | `just test` | CLI behaviour incl. real-jiti extension loading |
 | Architecture tests | (in suite) `test/architecture/` | single `process.exit` site; no `node:fs` in services |
+| Hexagonal conformance | `npx harness arch-check --json` | the whole import graph honours the 7 committed rules (`.dependency-cruiser.cjs`); warn-launch — violations read `degraded` + CI `::warning::` until severities are promoted |
 | Lint/format | `just fix` / `just format` (biome) | style + correctness rules |
 | Type build | `npm run build` (tsc) | the published surface compiles |
 | Docs drift guard | `npm run check:docs` | `docs-content.ts` matches `docs/how/` sources |
-| CI | `.github/workflows/ci.yml` | build + lint + test + check:docs on PR; doctor (non-blocking) |
+| CI | `.github/workflows/ci.yml` | build + lint + test + check:docs + arch-check (via the verb) on PR; doctor (non-blocking) |
 
 ## Evidence paths
 
