@@ -6,8 +6,8 @@
   "mode": "Simple",
   "cursor": "merge",
   "recommended_next": "merge",
-  "now": "Build DONE (companion-reviewed) — T000-T012, 13 commits, 12/12 ACs, 378/378 both cwds, doctor 3-loaded, warn-launch sensor live in CI",
-  "next": "/plan-8 merge analysis — executes ONLY on explicit typed PROCEED; /plan-7 superseded by the companion",
+  "now": "Build DONE (companion-reviewed, findings reconciled) — 15 commits af3b8b5..4ba1678; MERGE DEFERRED by user call 2026-06-10 ('we will do that later')",
+  "next": "PARKED: /plan-8 merge analysis when the user returns — executes ONLY on explicit typed PROCEED; /plan-7 superseded by the companion. Joins 014/015 in the parked-merge set",
   "_comment": "Harness exists (.harness/engineering-harness.md; loop opt-out is conversational) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
   "agents": [
     {
@@ -110,10 +110,11 @@
     {
       "id": "merge",
       "type": "merge",
-      "label": "Merge",
+      "label": "Merge — DEFERRED (user call)",
       "status": "known",
-      "command": "/plan-8",
-      "note": "Read-only analysis; executes only on explicit typed PROCEED.",
+      "command": "/plan-8 (parked)",
+      "user_input": "great mark merge phase skipped we wil ldo that later",
+      "note": "Deferred 2026-06-10 after the build landed — not skipped-forever: the branch stays local with 15 unmerged commits; resume with /plan-8 (read-only analysis; executes only on explicit typed PROCEED). 014 and 015 merges are parked the same way.",
       "next": []
     }
   ]
