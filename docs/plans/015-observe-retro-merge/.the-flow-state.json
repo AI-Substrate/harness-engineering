@@ -3,13 +3,13 @@
   "slug": "observe-retro-merge",
   "plan_dir": "docs/plans/015-observe-retro-merge",
   "mode": "Simple",
-  "current_stage": "awaiting-3",
-  "pending_command": "/plan-3-v3-architect --spec /Users/jordanknight/substrate/harness-engineering/docs/plans/015-observe-retro-merge/observe-retro-merge-spec.md",
+  "current_stage": "awaiting-6",
+  "pending_command": "/plan-6-v2-implement-phase-companion --plan /Users/jordanknight/substrate/harness-engineering/docs/plans/015-observe-retro-merge/observe-retro-merge-plan.md",
   "intent": "Combine the observe and retro skills into one simpler friction-lifecycle skill, move in-flight friction capture into the harness CLI (compaction-proof, gitignored transient storage), elevate the inference-vs-determinism question to a strong signal, with token usage as an explicit secondary goal",
   "milestones_total": 5,
-  "milestones_done": 2,
-  "last_checkpoint_at": "2026-06-10T02:15:00Z",
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-10T03:45:00Z",
   "compacted_seams": [],
   "status": "active",
-  "_note": "Spec VALIDATED WITH FIXES. Optional recommended detour before /plan-3: /harness-2-backpressure (alias /plan-2d). D-11 veto exercised (default bucket + sweep, never errors). Remaining vetoable: D-5 slug, D-6 verb, D-12 flags, D-13 wording."
+  "_note": "Plan READY + validate-v2 VALIDATED WITH FIXES (single phase T000-T014; D1-D10). Backpressure check skipped by user. Next: /plan-6 (companion recommended; plain variant fine). Remaining vetoable: D-5 slug, D-6 verb, D-12 flags, D-13 wording, plan D4 identity-sanitization extension."
 }

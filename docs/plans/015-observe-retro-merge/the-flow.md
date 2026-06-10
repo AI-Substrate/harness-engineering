@@ -12,9 +12,9 @@ flowchart TD
 
   discussion["Design discussion (in-session research)"]:::done
   spec["Spec + validate-v2 ✅ (15 ACs · D-1..D-13 · VALIDATED WITH FIXES)"]:::done
-  backpressure["Backpressure Check (/plan-2d, optional · recommended)"]:::harness
-  plan["Plan (/plan-3)"]:::known
-  build["Build (single phase expected)"]:::assumed
+  backpressure["Backpressure Check (/plan-2d — optional, skipped)"]:::harness
+  plan["Plan + validate-v2 ✅ READY (T000–T014 · D1–D10 · VALIDATED WITH FIXES)"]:::done
+  build["Build — single phase (T000–T014, /plan-6)"]:::known
   merge["Merge (/plan-8, typed PROCEED only)"]:::assumed
 
   discussion --> spec --> backpressure --> plan --> build --> merge
@@ -23,8 +23,10 @@ flowchart TD
   said_discussion -.- discussion
   said_spec>"🗣 fire up a flow and progress to a validated spec stage"]:::said
   said_spec -.- spec
+  said_plan>"🗣 proceed to architect phase please"]:::said
+  said_plan -.- plan
 ```
 
 **Legend** — 🟩 done · 🟧 in progress · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop
 
-**Now**: Spec **VALIDATED WITH FIXES** — 15 ACs, clarifications D-1..D-13 (slug/verb/identity/flags/wording defaults all vetoable). validate-v2's headline catch: the one CRITICAL (how does the CLI know which agent is calling? → D-11, softened by user veto to flag→env→default bucket, with a sweep-complete drain) plus a finding that **corrected the spec itself** — `ensureTemp()` already writes a nested `.harness/temp/.gitignore`, so the real gap is capture-time triggering + a doctor check, and no repo-root gitignore mutation is needed at all · **Next**: `/plan-2d` backpressure check (recommended, optional) → `/plan-3` architect
+**Now**: Plan **READY** + VALIDATED WITH FIXES — single phase T000–T014; design decisions D1–D10 resolve every choice the spec deferred (dedicated observe service with `ensureTemp` relocated to a shared module; YAML-in-md buffer format kept so legacy hand-written entries parse natively, **no new runtime dependency**; doctor probe rides the E144 conventions pattern; flow dispatch re-pointed to the merged skill). The validators' headline catch: T012's AC-14 check was upgraded from a "read-through" to a **mandatory 9-row mapping table** (section + line per preserved behavior) — the concrete defense against the spec's stated main thesis risk, silent preservation drift · **Next**: `/plan-6` build (companion recommended; `/compact` first at this seam)

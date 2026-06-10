@@ -4,10 +4,10 @@
   "slug": "observe-retro-merge",
   "plan_dir": "docs/plans/015-observe-retro-merge",
   "mode": "Simple",
-  "cursor": "backpressure",
-  "recommended_next": "backpressure",
-  "now": "Spec VALIDATED WITH FIXES (15 ACs, D-1..D-13) — the user's pre-authorized 'validated spec stage' is reached",
-  "next": "/plan-2d backpressure check (recommended, optional) or /plan-3 architect",
+  "cursor": "build",
+  "recommended_next": "build",
+  "now": "Plan READY + VALIDATED WITH FIXES (single phase T000–T014, D1–D10) — every spec-deferred decision resolved",
+  "next": "/plan-6 build (companion recommended) — compact first at this seam",
   "_comment": "Harness exists (.harness/engineering-harness.md, L3; no docs/harness/.disabled) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
   "agents": [],
   "nodes": [
@@ -35,7 +35,7 @@
       "command": "/plan-1b",
       "ran_at": "2026-06-10T02:05Z",
       "user_input": "fire up a flow and pgoress to a vlidated spec stage",
-      "note": "Simple, CS-3 (P=5), 15 ACs, clarifications D-1..D-13 (Round 1 settled from precedent + discussion per user instruction; D-5 slug, D-6 verb, D-11 agent identity, D-12 read/clear flags, D-13 question wording — all vetoable). validate-v2 (4 agents): VALIDATED WITH FIXES — 1 CRITICAL (agent-identity resolution → D-11; user veto same day softened it to: --agent flag → HARNESS_AGENT env → deterministic default bucket, never errors; stranded-bucket risk closed by --list/--clear all-buckets sweep) + 4 HIGH fixed (unconfigured-repo contract, preserved-behaviors inventory AC-14, flow-dispatch decision, P2 gitignore concern DISSOLVED: FC agent found record-service ensureTemp() already writes a nested .harness/temp/.gitignore — which also corrected the spec's own overstated drift claim; real gap = capture-time trigger + doctor check only). FC matrix ✅×5 post-fix; thesis Advanced @ Contract.",
+      "note": "Simple, CS-3 (P=5), 15 ACs, clarifications D-1..D-13 (Round 1 settled from precedent + discussion per user instruction). validate-v2 (4 agents): VALIDATED WITH FIXES — 1 CRITICAL (agent-identity resolution → D-11; user veto same day softened it to: --agent flag → HARNESS_AGENT env → deterministic default bucket, never errors; stranded-bucket risk closed by --list/--clear all-buckets sweep) + 4 HIGH fixed; P2 gitignore concern DISSOLVED (ensureTemp() already writes the nested .harness/temp/.gitignore — which also corrected the spec's own overstated drift claim). FC matrix ✅×5 post-fix; thesis Advanced @ Contract.",
       "artifacts": [
         "observe-retro-merge-spec.md",
         "observe-retro-merge.fltplan.md"
@@ -47,10 +47,10 @@
     {
       "id": "backpressure",
       "type": "backpressure",
-      "label": "Backpressure Check (optional, recommended)",
-      "status": "known",
+      "label": "Backpressure Check (optional — skipped)",
+      "status": "done",
       "command": "/plan-2d",
-      "note": "Harness exists (L3) — recommended pre-architect step; advisory, skippable. ACs are sensor-rich (validation confirmed AC-1..AC-8 mappable to deterministic sensors).",
+      "note": "Skipped by user decision (went straight to architect). Advisory — absence changes nothing; spec validation had already confirmed AC-1..AC-8 map to deterministic sensors, and the prose-sensor gap is recorded in .harness/engineering-harness.md.",
       "next": [
         "plan"
       ]
@@ -58,10 +58,15 @@
     {
       "id": "plan",
       "type": "plan",
-      "label": "Plan (/plan-3)",
-      "status": "known",
+      "label": "Plan (/plan-3 + validate-v2) ✅ READY",
+      "status": "done",
       "command": "/plan-3",
-      "note": "Architect from the validated spec. Open items explicitly assigned: D-7 mechanism route (placement hook vs service), buffer storage format (YAML-md vs JSONL).",
+      "ran_at": "2026-06-10T03:30Z",
+      "user_input": "proceed to architect phase please",
+      "note": "READY — gates 6 PASS / 1 N/A (no ADRs); single phase T000–T014. D1–D10 settle every spec-deferred choice: D1 dedicated observe service (placement? hook stays reserved; ensureTemp → services/shared/temp.ts); D2 keep YAML-blocks-in-md at .harness/temp/<bucket>/session-buffer.md, constrained codec, NO yaml dependency; D3 legacy entries parse natively (deviants → malformed_skipped, never silent); D4 kebab-sanitized identity (vetoable extension of D-11); D5 doctor probe in checkConventions() (E144 pattern); D6 edge envelopes + E146; D7 flow dispatch re-pointed to merged skill; D8 one locked setup line; D9 list envelope shape; D10 full system.compound written by CLI. validate-v2 (3 agents): VALIDATED WITH FIXES — Source-Truth: all 9 findings line-verified, constitution PASS, no Deviation Ledger; Completeness: CRITICAL fixed (T012 mandatory 9-row AC-14 mapping table) + 5 HIGH fixed; Thesis/FC: 4/4 consumers PASS, confidence 0.88. Status stayed READY.",
+      "artifacts": [
+        "observe-retro-merge-plan.md"
+      ],
       "next": [
         "build"
       ]
@@ -69,10 +74,10 @@
     {
       "id": "build",
       "type": "phase",
-      "label": "Build (single phase expected)",
-      "status": "assumed",
+      "label": "Build — single phase (T000–T014)",
+      "status": "known",
       "command": "/plan-6 or /plan-6-companion",
-      "note": "Placeholder — real phase nodes revealed by /plan-3.",
+      "note": "Confirmed by /plan-3: one phase. Strand A = CLI TDD pairs (observe service/codec/act, doctor probe, briefing); Strand B = merged skill rewrite (<703 lines, AC-14 inventory); Strand C = reference sweep + docs regen + dogfood drain (T013 doubles as the harness-loop retro seam) + dual-cwd suite proof.",
       "next": [
         "merge"
       ]
