@@ -37,6 +37,9 @@ export function registerVerbAct(
   const command = program.command(verb.name);
   command.description(verb.description ?? verb.summary);
   command.summary(verb.summary);
+  // Group every contributed verb under its own `--help` heading so the dynamic,
+  // extension-owned surface reads separately from the fixed core commands.
+  command.helpGroup('Extensions:');
 
   const args = verb.args ?? [];
   for (const arg of args) {

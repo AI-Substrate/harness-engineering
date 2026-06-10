@@ -37,7 +37,7 @@ export function registerHelpAct(
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)
-          : { emit: () => io.writers.out(renderHelpText(content)) };
+          : { emit: () => io.writers.out(renderHelpText(content, io.useColor ?? false)) };
       exitWithEnvelope(envelope, port);
     });
 }

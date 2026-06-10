@@ -80,6 +80,21 @@ describe('registerVerbAct', () => {
     expect(help).toContain('Print a greeting');
   });
 
+  it('groups the verb under the `Extensions:` help heading (separate from core)', () => {
+    /*
+    Test Doc:
+    - Why: contributed verbs must read as a distinct `--help` section, not intermixed with the
+      fixed core commands — the core/extension split is the whole legibility win.
+    - Contract: registerVerbAct sets command.helpGroup('Extensions:') on every verb it registers.
+    - Quality Contribution: pins the grouping so a future refactor can't silently re-flatten it.
+    */
+    const verb: HarnessVerb = { name: 'greet', summary: 'Greet.', run: () => ({ status: 'ok' }) };
+    const program = new Command().name('harness').exitOverride();
+    const io: CliIo = { mode: 'json', writers: { out: () => {}, err: () => {} } };
+    const cmd = registerVerbAct(program, verb, deps(), io);
+    expect(cmd.helpGroup()).toBe('Extensions:');
+  });
+
   it('parses options + args and passes them to the handler via ctx', async () => {
     const seen: { args?: unknown; options?: unknown } = {};
     const verb: HarnessVerb = {

@@ -1,4 +1,5 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
+import { helpPalette } from '../../output/style.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import { instructionsPathFor } from '../instructions/instructions-service.js';
 
@@ -97,37 +98,52 @@ export function helpEmptyHint(content: HelpContent): string | undefined {
   return content.verbs.length === 0 ? EMPTY_HINT : undefined;
 }
 
-/** Render the help payload as human-readable text (pure — returns a string). */
-export function renderHelpText(content: HelpContent): string {
+/**
+ * Render the help payload as human-readable text (pure — returns a string).
+ * Core commands and contributed verbs print under SEPARATE headings (`Commands:`
+ * vs `Extensions:`) so the dynamic, extension-owned surface is visually distinct
+ * from the fixed core. `useColor` accents the headings (cyan core / green
+ * extensions) + dims descriptions; it defaults off so non-interactive callers
+ * (and tests) get plain text. The entrypoint resolves it from human + TTY state.
+ */
+export function renderHelpText(content: HelpContent, useColor = false): string {
+  const c = helpPalette(useColor);
   const lines: string[] = [];
   lines.push('▶ AGENTS START HERE: npx harness instructions (the agent briefing)', '');
   lines.push('harness — engineering harness front door', '', content.purpose, '');
-  lines.push('Commands:');
-  lines.push('  help                explain the harness (this output)');
-  lines.push('  doctor              report what is configured + which extensions loaded');
-  lines.push("  instructions [verb] the agent briefing (core, or one verb's instructions.md)");
-  lines.push('  new <name>          scaffold a new extension into ./.harness/extensions/<name>/');
-  lines.push('  docs [id]           list the bundled docs, or print one by id');
+  lines.push(c.heading('Commands:'));
+  lines.push(`  help                ${c.dim('explain the harness (this output)')}`);
+  lines.push(
+    `  doctor              ${c.dim('report what is configured + which extensions loaded')}`,
+  );
+  lines.push(
+    `  instructions [verb] ${c.dim("the agent briefing (core, or one verb's instructions.md)")}`,
+  );
+  lines.push(
+    `  new <name>          ${c.dim('scaffold a new extension into ./.harness/extensions/<name>/')}`,
+  );
+  lines.push(`  docs [id]           ${c.dim('list the bundled docs, or print one by id')}`);
+  lines.push('', c.extHeading('Extensions:'));
   if (content.verbs.length === 0) {
     lines.push('  (no extensions installed yet)');
   }
   for (const verb of content.verbs) {
     const briefing = verb.has_instructions ? ' 📖' : '';
-    lines.push(`  ${verb.name.padEnd(18)}${verb.summary} [${verb.status}]${briefing}`);
+    lines.push(`  ${verb.name.padEnd(18)}${c.dim(verb.summary)}${briefing}`);
   }
   const { failed, conflicts } = content.extensions;
   if (failed > 0 || conflicts > 0) {
     lines.push('', `⚠ ${failed} failed, ${conflicts} conflict(s) — run \`harness doctor\`.`);
   }
-  lines.push('', 'Output modes:');
+  lines.push('', c.heading('Output modes:'));
   for (const mode of content.output_modes) {
     lines.push(`  - ${mode}`);
   }
-  lines.push('', 'Exit codes:');
+  lines.push('', c.heading('Exit codes:'));
   for (const [code, meaning] of Object.entries(content.exit_codes)) {
     lines.push(`  ${code}  ${meaning}`);
   }
-  lines.push('', 'Safe first actions:');
+  lines.push('', c.heading('Safe first actions:'));
   for (const action of content.safe_first_actions) {
     lines.push(`  - ${action}`);
   }

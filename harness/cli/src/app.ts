@@ -27,6 +27,7 @@ import {
   selectMode,
   type Writers,
 } from './output/output-port.js';
+import { helpStyleConfig, resolveUseColor } from './output/style.js';
 import { validateVerbRegistry } from './services/config/load-config.js';
 import { discoverExtensions } from './services/extensions/discovery.js';
 import {
@@ -162,6 +163,12 @@ export function buildProgram(
     .option('--json', 'force JSON output')
     .option('--no-json', 'force human output')
     .option('--no-extensions', 'skip loading repo extensions (core commands only)')
+    // Core commands sit under the default `Commands:` heading; each extension
+    // verb overrides this with `Extensions:` (see registerVerbAct) so the two
+    // surfaces read as distinct sections in `--help`. configureHelp accents the
+    // headings; commander strips the ANSI itself on non-color output streams.
+    .commandsGroup('Commands:')
+    .configureHelp(helpStyleConfig())
     .exitOverride();
 
   const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
@@ -227,7 +234,7 @@ export async function main(
   const clock = deps.clock;
 
   const mode = selectMode({ json: jsonFlag(argv) }, env, isTty);
-  const io: CliIo = { mode, writers };
+  const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
   const port = createOutputPort(io.mode, io.writers);
 
   let registry: VerbRegistry;

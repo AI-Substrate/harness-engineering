@@ -33,7 +33,7 @@
     "fix": "biome check --write harness/cli"
   },
   "dependencies": {
-    "commander": "^13.1.0",
+    "commander": "^14.0.3",
     "jiti": "2.7.0"
   },
   "devDependencies": {

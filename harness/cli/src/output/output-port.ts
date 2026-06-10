@@ -19,6 +19,13 @@ export type OutputMode = 'json' | 'human';
 export interface CliIo {
   mode: OutputMode;
   writers: Writers;
+  /**
+   * Whether the hand-rolled `harness help` renderer should emit ANSI color.
+   * Resolved ONCE by the entrypoint (human + interactive TTY, minus NO_COLOR);
+   * optional so test call sites that omit it default to plain text. Commander's
+   * own `--help` does its own color detection and ignores this.
+   */
+  useColor?: boolean;
 }
 
 /**

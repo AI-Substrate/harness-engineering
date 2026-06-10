@@ -121,6 +121,35 @@ describe('renderHelpText', () => {
     expect(text).toContain('Safe first actions:');
   });
 
+  it('splits core commands and contributed verbs under separate headings', () => {
+    /*
+    Test Doc:
+    - Why: the dynamic, extension-owned surface must read distinctly from the fixed core — a single
+      flat `Commands:` list buries contributed verbs (the feature ask).
+    - Contract: renderHelpText emits a `Commands:` heading AND an `Extensions:` heading, with each
+      verb listed under the latter.
+    - Worked Example: with a 'greet' verb, 'greet' appears after the 'Extensions:' heading.
+    */
+    const text = renderHelpText(
+      buildHelp(registry([mkVerb('greet')], [loadedRecord('greet')]), new FakeFs()),
+    );
+    expect(text).toContain('Commands:');
+    expect(text).toContain('Extensions:');
+    expect(text.indexOf('greet')).toBeGreaterThan(text.indexOf('Extensions:'));
+  });
+
+  it('emits ANSI only when useColor is set (default plain for pipes/agents)', () => {
+    /*
+    Test Doc:
+    - Why: the custom `harness help` renderer bypasses commander's auto-strip, so it must gate color
+      itself — colored for an interactive human, plain everywhere else.
+    - Contract: renderHelpText(content) has no ESC; renderHelpText(content, true) contains ESC.
+    */
+    const content = buildHelp(registry([mkVerb('greet')], [loadedRecord('greet')]), new FakeFs());
+    expect(renderHelpText(content)).not.toContain('\x1b[');
+    expect(renderHelpText(content, true)).toContain('\x1b[');
+  });
+
   it('shows the empty-state hint when no extensions are installed', () => {
     const text = renderHelpText(buildHelp(registry([], []), new FakeFs()));
     expect(text).toMatch(/no extensions/i);
