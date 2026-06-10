@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
@@ -104,11 +105,14 @@ describe('FakeFs', () => {
 });
 
 describe('NodeFs', () => {
+  // Resolve real-tree probes from THIS file's location, not cwd — the suite must
+  // read true from any invocation directory (plan 014 orchestrator retro OH-001).
+  const CLI_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
   it('reports a real existing file and reads its text', () => {
-    // cwd is harness/cli (vitest runs there); tsconfig.json lives here.
     const fs = new NodeFs();
-    expect(fs.exists('tsconfig.json')).toBe(true);
-    expect(fs.readText('tsconfig.json')).toContain('compilerOptions');
+    expect(fs.exists(join(CLI_ROOT, 'tsconfig.json'))).toBe(true);
+    expect(fs.readText(join(CLI_ROOT, 'tsconfig.json'))).toContain('compilerOptions');
   });
 
   it('returns false/null for a non-existent path without throwing', () => {
@@ -118,9 +122,8 @@ describe('NodeFs', () => {
   });
 
   it('readdir lists a real directory and returns [] for a missing one (no throw)', () => {
-    // cwd is harness/cli (vitest runs there); the `src` directory exists.
     const fs = new NodeFs();
-    expect(fs.readdir('src')).toContain('app.ts');
+    expect(fs.readdir(join(CLI_ROOT, 'src'))).toContain('app.ts');
     expect(fs.readdir('definitely/not/here')).toEqual([]);
   });
 

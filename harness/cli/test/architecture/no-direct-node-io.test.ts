@@ -1,6 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+// Resolve from THIS file's location, not cwd — the suite must read true from any
+// invocation directory (plan 014 orchestrator retro OH-001).
+const CLI_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function tsFiles(dir: string): string[] {
   const out: string[] = [];
@@ -26,13 +31,13 @@ describe('architecture — services keep Node I/O behind ports', () => {
     // data artifact is exempt (a `@generated` header alone is NOT enough — scope the escape hatch
     // so a future hand-or-generated service can't smuggle real node:fs in, companion F001).
     const GENERATED_DATA_ALLOWLIST = [join('src', 'services', 'docs', 'docs-content.ts')];
-    const offenders = tsFiles(join('src', 'services'))
+    const offenders = tsFiles(join(CLI_ROOT, 'src', 'services'))
       .filter((file) => !GENERATED_DATA_ALLOWLIST.some((allowed) => file.endsWith(allowed)))
       .filter((file) => {
         const source = readFileSync(file, 'utf8');
         return FORBIDDEN.some((pattern) => pattern.test(source));
       })
-      .map((file) => file.replace(`${process.cwd()}/`, ''));
+      .map((file) => relative(CLI_ROOT, file));
     expect(offenders).toEqual([]);
   });
 });

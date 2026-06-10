@@ -70,12 +70,15 @@ Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 - **Instructions content is convention-checked, not content-checked** — doctor
   proves `instructions.md` exists, not that a briefing is any good; quality is
   operator judgment.
+- **Suite exit codes are maskable by caller-side pipes** — `just test | grep …`
+  reads grep's exit, not vitest's. Not encodable repo-side (the recipe itself
+  propagates correctly); chain on the command, never on a pipe of it.
 
 ## Current maturity snapshot
 
-**L2 — commands encoded**: boot (`just test`) boots cleanly, health
-(`harness doctor`) reads ok, build/test/lint are confirmed runnable, the front
-door + governance doc exist. Not L3 yet: `.harness/history.md` has no encoded-
-improvement rows — the retro→encode loop has run via dogfood plans but has not
-yet shipped a change recorded in the changelog. First L3 candidate: encode a
-dogfood-run magic wand and start `history.md`.
+**L3 — improvement loop active**: boot (`just test`) boots cleanly, health
+(`harness doctor`) reads ok, build/test/lint confirmed runnable (L2 floor), and
+the retro→encode loop has now shipped a harness change: the plan-014
+orchestrator retro's magic wand (cwd-sensitive tests; mute stale-dist failures)
+was encoded same-day — see `.harness/history.md` row 1. Not L4: improvements do
+not yet arrive routinely during normal work without a retro prompting them.

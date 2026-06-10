@@ -33,8 +33,11 @@ describe('docs command — end-to-end through a real pipe (F002 truncation/EPIPE
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
     });
-    expect(out.length).toBe(expected.length);
-    expect(out).toBe(expected);
+    const staleHint =
+      'piped dist output differs from source docs-content — the built CLI is likely STALE; ' +
+      'run `npm run build` and re-run (plan 014 orchestrator retro OH-003)';
+    expect(out.length, staleHint).toBe(expected.length);
+    expect(out, staleHint).toBe(expected);
   });
 
   it('survives a reader that closes early (`| head -1`) without an EPIPE stack trace', () => {
