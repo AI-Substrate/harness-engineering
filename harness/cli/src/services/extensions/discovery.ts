@@ -1,6 +1,6 @@
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
+import { dedupeKey, isWithin, posixJoin, toPosix } from '../shared/posix-path.js';
 
 const EXTENSIONS_DIR = ['.harness', 'extensions'];
 const CODE_FILE = /\.(ts|tsx|mjs|cjs|js)$/;
@@ -44,16 +44,23 @@ export interface DiscoveryResult {
  *   `../escape.ts` path traversal — lexical containment only; see the realpath
  *   note below for symlinks).
  * - Entries are processed in **sorted** name order (stable "first wins").
- * - Candidates are **deduped** by resolved absolute path (first occurrence kept).
+ * - Candidates are **deduped** by POSIX-normalized logical path (first
+ *   occurrence kept; case-folded on win32 — see `dedupeKey`).
  * - Absent / empty dir → empty result (never an error).
  *
- * NOTE: dedup + containment are by `path.resolve` of the candidate; symlink-
- * following (true realpath) is deferred — it would need a new `FsPort.realpath`
- * capability, so the `../escape` guard is lexical and does NOT stop a symlink
- * inside the subdir from pointing elsewhere.
+ * Discovery is the SINGLE POSIX ORIGIN for extension paths (plan 017): the cwd
+ * is converted via `toPosix` at the boundary and every emitted `entryPath` /
+ * `folder` / rejected `path` is a logical POSIX path, so downstream consumers
+ * (doctor, instructions, registry) never re-normalize per site.
+ *
+ * NOTE: dedup + containment are lexical in POSIX space (posix-path helper —
+ * never `resolve`, which corrupts drive-letter paths); symlink-following (true
+ * realpath) is deferred — it would need a new `FsPort.realpath` capability, so
+ * the `../escape` guard is lexical and does NOT stop a symlink inside the
+ * subdir from pointing elsewhere.
  */
 export function discoverExtensions(fs: FsPort, proc: ProcessPort): DiscoveryResult {
-  const base = join(proc.cwd(), ...EXTENSIONS_DIR);
+  const base = posixJoin(toPosix(proc.cwd()), ...EXTENSIONS_DIR);
   const entries = fs.readdir(base);
   if (entries.length === 0) {
     return { candidates: [], rejected: [] };
@@ -62,7 +69,7 @@ export function discoverExtensions(fs: FsPort, proc: ProcessPort): DiscoveryResu
   const candidates: string[] = [];
   const rejected: RejectedExtension[] = [];
   for (const entry of [...entries].sort()) {
-    const entryPath = join(base, entry);
+    const entryPath = posixJoin(base, entry);
     if (CODE_FILE.test(entry)) {
       const name = entry.replace(CODE_FILE, '');
       rejected.push({
@@ -84,7 +91,7 @@ function resolveSubdir(fs: FsPort, dir: string): string[] {
     return manifestPaths;
   }
   for (const entry of ENTRY_CHAIN) {
-    const entryPath = join(dir, entry);
+    const entryPath = posixJoin(dir, entry);
     if (fs.exists(entryPath)) {
       return [entryPath];
     }
@@ -94,7 +101,7 @@ function resolveSubdir(fs: FsPort, dir: string): string[] {
 
 /** Read `<dir>/package.json` and return resolved `harness.extensions[]` paths, or []. */
 function readManifest(fs: FsPort, dir: string): string[] {
-  const pkgPath = join(dir, 'package.json');
+  const pkgPath = posixJoin(dir, 'package.json');
   if (!fs.exists(pkgPath)) {
     return [];
   }
@@ -110,25 +117,19 @@ function readManifest(fs: FsPort, dir: string): string[] {
     }
     return list
       .filter((entry): entry is string => typeof entry === 'string')
-      .map((rel) => join(dir, rel))
+      .map((rel) => posixJoin(dir, rel))
       .filter((candidate) => isWithin(dir, candidate));
   } catch {
     return [];
   }
 }
 
-/** True when `candidate` resolves to `dir` or a descendant of it (no `../` escape). */
-function isWithin(dir: string, candidate: string): boolean {
-  const rel = relative(resolve(dir), resolve(candidate));
-  return rel === '' || (!rel.startsWith(`..${sep}`) && rel !== '..' && !isAbsolute(rel));
-}
-
-/** Keep the first occurrence of each resolved absolute path (preserves order). */
+/** Keep the first occurrence of each logical path (POSIX-normalized `dedupeKey`; preserves order). */
 function dedupeByAbsolutePath(paths: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const path of paths) {
-    const key = resolve(path);
+    const key = dedupeKey(path);
     if (!seen.has(key)) {
       seen.add(key);
       result.push(path);

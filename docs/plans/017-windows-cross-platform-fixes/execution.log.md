@@ -38,3 +38,9 @@ Verdict: **healthy** → proceed. Harness router installed (`~/.claude/skills/en
 - `mkdirp` splits on `/[\\/]/` and registers ancestors in canonical POSIX form; `readdir` tolerates Windows-shaped probes (POSIX-canonical key fallback for the seeded map, normalized prefix match for mkdirp-created children, child-name split on either separator).
 - 6 new unit tests (backslash, slash-equivalence, UNC in both shapes, Windows-shaped probes, end-to-end UNC list). fake-fs suite 18/18; **full suite 423/423**.
 - Design note: registered state is canonical POSIX, probes are tolerant — `exists()` untouched (post-T004–T006 all service probes are POSIX; scope kept to the two plan-named sites).
+
+### T004 — discovery.ts → POSIX (single POSIX origin)
+
+- `node:path` import removed entirely; `toPosix(proc.cwd())` at the boundary; all joins via `posixJoin`; local `isWithin` deleted in favour of the helper (POSIX-space `'../'` literal); dedupe keyed by `dedupeKey` (POSIX-normalized, win32 case-fold default).
+- Header doc now declares discovery the **single POSIX origin** — downstream (doctor/instructions/registry) receives POSIX `entryPath`/`folder`/rejected `path` and never re-normalizes per site.
+- Read-verified: `grep -E "from 'node:path'|join\(|relative\(|resolve\(|sep"` → zero native hits. Suite 423/423.
