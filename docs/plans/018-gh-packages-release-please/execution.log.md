@@ -129,3 +129,18 @@ AC-5 + AC-7** (renamed scoped package installs under `--omit=dev` and the bin ru
 Remaining: **AC-3** (publish fires on the real release — post-merge), **AC-4** (config verified; fires post-merge),
 **AC-11** (canary — T12 held). Plan-018 implementation is complete and proven on CI; the real publish is one
 release-please Release-PR merge away.
+
+## T12 — CANARY DONE ✅ (the test release worked end-to-end)
+
+Pushed `canary/018-test` (D1 pre-merge trigger) → Release run **27322157506**, job `canary`:
+- **Publish** ✅ — `npm publish --tag canary` pushed **`@ai-substrate/engineering-harness@0.1.0-canary.1`**
+  (tarball = `bin` + full `dist/` + LICENSE + README); `release-please` + `publish` jobs correctly **skipped**.
+- **Verify** ✅ — authed `npm install @ai-substrate/engineering-harness@canary` → `added 3 packages`
+  (the package + **commander + jiti** resolved from the published tarball) → `harness --json help` returned
+  `{"status":"ok",...}` → `latest='<none>'  canary='0.1.0-canary.1'` → **latest not clobbered**.
+- Throwaway `canary/018-test` branch **deleted**. The immutable `0.1.0-canary.1` version remains under the
+  `canary` dist-tag (harmless prerelease; no `delete:packages` scope locally to remove it).
+
+**This proves T1's org preconditions for real** (GITHUB_TOKEN may publish packages; `@ai-substrate` scope usable;
+package links to the repo) and flips the entire publish path from BUILDABLE → **EXISTS**, pre-merge.
+**AC-11 ✅.** Only AC-3/AC-4 remain — they fire automatically on the real release-please release after merge.
