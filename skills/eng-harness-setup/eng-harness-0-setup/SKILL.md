@@ -45,7 +45,7 @@ Keep it a **basic nucleus**. Do **not** boil the ocean — a thin wrapper over t
 
 ## Step 1 — Install the harness
 
-The harness CLI ships from its GitHub repo and runs via `npx` (there is intentionally no npm-published package).
+The harness CLI installs two ways: **straight from its GitHub repo via `npx`/`npm` (zero registry setup — the default used below)**, or as the published package `@ai-substrate/engineering-harness` from **GitHub Packages** (versioned releases; needs a one-time registry + token setup — see the [CLI README](https://github.com/AI-Substrate/harness-engineering/blob/main/harness/cli/README.md) for that path). Prefer the repo path when setting up unattended — it needs no auth ceremony.
 
 1. **Check whether the harness is already installed — never blindly (re)install:**
 
