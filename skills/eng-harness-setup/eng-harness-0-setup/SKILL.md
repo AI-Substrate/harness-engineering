@@ -125,7 +125,9 @@ An installed harness that nothing calls **disappears on the next cold agent star
 
 2. **Map flow moments → seams.** The router speaks six universal seam events: `session-start | post-spec | pre-implement | task-pause | phase-end | plan-complete`. Whatever the host flow calls its stages, find where those moments fall. Not every flow has every seam — map what exists, skip the rest.
 
-3. **Weave the calls** (with the user's go-ahead) into surfaces a cold agent already loads:
+3. **Propose the map to the user before touching anything.** This is *their* flow — the step is a hand-held conversation, never a silent batch edit. Show the proposed map as a small table (flow moment → seam event → the surface that would carry the call), with one line per seam on why it earns its place. Invite pruning: the user reshapes or declines seams freely, and "none, thanks" is a perfectly good answer.
+
+4. **Weave the accepted calls** into surfaces a cold agent already loads — **per surface**: show the exact edit (which file, what gets inserted, where) and get an explicit go-ahead for *each* file before applying it. Never bundle the edits into one approval, and never present the weave as already done:
 
    | Repo shape | Where the seams go |
    |------------|--------------------|
@@ -133,9 +135,11 @@ An installed harness that nothing calls **disappears on the next cold agent star
    | Flow skills / instructions live **in this repo** | Add `/eng-harness-flow --event <seam>` calls at the mapped moments in those files |
    | No formal flow (plain branch/PR work) | The agent-context surface (`AGENTS.md` or equivalent) carries the cues: `--event session-start` when work begins, `--event phase-end` before a PR/handoff |
 
-4. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per seam: the seam event, where it fires from, and what fires it. This is the durable artifact the router's S3 rung reads; without it, the stateless router re-offers this step on every call. **When governance is still owed** (the `harness init` writer hasn't shipped or run), the injection map is owed with it — propose the map in conversation, note it as owed, and move on; never create the governance doc here. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md).
+   A declined weave is a fine outcome — record what was decided either way (a map row can say `declined` or `manual`).
 
-Offer, never force — the weave edits the user's files, so it happens only on their go-ahead. Keep descriptions of the host flow generic and public-safe (name the flow's *shape*, never private tooling identifiers the repo doesn't already commit).
+5. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per seam: the seam event, where it fires from, and what fires it. This is the durable artifact the router's S3 rung reads; without it, the stateless router re-offers this step on every call. **When governance is still owed** (the `harness init` writer hasn't shipped or run), the injection map is owed with it — propose the map in conversation, note it as owed, and move on; never create the governance doc here. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md).
+
+**Ask first, always.** The weave edits the user's own files; nothing in this step is applied without the user having seen the specific change and said yes to it. Keep descriptions of the host flow generic and public-safe (name the flow's *shape*, never private tooling identifiers the repo doesn't already commit).
 
 ---
 
