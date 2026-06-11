@@ -54,6 +54,8 @@
                                line at the bottom of body slides.
        .talk (aside)         — per-slide commentary. Hidden in PRESENT mode (lives
                                in the N notes panel); rendered inline in READ mode.
+       .cta / .cta-box       — install call-to-action with copy button. Add the
+                               cta-top class to hide it in PRESENT mode.
   4. Slide accent color: set style="--c: var(--azure)" on the section
      (amber/azure/green/stone/rust available). Dark slides: class="slide dark".
   5. Nothing in the <script> needs touching for content edits.
@@ -879,6 +881,67 @@
   a.k { text-decoration: none; transition: color .25s, border-color .25s; }
   a.k:hover { color: var(--green) !important; border-color: var(--green) !important; }
 
+  /* install CTA */
+  .cta {
+    margin-top: 44px;
+    max-width: 44em;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--green);
+    border-radius: 12px;
+    background: var(--panel);
+    padding: 20px 24px 18px;
+  }
+  .cta .ctag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--green);
+    display: block;
+    margin-bottom: 10px;
+  }
+  .cta p { font-size: 14px; color: var(--muted); font-weight: 380; margin-bottom: 12px; }
+  .cta a { color: var(--green); }
+  .cta-box {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+    border-radius: 9px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--green) 5%, white);
+  }
+  .cta-box pre {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+    padding: 12px 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text);
+  }
+  .copybtn {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    border: 0;
+    border-left: 1px solid color-mix(in srgb, var(--green) 30%, transparent);
+    background: transparent;
+    color: var(--green);
+    padding: 0 16px;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .copybtn:hover { background: color-mix(in srgb, var(--green) 10%, transparent); }
+  .cta-more { margin: 10px 0 0; font-size: 12.5px; }
+  body.present .cta-top { display: none; }
+  .slide.dark .cta { background: var(--ink-bg-2); border-color: #2c323a; border-left-color: var(--green); }
+  .slide.dark .cta p { color: #b9c0c9; }
+  .slide.dark .cta-box { background: #14171b; border-color: #2c323a; }
+  .slide.dark .cta-box pre { color: var(--term-text); }
+
   /* pain cards (sound familiar) */
   .pains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-top: 26px; }
   .pain {
@@ -1063,6 +1126,14 @@
         <span class="k"><b>P</b> to present</span>
         <span class="k"><b>M</b> contents</span>
         <a class="k" href="layers.html"><b>↗</b> layers — the one-page overview</a>
+      </div>
+      <div class="cta cta-top rv" style="--d:.32s">
+        <span class="ctag">Want the thing first?</span>
+        <p>This deck is the foundational understanding — the why. If you'd rather have a harness running
+          in your own repo right now, copy this into your agent and come back:</p>
+        <div class="cta-box"><pre>Install the engineering harness from https://github.com/AI-Substrate/harness-engineering and adopt it in this repo.</pre><button class="copybtn" type="button">copy</button></div>
+        <p class="cta-more">More technical detail — the CLI, the skills, extension authoring — in the
+          <a href="https://github.com/AI-Substrate/harness-engineering#readme">repo README</a>.</p>
       </div>
     </div>
     <div class="scene" aria-hidden="true">
@@ -1758,7 +1829,16 @@
       <span class="step" style="background: transparent; color: #b9c0c9; border-color: #3a414b;">Encode</span><span class="larr">→</span>
       <span class="again">⟲</span>
     </div>
-    <div class="keys rv" style="--d:.3s; justify-content: center; margin-top: 50px;">
+    <div class="cta rv" style="--d:.28s; margin: 52px auto 0; text-align: left;">
+      <span class="ctag">Take it home</span>
+      <p>Everything in this deck is a practice you could build from scratch. You don't have to —
+        that's rather the point of productising it. One paste into your agent and the harness takes
+        the shape your environment needs:</p>
+      <div class="cta-box"><pre>Install the engineering harness from https://github.com/AI-Substrate/harness-engineering and adopt it in this repo.</pre><button class="copybtn" type="button">copy</button></div>
+      <p class="cta-more">More technical detail — the CLI, the skills, extension authoring — in the
+        <a href="https://github.com/AI-Substrate/harness-engineering#readme">repo README</a>.</p>
+    </div>
+    <div class="keys rv" style="--d:.36s; justify-content: center; margin-top: 40px;">
       <a class="k" href="layers.html" style="background: transparent; border-color: #3a414b; color: #9aa1ab;">↗ layers — the one-page overview</a>
       <span class="k" style="background: transparent; border-color: #3a414b; color: #9aa1ab;">src · harness-foundations/simple-mode.md</span>
       <span class="k" style="background: transparent; border-color: #3a414b; color: #9aa1ab;">docs/harness-presentations/intro-to-harness.md</span>
@@ -1941,6 +2021,16 @@
   });
   $('#btn-prev').addEventListener('click', prev);
   $('#btn-next').addEventListener('click', next);
+
+  /* ── copy buttons ── */
+  $$('.copybtn').forEach((b) => b.addEventListener('click', async () => {
+    const t = b.closest('.cta-box').querySelector('pre').innerText;
+    try {
+      await navigator.clipboard.writeText(t);
+      b.textContent = 'copied ✓';
+      setTimeout(() => { b.textContent = 'copy'; }, 1600);
+    } catch (e) {}
+  }));
 
   /* ── keyboard ── */
   addEventListener('keydown', (e) => {
