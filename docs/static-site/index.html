@@ -594,6 +594,15 @@
 
   /* layer stack — flat plates with paired flows */
   .stack { display: grid; gap: 10px; max-width: 880px; margin-top: 30px; }
+  /* s-layers carries the full canonical layer wording — tighten vertical chrome so it
+     still fits one present-mode viewport. The recap stack keeps the roomier defaults. */
+  #s-layers .stack { margin-top: 14px; gap: 6px; }
+  #s-layers .flowrow { padding: 4px 0; }
+  #s-layers .plate { padding: 11px 18px; }
+  #s-layers .plate p { font-size: clamp(11.5px, 1.15vw, 13px); line-height: 1.45; }
+  #s-layers h1 { font-size: clamp(30px, 4vw, 52px); margin: 10px 0 10px; }
+  #s-layers .quote { font-size: clamp(15px, 1.7vw, 19px); }
+  body.present #s-layers { padding-bottom: 40px; }
   .plate {
     display: flex;
     align-items: center;
@@ -1298,16 +1307,22 @@
       <div class="plate" data-step="3" style="--pc: var(--azure)">
         <span class="pnum">02</span>
         <div><h3>Inference Layer <span>· agent harness</span></h3>
-        <p><i>Reasoning, planning, semantic review, architecture judgement. Writes code.</i> Where the agent works through ambiguity and discovers friction.</p></div>
+        <p><i>Reasoning, planning, semantic review, architecture judgement. Writes code. Spec Driven
+          Development etc. lives here.</i> Where the agent works through ambiguity and discovers friction.</p></div>
       </div>
       <div class="flowrow" data-step="4">
-        <span class="f down" style="--fc: var(--azure)"><span class="arr">▼</span> asks for proof <i>boot · checks · smoke — via --help, not memory</i></span>
+        <span class="f down" style="--fc: var(--azure)"><span class="arr">▼</span> asks for proof <i>boot · checks · smoke — discovered via --help, not memory</i></span>
         <span class="f up" style="--fc: var(--green)"><span class="arr">▲</span> verdicts &amp; evidence <i>friction comes back as new commands</i></span>
       </div>
       <div class="plate" data-step="5" style="--pc: var(--green)">
         <span class="pnum">03</span>
         <div><h3>Deterministic Layer <span>· engineering harness</span></h3>
-        <p><i>Runnable proof, backpressure, and token savings.</i> Proof · Backpressure · Evidence · Token savings — sensors decide, not the model marking its own homework.</p></div>
+        <p><i>Runnable proof, backpressure, and token savings.</i> <b>Proof</b> — can it build, run,
+          pass, render, respond, migrate, comply? <b>Backpressure</b> — tests, linters, type checks,
+          architecture rules, security checks, smoke tests, health checks, endpoint checks, browser
+          flows. <b>Evidence</b> — logs, traces, screenshots, reports, command output, API responses.
+          <b>Token savings</b> — less rediscovery, fewer loops, less markdown-as-runtime. Sensors
+          decide — not the model marking its own homework.</p></div>
       </div>
       <div class="flowrow" data-step="6">
         <span class="f down" style="--fc: var(--green)"><span class="arr">▼</span> wraps what exists <i>build · test · run · seed — as&#8209;is</i></span>
@@ -1320,7 +1335,7 @@
       </div>
     </div>
 
-    <p class="quote" data-step="8" style="margin-top: 30px;">The deterministic layer is the one your repo
+    <p class="quote" data-step="8" style="margin-top: 14px;">The deterministic layer is the one your repo
       probably doesn't have as a first-class thing. <b>"If the agent had to infer it twice, encode it
       here."</b><span class="attr">the thread for the rest of this deck</span></p>
 
@@ -1328,7 +1343,7 @@
       <span class="ttag">Commentary</span>
       <p>Walk the stack top to bottom, and narrate the paired flows — they're the point of the picture. Humans steer down: intent, decisions, what matters. The stack shows receipts back up: evidence, proposals, magic-wand asks. <b>Nothing below the top layer chooses what matters.</b></p>
       <p>The inference layer is the agent harness — where the agent reasons, plans, writes code, and discovers friction. It asks the layer below for proof — boot, checks, smoke — discovered via --help, not memory. And it gets verdicts and evidence back up. Friction comes back as new commands.</p>
-      <p>The deterministic layer is the engineering harness. Runnable proof. Trusted backpressure. Fewer tokens. Build, run, test, lint, typecheck, smoke. Probe endpoints, drive the browser, capture logs. Show evidence. Rerun until green.</p>
+      <p>The deterministic layer is the engineering harness. Runnable proof. Trusted backpressure. Fewer tokens. Build, run, test, lint, typecheck, smoke. Probe endpoints, drive the browser, capture logs. Show evidence. Rerun until green. Encode repeatable knowledge into commands, scripts and checks.</p>
       <p>And the deterministic layer wraps what already exists in the codebase — build, test, run, seed, as-is — and in return it demands harnessability from the codebase: fakes, seams, bootability.</p>
     </aside>
   </div>
