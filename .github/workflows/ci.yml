@@ -80,6 +80,23 @@ jobs:
           fi
           exit ${code:-0}
 
+      # Skill loadability through the VERB: every SKILL.md must satisfy the
+      # Agent Skills spec limits (name ≤64/charset/dir-match/unique,
+      # description ≤1024) or host CLIs silently skip it — measured in the
+      # field 2026-06-11 (Copilot CLI dropped eng-harness-flow at 1379 chars).
+      # Spec violations exit 1 and fail the step; the >900-char headroom band
+      # is degraded/exit 0 and surfaces as a ::warning:: annotation.
+      - name: Skill loadability (harness skills-check)
+        run: |
+          out=$(node harness/cli/bin/harness.js skills-check --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.warnings')
+            echo "::warning title=skills-check::${count} skill description(s) inside the 900–1024 char headroom band — trim before they drift over the spec limit and hosts silently drop them"
+          fi
+          exit ${code:-0}
+
   # Stable, matrix-independent required check for branch protection (T005).
   # Always runs and fails if any required job failed/cancelled.
   ci-required:
