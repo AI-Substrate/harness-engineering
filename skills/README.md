@@ -49,7 +49,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 
 | Skill | When | Why |
 |---|---|---|
-| `eng-harness-0-setup` | The repo has no working `harness boot` (or no harness front door at all) | Installs the harness CLI from npx and orchestrates a basic `boot`: install → (conditional) `eng-harness-0-harnessability-assessment` → `eng-harness-0-add-extension`. A lean flow that generates no files of its own. |
+| `eng-harness-0-setup` | The repo has no working `harness boot` (or no harness front door at all) | Installs the harness CLI from npx and orchestrates a basic `boot`: install → (conditional) `eng-harness-0-harnessability-assessment` → record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`, so the harness gets used and doesn't vanish on a cold agent start) → `eng-harness-0-add-extension`. A lean flow that generates no files of its own. |
 | `eng-harness-0-harnessability-assessment` | The front door exists but the repo needs a target-aware readiness picture | Surveys the existing engineering environment, then writes `.harness/reports/harnessability/latest.{md,json}` scoring Operate-Today and Adaptability with an A–F matrix, command tiers, proof ceilings, back-pressure surfaces, first-session guidance, and proposal-only affordance recommendations. |
 | `eng-harness-0-add-extension` | You need a new `harness <verb>` command | Guided authoring: reuses gathered intent, runs `harness new`, fills the handler, and verifies. |
 

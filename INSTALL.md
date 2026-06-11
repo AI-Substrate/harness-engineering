@@ -8,7 +8,7 @@ This repository publishes two skill groups through the [`npx skills@latest`](htt
 
 | Skill | Group | Purpose |
 |---|---|---|
-| `eng-harness-0-setup` | setup | Create or validate a repo-local engineering harness governance file and route future agents to it. |
+| `eng-harness-0-setup` | setup | Install the harness CLI, run the harnessability assessment if needed, record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`), and stand up a basic `boot`. |
 | `eng-harness-0-harnessability-assessment` | setup | Score a repository's harnessability (Operate-Today and Adaptability) and report back-pressure surfaces, proof ceilings, command tiers, and proposal-only affordances. |
 | `eng-harness-0-add-extension` | setup | Guided authoring of a new `harness <verb>` extension. |
 | `eng-harness-flow` | loop | Stateless harness-loop router — the single front door; re-derives loop position every call and routes to the one right skill. |

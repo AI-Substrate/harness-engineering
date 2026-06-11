@@ -28,7 +28,7 @@ flowchart TB
         S0["S0 · install<br/>eng-harness-0-setup"]:::setup
         S1["S1 · scout (skippable)<br/>eng-harness-0-harnessability-assessment"]:::setup
         S2["S2 · governance<br/>(owed — harness init is deferred)"]:::setup
-        S3["S3 · inject (advisory)<br/>record where the loop plugs in"]:::setup
+        S3["S3 · inject (advisory)<br/>map the extant flow → seams; record in governance"]:::setup
         S4["S4 · build + run boot LAST<br/>eng-harness-0-add-extension"]:::setup
     end
 
@@ -64,7 +64,7 @@ Three rungs are **required** before the router will route into the loop — with
 | **S0 · Install** | harness CLI present, `harness doctor` healthy | **required** |
 | **S1 · Scout** | a harnessability report exists | skippable |
 | **S2 · Governance** | `.harness/engineering-harness.md` (the BIO contract) | **required** — *owed until `harness init` ships; readers degrade gracefully* |
-| **S3 · Inject** | a recorded seam where your flow calls the loop back | advisory |
+| **S3 · Inject** | the governance doc's `## Injection map` — which seams your extant dev/SDD flow fires, from where (so the harness gets *used*, not just installed) | advisory |
 | **S4 · Boot** | a working boot verb, authored **and run once** | **required** |
 
 ```

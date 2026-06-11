@@ -31,6 +31,7 @@ The doc is a thin **Boot / Interact / Observe contract** plus a signal inventory
 | **Deterministic signal inventory** | the sensors that let a human/agent prove behaviour without inference: runtime inspectability, smoke paths, architecture/static checks, security/dependency/schema checks. |
 | **Evidence paths** | where artifacts land (log/trace/screenshot/output locations) so they're discoverable. |
 | **Back-pressure gaps** | behaviours that still rely on inference or human eyeballing — named honestly as improvement candidates, never as scores. |
+| **Injection map** | where the repo's *extant* dev/SDD flow calls `/eng-harness-flow` — one row per seam event (`session-start`, `post-spec`, `pre-implement`, `task-pause`, `phase-end`, `plan-complete`): where it fires from and what fires it. The host flow is swappable (`the-flow`, another SDD pipeline, plain PR work); the seam vocabulary is the constant. This section is the durable signal behind the router's S3 rung — without it a cold agent has no structural reason to call the harness. |
 | **Current maturity snapshot** | the **single, current** L0–L4 level the harness is *actually* at (see [`maturity-assessment.md`](./maturity-assessment.md)). The doc holds only the *current* snapshot — the trajectory lives in `history.md`. |
 
 The doc is a **contract, not a log**: it says what the harness *is right now*, not what happened each session.
@@ -61,6 +62,7 @@ Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity s
 |---|---|---|
 | **Inception** (once) | the doc is *created* with the BIO headings, the signal inventory skeleton, evidence paths, and the seed maturity snapshot | **the deferred `harness init` writer** (a CLI command). It is **deferred to a later plan**; until it ships, this rung is **owed, not provisioned** — setup attempts `npx harness init` with a graceful fallback, and boot/router degrade to `UNAVAILABLE` rather than erroring. (Setup *drives* setup; it does not itself generate the governance doc.) |
 | **Improve beat** (on a capability change) | the **body** (boot cmd / signals / evidence paths / back-pressure gaps) **and** the **current maturity snapshot** are edited to match new reality; a row is appended to `.harness/history.md` | the Improve beat — when the harness gains or changes a capability |
+| **Inject decision** (setup S3, or when the host flow changes) | the `## Injection map` section is added/updated in an *existing* doc — never created standalone; when governance is owed, the map is owed with it | `eng-harness-0-setup` Step 3, with the user's go-ahead |
 | **Every other loop run** | **nothing** — boot reads, observe writes its buffer, retro writes `.retro.md`; the governance doc is untouched | — |
 
 The doc is therefore written at **inception once**, and its body + snapshot change **only at the Improve beat**. It is never rewritten just to record that a session happened.

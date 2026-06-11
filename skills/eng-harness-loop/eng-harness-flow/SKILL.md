@@ -42,7 +42,7 @@ The router doesn't sit *inside* either zone — it sits *beside* them and points
 | **S0 · Install** | CLI present + `harness doctor` healthy | A · B | **required** | `eng-harness-0-setup` (install) |
 | **S1 · Scout** | a harnessability report exists | F | *skippable* | `eng-harness-0-harnessability-assessment` |
 | **S2 · Governance** | governance doc (BIO contract) + `docs/harness/` ledger | D · E | **required** | provision governance — *owed, not provisioned* (see below) |
-| **S3 · Inject** | a recorded injection point for `eng-harness-flow` in the user's existing flow | conversation / a noted decision | *advisory* | `eng-harness-0-setup` (inject step) |
+| **S3 · Inject** | a recorded injection map — where the user's extant dev/SDD flow calls `eng-harness-flow` | D — governance doc `## Injection map` | *advisory* | `eng-harness-0-setup` (Step 3 — inject) |
 | **S4 · Build + run boot (LAST)** | a **working boot command** (authored, recorded into governance, **and run once**) | C | **required** | `eng-harness-0-add-extension` (author boot, validate it boots) |
 | **E1 · Re-run boot** | — (an **action**, not a presence-check) | — | — | **re-run** the boot setup built — `eng-harness-1-boot --validate` (per coding session) |
 
@@ -82,7 +82,7 @@ The router decides purely from signals it can **read** (no state of its own). Th
 | A | **Harness CLI present** | `harness --version` resolves; or `.harness/` dir exists; or a `package.json`/`npx` target is present | Is there a harness at all? |
 | B | **CLI healthy** | `harness doctor` **JSON envelope** read by `exit_code`/`status` field (not prose — the CLI loading and returning an envelope is the signal; a consumer repo can still show *degraded* on individual layers, but `cli-build` is `ok`/n/a there since FX001) | Does the CLI itself load/run? |
 | C | **Working boot command** | a `boot` verb/recipe exists (`.harness/extensions/boot/`, a `justfile`/`package.json` boot, or governance declares it) **and** boots cleanly | Did setup establish a boot we can run? |
-| D | **Governance doc** | `.harness/engineering-harness.md` (the canonical and only location) | Is the Boot/Interact/Observe contract present? (Boot needs this or it reports `UNAVAILABLE`) |
+| D | **Governance doc** | `.harness/engineering-harness.md` (the canonical and only location) | Is the Boot/Interact/Observe contract present? (Boot needs this or it reports `UNAVAILABLE`.) Its `## Injection map` section is S3's durable signal: which seams the host flow fires, from where |
 | E | **Loop substrate** | `.harness/temp/` (gitignored observe scratch) + `.harness/records/retro/` (committed retro records, created via `harness record retro`) — legacy `docs/harness/agents/` retros are still read by harvest for back-compat | Can Observe/Retro actually record anything? |
 | F | **Harnessability report** | any report under `.harness/reports/harnessability/` (path inconsistency noted — see "limits"; the router detects *any* report present) | Has the repo been sized up? |
 | G | **Repo shape** | source tree empty vs. has source (e.g. `src/`, `package.json`, a language toolchain) | Fresh on-ramp vs. adopt-existing |
@@ -295,7 +295,7 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 
 ## Called repeatedly along an externally-managed flow
 
-The router is designed to be **invoked again and again** by a parent running its *own* flow (`the-flow`, a human, a CI agent). The seams where the parent calls the router are exactly the **injection points** setup step S3 helped identify. Each call is a fresh, stateless detection; the router holds no memory between calls. A parent passes a light hint at each seam and the router returns the right harness action:
+The router is designed to be **invoked again and again** by a parent running its *own* flow (`the-flow`, a human, a CI agent). The seams where the parent calls the router are exactly the **injection points** setup step S3 mapped and recorded in the governance doc's `## Injection map` — `the-flow` is one host implementation of this contract, not the contract itself; any SDD or dev flow plugs in the same way. Each call is a fresh, stateless detection; the router holds no memory between calls. A parent passes a light hint at each seam and the router returns the right harness action:
 
 ```
 P → H: session start    (--event session-start)            → eng-harness-1-boot --validate
