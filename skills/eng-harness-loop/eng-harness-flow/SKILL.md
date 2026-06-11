@@ -180,7 +180,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
   "preconditions_met": false,
   "missing_rung": "S4-build-and-run-boot",
   "next_suggested": "<the command after this one, e.g. --harvest after --drain>",
-  "rail":  { "zone": "setup", "setup_pips": "●●◐○○", "loop_pips": "○○○○○", "cursor": "governance" },
+  "rail":  { "zone": "setup", "setup_pips": "◆◆◐◇◇", "loop_pips": "◇◇◇◇◇", "cursor": "governance" },
   "now":   "<current stage, one line>",
   "next":  "<what follows, one line>",
   "flags": [ "<must-see item lifted verbatim from the artifact>" ],
@@ -196,28 +196,57 @@ The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Pe
 
 `the-flow` is a *pleasant* experience because every turn shows a **progress rail**, says **where we are** and **what's next**, and **flags anything important the user might have missed** — in a warm, confirming-not-nagging voice. `eng-harness-flow` adopts the same UX. The one adaptation: because the router is **stateless**, the rail is **recomputed from substrate every call** (not read from a saved journey) — but the *feel* is identical.
 
-### 1. The host rail (two zones) — always first, every turn
+### 1. The host rail — always first, every turn
 
-Every human-mode turn opens with a one-line rail on its own line, then a blank line, then the narration. The rail shows **both zones** with the cursor in the active one. Setup is a finite gate (a fill bar); the engineering loop is a cycle (a position marker with `↺`).
+Every human-mode turn opens with a one-line rail, then a blank line, then the narration. The rail speaks `the-flow`'s exact glyph language — **one visual vocabulary across both guides**: `◆` done · `◐` current · `◇` not yet, joined by `─` into a track. The loop's terminal is `↺`: engineering never "completes", it cycles — loop pips are **per-pass** and reset when the loop re-enters Boot. Use text-presentation `⚙` (never the `⚙️` emoji — double-width glyphs wreck the rail's spacing).
 
-```
-[eng-harness-flow] 🧰 ●─●─◐─○─○  →  ⚙️ ○──↺
- now  · establishing governance  (setup 3 of 5)
- next · find your injection point, then build boot
-```
-
-Once setup is done, the cursor lives in the loop:
+**Engineering zone** (setup holds — the setup segment disappears entirely; never render a completed setup bar):
 
 ```
-[eng-harness-flow] 🧰 ●●●●●  →  ⚙️ Boot ◐ · BP ○ · Obs ○ · Retro ○ · Improve ○ ↺
- now  · running boot — proving the env is healthy before coding
- next · backpressure, once the spec lands
+[eng-harness-flow] ⚙ ◆─◐─◇─◇─◇ ↺  boot · [backpressure] · observe · retro · improve
+
+ now  · post-spec — running the backpressure survey (boot ✓ this pass)
+ next · ▸ /plan-3   architect — consumes backpressure-coverage.md
 ```
 
-- **Glyphs** (tunable, mirroring `the-flow`): `●`/`◆` done · `◐` current · `○`/`◇` not yet · `↺` the loop continues (engineering never "completes" — it cycles).
-- **Setup pips** = the 5 setup steps (install · scout · governance · inject · boot). **Engineering pips** = the 5 loop stages (boot · backpressure · observe · retro · improve).
+The five loop pips are Boot · Backpressure · Observe · Retro · Improve, in that order, and the legend rides **on the rail line itself**: two spaces after the pips, the stage names in pip order joined by ` · `, the **current** one wrapped in `[…]`. Brackets follow the `◐`; on a settled rail bracket the next stage up. Same rule as `the-flow`’s rail.
+
+**Mid-setup** (the only time the 🧰 gate appears — two segments joined by `→`, loop still empty):
+
+```
+[eng-harness-flow] 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot
+
+ now  · setup gate — governance missing (S2); install ✓, scout ✓
+ next · ▸ <the governance step>   (routes you there)
+```
+
+Setup pips = S0 install · S1 scout · S2 governance · S3 inject · S4 boot. The moment S0+S2+S4 hold, drop the 🧰 segment for good. The legend names the **active segment’s** steps — setup rungs while the gate is open, loop stages once in the engineering zone.
+
 - **Stateless rail**: the fill is *derived from signals each call* (which setup rungs hold; where in the work) — never persisted. Frame it once, early, as *an at-a-glance map, not a saved journey*.
-- **Status line** under the pips, in an accent colour: `now · <current>` and `next · <what follows>`. When `next` has ≥2 options, stack them (recommended first), exactly like `the-flow`.
+- **Status line** under the rail: ` now  · <current>` / ` next · <what follows>`, aligned. When `next` has ≥2 options, stack them with `▸` (recommended first), exactly like `the-flow`.
+
+### 1a. The unified rail — when `the-flow` is also live
+
+Before rendering a solo rail, probe for an active SDD flow: any `docs/plans/*/.the-flow-state.json` with `"status": "active"`. If one exists, the two guides merge into **one unified block** — `the-flow`'s rail on top (fill from that state file's `milestones_done`/`milestones_total`), the harness loop **anchored beneath the active milestone**, then **each flow speaks with its own voice** — its own `now`/`next`, harness lines prefixed `⚙`:
+
+```
+[the-flow]  ◆─◆─◐─◇─◇─◇─◇  research · spec · [plan] · tasks · build · review · merge
+                └─ ⚙ ◆─◐─◇─◇─◇ ↺  boot · [backpressure] · observe · retro · improve  (post-spec)
+
+ the-flow
+  now  · spec READY + validated (Simple) — AC-11 branch-canary folded in
+  next · ▸ /plan-3   architect — consumes backpressure-coverage.md
+
+ ⚙ engineering harness
+  now  · post-spec seam — running the backpressure survey
+  next · writes backpressure-coverage.md → hands control back to /plan-3
+```
+
+- **Anchor placement**: the `└─` sits in the `◐` milestone's column — with the standard prefix `[the-flow]  ` (12 chars) and 2 chars per node, that's column 12 + 2 × (index of `◐`). No `◐` (settled between stages) → anchor under the last `◆`. Column uncertain (e.g. bracket-grouped phase nodes) → a fixed 4-space indent is fine; the anchor is a garnish — never let alignment delay the turn.
+- **Trailing seam note** on the anchored line: just the seam in parentheses — `(post-spec)`, `(pre-implement)`, `(phase-end)`; the legend’s brackets already name the stage.
+- **Two flows, two voices — never merged, each under its own header**: every `now`/`next` group opens with a one-line header naming the flow — ` the-flow` for the SDD voice, ` ⚙ engineering harness` for the loop voice — with the `now`/`next` lines indented one space beneath it (the header owns identity, so the lines themselves carry no prefix). The flow's lines speak SDD position (where the plan is, what command comes next); the harness's speak loop position (what the router is running, what it produces, where control hands back). Each gives the user real context on its own lines.
+- **Never invent the `the-flow` line**: read position from its state file + the newest artifact. State unreadable or stale → fall back to the solo rail.
+- Mid-setup with an active `the-flow`: same shape, the anchored line carries the 🧰 segment instead — `└─ 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot  (setup)`.
 
 ### 2. The per-turn narration contract — Orient → Flag → Insight → Suggest → Invite
 
