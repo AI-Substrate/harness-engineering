@@ -9,7 +9,7 @@ This directory holds the engineering-harness skills this repo publishes through 
 Install skills -> set up harness (eng-harness-0-setup) -> loop: boot/backpressure/observe/retro -> encode fixes/checks
 ```
 
-The goal is to make harness engineering practical for people new to the concept: install the skills, run the setup skill when a repo has no harness, then use the loop skills during every session.
+The goal is to make the engineering harness practical for people new to the concept: install the skills, run the setup skill when a repo has no harness, then use the loop skills during every session.
 
 ## Install
 

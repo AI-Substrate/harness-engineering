@@ -1,4 +1,4 @@
-Harness engineering is the practice of productising the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run. Agent harnesses make models operable; engineering harnesses make products operable. Productive agentic engineering needs both, but the project-side engineering harness is what proves real behaviour.
+An engineering harness productises the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run. Agent harnesses make models operable; engineering harnesses make products operable. Productive agentic engineering needs both, but the project-side engineering harness is what proves real behaviour.
 
 Note this is a very early attempt at creating such a list.
 
@@ -20,9 +20,9 @@ A model runtime can coordinate work, but only the project-side harness can prove
 
 The harness is a productised development surface, not a separate installable product; it is the repo-local commands, fixtures, docs, checks, state, workflows, and review paths every future feature, experiment, human, and agent passes through. A CLI often works well as the front door to that surface because it is explorable, scriptable, and cheap for agents to discover without loading the whole project into context. The harness can wrap existing scripts and tools rather than reimplementing them; its value is often the focused façade that makes the supported path obvious.
 
-#### 5. Harness engineering is not a silver bullet
+#### 5. The engineering harness is not a silver bullet
 
-Engineering fundamentals do not change: harness engineering amplifies disciplined delivery and may make good specification, design, review, prioritisation, and spec-driven development easier to achieve, but it must not water them down or pretend to replace them.
+Engineering fundamentals do not change: an engineering harness amplifies disciplined delivery and may make good specification, design, review, prioritisation, and spec-driven development easier to achieve, but it must not water them down or pretend to replace them.
 
 #### 6. Harnessability is a property of the codebase
 
@@ -32,7 +32,7 @@ Some products, especially brownfield systems, must be changed before they can be
 
 The point is not to eliminate complex systems, but to make them accessible to safe experimentation and evidence gathering.
 
-#### 8. Harness engineering is iterative - let it cook
+#### 8. The engineering harness is iterative - let it cook
 
 The right harness emerges through repeated runs, observed failures, and encoded improvements, not from a finished playbook.
 
@@ -260,4 +260,4 @@ The strongest form is not a parallel process but a harness-aware SDD flow where 
 
 #### 58. The core thesis is productising the loop
 
-Harness engineering is the practice of making the project development loop explicit, operable, measurable, and compounding for humans and agents.
+An engineering harness makes the project development loop explicit, operable, measurable, and compounding for humans and agents.

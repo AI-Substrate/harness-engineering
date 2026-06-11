@@ -1,4 +1,4 @@
-# Harness engineering, the simple version
+# The engineering harness, the simple version
 
 There's been a lot of chatter around harness engineering recently, and I think the industry is starting to converge on some genuinely useful ideas.
 
@@ -12,7 +12,7 @@ The **engineering harness** is the project-side loop that helps the agent work *
 
 ## The problem
 
-There are a couple of core problems that harness engineering is trying to address. One is that we need to reduce the time it takes for an agent to "close the loop" and get real feedback from your codebase on the work it's been doing. The second is that we're working hard to increase the quality and trustability of the loop by intentionally working towards more deterministic validation flows. We aim to turn these two things (and more) into first-class concepts in your codebase.
+There are a couple of core problems that an engineering harness is trying to address. One is that we need to reduce the time it takes for an agent to "close the loop" and get real feedback from your codebase on the work it's been doing. The second is that we're working hard to increase the quality and trustability of the loop by intentionally working towards more deterministic validation flows. We aim to turn these two things (and more) into first-class concepts in your codebase.
 
 I'm sure you've all felt the frustration. You've implemented a feature. You had the perfect plan. The tests are green. Everything has passed. The agent is telling you it's complete. And then you go and look at it, and there is something obviously wrong. It can be really hard to trust that the agent is going to do a good job. Folks who are new to AI engineering will definitely experience this doubt — the first few tries at producing a quality outcome can result in frustration at the agent's inability to "just know" what good looks like.
 
@@ -20,7 +20,7 @@ You'll see things like an architectural boundary has been breached or a shared h
 
 Or the other version of the same frustration: the agent did finish, but somewhere in the middle of the run it spent twenty-five minutes cycling on how to run up the code and validate that the endpoint was actually working. Burned tokens and time.
 
-A secret art of harness engineering is keeping track of these frictions the agent hits as it works, the discoveries it makes along the way, and the signals it needed but did not have. Then we encode those discoveries, fixes, and missing sensors back into the engineering harness. We track our work, we learn from the friction, and we look to feed it back in as data for the next iteration. But how we feed it is important.
+A secret art of the engineering harness is keeping track of these frictions the agent hits as it works, the discoveries it makes along the way, and the signals it needed but did not have. Then we encode those discoveries, fixes, and missing sensors back into the engineering harness. We track our work, we learn from the friction, and we look to feed it back in as data for the next iteration. But how we feed it is important.
 
 The goal here is that we take all this hard work figuring out **how** to work on our codebase, fix it for good and pay it forward as a gift to our future selves.
 
@@ -28,7 +28,7 @@ A rule to lock away nice and early as you think about how to approach this - our
 
 ## The idea
 
-Harness engineering is the practice of productising the development loop so a human or agent can move from intent to evidence and then encode what they learn into the next run.
+An engineering harness productises the development loop so a human or agent can move from intent to evidence and then encode what they learn into the next run.
 
 The agent harness drives the LLM. The engineering harness helps the agent prove the work that was done is good, and it also helps save us a bunch of tokens and time while doing it.
 
@@ -154,7 +154,7 @@ But after a few iterations, something quietly shifts.
 
 The next agent session starts faster with less preamble figuring out the codebase. The next validation run is more deterministic. The next time someone hits the same friction, the harness catches it before a human has to.
 
-That is the whole idea. Do not just use agents to write code. Use agents to improve the loop that the agents themselves use to write your product and prove the code works. That's my take on the simple version of harness engineering.
+That is the whole idea. Do not just use agents to write code. Use agents to improve the loop that the agents themselves use to write your product and prove the code works. That's my take on the engineering harness, the simple version.
 
 ### Some further points
 

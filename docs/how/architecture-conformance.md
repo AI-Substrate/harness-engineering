@@ -2,7 +2,7 @@
 
 > *"A prompt that says 'follow our architecture' is a start. A deterministic
 > architecture check that fails when the rule is violated is much better."*
-> — [Harness engineering, the simple version](../../harness-foundations/simple-mode.md), Rule 3
+> — [The engineering harness, the simple version](../../harness-foundations/simple-mode.md), Rule 3
 
 This is that rule made concrete. Architecture conformance is the textbook
 case of back pressure stuck in the **inferred world**: a reviewer eyeballs

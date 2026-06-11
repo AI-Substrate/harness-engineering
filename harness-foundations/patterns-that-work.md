@@ -98,7 +98,7 @@ Runtime observability explains what the software did. Process observability expl
 
 Runtime evidence includes logs, traces, screenshots, responses, health checks, database checks, console output, and event streams. Process evidence includes task trace, acceptance rationale, evaluator rubric, review notes, approval history, unresolved risks, and the reason a particular validation path was chosen.
 
-Both matter for harness engineering. A change can run correctly but have a poor decision trail. A decision trail can look careful but fail to prove real product behaviour. The harness should make both inspectable.
+Both matter for the engineering harness. A change can run correctly but have a poor decision trail. A decision trail can look careful but fail to prove real product behaviour. The harness should make both inspectable.
 
 Minimal version: every non-trivial change should leave an evidence note that says what was checked, why those checks were sufficient, and what remains unproven.
 
@@ -268,7 +268,7 @@ Harnesses decay because projects, teams, models, dependencies, and workflows cha
 
 Periodically scan for stale instructions, duplicated rules, dead fixtures, flaky checks, obsolete commands, drifted docs, noisy warnings, weak sensors, unused templates, and old workarounds that have become folklore. Some items should be deleted. Some should be promoted into executable checks. Some should be rewritten as routing guidance. Some should be retired because the product or toolchain changed.
 
-Garbage collection is not a cleanup chore separate from harness engineering. It is how the harness remains trustworthy and low ceremony.
+Garbage collection is not a cleanup chore separate from the engineering harness. It is how the harness remains trustworthy and low ceremony.
 
 Minimal version: during a regular review, ask which harness rule, check, fixture, or document no longer earns its keep.
 

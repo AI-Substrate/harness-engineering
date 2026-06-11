@@ -1,6 +1,6 @@
-# Harness Engineering
+# The Engineering Harness
 
-Harness engineering is the practice of productising the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run.
+An engineering harness productises the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run.
 
 This repo is a public foundation and tutorial project for teams that want faster, safer, more observable development loops in the age of AI-assisted engineering.
 

@@ -22,7 +22,7 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 
 ## Repo framing
 
-- Build a reusable, evidence-backed guide for harness engineering: how teams create fast, observable, repeatable development loops.
+- Build a reusable, evidence-backed guide for engineering harnesses: how teams create fast, observable, repeatable development loops.
 - Treat the engineering harness as a first-class product surface, not scaffolding.
 - Keep the engineering harness / agent harness distinction explicit in public content: this repo studies the project-side engineering harness, not agent runtimes themselves.
 - Distill private/raw source material into general principles, patterns, and tutorial content that can be shared safely.
