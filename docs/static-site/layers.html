@@ -254,6 +254,97 @@
   @keyframes bob { 50% { transform: translateX(-50%) translateY(7px); } }
 
   /* =========================================================
+     THE MAP — the deck's flat layer-stack diagram in one view,
+     for walking people through the layers live. Wording mirrors
+     docs/harness-presentations/intro-to-harness.md (canonical).
+  ========================================================== */
+  #map { padding: clamp(40px, 7vh, 80px) 0; }
+  #map h2 { font-size: clamp(26px, 3.2vw, 42px); margin: 14px 0 8px; }
+  .map-lede {
+    font-size: clamp(14px, 1.5vw, 17px);
+    color: var(--muted);
+    font-weight: 380;
+  }
+  .map-lede b.dn { color: var(--amber); font-weight: 600; }
+  .map-lede b.up { color: var(--green); font-weight: 600; }
+
+  .lstack { display: grid; gap: 7px; max-width: 920px; margin-top: 20px; }
+  .lplate {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border: 1.5px solid color-mix(in srgb, var(--pc) 55%, transparent);
+    border-left: 5px solid var(--pc);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--pc) 6%, rgba(255,255,255,.72));
+    padding: 12px 20px;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--pc) 10%, transparent);
+    text-decoration: none;
+    transition: transform .25s cubic-bezier(.2,.8,.3,1), box-shadow .25s;
+  }
+  .lplate:hover {
+    transform: translateX(6px);
+    box-shadow: 0 6px 24px color-mix(in srgb, var(--pc) 18%, transparent);
+  }
+  .lplate .lnum {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pc);
+    letter-spacing: .1em;
+  }
+  .lplate h3 {
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 15px);
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--pc);
+    margin: 0;
+  }
+  .lplate h3 span { color: var(--faint); font-weight: 400; letter-spacing: .08em; text-transform: none; }
+  .lplate p {
+    font-size: clamp(11.5px, 1.2vw, 13.5px);
+    color: var(--muted);
+    font-weight: 380;
+    line-height: 1.5;
+    margin: 2px 0 0;
+  }
+  .lplate p i { color: var(--text); font-style: italic; font-family: var(--serif); }
+  .lplate p b { color: var(--text); font-weight: 600; }
+  .lflow {
+    display: flex;
+    justify-content: center;
+    gap: clamp(16px, 4vw, 60px);
+    padding: 5px 0;
+  }
+  .lflow .f {
+    font-family: var(--mono);
+    font-size: clamp(8.5px, .95vw, 10.5px);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fc);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .lflow .f i {
+    font-style: normal;
+    color: var(--faint);
+    font-weight: 400;
+    letter-spacing: .04em;
+    text-transform: none;
+    white-space: normal;
+    max-width: 30ch;
+  }
+  .lflow .arr { animation: lnudge 1.6s ease-in-out infinite; display: inline-block; }
+  .lflow .up .arr { animation-name: lnudge-up; }
+  @keyframes lnudge { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(2px); } }
+  @keyframes lnudge-up { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-2px); } }
+
+  /* =========================================================
      LAYER SECTIONS
   ========================================================== */
   .layer {
@@ -851,6 +942,10 @@
   @media (max-width: 600px) {
     .pains { grid-template-columns: 1fr; }
   }
+  @media (max-width: 760px) {
+    .lflow { flex-direction: column; gap: 4px; align-items: center; }
+    .lflow .f { white-space: normal; }
+  }
 
   /* =========================================================
      RECAP / NUCLEUS
@@ -1115,6 +1210,7 @@
 
 <!-- ============================ MINIMAP ============================ -->
 <nav class="minimap" aria-label="Page navigation">
+  <a href="#map" style="--c: var(--green)"><i></i><span>The map</span></a>
   <a href="#problem" style="--c: var(--rust)"><i></i><span>The problem</span></a>
   <a href="#idea" style="--c: var(--azure)"><i></i><span>The idea</span></a>
   <a href="#layer-human" style="--c: var(--amber)"><i></i><span>01 · Human Steering</span></a>
@@ -1151,10 +1247,60 @@
       </div>
     </div>
   </div>
-  <span class="scroll-hint">the problem, first ↓</span>
+  <span class="scroll-hint">the map, then the problem ↓</span>
 </header>
 
 <main>
+
+  <!-- ============================ THE MAP ============================ -->
+  <section class="band" id="map" style="--bc: var(--green)">
+    <div class="wrap">
+      <p class="kicker reveal">The Map · One View</p>
+      <h2 class="reveal" style="--d:.06s">One picture for the <em>whole concept.</em></h2>
+      <p class="map-lede reveal" style="--d:.1s">Intent flows <b class="dn">down</b>. Evidence flows <b class="up">up</b>. Each plate jumps to its layer below.</p>
+
+      <div class="lstack">
+        <a class="lplate reveal" href="#layer-human" style="--pc: var(--amber); --d:.12s">
+          <span class="lnum">01</span>
+          <div><h3>Human Steering Layer <span>(THIS IS YOU)</span></h3>
+          <p><i>Intent, judgement, risk, taste, priorities.</i> Humans decide what matters and what gets encoded.</p></div>
+        </a>
+        <div class="lflow reveal" style="--d:.16s">
+          <span class="f down" style="--fc: var(--amber)"><span class="arr">▼</span> steers <i>intent · decisions · what matters</i></span>
+          <span class="f up" style="--fc: var(--azure)"><span class="arr">▲</span> shows receipts <i>evidence · proposals · magic-wand asks</i></span>
+        </div>
+        <a class="lplate reveal" href="#layer-inference" style="--pc: var(--azure); --d:.2s">
+          <span class="lnum">02</span>
+          <div><h3>Inference Layer <span>· agent harness</span></h3>
+          <p><i>Reasoning, planning, semantic review, architecture judgement. Writes code. Spec Driven
+            Development etc. lives here.</i> Where the agent works through ambiguity and discovers friction.</p></div>
+        </a>
+        <div class="lflow reveal" style="--d:.24s">
+          <span class="f down" style="--fc: var(--azure)"><span class="arr">▼</span> asks for proof <i>boot · checks · smoke — discovered via --help, not memory</i></span>
+          <span class="f up" style="--fc: var(--green)"><span class="arr">▲</span> verdicts &amp; evidence <i>friction comes back as new commands</i></span>
+        </div>
+        <a class="lplate reveal" href="#layer-deterministic" style="--pc: var(--green); --d:.28s">
+          <span class="lnum">03</span>
+          <div><h3>Deterministic Layer <span>· engineering harness</span></h3>
+          <p><i>Runnable proof, backpressure, and token savings.</i> <b>Proof</b> — can it build, run,
+            pass, render, respond, migrate, comply? <b>Backpressure</b> — tests, linters, type checks,
+            architecture rules, security checks, smoke tests, health checks, endpoint checks, browser
+            flows. <b>Evidence</b> — logs, traces, screenshots, reports, command output, API responses.
+            <b>Token savings</b> — less rediscovery, fewer loops, less markdown-as-runtime. Sensors
+            decide — not the model marking its own homework.</p></div>
+        </a>
+        <div class="lflow reveal" style="--d:.32s">
+          <span class="f down" style="--fc: var(--green)"><span class="arr">▼</span> wraps what exists <i>build · test · run · seed — as&#8209;is</i></span>
+          <span class="f up" style="--fc: var(--stone)"><span class="arr">▲</span> demands harnessability <i>fakes · seams · bootability</i></span>
+        </div>
+        <a class="lplate reveal" href="#layer-codebase" style="--pc: var(--stone); --d:.36s">
+          <span class="lnum">04</span>
+          <div><h3>Codebase Layer</h3>
+          <p><i>Bootable, observable, testable, mockable, stable.</i> Engineering fundamentals — the substrate that makes deterministic proof possible.</p></div>
+        </a>
+      </div>
+    </div>
+  </section>
 
   <!-- ============================ THE PROBLEM ============================ -->
   <section class="band" id="problem" style="--bc: var(--rust)">
