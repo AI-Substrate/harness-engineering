@@ -328,6 +328,17 @@
   }
   .lede strong { color: var(--text); font-weight: 600; }
 
+  /* Layer sections lead with the layer NAME in the h2; the old descriptor
+     sentence demotes to this serif line so you always know which layer you're in. */
+  .layer-desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(19px, 2.3vw, 27px);
+    color: var(--text);
+    margin: -4px 0 16px;
+    max-width: 26em;
+  }
+
   .chips {
     display: flex;
     flex-wrap: wrap;
@@ -1221,8 +1232,9 @@
     <span class="layer-num" aria-hidden="true">01</span>
     <div class="wrap">
       <div class="layer-inner">
-        <p class="kicker reveal">Layer 01 <span class="sub">/ Human Steering (this is you)</span></p>
-        <h2 class="reveal" style="--d:.08s">Intent, judgement, risk, <em>taste</em>, priorities.</h2>
+        <p class="kicker reveal">Layer 01 <span class="sub">/ this is you</span></p>
+        <h2 class="reveal" style="--d:.08s">The <em>Human Steering</em> Layer.</h2>
+        <p class="layer-desc reveal" style="--d:.12s">Intent, judgement, risk, taste, priorities.</p>
         <p class="lede reveal" style="--d:.16s">
           Humans decide <strong>what matters</strong> — and <strong>what gets encoded</strong>.
           Every loop below exists to serve a decision made here.
@@ -1262,8 +1274,9 @@
     <span class="layer-num" aria-hidden="true">02</span>
     <div class="wrap">
       <div class="layer-inner">
-        <p class="kicker reveal">Layer 02 <span class="sub">/ Inference · The Agent Harness</span></p>
-        <h2 class="reveal" style="--d:.08s">Reasons. Plans. Judges architecture. <em>Writes the code.</em></h2>
+        <p class="kicker reveal">Layer 02 <span class="sub">/ the agent harness</span></p>
+        <h2 class="reveal" style="--d:.08s">The <em>Inference</em> Layer.</h2>
+        <p class="layer-desc reveal" style="--d:.12s">Reasons. Plans. Judges architecture. Writes the code.</p>
         <p class="lede reveal" style="--d:.16s">
           Where the agent works through <strong>ambiguity</strong> — and discovers
           <strong>friction</strong>. Semantic review, planning, spec-driven development:
@@ -1310,8 +1323,9 @@
     <span class="layer-num" aria-hidden="true">03</span>
     <div class="wrap">
       <div class="layer-inner">
-        <p class="kicker reveal">Layer 03 <span class="sub">/ Deterministic · The Engineering Harness</span></p>
-        <h2 class="reveal" style="--d:.08s">Runnable proof. Trusted backpressure. <em>Fewer tokens.</em></h2>
+        <p class="kicker reveal">Layer 03 <span class="sub">/ the engineering harness</span></p>
+        <h2 class="reveal" style="--d:.08s">The <em>Deterministic</em> Layer.</h2>
+        <p class="layer-desc reveal" style="--d:.12s">Runnable proof. Trusted backpressure. Fewer tokens.</p>
         <p class="lede reveal" style="--d:.16s">
           Not just automation — this is where <strong>repeated inference gets converted
           into executable team memory</strong>. The proof comes from sensors, not from
@@ -1408,8 +1422,9 @@
       <div class="wrapped reveal">
         <span class="wrap-tag">⊂ wrapped by the deterministic layer</span>
         <div class="layer-inner">
-          <p class="kicker reveal" style="--d:.08s">Layer 04 <span class="sub">/ Codebase</span></p>
-          <h2 class="reveal" style="--d:.14s">Bootable. Observable. Testable. Mockable. <em>Stable.</em></h2>
+          <p class="kicker reveal" style="--d:.08s">Layer 04 <span class="sub">/ the substrate</span></p>
+          <h2 class="reveal" style="--d:.14s">The <em>Codebase</em> Layer.</h2>
+          <p class="layer-desc reveal" style="--d:.18s">Bootable. Observable. Testable. Mockable. Stable.</p>
           <p class="lede reveal" style="--d:.2s">
             <strong>Engineering fundamentals</strong> — the substrate that makes
             deterministic proof possible. If the harness is being stretched thin by
