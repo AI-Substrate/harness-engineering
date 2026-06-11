@@ -130,7 +130,7 @@ The deterministic layer wraps what already exists in the codebase — build, tes
 - (Naming note: you'll hear the practice called "harness engineering" in the wild — we lead with *engineering harness*, the artifact, so it never gets tangled with agent-harness engineering.)
 - In layer terms: the agent harness is the **inference layer**; the engineering harness is the **deterministic layer**. Different layers — don't conflate them.
   - Agent harness: the runtime that drives the model (Copilot, Claude Code, Codex, Cursor) — the agentic loop, tools, skills, MCP servers feeding the LLM.
-  - Engineering harness: the project-side loop it drives. Its birth name is "the productisation of the engineering environment" — engineering harness is just easier to say.
+  - Engineering harness: the project-side loop it drives — boot the app, run the tests, seed a database, smoke-test the checkout flow. Its birth name is "the productisation of the engineering environment" — engineering harness is just easier to say.
 - Highly cohesive: a better engineering harness means better agent outcomes, whatever runtime you use. Invest in the loop, not just the model.
 
 > **Deterministic layer thread:** the engineering harness *is* the deterministic layer — with a name, and (soon) a front door.
