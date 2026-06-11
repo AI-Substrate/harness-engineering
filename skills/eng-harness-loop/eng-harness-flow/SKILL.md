@@ -223,6 +223,7 @@ The five loop pips are Boot · Backpressure · Observe · Retro · Improve, in t
 Setup pips = S0 install · S1 scout · S2 governance · S3 inject · S4 boot. The moment S0+S2+S4 hold, drop the 🧰 segment for good. The legend names the **active segment’s** steps — setup rungs while the gate is open, loop stages once in the engineering zone.
 
 - **Stateless rail**: the fill is *derived from signals each call* (which setup rungs hold; where in the work) — never persisted. Frame it once, early, as *an at-a-glance map, not a saved journey*.
+- **Render the whole rail block as a fenced code block — always.** The rail line(s), any anchored companion line, and the `now`/`next` groups are ONE ``` fence (no language tag). Outside a fence markdown collapses leading spaces — and **never** fake alignment with `&nbsp;` or any HTML entity (terminals print them literally). Real spaces inside the fence are the only alignment tool.
 - **Status line** under the rail: ` now  · <current>` / ` next · <what follows>`, aligned. When `next` has ≥2 options, stack them with `▸` (recommended first), exactly like `the-flow`.
 
 ### 1a. The unified rail — when `the-flow` is also live
@@ -243,7 +244,7 @@ Before rendering a solo rail, probe for an active SDD flow: any `docs/plans/*/.t
 ```
 
 - **Anchor placement**: the `└─` sits in the `◐` milestone's column — with the standard prefix `[the-flow]  ` (12 chars) and 2 chars per node, that's column 12 + 2 × (index of `◐`). No `◐` (settled between stages) → anchor under the last `◆`. Column uncertain (e.g. bracket-grouped phase nodes) → a fixed 4-space indent is fine; the anchor is a garnish — never let alignment delay the turn.
-- **Trailing seam note** on the anchored line: just the seam in parentheses — `(post-spec)`, `(pre-implement)`, `(phase-end)`; the legend’s brackets already name the stage.
+- **The anchored line’s shape is fixed**: `└─ ⚙ <all five pips> ↺  <legend with [current]>  (<seam>)`. **Never compress the pips** (no `⚙ ◆ ↺` shorthand) and never swap the legend for prose — narrative belongs in the ` ⚙ engineering harness` `now`/`next` group below. The trailing note is just the seam in parentheses — `(post-spec)`, `(pre-implement)`, `(phase-end)`; the legend’s brackets already name the stage.
 - **Two flows, two voices — never merged, each under its own header**: every `now`/`next` group opens with a one-line header naming the flow — ` the-flow` for the SDD voice, ` ⚙ engineering harness` for the loop voice — with the `now`/`next` lines indented one space beneath it (the header owns identity, so the lines themselves carry no prefix). The flow's lines speak SDD position (where the plan is, what command comes next); the harness's speak loop position (what the router is running, what it produces, where control hands back). Each gives the user real context on its own lines.
 - **Never invent the `the-flow` line**: read position from its state file + the newest artifact. State unreadable or stale → fall back to the solo rail.
 - Mid-setup with an active `the-flow`: same shape, the anchored line carries the 🧰 segment instead — `└─ 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot  (setup)`.
