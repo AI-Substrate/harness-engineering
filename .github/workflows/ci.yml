@@ -13,13 +13,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-test:
-    name: build-test
+  # Version-independent static gates — run ONCE here, not per Node matrix leg
+  # (these don't vary by Node version, so duplicating them across build-test
+  # legs just burned minutes). Pure shell + the runner's preinstalled Node — no
+  # npm ci / build needed, so this job finishes in seconds.
+  rename-guard:
+    name: rename-guard
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        node: ['22', '24']
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,12 +38,6 @@ jobs:
           fi
           echo "OK: no legacy contract specifier remaining"
 
-      - name: Set up Node ${{ matrix.node }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-
       - name: Package scope matches repo owner (AC-10)
         run: |
           NAME=$(node -p "require('./package.json').name")
@@ -57,6 +51,23 @@ jobs:
           fi
           echo "OK: scope matches owner (case-insensitive)"
 
+  build-test:
+    name: build-test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
       - name: Install dependencies
         run: npm ci
 
@@ -65,23 +76,6 @@ jobs:
 
       - name: Build (tsc emit)
         run: npm run build
-
-      - name: Publish dry-run — scoped name + bin/dist packed (AC-8)
-        run: |
-          # Dry-run validates the publish path/registry config (exits 0 without
-          # auth — never contacts the registry) and proves the scoped name +
-          # bin/dist are in the packed set.
-          npm publish --dry-run 2>&1 | tee /tmp/pub.txt
-          grep -q "npm.pkg.github.com" /tmp/pub.txt \
-            || { echo "::error title=dry-run::not targeting GitHub Packages"; exit 1; }
-          npm pack --dry-run --json > /tmp/pack.json
-          jq -e '.[0].name == "@ai-substrate/engineering-harness"' /tmp/pack.json >/dev/null \
-            || { echo "::error title=dry-run::scoped name mismatch"; exit 1; }
-          jq -e '[.[0].files[].path] | any(test("harness/cli/bin/harness\\.js"))' /tmp/pack.json >/dev/null \
-            || { echo "::error title=dry-run::bin not packed"; exit 1; }
-          jq -e '[.[0].files[].path] | any(startswith("harness/cli/dist/"))' /tmp/pack.json >/dev/null \
-            || { echo "::error title=dry-run::dist not packed"; exit 1; }
-          echo "OK: scoped name + bin + dist present; targeting GitHub Packages"
 
       - name: Docs drift guard (generated bundle matches the .md sources)
         run: npm run check:docs
@@ -146,7 +140,7 @@ jobs:
   ci-required:
     name: ci-required
     runs-on: ubuntu-latest
-    needs: [build-test, package-smoke]
+    needs: [rename-guard, build-test, package-smoke]
     if: always()
     steps:
       - name: Verify required jobs passed
@@ -184,6 +178,24 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Publish dry-run — scoped name + bin/dist packed (AC-8)
+        run: |
+          # Lives here (not in the build-test matrix) so it runs ONCE and reuses
+          # this job's existing build. Dry-run validates the publish path/registry
+          # config (exits 0 without auth — never contacts the registry) and proves
+          # the scoped name + bin/dist are in the packed set.
+          npm publish --dry-run 2>&1 | tee /tmp/pub.txt
+          grep -q "npm.pkg.github.com" /tmp/pub.txt \
+            || { echo "::error title=dry-run::not targeting GitHub Packages"; exit 1; }
+          npm pack --dry-run --json > /tmp/pack.json
+          jq -e '.[0].name == "@ai-substrate/engineering-harness"' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::scoped name mismatch"; exit 1; }
+          jq -e '[.[0].files[].path] | any(test("harness/cli/bin/harness\\.js"))' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::bin not packed"; exit 1; }
+          jq -e '[.[0].files[].path] | any(startswith("harness/cli/dist/"))' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::dist not packed"; exit 1; }
+          echo "OK: scoped name + bin + dist present; targeting GitHub Packages"
 
       - name: Pack and smoke-test the installed bin (with a .ts extension fixture)
         run: |
