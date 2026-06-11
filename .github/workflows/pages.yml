@@ -1,0 +1,87 @@
+name: Publish presentations to GitHub Pages
+
+# Publishes the static HTML in docs/static-site/ to GitHub Pages.
+# Drop a new *.html file in that folder, push to main, and it goes live.
+#
+# Landing page: if docs/static-site/index.html exists, it is served as-is.
+# Otherwise a plain contents page linking every presentation is generated.
+#
+# Live URL: https://ai-substrate.github.io/harness-engineering/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/static-site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Allow one concurrent deployment; let an in-progress run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          src="docs/static-site"
+          out="_site"
+          mkdir -p "$out"
+          # Copy the whole folder verbatim (no Jekyll processing) — picks up
+          # HTML, plus any CSS/JS/images you reference relatively.
+          cp -R "$src"/. "$out"/ 2>/dev/null || true
+
+          # If you shipped your own index.html, serve it as-is and stop.
+          if [ -f "$out/index.html" ]; then
+            echo "Using provided index.html"
+            exit 0
+          fi
+
+          # Fallback: generate a plain contents page linking every presentation.
+          {
+            echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+            echo '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            echo '<title>Harness Engineering · Presentations</title>'
+            echo '<style>'
+            echo 'body{font:16px/1.6 system-ui,sans-serif;max-width:720px;margin:10vh auto;padding:0 24px;background:#f8f5ee;color:#1a1d21}'
+            echo 'h1{font-size:2rem;letter-spacing:-.02em} ul{list-style:none;padding:0}'
+            echo 'li{margin:0 0 .5rem} a{color:#2a66c9;text-decoration:none;font-weight:600}'
+            echo 'a:hover{text-decoration:underline} .muted{color:#5d6570;font-size:.9rem}'
+            echo '</style></head><body>'
+            echo '<h1>Harness Engineering</h1>'
+            echo '<p class="muted">Static presentations &amp; field diagrams.</p><ul>'
+            for f in "$out"/*.html; do
+              name="$(basename "$f")"
+              [ "$name" = "index.html" ] && continue
+              # Title: prefer <title>, fall back to the filename.
+              title="$(sed -n 's:.*<title>\(.*\)</title>.*:\1:p' "$f" | head -1)"
+              [ -z "$title" ] && title="$name"
+              echo "<li><a href=\"$name\">$title</a> <span class=\"muted\">$name</span></li>"
+            done
+            echo '</ul></body></html>'
+          } > "$out/index.html"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
