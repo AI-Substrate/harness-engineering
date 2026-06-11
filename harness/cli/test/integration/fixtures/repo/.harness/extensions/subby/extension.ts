@@ -1,4 +1,4 @@
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 // AC-14 fixture (plan 014): an extension package whose entry imports a helper
 // from a SUBFOLDER via a relative path — proves the real jiti loader resolves
 // package-internal imports.

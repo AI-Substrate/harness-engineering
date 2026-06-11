@@ -1,8 +1,12 @@
 {
-  "name": "harness-engineering",
+  "name": "@ai-substrate/engineering-harness",
   "version": "0.1.0",
   "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AI-Substrate/harness-engineering.git"
+  },
   "bin": {
     "harness": "./harness/cli/bin/harness.js"
   },
@@ -19,6 +23,9 @@
     "harness/cli/dist",
     "LICENSE"
   ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "engines": {
     "node": ">=22"
   },

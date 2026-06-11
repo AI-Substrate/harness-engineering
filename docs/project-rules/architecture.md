@@ -10,7 +10,7 @@ This document captures the system's high-level structure, boundaries, and intera
 
 ## 1. System Overview
 
-The **Harness CLI Core** is an agent-friendly Node CLI that is the **front door** to a repo's engineering harness. It is installed via `npx` (from the repo URL) onto a developer's or agent's machine; repo-local **extensions** (a later effort) supply the customisable behaviour at runtime.
+The **Harness CLI Core** is an agent-friendly Node CLI that is the **front door** to a repo's engineering harness. It is installed from **GitHub Packages** (`@ai-substrate/engineering-harness`, bin `harness`) onto a developer's or agent's machine; repo-local **extensions** (a later effort) supply the customisable behaviour at runtime.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -96,7 +96,7 @@ interface Envelope {
 
 ## 4. Packaging & Install Topology
 
-- The **npm manifest is the repo-root `package.json`** (`bin.harness → ./harness/cli/dist/index.js`, `"prepare": "npm run build"`, `files` limited to built output, `engines.node >=22`, an `exports` map exposing `./contract` for extension authors, and `jiti` in `dependencies`). This is what makes `npx github:<repo>` build-and-run with no npm publish (the `prepare` script runs `tsc`).
+- The **npm manifest is the repo-root `package.json`** (`name` `@ai-substrate/engineering-harness`, `bin.harness → ./harness/cli/dist/index.js`, `"prepare": "npm run build"`, `publishConfig.registry` → GitHub Packages, `files` limited to built output, `engines.node >=22`, an `exports` map exposing `./contract` for extension authors, and `jiti` in `dependencies`). The package is **published to GitHub Packages** by release-please on each release; consumers install from the registry (`.npmrc` scope + a `read:packages` token). The `prepare` script (`tsc`) bakes `dist` into the published tarball. *(Plan 018 — reverses the original `npx github:<repo>` / no-publish model.)*
 - **All CLI source/tests/config live under `harness/cli/`**; only the manifest and shared tool configs (`biome.json`, root `justfile`, CI) sit at the repo root.
 - **Runtime vs dev dependency discipline** (Constitution P10): anything needed at runtime inside a *user's* repo (a future extension loader, `jiti`) goes in `dependencies`; build/test-only tooling goes in `devDependencies`. Distributed/`npx` installs run `--omit=dev`.
 

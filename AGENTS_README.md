@@ -14,7 +14,7 @@ Check the rows **top-to-bottom**; the **first row whose condition passes** tells
 
 | # | Probe (passes if…) | You are | Go to |
 |---|---|---|---|
-| 0 | The root `package.json` declares `"name": "harness-engineering"` (this repo IS the package, not a dependency) | In the harness's own home repo | **Stop** — this file is for consumer repos. Read `AGENTS.md` instead; never run `eng-harness-0-setup` here. |
+| 0 | The root `package.json` declares `"name": "@ai-substrate/engineering-harness"` (this repo IS the package, not a dependency) | In the harness's own home repo | **Stop** — this file is for consumer repos. Read `AGENTS.md` instead; never run `eng-harness-0-setup` here. |
 | 1 | `eng-harness-flow` appears in **your own list of invocable skills/commands** (introspect your skill registry — not `harness help`, which lists CLI verbs, not agent skills) | Skilled — ready to go | [Stage 5 — Go](#stage-5--go-enter-the-harness-loop) |
 | 2 | `ls ./.claude/skills ./.agents/skills 2>/dev/null \| grep eng-harness` is non-empty (skill **files** on disk) but row 1 failed | Pre-restart — skills installed but not loaded | [Stage 4 — Restart](#stage-4--restart-load-the-skills) |
 | 3 | `test -f .harness/engineering-harness.md && test -d .harness/extensions/boot` (harness substrate exists; no skills loaded) | Run 2+, unskilled | [Operating an existing harness](#operating-an-existing-harness-run-2) |
@@ -78,8 +78,8 @@ npx --no-install harness --help
 git clone --depth 1 https://github.com/AI-Substrate/harness-engineering /tmp/he-build
 (cd /tmp/he-build && npm install --ignore-scripts && npm run build && npm pack)
 mkdir -p .harness/vendor
-cp /tmp/he-build/harness-engineering-*.tgz .harness/vendor/
-npm install ./.harness/vendor/harness-engineering-*.tgz
+cp /tmp/he-build/ai-substrate-engineering-harness-*.tgz .harness/vendor/
+npm install ./.harness/vendor/ai-substrate-engineering-harness-*.tgz
 ```
 
 This also makes the install deterministic for everyone who clones the repo later — `npm install` restores the harness from the vendored artifact with no network fetch.
@@ -220,7 +220,7 @@ Then commit everything durable: `package.json` (+ lockfile, + vendored tarball i
 
 ## Operating an existing harness (run 2+)
 
-Signs a repo already has a harness: a `.harness/` directory, `harness-engineering` in `package.json`, an `AGENTS.md` harness block, or skills in `./.agents/skills/` / `./.claude/skills/`.
+Signs a repo already has a harness: a `.harness/` directory, `@ai-substrate/engineering-harness` in `package.json`, an `AGENTS.md` harness block, or skills in `./.agents/skills/` / `./.claude/skills/`.
 
 ```bash
 npm install                                    # restore the CLI from the repo's own manifest

@@ -1,4 +1,4 @@
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 // Wraps a real command via ctx.exec (P8): calls `node -e`, a real, deterministic
 // command on PATH, and maps the child's exit to the Envelope. `--fail` forces a

@@ -42,7 +42,7 @@ This repository is two things at once:
 
 **What the Harness CLI Core is** (the product this constitution governs):
 
-- It is **installed onto a developer's or agent's machine via `npx`** (straight from the repo URL) to provide the *core* of the harness.
+- It is **installed onto a developer's or agent's machine from GitHub Packages** (`@ai-substrate/engineering-harness`) to provide the *core* of the harness.
 - The core is intentionally small. The **customisable behaviour comes from extensions** added in the *target* repo and loaded at runtime — the extension system (plan 005) has landed, and the core's verb surface is sourced entirely from it.
 - Everything the core does is grounded in **`harness-foundations/`** — the first principles, directives, and patterns are the doctrine the tooling makes executable.
 - This slice ships two core commands (`help`, `doctor`) plus the **runtime extension system**: a developer's own repo holds `.harness/extensions/`, which the core discovers + loads so each extension contributes `harness <verb>` commands — alongside a stable human+JSON output contract and the repo's own engineering fundamentals (Biome, vitest+coverage, `justfile`, CI, release-please).
@@ -161,7 +161,7 @@ Entrypoint (parse args, render, exit)
 
 - **Planning** uses the `docs/plans/<ordinal>-<slug>/` convention (spec → workshops → plan → phase tasks). No time estimates — use **Complexity Score (CS 1–5)** only (see `rules.md`).
 - **Backpressure before merge**: `just fft` locally; GitHub Actions CI (build + Biome + tests + coverage + audit) on PRs and `main`; `main` is branch-protected so required CI must pass before merge.
-- **Versioning**: semver via `release-please` (`release-type: node`). Install is `npx`-from-repo-URL; no npm publish required for this slice.
+- **Versioning & distribution**: semver via `release-please` (`release-type: node`); on each release-please release the `publish` job pushes `@ai-substrate/engineering-harness` to **GitHub Packages**. Install is from the registry (consumer `.npmrc` `@ai-substrate:registry=https://npm.pkg.github.com` + a `read:packages` token). *(Reverses the original plan-004 "no npm publish / npx-from-repo-URL" model — see plan 018.)*
 - **Documentation**: README-led, with agent-friendly per-command `--help`. Authoritative design decisions live in plan workshops and are not contradicted downstream.
 
 ---

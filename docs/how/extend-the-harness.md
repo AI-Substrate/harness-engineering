@@ -129,7 +129,7 @@ $ harness new greet
 Open `extension.ts` and fill `run(ctx)`. The minimal stub:
 
 ```ts
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const greet: HarnessVerb = {
   name: 'greet',

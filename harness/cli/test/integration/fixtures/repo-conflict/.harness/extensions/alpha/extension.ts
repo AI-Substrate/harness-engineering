@@ -1,4 +1,4 @@
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 // Sorts BEFORE beta.ts → wins the `greet` verb name (first-sorted wins).
 const greet: HarnessVerb = {

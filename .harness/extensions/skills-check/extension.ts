@@ -1,4 +1,4 @@
-import type { HarnessVerb, VerbContext } from 'harness-engineering/contract';
+import type { HarnessVerb, VerbContext } from '@ai-substrate/engineering-harness/contract';
 import { checkAll, type SkillFile, toDecision } from './frontmatter.js';
 
 /**

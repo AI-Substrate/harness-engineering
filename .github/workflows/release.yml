@@ -1,27 +1,117 @@
 name: Release
 
 on:
+  # Main: release-please maintains the Release PR; merging it cuts the release
+  # and (below) publishes to GitHub Packages. canary/**: pre-merge publish proof.
   push:
-    branches: [main]
+    branches: [main, 'canary/**']
+  # workflow_dispatch is only registered once this workflow is on the DEFAULT
+  # branch, so for a PRE-merge canary use a push to a `canary/**` branch (push
+  # triggers run from the pushed branch's own copy — no default-branch needed).
+  workflow_dispatch: {}
 
 permissions:
   contents: write
   pull-requests: write
 
-# release-please manages semver tags + CHANGELOG from conventional commits.
-# It opens/refreshes a Release PR; merging that PR tags + creates a GitHub
-# release. There is intentionally NO npm publish step (spec AC-15 — installs
-# use `npx github:AI-Substrate/harness-engineering#vX.Y.Z`).
+# release-please manages semver tags + CHANGELOG from conventional commits. It
+# opens/refreshes a Release PR; merging that PR tags + creates a GitHub release,
+# which sets `release_created` → the `publish` job pushes the matching version to
+# GitHub Packages as @ai-substrate/engineering-harness. Installs now use the
+# registry (see README — consumer .npmrc + read:packages token). The `canary` job
+# proves the whole publish + authed-install path from a branch BEFORE merge.
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    # Only the real release path (a push to main) runs release-please; the canary
+    # triggers (workflow_dispatch / canary/** push) skip it — there's nothing to cut.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Load-bearing: this job-level re-export is what makes the publish gate real.
+    # Without it `needs.release-please.outputs.release_created` resolves empty and
+    # the publish job would fire on every push.
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Release Please
+        id: release
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+  # Publish to GitHub Packages — ONLY when release-please actually cut a release.
+  # Singular `release_created` (the plural `releases_created` is a v3→v4 trap that
+  # defaults truthy); string compare because Actions outputs are strings. The
+  # published version is whatever release-please already committed to package.json.
+  publish:
+    needs: [release-please]
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node (GitHub Packages registry)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://npm.pkg.github.com
+          scope: '@ai-substrate'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish (latest)
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Canary (AC-11) — prove publish + authed-install from a branch BEFORE merge.
+  # Triggered by a push to `canary/**` (pre-merge) or workflow_dispatch (post-merge
+  # ergonomics). Publishes an ephemeral, NEVER-committed `<base>-canary.<run>`
+  # under the `canary` dist-tag (the --tag is load-bearing — without it npm would
+  # clobber `latest`). github.run_number guarantees a unique version (GitHub
+  # Packages versions are immutable).
+  canary:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/canary/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node (GitHub Packages registry)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://npm.pkg.github.com
+          scope: '@ai-substrate'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set ephemeral canary version (never committed)
+        run: |
+          BASE=$(node -p "require('./package.json').version")
+          npm version --no-git-tag-version "${BASE}-canary.${{ github.run_number }}"
+          echo "canary version: $(node -p "require('./package.json').version")"
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish (canary dist-tag — never touches latest)
+        run: npm publish --tag canary
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,7 +3,7 @@
 // author can extend the harness with zero runtime dependency on the core (plan
 // D4). Loaded via the native dynamic import() fast path, not jiti.
 
-/** @type {import('harness-engineering/contract').HarnessVerb} */
+/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
 const greetjs = {
   name: 'greetjs',
   summary: 'Greet from a plain .js extension (integration fixture).',

@@ -1,4 +1,4 @@
-import type { VerbContext } from 'harness-engineering/contract';
+import type { VerbContext } from '@ai-substrate/engineering-harness/contract';
 
 /**
  * Package-internal I/O helpers for `validate-harness-flow` (plan 014 T012 —

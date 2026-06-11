@@ -90,9 +90,9 @@ harness docs: no curated doc with id "no-such-doc"   # → E160, exit 1
 ## Offline by design
 
 The docs are **bundled into the CLI build**, not read from your working tree at
-runtime. A consumer running `npx github:AI-Substrate/harness-engineering docs`
-gets the same content with no repo checkout and no network — the docs travel
-with the binary.
+runtime. A consumer running `harness docs` (from the registry-installed
+`@ai-substrate/engineering-harness`) gets the same content with no repo checkout
+and no network — the docs travel with the binary.
 
 Under the hood, a build step inlines each curated `.md` into a generated module
 that `tsc` compiles into `dist`. You never edit that generated module; you edit

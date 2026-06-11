@@ -18,7 +18,7 @@ Test Doc:
 - Quality Contribution: turns "what should the stub look like?" into an assertion, not prose.
 */
 
-const MINIMAL_TS_GREET = `import type { HarnessVerb } from 'harness-engineering/contract';
+const MINIMAL_TS_GREET = `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const greet: HarnessVerb = {
   name: 'greet',
@@ -33,7 +33,7 @@ const greet: HarnessVerb = {
 export default greet;
 `;
 
-const WRAP_TS_TEST = `import type { HarnessVerb } from 'harness-engineering/contract';
+const WRAP_TS_TEST = `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const test: HarnessVerb = {
   name: 'test',
@@ -55,7 +55,7 @@ const test: HarnessVerb = {
 export default test;
 `;
 
-const MINIMAL_JS_GREET = `/** @type {import('harness-engineering/contract').HarnessVerb} */
+const MINIMAL_JS_GREET = `/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
 const greet = {
   name: 'greet',
   summary: 'TODO: one-line summary of what \`harness greet\` does.',
@@ -68,7 +68,7 @@ const greet = {
 export default greet;
 `;
 
-const WRAP_JS_TEST = `/** @type {import('harness-engineering/contract').HarnessVerb} */
+const WRAP_JS_TEST = `/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
 const test = {
   name: 'test',
   summary: 'Wraps \`npm test\`.',
@@ -148,7 +148,7 @@ describe('scaffold templates', () => {
   it('the record-ts starter exports a HarnessRecordType with the 4 fields', () => {
     const contents = renderStarter({ name: 'dev-survey', js: false, record: true }).contents;
     expect(contents).toContain(
-      "import type { HarnessRecordType } from 'harness-engineering/contract'",
+      "import type { HarnessRecordType } from '@ai-substrate/engineering-harness/contract'",
     );
     expect(contents).toContain("kind: 'record'");
     expect(contents).toContain("type: 'dev-survey'");

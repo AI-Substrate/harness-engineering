@@ -6,14 +6,30 @@ The agent-friendly **front door** to this repo's engineering harness. A small, w
 
 ## Install / run
 
-No install required — run straight from the repo URL with `npx`:
+The CLI is published to **GitHub Packages** as `@ai-substrate/engineering-harness` (bin `harness`). GitHub Packages requires authentication even for public packages, so a one-time consumer setup is needed:
 
-```bash
-npx github:AI-Substrate/harness-engineering help
-npx github:AI-Substrate/harness-engineering doctor
-```
+1. Point the `@ai-substrate` scope at GitHub Packages — add to your repo's (or `~/`) `.npmrc`:
 
-`npx` clones the repo, runs the `prepare` build (`tsc` → `harness/cli/dist`), and invokes the `harness` bin (`./harness/cli/dist/index.js`). Requires Node `>= 22`.
+   ```ini
+   @ai-substrate:registry=https://npm.pkg.github.com
+   ```
+
+2. Authenticate with a GitHub token carrying the **`read:packages`** scope (a classic PAT, or `GITHUB_TOKEN` in CI) — either log in once:
+
+   ```bash
+   npm login --scope=@ai-substrate --registry=https://npm.pkg.github.com
+   ```
+
+   …or add the token to `.npmrc`: `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}`.
+
+3. Install and run (Node `>= 22`):
+
+   ```bash
+   npm install @ai-substrate/engineering-harness
+   npx harness doctor
+   ```
+
+The published tarball bakes in the built `dist` and declares `commander` + `jiti` as runtime dependencies, so an `--omit=dev` install resolves everything — no install-time build, no git-clone fragility. Pin a version the usual way (`@ai-substrate/engineering-harness@0.1.0`).
 
 For local development in this repo:
 
@@ -46,7 +62,7 @@ Each entry **default-exports** a `HarnessVerb` (or an array of them). The instal
 ```bash
 mkdir -p .harness/extensions/hello
 cat > .harness/extensions/hello/extension.ts <<'TS'
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const hello: HarnessVerb = {
   name: 'hello',
@@ -145,7 +161,7 @@ CI runs on every pull request and on pushes to `main` (`.github/workflows/ci.yml
 - **`package-smoke`** — packs the tarball, installs it into a clean temp project with `--omit=dev`, drops a real `.harness/extensions/hello/extension.ts` package fixture, and asserts the installed `harness` bin discovers + jiti-loads the verb and runs it (proving jiti resolves as a runtime dependency), plus a flat `legacy.ts` file is rejected with `E143` — the npx/bin-symlink + extension contract end-to-end.
 - **`ci-required`** — a stable aggregation job that fails if any required job failed. Branch protection requires this one matrix-independent check.
 
-**Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release. There is **no npm publish** — install pins a tag: `npx github:AI-Substrate/harness-engineering#vX.Y.Z`.
+**Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release **and the `publish` job pushes `@ai-substrate/engineering-harness` to GitHub Packages** (gated on release-please actually cutting a release). A branch-dispatchable **canary** job proves the publish + authed-install path before merge (push a `canary/**` branch, or `workflow_dispatch` once the workflow is on `main`). Install from the registry — see *Install / run* above.
 
 **Branch protection** on `main` requires the `ci-required` check to pass before merge. Applied with (requires repo admin):
 

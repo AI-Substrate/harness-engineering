@@ -102,7 +102,7 @@ core ∪ extension types.
 A record type needs only four fields:
 
 ```ts
-import type { HarnessRecordType } from 'harness-engineering/contract';
+import type { HarnessRecordType } from '@ai-substrate/engineering-harness/contract';
 
 const devSurvey: HarnessRecordType = {
   kind: 'record',                                    // discriminator (vs a verb)

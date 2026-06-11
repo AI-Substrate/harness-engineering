@@ -1,4 +1,4 @@
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 // Sorts AFTER alpha.ts → its `greet` verb is shadowed → recorded as a conflict (E142).
 const greet: HarnessVerb = {

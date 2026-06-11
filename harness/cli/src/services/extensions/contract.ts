@@ -1,7 +1,7 @@
 /**
  * PUBLIC verb contract — the types an extension author imports.
  *
- * Authors `import type { HarnessVerb } from 'harness-engineering/contract'`
+ * Authors `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract'`
  * (resolved by the `exports["./contract"]` map added in T023). Everything here is
  * **types only**, so it is erased at runtime — even a plain `.js` extension can
  * reference these via JSDoc with no runtime dependency on the core (plan D4).

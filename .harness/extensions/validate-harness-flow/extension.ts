@@ -1,4 +1,4 @@
-import type { HarnessVerb, VerbContext, VerbResult } from 'harness-engineering/contract';
+import type { HarnessVerb, VerbContext, VerbResult } from '@ai-substrate/engineering-harness/contract';
 // Package-internal helpers (plan 014 T012 split — proves AC-14 in production).
 import { captureNewRun, copyInto, lastRunId, readJson, writeFile } from './lib/worker-io.ts';
 

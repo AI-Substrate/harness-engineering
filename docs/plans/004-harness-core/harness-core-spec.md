@@ -106,7 +106,7 @@ The harness *loop* behaviour (real `run`/`validate`/`build`/`smoke`/`health`/`ob
 ### Phase 3 — CI, release automation, branch protection
 13. A GitHub Actions CI workflow runs on pull requests and pushes to `main`, installing deps and running build + Biome check + tests + coverage + `npm audit`.
 14. CI **reports test coverage** so reviewers can see the proof path's health.
-15. `release-please` is configured (`release-please-config.json` + `.release-please-manifest.json` + a release workflow) for `release-type: node`, producing semver tags/changelog (no npm publish).
+15. `release-please` is configured (`release-please-config.json` + `.release-please-manifest.json` + a release workflow) for `release-type: node`, producing semver tags/changelog (no npm publish). **[Reversed in plan 018 — the CLI now publishes `@ai-substrate/engineering-harness` to GitHub Packages on each release-please release.]**
 16. `main` is branch-protected so required CI must pass before merge — applied via a documented `gh`/admin step (it is a repo setting, not code), and the step is recorded in the plan.
 
 ## Risks & Assumptions

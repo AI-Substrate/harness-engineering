@@ -24,7 +24,7 @@ function argsLiteral(rest: string[]): string {
 /** Minimal TypeScript starter — an honest `unconfigured` stub (workshop §4a). */
 export function minimalTs(name: string): string {
   const id = toIdentifier(name);
-  return `import type { HarnessVerb } from 'harness-engineering/contract';
+  return `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const ${id}: HarnessVerb = {
   name: '${name}',
@@ -44,7 +44,7 @@ export default ${id};
 export function wrapTs(name: string, command: string): string {
   const id = toIdentifier(name);
   const { argv0, rest } = splitCommand(command);
-  return `import type { HarnessVerb } from 'harness-engineering/contract';
+  return `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const ${id}: HarnessVerb = {
   name: '${name}',
@@ -70,7 +70,7 @@ export default ${id};
 /** Minimal plain-JS starter — JSDoc contract reference, no runtime import (workshop §4c). */
 export function minimalJs(name: string): string {
   const id = toIdentifier(name);
-  return `/** @type {import('harness-engineering/contract').HarnessVerb} */
+  return `/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
 const ${id} = {
   name: '${name}',
   summary: 'TODO: one-line summary of what \`harness ${name}\` does.',
@@ -88,7 +88,7 @@ export default ${id};
 export function wrapJs(name: string, command: string): string {
   const id = toIdentifier(name);
   const { argv0, rest } = splitCommand(command);
-  return `/** @type {import('harness-engineering/contract').HarnessVerb} */
+  return `/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
 const ${id} = {
   name: '${name}',
   summary: 'Wraps \`${command}\`.',
@@ -118,7 +118,7 @@ export default ${id};
  */
 export function recordTs(name: string): string {
   const id = toIdentifier(name);
-  return `import type { HarnessRecordType } from 'harness-engineering/contract';
+  return `import type { HarnessRecordType } from '@ai-substrate/engineering-harness/contract';
 
 const ${id}: HarnessRecordType = {
   kind: 'record',

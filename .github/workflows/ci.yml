@@ -24,11 +24,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: No stale package specifier (rename completeness gate · AC-6)
+        run: |
+          # Every contract import must use the scoped @ai-substrate/engineering-harness/contract.
+          # The legacy needle is assembled from a variable so THIS workflow file
+          # never matches its own gate. Exclude planning history + .git; any residual fails fast.
+          OLD='harness-engineering'
+          if grep -rn "${OLD}/contract" \
+               --include='*.ts' --include='*.js' --include='*.md' --include='*.yml' . \
+               | grep -v 'docs/plans/' | grep -v '/.git/'; then
+            echo "::error title=stale-specifier::legacy '<old-name>/contract' import found — rename incomplete (AC-6)"
+            exit 1
+          fi
+          echo "OK: no legacy contract specifier remaining"
+
       - name: Set up Node ${{ matrix.node }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+
+      - name: Package scope matches repo owner (AC-10)
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          SCOPE=${NAME#@}; SCOPE=${SCOPE%%/*}
+          OWNER=${GITHUB_REPOSITORY%%/*}
+          echo "package='$NAME' scope='$SCOPE' owner='$OWNER'"
+          lc() { printf %s "$1" | tr '[:upper:]' '[:lower:]'; }
+          if [ "$(lc "$SCOPE")" != "$(lc "$OWNER")" ]; then
+            echo "::error title=scope-owner::package scope '@$SCOPE' != repo owner '$OWNER' (AC-10)"
+            exit 1
+          fi
+          echo "OK: scope matches owner (case-insensitive)"
 
       - name: Install dependencies
         run: npm ci
@@ -38,6 +65,23 @@ jobs:
 
       - name: Build (tsc emit)
         run: npm run build
+
+      - name: Publish dry-run — scoped name + bin/dist packed (AC-8)
+        run: |
+          # Dry-run validates the publish path/registry config (exits 0 without
+          # auth — never contacts the registry) and proves the scoped name +
+          # bin/dist are in the packed set.
+          npm publish --dry-run 2>&1 | tee /tmp/pub.txt
+          grep -q "npm.pkg.github.com" /tmp/pub.txt \
+            || { echo "::error title=dry-run::not targeting GitHub Packages"; exit 1; }
+          npm pack --dry-run --json > /tmp/pack.json
+          jq -e '.[0].name == "@ai-substrate/engineering-harness"' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::scoped name mismatch"; exit 1; }
+          jq -e '[.[0].files[].path] | any(test("harness/cli/bin/harness\\.js"))' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::bin not packed"; exit 1; }
+          jq -e '[.[0].files[].path] | any(startswith("harness/cli/dist/"))' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::dist not packed"; exit 1; }
+          echo "OK: scoped name + bin + dist present; targeting GitHub Packages"
 
       - name: Docs drift guard (generated bundle matches the .md sources)
         run: npm run check:docs
@@ -164,7 +208,7 @@ jobs:
           # A repo-local .ts extension PACKAGE — discovered + jiti-loaded by the installed bin.
           mkdir -p .harness/extensions/hello .harness/extensions/boom
           cat > .harness/extensions/hello/extension.ts <<'TS'
-          import type { HarnessVerb } from 'harness-engineering/contract';
+          import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
           const hello: HarnessVerb = {
             name: 'hello',
             summary: 'Say hello (smoke fixture).',
@@ -177,7 +221,7 @@ jobs:
           TS
           echo '# `harness hello` — agent briefing (smoke fixture)' > .harness/extensions/hello/instructions.md
           cat > .harness/extensions/boom/extension.ts <<'TS'
-          import type { HarnessVerb } from 'harness-engineering/contract';
+          import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
           const boom: HarnessVerb = {
             name: 'boom',
             summary: 'Always fails (smoke fixture).',

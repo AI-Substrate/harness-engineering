@@ -1,4 +1,4 @@
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 import { type DepcruiseRule, mapToDecision, parseDepcruiseJson } from './mapping.js';
 
 /**

@@ -2,7 +2,7 @@
  * PUBLIC record-type contract — the type an extension author imports to declare a
  * new kind of record (alongside the verb contract).
  *
- * Authors `import type { HarnessRecordType } from 'harness-engineering/contract'`
+ * Authors `import type { HarnessRecordType } from '@ai-substrate/engineering-harness/contract'`
  * (re-exported from `services/extensions/contract.ts`, which the package's
  * `exports["./contract"]` map resolves). Everything here is **types only**, so it
  * is erased at runtime — even a plain `.js` record extension can reference it via

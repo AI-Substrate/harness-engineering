@@ -1,4 +1,4 @@
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 // PERMANENT fixture (plan 014 T011): the retired FLAT layout. Discovery must
 // REJECT this file with E143 ("unsupported flat layout — move to

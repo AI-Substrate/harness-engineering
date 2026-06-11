@@ -55,7 +55,7 @@ Import the types from the published package (they're erased at runtime, so even
 a plain `.js` extension can reference them via JSDoc with no runtime dependency):
 
 ```ts
-import type { HarnessVerb, VerbContext, VerbResult } from 'harness-engineering/contract';
+import type { HarnessVerb, VerbContext, VerbResult } from '@ai-substrate/engineering-harness/contract';
 ```
 
 A verb is a declarative object:
@@ -113,7 +113,7 @@ machine-readable "what to do next" on every failure.
 ### `hello/extension.ts` — the minimal verb
 
 ```ts
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const hello: HarnessVerb = {
   name: 'hello',
@@ -134,7 +134,7 @@ $ harness hello --name pi
 ### `build/extension.ts` — wrapping a real command (the point)
 
 ```ts
-import type { HarnessVerb } from 'harness-engineering/contract';
+import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 
 const build: HarnessVerb = {
   name: 'build',
