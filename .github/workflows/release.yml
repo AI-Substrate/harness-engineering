@@ -37,7 +37,7 @@ jobs:
 
       - name: Release Please
         id: release
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
           # A user/PAT token (not the built-in GITHUB_TOKEN) so the Release PRs
           # release-please opens TRIGGER CI — GitHub intentionally suppresses
