@@ -121,7 +121,7 @@ The deterministic layer is the engineering harness. Runnable proof. Trusted back
 
 The deterministic layer wraps what already exists in the codebase — build, test, run, seed, as-is — and in return it demands harnessability from the codebase: fakes, seams, bootability.
 
-(Maintenance note: `docs/static-site/layers.html` and `docs/static-site/index.html` (the full deck) mirror this slide's wording — this slide owns the canonical wording; keep them in sync.)
+(Maintenance note: `docs/static-site/layers.html`, `docs/static-site/index.html` (the full deck) and the README's layer diagram mirror this slide's wording — this slide owns the canonical wording; keep them in sync.)
 
 # Engineering Harness vs Agent Harness
 
