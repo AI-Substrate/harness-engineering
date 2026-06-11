@@ -1,0 +1,49 @@
+# Dependabot configuration — automated dependency update PRs.
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+
+updates:
+  # ── npm — the root package (@ai-substrate/engineering-harness) ──────────────
+  # Single package at the repo root; harness/cli/ is source under it, not its
+  # own manifest. The fixtures repo under agents/ is test scaffolding and is
+  # intentionally not tracked here.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      prefix-development: chore
+      include: scope
+    groups:
+      # Batch the low-risk minor/patch bumps into one PR to cut noise.
+      production-minor-patch:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      dev-minor-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    # Majors stay as individual PRs (default behaviour) so breaking changes get
+    # their own review.
+
+  # ── GitHub Actions — the workflows under .github/workflows/ ─────────────────
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions-minor-patch:
+        update-types:
+          - minor
+          - patch
