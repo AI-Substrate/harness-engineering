@@ -14,7 +14,8 @@ This skill is a **flow**, not a generator. It installs the harness CLI from npx,
 
 ```mermaid
 flowchart TD
-    A["1 · Install harness<br/>npx + (future) harness init"] --> Ad{harness doctor OK?}
+    P{"already installed?<br/>npx harness doctor responds"} -- yes --> C
+    P -- no --> A["1 · Install harness<br/>npx + (future) harness init"] --> Ad{harness doctor OK?}
     Ad -- no --> At["Troubleshoot<br/>Node · network/gh · build"] --> A
     Ad -- yes --> C{".harness/reports/harnessability/latest.json<br/>exists?"}
     C -- no --> D["2 · Run eng-harness-0-harnessability-assessment skill"] --> E
@@ -46,13 +47,21 @@ Keep it a **basic nucleus**. Do **not** boil the ocean — a thin wrapper over t
 
 The harness CLI ships from its GitHub repo and runs via `npx` (there is intentionally no npm-published package).
 
-1. **Prove it runs** (checks Node + network + the CLI itself):
+1. **Check whether the harness is already installed — never blindly (re)install:**
+
+   ```bash
+   npx harness doctor --json 2>/dev/null || echo "NO_HARNESS"
+   ```
+
+   An envelope back (any `status` — `degraded` counts) means the CLI already resolves in this repo: **skip the install entirely (steps 2–3)** and jump to the sanity-check (step 5) — re-running setup only fills whatever gaps `doctor` names from there (step 4's `harness init` still applies if the nucleus is missing). A `.harness/` directory or a harness dependency already in `package.json` are the same signal. Only `NO_HARNESS` (or command-not-found) proceeds with the install below.
+
+2. **Prove the installer runs** (checks Node + network + the CLI itself):
 
    ```bash
    npx github:AI-Substrate/harness-engineering help
    ```
 
-2. **Make `harness` resolve locally** for repeated use — install it into the target repo (its `prepare` step builds the CLI):
+3. **Make `harness` resolve locally** for repeated use — install it into the target repo (its `prepare` step builds the CLI):
 
    ```bash
    # Repos with no package.json (typical for Python/Go): npm walks UP to the
@@ -67,7 +76,7 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
 
    Afterwards use `npx harness <command>` (it resolves the locally-installed CLI whether or not `harness` is on PATH). **All examples below use `npx harness …`; drop the `npx` prefix only if `harness` is already on your PATH.**
 
-3. **Initialise the nucleus** — run the deterministic bootstrap:
+4. **Initialise the nucleus** — run the deterministic bootstrap:
 
    ```bash
    npx harness init
@@ -77,7 +86,7 @@ The harness CLI ships from its GitHub repo and runs via `npx` (there is intentio
 
    `.harness/temp/` is transient agent scratch — never committed; the CLI self-heals its nested `.gitignore` and `harness doctor` checks the convention.
 
-4. **Sanity-check** with the CLI's own front door:
+5. **Sanity-check** with the CLI's own front door:
 
    ```bash
    npx harness doctor          # human-readable
