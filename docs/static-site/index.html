@@ -1,0 +1,1969 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harness Engineering — The Full Deck</title>
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  HARNESS ENGINEERING — THE FULL DECK
+  ═══════════════════════════════════════════════════════════════════════════
+
+  SOURCES OF TRUTH
+  · Content mirrors docs/harness-presentations/intro-to-harness.md — that file
+    owns the canonical wording. Keep the two in sync when editing content.
+  · Companion overview page: docs/static-site/layers.html (same palette + type family)
+
+  TWO MODES (toggle: "P" key, the topbar button, or ?mode=present / ?mode=read)
+  · READ mode (default)  — single scrolling page. Every slide visible, talk-track
+    notes shown inline. Self-contained for static hosting.
+  · PRESENT mode         — one slide at a time; each slide auto-plays its content
+    in. ←/→ or Space to change slides. N = notes panel, M = menu, F = fullscreen.
+
+  HOW TO EDIT THIS DECK
+  ─────────────────────
+  1. Each slide is one <section class="slide" id="s-..." data-title="Menu label">.
+     Slides are delimited by banner comments. To add a slide: copy a section,
+     give it a unique id and data-title. To reorder: move the section. Slide
+     numbers, the menu, progress and the counter all derive automatically.
+  2. Reveal system:
+       class="rv"            — fades up when the slide activates (or scrolls in).
+                               Add style="--d:.15s" to stagger.
+       data-step="1"         — reveal ORDER within the slide's auto-played cascade
+                               in PRESENT mode (lowest first; ties reveal together).
+                               In READ mode these simply scroll-reveal.
+  3. Component classes (compose freely inside .inner):
+       .kicker               — mono eyebrow. Slide number auto-injected.
+       h1 + <em>             — slide title; em renders serif-italic in accent color.
+       .lede                 — intro paragraph under the title.
+       .bullets              — styled <ul>. <b> inside li = emphasis ink.
+       .cols / .grid-2/3/4   — layout grids.
+       .card                 — bordered panel. .card .glyph for a symbol.
+       .chip / .chips        — small mono tags.
+       .statement            — huge centered serif line (hero punchlines).
+       .term                 — dark terminal. .t-cmd[data-type] lines get typed
+                               live. .t-bad = the "old way" strikethrough line,
+                               .t-ok = green result.
+       .duo                  — two-up numbered problem/answer cards.
+       .stack / .plate / .flowrow — the layer-stack diagram (slide 6 + recap).
+       .abc .aff             — A/B/C lettered cards.
+       .stat                 — big number + caption.
+       .eq .piece            — nucleus equation pieces.
+       .loop .step           — loop pills.
+       .thread               — the recurring "deterministic layer thread" stitch
+                               line at the bottom of body slides.
+       .talk (aside)         — per-slide commentary. Hidden in PRESENT mode (lives
+                               in the N notes panel); rendered inline in READ mode.
+  4. Slide accent color: set style="--c: var(--azure)" on the section
+     (amber/azure/green/stone/rust available). Dark slides: class="slide dark".
+  5. Nothing in the <script> needs touching for content edits.
+  ═══════════════════════════════════════════════════════════════════════════
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Instrument+Serif:ital@0;1&family=Martian+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════ TOKENS ════════════════════════ */
+  :root {
+    --bg: #f8f5ee;
+    --panel: #fffdf7;
+    --panel-2: #f4f0e6;
+    --ink-bg: #1d2126;
+    --ink-bg-2: #23282f;
+    --text: #20242b;
+    --muted: #5c646e;
+    --faint: #9aa1ab;
+    --line: #e3ddd0;
+    --amber: #b8760f;
+    --azure: #2a66c9;
+    --green: #0e8f5a;
+    --stone: #67707b;
+    --rust: #c2452d;
+    --term-bg: #1b1f24;
+    --term-text: #d7dce2;
+    --term-green: #4ec98a;
+    --term-faint: #6b7280;
+    --mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+    --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: color-mix(in srgb, var(--amber) 30%, transparent); }
+
+  /* ════════════════════════ CHROME ════════════════════════ */
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .wordmark {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wordmark b { color: var(--green); font-weight: 700; }
+  .topbar .spacer { flex: 1; pointer-events: none; }
+  .tbtn {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--panel) 82%, transparent);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 7px 14px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    transition: color .25s, border-color .25s, background .25s;
+  }
+  .tbtn:hover { color: var(--green); border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+  .tbtn.on { color: var(--green); border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, var(--panel)); }
+  .tbtn kbd {
+    font-family: inherit;
+    font-size: 8.5px;
+    color: var(--faint);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 4px;
+    margin-left: 7px;
+  }
+
+  .progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    width: 0%;
+    background: linear-gradient(90deg, var(--amber), var(--green));
+    z-index: 95;
+    transition: width .35s var(--ease);
+  }
+
+  /* present-mode nav cluster */
+  .navc {
+    position: fixed;
+    bottom: 22px; right: 22px;
+    z-index: 90;
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  body.present .navc { display: flex; }
+  .navc .count {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .14em;
+    color: var(--faint);
+    margin-right: 4px;
+  }
+  .navc .count b { color: var(--text); font-weight: 700; }
+  .nbtn {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: blur(8px);
+    color: var(--text);
+    font-size: 17px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: border-color .25s, color .25s, transform .15s;
+  }
+  .nbtn:hover { border-color: var(--green); color: var(--green); }
+  .nbtn:active { transform: scale(.92); }
+  .nbtn:disabled { opacity: .3; cursor: default; }
+
+  .hint {
+    position: fixed;
+    bottom: 26px; left: 26px;
+    z-index: 90;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+    display: none;
+  }
+  body.present .hint { display: block; }
+  @media (max-width: 760px) { .hint { display: none !important; } }
+
+  /* menu overlay */
+  .menu {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(14px);
+    display: none;
+    overflow-y: auto;
+    padding: 90px 24px 60px;
+  }
+  .menu.open { display: block; }
+  .menu ol {
+    max-width: 680px;
+    margin: 0 auto;
+    list-style: none;
+    counter-reset: m;
+  }
+  .menu li { counter-increment: m; }
+  .menu a {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: clamp(16px, 2vw, 21px);
+    font-weight: 550;
+    letter-spacing: -.01em;
+    transition: background .2s, color .2s;
+  }
+  .menu a::before {
+    content: counter(m, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .menu a:hover { background: color-mix(in srgb, var(--green) 7%, transparent); color: var(--green); }
+  .menu a.here { color: var(--green); }
+  .menu a.here::after { content: '●'; font-size: 8px; color: var(--green); margin-left: auto; }
+
+  /* notes panel (present mode) */
+  .npanel {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(400px, 88vw);
+    z-index: 100;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    box-shadow: -18px 0 50px rgba(48,40,25,.08);
+    transform: translateX(102%);
+    transition: transform .4s var(--ease);
+    display: flex;
+    flex-direction: column;
+  }
+  body.present.notes-open .npanel { transform: none; }
+  .npanel header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--green);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .npanel header span { color: var(--faint); font-weight: 400; }
+  .npanel .nbody {
+    padding: 20px 24px 40px;
+    overflow-y: auto;
+    font-size: 14.5px;
+    color: var(--muted);
+    font-weight: 380;
+  }
+  .npanel .nbody p { margin-bottom: 14px; }
+  .npanel .nbody b { color: var(--text); font-weight: 650; }
+  body.present.notes-open .deckwrap { margin-right: min(400px, 88vw); }
+
+  /* ════════════════════════ SLIDE LAYOUT — both modes ════════════════════════ */
+  .deckwrap { transition: margin-right .4s var(--ease); }
+
+  .slide { position: relative; }
+  .slide .inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 0 clamp(22px, 5vw, 64px);
+    width: 100%;
+  }
+
+  /* PRESENT: one viewport-fitted slide at a time */
+  body.present { overflow: hidden; height: 100dvh; }
+  body.present .deckwrap { height: 100dvh; position: relative; }
+  body.present .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(14px) scale(.985);
+    transition: opacity .5s var(--ease), transform .5s var(--ease), visibility 0s .5s;
+    overflow-y: auto;
+    padding: 76px 0 70px;
+  }
+  body.present .slide .inner { margin: auto; }
+  body.present .slide.active {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition: opacity .5s var(--ease), transform .5s var(--ease), visibility 0s 0s;
+    z-index: 2;
+  }
+  body.present .talk { display: none; }
+
+  /* READ: stacked scrolling document */
+  body.read .slide {
+    min-height: 58vh;
+    display: flex;
+    align-items: center;
+    padding: clamp(64px, 10vh, 120px) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  body.read .slide:last-child { border-bottom: 0; }
+  body.read .navc, body.read .npanel { display: none; }
+
+  /* per-slide ambient glow */
+  .slide::before {
+    content: '';
+    position: absolute;
+    top: 8%; right: -12%;
+    width: 50vw; height: 70%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--c, var(--stone)) 7%, transparent), transparent 70%);
+    pointer-events: none;
+  }
+  .slide:nth-child(even)::before { right: auto; left: -12%; }
+
+  /* dark slides */
+  .slide.dark { background: var(--ink-bg); color: #efe9da; }
+  .slide.dark::before { background: radial-gradient(closest-side, color-mix(in srgb, var(--c, var(--green)) 14%, transparent), transparent 70%); }
+  body.read .slide.dark { border-bottom-color: #2c323a; }
+
+  /* ════════════════════════ REVEAL SYSTEM ════════════════════════ */
+  .rv, [data-step] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity .65s var(--ease), transform .65s var(--ease);
+    transition-delay: var(--d, 0s);
+  }
+  .rv.in, [data-step].in {
+    opacity: 1;
+    transform: none;
+  }
+  /* steps get a touch more drama in present mode */
+  body.present [data-step] { transform: translateY(26px) scale(.99); transition-delay: 0s; }
+  body.present [data-step].in { transform: none; }
+
+  /* ════════════════════════ COMPONENTS ════════════════════════ */
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--c, var(--stone));
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .kicker::before { content: ''; width: 26px; height: 1.5px; background: var(--c, var(--stone)); }
+  .kicker .snum { color: var(--faint); font-weight: 400; letter-spacing: .14em; }
+
+  .slide h1 {
+    font-size: clamp(34px, 5vw, 66px);
+    font-weight: 750;
+    line-height: 1.04;
+    letter-spacing: -.028em;
+    margin: 14px 0 16px;
+    max-width: 16em;
+    font-variation-settings: "opsz" 96;
+  }
+  .slide h1 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--c, var(--green));
+    letter-spacing: 0;
+  }
+  .slide.dark h1 { color: #f4efe2; }
+
+  .lede {
+    font-size: clamp(15.5px, 1.7vw, 19px);
+    color: var(--muted);
+    max-width: 38em;
+    font-weight: 380;
+    margin-bottom: 10px;
+  }
+  .lede strong { color: var(--text); font-weight: 620; }
+  .slide.dark .lede { color: #b9c0c9; }
+  .slide.dark .lede strong { color: #efe9da; }
+
+  .bullets { list-style: none; margin-top: 18px; max-width: 46em; }
+  .bullets li {
+    position: relative;
+    padding: 7px 0 7px 26px;
+    font-size: clamp(14.5px, 1.5vw, 17px);
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .bullets li::before {
+    content: '▸';
+    position: absolute;
+    left: 2px;
+    color: var(--c, var(--green));
+    font-size: 13px;
+  }
+  .bullets li b, .bullets li strong { color: var(--text); font-weight: 650; }
+  .bullets li code, .lede code, .card code {
+    font-family: var(--mono);
+    font-size: .82em;
+    background: color-mix(in srgb, var(--c, var(--green)) 8%, white);
+    border: 1px solid color-mix(in srgb, var(--c, var(--green)) 22%, transparent);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: var(--c, var(--green));
+  }
+  .bullets .sub { display: block; font-size: .88em; color: var(--faint); margin-top: 3px; }
+
+  .cols { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(24px, 4vw, 56px); align-items: start; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 22px 24px;
+    box-shadow: 0 2px 10px rgba(48,40,25,.05);
+    transition: transform .3s, border-color .3s, box-shadow .3s;
+  }
+  .card:hover {
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--c, var(--green)) 45%, transparent);
+    box-shadow: 0 14px 36px rgba(48,40,25,.11);
+  }
+  .card .glyph { font-size: 20px; color: var(--c, var(--green)); display: block; margin-bottom: 10px; }
+  .card h3 { font-size: 16.5px; font-weight: 700; letter-spacing: -.012em; margin-bottom: 7px; }
+  .card h3 em { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--c, var(--green)); }
+  .card p { font-size: 13.5px; color: var(--muted); line-height: 1.62; font-weight: 380; }
+  .card p b { color: var(--text); font-weight: 620; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
+  .chip {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    border: 1px solid color-mix(in srgb, var(--c, var(--stone)) 40%, transparent);
+    color: var(--c, var(--stone));
+    background: color-mix(in srgb, var(--c, var(--stone)) 6%, white);
+    border-radius: 999px;
+    padding: 6px 13px;
+  }
+
+  .statement {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(28px, 4.6vw, 58px);
+    line-height: 1.22;
+    letter-spacing: -.01em;
+    max-width: 18em;
+    color: var(--text);
+  }
+  .statement b { color: var(--c, var(--green)); font-weight: 400; }
+  .slide.dark .statement { color: #f4efe2; }
+
+  .quote {
+    border-left: 2.5px solid var(--c, var(--green));
+    padding: 4px 0 4px 22px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(17px, 2vw, 23px);
+    color: var(--text);
+    max-width: 30em;
+    margin-top: 26px;
+  }
+  .quote b { color: var(--c, var(--green)); font-weight: 400; }
+  .quote .attr {
+    display: block;
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 9.5px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-top: 8px;
+  }
+
+  /* duo — numbered half cards */
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+  .duo .half {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 24px 26px;
+  }
+  .duo .num {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--c, var(--rust));
+    display: block;
+    margin-bottom: 10px;
+  }
+  .duo h3 { font-size: clamp(17px, 1.9vw, 22px); font-weight: 720; letter-spacing: -.018em; margin-bottom: 8px; }
+  .duo p { font-size: 14px; color: var(--muted); font-weight: 380; line-height: 1.65; }
+  .duo p b { color: var(--text); font-weight: 620; }
+
+  /* terminal */
+  .term {
+    background: var(--term-bg);
+    border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(29,33,38,.28);
+    overflow: hidden;
+    font-family: var(--mono);
+    font-size: clamp(11px, 1.15vw, 13px);
+  }
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 11px 15px;
+    background: #14171b;
+  }
+  .term-bar i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .term-bar i:nth-child(1) { background: #f25f57; }
+  .term-bar i:nth-child(2) { background: #fbbe2e; }
+  .term-bar i:nth-child(3) { background: #58c843; }
+  .term-bar em {
+    margin-left: auto;
+    font-style: normal;
+    font-size: 9.5px;
+    letter-spacing: .14em;
+    color: var(--term-faint);
+  }
+  .term-body { padding: 18px 20px 20px; display: grid; gap: 9px; }
+  .t-bad {
+    color: var(--term-faint);
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--rust) 70%, transparent);
+    font-size: .92em;
+  }
+  .t-row { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
+  .t-cmd { color: var(--term-text); font-weight: 600; }
+  .t-cmd::before { content: '$ '; color: var(--term-green); font-weight: 700; }
+  .t-ok { color: var(--term-green); font-size: .92em; }
+  .t-dim { color: var(--term-faint); font-size: .92em; }
+  .t-out { color: var(--term-text); opacity: .92; white-space: pre-wrap; font-size: .95em; line-height: 1.7; }
+  .t-out b { color: var(--term-green); font-weight: 700; }
+  .t-cursor {
+    display: inline-block;
+    width: 8px; height: 15px;
+    background: var(--term-green);
+    vertical-align: text-bottom;
+    margin-left: 6px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* layer stack — flat plates with paired flows */
+  .stack { display: grid; gap: 0; max-width: 880px; margin-top: 26px; }
+  .plate {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border: 1.5px solid color-mix(in srgb, var(--pc) 55%, transparent);
+    border-left: 5px solid var(--pc);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--pc) 6%, var(--panel));
+    padding: 16px 22px;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--pc) 10%, transparent);
+  }
+  .plate .pnum {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pc);
+    letter-spacing: .1em;
+  }
+  .plate h3 {
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.4vw, 15px);
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--pc);
+  }
+  .plate h3 span { color: var(--faint); font-weight: 400; letter-spacing: .08em; text-transform: none; }
+  .plate p { font-size: clamp(12px, 1.25vw, 14px); color: var(--muted); font-weight: 380; line-height: 1.5; }
+  .plate p i { color: var(--text); font-style: italic; font-family: var(--serif); }
+  .slide.dark .plate { background: color-mix(in srgb, var(--pc) 12%, var(--ink-bg-2)); }
+  .slide.dark .plate p { color: #b9c0c9; }
+  .slide.dark .plate p i { color: #efe9da; }
+
+  .flowrow {
+    display: flex;
+    justify-content: center;
+    gap: clamp(16px, 4vw, 60px);
+    padding: 7px 0;
+  }
+  .flowrow .f {
+    font-family: var(--mono);
+    font-size: clamp(8.5px, .95vw, 10.5px);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--fc);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .flowrow .f i {
+    font-style: normal;
+    color: var(--faint);
+    font-weight: 400;
+    letter-spacing: .04em;
+    text-transform: none;
+  }
+  .flowrow .arr { animation: nudge 1.6s var(--ease) infinite; display: inline-block; }
+  .flowrow .up .arr { animation-name: nudge-up; }
+  @keyframes nudge { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(2px); } }
+  @keyframes nudge-up { 0%, 100% { transform: translateY(2px); } 50% { transform: translateY(-2px); } }
+
+  /* abc lettered cards */
+  .abc { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+  .abc .aff {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 24px;
+    transition: transform .3s, border-color .3s;
+  }
+  .abc .aff:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+  .abc .letter {
+    width: 32px; height: 32px;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid color-mix(in srgb, var(--green) 55%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--green) 7%, white);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 14px;
+  }
+  .abc h3 { font-size: 17px; font-weight: 720; letter-spacing: -.015em; margin-bottom: 7px; }
+  .abc h3 em { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--green); }
+  .abc p { font-size: 13.5px; color: var(--muted); line-height: 1.62; font-weight: 380; }
+  .abc p b { color: var(--text); font-weight: 620; }
+
+  /* stats */
+  .stats { display: flex; gap: clamp(20px, 4vw, 56px); flex-wrap: wrap; margin: 26px 0 6px; }
+  .stat .big {
+    font-size: clamp(38px, 5vw, 64px);
+    font-weight: 780;
+    letter-spacing: -.04em;
+    line-height: 1;
+    color: var(--text);
+  }
+  .stat .big em { font-family: var(--serif); font-style: italic; font-weight: 400; color: var(--c, var(--green)); }
+  .stat .cap {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-top: 8px;
+    max-width: 22em;
+  }
+
+  /* nucleus equation */
+  .eq { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 26px; max-width: 980px; }
+  .eq .piece {
+    font-family: var(--mono);
+    font-size: clamp(9px, 1vw, 11px);
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 11px 15px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    color: var(--text);
+  }
+  .eq .piece small { display: block; font-size: 8px; font-weight: 400; letter-spacing: .12em; color: var(--faint); margin-top: 3px; }
+  .eq .op { font-family: var(--serif); font-style: italic; font-size: 22px; color: var(--amber); }
+  .eq .result {
+    border-color: var(--green);
+    background: color-mix(in srgb, var(--green) 10%, white);
+    color: var(--green);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--green) 16%, transparent);
+  }
+
+  /* loop pills */
+  .loop { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; margin-top: 26px; }
+  .loop .step {
+    font-family: var(--mono);
+    font-size: clamp(9px, 1vw, 11px);
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 9px 15px;
+    background: rgba(255,255,255,.7);
+    transition: color .3s, border-color .3s;
+  }
+  .loop .step:hover { color: var(--green); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
+  .loop .larr { color: var(--faint); font-family: var(--mono); font-size: 11px; }
+  .loop .again { font-family: var(--mono); font-size: 16px; color: var(--green); animation: spin 5s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+
+  /* deterministic-layer thread stitch */
+  .thread {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-top: clamp(26px, 4vh, 44px);
+    max-width: 52em;
+  }
+  .thread::before {
+    content: '─ ─ ─▶';
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    color: var(--green);
+    white-space: nowrap;
+    flex: none;
+  }
+  .thread p { font-size: 13.5px; color: var(--muted); font-weight: 400; }
+  .thread p b {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-right: 6px;
+  }
+  .slide.dark .thread p { color: #b9c0c9; }
+
+  /* talk track (read mode only) */
+  .talk {
+    margin-top: clamp(30px, 5vh, 48px);
+    border-top: 1px dashed var(--line);
+    padding-top: 22px;
+    max-width: 52em;
+  }
+  .talk .ttag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--amber);
+    display: block;
+    margin-bottom: 12px;
+  }
+  .talk p { font-size: 14.5px; color: var(--muted); font-weight: 380; line-height: 1.75; margin-bottom: 12px; }
+  .talk p b { color: var(--text); font-weight: 650; }
+  .slide.dark .talk { border-top-color: #2c323a; }
+  .slide.dark .talk p { color: #aeb6bf; }
+  .slide.dark .talk p b { color: #efe9da; }
+
+  /* ════════════════════════ TITLE SLIDE 3D STACK ════════════════════════ */
+  .titlegrid { display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(20px, 4vw, 60px); align-items: center; }
+  .titleslide h1 {
+    font-size: clamp(44px, 7vw, 96px);
+    max-width: none;
+    line-height: .98;
+  }
+  .titleslide h1 .dot { color: var(--green); }
+  .titleslide .sub {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(19px, 2.4vw, 28px);
+    color: var(--muted);
+    margin-top: 14px;
+    max-width: 22em;
+  }
+  .scene { position: relative; height: clamp(280px, 38vh, 460px); display: grid; place-items: center; }
+  .stack3d {
+    position: relative;
+    width: min(330px, 64vw);
+    height: 230px;
+    transform: rotateX(54deg) rotateZ(-42deg);
+    transform-style: preserve-3d;
+  }
+  .p3 {
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    border: 1.5px solid color-mix(in srgb, var(--pc) 60%, transparent);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--pc) 14%, var(--panel)), color-mix(in srgb, var(--pc) 5%, var(--panel)));
+    box-shadow: 0 18px 50px color-mix(in srgb, var(--pc) 22%, transparent);
+    transform: translateZ(calc(var(--i) * 64px));
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 14px 16px;
+    animation: assemble 1s var(--ease) both;
+    animation-delay: calc(.25s + var(--i) * .18s);
+  }
+  @keyframes assemble {
+    from { opacity: 0; transform: translateZ(calc(var(--i) * 64px + 130px)); }
+    to { opacity: 1; transform: translateZ(calc(var(--i) * 64px)); }
+  }
+  .p3 i {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pc);
+  }
+  .p3 span {
+    font-family: var(--mono);
+    font-size: clamp(8.5px, .95vw, 11px);
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--pc);
+  }
+  .stack-shadow {
+    position: absolute;
+    inset: -8px;
+    border-radius: 24px;
+    background: rgba(48,40,25,.16);
+    filter: blur(26px);
+    transform: translateZ(-50px);
+  }
+  .keys { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px; }
+  .keys .k {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    padding: 7px 12px;
+  }
+  .keys .k b { color: var(--green); font-weight: 700; }
+  a.k { text-decoration: none; transition: color .25s, border-color .25s; }
+  a.k:hover { color: var(--green) !important; border-color: var(--green) !important; }
+
+  /* pain cards (sound familiar) */
+  .pains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-top: 26px; }
+  .pain {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 18px 19px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pain q {
+    quotes: '“' '”';
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(14px, 1.45vw, 17px);
+    line-height: 1.42;
+    color: var(--text);
+  }
+  .pain .cure {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-top: auto;
+  }
+  .pain .cure::before { content: '→ '; color: var(--faint); }
+
+  /* agenda list */
+  .agenda { columns: 2; column-gap: clamp(24px, 4vw, 56px); margin-top: 22px; max-width: 60em; counter-reset: ag; list-style: none; }
+  .agenda li {
+    counter-increment: ag;
+    break-inside: avoid;
+    padding: 8px 0;
+    font-size: clamp(13.5px, 1.45vw, 16.5px);
+    color: var(--muted);
+    display: flex;
+    gap: 14px;
+    align-items: baseline;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  }
+  .agenda li::before {
+    content: counter(ag, decimal-leading-zero);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--faint);
+    flex: none;
+  }
+  .agenda li b { color: var(--text); font-weight: 600; }
+
+  /* vs divider */
+  .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(14px, 2.5vw, 30px); align-items: stretch; margin-top: 26px; }
+  .vs .side {
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 24px 26px;
+  }
+  .vs .side.a { border-top: 3px solid var(--azure); }
+  .vs .side.b { border-top: 3px solid var(--green); }
+  .vs .side .tag {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 10px;
+  }
+  .vs .side.a .tag { color: var(--azure); }
+  .vs .side.b .tag { color: var(--green); }
+  .vs .side h3 { font-size: clamp(16px, 1.8vw, 20px); font-weight: 720; letter-spacing: -.015em; margin-bottom: 8px; }
+  .vs .side p { font-size: 13.5px; color: var(--muted); font-weight: 380; line-height: 1.62; }
+  .vs .side p b { color: var(--text); font-weight: 620; }
+  .vs .mid {
+    align-self: center;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(20px, 2.4vw, 30px);
+    color: var(--faint);
+  }
+
+  /* ladder (backpressure kinds) */
+  .ladder { display: grid; gap: 10px; margin-top: 22px; }
+  .rung {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel);
+    padding: 14px 18px;
+    display: flex;
+    gap: 16px;
+    align-items: baseline;
+  }
+  .rung .lvl {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    flex: none;
+    width: 92px;
+  }
+  .rung p { font-size: 13px; color: var(--muted); font-weight: 380; line-height: 1.55; }
+  .rung p b { color: var(--text); font-weight: 620; }
+  .rung.r1 .lvl { color: var(--stone); }
+  .rung.r2 .lvl { color: var(--amber); }
+  .rung.r3 { border-color: color-mix(in srgb, var(--green) 45%, transparent); background: color-mix(in srgb, var(--green) 5%, var(--panel)); }
+  .rung.r3 .lvl { color: var(--green); }
+
+  /* ════════════════════════ RESPONSIVE ════════════════════════ */
+  @media (max-width: 980px) {
+    .cols, .titlegrid, .grid-3, .abc, .pains { grid-template-columns: 1fr; }
+    .pains { grid-template-columns: 1fr 1fr; }
+    .titlegrid .scene { order: -1; height: clamp(240px, 34vh, 320px); }
+    .agenda { columns: 1; }
+    .vs { grid-template-columns: 1fr; }
+    .vs .mid { justify-self: center; }
+  }
+  @media (max-width: 640px) {
+    .grid-2, .duo, .pains { grid-template-columns: 1fr; }
+    .flowrow { flex-direction: column; gap: 4px; align-items: center; }
+    body.present .slide { padding: 64px 0 86px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .rv, [data-step] { opacity: 1; transform: none; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ════════════════════════ PRINT ════════════════════════ */
+  @media print {
+    .topbar, .navc, .hint, .progress, .menu, .npanel { display: none !important; }
+    body.present .slide { position: static; visibility: visible; opacity: 1; transform: none; }
+    .slide { page-break-after: always; border: 0; }
+    .rv, [data-step] { opacity: 1 !important; transform: none !important; }
+    .talk { display: block !important; }
+  }
+</style>
+</head>
+<body class="read">
+
+<div class="progress" id="progress"></div>
+
+<header class="topbar">
+  <a class="wordmark" href="#s-title">Harness <b>Engineering</b> · The Deck</a>
+  <span class="spacer"></span>
+  <button class="tbtn" id="btn-mode">Present <kbd>P</kbd></button>
+  <button class="tbtn" id="btn-notes" hidden>Notes <kbd>N</kbd></button>
+  <button class="tbtn" id="btn-menu">Menu <kbd>M</kbd></button>
+  <button class="tbtn" id="btn-full" hidden>Full <kbd>F</kbd></button>
+</header>
+
+<nav class="menu" id="menu" aria-label="Slide menu"><ol id="menu-list"></ol></nav>
+
+<aside class="npanel" aria-label="Speaker notes">
+  <header>Notes <span id="np-count"></span></header>
+  <div class="nbody" id="np-body"></div>
+</aside>
+
+<div class="navc">
+  <span class="count" id="counter"></span>
+  <button class="nbtn" id="btn-prev" aria-label="Previous">←</button>
+  <button class="nbtn" id="btn-next" aria-label="Next">→</button>
+</div>
+<span class="hint">← → navigate · N notes · M menu · P read mode</span>
+
+<main class="deckwrap" id="deck">
+
+<!-- ═══════════════════════ SLIDE · TITLE ═══════════════════════ -->
+<section class="slide titleslide" id="s-title" data-title="Title" style="--c: var(--green)">
+  <div class="inner titlegrid">
+    <div>
+      <p class="kicker rv"><span class="snum"></span>An introduction, in full</p>
+      <h1 class="rv" style="--d:.06s">Harness<br>Engineering<span class="dot">.</span></h1>
+      <p class="sub rv" style="--d:.14s">Productising the engineering environment — so every
+        agent session, and every teammate, gets to live in what the team has learned.</p>
+      <div class="keys rv" style="--d:.24s">
+        <span class="k"><b>scroll</b> to read — notes included</span>
+        <span class="k"><b>P</b> to present</span>
+        <span class="k"><b>M</b> contents</span>
+        <a class="k" href="layers.html"><b>↗</b> layers — the one-page overview</a>
+      </div>
+    </div>
+    <div class="scene" aria-hidden="true">
+      <div class="stack3d">
+        <div class="stack-shadow"></div>
+        <div class="p3" style="--i:0; --pc: var(--stone)"><i>04</i><span>CODEBASE LAYER</span></div>
+        <div class="p3" style="--i:1; --pc: var(--green)"><i>03</i><span>DETERMINISTIC LAYER</span></div>
+        <div class="p3" style="--i:2; --pc: var(--azure)"><i>02</i><span>INFERENCE LAYER</span></div>
+        <div class="p3" style="--i:3; --pc: var(--amber)"><i>01</i><span>HUMAN STEERING LAYER</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · OPENING ═══════════════════════ -->
+<section class="slide" id="s-opening" data-title="You already do this" style="--c: var(--amber)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Opening</p>
+    <h1 class="rv" style="--d:.06s">You already <em>do</em> this.</h1>
+    <p class="lede rv" style="--d:.12s">As you work, you find things annoying or repetitive — or you
+      just want to standardise for the team. So you build scripts. <strong>As humans we do this all
+      the time.</strong></p>
+    <div class="statement" data-step="1" style="max-width: 24em; margin-top: 28px; font-size: clamp(24px, 3.4vw, 42px);">
+      Agents don't get to. Every session, the agent has <b>never seen your repo before this
+      minute</b> — even if you've worked on it for a year.
+    </div>
+    <p class="lede" data-step="2" style="margin-top: 26px;">This whole concept is encoding stuff into the
+      engineering environment so the agent — <strong>and the whole team</strong> — gets to live in it too.</p>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>Every new Cursor or Copilot window is a fresh developer onboarding into your codebase — cold. How do you rapidly onboard it — how the project runs, how it's checked, all of it — into this moment right now?</p>
+      <p>Humans accumulate this knowledge invisibly: a shell alias here, a script there, a habit of running things a certain way. The agent starts from zero every single time. The fix isn't telling the agent more — it's building an environment that already knows.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · SOUND FAMILIAR ═══════════════════════ -->
+<section class="slide" id="s-familiar" data-title="Sound familiar?" style="--c: var(--rust)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>The symptoms</p>
+    <h1 class="rv" style="--d:.06s">Sound <em>familiar?</em></h1>
+    <div class="pains">
+      <div class="pain" data-step="1"><q>The agent says "done" — you take a look and wonder what it was up to the whole time.</q><span class="cure">backpressure</span></div>
+      <div class="pain" data-step="1"><q>Tests are green, everything passed… first real run, instantly broken.</q><span class="cure">evidence</span></div>
+      <div class="pain" data-step="2"><q>Did you even try to run this?</q><span class="cure">backpressure</span></div>
+      <div class="pain" data-step="2"><q>25 minutes of the agent looping just to boot the app and hit one endpoint.</q><span class="cure">fewer tokens</span></div>
+      <div class="pain" data-step="3"><q>How many times has your team solved the same setup problem?</q><span class="cure">encode it once</span></div>
+      <div class="pain" data-step="3"><q>Can your agent even run and interact with your project?</q><span class="cure">harnessability</span></div>
+    </div>
+    <p class="quote" data-step="4">And the kicker: it's <b>you and the agent together</b> that made these
+      problems. With the correct environment, most of them don't happen.
+      <span class="attr">each one is a fixable harness defect — not "the agent being dumb"</span></p>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>The agent is confident, the tests look green, and then you actually open it and something obvious is wrong. Properly prompted, with the correct environment set up, it probably wouldn't have made these mistakes.</p>
+      <p>You have to wonder how many times people on your team have solved the same problem. While the agent's ticking away, if there's friction in the code, chances are it's happening on multiple dev machines and you won't know. Even an agent looping 20 times to get something going is friction — fixed properly in the engineering environment, that might be one loop, and a lot fewer tokens.</p>
+      <p>"Did you even try to run this?" — unless the agent has a very clear pathway to run something, it might not figure out how, or it'll do it off the rails. It can't be left open to inference. <b>The agent stumbling is usability research on your engineering environment.</b> The rest of this deck is about how to capture that and pay it forward.</p>
+      <p>And here's the thing — you've probably already fixed some of these. Maybe the fix lived in a script someone wrote, or a message in a thread. Most likely it's instructions in a markdown file. An engineering harness takes that instinct — encoding the answer so the problem never bites again — and makes it a first-class concept with a defined home: discoverable, runnable, and shared with everyone (and every agent) on the repo.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · AGENDA ═══════════════════════ -->
+<section class="slide" id="s-agenda" data-title="Agenda" style="--c: var(--stone)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Agenda</p>
+    <h1 class="rv" style="--d:.06s">Where we're <em>going.</em></h1>
+    <ol class="agenda rv" style="--d:.14s">
+      <li><b>Framing the problem</b> — what an engineering harness actually is</li>
+      <li><b>The layers</b> — one picture for the whole talk</li>
+      <li>Engineering harness vs agent harness</li>
+      <li>Encoding your team project memory</li>
+      <li><b>Backpressure</b> — and why the deterministic kind wins</li>
+      <li>Do as much work deterministically as possible</li>
+      <li><b>Harnessability</b> — shaping the codebase for agents</li>
+      <li>The focal point</li>
+      <li>CLI as the front door</li>
+      <li>Recap: the layers</li>
+      <li>The harness in your development flow</li>
+      <li>Retrospective and the magic wand</li>
+      <li>Installing the harness</li>
+    </ol>
+    <div class="thread rv" style="--d:.24s"><p><b>One thread to watch</b> the deterministic layer. Every
+      slide from the layers picture onward is about making that one layer real.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>The goal of this deck is to establish why you'd even want an engineering harness, and what it is — the value prop for teams. But not by promising "you'll reduce your tokens by 50% and ship twice as much product". It's about the core concepts, and the real problem points engineers have with their engineering environment.</p>
+      <p>The aim is to bring engineering fundamentals and the engineering environment right up to the front of the mindset of folks using agents — right there, tapping them on the shoulder every turn: <b>hey, engineering environment.</b></p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · FRAMING THE PROBLEM ═══════════════════════ -->
+<section class="slide" id="s-framing" data-title="Framing the problem" style="--c: var(--rust)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Framing the problem</p>
+    <h1 class="rv" style="--d:.06s">What is an engineering harness — and <em>why?</em></h1>
+    <p class="lede rv" style="--d:.12s">An engineering harness is the <strong>productisation of your
+      engineering environment</strong>: turning a diffuse concept — scripts, docs, makefiles, tribal
+      steps — into a first-class one. Easy to discover, easy to understand, one focal point for
+      improvement. <strong>On rails — not guardrails, rails.</strong></p>
+    <div class="duo">
+      <div class="half" data-step="1">
+        <span class="num">Problem 01</span>
+        <h3>The loop closes too slowly.</h3>
+        <p>The agent takes too long to get real feedback from your codebase, so it <b>guesses, loops,
+          or waits for a human</b>.</p>
+      </div>
+      <div class="half" data-step="1">
+        <span class="num">Problem 02</span>
+        <h3>The loop is hard to trust.</h3>
+        <p>"Looks good to me" from a model is <b>inference, not proof</b>.</p>
+      </div>
+    </div>
+    <div class="duo" style="margin-top: 14px;">
+      <div class="half" data-step="2" style="border-color: color-mix(in srgb, var(--green) 40%, transparent);">
+        <span class="num" style="color: var(--green);">Answer a</span>
+        <p>Create the <b>best possible environment</b> for agents and humans to work together — and
+          encode learnings and structure back into it, in a structured manner.</p>
+      </div>
+      <div class="half" data-step="2" style="border-color: color-mix(in srgb, var(--green) 40%, transparent);">
+        <span class="num" style="color: var(--green);">Answer b</span>
+        <p>Systemise <b>deterministic backpressure</b> to raise quality and speed — encode tribal
+          knowledge into the environment so the agent can lean on it.</p>
+      </div>
+    </div>
+    <div class="thread" data-step="3"><p><b>Deterministic layer thread</b> both answers land in the same
+      place — a layer of runnable, deterministic capability sitting between the agent and your codebase.
+      That's the next slide.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>Right now your engineering environment is probably a diffuse concept: scripts, documentation, commands, makefiles. We want to turn it into something easy to discover, easy to understand — a cohesive system that is on rails.</p>
+      <p>There are somewhere around fifty principles that matter here, but these two are the most important. All those tokens being burned figuring stuff out across your team — you're not even aware of it happening. And you shouldn't have to be. And second: deterministic backpressure gets its own slide — for now, treat providing it as an absolute principal goal of the engineering system.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · THE LAYERS ═══════════════════════ -->
+<section class="slide" id="s-layers" data-title="The Layers" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>The Layers</p>
+    <h1 class="rv" style="--d:.06s">One picture for the <em>whole talk.</em></h1>
+    <p class="lede rv" style="--d:.12s">Intent flows <strong>down</strong>. Evidence flows <strong>up</strong>.</p>
+
+    <div class="stack">
+      <div class="plate" data-step="1" style="--pc: var(--amber)">
+        <span class="pnum">01</span>
+        <div><h3>Human Steering Layer</h3>
+        <p><i>Intent, judgement, risk, taste, priorities.</i> Humans decide what matters and what gets encoded.</p></div>
+      </div>
+      <div class="flowrow" data-step="2">
+        <span class="f down" style="--fc: var(--amber)"><span class="arr">▼</span> steers <i>intent · decisions · what matters</i></span>
+        <span class="f up" style="--fc: var(--azure)"><span class="arr">▲</span> shows receipts <i>evidence · proposals · magic-wand asks</i></span>
+      </div>
+      <div class="plate" data-step="3" style="--pc: var(--azure)">
+        <span class="pnum">02</span>
+        <div><h3>Inference Layer <span>· agent harness</span></h3>
+        <p><i>Reasoning, planning, semantic review, architecture judgement. Writes code.</i> Where the agent works through ambiguity and discovers friction.</p></div>
+      </div>
+      <div class="flowrow" data-step="4">
+        <span class="f down" style="--fc: var(--azure)"><span class="arr">▼</span> asks for proof <i>boot · checks · smoke — via --help, not memory</i></span>
+        <span class="f up" style="--fc: var(--green)"><span class="arr">▲</span> verdicts &amp; evidence <i>friction comes back as new commands</i></span>
+      </div>
+      <div class="plate" data-step="5" style="--pc: var(--green)">
+        <span class="pnum">03</span>
+        <div><h3>Deterministic Layer <span>· engineering harness</span></h3>
+        <p><i>Runnable proof, backpressure, and token savings.</i> Proof · Backpressure · Evidence · Token savings — sensors decide, not the model marking its own homework.</p></div>
+      </div>
+      <div class="flowrow" data-step="6">
+        <span class="f down" style="--fc: var(--green)"><span class="arr">▼</span> wraps what exists <i>build · test · run · seed — as-is</i></span>
+        <span class="f up" style="--fc: var(--stone)"><span class="arr">▲</span> demands harnessability <i>fakes · seams · bootability</i></span>
+      </div>
+      <div class="plate" data-step="7" style="--pc: var(--stone)">
+        <span class="pnum">04</span>
+        <div><h3>Codebase Layer</h3>
+        <p><i>Bootable, observable, testable, mockable, stable.</i> Engineering fundamentals — the substrate that makes deterministic proof possible.</p></div>
+      </div>
+    </div>
+
+    <p class="quote" data-step="8" style="margin-top: 30px;">The deterministic layer is the one your repo
+      probably doesn't have as a first-class thing. <b>"If the agent had to infer it twice, encode it
+      here."</b><span class="attr">the thread for the rest of this deck</span></p>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>Walk the stack top to bottom, and narrate the paired flows — they're the point of the picture. Humans steer down: intent, decisions, what matters. The stack shows receipts back up: evidence, proposals, magic-wand asks. <b>Nothing below the top layer chooses what matters.</b></p>
+      <p>The inference layer is the agent harness — where the agent reasons, plans, writes code, and discovers friction. It asks the layer below for proof — boot, checks, smoke — discovered via --help, not memory. And it gets verdicts and evidence back up. Friction comes back as new commands.</p>
+      <p>The deterministic layer is the engineering harness. Runnable proof. Trusted backpressure. Fewer tokens. Build, run, test, lint, typecheck, smoke. Probe endpoints, drive the browser, capture logs. Show evidence. Rerun until green.</p>
+      <p>And the deterministic layer wraps what already exists in the codebase — build, test, run, seed, as-is — and in return it demands harnessability from the codebase: fakes, seams, bootability.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · ENG vs AGENT HARNESS ═══════════════════════ -->
+<section class="slide" id="s-vs" data-title="Engineering vs Agent Harness" style="--c: var(--azure)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Deconflating terms</p>
+    <h1 class="rv" style="--d:.06s">Engineering harness <em>≠</em> agent harness.</h1>
+    <p class="lede rv" style="--d:.12s">The harness word is hot right now — probably overused. We mean
+      <strong>engineering harnesses</strong> here. In layer terms: the agent harness is the
+      <strong>inference layer</strong>; the engineering harness is the <strong>deterministic
+      layer</strong>.</p>
+    <div class="vs">
+      <div class="side a" data-step="1">
+        <span class="tag">Agent harness · inference layer</span>
+        <h3>The runtime that drives the model.</h3>
+        <p>Copilot, Claude Code, Codex, Cursor — the agentic loop, tools, skills, MCP servers
+          <b>feeding the LLM</b>.</p>
+      </div>
+      <span class="mid" data-step="1">vs</span>
+      <div class="side b" data-step="1">
+        <span class="tag">Engineering harness · deterministic layer</span>
+        <h3>The project-side loop it drives.</h3>
+        <p>Its birth name is <b>"the productisation of the engineering environment"</b> — engineering
+          harness is just easier to say.</p>
+      </div>
+    </div>
+    <p class="lede" data-step="2" style="margin-top: 24px;">Highly cohesive: a better engineering harness
+      means better agent outcomes, <strong>whatever runtime you use</strong>. Invest in the loop, not
+      just the model.</p>
+    <div class="thread" data-step="2"><p><b>Deterministic layer thread</b> the engineering harness <i>is</i>
+      the deterministic layer — with a name, and (soon) a front door.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>If you're doing agent-harness engineering, you're working on the skills, the prompts, the tools, the MCP servers — the stuff feeding the actual LLM. The engineering harness is the project-side loop that the agent harness drives. They're highly cohesive — the engineering harness will probably ship some skills of its own, for example — but they're different layers of the stack.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · TEAM MEMORY (dark) ═══════════════════════ -->
+<section class="slide dark" id="s-memory" data-title="Encoding team memory" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Encoding your team project memory</p>
+    <h1 class="rv" style="--d:.06s">Build the thing that <em>builds the thing.</em></h1>
+    <ul class="bullets rv" style="--d:.12s">
+      <li>Create and encode team/project memory as <b>deterministic code</b> where possible — markdown as fallback.</li>
+      <li>Rather than writing down a memory — "hey, we discovered this, here's how you solve it" —
+        <b>just solve it</b>. Put the fix where the problem lives.</li>
+      <li>It's a team sport, akin to a chess game played by mail: the game is an <b>executable version
+        of the team's memory and learnings</b>.</li>
+    </ul>
+    <div class="statement" data-step="1" style="margin-top: 34px;">
+      Nobody has to read it. Nobody loads it into context. It just exists — and because it exists,
+      it's how it works. <b>It becomes physical.</b>
+    </div>
+    <div class="thread" data-step="2"><p><b>Deterministic layer thread</b> team memory you don't have to
+      remember — it's executable, so it's just how the repo works now.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>Your engineering environment is the thing that builds the thing. We want to take all the loops we have and encode them as deterministic memory. Rather than write down a memory somewhere, just solve it. Just put it there. We're giving it somewhere to do that — all the learnings, all the friction. As the agent works it keeps an eye out for these and has a way, and a place, to push them.</p>
+      <p>This is the bit to land hard: the virtual team memory — the memory of all the agent sessions and everything they've learned — goes into your engineering environment and then it just exists. That's what the engineering harness is.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · BACKPRESSURE ═══════════════════════ -->
+<section class="slide" id="s-backpressure" data-title="Backpressure" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Backpressure</p>
+    <h1 class="rv" style="--d:.06s">Take the inference of correctness <em>out of the LLM.</em></h1>
+    <p class="lede rv" style="--d:.12s">"Did it even run the code?" — that review reflex is backpressure,
+      the human kind. It's <strong>tribal knowledge</strong>: unevenly spread, some people better at it
+      than others. <strong>Encode it into the physical system instead.</strong></p>
+    <div class="cols" style="margin-top: 24px;">
+      <div>
+        <div class="ladder">
+          <div class="rung r1" data-step="1"><span class="lvl">Human</span>
+            <p>You run it up, click around, go "no, fix this". Real backpressure — but it doesn't scale
+              and it <b>varies by person</b>.</p></div>
+          <div class="rung r2" data-step="2"><span class="lvl">Inferred</span>
+            <p>"Do a code review" — non-deterministic, <b>even with an advanced prompt</b> that checks
+              architecture. Different every time.</p></div>
+          <div class="rung r3" data-step="3"><span class="lvl">Deterministic</span>
+            <p>The best kind. <b>Sensors and probes in code</b>: yes or no, evidence attached. When a
+              check is wrong, it's not a judgement call — you fix the check, and everyone gets the fix.</p></div>
+        </div>
+        <ul class="bullets" data-step="4" style="margin-top: 18px;">
+          <li><b>Unit tests</b> — agents are very good at red/green TDD. But tests won't validate architecture.</li>
+          <li><b>Architecture as a rule set</b> — 10,000 pages of clean-architecture markdown vs a
+            CodeQL / Roslyn check the agent runs. It doesn't have to know any of it — <b>it just gets
+            yes or no</b>.</li>
+          <li><b>Closing the loop</b> — a harness command to build, host, and connect a Playwright
+            browser so the agent physically tests the shiny new button it just added.</li>
+        </ul>
+      </div>
+      <div class="term" data-step="5">
+        <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><em>harness — zsh</em></div>
+        <div class="term-body">
+          <div class="t-bad">"Remember to start the app this weird way…"</div>
+          <div class="t-row"><span class="t-cmd" data-type>harness boot</span><span class="t-ok">✓ app up · health green</span></div>
+          <div class="t-bad">"Check that this follows our architecture."</div>
+          <div class="t-row"><span class="t-cmd" data-type>harness check architecture</span><span class="t-ok">✓ violations: 0</span></div>
+          <div class="t-bad">"Manually open the app, see if the button works."</div>
+          <div class="t-row"><span class="t-cmd" data-type>harness smoke checkout-flow</span><span class="t-ok">✓ screenshot + trace captured</span></div>
+          <div><span style="color: var(--term-green); font-weight: 700;">$</span><span class="t-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="thread" data-step="6"><p><b>Deterministic layer thread</b> backpressure is what the
+      deterministic layer pushes back <i>up</i> the stack — verdicts and evidence, not vibes.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>It's not that backpressure doesn't exist in repos — it's that it's hidden. We want to take what's there, bubble it up to first class and high visibility, and then strive to build more. The agent's had a crack at it, but with no backpressure it doesn't know if the crack's correct. You're creating sensors and probes so it can act in the environment and get a signal back that guides it.</p>
+      <p>Architecture is the big example. You might have 10,000 pages of markdown on clean architecture, hexagonal design, ports and adapters — and you say to the agent "implement this way, don't fail me". Or: you use CodeQL or Roslyn to build a rule set that checks the implementation takes the shape. The agent doesn't have to know any of it. It just gets an answer. And when you spot the architecture check missed something — it's exceptionally obvious where the fix goes. You just fix the check. That's what giving it a focal point means.</p>
+      <p>How does the agent use this? The harness gives the agent commands it can run. The commands are deterministic, so the signal is highly trustable — and if they're not quite right, there's a very obvious way to fix them. <b>The agent is in charge of the loop; we've just taken the inference of correctness out of the LLM and put it into deterministic code.</b></p>
+      <p>This is the thing teams need to get good at if they're going to have trustable, predictable engineering environments that agents can work on.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · DO IT DETERMINISTICALLY ═══════════════════════ -->
+<section class="slide" id="s-deterministic" data-title="Work deterministically" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Do as much work deterministically as possible</p>
+    <h1 class="rv" style="--d:.06s">Skills and markdown are great — <em>not good enough.</em></h1>
+    <p class="lede rv" style="--d:.12s">Deterministic = code and scripts: runnable, probably idempotent,
+      and it can have unit tests. <strong>Validate your validators.</strong> New service in your app?
+      Don't describe the shape in markdown — <strong>generate the shape</strong>, tests included, with
+      architecture validation in the test plan.</p>
+    <div class="stats">
+      <div class="stat" data-step="1">
+        <div class="big">10h <em>→</em> 8h</div>
+        <div class="cap">weekly code-review tokens per dev — can deterministic checks close the gap?</div>
+      </div>
+      <div class="stat" data-step="2">
+        <div class="big">20 <em>→</em> 1</div>
+        <div class="cap">loops to figure something out — encode it, and it's one loop next time</div>
+      </div>
+      <div class="stat" data-step="3">
+        <div class="big">0×</div>
+        <div class="cap">times the same thing should be re-discovered — even across dev machines</div>
+      </div>
+    </div>
+    <p class="quote" data-step="4">Don't tell me how to fix it — <b>just fix it.</b>
+      <span class="attr">rather than write the learning in a file, build the learning as a fix or feature</span></p>
+    <div class="thread" data-step="5"><p><b>Deterministic layer thread</b> every loop you encode moves work
+      out of the expensive, fuzzy inference layer into the cheap, repeatable deterministic layer.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>When agent harnesses came out and we got skills and markdown, people started putting all their engineering stuff into skills: run this script, this is how you write these functions, here's my project constitution. They're all great — but they're not good enough. Move as much of that as possible into deterministic capability.</p>
+      <p>Deterministic basically means scripts and code — anything runnable as code. It's probably idempotent, so you can run it over and over and get the same result. And you can unit test it — your deterministic checks are themselves tested. Validate your validators.</p>
+      <p>Why the urgency: tokens are expensive. Any tokens spent figuring something out — that's the trigger to ask whether it should be encoded into the environment for the rest of the team and our future selves. This was obvious in the past — a hard or arcane process, we'd write a script for ourselves, our peers, and CI. These days it's become too easy to just update an agents file. Choose what goes where wisely, but lean deterministic.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · HARNESSABILITY ═══════════════════════ -->
+<section class="slide" id="s-harnessability" data-title="Harnessability" style="--c: var(--stone)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Harnessability</p>
+    <h1 class="rv" style="--d:.06s">Shape the codebase so agents can <em>operate freely.</em></h1>
+    <p class="lede rv" style="--d:.12s">The engineering environment isn't the only thing to improve —
+      your codebase may need to change. The real measure: <strong>how adaptable is your codebase to
+      creating the backpressure a given task needs?</strong></p>
+    <div class="grid-3" style="margin-top: 24px;">
+      <div class="card" data-step="1">
+        <span class="glyph">⛁</span>
+        <h3>Fakes &amp; seams</h3>
+        <p>Can the agent stand the system up locally — <b>faking the upstream connection</b>, or running
+          the database and downstream services locally? Creating tables, seeding records — the whole
+          shebang.</p>
+      </div>
+      <div class="card" data-step="2">
+        <span class="glyph">⌬</span>
+        <h3>Composability</h3>
+        <p>A well-composed codebase — composability, <b>dependency injection</b>, seams — is one the
+          agent can work on far more efficiently.</p>
+      </div>
+      <div class="card" data-step="3">
+        <span class="glyph">⚑</span>
+        <h3>Top of the castle</h3>
+        <p>An agent pulls a PR and <b>just works</b> — full end-to-end checks, real pipelines, in an
+          isolated CI run, with all the deterministic backpressure of a local machine.</p>
+      </div>
+    </div>
+    <ul class="bullets" data-step="4" style="margin-top: 22px;">
+      <li>There's a <b>harnessability assessment skill</b> that scores exactly this: how fast an agent
+        goes from zero to run/build/test on your repo, and how adaptable the codebase is.</li>
+      <li>If the engineering environment is stretched thin by the codebase, <b>maybe it's time to update
+        the codebase</b>.</li>
+    </ul>
+    <div class="thread" data-step="5"><p><b>Deterministic layer thread</b> the codebase is the substrate —
+      the deterministic layer can only prove what the codebase lets it touch.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>How easy is it to run your system? Are you able to fully run your application on a local dev machine, end to end, full stack? Could you conceivably run it up and do full end-to-end checks using real pipelines in an isolated environment like a CI run? That's peak onboarding: an agent pulls a PR and just works.</p>
+      <p>The reason this matters: the agent can work far more efficiently on a codebase that's well composed, where it can fake in pieces. Instead of connecting to a real database on a remote machine, it fakes the connection to the upstream system, or runs that database — or that downstream service — locally. And it all rolls up to one question: how adaptable is the codebase to being changed to create the backpressure required for the given task?</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · FOCAL POINT ═══════════════════════ -->
+<section class="slide" id="s-focal" data-title="Focal Point" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>The Focal Point</p>
+    <h1 class="rv" style="--d:.06s">Reduce diffuse information to <em>one focal point.</em></h1>
+    <p class="lede rv" style="--d:.12s">You get three things:</p>
+    <div class="abc">
+      <div class="aff" data-step="1">
+        <span class="letter">A</span>
+        <h3>Discover <em>in one place</em></h3>
+        <p>One place to look and see everything the engineering environment can do. Seed a database and
+          connect your product to it? <b>That's one discoverable command.</b></p>
+      </div>
+      <div class="aff" data-step="2">
+        <span class="letter">B</span>
+        <h3>Prove <em>with backpressure</em></h3>
+        <p>One place backpressure lives. Pre-check work before you start: <b>"if we do this work, how
+          will the system deterministically validate it?"</b></p>
+      </div>
+      <div class="aff" data-step="3">
+        <span class="letter">C</span>
+        <h3>Improve <em>on rails</em></h3>
+        <p>Friction encoding on rails — fully defined, and <b>obvious where a fix lives and where it
+          goes</b>. A deterministic check misbehaving? Fix it, in place.</p>
+      </div>
+    </div>
+    <p class="lede" data-step="4" style="margin-top: 26px;">A and C are both sides of the same coin: make
+      capabilities <strong>super discoverable</strong>, and make encoding new ones <strong>the easy,
+      on-rails path</strong>.</p>
+    <div class="thread" data-step="4"><p><b>Deterministic layer thread</b> discover, prove, improve only
+      work because the layer has <i>one surface</i>. That surface is the next slide.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>We want to put on rails the process through which friction — and any features the engineering environment needs — gets encoded. Fully defined, and very obvious as to where it lives and where it should go.</p>
+      <p>Discover: go look in one place and see everything it can do. Prove: it's where the backpressure lives, and you can pre-check work — the pre-check question gets far more context and affordance, and the team gathers the concept quickly. Improve: you're giving a target for improvement. Something would have made this way easier next time? Add it to the harness.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · CLI FRONT DOOR ═══════════════════════ -->
+<section class="slide" id="s-cli" data-title="CLI as the front door" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>CLI as the front door</p>
+    <h1 class="rv" style="--d:.06s">Where it gets <em>physical.</em></h1>
+    <p class="lede rv" style="--d:.12s">Everything we've talked about, made manifest: <strong>your harness
+      CLI</strong>. CLIs are a magnificent focal-point mechanism for agents — they understand them,
+      they're highly trained on them.</p>
+    <div class="cols" style="margin-top: 22px;">
+      <div>
+        <ul class="bullets">
+          <li data-step="1">Months of team encoding shows up in <code>--help</code> — it doesn't get
+            stuffed into the context as skills. Think of it as encouraging <b>deterministic skills</b>.</li>
+          <li data-step="2">agents.md stays a single paragraph: "the harness can see databases, run smoke
+            tests, …" — <b>the details live behind <code>--help</code>, fetched on demand</b>.</li>
+          <li data-step="3">The agent explores it the way it explores the git CLI: it has never seen your
+            repo, but <b>it knows how to work a CLI</b>. This is that, for your codebase.</li>
+          <li data-step="4">Every session is a cold onboarding — wrap what you already have
+            (build/test/lint/doctor/boot/smoke/seed) to give a <b>front door</b>.</li>
+        </ul>
+        <p class="quote" data-step="5">If it's designed well, pointing the agent at the CLI is
+          <b>almost enough</b> — the harness can just about take care of itself.</p>
+      </div>
+      <div class="term" data-step="1">
+        <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><em>harness — zsh</em></div>
+        <div class="term-body">
+          <div class="t-row"><span class="t-cmd" data-type>harness --help</span></div>
+          <div class="t-out">harness — the engineering front door
+
+  <b>boot</b>      start the app the supported way
+  <b>doctor</b>    environment + extension health
+  <b>check</b>     architecture · security · schema
+  <b>smoke</b>     end-to-end flows, evidence attached
+  <b>seed</b>      databases, fixtures, test users
+  <b>observe</b>   log friction as you hit it</div>
+          <div class="t-dim"># months of team encoding, one --help away</div>
+          <div><span style="color: var(--term-green); font-weight: 700;">$</span><span class="t-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="thread" data-step="6"><p><b>Deterministic layer thread</b> the CLI is the deterministic
+      layer made tangible — the front door to every proof the repo can offer.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>We've talked a lot about the engineering environment so far, but not about physical things. This is what's made manifest from all of it. All that stuff we've been collecting and encoding for months as a team shows up in help commands. If the agent needs to see the database, it goes and looks in the harness; the agents.md file might say "you can see databases, you can do this and this" — just a single paragraph — and the help command can dump a little prompt that tells it how. It's like a skill, except we're encouraging the encoding of deterministic skills.</p>
+      <p>The agent can explore the git CLI and know how to do everything about git even if it had never seen it before. This is that, for your codebase. (The example verbs here are illustrative — your harness grows the verbs your repo needs.)</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · RECAP ═══════════════════════ -->
+<section class="slide" id="s-recap" data-title="Recap: the layers" style="--c: var(--green)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Recap · The Layers</p>
+    <h1 class="rv" style="--d:.06s">The stack, <em>one more time.</em></h1>
+    <div class="stack rv" style="--d:.12s; max-width: 820px;">
+      <div class="plate" style="--pc: var(--amber); padding: 11px 18px;">
+        <span class="pnum">01</span>
+        <div><h3>Human Steering</h3><p>Decides what matters, and what gets encoded. Steers ▼, receives receipts ▲.</p></div>
+      </div>
+      <div class="plate" style="--pc: var(--azure); padding: 11px 18px; margin-top: 8px;">
+        <span class="pnum">02</span>
+        <div><h3>Inference <span>· agent harness</span></h3><p>Reasons, plans, writes code, discovers friction. Asks for proof ▼, receives verdicts &amp; evidence ▲.</p></div>
+      </div>
+      <div class="plate" style="--pc: var(--green); padding: 11px 18px; margin-top: 8px;">
+        <span class="pnum">03</span>
+        <div><h3>Deterministic <span>· engineering harness</span></h3><p>Runnable proof, trusted backpressure, fewer tokens. Wraps the codebase ▼, demands harnessability ▲.</p></div>
+      </div>
+      <div class="plate" style="--pc: var(--stone); padding: 11px 18px; margin-top: 8px;">
+        <span class="pnum">04</span>
+        <div><h3>Codebase</h3><p>Bootable, observable, testable, mockable, stable. The substrate.</p></div>
+      </div>
+    </div>
+    <ul class="bullets" data-step="1" style="margin-top: 26px; columns: 2; column-gap: 40px; max-width: 60em;">
+      <li>Assume friction will happen — especially while the harness is new. <b>It's your job to make it
+        do the things it doesn't do yet.</b></li>
+      <li>Give the repo one focal operating surface: <b>the CLI</b> — and instruct the agent to use it,
+        not guess around it.</li>
+      <li>Strive to make the agent use <b>deterministic means</b> for backpressure.</li>
+      <li>Capture friction as improvement feedback. Ask what the agent <b>had to infer that the harness
+        should have proved</b>.</li>
+      <li><b>Human chooses what matters.</b> Encode the chosen fix into the environment, via the
+        harness. Repeat.</li>
+    </ul>
+    <div class="eq" data-step="2">
+      <span class="piece">CLI focal point<small>+ required agent use</small></span>
+      <span class="op">+</span>
+      <span class="piece">Deterministic backpressure<small>proof from sensors, not vibes</small></span>
+      <span class="op">+</span>
+      <span class="piece">Friction capture<small>every stumble &amp; magic-wand ask</small></span>
+      <span class="op">+</span>
+      <span class="piece">Human-selected encoding<small>the human picks what gets encoded</small></span>
+      <span class="op">=</span>
+      <span class="piece result">Engineering Harness Nucleus</span>
+    </div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>To summarise all of that in one hit. We assume friction will happen — the agent is probably not going to sail through clear skies, especially early on. This is especially important when the harness is new, because it won't do much yet. Part of what we see when installing for teams: "oh, it doesn't do this, it doesn't do that". Right — it's your job to make it do that now.</p>
+      <p>We query the environment — including backpressure — before we even start work: are we confident the ways the harness provides backpressure will satisfy this task in a non-risky way? We capture friction as improvement feedback, the human keeps it honest — "why did you take twenty turns there? Is that an opportunity?" — and then we either put tasks on the board or just fix it then. It's on us to pay that forward.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · THE FLOW ═══════════════════════ -->
+<section class="slide" id="s-flow" data-title="The harness in your flow" style="--c: var(--azure)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Engineering harness in your development flow</p>
+    <h1 class="rv" style="--d:.06s">It enhances your flow. It doesn't <em>stomp on it.</em></h1>
+    <p class="lede rv" style="--d:.12s">A good engineering harness adapts to your existing environment
+      and flows — your flows should only adapt a little. Teams are (rightly) particular about their
+      workflows. The harness just keeps <strong>tapping you on the shoulder</strong>. It has a loop of
+      its own that lives inside your existing flow (spec-driven development flows are best):</p>
+    <div class="loop rv" style="--d:.18s">
+      <span class="step">Boot</span><span class="larr">→</span>
+      <span class="step">Backpressure Check</span><span class="larr">→</span>
+      <span class="step">Do work · Observe</span><span class="larr">→</span>
+      <span class="step">Retro · Magic wand</span><span class="larr">→</span>
+      <span class="step">Improve — encode the fix</span><span class="larr">→</span>
+      <span class="again">⟲</span>
+    </div>
+    <div class="grid-2" style="margin-top: 26px;">
+      <div class="card" data-step="1">
+        <h3>Boot</h3>
+        <p>"If your environment isn't working <b>before</b> you start, it certainly won't be working
+          after you start mucking around with it."</p>
+      </div>
+      <div class="card" data-step="2">
+        <h3>Backpressure Check</h3>
+        <p>Sometimes you stop and build the backpressure <b>first</b>. Side missions that run a day are
+          worth it — in one case (Huxley) we demonstrably proved the agent found it very difficult to
+          operate without it.</p>
+      </div>
+    </div>
+    <p class="quote" data-step="3">Bypassing the harness = burning tokens <b>without paying the
+      discoveries forward</b>.</p>
+    <div class="thread" data-step="3"><p><b>Deterministic layer thread</b> the loop exists to grow the
+      layer — every pass through it should leave the deterministic layer a little bigger.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>Teams are pretty particular when it comes to mucking around with their established workflows — no stomping, no teaching anyone to suck eggs. Done well, the harness sits inside the flow and enhances it.</p>
+      <p>Boot: before you start your work — probably after planning, before implementation — you boot the harness. Can it build? Depending on the codebase, boot might fire up the code with hot reload, or stand up an endpoint and validate you can ping it. Boot also reminds the agent how to work with the harness.</p>
+      <p>Backpressure Check: a skill takes the planned work and checks that we'll be able to use deterministic backpressure where possible, and highlights options for improvement. Score the risk a little: is the validation deterministic or not, how complex is the task?</p>
+      <p>During do-work, the agent takes notes — frictions, places it got stuck, thin confidence — while using the harness to capture real evidence: logs, health, smoke responses, screenshots, artifacts. Physical, real evidence. If the evidence is light, the environment should be improved. And a warning: if folks bypass the harness, they will run into things, and they will fix them by hand-cranking the prompt window — and none of it gets paid forward. It might feel like a cliff face at the start, but it's super important.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · RETRO & MAGIC WAND ═══════════════════════ -->
+<section class="slide" id="s-retro" data-title="Retro & the magic wand" style="--c: var(--amber)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Retrospective, magic wand, compounding payoff</p>
+    <h1 class="rv" style="--d:.06s">Five years of knowledge just fixed that. <em>Where did it go?</em></h1>
+    <p class="lede rv" style="--d:.12s">Watch someone hand-crank an agent: they fix a problem using five
+      years of built-in knowledge of the codebase. Why isn't that encoded back in? <strong>Because
+      there's been no standardised way to. Now there is.</strong></p>
+    <div class="grid-2" style="margin-top: 22px;">
+      <div class="card" data-step="1" style="--c: var(--amber)">
+        <span class="glyph">↻</span>
+        <h3>The retro</h3>
+        <p>"This was hard, that was easy, <b>here's what could have gone better</b>."</p>
+      </div>
+      <div class="card" data-step="2" style="--c: var(--green)">
+        <span class="glyph">✦</span>
+        <h3>The magic wand</h3>
+        <p>"Add <b>this command</b> to the harness — and here's why it would be cool." Well-prompted,
+          the agent makes great suggestions. I've re-encoded some fantastic ones.</p>
+      </div>
+    </div>
+    <ul class="bullets" data-step="3" style="margin-top: 22px;">
+      <li>Expect the harness to show up in your dashboards: <b>change failure rate, time from
+        implementation to delivery, token usage</b>.</li>
+      <li>Tokens spike at first — you're building the whole damn thing — <b>then compound down</b>.
+        After even a few iterations in the team, the payoffs start to compound.</li>
+    </ul>
+    <div class="thread" data-step="4"><p><b>Deterministic layer thread</b> the magic wand is the layer's
+      growth engine — every good answer becomes a new command, check, or sensor.</p></div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>Watching people manually use Cursor to do work, I'm constantly thinking: oh, I would have captured that. That sounds like something someone else on the team would want. You just used five years of built-in knowledge from working on this codebase to fix that problem — why wasn't that encoded back in? And the answer is: because there's no way to do that. No standardised way in the team. We're providing that standardised way for all teams.</p>
+      <p>When the harness is really singing, at the end of a run you ask: if you had a magic wand, what would you have done here? I've seen this pay off in some absolutely magnificent ways over the last year or so of working with harnesses.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · INSTALLING ═══════════════════════ -->
+<section class="slide" id="s-install" data-title="Installing the harness" style="--c: var(--azure)">
+  <div class="inner">
+    <p class="kicker rv"><span class="snum"></span>Installing the harness</p>
+    <h1 class="rv" style="--d:.06s">All of that, as a system you can <em>install.</em></h1>
+    <div class="cols" style="margin-top: 20px;">
+      <div>
+        <div class="grid-2">
+          <div class="card" data-step="1">
+            <h3>Core</h3>
+            <p>Installed via NPX, <b>upgradeable</b>. New capability can ship to every repo later —
+              e.g. metrics: token usage, skills usage, <b>harness bypass rate</b>, correlated against
+              PR approval times.</p>
+          </div>
+          <div class="card" data-step="2">
+            <h3>Extensions</h3>
+            <p>Created <b>per repo</b>, gathered at runtime from the <code>.harness</code> folder.
+              Every repo gets the same extensions concept and the same base skills, improving over
+              time.</p>
+          </div>
+        </div>
+        <ul class="bullets" data-step="3" style="margin-top: 20px;">
+          <li>On install it's minimal — almost no features, <b>just the will to improve</b> and take the
+            shape your environment needs.</li>
+          <li>The installation skill runs an initial <b>harnessability survey</b> and recommends first
+            extensions (test, build, lint…), plus the skills that assist the harness loop (boot,
+            observe, retro).</li>
+        </ul>
+      </div>
+      <div class="term" data-step="1">
+        <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><em>any repo — zsh</em></div>
+        <div class="term-body">
+          <div class="t-row"><span class="t-cmd" data-type>npx skills add AI-Substrate/harness-engineering</span></div>
+          <div class="t-ok">✓ harness CLI + loop skills installed</div>
+          <div class="t-row"><span class="t-cmd" data-type>harness doctor</span></div>
+          <div class="t-ok">✓ core loaded · extensions: ready when you are</div>
+          <div class="t-dim"># no ceremony — just install it</div>
+          <div><span style="color: var(--term-green); font-weight: 700;">$</span><span class="t-cursor"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="talk">
+      <span class="ttag">Commentary</span>
+      <p>We're trying to make all of that into a system you can install — think about how hard that is for a minute. The core is installed via NPX and is upgradeable, so it can grow new features later. Extensions are created per repo: run the CLI in a repo with a .harness folder and those extensions get picked up and become available in the CLI. Best of both worlds — upgradeable core, per-repo extensions.</p>
+      <p>When teams install it they don't start from scratch, and every codebase shares the same extensions concept and the same base skills that drive it.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══════════════════════ SLIDE · CLOSE (dark) ═══════════════════════ -->
+<section class="slide dark" id="s-close" data-title="Close" style="--c: var(--green)">
+  <div class="inner" style="text-align: center;">
+    <p class="kicker rv" style="justify-content: center;"><span class="snum"></span>The ask</p>
+    <div class="statement rv" style="--d:.1s; margin: 30px auto 0; max-width: 16em;">
+      Don't just use agents to write code. <b>Use agents to improve the loop the agents themselves
+      use.</b>
+    </div>
+    <div class="loop rv" style="--d:.22s; justify-content: center; margin-top: 44px;">
+      <span class="step" style="background: transparent; color: #b9c0c9; border-color: #3a414b;">Boot</span><span class="larr">→</span>
+      <span class="step" style="background: transparent; color: #b9c0c9; border-color: #3a414b;">Backpressure Check</span><span class="larr">→</span>
+      <span class="step" style="background: transparent; color: #b9c0c9; border-color: #3a414b;">Do work · Observe</span><span class="larr">→</span>
+      <span class="step" style="background: transparent; color: #b9c0c9; border-color: #3a414b;">Retro · Magic wand</span><span class="larr">→</span>
+      <span class="step" style="background: transparent; color: #b9c0c9; border-color: #3a414b;">Encode</span><span class="larr">→</span>
+      <span class="again">⟲</span>
+    </div>
+    <div class="keys rv" style="--d:.3s; justify-content: center; margin-top: 50px;">
+      <a class="k" href="layers.html" style="background: transparent; border-color: #3a414b; color: #9aa1ab;">↗ layers — the one-page overview</a>
+      <span class="k" style="background: transparent; border-color: #3a414b; color: #9aa1ab;">src · harness-foundations/simple-mode.md</span>
+      <span class="k" style="background: transparent; border-color: #3a414b; color: #9aa1ab;">docs/harness-presentations/intro-to-harness.md</span>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const slides = $$('.slide');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let cur = 0;
+  let mode = 'read';
+
+  /* ── auto slide numbers in kickers ── */
+  slides.forEach((s, i) => {
+    const n = $('.kicker .snum', s);
+    if (n) n.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0') + ' · ';
+  });
+
+  /* ── menu (built from data-title) ── */
+  const menu = $('#menu'), menuList = $('#menu-list');
+  slides.forEach((s, i) => {
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.textContent = s.dataset.title || s.id;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeMenu();
+      go(i);
+    });
+    li.appendChild(a);
+    menuList.appendChild(li);
+  });
+  const openMenu = () => { menu.classList.add('open'); markMenu(); };
+  const closeMenu = () => menu.classList.remove('open');
+  const toggleMenu = () => menu.classList.contains('open') ? closeMenu() : openMenu();
+  const markMenu = () => $$('a', menuList).forEach((a, i) => a.classList.toggle('here', i === cur));
+
+  /* ── data-step elements in reveal order — auto-played as a cascade on slide entry ── */
+  slides.forEach((s) => {
+    s._steps = $$('[data-step]', s)
+      .sort((a, b) => (parseFloat(a.dataset.step) || 0) - (parseFloat(b.dataset.step) || 0));
+  });
+  const clearDelays = (root = document) => $$('[data-step]', root).forEach((el) => { el.style.transitionDelay = ''; });
+
+  /* ── terminal typing ── */
+  $$('[data-type]').forEach((el) => { el.dataset.full = el.textContent; });
+  let typeRun = 0;
+  async function typeSlide(s) {
+    const token = ++typeRun;
+    const els = $$('[data-type]', s);
+    if (!els.length) return;
+    if (reduced) { els.forEach((el) => { el.textContent = el.dataset.full; }); return; }
+    els.forEach((el) => { el.textContent = ''; });
+    for (const el of els) {
+      for (let i = 0; i <= el.dataset.full.length; i++) {
+        if (token !== typeRun) return;
+        el.textContent = el.dataset.full.slice(0, i);
+        await new Promise((r) => setTimeout(r, 16 + Math.random() * 26));
+      }
+      await new Promise((r) => setTimeout(r, 220));
+    }
+  }
+
+  /* ── present-mode activation ── */
+  const counter = $('#counter'), progress = $('#progress');
+  const npBody = $('#np-body'), npCount = $('#np-count');
+  function activate(i) {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    slides.forEach((s, si) => {
+      const active = si === cur;
+      s.classList.toggle('active', active);
+      if (!active) {
+        $$('.rv, [data-step]', s).forEach((el) => el.classList.remove('in'));
+        clearDelays(s);
+      }
+    });
+    const s = slides[cur];
+    $$('.rv, [data-step]', s).forEach((el) => el.classList.remove('in'));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      $$('.rv', s).forEach((el) => el.classList.add('in'));
+      s._steps.forEach((el, idx) => {
+        el.style.transitionDelay = (.3 + idx * .09).toFixed(2) + 's';
+        el.classList.add('in');
+      });
+    }));
+    typeSlide(s);
+    counter.innerHTML = '<b>' + String(cur + 1).padStart(2, '0') + '</b> / ' + String(slides.length).padStart(2, '0');
+    progress.style.width = ((cur + 1) / slides.length * 100) + '%';
+    history.replaceState(null, '', '#' + s.id);
+    $('#btn-prev').disabled = cur === 0;
+    $('#btn-next').disabled = cur === slides.length - 1;
+    const talk = $('.talk', s);
+    npBody.innerHTML = talk ? talk.innerHTML.replace(/<span class="ttag">[\s\S]*?<\/span>/, '') : '<p>No notes for this slide.</p>';
+    npCount.textContent = (cur + 1) + ' / ' + slides.length;
+    markMenu();
+  }
+  function next() { if (cur < slides.length - 1) activate(cur + 1); }
+  function prev() { if (cur > 0) activate(cur - 1); }
+  function go(i) {
+    if (mode === 'present') activate(i);
+    else slides[i].scrollIntoView({ behavior: reduced ? 'auto' : 'smooth' });
+  }
+
+  /* ── read-mode observers ── */
+  let io = null;
+  function watchRead() {
+    io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          if (e.target.matches('.term') || $('[data-type]', e.target)) typeSlide(e.target.closest('.slide'));
+          io.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.14 });
+    $$('.rv, [data-step]').forEach((el) => io.observe(el));
+  }
+  function unwatchRead() { if (io) { io.disconnect(); io = null; } }
+
+  let typedSlides = new WeakSet();
+  const _typeSlide = typeSlide;
+  typeSlide = (s) => {
+    if (mode === 'read') {
+      if (typedSlides.has(s)) return;
+      typedSlides.add(s);
+    }
+    return _typeSlide(s);
+  };
+
+  /* ── scroll progress in read mode ── */
+  function onScroll() {
+    if (mode !== 'read') return;
+    const h = document.documentElement;
+    progress.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    let best = 0;
+    slides.forEach((s, i) => { if (s.getBoundingClientRect().top < innerHeight * .45) best = i; });
+    cur = best;
+  }
+  addEventListener('scroll', onScroll, { passive: true });
+
+  /* ── mode switching ── */
+  const btnMode = $('#btn-mode'), btnNotes = $('#btn-notes'), btnFull = $('#btn-full');
+  function setMode(m, keepPos) {
+    mode = m;
+    document.body.classList.toggle('present', m === 'present');
+    document.body.classList.toggle('read', m === 'read');
+    btnMode.innerHTML = m === 'present' ? 'Read <kbd>P</kbd>' : 'Present <kbd>P</kbd>';
+    btnNotes.hidden = m !== 'present';
+    btnFull.hidden = m !== 'present';
+    try { localStorage.setItem('deck-mode', m); } catch (e) {}
+    if (m === 'present') {
+      unwatchRead();
+      typedSlides = new WeakSet();
+      $$('.rv, [data-step]').forEach((el) => el.classList.remove('in'));
+      activate(keepPos ? cur : 0);
+    } else {
+      document.body.classList.remove('notes-open');
+      slides.forEach((s) => s.classList.remove('active'));
+      $$('.rv, [data-step]').forEach((el) => el.classList.remove('in'));
+      clearDelays();
+      typedSlides = new WeakSet();
+      watchRead();
+      if (keepPos) setTimeout(() => slides[cur].scrollIntoView({ behavior: 'auto', block: 'start' }), 30);
+      onScroll();
+    }
+  }
+  btnMode.addEventListener('click', () => setMode(mode === 'present' ? 'read' : 'present', true));
+  btnNotes.addEventListener('click', () => document.body.classList.toggle('notes-open'));
+  $('#btn-menu').addEventListener('click', toggleMenu);
+  btnFull.addEventListener('click', () => {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  });
+  $('#btn-prev').addEventListener('click', prev);
+  $('#btn-next').addEventListener('click', next);
+
+  /* ── keyboard ── */
+  addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === 'p') { setMode(mode === 'present' ? 'read' : 'present', true); return; }
+    if (k === 'm') { toggleMenu(); return; }
+    if (k === 'escape') { closeMenu(); return; }
+    if (mode !== 'present') return;
+    if (k === 'arrowright' || (k === ' ' && !e.shiftKey) || k === 'pagedown') { e.preventDefault(); next(); }
+    else if (k === 'arrowleft' || (k === ' ' && e.shiftKey) || k === 'pageup') { e.preventDefault(); prev(); }
+    else if (k === 'home') { e.preventDefault(); activate(0); }
+    else if (k === 'end') { e.preventDefault(); activate(slides.length - 1); }
+    else if (k === 'n') { document.body.classList.toggle('notes-open'); }
+    else if (k === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+  });
+
+  /* ── boot: mode from ?mode= → localStorage → default read; slide from #hash ── */
+  const qmode = new URLSearchParams(location.search).get('mode');
+  let saved = null;
+  try { saved = localStorage.getItem('deck-mode'); } catch (e) {}
+  const initial = (qmode === 'present' || qmode === 'read') ? qmode : (saved || 'read');
+  const hashIdx = slides.findIndex((s) => '#' + s.id === location.hash);
+  if (hashIdx > 0) cur = hashIdx;
+  setMode(initial, hashIdx > 0);
+})();
+</script>
+
+</body>
+</html>
