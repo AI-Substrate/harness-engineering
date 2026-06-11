@@ -2,7 +2,7 @@
 
 The agent-friendly **front door** to this repo's engineering harness. A small, well-structured Node + TypeScript (ESM) CLI whose verbs are **owned by extensions**: each is a little package at `.harness/extensions/<name>/` (entry `extension.ts`, agent briefing `instructions.md`) and becomes a `harness <verb>` command with its own `--help`, options, structured output, and exit codes. A few commands are always built in (`help`, `doctor`, `instructions`, `new`, `docs`, `skills`, `record`); everything else is contributed by extensions you add.
 
-> This is the **engineering harness** (the project's development loop), not an agent runtime. It studies how a human or agent can boot, run, and prove the software safely and quickly.
+> This is the **engineering harness** (the project's development loop), not an agent runtime. Its job is to turn the repo's **deterministic layer** — build, run, test, proof, sensors, evidence — from diffuse scripts and tribal knowledge into a **first-class, discoverable artifact** with one focal point: this CLI. When something had to be inferred twice, it gets encoded here as a command; `--help` and `doctor` make the layer enumerable instead of remembered.
 
 ## Install / run
 

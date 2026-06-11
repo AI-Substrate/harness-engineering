@@ -16,6 +16,15 @@ you bring the inference.** Verbs compute repeatable facts (run suites, collect
 evidence, scaffold files); these instructions — and each verb's own briefing —
 tell you the role you play around those facts and the judgment expected back.
 
+Why this surface exists: the harness is the **focal point of the repo's
+deterministic layer** — the one discoverable place where proof lives (build,
+test, boot, sensors, evidence) instead of diffuse scripts and tribal
+knowledge. The deal that makes it compound: **encode, don't document** — if
+you had to infer something twice, that is a missing command, not a missing
+doc; propose it as a one-line observation (§ Friction capture, below).
+Discoverability is the point: \`--help\`, \`doctor\`, and these briefings exist
+so the layer can be enumerated, not remembered.
+
 ## The envelope contract
 
 Every command emits ONE envelope. Pass \`--json\` to get it machine-readable:

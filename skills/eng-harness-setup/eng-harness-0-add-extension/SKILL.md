@@ -1,6 +1,6 @@
 ---
 name: eng-harness-0-add-extension
-description: Scaffold and validate a new harness extension. Reuses already-gathered intent (spec/plan/workshop/conversation) when it is obvious, otherwise asks; calls `harness new` to create a loadable extension skeleton in .harness/extensions/, fills the verb handler from that intent, and verifies with `harness doctor`/`harness help`.
+description: Scaffold and validate a new harness extension — the encoding move of the harness loop, turning inferred knowledge into a runnable, discoverable part of the repo's deterministic layer. Reuses already-gathered intent (spec/plan/workshop/conversation) when it is obvious, otherwise asks; calls `harness new` to create a loadable extension skeleton in .harness/extensions/, fills the verb handler from that intent, and verifies with `harness doctor`/`harness help`.
 ---
 # eng-harness-0-add-extension
 
@@ -8,6 +8,12 @@ Add a new `harness <verb>` extension to the current repo with near-zero friction
 The deterministic scaffolding is owned by the CLI (`harness new`); this skill owns
 the **judgement**: figure out what verb the user wants, scaffold it, fill the
 handler, and prove it loaded.
+
+This is the **encoding move** — the moment a piece of inferred knowledge (a
+weird boot sequence, an eyeballed check, a tribal command) becomes a runnable
+part of the repo's **deterministic layer**, discoverable by every future agent
+and human via `--help`. Each extension makes that layer a little more
+first-class and the next session a little cheaper.
 
 > **Stay thin.** If the wanted extension is obvious from context, just build it.
 > If it is ambiguous, ask one short question. Do **not** build an elaborate

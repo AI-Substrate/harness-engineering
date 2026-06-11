@@ -7,6 +7,8 @@ description: |
 
 The **front door** to the harness loop (the loop drawn in [`references/getting-started.md`](./references/getting-started.md), bundled with this skill — read that first if the skill family is new to you). `the-flow` does this for the **SDD pipeline** (a linear journey: spec → plan → tasks → code → review → merge). `eng-harness-flow` does it for the **harness loop** (a *cycle* re-entered wherever the work is: Boot → Backpressure → Observe → Retro → Improve → Boot). On each call it figures out *where on the loop you are* and hands back the **one right harness command** — whether you are on an empty repo (set it up), a full repo with no harness (set it up), or mid-plan in a healthy harness (boot / backpressure / retro).
 
+The router is also a **guide on a journey**: most callers meet the loop cold, so as it routes it *teaches* — every turn says not just what's next but **why it matters**. The loop's purpose, in one line: make the repo's **deterministic layer** (build, test, proof, sensors, evidence) a **first-class, discoverable, improvable thing** instead of diffuse scripts and tribal knowledge — with the harness CLI as its focal point. Every routed stage is one move in that game, and the narration names which (§ Per-turn UX, the why table).
+
 > **Stateless by design.** Unlike `the-flow`, this skill **stores nothing** — no state file, no `.json`/`.md` journey, no artifacts of its own. The harness loop has no single journey to checkpoint; *its* position is already observable in deterministic substrate (`harness doctor`, the governance doc, a harnessability report, plan-dir artifacts, the retro buffer). The router **re-derives** position every call from those signals, which is more robust than a parallel state file that can drift — and "prefer deterministic observation over remembered state" is itself a harness principle. The moment the router would need to *remember* something across calls, that something belongs in substrate a child skill owns — not here.
 
 ---
@@ -257,11 +259,28 @@ Every turn follows the same five beats (one decision per turn, a recommended def
 |---|---|---|
 | **Orient** | one line: which zone + stage, from the rail | "Setup's done — you're in the engineering loop, just past the spec." |
 | **Flag** ⚠️ | surface must-see items the user might've missed (see beat 3) — *confirming, never nagging*; **silent when clean** | "⚠️ Boot flagged `no smoke path declared` — worth knowing before we lean on it." |
-| **Insight** | one *interesting*, real detail about the stage or what it produces | "Backpressure writes `backpressure-coverage.md` — it tells you what's *provable* vs eyeballed before you build." |
+| **Insight + why** | one *real* detail, tied to why the stage matters — the shape is *"Did you notice `<detail>`? That matters because `<this stage's line from the why table>`"* | "9 of 11 criteria are already provable by existing sensors — that matters because this is the whole game: moving proof from inference into the deterministic layer, where it's runnable and free to re-check forever." |
 | **Suggest** | print the **one** next command in a copyable block | `eng-harness-2-backpressure` |
 | **Invite** | offer to run it; recommend the default, never force | "Want me to run it? (`yes` / run it yourself — either way I'll pick up from here.)" |
 
 This is the same **print-then-offer** posture as `the-flow`: always show the command first (copyable anywhere), then offer to run it; **one step per turn**; **never anything irreversible without explicit go-ahead**.
+
+### 2a. The why table — what each stage is *for*
+
+The teach-half of the Insight beat is drawn from this fixed table (never invented), fused with one **real** detail from the routed artifact. One line max, pitched at someone meeting the loop for the first time. **Skip the teach-half when the user clearly knows the loop** — a returning operator, or a stage already taught this session — confirming, never lecturing. The detail half is still subject to the no-fabrication rule: read the artifact, quote what's there.
+
+| Stage | Why it matters (the thesis link) |
+|---|---|
+| S0 · Install | the deterministic layer gets a **front door** — one discoverable place (`--help`, `doctor`) instead of diffuse scripts and tribal knowledge |
+| S1 · Scout | measures the **proof ceiling** — how much of this repo can be *proven* today vs eyeballed |
+| S2 · Governance | the contract that makes the layer **tangible** — what boots it, what proves it, where evidence lands |
+| S3 · Inject | wires the harness into the flow you already run, so usage is **structural, not remembered** — it survives every cold agent start |
+| S4 · Build boot | the first proof — the environment runs **before** any work starts |
+| Boot (loop) | orientation by **evidence, not memory** — prove the system runs before you touch it |
+| Backpressure | moves proof from **inference to determinism** before you build — what can the repo *prove* about this work, and what would still be eyeballed? |
+| Observe | friction is **usability research** on the engineering environment — one line now, a candidate fix later |
+| Retro | "what did you have to infer that the harness should have proved?" — every answer names a **missing command** |
+| Improve | the compounding move — **improve = encode the fix**: inferred knowledge becomes a runnable part of the deterministic layer, and the next session starts smarter |
 
 ### 3. The Flag beat — "just making sure you saw this"
 
