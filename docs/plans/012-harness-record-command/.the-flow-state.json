@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "harness-record-command",
+  "plan_dir": "docs/plans/012-harness-record-command",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan docs/plans/012-harness-record-command/harness-record-command-plan.md",
+  "intent": "Add a core `harness record <type>` CLI command that scaffolds a record file from a template into .harness/records/<type>/<date>-<slug>.md and returns the path for the agent to fill; generic extensible record-type contract (core + extension), starting with retro; plus adapt existing loop skills to use it and define starting core record types + schema.",
+  "milestones_total": 5,
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-09T11:28:00Z",
+  "compacted_seams": [],
+  "status": "complete",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
+}

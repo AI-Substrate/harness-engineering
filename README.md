@@ -4,9 +4,11 @@ Harness engineering is the practice of productising the software-development loo
 
 This repo is a public foundation and tutorial project for teams that want faster, safer, more observable development loops in the age of AI-assisted engineering.
 
-## Install the setup skill
+It is also the **home of the harness product itself**: the harness CLI (`harness/cli/`) and the engineering-harness skills (`skills/`) are authored here and deployed into *other* repos — which consume them via `npx skills` / `harness skills install`. We also **dogfood** the harness on this repo. When working here, keep the two modes distinct: *editing* the CLI or skills is product development that ships to every consumer, whereas *running* the loop skills is dogfooding this checkout. See [`AGENTS.md`](./AGENTS.md#this-repos-dual-role) and the constitution (`docs/project-rules/constitution.md` §1) for the full framing.
 
-This repo publishes the engineering-harness setup/provisioning skill consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills).
+## Install the skills
+
+This repo publishes its engineering-harness skills — a **setup group** (`skills/eng-harness-setup/`) and the **interactive loop group** (`skills/eng-harness-loop/`) — consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills). The harness CLI also wraps this in a first-class `harness skills install` command (a transparent pass-through to the same installer — see [`INSTALL.md`](./INSTALL.md)).
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
@@ -26,11 +28,11 @@ npx skills@latest add AI-Substrate/harness-engineering \
 
 This writes the skill to `./.agents/skills/`, the project-local location used by both targets.
 
-Both generic commands above install every skill this repo publishes (`engineering-harness-setup` and `harnessability-assessment`). To install a single skill, add `-s <skill-name>` — for example the harnessability assessment skill, project-local for GitHub Copilot CLI:
+Both generic commands above install every skill this repo publishes (the `eng-harness-setup` group + the `eng-harness-loop` group). To install a single skill, add `-s <skill-name>` — for example the harnessability assessment skill, project-local for GitHub Copilot CLI:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
-  -s harnessability-assessment \
+  -s eng-harness-0-harnessability-assessment \
   -a github-copilot \
   -y
 ```
@@ -103,18 +105,27 @@ If the answer is no, the engineering harness is the product surface to improve.
 
 This repo distils private and public research into general, publication-safe principles. Raw notes and private source material live outside the public surface. Public content should avoid private names, internal codewords, local paths, unreleased details, and exact private metrics unless explicitly approved.
 
-## Skill authored here
+## Skills authored here
 
-For a practical guide to when to run this setup skill and how it fits the upstream runtime loop, see [`skills/README.md`](skills/README.md).
+For a practical guide to when to run the setup skill and how the loop skills fit, see [`skills/README.md`](skills/README.md).
 
-- [`skills/engineering-harness-setup/`](skills/engineering-harness-setup/SKILL.md): creates or validates a repo-local engineering harness nucleus: `docs/project-rules/engineering-harness.md`, a starter `harness/cli/` command surface and sensor inventory, `docs/harness` improvement surfaces, and an `AGENTS.md` route for future agents.
-- [`skills/harnessability-assessment/`](skills/harnessability-assessment/SKILL.md): runs after setup to score a repository's harnessability across Operate-Today and Adaptability, mapping back-pressure surfaces, proof ceilings, external-dependency exposure, command tiers, first-session guidance, and proposal-only codebase affordance recommendations.
+**Setup group** — [`skills/eng-harness-setup/`](skills/eng-harness-setup/):
 
-Runtime loop skills now live upstream in `jakkaj/tools`:
+- [`eng-harness-0-setup`](skills/eng-harness-setup/eng-harness-0-setup/SKILL.md): installs and validates the repo-local engineering harness nucleus — the CLI command surface, sensor inventory, improvement surfaces, and an `AGENTS.md` route — and coordinates the governance doc at `.harness/engineering-harness.md` (provisioning it is the deferred `harness init` writer; the doc itself stays hand-maintained).
+- [`eng-harness-0-harnessability-assessment`](skills/eng-harness-setup/eng-harness-0-harnessability-assessment/SKILL.md): scores a repository's harnessability across Operate-Today and Adaptability, mapping back-pressure surfaces, proof ceilings, external-dependency exposure, command tiers, first-session guidance, and proposal-only codebase affordance recommendations.
+- [`eng-harness-0-add-extension`](skills/eng-harness-setup/eng-harness-0-add-extension/SKILL.md): the guided path for authoring a new `harness <verb>` extension.
 
-- `harness-1-boot`
-- `plan-2d-backpressure-survey` (the advisory Backpressure Check)
-- `harness-2-observe`
-- `harness-3-retro`
+**Loop group** — [`skills/eng-harness-loop/`](skills/eng-harness-loop/) (the interactive Boot → Backpressure → Observe → Retro loop, now hosted here):
 
-This repo remains the public foundations and setup surface. The tools repo owns the canonical runtime loop.
+- `eng-harness-1-boot`
+- `eng-harness-2-backpressure` (the advisory Backpressure Check)
+- `eng-harness-4-retro` (the friction lifecycle — in-flight capture via the `harness observe` CLI verb, drain, harvest)
+
+The Observe/Retro stages are backed by a core CLI command: **`harness record <type>`** scaffolds a templated record (starting with `retro`) into `.harness/records/<type>/` and returns its path for the agent to fill. Observe jots crash-resilient working notes to the gitignored scratch buffer `.harness/temp/<agent>/`; `eng-harness-4-retro --drain` then materialises a **committed** record under `.harness/records/`. Record types are a generic 4-field contract loadable from core or extensions — see [`docs/how/record-and-record-types.md`](docs/how/record-and-record-types.md).
+
+The CLI's hexagonal architecture is itself under deterministic back pressure: `harness arch-check` (a third exemplar extension) proves the import graph against 7 committed dependency-cruiser rules on every PR — see [`docs/how/architecture-conformance.md`](docs/how/architecture-conformance.md).
+
+### Dogfooding the harness on itself
+
+Two repo-local dogfood extensions exercise the harness against real, unfamiliar repos by firing parallel `minih` workers: `harness validate-harnessability` runs the *assessment* skill on each clone, and `harness validate-harness-flow` runs the **entire setup flow** (assess → governance → boot → retro), then `--collect` aggregates the workers' records + reports. See [`docs/how/dogfood-harness-flow.md`](docs/how/dogfood-harness-flow.md). Collected retros are **surfaced, never auto-implemented**.
+

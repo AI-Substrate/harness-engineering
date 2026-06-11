@@ -1,0 +1,47 @@
+{
+  "$comment": "Curated allow-list of docs surfaced by `harness docs` (plan 007, workshop 001). THE P12 curation point: only publication-safe, human/agent-facing guides belong here. NEVER add AGENTS.md, docs/plans/**, docs/project-rules/** governance, or scratch/**. `sourcePath` is relative to the repo root (npm scripts run from there). `scripts/gen-docs.mjs` reads this to inline each .md into the generated docs-content.ts.",
+  "docs": [
+    {
+      "id": "extend-the-harness",
+      "title": "Extend the harness",
+      "summary": "Add a new `harness <verb>` command — the fast path (`harness new`) and the guided `eng-harness-0-add-extension` skill.",
+      "audience": "both",
+      "sourcePath": "docs/how/extend-the-harness.md"
+    },
+    {
+      "id": "record-and-record-types",
+      "title": "Record and record types",
+      "summary": "Use `harness record <type>` to scaffold a templated record file, and add a new record type (core or extension) with the 4-field contract.",
+      "audience": "both",
+      "sourcePath": "docs/how/record-and-record-types.md"
+    },
+    {
+      "id": "using-harness-docs",
+      "title": "Using harness docs",
+      "summary": "Discover and read the harness's bundled docs offline with `harness docs` (and the future MCP `docs_*` seam).",
+      "audience": "both",
+      "sourcePath": "docs/how/using-harness-docs.md"
+    },
+    {
+      "id": "authoring-verbs",
+      "title": "Authoring a harness verb",
+      "summary": "The extension-author contract: `HarnessVerb`, `VerbContext`, structured output, exit codes, and safety rules.",
+      "audience": "both",
+      "sourcePath": "harness/cli/docs/authoring-verbs.md"
+    },
+    {
+      "id": "cli-readme",
+      "title": "harness CLI README",
+      "summary": "Overview of the harness CLI: install/run via npx, the command surface, output modes, and exit codes.",
+      "audience": "both",
+      "sourcePath": "harness/cli/README.md"
+    },
+    {
+      "id": "agents-readme",
+      "title": "Agent onboarding (the drop-file)",
+      "summary": "Self-contained bootstrap guide: point an agent at a repo and it installs the harness CLI + skills, orients itself, and enters the loop.",
+      "audience": "both",
+      "sourcePath": "AGENTS_README.md"
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "slug": "gh-packages-release-please",
+  "plan_dir": "docs/plans/018-gh-packages-release-please",
+  "mode": "Simple",
+  "cursor": "implement",
+  "recommended_next": "implement",
+  "milestones_total": 5,
+  "milestones_done": 3,
+  "router_installed": true,
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "status": "done",
+      "title": "Research — install/distribution failure + fix options",
+      "note": "Seeded from scratch dossier. Confirms git-URL installs don't deliver runtime deps; jiti can't be bundled; tarball/registry path works. Decision: GitHub Packages via release-please (§5 option 2c).",
+      "artifacts": ["research-dossier.md"],
+      "ran_at": "2026-06-11T00:44:00Z",
+      "reconstructed": true,
+      "next": ["spec"]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "status": "done",
+      "title": "Spec — publish to GitHub Packages via release-please",
+      "note": "READY. @ai-substrate/engineering-harness, registry-only, reverses AC-15. validate-v2 ran: AC-6 made exhaustive (17 missed rename sites), AC-4 gating tightened; AC-11 branch-canary added per user request.",
+      "command": "/plan-1b-v3-specify-and-clarify",
+      "user_input": "lets get it right now. get us in gh packages, using release please.",
+      "ran_at": "2026-06-11T01:05:00Z",
+      "artifacts": ["gh-packages-release-please-spec.md"],
+      "next": ["backpressure"]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "status": "done",
+      "title": "Backpressure (post-spec seam, harness router)",
+      "note": "Certainty: Partial. Install/rename covered by EXISTS sensors (package-smoke proves pack→install→run; check:docs/vitest/tsc catch the rename). Publish-automation BUILDABLE — canary+dry-run already in the ACs. Phase 0 absorbed; sequence the canary early.",
+      "command": "/eng-harness-flow --event post-spec",
+      "branch_of": "spec",
+      "ran_at": "2026-06-11T01:18:00Z",
+      "artifacts": ["backpressure-coverage.md"],
+      "next": ["plan"]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "status": "done",
+      "title": "Architect — implementation plan",
+      "note": "READY (5 PASS / 0 FAIL / 1 N/A + a G2 Deviation Ledger entry). Simple mode = single implementation wave, 16 tasks. validate-v2 (4 agents) ran: fixed 1 CRITICAL (release-please cross-job output gate was a silent no-op → would publish on every push) + HIGHs (canary --tag canary, ephemeral version mechanism, T1 precondition checklist); Forward-Compat + Thesis both PASS (rename worklist verified vs live grep: 24 files/37 hits). VALIDATED WITH FIXES.",
+      "command": "/plan-3-v3-architect",
+      "user_input": "run it",
+      "ran_at": "2026-06-11T02:05:00Z",
+      "artifacts": ["gh-packages-release-please-plan.md"],
+      "next": ["implement"]
+    },
+    {
+      "id": "implement",
+      "type": "phase",
+      "status": "known",
+      "title": "Implement — single wave (rename + publish job + canary + docs/reversal)",
+      "note": "Simple mode: one PR, tasks T1–T16; sensors sequenced early per backpressure (grep gate, scope assert, dry-run, canary). Next: /plan-6.",
+      "command": "/plan-6-v2-implement-phase",
+      "next": ["merge"]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "status": "known",
+      "title": "Merge to main → release-please cuts the release",
+      "command": "/plan-8-v2-merge",
+      "next": []
+    }
+  ],
+  "agents": []
+}

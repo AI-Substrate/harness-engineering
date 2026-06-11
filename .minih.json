@@ -1,0 +1,20 @@
+{
+  "$schema": "https://minih.dev/schemas/minih-config.json",
+  "skills": {
+    "comment": "Repo-local skills minih agents may invoke. minih's path: source searches a directory's DIRECT children, so with the two-level layout (skills/<category>/<slug>/SKILL.md) the sources must point at the category folders, not skills/.",
+    "sources": [
+      "path:skills/eng-harness-setup",
+      "path:skills/eng-harness-loop"
+    ],
+    "include": [
+      "eng-harness-0-setup",
+      "eng-harness-0-harnessability-assessment",
+      "eng-harness-0-add-extension",
+      "eng-harness-1-boot",
+      "eng-harness-2-backpressure",
+      "eng-harness-4-retro",
+      "eng-harness-flow"
+    ],
+    "exclude": []
+  }
+}

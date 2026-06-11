@@ -1,0 +1,36 @@
+{
+  "$schema": "https://minih.dev/schemas/agent-manifest.json",
+  "name": "install-and-validate-test-extension",
+  "version": "0.1.0",
+  "description": "Single-shot end-to-end test agent. In a throwaway temp repo (fixture-based), it installs the harness core, drives the add-extension skill to author a new `harness <verb>` extension, then independently validates that the extension loads (`doctor`), lists (`help`), and runs with the expected Envelope status/exit. Reports a structured verdict plus a magic-wand retrospective for both the project and minih.",
+  "author": "AI-Substrate",
+  "tags": ["test", "e2e", "extension", "skill", "harness", "dogfood"],
+  "minihVersion": ">=0.3.0",
+  "type": "minih-agent",
+  "files": [
+    {
+      "path": "prompt.md",
+      "description": "Mission: temp-repo setup, harness install, skill-driven extension authoring, independent validation, verdict + retrospective. Documents how skills are wired into minih (`.minih.json` skills block / `--skill-source`+`--skill`)."
+    },
+    {
+      "path": "instructions.md",
+      "description": "Rules: drive the skill (don't bypass it), independent verification is mandatory, prefer --json, throwaway-only writes, capture friction at the moment of friction."
+    },
+    {
+      "path": "input-schema.json",
+      "description": "Params: harnessSource (local|github), verbName, variant (minimal|wrap|js), keepTempRepo."
+    },
+    {
+      "path": "output-schema.json",
+      "description": "Structured report: tempRepo, installResult, scaffoldResult, validation, verdict (PASS|FAIL), summary, and retrospective (workedWell/confusing/magicWand/magicWandTarget/difficulties)."
+    },
+    {
+      "path": "fixtures/repo/package.json",
+      "description": "Minimal fixture repo copied into the temp dir; exposes an `npm run demo` script for the --wrap variant."
+    },
+    {
+      "path": "fixtures/repo/README.md",
+      "description": "Explains the fixture: a clean repo with no .harness/ folder, proving extension-from-zero."
+    }
+  ]
+}

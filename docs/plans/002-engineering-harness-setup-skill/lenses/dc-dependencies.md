@@ -236,7 +236,7 @@ If both are installed in the same repo, friction can end up captured in two unre
 ### Finding DC-09: External dependencies — runtime ambiguity, no library deps, but `harness` is not a global binary on most systems
 
 **Evidence**:
-- Runtime probes: `which python3` → `/opt/homebrew/bin/python3`; `which node` → `/opt/homebrew/bin/node`; `which harness` → `/Users/jordanknight/substrate/084-random-enhancements-3/node_modules/.bin/harness` (i.e. a *local* package binary in an unrelated repo)
+- Runtime probes: `which python3` → `/opt/homebrew/bin/python3`; `which node` → `/opt/homebrew/bin/node`; `which harness` → `~/substrate/084-random-enhancements-3/node_modules/.bin/harness` (i.e. a *local* package binary in an unrelated repo)
 - `source-prompt.md:991-1095` (Python CLI skeleton — imports only `argparse`, `json`, `os`, `subprocess`, `sys`, `time`, `urllib.request`, `pathlib` — all stdlib)
 - `source-prompt.md:1108-1280` (Node CLI skeleton — imports only `node:child_process`, `node:fs`, `node:path`, `node:url` — all stdlib; uses global `fetch`, requires Node 18+)
 - `source-prompt.md:213-218` (Section 5 — example invocations include `./harness/bin/harness.py`, `node ./harness/bin/harness.mjs`, `npm run harness -- doctor`, `uv run python harness/bin/harness.py`)

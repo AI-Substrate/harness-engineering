@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "windows-cross-platform-fixes",
+  "plan_dir": "docs/plans/017-windows-cross-platform-fixes",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build complete (2026-06-10): /plan-6-v2-implement-phase-companion, single phase T000–T015 all done. Suite 380→434 green throughout; arch-check ok; CI fully green at b789ddf (run 27269892006) — build-test 22+24 AND package-smoke (first green). Companion reviewed all 16 commits; its 4 MEDIUM findings arrived via the farewell only (inbox channel asymmetry — DL-001 recurrence) and were ALL addressed inline post-farewell (UNC root-kind guard, AC-2 source guard, idiom scope, self-repo invocation docs) — suite 442/442. Retros: 008-017-windows-build-drain.md (orchestrator) + 009-017-companion-farewell.md (companion)",
+  "next": "/plan-8 merge analysis — executes ONLY on a typed PROCEED.",
+  "_comment": "Harness exists (.harness/engineering-harness.md) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
+  "agents": [],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research — external Windows dossier (pre-supplied)",
+      "status": "done",
+      "command": "(no /plan-1a — dossier produced during the Windows port session, supplied at flow start)",
+      "ran_at": "2026-06-10T08:40:41Z",
+      "user_input": "need to fix these windows problem scratch/cross-system-failure.md. we shoud use our harness loop to validate them using determinitic back pressure when done.",
+      "note": "scratch/cross-system-failure.md: harness CLI builds and RUNS on Windows, but npm test = 40 failed / 237 passed. Five root causes, none logic defects: (A ~33 failures) production builds logical paths with node:path join -> backslashes leak into envelopes + miss POSIX-keyed fixtures (discovery.ts, record-service.ts, scaffold-service.ts); (B) FakeFs.mkdirp splits on '/' only; (C) extensions.test.ts re-splits abs paths with '/' instead of basename(); (D) docs.test.ts hard-codes bash+head for the EPIPE check; (E) gen-docs.mjs execFileSync of extensionless .bin/biome fails on Windows. Dossier recommends posix.join for logical paths + toPosix(cwd) at the boundary. Flow-start discovery appended: package-smoke CI job failing on ALL recent branch runs — gen-docs logs to stdout, contaminating TARBALL=$(npm pack --silent) (ci.yml:125); same script as Cat E, folded into scope.",
+      "artifacts": [
+        "scratch/cross-system-failure.md",
+        "original-ask.md"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec (/plan-1b) ✅ + validate-v2",
+      "status": "done",
+      "command": "/plan-1b-v3-specify-and-clarify \"Fix the Windows cross-platform failures catalogued in scratch/cross-system-failure.md ... — validated by deterministic backpressure when done\"",
+      "ran_at": "2026-06-10T08:55:00Z",
+      "user_input": "run it · then validate",
+      "note": "Simple, CS-2, 10 ACs. Round 1 adopted on recommended defaults per the user's run-through (Simple / Hybrid / targeted mocks / convention-in-idioms docs). validate-v2 (3 agents: evidence / contract-testability / adversarial-risk): VALIDATED WITH FIXES — scope EXTENDED to doctor-service + instructions-service (native path math on entryPath downstream of discovery; dossier missed them because their unit tests use POSIX-keyed fakes); package-smoke found DOUBLE-broken (stderr move insufficient under --silent -> npm pack --json primary capture; AND the E143 greps are unsatisfiable — no flat fixture file is ever created, restored in AC-9); POSIX-space edge cases pinned (drive-letter case, literal '../', dedupe keys); Windows leg design pinned (minimal job, no check:docs/autocrlf hazard, .gitattributes eol=lf, ci-required gate update); fix forms made precise (two-segment form at extensions.test.ts:91, fake-fs readdir :41, npm build-guard must not be skipped). Deferred to Non-Goals: NodeExec extensionless-bin resolution (skills npx + arch-check depcruise — runtime-only on Windows, FakeExec masks).",
+      "artifacts": [
+        "windows-cross-platform-fixes-spec.md",
+        "windows-cross-platform-fixes.fltplan.md"
+      ],
+      "next": [
+        "backpressure"
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure Check ✅ — Partial, Phase 0 recommended",
+      "status": "done",
+      "command": "/eng-harness-2-backpressure --spec docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-spec.md",
+      "ran_at": "2026-06-10T09:05:00Z",
+      "user_input": "do backpressure survey now · are the sensors in one extension? · we will not have a windows server in ci... remove anyting that needs that... · no new extension to check windows stuff?",
+      "note": "Certainty: Partial. Inventory: 9 existing sensors, ALL ubuntu-only (grep -ri windows .github/workflows -> 0 hits — the single fact that let 40 failures ship invisibly). FIRST PASS recommended a minimal windows-latest leg as keystone Phase-0 sensor. AMENDED same day: user ruled out any Windows CI executor ('we will not have a windows server in ci... remove anyting that needs that') -> survey + spec regenerated. Replacement proof: deterministic BY CONSTRUCTION — pure POSIX helpers + Windows-shaped-input unit tests on ubuntu (FakeProcess.cwd='C:\\repo' backslash fixtures across discovery/record/scaffold/doctor/instructions: native join leaks a backslash into an envelope assertion and fails on Linux). Honest ABSENT rows by decision: real-fs assertion forms (AC-5), jiti on real Windows, NodeExec spawns (already Non-Goaled) -> routed to one-off manual re-port (verify-port.ps1), human-tier, recorded in execution log. Phase 0 (4 sensors, no Windows machine anywhere): pure helper tests, Windows-shaped cwd fixture set, package-smoke repair (npm pack --json + flat legacy.ts fixture), .gitattributes eol=lf. Sidebars answered: only arch-check among the 9 sensors is a harness extension (rest are npm scripts / CI jobs / built-in verbs); NO new extension for the Windows checks by design — the sensors are ordinary vitest tests run by npm test; a path-hygiene verb would duplicate the unit-test sensor (declined, candidate for later).",
+      "artifacts": [
+        "backpressure-coverage.md"
+      ],
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (/plan-3) ✅ READY v1.1.0 + validate-v2",
+      "status": "done",
+      "command": "/plan-3-v3-architect --spec docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-spec.md",
+      "ran_at": "2026-06-10T09:40:15Z",
+      "user_input": "run architect step",
+      "note": "READY, all gates PASS (G4 N/A — no ADRs). Single-phase Simple plan, 16 task rows: T000 boot · T001-T002 helper tests-first (RED->GREEN) · T003 FakeFs tolerance · T004-T006 the five services -> POSIX (discovery as single POSIX origin) · T007 path-safe assertions · T008 Windows-shape sensor (FakeProcess cwd='C:\\repo', post-toPosix FakeFs keys, revert-proof recorded) · T009 shell-free EPIPE + Windows-safe npm guard · T010 gen-docs stderr + process.execPath biome · T011 package-smoke repair (jq + *.tgz assert + flat legacy.ts between ci.yml:161-167) · T012 .gitattributes · T013 idioms · T014 full verification · T015 retro drain. Research subagents corrected the spec's AC-9 rationale EMPIRICALLY: npm pack --json is NOT immune to lifecycle stdout (verified on npm 11.10.0) -> stderr move is load-bearing, --json+assert is the loud guard. Second hazard found: posix.resolve() corrupts drive-letter paths -> helper is normalize/join-only. validate-v2 (3 agents): all 22 factual claims verified; 4 specs tightened (UNC leading-// collapses under posix.normalize -> guard/reattach pinned; T008 seeding form explicit; doctor :291 both-sides-POSIX; CI fixture placement).",
+      "artifacts": [
+        "windows-cross-platform-fixes-plan.md"
+      ],
+      "next": [
+        "build"
+      ]
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "label": "Build (/plan-6 companion) ✅ — single phase T000–T015",
+      "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion --plan \"/Users/jordanknight/substrate/harness-engineering/docs/plans/017-windows-cross-platform-fixes/windows-cross-platform-fixes-plan.md\"",
+      "ran_at": "2026-06-10T10:35:00Z",
+      "user_input": "implementn with companion",
+      "note": "All 16 tasks done; suite 380→434 green throughout; arch-check ok (67 modules). Delivered: posix-path helper (normalize/join-only, UNC-guarded, explicit caseInsensitive) · separator-tolerant FakeFs · five services POSIX (discovery = single POSIX origin) · path-safe assertions · Windows-shape sensor (11 tests, REVERT-PROVEN: native-join boundary reversion fails it) · shell-free EPIPE + Windows-safe npm guard · gen-docs stderr + execPath biome · package-smoke repair · .gitattributes (zero churn) · idioms §11. CI: 3 pushes — e259e15 red (sh: harness: Permission denied — bin pointed at untracked 644 tsc output; npx root-bin resolution nondeterministic across npm majors), bd317e3 wrapper (npm-10 leg green), b789ddf node-direct invocation → ALL GREEN incl. package-smoke FIRST green (AC-9) + Node 22/24 (AC-10). All 10 ACs checked. Companion: 16 review pings; 4 MEDIUM farewell findings (F001 UNC root-kind conflation, F002 AC-2 source guard missing, F003 idiom overclaim, F004 self-repo npx doc drift) ALL ADDRESSED INLINE post-farewell — final suite 442/442. Inbox channel asymmetry recurred (DL-001): findings reached the orchestrator only via the farewell. T015 drain → 008-017-windows-build-drain.md (4 new entries + DL-001 carried); companion retro → 009-017-companion-farewell.md.",
+      "artifacts": [
+        "execution.log.md",
+        "harness/cli/src/services/shared/posix-path.ts",
+        "harness/cli/test/services/windows-shape.test.ts",
+        "harness/cli/bin/harness.js",
+        ".gitattributes",
+        ".harness/records/retro/2026-06-10/008-017-windows-build-drain.md"
+      ],
+      "next": [
+        "merge"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge (/plan-8)",
+      "status": "known",
+      "command": "/plan-8 (typed PROCEED only)",
+      "note": "014/015/016 merges are parked at the same gate; this flow is independent of them.",
+      "next": []
+    }
+  ]
+}

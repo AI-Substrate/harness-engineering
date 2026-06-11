@@ -1,0 +1,224 @@
+import { describe, expect, it } from 'vitest';
+import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
+import type { FsPort } from '../../../src/adapters/fs/fs-port.js';
+import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
+import { ErrorCodes } from '../../../src/output/error-codes.js';
+import { scaffoldExtension } from '../../../src/services/scaffold/scaffold-service.js';
+import { minimalTs } from '../../../src/services/scaffold/templates.js';
+
+/*
+Test Doc:
+- Why: `harness new` must deterministically validate the name, root the path the SAME way
+  discovery does (via injected ProcessPort.cwd()), pick the right template, and write — all
+  unit-testable with fakes (Constitution P3; plan 006 Findings 01/07). Since plan 014 (AC-8)
+  every variant scaffolds the FOLDER form: <name>/extension.<ext> + a starter instructions.md
+  (the little-package convention); the flat form and the `.record.ts` filename are retired.
+- Contract: scaffoldExtension returns {ok:true, path, verb, variant, instructionsPath} or
+  {ok:false, code, message, next_action}; writes go through FsPort (no node:fs); files land at
+  <cwd>/.harness/extensions/<name>/.
+- Quality Contribution: pins the validation + path + flag matrix + error band before any code.
+*/
+
+const deps = () => ({ fs: new FakeFs(), proc: new FakeProcess({}, '/repo') });
+
+describe('scaffoldExtension — happy paths (folder form, plan 014 AC-8)', () => {
+  it('writes <name>/extension.ts + starter instructions.md and reports both relative paths', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension({ name: 'greet' }, { fs, proc: new FakeProcess({}, '/repo') });
+    expect(out).toMatchObject({
+      ok: true,
+      path: '.harness/extensions/greet/extension.ts',
+      instructionsPath: '.harness/extensions/greet/instructions.md',
+      verb: 'greet',
+      variant: 'minimal-ts',
+    });
+    expect(fs.mkdirs).toContain('/repo/.harness/extensions/greet');
+    expect(fs.writes).toContain('/repo/.harness/extensions/greet/extension.ts');
+    expect(fs.writes).toContain('/repo/.harness/extensions/greet/instructions.md');
+    expect(fs.readText('/repo/.harness/extensions/greet/extension.ts')).toBe(minimalTs('greet'));
+  });
+
+  it('the starter instructions.md is a guided TODO addressed to the CALLING agent', () => {
+    const fs = new FakeFs();
+    scaffoldExtension({ name: 'greet' }, { fs, proc: new FakeProcess({}, '/repo') });
+    const briefing = fs.readText('/repo/.harness/extensions/greet/instructions.md') ?? '';
+    expect(briefing).toContain('harness greet');
+    expect(briefing).toContain('TODO');
+    expect(briefing).toMatch(/calling agent/i);
+    expect(briefing).toMatch(/judg(e|ment)/i);
+    expect(briefing).not.toMatch(/\bprompt\b/i);
+  });
+
+  it('--js writes extension.js (instructions.md still markdown)', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'greet', js: true },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out).toMatchObject({
+      ok: true,
+      path: '.harness/extensions/greet/extension.js',
+      instructionsPath: '.harness/extensions/greet/instructions.md',
+      variant: 'minimal-js',
+    });
+    expect(fs.writes).toContain('/repo/.harness/extensions/greet/extension.js');
+    expect(fs.writes).toContain('/repo/.harness/extensions/greet/instructions.md');
+  });
+
+  it('--wrap writes the wrap-a-command starter into the folder entry', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'test', wrap: 'npm test' },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out).toMatchObject({ ok: true, variant: 'wrap-ts' });
+    expect(fs.readText('/repo/.harness/extensions/test/extension.ts')).toContain(
+      "await ctx.exec('npm', ['test'])",
+    );
+  });
+
+  it('--wrap --js composes into the wrap-js variant', () => {
+    const out = scaffoldExtension({ name: 'test', wrap: 'npm test', js: true }, deps());
+    expect(out).toMatchObject({
+      ok: true,
+      variant: 'wrap-js',
+      path: '.harness/extensions/test/extension.js',
+    });
+  });
+
+  it('--record scaffolds the record-type stub at <name>/extension.ts (the .record.ts name is retired)', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'dev-survey', record: true },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out).toMatchObject({
+      ok: true,
+      path: '.harness/extensions/dev-survey/extension.ts',
+      verb: 'dev-survey',
+      variant: 'record-ts',
+    });
+    const contents = fs.readText('/repo/.harness/extensions/dev-survey/extension.ts');
+    expect(contents).toContain("kind: 'record'");
+    expect(contents).toContain("type: 'dev-survey'");
+    expect(contents).toContain('HarnessRecordType');
+  });
+});
+
+describe('scaffoldExtension — error paths (no file written on validation failure)', () => {
+  it.each([
+    'Greet',
+    '2fast',
+    'my verb',
+    'a/b',
+    'a\\b',
+    '..',
+    '',
+    'a-',
+    'a--b',
+  ])('rejects invalid name %j with E150 and writes nothing', (name) => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension({ name }, { fs, proc: new FakeProcess({}, '/repo') });
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.code).toBe(ErrorCodes.SCAFFOLD_INVALID_NAME);
+      expect(out.next_action.length).toBeGreaterThan(0);
+    }
+    expect(fs.writes).toEqual([]);
+  });
+
+  it.each([
+    'help',
+    'doctor',
+    'new',
+    'docs',
+    'skills',
+    'record',
+    'instructions',
+  ])('rejects reserved name %j with E151 and writes nothing', (name) => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension({ name }, { fs, proc: new FakeProcess({}, '/repo') });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe(ErrorCodes.SCAFFOLD_NAME_RESERVED);
+    expect(fs.writes).toEqual([]);
+  });
+
+  it('refuses to overwrite an existing entry file (E152) unless --force', () => {
+    const seeded = { '/repo/.harness/extensions/greet/extension.ts': '// existing' };
+    const fs = new FakeFs(seeded);
+    const out = scaffoldExtension({ name: 'greet' }, { fs, proc: new FakeProcess({}, '/repo') });
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe(ErrorCodes.SCAFFOLD_FILE_EXISTS);
+    expect(fs.writes).toEqual([]);
+    expect(fs.readText('/repo/.harness/extensions/greet/extension.ts')).toBe('// existing');
+  });
+
+  it('--force overwrites the entry but PRESERVES an existing authored instructions.md', () => {
+    const fs = new FakeFs({
+      '/repo/.harness/extensions/greet/extension.ts': '// existing',
+      '/repo/.harness/extensions/greet/instructions.md': '# Hand-authored briefing',
+    });
+    const out = scaffoldExtension(
+      { name: 'greet', force: true },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out.ok).toBe(true);
+    expect(fs.readText('/repo/.harness/extensions/greet/extension.ts')).toBe(minimalTs('greet'));
+    expect(fs.readText('/repo/.harness/extensions/greet/instructions.md')).toBe(
+      '# Hand-authored briefing',
+    );
+  });
+
+  it('maps a write/mkdir failure to E153', () => {
+    const throwingFs: FsPort = {
+      exists: () => false,
+      readText: () => null,
+      readdir: () => [],
+      mkdirp: () => {
+        throw new Error('EACCES');
+      },
+      writeText: () => {
+        throw new Error('EACCES');
+      },
+    };
+    const out = scaffoldExtension(
+      { name: 'greet' },
+      { fs: throwingFs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe(ErrorCodes.SCAFFOLD_WRITE_FAILED);
+  });
+
+  it.each([
+    'node -e "x"',
+    "echo 'hi'",
+    'echo `date`',
+    'a && b',
+    'echo $' + '{HOME}',
+    '  ',
+  ])('rejects an unsafe --wrap command %j with E108 and writes nothing', (wrap) => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'greet', wrap },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) {
+      expect(out.code).toBe(ErrorCodes.INVALID_ARGS);
+      expect(out.next_action.length).toBeGreaterThan(0);
+    }
+    expect(fs.writes).toEqual([]);
+  });
+
+  it('accepts a simple multi-token --wrap command', () => {
+    const fs = new FakeFs();
+    const out = scaffoldExtension(
+      { name: 'demo', wrap: 'npm run demo' },
+      { fs, proc: new FakeProcess({}, '/repo') },
+    );
+    expect(out.ok).toBe(true);
+    expect(fs.readText('/repo/.harness/extensions/demo/extension.ts')).toContain(
+      "ctx.exec('npm', ['run', 'demo'])",
+    );
+  });
+});

@@ -1,0 +1,1371 @@
+{
+  "schema_version": "harnessability-assessment.v0.2",
+  "run": {
+    "timestamp_utc": "20260609T125423Z",
+    "repo_root": "/private/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/cobra",
+    "repo_name": "cobra",
+    "branch": "main",
+    "commit": "ad460ea8f249db69c943a365fb84f3a59042d54e",
+    "mode": "safe-probe",
+    "commands_executed": [
+      "git status --short",
+      "git branch --show-current",
+      "git rev-parse HEAD",
+      "npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund",
+      "./node_modules/.bin/harness doctor --json",
+      "go env GOVERSION GOPATH GOMODCACHE",
+      "static file inspection and ripgrep searches"
+    ],
+    "commands_skipped": [
+      "service boot: not applicable for Go library",
+      "go test ./... during assessment: reserved for the boot extension verification step",
+      "make test: skipped because Makefile install_deps runs go get",
+      "external service calls: none needed"
+    ],
+    "safety_notes": [
+      "No secret values read.",
+      "No product-code changes applied.",
+      "No services booted during assessment.",
+      "Assessment writes limited to .harness/reports/harnessability/."
+    ]
+  },
+  "verdict": {
+    "operate_today_percent": 74,
+    "operate_today_grade": "B",
+    "adaptability_percent": 70,
+    "adaptability_grade": "B",
+    "harnessability_index_percent": 72,
+    "harnessability_index_grade": "B",
+    "readiness_level": "H2",
+    "highest_proof_level": "L2 Static/build/test",
+    "target_proof_level": "L3 Runtime interaction",
+    "confidence": "high",
+    "final_grade": "B"
+  },
+  "harness_surfaces": [
+    {
+      "name": "Makefile command surface",
+      "path": "Makefile",
+      "kind": "generic",
+      "status": "present",
+      "notes": "Provides all/fmt/lint/test/richtest/install_deps/clean; make test mutates dependency state via go get."
+    },
+    {
+      "name": "Contributor run/test guidance",
+      "path": "CONTRIBUTING.md",
+      "kind": "prior",
+      "status": "present",
+      "notes": "Documents go test ./..., make test, and make all."
+    },
+    {
+      "name": "Harness governance file",
+      "path": ".harness/engineering-harness.md",
+      "kind": "canonical",
+      "status": "absent at assessment time",
+      "notes": "Will be hand-written later in this setup flow because no harness init writer exists."
+    }
+  ],
+  "topology": {
+    "primary_type": "library",
+    "languages": [
+      "Go"
+    ],
+    "runtimes": [
+      "go"
+    ],
+    "package_roots": [
+      "."
+    ],
+    "service_types": [
+      "library",
+      "CLI framework"
+    ],
+    "frameworks": [
+      "Cobra command framework"
+    ],
+    "ci": [
+      ".github/workflows/test.yml"
+    ],
+    "is_monorepo": false,
+    "notes": "Single Go module for a CLI application framework plus documentation generation helpers under doc/ and a Hugo documentation site under site/."
+  },
+  "axis_a_operate_today": [
+    {
+      "id": "A1",
+      "name": "Cold-start orientation and repo map",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "README.md explains Cobra as a Go CLI library and points to cobra.dev/user guide.",
+        "CONTRIBUTING.md documents go test ./..., make test, and make all for contributors."
+      ],
+      "notes": "Good product orientation and contribution notes, but no canonical first-session engineering harness map yet.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A2",
+      "name": "Setup and environment contract",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "go.mod declares module github.com/spf13/cobra and Go 1.15 compatibility.",
+        ".github/workflows/test.yml runs a Go matrix and setup-go; Makefile lists fmt/test/lint targets."
+      ],
+      "notes": "Tool and dependency discovery is mostly through Go conventions and CI; no devcontainer/tool-version/doctor preflight.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A3",
+      "name": "Locality of infrastructure and external-dependency exposure",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Static scan found no databases, queues, object stores, auth providers, payment/email/SMS/webhook integrations, or required service URLs.",
+        "Tests exercise in-memory command objects and buffers rather than remote infrastructure."
+      ],
+      "notes": "Runtime proof is not blocked by product infrastructure; only Go module/tool downloads may be needed on a cold machine.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A4",
+      "name": "Harness front door and command discoverability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Makefile exposes all/fmt/lint/test/richtest/install_deps/clean.",
+        "CONTRIBUTING.md names go test ./..., make test, and make all."
+      ],
+      "notes": "There is a conventional Makefile but no canonical .harness governance file or harness verb before this setup flow.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A5",
+      "name": "Boot and health/readiness path",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "For this Go library, go test ./... is the health/readiness signal; CI runs richgo-backed test lanes across OS/Go versions.",
+        "Makefile default all runs fmt then test."
+      ],
+      "notes": "Library health can be proven without a server boot. make test is less safe as a boot command because install_deps runs go get; prefer go test ./....",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A6",
+      "name": "Seed, fixture, reset, and cleanup state",
+      "band": "Not applicable",
+      "points": null,
+      "evidence": [
+        "Cobra is a stateless Go library; test state is command objects, arguments, buffers, and generated documentation strings."
+      ],
+      "notes": "No persistent datastore or service state requires seed/reset. File outputs in tests are local/generated and isolated by test code.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A7",
+      "name": "Supported interaction surfaces",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Tests use Command.SetArgs, SetOut, SetErr, ExecuteC, ExecuteContext, and generated completion/doc functions as supported library interaction surfaces.",
+        "README documents Cobra command/flag/help/completion/manpage behavior."
+      ],
+      "notes": "Agents can exercise real library behavior through Go tests and small fixture commands.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A8",
+      "name": "Existing deterministic back-pressure sensors",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "go test ./... is documented and CI-enforced.",
+        "Makefile fmt wraps gofmt -l and .golangci.yml configures golangci-lint; CI also runs addlicense and golangci-lint."
+      ],
+      "notes": "Strong L2 sensors exist; local/CI differ because CI uses richgo and matrix/lint/license checks that are not a single local command.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A9",
+      "name": "Observability and evidence artifacts",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "go test -v ./... and richgo produce command output and exit codes.",
+        "No JSON test report, coverage artifact, or structured harness evidence path was detected before setup."
+      ],
+      "notes": "Evidence is deterministic but mostly terminal output, not portable structured artifacts.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "A10",
+      "name": "Compounding harness loop",
+      "band": "Absent",
+      "points": 0,
+      "evidence": [
+        "No .harness/ records, difficulty ledger, or retrospective loop existed before this setup run."
+      ],
+      "notes": "This setup flow will add the first harness reports and retro record.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "axis_b_adaptability": [
+    {
+      "id": "B1",
+      "name": "Structural coupling and blast radius",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Core behavior is concentrated in command.go and related completion/doc files; doc/ is a separate package.",
+        "Large central files such as command.go and completions_test.go imply broad blast radius for core command behavior."
+      ],
+      "notes": "Structure is understandable but centralized.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B2",
+      "name": "Temporal/change coupling",
+      "band": "Unknown",
+      "points": 0,
+      "evidence": [],
+      "notes": "Git co-change history was not mined in this static/safe-probe assessment.",
+      "provenance": "unknown",
+      "confidence": "low"
+    },
+    {
+      "id": "B3",
+      "name": "Cohesion and locality of change",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Tests are colocated with the Go files and doc package tests live under doc/.",
+        "Completion, active-help, docs, flags, and args behaviors have separate files, but the root command implementation remains a central hotspot."
+      ],
+      "notes": "Most behavior has nearby tests; central command abstractions still create broad edit impact.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B4",
+      "name": "Seams, substitution, and dependency inversion",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Command exposes SetArgs, SetOut, SetErr, ExecuteC, ExecuteContext, and template hooks that tests use directly.",
+        "Tests use bytes.Buffer and constructed Command trees instead of private shortcuts or remote systems."
+      ],
+      "notes": "The public API itself provides strong test seams for interaction and observation.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B5",
+      "name": "Hermetic, offline, and isolated testability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Static test scan shows in-memory command execution, buffers, and generated docs/completions.",
+        "Only optional shellcheck execution is gated by a which shellcheck probe; product tests do not require live services."
+      ],
+      "notes": "Cold machines may need Go modules, but product behavior tests are hermetic once dependencies are available.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B6",
+      "name": "Side-effect isolation and external-effect sinks",
+      "band": "Not applicable",
+      "points": null,
+      "evidence": [
+        "No payment, email, SMS, webhook, queue, analytics, object-store, or model-provider side effects detected."
+      ],
+      "notes": "No external-effect sink is required for this repo topology.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B7",
+      "name": "State evolution and consequence verification",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Consequences are stdout/stderr buffers, command return values, completion output, and generated documentation strings asserted by tests.",
+        "No persistent state evolution or generated artifact retention path exists outside tests."
+      ],
+      "notes": "Good L2 consequence assertions; no reusable harness evidence artifact yet.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B8",
+      "name": "Architecture boundary enforceability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "golangci-lint config enables vet/staticcheck/gosec/errcheck and formatters.",
+        "No explicit package/layer boundary rule was detected."
+      ],
+      "notes": "Generic static rules are encoded; architectural constraints are mostly by convention and review.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B9",
+      "name": "Complexity, size, and navigability thresholds",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        ".golangci.yml has many quality linters enabled but disables complexity/length linters such as gocyclo, funlen, dupl, and lll.",
+        "Large files command.go and completions_test.go can strain context windows."
+      ],
+      "notes": "Lint quality is strong, but complexity and file-size back pressure is intentionally light.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B10",
+      "name": "Inner-loop speed and repeatability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "go test ./... and gofmt are conventional fast local loops for a Go library.",
+        "No service startup, seed, or reset is needed for the primary proof lane."
+      ],
+      "notes": "The fastest reliable loop should avoid Makefile install_deps/go get and call go test ./... directly.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "backpressure_surfaces": [
+    {
+      "category": "static",
+      "name": "Go test suite",
+      "command_or_check": "go test ./...",
+      "scope": "all Go packages",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<60s expected for library test lane",
+      "output_artifact": "stdout/stderr and exit code",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "CONTRIBUTING.md; Makefile; .github/workflows/test.yml"
+    },
+    {
+      "category": "static",
+      "name": "gofmt formatting check",
+      "command_or_check": "test -z $(gofmt -l $(find . -name \"*.go\"))",
+      "scope": "Go source",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<60s",
+      "output_artifact": "gofmt diff on failure",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "Makefile fmt target"
+    },
+    {
+      "category": "static",
+      "name": "golangci-lint",
+      "command_or_check": "golangci-lint run -v",
+      "scope": "Go source",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "5m timeout configured",
+      "output_artifact": "linter diagnostics",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".golangci.yml; .github/workflows/test.yml"
+    },
+    {
+      "category": "static",
+      "name": "license header check",
+      "command_or_check": "docker run ghcr.io/google/addlicense ... -check .",
+      "scope": "repository files",
+      "local_available": false,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "CI job output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".github/workflows/test.yml"
+    },
+    {
+      "category": "consequence",
+      "name": "Command execution assertions",
+      "command_or_check": "go test ./...",
+      "scope": "constructed Cobra commands",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<60s expected",
+      "output_artifact": "test assertions over buffers/errors/generated docs",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "command_test.go; completions_test.go; doc/*_test.go"
+    },
+    {
+      "category": "observability",
+      "name": "Verbose test output",
+      "command_or_check": "go test -v ./...",
+      "scope": "all Go packages",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<60s expected",
+      "output_artifact": "terminal output only",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "Makefile test/richtest targets"
+    }
+  ],
+  "scenario_probes": [
+    {
+      "name": "CLI library behavior loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "Command.SetArgs",
+        "Command.SetOut",
+        "Command.SetErr",
+        "ExecuteC",
+        "ExecuteContext"
+      ],
+      "likely_edit_target": "command.go or command_test.go",
+      "required_setup": "Go toolchain and module dependencies",
+      "supported_interaction": "Construct a Command tree in a Go test, pass args, execute it, and inspect returned command/error/output buffer.",
+      "expected_observable_consequence": "stdout/stderr buffer, error value, selected subcommand, help/completion output",
+      "deterministic_verdict": "go test ./...",
+      "reset_cleanup_path": "test-local command objects and buffers; no persistent reset needed",
+      "local_substitute_available": "in-memory commands and bytes.Buffer",
+      "remote_or_secret_blockers": "none",
+      "highest_plausible_proof_level": "L3 Runtime interaction",
+      "what_agent_would_infer": "No structured artifact persists beyond test output unless harness captures it.",
+      "highest_leverage_missing_sensor": "harness boot/proof verb that captures go test output into a stable evidence path."
+    },
+    {
+      "name": "Completion generation loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "bash/fish/powershell/zsh completion generators",
+        "completion tests"
+      ],
+      "likely_edit_target": "completions.go or shell-specific completion files",
+      "required_setup": "Go toolchain; shellcheck optional for bash completion validation",
+      "supported_interaction": "Generate completion script for a fixture command.",
+      "expected_observable_consequence": "Generated script text and optional shellcheck verdict",
+      "deterministic_verdict": "go test ./... with optional shellcheck path if installed",
+      "reset_cleanup_path": "in-memory buffers",
+      "local_substitute_available": "fixture commands in tests",
+      "remote_or_secret_blockers": "none",
+      "highest_plausible_proof_level": "L3 Runtime interaction",
+      "what_agent_would_infer": "Cross-shell behavior beyond generated text is not fully exercised locally.",
+      "highest_leverage_missing_sensor": "Document the optional shellcheck lane and expose it as a separate harness check."
+    },
+    {
+      "name": "Documentation generation loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "doc package",
+        "md/man/rest/yaml doc tests"
+      ],
+      "likely_edit_target": "doc/*.go",
+      "required_setup": "Go toolchain",
+      "supported_interaction": "Run doc generator functions against fixture commands.",
+      "expected_observable_consequence": "Generated documentation string/man/rest/yaml output",
+      "deterministic_verdict": "go test ./...",
+      "reset_cleanup_path": "in-memory buffers/files from tests",
+      "local_substitute_available": "fixture command trees",
+      "remote_or_secret_blockers": "none",
+      "highest_plausible_proof_level": "L3 Runtime interaction",
+      "what_agent_would_infer": "Rendered site behavior is not proven by the Go test lane.",
+      "highest_leverage_missing_sensor": "Optional site/docs build harness if documentation site edits are in scope."
+    },
+    {
+      "name": "Static quality loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "gofmt",
+        "golangci-lint",
+        "addlicense CI job"
+      ],
+      "likely_edit_target": "any Go source",
+      "required_setup": "Go toolchain; golangci-lint optional locally; Docker for local addlicense parity",
+      "supported_interaction": "Run formatting/lint/license checks.",
+      "expected_observable_consequence": "Diagnostics or exit code",
+      "deterministic_verdict": "make fmt; golangci-lint run -v; CI addlicense job",
+      "reset_cleanup_path": "none",
+      "local_substitute_available": "gofmt is native; golangci-lint install documented only by warning",
+      "remote_or_secret_blockers": "none",
+      "highest_plausible_proof_level": "L2 Static/build/test",
+      "what_agent_would_infer": "Whether local machine has golangci-lint and Docker for CI parity.",
+      "highest_leverage_missing_sensor": "doctor/preflight command naming missing local tools without mutating state."
+    }
+  ],
+  "command_tiers": [
+    {
+      "command_or_check": "go test ./...",
+      "tier": "fast",
+      "category": "test",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<60s expected",
+      "output_artifact": "stdout/stderr and exit code",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "CONTRIBUTING.md; CI test jobs"
+    },
+    {
+      "command_or_check": "go test ./...",
+      "tier": "health",
+      "category": "test",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<60s expected",
+      "output_artifact": "stdout/stderr and exit code",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "Library health/readiness path"
+    },
+    {
+      "command_or_check": "make all",
+      "tier": "ci_equivalent",
+      "category": "format+test",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": true,
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "gofmt/test output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "Makefile default/all target; mutates via install_deps/go get through test target"
+    },
+    {
+      "command_or_check": "golangci-lint run -v",
+      "tier": "proof",
+      "category": "lint",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "5m timeout configured",
+      "output_artifact": "linter diagnostics",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".golangci.yml; CI workflow"
+    },
+    {
+      "command_or_check": "docker run ghcr.io/google/addlicense ... -check .",
+      "tier": "ci_equivalent",
+      "category": "license",
+      "local_available": false,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "license check output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".github/workflows/test.yml lic-headers job"
+    },
+    {
+      "command_or_check": "npx harness record retro --slug <repo>-flow",
+      "tier": "retro_or_improve",
+      "category": "harness",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": true,
+      "expected_duration_if_known": "<10s",
+      "output_artifact": ".harness/records/retro/*.md",
+      "proof_level": "L1",
+      "status": "verified",
+      "evidence": "Harness core installed during setup flow"
+    }
+  ],
+  "environment_variables": [
+    {
+      "name": "GO111MODULE",
+      "required": "optional",
+      "purpose_inferred": "Forces Go module mode in CI.",
+      "source_files": [
+        ".github/workflows/test.yml"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "CI sets GO111MODULE=on; modern Go defaults make this mostly advisory."
+    },
+    {
+      "name": "GOBIN",
+      "required": "optional",
+      "purpose_inferred": "CI install path for richgo/gox helper binaries.",
+      "source_files": [
+        ".github/workflows/test.yml"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Only needed for the richgo CI-style lane."
+    },
+    {
+      "name": "RICHGO_FORCE_COLOR",
+      "required": "optional",
+      "purpose_inferred": "Forces colored richgo output in CI.",
+      "source_files": [
+        ".github/workflows/test.yml"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Not needed for plain go test ./...."
+    },
+    {
+      "name": "BASH_COMP_DEBUG_FILE",
+      "required": "optional",
+      "purpose_inferred": "Enables bash completion debug logging.",
+      "source_files": [
+        "completions.go"
+      ],
+      "example_present": "no",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Optional diagnostic path; unset is safe."
+    },
+    {
+      "name": "COBRA_ACTIVE_HELP",
+      "required": "optional",
+      "purpose_inferred": "Controls Cobra active help globally.",
+      "source_files": [
+        "active_help.go"
+      ],
+      "example_present": "no",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Optional runtime behavior flag for Cobra-powered apps."
+    },
+    {
+      "name": "<APP>_ACTIVE_HELP",
+      "required": "optional",
+      "purpose_inferred": "Controls active help for a specific Cobra application.",
+      "source_files": [
+        "active_help.go"
+      ],
+      "example_present": "no",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Name depends on the root command."
+    },
+    {
+      "name": "SOURCE_DATE_EPOCH",
+      "required": "optional",
+      "purpose_inferred": "Controls reproducible manpage date output.",
+      "source_files": [
+        "doc/man_docs.go"
+      ],
+      "example_present": "no",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Optional reproducibility input."
+    }
+  ],
+  "external_dependencies": [
+    {
+      "name": "Go module registry/proxy",
+      "type": "external_api",
+      "where_detected": "go.mod/go.sum and cold-start Go dependency resolution",
+      "local_option": "native",
+      "remote_required": "optional",
+      "secret_required": "no",
+      "mutation_risk": "none",
+      "proof_blocked_by_dependency": "partial",
+      "recommended_affordance": "Keep go.sum current and use go test ./... directly; optionally document GOPROXY/cache expectations for offline agents."
+    },
+    {
+      "name": "golangci-lint binary distribution",
+      "type": "external_api",
+      "where_detected": "Makefile warning and CI golangci-lint action",
+      "local_option": "native",
+      "remote_required": "optional",
+      "secret_required": "no",
+      "mutation_risk": "none",
+      "proof_blocked_by_dependency": "partial",
+      "recommended_affordance": "Add a non-mutating doctor/preflight that reports whether golangci-lint is installed and how to install it."
+    },
+    {
+      "name": "addlicense container image",
+      "type": "external_api",
+      "where_detected": ".github/workflows/test.yml lic-headers job",
+      "local_option": "container",
+      "remote_required": "optional",
+      "secret_required": "no",
+      "mutation_risk": "none",
+      "proof_blocked_by_dependency": "partial",
+      "recommended_affordance": "Expose a local license-check command or document CI-only status."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "G001",
+      "title": "No canonical harness governance/front door before setup",
+      "axis": "operate_today",
+      "subsystem": "tools",
+      "loop_stage": "boot",
+      "backpressure_category": "static",
+      "scenario_impacted": "all",
+      "target_layer": "harness",
+      "encoding_type": "command",
+      "severity": "medium",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Add .harness/engineering-harness.md and a boot verb that wraps the safest Go health command.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    },
+    {
+      "id": "G002",
+      "title": "Makefile test target mutates dependency state via go get",
+      "axis": "operate_today",
+      "subsystem": "tools",
+      "loop_stage": "validate",
+      "backpressure_category": "static",
+      "scenario_impacted": "static quality loop",
+      "target_layer": "harness",
+      "encoding_type": "command",
+      "severity": "medium",
+      "status": "partial",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Use go test ./... as the harness boot/health command and avoid make test for non-mutating proof.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    },
+    {
+      "id": "G003",
+      "title": "CI/local equivalence is split across several tools",
+      "axis": "both",
+      "subsystem": "feedback",
+      "loop_stage": "validate",
+      "backpressure_category": "static",
+      "scenario_impacted": "static quality loop",
+      "target_layer": "harness",
+      "encoding_type": "diagnostic",
+      "severity": "medium",
+      "status": "partial",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Add a doctor/preflight or check command that names missing local tools and maps local commands to CI jobs.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "G004",
+      "title": "No structured evidence artifact for the primary proof lane",
+      "axis": "operate_today",
+      "subsystem": "observability",
+      "loop_stage": "observe",
+      "backpressure_category": "observability",
+      "scenario_impacted": "CLI library behavior loop",
+      "target_layer": "harness",
+      "encoding_type": "evidence",
+      "severity": "low",
+      "status": "weak",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Capture boot/test command, exit code, duration, and output path in a harness Envelope or run artifact.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "G005",
+      "title": "No compounding difficulty/retro loop before setup",
+      "axis": "operate_today",
+      "subsystem": "human_process",
+      "loop_stage": "improve",
+      "backpressure_category": "human_inferential",
+      "scenario_impacted": "all",
+      "target_layer": "harness",
+      "encoding_type": "workflow",
+      "severity": "medium",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Use harness record retro after setup and wire future runs to review records.",
+      "proof_level_unblocked": "L1",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    }
+  ],
+  "remediations": [
+    {
+      "id": "R001",
+      "title": "Encode the library health lane as harness boot",
+      "recommended_encoding": "boot verb running go test ./... and returning an Envelope with command, exit code, and next_action on failure",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "G001",
+        "G002",
+        "G004"
+      ]
+    },
+    {
+      "id": "R002",
+      "title": "Add a non-mutating local/CI preflight",
+      "recommended_encoding": "doctor/check verb that reports go, golangci-lint, Docker/addlicense availability and maps each to CI jobs",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "G003"
+      ]
+    },
+    {
+      "id": "R003",
+      "title": "Persist proof evidence for boot runs",
+      "recommended_encoding": ".harness/runs/<timestamp>/boot.json plus captured stdout/stderr path",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "G004"
+      ]
+    },
+    {
+      "id": "R004",
+      "title": "Start the retro/improvement record loop",
+      "recommended_encoding": "harness record retro with structured difficulty/magic-wand entries after each harness setup run",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L1",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "G005"
+      ]
+    }
+  ],
+  "product_code_affordances": [],
+  "harness_recommendations": [
+    {
+      "id": "HR001",
+      "title": "Create governance file from BIO contract",
+      "path": ".harness/engineering-harness.md",
+      "risk": "low",
+      "type": "suggested",
+      "summary": "Document boot, health, interaction, observation, sensors, evidence paths, gaps, and maturity for the Go library.",
+      "rationale": "The repo has good commands but no canonical engineering-harness contract.",
+      "requires_human_review": false
+    },
+    {
+      "id": "HR002",
+      "title": "Add boot extension",
+      "path": ".harness/extensions/boot.*",
+      "risk": "low",
+      "type": "suggested",
+      "summary": "Run go test ./... rather than make test to avoid go get mutation.",
+      "rationale": "Provides one honest, non-mutating harness front door for the repo health lane.",
+      "requires_human_review": false
+    },
+    {
+      "id": "HR003",
+      "title": "Add evidence capture for boot",
+      "path": ".harness/runs/",
+      "risk": "low",
+      "type": "suggested",
+      "summary": "Persist command, duration, exit code, status, and captured output.",
+      "rationale": "Turns terminal-only evidence into portable artifacts.",
+      "requires_human_review": true
+    }
+  ],
+  "applied_patches": [],
+  "onboarding_consolidation": [
+    {
+      "item": "Contribution test commands",
+      "action": "fold_in",
+      "source_path": "CONTRIBUTING.md",
+      "notes": "Promote go test ./... and make all context into .harness/engineering-harness.md."
+    },
+    {
+      "item": "Makefile command map",
+      "action": "fold_in",
+      "source_path": "Makefile",
+      "notes": "Use Makefile as prior art but choose non-mutating go test ./... for boot."
+    },
+    {
+      "item": "CI checks",
+      "action": "fold_in",
+      "source_path": ".github/workflows/test.yml",
+      "notes": "Capture local/CI divergence: CI richgo matrix, golangci-lint, and addlicense checks."
+    }
+  ],
+  "first_safe_session_plan": [
+    "Read .harness/engineering-harness.md once created, then verify npx harness doctor --json.",
+    "Run npx harness boot to execute go test ./... and inspect the Envelope status/next_action.",
+    "For a scoped code change, add or update colocated Go tests using Command.SetArgs/SetOut/SetErr/ExecuteC as the interaction surface.",
+    "Use gofmt/golangci-lint as stronger follow-up checks when local tools are installed.",
+    "Record retro friction rather than silently encoding new behavior during the same run."
+  ],
+  "human_questions": [
+    {
+      "id": "Q001",
+      "question": "Should local harness parity include CI-only addlicense and golangci-lint checks, or is go test ./... the intended fast proof lane?",
+      "reason": "CI has stronger checks than the simplest documented local command.",
+      "answer_type": "policy decision"
+    }
+  ],
+  "evidence_log": [
+    {
+      "source": "README.md",
+      "claim": "Cobra is a Go library for creating CLI applications and documents command/flag/help/completion concepts.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "CONTRIBUTING.md",
+      "claim": "Contributors are told to run go test ./..., make test, and make all.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "Makefile",
+      "claim": "make all runs fmt and test; test depends on install_deps, which runs go get -v ./....",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": ".github/workflows/test.yml",
+      "claim": "CI runs license headers, golangci-lint, and richgo tests across Unix/Windows Go versions.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": ".golangci.yml",
+      "claim": "Static quality checks include gofmt/goimports formatters and linters such as errcheck, gocritic, gosec, govet, staticcheck, and unused.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "command_test.go and completions_test.go",
+      "claim": "Tests exercise command behavior through public interaction seams and in-memory buffers.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "static external dependency scan",
+      "claim": "No product runtime databases, queues, object stores, auth, email, payment, SMS, webhook, analytics, or model-provider dependencies were detected.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "report_paths": {
+    "run_dir": ".harness/reports/harnessability/001-cobra",
+    "report_md": ".harness/reports/harnessability/001-cobra/report.md",
+    "report_json": ".harness/reports/harnessability/001-cobra/report.json",
+    "summary_md": ".harness/reports/harnessability/001-cobra/summary.md",
+    "evidence_jsonl": ".harness/reports/harnessability/001-cobra/evidence.jsonl",
+    "latest_md": ".harness/reports/harnessability/latest.md",
+    "latest_json": ".harness/reports/harnessability/latest.json",
+    "schema_json": ".harness/reports/harnessability/schema.json"
+  },
+  "assessment_matrix": [
+    {
+      "area": "Engineering flows",
+      "grade": "B",
+      "score_percent": 78,
+      "rationale": "Go test, Makefile, CONTRIBUTING, and CI provide clear build/test/review flows; no SDD-like planning flow detected."
+    },
+    {
+      "area": "Pre-commit & local gates",
+      "grade": "C",
+      "score_percent": 62,
+      "rationale": "gofmt, go test, and golangci-lint are available, but no git-hook/pre-commit wiring was detected and Makefile test mutates dependency state."
+    },
+    {
+      "area": "CI / local equivalence",
+      "grade": "C",
+      "score_percent": 68,
+      "rationale": "Local commands map to CI concepts, but CI uses richgo, OS/Go matrix, addlicense, and golangci action while local parity is split."
+    },
+    {
+      "area": "Existing harness concept",
+      "grade": "C",
+      "score_percent": 58,
+      "rationale": "Makefile and docs are useful but diffuse; no canonical .harness contract existed before setup."
+    },
+    {
+      "area": "Test mechanisms",
+      "grade": "A",
+      "score_percent": 88,
+      "rationale": "Broad hermetic tests use public seams and in-memory buffers to prove real library behavior."
+    },
+    {
+      "area": "External-dependency pressure",
+      "grade": "A",
+      "score_percent": 90,
+      "rationale": "No product runtime infrastructure or secret-gated services block local proof."
+    },
+    {
+      "area": "Code composition & seams",
+      "grade": "B",
+      "score_percent": 72,
+      "rationale": "Strong API seams and colocated tests, tempered by large central core files."
+    },
+    {
+      "area": "Observability & evidence",
+      "grade": "C",
+      "score_percent": 60,
+      "rationale": "Exit codes and verbose test output are deterministic, but structured artifacts are absent before harness setup."
+    }
+  ],
+  "engineering_flows": [
+    {
+      "name": "Contributor test flow",
+      "kind": "test",
+      "commands": [
+        "go test ./...",
+        "make test"
+      ],
+      "where_detected": "CONTRIBUTING.md",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "go test ./... is the safer non-mutating lane; make test runs install_deps/go get."
+    },
+    {
+      "name": "Makefile all flow",
+      "kind": "build",
+      "commands": [
+        "make all"
+      ],
+      "where_detected": "Makefile",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "Runs fmt then test."
+    },
+    {
+      "name": "CI test and quality flow",
+      "kind": "ci",
+      "commands": [
+        "richgo test via make richtest",
+        "golangci-lint-action",
+        "addlicense container check"
+      ],
+      "where_detected": ".github/workflows/test.yml",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "CI matrix spans Unix/Windows and Go versions."
+    },
+    {
+      "name": "Spec-driven planning",
+      "kind": "sdd",
+      "commands": [],
+      "where_detected": "none",
+      "canonical": "no",
+      "provenance": "evidence",
+      "notes": "No plans/ directory, RFC/ADR pipeline, or task skill flow detected."
+    }
+  ],
+  "pre_commit_gates": [
+    {
+      "name": "gofmt check",
+      "mechanism": "Makefile target",
+      "checks": [
+        "gofmt -l"
+      ],
+      "local_available": true,
+      "ci_equivalent": false,
+      "notes": "Local Makefile target; CI equivalence is indirect through golangci formatters."
+    },
+    {
+      "name": "Go tests",
+      "mechanism": "manual command/CI",
+      "checks": [
+        "go test ./...",
+        "richgo test via make richtest"
+      ],
+      "local_available": true,
+      "ci_equivalent": true,
+      "notes": "Same product test intent, different runner in CI."
+    },
+    {
+      "name": "golangci-lint",
+      "mechanism": "Makefile target/CI action",
+      "checks": [
+        "golangci-lint run -v"
+      ],
+      "local_available": true,
+      "ci_equivalent": true,
+      "notes": "Makefile warns if binary missing; CI installs via action."
+    }
+  ],
+  "ci_local_equivalence": [
+    {
+      "check": "Go tests",
+      "ci_command": "RICHGO_FORCE_COLOR=1 PATH=$HOME/go/bin/:$PATH make richtest",
+      "local_command": "go test ./... or make test",
+      "equivalence": "equivalent",
+      "notes": "Same tests, but CI uses richgo and a Go/OS matrix."
+    },
+    {
+      "check": "Lint",
+      "ci_command": "golangci-lint-action args --verbose",
+      "local_command": "golangci-lint run -v",
+      "equivalence": "equivalent",
+      "notes": "CI action controls install/version; local requires user-installed binary."
+    },
+    {
+      "check": "License headers",
+      "ci_command": "docker run ghcr.io/google/addlicense ... -check .",
+      "local_command": "",
+      "equivalence": "one-sided",
+      "notes": "CI-only in discovered surfaces."
+    },
+    {
+      "check": "Formatting",
+      "ci_command": "golangci-lint formatters include gofmt/goimports",
+      "local_command": "make fmt",
+      "equivalence": "partial",
+      "notes": "Local make fmt is explicit; CI formatting is part of linter config/action."
+    }
+  ],
+  "existing_harness_concepts": [
+    {
+      "name": "Makefile",
+      "kind": "diffuse",
+      "surfaces": [
+        "Makefile"
+      ],
+      "coverage": "Partial",
+      "notes": "Useful command surface but not an engineering-harness contract or Envelope-producing front door."
+    },
+    {
+      "name": "Contributor docs",
+      "kind": "diffuse",
+      "surfaces": [
+        "CONTRIBUTING.md"
+      ],
+      "coverage": "Partial",
+      "notes": "Explains test commands for humans; not deterministic proof by itself."
+    },
+    {
+      "name": ".harness governance",
+      "kind": "canonical",
+      "surfaces": [
+        ".harness/engineering-harness.md"
+      ],
+      "coverage": "Absent before setup",
+      "notes": "To be created in S3 because harness init writer is not shipped."
+    }
+  ],
+  "deterministic_encoding_opportunities": [
+    {
+      "id": "DE001",
+      "title": "Contributor test guidance lives in prose",
+      "current_encoding": "doc",
+      "proposed_encoding": "boot/proof harness verb wrapping go test ./... with Envelope output",
+      "proof_level": "L2",
+      "rationale": "The command can fail deterministically and report next_action; prose cannot."
+    },
+    {
+      "id": "DE002",
+      "title": "Local/CI parity knowledge is scattered across Makefile and workflow YAML",
+      "current_encoding": "manual convention",
+      "proposed_encoding": "doctor/check verb listing local tool availability and CI mapping",
+      "proof_level": "L2",
+      "rationale": "Agents should not infer which CI checks are locally reproducible."
+    },
+    {
+      "id": "DE003",
+      "title": "Terminal-only test output is the main evidence artifact",
+      "current_encoding": "human-inferential terminal output",
+      "proposed_encoding": "captured boot evidence JSON plus output log path",
+      "proof_level": "L2",
+      "rationale": "Portable evidence lets later agents inspect exactly what ran and failed."
+    }
+  ],
+  "test_mechanisms": [
+    {
+      "name": "Constructed command fixtures",
+      "type": "fake",
+      "where_detected": "command_test.go; completions_test.go; doc/*_test.go",
+      "deterministic": "yes",
+      "notes": "Tests build real Cobra Command trees in memory and exercise public execution paths."
+    },
+    {
+      "name": "Output/error buffers",
+      "type": "sink",
+      "where_detected": "SetOut/SetErr with bytes.Buffer in tests",
+      "deterministic": "yes",
+      "notes": "CLI output side effects are captured and asserted without shelling out."
+    },
+    {
+      "name": "Argument injection",
+      "type": "dependency_injection",
+      "where_detected": "SetArgs in tests",
+      "deterministic": "yes",
+      "notes": "Tests inject command-line args directly into command execution."
+    },
+    {
+      "name": "Optional shellcheck probe",
+      "type": "external_tool_probe",
+      "where_detected": "bash_completions_test.go",
+      "deterministic": "partial",
+      "notes": "Runs shellcheck only when present; useful but environment-dependent."
+    },
+    {
+      "name": "Generated documentation assertions",
+      "type": "consequence",
+      "where_detected": "doc/*_test.go",
+      "deterministic": "yes",
+      "notes": "Generated markdown/man/rest/yaml output is asserted by tests."
+    }
+  ],
+  "external_dependency_pressure": [
+    {
+      "name": "Product runtime infrastructure",
+      "pressure": "none",
+      "where_detected": "static scan",
+      "local_substitute": "not needed",
+      "notes": "No database/cache/queue/auth/external side-effect service detected."
+    },
+    {
+      "name": "Go module downloads",
+      "pressure": "partial",
+      "where_detected": "go.mod/go.sum",
+      "local_substitute": "module cache",
+      "notes": "Cold agents may need network once; no secrets required."
+    },
+    {
+      "name": "Local lint/license helper tools",
+      "pressure": "partial",
+      "where_detected": "Makefile and CI",
+      "local_substitute": "native/container",
+      "notes": "Can block full CI parity but not fast boot/test proof."
+    }
+  ],
+  "code_composition": [
+    {
+      "name": "Root cobra package",
+      "path": ".",
+      "role": "core library API",
+      "seams": [
+        "Command construction",
+        "SetArgs",
+        "SetOut",
+        "SetErr",
+        "ExecuteC",
+        "ExecuteContext",
+        "template hooks"
+      ],
+      "test_substitutable": "yes",
+      "notes": "Strong public seams; central command.go hotspot."
+    },
+    {
+      "name": "doc package",
+      "path": "doc/",
+      "role": "documentation generators",
+      "seams": [
+        "fixture commands",
+        "buffer/file output"
+      ],
+      "test_substitutable": "yes",
+      "notes": "Separate package with focused tests for generated outputs."
+    },
+    {
+      "name": "site documentation",
+      "path": "site/",
+      "role": "public documentation content",
+      "seams": [
+        "markdown content"
+      ],
+      "test_substitutable": "unknown",
+      "notes": "No local site build/check discovered in assessment."
+    }
+  ],
+  "candidate_first_harness_surfaces": [
+    {
+      "name": "boot",
+      "command": "go test ./...",
+      "tier": "boot",
+      "rationale": "Safest non-mutating health lane for this stateless Go library.",
+      "proof_level": "L2",
+      "effort": "XS"
+    },
+    {
+      "name": "doctor",
+      "command": "go version && command -v golangci-lint && command -v docker",
+      "tier": "doctor",
+      "rationale": "Make CI/local parity and missing tools explicit before agents infer.",
+      "proof_level": "L1",
+      "effort": "S"
+    },
+    {
+      "name": "evidence",
+      "command": "capture go test output and exit code under .harness/runs/",
+      "tier": "observe",
+      "rationale": "Turns deterministic terminal output into a portable artifact.",
+      "proof_level": "L2",
+      "effort": "S"
+    }
+  ],
+  "manual_operation_signals": [
+    {
+      "name": "CLA signing",
+      "where_detected": "CONTRIBUTING.md",
+      "operation": "Contributor signs CLA after PR",
+      "penalize": "no",
+      "notes": "Human governance step, not needed for local harness proof."
+    },
+    {
+      "name": "Slack support channel",
+      "where_detected": "CONTRIBUTING.md/README.md",
+      "operation": "Ask questions in community Slack",
+      "penalize": "no",
+      "notes": "Community support path, not an engineering-harness dependency."
+    }
+  ]
+}

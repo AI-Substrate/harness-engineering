@@ -1,0 +1,106 @@
+{
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/express",
+  "harnessSource": "local",
+  "harnessInstalled": true,
+  "harnessabilityGrade": "B",
+  "axisTuple": {
+    "operateTodayPercent": 76.7,
+    "operateTodayGrade": "B",
+    "adaptabilityPercent": 73.3,
+    "adaptabilityGrade": "B"
+  },
+  "assessmentReportPaths": {
+    "latestJson": ".harness/reports/harnessability/latest.json",
+    "latestMd": ".harness/reports/harnessability/latest.md",
+    "runDir": ".harness/reports/harnessability/001-express"
+  },
+  "abandoned": false,
+  "abandonReason": null,
+  "governanceWritten": true,
+  "governancePath": ".harness/engineering-harness.md",
+  "bootAuthored": true,
+  "bootRuns": true,
+  "bootPath": ".harness/extensions/boot.js",
+  "retroRecorded": true,
+  "retroRecordPaths": [
+    ".harness/records/retro/2026-06-09-express-flow.md"
+  ],
+  "verdict": "PASS",
+  "summary": "Ran the full harness setup flow against the fresh Express clone. The local harness installed and `harness doctor --json` returned an Envelope, the harnessability assessment produced grade B with Operate-Today B (76.7%) and Adaptability B (73.3%), the repo passed the abandonment gate, governance was hand-written with all eight BIO fields, a `boot` extension was scaffolded through `harness new` and verified loaded/runnable, and a retro record was scaffolded and filled through `harness record retro`.",
+  "assessment": {
+    "readinessLevel": "H3",
+    "highestProofLevel": "L4",
+    "confidence": "high",
+    "harnessabilityIndexPercent": 75.0,
+    "harnessabilityIndexGrade": "B"
+  },
+  "independentVerification": {
+    "skillsDoctor": true,
+    "assessmentLatestJsonRead": true,
+    "governanceBioFieldsPresent": 8,
+    "doctorLoadedBoot": true,
+    "helpListedBoot": true,
+    "bootEnvelopeStatus": "ok",
+    "bootCommandExercisedRepo": "npm test",
+    "retroRecordReadBack": true
+  },
+  "retrospective": {
+    "workedWell": "The repo-local skills resolved cleanly, the local file install exposed `npx harness`, the add-extension path scaffolded a loadable boot verb quickly, and Express already had a strong local Mocha/Supertest proof lane that made the boot command straightforward.",
+    "confusing": "The shell did not expose `MINIH_PROJECT_ROOT`, `harness doctor --json` reported a source-checkout-style cli-build degradation inside an installed target repo, and one plain boot invocation initially errored even though `--json`, direct `npm test`, and later plain boot runs passed.",
+    "magicWand": "Ship a non-interactive `harness setup --json --repo <path>` orchestrator that delegates to the same child setup skills, emits step Envelopes, and includes a real `harness init` writer for the BIO governance doc.",
+    "magicWandTarget": "project",
+    "coordination": {
+      "peerUpdatesSent": 0,
+      "unresolvedPeerRequests": 0,
+      "statePublished": false,
+      "notes": "Single-shot run; no peer coordination channel was used."
+    },
+    "difficulties": [
+      {
+        "id": "VF-001",
+        "layer": "minih",
+        "category": "config",
+        "description": "The shell did not expose MINIH_PROJECT_ROOT even though the run instructions required starting from it.",
+        "mitigation": "Used the literal project root from the execution context: ~/substrate/harness-engineering.",
+        "workaround": "Used the literal project root from the execution context.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-002",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "There is no shipped harness init writer, so the governance doc had to be hand-written from the BIO template.",
+        "mitigation": "Read the governance template and wrote .harness/engineering-harness.md with all eight BIO fields.",
+        "workaround": "Hand-wrote the governance doc as the recipe explicitly allows.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-003",
+        "layer": "project",
+        "category": "debug",
+        "description": "npx harness doctor --json worked but reported cli-build degraded because it looked for harness/cli/dist inside the target clone.",
+        "mitigation": "Treated the working npx harness entrypoint plus loaded extension/record-type discovery as sufficient while preserving the degraded doctor status.",
+        "workaround": "Relied on command-specific verification (`harness help`, `harness boot`) instead of doctor being fully green.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-004",
+        "layer": "project",
+        "category": "test",
+        "description": "The first plain `npx harness boot` invocation returned error even though `npx harness boot --json` and direct `npm test` passed immediately afterward.",
+        "mitigation": "Re-ran the boot with --json, direct npm test, HARNESS_JSON=1, NO_COLOR=1, and plain mode; recorded bootRuns true only after a real passing boot.",
+        "workaround": "Used JSON and direct command verification to establish the boot exercised the repo and returned an honest ok Envelope.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-005",
+        "layer": "project",
+        "category": "test",
+        "description": "A duplicate final `npx harness boot --json` verification hung in Mocha after earlier successful boot verification.",
+        "mitigation": "Inspected the process tree and terminated only the specific stuck duplicate boot process IDs, keeping the earlier successful boot evidence.",
+        "workaround": "Killed PIDs 10988, 10955, and 10936 after confirming they belonged to the duplicate target-repo boot check.",
+        "severity": "degrading"
+      }
+    ]
+  }
+}

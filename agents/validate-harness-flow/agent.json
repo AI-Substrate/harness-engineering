@@ -1,0 +1,28 @@
+{
+  "$schema": "https://minih.dev/schemas/agent-manifest.json",
+  "name": "validate-harness-flow",
+  "version": "0.2.0",
+  "description": "Single-shot onboarding probe. Given a freshly-cloned repo (targetRepo) with no harness, it must figure the harness product out from its own README, documentation, and installed skills — set up a working engineering harness in the clone, prove it works, and record its experience with the harness's own mechanisms as it discovers them. Emits a structured PASS|FAIL|ABANDONED report plus a dual-layer (project|minih) retrospective; the orchestrator's --collect grades the clone with deterministic probes, keeping this report as the experiential layer.",
+  "author": "AI-Substrate",
+  "tags": ["test", "dogfood", "harness", "onboarding"],
+  "minihVersion": ">=0.3.0",
+  "type": "minih-agent",
+  "files": [
+    {
+      "path": "prompt.md",
+      "description": "The goal brief: resolve the product root, then — starting from the product repo's README — set up a working engineering harness in the clone, prove it, and report. Carries test plumbing only (parameters, throwaway rule, abandonment-is-valid, router rail, report path); no recipe."
+    },
+    {
+      "path": "instructions.md",
+      "description": "Rules of the test: produce skill outputs by driving the skills (never hand-roll them), never drive an interactive router headless, independent verification is mandatory, abandonment is a valid outcome, honest statuses, throwaway writes only, retros surfaced never auto-implemented, capture friction at the moment of friction (VF-NNN, layer-tagged project|minih)."
+    },
+    {
+      "path": "input-schema.json",
+      "description": "Params: targetRepo (required abs path to the clone), harnessSource (local|github — where the product is installed from), keepTarget (leave the clone on disk)."
+    },
+    {
+      "path": "output-schema.json",
+      "description": "Structured report: targetRepo, harnessabilityGrade + axisTuple, abandoned + abandonReason, bootAuthored, bootRuns, retroRecorded + retroRecordPaths[], verdict (PASS|FAIL|ABANDONED), summary, and a dual-layer retrospective (workedWell/confusing/magicWand/magicWandTarget/difficulties). Consumed by the orchestrator's --collect rollup as the experiential layer beside its deterministic probes."
+    }
+  ]
+}

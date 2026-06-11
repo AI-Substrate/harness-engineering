@@ -1,0 +1,10 @@
+{
+  "name": "harness-extension-test-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal fixture repo copied into a temp dir by the install-and-validate-test-extension agent. Provides a real `demo` script so a `--wrap` extension has an actual command to wrap.",
+  "scripts": {
+    "demo": "node -e \"console.log('demo ok')\""
+  }
+}

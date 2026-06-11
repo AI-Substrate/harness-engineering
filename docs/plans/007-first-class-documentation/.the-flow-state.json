@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "first-class-documentation",
+  "plan_dir": "docs/plans/007-first-class-documentation",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/007-first-class-documentation/first-class-documentation-plan.md\"",
+  "intent": "First-class documentation support for the harness CLI — discoverable, locally-readable docs for humans and agents, without precluding a future MCP server.",
+  "milestones_total": 5,
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-08T22:51:00Z",
+  "compacted_seams": [],
+  "status": "complete",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
+}

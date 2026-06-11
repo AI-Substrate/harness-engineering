@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "dogfood-harness-flow",
+  "plan_dir": "docs/plans/013-dogfood-harness-flow",
+  "mode": "Simple",
+  "cursor": "fix-fx001",
+  "recommended_next": "merge",
+  "now": "FX001 fix (validated) — implementing with code-review-companion",
+  "next": "Merge analysis (/plan-8) once the fix lands",
+  "_comment": "No engineering-harness governance doc in this repo -> harness loop nodes omitted (per the-flow sentinel). the-flow.md is generated FROM this file.",
+  "agents": [
+    { "id": "code-review-companion", "kind": "companion", "render": "wrap", "covers": ["fix-fx001"],
+      "note": "Power-On-Mode live reviewer over FX001 commits; supersedes /plan-7 for this fix." }
+  ],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research", "status": "done",
+      "command": "/plan-1a", "ran_at": "2026-06-09T11:42Z",
+      "user_input": "build a validate-harnessability-style minih extension that runs the FULL eng-harness-flow on 3 fresh public repos in parallel, collects retros, dogfood it ourselves, report back; never auto-implement retro improvements",
+      "note": "Dossier landed. Two near-perfect templates: validate-harnessability.ts (parallel orchestrator) + agents/install-and-validate-test-extension (setup-driving worker). Governance writer unshipped (hand-write harness.md). Retros are surfaced-not-applied (already guaranteed).",
+      "artifacts": ["research-dossier.md"], "next": ["spec"] },
+
+    { "id": "spec", "type": "spec", "label": "Spec", "status": "done",
+      "command": "/plan-1b", "ran_at": "2026-06-09T11:45Z",
+      "user_input": "Spec to be simple mode, accept other defaults",
+      "note": "Simple, CS-3. No NEEDS-CLARIFICATION left; Round 2 skipped. 11 ACs; defaults recorded for the 5 open questions. 4 workshop opportunities logged (WS-A..D), not run. validate-v2 ran (3 agents): VALIDATED WITH FIXES — tightened AC-5 (governance template pin), AC-6 (assessment->report field mapping), AC-8 (terminal-wait collection + DONE/TIMED_OUT/MISSING_REPORT), added AC-12 (culminating 3-parallel smoke). Thesis: advanced @ Contract.",
+      "artifacts": ["dogfood-harness-flow-spec.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan", "status": "done",
+      "command": "/plan-3", "ran_at": "2026-06-09T11:58Z",
+      "user_input": "go  +  remember we are to dogfood the skills (I will reload harness)",
+      "note": "Simple, READY. 7 gates PASS/N·A (G4 N/A). 12 tasks, single phase. No harness governance doc -> harness-loop rows omitted. Self-dogfooding made continuous (T010 across T001-T012).",
+      "artifacts": ["dogfood-harness-flow-plan.md"], "next": ["phases"] },
+
+    { "id": "phases", "type": "phase", "label": "Build (single phase, 12 tasks)", "status": "done",
+      "command": "/plan-6 --plan docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md",
+      "ran_at": "2026-06-09T13:15Z", "reconstructed": true,
+      "note": "T001-T012 done, 12/12. 4 worker runs PASS B/B (chalk x2, express, click, cobra); --collect rollup written. Companion findings F001-F008 addressed. Findings FIND-1..4 + bonus SURFACED (not implemented) per standing rule; worker harvest relocated to .harness/records/retro/.",
+      "artifacts": ["execution.log.md", "runs/ROLLUP.md"], "next": ["merge"] },
+
+    { "id": "fix-fx001", "type": "fix-loop", "label": "Fix FX001: doctor consumer-mode cli-build", "status": "in_progress",
+      "branch_of": "phases",
+      "command": "/plan-6-v2-implement-phase-companion --fix \"FX001\" --plan \"~/substrate/harness-engineering/docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md\"",
+      "user_input": "implement with code review companion please.",
+      "note": "From dogfood finding FIND-2 (hit by all 4 worker repos). Dossier validated (3 agents): VALIDATED WITH FIXES — 1 CRITICAL fixed pre-implementation (directory gate untestable with FakeFs exact-path semantics -> harness/cli/tsconfig.json file-marker gate). FIND-4 fixed separately (ea58be3); bonus raised as AI-Substrate/minih#39; FIND-1 (init) reserved for its own plan.",
+      "artifacts": ["fixes/FX001-doctor-consumer-mode-cli-build.md", "fixes/FX001-doctor-consumer-mode-cli-build.fltplan.md"], "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "known",
+      "command": "/plan-8", "note": "Read-only analysis; executes only on explicit PROCEED.", "next": [] }
+  ]
+}

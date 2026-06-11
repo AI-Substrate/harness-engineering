@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "add-extension-skill",
+  "plan_dir": "docs/plans/006-add-extension-skill",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge \"docs/plans/006-add-extension-skill/add-extension-skill-plan.md\"",
+  "intent": "a skill that scaffolds a new harness extension so teams can extend their harness easily",
+  "milestones_total": 4,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-08T10:30:00Z",
+  "compacted_seams": [],
+  "status": "complete",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
+}

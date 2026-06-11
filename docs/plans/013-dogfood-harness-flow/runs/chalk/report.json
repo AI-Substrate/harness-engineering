@@ -1,0 +1,92 @@
+{
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-10T05-03-54-224Z/chalk",
+  "harnessSource": "local",
+  "harnessInstalled": true,
+  "harnessabilityGrade": "B",
+  "axisTuple": {
+    "operateTodayPercent": 67,
+    "operateTodayGrade": "C",
+    "adaptabilityPercent": 81,
+    "adaptabilityGrade": "B"
+  },
+  "assessmentReportPaths": {
+    "latestJson": ".harness/reports/harnessability/latest.json",
+    "latestMd": ".harness/reports/harnessability/latest.md",
+    "runDir": ".harness/reports/harnessability/001-chalk"
+  },
+  "abandoned": false,
+  "abandonReason": null,
+  "bootAuthored": true,
+  "bootRuns": true,
+  "bootPath": ".harness/extensions/boot/extension.ts",
+  "bootEnvelope": {
+    "status": "ok",
+    "command": "npm test",
+    "coverageGenerated": true,
+    "evidence": [
+      {
+        "label": "coverage report",
+        "path": "coverage/lcov.info"
+      }
+    ]
+  },
+  "retroRecorded": true,
+  "retroRecordPaths": [
+    ".harness/records/retro/2026-06-10/001-validate-harness-flow.md"
+  ],
+  "verdict": "PASS",
+  "summary": "Installed the local harness CLI into the throwaway Chalk clone, drove the harnessability assessment skill to produce the required reports, used `harness new` through the add-extension flow to author a `boot` extension, and independently verified `harness doctor`, `harness help`, `harness instructions boot`, and `harness boot --json`. The final boot honestly runs Chalk's canonical `npm test` lane and returns an ok envelope with coverage evidence; a retro record was created and filled through the harness record mechanism.",
+  "retrospective": {
+    "workedWell": "Once the CLI was available, the core harness surfaces were straightforward: `harness new boot --wrap \"npm test\"` produced a loadable extension, `doctor` and `help` exposed it clearly, and `boot --json` produced an agent-usable envelope.",
+    "confusing": "The local-source install path was not obvious because a direct file install ran the harness package prepare script inside the consumer repo's dependency graph. `harness init` also failed with a generic E108 root-argument error rather than an init-specific unavailable/fallback envelope.",
+    "magicWand": "Make local-source dogfood install a single deterministic command that builds the harness package outside the consumer repo and installs a packed artifact into the target, so the target repo's older dev toolchain cannot break harness setup.",
+    "magicWandTarget": "project",
+    "coordination": {
+      "peerUpdatesSent": 0,
+      "unresolvedPeerRequests": 0,
+      "statePublished": false,
+      "notes": "No peer coordination was needed in this single-shot run."
+    },
+    "difficulties": [
+      {
+        "id": "VF-001",
+        "layer": "project",
+        "category": "build",
+        "description": "Local-source CLI install first failed because npm ran the harness package prepare script against Chalk's older TypeScript toolchain.",
+        "mitigation": "Built the copied harness source in isolation, packed it to `.harness/vendor/harness-engineering-0.1.0.tgz`, installed that tarball into the target, and re-ran doctor and boot after deleting build scratch.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-002",
+        "layer": "project",
+        "category": "config",
+        "description": "`harness init --json` is documented as a graceful missing-command fallback, but this CLI returned a generic E108 root parser error instead of an init-specific unavailable envelope.",
+        "mitigation": "Treated it as the documented missing-init fallback, recorded the friction, and continued with `harness new`.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-003",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "Piping `harness instructions boot` for a short preview switched output to JSON because stdout was non-TTY, which made a quick human text preview less direct.",
+        "mitigation": "Used the JSON envelope and checked the on-disk briefing content through independent verification.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-004",
+        "layer": "project",
+        "category": "debug",
+        "description": "A `harness observe` capture used backticks inside a double-quoted shell argument, so the shell executed the command before `harness observe` saw the text and bloated the observation buffer.",
+        "mitigation": "Preserved the issue in the retro record and summarized it concisely here; future observe examples should prefer single-quoted descriptions when mentioning backticked commands.",
+        "severity": "annoying"
+      }
+    ]
+  },
+  "verification": {
+    "doctorStatus": "ok",
+    "helpIncludedBoot": true,
+    "bootStatus": "ok",
+    "retroRecordFilled": true,
+    "scratchCleaned": true
+  }
+}

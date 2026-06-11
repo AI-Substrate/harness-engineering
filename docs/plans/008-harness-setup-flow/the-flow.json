@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-setup-flow",
+  "plan_dir": "docs/plans/008-harness-setup-flow",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build landed",
+  "next": "Merge",
+  "agents": [],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "command": "/plan-1a",
+      "artifacts": [
+        "research-dossier.md"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-08T22:20:37Z",
+      "user_input": "Simple; assume future harness init; pure orchestration; first extension = basic `boot` nucleus (build/run/health per assessment), don't boil the ocean; manual + e2e-agent proof",
+      "note": "CS-3 Simple. 9 ACs. Pure-orchestration flow: install(npx + future harness init) -> conditional harnessability-assessment -> add-extension to stand up a BASIC `boot` extension (the nucleus agents run before every task: prove env ready + re-orient). Don't boil the ocean; self-improving from there. Delete all 19 templates + CREATE/VALIDATE/STATUS. a private Dockerized reference repo as boot guide.",
+      "artifacts": [
+        "harness-setup-flow-spec.md",
+        "harness-setup-flow.fltplan.md"
+      ],
+      "next": [
+        "ws1",
+        "plan"
+      ]
+    },
+    {
+      "id": "ws1",
+      "type": "workshop",
+      "label": "Workshop (opt) \u00b7 harness init contract",
+      "status": "assumed",
+      "branch_of": "spec",
+      "command": "/plan-2c",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "ws2",
+      "type": "workshop",
+      "label": "Workshop (opt) \u00b7 install + troubleshoot recipe",
+      "status": "assumed",
+      "branch_of": "spec",
+      "command": "/plan-2c",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/plan-3",
+      "next": [
+        "build"
+      ],
+      "ran_at": "2026-06-08T22:34:45Z",
+      "note": "Status READY. Simple mode, single phase, 7 tasks (T001 rewrite SKILL, T002 README+DAG, T003 AUTHORING, T004 delete 19 templates, T005 catalog+sweep, T006 manual walkthrough, T007 e2e proof). Gates G1/G2 PASS, G3/G4 N/A, G5-G7 PASS. validate-v2: VALIDATED WITH FIXES (template count 22->19; report sentinel pinned to .harness/reports/harnessability/latest.json; AC8 MCP-proof + publication guard tightened).",
+      "artifacts": [
+        "harness-setup-flow-plan.md",
+        "harness-setup-flow.fltplan.md"
+      ]
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "phase": 1,
+      "label": "Build \u00b7 rework skill (companion)",
+      "status": "done",
+      "command": "/plan-6",
+      "next": [
+        "merge"
+      ],
+      "note": "Companion mode: T001-T007 done, AC1-AC9 PASS. e2e (install-and-validate-test-extension, verbName=boot) PASSED. Companion findings F001-F004 all fixed.",
+      "ran_at": "2026-06-08T23:01:30Z",
+      "artifacts": [
+        "execution.log.md",
+        "verification.md"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "command": "/plan-8",
+      "next": []
+    }
+  ]
+}

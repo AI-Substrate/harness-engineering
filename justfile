@@ -124,3 +124,55 @@ compact target="harness-foundations":
       git check-ignore -q "$out" && echo "Ignored by git: yes" || echo "Ignored by git: no"; \
       wc -l "$out"; \
       du -h "$out"
+
+# --- Harness CLI engineering loop (Phase 1) ---
+# Working dirs are explicit: biome runs from repo root (where biome.json lives);
+# vitest runs from harness/cli (where vitest.config.ts lives).
+
+# The global link lives OUTSIDE the npm `build`/`prepare` script on purpose:
+# `prepare` runs for every npx/CI consumer, and `npm link` re-triggers `prepare`
+# (→ recursion). The link uses `--ignore-scripts` so it reuses the dist we just
+# built instead of rebuilding.
+#
+# Build the CLI (docs + tsc) and (re)link `harness` globally to this working tree.
+build:
+    npm run build
+    npm link --ignore-scripts
+    @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
+
+# Install the harness CLI globally from THIS working tree (npm link).
+# Builds first (gen:docs + tsc -> dist), then symlinks `harness` onto your PATH
+# at $(npm prefix -g)/bin, pointing at harness/cli/bin/harness.js. The link is
+# LIVE: re-run this (or `just build`) after changes to refresh the dist it serves.
+# Undo with `just uninstall-cli`.
+install-cli:
+    npm run build
+    npm link --ignore-scripts
+    @command -v harness >/dev/null 2>&1 \
+        && echo "✓ harness installed globally: $(command -v harness) — $(harness --version 2>/dev/null)" \
+        || echo "⚠ linked at $(npm prefix -g)/bin/harness, but it is not on PATH. Add '$(npm prefix -g)/bin' to PATH, then reopen your shell."
+
+# Remove the globally linked harness CLI (reverse of install-cli).
+uninstall-cli:
+    @npm rm -g harness-engineering >/dev/null 2>&1 \
+        && echo "✓ removed global harness link." \
+        || echo "harness was not linked (nothing to remove)."
+
+# Auto-fix lint + safe fixes on the CLI source.
+fix:
+    npx biome check --write harness/cli
+
+# Format the CLI source in place.
+format:
+    npx biome format --write harness/cli
+
+# Run the CLI unit tests with coverage (report-only).
+test:
+    cd harness/cli && npx vitest run --coverage
+
+# fix -> format -> test (the engineering loop).
+fft: fix format test
+
+# Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
+test-repo dest="":
+    @bash scripts/new-test-repo.sh "{{dest}}"

@@ -1,0 +1,1220 @@
+{
+  "schema_version": "harnessability-assessment.v0.2",
+  "run": {
+    "timestamp_utc": "20260609T125200Z",
+    "repo_root": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/express",
+    "repo_name": "express",
+    "branch": "master",
+    "commit": "dae209ae6559c29cfca2a1f4414c51d89ea643d5",
+    "mode": "static",
+    "commands_executed": [
+      "minih skills doctor",
+      "npm install ~/substrate/harness-engineering --no-audit --no-fund",
+      "npx harness doctor --json",
+      "static inspection of Readme.md, package.json, .npmrc, .eslintrc.yml, GitHub Actions workflows, tests, examples, and environment references"
+    ],
+    "commands_skipped": [
+      "service boot",
+      "real example server startup",
+      "migrations, seeds, reset, queue consumers, cron jobs, and external service calls",
+      "deep dependency graph or temporal coupling mining"
+    ],
+    "safety_notes": [
+      "No secret values were read or printed; only variable names and public repository files were inspected.",
+      "Dependency installation was performed only because the harness setup flow requires installing the harness core into the throwaway target clone.",
+      "Redis references are optional example dependencies; no Redis server was started."
+    ]
+  },
+  "verdict": {
+    "operate_today_percent": 76.7,
+    "operate_today_grade": "B",
+    "adaptability_percent": 73.3,
+    "adaptability_grade": "B",
+    "harnessability_index_percent": 75.0,
+    "harnessability_index_grade": "B",
+    "final_grade": "B",
+    "readiness_level": "H3",
+    "highest_proof_level": "L4",
+    "target_proof_level": "L5",
+    "confidence": "high"
+  },
+  "report_paths": {
+    "run_dir": ".harness/reports/harnessability/001-express",
+    "report_md": ".harness/reports/harnessability/001-express/report.md",
+    "report_json": ".harness/reports/harnessability/001-express/report.json",
+    "summary_md": ".harness/reports/harnessability/001-express/summary.md",
+    "evidence_jsonl": ".harness/reports/harnessability/001-express/evidence.jsonl",
+    "latest_md": ".harness/reports/harnessability/latest.md",
+    "latest_json": ".harness/reports/harnessability/latest.json",
+    "schema_json": ".harness/reports/harnessability/schema.json"
+  },
+  "assessment_matrix": [
+    {
+      "area": "Cold start and local operation",
+      "grade": "B",
+      "score_percent": 76.7,
+      "weight": 0.5,
+      "rationale": "Install, lint, test, examples, and CI are discoverable, but there was no canonical harness front door or structured health command before this run.",
+      "evidence": [
+        "Readme.md documents npm install and npm test.",
+        "package.json exposes lint, test, test-ci, test-cov, and test-tap scripts.",
+        ".github/workflows/ci.yml runs lint and test-ci."
+      ]
+    },
+    {
+      "area": "Adaptability and proof seams",
+      "grade": "B",
+      "score_percent": 73.3,
+      "weight": 0.5,
+      "rationale": "The framework is small and modular with extensive Supertest coverage and fixtures, but lacks encoded architecture boundaries, structured local reports, and a compounding improvement loop.",
+      "evidence": [
+        "lib/ is split into application, request, response, router-facing utilities, and view modules.",
+        "test/ and test/acceptance/ exercise request/response behavior through Supertest.",
+        ".eslintrc.yml enforces style and basic correctness but not architectural boundaries."
+      ]
+    }
+  ],
+  "harness_surfaces": [
+    {
+      "name": "npm scripts",
+      "path": "package.json",
+      "kind": "generic",
+      "status": "configured",
+      "notes": "The main supported local surfaces are npm run lint, npm test, npm run test-ci, npm run test-cov, and npm run test-tap."
+    },
+    {
+      "name": "harness CLI installed for setup flow",
+      "path": "node_modules/.bin/harness",
+      "kind": "canonical",
+      "status": "doctor-ran-degraded",
+      "notes": "npx harness doctor --json returned an Envelope; it reported cli-build degraded because the target checkout has no harness/cli/dist, while extensions and record types were inspectable."
+    },
+    {
+      "name": "pre-existing engineering harness",
+      "kind": "none",
+      "status": "absent",
+      "notes": "No .harness/engineering-harness.md or prior .harness/extensions front door existed before the setup flow created one."
+    }
+  ],
+  "topology": {
+    "primary_type": "node-library",
+    "languages": [
+      "JavaScript"
+    ],
+    "runtimes": [
+      "Node.js >=18"
+    ],
+    "package_roots": [
+      "."
+    ],
+    "service_types": [
+      "library",
+      "HTTP framework",
+      "example applications"
+    ],
+    "frameworks": [
+      "Express",
+      "Mocha",
+      "Supertest",
+      "ESLint",
+      "nyc"
+    ],
+    "ci": [
+      "GitHub Actions: lint on lts/*",
+      "GitHub Actions: test-ci on Node 18-26 and ubuntu/windows",
+      "GitHub Actions: legacy test-ci on Node 16-17",
+      "CodeQL",
+      "OpenSSF Scorecard"
+    ],
+    "is_monorepo": false,
+    "notes": "Single-package public Node framework with examples and a broad local test suite."
+  },
+  "axis_a_operate_today": [
+    {
+      "id": "A1",
+      "name": "Cold-start orientation and repo map",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Readme.md explains the project, examples, installation, contribution path, and running tests.",
+        "examples/README.md lists runnable examples."
+      ],
+      "notes": "A fresh agent can identify the system and basic local loop quickly.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A2",
+      "name": "Setup and environment contract",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "package.json declares Node.js >=18 and npm scripts.",
+        ".npmrc disables package-lock and ignores scripts."
+      ],
+      "notes": "Runtime and install are discoverable, but no .nvmrc, devcontainer, or environment example exists.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A3",
+      "name": "Locality of infrastructure and external dependency exposure",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Core tests use Mocha/Supertest and local fixtures.",
+        "Redis appears only in optional examples such as examples/search, examples/online, and examples/session."
+      ],
+      "notes": "Core validation is local and does not require remote services or secrets.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A4",
+      "name": "Harness front door and command discoverability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "package.json scripts are discoverable.",
+        "Readme.md documents npm test."
+      ],
+      "notes": "There was no canonical .harness front door before this setup flow; commands are generic npm scripts.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A5",
+      "name": "Boot and health/readiness path",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "npm test is the documented proof command.",
+        "package.json test-ci wraps npm test with nyc coverage."
+      ],
+      "notes": "For a library, test exit status is the health signal; no dedicated boot/doctor command existed before harness setup.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A6",
+      "name": "Seed, fixture, reset, and cleanup state",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "test/fixtures contains file and template fixtures.",
+        "Tests set NODE_ENV and NO_DEPRECATION via test/support/env.js."
+      ],
+      "notes": "State needs are low for the core library, but example app state is not exposed through a reset/seed command.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A7",
+      "name": "Supported interaction surfaces",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "test/acceptance/hello-world.js exercises an example app through HTTP requests.",
+        "test/acceptance/web-service.js exercises API routes with valid and invalid API-key inputs.",
+        "test/express.static.js exercises static-file HTTP behavior against fixtures."
+      ],
+      "notes": "Supertest gives agents a supported interaction path without starting network listeners.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A8",
+      "name": "Existing deterministic back-pressure sensors",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "npm run lint runs ESLint.",
+        "npm test runs Mocha with leak checks across test/ and test/acceptance/.",
+        "npm run test-ci runs nyc coverage and is used by CI."
+      ],
+      "notes": "Static and runtime test sensors are strong and CI-enforced.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A9",
+      "name": "Observability and evidence artifacts",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Mocha spec/TAP output is available through npm test and npm run test-tap.",
+        "nyc emits coverage reports for test-ci and test-cov."
+      ],
+      "notes": "Evidence exists, but local commands do not produce a canonical JSON harness report by default.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A10",
+      "name": "Compounding harness loop",
+      "band": "Weak",
+      "points": 1,
+      "evidence": [
+        "No pre-existing .harness records, retro ledger, or magic-wand loop was present."
+      ],
+      "notes": "The setup flow can add retro records, but the repository did not already encode that loop.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "axis_b_adaptability": [
+    {
+      "id": "B1",
+      "name": "Structural coupling and blast radius",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "lib/ separates application, request, response, utils, view, and express entrypoint code.",
+        "index.js exports lib/express."
+      ],
+      "notes": "The library is navigable, but central request/response/application modules still have high semantic blast radius.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B2",
+      "name": "Temporal/change coupling",
+      "band": "Weak",
+      "points": 1,
+      "evidence": [
+        "Deep git-history co-change mining was skipped in static mode."
+      ],
+      "notes": "Temporal coupling is not encoded as an available local sensor; confidence is low without deep mode.",
+      "provenance": "unknown",
+      "confidence": "low"
+    },
+    {
+      "id": "B3",
+      "name": "Cohesion and locality of change",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Tests are organized by app/request/response/router behavior and acceptance examples.",
+        "Core code is concentrated under lib/ with focused files."
+      ],
+      "notes": "Behavior has clear local test targets.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B4",
+      "name": "Seams, substitution, and dependency inversion",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Supertest exercises apps in-process without real network listeners.",
+        "Examples expose app objects that tests can require directly."
+      ],
+      "notes": "In-process HTTP testing is a strong seam; formal ports/adapters are limited because this is a small framework package.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B5",
+      "name": "Hermetic, offline, and isolated testability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Mocha/Supertest tests run against local modules and fixtures.",
+        "Core tests do not require live databases, queues, or remote credentials."
+      ],
+      "notes": "Useful proof is available offline after dependencies are installed.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B6",
+      "name": "Side-effect isolation and external-effect sinks",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Core package has minimal external side effects.",
+        "Redis-backed examples require a real Redis server when exercised manually."
+      ],
+      "notes": "External-effect pressure is low for core, but optional Redis examples lack a fake or sink.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B7",
+      "name": "State evolution and consequence verification",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Static-file and template fixtures verify file-backed consequences.",
+        "Supertest assertions verify response bodies, headers, and status codes."
+      ],
+      "notes": "Consequences are mostly HTTP outputs rather than durable state evolution, which fits the library topology.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B8",
+      "name": "Architecture boundary enforceability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        ".eslintrc.yml enforces syntax/style rules.",
+        "GitHub Actions include CodeQL."
+      ],
+      "notes": "General static checks exist; explicit module boundary rules were not found.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B9",
+      "name": "Complexity, size, and navigability thresholds",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "ESLint is configured and CI-enforced.",
+        "No explicit complexity, duplication, or max-file thresholds were found."
+      ],
+      "notes": "The current size is navigable, but complexity guardrails are limited.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B10",
+      "name": "Inner-loop speed and repeatability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "npm test is a single local command with no service prerequisites.",
+        "npm run lint is a single local static gate.",
+        "CI runs the same npm run test-ci command on a matrix."
+      ],
+      "notes": "The edit-to-feedback loop is simple and repeatable after npm install.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "backpressure_surfaces": [
+    {
+      "category": "static",
+      "name": "ESLint",
+      "command_or_check": "npm run lint",
+      "scope": "repository",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.lint and .github/workflows/ci.yml lint job."
+    },
+    {
+      "category": "runtime",
+      "name": "Mocha/Supertest suite",
+      "command_or_check": "npm test",
+      "scope": "test/ and test/acceptance/",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L4",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.test; acceptance tests issue HTTP requests and assert responses."
+    },
+    {
+      "category": "static",
+      "name": "Coverage lane",
+      "command_or_check": "npm run test-ci",
+      "scope": "repository",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.test-ci; CI uploads coverage/lcov.info."
+    },
+    {
+      "category": "consequence",
+      "name": "HTTP response assertions",
+      "command_or_check": "npm test",
+      "scope": "Supertest request/response flows",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L4",
+      "status": "configured_unverified",
+      "evidence": "test/acceptance/web-service.js and test/express.static.js assert status, headers, body, and fixture behavior."
+    },
+    {
+      "category": "observability",
+      "name": "Mocha TAP output",
+      "command_or_check": "npm run test-tap",
+      "scope": "repository tests",
+      "local_available": true,
+      "ci_available": false,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.test-tap."
+    },
+    {
+      "category": "human_inferential",
+      "name": "README contribution instructions",
+      "command_or_check": null,
+      "scope": "onboarding",
+      "local_available": true,
+      "ci_available": false,
+      "proof_level": "L0",
+      "status": "advisory",
+      "evidence": "Readme.md describes install and npm test but cannot enforce command freshness."
+    }
+  ],
+  "scenario_probes": [
+    {
+      "name": "Core HTTP behavior loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "lib/application.js",
+        "lib/request.js",
+        "lib/response.js",
+        "test/*.js",
+        "Supertest"
+      ],
+      "likely_edit_target": "lib/request.js or lib/response.js",
+      "required_setup": "npm install",
+      "supported_interaction": "Mocha test creates an Express app and Supertest issues in-process HTTP requests.",
+      "expected_observable_consequence": "HTTP status, headers, and body assertions.",
+      "deterministic_verdict": "npm test",
+      "reset_cleanup_path": "Process-local test state; rerun npm test from a clean checkout.",
+      "local_substitute_available": "native",
+      "remote_or_secret_blockers": "none for core tests",
+      "highest_plausible_proof_level": "L4",
+      "what_agent_would_infer": "Which subset is the fastest targeted lane for a specific module.",
+      "highest_leverage_missing_sensor": "A harness test verb that records targeted Mocha/TAP output and duration."
+    },
+    {
+      "name": "Example API app loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "examples/web-service/index.js",
+        "test/acceptance/web-service.js"
+      ],
+      "likely_edit_target": "examples/web-service/index.js",
+      "required_setup": "npm install",
+      "supported_interaction": "Supertest GET requests with valid, missing, and invalid API keys.",
+      "expected_observable_consequence": "JSON response body, status code, and content-type.",
+      "deterministic_verdict": "npm test or targeted Mocha acceptance test",
+      "reset_cleanup_path": "No durable state.",
+      "local_substitute_available": "native",
+      "remote_or_secret_blockers": "none",
+      "highest_plausible_proof_level": "L4",
+      "what_agent_would_infer": "Targeted command syntax is not documented as a harness verb.",
+      "highest_leverage_missing_sensor": "A harness smoke verb for representative example app requests."
+    },
+    {
+      "name": "Static file behavior loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "lib/response.js",
+        "test/fixtures",
+        "test/express.static.js"
+      ],
+      "likely_edit_target": "lib/response.js or static middleware integration",
+      "required_setup": "npm install",
+      "supported_interaction": "Supertest requests fixture-backed static files.",
+      "expected_observable_consequence": "File content, cache headers, 304 behavior, and not-found responses.",
+      "deterministic_verdict": "npm test",
+      "reset_cleanup_path": "Fixture files under test/fixtures; no service cleanup.",
+      "local_substitute_available": "native",
+      "remote_or_secret_blockers": "none",
+      "highest_plausible_proof_level": "L4",
+      "what_agent_would_infer": "Whether all relevant cache/file cases are covered for a given change.",
+      "highest_leverage_missing_sensor": "A targeted static-file proof command with machine-readable output."
+    },
+    {
+      "name": "Optional Redis example loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "examples/search/index.js",
+        "examples/online/index.js",
+        "examples/session/index.js"
+      ],
+      "likely_edit_target": "Redis-backed examples",
+      "required_setup": "npm install plus redis package/server for manual examples",
+      "supported_interaction": "Manual node examples/search or examples/online after Redis setup.",
+      "expected_observable_consequence": "Redis-backed search/session/online state.",
+      "deterministic_verdict": "No local harness verdict found for Redis examples.",
+      "reset_cleanup_path": "Not documented.",
+      "local_substitute_available": "none",
+      "remote_or_secret_blockers": "Redis server required for those examples; not core package proof.",
+      "highest_plausible_proof_level": "L1",
+      "what_agent_would_infer": "Whether Redis is installed, which database is safe, and how to clean it.",
+      "highest_leverage_missing_sensor": "A fake or containerized Redis example test lane if those examples are meant to be maintained as proof surfaces."
+    }
+  ],
+  "command_tiers": [
+    {
+      "command_or_check": "npm install",
+      "tier": "bootstrap",
+      "category": "dependency install",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "local node_modules",
+      "expected_duration_if_known": "short to moderate",
+      "output_artifact": "node_modules/",
+      "proof_level": "L1",
+      "status": "verified",
+      "evidence": "Executed during harness installation in the target clone."
+    },
+    {
+      "command_or_check": "npx harness doctor --json",
+      "tier": "doctor",
+      "category": "harness diagnostic",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "seconds",
+      "output_artifact": "stdout JSON Envelope",
+      "proof_level": "L1",
+      "status": "verified",
+      "evidence": "Executed after installing the harness; returned status degraded with extension and record-type data."
+    },
+    {
+      "command_or_check": "npm run lint",
+      "tier": "fast",
+      "category": "static",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "stdout/stderr",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.lint and CI lint job."
+    },
+    {
+      "command_or_check": "npm test",
+      "tier": "proof",
+      "category": "runtime",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "unknown but expected under one minute for local library tests",
+      "output_artifact": "Mocha spec output",
+      "proof_level": "L4",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.test; README Running Tests."
+    },
+    {
+      "command_or_check": "npm run test-ci",
+      "tier": "ci_equivalent",
+      "category": "coverage",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "coverage output",
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "coverage/lcov.info and text coverage",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.test-ci and GitHub Actions test job."
+    },
+    {
+      "command_or_check": "npm run test-tap",
+      "tier": "observe",
+      "category": "test report",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "TAP stdout",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json scripts.test-tap."
+    }
+  ],
+  "environment_variables": [
+    {
+      "name": "NODE_ENV",
+      "required": "no",
+      "purpose_inferred": "Selects Express environment behavior and is set to test by test/support/env.js.",
+      "source_files": [
+        "lib/application.js",
+        "test/support/env.js",
+        "examples/cookies/index.js",
+        "examples/error-pages/index.js"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Defaults to development in lib/application.js when unset."
+    },
+    {
+      "name": "NO_DEPRECATION",
+      "required": "no",
+      "purpose_inferred": "Suppresses body-parser and express deprecation warnings during tests.",
+      "source_files": [
+        "test/support/env.js"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Set by the test support preload."
+    },
+    {
+      "name": "SCORECARD_TOKEN",
+      "required": "optional",
+      "purpose_inferred": "Optional OpenSSF Scorecard repository token in CI comments.",
+      "source_files": [
+        ".github/workflows/scorecard.yml"
+      ],
+      "example_present": "no",
+      "safe_default_present": "no",
+      "secret_like": "yes",
+      "local_dev_notes": "Not needed for local core proof."
+    }
+  ],
+  "external_dependencies": [
+    {
+      "name": "Redis",
+      "type": "cache",
+      "where_detected": "examples/search/index.js, examples/online/index.js, examples/session/index.js, examples/README.md",
+      "local_option": "native",
+      "remote_required": "no",
+      "secret_required": "no",
+      "mutation_risk": "local_only",
+      "proof_blocked_by_dependency": "partial",
+      "recommended_affordance": "If Redis examples are intended as maintained proof surfaces, add a fake or containerized Redis harness lane with reset/cleanup."
+    },
+    {
+      "name": "Coveralls",
+      "type": "analytics",
+      "where_detected": ".github/workflows/ci.yml and legacy.yml coverage upload steps",
+      "local_option": "none",
+      "remote_required": "optional",
+      "secret_required": "unknown",
+      "mutation_risk": "remote_safe_sandbox",
+      "proof_blocked_by_dependency": "no",
+      "recommended_affordance": "Keep coverage upload as CI-only; local proof should stop at lcov/text artifact generation."
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "title": "No canonical engineering harness front door before setup",
+      "axis": "operate_today",
+      "subsystem": "tools",
+      "loop_stage": "boot",
+      "backpressure_category": "static",
+      "scenario_impacted": "all local proof loops",
+      "target_layer": "harness",
+      "encoding_type": "command",
+      "severity": "medium",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Add a boot extension that wraps the documented proof command and emits an honest Envelope.",
+      "proof_level_unblocked": "L4",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-002",
+      "title": "No structured local test evidence report by default",
+      "axis": "both",
+      "subsystem": "observability",
+      "loop_stage": "observe",
+      "backpressure_category": "observability",
+      "scenario_impacted": "core HTTP behavior loop",
+      "target_layer": "harness",
+      "encoding_type": "evidence",
+      "severity": "medium",
+      "status": "partial",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Expose npm run test-tap or a JSON/TAP capture path through a harness observe/proof verb.",
+      "proof_level_unblocked": "L5",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-003",
+      "title": "No compounding harness retrospective loop",
+      "axis": "operate_today",
+      "subsystem": "human_process",
+      "loop_stage": "improve",
+      "backpressure_category": "human_inferential",
+      "scenario_impacted": "future agent runs",
+      "target_layer": "harness",
+      "encoding_type": "workflow",
+      "severity": "low",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Record retros under .harness/records/retro and harvest them into a difficulty/improvement view.",
+      "proof_level_unblocked": "L5",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-004",
+      "title": "Optional Redis examples lack a deterministic local proof lane",
+      "axis": "both",
+      "subsystem": "external_dependency",
+      "loop_stage": "validate",
+      "backpressure_category": "external_effect",
+      "scenario_impacted": "Optional Redis example loop",
+      "target_layer": "product_code",
+      "encoding_type": "fake",
+      "severity": "low",
+      "status": "weak",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Add a test-only fake/containerized Redis lane only if those examples are meant to be regression-proofed locally.",
+      "proof_level_unblocked": "L4",
+      "estimated_effort": "M",
+      "risk_tier": "medium"
+    },
+    {
+      "id": "GAP-005",
+      "title": "Architecture boundaries are not encoded beyond generic lint and CodeQL",
+      "axis": "adaptability",
+      "subsystem": "architecture",
+      "loop_stage": "validate",
+      "backpressure_category": "static",
+      "scenario_impacted": "core module changes",
+      "target_layer": "test_code",
+      "encoding_type": "architecture_rule",
+      "severity": "low",
+      "status": "partial",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Add import/boundary checks only if module layering regressions are a recurring issue.",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "M",
+      "risk_tier": "low"
+    }
+  ],
+  "remediations": [
+    {
+      "id": "REM-001",
+      "title": "Create a harness boot verb around npm test",
+      "recommended_encoding": "command",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L4",
+      "estimated_effort": "S",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-001"
+      ]
+    },
+    {
+      "id": "REM-002",
+      "title": "Expose TAP or JSON test evidence as a harness observe/proof artifact",
+      "recommended_encoding": "evidence",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L5",
+      "estimated_effort": "S",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-002"
+      ]
+    },
+    {
+      "id": "REM-003",
+      "title": "Record harness retros after setup and proof runs",
+      "recommended_encoding": "workflow",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L5",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-003"
+      ]
+    },
+    {
+      "id": "REM-004",
+      "title": "Optionally regression-test Redis examples with a fake or containerized Redis",
+      "recommended_encoding": "fake",
+      "target_layer": "product_code",
+      "proof_level_unblocked": "L4",
+      "estimated_effort": "M",
+      "risk_tier": "medium",
+      "addresses_gaps": [
+        "GAP-004"
+      ]
+    }
+  ],
+  "product_code_affordances": [
+    {
+      "id": "PCA-001",
+      "title": "Test-only Redis substitute for optional Redis examples",
+      "category": "external_dependency",
+      "status": "proposed",
+      "risk_tier": "medium",
+      "target_layer": "product_code",
+      "environment_scope": [
+        "local",
+        "test"
+      ],
+      "environments_where_it_must_not_apply": [
+        "production"
+      ],
+      "safety_requirements": [
+        "Must not change the default behavior of examples when run by users.",
+        "Must be scoped to tests or an explicit local harness command.",
+        "Must document reset/cleanup behavior for any containerized service."
+      ],
+      "human_or_security_review_required": false,
+      "which_gap_it_addresses": "GAP-004",
+      "which_harness_command_or_proof_level_it_unblocks": "Would allow Redis examples to reach L4 local proof.",
+      "why_it_is_better_than_more_documentation": "A fake or containerized lane can fail deterministically when example behavior regresses; prose can only tell an agent to set Redis up manually."
+    }
+  ],
+  "harness_recommendations": [
+    {
+      "id": "HR-001",
+      "title": "Boot verb for local proof",
+      "path": ".harness/extensions/boot.*",
+      "risk": "low",
+      "type": "command",
+      "summary": "Wrap npm test and return an Envelope with command, exit code, and next action on failure.",
+      "rationale": "This turns the documented local proof lane into a canonical harness front door.",
+      "requires_human_review": false
+    },
+    {
+      "id": "HR-002",
+      "title": "Observe/proof evidence capture",
+      "path": ".harness/extensions/observe.* or future proof verb",
+      "risk": "low",
+      "type": "evidence",
+      "summary": "Capture npm run test-tap or coverage output into a stable artifact path.",
+      "rationale": "Agents can parse a stable evidence artifact instead of scraping terminal output.",
+      "requires_human_review": false
+    }
+  ],
+  "applied_patches": [],
+  "onboarding_consolidation": [
+    {
+      "item": "Install and test instructions",
+      "action": "fold_in",
+      "source_path": "Readme.md",
+      "notes": "Use npm install and npm test as the initial boot/proof nucleus."
+    },
+    {
+      "item": "Example app inventory",
+      "action": "keep",
+      "source_path": "examples/README.md",
+      "notes": "Examples are useful orientation and some are already covered by acceptance tests."
+    },
+    {
+      "item": "CI command mapping",
+      "action": "fold_in",
+      "source_path": ".github/workflows/ci.yml",
+      "notes": "Map lint to npm run lint and test matrix to npm run test-ci."
+    }
+  ],
+  "first_safe_session_plan": [
+    "Run npx harness doctor --json and inspect extensions.",
+    "Run npm test for the full local proof lane.",
+    "For narrower changes, run a targeted Mocha file under test/ or test/acceptance/ before the full suite.",
+    "Use npm run lint before reporting completion.",
+    "Record any command ambiguity or proof gaps in .harness/records/retro/."
+  ],
+  "human_questions": [
+    {
+      "id": "HQ-001",
+      "question": "Should the canonical boot command be npm test only, or npm run lint && npm test?",
+      "reason": "The README names npm test, while CI also enforces lint.",
+      "answer_type": "choice"
+    }
+  ],
+  "engineering_flows": [
+    {
+      "name": "Install dependencies",
+      "kind": "onboarding",
+      "commands": [
+        "npm install"
+      ],
+      "where_detected": "Readme.md and GitHub Actions",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "Documented for contributors and used by CI."
+    },
+    {
+      "name": "Local test",
+      "kind": "test",
+      "commands": [
+        "npm test"
+      ],
+      "where_detected": "Readme.md and package.json",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "Primary local proof command."
+    },
+    {
+      "name": "Lint",
+      "kind": "build",
+      "commands": [
+        "npm run lint"
+      ],
+      "where_detected": "package.json and .github/workflows/ci.yml",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "CI-enforced static gate."
+    },
+    {
+      "name": "CI matrix test",
+      "kind": "ci",
+      "commands": [
+        "npm run test-ci"
+      ],
+      "where_detected": ".github/workflows/ci.yml and legacy.yml",
+      "canonical": "yes",
+      "provenance": "evidence",
+      "notes": "Runs across multiple Node versions and operating systems."
+    }
+  ],
+  "pre_commit_gates": [
+    {
+      "name": "No local pre-commit hook detected",
+      "mechanism": "none",
+      "checks": [],
+      "local_available": false,
+      "ci_equivalent": "CI runs lint and tests",
+      "notes": "No husky, pre-commit, lefthook, or git hook configuration was found."
+    }
+  ],
+  "ci_local_equivalence": [
+    {
+      "check": "lint",
+      "ci_command": "npm run lint",
+      "local_command": "npm run lint",
+      "equivalence": "identical",
+      "notes": "The CI lint job uses the same npm script exposed locally."
+    },
+    {
+      "check": "test",
+      "ci_command": "npm run test-ci",
+      "local_command": "npm test",
+      "equivalence": "partial",
+      "notes": "Local README points to npm test; CI wraps it with nyc coverage and runs a Node/OS matrix."
+    },
+    {
+      "check": "coverage",
+      "ci_command": "npm run test-ci plus artifact upload",
+      "local_command": "npm run test-ci",
+      "equivalence": "partial",
+      "notes": "Local command can produce lcov/text; remote upload and merge are CI-only."
+    }
+  ],
+  "existing_harness_concepts": [
+    {
+      "name": "NPM-script command map",
+      "kind": "diffuse",
+      "surfaces": [
+        "package.json scripts",
+        "Readme.md Running Tests",
+        ".github/workflows/ci.yml"
+      ],
+      "coverage": "Partial",
+      "notes": "Useful commands exist but are not collected under a harness-specific front door."
+    }
+  ],
+  "deterministic_encoding_opportunities": [
+    {
+      "id": "DEO-001",
+      "title": "Encode README test instructions as a harness boot verb",
+      "current_encoding": "doc",
+      "proposed_encoding": "npx harness boot wrapping npm test with an Envelope",
+      "proof_level": "L4",
+      "rationale": "The command becomes executable and machine-checkable instead of prose an agent has to copy."
+    },
+    {
+      "id": "DEO-002",
+      "title": "Encode test evidence output as a stable artifact",
+      "current_encoding": "convention",
+      "proposed_encoding": "Harness observe/proof command that captures TAP or coverage output",
+      "proof_level": "L5",
+      "rationale": "Stable artifacts make reruns comparable and reduce terminal-scraping ambiguity."
+    }
+  ],
+  "test_mechanisms": [
+    {
+      "name": "Supertest in-process HTTP interaction",
+      "type": "integration",
+      "where_detected": "test/*.js and test/acceptance/*.js",
+      "deterministic": "yes",
+      "notes": "Tests construct apps and assert HTTP status, headers, and body without real network listeners."
+    },
+    {
+      "name": "File and template fixtures",
+      "type": "fixture",
+      "where_detected": "test/fixtures",
+      "deterministic": "yes",
+      "notes": "Static-file and rendering behavior use committed fixtures."
+    },
+    {
+      "name": "Environment preload",
+      "type": "stub",
+      "where_detected": "test/support/env.js",
+      "deterministic": "yes",
+      "notes": "Sets NODE_ENV and NO_DEPRECATION for repeatable tests."
+    },
+    {
+      "name": "Response helper assertions",
+      "type": "unit",
+      "where_detected": "test/support/utils.js",
+      "deterministic": "yes",
+      "notes": "Reusable assertions for body/header consequences."
+    }
+  ],
+  "external_dependency_pressure": [
+    {
+      "dependency": "Redis examples",
+      "pressure": "low",
+      "local_substitute": "none",
+      "proof_impact": "Core package proof is not blocked; Redis-backed examples remain manual unless Redis is installed.",
+      "notes": "Optional example-only pressure."
+    },
+    {
+      "dependency": "Coveralls upload",
+      "pressure": "low",
+      "local_substitute": "none",
+      "proof_impact": "Local coverage generation works without remote upload; CI publication is remote.",
+      "notes": "Does not block local proof."
+    }
+  ],
+  "code_composition": [
+    {
+      "area": "lib/application.js",
+      "kind": "module",
+      "coupling": "central framework application object; broad semantic fan-out",
+      "test_seam": "yes",
+      "notes": "Covered through app and acceptance tests."
+    },
+    {
+      "area": "lib/request.js and lib/response.js",
+      "kind": "module",
+      "coupling": "central HTTP behavior modules",
+      "test_seam": "yes",
+      "notes": "Request/response tests and Supertest flows exercise behavior."
+    },
+    {
+      "area": "examples/",
+      "kind": "seam",
+      "coupling": "example apps are required by acceptance tests",
+      "test_seam": "yes",
+      "notes": "Examples double as integration fixtures for framework behavior."
+    },
+    {
+      "area": "test/support",
+      "kind": "seam",
+      "coupling": "shared environment and assertion helpers",
+      "test_seam": "yes",
+      "notes": "Provides repeatable test environment setup."
+    }
+  ],
+  "candidate_first_harness_surfaces": [
+    {
+      "surface": "boot",
+      "rationale": "Wrap the documented npm test proof lane as the canonical first harness verb.",
+      "proof_level": "L4",
+      "already_exists": "no",
+      "priority": "high",
+      "notes": "For a library, passing tests are the practical health signal."
+    },
+    {
+      "surface": "lint",
+      "rationale": "Expose the CI-identical ESLint gate for fast static feedback.",
+      "proof_level": "L2",
+      "already_exists": "yes",
+      "priority": "medium",
+      "notes": "Already exists as npm run lint; a harness wrapper would improve discoverability."
+    },
+    {
+      "surface": "observe-test",
+      "rationale": "Capture TAP or coverage artifacts in a stable path.",
+      "proof_level": "L5",
+      "already_exists": "partial",
+      "priority": "medium",
+      "notes": "npm run test-tap and npm run test-ci are available but not artifact-managed by the harness."
+    },
+    {
+      "surface": "retro",
+      "rationale": "Persist friction and magic-wand findings after proof runs.",
+      "proof_level": "L5",
+      "already_exists": "no",
+      "priority": "medium",
+      "notes": "The harness core provides retro records once installed."
+    }
+  ],
+  "manual_operation_signals": [
+    {
+      "signal": "Manual example startup with node examples/<name>",
+      "kind": "manual_step",
+      "influences": [
+        "A5",
+        "A7",
+        "A9",
+        "B10"
+      ],
+      "penalize": "yes",
+      "notes": "Examples are documented as manual runs; many are covered by acceptance tests, but manual-only examples do not provide a standard health artifact."
+    },
+    {
+      "signal": "Redis setup for Redis-backed examples",
+      "kind": "manual_step",
+      "influences": [
+        "A5",
+        "A7",
+        "B5",
+        "B10"
+      ],
+      "penalize": "yes",
+      "notes": "Only affects optional examples, not the core framework proof lane."
+    }
+  ],
+  "evidence_log": [
+    {
+      "source": "Readme.md",
+      "claim": "The repo documents npm install followed by npm test for running the test suite.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "package.json",
+      "claim": "The repo exposes lint, test, test-ci, test-cov, and test-tap npm scripts.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": ".github/workflows/ci.yml",
+      "claim": "CI runs npm run lint and npm run test-ci across a Node/OS matrix.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "test/acceptance/web-service.js",
+      "claim": "Acceptance tests exercise API behavior through Supertest and assert response consequences.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "examples/README.md and Redis example files",
+      "claim": "Redis is an optional example dependency, not a blocker for core package tests.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "npx harness doctor --json",
+      "claim": "The installed harness CLI returned an Envelope and detected no extensions before the boot extension step.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["targetRepo"],
+  "properties": {
+    "targetRepo": {
+      "type": "string",
+      "description": "Absolute path to the ALREADY-CLONED target repository to assess (the orchestrator verb clones it; this agent does not clone and runs with network off)."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["static", "safe-probe", "deep"],
+      "default": "static",
+      "description": "Assessment mode passed to the harnessability-assessment skill. Default 'static' = read-only, no probes, no network."
+    }
+  }
+}

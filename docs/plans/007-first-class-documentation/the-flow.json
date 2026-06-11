@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "slug": "first-class-documentation",
+  "plan_dir": "docs/plans/007-first-class-documentation",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "milestones_total": 5,
+  "milestones_done": 3,
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "title": "Explore docs landscape (/plan-1a)",
+      "status": "done",
+      "user_input": "do explore, then spec please",
+      "note": "Dossier done. Headline decision: doc bundling strategy (no asset pipeline today). doctor-service split = MCP-ready seam. E160+ band free.",
+      "next": [
+        "spec"
+      ],
+      "ran_at": "2026-06-08T11:18:00Z",
+      "artifacts": [
+        "research-dossier.md"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "title": "Write spec (/plan-1b)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "ran_at": "2026-06-08T11:30:00Z",
+      "artifacts": [
+        "first-class-documentation-spec.md"
+      ],
+      "note": "Simple mode, CS-3. Hybrid testing, fakes-only. Hybrid docs."
+    },
+    {
+      "id": "workshop_w1",
+      "type": "workshop",
+      "title": "W1 bundling strategy (/plan-2c)",
+      "status": "done",
+      "branch_of": "spec",
+      "user_input": "do workshop the lock in to the spec please",
+      "note": "Option C locked (generate-TS-from-MD, committed under src). Perplexity-validated.",
+      "next": [
+        "plan"
+      ],
+      "ran_at": "2026-06-08T11:55:00Z",
+      "artifacts": [
+        "workshops/001-doc-bundling-and-source-of-truth.md"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "title": "Architect plan (/plan-3)",
+      "status": "done",
+      "next": [
+        "phases"
+      ],
+      "ran_at": "2026-06-08T12:01:00Z",
+      "artifacts": [
+        "first-class-documentation-plan.md"
+      ],
+      "note": "Simple, single-phase, 16 tasks, READY, all 7 gates PASS. validate-v2: 2 clean + 1 MEDIUM fixed (T001 MCP contract pinned). VALIDATED WITH FIXES."
+    },
+    {
+      "id": "phases",
+      "type": "phase",
+      "title": "Build (single phase, 16 tasks)",
+      "status": "done",
+      "next": [
+        "merge"
+      ],
+      "ran_at": "2026-06-08T22:50:00Z",
+      "note": "16/16 tasks, 12/12 ACs, 213 tests pass. Built with code-review-companion (live per-commit review); 5 findings (1 HIGH+4 MEDIUM) all fixed + companion-approved. /plan-7 superseded.",
+      "user_input": "run the imlemetaiton wthteh companion please"
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "title": "Merge (/plan-8)",
+      "status": "known",
+      "next": []
+    }
+  ],
+  "agents": [
+    {
+      "slug": "code-review-companion",
+      "kind": "companion",
+      "render": "wrap",
+      "run_id": "2026-06-08T22-08-20-158Z-d7d0",
+      "covers": [
+        "phases"
+      ],
+      "note": "Power-On-Mode; 17 commits reviewed; APPROVED; farewell captured -> docs/retros/007-first-class-documentation.md"
+    }
+  ]
+}

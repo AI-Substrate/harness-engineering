@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "slug": "harness-core",
+  "plan_dir": "docs/plans/004-harness-core",
+  "mode": "Full",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/004-harness-core/harness-core-plan.md\"",
+  "intent": "Starter harness CLI core: agent-friendly Node CLI under harness/cli/ as the harness front door (help/doctor/run/validate/build/lint/test/smoke/health/observe), JSON+human output, unconfigured slots, clean act/service/adapter architecture, plus repo engineering fundamentals (biome, justfile fft, npm audit, GH Actions CI, release-please, branch protection, coverage).",
+  "milestones_total": 7,
+  "milestones_done": 6,
+  "last_checkpoint_at": "2026-06-08T01:30:00Z",
+  "compacted_seams": [],
+  "status": "complete",
+  "note": "All 3 plan phases built + companion-reviewed; CI green on PR #1; main branch-protected. MERGE INTENTIONALLY DEFERRED (user: 'no merge yet, continue on this branch to the next phase'). /plan-8 is available on demand. Branch feat/harness-cli-core is clean and HEAD CI is green — ready to layer the next phase of work on top.",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
+}

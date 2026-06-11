@@ -1,0 +1,120 @@
+{
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-09T12-48-22-100Z/cobra",
+  "harnessSource": "local",
+  "harnessInstalled": true,
+  "harnessInstallCommand": "npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund",
+  "harnessDoctorStatusAfterInstall": "degraded",
+  "harnessDoctorDegradedReason": "The local file install exposed a runnable npx harness, but doctor reported cli-build degraded because harness/cli/dist/index.js was not built in the source tree.",
+  "skillsResolved": true,
+  "harnessabilityGrade": "B",
+  "axisTuple": {
+    "operateTodayPercent": 74,
+    "operateTodayGrade": "B",
+    "adaptabilityPercent": 70,
+    "adaptabilityGrade": "B"
+  },
+  "assessmentReportPaths": {
+    "latestJson": ".harness/reports/harnessability/latest.json",
+    "latestMd": ".harness/reports/harnessability/latest.md",
+    "runDir": ".harness/reports/harnessability/001-cobra"
+  },
+  "abandoned": false,
+  "abandonReason": null,
+  "governanceWritten": true,
+  "governancePath": ".harness/engineering-harness.md",
+  "governanceFieldsVerified": [
+    "Boot command",
+    "Health check",
+    "Interact method",
+    "Observe method",
+    "Deterministic signal inventory",
+    "Evidence paths",
+    "Back-pressure gaps",
+    "Current maturity snapshot"
+  ],
+  "bootAuthored": true,
+  "bootRuns": true,
+  "bootPath": ".harness/extensions/boot.ts",
+  "bootVerification": {
+    "doctorStatus": "degraded",
+    "doctorBootExtensionStatus": "loaded",
+    "helpHasBoot": true,
+    "bootHelpRendered": true,
+    "bootStatus": "ok",
+    "bootCommand": "go test ./...",
+    "bootExitCode": 0,
+    "bootDurationMs": 5200,
+    "bootStdoutPreview": [
+      "ok  \tgithub.com/spf13/cobra\t2.446s",
+      "ok  \tgithub.com/spf13/cobra/doc\t0.734s"
+    ]
+  },
+  "retroRecorded": true,
+  "retroRecordPaths": [
+    ".harness/records/retro/2026-06-09-cobra-flow.md"
+  ],
+  "verdict": "PASS",
+  "summary": "Ran the full harness setup flow against the fresh Cobra clone without using the interactive router. The local harness core installed and `harness doctor --json` produced a parseable Envelope; the harnessability assessment graded the repo B with Operate-Today B (74%) and Adaptability B (70%), so the abandonment gate did not trip. I hand-wrote the BIO governance document, used the add-extension flow to scaffold and fill a `boot` verb, independently verified `doctor`, `help`, and `harness boot --json`, and recorded a retro via `harness record retro`.",
+  "retrospective": {
+    "workedWell": "Repo-local skill discovery was clear through `minih skills doctor`, the Cobra repo was a strong candidate for the flow because `go test ./...` is a clean library health signal, `harness new boot --wrap \"go test ./...\"` produced a loadable extension scaffold, and `harness boot --json` returned an honest ok Envelope after the handler was filled.",
+    "confusing": "The install recipe did not account for non-Node repos with no package.json, so plain `npm install <harnessSource>` selected /tmp as the npm prefix. The local harness doctor also reported a degraded cli-build layer even though the installed `npx harness` command worked, and the assessment skill is currently a contract/instruction rather than a single executable report writer.",
+    "magicWand": "Ship a headless `harness setup --repo <path> --boot \"go test ./...\" --json` command that handles repo-local npm prefixing, writes the harnessability reports, generates `.harness/engineering-harness.md`, scaffolds/fills/verifies `boot`, and returns all authored paths in one Envelope.",
+    "magicWandTarget": "project",
+    "coordination": {
+      "peerUpdatesSent": 0,
+      "unresolvedPeerRequests": 0,
+      "statePublished": false,
+      "notes": "No peer coordination was involved in this single-shot run."
+    },
+    "difficulties": [
+      {
+        "id": "VF-001",
+        "layer": "project",
+        "category": "config",
+        "description": "The documented local install command `npm install $MINIH_PROJECT_ROOT` is unsafe in a Go repo with no package.json because npm chose /tmp as the prefix and tried to write /private/tmp/node_modules instead of the target clone.",
+        "mitigation": "Used `npm install --prefix . ~/substrate/harness-engineering --no-audit --no-fund` so node_modules stayed inside the target clone.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-002",
+        "layer": "project",
+        "category": "build",
+        "description": "`harness doctor --json` stayed degraded after installation because the local file install pointed at a harness source tree whose `harness/cli/dist/index.js` was not built, even though the npx harness command itself worked.",
+        "mitigation": "Treated the parseable doctor Envelope and working CLI as sufficient for the install sanity check while recording the degraded cli-build layer.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-003",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "The harnessability assessment skill is guidance-only in this CLI context; it does not expose a single command that writes the required report, so the agent had to manually produce the skill's report artifacts while following the skill contract.",
+        "mitigation": "Used the skill schema/template instructions and independently read `.harness/reports/harnessability/latest.json` after writing the reports.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-004",
+        "layer": "project",
+        "category": "knowledge",
+        "description": "The flow requires governance to be hand-written because no `harness init` writer is shipped yet, which forces agents to copy the BIO contract manually.",
+        "mitigation": "Read the governance template and hand-wrote `.harness/engineering-harness.md` with all eight BIO fields.",
+        "severity": "degrading"
+      },
+      {
+        "id": "VF-005",
+        "layer": "project",
+        "category": "test",
+        "description": "`harness new boot --wrap` produced a loadable stub with a placeholder summary and hard error behavior on wrapped command failure, so it was not yet an honest boot Envelope for degraded test failures.",
+        "mitigation": "Edited the scaffolded file to add a real summary, include command/exit/duration/stdout/stderr data, and return `ctx.degraded` with a next_action when tests fail.",
+        "severity": "annoying"
+      },
+      {
+        "id": "VF-006",
+        "layer": "minih",
+        "category": "knowledge",
+        "description": "The required output instructions say difficulty IDs should be VF-NNN, while the generic schema example says MH-NNN, creating conflicting numbering guidance.",
+        "mitigation": "Used VF-NNN as the task-specific rule because it was explicit for this validate-harness-flow run.",
+        "severity": "annoying"
+      }
+    ]
+  }
+}

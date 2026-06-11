@@ -1,0 +1,912 @@
+{
+  "schema_version": "harnessability-assessment.v0.2",
+  "run": {
+    "timestamp_utc": "20260609T131600Z",
+    "repo_root": "/private/tmp/harness-flow-selftest-2026-06-09T13-13-49-111Z/chalk",
+    "repo_name": "chalk",
+    "branch": "main",
+    "commit": "aa06bb5ac3f14df9fda8cfb54274dfc165ddfdef",
+    "mode": "static",
+    "commands_executed": [
+      "minih skills doctor",
+      "npm install <PROJECT_ROOT> --prefix <targetRepo> --no-audit --no-fund",
+      "npx harness doctor --json",
+      "git ls-files",
+      "git status --short",
+      "read package.json/readme.md/.github/workflows/main.yml/source/test files"
+    ],
+    "commands_skipped": [
+      "No service boot, migrations, seeds, remote calls, auth flows, or destructive cleanup were run during the assessment step"
+    ],
+    "safety_notes": [
+      "Secret values were not read or printed",
+      "Assessment writes are limited to .harness/reports/harnessability in the target clone",
+      "The local harness install added harness-engineering as a throwaway dependency in the clone for this dogfood run"
+    ]
+  },
+  "verdict": {
+    "operate_today_percent": 77.8,
+    "operate_today_grade": "B",
+    "adaptability_percent": 77.8,
+    "adaptability_grade": "B",
+    "harnessability_index_percent": 77.8,
+    "harnessability_index_grade": "B",
+    "final_grade": "B",
+    "readiness_level": "H2",
+    "highest_proof_level": "L2",
+    "target_proof_level": "L3",
+    "confidence": "high"
+  },
+  "harness_surfaces": [
+    {
+      "name": "npm scripts",
+      "path": "package.json",
+      "kind": "generic",
+      "status": "canonical_for_repo",
+      "notes": "npm test is the supported local/CI proof lane for this library."
+    },
+    {
+      "name": "GitHub Actions CI",
+      "path": ".github/workflows/main.yml",
+      "kind": "prior",
+      "status": "configured",
+      "notes": "CI runs npm install and npm test across three Node versions."
+    },
+    {
+      "name": "engineering harness",
+      "path": ".harness/",
+      "kind": "canonical",
+      "status": "created_by_this_flow",
+      "notes": "Harness reports begin with this assessment; governance/boot/retro are subsequent setup steps."
+    }
+  ],
+  "topology": {
+    "primary_type": "library",
+    "languages": [
+      "JavaScript",
+      "TypeScript declarations"
+    ],
+    "runtimes": [
+      "Node.js"
+    ],
+    "package_roots": [
+      "."
+    ],
+    "service_types": [
+      "library"
+    ],
+    "frameworks": [
+      "AVA",
+      "XO",
+      "c8",
+      "tsd"
+    ],
+    "ci": [
+      "GitHub Actions"
+    ],
+    "is_monorepo": false,
+    "notes": "Small ESM terminal string styling package with vendored ANSI/color-support modules."
+  },
+  "axis_a_operate_today": [
+    {
+      "id": "A1",
+      "name": "Cold-start orientation and repo map",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "readme.md explains product/API usage in detail",
+        "contributing.md only points to code of conduct and does not describe local development"
+      ],
+      "notes": "Fresh agents can understand the library quickly, but developer-operation guidance is mostly inferred from package.json.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A2",
+      "name": "Setup and environment contract",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "package.json declares Node engine range and test tooling",
+        "No lockfile or .env example found in tracked files"
+      ],
+      "notes": "Runtime/tooling is discoverable, but install reproducibility is weaker without a lockfile and setup notes.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "A3",
+      "name": "Locality of infrastructure and external dependency exposure",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "No database/cache/queue/service configuration detected",
+        "Tests exercise local code and a local child-process fixture"
+      ],
+      "notes": "Local proof is not blocked by remote infrastructure or secrets.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A4",
+      "name": "Harness front door and command discoverability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "package.json exposes npm test and npm run bench",
+        "CI uses the same npm test command"
+      ],
+      "notes": "The npm script surface is the canonical front door for this small library, though no project-specific harness existed before this run.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A5",
+      "name": "Boot and health/readiness path",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "npm test runs lint, coverage-wrapped AVA tests, and tsd type assertions"
+      ],
+      "notes": "For a library, a green test lane is the practical health signal.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A6",
+      "name": "Seed, fixture, reset, and cleanup state",
+      "band": "Not applicable",
+      "points": null,
+      "evidence": [
+        "Library is stateless; test/_fixture.js is a process fixture rather than persisted state"
+      ],
+      "notes": "No datastore, queue, object store, or generated state lifecycle applies.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A7",
+      "name": "Supported interaction surfaces",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "README documents the public ESM API",
+        "Tests import source/index.js and assert public behavior"
+      ],
+      "notes": "Agents can interact through the documented library API and the AVA/tsd test harness.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A8",
+      "name": "Existing deterministic back-pressure sensors",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "xo lint",
+        "c8 ava unit tests",
+        "tsd type tests",
+        "GitHub Actions matrix across Node 14/16/18"
+      ],
+      "notes": "The core behavior has strong static and unit/type backpressure.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "A9",
+      "name": "Observability and evidence artifacts",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "c8 configured for text and lcov coverage reporters",
+        "Test verdict is available through command exit code/stdout"
+      ],
+      "notes": "Evidence exists, but there is no structured JSON test report or canonical artifact directory in the repo.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "A10",
+      "name": "Compounding harness loop",
+      "band": "Absent",
+      "points": 0,
+      "evidence": [
+        "No .harness governance doc, retro records, difficulty ledger, or improvement loop existed before this setup run"
+      ],
+      "notes": "Friction capture starts with this dogfood run rather than being an existing project surface.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "axis_b_adaptability": [
+    {
+      "id": "B1",
+      "name": "Structural coupling and blast radius",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "source/index.js imports two local utilities and vendored ansi/supports-color modules",
+        "Small package root with focused source and tests"
+      ],
+      "notes": "Blast radius is limited for most library changes.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B2",
+      "name": "Temporal/change coupling",
+      "band": "Unknown",
+      "points": 0,
+      "evidence": [
+        "Deep git-history mining was not run in static mode and the clone is shallow"
+      ],
+      "notes": "Temporal coupling should not be inferred from the current file layout alone.",
+      "provenance": "unknown",
+      "confidence": "low"
+    },
+    {
+      "id": "B3",
+      "name": "Cohesion and locality of change",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Core behavior lives in source/index.js with tests in test/*.js and type checks in source/index.test-d.ts"
+      ],
+      "notes": "Related behavior and proof surfaces are easy to locate.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B4",
+      "name": "Seams, substitution, and dependency inversion",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Chalk constructor accepts level options",
+        "Tests isolate color support by setting levels and running test/_fixture.js with execaNode"
+      ],
+      "notes": "The main behavior is parameterized and easy to exercise without external services.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B5",
+      "name": "Hermetic, offline, and isolated testability",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "npm test uses local lint/unit/type tools only",
+        "No required service or secret was detected"
+      ],
+      "notes": "Useful proof runs offline after dependencies are installed.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B6",
+      "name": "Side-effect isolation and external-effect sinks",
+      "band": "Not applicable",
+      "points": null,
+      "evidence": [
+        "No email/SMS/payment/webhook/object-store/queue/model side effects detected"
+      ],
+      "notes": "The package transforms strings and writes only normal test process output.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B7",
+      "name": "State evolution and consequence verification",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Tests assert exact string/ANSI escape-code consequences for API interactions"
+      ],
+      "notes": "State evolution is not a concern, but behavior consequences are directly verified.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B8",
+      "name": "Architecture boundary enforceability",
+      "band": "Weak",
+      "points": 1,
+      "evidence": [
+        "XO lint exists, but no architecture/dependency-boundary rule was found"
+      ],
+      "notes": "This is low-risk for the current size, but boundary rules are not encoded beyond lint/import checks.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    },
+    {
+      "id": "B9",
+      "name": "Complexity, size, and navigability thresholds",
+      "band": "Strong",
+      "points": 3,
+      "evidence": [
+        "Small source tree and XO lint configuration",
+        "No generated mega-files or multi-service topology detected"
+      ],
+      "notes": "The codebase fits comfortably in an agent context window.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "id": "B10",
+      "name": "Inner-loop speed and repeatability",
+      "band": "Partial",
+      "points": 2,
+      "evidence": [
+        "Comprehensive npm test command is defined",
+        "No separate quick/fast test lane or watch command was found"
+      ],
+      "notes": "The loop is repeatable but lacks a named fast lane distinct from full lint+coverage+type proof.",
+      "provenance": "evidence",
+      "confidence": "medium"
+    }
+  ],
+  "backpressure_surfaces": [
+    {
+      "category": "static",
+      "name": "XO lint",
+      "command_or_check": "xo",
+      "scope": "source and tests",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json test script and CI npm test"
+    },
+    {
+      "category": "static",
+      "name": "AVA unit tests with coverage",
+      "command_or_check": "c8 ava",
+      "scope": "runtime behavior of library API",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json test script; test/*.js"
+    },
+    {
+      "category": "static",
+      "name": "tsd type assertions",
+      "command_or_check": "tsd",
+      "scope": "TypeScript declaration compatibility",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json test script; source/index.test-d.ts"
+    },
+    {
+      "category": "consequence",
+      "name": "Exact ANSI string assertions",
+      "command_or_check": "ava",
+      "scope": "library output strings",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L4",
+      "status": "configured_unverified",
+      "evidence": "test/chalk.js and related tests assert stdout strings and escape-code consequences"
+    },
+    {
+      "category": "observability",
+      "name": "Coverage reports",
+      "command_or_check": "c8 ava",
+      "scope": "coverage text and lcov",
+      "local_available": true,
+      "ci_available": true,
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json c8 reporter text/lcov and codecov CI upload"
+    }
+  ],
+  "scenario_probes": [
+    {
+      "name": "Library API behavior loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "README API examples",
+        "AVA tests"
+      ],
+      "likely_edit_target": "source/index.js",
+      "required_setup": "npm install",
+      "supported_interaction": "Import chalk or Chalk from source/index.js and call chainable style APIs",
+      "expected_observable_consequence": "Returned strings contain expected ANSI open/close codes or plain text at level 0",
+      "deterministic_verdict": "npm test / targeted AVA test",
+      "reset_cleanup_path": "No persisted state to reset",
+      "local_substitute_available": "Not needed",
+      "remote_or_secret_blockers": "None detected",
+      "highest_plausible_proof_level": "L4",
+      "what_agent_would_infer": "Which targeted test is fastest without a named quick lane",
+      "highest_leverage_missing_sensor": "Expose a harness boot/quick verb that names the full and targeted proof lanes"
+    },
+    {
+      "name": "Type declaration compatibility loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "source/index.d.ts",
+        "source/index.test-d.ts",
+        "tsd"
+      ],
+      "likely_edit_target": "source/index.d.ts",
+      "required_setup": "npm install",
+      "supported_interaction": "Run tsd against declaration tests",
+      "expected_observable_consequence": "Type expectations pass/fail deterministically",
+      "deterministic_verdict": "npm test or npx tsd",
+      "reset_cleanup_path": "No state",
+      "local_substitute_available": "Not needed",
+      "remote_or_secret_blockers": "None detected",
+      "highest_plausible_proof_level": "L2",
+      "what_agent_would_infer": "Whether tsd alone is an accepted quick proof outside npm test",
+      "highest_leverage_missing_sensor": "Document or encode npx tsd as a quick/type harness verb"
+    },
+    {
+      "name": "Color support fixture loop",
+      "applicable": true,
+      "relevant_surfaces": [
+        "test/_fixture.js",
+        "test/level.js"
+      ],
+      "likely_edit_target": "source/vendor/supports-color or source/index.js",
+      "required_setup": "npm install",
+      "supported_interaction": "AVA spawns a child Node process with execaNode",
+      "expected_observable_consequence": "Captured stdout equals expected plain/colorized output",
+      "deterministic_verdict": "AVA assertion in test/level.js",
+      "reset_cleanup_path": "Child process exits; no persisted state",
+      "local_substitute_available": "Local fixture",
+      "remote_or_secret_blockers": "None detected",
+      "highest_plausible_proof_level": "L4",
+      "what_agent_would_infer": "The exact environment matrix for terminal color support beyond the fixture",
+      "highest_leverage_missing_sensor": "Add a named fixture/smoke command for color-level behavior if this area changes often"
+    }
+  ],
+  "command_tiers": [
+    {
+      "command_or_check": "npm install",
+      "tier": "bootstrap",
+      "category": "dependency install",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "node_modules/package metadata",
+      "expected_duration_if_known": "tens of seconds in this run after harness install",
+      "output_artifact": "node_modules",
+      "proof_level": "L1",
+      "status": "verified",
+      "evidence": "Executed during harness install with target prefix"
+    },
+    {
+      "command_or_check": "npm test",
+      "tier": "proof",
+      "category": "lint/unit/type/coverage",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "coverage artifacts",
+      "expected_duration_if_known": "unknown until boot step",
+      "output_artifact": "coverage/lcov.info and terminal output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": "package.json and CI workflow"
+    },
+    {
+      "command_or_check": "npm test",
+      "tier": "ci_equivalent",
+      "category": "CI-equivalent local proof",
+      "local_available": true,
+      "ci_available": true,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": "coverage artifacts",
+      "expected_duration_if_known": "unknown until boot step",
+      "output_artifact": "coverage/lcov.info and terminal output",
+      "proof_level": "L2",
+      "status": "configured_unverified",
+      "evidence": ".github/workflows/main.yml runs npm test"
+    },
+    {
+      "command_or_check": "npm run bench",
+      "tier": "observe",
+      "category": "benchmark",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "unknown",
+      "output_artifact": "terminal benchmark output",
+      "proof_level": "L1",
+      "status": "candidate_unverified",
+      "evidence": "package.json bench script"
+    },
+    {
+      "command_or_check": "npx harness doctor --json",
+      "tier": "doctor",
+      "category": "harness health",
+      "local_available": true,
+      "ci_available": false,
+      "requires_services": false,
+      "requires_secrets": false,
+      "mutates_state": false,
+      "expected_duration_if_known": "<1s after install",
+      "output_artifact": "JSON envelope",
+      "proof_level": "L1",
+      "status": "verified",
+      "evidence": "Executed after S0 and returned degraded envelope"
+    }
+  ],
+  "environment_variables": [
+    {
+      "name": "FORCE_COLOR",
+      "required": "optional",
+      "purpose_inferred": "Override Chalk color support level for consumers/tests",
+      "source_files": [
+        "readme.md"
+      ],
+      "example_present": "yes",
+      "safe_default_present": "yes",
+      "secret_like": "no",
+      "local_dev_notes": "Optional behavior-control variable, not a secret."
+    }
+  ],
+  "external_dependencies": [],
+  "gaps": [
+    {
+      "id": "GAP-001",
+      "title": "No pre-existing engineering harness governance/front door",
+      "axis": "operate_today",
+      "subsystem": "tools",
+      "loop_stage": "boot",
+      "backpressure_category": "human_inferential",
+      "scenario_impacted": "all setup and proof loops",
+      "target_layer": "harness",
+      "encoding_type": "command",
+      "severity": "medium",
+      "status": "absent",
+      "provenance": "evidence",
+      "confidence": "high",
+      "recommended_next_action": "Add .harness/engineering-harness.md and boot verb that wraps npm test",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-002",
+      "title": "No named quick lane separate from full lint+coverage+type proof",
+      "axis": "both",
+      "subsystem": "tests",
+      "loop_stage": "validate",
+      "backpressure_category": "static",
+      "scenario_impacted": "small focused edits",
+      "target_layer": "harness",
+      "encoding_type": "command",
+      "severity": "low",
+      "status": "weak",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Expose quick targeted commands such as npx ava and npx tsd as documented harness surfaces if maintainers want faster edit loops",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low"
+    },
+    {
+      "id": "GAP-003",
+      "title": "Structured evidence artifacts are limited",
+      "axis": "operate_today",
+      "subsystem": "observability",
+      "loop_stage": "observe",
+      "backpressure_category": "observability",
+      "scenario_impacted": "agent-readable verdict capture",
+      "target_layer": "harness",
+      "encoding_type": "evidence",
+      "severity": "low",
+      "status": "partial",
+      "provenance": "evidence",
+      "confidence": "medium",
+      "recommended_next_action": "Have the boot harness capture command, exit code, duration, and output tail in a JSON envelope",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "XS",
+      "risk_tier": "low"
+    }
+  ],
+  "remediations": [
+    {
+      "id": "REM-001",
+      "title": "Encode a boot verb around npm test",
+      "recommended_encoding": "harness extension command returning JSON envelope with status ok/degraded/error and captured duration",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-001",
+        "GAP-003"
+      ]
+    },
+    {
+      "id": "REM-002",
+      "title": "Add quick proof aliases for AVA and tsd if faster loops are needed",
+      "recommended_encoding": "harness quick/type verbs or npm scripts that separate unit/type checks from full coverage lint run",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L2",
+      "estimated_effort": "S",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-002"
+      ]
+    },
+    {
+      "id": "REM-003",
+      "title": "Persist harness retro records for setup friction",
+      "recommended_encoding": "harness record retro after setup runs",
+      "target_layer": "harness",
+      "proof_level_unblocked": "L1",
+      "estimated_effort": "XS",
+      "risk_tier": "low",
+      "addresses_gaps": [
+        "GAP-001"
+      ]
+    }
+  ],
+  "product_code_affordances": [],
+  "harness_recommendations": [
+    {
+      "id": "HR-001",
+      "title": "Create .harness/engineering-harness.md",
+      "path": ".harness/engineering-harness.md",
+      "risk": "low",
+      "type": "governance",
+      "summary": "Record boot, health, interaction, observe, deterministic signals, evidence paths, gaps, and maturity.",
+      "rationale": "The repo has good npm proof surfaces but no canonical harness contract.",
+      "requires_human_review": false
+    },
+    {
+      "id": "HR-002",
+      "title": "Add boot extension wrapping npm test",
+      "path": ".harness/extensions/boot.*",
+      "risk": "low",
+      "type": "extension",
+      "summary": "Expose the CI-equivalent proof lane through harness boot.",
+      "rationale": "This gives agents a single observable entry point with an honest Envelope.",
+      "requires_human_review": false
+    }
+  ],
+  "applied_patches": [],
+  "onboarding_consolidation": [
+    {
+      "item": "README API usage and FORCE_COLOR behavior",
+      "action": "fold_in",
+      "source_path": "readme.md",
+      "notes": "Useful for interact/observe sections of governance."
+    },
+    {
+      "item": "CI npm test command",
+      "action": "fold_in",
+      "source_path": ".github/workflows/main.yml",
+      "notes": "Use as canonical local/CI equivalence evidence."
+    },
+    {
+      "item": "Minimal contributing guide",
+      "action": "keep",
+      "source_path": "contributing.md",
+      "notes": "No harness content to consolidate beyond code-of-conduct pointer."
+    }
+  ],
+  "first_safe_session_plan": [
+    "Run npx harness doctor --json to verify harness health",
+    "Run npx harness boot once the boot extension is authored",
+    "For source changes, prefer npm test or a targeted AVA/tsd command before full proof",
+    "Record friction with harness record retro at the end of the session"
+  ],
+  "human_questions": [
+    {
+      "id": "HQ-001",
+      "question": "Do maintainers want a separate quick lane, or is full npm test fast enough for normal edits?",
+      "reason": "No quick script exists today, but the repo is small.",
+      "answer_type": "maintainer preference"
+    }
+  ],
+  "evidence_log": [
+    {
+      "source": "package.json",
+      "claim": "The project is a Node ESM library with package scripts: test = \"xo && c8 ava && tsd\" and bench = \"matcha benchmark.js\".",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": ".github/workflows/main.yml",
+      "claim": "CI runs npm install and npm test on Node 18, 16, and 14, then uploads coverage on Node 16.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "readme.md",
+      "claim": "README explains the package purpose, install command, API usage, style catalogue, color support controls, and FORCE_COLOR/--color behavior.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "test/*.js and source/index.test-d.ts",
+      "claim": "AVA tests and tsd type assertions exercise Chalk behavior, color-level controls, string output consequences, and a child-process fixture.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "source/index.js and source/utilities.js",
+      "claim": "Core implementation is compact and localized: public factory/API logic in source/index.js with two utility functions in source/utilities.js and vendored support modules.",
+      "provenance": "evidence",
+      "confidence": "high"
+    },
+    {
+      "source": "npx harness doctor --json",
+      "claim": "After local harness install, harness doctor executes but reports degraded cli-build because consumer clone lacks harness/cli/dist, while extensions and record-types load.",
+      "provenance": "evidence",
+      "confidence": "high"
+    }
+  ],
+  "report_paths": {
+    "run_dir": ".harness/reports/harnessability/001-chalk",
+    "report_md": ".harness/reports/harnessability/001-chalk/report.md",
+    "report_json": ".harness/reports/harnessability/001-chalk/report.json",
+    "summary_md": ".harness/reports/harnessability/001-chalk/summary.md",
+    "evidence_jsonl": ".harness/reports/harnessability/001-chalk/evidence.jsonl",
+    "latest_md": ".harness/reports/harnessability/latest.md",
+    "latest_json": ".harness/reports/harnessability/latest.json",
+    "schema_json": ".harness/reports/harnessability/schema.json"
+  },
+  "assessment_matrix": [
+    {
+      "area": "Operate today",
+      "grade": "B",
+      "score_percent": 77.8,
+      "rationale": "Clear npm test/CI proof and local-only topology, with gaps in setup docs, structured evidence, and compounding harness loop."
+    },
+    {
+      "area": "Adapt safely",
+      "grade": "B",
+      "score_percent": 77.8,
+      "rationale": "Small cohesive library with hermetic tests; temporal coupling is unknown and architecture rules are minimal."
+    },
+    {
+      "area": "External dependency exposure",
+      "grade": "A",
+      "score_percent": 100,
+      "rationale": "No remote services or secrets block local proof."
+    },
+    {
+      "area": "Evidence and observability",
+      "grade": "C",
+      "score_percent": 65,
+      "rationale": "Coverage and exit-code evidence exist, but structured harness artifacts are absent before setup."
+    }
+  ],
+  "engineering_flows": [
+    {
+      "name": "CI-equivalent test",
+      "commands": [
+        "npm install",
+        "npm test"
+      ],
+      "canonical": true,
+      "evidence": ".github/workflows/main.yml and package.json"
+    },
+    {
+      "name": "Benchmark",
+      "commands": [
+        "npm run bench"
+      ],
+      "canonical": false,
+      "evidence": "package.json bench script"
+    }
+  ],
+  "pre_commit_gates": [],
+  "ci_local_equivalence": [
+    {
+      "check": "test",
+      "local_command": "npm test",
+      "ci_command": "npm test",
+      "equivalence": "identical",
+      "evidence": "package.json and .github/workflows/main.yml"
+    },
+    {
+      "check": "install",
+      "local_command": "npm install",
+      "ci_command": "npm install",
+      "equivalence": "identical",
+      "evidence": ".github/workflows/main.yml"
+    }
+  ],
+  "existing_harness_concepts": [
+    {
+      "name": "npm scripts",
+      "kind": "diffuse",
+      "canonicality": "project-canonical-before-harness",
+      "evidence": "package.json scripts"
+    },
+    {
+      "name": ".harness",
+      "kind": "canonical",
+      "canonicality": "created-during-flow",
+      "evidence": ".harness/reports/harnessability"
+    }
+  ],
+  "deterministic_encoding_opportunities": [
+    {
+      "id": "DEO-001",
+      "source": "package.json/.github/workflows/main.yml",
+      "current_form": "npm test known through package/CI conventions",
+      "proposed_encoding": "harness boot verb returning a JSON Envelope",
+      "target_layer": "harness",
+      "why": "Executable harness command removes inference about the canonical proof lane."
+    }
+  ],
+  "test_mechanisms": [
+    {
+      "name": "AVA exact-output assertions",
+      "type": "unit",
+      "evidence": "test/chalk.js",
+      "reusable_as_harness_affordance": true
+    },
+    {
+      "name": "Child-process fixture for color support",
+      "type": "fixture",
+      "evidence": "test/_fixture.js and test/level.js",
+      "reusable_as_harness_affordance": true
+    },
+    {
+      "name": "tsd declaration assertions",
+      "type": "contract",
+      "evidence": "source/index.test-d.ts",
+      "reusable_as_harness_affordance": true
+    }
+  ],
+  "external_dependency_pressure": [],
+  "code_composition": [
+    {
+      "name": "Core API module",
+      "path": "source/index.js",
+      "seam": "Chalk options and level property",
+      "test_substitutable": true,
+      "evidence": "source/index.js and tests"
+    },
+    {
+      "name": "Utility helpers",
+      "path": "source/utilities.js",
+      "seam": "pure functions used by core styling",
+      "test_substitutable": true,
+      "evidence": "source/utilities.js and output tests"
+    },
+    {
+      "name": "Vendored support modules",
+      "path": "source/vendor",
+      "seam": "package import aliases #ansi-styles and #supports-color",
+      "test_substitutable": "partially",
+      "evidence": "package.json imports map"
+    }
+  ],
+  "candidate_first_harness_surfaces": [
+    {
+      "name": "boot",
+      "command": "npm test",
+      "rationale": "Wraps the existing CI-equivalent proof lane for the library.",
+      "target_proof_level": "L2"
+    },
+    {
+      "name": "quick",
+      "command": "npx ava",
+      "rationale": "Optional faster behavior loop if maintainers want a split from lint+coverage+types.",
+      "target_proof_level": "L2"
+    },
+    {
+      "name": "typecheck",
+      "command": "npx tsd",
+      "rationale": "Names the type declaration contract test separately.",
+      "target_proof_level": "L2"
+    }
+  ],
+  "manual_operation_signals": []
+}

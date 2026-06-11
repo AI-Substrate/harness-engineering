@@ -1,0 +1,54 @@
+{
+  "name": "@ai-substrate/engineering-harness",
+  "version": "0.1.0",
+  "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AI-Substrate/harness-engineering.git"
+  },
+  "bin": {
+    "harness": "./harness/cli/bin/harness.js"
+  },
+  "exports": {
+    ".": "./harness/cli/dist/index.js",
+    "./contract": {
+      "types": "./harness/cli/dist/services/extensions/contract.d.ts",
+      "import": "./harness/cli/dist/services/extensions/contract.js",
+      "default": "./harness/cli/dist/services/extensions/contract.js"
+    }
+  },
+  "files": [
+    "harness/cli/bin",
+    "harness/cli/dist",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "gen:docs": "node scripts/gen-docs.mjs",
+    "check:docs": "npm run gen:docs && git diff --exit-code harness/cli/src/services/docs/docs-content.ts",
+    "build": "npm run gen:docs && tsc -p harness/cli/tsconfig.json",
+    "prepare": "npm run build",
+    "test": "cd harness/cli && vitest run --coverage",
+    "lint": "biome check harness/cli",
+    "format": "biome format --write harness/cli",
+    "fix": "biome check --write harness/cli"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "jiti": "2.7.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.10",
+    "@types/node": "^22",
+    "@vitest/coverage-v8": "^4.1.8",
+    "dependency-cruiser": "^17.4.3",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.8"
+  }
+}

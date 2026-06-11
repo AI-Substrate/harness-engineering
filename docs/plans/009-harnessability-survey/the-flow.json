@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harnessability-survey",
+  "plan_dir": "docs/plans/009-harnessability-survey",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build complete \u2014 19 tasks (G1-G5) landed; companion-reviewed (F004 HIGH fixed)",
+  "next": "Merge (/plan-8)  \u2014 companion superseded /plan-7",
+  "_comment": "Simple mode: per-phase group collapses to one Build node. No engineering-harness governance doc in this repo, so harness-loop nodes (incl. the backpressure spine node) are omitted; standard testing fallback. the-flow.md is generated FROM this file.",
+  "agents": [
+    {
+      "id": "companion-1",
+      "kind": "companion",
+      "slug": "code-review-companion",
+      "runId": "2026-06-09T12-00-15-857Z-e2a9",
+      "render": "wrap",
+      "covers": ["build"],
+      "status": "completed",
+      "note": "Power-On-Mode live review of all 19 commits. 4 findings: F004 HIGH (shell-injection in dogfood verb) fixed+verified; F002 MED (schema whitelist) fixed; F001 MED (plan-doc drift) dispositioned; F003 already resolved by T014. Farewell exitReason=stop_requested."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "command": "/plan-1a",
+      "ran_at": "2026-06-08T23:55Z",
+      "user_input": "next we are working on skills/harnessability-assessment ... review suggestions then we will kick off to prepare our implementation",
+      "note": "Dossier: 5 critical findings, 8 prior learnings, 7 open decisions.",
+      "artifacts": [
+        "research-dossier.md"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-09T00:05Z",
+      "user_input": "Simple mode; ad-hoc structural validation, no new just target",
+      "note": "Simple, CS-4 (S2 I2 D2 N1 F1 T1=9), 15 ACs, task-groups G1-G5 (G5 = dogfood self-test verb). Workshop 001 (validate-harnessability verb) Contract-Ready. Validated 2026-06-09 (1 HIGH run-ID-capture bug fixed, 1 MEDIUM stale-G4 fixed).",
+      "artifacts": [
+        "harnessability-survey-spec.md"
+      ],
+      "next": [
+        "ws1"
+      ]
+    },
+    {
+      "id": "ws1",
+      "type": "workshop",
+      "label": "Workshop 1 \u00b7 validate-harnessability verb",
+      "status": "done",
+      "branch_of": "spec",
+      "ran_at": "2026-06-09T00:40Z",
+      "user_input": "workshop our new dogfood exemplar verb ... simple verb: clone 3 repos to tmp, run minih agents in parallel bg, return run ids + prompting on how to check progress",
+      "note": "Contract Ready. Verb `validate-harnessability` (orchestrator) fires N x `validate-harnessability-assessment-skill` minih agents in bg (nohup & via ctx.exec), returns instantly with run IDs + next_action prompting. Decisions resolved: clone-from-github, fire-and-forget, agent-reviews-via-prompting. Open: Q1 clone URLs.",
+      "artifacts": [
+        "workshops/001-validate-harnessability-verb.md"
+      ],
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/plan-3",
+      "ran_at": "2026-06-09T10:50Z",
+      "user_input": "run it",
+      "note": "Status READY. Gate Matrix: G1 Clarify PASS, G2 Constitution PASS, G3 Architecture PASS, G4 ADR N/A, G5 Structure PASS, G6 Testing PASS, G7 Domain PASS. Simple single phase: 18 tasks (T001-T018) in groups G1-G5; G5 independent (Depends:None, may fire first for evidence). Deep validation (validate-v2) auto-running.",
+      "artifacts": [
+        "harnessability-survey-plan.md"
+      ],
+      "next": [
+        "build"
+      ]
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "phase": 1,
+      "label": "Build (G1-G5)",
+      "status": "done",
+      "command": "/plan-6-companion",
+      "ran_at": "2026-06-09T12-40Z",
+      "user_input": "yep run",
+      "note": "19 tasks (T001-T018 + T016b) landed across G1-G5. Companion-reviewed live (Power-On-Mode). All structural validation green: schema v0.2 valid, example validates, boundary byte-identical, leak grep clean. G5 dogfood verb loads + smoke-verified (fires bg minih agents, captures run IDs, degrades on bad URL). Companion F004 HIGH (shell-injection) fixed+verified.",
+      "artifacts": [
+        "skills/harnessability-assessment/ (v0.2)",
+        ".harness/extensions/validate-harnessability.ts",
+        "agents/validate-harnessability-assessment-skill/",
+        "execution.log.md",
+        "docs/retros/009-harnessability-survey.md"
+      ],
+      "next": [
+        "merge"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "command": "/plan-8",
+      "note": "Companion superseded /plan-7 (live per-commit review done). Branch carries plans 004-009.",
+      "next": []
+    }
+  ]
+}

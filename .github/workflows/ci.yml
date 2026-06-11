@@ -1,0 +1,293 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Version-independent static gates — run ONCE here, not per Node matrix leg
+  # (these don't vary by Node version, so duplicating them across build-test
+  # legs just burned minutes). Pure shell + the runner's preinstalled Node — no
+  # npm ci / build needed, so this job finishes in seconds.
+  rename-guard:
+    name: rename-guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: No stale package specifier (rename completeness gate · AC-6)
+        run: |
+          # Every contract import must use the scoped @ai-substrate/engineering-harness/contract.
+          # The legacy needle is assembled from a variable so THIS workflow file
+          # never matches its own gate. Exclude planning history + .git; any residual fails fast.
+          OLD='harness-engineering'
+          if grep -rn "${OLD}/contract" \
+               --include='*.ts' --include='*.js' --include='*.md' --include='*.yml' . \
+               | grep -v 'docs/plans/' | grep -v '/.git/'; then
+            echo "::error title=stale-specifier::legacy '<old-name>/contract' import found — rename incomplete (AC-6)"
+            exit 1
+          fi
+          echo "OK: no legacy contract specifier remaining"
+
+      - name: Package scope matches repo owner (AC-10)
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          SCOPE=${NAME#@}; SCOPE=${SCOPE%%/*}
+          OWNER=${GITHUB_REPOSITORY%%/*}
+          echo "package='$NAME' scope='$SCOPE' owner='$OWNER'"
+          lc() { printf %s "$1" | tr '[:upper:]' '[:lower:]'; }
+          if [ "$(lc "$SCOPE")" != "$(lc "$OWNER")" ]; then
+            echo "::error title=scope-owner::package scope '@$SCOPE' != repo owner '$OWNER' (AC-10)"
+            exit 1
+          fi
+          echo "OK: scope matches owner (case-insensitive)"
+
+  build-test:
+    name: build-test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (Biome)
+        run: npx biome check harness/cli
+
+      - name: Build (tsc emit)
+        run: npm run build
+
+      - name: Docs drift guard (generated bundle matches the .md sources)
+        run: npm run check:docs
+
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc --noEmit -p harness/cli/tsconfig.json
+
+      - name: Test with coverage
+        run: cd harness/cli && npx vitest run --coverage
+
+      - name: Upload coverage (lcov)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov-node${{ matrix.node }}
+          path: harness/cli/coverage/lcov.info
+          if-no-files-found: error
+
+      - name: Audit (advisory)
+        run: npm audit --audit-level=high || true
+
+      # Architecture conformance through the VERB (never raw depcruise) so the
+      # envelope mapping is continuously proven on the same code path devs use
+      # (plan 016, AC-9). Warn-launch: degraded (warn-only violations) exits 0
+      # and surfaces as a ::warning:: annotation; crash (exit 1) or missing
+      # tool/config (exit 2) still fail the step.
+      - name: Architecture conformance (harness arch-check)
+        run: |
+          # Invoke the bin via node directly (plan 017): `npx --no-install harness`
+          # resolves the root package's own bin nondeterministically across npm
+          # majors (npm 10 green / npm 11.13 "Permission denied" on identical
+          # trees). node + the committed wrapper is the same verb code path
+          # with zero install-time-chmod dependence.
+          out=$(node harness/cli/bin/harness.js arch-check --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.violations | length')
+            echo "::warning title=arch-check::${count} architecture violation(s) at warn severity — see the envelope in this step's log; promote severities in .dependency-cruiser.cjs once they should block"
+          fi
+          exit ${code:-0}
+
+      # Skill loadability through the VERB: every SKILL.md must satisfy the
+      # Agent Skills spec limits (name ≤64/charset/dir-match/unique,
+      # description ≤1024) or host CLIs silently skip it — measured in the
+      # field 2026-06-11 (Copilot CLI dropped eng-harness-flow at 1379 chars).
+      # Spec violations exit 1 and fail the step; the >900-char headroom band
+      # is degraded/exit 0 and surfaces as a ::warning:: annotation.
+      - name: Skill loadability (harness skills-check)
+        run: |
+          out=$(node harness/cli/bin/harness.js skills-check --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.warnings')
+            echo "::warning title=skills-check::${count} skill description(s) inside the 900–1024 char headroom band — trim before they drift over the spec limit and hosts silently drop them"
+          fi
+          exit ${code:-0}
+
+  # Stable, matrix-independent required check for branch protection (T005).
+  # Always runs and fails if any required job failed/cancelled.
+  ci-required:
+    name: ci-required
+    runs-on: ubuntu-latest
+    needs: [rename-guard, build-test, package-smoke]
+    if: always()
+    steps:
+      - name: Verify required jobs passed
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "One or more required jobs did not succeed."
+          exit 1
+      - name: All required jobs passed
+        run: echo "All required jobs passed."
+
+  # Packaging / bin-symlink smoke (companion F005 guard): pack the tarball,
+  # install it into a clean temp project, and invoke the installed `harness`
+  # bin through its symlink. Drops a real `.harness/extensions/hello/extension.ts`
+  # package fixture (a .ts entry — forcing the jiti path, which proves jiti
+  # resolved as a RUNTIME dependency under the packaged `--omit=dev` install) and
+  # asserts the verb runs + exits 0, a deliberately-failing package exits 1, and
+  # a FLAT legacy file is rejected with E143 (plan 014 folder-only layout)
+  # (AC-8, AC-10, KF-07; 014 AC-6).
+  package-smoke:
+    name: package-smoke
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish dry-run — scoped name + bin/dist packed (AC-8)
+        run: |
+          # Lives here (not in the build-test matrix) so it runs ONCE and reuses
+          # this job's existing build. Dry-run validates the publish path/registry
+          # config (exits 0 without auth — never contacts the registry) and proves
+          # the scoped name + bin/dist are in the packed set.
+          npm publish --dry-run 2>&1 | tee /tmp/pub.txt
+          grep -q "npm.pkg.github.com" /tmp/pub.txt \
+            || { echo "::error title=dry-run::not targeting GitHub Packages"; exit 1; }
+          npm pack --dry-run --json > /tmp/pack.json
+          jq -e '.[0].name == "@ai-substrate/engineering-harness"' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::scoped name mismatch"; exit 1; }
+          jq -e '[.[0].files[].path] | any(test("harness/cli/bin/harness\\.js"))' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::bin not packed"; exit 1; }
+          jq -e '[.[0].files[].path] | any(startswith("harness/cli/dist/"))' /tmp/pack.json >/dev/null \
+            || { echo "::error title=dry-run::dist not packed"; exit 1; }
+          echo "OK: scoped name + bin + dist present; targeting GitHub Packages"
+
+      - name: Pack and smoke-test the installed bin (with a .ts extension fixture)
+        run: |
+          set -euo pipefail
+          # Deterministic tarball capture (plan 017 AC-9): --json + jq, with a
+          # mechanical *.tgz assert so ANY lifecycle stdout leak fails loudly
+          # instead of silently corrupting $TARBALL. The load-bearing fix is
+          # gen-docs logging to stderr (017 T010) — --json is NOT immune to
+          # lifecycle stdout (verified on npm 11.10.0).
+          TARBALL="$(npm pack --json | jq -r '.[0].filename')"
+          [[ "$TARBALL" == *.tgz ]] || { echo "ERROR: npm pack capture corrupt: '$TARBALL'"; exit 1; }
+          echo "Packed: $TARBALL"
+          SMOKE_DIR="$(mktemp -d)"
+          cd "$SMOKE_DIR"
+          npm init -y >/dev/null 2>&1
+          # --omit=dev mirrors a real consumer install: jiti must resolve as a
+          # runtime dependency, not a devDependency, for the .ts fixture to load.
+          npm install --omit=dev "$GITHUB_WORKSPACE/$TARBALL"
+          echo "Installed bin symlink:"
+          ls -l node_modules/.bin/harness
+
+          # A repo-local .ts extension PACKAGE — discovered + jiti-loaded by the installed bin.
+          mkdir -p .harness/extensions/hello .harness/extensions/boom
+          cat > .harness/extensions/hello/extension.ts <<'TS'
+          import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
+          const hello: HarnessVerb = {
+            name: 'hello',
+            summary: 'Say hello (smoke fixture).',
+            options: [{ flags: '--name <name>', description: 'who to greet', defaultValue: 'world' }],
+            run(ctx) {
+              return ctx.ok({ greeting: `hello, ${ctx.options.name}` });
+            },
+          };
+          export default hello;
+          TS
+          echo '# `harness hello` — agent briefing (smoke fixture)' > .harness/extensions/hello/instructions.md
+          cat > .harness/extensions/boom/extension.ts <<'TS'
+          import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
+          const boom: HarnessVerb = {
+            name: 'boom',
+            summary: 'Always fails (smoke fixture).',
+            run(ctx) {
+              return ctx.error('E1', 'intentional failure', { next_action: 'expected' });
+            },
+          };
+          export default boom;
+          TS
+
+          # FLAT legacy file (plan 017 Finding 02): the retired flat layout must
+          # be REJECTED with E143 and its verb must never register — this fixture
+          # is what the doctor greps and the `harness legacy` check below
+          # actually exercise (it was never created before, so those checks
+          # could not pass).
+          cat > .harness/extensions/legacy.ts <<'TS'
+          // Flat-layout fixture — discovery must reject it (E143 unsupported flat layout).
+          export default { name: 'legacy', summary: 'flat fixture', run: () => ({ status: 'ok' }) };
+          TS
+
+          echo "harness --version:"
+          ./node_modules/.bin/harness --version
+
+          echo "harness doctor (must enumerate the packages + reject the flat file with E143):"
+          ./node_modules/.bin/harness --json doctor | tee doctor.json
+          grep -q '"extensions"' doctor.json
+          grep -q 'E143' doctor.json
+          grep -q 'unsupported flat layout' doctor.json
+
+          echo "harness legacy (flat file must NOT register — unknown command, non-zero):"
+          if ./node_modules/.bin/harness --json legacy; then
+            echo "ERROR: the flat legacy.ts fixture registered a verb (folder-only layout regressed)"
+            exit 1
+          else
+            echo "OK: flat fixture rejected as expected"
+          fi
+
+          echo "harness hello (the .ts fixture verb, via jiti, must exit 0):"
+          ./node_modules/.bin/harness --json hello --name pi | tee hello.json
+          grep -q '"greeting":"hello, pi"' hello.json
+
+          echo "harness boom (failing fixture must exit 1):"
+          if ./node_modules/.bin/harness --json boom; then
+            echo "ERROR: expected the failing fixture verb to exit non-zero"
+            exit 1
+          else
+            echo "OK: failing fixture exited non-zero as expected"
+          fi
+
+          echo "harness --no-extensions hello (safe mode → unknown command, non-zero):"
+          if ./node_modules/.bin/harness --no-extensions --json hello; then
+            echo "ERROR: --no-extensions should not expose the hello verb"
+            exit 1
+          else
+            echo "OK: --no-extensions skipped discovery as expected"
+          fi
+

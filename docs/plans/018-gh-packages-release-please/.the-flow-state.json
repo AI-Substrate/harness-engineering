@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "slug": "gh-packages-release-please",
+  "plan_dir": "docs/plans/018-gh-packages-release-please",
+  "mode": "Simple",
+  "current_stage": "awaiting-6",
+  "pending_command": "/plan-6-v2-implement-phase --phase \"Implementation\" --plan docs/plans/018-gh-packages-release-please/gh-packages-release-please-plan.md",
+  "intent": "GH Packages release-please: publish the harness CLI to GitHub Packages, released by release-please on merge to main (reverses AC-15 no-publish).",
+  "milestones_total": 5,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-11T02:06:00Z",
+  "spec_status": "READY (validated with fixes; AC-11 branch-canary added)",
+  "plan_status": "READY (validated with fixes; 1 CRITICAL gate no-op + canary --tag/version + T1 checklist fixed). Simple mode, 16 tasks T1-T16.",
+  "backpressure": "Partial — install/rename EXISTS sensors (package-smoke/check:docs/vitest); publish-automation BUILDABLE (canary+dry-run+grep in ACs/tasks). Sensors sequenced early in plan.",
+  "compacted_seams": [],
+  "status": "active"
+}

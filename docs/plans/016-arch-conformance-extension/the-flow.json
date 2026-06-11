@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "arch-conformance-extension",
+  "plan_dir": "docs/plans/016-arch-conformance-extension",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build DONE (companion-reviewed, findings reconciled) — 15 commits af3b8b5..4ba1678; MERGE DEFERRED by user call 2026-06-10 ('we will do that later')",
+  "next": "PARKED: /plan-8 merge analysis when the user returns — executes ONLY on explicit typed PROCEED; /plan-7 superseded by the companion. Joins 014/015 in the parked-merge set",
+  "_comment": "Harness exists (.harness/engineering-harness.md; loop opt-out is conversational) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
+  "agents": [
+    {
+      "id": "code-review-companion",
+      "kind": "companion",
+      "label": "code-review-companion — reviews every commit (supersedes /plan-7)",
+      "render": "wrap",
+      "covers": [
+        "build"
+      ],
+      "started_at": "2026-06-10T07:50:36Z",
+      "stopped_at": "2026-06-10T08:20:44Z",
+      "note": "13 review-request pings; in-phase replies suppressed by a minih channel failure (observe-filed) — farewell delivered 7 findings (5 HIGH/2 MEDIUM, verdict REQUEST_CHANGES), reconciled post-debrief: F001/F004/F006 fixed, F003 partial, F002 refuted with evidence, F005/F007 record corrections; post-fix 380/380 + doctor ok"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "investigation",
+      "type": "research",
+      "label": "Tool investigation (in-session, PoC-proven)",
+      "status": "done",
+      "command": "(conversation — no /plan-1a; Perplexity research + live PoC)",
+      "ran_at": "2026-06-10T05:30Z",
+      "user_input": "Next up, we need to add another exemplar extension. This one is using deterministic back pressure to do architectural checking. We use the hexagonal architecture design. I want to investigate a way that we can use code to actually validate that our implementations are following that pattern… do we use node native, install something? codeql etC? we can use perplexty to hel find the best ways to do this too",
+      "note": "Verdict: dependency-cruiser as repo devDependency, wrapped by an exemplar extension. PoC: 7 rules ran clean on harness/cli/src (66 modules / 112 deps / exit 0); seeded violation caught by services-only-adapter-ports with structured JSON + exit 1, reverted. Rules committed at poc-arch-rules.cjs (plan folder). Ruled out: eslint-plugin-boundaries (ESLint beside Biome), ts-arch (prose violations), madge (cycles only), CodeQL (authoring weight + licensing), ts-morph roll-your-own. Gotchas encoded: bare-npx depcruise scans 0 modules (always ./node_modules/.bin); no tsConfig option (TS18003).",
+      "artifacts": [
+        "original-ask.md",
+        "poc-arch-rules.cjs"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec (+ validate-v2) ✅",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-10T06:58Z",
+      "user_input": "yes do that next phase please · (Round 1) agreed · validated? · (Round 2) arch-check?. no examples copyable. later wew ill add harness core skill to be able to installe xtensiosn from toehr repos.",
+      "note": "Simple, CS-2 (P=4, conf 0.85), 12 ACs. Round 1 settled on recommendations (Simple / Hybrid / targeted mocks / hybrid docs). validate-v2 (4 agents, 13/15 lenses): VALIDATED WITH FIXES — evidence durability CRITICAL closed (full rule config committed as poc-arch-rules.cjs; the 'reproduced in original-ask.md' claim was false), § Envelope & Exit Contract added (6 states: ok/0, error/1, degraded/0 warn-only, unconfigured/2 missing tool AND missing config, error/1 crash), mapping extraction + 4-fixture RED/GREEN made mandatory (G6 honesty), CI pinned through the verb (one config, one code path), verb-name leakage contained. Verified in our favor: ExecPort resolves with {code,stdout,stderr} on non-zero exit (never throws); arch-check not in RESERVED_NAMES. Round 2: verb = arch-check; NO examples/extensions starter — future 'install extensions from other repos' core capability is the distribution channel (captured as SUGG-009). Post-validation refinement (user-approved, from external exemplar comparison scratch/exampe-of-determistic-backpresure.md): AC-11 gains severity-ramp rule-evolution workflow + proof-boundary statement; violations[] sort order pinned (from/to/rule, asserted by AC-10); roadmap ideas (explain verb, provenance, baseline/compare, required-rules) logged as SUGG-010. Grill pass (/grill-me, 2026-06-10): WARN-LAUNCH posture locked — all 7 rules ship at warn (violations -> degraded/exit 0 + CI ::warning:: annotation; promotion to blocking error is a deliberate future flip; no-circular-as-error canary declined); rule-set authority is empirical (no cross-walk task); rule-change discipline added (never weaken a rule in the PR that trips it; encoded in instructions.md + how-guide). ACs 2/4/9 updated. Today's backlog measured at zero by the PoC.",
+      "artifacts": [
+        "arch-conformance-extension-spec.md",
+        "poc-arch-rules.cjs"
+      ],
+      "next": [
+        "backpressure"
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure Check — SKIPPED (user call)",
+      "status": "done",
+      "command": "/plan-2d (not run)",
+      "ran_at": "2026-06-10T07:27Z",
+      "user_input": "skip to plan 3 cause that bakpressure is what we're building",
+      "note": "Consciously skipped, not forgotten: the plan BUILDS the backpressure sensor, and the spec's § Envelope & Exit Contract already maps every AC to a deterministic check — the survey would have been the spec grading its own homework. Resolved by user decision; no coverage artifact produced.",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (/plan-3) ✅ READY + validated",
+      "status": "done",
+      "command": "/plan-3-v3-architect --spec docs/plans/016-arch-conformance-extension/arch-conformance-extension-spec.md",
+      "ran_at": "2026-06-10T07:44Z",
+      "user_input": "run it",
+      "note": "READY first emit — gates 6 PASS / 1 N/A (G4 no ADRs). G2 found+fixed a P12 publication-boundary leak (internal exemplar name sanitized from spec/the-flow.md pre-emit). Spec's delegated decision settled: mapping tests colocate with the extension; vitest include widened ('../../.harness/extensions/**/*.test.ts'). validate-v2 (4 agents): VALIDATED WITH FIXES — FC caught the include glob one level short (would've hit a nonexistent path); CI step placement pinned (final step after Test, jq paths pinned); mapToDecision(parsed, rules) signature pinned; T007 honesty (rows 2/6 fixture-proven, not E2E). Thesis agent: PASS clean — all grill decisions (warn-launch, discipline, sort) survived; zero non-goal creep. 11 tasks + 2 harness rows, CS-2.",
+      "artifacts": [
+        "arch-conformance-extension-plan.md",
+        "arch-conformance-extension.fltplan.md"
+      ],
+      "next": [
+        "build"
+      ]
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "label": "Build — single phase (T000–T012) ✅ companion-reviewed",
+      "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion --plan \"docs/plans/016-arch-conformance-extension/arch-conformance-extension-plan.md\"",
+      "ran_at": "2026-06-10T08:20:44Z",
+      "user_input": "impleent with companion please · look at docs/harness-basics/intro-to-harness.md and harness-foundations/simple-mode.md to help frame the doco",
+      "note": "T000-T012 complete, 13 commits af3b8b5..e27c6c4, 12/12 ACs evidenced. Sensor live: arch-check ok/0 on clean tree (66/112); seeded violation -> degraded/0 naming the right rule with comment quoted; missing tool/config -> unconfigured/2; CI final step warn-annotates. Discovery encoded same-session: depcruise json reporter exits 0 on error violations -> parse-first (gotcha #3). Mid-build user direction: guide+briefing reframed in harness-foundations vocabulary (inferred->deterministic worlds, encode-the-fix-not-the-memory, Rule 3 epigraph). T012 drain: 12 entries materialised, SUGG-010 P12-sanitized, buffer cleared. Companion debrief: farewell delivered 7 findings (in-phase replies lost to a minih channel failure) — F001 abs-path leak + F004 schema-guard + F006 stale-doc fixed, F003 partial, F002 refuted (engines >=22 predates 016), F005/F007 record corrections; post-fix 380/380.",
+      "artifacts": [
+        ".dependency-cruiser.cjs",
+        ".harness/extensions/arch-check/",
+        "execution.log.md",
+        "docs/how/architecture-conformance.md"
+      ],
+      "next": [
+        "merge"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge — DEFERRED (user call)",
+      "status": "known",
+      "command": "/plan-8 (parked)",
+      "user_input": "great mark merge phase skipped we wil ldo that later",
+      "note": "Deferred 2026-06-10 after the build landed — not skipped-forever: the branch stays local with 15 unmerged commits; resume with /plan-8 (read-only analysis; executes only on explicit typed PROCEED). 014 and 015 merges are parked the same way.",
+      "next": []
+    }
+  ]
+}

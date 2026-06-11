@@ -1,0 +1,148 @@
+{
+  "modules": [],
+  "summary": {
+    "violations": [
+      {
+        "type": "dependency",
+        "from": "harness/cli/src/services/help/help-service.ts",
+        "to": "harness/cli/src/adapters/fs/node-fs.ts",
+        "unresolvedTo": "../../adapters/fs/node-fs.js",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ],
+        "rule": {
+          "severity": "error",
+          "name": "services-only-adapter-ports"
+        }
+      },
+      {
+        "type": "cycle",
+        "from": "harness/cli/src/output/envelope.ts",
+        "to": "harness/cli/src/output/render.ts",
+        "cycle": [
+          {
+            "name": "harness/cli/src/output/render.ts"
+          },
+          {
+            "name": "harness/cli/src/output/envelope.ts"
+          }
+        ],
+        "rule": {
+          "severity": "error",
+          "name": "no-circular"
+        }
+      },
+      {
+        "type": "dependency",
+        "from": "harness/cli/src/adapters/exec/node-exec.ts",
+        "to": "harness/cli/src/services/extensions/registry.ts",
+        "unresolvedTo": "../../services/extensions/registry.js",
+        "dependencyTypes": [
+          "local",
+          "import"
+        ],
+        "rule": {
+          "severity": "warn",
+          "name": "adapters-stay-leaf"
+        }
+      }
+    ],
+    "error": 2,
+    "warn": 1,
+    "info": 0,
+    "totalCruised": 66,
+    "totalDependenciesCruised": 113,
+    "ruleSetUsed": {
+      "forbidden": [
+        {
+          "name": "no-circular",
+          "comment": "No circular dependencies anywhere in the CLI.",
+          "severity": "error",
+          "from": {},
+          "to": {
+            "circular": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "services-never-import-acts",
+          "comment": "Services are adapter-agnostic business logic — they must not know about command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "services-only-adapter-ports",
+          "comment": "Services may depend on adapter PORT interfaces only, never concrete node-*/exec-*/system-* implementations or fakes.",
+          "severity": "error",
+          "from": {
+            "path": "^harness/cli/src/services"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters",
+            "pathNot": "-port\\.ts$"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "services-ports-type-only",
+          "comment": "Port imports from services must be type-only (the kernel injects the implementation).",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters/.*-port\\.ts$",
+            "dependencyTypesNot": [
+              "type-only"
+            ]
+          },
+          "scope": "module"
+        },
+        {
+          "name": "adapters-stay-leaf",
+          "comment": "Adapters are leaves — they never import services, acts, or output.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/adapters"
+          },
+          "to": {
+            "path": "^harness/cli/src/(services|acts|output)"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "output-stays-leaf",
+          "comment": "The output/envelope layer must not reach back into services or acts.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/output"
+          },
+          "to": {
+            "path": "^harness/cli/src/(services|acts)"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "no-fakes-in-prod",
+          "comment": "Fake adapters are test doubles — production source must not import them.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src",
+            "pathNot": "\\.(test|spec)\\.ts$"
+          },
+          "to": {
+            "path": "/fake-[^/]+\\.ts$"
+          },
+          "scope": "module"
+        }
+      ]
+    }
+  }
+}

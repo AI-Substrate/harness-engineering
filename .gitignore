@@ -147,3 +147,22 @@ scratch/
 
 # Local agent tool state (activity logs, etc.)
 .chainglass/
+
+# FlowSpace MCP local index
+.fs2/
+
+# minih agent runtime artifacts (per-run logs/events/state)
+agents/*/runs/
+
+# Harness scratch buffer — crash-resilient agent working notes (.harness/ itself is committed;
+# only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).
+.harness/temp/
+
+# validate-harness-flow runtime manifest (non-portable abs paths + PIDs; --collect reads it locally,
+# it is not durable AC-8 evidence). The copied reports/records/ROLLUP.md stay tracked.
+docs/plans/*/runs/**/.last-fire.json
+docs/plans/*/runs/.last-fire.json
+
+# minih harvests validate-harness-flow worker farewells to this legacy location at runtime;
+# the canonical record is relocated to .harness/records/retro/ (plan-012). Ignore only this file.
+docs/retros/validate-harness-flow.md

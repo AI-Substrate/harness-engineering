@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "harnessability-survey",
+  "plan_dir": "docs/plans/009-harnessability-survey",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/plan-8-v2-merge --plan \"docs/plans/009-harnessability-survey/harnessability-survey-plan.md\"",
+  "intent": "Rework the harnessability-assessment skill (v0.2) to survey existing engineering flows + deterministic harness opportunities, move output to .harness/reports/harnessability/, add A-F matrix + terminal summary, and a manual/IDE-only operation signals scan.",
+  "milestones_total": 5,
+  "milestones_done": 4,
+  "last_checkpoint_at": "2026-06-09T12-40-00Z",
+  "compacted_seams": [],
+  "status": "complete",
+  "closed_note": "Closed 2026-06-10 by /the-flow housekeeping — individual merge not executed; branch-wide bulk merge of feat/harness-cli-core planned (all 11 flows merge together)."
+}

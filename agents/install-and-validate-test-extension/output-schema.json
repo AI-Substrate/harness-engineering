@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Install & Validate Test Extension Report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["tempRepo", "installResult", "scaffoldResult", "validation", "verdict", "summary", "retrospective"],
+  "properties": {
+    "tempRepo": {
+      "type": "string",
+      "description": "Absolute path of the throwaway repo used for this run."
+    },
+    "installResult": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["harnessSource", "installed", "doctorRan"],
+      "properties": {
+        "harnessSource": { "type": "string", "enum": ["local", "github"] },
+        "installed": { "type": "boolean" },
+        "doctorRan": { "type": "boolean", "description": "`harness doctor` executed against the fresh (empty) repo without error." }
+      }
+    },
+    "scaffoldResult": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["usedSkill", "verb", "variant", "path", "created"],
+      "properties": {
+        "usedSkill": { "type": "boolean", "description": "True if the add-extension skill (not a hand-written file) authored the extension." },
+        "verb": { "type": "string" },
+        "variant": { "type": "string", "enum": ["minimal", "wrap", "js"] },
+        "path": { "type": "string", "description": "The .harness/extensions/<verb>.<ext> path the skill created." },
+        "created": { "type": "boolean" }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["loadedInDoctor", "shownInHelp", "invokedStatus", "invokedExitCode"],
+      "properties": {
+        "loadedInDoctor": { "type": "boolean", "description": "doctor reports the extension as `loaded` (not failed/conflict)." },
+        "shownInHelp": { "type": "boolean", "description": "`harness help` lists the verb." },
+        "invokedStatus": {
+          "type": "string",
+          "enum": ["ok", "degraded", "unconfigured", "error"],
+          "description": "Envelope status from invoking the verb."
+        },
+        "invokedExitCode": { "type": "integer" }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"],
+      "description": "PASS only if the skill created the extension AND it loaded AND invoking it returned the expected status/exit."
+    },
+    "summary": { "type": "string", "minLength": 50 },
+    "retrospective": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["workedWell", "confusing", "magicWand", "magicWandTarget"],
+      "properties": {
+        "workedWell": { "type": "string", "minLength": 10 },
+        "confusing": { "type": "string", "minLength": 10 },
+        "magicWand": { "type": "string", "minLength": 10 },
+        "magicWandTarget": {
+          "type": "string",
+          "enum": ["project", "minih"]
+        },
+        "difficulties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["id", "layer", "description"],
+            "properties": {
+              "id": { "type": "string", "description": "Self-numbered MH-001, MH-002, …" },
+              "layer": { "type": "string", "enum": ["project", "minih"] },
+              "category": { "type": "string", "description": "build | config | data | test | debug | knowledge | other" },
+              "description": { "type": "string" },
+              "mitigation": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

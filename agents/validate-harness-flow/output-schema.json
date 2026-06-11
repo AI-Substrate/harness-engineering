@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Validate Harness Flow — Worker Report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "targetRepo",
+    "harnessabilityGrade",
+    "axisTuple",
+    "abandoned",
+    "bootAuthored",
+    "bootRuns",
+    "retroRecorded",
+    "retroRecordPaths",
+    "verdict",
+    "summary",
+    "retrospective"
+  ],
+  "if": {
+    "properties": { "abandoned": { "const": true } },
+    "required": ["abandoned"]
+  },
+  "then": {
+    "required": ["abandonReason"],
+    "properties": { "abandonReason": { "type": "string", "minLength": 1 } }
+  },
+  "properties": {
+    "targetRepo": {
+      "type": "string",
+      "description": "Absolute path of the cloned target repo this run drove the setup flow against."
+    },
+    "harnessSource": {
+      "type": "string",
+      "enum": ["local", "github"],
+      "description": "Where the harness core was installed from for this run."
+    },
+    "harnessInstalled": {
+      "type": "boolean",
+      "description": "`harness doctor` ran against the target after install and returned an envelope."
+    },
+    "harnessabilityGrade": {
+      "oneOf": [{ "$ref": "#/$defs/grade" }, { "type": "null" }],
+      "description": "verdict.final_grade from the harnessability assessment (A–F), or null if the assessment did not produce one."
+    },
+    "axisTuple": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "operateTodayPercent",
+        "operateTodayGrade",
+        "adaptabilityPercent",
+        "adaptabilityGrade"
+      ],
+      "description": "The two-axis tuple from the assessment verdict — the primary result the final_grade must never mask.",
+      "properties": {
+        "operateTodayPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "operateTodayGrade": { "$ref": "#/$defs/grade" },
+        "adaptabilityPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "adaptabilityGrade": { "$ref": "#/$defs/grade" }
+      }
+    },
+    "assessmentReportPaths": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Where the assessment wrote, inside the clone, relative or absolute.",
+      "properties": {
+        "latestJson": { "type": "string" },
+        "latestMd": { "type": "string" },
+        "runDir": { "type": "string" }
+      }
+    },
+    "abandoned": {
+      "type": "boolean",
+      "description": "True when the worker stopped after the assessment because its report judged the repo poorly harnessable. Not a hard failure; a valid, useful outcome."
+    },
+    "abandonReason": {
+      "type": ["string", "null"],
+      "description": "Human-readable reason for abandonment (e.g. grade + which axis failed). Null when not abandoned."
+    },
+    "bootAuthored": {
+      "type": "boolean",
+      "description": "True when a `boot` extension was authored via the harness's own tooling (not hand-written) and shows as loaded in `harness doctor`."
+    },
+    "bootRuns": {
+      "type": "boolean",
+      "description": "True when invoking the boot extension returned an honest Envelope (ok / degraded / unconfigured with next_action) — independently verified, not trusting the skill's self-report."
+    },
+    "bootPath": {
+      "type": ["string", "null"],
+      "description": "The .harness/extensions/boot.<ext> path in the clone, or null."
+    },
+    "retroRecorded": {
+      "type": "boolean",
+      "description": "True when a retro record was created and filled in the clone via the harness's own retro mechanism."
+    },
+    "retroRecordPaths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Paths to the retro record files this run authored in the clone (consumed by the orchestrator --collect rollup)."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "ABANDONED"],
+      "description": "PASS only when the clone ends with a working, proven harness (installed + assessed + a boot that runs honestly + a retro recorded). ABANDONED when the worker stopped on its assessment's judgement (reported, not FAILed). FAIL on any other broken step."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 50,
+      "description": "What happened, end to end, in a few sentences."
+    },
+    "retrospective": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["workedWell", "confusing", "magicWand", "magicWandTarget"],
+      "description": "Dual-layer retrospective. project = the harness CLI / skills / docs; minih = the runner / skill passing / permissions.",
+      "properties": {
+        "workedWell": { "type": "string", "minLength": 10 },
+        "confusing": { "type": "string", "minLength": 10 },
+        "magicWand": { "type": "string", "minLength": 10 },
+        "magicWandTarget": { "type": "string", "enum": ["project", "minih"] },
+        "difficulties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["id", "layer", "description"],
+            "properties": {
+              "id": { "type": "string", "description": "Self-numbered VF-001, VF-002, …" },
+              "layer": { "type": "string", "enum": ["project", "minih"] },
+              "category": {
+                "type": "string",
+                "description": "build | config | data | test | debug | knowledge | other"
+              },
+              "description": { "type": "string" },
+              "mitigation": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "grade": { "type": "string", "enum": ["A", "B", "C", "D", "E", "F"] }
+  }
+}

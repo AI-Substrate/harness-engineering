@@ -1,0 +1,86 @@
+# Engineering harness — harness-engineering (this repo)
+
+> **AGENTS START HERE → `npx harness instructions`** — the CLI's baked agent
+> briefing (envelope contract, role split, discovery loop). Then
+> `npx harness instructions <verb>` for each verb you'll use. `harness help`
+> and `harness doctor --json` complete the one-hop orientation.
+
+This is the harness's own home: the "system" here is the **harness CLI itself**
+(`harness/cli/`, TypeScript, commander + ports/adapters) plus the skill packs
+it ships. Booting this repo means proving the CLI builds, its full suite
+passes, and the dogfood extensions load.
+
+## Boot command
+
+```bash
+just test        # cd harness/cli && npx vitest run --coverage — the full suite (~5s warm)
+```
+
+Full loop when editing source: `just fft` (biome fix → format → test).
+Cold start after clone: `npm install` (the `prepare` hook builds: gen:docs + tsc).
+
+## Health check
+
+```bash
+npx harness doctor --json    # envelope status "ok" = healthy (toolchain, build, extensions, conventions)
+```
+
+Exit 0 with `status: "ok"` and `extensions: 3 loaded, 0 failed` is the healthy
+reading for this repo. `degraded` names exactly what to fix in `next_action`.
+
+## Interact method
+
+The CLI is the interaction surface: `npx harness <verb> --json` — core acts
+(`help`, `doctor`, `instructions`, `new`, `docs`, `skills`, `record`) plus this
+repo's extension verbs (`validate-harness-flow`, `validate-harnessability`,
+`arch-check`).
+Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
+`next_action?`/`timestamp`); statuses map to exits 0/0/2/1.
+
+## Observe method
+
+- Envelope `data` + `evidence[]` on every command (`--json`).
+- `npx vitest run --coverage` output (full suite + v8 coverage table) — run from `harness/cli/`; the include also collects `.harness/extensions/**/*.test.ts`.
+- `harness doctor --json` layer report (toolchain / cli-build / extensions / instructions / record-types).
+- Dogfood worker artifacts collected by `harness validate-harness-flow --collect` (per-repo reports + ROLLUP.md).
+
+## Deterministic signal inventory
+
+| Sensor | Command | Proves |
+|---|---|---|
+| Unit + integration suite | `just test` | CLI behaviour incl. real-jiti extension loading |
+| Architecture tests | (in suite) `test/architecture/` | single `process.exit` site; no `node:fs` in services |
+| Hexagonal conformance | `npx harness arch-check --json` | the whole import graph honours the 7 committed rules (`.dependency-cruiser.cjs`); warn-launch — violations read `degraded` + CI `::warning::` until severities are promoted |
+| Lint/format | `just fix` / `just format` (biome) | style + correctness rules |
+| Type build | `npm run build` (tsc) | the published surface compiles |
+| Docs drift guard | `npm run check:docs` | `docs-content.ts` matches `docs/how/` sources |
+| CI | `.github/workflows/ci.yml` | build-test: lint + build + check:docs + typecheck + test + arch-check (via the verb); package-smoke: packed-install doctor/extension fixture checks |
+
+## Evidence paths
+
+- `harness/cli/coverage/` — vitest coverage output (gitignored, regenerated per run).
+- `docs/plans/<ord>-<slug>/runs/` — dogfood run collections (reports, ROLLUP.md).
+- `.harness/records/retro/` — recorded retros (`harness record retro`).
+- CI logs on GitHub Actions for the PR-time reading.
+
+## Back-pressure gaps (honest)
+
+- **Skill prose has no deterministic sensor** — the `skills/**/SKILL.md` packs
+  are validated only by dogfood runs (`validate-harness-flow`), not by tests.
+- **minih-dependent verbs need live workers** — there is no fake for the
+  `minih` runtime; the two dogfood verbs are proven by real fan-out runs only.
+- **Instructions content is convention-checked, not content-checked** — doctor
+  proves `instructions.md` exists, not that a briefing is any good; quality is
+  operator judgment.
+- **Suite exit codes are maskable by caller-side pipes** — `just test | grep …`
+  reads grep's exit, not vitest's. Not encodable repo-side (the recipe itself
+  propagates correctly); chain on the command, never on a pipe of it.
+
+## Current maturity snapshot
+
+**L3 — improvement loop active**: boot (`just test`) boots cleanly, health
+(`harness doctor`) reads ok, build/test/lint confirmed runnable (L2 floor), and
+the retro→encode loop has now shipped a harness change: the plan-014
+orchestrator retro's magic wand (cwd-sensitive tests; mute stale-dist failures)
+was encoded same-day — see `.harness/history.md` row 1. Not L4: improvements do
+not yet arrive routinely during normal work without a retro prompting them.

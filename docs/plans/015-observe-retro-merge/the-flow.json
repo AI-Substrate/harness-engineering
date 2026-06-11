@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "observe-retro-merge",
+  "plan_dir": "docs/plans/015-observe-retro-merge",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Build COMPLETE — T000–T014 done, suite 374/374 both cwds, dogfood drain proved AC-9, companion reviewed every commit (supersedes /plan-7)",
+  "next": "/plan-8 merge analysis — executes only on typed PROCEED",
+  "_comment": "Harness exists (.harness/engineering-harness.md, L3; no docs/harness/.disabled) -> backpressure node on the spine. the-flow.md is generated FROM this file.",
+  "agents": [
+    {
+      "id": "code-review-companion",
+      "kind": "companion",
+      "render": "wrap",
+      "covers": ["build"],
+      "run_id": "2026-06-10T12-44-41-380Z-6236",
+      "note": "Power-On-Mode live reviewer — briefed at phase start, pinged at every commit boundary (5 review-requests + final drain), supersedes /plan-7; farewell harvested at debrief."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "discussion",
+      "type": "research",
+      "label": "Design discussion (in-session)",
+      "status": "done",
+      "command": "(conversation — no /plan-1a)",
+      "ran_at": "2026-06-10T01:30Z",
+      "user_input": "We're going to look at how to combine observe and retro skills into one… what did the agent have to infer that the harness should have proved deterministically… Do we need a new record type in the harness itself?… these inflight logs should probably not be committed… part of this process is about token usage… combine them into a more simple concept without watering them down. + alignment read: docs/harness-basics/intro-to-harness.md, harness-foundations/simple-mode.md",
+      "note": "Agreed direction: (1) merge is canon-restoring — observe is ambient in do-work-and-observe, not a stage; (2) elevate the simple-mode Rule 5 question pair to headline signal, asked in-flight AND at drain; (3) CLI-owned capture verb `harness observe`; (4) storage classes: committed records vs transient temp + doctor convention check; (5) token framing already canon — recurrence = leak detector; (6) merged skill must be SHORTER than the two it replaces (703-line baseline).",
+      "artifacts": [
+        "original-ask.md"
+      ],
+      "next": [
+        "spec"
+      ]
+    },
+    {
+      "id": "spec",
+      "type": "spec",
+      "label": "Spec (+ validate-v2)",
+      "status": "done",
+      "command": "/plan-1b",
+      "ran_at": "2026-06-10T02:05Z",
+      "user_input": "fire up a flow and pgoress to a vlidated spec stage",
+      "note": "Simple, CS-3 (P=5), 15 ACs, clarifications D-1..D-13 (Round 1 settled from precedent + discussion per user instruction). validate-v2 (4 agents): VALIDATED WITH FIXES — 1 CRITICAL (agent-identity resolution → D-11; user veto same day softened it to: --agent flag → HARNESS_AGENT env → deterministic default bucket, never errors; stranded-bucket risk closed by --list/--clear all-buckets sweep) + 4 HIGH fixed; P2 gitignore concern DISSOLVED (ensureTemp() already writes the nested .harness/temp/.gitignore — which also corrected the spec's own overstated drift claim). FC matrix ✅×5 post-fix; thesis Advanced @ Contract.",
+      "artifacts": [
+        "observe-retro-merge-spec.md",
+        "observe-retro-merge.fltplan.md"
+      ],
+      "next": [
+        "backpressure"
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure Check (optional — skipped)",
+      "status": "done",
+      "command": "/plan-2d",
+      "note": "Skipped by user decision (went straight to architect). Advisory — absence changes nothing; spec validation had already confirmed AC-1..AC-8 map to deterministic sensors, and the prose-sensor gap is recorded in .harness/engineering-harness.md.",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (/plan-3 + validate-v2) ✅ READY",
+      "status": "done",
+      "command": "/plan-3",
+      "ran_at": "2026-06-10T03:30Z",
+      "user_input": "proceed to architect phase please",
+      "note": "READY — gates 6 PASS / 1 N/A (no ADRs); single phase T000–T014. D1–D10 settle every spec-deferred choice: D1 dedicated observe service (placement? hook stays reserved; ensureTemp → services/shared/temp.ts); D2 keep YAML-blocks-in-md at .harness/temp/<bucket>/session-buffer.md, constrained codec, NO yaml dependency; D3 legacy entries parse natively (deviants → malformed_skipped, never silent); D4 kebab-sanitized identity (vetoable extension of D-11); D5 doctor probe in checkConventions() (E144 pattern); D6 edge envelopes + E146; D7 flow dispatch re-pointed to merged skill; D8 one locked setup line; D9 list envelope shape; D10 full system.compound written by CLI. validate-v2 (3 agents): VALIDATED WITH FIXES — Source-Truth: all 9 findings line-verified, constitution PASS, no Deviation Ledger; Completeness: CRITICAL fixed (T012 mandatory 9-row AC-14 mapping table) + 5 HIGH fixed; Thesis/FC: 4/4 consumers PASS, confidence 0.88. Status stayed READY.",
+      "artifacts": [
+        "observe-retro-merge-plan.md"
+      ],
+      "next": [
+        "build"
+      ]
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "label": "Build — single phase (T000–T014) ✅",
+      "status": "done",
+      "command": "/plan-6-v2-implement-phase-companion",
+      "ran_at": "2026-06-10T02:43Z",
+      "user_input": "implement with companion",
+      "note": "T000–T014 complete in 5 atomic RED/GREEN commits (421de53, e4a943a, 3f1cee9, b0cef6f, b57d7b1 + evidence commit). Strand A: observe service/codec/shared-temp relocation (record tests untouched-green), act + RESERVED_NAMES + E146, doctor temp-hygiene probe, briefing capture+drain. Strand B: merged skill 386 lines (<703), D-13 strings ×2, AC-14 9/9 mapped w/ line numbers. Strand C: slug retired (repo-root grep zero hits; flow re-pointed per D7 naming `harness observe`), docs/how + gen:docs order held, T013 real dogfood drain (SUGG-001 user note + DL-001 FakeFs gap → committed record 002 via data.path → clear → empty sweep), T014 suite 374/374 BOTH cwds + doctor ok + smoke. Mid-build discovery: FakeFs.readdir lacked NodeFs fidelity for mkdirp-created dirs — fixed + pinned, captured as DL-001 via the new verb itself. Companion: code-review-companion run 2026-06-10T12-44-41-380Z-6236, briefed + pinged per commit, no findings raised mid-phase; debrief at phase end.",
+      "next": [
+        "merge"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "command": "/plan-8",
+      "note": "Read-only analysis; executes only on explicit typed PROCEED.",
+      "next": []
+    }
+  ]
+}
