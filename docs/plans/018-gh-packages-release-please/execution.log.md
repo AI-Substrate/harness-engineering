@@ -120,3 +120,12 @@ migrate those flows to the registry install. Surfaced for an explicit scope deci
 Verified locally: **AC-1, AC-2, AC-4, AC-6, AC-8, AC-9, AC-10** ✅. Awaiting CI/merge/dispatch:
 **AC-5/AC-7** (package-smoke tarball install — CI proves on push), **AC-3** (publish on real release — post-merge),
 **AC-11** (canary — T12 dispatch held).
+
+## CI evidence — commit `29e4255`, PR #1, run 27321676624 ✅
+
+`build-test (22)` ✅ · `build-test (24)` ✅ · **`package-smoke`** ✅ · `ci-required` ✅. The new sensors
+(grep gate, scope==owner, publish dry-run) ran *inside* the green `build-test`; **`package-smoke` green proves
+AC-5 + AC-7** (renamed scoped package installs under `--omit=dev` and the bin runs). **AC-5/AC-7 now ✅.**
+Remaining: **AC-3** (publish fires on the real release — post-merge), **AC-4** (config verified; fires post-merge),
+**AC-11** (canary — T12 held). Plan-018 implementation is complete and proven on CI; the real publish is one
+release-please Release-PR merge away.
