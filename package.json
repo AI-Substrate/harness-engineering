@@ -8,7 +8,8 @@
     "url": "git+https://github.com/AI-Substrate/harness-engineering.git"
   },
   "bin": {
-    "harness": "./harness/cli/bin/harness.js"
+    "harness": "./harness/cli/bin/harness.js",
+    "engh": "./harness/cli/bin/harness.js"
   },
   "exports": {
     ".": "./harness/cli/dist/index.js",
