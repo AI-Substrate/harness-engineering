@@ -26,6 +26,6 @@ spec-driven flow), fills the handler, and proves it loaded with
 
 ## See also
 
-- `harness/cli/docs/authoring-verbs.md` — the full verb contract.
-- `docs/how/extend-the-harness.md` — the end-to-end user guide.
+- [harness/cli/docs/authoring-verbs.md](https://github.com/AI-Substrate/harness-engineering/blob/main/harness/cli/docs/authoring-verbs.md) — the full verb contract.
+- [docs/how/extend-the-harness.md](https://github.com/AI-Substrate/harness-engineering/blob/main/docs/how/extend-the-harness.md) — the end-to-end user guide.
 - `AUTHORING.md` — notes for maintaining this skill.

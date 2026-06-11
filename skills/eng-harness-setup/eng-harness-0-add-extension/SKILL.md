@@ -77,7 +77,8 @@ Open the scaffolded file and implement `run(ctx)`:
   Read inputs from `ctx.options`/`ctx.args`; reach the filesystem/git/env via
   `ctx.fs`/`ctx.git`/`ctx.env` (never import `node:*` directly).
 
-See `harness/cli/docs/authoring-verbs.md` (and `docs/how/extend-the-harness.md`)
+See [authoring-verbs.md](https://github.com/AI-Substrate/harness-engineering/blob/main/harness/cli/docs/authoring-verbs.md)
+(and [extend-the-harness.md](https://github.com/AI-Substrate/harness-engineering/blob/main/docs/how/extend-the-harness.md))
 for the full contract.
 
 ### 3. Verify — show the proof

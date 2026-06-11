@@ -62,7 +62,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 | `eng-harness-2-backpressure` | Backpressure Check | Advisory survey of whether scoped work can be *proven by deterministic sensors*; names missing sensors. Never blocks. |
 | `eng-harness-4-retro` | Do Work and Observe + Retro / Magic Wand | The one friction-lifecycle skill. In-flight capture is a CLI verb — `npx harness observe` logs one entry per call to the gitignored buffer (`.harness/temp/<bucket>/`), with IDs/timestamps/validation/gitignore owned by the CLI; `--drain` presents the end-of-session triage prompt and materialises a committed record via `harness record retro` (under `.harness/records/`); `--harvest` clusters recurring improvement candidates and frames recurrence as token cost. |
 
-> **Backed by `harness record`**: the Observe/Retro stages call the core CLI command `harness record <type>` (starting with the `retro` type) to scaffold a templated record into `.harness/records/<type>/`. Scratch lives in gitignored `.harness/temp/`; committed records live in tracked `.harness/records/`. See [`docs/how/record-and-record-types.md`](../docs/how/record-and-record-types.md).
+> **Backed by `harness record`**: the Observe/Retro stages call the core CLI command `harness record <type>` (starting with the `retro` type) to scaffold a templated record into `.harness/records/<type>/`. Scratch lives in gitignored `.harness/temp/`; committed records live in tracked `.harness/records/`. See [docs/how/record-and-record-types.md](https://github.com/AI-Substrate/harness-engineering/blob/main/docs/how/record-and-record-types.md).
 
 ## The intended loop
 
