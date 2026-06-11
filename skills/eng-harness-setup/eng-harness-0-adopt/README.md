@@ -1,4 +1,4 @@
-# eng-harness-0-setup
+# eng-harness-0-adopt
 
 Install a repo's **engineering harness** from npx and guide the user to a working basic `boot` — the command every engineering task starts from.
 
@@ -42,7 +42,7 @@ Run this when a repo has no working `harness boot` (or no harness front door at 
 ## Where it fits
 
 ```text
-eng-harness-0-setup  ->  eng-harness-0-harnessability-assessment  ->  eng-harness-0-add-extension (boot)  ->  runtime loop
+eng-harness-0-adopt  ->  eng-harness-0-harnessability-assessment  ->  eng-harness-0-add-extension (boot)  ->  runtime loop
    install + drive the CLI       report-only readiness         author the nucleus       boot · work · observe · retro · improve
 ```
 

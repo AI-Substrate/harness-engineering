@@ -1,11 +1,11 @@
 ---
 name: eng-harness-flow
 description: |
-  Stateless harness-loop router — the single front door to the eng-harness skill family, and the harness-loop analogue of `the-flow` (which guides the SDD pipeline). On every call it re-derives where the work sits on the loop from deterministic repo signals plus an optional caller hint, then routes to the SINGLE correct harness skill — never call the children directly. It enforces a setup gate (install → scout → governance → inject → boot LAST) before the engineering zone (boot → backpressure → observe → retro → improve), honours `at=` / `--event` / `--plan-dir` / `--spec` / `--phase` / `--prompt-optional` / `--json`, and resolves hint-vs-signal conflicts via a route/redirect/noop/ambiguous matrix. Stateless — safe to call anytime, from any caller. Never gates, scores, or blocks; never invents a health verdict (that is `harness doctor`'s job).
+  Stateless harness-loop router — the single front door to the eng-harness skill family, and the harness-loop analogue of `the-flow` (which guides the SDD pipeline). On every call it re-derives where the work sits on the loop from deterministic repo signals plus an optional caller hint, then routes to the SINGLE correct harness skill — never call the children directly. It enforces an adoption gate (install → scout → governance → inject → boot LAST) before the engineering zone (boot → backpressure → observe → retro → improve), honours `at=` / `--event` / `--plan-dir` / `--spec` / `--phase` / `--prompt-optional` / `--json`, and resolves hint-vs-signal conflicts via a route/redirect/noop/ambiguous matrix. Stateless — safe to call anytime, from any caller. Never gates, scores, or blocks; never invents a health verdict (that is `harness doctor`'s job).
 ---
 # eng-harness-flow
 
-The **front door** to the harness loop (the loop drawn in [`references/getting-started.md`](./references/getting-started.md), bundled with this skill — read that first if the skill family is new to you). `the-flow` does this for the **SDD pipeline** (a linear journey: spec → plan → tasks → code → review → merge). `eng-harness-flow` does it for the **harness loop** (a *cycle* re-entered wherever the work is: Boot → Backpressure → Observe → Retro → Improve → Boot). On each call it figures out *where on the loop you are* and hands back the **one right harness command** — whether you are on an empty repo (set it up), a full repo with no harness (set it up), or mid-plan in a healthy harness (boot / backpressure / retro).
+The **front door** to the harness loop (the loop drawn in [`references/getting-started.md`](./references/getting-started.md), bundled with this skill — read that first if the skill family is new to you). `the-flow` does this for the **SDD pipeline** (a linear journey: spec → plan → tasks → code → review → merge). `eng-harness-flow` does it for the **harness loop** (a *cycle* re-entered wherever the work is: Boot → Backpressure → Observe → Retro → Improve → Boot). On each call it figures out *where on the loop you are* and hands back the **one right harness command** — whether you are on an empty repo (adopt a harness), a full repo with no harness (adopt one), or mid-plan in a healthy harness (boot / backpressure / retro).
 
 The router is also a **guide on a journey**: most callers meet the loop cold, so as it routes it *teaches* — every turn says not just what's next but **why it matters**. The loop's purpose, in one line: make the repo's **deterministic layer** (build, test, proof, sensors, evidence) a **first-class, discoverable, improvable thing** instead of diffuse scripts and tribal knowledge — with the harness CLI as its focal point. Every routed stage is one move in that game, and the narration names which (§ Per-turn UX, the why table).
 
@@ -18,7 +18,7 @@ The router is also a **guide on a journey**: most callers meet the loop cold, so
 `eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It:
 
 - ❌ **Writes no artifacts of its own** — no state file, no flight-plan `.json`/`.md`, no journey log. Child skills own *their* artifacts (the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`).
-- ❌ **Never gates, scores, or blocks** — every route is a *suggestion*; `at=` is a hint, never a command; the setup gate *informs* but never forces. There is **no `.disabled` sentinel** for the loop — declining the harness is **conversational** (the user says so and the agent stops calling the loop skills), not a file.
+- ❌ **Never gates, scores, or blocks** — every route is a *suggestion*; `at=` is a hint, never a command; the adoption gate *informs* but never forces. There is **no `.disabled` sentinel** for the loop — declining the harness is **conversational** (the user says so and the agent stops calling the loop skills), not a file.
 - ❌ **Never runs `minih`** (companions are owned by the plan-6 companion skill) and **never runs `/compact`** (a user-typed CLI built-in — it can only *recommend* it).
 - ❌ **Never invents a verdict** — "is the harness healthy?" is answered by `harness doctor` (the JSON envelope), not by the router's opinion.
 - ✅ **Reads** repo signals + conversation, **routes** to exactly one harness skill (with a one-line *why*, the artifact it produces, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and is **safe to call any number of times**.
@@ -28,39 +28,41 @@ The router is also a **guide on a journey**: most callers meet the loop cold, so
 
 ---
 
-## The two zones — 🧰 setup gate, then ⚙️ engineering loop
+## The two zones — 🧰 adoption gate, then ⚙️ engineering loop
 
 Two grouped concepts, kept separate:
 
-- **🧰 Harness setup & installation** — the one-time *process* (`eng-harness-0-setup`) that *establishes* the substrate: install, scout, a **working boot command + governance**, and the injection point. **Boot is built LAST** in setup, deliberately, so the moment it's built you *run* it and flow straight into the dev loop ("build boot, run boot, then try the shiny new harness").
-- **⚙️ Engineering flows** — the repeated ready-for-coding loop that *runs* it. Its first step **re-runs** the boot that setup built; it never *creates* boot.
+- **🧰 Harness adoption** — the one-time *journey* (`eng-harness-0-adopt`) by which a repo takes the harness into how it works: install, scout, a **working boot command + governance**, and the injection point. Adoption wraps what the repo already has and weaves the loop into its extant flow. **Boot is built LAST** in adoption, deliberately, so the moment it's built you *run* it and flow straight into the dev loop ("build boot, run boot, then try the shiny new harness").
+- **⚙️ Engineering flows** — the repeated ready-for-coding loop that *runs* it. Its first step **re-runs** the boot that adoption built; it never *creates* boot.
 
-The router doesn't sit *inside* either zone — it sits *beside* them and points the caller at the right step. A single "harness functional?" gate is **not** enough to enter the engineering loop: the 🧰 setup process must have *established* the substrate, in order, ending with boot. The router walks the rungs and routes the **first missing one** to the setup step that owns it — though provisioning the governance/boot rungs is the deferred `harness init` writer's job (see *owed, not provisioned* below), so for those the router routes/attempts rather than claiming setup provisions them now.
+The router doesn't sit *inside* either zone — it sits *beside* them and points the caller at the right step. A single "harness functional?" gate is **not** enough to enter the engineering loop: the 🧰 adoption journey must have *established* the substrate, in order, ending with boot. The router walks the rungs and routes the **first missing one** to the adoption step that owns it — though provisioning the governance/boot rungs is the deferred `harness init` writer's job (see *owed, not provisioned* below), so for those the router routes/attempts rather than claiming adoption provisions them now.
 
-### The 🧰 setup gate (in order; boot LAST)
+**The no-harness moment is an invitation, not a deficiency.** When nothing holds at all (S0 misses on a repo with source), narrate it as adoption, never as missing setup steps: *"Looks like this repo hasn't adopted an engineering harness yet. Adoption wraps what you already have — build, test, run, as-is — weaves the loop into your existing flow, and leaves a working `boot`. Want to walk through it?"* — then route to `eng-harness-0-adopt`.
 
-| Rung | What setup must have established | Read via signals | Required? | If missing → route to |
+### The 🧰 adoption gate (in order; boot LAST)
+
+| Rung | What adoption must have established | Read via signals | Required? | If missing → route to |
 |---|---|---|---|---|
-| **S0 · Install** | CLI present + `harness doctor` healthy | A · B | **required** | `eng-harness-0-setup` (install) |
+| **S0 · Install** | CLI present + `harness doctor` healthy | A · B | **required** | `eng-harness-0-adopt` (install) |
 | **S1 · Scout** | a harnessability report exists | F | *skippable* | `eng-harness-0-harnessability-assessment` |
 | **S2 · Governance** | governance doc (BIO contract) + `docs/harness/` ledger | D · E | **required** | provision governance — *owed, not provisioned* (see below) |
-| **S3 · Inject** | a recorded injection map — where the user's extant dev/SDD flow calls `eng-harness-flow` | D — governance doc `## Injection map` | *advisory* | `eng-harness-0-setup` (Step 3 — inject) |
+| **S3 · Inject** | a recorded injection map — where the user's extant dev/SDD flow calls `eng-harness-flow` | D — governance doc `## Injection map` | *advisory* | `eng-harness-0-adopt` (Step 3 — inject) |
 | **S4 · Build + run boot (LAST)** | a **working boot command** (authored, recorded into governance, **and run once**) | C | **required** | `eng-harness-0-add-extension` (author boot, validate it boots) |
-| **E1 · Re-run boot** | — (an **action**, not a presence-check) | — | — | **re-run** the boot setup built — `eng-harness-1-boot --validate` (per coding session) |
+| **E1 · Re-run boot** | — (an **action**, not a presence-check) | — | — | **re-run** the boot adoption built — `eng-harness-1-boot --validate` (per coding session) |
 
-- **Required rungs** (S0 install, S2 governance, S4 built boot) hard-gate the engineering zone: without governance + a working boot the loop skills report `UNAVAILABLE`/no-op, so the router **stays on the 🧰 setup track**. The router routes the **first** missing required rung with a one-line *why*.
+- **Required rungs** (S0 install, S2 governance, S4 built boot) hard-gate the engineering zone: without governance + a working boot the loop skills report `UNAVAILABLE`/no-op, so the router **stays on the 🧰 adoption track**. The router routes the **first** missing required rung with a one-line *why*.
 - **Skippable / advisory rungs** (S1 scout, S3 inject) are **offered, never blocking**. Because the router is stateless, a skip is *re-offered next call* unless the child artifact exists or the parent passes `--prompt-optional=false`.
 - **Inject (S3) comes before boot (S4)** so that the instant boot works, the user already knows where `eng-harness-flow` plugs into their flow and can dive straight into real work.
 
-> **Owed, not provisioned (honesty about the deferred writer).** The governance doc *writer* — provisioning `.harness/engineering-harness.md` + a working boot at inception via a deterministic `harness init` CLI command — is **deferred to a later plan**. So for S2 (governance) and S3 (inject) the router says the rung is **owed** and routes to `eng-harness-0-setup` / an attempted `npx harness init` — it must **not** claim setup unconditionally "provisions" governance. If the installed CLI doesn't yet support it, the router reports `UNAVAILABLE` and stays on the setup track (nothing errors). See `references/governance-doc.md` for what the doc contains and when it's written.
+> **Owed, not provisioned (honesty about the deferred writer).** The governance doc *writer* — provisioning `.harness/engineering-harness.md` + a working boot at inception via a deterministic `harness init` CLI command — is **deferred to a later plan**. So for S2 (governance) and S3 (inject) the router says the rung is **owed** and routes to `eng-harness-0-adopt` / an attempted `npx harness init` — it must **not** claim adoption unconditionally "provisions" governance. If the installed CLI doesn't yet support it, the router reports `UNAVAILABLE` and stays on the adoption track (nothing errors). See `references/governance-doc.md` for what the doc contains and when it's written.
 
 ### The ⚙️ engineering dispatch (only once S0 + S2 + S4 hold)
 
-Once the required setup rungs hold, the router crosses into the loop and dispatches by *where in the work* the caller is:
+Once the required adoption rungs hold, the router crosses into the loop and dispatches by *where in the work* the caller is:
 
 | Where in the work (signals H · I / `--event`) | Route to | Produces |
 |---|---|---|
-| session start / unknown | `eng-harness-1-boot --validate` (re-run the boot setup built) | a boot verdict (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
+| session start / unknown | `eng-harness-1-boot --validate` (re-run the boot adoption built) | a boot verdict (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
 | spec done, pre-architect | `eng-harness-2-backpressure` | `backpressure-coverage.md` |
 | mid-build (doing work) | capture is one CLI call — `npx harness observe "<what>" --kind <kind>` *(silent; judgment guidance lives in `eng-harness-4-retro` § in-flight capture)* | one buffer entry per call |
 | phase / session end · **buffer non-empty** | `eng-harness-4-retro --drain` | buffer drained → `.retro.md` (`next_suggested: --harvest`) |
@@ -77,13 +79,13 @@ Once the required setup rungs hold, the router crosses into the loop and dispatc
 
 ## Detection signals A–J
 
-The router decides purely from signals it can **read** (no state of its own). This is the catalog; the decision order below applies them (hint first, then the setup gate, then the engineering dispatch). There is **no `.disabled` opt-out** — opting out is conversational.
+The router decides purely from signals it can **read** (no state of its own). This is the catalog; the decision order below applies them (hint first, then the adoption gate, then the engineering dispatch). There is **no `.disabled` opt-out** — opting out is conversational.
 
 | # | Signal | How it's read | Tells us |
 |---|---|---|---|
 | A | **Harness CLI present** | `harness --version` resolves; or `.harness/` dir exists; or a `package.json`/`npx` target is present | Is there a harness at all? |
 | B | **CLI healthy** | `harness doctor` **JSON envelope** read by `exit_code`/`status` field (not prose — the CLI loading and returning an envelope is the signal; a consumer repo can still show *degraded* on individual layers, but `cli-build` is `ok`/n/a there since FX001) | Does the CLI itself load/run? |
-| C | **Working boot command** | a `boot` verb/recipe exists (`.harness/extensions/boot/`, a `justfile`/`package.json` boot, or governance declares it) **and** boots cleanly | Did setup establish a boot we can run? |
+| C | **Working boot command** | a `boot` verb/recipe exists (`.harness/extensions/boot/`, a `justfile`/`package.json` boot, or governance declares it) **and** boots cleanly | Did adoption establish a boot we can run? |
 | D | **Governance doc** | `.harness/engineering-harness.md` (the canonical and only location) | Is the Boot/Interact/Observe contract present? (Boot needs this or it reports `UNAVAILABLE`.) Its `## Injection map` section is S3's durable signal: which seams the host flow fires, from where |
 | E | **Loop substrate** | `.harness/temp/` (gitignored observe scratch) + `.harness/records/retro/` (committed retro records, created via `harness record retro`) — legacy `docs/harness/agents/` retros are still read by harvest for back-compat | Can Observe/Retro actually record anything? |
 | F | **Harnessability report** | any report under `.harness/reports/harnessability/` (path inconsistency noted — see "limits"; the router detects *any* report present) | Has the repo been sized up? |
@@ -94,15 +96,15 @@ The router decides purely from signals it can **read** (no state of its own). Th
 
 ### Decision order
 
-1. **Parent hint first (J).** An explicit `at=`/`--event` is honoured **only if its precondition holds** (validated by the setup gate + the conflict matrix). Otherwise the router **redirects** to the setup step that owns the missing rung and says why — it never blindly runs the named stage when signals contradict it. (For the governance/boot rungs, "owns" means routes-or-attempts the deferred `harness init` writer, not "provisions now" — see *owed, not provisioned*.)
-2. **Then the 🧰 setup gate** (S0 → S1 → S2 → S3 → **S4 boot last**). Route the first missing **required** rung (S0, S2, S4); *offer* the skippable rungs (S1, S3) without blocking.
+1. **Parent hint first (J).** An explicit `at=`/`--event` is honoured **only if its precondition holds** (validated by the adoption gate + the conflict matrix). Otherwise the router **redirects** to the adoption step that owns the missing rung and says why — it never blindly runs the named stage when signals contradict it. (For the governance/boot rungs, "owns" means routes-or-attempts the deferred `harness init` writer, not "provisions now" — see *owed, not provisioned*.)
+2. **Then the 🧰 adoption gate** (S0 → S1 → S2 → S3 → **S4 boot last**). Route the first missing **required** rung (S0, S2, S4); *offer* the skippable rungs (S1, S3) without blocking.
 3. **Then the ⚙️ engineering dispatch** (the table above), keyed on `--event` / signals H · I, with drain-before-harvest and ambiguous-not-guessed.
 
 ### Where statelessness has limits (and who absorbs them)
 
 1. **Skipped optionals re-offer.** With no memory, a declined scout/backpressure offer comes back next call. **Absorbed by**: the parent (skip-suppression via `--prompt-optional=false`) and by treating the **child artifact** as the only durable "done" signal.
 2. **In-plan position is inferred, not known.** Plan-dir artifacts are ambiguous in real repos (multiple plans, stale phases, post-`/compact` context loss). **Absorbed by**: the parent pinning `--plan-dir`/`--spec`/`--phase`/`--event`; when unpinned and ambiguous the router returns `ambiguous` and **asks**.
-3. **Provisioning gaps look like engineering entry.** A repo can pass S0 (CLI installed) yet lack S2 (governance) or S4 (a working, run-once boot), so a naive "functional?" check would route into the engineering zone whose skills then report `UNAVAILABLE`/no-op. **Absorbed by**: the setup gate — the router refuses to enter the ⚙️ engineering dispatch until S0 + S2 + S4 hold.
+3. **Provisioning gaps look like engineering entry.** A repo can pass S0 (CLI installed) yet lack S2 (governance) or S4 (a working, run-once boot), so a naive "functional?" check would route into the engineering zone whose skills then report `UNAVAILABLE`/no-op. **Absorbed by**: the adoption gate — the router refuses to enter the ⚙️ engineering dispatch until S0 + S2 + S4 hold.
 
 ---
 
@@ -115,7 +117,8 @@ The skill works with **no** arguments (full auto-detect), but a parent driving i
                   [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json]
 
 at=auto            (default) detect from signals A–J
-at=setup           force the on-ramp (install / finish setup / provision governance — owed)
+at=adopt           force the on-ramp (install / finish adoption / provision governance — owed)
+                   (`at=setup` is an accepted back-compat alias)
 at=boot            force eng-harness-1-boot --validate
 at=backpressure    force eng-harness-2-backpressure (post-spec seam)
 at=observe         guidance only; with --entry-* it silently runs `npx harness observe`
@@ -133,7 +136,7 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 --json             return the routing decision as a machine-readable envelope
 ```
 
-- **`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the setup gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
+- **`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the adoption gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
 - **Observe needs a payload to do anything.** In-flight capture is a *silent CLI producer that logs one entry per call* — `npx harness observe "<what>" --kind <kind>` (the merged `eng-harness-4-retro` skill carries the capture judgment). So `at=observe` with no payload is **guidance only** ("observe fires silently — here's how friction gets logged"); to actually record, the parent passes the entry fields and the router runs the capture command silently.
 - **Optional offers don't self-suppress.** Because the router is stateless, a skipped optional (scout, an offered backpressure) is *re-offered next call* unless the parent sets `--prompt-optional=false` or the child artifact now exists. The router treats only **child artifacts** as durable completion — never its own memory.
 - **`--repo` is reserved for v2.** Multi-repo execution is documented but not implemented in v1; the router operates on `cwd`.
@@ -144,7 +147,7 @@ Like `the-flow`'s alias table, the router maps friendly stage names → the **ex
 
 | Friendly name | Installed slug |
 |---|---|
-| `setup` | `eng-harness-0-setup` |
+| `adopt` (alias: `setup`) | `eng-harness-0-adopt` |
 | `assess` | `eng-harness-0-harnessability-assessment` |
 | `add-extension` | `eng-harness-0-add-extension` |
 | `boot` | `eng-harness-1-boot` |
@@ -164,7 +167,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
 | `at=backpressure` | no spec, or >1 spec and no `--spec` | `redirect` / `ambiguous` | ask for `--spec`, or route to `/plan-1b` first |
 | `at=retro-drain` | buffer empty | `noop` | "nothing to drain"; suggest `--harvest` if `.retro.md` exist |
 | `at=retro-harvest` | buffer non-empty | `redirect` | drain first; `next_suggested: --drain` then `--harvest` |
-| `at=setup` | setup already complete | `noop` | "already set up"; suggest `at=boot` |
+| `at=adopt` (or alias `at=setup`) | adoption already complete | `noop` | "harness already adopted"; suggest `at=boot` |
 | `at=auto` | >1 candidate plan, no `--plan-dir` | `ambiguous` | list plans, ask / require `--plan-dir` |
 
 ### The `--json` routing envelope
@@ -174,7 +177,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
 ```jsonc
 {
   "requested_stage": "boot",
-  "actual_stage": "setup",
+  "actual_stage": "adopt",
   "decision": "route | redirect | noop | ambiguous",
   "command": "<exact next harness command>",
   "why": "<one line>",
@@ -182,7 +185,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
   "preconditions_met": false,
   "missing_rung": "S4-build-and-run-boot",
   "next_suggested": "<the command after this one, e.g. --harvest after --drain>",
-  "rail":  { "zone": "setup", "setup_pips": "◆◆◐◇◇", "loop_pips": "◇◇◇◇◇", "cursor": "governance" },
+  "rail":  { "zone": "adopt", "adopt_pips": "◆◆◐◇◇", "loop_pips": "◇◇◇◇◇", "cursor": "governance" },
   "now":   "<current stage, one line>",
   "next":  "<what follows, one line>",
   "flags": [ "<must-see item lifted verbatim from the artifact>" ],
@@ -202,7 +205,7 @@ The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Pe
 
 Every human-mode turn opens with a one-line rail, then a blank line, then the narration. The rail speaks `the-flow`'s exact glyph language — **one visual vocabulary across both guides**: `◆` done · `◐` current · `◇` not yet, joined by `─` into a track. The loop's terminal is `↺`: engineering never "completes", it cycles — loop pips are **per-pass** and reset when the loop re-enters Boot. Use text-presentation `⚙` (never the `⚙️` emoji — double-width glyphs wreck the rail's spacing).
 
-**Engineering zone** (setup holds — the setup segment disappears entirely; never render a completed setup bar):
+**Engineering zone** (adoption holds — the adoption segment disappears entirely; never render a completed adoption bar):
 
 ```
 [eng-harness-flow] ⚙ ◆─◐─◇─◇─◇ ↺  boot · [backpressure] · observe · retro · improve
@@ -213,18 +216,18 @@ Every human-mode turn opens with a one-line rail, then a blank line, then the na
 
 The five loop pips are Boot · Backpressure · Observe · Retro · Improve, in that order, and the legend rides **on the rail line itself**: two spaces after the pips, the stage names in pip order joined by ` · `, the **current** one wrapped in `[…]`. Brackets follow the `◐`; on a settled rail bracket the next stage up. Same rule as `the-flow`’s rail.
 
-**Mid-setup** (the only time the 🧰 gate appears — two segments joined by `→`, loop still empty):
+**Mid-adoption** (the only time the 🧰 gate appears — two segments joined by `→`, loop still empty):
 
 ```
 [eng-harness-flow] 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot
 
- now  · setup gate — governance missing (S2); install ✓, scout ✓
+ now  · adoption gate — governance missing (S2); install ✓, scout ✓
  next · ▸ <the governance step>   (routes you there)
 ```
 
-Setup pips = S0 install · S1 scout · S2 governance · S3 inject · S4 boot. The moment S0+S2+S4 hold, drop the 🧰 segment for good. The legend names the **active segment’s** steps — setup rungs while the gate is open, loop stages once in the engineering zone.
+Adoption pips = S0 install · S1 scout · S2 governance · S3 inject · S4 boot. The moment S0+S2+S4 hold, drop the 🧰 segment for good. The legend names the **active segment’s** steps — adoption rungs while the gate is open, loop stages once in the engineering zone.
 
-- **Stateless rail**: the fill is *derived from signals each call* (which setup rungs hold; where in the work) — never persisted. Frame it once, early, as *an at-a-glance map, not a saved journey*.
+- **Stateless rail**: the fill is *derived from signals each call* (which adoption rungs hold; where in the work) — never persisted. Frame it once, early, as *an at-a-glance map, not a saved journey*.
 - **Render the whole rail block as a fenced code block — always.** The rail line(s), any anchored companion line, and the `now`/`next` groups are ONE ``` fence (no language tag). Outside a fence markdown collapses leading spaces — and **never** fake alignment with `&nbsp;` or any HTML entity (terminals print them literally). Real spaces inside the fence are the only alignment tool.
 - **Status line** under the rail: ` now  · <current>` / ` next · <what follows>`, aligned. When `next` has ≥2 options, stack them with `▸` (recommended first), exactly like `the-flow`.
 
@@ -249,7 +252,7 @@ Before rendering a solo rail, probe for an active SDD flow: any `docs/plans/*/.t
 - **The anchored line’s shape is fixed**: `└─ ⚙ <all five pips> ↺  <legend with [current]>  (<seam>)`. **Never compress the pips** (no `⚙ ◆ ↺` shorthand) and never swap the legend for prose — narrative belongs in the ` ⚙ engineering harness` `now`/`next` group below. The trailing note is just the seam in parentheses — `(post-spec)`, `(pre-implement)`, `(phase-end)`; the legend’s brackets already name the stage.
 - **Two flows, two voices — never merged, each under its own header**: every `now`/`next` group opens with a one-line header naming the flow — ` the-flow` for the SDD voice, ` ⚙ engineering harness` for the loop voice — with the `now`/`next` lines indented one space beneath it (the header owns identity, so the lines themselves carry no prefix). The flow's lines speak SDD position (where the plan is, what command comes next); the harness's speak loop position (what the router is running, what it produces, where control hands back). Each gives the user real context on its own lines.
 - **Never invent the `the-flow` line**: read position from its state file + the newest artifact. State unreadable or stale → fall back to the solo rail.
-- Mid-setup with an active `the-flow`: same shape, the anchored line carries the 🧰 segment instead — `└─ 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot  (setup)`.
+- Mid-adoption with an active `the-flow`: same shape, the anchored line carries the 🧰 segment instead — `└─ 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot  (adopting)`.
 
 ### 2. The per-turn narration contract — Orient → Flag → Insight → Suggest → Invite
 
@@ -257,7 +260,7 @@ Every turn follows the same five beats (one decision per turn, a recommended def
 
 | Beat | What it does | Example (engineering, post-spec) |
 |---|---|---|
-| **Orient** | one line: which zone + stage, from the rail | "Setup's done — you're in the engineering loop, just past the spec." |
+| **Orient** | one line: which zone + stage, from the rail | "Adoption's done — you're in the engineering loop, just past the spec." |
 | **Flag** ⚠️ | surface must-see items the user might've missed (see beat 3) — *confirming, never nagging*; **silent when clean** | "⚠️ Boot flagged `no smoke path declared` — worth knowing before we lean on it." |
 | **Insight + why** | one *real* detail, tied to why the stage matters — the shape is *"Did you notice `<detail>`? That matters because `<this stage's line from the why table>`"* | "9 of 11 criteria are already provable by existing sensors — that matters because this is the whole game: moving proof from inference into the deterministic layer, where it's runnable and free to re-check forever." |
 | **Suggest** | print the **one** next command in a copyable block | `eng-harness-2-backpressure` |
@@ -307,14 +310,14 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 
 - **Warm and confirming**, never bureaucratic. "Nice — boot's green, you're ready to code" beats "S4 precondition satisfied."
 - **One decision per turn.** Never dump the whole tree; surface the single next move + a couple of alternates.
-- **Celebrate the bridge.** When setup finishes and boot first runs, say so — "🎉 boot's working — that's the harness alive; let's try it on real work." (the "shiny new harness" moment).
+- **Celebrate the bridge.** When adoption finishes and boot first runs, say so — "🎉 boot's working — that's the harness alive; let's try it on real work." (the "shiny new harness" moment).
 - **Never nag.** A skipped optional is offered at most once per call and waved past freely; flags are "just making sure you saw," never blockers.
 
 ---
 
 ## Called repeatedly along an externally-managed flow
 
-The router is designed to be **invoked again and again** by a parent running its *own* flow (`the-flow`, a human, a CI agent). The seams where the parent calls the router are exactly the **injection points** setup step S3 mapped and recorded in the governance doc's `## Injection map` — `the-flow` is one host implementation of this contract, not the contract itself; any SDD or dev flow plugs in the same way. Each call is a fresh, stateless detection; the router holds no memory between calls. A parent passes a light hint at each seam and the router returns the right harness action:
+The router is designed to be **invoked again and again** by a parent running its *own* flow (`the-flow`, a human, a CI agent). The seams where the parent calls the router are exactly the **injection points** adoption step S3 mapped and recorded in the governance doc's `## Injection map` — `the-flow` is one host implementation of this contract, not the contract itself; any SDD or dev flow plugs in the same way. Each call is a fresh, stateless detection; the router holds no memory between calls. A parent passes a light hint at each seam and the router returns the right harness action:
 
 ```
 P → H: session start    (--event session-start)            → eng-harness-1-boot --validate
@@ -329,7 +332,7 @@ This is the inversion of `the-flow`'s hard-coded harness cues: instead of a pare
 
 ## Relationship to existing skills (anti-reinvention)
 
-- **`eng-harness-0-setup`** already *is* a flow (install → assess → basic boot). This router does **not** duplicate it — when any setup rung is incomplete it **delegates** to setup. Setup *drives* the establishment of the harness (it installs, scouts, helps author boot); the governance doc itself is provisioned by the deferred `harness init` writer — until it ships, setup routes/attempts it and the governance rung stays **owed, not provisioned**. The router owns "which setup rung is owed, or are we past setup and into engineering?"
+- **`eng-harness-0-adopt`** already *is* a flow (install → assess → inject → basic boot). This router does **not** duplicate it — when any adoption rung is incomplete it **delegates** to adopt. The adopt skill *drives* the establishment of the harness (it installs, scouts, weaves the injection map, helps author boot); the governance doc itself is provisioned by the deferred `harness init` writer — until it ships, adopt routes/attempts it and the governance rung stays **owed, not provisioned**. The router owns "which adoption rung is owed, or are we past adoption and into engineering?"
 - **`the-flow`** owns the **SDD** journey (stateful) and already narrates harness cues. Clean separation: `the-flow` = pipeline guide; `eng-harness-flow` = loop router (stateless).
 - **The loop skills** (`eng-harness-1-boot`, `-2-backpressure`, `-4-retro` — the last carrying the whole friction lifecycle, with in-flight capture as the `npx harness observe` CLI verb) stay exactly as they are — the router only chooses *which* to surface and *when*.
 

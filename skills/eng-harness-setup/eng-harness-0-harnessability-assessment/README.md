@@ -20,7 +20,7 @@ The skill writes a per-run history directory plus stable root "latest" files:
 .harness/reports/harnessability/schema.json
 ```
 
-Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `eng-harness-0-setup` reads to decide whether an assessment already exists.
+Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `eng-harness-0-adopt` reads to decide whether an assessment already exists.
 
 The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
 
@@ -35,10 +35,10 @@ It does not install dependencies, boot services, mutate state, read secrets, cal
 ## Where it fits
 
 ```text
-eng-harness-0-setup -> eng-harness-0-harnessability-assessment -> tools runtime skills
+eng-harness-0-adopt -> eng-harness-0-harnessability-assessment -> tools runtime skills
 ```
 
-- `eng-harness-0-setup` creates or validates the local harness nucleus.
+- `eng-harness-0-adopt` creates or validates the local harness nucleus.
 - `eng-harness-0-harnessability-assessment` reports target-aware harnessability and next safe actions.
 - tools runtime skills operate the loop: boot, observe, retro, harvest, and advisory Backpressure Check.
 

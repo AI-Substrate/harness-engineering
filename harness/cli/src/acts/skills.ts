@@ -52,7 +52,7 @@ interface InstallOpts {
  *
  * Targets are flags, not a blocking prompt: the harness CLI is agent-first and
  * non-blocking, so a missing `--target` returns `E108` with a `next_action` that
- * enumerates the valid targets. The *skill* (`eng-harness-0-setup`) is what asks
+ * enumerates the valid targets. The *skill* (`eng-harness-0-adopt`) is what asks
  * the user, then runs this with flags.
  */
 export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDeps): void {

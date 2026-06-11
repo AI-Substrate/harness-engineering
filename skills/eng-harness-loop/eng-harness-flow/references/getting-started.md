@@ -2,7 +2,7 @@
 
 A visual guide to the **engineering-harness skills** and the loop they operate. The entry point is almost always **`/eng-harness-flow`** — the stateless front-door router that works out where your repo sits and hands back the one right next command. Everything else chains from there.
 
-> Repo reference: the setup skills live at `skills/eng-harness-setup/` and the loop skills at `skills/eng-harness-loop/` in [`AI-Substrate/harness-engineering`](https://github.com/AI-Substrate/harness-engineering). Full skill matrix: `skills/README.md`. Zero-context consumer-agent onboarding: `AGENTS_README.md`. CLI details: `harness/cli/README.md` (or in-CLI via `harness docs`).
+> Repo reference: the adoption-side skills live at `skills/eng-harness-setup/` and the loop skills at `skills/eng-harness-loop/` in [`AI-Substrate/harness-engineering`](https://github.com/AI-Substrate/harness-engineering). Full skill matrix: `skills/README.md`. Zero-context consumer-agent onboarding: `AGENTS_README.md`. CLI details: `harness/cli/README.md` (or in-CLI via `harness docs`).
 
 ---
 
@@ -10,10 +10,10 @@ A visual guide to the **engineering-harness skills** and the loop they operate. 
 
 Two zones, one bridge:
 
-- **🧰 Setup gate** (once per repo) — establishes the substrate: install the CLI, scout the repo, governance, an injection point, and a **working boot command — built LAST**, deliberately, so the moment it works you run it and flow straight into real work.
+- **🧰 Adoption gate** (once per repo) — the repo *adopts* the harness: install the CLI, scout the repo, governance, an injection point into the flow you already run, and a **working boot command — built LAST**, deliberately, so the moment it works you run it and flow straight into real work.
 - **⚙️ Engineering loop** (every session, forever) — the cycle that *runs* the substrate: `Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve`, then back to Boot. It never "completes" — it compounds.
 
-The router (`/eng-harness-flow`) sits *beside* both zones, not inside either: on every call it re-reads the repo's deterministic signals and routes you to the first missing setup rung, or — once the gate holds — to the right loop stage for where your work is.
+The router (`/eng-harness-flow`) sits *beside* both zones, not inside either: on every call it re-reads the repo's deterministic signals and routes you to the first missing adoption rung, or — once the gate holds — to the right loop stage for where your work is.
 
 ```mermaid
 flowchart TB
@@ -24,8 +24,8 @@ flowchart TB
 
     R["/eng-harness-flow<br/>stateless router · the front door"]:::router
 
-    subgraph setupzone["🧰 SETUP GATE · once per repo · boot LAST"]
-        S0["S0 · install<br/>eng-harness-0-setup"]:::setup
+    subgraph setupzone["🧰 ADOPTION GATE · once per repo · boot LAST"]
+        S0["S0 · install<br/>eng-harness-0-adopt"]:::setup
         S1["S1 · scout (skippable)<br/>eng-harness-0-harnessability-assessment"]:::setup
         S2["S2 · governance<br/>(owed — harness init is deferred)"]:::setup
         S3["S3 · inject (advisory)<br/>map the extant flow → seams; record in governance"]:::setup
@@ -49,13 +49,13 @@ flowchart TB
     I -.->|next session ↺| B
 ```
 
-**Legend**: 🟠 orange = setup gate · 🟢 green = loop skills · 🔵 blue = a CLI verb, not a skill · 🟣 purple = the router. Solid = the establishing order, dashed = routing / the cycle re-entering.
+**Legend**: 🟠 orange = adoption gate · 🟢 green = loop skills · 🔵 blue = a CLI verb, not a skill · 🟣 purple = the router. Solid = the establishing order, dashed = routing / the cycle re-entering.
 
 ---
 
 ## How the two zones fit
 
-The setup gate produces the **substrate** (CLI → report → governance → injection point → a proven boot). The engineering loop produces **compounding value** — it proves the system runs before you touch it, catches friction while you work, and turns that friction into encoded improvements, so the next session is smoother than this one.
+The adoption gate produces the **substrate** (CLI → report → governance → injection point → a proven boot). The engineering loop produces **compounding value** — it proves the system runs before you touch it, catches friction while you work, and turns that friction into encoded improvements, so the next session is smoother than this one.
 
 Three rungs are **required** before the router will route into the loop — without them the loop skills honestly report `UNAVAILABLE` / no-op:
 
@@ -83,7 +83,7 @@ Boot ─────────────────────────
 | Loop stage | Skill / verb | Who calls it | When |
 |---|---|---|---|
 | **Front door** | `/eng-harness-flow` | **You**, or a parent flow, anytime | Whenever you're unsure where you are. Stateless — safe to call repeatedly; it re-derives position from repo signals every call and routes exactly one next step. |
-| **Boot** | `eng-harness-1-boot --validate` | **You** (or the router) at session start | Re-runs the boot that setup built — proves the system is healthy *before* any code is written. Reports `UNAVAILABLE` (not an error) when no governance doc exists → routes back to setup. |
+| **Boot** | `eng-harness-1-boot --validate` | **You** (or the router) at session start | Re-runs the boot that adoption built — proves the system is healthy *before* any code is written. Reports `UNAVAILABLE` (not an error) when no governance doc exists → routes back to adoption. |
 | **Backpressure Check** | `eng-harness-2-backpressure` | **You**, recommended, post-spec | After scoped work is defined, before you architect/build it. Surveys whether the work is *provable by deterministic sensors* (build/type/test/lint/smoke/boot/architecture/schema) vs inference; writes `backpressure-coverage.md`; may recommend an optional "Phase 0: Establish Backpressure". Advisory — the sensors prove, never the LLM. Never blocks. |
 | **Observe** | `npx --no-install harness observe "<what>" --kind <kind>` | **You/your agent, the moment friction happens** | A CLI verb, not a skill — one silent call per noticing (confusing failure, retry, backtrack, slow command, "if only there were…"). Lands in the gitignored buffer `.harness/temp/`. Capture judgment lives in `eng-harness-4-retro` § in-flight capture. |
 | **Retro (drain)** | `eng-harness-4-retro --drain` | **You** at phase/session end, buffer non-empty | The one normal user-facing retro prompt: triage `[s/t/p/e/d/a]`, materialize kept entries into a committed record via `harness record retro`, then clear the buffer. |
@@ -119,9 +119,9 @@ flowchart LR
     classDef s fill:#fff3e0,stroke:#f57c00,color:#000
     classDef f fill:#e8f5e9,stroke:#388e3c,color:#000
 
-    subgraph fresh["NO HARNESS YET · setup gate"]
+    subgraph fresh["NO HARNESS YET · adopt one"]
         direction TB
-        N1["eng-harness-0-setup<br/>install CLI"] --> N2["assessment<br/>(offered)"] --> N3["boot verb<br/>built + run LAST"]
+        N1["eng-harness-0-adopt<br/>install CLI"] --> N2["assessment<br/>(offered)"] --> N3["boot verb<br/>built + run LAST"]
     end
 
     subgraph existing["HARNESS EXISTS · straight to the loop"]
@@ -136,7 +136,7 @@ flowchart LR
     class existing f
 ```
 
-**Fresh repo** — the router stays on the 🧰 setup track and routes the first missing required rung. **Existing harness** — S0 + S2 + S4 hold, so every call dispatches into the ⚙️ loop by seam: session start → boot, post-spec → backpressure, mid-work → observe guidance, phase end → drain, plan complete → harvest.
+**Fresh repo** — the router stays on the 🧰 adoption track and routes the first missing required rung. **Existing harness** — S0 + S2 + S4 hold, so every call dispatches into the ⚙️ loop by seam: session start → boot, post-spec → backpressure, mid-work → observe guidance, phase end → drain, plan complete → harvest.
 
 ---
 
@@ -147,9 +147,10 @@ flowchart LR
 ```
 0.  /eng-harness-flow
     → Router reads signals: no CLI, no .harness/ → routes S0.
-      "🧰 setup 0 of 5 — install first; boot comes last."
+      "🧰 Looks like this repo hasn't adopted a harness yet — rung 0 of 5:
+       install first; boot comes last."
 
-1.  eng-harness-0-setup        (S0 · install)
+1.  eng-harness-0-adopt        (S0 · install)
     → npm install github:AI-Substrate/harness-engineering
     → npx --no-install harness instructions   ← the agent briefing (AGENTS START HERE)
     → npx --no-install harness doctor --json  ← envelope healthy, exit 0
@@ -193,10 +194,10 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 | Command | What it does | Produces |
 |---|---|---|
 | `/eng-harness-flow` | **Front door** — stateless router; re-derives position from signals A–J and routes one next step | nothing of its own (a routing decision; `--json` envelope for machine callers) |
-| `eng-harness-0-setup` | The setup flow: install CLI → scout → stand up `boot` | installed CLI; orchestrates the rungs |
+| `eng-harness-0-adopt` | The adoption flow: install CLI → scout → inject → stand up `boot` | installed CLI; orchestrates the rungs |
 | `eng-harness-0-harnessability-assessment` | Size up the repo — evidence vs inference vs unknowns | `.harness/reports/harnessability/latest.{md,json}` |
 | `eng-harness-0-add-extension` | Guided authoring of a new `harness <verb>` (incl. `boot` at S4) | `.harness/extensions/<name>/` (entry + `instructions.md`) |
-| `eng-harness-1-boot` | Re-run the boot setup built; readiness verdict + maturity read | terminal report (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
+| `eng-harness-1-boot` | Re-run the boot adoption built; readiness verdict + maturity read | terminal report (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
 | `eng-harness-2-backpressure` | Deterministic-sensor coverage survey for scoped work | `docs/plans/<ordinal>-<slug>/backpressure-coverage.md` |
 | `npx --no-install harness observe "<what>" --kind <kind>` | Capture one friction entry (CLI verb, not a skill) | one buffer entry in gitignored `.harness/temp/` |
 | `eng-harness-4-retro --drain` | Soft-prompt triage of the buffer (`[s/t/p/e/d/a]`) | committed record via `harness record retro` |
@@ -251,7 +252,7 @@ A parent running its own flow pins position with `--event` instead of letting th
 --event plan-complete                      → eng-harness-4-retro --harvest  (buffer empty)
 ```
 
-One command per call; the parent calls again for the next seam. Hints are validated, never blindly obeyed — `at=boot` on a repo with no governance politely redirects to setup and says why.
+One command per call; the parent calls again for the next seam. Hints are validated, never blindly obeyed — `at=boot` on a repo with no governance politely redirects to adoption and says why.
 
 ### Maturity (L0–L4)
 

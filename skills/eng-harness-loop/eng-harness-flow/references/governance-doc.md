@@ -1,6 +1,6 @@
 # The engineering-harness governance doc — contents & write conditions
 
-This is the **one canonical description** of the engineering-harness governance doc: where it lives, what it contains, the companion `history.md` changelog, and *when* each is written. Skills that touch the doc (`eng-harness-1-boot`, `eng-harness-0-setup`, `eng-harness-2-backpressure`, `eng-harness-4-retro`, `eng-harness-0-harnessability-assessment`) **link here** rather than restating these rules, so there is a single source of truth.
+This is the **one canonical description** of the engineering-harness governance doc: where it lives, what it contains, the companion `history.md` changelog, and *when* each is written. Skills that touch the doc (`eng-harness-1-boot`, `eng-harness-0-adopt`, `eng-harness-2-backpressure`, `eng-harness-4-retro`, `eng-harness-0-harnessability-assessment`) **link here** rather than restating these rules, so there is a single source of truth.
 
 > **Separation of concerns (the load-bearing idea):**
 > - **governance doc = contract** — what the harness *is*, plus the *current* maturity snapshot.
@@ -62,7 +62,7 @@ Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity s
 |---|---|---|
 | **Inception** (once) | the doc is *created* with the BIO headings, the signal inventory skeleton, evidence paths, and the seed maturity snapshot | **the deferred `harness init` writer** (a CLI command). It is **deferred to a later plan**; until it ships, this rung is **owed, not provisioned** — setup attempts `npx harness init` with a graceful fallback, and boot/router degrade to `UNAVAILABLE` rather than erroring. (Setup *drives* setup; it does not itself generate the governance doc.) |
 | **Improve beat** (on a capability change) | the **body** (boot cmd / signals / evidence paths / back-pressure gaps) **and** the **current maturity snapshot** are edited to match new reality; a row is appended to `.harness/history.md` | the Improve beat — when the harness gains or changes a capability |
-| **Inject decision** (setup S3, or when the host flow changes) | the `## Injection map` section is added/updated in an *existing* doc — never created standalone; when governance is owed, the map is owed with it | `eng-harness-0-setup` Step 3, with the user's go-ahead |
+| **Inject decision** (adoption S3, or when the host flow changes) | the `## Injection map` section is added/updated in an *existing* doc — never created standalone; when governance is owed, the map is owed with it | `eng-harness-0-adopt` Step 3, with the user's go-ahead |
 | **Every other loop run** | **nothing** — boot reads, observe writes its buffer, retro writes `.retro.md`; the governance doc is untouched | — |
 
 The doc is therefore written at **inception once**, and its body + snapshot change **only at the Improve beat**. It is never rewritten just to record that a session happened.

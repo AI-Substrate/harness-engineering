@@ -1,10 +1,10 @@
 ---
-name: eng-harness-0-setup
-description: Install the repo-local engineering harness from npx and guide the user to a working basic `boot`. A lean flow that orchestrates other skills — it installs/initialises the harness CLI, runs eng-harness-0-harnessability-assessment when no report exists yet, records the injection map (where the repo's extant dev/SDD flow will call /eng-harness-flow, so the harness gets used instead of disappearing on a cold agent start), then stands up a basic `boot` extension via eng-harness-0-add-extension. It generates no artifacts of its own; the CLI (and a future `harness init`) own the deterministic substrate.
+name: eng-harness-0-adopt
+description: Guide a repo through adopting the engineering harness — install the CLI, wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `boot`. A lean flow that orchestrates other skills — it installs/initialises the harness CLI, runs eng-harness-0-harnessability-assessment when no report exists yet, records the injection map (where the repo's extant dev/SDD flow will call /eng-harness-flow, so the harness gets used instead of disappearing on a cold agent start), then stands up a basic `boot` extension via eng-harness-0-add-extension. It generates no artifacts of its own; the CLI (and a future `harness init`) own the deterministic substrate.
 ---
-# eng-harness-0-setup
+# eng-harness-0-adopt
 
-Get a repo's **engineering harness** installed and working, then leave behind the one thing every engineering task starts from: a **basic `boot`**.
+Walk a repo through **adopting** the engineering harness — the moment it decides to make its **deterministic layer** a first-class thing. Adoption wraps what already exists (build / test / run, as-is), weaves the loop into the repo's extant dev flow, and leaves behind the one thing every engineering task starts from: a **basic `boot`**. This is hand-held, not silent: every step that touches the user's repo is proposed first.
 
 This skill is a **flow**, not a generator. It installs the harness CLI from npx, then **orchestrates other skills** — `eng-harness-0-harnessability-assessment` to size up the repo, and `eng-harness-0-add-extension` to author the first extension. It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (and by a future `harness init`), not re-generated here.
 
@@ -30,7 +30,7 @@ Four steps to a working boot, plus an opt-in fifth that offers to install the ha
 
 ## When to use
 
-Run this when a repo does not yet have a working `harness boot` (or has no harness front door at all), and you want to get an agent-operable engineering loop started quickly. It is safe to re-run: it detects what already exists and only fills the gap.
+Run this when a repo hasn't adopted a harness yet — no working `harness boot`, or no harness front door at all — and you want to get an agent-operable engineering loop started quickly. It is safe to re-run: it detects what already exists and only fills the gap.
 
 ## Why `boot` is the deliverable
 
@@ -128,7 +128,7 @@ test -f .harness/reports/harnessability/latest.json \
 
 ## Step 3 — Record the injection map (so the harness gets *used*)
 
-An installed harness that nothing calls **disappears on the next cold agent start** — a fresh agent only runs what's in the surfaces it already loads. This step makes usage structural instead of memorial: identify the repo's *extant* development flow, map its natural moments onto the harness seams, weave the calls into surfaces a cold agent loads anyway, and record the result. It runs **before** boot deliberately (the router's setup gate orders S3 · Inject before S4 · Boot) so the instant boot works, the harness is already plugged into real work.
+An installed harness that nothing calls **disappears on the next cold agent start** — a fresh agent only runs what's in the surfaces it already loads. This step makes usage structural instead of memorial: identify the repo's *extant* development flow, map its natural moments onto the harness seams, weave the calls into surfaces a cold agent loads anyway, and record the result. It runs **before** boot deliberately (the router's adoption gate orders S3 · Inject before S4 · Boot) so the instant boot works, the harness is already plugged into real work.
 
 1. **Identify the extant flow.** Read `engineering_flows[]` from the harnessability report (Step 2) — the assessment already inventories SDD-like pipelines (a `plans/` directory, `/plan-*` or `task-*` skills, RFC/ADR conventions) alongside build/test/release/review flows. No report or no entry → take a quick look yourself (skills directories, `docs/plans/`, CI workflow names, CONTRIBUTING).
 
@@ -192,7 +192,7 @@ When `harness boot` returns a usable verdict and re-orients the agent, the nucle
 
 ## Step 5 — Offer to install the harness skills (opt-in)
 
-The harness ships its own **skills** — the `eng-harness-*` setup + loop suite (`boot` / `backpressure` / `observe` / `retro`). Once the nucleus is in place, **offer** — never force — to install them into the user's CLI so they can run the loop directly.
+The harness ships its own **skills** — the `eng-harness-*` adopt + loop suite (`boot` / `backpressure` / `observe` / `retro`). Once the nucleus is in place, **offer** — never force — to install them into the user's CLI so they can run the loop directly.
 
 1. **Ask** which CLI target(s) and scope:
    - Targets: `claude-code`, `codex`, `cursor`, `github-copilot`, `opencode`, `pi`.

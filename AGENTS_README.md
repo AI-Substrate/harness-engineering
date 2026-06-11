@@ -14,7 +14,7 @@ Check the rows **top-to-bottom**; the **first row whose condition passes** tells
 
 | # | Probe (passes if…) | You are | Go to |
 |---|---|---|---|
-| 0 | The root `package.json` declares `"name": "@ai-substrate/engineering-harness"` (this repo IS the package, not a dependency) | In the harness's own home repo | **Stop** — this file is for consumer repos. Read `AGENTS.md` instead; never run `eng-harness-0-setup` here. |
+| 0 | The root `package.json` declares `"name": "@ai-substrate/engineering-harness"` (this repo IS the package, not a dependency) | In the harness's own home repo | **Stop** — this file is for consumer repos. Read `AGENTS.md` instead; never run `eng-harness-0-adopt` here. |
 | 1 | `eng-harness-flow` appears in **your own list of invocable skills/commands** (introspect your skill registry — not `harness help`, which lists CLI verbs, not agent skills) | Skilled — ready to go | [Stage 5 — Go](#stage-5--go-enter-the-harness-loop) |
 | 2 | `ls ./.claude/skills ./.agents/skills 2>/dev/null \| grep eng-harness` is non-empty (skill **files** on disk) but row 1 failed | Pre-restart — skills installed but not loaded | [Stage 4 — Restart](#stage-4--restart-load-the-skills) |
 | 3 | `test -f .harness/engineering-harness.md && test -d .harness/extensions/boot` (harness substrate exists; no skills loaded) | Run 2+, unskilled | [Operating an existing harness](#operating-an-existing-harness-run-2) |
@@ -114,7 +114,7 @@ What you get — **seven skills, two groups**:
 | Skill | Group | Purpose |
 |---|---|---|
 | `eng-harness-flow` ⭐ | loop | **The front door** — stateless router; detects where the repo is on the loop and hands back the one right next command. After Stage 4, this is the only skill you need to remember. |
-| `eng-harness-0-setup` | setup | The setup flow — install, assess, stand up `boot`, route agents. |
+| `eng-harness-0-adopt` | setup | The adoption flow — install, assess, inject, stand up `boot`, route agents. |
 | `eng-harness-0-harnessability-assessment` | setup | Score the repo's harnessability; map back-pressure surfaces and proof ceilings. |
 | `eng-harness-0-add-extension` | setup | Guided authoring of a new `harness <verb>` extension. |
 | `eng-harness-1-boot` | loop | Boot stage — validate harness health at session start. |
@@ -136,7 +136,7 @@ On re-entry, the *Where are you?* table routes you to Stage 5 in one hop.
 **No-restart fallback**: the installed skills are just markdown on disk. You can read them and follow them inline without skill invocation:
 
 ```bash
-cat ./.claude/skills/eng-harness-0-setup/SKILL.md   # or ./.agents/skills/… per your CLI
+cat ./.claude/skills/eng-harness-0-adopt/SKILL.md   # or ./.agents/skills/… per your CLI
 ```
 
 If a SKILL.md proves unreadable or incomplete this way, fall back to the restart script above rather than improvising.

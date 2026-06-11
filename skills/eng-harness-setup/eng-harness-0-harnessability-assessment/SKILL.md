@@ -101,7 +101,7 @@ Each run writes a per-run history directory plus stable root "latest" files:
 
 `<ordinal>` is the next free 3-digit number (`001`, `002`, …) found by scanning existing `.harness/reports/harnessability/<NNN>-*/` directories; `<slug>` is a short kebab-case label for the run (e.g. the repo name, or `assessment`).
 
-**Every run overwrites the three root files** (`latest.md`, `latest.json`, `schema.json`) so they mirror the newest run. The root `latest.json` is a load-bearing **sentinel**: the `eng-harness-0-setup` flow detects an existing assessment with `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` and then reads `latest.json` for recommendations. Keep it present **and** readable on every run — never write only the history directory (that would satisfy detection but leave nothing stable to read).
+**Every run overwrites the three root files** (`latest.md`, `latest.json`, `schema.json`) so they mirror the newest run. The root `latest.json` is a load-bearing **sentinel**: the `eng-harness-0-adopt` flow detects an existing assessment with `test -f .harness/reports/harnessability/latest.json || ls .harness/reports/harnessability/*` and then reads `latest.json` for recommendations. Keep it present **and** readable on every run — never write only the history directory (that would satisfy detection but leave nothing stable to read).
 
 The Markdown report follows `templates/assessment-report.md`. The JSON report follows `templates/assessment-report.schema.json`, the authoritative v0.2 contract; write a copy of it to `.harness/reports/harnessability/schema.json`. The terminal-sized `summary.md` follows `templates/summary.md`; keep detailed evidence in `report.md`. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples. If the repo already contains earlier assessment reports or onboarding docs, read them as evidence, but write this run's reports under `.harness/reports/harnessability/`.
 
@@ -145,11 +145,11 @@ It still must not boot services, install dependencies, mutate state, read secret
 
 `--apply-safe-harness-patches` may apply low-risk harness-only patches. Product-code affordance recommendations remain proposal-only unless a later explicit implementation task is approved by the user.
 
-## Relationship to setup, runtime, and feature-scoped back-pressure skills
+## Relationship to adoption, runtime, and feature-scoped back-pressure skills
 
 | Skill type | Responsibility | Relationship to this skill |
 |---|---|---|
-| Setup skill | Create or validate the harness nucleus: governance file, command map, `harness/cli/`, docs, routing, deterministic sensor inventory. | This skill may recommend setup if no front door exists, but it does not replace setup. |
+| Adopt skill | Create or validate the harness nucleus: governance file, command map, `harness/cli/`, docs, routing, deterministic sensor inventory. | This skill may recommend adoption if no front door exists, but it does not replace the adopt flow. |
 | Runtime boot/observe skill | Determine whether the harness is healthy for the current session. | This skill reports repo-level harnessability, not only live session readiness. |
 | Feature-scoped Backpressure Check | Determine whether a specific feature or acceptance criterion can be proven by existing or buildable sensors. | This skill is whole-repo and structural; it identifies the repo's general proof surfaces and adaptability. |
 | Cold-start onboarding/orientation | Help a fresh user or agent discover how to operate the repo. | Folded in: cold-start orientation is A1/A2/A4 within Operate-Today. |
@@ -866,7 +866,7 @@ After ranking, derive `candidate_first_harness_surfaces[]` — the verbs worth e
 
 ### 11. Write reports
 
-Write the Markdown report, the terminal-sized `summary.md`, the JSON report, and the schema copy according to the output contract: into `.harness/reports/harnessability/<ordinal>-<slug>/` and mirrored to the root `latest.*`/`schema.json`. Record the written paths in `report_paths`. Confirm the root `latest.json` is present and readable — it is the sentinel the `eng-harness-0-setup` flow reads.
+Write the Markdown report, the terminal-sized `summary.md`, the JSON report, and the schema copy according to the output contract: into `.harness/reports/harnessability/<ordinal>-<slug>/` and mirrored to the root `latest.*`/`schema.json`. Record the written paths in `report_paths`. Confirm the root `latest.json` is present and readable — it is the sentinel the `eng-harness-0-adopt` flow reads.
 
 ## Parallel execution: subsystem fan-out
 

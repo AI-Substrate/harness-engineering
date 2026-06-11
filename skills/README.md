@@ -2,14 +2,14 @@
 
 This directory holds the engineering-harness skills this repo publishes through [`npx skills`](https://github.com/vercel-labs/skills). They are grouped into two category folders:
 
-- **`eng-harness-setup/`** — base setup + explore skills (group `0`, pre-loop).
+- **`eng-harness-setup/`** — the adoption + explore skills (group `0`, pre-loop).
 - **`eng-harness-loop/`** — the interactive Boot → Backpressure → Observe → Retro loop that runs during work.
 
 ```text
-Install skills -> set up harness (eng-harness-0-setup) -> loop: boot/backpressure/observe/retro -> encode fixes/checks
+Install skills -> adopt the harness (eng-harness-0-adopt) -> loop: boot/backpressure/observe/retro -> encode fixes/checks
 ```
 
-The goal is to make the engineering harness practical for people new to the concept: install the skills, run the setup skill when a repo has no harness, then use the loop skills during every session.
+The goal is to make the engineering harness practical for people new to the concept: install the skills, adopt the harness when a repo has none, then use the loop skills during every session.
 
 ## Install
 
@@ -29,7 +29,7 @@ Install a single category or skill:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering/skills/eng-harness-loop -a claude-code -g   # whole loop group
-npx skills@latest add AI-Substrate/harness-engineering -s eng-harness-0-setup -a claude-code -g     # one skill
+npx skills@latest add AI-Substrate/harness-engineering -s eng-harness-0-adopt -a claude-code -g     # one skill
 ```
 
 From this working tree while developing, or to list what the repo exposes:
@@ -45,11 +45,11 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 
 ## Skills
 
-### Setup group — `eng-harness-setup/`
+### Adoption group — `eng-harness-setup/`
 
 | Skill | When | Why |
 |---|---|---|
-| `eng-harness-0-setup` | The repo has no working `harness boot` (or no harness front door at all) | Installs the harness CLI from npx and orchestrates a basic `boot`: install → (conditional) `eng-harness-0-harnessability-assessment` → record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`, so the harness gets used and doesn't vanish on a cold agent start) → `eng-harness-0-add-extension`. A lean flow that generates no files of its own. |
+| `eng-harness-0-adopt` | The repo hasn't adopted a harness — no working `harness boot`, or no harness front door at all | Walks the repo through adoption: install the CLI from npx → (conditional) `eng-harness-0-harnessability-assessment` → record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`, so the harness gets used and doesn't vanish on a cold agent start) → `eng-harness-0-add-extension` for a basic `boot`. A lean flow that generates no files of its own. |
 | `eng-harness-0-harnessability-assessment` | The front door exists but the repo needs a target-aware readiness picture | Surveys the existing engineering environment, then writes `.harness/reports/harnessability/latest.{md,json}` scoring Operate-Today and Adaptability with an A–F matrix, command tiers, proof ceilings, back-pressure surfaces, first-session guidance, and proposal-only affordance recommendations. |
 | `eng-harness-0-add-extension` | You need a new `harness <verb>` command | Guided authoring: reuses gathered intent, runs `harness new`, fills the handler, and verifies. |
 
@@ -58,7 +58,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 | Skill | Stage | Why |
 |---|---|---|
 | `eng-harness-flow` | Any (router) | The single front door to the loop. Stateless: re-derives where the work sits from deterministic repo signals + an optional caller hint (`--event session-start\|post-spec\|pre-implement\|phase-end\|plan-complete`), then routes to the ONE right skill below — callers never invoke the children directly. |
-| `eng-harness-1-boot` | Boot | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, reports readiness. `UNAVAILABLE` (not an error) when no harness exists → recommends `eng-harness-0-setup`. |
+| `eng-harness-1-boot` | Boot | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, reports readiness. `UNAVAILABLE` (not an error) when no harness exists → recommends `eng-harness-0-adopt`. |
 | `eng-harness-2-backpressure` | Backpressure Check | Advisory survey of whether scoped work can be *proven by deterministic sensors*; names missing sensors. Never blocks. |
 | `eng-harness-4-retro` | Do Work and Observe + Retro / Magic Wand | The one friction-lifecycle skill. In-flight capture is a CLI verb — `npx harness observe` logs one entry per call to the gitignored buffer (`.harness/temp/<bucket>/`), with IDs/timestamps/validation/gitignore owned by the CLI; `--drain` presents the end-of-session triage prompt and materialises a committed record via `harness record retro` (under `.harness/records/`); `--harvest` clusters recurring improvement candidates and frames recurrence as token cost. |
 
@@ -67,7 +67,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 ## The intended loop
 
 1. **Install** the skills (above).
-2. **Set up** the harness with `eng-harness-0-setup` when a repo has no working `harness boot` — installs the CLI (`harness doctor` passes), ensures a harnessability report exists, and stands up a basic `boot` extension. Writes no governance doc / `harness/cli/` / `AGENTS.md` / `docs/harness/` scaffold — that substrate is owned by the harness CLI (and a future `harness init`).
+2. **Adopt** the harness with `eng-harness-0-adopt` when a repo has no working `harness boot` — installs the CLI (`harness doctor` passes), ensures a harnessability report exists, and stands up a basic `boot` extension. Writes no governance doc / `harness/cli/` / `AGENTS.md` / `docs/harness/` scaffold — that substrate is owned by the harness CLI (and a future `harness init`).
 3. **Assess** with `eng-harness-0-harnessability-assessment` for a target-aware readiness report (evidence vs inference vs unknowns vs next safe actions; affordance recommendations are proposal-only).
 4. **Boot** with `eng-harness-1-boot` at session start — read the contract instead of guessing commands.
 5. **Observe** quietly during work with one CLI call per noticing — `npx harness observe "<what>" --kind <kind>` — for confusing failures, retries/backtracking, slow/missing commands, missing fixtures/sensors, "if only there were…" ideas (capture judgment lives in `eng-harness-4-retro`). Don't nag mid-flow.
@@ -80,8 +80,8 @@ The foundation documents explain the thesis: the engineering harness is the proj
 
 | Foundation idea | Skill-suite affordance |
 |---|---|
-| Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve | `eng-harness-0-setup` installs the harness CLI and stands up a basic `boot`; the loop skills operate the loop through it. |
-| The harness is the front door, not a replacement toolchain | `eng-harness-0-setup` installs the CLI and authors a `boot` that wraps existing commands first. |
+| Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve | `eng-harness-0-adopt` brings the harness into the repo and stands up a basic `boot`; the loop skills operate the loop through it. |
+| The harness is the front door, not a replacement toolchain | `eng-harness-0-adopt` installs the CLI and authors a `boot` that wraps existing commands first. |
 | Cold-start orientation should be repository evidence, not private memory | `eng-harness-0-harnessability-assessment` writes a target-aware report separating evidence, inference, unknowns, and next safe actions. |
 | Encode the fix, not the memory | Harness entries name a candidate encoded fix, not just a complaint. |
 | Agents are real harness users | `eng-harness-4-retro`'s in-flight capture (`npx harness observe`) treats agent friction as product feedback for the harness. |
@@ -92,7 +92,7 @@ The foundation documents explain the thesis: the engineering harness is the proj
 ## Operating rules
 
 - Run `eng-harness-1-boot` before non-trivial work in a repo that has a harness.
-- If boot says no harness exists, run `eng-harness-0-setup`.
+- If boot says no harness exists, run `eng-harness-0-adopt`.
 - Track friction quietly during work; bubble once at a natural pause; harvest when recurring friction should influence planning.
 - Wrap existing build/test/run/seed/health commands before inventing new harness behaviour.
 - Prefer encoded fixes: commands, checks, fixtures, diagnostics, templates, defaults, or evidence paths.

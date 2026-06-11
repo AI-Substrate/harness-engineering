@@ -7,7 +7,7 @@
       "path:skills/eng-harness-loop"
     ],
     "include": [
-      "eng-harness-0-setup",
+      "eng-harness-0-adopt",
       "eng-harness-0-harnessability-assessment",
       "eng-harness-0-add-extension",
       "eng-harness-1-boot",

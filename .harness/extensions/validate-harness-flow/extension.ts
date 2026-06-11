@@ -41,7 +41,7 @@ const SKILL_FLAGS = [
   '--skill-source',
   'path:skills/eng-harness-loop',
   '--skill',
-  'eng-harness-0-setup',
+  'eng-harness-0-adopt',
   '--skill',
   'eng-harness-0-harnessability-assessment',
   '--skill',

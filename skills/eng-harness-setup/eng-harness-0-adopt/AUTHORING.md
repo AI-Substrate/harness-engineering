@@ -1,4 +1,4 @@
-# Authoring notes — eng-harness-0-setup
+# Authoring notes — eng-harness-0-adopt
 
 **This file is repo-internal and NOT installed by the skill.** It documents the conventions future editors must preserve.
 
