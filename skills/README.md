@@ -57,6 +57,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 
 | Skill | Stage | Why |
 |---|---|---|
+| `eng-harness-flow` | Any (router) | The single front door to the loop. Stateless: re-derives where the work sits from deterministic repo signals + an optional caller hint (`--event session-start\|post-spec\|pre-implement\|phase-end\|plan-complete`), then routes to the ONE right skill below — callers never invoke the children directly. |
 | `eng-harness-1-boot` | Boot | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, reports readiness. `UNAVAILABLE` (not an error) when no harness exists → recommends `eng-harness-0-setup`. |
 | `eng-harness-2-backpressure` | Backpressure Check | Advisory survey of whether scoped work can be *proven by deterministic sensors*; names missing sensors. Never blocks. |
 | `eng-harness-4-retro` | Do Work and Observe + Retro / Magic Wand | The one friction-lifecycle skill. In-flight capture is a CLI verb — `npx harness observe` logs one entry per call to the gitignored buffer (`.harness/temp/<bucket>/`), with IDs/timestamps/validation/gitignore owned by the CLI; `--drain` presents the end-of-session triage prompt and materialises a committed record via `harness record retro` (under `.harness/records/`); `--harvest` clusters recurring improvement candidates and frames recurrence as token cost. |

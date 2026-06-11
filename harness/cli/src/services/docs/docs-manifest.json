@@ -35,6 +35,13 @@
       "summary": "Overview of the harness CLI: install/run via npx, the command surface, output modes, and exit codes.",
       "audience": "both",
       "sourcePath": "harness/cli/README.md"
+    },
+    {
+      "id": "agents-readme",
+      "title": "Agent onboarding (the drop-file)",
+      "summary": "Self-contained bootstrap guide: point an agent at a repo and it installs the harness CLI + skills, orients itself, and enters the loop.",
+      "audience": "both",
+      "sourcePath": "AGENTS_README.md"
     }
   ]
 }

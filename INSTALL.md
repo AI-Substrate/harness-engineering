@@ -11,6 +11,7 @@ This repository publishes two skill groups through the [`npx skills@latest`](htt
 | `eng-harness-0-setup` | setup | Create or validate a repo-local engineering harness governance file and route future agents to it. |
 | `eng-harness-0-harnessability-assessment` | setup | Score a repository's harnessability (Operate-Today and Adaptability) and report back-pressure surfaces, proof ceilings, command tiers, and proposal-only affordances. |
 | `eng-harness-0-add-extension` | setup | Guided authoring of a new `harness <verb>` extension. |
+| `eng-harness-flow` | loop | Stateless harness-loop router — the single front door; re-derives loop position every call and routes to the one right skill. |
 | `eng-harness-1-boot` | loop | Boot stage — validate the harness is healthy at session start. |
 | `eng-harness-2-backpressure` | loop | Backpressure Check — advisory deterministic-sensor coverage survey. |
 | `eng-harness-4-retro` | loop | The friction lifecycle — in-flight capture (via the `harness observe` CLI verb), session-end drain, long-horizon harvest. |
