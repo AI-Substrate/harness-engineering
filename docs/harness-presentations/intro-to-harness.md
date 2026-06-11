@@ -34,7 +34,7 @@ It is the productisation of the engineering environment.
 # Agenda
 
 - Framing the problem: what an engineering harness actually is
-- The layers: one picture for the whole talk
+- The layers: one picture for the whole concept
 - Engineering harness vs agent harness
 - Encoding your team project memory
 - Backpressure, and why the deterministic kind wins
@@ -79,7 +79,7 @@ And second: we need to systemise deterministic backpressure to raise quality and
 
 # The Layers
 
-One picture for the whole talk. Intent flows down. Evidence flows up.
+One picture for the whole concept. Intent flows down. Evidence flows up.
 
 ```mermaid
 %%{init: {"flowchart": {"wrappingWidth": 520, "nodeSpacing": 60, "rankSpacing": 64}} }%%
@@ -117,7 +117,7 @@ Humans steer down: intent, decisions, what matters. The stack shows receipts bac
 
 The inference layer is the agent harness — where the agent reasons, plans, writes code, and discovers friction. It asks the layer below for proof — boot, checks, smoke — discovered via --help, not memory. And it gets verdicts and evidence back up. Friction comes back as new commands.
 
-The deterministic layer is the engineering harness. Runnable proof. Trusted backpressure. Fewer tokens. Build, run, test, lint, typecheck, smoke. Probe endpoints, drive the browser, capture logs. Show evidence. Rerun until green. If the agent had to infer it twice, encode it here — that line is the thread for the rest of the talk.
+The deterministic layer is the engineering harness. Runnable proof. Trusted backpressure. Fewer tokens. Build, run, test, lint, typecheck, smoke. Probe endpoints, drive the browser, capture logs. Show evidence. Rerun until green. If the agent had to infer it twice, encode it here — that line is the thread for the rest of the deck.
 
 The deterministic layer wraps what already exists in the codebase — build, test, run, seed, as-is — and in return it demands harnessability from the codebase: fakes, seams, bootability.
 

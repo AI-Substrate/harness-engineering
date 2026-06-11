@@ -588,7 +588,7 @@
   @keyframes blink { 50% { opacity: 0; } }
 
   /* layer stack — flat plates with paired flows */
-  .stack { display: grid; gap: 0; max-width: 880px; margin-top: 26px; }
+  .stack { display: grid; gap: 10px; max-width: 880px; margin-top: 30px; }
   .plate {
     display: flex;
     align-items: center;
@@ -626,7 +626,7 @@
     display: flex;
     justify-content: center;
     gap: clamp(16px, 4vw, 60px);
-    padding: 7px 0;
+    padding: 8px 0;
   }
   .flowrow .f {
     font-family: var(--mono);
@@ -639,12 +639,15 @@
     align-items: center;
     gap: 8px;
   }
+  .flowrow .f { white-space: nowrap; }
   .flowrow .f i {
     font-style: normal;
     color: var(--faint);
     font-weight: 400;
     letter-spacing: .04em;
     text-transform: none;
+    white-space: normal;
+    max-width: 30ch;
   }
   .flowrow .arr { animation: nudge 1.6s var(--ease) infinite; display: inline-block; }
   .flowrow .up .arr { animation-name: nudge-up; }
@@ -1131,7 +1134,7 @@
     <h1 class="rv" style="--d:.06s">Where we're <em>going.</em></h1>
     <ol class="agenda rv" style="--d:.14s">
       <li><b>Framing the problem</b> — what an engineering harness actually is</li>
-      <li><b>The layers</b> — one picture for the whole talk</li>
+      <li><b>The layers</b> — one picture for the whole concept</li>
       <li>Engineering harness vs agent harness</li>
       <li>Encoding your team project memory</li>
       <li><b>Backpressure</b> — and why the deterministic kind wins</li>
@@ -1205,7 +1208,7 @@
 <section class="slide" id="s-layers" data-title="The Layers" style="--c: var(--green)">
   <div class="inner">
     <p class="kicker rv"><span class="snum"></span>The Layers</p>
-    <h1 class="rv" style="--d:.06s">One picture for the <em>whole talk.</em></h1>
+    <h1 class="rv" style="--d:.06s">One picture for the <em>whole concept.</em></h1>
     <p class="lede rv" style="--d:.12s">Intent flows <strong>down</strong>. Evidence flows <strong>up</strong>.</p>
 
     <div class="stack">
@@ -1233,7 +1236,7 @@
         <p><i>Runnable proof, backpressure, and token savings.</i> Proof · Backpressure · Evidence · Token savings — sensors decide, not the model marking its own homework.</p></div>
       </div>
       <div class="flowrow" data-step="6">
-        <span class="f down" style="--fc: var(--green)"><span class="arr">▼</span> wraps what exists <i>build · test · run · seed — as-is</i></span>
+        <span class="f down" style="--fc: var(--green)"><span class="arr">▼</span> wraps what exists <i>build · test · run · seed — as&#8209;is</i></span>
         <span class="f up" style="--fc: var(--stone)"><span class="arr">▲</span> demands harnessability <i>fakes · seams · bootability</i></span>
       </div>
       <div class="plate" data-step="7" style="--pc: var(--stone)">
@@ -1562,15 +1565,15 @@
         <span class="pnum">01</span>
         <div><h3>Human Steering</h3><p>Decides what matters, and what gets encoded. Steers ▼, receives receipts ▲.</p></div>
       </div>
-      <div class="plate" style="--pc: var(--azure); padding: 11px 18px; margin-top: 8px;">
+      <div class="plate" style="--pc: var(--azure); padding: 11px 18px;">
         <span class="pnum">02</span>
         <div><h3>Inference <span>· agent harness</span></h3><p>Reasons, plans, writes code, discovers friction. Asks for proof ▼, receives verdicts &amp; evidence ▲.</p></div>
       </div>
-      <div class="plate" style="--pc: var(--green); padding: 11px 18px; margin-top: 8px;">
+      <div class="plate" style="--pc: var(--green); padding: 11px 18px;">
         <span class="pnum">03</span>
         <div><h3>Deterministic <span>· engineering harness</span></h3><p>Runnable proof, trusted backpressure, fewer tokens. Wraps the codebase ▼, demands harnessability ▲.</p></div>
       </div>
-      <div class="plate" style="--pc: var(--stone); padding: 11px 18px; margin-top: 8px;">
+      <div class="plate" style="--pc: var(--stone); padding: 11px 18px;">
         <span class="pnum">04</span>
         <div><h3>Codebase</h3><p>Bootable, observable, testable, mockable, stable. The substrate.</p></div>
       </div>
