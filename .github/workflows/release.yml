@@ -39,7 +39,11 @@ jobs:
         id: release
         uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # A user/PAT token (not the built-in GITHUB_TOKEN) so the Release PRs
+          # release-please opens TRIGGER CI — GitHub intentionally suppresses
+          # workflows for events created by GITHUB_TOKEN (anti-recursion), which
+          # otherwise leaves the Release PR stuck waiting on the required check.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
