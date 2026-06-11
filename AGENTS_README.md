@@ -147,9 +147,9 @@ If a SKILL.md proves unreadable or incomplete this way, fall back to the restart
 /eng-harness-flow
 ```
 
-`/eng-harness-flow` is the front door to the harness loop. It is **stateless**: every time you run it, it re-reads the repo's signals and hands back the ONE right next command — finishing setup if anything is missing (install → assess → governance → a working `boot`, built last), then cycling the loop (Boot → Backpressure → Observe → Retro → Improve). Run it any number of times, at any point, even after your context is wiped — it never guesses, never blocks, and says why it chose what it chose.
+`/eng-harness-flow` is the front door to the harness loop. It is **stateless**: every time you run it, it re-reads the repo's signals and hands back the ONE right next command — finishing adoption if anything is missing (install → assess → governance → a working `boot`, built last), then cycling the loop (Boot → Backpressure → Observe → Retro → Improve). Run it any number of times, at any point, even after your context is wiped — it never guesses, never blocks, and says why it chose what it chose.
 
-Whether the router drives it or you follow the setup skill inline (Stage 4 fallback), the first-time work has the same shape:
+Whether the router drives it or you follow the adopt skill inline (Stage 4 fallback), the first-time work has the same shape:
 
 1. **Assess** — run the harnessability assessment. It writes a graded report to `.harness/reports/harnessability/` (Operate-Today and Adaptability axes). If the assessment concludes the repo isn't workable, abandoning with that evidence is a valid, honest outcome.
 2. **Stand up `boot`** — find the repo's canonical "prove it runs" command (test suite, build + smoke, dev-server health check), then scaffold a real verb around it:
@@ -235,7 +235,7 @@ Then work normally, with the loop around you: run `harness instructions <verb>` 
 
 ---
 
-## What done looks like (first-time setup)
+## What done looks like (first-time adoption)
 
 - [ ] `npx --no-install harness --help` prints usage (CLI is repo-local)
 - [ ] `harness doctor --json` → extensions loaded, no convention complaints

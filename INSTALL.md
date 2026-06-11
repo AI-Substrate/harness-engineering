@@ -93,7 +93,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
   --copy
 ```
 
-This installs the setup skill from the remote GitHub repository into:
+This installs the skills from the remote GitHub repository into:
 
 ```txt
 ./.agents/skills/
@@ -105,7 +105,7 @@ Use `--copy` when you want the installed skill files to be physically present in
 
 Use `-s` / `--skill` to install only one skill explicitly. Swap `-a <agent>` for your CLI and use `-g` for a global install or omit it for a project-local install into `./.agents/skills/`.
 
-Setup skill, global, Claude Code:
+Adopt skill, global, Claude Code:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering \
@@ -140,7 +140,7 @@ From this repository:
 npx skills@latest add "$(pwd)" -l
 ```
 
-Install the local working tree setup skill globally to all supported CLIs:
+Install the local working tree skills globally to all supported CLIs:
 
 ```bash
 npx skills@latest add "$(pwd)" \
@@ -153,7 +153,7 @@ npx skills@latest add "$(pwd)" \
   -y
 ```
 
-Install the local working tree setup skill project-locally:
+Install the local working tree skills project-locally:
 
 ```bash
 npx skills@latest add "$(pwd)" \
