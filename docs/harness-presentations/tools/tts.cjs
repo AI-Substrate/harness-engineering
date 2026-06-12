@@ -119,6 +119,7 @@ if (!key) {
       voice_settings: {
         stability: +opt('stability', 0.5),
         similarity_boost: +opt('similarity', 0.75),
+        speed: +opt('speed', process.env.ELEVENLABS_SPEED || 1),
       },
     }),
   });
