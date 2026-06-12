@@ -3400,13 +3400,13 @@
   #s-need {
     --cue-what: 1.10s;      /* "WHAT WE NEED is…" */
     --cue-one: 2.00s;       /* "…is ONE really simple…" */
-    --cue-focal: 4.10s;     /* "…first class FOCAL POINT." */
-    --cue-A: 6.18s;         /* "A:" */
-    --cue-tools: 8.94s;     /* "…find all the TOOLS your environment offers" */
-    --cue-B: 12.02s;        /* "B:" */
-    --cue-encode: 13.86s;   /* "…place to ENCODE the friction away" */
-    --cue-oneplace: 19.12s; /* "ONE PLACE. Not scattered docs…" */
-    --cue-shape: 23.56s;    /* "so what SHAPE is that thing?" */
+    --cue-focal: 4.04s;     /* "…first class FOCAL POINT." */
+    --cue-A: 6.00s;         /* "A:" */
+    --cue-tools: 8.76s;     /* "…all the TOOLS and backpressure sensors…" */
+    --cue-B: 13.68s;        /* "B:" */
+    --cue-encode: 15.56s;   /* "…place to ENCODE the friction away" */
+    --cue-oneplace: 20.74s; /* "ONE PLACE. Not scattered docs…" */
+    --cue-shape: 24.66s;    /* "so what SHAPE is that thing?" */
   }
   #s-need .nhead { position: absolute; left: 3.5cqw; top: 3.4cqh; z-index: 4; }
   #s-need .nhead h2 {
@@ -3425,9 +3425,15 @@
      they shrink and sink into the node (forwards = they stay gone) */
   #s-need .qa { left: 28.5%; top: 46%; }
   #s-need .qb { left: 71.5%; top: 46%; }
-  /* the .05s fadein is the S13→S14 match-cut — never cue it */
-  #s-need.active .qa { animation: fadein .35s ease .05s backwards, qTravelA .9s cubic-bezier(.55,.05,.7,1) calc(var(--cue-focal) - .95s) forwards; }
-  #s-need.active .qb { animation: fadein .35s ease .05s backwards, qTravelB .9s cubic-bezier(.55,.05,.7,1) calc(var(--cue-focal) - .8s) forwards; }
+  /* S13→S14 match-cut: the cards are PRESENT at frame 0 — no entrance,
+     a fade reads as a blink at the stitched cut. They also keep
+     breathing at the exact phase S13's last frame left them: S13 runs
+     30.8s with breathe delays 3.09s/11.19s on a 5.4s period, so the
+     cut lands .71s / 3.41s into a cycle (negative delays). Recompute
+     if S13's narration retimes. qTravel* is listed after qBreathe so
+     it owns scale/opacity once the cards sink. */
+  #s-need.active .qa { animation: qBreathe 5.4s ease-in-out -.71s infinite, qTravelA .9s cubic-bezier(.55,.05,.7,1) calc(var(--cue-focal) - .95s) forwards; }
+  #s-need.active .qb { animation: qBreathe 5.4s ease-in-out -3.41s infinite, qTravelB .9s cubic-bezier(.55,.05,.7,1) calc(var(--cue-focal) - .8s) forwards; }
   @keyframes qTravelA {
     0%   { left: 28.5%; top: 46%; scale: 1; opacity: 1; }
     78%  { opacity: 1; }
