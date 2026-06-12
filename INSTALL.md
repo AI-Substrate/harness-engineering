@@ -21,7 +21,7 @@ This repository publishes two skill groups through the [`npx skills@latest`](htt
 ### Install globally for Claude Code
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a claude-code \
   -g
 ```
@@ -29,7 +29,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 ### Install globally for GitHub Copilot CLI
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a github-copilot \
   -g
 ```
@@ -37,7 +37,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 ### Install globally for Codex CLI
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a codex \
   -g
 ```
@@ -45,7 +45,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 ### Install globally for OpenCode
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a opencode \
   -g
 ```
@@ -53,7 +53,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 ### Install globally for Pi
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a pi \
   -g
 ```
@@ -61,7 +61,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 ### Install globally for several CLIs at once
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a claude-code \
   -a codex \
   -a opencode \
@@ -75,7 +75,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 Drop `-g` to install into the current project rather than the user-global skill location.
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a claude-code
 ```
 
@@ -86,7 +86,7 @@ Project-local installs are useful when a repository wants to pin the skill along
 GitHub Copilot CLI and Cursor both use the project-local `.agents/skills/` target through `npx skills`.
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -a github-copilot \
   -a cursor \
   -y \
@@ -108,7 +108,7 @@ Use `-s` / `--skill` to install only one skill explicitly. Swap `-a <agent>` for
 Adopt skill, global, Claude Code:
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -s eng-harness-0-adopt \
   -a claude-code \
   -g
@@ -117,7 +117,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 Harnessability assessment skill, global, Claude Code:
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -s eng-harness-0-harnessability-assessment \
   -a claude-code \
   -g
@@ -126,7 +126,7 @@ npx skills@latest add AI-Substrate/harness-engineering \
 Harnessability assessment skill, project-local, GitHub Copilot CLI:
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering \
+npx skills@latest add AI-Substrate/harness-engineering/skills \
   -s eng-harness-0-harnessability-assessment \
   -a github-copilot \
   -y

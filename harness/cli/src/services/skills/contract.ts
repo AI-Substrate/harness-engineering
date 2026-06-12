@@ -4,8 +4,15 @@
  * construction is unit-testable (Principle 3: pure logic, no child spawn here).
  */
 
-/** The default skills source: this repo, so the command installs THIS harness's skills from anywhere it runs. */
-export const DEFAULT_SKILLS_SOURCE = 'AI-Substrate/harness-engineering';
+/**
+ * The default skills source: this repo's `skills/` subtree (the `owner/repo/subdir`
+ * form `npx skills add` accepts), so the command installs THIS harness's skills from
+ * anywhere it runs. Scoped to `/skills` ON PURPOSE: a bare `owner/repo` makes the
+ * installer fetch the whole repo and recursively sweep EVERY `SKILL.md` it finds —
+ * which would pull in any stray skill under `agents/`, fixtures, or future top-level
+ * dirs. Pinning the subdir keeps the install to the published skill set only.
+ */
+export const DEFAULT_SKILLS_SOURCE = 'AI-Substrate/harness-engineering/skills';
 
 /** CLI targets the Vercel `skills` tool understands (the `-a <agent>` values). Surfaced for help/validation. */
 export const KNOWN_SKILL_TARGETS = [

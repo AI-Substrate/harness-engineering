@@ -22,14 +22,14 @@ harness skills install --target claude-code --global      # or --target github-c
 Equivalent direct `npx` invocation (what the command wraps):
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering -a claude-code -g -y
+npx skills@latest add AI-Substrate/harness-engineering/skills -a claude-code -g -y
 ```
 
 Install a single category or skill:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering/skills/eng-harness-loop -a claude-code -g   # whole loop group
-npx skills@latest add AI-Substrate/harness-engineering -s eng-harness-0-adopt -a claude-code -g     # one skill
+npx skills@latest add AI-Substrate/harness-engineering/skills -s eng-harness-0-adopt -a claude-code -g     # one skill
 ```
 
 From this working tree while developing, or to list what the repo exposes:
