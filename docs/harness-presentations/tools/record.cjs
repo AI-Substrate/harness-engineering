@@ -93,6 +93,9 @@ const preset = opt('preset', 'slow');
       id = slideArg.replace(/^#/, '');
       if (!slides.includes(id)) { console.error(`no slide id "${id}" — ids: ${slides.join(', ')}`); process.exit(1); }
     }
+    // Clips are numbered by deck order (001-s-title, 002-s-stack, ...) so they
+    // sort into presentation order and pair with same-stem audio files.
+    const stem = `${String(slides.indexOf(id) + 1).padStart(3, '0')}-${id}`;
 
     await page.goto(`${url}#${id}`, { waitUntil: 'networkidle0' });
     // Record mode: the stage ("grab inside the line") fills the viewport
@@ -116,7 +119,7 @@ const preset = opt('preset', 'slow');
 
     const total = Math.round(durSec * fps);
     const pad = Math.max(String(total - 1).length, 3);
-    const framesDir = path.join(out, `frames-${id}`);
+    const framesDir = path.join(out, `frames-${stem}`);
     fs.rmSync(framesDir, { recursive: true, force: true });
     fs.mkdirSync(framesDir, { recursive: true });
 
@@ -135,7 +138,7 @@ const preset = opt('preset', 'slow');
     }
     console.log(`  (capture ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
-    const mp4 = path.join(out, `${id}.mp4`);
+    const mp4 = path.join(out, `${stem}.mp4`);
     execFileSync('ffmpeg', [
       '-y',
       '-framerate', String(fps),
