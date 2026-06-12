@@ -40,13 +40,21 @@ if (fs.existsSync(envPath)) {
   }
 }
 
+// Flags accept both `--name=value` and `--name value`. Booleans take no value.
+const BOOLEAN_FLAGS = new Set(['list-voices']);
 const args = process.argv.slice(2);
-const positional = args.filter((a) => !a.startsWith('--'));
-const opt = (name, dflt) => {
-  const hit = args.find((a) => a.startsWith(`--${name}=`));
-  return hit ? hit.split('=')[1] : dflt;
-};
-const flag = (name) => args.includes(`--${name}`);
+const opts = {};
+const positional = [];
+for (let i = 0; i < args.length; i++) {
+  const a = args[i];
+  if (!a.startsWith('--')) { positional.push(a); continue; }
+  const eq = a.indexOf('=');
+  if (eq !== -1) opts[a.slice(2, eq)] = a.slice(eq + 1);
+  else if (!BOOLEAN_FLAGS.has(a.slice(2)) && i + 1 < args.length && !args[i + 1].startsWith('--')) opts[a.slice(2)] = args[++i];
+  else opts[a.slice(2)] = true;
+}
+const opt = (name, dflt) => (name in opts && opts[name] !== true ? opts[name] : dflt);
+const flag = (name) => name in opts;
 
 const API = 'https://api.elevenlabs.io/v1';
 const key = process.env.ELEVENLABS_API_KEY;
