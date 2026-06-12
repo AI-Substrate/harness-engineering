@@ -117,7 +117,10 @@ if (!key) {
       text,
       model_id: model,
       voice_settings: {
-        stability: +opt('stability', 0.5),
+        // v3 note: stability is effectively discrete — 0.0 Creative,
+        // 0.5 Natural, 1.0 Robust. Robust pins the voice to the original
+        // (prevents the per-generation accent drift Natural can produce).
+        stability: +opt('stability', process.env.ELEVENLABS_STABILITY || 0.5),
         similarity_boost: +opt('similarity', 0.75),
         speed: +opt('speed', process.env.ELEVENLABS_SPEED || 1),
       },
