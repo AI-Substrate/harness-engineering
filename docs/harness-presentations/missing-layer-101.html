@@ -4041,23 +4041,32 @@
   #s-pr.active .cvd1 { animation: cvdRun1 2.4s linear calc(var(--cue-points) + .6s) infinite; }
   #s-pr.active .cvd2 { animation: cvdRun2 2.4s linear calc(var(--cue-points) + 1.4s) infinite; }
   #s-pr.active .cvd3 { animation: cvdRun3 2.4s linear calc(var(--cue-points) + 2.2s) infinite; }
+  /* dot positions are derived EXACTLY from the .conv line endpoints:
+     viewBox is 0 0 1000 562.5 stretched to the same box (inset 0,
+     preserveAspectRatio none), so left% = x/10, top% = y/5.625.
+     Intermediate frames are collinear (f = t/48) — CSS interpolation
+     then keeps the dot on the line at every frame. If a cv line's
+     x/y changes, recompute all four frames. */
   @keyframes cvdRun1 {
-    0%        { left: 19.5%; top: 50%; opacity: 0; }
-    10%       { left: 22.9%; top: 53.6%; opacity: 1; }
-    42%       { left: 52.7%; top: 85.5%; opacity: 1; }
-    48%, 100% { left: 54.8%; top: 88%; opacity: 0; }
+    /* cv1 (195,282)→(548,505) */
+    0%        { left: 19.5%;  top: 50.13%; opacity: 0; }
+    10%       { left: 26.85%; top: 58.39%; opacity: 1; }
+    42%       { left: 50.39%; top: 84.82%; opacity: 1; }
+    48%, 100% { left: 54.8%;  top: 89.78%; opacity: 0; }
   }
   @keyframes cvdRun2 {
-    0%        { left: 70%;   top: 43.5%; opacity: 0; }
-    10%       { left: 68.5%; top: 47.5%; opacity: 1; }
-    42%       { left: 56.2%; top: 84.5%; opacity: 1; }
-    48%, 100% { left: 55.1%; top: 87.5%; opacity: 0; }
+    /* cv2 (700,245)→(551,497) */
+    0%        { left: 70%;    top: 43.56%; opacity: 0; }
+    10%       { left: 66.9%;  top: 52.89%; opacity: 1; }
+    42%       { left: 56.96%; top: 82.76%; opacity: 1; }
+    48%, 100% { left: 55.1%;  top: 88.36%; opacity: 0; }
   }
   @keyframes cvdRun3 {
-    0%        { left: 79%;   top: 54%; opacity: 0; }
-    10%       { left: 76.2%; top: 57.4%; opacity: 1; }
-    42%       { left: 57.4%; top: 85.5%; opacity: 1; }
-    48%, 100% { left: 55.7%; top: 88%; opacity: 0; }
+    /* cv3 (790,305)→(557,505) */
+    0%        { left: 79%;    top: 54.22%; opacity: 0; }
+    10%       { left: 74.15%; top: 61.63%; opacity: 1; }
+    42%       { left: 58.61%; top: 85.33%; opacity: 1; }
+    48%, 100% { left: 55.7%;  top: 89.78%; opacity: 0; }
   }
 
   #s-pr .cap {
