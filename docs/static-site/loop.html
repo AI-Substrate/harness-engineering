@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Loop · The Engineering Harness</title>
+<!--
+  Self-contained explainer of the harness operating loop: the skills, the order,
+  and where they land in a typical SDD flow.
+  Sources of truth: skills/eng-harness-loop/eng-harness-flow/references/getting-started.md
+  + skills/eng-harness-loop/eng-harness-flow/SKILL.md + skills/README.md.
+  Quick check after editing: open in a modern browser; scroll every section; verify the
+  hub-and-spoke hero, adoption rungs, loop cards, seam rows and tables render; test at
+  ~640px and ~1000px widths (DevTools); with JS disabled all text must still be visible.
+-->
+<script>document.documentElement.classList.add('js')</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=Instrument+Serif:ital@0;1&family=Martian+Mono:wght@100..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f8f5ee;
+    --panel: #ffffff;
+    --panel-2: #fbf9f4;
+    --line: #e3ddd0;
+    --text: #1a1d21;
+    --muted: #5d6570;
+    --faint: #9b988e;
+
+    --amber: #b8760f;
+    --azure: #2a66c9;
+    --green: #0e8f5a;
+    --stone: #67707b;
+    --rust: #c2452d;
+
+    --term-bg: #0c1015;
+    --term-green: #4ce08a;
+    --term-text: #e8edf2;
+    --term-faint: #707b87;
+    --term-line: #1d2630;
+
+    --mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+    --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 40px; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    font-optical-sizing: auto;
+    line-height: 1.6;
+    overflow-x: hidden;
+    background-image: radial-gradient(circle, rgba(26,29,33,.06) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  ::selection { background: var(--amber); color: #fff8ec; }
+
+  /* ---- grain overlay ---- */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity: .05;
+    pointer-events: none;
+    z-index: 99;
+    mix-blend-mode: multiply;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(20px, 4vw, 48px); }
+
+  /* =========================================================
+     HERO
+  ========================================================== */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    align-content: center;
+    position: relative;
+    padding: clamp(48px, 7vh, 90px) 0;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -20%; left: -10%;
+    width: 70vw; height: 80vh;
+    background: radial-gradient(closest-side, rgba(42,102,201,.08), transparent 70%);
+    pointer-events: none;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
+    gap: clamp(24px, 5vw, 72px);
+    align-items: center;
+  }
+
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .kicker::before {
+    content: '';
+    width: 28px; height: 1px;
+    background: var(--azure);
+  }
+  .caret {
+    display: inline-block;
+    width: 7px; height: 14px;
+    background: var(--green);
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  h1 {
+    font-size: clamp(58px, 9.5vw, 132px);
+    font-weight: 800;
+    line-height: .95;
+    letter-spacing: -.035em;
+    margin: 22px 0 26px;
+    font-variation-settings: "opsz" 96;
+  }
+  h1 .dot { color: var(--azure); }
+
+  .hero-sub {
+    font-size: clamp(17px, 1.9vw, 22px);
+    color: var(--muted);
+    max-width: 30em;
+    font-weight: 380;
+  }
+  .hero-sub em {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--azure);
+    font-size: 1.12em;
+  }
+  .hero-sub strong {
+    color: var(--green);
+    font-weight: 600;
+  }
+  .hero-sub code {
+    font-family: var(--mono);
+    font-size: .78em;
+    background: color-mix(in srgb, var(--azure) 7%, white);
+    border: 1px solid color-mix(in srgb, var(--azure) 25%, transparent);
+    border-radius: 6px;
+    padding: 2px 8px;
+    color: var(--azure);
+    white-space: nowrap;
+  }
+
+  .hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 36px;
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 9px 15px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgba(255,255,255,.65);
+  }
+  .chip b { font-weight: 700; }
+  .chip .a1 { color: var(--amber); }
+  .chip .a2 { color: var(--azure); }
+  .chip .a3 { color: var(--green); }
+
+  /* ---- hub-and-spoke: the front door routes to everything ---- */
+  .scene {
+    height: clamp(400px, 52vw, 540px);
+    display: grid;
+    place-items: center;
+  }
+  .hub {
+    position: relative;
+    width: clamp(300px, 40vw, 470px);
+    aspect-ratio: 1;
+    animation: hubin 1.1s cubic-bezier(.2,.8,.3,1) backwards;
+  }
+  @keyframes hubin { from { opacity: 0; transform: scale(.92); } }
+  .hub svg {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    overflow: visible;
+  }
+  .hub svg line {
+    stroke-width: 1.4;
+    stroke-dasharray: 3 5;
+    animation: spokeflow 1.2s linear infinite;
+    opacity: .65;
+  }
+  @keyframes spokeflow { to { stroke-dashoffset: -8; } }
+  .hub svg .lnn { display: none; }
+  .sat {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-family: var(--mono);
+    font-size: clamp(8.5px, .95vw, 10.5px);
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--c);
+    border: 1.5px solid color-mix(in srgb, var(--c) 55%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--c) 6%, rgba(255,255,255,.92));
+    padding: 8px 14px;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--c) 14%, transparent);
+    animation: satin .9s cubic-bezier(.2,.8,.3,1) backwards;
+    animation-delay: var(--d, .3s);
+  }
+  @keyframes satin { from { opacity: 0; transform: translate(-50%, -50%) scale(.7); } }
+  .sat small {
+    display: block;
+    font-weight: 400;
+    font-size: .82em;
+    letter-spacing: .06em;
+    color: var(--faint);
+    text-align: center;
+  }
+  .hubcore {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--term-bg);
+    border: 1px solid var(--term-line);
+    border-radius: 14px;
+    padding: 14px 20px;
+    text-align: center;
+    box-shadow: 0 18px 50px rgba(48,40,25,.3), 0 0 40px color-mix(in srgb, var(--azure) 22%, transparent);
+    z-index: 2;
+  }
+  .hubcore b {
+    display: block;
+    font-family: var(--mono);
+    font-size: clamp(10.5px, 1.2vw, 13px);
+    font-weight: 700;
+    color: var(--term-green);
+    letter-spacing: .04em;
+  }
+  .hubcore small {
+    display: block;
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 400;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--term-faint);
+    margin-top: 5px;
+  }
+  .hub-cap {
+    position: absolute;
+    left: 50%;
+    bottom: -34px;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+    white-space: nowrap;
+  }
+  .hub-cap b { color: var(--azure); font-weight: 600; }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 28px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .3em;
+    color: var(--faint);
+    text-transform: uppercase;
+    animation: bob 2.2s ease-in-out infinite;
+  }
+  @keyframes bob { 50% { transform: translateX(-50%) translateY(7px); } }
+
+  /* =========================================================
+     NARRATIVE BANDS
+  ========================================================== */
+  .band {
+    position: relative;
+    padding: clamp(70px, 11vh, 130px) 0;
+  }
+  .band::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -15%;
+    width: 55vw; height: 70%;
+    background: radial-gradient(closest-side, color-mix(in srgb, var(--bc) 6%, transparent), transparent 70%);
+    pointer-events: none;
+  }
+  .band:nth-of-type(even)::before { left: auto; right: -15%; }
+  .band .kicker { color: var(--bc); }
+  .band .kicker::before { background: var(--bc); }
+  .band .kicker .sub { color: var(--faint); letter-spacing: .14em; }
+
+  h2 {
+    font-size: clamp(34px, 4.8vw, 62px);
+    font-weight: 750;
+    line-height: 1.02;
+    letter-spacing: -.028em;
+    margin: 20px 0 18px;
+    max-width: 16em;
+    font-variation-settings: "opsz" 96;
+  }
+  h2 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--bc);
+    letter-spacing: 0;
+  }
+
+  .lede {
+    font-size: clamp(16px, 1.8vw, 20px);
+    color: var(--muted);
+    max-width: 38em;
+    font-weight: 380;
+  }
+  .lede strong { color: var(--text); font-weight: 600; }
+  .lede code {
+    font-family: var(--mono);
+    font-size: .8em;
+    background: color-mix(in srgb, var(--bc) 7%, white);
+    border: 1px solid color-mix(in srgb, var(--bc) 25%, transparent);
+    border-radius: 5px;
+    padding: 1px 7px;
+    color: var(--bc);
+  }
+
+  .band-desc {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(19px, 2.3vw, 27px);
+    color: var(--text);
+    margin: -4px 0 16px;
+    max-width: 26em;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 30px;
+  }
+  .chips .chip {
+    border-color: color-mix(in srgb, var(--bc) 40%, transparent);
+    color: var(--bc);
+    background: color-mix(in srgb, var(--bc) 6%, white);
+  }
+
+  .aside-note {
+    margin-top: 44px;
+    max-width: 46em;
+    font-size: 15px;
+    color: var(--muted);
+    border-left: 2px solid color-mix(in srgb, var(--bc) 55%, transparent);
+    padding-left: 20px;
+    font-weight: 380;
+  }
+  .aside-note b { color: var(--bc); font-weight: 650; }
+  .aside-note code {
+    font-family: var(--mono);
+    font-size: .82em;
+    background: color-mix(in srgb, var(--bc) 7%, white);
+    border: 1px solid color-mix(in srgb, var(--bc) 22%, transparent);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: var(--bc);
+  }
+
+  .callout {
+    margin-top: 34px;
+    max-width: 44em;
+    border: 1px dashed color-mix(in srgb, var(--rust) 45%, transparent);
+    border-radius: 12px;
+    padding: 18px 22px;
+    background: rgba(255,255,255,.6);
+    font-size: 14.5px;
+    color: var(--muted);
+  }
+  .callout b { color: var(--rust); font-weight: 650; }
+  .callout code {
+    font-family: var(--mono);
+    font-size: .82em;
+    background: color-mix(in srgb, var(--rust) 6%, white);
+    border: 1px solid color-mix(in srgb, var(--rust) 22%, transparent);
+    border-radius: 5px;
+    padding: 1px 6px;
+    color: var(--rust);
+  }
+  .callout .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--rust);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  /* =========================================================
+     TERMINAL
+  ========================================================== */
+  .term-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: clamp(22px, 4vw, 52px);
+    align-items: center;
+    margin-top: 56px;
+  }
+  .term-side h3 {
+    font-size: clamp(22px, 2.6vw, 32px);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    line-height: 1.15;
+    margin-bottom: 14px;
+  }
+  .term-side h3 em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--bc);
+  }
+  .term-side p {
+    font-size: 14.5px;
+    color: var(--muted);
+    max-width: 30em;
+    font-weight: 380;
+  }
+  .term-side p b { color: var(--bc); font-weight: 650; }
+
+  .term {
+    background: var(--term-bg);
+    border: 1px solid var(--term-line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(48,40,25,.25);
+  }
+  .term-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 16px;
+    background: #10161d;
+    border-bottom: 1px solid var(--term-line);
+  }
+  .term-bar i { width: 11px; height: 11px; border-radius: 50%; }
+  .term-bar i:nth-child(1) { background: #ff5f57; }
+  .term-bar i:nth-child(2) { background: #febc2e; }
+  .term-bar i:nth-child(3) { background: #28c840; }
+  .term-bar em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    color: var(--term-faint);
+    margin-left: auto; margin-right: auto;
+    transform: translateX(-22px);
+  }
+  .term-body {
+    padding: 22px 24px 26px;
+    font-family: var(--mono);
+    font-size: clamp(10.5px, 1.2vw, 12.5px);
+    line-height: 2.05;
+    overflow-x: auto;
+  }
+  .t-cmd { color: var(--term-text); font-weight: 500; }
+  .t-cmd::before { content: '$ '; color: var(--term-green); font-weight: 700; }
+  .t-skill { color: var(--term-text); font-weight: 500; }
+  .t-skill::before { content: '> '; color: #7aa7e8; font-weight: 700; }
+  .t-ok { color: var(--term-green); font-size: .92em; }
+  .t-out { color: var(--term-faint); font-size: .92em; }
+  .t-rail { color: #c9d4df; font-size: .92em; white-space: pre; }
+  .t-rail b { color: var(--term-green); font-weight: 600; }
+  .t-note { color: var(--term-faint); font-style: italic; font-size: .88em; }
+  .t-hero { color: #ffd479; }
+  .t-last .t-cursor {
+    display: inline-block;
+    width: 8px; height: 15px;
+    background: var(--term-green);
+    vertical-align: -2px;
+    margin-left: 4px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+
+  /* =========================================================
+     ADOPTION RUNGS
+  ========================================================== */
+  .rungs { display: grid; gap: 8px; max-width: 940px; margin-top: 44px; }
+  .rung {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border: 1.5px solid color-mix(in srgb, var(--amber) 35%, transparent);
+    border-left: 5px solid var(--amber);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--amber) 4%, rgba(255,255,255,.72));
+    padding: 14px 22px;
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--amber) 8%, transparent);
+    transition: transform .25s cubic-bezier(.2,.8,.3,1), box-shadow .25s;
+  }
+  .rung:hover {
+    transform: translateX(6px);
+    box-shadow: 0 6px 24px color-mix(in srgb, var(--amber) 16%, transparent);
+  }
+  .rung .rnum {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--amber);
+    letter-spacing: .08em;
+    min-width: 2.4em;
+  }
+  .rung .rbody { flex: 1; }
+  .rung h3 {
+    font-family: var(--mono);
+    font-size: clamp(11.5px, 1.3vw, 14px);
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .rung h3 code {
+    font-size: .82em;
+    font-weight: 500;
+    letter-spacing: .02em;
+    text-transform: none;
+    color: var(--amber);
+    background: color-mix(in srgb, var(--amber) 7%, white);
+    border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent);
+    border-radius: 5px;
+    padding: 1px 7px;
+  }
+  .rung p {
+    font-size: clamp(11.5px, 1.2vw, 13.5px);
+    color: var(--muted);
+    font-weight: 380;
+    line-height: 1.5;
+    margin-top: 3px;
+  }
+  .rung p b { color: var(--text); font-weight: 600; }
+  .badge {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 4px 10px;
+    white-space: nowrap;
+  }
+  .badge.req { color: var(--rust); border: 1px solid color-mix(in srgb, var(--rust) 45%, transparent); background: color-mix(in srgb, var(--rust) 6%, white); }
+  .badge.opt { color: var(--stone); border: 1px solid color-mix(in srgb, var(--stone) 45%, transparent); background: color-mix(in srgb, var(--stone) 6%, white); }
+  .rung.last { border-color: color-mix(in srgb, var(--green) 45%, transparent); border-left-color: var(--green); }
+  .rung.last .rnum { color: var(--green); }
+  .rung.last h3 code { color: var(--green); background: color-mix(in srgb, var(--green) 7%, white); border-color: color-mix(in srgb, var(--green) 25%, transparent); }
+
+  .bridge-line {
+    margin: 54px auto 0;
+    max-width: 940px;
+    border: 1.5px solid color-mix(in srgb, var(--green) 50%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--green) 7%, white);
+    padding: 22px 28px;
+    text-align: center;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(19px, 2.4vw, 27px);
+    color: var(--text);
+    box-shadow: 0 0 36px color-mix(in srgb, var(--green) 14%, transparent);
+  }
+  .bridge-line b { color: var(--green); font-weight: 400; }
+  .bridge-line .sub {
+    display: block;
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-top: 10px;
+  }
+
+  /* =========================================================
+     THE LOOP — chain + stage cards
+  ========================================================== */
+  .loop {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 50px auto 0;
+  }
+  .loop .step {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 10px 17px;
+    background: rgba(255,255,255,.7);
+    transition: color .3s, border-color .3s;
+  }
+  .loop .step:hover { color: var(--green); border-color: color-mix(in srgb, var(--green) 55%, transparent); }
+  .loop .arr { color: var(--faint); font-family: var(--mono); font-size: 12px; }
+  .loop .again {
+    font-family: var(--mono);
+    font-size: 17px;
+    color: var(--green);
+    animation: spin 5s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+
+  .stages {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 46px;
+  }
+  .stage-card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 24px 22px 22px;
+    transition: transform .3s, border-color .3s, box-shadow .3s;
+    box-shadow: 0 2px 10px rgba(48,40,25,.05);
+    display: flex;
+    flex-direction: column;
+  }
+  .stage-card:hover {
+    transform: translateY(-5px);
+    border-color: color-mix(in srgb, var(--sc) 50%, transparent);
+    box-shadow: 0 16px 40px rgba(48,40,25,.13), 0 0 0 1px color-mix(in srgb, var(--sc) 14%, transparent);
+  }
+  .stage-card .when {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--sc);
+    display: block;
+    margin-bottom: 12px;
+  }
+  .stage-card h3 {
+    font-size: 19px;
+    font-weight: 720;
+    letter-spacing: -.015em;
+    margin-bottom: 8px;
+  }
+  .stage-card code {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    background: color-mix(in srgb, var(--sc) 7%, white);
+    border: 1px solid color-mix(in srgb, var(--sc) 28%, transparent);
+    border-radius: 6px;
+    padding: 3px 9px;
+    color: var(--sc);
+    margin-bottom: 12px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .stage-card p {
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.65;
+    font-weight: 380;
+  }
+  .stage-card p b { color: var(--text); font-weight: 600; }
+  .stage-card .makes {
+    margin-top: auto;
+    padding-top: 14px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--sc);
+  }
+  .stage-card .makes::before { content: 'produces → '; color: var(--faint); font-weight: 400; }
+
+  .pull {
+    margin: 80px auto 8px;
+    text-align: center;
+    max-width: 19em;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: clamp(26px, 4vw, 44px);
+    line-height: 1.25;
+    color: var(--text);
+  }
+  .pull b { color: var(--green); font-weight: 400; }
+  .pull-attr {
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-top: 18px;
+  }
+
+  /* =========================================================
+     SDD SEAMS
+  ========================================================== */
+  .sddtrack {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 44px;
+    padding: 18px 22px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255,255,255,.65);
+    width: fit-content;
+    max-width: 100%;
+  }
+  .sddtrack .m {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sddtrack .sep { color: var(--faint); font-family: var(--mono); font-size: 11px; }
+  .sddtrack .lbl {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--azure);
+    margin-right: 6px;
+  }
+
+  .seams { display: grid; gap: 10px; margin-top: 26px; max-width: 1020px; }
+  .seam {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) auto minmax(0, 1.4fr);
+    gap: clamp(14px, 2.5vw, 30px);
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--panel), var(--panel-2));
+    padding: 18px 24px;
+    box-shadow: 0 2px 10px rgba(48,40,25,.05);
+    transition: transform .25s, border-color .25s;
+  }
+  .seam:hover {
+    transform: translateX(5px);
+    border-color: color-mix(in srgb, var(--azure) 45%, transparent);
+  }
+  .seam .moment {
+    font-size: clamp(14px, 1.6vw, 17px);
+    font-weight: 650;
+    letter-spacing: -.012em;
+    line-height: 1.3;
+  }
+  .seam .moment small {
+    display: block;
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--azure);
+    margin-top: 5px;
+  }
+  .seam .go {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--faint);
+    animation: nudge-x 1.6s ease-in-out infinite;
+  }
+  @keyframes nudge-x { 50% { transform: translateX(4px); } }
+  .seam .resp { min-width: 0; }
+  .seam .resp code {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--sc, var(--green)) 7%, white);
+    border: 1px solid color-mix(in srgb, var(--sc, var(--green)) 30%, transparent);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: var(--sc, var(--green));
+    margin-bottom: 7px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+  .seam .resp p {
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 380;
+    line-height: 1.55;
+  }
+  .seam .resp p b { color: var(--text); font-weight: 600; }
+
+  /* =========================================================
+     CHEAT SHEET
+  ========================================================== */
+  .cheat {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 44px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255,255,255,.7);
+    box-shadow: 0 2px 10px rgba(48,40,25,.05);
+  }
+  .cheat th {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--faint);
+    text-align: left;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel-2);
+  }
+  .cheat td {
+    padding: 13px 18px;
+    border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 380;
+    vertical-align: top;
+  }
+  .cheat tr:last-child td { border-bottom: none; }
+  .cheat tr:hover td { background: color-mix(in srgb, var(--green) 3%, transparent); }
+  .cheat td:first-child {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .cheat td:first-child i { font-style: normal; color: var(--green); }
+  .cheat td:last-child {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--stone);
+  }
+  .cheat-scroll { overflow-x: auto; }
+
+  /* =========================================================
+     RECAP
+  ========================================================== */
+  .recap {
+    padding: clamp(80px, 13vh, 150px) 0;
+    position: relative;
+  }
+  .recap::before {
+    content: '';
+    position: absolute;
+    top: 10%; left: 50%;
+    transform: translateX(-50%);
+    width: 80vw; height: 70%;
+    background: radial-gradient(closest-side, rgba(14,143,90,.06), transparent 70%);
+    pointer-events: none;
+  }
+  .recap .kicker { justify-content: center; color: var(--green); }
+  .recap .kicker::before { background: var(--green); }
+  .recap .kicker::after { content: ''; width: 28px; height: 1px; background: var(--green); }
+  .recap h2 { text-align: center; margin: 20px auto 30px; max-width: 14em; }
+  .recap h2 em { color: var(--green); }
+
+  .recap-note {
+    max-width: 40em;
+    margin: 0 auto;
+    text-align: center;
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--muted);
+    font-weight: 380;
+  }
+  .recap-note b { color: var(--green); font-weight: 650; }
+
+  .closing {
+    text-align: center;
+    margin-top: 70px;
+    font-size: clamp(20px, 2.6vw, 30px);
+    font-weight: 380;
+    color: var(--muted);
+  }
+  .closing em {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--green);
+    font-size: 1.1em;
+  }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 30px 0 40px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    justify-content: space-between;
+  }
+
+  /* =========================================================
+     MINIMAP
+  ========================================================== */
+  .minimap {
+    position: fixed;
+    right: 22px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 50;
+  }
+  .minimap a {
+    display: flex;
+    align-items: center;
+    flex-direction: row-reverse;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .minimap i {
+    width: 20px; height: 3px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--c) 35%, transparent);
+    transition: width .3s, background .3s, box-shadow .3s;
+  }
+  .minimap span {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--c);
+    opacity: 0;
+    transform: translateX(6px);
+    transition: opacity .3s, transform .3s;
+    white-space: nowrap;
+  }
+  .minimap a:hover i, .minimap a.active i {
+    width: 34px;
+    background: var(--c);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--c) 50%, transparent);
+  }
+  .minimap a:hover span, .minimap a.active span {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* =========================================================
+     REVEAL
+  ========================================================== */
+  .js .reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity .75s ease, transform .75s cubic-bezier(.2,.7,.3,1);
+    transition-delay: var(--d, 0s);
+  }
+  .js .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* =========================================================
+     RESPONSIVE
+  ========================================================== */
+  @media (max-width: 1240px) { .minimap { display: none; } }
+  @media (max-width: 1100px) and (min-width: 981px) {
+    .sat.s-bp { left: 78% !important; }
+  }
+  @media (max-width: 980px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .scene { order: -1; height: clamp(320px, 70vw, 440px); }
+    .hub { width: clamp(280px, 64vw, 420px); }
+    .hub svg .lnw { display: none; }
+    .hub svg .lnn { display: inline; }
+    .sat.s-bp { left: 76% !important; top: 70% !important; }
+    .sat.s-retro { left: 55% !important; }
+    .term-wrap { grid-template-columns: 1fr; }
+    .stages { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 760px) {
+    .seam { grid-template-columns: 1fr; gap: 10px; }
+    .seam .go { display: none; }
+    .rung { flex-wrap: wrap; gap: 10px 16px; }
+  }
+  @media (max-width: 600px) {
+    .stages { grid-template-columns: 1fr; }
+    .sat small { display: none; }
+    .sat { font-size: 8px; }
+    .sat.s-bp { top: 74% !important; }
+    .sat.s-retro { left: 62% !important; top: 91% !important; }
+    .sat.s-obs { top: 77% !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .js .reveal { opacity: 1; transform: none; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================ MINIMAP ============================ -->
+<nav class="minimap" aria-label="Page navigation">
+  <a href="#door" style="--c: var(--azure)"><i></i><span>The front door</span></a>
+  <a href="#install" style="--c: var(--amber)"><i></i><span>01 · Install</span></a>
+  <a href="#adopt" style="--c: var(--amber)"><i></i><span>02 · Adopt</span></a>
+  <a href="#loop" style="--c: var(--green)"><i></i><span>03 · The work loop</span></a>
+  <a href="#sdd" style="--c: var(--azure)"><i></i><span>The SDD seams</span></a>
+  <a href="#cheat" style="--c: var(--stone)"><i></i><span>Cheat sheet</span></a>
+</nav>
+
+<!-- ============================ HERO ============================ -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="kicker">Engineering Harness · The Operating Loop <span class="caret"></span></p>
+      <h1>The<br>Loop<span class="dot">.</span></h1>
+      <p class="hero-sub">
+        Seven skills, <em>one front door</em>. You only ever call
+        <code>/eng-harness-flow</code> — it routes to everything else. Install once,
+        adopt once per repo, then run the session loop that <strong>compounds</strong>.
+      </p>
+      <div class="hero-meta">
+        <span class="chip"><b class="a1">install</b> once</span>
+        <span class="chip"><b class="a1">adopt</b> once per repo</span>
+        <span class="chip"><b class="a3">loop</b> every session ↺</span>
+      </div>
+    </div>
+    <div class="scene" aria-hidden="true">
+      <div class="hub">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <line x1="50" y1="50" x2="19" y2="13" style="stroke: var(--amber)"/>
+          <line x1="50" y1="50" x2="80" y2="16" style="stroke: var(--green)"/>
+          <line class="lnw" x1="50" y1="50" x2="84" y2="67" style="stroke: var(--azure)"/>
+          <line class="lnn" x1="50" y1="50" x2="76" y2="70" style="stroke: var(--azure)"/>
+          <line class="lnw" x1="50" y1="50" x2="72" y2="89" style="stroke: var(--rust)"/>
+          <line class="lnn" x1="50" y1="50" x2="55" y2="89" style="stroke: var(--rust)"/>
+          <line x1="50" y1="50" x2="16" y2="80" style="stroke: var(--stone)"/>
+        </svg>
+        <span class="sat" style="--c: var(--amber); left: 19%; top: 13%; --d: .35s">eng-harness-0-adopt<small>+ assess · add-extension</small></span>
+        <span class="sat" style="--c: var(--green); left: 80%; top: 16%; --d: .45s">eng-harness-1-boot</span>
+        <span class="sat s-bp" style="--c: var(--azure); left: 84%; top: 67%; --d: .55s">eng-harness-2-backpressure</span>
+        <span class="sat s-retro" style="--c: var(--rust); left: 72%; top: 89%; --d: .65s">eng-harness-4-retro</span>
+        <span class="sat s-obs" style="--c: var(--stone); left: 16%; top: 80%; --d: .75s">harness observe<small>CLI verb · not a skill</small></span>
+        <div class="hubcore">
+          <b>/eng-harness-flow</b>
+          <small>the front door</small>
+        </div>
+        <span class="hub-cap"><b>you call this</b> · it routes to these</span>
+      </div>
+    </div>
+  </div>
+  <span class="scroll-hint">the front door, then three phases ↓</span>
+</header>
+
+<main>
+
+  <!-- ============================ THE FRONT DOOR ============================ -->
+  <section class="band" id="door" style="--bc: var(--azure)">
+    <div class="wrap">
+      <p class="kicker reveal">Rule Zero · The Front Door</p>
+      <h2 class="reveal" style="--d:.06s">You only ever call <em>one thing.</em></h2>
+      <p class="band-desc reveal" style="--d:.1s">Never call the children directly — the router owns the routing.</p>
+      <p class="lede reveal" style="--d:.14s">
+        <code>/eng-harness-flow</code> is a <strong>stateless router</strong>. On every call it
+        re-reads the repo's deterministic signals — <code>harness doctor</code>, the governance doc,
+        plan artifacts, the observe buffer — works out where you are, and hands back
+        <strong>exactly one next command</strong>. Mid-adoption it routes the first missing rung;
+        once the gate holds, it dispatches into the loop by seam. Unsure where you are?
+        Call it. It's always safe.
+      </p>
+      <div class="chips reveal" style="--d:.2s">
+        <span class="chip">stateless — survives /compact</span>
+        <span class="chip">routes exactly one step</span>
+        <span class="chip">never gates · never blocks</span>
+        <span class="chip">teaches as it routes</span>
+      </div>
+
+      <div class="term-wrap">
+        <div class="term-side reveal">
+          <h3>Every turn: a rail, a <em>now</em>, a <em>next.</em></h3>
+          <p>The router shows where you sit on the loop, flags anything you might have missed,
+            and prints the <b>one</b> next command — copyable, never forced. Opting out is
+            conversational: say so, and the loop skills stop being called.</p>
+        </div>
+        <div class="term reveal" style="--d:.12s">
+          <div class="term-bar"><i></i><i></i><i></i><em>eng-harness-flow</em></div>
+          <div class="term-body">
+            <div class="t-skill">/eng-harness-flow</div>
+            <div class="t-rail">[eng-harness-flow] ⚙ <b>◆─◐─◇─◇─◇</b> ↺  boot · [backpressure] · observe · retro · improve</div>
+            <div class="t-rail"> now  · post-spec — running the backpressure survey (boot ✓ this pass)</div>
+            <div class="t-rail"> next · ▸ architect — consumes backpressure-coverage.md</div>
+            <div class="t-last t-note">stateless — recomputed from repo signals, every call<span class="t-cursor"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ PHASE 1 · INSTALL ============================ -->
+  <section class="band" id="install" style="--bc: var(--amber)">
+    <div class="wrap">
+      <p class="kicker reveal">Phase 01 · Install <span class="sub">/ once per machine</span></p>
+      <h2 class="reveal" style="--d:.06s">Teach your agent the <em>skills.</em></h2>
+      <p class="band-desc reveal" style="--d:.1s">One command, and the whole family is on board.</p>
+      <p class="lede reveal" style="--d:.14s">
+        The skills ship from the public <strong>AI-Substrate/harness-engineering</strong> repo via
+        <code>npx skills</code>. Install them globally into your agent CLI — Claude Code, Copilot,
+        Cursor, Codex — and your agent now knows the front door and everything behind it.
+        Nothing has touched your repo yet; that's the next phase.
+      </p>
+
+      <div class="term-wrap">
+        <div class="term-side reveal">
+          <h3>Skills are the <em>playbooks.</em></h3>
+          <p>This step installs the instructions your agent follows. The <b>harness CLI</b> — the
+            runnable focal point — lands per-repo during adoption, where it wraps the commands
+            your repo already has.</p>
+        </div>
+        <div class="term reveal" style="--d:.12s">
+          <div class="term-bar"><i></i><i></i><i></i><em>install · once per machine</em></div>
+          <div class="term-body">
+            <div class="t-cmd">npx skills@latest add AI-Substrate/harness-engineering -a claude-code -g -y</div>
+            <div class="t-ok">✓ eng-harness-flow · eng-harness-1-boot · eng-harness-2-backpressure</div>
+            <div class="t-ok">✓ eng-harness-4-retro · eng-harness-0-adopt · eng-harness-0-harnessability-assessment</div>
+            <div class="t-ok">✓ eng-harness-0-add-extension — 7 skills installed</div>
+            <div class="t-out"># already in a harnessed repo? the CLI wraps the same thing:</div>
+            <div class="t-last"><span class="t-cmd">harness skills install --target claude-code --global</span><span class="t-cursor"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ PHASE 2 · ADOPT ============================ -->
+  <section class="band" id="adopt" style="--bc: var(--amber)">
+    <div class="wrap">
+      <p class="kicker reveal">Phase 02 · Adoption Gate <span class="sub">/ once per repo · boot LAST</span></p>
+      <h2 class="reveal" style="--d:.06s">The repo <em>adopts</em> the harness.</h2>
+      <p class="band-desc reveal" style="--d:.1s">Five rungs, walked in order — the router routes the first missing one.</p>
+      <p class="lede reveal" style="--d:.14s">
+        Point your agent at a repo and call the front door. No harness yet? The router stays on the
+        adoption track: install the CLI, scout the repo, governance, an injection point into the flow
+        you already run — and a <strong>working boot command, built last</strong>, deliberately, so the
+        moment it works you run it and flow straight into real work. Adoption <strong>wraps what
+        exists</strong> — build, test, run, as-is — it never replaces your toolchain.
+      </p>
+
+      <div class="rungs">
+        <div class="rung reveal" style="--d:.05s">
+          <span class="rnum">S0</span>
+          <div class="rbody">
+            <h3>Install <code>eng-harness-0-adopt</code></h3>
+            <p>The harness CLI lands in the repo as a dependency; <b>npx --no-install harness doctor</b> comes back healthy, exit 0.</p>
+          </div>
+          <span class="badge req">required</span>
+        </div>
+        <div class="rung reveal" style="--d:.1s">
+          <span class="rnum">S1</span>
+          <div class="rbody">
+            <h3>Scout <code>eng-harness-0-harnessability-assessment</code></h3>
+            <p>A harnessability report: what can be <b>proven</b> today vs eyeballed. An honest "this repo isn't workable" is a valid outcome.</p>
+          </div>
+          <span class="badge opt">skippable</span>
+        </div>
+        <div class="rung reveal" style="--d:.15s">
+          <span class="rnum">S2</span>
+          <div class="rbody">
+            <h3>Governance <code>.harness/engineering-harness.md</code></h3>
+            <p>The Boot / Interact / Observe contract — what boots it, what proves it, where evidence lands. Until it exists, the loop skills honestly report <b>UNAVAILABLE</b>.</p>
+          </div>
+          <span class="badge req">required</span>
+        </div>
+        <div class="rung reveal" style="--d:.2s">
+          <span class="rnum">S3</span>
+          <div class="rbody">
+            <h3>Inject <code>the injection map</code></h3>
+            <p>Map where your extant dev/SDD flow calls <b>/eng-harness-flow</b> — recorded in governance, so usage is structural, not remembered. It survives every cold agent start.</p>
+          </div>
+          <span class="badge opt">advisory</span>
+        </div>
+        <div class="rung last reveal" style="--d:.25s">
+          <span class="rnum">S4</span>
+          <div class="rbody">
+            <h3>Boot · built LAST <code>eng-harness-0-add-extension</code></h3>
+            <p>Author a <b>boot</b> verb that wraps what already exists — <b>npm test</b>, <b>just test</b>, your smoke script — then <b>run it once</b>. Never trust your own scaffold: verify with doctor, instructions, boot.</p>
+          </div>
+          <span class="badge req">required</span>
+        </div>
+      </div>
+
+      <div class="callout reveal">
+        <span class="tag">⚠ One gotcha</span>
+        <b>Never run bare <code>npx harness</code></b> — that fetches an unrelated npm package.
+        After install it's always <code>npx --no-install harness …</code> (or <code>./node_modules/.bin/harness …</code>).
+      </div>
+
+      <div class="bridge-line reveal">
+        🎉 <b>boot's working — that's the harness alive.</b> Cross the bridge.
+        <span class="sub">adoption ends · the loop begins · once, ever</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ PHASE 3 · THE WORK LOOP ============================ -->
+  <section class="band" id="loop" style="--bc: var(--green)">
+    <div class="wrap">
+      <p class="kicker reveal">Phase 03 · The Work Loop <span class="sub">/ every session · forever</span></p>
+      <h2 class="reveal" style="--d:.06s">Deliver software — <em>loop running.</em></h2>
+      <p class="band-desc reveal" style="--d:.1s">It never "completes" — it compounds.</p>
+      <p class="lede reveal" style="--d:.14s">
+        This is where you actually ship. Your normal dev flow — specs, plans, tasks, commits — runs
+        in the middle; the loop wraps around it. Boot proves the system runs <strong>before</strong>
+        you touch it, friction gets captured <strong>while</strong> you work, and the retro turns that
+        friction into <strong>encoded improvements</strong> — so the next session boots smarter than this one.
+      </p>
+
+      <div class="loop reveal" style="--d:.18s">
+        <span class="step">Boot</span><span class="arr">→</span>
+        <span class="step">Backpressure Check</span><span class="arr">→</span>
+        <span class="step">Do Work · Observe</span><span class="arr">→</span>
+        <span class="step">Retro · Magic Wand</span><span class="arr">→</span>
+        <span class="step">Improve</span><span class="arr">→</span>
+        <span class="again">⟲</span>
+      </div>
+
+      <div class="stages">
+        <div class="stage-card reveal" style="--sc: var(--green); --d:.05s">
+          <span class="when">session start</span>
+          <h3>Boot</h3>
+          <code>eng-harness-1-boot --validate</code>
+          <p><b>Re-run</b> the boot adoption built — prove the system runs before any code is written.
+            Reports healthy / SLOW / UNHEALTHY — or <b>UNAVAILABLE</b>, which routes back to adoption,
+            never errors.</p>
+          <span class="makes">a readiness verdict</span>
+        </div>
+        <div class="stage-card reveal" style="--sc: var(--azure); --d:.1s">
+          <span class="when">post-spec · before you build</span>
+          <h3>Backpressure Check</h3>
+          <code>eng-harness-2-backpressure</code>
+          <p>Can this work be <b>proven by deterministic sensors</b> — build, type, test, lint, smoke —
+            or just eyeballed? Names the missing sensors; may suggest a "Phase 0: establish backpressure."
+            Advisory — <b>never blocks</b>.</p>
+          <span class="makes">backpressure-coverage.md</span>
+        </div>
+        <div class="stage-card reveal" style="--sc: var(--stone); --d:.15s">
+          <span class="when">the moment friction happens</span>
+          <h3>Do Work + Observe</h3>
+          <code>npx --no-install harness observe "&lt;what&gt;" --kind &lt;kind&gt;</code>
+          <p>A <b>CLI verb, not a skill</b>. One silent call per noticing — a confusing failure, a retry,
+            a slow command, an "if only there were…". No nagging mid-flow.</p>
+          <span class="makes">one entry in the gitignored buffer</span>
+        </div>
+        <div class="stage-card reveal" style="--sc: var(--rust); --d:.2s">
+          <span class="when">phase / session end</span>
+          <h3>Retro · Drain</h3>
+          <code>eng-harness-4-retro --drain</code>
+          <p>The one user-facing retro prompt: triage <b>[s/t/p/e/d/a]</b>, materialise the keepers into
+            a committed record via <b>harness record retro</b>, clear the buffer.</p>
+          <span class="makes">committed team memory</span>
+        </div>
+        <div class="stage-card reveal" style="--sc: var(--rust); --d:.25s">
+          <span class="when">plan complete · periodically</span>
+          <h3>Retro · Harvest</h3>
+          <code>eng-harness-4-retro --harvest</code>
+          <p>Read-only curation across every committed retro: what <b>recurs</b>, what's stale, what to
+            encode next. Recurrence is framed as <b>token cost</b> — pay it down. Drain first if the buffer
+            isn't empty.</p>
+          <span class="makes">the encode-next shortlist</span>
+        </div>
+        <div class="stage-card reveal" style="--sc: var(--green); --d:.3s">
+          <span class="when">when a retro names a fix</span>
+          <h3>Improve</h3>
+          <code>retro [e]ncode → eng-harness-0-add-extension</code>
+          <p>The beat where the loop <b>compounds</b>: ship the fix as a command, sensor, fixture, or doc.
+            <b>.harness/history.md</b> gains a row. Most loop runs encode nothing — and that's fine.</p>
+          <span class="makes">an encoded harness change</span>
+        </div>
+      </div>
+
+      <p class="pull reveal">Every difficulty catalogued is <b>a gift to your future self.</b></p>
+      <p class="pull-attr reveal">the reason the loop exists</p>
+    </div>
+  </section>
+
+  <!-- ============================ THE SDD SEAMS ============================ -->
+  <section class="band" id="sdd" style="--bc: var(--azure)">
+    <div class="wrap">
+      <p class="kicker reveal">Where It Plugs In · The Seams</p>
+      <h2 class="reveal" style="--d:.06s">Riding shotgun with your <em>SDD flow.</em></h2>
+      <p class="lede reveal" style="--d:.12s">
+        The harness loop doesn't replace your delivery pipeline — it <strong>anchors beneath it</strong>.
+        A parent flow (an SDD pipeline like <code>the-flow</code>, a human, a CI agent) calls the front
+        door at five seams and pins position with <code>--event</code>. One command per call;
+        the parent calls again at the next seam.
+      </p>
+
+      <div class="sddtrack reveal" style="--d:.16s" aria-hidden="true">
+        <span class="lbl">your SDD flow</span>
+        <span class="m">spec</span><span class="sep">→</span>
+        <span class="m">plan</span><span class="sep">→</span>
+        <span class="m">tasks</span><span class="sep">→</span>
+        <span class="m">build</span><span class="sep">→</span>
+        <span class="m">review</span><span class="sep">→</span>
+        <span class="m">merge</span>
+      </div>
+
+      <div class="seams">
+        <div class="seam reveal" style="--sc: var(--green); --d:.05s">
+          <div class="moment">You sit down to work
+            <small>--event session-start</small>
+          </div>
+          <span class="go">⟶</span>
+          <div class="resp">
+            <code>eng-harness-1-boot --validate</code>
+            <p>Prove the environment runs <b>before</b> the first line of code — orientation by evidence, not memory.</p>
+          </div>
+        </div>
+        <div class="seam reveal" style="--sc: var(--azure); --d:.1s">
+          <div class="moment">The spec is ready, pre-architect
+            <small>--event post-spec --spec &lt;path&gt;</small>
+          </div>
+          <span class="go">⟶</span>
+          <div class="resp">
+            <code>eng-harness-2-backpressure</code>
+            <p>Survey what's provable about the scoped work — the architect consumes <b>backpressure-coverage.md</b>.</p>
+          </div>
+        </div>
+        <div class="seam reveal" style="--sc: var(--stone); --d:.15s">
+          <div class="moment">Mid-build, friction hits
+            <small>no event — fire it the moment it happens</small>
+          </div>
+          <span class="go">⟶</span>
+          <div class="resp">
+            <code>npx --no-install harness observe "…" --kind difficulty</code>
+            <p>One silent line per stumble. <b>Agent friction is usability research</b> on your engineering environment.</p>
+          </div>
+        </div>
+        <div class="seam reveal" style="--sc: var(--rust); --d:.2s">
+          <div class="moment">A phase or session ends
+            <small>--event phase-end --plan-dir &lt;path&gt;</small>
+          </div>
+          <span class="go">⟶</span>
+          <div class="resp">
+            <code>eng-harness-4-retro --drain</code>
+            <p>Buffer non-empty → triage it into a committed record <b>before the context evaporates</b>.</p>
+          </div>
+        </div>
+        <div class="seam reveal" style="--sc: var(--rust); --d:.25s">
+          <div class="moment">The plan completes
+            <small>--event plan-complete</small>
+          </div>
+          <span class="go">⟶</span>
+          <div class="resp">
+            <code>eng-harness-4-retro --harvest</code>
+            <p>Look across plans: what recurred, what to <b>encode</b> — and the Improve beat ships it.</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="aside-note reveal">
+        <b>No parent flow? Same seams, driven by you.</b> The router is stateless, so
+        <code>/eng-harness-flow</code> with no arguments is always a safe question — "where am I and
+        what's next?" — answered from the repo itself, not from anyone's memory.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================ CHEAT SHEET ============================ -->
+  <section class="band" id="cheat" style="--bc: var(--stone)">
+    <div class="wrap">
+      <p class="kicker reveal">Cheat Sheet · Quick Reference</p>
+      <h2 class="reveal" style="--d:.06s">The whole family on <em>one card.</em></h2>
+
+      <div class="cheat-scroll reveal" style="--d:.12s">
+        <table class="cheat">
+          <thead>
+            <tr><th>Command</th><th>What it does</th><th>Produces</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><i>/eng-harness-flow</i></td>
+              <td>The front door — stateless router; re-derives position from repo signals, routes one next step</td>
+              <td>a routing decision (--json for machines)</td>
+            </tr>
+            <tr>
+              <td>eng-harness-0-adopt</td>
+              <td>The adoption flow: install CLI → scout → inject → stand up boot</td>
+              <td>installed CLI; orchestrates the rungs</td>
+            </tr>
+            <tr>
+              <td>eng-harness-0-harnessability-assessment</td>
+              <td>Size up the repo — evidence vs inference vs unknowns</td>
+              <td>.harness/reports/harnessability/latest.{md,json}</td>
+            </tr>
+            <tr>
+              <td>eng-harness-0-add-extension</td>
+              <td>Guided authoring of a new harness &lt;verb&gt; — including boot at S4</td>
+              <td>.harness/extensions/&lt;name&gt;/</td>
+            </tr>
+            <tr>
+              <td>eng-harness-1-boot</td>
+              <td>Re-run the boot adoption built; readiness verdict + maturity read</td>
+              <td>healthy / SLOW / UNHEALTHY / UNAVAILABLE</td>
+            </tr>
+            <tr>
+              <td>eng-harness-2-backpressure</td>
+              <td>Deterministic-sensor coverage survey for scoped work</td>
+              <td>backpressure-coverage.md</td>
+            </tr>
+            <tr>
+              <td>npx --no-install harness observe</td>
+              <td>Capture one friction entry — CLI verb, not a skill</td>
+              <td>one entry in gitignored .harness/temp/</td>
+            </tr>
+            <tr>
+              <td>eng-harness-4-retro --drain</td>
+              <td>Soft-prompt triage of the buffer ([s/t/p/e/d/a])</td>
+              <td>committed record via harness record retro</td>
+            </tr>
+            <tr>
+              <td>eng-harness-4-retro --harvest</td>
+              <td>Curated cross-plan friction view (read-only)</td>
+              <td>terminal print (--json for tooling)</td>
+            </tr>
+            <tr>
+              <td>npx --no-install harness doctor --json</td>
+              <td>What's configured + which extensions loaded or failed</td>
+              <td>JSON envelope — every complaint has a next_action</td>
+            </tr>
+            <tr>
+              <td>npx --no-install harness instructions</td>
+              <td>The agent briefing — AGENTS START HERE</td>
+              <td>terminal print</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ RECAP ============================ -->
+  <section class="recap">
+    <div class="wrap">
+      <p class="kicker reveal">Recap · One Sentence</p>
+      <h2 class="reveal" style="--d:.08s">The loop, <em>compounding.</em></h2>
+
+      <p class="recap-note reveal" style="--d:.14s"><b>Boot</b> proves the system runs,
+        <b>Backpressure</b> asks what's provable before you build, <b>Observe</b> catches friction
+        while you work, and <b>Retro</b> turns that friction into encoded improvements — so the
+        harness <b>is</b> the product, and every session starts smarter than the last.</p>
+
+      <p class="closing reveal">
+        You can drive every step by hand —<br>
+        <em>but you never have to route by hand.</em>
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap" style="display: contents;">
+    <span>Engineering Harness · The Operating Loop</span>
+    <span>src: skills/eng-harness-loop/eng-harness-flow/references/getting-started.md · skills/README.md</span>
+  </div>
+</footer>
+
+<script>
+  // staggered scroll reveals
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  // minimap scrollspy
+  const links = [...document.querySelectorAll('.minimap a')];
+  const spy = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        links.forEach((l) => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+      }
+    });
+  }, { rootMargin: '-40% 0px -52% 0px' });
+  document.querySelectorAll('.band').forEach((s) => spy.observe(s));
+</script>
+
+</body>
+</html>
