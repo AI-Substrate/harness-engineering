@@ -200,6 +200,13 @@ cues (recipe B steps 4–6).
   forgot both.
 - Background `&` launches don't notify; use the harness's background runner
   or a Monitor on the log file.
+- Slides that CONTINUE the previous slide's scene (S8→S9, S9→S10,
+  S17→S18) must have the persistent elements on stage at frame 0 — no
+  entrance fade/pop, or the stitched video blinks at the cut (full scene
+  → blank frame → rebuild). Only genuinely new elements get entrances.
+  Check a boundary with:
+  `ffmpeg -sseof -0.1 -i NNN.mp4 -frames:v 1 last.png` vs
+  `ffmpeg -i MMM.mp4 -frames:v 1 first.png`.
 
 ## Numbering & layout
 
