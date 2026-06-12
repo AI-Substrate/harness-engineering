@@ -4,7 +4,7 @@
 **Branch reproduced on:** `feat/harness-cli-core`
 **Date:** 2026-06-11
 **Status:** Research-only (read-only). No code changed. Empirical reproductions below.
-**Companion input:** the downstream dossier from `myob-lab/engineering-harness` (`harness-nucleus`).
+**Companion input:** the downstream dossier from the downstream org's harness repo (`harness-nucleus`).
 
 ---
 
@@ -149,7 +149,7 @@ From `README.md` + bundled `docs-content.ts` + the release section:
   - Then runtime needs **zero** dependency resolution and npm's git‑install dep‑drop is irrelevant. Cost: a few hundred KB committed + a re-vendor step gated on jiti bumps. This is the *realistic* form of the downstream's "option 1/2".
 
 - **2c — publish to a registry (revisit AC-15 "no publish").** Routes every consumer through the **proven registry/tarball path** (§3.3): `npm publish` builds once in CI (full devDeps → kills mode A) and bakes `dist` into the tarball; a registry install delivers `commander`+`jiti` normally (kills mode B). No git-clone machinery at all. **Which registry matters:**
-  - **GitHub Packages** (`@ai-substrate/harness-engineering` on `npm.pkg.github.com`) — **requires an auth token (`read:packages` PAT + `.npmrc`) to install, even for *public* packages** (verified against current GitHub docs; no anonymous install, unlike public npm/GitLab). ✅ Excellent for an **internal/org audience** already GitHub-authed — notably the **downstream MYOB** consumers. ⚠️ For the **public OSS upstream**, it's a *downgrade* from `npx github:` (which needs no token).
+  - **GitHub Packages** (`@ai-substrate/harness-engineering` on `npm.pkg.github.com`) — **requires an auth token (`read:packages` PAT + `.npmrc`) to install, even for *public* packages** (verified against current GitHub docs; no anonymous install, unlike public npm/GitLab). ✅ Excellent for an **internal/org audience** already GitHub-authed — notably the **downstream org** consumers. ⚠️ For the **public OSS upstream**, it's a *downgrade* from `npx github:` (which needs no token).
   - **Public npm** (`npmjs.com`) — the *only* channel that gives a true **zero-auth one-liner** (`npx @ai-substrate/harness-engineering`, `npm i -g …`). This is what "hand someone one command" actually needs. The spec deliberately avoided it (AC-15); revisiting that is the real decision, not GitHub-Packages-vs-git-URL.
   - **Costs (either registry):** rename to scoped `@ai-substrate/harness-engineering` → **breaks the contract import** `harness-engineering/contract` → `@ai-substrate/harness-engineering/contract` (docs + every extension author); reverse AC-15 in `004-harness-core-spec` + README + `docs-content.ts`; add a publish step to `release.yml` (`registry-url` + `NODE_AUTH_TOKEN`). Publishing makes Tier‑1 "commit dist" largely moot for the registry path (publish CI builds it) — keep committed-dist + guarded-prepare only if you want `npx github:` as a no-auth fallback.
 
@@ -159,7 +159,7 @@ From `README.md` + bundled `docs-content.ts` + the release section:
 The choice collapses to **one question: who installs this, and do they need a zero-auth one-liner?**
 
 - **Public OSS upstream, must stay zero-auth → Tier 1 + 2a.** Commit dist, guard prepare, add the dist-drift gate, smoke the git path in CI, bless `npx github:…#<tag>` + `harness skills install`, mark `npm i -g github:` unsupported. Fixes the dominant reproduced failure (mode A), keeps the no-token install, no rename. Escalate to **2b (vendor jiti)** only if the literal `npm i -g github:` must also succeed.
-- **Internal/org audience (e.g. downstream MYOB) → 2c via GitHub Packages.** A real internal feed is strictly better than git-URL installs and immune to every npm git quirk; the auth requirement is a non-issue when consumers are already org-authed. Pair with Tier 1 only if you want `npx github:` as a fallback.
+- **Internal/org audience (downstream org consumers) → 2c via GitHub Packages.** A real internal feed is strictly better than git-URL installs and immune to every npm git quirk; the auth requirement is a non-issue when consumers are already org-authed. Pair with Tier 1 only if you want `npx github:` as a fallback.
 - **Want a true public registry one-liner → 2c via public npm**, not GitHub Packages (GitHub Packages can't do anonymous install). This is the cleanest end-state for "hand anyone one command," at the cost of revisiting AC-15 and the scoped rename.
 
 The wrong move is GitHub Packages *for an anonymous public audience* — it reverses AC-15 **and** still leaves a per-user token step, getting the costs of publishing without the "one-liner" benefit.
