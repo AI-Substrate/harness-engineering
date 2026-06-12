@@ -159,9 +159,33 @@ const preset = opt('preset', 'slow');
       mp4,
     ], { stdio: ['ignore', 'ignore', 'pipe'] });
 
+    // If same-stem narration exists (from tts.cjs), mux it in — the recorder's
+    // output is then the finished clip. Video stream is copied, not re-encoded.
+    const mp3 = path.join(out, `${stem}.mp3`);
+    let muxNote = '';
+    if (fs.existsSync(mp3)) {
+      const probe = (f) => parseFloat(execFileSync('ffprobe', [
+        '-v', 'error', '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1', f,
+      ]).toString().trim());
+      const audioDur = probe(mp3);
+      const tmp = path.join(out, `${stem}.mux.mp4`);
+      execFileSync('ffmpeg', [
+        '-y', '-i', mp4, '-i', mp3,
+        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+        '-movflags', '+faststart',
+        tmp,
+      ], { stdio: ['ignore', 'ignore', 'pipe'] });
+      fs.renameSync(tmp, mp4);
+      muxNote = `, audio muxed (${audioDur.toFixed(2)}s)`;
+      if (audioDur > durSec) {
+        muxNote += ` — WARNING: audio outlasts video; re-record with --dur=${(Math.ceil(audioDur * 10) / 10).toFixed(1)}`;
+      }
+    }
+
     const mb = (fs.statSync(mp4).size / 1024 / 1024).toFixed(2);
     if (!flag('keep-frames')) fs.rmSync(framesDir, { recursive: true, force: true });
-    console.log(`wrote ${mp4} (${durSec}s @ ${fps}fps, ${total} frames, ${mb} MB)`);
+    console.log(`wrote ${mp4} (${durSec}s @ ${fps}fps, ${total} frames, ${mb} MB${muxNote})`);
     console.log('console errors:', errors.length ? errors : 'none');
   } finally {
     await browser.close();
