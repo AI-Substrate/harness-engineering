@@ -382,6 +382,13 @@
   /* #########################################################
      S1 · TITLE — Engineering Harness 101
   ######################################################### */
+  /* word-sync cues from narration/001-s-title.words.json (+1s mux lead).
+     If narration is re-taken, re-run tools/align.cjs and update only
+     this block. */
+  #s-title {
+    --cue-harness: 1.68s; /* "Harness Engineering…" — the title answers its name */
+    --cue-101: 2.80s;     /* "…101." — the outlined number fills in */
+  }
   #s-title .tags {
     display: flex;
     align-items: center;
@@ -418,13 +425,19 @@
     line-height: .98;
     letter-spacing: -.02em;
     margin: clamp(8px, 2cqh, 22px) 0;
-    animation: fadeup 1s var(--pop) .18s backwards;
+    animation: fadeup 1s var(--pop) var(--cue-harness) backwards;
   }
   #s-title h1 .n101 {
     color: transparent;
     -webkit-text-stroke: .022em var(--white);
   }
   #s-title h1 .dot { color: var(--lavender); }
+  /* "…101." — the stroked number fills solid for a beat as the word lands */
+  #s-title h1 .n101 { animation: n101Fill .9s var(--pop) var(--cue-101); }
+  @keyframes n101Fill {
+    0%, 100% { color: transparent; text-shadow: none; }
+    30%, 60% { color: var(--white); text-shadow: 0 0 1.4cqh rgba(196,151,254,.85); }
+  }
   #s-title .sub {
     font-family: var(--mcqueen);
     font-weight: 400;
@@ -432,7 +445,7 @@
     color: var(--mauve);
     max-width: 28em;
     line-height: 1.5;
-    animation: fadeup 1s var(--pop) .3s backwards;
+    animation: fadeup 1s var(--pop) calc(var(--cue-harness) + .35s) backwards;
   }
   #s-title .sub strong { color: var(--white); font-weight: 600; }
   #s-title .meta {
@@ -440,7 +453,7 @@
     flex-wrap: wrap;
     gap: 10px;
     margin-top: clamp(10px, 3cqh, 32px);
-    animation: fadeup 1s var(--pop) .42s backwards;
+    animation: fadeup 1s var(--pop) calc(var(--cue-101) + .3s) backwards;
   }
   #s-title .chip {
     font-size: clamp(6.5px, .74cqw, 11px);
@@ -1014,6 +1027,33 @@
   }
   @keyframes ruleDraw { from { transform: scaleX(0); } }
 
+  /* word-sync cues from narration/003-s-human.words.json (+1s mux lead).
+     If the narration is re-taken, re-run tools/align.cjs and update
+     only this block. */
+  #s-human {
+    --cue-you: 2.22s;        /* "Top layer: YOU." */
+    --cue-intent: 3.06s;     /* "INTENT," */
+    --cue-judgement: 3.92s;  /* "JUDGEMENT," */
+    --cue-priorities: 4.6s;  /* "PRIORITIES," */
+    --cue-risk: 5.52s;       /* "RISK," */
+    --cue-taste: 5.96s;      /* "TASTE." */
+    --cue-decide: 7.14s;     /* "YOU DECIDE what matters" */
+    --cue-good: 10.48s;      /* "…whether the thing is ACTUALLY GOOD." */
+    --cue-below: 12.64s;     /* "Nothing BELOW this layer…" */
+  }
+  /* traits stamp on their spoken words (overrides .lhead defaults) */
+  #s-human .ltraits .t:nth-child(1) { animation-delay: var(--cue-intent); }
+  #s-human .ltraits .t:nth-child(2) { animation-delay: var(--cue-judgement); }
+  #s-human .ltraits .t:nth-child(3) { animation-delay: var(--cue-taste); }
+  /* "nothing below this layer" — the ghosted rest-of-stack appears on cue */
+  #s-human.active .ghosts { animation: fadein .8s ease var(--cue-below) backwards; }
+  /* "YOU decide" — the name pill under the typist glows on its word */
+  #s-human.active .cast small { animation: youFlare .9s ease var(--cue-decide); }
+  @keyframes youFlare {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(196,151,254,0); }
+    35%, 65% { box-shadow: 0 0 1.4cqh .25cqh rgba(196,151,254,.9); }
+  }
+
   /* the little human at work: ink silhouette typing at a laptop.
      Arm taps, head bobs, the screen flickers, fragments of work
      rise off the laptop. The artifact cards are born HERE and fly
@@ -1023,7 +1063,7 @@
     left: 50%; top: 50%;
     transform: translate(-50%, -54%);
   }
-  #s-human.active .field .cast { animation: castPop .6s var(--bounce) .15s backwards; }
+  #s-human.active .field .cast { animation: castPop .6s var(--bounce) var(--cue-you) backwards; }
   .deskscene svg { width: 21cqw; height: auto; display: block; overflow: visible; }
   /* SVG gotcha: outer <g> keeps the SVG transform attribute (placement),
      inner <g class> takes the CSS animation. transform-origin explicit. */
@@ -1067,7 +1107,7 @@
   /* artifact cards: shared .acard cast; only positions + internals here.
      Cards are born at the desk (--fx/--fy points back at it). */
   /* backlog card */
-  #s-human .a-backlog { left: 13%; top: 12%; --rot: -4deg; --d: .5s; --fx: 18cqw; --fy: 16cqh; }
+  #s-human .a-backlog { left: 13%; top: 12%; --rot: -4deg; --d: var(--cue-priorities); --fx: 18cqw; --fy: 16cqh; }
   #s-human .a-backlog .row {
     display: flex; align-items: center; gap: .7cqw;
     font-family: var(--mono); font-size: .85cqw; font-weight: 700;
@@ -1078,7 +1118,7 @@
   #s-human .a-backlog .row:nth-child(3) .bar { width: 6.5cqw; }
   #s-human .a-backlog .row:nth-child(4) .bar { width: 4.5cqw; }
   /* judgement card */
-  #s-human .a-judge { right: 12%; top: 9%; --rot: 3deg; --d: .85s; --fx: -18cqw; --fy: 16cqh; }
+  #s-human .a-judge { right: 12%; top: 9%; --rot: 3deg; --d: var(--cue-judgement); --fx: -18cqw; --fy: 16cqh; }
   #s-human .a-judge .opts { display: flex; gap: .6cqw; }
   #s-human .a-judge .opt {
     font-size: .85cqw; font-weight: 600;
@@ -1088,7 +1128,7 @@
   #s-human .a-judge .opt.yes { background: var(--lavender); }
   #s-human .a-judge .opt.no { border: 1.5px solid rgba(0,0,0,.3); opacity: .65; }
   /* risk dial */
-  #s-human .a-risk { left: 11%; bottom: 14%; --rot: -3deg; --d: 1.2s; --fx: 18cqw; --fy: -12cqh; }
+  #s-human .a-risk { left: 11%; bottom: 14%; --rot: -3deg; --d: var(--cue-risk); --fx: 18cqw; --fy: -12cqh; }
   #s-human .gauge { position: relative; width: 7cqw; height: 3.5cqw; overflow: hidden; }
   #s-human .gauge::before {
     content: '';
@@ -1111,10 +1151,10 @@
   }
   @keyframes needleWob { from { rotate: 14deg; } to { rotate: 34deg; } }
   /* taste card */
-  #s-human .a-taste { right: 9%; top: 47%; --rot: 5deg; --d: 1.55s; --fx: -16cqw; --fy: 2cqh; }
+  #s-human .a-taste { right: 9%; top: 47%; --rot: 5deg; --d: var(--cue-taste); --fx: -16cqw; --fy: 2cqh; }
   #s-human .a-taste .star { font-size: 2cqw; color: var(--purple); line-height: 1; text-align: center; }
   /* review note */
-  #s-human .a-note { right: 26%; bottom: 11%; --rot: -2deg; --d: 1.9s; --fx: -6cqw; --fy: -12cqh; background: var(--mauve); }
+  #s-human .a-note { right: 26%; bottom: 11%; --rot: -2deg; --d: var(--cue-good); --fx: -6cqw; --fy: -12cqh; background: var(--mauve); }
   #s-human .a-note q { font-style: italic; font-size: 1.05cqw; quotes: '"' '"'; }
   /* ghosted rest-of-stack at the very bottom */
   #s-human .ghosts {
@@ -1140,7 +1180,30 @@
      pulses, and once per cycle a faint lavender sheen ripples
      across everything it made (its output is inference).
   ######################################################### */
-  #s-infer { --TRIP: 4.6s; }
+  /* word-sync cues from narration/004-s-infer.words.json (+1s mux lead).
+     --loop0 phase-locks the whole production loop (glow/ticks/diff/sheen)
+     so the 7th sheen sweep's leading edge lands on "inferred":
+     loop0 = cue-inferred − (6 × TRIP + .62 × TRIP) = 32.84 − 30.452. */
+  #s-infer {
+    --TRIP: 4.6s;
+    --cue-inference: 2.26s;     /* "Middle layer: INFERENCE." */
+    --cue-agent: 3.32s;         /* "The AGENT." */
+    --cue-plans: 4.36s;         /* "it PLANS," */
+    --cue-reasons: 5.12s;       /* "it REASONS," */
+    --cue-writes: 5.78s;        /* "it WRITES the code." */
+    --cue-code: 6.30s;          /* "it writes the CODE." */
+    --cue-spec: 7.52s;          /* "your SPEC driven flow" */
+    --cue-flow: 8.24s;          /* "spec driven FLOW" */
+    --cue-prompts: 9.34s;       /* "and your PROMPTS live here." */
+    --cue-agentharness: 16.06s; /* "the AGENT HARNESS." */
+    --cue-not: 23.34s;          /* "that is NOT the harness this talk is about." */
+    --loop0: 2.388s;            /* derived — see note above */
+  }
+  /* header lands on its name (overrides .lhead defaults) */
+  #s-infer .lword { animation-delay: var(--cue-inference); }
+  #s-infer .ltraits .t:nth-child(1) { animation-delay: var(--cue-plans); }
+  #s-infer .ltraits .t:nth-child(2) { animation-delay: var(--cue-reasons); }
+  #s-infer .ltraits .t:nth-child(3) { animation-delay: var(--cue-writes); }
   /* the layers above and below, ghosted: we are inside 02 */
   #s-infer .gline {
     position: absolute;
@@ -1162,14 +1225,14 @@
     left: 50%; top: 50%;
     transform: translate(-50%, -54%);
   }
-  #s-infer.active .cast { animation: castPop .6s var(--bounce) .5s backwards; }
+  #s-infer.active .cast { animation: castPop .6s var(--bounce) var(--cue-agent) backwards; }
   #s-infer .agent-chip { width: 7.2cqw; height: 7.2cqw; border-radius: 1.5cqw; gap: .6cqh; }
   #s-infer .agent-chip .eyes { font-size: 1.8cqw; }
   #s-infer .agent-chip .glyph { font-size: 1.3cqw; }
   /* processing flash, phase-locked to the production loop */
   #s-infer.active .agent-chip .eyes {
     animation: blinkEyes 4.6s ease-in-out infinite,
-               inferGlow var(--TRIP) linear 2.3s infinite;
+               inferGlow var(--TRIP) linear var(--loop0) infinite;
   }
   @keyframes inferGlow {
     0%, 28%   { color: var(--white); text-shadow: none; }
@@ -1210,7 +1273,7 @@
     0%, 100% { opacity: .22; transform: translateY(0); }
     35%      { opacity: 1; transform: translateY(-.3cqh); }
   }
-  #s-infer.active .think { animation: castPop .5s var(--bounce) .85s backwards; }
+  #s-infer.active .think { animation: castPop .5s var(--bounce) calc(var(--cue-agent) + .35s) backwards; }
 
   /* the "inferred" sheen: light ripples across every card once per
      cycle, in dealing order (--shd staggers the wave) */
@@ -1232,7 +1295,7 @@
   }
 
   /* spec.md: tidy skeleton */
-  #s-infer .a-spec { left: 12%; top: 12%; --rot: -4deg; --d: 1s; --fx: 18cqw; --fy: 15cqh; --shd: 2.3s; }
+  #s-infer .a-spec { left: 12%; top: 12%; --rot: -4deg; --d: var(--cue-spec); --fx: 18cqw; --fy: 15cqh; --shd: calc(var(--loop0) + .15s); }
   #s-infer .a-spec h4 { text-transform: none; font-family: var(--mono); letter-spacing: .08em; }
   #s-infer .a-spec .ln {
     display: block;
@@ -1247,7 +1310,7 @@
   #s-infer .a-spec .ln:nth-of-type(4) { width: 5.5cqw; margin-left: 1cqw; }
 
   /* the plan: two done, the loop keeps ticking the rest over */
-  #s-infer .a-plan { right: 11%; top: 11%; --rot: 3deg; --d: 1.25s; --fx: -18cqw; --fy: 15cqh; --shd: 2.45s; }
+  #s-infer .a-plan { right: 11%; top: 11%; --rot: 3deg; --d: var(--cue-flow); --fx: -18cqw; --fy: 15cqh; --shd: calc(var(--loop0) + .3s); }
   #s-infer .ck { display: flex; align-items: center; gap: .6cqw; margin-top: .6cqh; }
   #s-infer .ck .bx {
     width: 1.15cqw; height: 1.15cqw;
@@ -1266,8 +1329,8 @@
   #s-infer .ck:nth-of-type(2) .bar { width: 5.2cqw; }
   #s-infer .ck:nth-of-type(3) .bar { width: 7cqw; }
   #s-infer .ck:nth-of-type(4) .bar { width: 4.6cqw; }
-  #s-infer.active .ck.c3 .bx { animation: ckOn3 var(--TRIP) linear 2.3s infinite; }
-  #s-infer.active .ck.c4 .bx { animation: ckOn4 var(--TRIP) linear 2.3s infinite; }
+  #s-infer.active .ck.c3 .bx { animation: ckOn3 var(--TRIP) linear var(--loop0) infinite; }
+  #s-infer.active .ck.c4 .bx { animation: ckOn4 var(--TRIP) linear var(--loop0) infinite; }
   @keyframes ckOn3 {
     0%, 30%   { background: rgba(196,151,254,0); border-color: rgba(0,0,0,.32); color: rgba(0,0,0,0); }
     36%, 88%  { background: var(--lavender); border-color: var(--lavender); color: var(--ink); }
@@ -1280,7 +1343,7 @@
   }
 
   /* the diff: it keeps writing code. Types in, holds, resets. */
-  #s-infer .a-diff { left: 12%; bottom: 13%; --rot: -3deg; --d: 1.5s; --fx: 18cqw; --fy: -12cqh; --shd: 2.6s; }
+  #s-infer .a-diff { left: 12%; bottom: 13%; --rot: -3deg; --d: var(--cue-code); --fx: 18cqw; --fy: -12cqh; --shd: var(--loop0); }
   #s-infer .drow {
     display: flex;
     align-items: center;
@@ -1302,7 +1365,7 @@
   #s-infer .drow:nth-child(3) .bar { width: 4.2cqw; }
   #s-infer .drow:nth-child(4) .bar { width: 7.4cqw; }
   #s-infer .drow:nth-child(5) .bar { width: 3.6cqw; }
-  #s-infer.active .dlines { animation: dType var(--TRIP) linear 2.3s infinite; }
+  #s-infer.active .dlines { animation: dType var(--TRIP) linear var(--loop0) infinite; }
   @keyframes dType {
     0%   { clip-path: inset(0 0 100% 0); animation-timing-function: steps(5, jump-none); }
     52%  { clip-path: inset(0 0 0% 0); animation-timing-function: linear; }
@@ -1311,7 +1374,7 @@
   }
 
   /* the prompt that started it */
-  #s-infer .a-chat { right: 11%; bottom: 22%; --rot: 4deg; --d: 1.75s; --fx: -16cqw; --fy: -10cqh; --shd: 2.75s; }
+  #s-infer .a-chat { right: 11%; bottom: 22%; --rot: 4deg; --d: var(--cue-prompts); --fx: -16cqw; --fy: -10cqh; --shd: calc(var(--loop0) + .45s); }
   #s-infer .a-chat .cline { font-family: var(--mono); font-size: 1cqw; font-weight: 700; white-space: nowrap; }
   #s-infer .a-chat .ps { color: var(--purple); margin-right: .55cqw; }
   #s-infer .a-chat .cur {
@@ -1336,7 +1399,15 @@
     border-radius: 999px;
     padding: .8cqh 1.3cqw;
   }
-  #s-infer.active .decon { animation: stampShake .55s var(--bounce) 2.2s backwards; }
+  #s-infer.active .decon {
+    animation: stampShake .55s var(--bounce) var(--cue-agentharness) backwards,
+               deconNope .8s ease var(--cue-not);
+  }
+  /* "that is NOT the harness this talk is about" — the note flares on "not" */
+  @keyframes deconNope {
+    0%, 100% { color: var(--mauve); border-color: rgba(255,255,255,.55); text-shadow: none; }
+    25%, 60% { color: var(--white); border-color: var(--white); text-shadow: 0 0 1cqh rgba(196,151,254,.85); }
+  }
   @keyframes stampShake {
     0%   { opacity: 0; transform: scale(1.7) rotate(2deg); }
     60%  { opacity: 1; transform: scale(.95) rotate(-1.4deg); }
@@ -1352,7 +1423,26 @@
      blink pass/fail, the database lid blips. This pile is the
      setup S16 pays off ("a simple view over the complex").
   ######################################################### */
-  #s-code { --TRIP: 4.6s; }
+  /* word-sync cues from narration/005-s-code.words.json (+1s mux lead).
+     The rain is re-staged into category waves: each wave's cards land
+     on the spoken noun that names them. --rd is the rain delay ONLY;
+     --d still owns the jostle phase math — do not merge them. */
+  #s-code {
+    --TRIP: 4.6s;
+    --cue-codebase: 2.32s;  /* "Bottom layer: the CODEBASE." */
+    --cue-code: 3.50s;      /* "CODE," */
+    --cue-tests: 4.18s;     /* "TESTS," */
+    --cue-scripts: 4.86s;   /* "SCRIPTS," */
+    --cue-pipelines: 5.50s; /* "PIPELINES," */
+    --cue-configs: 6.32s;   /* "CONFIGS," */
+    --cue-db: 6.96s;        /* "DATABASES." */
+    --cue-where: 14.22s;    /* "WHERE all the real engineering complexity lives" */
+  }
+  /* wordmark + traits arrive on their name (overrides .lhead defaults) */
+  #s-code .lword { animation-delay: var(--cue-codebase); }
+  #s-code .ltraits .t:nth-child(1) { animation-delay: calc(var(--cue-codebase) + .4s); }
+  #s-code .ltraits .t:nth-child(2) { animation-delay: calc(var(--cue-codebase) + .6s); }
+  #s-code .ltraits .t:nth-child(3) { animation-delay: calc(var(--cue-codebase) + .8s); }
   /* the two layers above, ghosted: we are at the bottom */
   #s-code .gline {
     position: absolute;
@@ -1450,7 +1540,7 @@
     font-weight: 700;
     color: var(--ink);
   }
-  #s-code.active .db::before { animation: dbPulse var(--TRIP) ease-in-out 2.3s infinite; }
+  #s-code.active .db::before { animation: dbPulse var(--TRIP) ease-in-out calc(var(--cue-db) + .45s) infinite; }
   @keyframes dbPulse {
     0%, 100% { background: var(--lavender); }
     10%      { background: var(--white); }
@@ -1461,12 +1551,12 @@
      jostle/jostleR phases are scattered off each card's own --d. */
   #s-code.active :is(.ccard, .db) {
     animation:
-      rainIn .5s var(--pop) var(--d, .5s) backwards,
+      rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
       jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite;
   }
   #s-code.active :is(.ccard, .db):nth-child(odd) {
     animation:
-      rainIn .5s var(--pop) var(--d, .5s) backwards,
+      rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
       jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite;
   }
   @keyframes rainIn {
@@ -1485,26 +1575,26 @@
 
   /* the pile, placed (left/top are % of the field). Deliberately
      tight: neighbours overlap, the whole field carries clutter. */
-  #s-code .c-src    { left: 27%; top: 18%; --rot: -5deg; --d: .50s; }
-  #s-code .c-tests  { left: 41%; top: 13%; --rot: 3deg;  --d: .54s; }
-  #s-code .c-pkg    { left: 53%; top: 25%; --rot: -2deg; --d: .58s; }
-  #s-code .c-docker { left: 19%; top: 40%; --rot: 4deg;  --d: .62s; }
-  #s-code .c-deploy { left: 36%; top: 32%; --rot: -3deg; --d: .66s; }
-  #s-code .c-seed   { left: 55%; top: 44%; --rot: 2deg;  --d: .70s; }
-  #s-code .c-make   { left: 26%; top: 58%; --rot: -4deg; --d: .74s; }
-  #s-code .c-ci     { left: 44%; top: 49%; --rot: 5deg;  --d: .78s; }
-  #s-code .c-env    { left: 9%;  top: 22%; --rot: -6deg; --d: .82s; }
-  #s-code .c-mig    { left: 69%; top: 60%; --rot: -3deg; --d: .86s; }
-  #s-code .c-m1     { left: 66%; top: 15%; --rot: -5deg; --d: .90s; }
-  #s-code .c-m2     { left: 8%;  top: 56%; --rot: 6deg;  --d: .94s; }
-  #s-code .c-db     { left: 76%; top: 26%; --rot: 3deg;  --d: .98s; }
-  #s-code .c-comp   { left: 35%; top: 74%; --rot: 3deg;  --d: 1.02s; }
-  #s-code .c-schema { left: 53%; top: 70%; --rot: -4deg; --d: 1.06s; }
-  #s-code .c-lint   { left: 13%; top: 75%; --rot: -3deg; --d: 1.10s; }
-  #s-code .c-readme { left: 74%; top: 12%; --rot: 2deg;  --d: 1.14s; }
-  #s-code .c-test2  { left: 7%;  top: 36%; --rot: 3deg;  --d: 1.18s; }
-  #s-code .c-infra  { left: 73%; top: 42%; --rot: -2deg; --d: 1.22s; }
-  #s-code .c-m3     { left: 50%; top: 30%; --rot: -6deg; --d: 1.26s; }
+  #s-code .c-src    { left: 27%; top: 18%; --rot: -5deg; --d: .50s; --rd: var(--cue-code); }
+  #s-code .c-tests  { left: 41%; top: 13%; --rot: 3deg;  --d: .54s; --rd: var(--cue-tests); }
+  #s-code .c-pkg    { left: 53%; top: 25%; --rot: -2deg; --d: .58s; --rd: var(--cue-configs); }
+  #s-code .c-docker { left: 19%; top: 40%; --rot: 4deg;  --d: .62s; --rd: calc(var(--cue-pipelines) + .08s); }
+  #s-code .c-deploy { left: 36%; top: 32%; --rot: -3deg; --d: .66s; --rd: var(--cue-scripts); }
+  #s-code .c-seed   { left: 55%; top: 44%; --rot: 2deg;  --d: .70s; --rd: calc(var(--cue-scripts) + .08s); }
+  #s-code .c-make   { left: 26%; top: 58%; --rot: -4deg; --d: .74s; --rd: calc(var(--cue-scripts) + .16s); }
+  #s-code .c-ci     { left: 44%; top: 49%; --rot: 5deg;  --d: .78s; --rd: var(--cue-pipelines); }
+  #s-code .c-env    { left: 9%;  top: 22%; --rot: -6deg; --d: .82s; --rd: calc(var(--cue-configs) + .08s); }
+  #s-code .c-mig    { left: 69%; top: 60%; --rot: -3deg; --d: .86s; --rd: calc(var(--cue-db) + .08s); }
+  #s-code .c-m1     { left: 66%; top: 15%; --rot: -5deg; --d: .90s; --rd: calc(var(--cue-code) + .07s); }
+  #s-code .c-m2     { left: 8%;  top: 56%; --rot: 6deg;  --d: .94s; --rd: calc(var(--cue-configs) + .24s); }
+  #s-code .c-db     { left: 76%; top: 26%; --rot: 3deg;  --d: .98s; --rd: var(--cue-db); }
+  #s-code .c-comp   { left: 35%; top: 74%; --rot: 3deg;  --d: 1.02s; --rd: calc(var(--cue-pipelines) + .16s); }
+  #s-code .c-schema { left: 53%; top: 70%; --rot: -4deg; --d: 1.06s; --rd: calc(var(--cue-db) + .16s); }
+  #s-code .c-lint   { left: 13%; top: 75%; --rot: -3deg; --d: 1.10s; --rd: calc(var(--cue-configs) + .16s); }
+  #s-code .c-readme { left: 74%; top: 12%; --rot: 2deg;  --d: 1.14s; --rd: calc(var(--cue-code) + .21s); }
+  #s-code .c-test2  { left: 7%;  top: 36%; --rot: 3deg;  --d: 1.18s; --rd: calc(var(--cue-tests) + .08s); }
+  #s-code .c-infra  { left: 73%; top: 42%; --rot: -2deg; --d: 1.22s; --rd: calc(var(--cue-pipelines) + .24s); }
+  #s-code .c-m3     { left: 50%; top: 30%; --rot: -6deg; --d: 1.26s; --rd: calc(var(--cue-code) + .14s); }
   #s-code .c-m3 .ln { width: 2.6cqw; margin-top: .5cqh; }
   #s-code .c-m3 .ln + .ln { width: 1.9cqw; }
 
@@ -1521,7 +1611,7 @@
     padding: 1cqh 1.8cqw;
     box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.25);
   }
-  #s-code.active .caption { animation: stampShake .55s var(--bounce) 1.6s backwards; }
+  #s-code.active .caption { animation: stampShake .55s var(--bounce) var(--cue-where) backwards; }
 
   /* #########################################################
      S6 · LET'S SAY YOU'RE WORKING ON YOUR PLAN. The story
@@ -1530,7 +1620,18 @@
      ticks stamp), the agent arrives, the plan docks under it
      like a baton handoff, and it settles into building.
   ######################################################### */
-  #s-plan { --TRIP: 4.6s; }
+  /* word-sync cues from narration/006-s-plan.words.json (+1s mux lead). */
+  #s-plan {
+    --TRIP: 4.6s;
+    --cue-plan: 2.78s;      /* "working on your PLAN." */
+    --cue-spec: 6.16s;      /* "SPEC driven development," */
+    --cue-prompts: 8.46s;   /* "good PROMPTS," */
+    --cue-looks: 11.10s;    /* "genuinely LOOKS GREAT." */
+    --cue-agent: 13.12s;    /* "The AGENT" */
+    --cue-picks: 13.68s;    /* "PICKS IT UP" */
+    --cue-going: 14.58s;    /* "and GETS GOING." */
+    --cue-textbook: 17.18s; /* "So far, TEXTBOOK." */
+  }
   #s-plan .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
   #s-plan .deskscene svg { width: 24cqw; }
   #s-plan .field .cast.deskscene {
@@ -1552,8 +1653,15 @@
     box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
   }
   #s-plan.active .plan {
-    animation: planRise .9s var(--bounce) .4s backwards,
-               planDock .9s var(--pop) 3.8s forwards;
+    animation: planRise .9s var(--bounce) var(--cue-plan) backwards,
+               planDock .9s var(--pop) var(--cue-picks) forwards,
+               textbookFlash .7s ease var(--cue-textbook);
+  }
+  /* "so far, textbook." — the docked plan glows once: the button on the scene.
+     Filter-only so it can't fight planDock's held transform. */
+  @keyframes textbookFlash {
+    0%, 100% { filter: none; }
+    35%      { filter: brightness(1.45) drop-shadow(0 0 1.2cqh rgba(196,151,254,.8)); }
   }
   @keyframes planRise {
     0%   { opacity: 0; transform: translate(-13cqw, 16cqh) scale(.25); }
@@ -1576,9 +1684,10 @@
     overflow: hidden;
     white-space: nowrap;
     vertical-align: bottom;
+    width: auto; /* the global .tw sets width:0 — this header types via max-width */
     max-width: 0;
   }
-  #s-plan.active .ph .tw { animation: planType .6s steps(7, end) 1.2s forwards; }
+  #s-plan.active .ph .tw { animation: planType .6s steps(7, end) calc(var(--cue-plan) + .8s) forwards; }
   @keyframes planType { to { max-width: 8ch; } }
   #s-plan .plan .ln {
     display: block;
@@ -1592,9 +1701,9 @@
   #s-plan .plan .l2 { width: 9.5cqw; }
   #s-plan .plan .l3 { width: 11cqw; }
   #s-plan.active .plan .ln { animation: lineWipe .5s var(--pop) backwards; }
-  #s-plan.active .plan .l1 { animation-delay: 1.5s; }
-  #s-plan.active .plan .l2 { animation-delay: 1.65s; }
-  #s-plan.active .plan .l3 { animation-delay: 1.8s; }
+  #s-plan.active .plan .l1 { animation-delay: calc(var(--cue-plan) + 1.1s); }
+  #s-plan.active .plan .l2 { animation-delay: calc(var(--cue-plan) + 1.25s); }
+  #s-plan.active .plan .l3 { animation-delay: calc(var(--cue-plan) + 1.4s); }
   @keyframes lineWipe { from { transform: scaleX(0); } }
   #s-plan .tick {
     font-family: var(--mono);
@@ -1605,15 +1714,16 @@
   }
   #s-plan .tick:first-of-type { margin-top: 1.2cqh; }
   #s-plan .tick b { color: var(--purple); margin-left: .35cqw; }
-  #s-plan.active .t1 { animation: stampIn .5s var(--bounce) 2.1s backwards; }
-  #s-plan.active .t2 { animation: stampIn .5s var(--bounce) 2.45s backwards; }
-  #s-plan.active .t3 { animation: stampIn .5s var(--bounce) 2.8s backwards; }
+  /* ticks stamp on their spoken phrases: spec / prompts / looks great */
+  #s-plan.active .t1 { animation: stampIn .5s var(--bounce) var(--cue-spec) backwards; }
+  #s-plan.active .t2 { animation: stampIn .5s var(--bounce) var(--cue-prompts) backwards; }
+  #s-plan.active .t3 { animation: stampIn .5s var(--bounce) var(--cue-looks) backwards; }
 
   /* the agent arrives, takes the handoff, gets to work */
   #s-plan .agentside { position: absolute; left: 70%; top: 42%; }
-  #s-plan.active .agentside { animation: agentIn .8s var(--pop) 2.9s backwards; }
+  #s-plan.active .agentside { animation: agentIn .8s var(--pop) var(--cue-agent) backwards; }
   @keyframes agentIn { from { opacity: 0; transform: translateX(13cqw); } }
-  #s-plan.active .agentside .agent-chip { animation: recvNod .5s var(--bounce) 4.6s; }
+  #s-plan.active .agentside .agent-chip { animation: recvNod .5s var(--bounce) calc(var(--cue-picks) + .9s); }
   @keyframes recvNod {
     0%, 100% { scale: 1; }
     45%      { scale: .9 1.06; }
@@ -1621,7 +1731,7 @@
   /* working: eyes flash on the master cycle once it has the plan */
   #s-plan.active .agentside .eyes {
     animation: blinkEyes 4.6s ease-in-out infinite,
-               inferGlow var(--TRIP) linear 4.8s infinite;
+               inferGlow var(--TRIP) linear calc(var(--cue-going) + .2s) infinite;
   }
   #s-plan .status {
     display: inline-flex;
@@ -1661,8 +1771,8 @@
     transform: translateX(-3.6cqw);
   }
   #s-plan.active .status,
-  #s-plan.active .pbar { animation: fadeup .6s var(--pop) 4.7s backwards; }
-  #s-plan.active .pbar i { animation: sweep 2.3s ease-in-out 4.8s infinite; }
+  #s-plan.active .pbar { animation: fadeup .6s var(--pop) calc(var(--cue-going) + .1s) backwards; }
+  #s-plan.active .pbar i { animation: sweep 2.3s ease-in-out calc(var(--cue-going) + .2s) infinite; }
   @keyframes sweep {
     0%   { transform: translateX(-3.6cqw); }
     100% { transform: translateX(9.6cqw); }
@@ -1678,7 +1788,34 @@
      the whole way and flares during every detour. One trek
      cycle loops forever.
   ######################################################### */
-  #s-friction { --TREK: 16s; }
+  /* word-sync cues from narration/007-s-friction.words.json (+1s mux lead).
+     The 16s trek loop is hand-tuned — never retime its percentages; the
+     only lever is --trek-go, chosen so hold-1 (16% = 2.56s in) lands on
+     "environment". If narration is re-taken, update only this block. */
+  #s-friction {
+    --TREK: 16s;
+    --cue-env: 3.50s;      /* "The ENVIRONMENT won't boot…" */
+    --cue-test: 7.08s;     /* "The TEST setup is weird." */
+    --cue-how: 11.14s;     /* "HOW to run the thing." */
+    --cue-burning: 18s;    /* "BURNING tokens the whole way." */
+    --trek-go: .94s;       /* = var(--cue-env) − 2.56s (16% of 16s) */
+  }
+  /* obstacles stamp in on their spoken nouns */
+  #s-friction.active .pin.k1,
+  #s-friction.active .stem.s1 { animation-delay: var(--cue-env); }
+  #s-friction.active .pin.k2,
+  #s-friction.active .stem.s2 { animation-delay: var(--cue-test); }
+  #s-friction.active .pin.k3,
+  #s-friction.active .stem.s3 { animation-delay: var(--cue-how); }
+  #s-friction.active .obs.o1 { animation-delay: calc(var(--cue-env) + .15s); }
+  #s-friction.active .obs.o2 { animation-delay: calc(var(--cue-test) + .15s); }
+  #s-friction.active .obs.o3 { animation-delay: calc(var(--cue-how) + .15s); }
+  /* "Burning tokens" — the meter wordmark flares as the line lands */
+  #s-friction.active .ticker .tl { animation: tlBurn .9s var(--pop) var(--cue-burning); }
+  @keyframes tlBurn {
+    0%, 100% { color: var(--lavender); text-shadow: none; }
+    30%, 60% { color: var(--white); text-shadow: 0 0 1.1cqh rgba(196,151,254,.95); }
+  }
   #s-friction .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
 
   /* the intended route, stretched to the field; dashes march
@@ -1782,7 +1919,7 @@
     translate: -50% -88%;
     opacity: 0;
   }
-  #s-friction.active .trek { animation: trekWalk var(--TREK) linear 1.6s infinite; }
+  #s-friction.active .trek { animation: trekWalk var(--TREK) linear var(--trek-go) infinite; }
   /* generated from the trail path (arc-length sampled, see the
      route <path> data): every keyframe sits ON the curve, and the
      holds (the confusion windows everything else phases off) sit
@@ -1850,7 +1987,7 @@
   /* walking bob + the confused shake at each stop */
   #s-friction.active .trek .agent-chip {
     animation: trekBob .46s ease-in-out infinite alternate,
-               trekWob var(--TREK) linear 1.6s infinite;
+               trekWob var(--TREK) linear var(--trek-go) infinite;
   }
   @keyframes trekBob { from { translate: 0 0; } to { translate: 0 -.45cqh; } }
   @keyframes trekWob {
@@ -1872,8 +2009,8 @@
     72.5%, 100%  { rotate: 0deg; }
   }
   /* eye mood swaps in the same windows */
-  #s-friction.active .trek .conf { animation: s7conf var(--TREK) linear 1.6s infinite; }
-  #s-friction.active .trek .base { animation: s7base var(--TREK) linear 1.6s infinite; }
+  #s-friction.active .trek .conf { animation: s7conf var(--TREK) linear var(--trek-go) infinite; }
+  #s-friction.active .trek .base { animation: s7base var(--TREK) linear var(--trek-go) infinite; }
   @keyframes s7conf {
     0%, 15%   { opacity: 0; }
     16%, 20%  { opacity: 1; }
@@ -1908,7 +2045,7 @@
     box-shadow: 0 .6cqh 1.8cqh rgba(0,0,0,.25);
     opacity: 0;
   }
-  #s-friction.active .qb { animation: qPop var(--TREK) linear 1.6s infinite; }
+  #s-friction.active .qb { animation: qPop var(--TREK) linear var(--trek-go) infinite; }
   @keyframes qPop {
     0%, 15%     { opacity: 0; scale: .3; }
     16.5%, 20%  { opacity: 1; scale: 1; }
@@ -1957,7 +2094,7 @@
   /* burns brighter while the agent detours (same trek clock) */
   #s-friction.active .ticker {
     animation: fadeup .7s var(--pop) 1.5s backwards,
-               burn var(--TREK) linear 1.6s infinite;
+               burn var(--TREK) linear var(--trek-go) infinite;
   }
   @keyframes burn {
     0%, 15%   { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
@@ -2014,18 +2151,37 @@
     100% { translate: 0 0; }
   }
 
+  /* word-sync cues from narration/008-s-done.words.json (+1s mux lead).
+     The slam's IMPACT (end of the .6s zoom) lands on the word, so the
+     animation starts at cue − .6s; the reaction chain keeps its
+     original offsets relative to impact. */
+  #s-done {
+    --cue-done1: 2.24s;    /* "And eventually: DONE." — slam impact */
+    --cue-believes: 3.86s; /* "the agent BELIEVES it." — pride hop starts */
+    --cue-done2: 6.48s;    /* closing "DONE." — the stamp says it again */
+  }
   #s-done .bigstamp { rotate: -5deg; opacity: 0; }
-  #s-done.active .bigstamp { animation: slam .6s cubic-bezier(.16,1.1,.4,1) 2.1s forwards; }
+  #s-done.active .bigstamp {
+    animation: slam .6s cubic-bezier(.16,1.1,.4,1) calc(var(--cue-done1) - .6s) forwards,
+               doneEcho .55s ease var(--cue-done2);
+  }
+  /* the closing "Done." — the stamp flares as the word lands a second time.
+     Color/border/shadow only: slam's forwards fill owns transform+opacity. */
+  @keyframes doneEcho {
+    0%, 100% { color: var(--lavender); border-color: var(--lavender); text-shadow: none; }
+    30%, 60% { color: var(--white); border-color: var(--white);
+               text-shadow: 0 0 1.4cqh rgba(196,151,254,.85); }
+  }
   @keyframes slam {
     0%   { opacity: 0; transform: scale(3.6); }
     55%  { opacity: 1; transform: scale(.92); }
     75%  { opacity: 1; transform: scale(1.07); }
     100% { opacity: 1; transform: scale(1); }
   }
-  #s-done.active .dust i { animation: puff .8s ease-out 2.4s forwards; }
-  #s-done.active .field { animation: jolt .5s ease-out 2.35s; }
+  #s-done.active .dust i { animation: puff .8s ease-out calc(var(--cue-done1) - .3s) forwards; }
+  #s-done.active .field { animation: jolt .5s ease-out calc(var(--cue-done1) - .35s); }
   /* afterglow: the claim radiates quiet confidence */
-  #s-done.active .stampwrap { animation: stampBreathe 4.6s ease-in-out 3.4s infinite; }
+  #s-done.active .stampwrap { animation: stampBreathe 4.6s ease-in-out calc(var(--cue-done1) + .7s) infinite; }
   @keyframes stampBreathe {
     0%, 100% { filter: drop-shadow(0 0 0 rgba(196,151,254,0)); }
     50%      { filter: drop-shadow(0 0 1.6cqh rgba(196,151,254,.5)); }
@@ -2036,7 +2192,7 @@
   @keyframes s8walk { from { opacity: 0; transform: translateX(-36cqw); } }
   #s-done.active .agent-chip {
     animation: trekBob .35s ease-in-out .3s 4 alternate,
-               hopJoy 2.6s ease-in-out 3.2s infinite;
+               hopJoy 2.6s ease-in-out var(--cue-believes) infinite;
   }
   @keyframes hopJoy {
     0%, 100% { translate: 0 0; }
@@ -2045,9 +2201,9 @@
     16%      { translate: 0 -.7cqh; }
     21%, 99% { translate: 0 0; }
   }
-  #s-done.active .eyes .base     { animation: eyesOut .12s linear 2.45s forwards; }
-  #s-done.active .eyes .alt.joy  { animation: eyesIn  .12s linear 2.45s forwards; }
-  #s-done.active .ticker { animation: fadeup .6s var(--pop) 2.8s backwards; }
+  #s-done.active .eyes .base     { animation: eyesOut .12s linear calc(var(--cue-done1) - .25s) forwards; }
+  #s-done.active .eyes .alt.joy  { animation: eyesIn  .12s linear calc(var(--cue-done1) - .25s) forwards; }
+  #s-done.active .ticker { animation: fadeup .6s var(--pop) calc(var(--cue-done1) + .1s) backwards; }
 
   /* #########################################################
      S9 · YOU GO AND LOOK. The S8 scene, recreated — then the
@@ -2055,9 +2211,18 @@
      claim, and the stamp flips on its Y axis to the truth.
      Heavy thunk, stage jolt, the agent's eyes drop to > <.
   ######################################################### */
+  /* word-sync cues from narration/009-s-you.words.json (+1s mux lead).
+     Flip starts on "not" so its impact (~.4s in) slams ON "done";
+     the jolt/dust/eyes/bob reaction chain keeps its offsets. */
+  #s-you {
+    --cue-you:  1.12s;  /* "YOU go and look." */
+    --cue-look: 1.68s;  /* "you go and LOOK." */
+    --cue-not:  4.42s;  /* "that's actually NOT DONE." — impact at +.4s */
+    --cue-did: 13.56s;  /* "DID you even try to run this?" */
+  }
   #s-you .stampwrap { perspective: 70cqw; }
   #s-you .flip { transform-style: preserve-3d; }
-  #s-you.active .flip { animation: flipTruth .75s cubic-bezier(.6,.04,.3,1.35) 3.6s forwards; }
+  #s-you.active .flip { animation: flipTruth .75s cubic-bezier(.6,.04,.3,1.35) var(--cue-not) forwards; }
   @keyframes flipTruth { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
   #s-you .face { backface-visibility: hidden; rotate: -5deg; }
   #s-you .face.f-not {
@@ -2073,13 +2238,13 @@
     border-color: var(--ink);
     color: var(--ink);
   }
-  #s-you.active .dust i { animation: puff .7s ease-out 4.3s forwards; }
-  #s-you.active .field { animation: jolt .45s ease-out 4.28s; }
+  #s-you.active .dust i { animation: puff .7s ease-out calc(var(--cue-not) + .7s) forwards; }
+  #s-you.active .field { animation: jolt .45s ease-out calc(var(--cue-not) + .68s); }
   /* the scene is already standing when we arrive */
   #s-you.active :is(.stampwrap, .agentside2, .ticker) { animation: fadein .4s ease .05s backwards; }
   /* the human walks in with the magnifier */
   #s-you .you { position: absolute; left: 21%; top: 49%; translate: 0 -50%; }
-  #s-you.active .you { animation: youIn .9s var(--pop) .5s backwards; }
+  #s-you.active .you { animation: youIn .9s var(--pop) var(--cue-you) backwards; }
   @keyframes youIn { from { opacity: 0; transform: translateX(-26cqw); } }
   #s-you .mag {
     position: absolute;
@@ -2107,8 +2272,9 @@
     transform-origin: 50% 0;
   }
   #s-you.active .mag {
-    animation: magSweep 2.4s ease-in-out 1.5s forwards,
-               magOff .55s ease 3.55s forwards; /* lowered as the truth lands */
+    /* sweep stretched to flow straight into magOff at the flip cue */
+    animation: magSweep 2.65s ease-in-out var(--cue-look) forwards,
+               magOff .55s ease calc(var(--cue-not) - .05s) forwards; /* lowered as the truth lands */
   }
   @keyframes magSweep {
     0%   { opacity: 0; left: 27%; top: 44%; }
@@ -2121,8 +2287,9 @@
   /* the agent takes it badly */
   #s-you .agentside2 { position: absolute; left: 50%; top: 73%; translate: -50% -50%; }
   #s-you.active .agentside2 .agent-chip {
-    animation: sadWob .65s ease-in-out 4.35s,
-               sadBob 3.2s ease-in-out 5.2s infinite alternate;
+    animation: sadWob .65s ease-in-out calc(var(--cue-not) + .75s),
+               sadBob 3.2s ease-in-out calc(var(--cue-not) + 1.6s) infinite alternate,
+               sadWob .65s ease-in-out var(--cue-did); /* "did you even try" flinch */
   }
   @keyframes sadWob {
     0%, 100% { rotate: 0deg; }
@@ -2131,8 +2298,8 @@
     70%      { rotate: -4deg; }
   }
   @keyframes sadBob { from { translate: 0 0; } to { translate: 0 .5cqh; } }
-  #s-you.active .agentside2 .base     { animation: eyesOut .12s linear 4.4s forwards; }
-  #s-you.active .agentside2 .alt.conf { animation: eyesIn  .12s linear 4.4s forwards; }
+  #s-you.active .agentside2 .base     { animation: eyesOut .12s linear calc(var(--cue-not) + .8s) forwards; }
+  #s-you.active .agentside2 .alt.conf { animation: eyesIn  .12s linear calc(var(--cue-not) + .8s) forwards; }
   #s-you .ticker.dim { opacity: .75; }
 
   /* #########################################################
@@ -2142,6 +2309,18 @@
      a lavender shimmer, and a TRUE stamp lands: actually
      done. Both characters bounce; confetti. A success story.
   ######################################################### */
+  /* word-sync cues from narration/010-s-back.words.json (+1s mux lead).
+     Re-take narration → re-run tools/align.cjs and update only this block. */
+  #s-back {
+    --cue-push: 1.44s;    /* "So you PUSH back." — the arrow is the push */
+    --cue-n1: 2.36s;      /* "THAT bit's wrong." */
+    --cue-n2: 3.66s;      /* "THIS never ran." */
+    --cue-n3: 5.26s;      /* "FIX that." */
+    --cue-name: 8.74s;    /* "has a name: HUMAN backpressure." */
+    --cue-sensor: 11.64s; /* "you're the SENSOR" */
+    --cue-fixes: 16.44s;  /* "takes it, FIXES it" */
+    --cue-done: 19.76s;   /* "genuinely is DONE." — slam hit lands in-word */
+  }
   #s-back .yb { position: absolute; left: 24%; top: 56%; translate: -50% -50%; }
   #s-back .ab { position: absolute; left: 76%; top: 56%; translate: -50% -50%; }
   #s-back.active .yb { animation: castPop .55s var(--bounce) .2s backwards; }
@@ -2167,7 +2346,7 @@
     border-bottom: .95cqh solid transparent;
   }
   #s-back.active .flow {
-    animation: flowDraw .7s var(--pop) .7s backwards,
+    animation: flowDraw .7s var(--pop) var(--cue-push) backwards,
                flowMarch .9s linear infinite;
   }
   @keyframes flowDraw  { from { transform: scaleX(0); } }
@@ -2187,7 +2366,7 @@
     box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.25);
     white-space: nowrap;
   }
-  #s-back.active .flowlab { animation: stampIn .5s var(--bounce) 1.1s backwards; }
+  #s-back.active .flowlab { animation: stampIn .5s var(--bounce) var(--cue-name) backwards; }
   /* corrections riding the arrow */
   #s-back .note {
     position: absolute;
@@ -2203,17 +2382,18 @@
     box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.25);
     rotate: var(--rot, 0deg);
   }
-  #s-back .note.n1 { left: 39%; top: 68%; --rot: -3deg; --d: 1.5s; }
-  #s-back .note.n2 { left: 50%; top: 70.5%; --rot: 2deg;  --d: 1.9s; }
-  #s-back .note.n3 { left: 61%; top: 68%; --rot: -2deg; --d: 2.3s; }
+  /* each correction pops as it's spoken */
+  #s-back .note.n1 { left: 39%; top: 68%; --rot: -3deg; --d: var(--cue-n1); }
+  #s-back .note.n2 { left: 50%; top: 70.5%; --rot: 2deg;  --d: var(--cue-n2); }
+  #s-back .note.n3 { left: 61%; top: 68%; --rot: -2deg; --d: var(--cue-n3); }
   #s-back.active .note {
     animation: castPop .5s var(--bounce) var(--d) backwards,
                floaty 5.2s ease-in-out var(--d) infinite alternate;
   }
   /* the agent takes it on board (shimmer), then both celebrate */
   #s-back.active .ab .agent-chip {
-    animation: reworkGlow .9s ease 2.9s,
-               hopJoy 2.6s ease-in-out 4.35s infinite;
+    animation: reworkGlow .9s ease var(--cue-fixes),
+               hopJoy 2.6s ease-in-out calc(var(--cue-done) + .45s) infinite;
   }
   @keyframes reworkGlow {
     0%, 100% { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
@@ -2221,11 +2401,20 @@
   }
   #s-back.active .ab .eyes {
     animation: blinkEyes 4.6s ease-in-out infinite,
-               inferGlow .9s linear 2.9s;
+               inferGlow .9s linear var(--cue-fixes);
   }
-  #s-back.active .ab .base     { animation: eyesOut .12s linear 4.3s forwards; }
-  #s-back.active .ab .alt.joy  { animation: eyesIn  .12s linear 4.3s forwards; }
-  #s-back.active .yb .human-chip { animation: hopJoy 2.6s ease-in-out 4.45s infinite; }
+  #s-back.active .ab .base     { animation: eyesOut .12s linear calc(var(--cue-done) + .4s) forwards; }
+  #s-back.active .ab .alt.joy  { animation: eyesIn  .12s linear calc(var(--cue-done) + .4s) forwards; }
+  #s-back.active .yb .human-chip {
+    animation: sensorFlare .9s ease var(--cue-sensor),
+               hopJoy 2.6s ease-in-out calc(var(--cue-done) + .55s) infinite;
+  }
+  /* "you're the sensor" — the human flares white as the role is named
+     (0%/100% restore the chip's resting shadow exactly — no snap) */
+  @keyframes sensorFlare {
+    0%, 100% { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.22); }
+    40%      { box-shadow: 0 0 2.4cqh .4cqw rgba(255,255,255,.75); }
+  }
   /* the true stamp: solid lavender, human-verified */
   #s-back .stampwrap { top: 22%; }
   #s-back .bigstamp.adone {
@@ -2237,9 +2426,9 @@
     rotate: 3deg;
     opacity: 0;
   }
-  #s-back.active .adone { animation: slam .55s cubic-bezier(.16,1.1,.4,1) 3.9s forwards; }
-  #s-back.active .stampwrap { animation: stampBreathe 4.6s ease-in-out 4.8s infinite; }
-  #s-back.active .field { animation: jolt .45s ease-out 4.1s; }
+  #s-back.active .adone { animation: slam .55s cubic-bezier(.16,1.1,.4,1) var(--cue-done) forwards; }
+  #s-back.active .stampwrap { animation: stampBreathe 4.6s ease-in-out calc(var(--cue-done) + .9s) infinite; }
+  #s-back.active .field { animation: jolt .45s ease-out calc(var(--cue-done) + .2s); }
   /* confetti tick */
   #s-back .conf i {
     position: absolute;
@@ -2249,7 +2438,7 @@
     background: var(--cc, var(--lavender));
     opacity: 0;
   }
-  #s-back.active .conf i { animation: confFall 1.5s ease-out 4.15s forwards; }
+  #s-back.active .conf i { animation: confFall 1.5s ease-out calc(var(--cue-done) + .25s) forwards; }
   @keyframes confFall {
     0%   { opacity: 0; translate: 0 0; rotate: 0deg; }
     12%  { opacity: 1; translate: calc(var(--cx) * .25) calc(var(--cy) * .12 - 2.2cqh); rotate: calc(var(--cr) * .3); }
@@ -2275,10 +2464,44 @@
     box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
     overflow: hidden;
   }
+  /* word-sync cues from narration/011-s-gone.words.json (+1s mux lead). */
+  #s-gone {
+    --cue-go: 4.02s;        /* "where did all of that GO?" — card stutters */
+    --cue-frictions: 5.08s; /* "the FRICTIONS the agent found" — mini scene */
+    --cue-work: 7.58s;      /* "the WORKAROUNDS" — line 1 */
+    --cue-corr: 8.88s;      /* "your CORRECTIONS" — line 2 */
+    --cue-bp: 9.88s;        /* "your BACKPRESSURE" — the ✓ stamp */
+    --cue-session: 12.46s;  /* "it lived in one CHAT SESSION" — title bar */
+    --cue-gone: 14.16s;     /* "and it's GONE." — dissolve */
+    --cue-next: 19.56s;     /* "for the NEXT PERSON on your team" — ghost walk */
+  }
   #s-gone.active .sesh {
     animation: castPop .6s var(--bounce) .25s backwards,
-               seshFlick .45s linear 1.6s,
-               seshGone 1.5s linear 2.2s forwards;
+               seshIdle 3.4s ease-in-out 1s infinite,
+               seshFlick .45s linear var(--cue-go),
+               seshFlick .45s linear calc(var(--cue-gone) - .6s),
+               seshGone 1.5s linear var(--cue-gone) forwards;
+  }
+  /* gentle hover so the card never sits dead while the narration builds.
+     margin-top, never translate — the card centers via translate. */
+  @keyframes seshIdle {
+    0%, 100% { margin-top: 0; }
+    50%      { margin-top: .4cqh; }
+  }
+  /* the list names what lived inside the card — each pings on its word */
+  #s-gone.active .sesh .mini      { animation: invPing .6s ease var(--cue-frictions); }
+  #s-gone.active .sesh .ln        { animation: invPing .6s ease var(--cue-work); }
+  #s-gone.active .sesh .ln + .ln  { animation: invPing .6s ease var(--cue-corr); }
+  #s-gone.active .sesh .mstamp    { animation: invPing .6s ease var(--cue-bp); }
+  @keyframes invPing {
+    0%, 100% { scale: 1; filter: none; }
+    40%      { scale: 1.05; filter: brightness(.88); }
+  }
+  /* "one chat session" — the title bar names the card */
+  #s-gone.active .sesh .bar b { animation: seshName .7s ease var(--cue-session); }
+  @keyframes seshName {
+    0%, 100% { color: var(--ink); text-shadow: none; }
+    30%, 65% { color: var(--white); text-shadow: 0 0 .8cqh rgba(255,255,255,.85); }
   }
   @keyframes seshFlick {
     0%, 100% { opacity: 1; }
@@ -2340,7 +2563,8 @@
     background: var(--c, var(--lavender));
     opacity: 0;
   }
-  #s-gone.active .pcloud i { animation: drift 1.6s ease-out var(--pd) forwards; }
+  /* one calc rebases all 15 inline --pd values onto the new dissolve cue */
+  #s-gone.active .pcloud i { animation: drift 1.6s ease-out calc(var(--pd) + var(--cue-gone) - 2.2s) forwards; }
   @keyframes drift {
     0%   { opacity: 0; translate: 0 0; scale: 1; }
     14%  { opacity: .95; }
@@ -2369,8 +2593,9 @@
     color: var(--mauve);
     white-space: nowrap;
   }
-  #s-gone.active .lost    { animation: fadeup .9s var(--pop) 4.1s backwards; }
-  #s-gone.active .lostsub { animation: fadeup .9s var(--pop) 4.7s backwards; }
+  /* heading lands in the breath after the last sliver dissolves */
+  #s-gone.active .lost    { animation: fadeup .9s var(--pop) calc(var(--cue-gone) + 1.5s) backwards; }
+  #s-gone.active .lostsub { animation: fadeup .9s var(--pop) calc(var(--cue-gone) + 2.1s) backwards; }
   /* faintly, it's already happening again */
   #s-gone .gwalk {
     position: absolute;
@@ -2378,7 +2603,7 @@
     width: 20cqw; height: 5cqh;
     opacity: 0;
   }
-  #s-gone.active .gwalk { animation: gwIn 1.2s ease 5.2s forwards; }
+  #s-gone.active .gwalk { animation: gwIn 1.2s ease var(--cue-next) forwards; }
   @keyframes gwIn { to { opacity: .22; } }
   #s-gone .gwalk .gline2 { position: absolute; left: 0; right: 0; bottom: 0; border-top: 2px dashed rgba(255,255,255,.6); }
   #s-gone .gwalk .gpin { position: absolute; left: 66%; bottom: 0; width: .8cqw; height: .8cqw; translate: -50% 50%; border-radius: 50%; background: var(--mauve); }
@@ -2397,7 +2622,7 @@
     letter-spacing: .18em;
     opacity: 0;
   }
-  #s-gone.active .gwalk .ga { animation: gwLoop 6s linear 5.4s infinite; }
+  #s-gone.active .gwalk .ga { animation: gwLoop 6s linear calc(var(--cue-next) + .2s) infinite; }
   @keyframes gwLoop {
     0%       { transform: translateX(0); rotate: 0deg; opacity: 0; }
     8%       { transform: translateX(1cqw); rotate: 0deg; opacity: 1; }
@@ -2429,13 +2654,28 @@
   #s-mult .l4 { left: 4%;  top: 37%; --lp: 2.3s; }
   #s-mult .l5 { left: 37%; top: 37%; --lp: 3.1s; }
   #s-mult .l6 { left: 70%; top: 37%; --lp: 3.8s; }
+  /* word-sync cues from narration/012-s-mult.words.json (+1s mux lead).
+     l1 stays early — it's the "it" being multiplied; the rest of the
+     grid fills in on the words that multiply it. */
+  #s-mult {
+    --cue-mult: 1.8s;      /* "Now MULTIPLY it." */
+    --cue-everyone: 3.42s; /* "EVERYONE on the team," */
+    --cue-team: 4.28s;     /* "on the TEAM," */
+    --cue-every: 4.78s;    /* "EVERY day," */
+    --cue-day: 5.14s;      /* "every DAY," */
+    --cue-many: 5.58s;     /* "MANY times a day" */
+    --cue-times: 5.88s;    /* "many TIMES a day" */
+    --cue-tokens: 7.6s;    /* "paying TOKENS" */
+    --cue-agents: 17.86s;  /* "land in an AGENTS file" */
+    --cue-burn: 25.74s;    /* "the tokens just BURN" */
+  }
   #s-mult.active .lane { animation: castPop .55s var(--bounce) var(--d, .9s) backwards; }
   #s-mult.active .l1 { animation-delay: .3s; }
-  #s-mult.active .l2 { animation-delay: .95s; }
-  #s-mult.active .l3 { animation-delay: 1.1s; }
-  #s-mult.active .l4 { animation-delay: 1.25s; }
-  #s-mult.active .l5 { animation-delay: 1.4s; }
-  #s-mult.active .l6 { animation-delay: 1.55s; }
+  #s-mult.active .l2 { animation-delay: var(--cue-mult); }
+  #s-mult.active .l3 { animation-delay: var(--cue-everyone); }
+  #s-mult.active .l4 { animation-delay: var(--cue-team); }
+  #s-mult.active .l5 { animation-delay: var(--cue-day); }
+  #s-mult.active .l6 { animation-delay: var(--cue-times); }
   /* lane internals: a tiny silent cast */
   #s-mult .mh {
     position: absolute;
@@ -2546,9 +2786,13 @@
   #s-mult .amd .ln.sp1 { width: 11.5cqw; margin-left: 1.2cqw; rotate: 2deg; opacity: .8; }
   #s-mult .amd .ln.sp2 { position: absolute; left: 52%; bottom: -1.5cqh; width: 7.5cqw; rotate: -5deg; opacity: .55; }
   #s-mult .amd .ln.sp3 { position: absolute; left: -8%; bottom: -.7cqh; width: 6cqw; rotate: 4deg; opacity: .45; }
+  /* amdPulse phase lock is sacred: peak (8%) must keep catching l4's
+     crumb landings, i.e. delay ≡ 5s (mod 4.6s). 18.8s = 5 + 3×4.6 is
+     the first slot after the card pops at --cue-agents. If the cue
+     moves, recompute the nearest 5 + 4.6k ≥ cue + .55. */
   #s-mult.active .amd {
-    animation: castPop .55s var(--bounce) 2.2s backwards,
-               amdPulse 4.6s ease-in-out 5s infinite;
+    animation: castPop .55s var(--bounce) var(--cue-agents) backwards,
+               amdPulse 4.6s ease-in-out 18.8s infinite;
   }
   @keyframes amdPulse {
     0%, 100% { scale: 1; }
@@ -2567,8 +2811,23 @@
     white-space: nowrap;
   }
   #s-mult .mline b { color: var(--lavender); font-weight: 600; }
-  #s-mult.active .mline { animation: fadeup .9s var(--pop) 2.8s backwards; }
-  #s-mult.active .ticker { animation: fadeup .7s var(--pop) 1.9s backwards; }
+  #s-mult.active .mline { animation: fadeup .9s var(--pop) var(--cue-every) backwards; }
+  /* "many times a day" — the bold flares as its words land */
+  #s-mult.active .mline b { animation: manyFlash .7s ease var(--cue-many); }
+  @keyframes manyFlash {
+    0%, 100% { color: var(--lavender); text-shadow: none; }
+    30%, 60% { color: var(--white); text-shadow: 0 0 1cqh rgba(196,151,254,.9); }
+  }
+  #s-mult.active .ticker {
+    animation: fadeup .7s var(--pop) var(--cue-tokens) backwards,
+               burnFlash .9s ease var(--cue-burn);
+  }
+  /* "the tokens just burn" — filter-based so the meter's mixed base
+     colors are untouched */
+  @keyframes burnFlash {
+    0%, 100% { filter: none; }
+    30%, 60% { filter: brightness(1.6) drop-shadow(0 0 .8cqh rgba(196,151,254,.9)); }
+  }
   #s-mult .ticker .dot { animation: thinkDot .8s ease-in-out infinite; }
   #s-mult .r-m1 .reel { animation: reelSpin 18s steps(10, end) infinite; }
   #s-mult .r-m2 .reel { animation: reelSpin 1.8s steps(10, end) infinite; }
@@ -2630,8 +2889,33 @@
   #s-quest .qb { left: 71.5%; top: 46%; }
   /* AUTOPLAY: A flips up, B answers it, then both idle on a slow
      offset breath (the scale property composes under the flip) */
-  #s-quest.active .qa { animation: qFlip 1.05s var(--pop) .6s backwards, qBreathe 5.4s ease-in-out 1.65s infinite; }
-  #s-quest.active .qb { animation: qFlip 1.05s var(--pop) 1.8s backwards, qBreathe 5.4s ease-in-out 4.35s infinite; }
+  /* word-sync cues from narration/013-s-quest.words.json (+1s mux lead).
+     Flips key their IMPACT (~75% of the 1.05s qFlip) on the counted
+     word: start = cue − .7s. The .qb breathe offset (+4.27s) keeps the
+     two cards breathing in perfect counter-phase (1.5 periods apart)
+     while still starting after its flip ends. */
+  #s-quest {
+    --cue-one: 2.74s;   /* "ONE: how does the agent know when it's done?" */
+    --cue-two: 6.92s;   /* "And TWO: where does the learning go?" */
+    --cue-enum: 10.10s; /* "The BACKPRESSURE… frictions… workarounds" */
+  }
+  #s-quest.active .qa {
+    animation: qFlip 1.05s var(--pop) calc(var(--cue-one) - .7s) backwards,
+               qBreathe 5.4s ease-in-out calc(var(--cue-one) + .35s) infinite;
+  }
+  #s-quest.active .qb {
+    animation: qFlip 1.05s var(--pop) calc(var(--cue-two) - .7s) backwards,
+               qBreathe 5.4s ease-in-out calc(var(--cue-two) + 4.27s) infinite;
+  }
+  /* "the backpressure… the frictions… the workarounds" — the inked
+     card's subtitle pulses once per item as the narration enumerates it */
+  #s-quest.active .qb .qs { animation: qsEnum 6.6s linear var(--cue-enum) 1; }
+  @keyframes qsEnum {
+    0%, 16%, 41%, 57%, 80%, 96%, 100% { color: var(--mauve); text-shadow: none; }
+    3%, 9%   { color: var(--white); text-shadow: 0 0 1cqh rgba(196,151,254,.7); }
+    44%, 50% { color: var(--white); text-shadow: 0 0 1cqh rgba(196,151,254,.7); }
+    83%, 89% { color: var(--white); text-shadow: 0 0 1cqh rgba(196,151,254,.7); }
+  }
   @keyframes qFlip {
     0%   { opacity: 0; transform: rotateX(58deg) translateY(7cqh); }
     62%  { opacity: 1; transform: rotateX(-6deg) translateY(-.5cqh); }
@@ -2648,6 +2932,21 @@
      spokes into one glowing focal node, leaving the A / B
      labels behind. Ambient: the questions keep feeding it.
   ######################################################### */
+  /* word-sync cues from narration/014-s-need.words.json (+1s mux lead).
+     --cue-focal is the merge anchor: ping fires on it, spokes/travel
+     are back-timed from it, packets + nodeTick phase off it (arrival
+     = delay + 1.368s; tick = pkA delay + 1.35s; pkB = pkA + 1.8s). */
+  #s-need {
+    --cue-what: 1.10s;      /* "WHAT WE NEED is…" */
+    --cue-one: 2.00s;       /* "…is ONE really simple…" */
+    --cue-focal: 4.10s;     /* "…first class FOCAL POINT." */
+    --cue-A: 6.18s;         /* "A:" */
+    --cue-tools: 8.94s;     /* "…find all the TOOLS your environment offers" */
+    --cue-B: 12.02s;        /* "B:" */
+    --cue-encode: 13.86s;   /* "…place to ENCODE the friction away" */
+    --cue-oneplace: 19.12s; /* "ONE PLACE. Not scattered docs…" */
+    --cue-shape: 23.56s;    /* "so what SHAPE is that thing?" */
+  }
   #s-need .nhead { position: absolute; left: 3.5cqw; top: 3.4cqh; z-index: 4; }
   #s-need .nhead h2 {
     font-family: var(--mcqueen);
@@ -2658,15 +2957,16 @@
     margin-top: 1.1cqh;
   }
   #s-need .nhead .hdot { color: var(--lavender); }
-  #s-need.active .nhead .kicker { animation: fadeup .7s var(--pop) .45s backwards; }
-  #s-need.active .nhead h2 { animation: fadeup .8s var(--pop) .6s backwards; }
+  #s-need.active .nhead .kicker { animation: fadeup .7s var(--pop) calc(var(--cue-what) - .35s) backwards; }
+  #s-need.active .nhead h2 { animation: fadeup .8s var(--pop) var(--cue-what) backwards; }
 
   /* the S13 cards, still on stage at the same coordinates, then
      they shrink and sink into the node (forwards = they stay gone) */
   #s-need .qa { left: 28.5%; top: 46%; }
   #s-need .qb { left: 71.5%; top: 46%; }
-  #s-need.active .qa { animation: fadein .35s ease .05s backwards, qTravelA .9s cubic-bezier(.55,.05,.7,1) 1.9s forwards; }
-  #s-need.active .qb { animation: fadein .35s ease .05s backwards, qTravelB .9s cubic-bezier(.55,.05,.7,1) 2.05s forwards; }
+  /* the .05s fadein is the S13→S14 match-cut — never cue it */
+  #s-need.active .qa { animation: fadein .35s ease .05s backwards, qTravelA .9s cubic-bezier(.55,.05,.7,1) calc(var(--cue-focal) - .95s) forwards; }
+  #s-need.active .qb { animation: fadein .35s ease .05s backwards, qTravelB .9s cubic-bezier(.55,.05,.7,1) calc(var(--cue-focal) - .8s) forwards; }
   @keyframes qTravelA {
     0%   { left: 28.5%; top: 46%; scale: 1; opacity: 1; }
     78%  { opacity: 1; }
@@ -2687,8 +2987,8 @@
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
   }
-  #s-need.active .spA { animation: spDraw .7s ease 1.5s forwards; }
-  #s-need.active .spB { animation: spDraw .7s ease 1.65s forwards; }
+  #s-need.active .spA { animation: spDraw .7s ease calc(var(--cue-focal) - 1.35s) forwards; }
+  #s-need.active .spB { animation: spDraw .7s ease calc(var(--cue-focal) - 1.2s) forwards; }
   @keyframes spDraw { to { stroke-dashoffset: 0; } }
 
   /* what each card leaves behind: its question, distilled */
@@ -2707,7 +3007,9 @@
   #s-need .slab b { font-weight: 600; color: var(--lavender); }
   #s-need .sa { left: 28.5%; top: 46%; }
   #s-need .sb { left: 71.5%; top: 46%; }
-  #s-need.active .slab { animation: fadein .6s ease 2.75s backwards; }
+  /* each slab lands on its spoken phrase */
+  #s-need.active .sa { animation: fadein .6s ease var(--cue-tools) backwards; }
+  #s-need.active .sb { animation: fadein .6s ease var(--cue-encode) backwards; }
 
   /* the focal node */
   #s-need .fnode {
@@ -2717,7 +3019,13 @@
     translate: -50% -50%;
     z-index: 2;
   }
-  #s-need.active .fnode { animation: nodeIn .7s var(--bounce) 1.2s backwards, nodeTick 1.8s ease-in-out 4.65s infinite; }
+  #s-need.active .fnode { animation: nodeIn .7s var(--bounce) var(--cue-one) backwards, nodeTick 1.8s ease-in-out calc(var(--cue-focal) + 1.8s) infinite; }
+  /* "so what shape is that thing?" — the node flares once, handing off to S15 */
+  #s-need.active .fnode .core { animation: nodeAsk .9s ease var(--cue-shape); }
+  @keyframes nodeAsk {
+    0%, 100% { filter: none; }
+    35% { filter: brightness(1.6) drop-shadow(0 0 1.2cqh rgba(196,151,254,.9)); }
+  }
   @keyframes nodeIn { from { scale: 0; } }
   @keyframes nodeTick {
     0%, 16%, 100% { scale: 1; }
@@ -2763,7 +3071,7 @@
     border: .3cqw solid var(--lavender);
     opacity: 0;
   }
-  #s-need.active .ping { animation: pingOnce 1s ease-out 2.85s; }
+  #s-need.active .ping { animation: pingOnce 1s ease-out var(--cue-focal); }
   @keyframes pingOnce {
     0%   { opacity: .85; scale: .5; }
     100% { opacity: 0; scale: 1.8; }
@@ -2783,8 +3091,8 @@
   }
   #s-need .ba { left: 45.8%; top: 59.6%; background: var(--white); color: var(--ink); }
   #s-need .bb2 { left: 54.2%; top: 59.6%; background: var(--ink); color: var(--white); border: .16cqw solid var(--lavender); }
-  #s-need.active .ba { animation: castPop .5s var(--bounce) 2.62s backwards, bdgFloat 4.2s ease-in-out infinite alternate; }
-  #s-need.active .bb2 { animation: castPop .5s var(--bounce) 2.76s backwards, bdgFloat 4.2s ease-in-out 2.1s infinite alternate; }
+  #s-need.active .ba { animation: castPop .5s var(--bounce) var(--cue-A) backwards, bdgFloat 4.2s ease-in-out infinite alternate; }
+  #s-need.active .bb2 { animation: castPop .5s var(--bounce) var(--cue-B) backwards, bdgFloat 4.2s ease-in-out 2.1s infinite alternate; }
   @keyframes bdgFloat { to { transform: translateY(-.4cqh); } }
   #s-need .nsub {
     position: absolute;
@@ -2798,7 +3106,7 @@
     color: var(--mauve);
     white-space: nowrap;
   }
-  #s-need.active .nsub { animation: fadeup .8s var(--pop) 3.15s backwards; }
+  #s-need.active .nsub { animation: fadeup .8s var(--pop) var(--cue-oneplace) backwards; }
 
   /* ambient: packets keep feeding the focal point, phase-locked
      to the node's absorb tick (arrivals land on the 1.8s grid) */
@@ -2811,8 +3119,8 @@
     box-shadow: 0 0 1.4cqh .2cqh rgba(196,151,254,.8);
     opacity: 0;
   }
-  #s-need.active .pkA { animation: pkRunA 3.6s linear 3.3s infinite; }
-  #s-need.active .pkB { animation: pkRunB 3.6s linear 5.1s infinite; }
+  #s-need.active .pkA { animation: pkRunA 3.6s linear calc(var(--cue-focal) + .45s) infinite; }
+  #s-need.active .pkB { animation: pkRunB 3.6s linear calc(var(--cue-focal) + 2.25s) infinite; }
   @keyframes pkRunA {
     0%        { left: 32.2%; top: 49.2%; opacity: 0; }
     8%        { left: 33.6%; top: 50.3%; opacity: 1; }
@@ -2842,6 +3150,24 @@
     align-items: center;
     gap: 1.5cqw;
   }
+  /* word-sync cues from narration/015-s-miss.words.json (+1s mux lead).
+     If the narration is re-taken, re-run tools/align.cjs, update this
+     block, and re-derive --cue-loop: ("up." clip time) − 1.54s. */
+  #s-miss {
+    --cue-remember: 1.10s;  /* "REMEMBER the stack" — floors snap back */
+    --cue-looked:   2.44s;  /* "that LOOKED complete?" — labels dress it */
+    --cue-missing:  4.62s;  /* "it was MISSING a layer" — the crack opens */
+    --cue-determ:   6.42s;  /* "A DETERMINISTIC…" — ink plate flies in */
+    --cue-layer2:   7.38s;  /* "…LAYER," — plate docks; its label lands */
+    --cue-between:  8.68s;  /* "sitting BETWEEN" — subtitle fades in */
+    --cue-agent:    9.32s;  /* "the AGENT" — Inference wordmark flares */
+    --cue-code:    10.20s;  /* "your CODEBASE" — Codebase wordmark flares */
+    --cue-node:    10.55s;  /* breath after "codebase." — A·B node arcs in */
+    --cue-loop:    11.42s;  /* phase root: proof tops out on "UP." (+55%),
+                               enc dot buries on "ENCODED" (+88%) */
+    --cue-encoded: 13.66s;  /* "ENCODED backpressure" — encode chip flares */
+    --cue-piece:   18.32s;  /* "the missing PIECE." — unified stack pulse */
+  }
   #s-miss.active .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
   #s-miss h2 {
     font-family: var(--mcqueen);
@@ -2860,7 +3186,7 @@
     font-size: 1.3cqw;
     color: var(--mauve);
   }
-  #s-miss.active .m-sub { animation: fadein .9s ease 4.9s backwards; }
+  #s-miss.active .m-sub { animation: fadein .9s ease var(--cue-between) backwards; }
 
   /* same rig as S2: orthographic camera on the parent, floors
      travel along Z only */
@@ -2894,7 +3220,7 @@
     pointer-events: none;
   }
   /* the unified pulse rides the scale property over isoBob's translate */
-  #s-miss.active .iso { animation: isoBob 7s ease-in-out infinite alternate, stackPulse .9s ease 5.15s; }
+  #s-miss.active .iso { animation: isoBob 7s ease-in-out infinite alternate, stackPulse .9s ease calc(var(--cue-piece) - .3s); }
   @keyframes stackPulse {
     0%, 100% { scale: 1; }
     35%      { scale: 1.04; }
@@ -2947,9 +3273,9 @@
   #s-miss .f-3 { --pc: var(--white);    --z: -6.4cqw; }
   /* AUTOPLAY: re-assemble fast, then the crack opens. gapUp/Down
      take over transform after floorLand has finished and hold. */
-  #s-miss.active .f-1 { animation: floorLand .55s var(--pop) .15s backwards, gapUp1 .9s ease 1.6s forwards; }
-  #s-miss.active .f-2 { animation: floorLand .55s var(--pop) .32s backwards, gapUp2 .9s ease 1.6s forwards; }
-  #s-miss.active .f-3 { animation: floorLand .55s var(--pop) .49s backwards, gapDown3 .9s ease 1.6s forwards; }
+  #s-miss.active .f-1 { animation: floorLand .55s var(--pop) var(--cue-remember) backwards, gapUp1 .9s ease var(--cue-missing) forwards; }
+  #s-miss.active .f-2 { animation: floorLand .55s var(--pop) calc(var(--cue-remember) + .23s) backwards, gapUp2 .9s ease var(--cue-missing) forwards; }
+  #s-miss.active .f-3 { animation: floorLand .55s var(--pop) calc(var(--cue-remember) + .46s) backwards, gapDown3 .9s ease var(--cue-missing) forwards; }
   @keyframes gapUp1   { from { transform: translateZ(10cqw); }   to { transform: translateZ(11.6cqw); } }
   @keyframes gapUp2   { from { transform: translateZ(2.6cqw); }  to { transform: translateZ(4.4cqw); } }
   @keyframes gapDown3 { from { transform: translateZ(-6.4cqw); } to { transform: translateZ(-11.6cqw); } }
@@ -2962,7 +3288,14 @@
     background: radial-gradient(closest-side, rgba(196,151,254,.9), rgba(196,151,254,0) 75%);
     opacity: 0;
   }
-  #s-miss.active .gap-glow { animation: gapGlow 2.2s ease 1.8s; }
+  /* flourish: while "looked complete?" hangs, the seam where the slot
+     will open leaks a barely-there glint — the slide whispers the
+     answer before saying it */
+  #s-miss.active .gap-glow {
+    animation: gapHint .9s ease calc(var(--cue-looked) + .35s),
+               gapGlow 2.2s ease calc(var(--cue-missing) + .2s);
+  }
+  @keyframes gapHint { 50% { opacity: .14; } }
   @keyframes gapGlow {
     0%   { opacity: 0; }
     40%  { opacity: .65; }
@@ -2982,7 +3315,9 @@
       repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3.75cqw),
       repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3.75cqw);
   }
-  #s-miss.active .f-d { animation: plateIn 1.15s cubic-bezier(.25,.7,.3,1.04) 2.5s forwards, plateBreathe 2.8s ease-in-out 5.6s infinite; }
+  /* plateBreathe starts one full period before --cue-loop: identical
+     phase, but the plate never sits static after docking */
+  #s-miss.active .f-d { animation: plateIn 1.15s cubic-bezier(.25,.7,.3,1.04) var(--cue-determ) forwards, plateBreathe 2.8s ease-in-out calc(var(--cue-loop) - 2.8s) infinite; }
   @keyframes plateIn {
     0%   { opacity: 0; transform: translateZ(-3.6cqw) translateX(46cqw); }
     22%  { opacity: 1; }
@@ -2995,16 +3330,18 @@
     88%      { box-shadow: 0 0 5cqw .9cqw rgba(196,151,254,.75); }
   }
   /* landing flash, then a second blink as the chips stamp on */
-  #s-miss.active .f-d .coat { animation: dCoat 1.4s ease 3.5s, uniFlash .7s ease 5.15s; }
+  #s-miss.active .f-d .coat { animation: dCoat 1.4s ease calc(var(--cue-determ) + 1s), uniFlash .7s ease calc(var(--cue-piece) - .3s); }
   @keyframes dCoat {
     0%        { opacity: .75; }
     35%, 75%  { opacity: 0; }
     82%       { opacity: .45; }
     100%      { opacity: 0; }
   }
-  #s-miss.active .f-1 .coat { animation: uniFlash .7s ease 5.15s, coatPass1 2.8s linear 5.6s infinite; }
-  #s-miss.active .f-2 .coat { animation: uniFlash .7s ease 5.15s, coatPass2 2.8s linear 5.6s infinite; }
-  #s-miss.active .f-3 .coat { animation: uniFlash .7s ease 5.15s; }
+  /* uniFlash now fires while coatPass is mid-loop, so it must be LAST
+     in the list to win the opacity during its window */
+  #s-miss.active .f-1 .coat { animation: coatPass1 2.8s linear var(--cue-loop) infinite, uniFlash .7s ease calc(var(--cue-piece) - .3s); }
+  #s-miss.active .f-2 .coat { animation: coatPass2 2.8s linear var(--cue-loop) infinite, uniFlash .7s ease calc(var(--cue-piece) - .3s); }
+  #s-miss.active .f-3 .coat { animation: uniFlash .7s ease calc(var(--cue-piece) - .3s); }
   @keyframes uniFlash { 30% { opacity: .5; } }
   /* the floors react as the dots pass: proof going up (first bump),
      backpressure coming down (second). Same 2.8s clock = phase-locked. */
@@ -3040,8 +3377,17 @@
   #s-miss .c1 { left: 26%; top: 78%; }
   #s-miss .c2 { left: 60%; top: 73%; }
   #s-miss.active .dchip { animation: castPop .55s var(--bounce) backwards; }
-  #s-miss.active .c1 { animation-delay: 4.55s; }
-  #s-miss.active .c2 { animation-delay: 4.7s; }
+  #s-miss.active .c1 { animation-delay: calc(var(--cue-node) + .7s); }
+  /* c2 carries the "encoded backpressure" flare, so it gets a full list */
+  #s-miss.active .c2 {
+    animation: castPop .55s var(--bounce) calc(var(--cue-node) + .85s) backwards,
+               chipFlare .8s ease var(--cue-encoded);
+  }
+  @keyframes chipFlare {
+    0%, 100% { color: var(--lavender); border-color: var(--lavender); box-shadow: none; }
+    30%, 60% { color: var(--white); border-color: var(--white);
+               box-shadow: 0 0 1.4cqh rgba(196,151,254,.9); }
+  }
 
   /* billboard labels (screen space, like S2). Only the new layer
      carries a trait line: the other three have been toured. */
@@ -3087,10 +3433,14 @@
   #s-miss .bb-d { right: 79%; top: 56%; }
   #s-miss .bb-3 { right: 79%; top: 76%; }
   #s-miss.active .bb { animation: bbIn .5s var(--pop) backwards; }
-  #s-miss.active .bb-1 { animation-delay: .85s; }
-  #s-miss.active .bb-2 { animation-delay: .95s; }
-  #s-miss.active .bb-3 { animation-delay: 1.05s; }
-  #s-miss.active .bb-d { animation-delay: 3.75s; }
+  #s-miss.active .bb-1 { animation-delay: var(--cue-looked); }
+  #s-miss.active .bb-2 { animation-delay: calc(var(--cue-looked) + .12s); }
+  #s-miss.active .bb-3 { animation-delay: calc(var(--cue-looked) + .24s); }
+  #s-miss.active .bb-d { animation-delay: var(--cue-layer2); }
+  /* the narration walks the diagram: wordmarks flare on their words
+     (bbMeet keyframes shared from S2) */
+  #s-miss.active .bb-2 b { animation: bbMeet .5s ease var(--cue-agent); }
+  #s-miss.active .bb-3 b { animation: bbMeet .5s ease var(--cue-code); }
 
   /* the S14 focal node arcs in and splits into the two decals */
   #s-miss .node2 {
@@ -3111,7 +3461,7 @@
     color: var(--white);
     opacity: 0;
   }
-  #s-miss.active .node2 { animation: nodeArc .85s cubic-bezier(.4,.1,.7,1) 3.85s forwards; }
+  #s-miss.active .node2 { animation: nodeArc .85s cubic-bezier(.4,.1,.7,1) var(--cue-node) forwards; }
   @keyframes nodeArc {
     0%   { left: 58%; top: -6%; opacity: 0; scale: 1; }
     12%  { opacity: 1; }
@@ -3133,8 +3483,8 @@
   }
   #s-miss .proof { background: var(--white); box-shadow: 0 0 1.6cqh .25cqh rgba(255,255,255,.7); }
   #s-miss .enc { margin-left: 1.2cqw; top: 24%; background: var(--lavender); box-shadow: 0 0 1.6cqh .25cqh rgba(196,151,254,.8); }
-  #s-miss.active .proof { animation: proofRise 2.8s linear 5.6s infinite; }
-  #s-miss.active .enc { animation: encFall 2.8s linear 5.6s infinite; }
+  #s-miss.active .proof { animation: proofRise 2.8s linear var(--cue-loop) infinite; }
+  #s-miss.active .enc { animation: encFall 2.8s linear var(--cue-loop) infinite; }
   @keyframes proofRise {
     0%, 8%    { top: 58%; opacity: 0; }
     16%       { top: 54%; opacity: 1; }
@@ -3215,6 +3565,22 @@
      over the complex). Three jobs pop out; the terminal proves
      it's real; the agent leans in, delighted.
   ######################################################### */
+  /* word-sync cues from narration/016-s-name.words.json (+1s mux lead). */
+  #s-name {
+    --cue-named: 2.50s;    /* "called an ENGINEERING harness." */
+    --cue-harness: 3.20s;  /* "engineering HARNESS." — the period clicks in */
+    --cue-clutter: 4.98s;  /* "remember the CLUTTER at the code layer?" */
+    --cue-simple: 7.98s;   /* "a SIMPLE view over all of that complexity" */
+    --cue-encode: 11.72s;  /* "when you want to ENCODE…" */
+    --cue-check: 12.86s;   /* "a backpressure CHECK" */
+    --cue-friction: 13.80s;/* "or REMOVE a friction" */
+    --cue-place: 16.08s;   /* "this is the OBVIOUS place" */
+    --cue-agent: 18.96s;   /* "the one place the AGENT looks" */
+    --cue-looks: 19.32s;   /* "the agent LOOKS to see" */
+    --cue-see: 19.78s;     /* "to SEE what this environment can do" */
+    --cue-improve: 26.02s; /* "if one's weak, IMPROVE it" */
+    --cue-go: 30.62s;      /* "where improvements to your environment GO." */
+  }
   #s-name.active .kicker { animation: fadeup .7s var(--pop) .1s backwards; }
   /* the ghost clutter: faint outline cards, scattered, then tidy */
   #s-name .gcard {
@@ -3235,10 +3601,17 @@
     opacity: .55;
   }
   #s-name.active .gcard {
-    animation: fadein .45s ease var(--fd) backwards,
-               tidy .8s var(--pop) 1.6s forwards;
+    animation: fadein .45s ease calc(var(--cue-clutter) + var(--fd) - 1.15s) backwards,
+               tidy .8s var(--pop) var(--cue-simple) forwards,
+               gBreathe 5.2s ease-in-out calc(var(--cue-clutter) + var(--fd)) infinite;
   }
   @keyframes tidy { to { left: var(--gx); top: var(--gy); rotate: 0deg; } }
+  /* ambient: the tidied complexity hums faintly beneath the simple view
+     (opacity only — tidy owns position/rotate with a forwards fill) */
+  @keyframes gBreathe {
+    0%, 100% { opacity: .55; }
+    50%      { opacity: .35; }
+  }
 
   /* the plate, zooming up from the S15 stack to hero scale */
   #s-name .nplate {
@@ -3271,8 +3644,9 @@
   }
   #s-name.active .nplate {
     animation: nzoom .9s var(--pop) .2s backwards,
-               nbump .5s ease 2.55s,
-               nglow 3.4s ease-in-out 3s infinite;
+               nbump .5s ease var(--cue-place),
+               nbump .5s ease var(--cue-go),
+               nglow 3.4s ease-in-out 1.2s infinite;
   }
   @keyframes nzoom {
     0%   { opacity: 0; scale: .22; }
@@ -3287,8 +3661,12 @@
     0%, 100% { box-shadow: 0 0 3.4cqw .4cqw rgba(196,151,254,.45); }
     50%      { box-shadow: 0 0 5.2cqw .8cqw rgba(196,151,254,.7); }
   }
-  #s-name.active .nplate h3 { animation: fadeup .7s var(--pop) .75s backwards; }
-  #s-name.active .nplate .nsub2 { animation: fadein .8s ease 2.6s backwards; }
+  #s-name.active .nplate h3 { animation: fadeup .7s var(--pop) var(--cue-named) backwards; }
+  /* flourish: the name stamps on "engineering", then its lavender full
+     stop clicks into place exactly as the spoken "harness." closes the
+     sentence — the full stop lands on the full stop */
+  #s-name.active .nplate h3 .hdot { display: inline-block; animation: fadein .25s ease var(--cue-harness) backwards; }
+  #s-name.active .nplate .nsub2 { animation: fadein .8s ease calc(var(--cue-simple) + .3s) backwards; }
 
   /* the three jobs, popped out of the plate on connector stems */
   #s-name .conn {
@@ -3303,9 +3681,9 @@
   #s-name .c-2 { left: 50%; }
   #s-name .c-3 { left: 70%; }
   #s-name.active .conn { animation: connDraw .4s ease backwards; }
-  #s-name.active .c-1 { animation-delay: 2.75s; }
-  #s-name.active .c-2 { animation-delay: 3.05s; }
-  #s-name.active .c-3 { animation-delay: 3.35s; }
+  #s-name.active .c-1 { animation-delay: var(--cue-encode); }
+  #s-name.active .c-2 { animation-delay: var(--cue-check); }
+  #s-name.active .c-3 { animation-delay: var(--cue-friction); }
   @keyframes connDraw { from { transform: scaleY(0); } }
   #s-name .job {
     position: absolute;
@@ -3342,8 +3720,19 @@
     width: max-content;
     max-width: 13cqw;
   }
-  #s-name.active .job b { animation: castPop .5s var(--bounce) var(--d) backwards, jobPulse 3.9s ease-in-out var(--jp) infinite; }
+  #s-name.active .job b {
+    animation: castPop .5s var(--bounce) var(--d) backwards,
+               jobPulse 3.9s ease-in-out var(--jp) infinite,
+               jobFlare .9s ease var(--flare, 999s); /* 999s default = never */
+  }
   #s-name.active .job small { animation: fadein .5s ease calc(var(--d) + .18s) backwards; }
+  /* a job pill flares white-hot as its spoken word lands */
+  #s-name .j1 { --flare: var(--cue-looks); }
+  #s-name .j3 { --flare: var(--cue-improve); }
+  @keyframes jobFlare {
+    0%, 100% { box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22); }
+    25%, 60% { box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22), 0 0 2.4cqw .45cqw rgba(196,151,254,.95); }
+  }
   /* ambient: the three jobs light up in turn, like being browsed */
   @keyframes jobPulse {
     0%, 24%, 100% { box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22); scale: 1; }
@@ -3364,10 +3753,10 @@
     color: var(--white);
     box-shadow: 0 1cqh 3cqh rgba(0,0,0,.3);
   }
-  #s-name.active .term { animation: fadeup .7s var(--pop) 4s backwards; }
+  #s-name.active .term { animation: fadeup .7s var(--pop) var(--cue-agent) backwards; }
   #s-name .term .ps { color: var(--lavender); font-weight: 700; margin-right: .7cqw; }
   #s-name .term .tw { font-weight: 600; }
-  #s-name.active .term .tw { animation: typeW 1s steps(14, end) 4.3s forwards; }
+  #s-name.active .term .tw { animation: typeW 1s steps(14, end) var(--cue-see) forwards; }
   #s-name .term .out {
     display: flex;
     gap: 1.2cqw;
@@ -3377,19 +3766,20 @@
   #s-name .term .out .cmd { color: var(--lavender); font-weight: 700; min-width: 11cqw; }
   #s-name .term .out .dsc { color: rgba(255,255,255,.75); }
   #s-name.active .term .out { animation: fadeup .35s var(--pop) backwards; }
-  #s-name.active .term .o1 { animation-delay: 5.5s; }
-  #s-name.active .term .o2 { animation-delay: 5.7s; }
-  #s-name.active .term .o3 { animation-delay: 5.9s; }
+  #s-name.active .term .o1 { animation-delay: calc(var(--cue-see) + 1.12s); }
+  #s-name.active .term .o2 { animation-delay: calc(var(--cue-see) + 1.32s); }
+  #s-name.active .term .o3 { animation-delay: calc(var(--cue-see) + 1.52s); }
 
   /* the agent leans in to read the help output */
   #s-name .leanin { position: absolute; left: 77%; top: 76%; }
-  #s-name.active .leanin { animation: fadein .3s ease 5.6s backwards; }
+  #s-name.active .leanin { animation: fadein .3s ease var(--cue-agent) backwards; }
   #s-name.active .leanin .agent-chip {
-    animation: castPop .5s var(--bounce) 5.6s backwards,
-               leanIn .5s ease 6.1s forwards;
+    animation: castPop .5s var(--bounce) var(--cue-agent) backwards,
+               leanIn .5s ease var(--cue-looks) forwards; /* leans in on "looks" */
   }
   @keyframes leanIn { to { rotate: -7deg; } }
-  #s-name.active .leanin .joy { animation: eyesIn .12s ease 6.3s forwards; }
+  /* delight as the help output lands */
+  #s-name.active .leanin .joy { animation: eyesIn .12s ease calc(var(--cue-see) + 1.3s) forwards; }
 
   /* #########################################################
      S17 · LIFE WITH IT: PR TIME — green PR, human catches an
@@ -3397,15 +3787,33 @@
      the reviewer all point at the same place. Not the code,
      not a doc: the arch check chip on the harness plate.
   ######################################################### */
+  /* word-sync cues from narration/017-s-pr.words.json (+1s mux lead). */
+  #s-pr {
+    --cue-harness: 3.16s;  /* "the team's HARNESS" */
+    --cue-checker: 3.98s;  /* "an ARCHITECTURE CHECKER now" */
+    --cue-work: 6.02s;     /* "WORK goes through" */
+    --cue-green: 7.48s;    /* "EVERYTHING'S GREEN" */
+    --cue-pr: 9.10s;       /* "the PR goes up" */
+    --cue-reviewer: 11.56s;/* "the human REVIEWER goes" */
+    --cue-hangon: 12.88s;  /* "HANG ON." */
+    --cue-wrong: 14.04s;   /* "THIS ARCHITECTURE IS WRONG." */
+    --cue-passed: 16.58s;  /* "the CHECKER PASSED something it shouldn't" */
+    --cue-everyone: 29.92s;/* "EVERYONE, including…" */
+    --cue-agent2: 31.40s;  /* "including the AGENT" */
+    --cue-points: 32.12s;  /* "POINTS at the same thing" */
+    --cue-fix: 34.78s;     /* "the FIX is in the harness" */
+  }
   #s-pr.active .kicker { animation: fadeup .7s var(--pop) .15s backwards; }
   #s-pr.active .hchip { animation: castPop .5s var(--bounce) backwards; }
-  #s-pr.active .hchip:nth-of-type(1) { animation-delay: .6s; }
-  #s-pr.active .hchip:nth-of-type(2) { animation-delay: .72s; }
-  #s-pr.active .hchip:nth-of-type(3) { animation-delay: .84s; }
+  /* .hl is span #1 inside .hplate, so the chips are nth-of-type(2)–(4)
+     (the old (1)–(3) rules silently missed the smoke chip) */
+  #s-pr.active .hchip:nth-of-type(2) { animation-delay: var(--cue-harness); }
+  #s-pr.active .hchip:nth-of-type(3) { animation-delay: calc(var(--cue-harness) + .12s); }
+  #s-pr.active .hchip:nth-of-type(4) { animation-delay: calc(var(--cue-harness) + .24s); }
   #s-pr.active .ck-arch {
-    animation: castPop .5s var(--bounce) .96s backwards,
-               chipLift .6s var(--bounce) 5.6s forwards,
-               archGlow 2.6s ease-in-out 6.4s infinite;
+    animation: castPop .5s var(--bounce) var(--cue-checker) backwards,
+               chipLift .6s var(--bounce) var(--cue-fix) forwards,
+               archGlow 2.6s ease-in-out calc(var(--cue-fix) + .8s) infinite;
   }
   @keyframes chipLift {
     to { translate: 0 -1.5cqh; scale: 1.15; background: rgba(196,151,254,.3); }
@@ -3447,12 +3855,24 @@
   .prcard .b3 { width: 7.5cqw; }
   .prcard .b4 { width: 11.5cqw; }
   @keyframes rlWipe { from { transform: scaleX(0); } }
-  #s-pr .prcard { left: 33.5%; top: 26%; --d: 1s; --fx: 14cqw; --fy: -3cqh; }
+  #s-pr .prcard { left: 33.5%; top: 26%; --d: var(--cue-work); --fx: 14cqw; --fy: -3cqh; }
+  /* prcard has no .fl child — give it its own ambient float so the
+     long unsynced midsection never sits still */
+  #s-pr.active .prcard {
+    animation: cardIn .85s var(--bounce) var(--d) backwards,
+               floaty 5.2s ease-in-out calc(var(--d) + .85s) infinite alternate;
+  }
   #s-pr.active .prcard .bar { animation: rlWipe .45s var(--pop) backwards; }
-  #s-pr.active .drow:nth-of-type(1) .bar { animation-delay: 1.35s; }
-  #s-pr.active .drow:nth-of-type(2) .bar { animation-delay: 1.45s; }
-  #s-pr.active .drow:nth-of-type(3) .bar { animation-delay: 1.55s; }
-  #s-pr.active .drow:nth-of-type(4) .bar { animation-delay: 1.65s; }
+  #s-pr.active .drow:nth-of-type(1) .bar { animation-delay: calc(var(--cue-work) + .35s); }
+  #s-pr.active .drow:nth-of-type(2) .bar { animation-delay: calc(var(--cue-work) + .45s); }
+  #s-pr.active .drow:nth-of-type(3) .bar { animation-delay: calc(var(--cue-work) + .55s); }
+  #s-pr.active .drow:nth-of-type(4) .bar { animation-delay: calc(var(--cue-work) + .65s); }
+  /* "the PR goes up" — the card title flares as the PR is named */
+  #s-pr.active .prcard h4 { animation: prFlare .7s ease var(--cue-pr); }
+  @keyframes prFlare {
+    0%, 100% { color: var(--purple); text-shadow: none; }
+    30%, 65% { color: var(--ink); text-shadow: 0 0 .8cqh rgba(196,151,254,.9); }
+  }
   /* the status row: everything passes (brand purple, not green) */
   .prcard .status { display: flex; gap: .6cqw; margin-top: 1.2cqh; }
   .prcard .st {
@@ -3467,10 +3887,10 @@
   }
   .prcard .st b { color: var(--purple); }
   #s-pr.active .st { animation: castPop .45s var(--bounce) backwards; }
-  #s-pr.active .s1 { animation-delay: 1.9s; }
-  #s-pr.active .s2 { animation-delay: 2.1s; }
-  /* arch check ticked too... and wobbles when the reviewer speaks */
-  #s-pr.active .s3 { animation: castPop .45s var(--bounce) 2.3s backwards, tickWob .6s ease 4.6s; }
+  #s-pr.active .s1 { animation-delay: var(--cue-green); }
+  #s-pr.active .s2 { animation-delay: calc(var(--cue-green) + .18s); }
+  /* arch check ticked too... and wobbles on "the checker passed" */
+  #s-pr.active .s3 { animation: castPop .45s var(--bounce) calc(var(--cue-green) + .36s) backwards, tickWob .6s ease var(--cue-passed); }
   @keyframes tickWob {
     0%, 100% { rotate: 0deg; }
     25%      { rotate: -4deg; }
@@ -3486,10 +3906,20 @@
   #s-pr.active .aoyu { animation: castPop .55s var(--bounce) .85s backwards; }
   #s-pr.active .aag { animation: castPop .55s var(--bounce) .7s backwards; }
   #s-pr.active .aag .joy {
-    animation: eyesIn .12s ease 2.6s forwards,
-               eyesOut .12s ease 4.3s forwards;
+    animation: eyesIn .12s ease var(--cue-green) forwards,
+               eyesOut .12s ease var(--cue-hangon) forwards; /* joy dies on "hang on." */
   }
-  #s-pr.active .arev { animation: revIn .65s var(--pop) 3.2s backwards; }
+  /* flourish: the agent side-eyes the reviewer as the bubble lands.
+     blinkEyes must be re-listed — the shorthand replaces it. */
+  #s-pr.active .aag .eyes {
+    animation: blinkEyes 4.6s ease-in-out infinite,
+               glanceShy 1.1s ease calc(var(--cue-wrong) + .25s);
+  }
+  @keyframes glanceShy {
+    0%, 100% { transform: translateX(.14em); }
+    25%, 70% { transform: translateX(.45em); }
+  }
+  #s-pr.active .arev { animation: revIn .65s var(--pop) var(--cue-reviewer) backwards; }
   @keyframes revIn { from { opacity: 0; transform: translateX(7cqw); } }
 
   /* the reviewer's catch (the status row stays green: dissonance) */
@@ -3516,8 +3946,8 @@
     rotate: 45deg;
   }
   #s-pr.active .bub {
-    animation: castPop .5s var(--bounce) 3.8s backwards,
-               bubPulse 1.6s ease-in-out 4.5s infinite;
+    animation: castPop .5s var(--bounce) var(--cue-wrong) backwards,
+               bubPulse 1.6s ease-in-out calc(var(--cue-wrong) + .7s) infinite;
   }
   @keyframes bubPulse {
     0%, 100% { scale: 1; }
@@ -3533,9 +3963,10 @@
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
   }
-  #s-pr.active .cv1 { animation: spDraw .55s ease 4.9s forwards; }
-  #s-pr.active .cv2 { animation: spDraw .55s ease 5.05s forwards; }
-  #s-pr.active .cv3 { animation: spDraw .55s ease 5.2s forwards; }
+  /* cv2 (the agent's line) draws FIRST, on "including the agent" */
+  #s-pr.active .cv1 { animation: spDraw .55s ease var(--cue-points) forwards; }
+  #s-pr.active .cv2 { animation: spDraw .55s ease var(--cue-agent2) forwards; }
+  #s-pr.active .cv3 { animation: spDraw .55s ease calc(var(--cue-points) + .15s) forwards; }
   #s-pr .cvd {
     position: absolute;
     width: .85cqw; height: .85cqw;
@@ -3545,9 +3976,9 @@
     box-shadow: 0 0 1.2cqh .2cqh rgba(196,151,254,.8);
     opacity: 0;
   }
-  #s-pr.active .cvd1 { animation: cvdRun1 2.4s linear 6.2s infinite; }
-  #s-pr.active .cvd2 { animation: cvdRun2 2.4s linear 7s infinite; }
-  #s-pr.active .cvd3 { animation: cvdRun3 2.4s linear 7.8s infinite; }
+  #s-pr.active .cvd1 { animation: cvdRun1 2.4s linear calc(var(--cue-points) + .6s) infinite; }
+  #s-pr.active .cvd2 { animation: cvdRun2 2.4s linear calc(var(--cue-points) + 1.4s) infinite; }
+  #s-pr.active .cvd3 { animation: cvdRun3 2.4s linear calc(var(--cue-points) + 2.2s) infinite; }
   @keyframes cvdRun1 {
     0%        { left: 19.5%; top: 50%; opacity: 0; }
     10%       { left: 22.9%; top: 53.6%; opacity: 1; }
@@ -3577,7 +4008,7 @@
     color: var(--white);
     white-space: nowrap;
   }
-  #s-pr.active .cap { animation: fadeup .8s var(--pop) 6.1s backwards; }
+  #s-pr.active .cap { animation: fadeup .8s var(--pop) var(--cue-everyone) backwards; }
 
   /* #########################################################
      S18 · FIX THE CHECK, THEN THE CODE — the chip opens into a
@@ -3585,11 +4016,42 @@
      the code gets fixed, the PR merges. Then the loss motif in
      reverse: the rule flows DOWN into the plate and sticks.
   ######################################################### */
+  /* word-sync cues from narration/018-s-fix.words.json (+1s mux lead). */
+  #s-fix {
+    --cue-encode: 1.46s;     /* "we ENCODE what the reviewer saw" */
+    --cue-checker: 3.0s;     /* "INTO THE CHECKER" — the rule types itself */
+    --cue-rerun: 4.42s;      /* "and RE-RUN it" — runstrip rises */
+    --cue-points: 6.16s;     /* "it POINTS straight at the problem" — ✗ */
+    --cue-agent: 8.78s;      /* "the AGENT fixes the code" */
+    --cue-allgreen: 10.48s;  /* "EVERYTHING'S green" — cmd2 re-types */
+    --cue-green: 11.12s;     /* "everything's GREEN" — ✓ clean */
+    --cue-merges: 12.34s;    /* "the PR MERGES" — merged ✓ stamp */
+    --cue-correction: 16.08s;/* "that CORRECTION isn't a comment" */
+    --cue-sensor: 20.4s;     /* "it's a SENSOR" — spark ARRIVES (departs −1s) */
+    --cue-teammate: 21.64s;  /* "EVERY TEAMMATE, and every future session" */
+    --cue-inherits: 25.1s;   /* "INHERITS it automatically" */
+    --cue-harness: 28.2s;    /* "because the HARNESS exists" */
+    --cue-compound: 35.62s;  /* "that's COMPOUNDING value in action" */
+  }
   #s-fix.active .kicker { animation: fadeup .7s var(--pop) .1s backwards; }
   /* recreate the S17 end-state quietly */
   #s-fix.active :is(.hplate, .aag2) { animation: fadein .35s ease .05s backwards; }
-  #s-fix.active .hplate { animation: fadein .35s ease .05s backwards, hglow 3.2s ease-in-out infinite; }
-  #s-fix.active .prcard { animation: fadein .35s ease .05s backwards, reworkGlow .9s ease-in-out 5s 2; }
+  #s-fix.active .hplate {
+    animation: fadein .35s ease .05s backwards,
+               hglow 3.2s ease-in-out infinite,
+               plateFlare .9s ease var(--cue-harness);
+  }
+  /* "because the HARNESS exists as its own clearly defined thing" —
+     filter-only flare so it composes with the hglow box-shadow loop */
+  @keyframes plateFlare {
+    0%, 100% { filter: none; }
+    35%, 55% { filter: brightness(1.3) drop-shadow(0 0 1.2cqh rgba(196,151,254,.5)); }
+  }
+  #s-fix.active .prcard {
+    animation: fadein .35s ease .05s backwards,
+               reworkGlow .9s ease-in-out var(--cue-agent) 2,
+               floaty 5.2s ease-in-out .4s infinite alternate;
+  }
   #s-fix .prcard { left: 70%; top: 12%; width: 14cqw; --rot: 1.5deg; }
   #s-fix .prcard .b1 { width: 8.5cqw; }
   #s-fix .prcard .b2 { width: 6.5cqw; }
@@ -3607,16 +4069,20 @@
     border-radius: 999px;
     box-shadow: 0 .5cqh 1.4cqh rgba(0,0,0,.3);
   }
-  #s-fix.active .merged { animation: castPop .55s var(--bounce) 7.3s backwards; }
+  #s-fix.active .merged { animation: castPop .55s var(--bounce) var(--cue-merges) backwards; }
   /* the agent works the fix */
   #s-fix .aag2 { position: absolute; left: 53%; top: 14%; }
   #s-fix.active .aag2 .conf {
-    animation: eyesIn .12s ease 4.35s forwards,
-               eyesOut .12s ease 5.6s forwards;
+    animation: eyesIn .12s ease calc(var(--cue-points) + .25s) forwards,
+               eyesOut .12s ease var(--cue-agent) forwards;
   }
-  #s-fix.active .aag2 .joy { animation: eyesIn .12s ease 8.9s forwards; }
+  #s-fix.active .aag2 .joy { animation: eyesIn .12s ease calc(var(--cue-green) + .25s) forwards; }
   /* the chip, opened up: the rule card (flies out of the chip) */
-  #s-fix .rulecard { left: 14%; top: 26%; width: 21cqw; --d: .6s; --fx: 37cqw; --fy: 44cqh; --rot: -1.5deg; }
+  #s-fix .rulecard { left: 14%; top: 26%; width: 21cqw; --fx: 37cqw; --fy: 44cqh; --rot: -1.5deg; }
+  #s-fix.active .rulecard {
+    animation: cardIn .85s var(--bounce) var(--cue-encode) backwards,
+               floaty 5.2s ease-in-out calc(var(--cue-encode) + 1s) infinite alternate;
+  }
   #s-fix .rulecard h4 {
     font-family: var(--mono);
     text-transform: none;
@@ -3633,8 +4099,8 @@
   }
   #s-fix .rulecard .ln:nth-of-type(2) { width: 11cqw; }
   #s-fix.active .rulecard .ln { animation: rlWipe .5s var(--pop) backwards; }
-  #s-fix.active .rulecard .ln:nth-of-type(1) { animation-delay: 1.15s; }
-  #s-fix.active .rulecard .ln:nth-of-type(2) { animation-delay: 1.3s; }
+  #s-fix.active .rulecard .ln:nth-of-type(1) { animation-delay: calc(var(--cue-encode) + .55s); }
+  #s-fix.active .rulecard .ln:nth-of-type(2) { animation-delay: calc(var(--cue-encode) + .7s); }
   #s-fix .nrule {
     margin-top: 1cqh;
     font-family: var(--mono);
@@ -3643,7 +4109,16 @@
     color: var(--purple);
     white-space: nowrap;
   }
-  #s-fix.active .nrule .tw { animation: typeW 1s steps(32, end) 1.7s forwards; }
+  #s-fix.active .nrule .tw {
+    animation: typeW 1s steps(32, end) var(--cue-checker) forwards,
+               ruleFlash .9s ease var(--cue-correction);
+  }
+  /* "that CORRECTION isn't a comment in a PR thread anymore" —
+     highlighter sweep over the typed rule, teeing up the spark */
+  @keyframes ruleFlash {
+    0%, 100% { background: transparent; }
+    30%, 65% { background: rgba(196,151,254,.4); }
+  }
 
   /* the re-run strip: the checker now catches it */
   #s-fix .runstrip {
@@ -3659,7 +4134,7 @@
     color: var(--white);
     box-shadow: 0 1cqh 3cqh rgba(0,0,0,.3);
   }
-  #s-fix.active .runstrip { animation: fadeup .6s var(--pop) 2.8s backwards, stripShake .5s ease 4.35s; }
+  #s-fix.active .runstrip { animation: fadeup .6s var(--pop) var(--cue-rerun) backwards, stripShake .5s ease var(--cue-points); }
   @keyframes stripShake {
     0%, 100% { rotate: 0deg; }
     25%      { rotate: -.7deg; }
@@ -3670,8 +4145,8 @@
   #s-fix .runstrip .rrow { margin-top: .7cqh; }
   #s-fix .runstrip .rrow:first-child { margin-top: 0; }
   #s-fix .runstrip .tw { font-weight: 600; }
-  #s-fix.active .cmd1 { animation: typeW 1s steps(26, end) 3.1s forwards; }
-  #s-fix.active .cmd2 { animation: typeW .55s steps(26, end) 6.2s forwards; }
+  #s-fix.active .cmd1 { animation: typeW 1s steps(26, end) calc(var(--cue-rerun) + .3s) forwards; }
+  #s-fix.active .cmd2 { animation: typeW .55s steps(26, end) var(--cue-allgreen) forwards; }
   #s-fix .res {
     display: flex;
     align-items: center;
@@ -3689,8 +4164,8 @@
   }
   #s-fix .res .ok { color: var(--lavender); font-size: 1.2cqw; }
   #s-fix .res small { font-weight: 400; color: rgba(255,255,255,.7); font-size: .85cqw; }
-  #s-fix.active .res1 { animation: castPop .45s var(--bounce) 4.35s backwards; }
-  #s-fix.active .res2 { animation: castPop .45s var(--bounce) 6.95s backwards; }
+  #s-fix.active .res1 { animation: castPop .45s var(--bounce) var(--cue-points) backwards; }
+  #s-fix.active .res2 { animation: castPop .45s var(--bounce) var(--cue-green) backwards; }
 
   /* the reversed loss motif: the rule sinks into the plate */
   #s-fix .spark {
@@ -3703,7 +4178,9 @@
     box-shadow: 0 0 1.6cqh .3cqh rgba(196,151,254,.85);
     opacity: 0;
   }
-  #s-fix.active .spark { animation: sparkArc 1s cubic-bezier(.5,.05,.7,1) 7.9s forwards; }
+  /* arrival-keyed: sparkArc is exactly 1s, so departing at cue−1s lands
+     the spark ON "sensor" */
+  #s-fix.active .spark { animation: sparkArc 1s cubic-bezier(.5,.05,.7,1) calc(var(--cue-sensor) - 1s) forwards; }
   @keyframes sparkArc {
     0%   { left: 22%; top: 36%; opacity: 0; scale: 1; }
     12%  { opacity: 1; }
@@ -3719,7 +4196,16 @@
     background: rgba(196,151,254,.3);
     box-shadow: 0 0 1.8cqw .25cqw rgba(196,151,254,.65);
   }
-  #s-fix.active .ck-arch { animation: chipCryst .55s var(--bounce) 8.75s forwards; }
+  #s-fix.active .ck-arch {
+    animation: chipCryst .55s var(--bounce) var(--cue-sensor) forwards,
+               hchipHop .45s ease calc(var(--cue-compound) + .36s);
+  }
+  /* flourish: on "compounding value" the plate's chips ripple
+     left-to-right — the harness literally compounding under the words */
+  @keyframes hchipHop { 50% { transform: translateY(-.5cqh); } }
+  #s-fix.active .hchip:nth-of-type(2) { animation: hchipHop .45s ease var(--cue-compound); }
+  #s-fix.active .hchip:nth-of-type(3) { animation: hchipHop .45s ease calc(var(--cue-compound) + .12s); }
+  #s-fix.active .hchip:nth-of-type(4) { animation: hchipHop .45s ease calc(var(--cue-compound) + .24s); }
   @keyframes chipCryst {
     45%  { translate: 0 -1.8cqh; scale: 1.3; }
     100% { translate: 0 0; scale: 1.05; background: var(--lavender); color: var(--ink); box-shadow: 0 0 2.6cqw .45cqw rgba(196,151,254,.8); }
@@ -3738,7 +4224,7 @@
     padding: .5cqh 1.2cqw;
     white-space: nowrap;
   }
-  #s-fix.active .badge { animation: castPop .5s var(--bounce) 9.1s backwards; }
+  #s-fix.active .badge { animation: castPop .5s var(--bounce) var(--cue-teammate) backwards; }
   #s-fix .fline {
     position: absolute;
     left: 50%; top: 64%;
@@ -3750,7 +4236,7 @@
     white-space: nowrap;
   }
   #s-fix .fline b { color: var(--lavender); font-weight: 600; }
-  #s-fix.active .fline { animation: fadeup .9s var(--pop) 9.5s backwards; }
+  #s-fix.active .fline { animation: fadeup .9s var(--pop) var(--cue-inherits) backwards; }
 
   /* #########################################################
      S19 · FINALE — the team, compounding. S12's lanes return,
@@ -3760,6 +4246,22 @@
      visibly grows; the agents get happier. Close on the brand
      equation in the termbar. Hold here for Q&A.
   ######################################################### */
+  /* word-sync cues from narration/019-s-fin.words.json (+1s mux lead).
+     --sync-fix uniformly shifts the hand-tuned fall/kick/chip/joy
+     cluster (authored base 2.4s) so fall 1 departs on "every" and
+     lands on "lands". --sync-drip must stay a multiple of 3.2s — the
+     drips are phase-locked to the hglow pulse. */
+  #s-fin {
+    --cue-team: 3.52s;      /* "when the whole TEAM lives in it" */
+    --cue-frictions: 8.12s; /* "Same FRICTIONS." */
+    --cue-fix: 10.44s;      /* "EVERY fix LANDS in one place" */
+    --sync-fix: calc(var(--cue-fix) - 2.4s);
+    --cue-harness: 15.34s;  /* "The HARNESS gets a little more capable" */
+    --sync-drip: 6.4s;      /* 2 × hglow period; drip 1 lands on "every day" */
+    --cue-everyone: 18.82s; /* "And EVERYONE, including…" */
+    --cue-starts: 22.38s;   /* "STARTS on top of everything…" */
+    --cue-harness2: 29.04s; /* "That's an engineering HARNESS." */
+  }
   #s-fin.active > .kicker { animation: fadein .4s ease .1s backwards; }
   #s-fin .lane {
     position: absolute;
@@ -3775,12 +4277,13 @@
   #s-fin .l5 { left: 37%; top: 32%; }
   #s-fin .l6 { left: 70%; top: 32%; }
   #s-fin.active .lane { animation: castPop .5s var(--bounce) backwards; }
-  #s-fin.active .l1 { animation-delay: .3s; }
-  #s-fin.active .l2 { animation-delay: .45s; }
-  #s-fin.active .l3 { animation-delay: .6s; }
-  #s-fin.active .l4 { animation-delay: .75s; }
-  #s-fin.active .l5 { animation-delay: .9s; }
-  #s-fin.active .l6 { animation-delay: 1.05s; }
+  /* the grid crests on "team": same .15s stagger, l6 lands on the word */
+  #s-fin.active .l1 { animation-delay: calc(var(--cue-team) - .75s); }
+  #s-fin.active .l2 { animation-delay: calc(var(--cue-team) - .6s); }
+  #s-fin.active .l3 { animation-delay: calc(var(--cue-team) - .45s); }
+  #s-fin.active .l4 { animation-delay: calc(var(--cue-team) - .3s); }
+  #s-fin.active .l5 { animation-delay: calc(var(--cue-team) - .15s); }
+  #s-fin.active .l6 { animation-delay: var(--cue-team); }
   /* the same silent cast as S12 */
   #s-fin .mh {
     position: absolute;
@@ -3842,8 +4345,17 @@
   /* two stacked faces: each lane flips to joy when its fix lands (--jt) */
   #s-fin .ma b { grid-area: 1 / 1; font-style: normal; }
   #s-fin .ma .mj { opacity: 0; color: var(--lavender); }
-  #s-fin.active .ma .mb { animation: eyesOut .12s ease var(--jt) forwards; }
-  #s-fin.active .ma .mj { animation: eyesIn  .12s ease var(--jt) forwards; }
+  #s-fin.active .ma .mb { animation: eyesOut .12s ease calc(var(--jt) + var(--sync-fix)) forwards; }
+  #s-fin.active .ma .mj { animation: eyesIn  .12s ease calc(var(--jt) + var(--sync-fix)) forwards; }
+  /* lane 6's joy is caused by drip 1, not a fall — drip clock, not fix clock */
+  #s-fin.active .l6 .ma .mb,
+  #s-fin.active .l6 .ma .mj { animation-delay: calc(var(--jt) + var(--sync-drip)); }
+  /* "Same frictions." — all six snag pins flare as the words land */
+  #s-fin.active .fpin { animation: pinFlash .8s ease var(--cue-frictions); }
+  @keyframes pinFlash {
+    0%, 100% { background: var(--mauve); box-shadow: none; }
+    30%, 60% { background: var(--white); box-shadow: 0 0 1cqh .2cqh rgba(255,255,255,.85); }
+  }
   /* the reversed loss motif, ×5: a fix detaches and falls into the plate */
   #s-fin .fall, #s-fin .drip {
     position: absolute;
@@ -3858,7 +4370,7 @@
   }
   /* waypoints --xa/--ya and --xm/--ym route each dot out through the
      row gap and down a gutter BETWEEN lanes, never through one */
-  #s-fin.active .fall { animation: finFall .95s cubic-bezier(.55,.05,.65,1) var(--fd) forwards; }
+  #s-fin.active .fall { animation: finFall .95s cubic-bezier(.55,.05,.65,1) calc(var(--fd) + var(--sync-fix)) forwards; }
   @keyframes finFall {
     0%   { left: var(--x0); top: var(--y0); opacity: 0; scale: 1; }
     10%  { opacity: 1; }
@@ -3869,7 +4381,7 @@
   }
   /* ...then forever: ambient drips phase-locked to the plate glow,
      so every pulse reads as the plate absorbing the team's fixes */
-  #s-fin.active .drip { animation: finDrip 3.2s linear var(--dd) infinite; }
+  #s-fin.active .drip { animation: finDrip 3.2s linear calc(var(--dd) + var(--sync-drip)) infinite; }
   @keyframes finDrip {
     0%, 8%    { left: var(--x0); top: var(--y0); opacity: 0; scale: 1; }
     14%       { opacity: .95; }
@@ -3889,11 +4401,21 @@
   #s-fin.active .hplate {
     animation: fadeup .7s var(--pop) .55s backwards,
                hglow 3.2s ease-in-out infinite,
-               plateKick .5s ease 3.35s,
-               plateKick .5s ease 4.15s,
-               plateKick .5s ease 4.85s,
-               plateKick .5s ease 5.65s,
-               plateKick .5s ease 6.45s;
+               plateKick .5s ease calc(var(--sync-fix) + 3.35s),
+               plateKick .5s ease calc(var(--sync-fix) + 4.15s),
+               plateKick .5s ease calc(var(--sync-fix) + 4.85s),
+               plateKick .5s ease calc(var(--sync-fix) + 5.65s),
+               plateKick .5s ease calc(var(--sync-fix) + 6.45s),
+               plateKick .5s ease var(--cue-harness2); /* flourish: one last breath on the final word */
+  }
+  /* the wordmark answers to its name, twice */
+  #s-fin.active .hplate .hl {
+    animation: hlFlare .7s ease var(--cue-harness),
+               hlFlare .9s ease var(--cue-harness2);
+  }
+  @keyframes hlFlare {
+    0%, 100% { filter: none; }
+    40%      { filter: brightness(1.6) drop-shadow(0 0 .9cqh rgba(196,151,254,.9)); }
   }
   @keyframes plateKick {
     0%, 100% { box-shadow: 0 0 2.6cqw .25cqw rgba(196,151,254,.3); }
@@ -3901,8 +4423,8 @@
   }
   /* new chips crystallise in: pop solid lavender, settle to chip dress */
   #s-fin.active .nc {
-    animation: castPop .5s var(--bounce) var(--cd) backwards,
-               chipFlash 1.6s ease calc(var(--cd) + .45s) backwards;
+    animation: castPop .5s var(--bounce) calc(var(--cd) + var(--sync-fix)) backwards,
+               chipFlash 1.6s ease calc(var(--cd) + var(--sync-fix) + .45s) backwards;
   }
   @keyframes chipFlash {
     from { background: var(--lavender); color: var(--ink); box-shadow: 0 0 1.8cqw .35cqw rgba(196,151,254,.85); }
@@ -3919,7 +4441,7 @@
     white-space: nowrap;
   }
   #s-fin .closeline b { color: var(--lavender); font-weight: 600; }
-  #s-fin.active .closeline { animation: fadeup .9s var(--pop) 7.2s backwards; }
+  #s-fin.active .closeline { animation: fadeup .9s var(--pop) var(--cue-everyone) backwards; }
   /* the closing equation: S1's termbar language, resolved */
   #s-fin .termbar {
     position: absolute;
@@ -3936,7 +4458,7 @@
     white-space: nowrap;
     overflow: hidden;
   }
-  #s-fin.active .termbar { animation: fadeup .7s var(--pop) 8.2s backwards; }
+  #s-fin.active .termbar { animation: fadeup .7s var(--pop) var(--cue-starts) backwards; }
   #s-fin .termbar .ps { color: var(--lavender); font-weight: 700; margin-right: .8cqw; }
   #s-fin .termbar .tline {
     display: inline-block;
@@ -3944,7 +4466,8 @@
     white-space: nowrap;
     vertical-align: bottom;
     max-width: 0;
-    animation: typeFin 2.4s steps(54, end) 8.8s forwards;
+    /* typing ends as "…learned." is spoken */
+    animation: typeFin 2.4s steps(54, end) calc(var(--cue-starts) + .5s) forwards;
   }
   @keyframes typeFin { to { max-width: 54ch; } }
   #s-fin .termbar .br { color: rgba(255,255,255,.45); }
@@ -3966,6 +4489,20 @@
      the ghost ? pill crossfades into an ink "your harness"
      pill in the plate's dress. Happy harnessing.
   ######################################################### */
+  /* word-sync cues from narration/020-s-bye.words.json (+1s mux lead). */
+  #s-bye {
+    --cue-layers: 2.94s;   /* "same THREE LAYERS you walked in with" */
+    --cue-missing: 5.94s;  /* "plus the one that was MISSING" — the ? resolves */
+    --cue-find: 6.88s;     /* "GO FIND yours." */
+    --cue-happy: 8.24s;    /* "HAPPY harnessing." */
+  }
+  /* the three layers re-enter on their phrase, via the .e wrapper —
+     never the .pill (its single-value duration/delay would clobber
+     the counter-rotation phase lock). The ghost ? orbits from frame
+     one: it's the bookend callback. */
+  #s-bye.active .orb.o1 .e  { animation: fadein .6s ease var(--cue-layers) backwards; }
+  #s-bye.active .orb.o2a .e { animation: fadein .6s ease calc(var(--cue-layers) + .15s) backwards; }
+  #s-bye.active .orb.o2b .e { animation: fadein .6s ease calc(var(--cue-layers) + .3s) backwards; }
   #s-bye .scene {
     position: absolute;
     inset: 0 0 26% 0;
@@ -4040,7 +4577,7 @@
     border: 1.5px dashed rgba(255,255,255,.75);
     color: var(--white);
   }
-  #s-bye.active .pill.ghost { animation: spin 34s linear -6s infinite reverse, eyesOut .45s ease 2.1s forwards; }
+  #s-bye.active .pill.ghost { animation: spin 34s linear -6s infinite reverse, eyesOut .45s ease var(--cue-missing) forwards; }
   #s-bye .pill.hh {
     background: var(--ink);
     color: var(--lavender);
@@ -4049,10 +4586,10 @@
   }
   #s-bye.active .pill.hh {
     animation: spin 34s linear -6s infinite reverse,
-               eyesIn .45s ease 2.1s forwards,
-               castPop .5s var(--bounce) 2.1s backwards,
-               hhPing 1.1s ease 2.2s,
-               hhGlow 3.2s ease-in-out 3.4s infinite;
+               eyesIn .45s ease var(--cue-missing) forwards,
+               castPop .5s var(--bounce) var(--cue-missing) backwards,
+               hhPing 1.1s ease calc(var(--cue-missing) + .1s),
+               hhGlow 3.2s ease-in-out calc(var(--cue-missing) + 1.3s) infinite;
   }
   @keyframes hhPing {
     0%   { box-shadow: 0 0 0 0 rgba(196,151,254,.7); }
@@ -4074,7 +4611,12 @@
     white-space: nowrap;
   }
   #s-bye .byeline .hdot { color: var(--lavender); }
-  #s-bye.active .byeline { animation: fadeup 1s var(--pop) 2.75s backwards; }
+  #s-bye.active .byeline { animation: fadeup 1s var(--pop) var(--cue-happy) backwards; }
+  /* flourish: the heading's lavender full stop rubber-stamps down as
+     the spoken sentence closes (narration ends "harnessing." ≈ 9.1s) */
+  #s-bye .byeline .hdot { display: inline-block; }
+  #s-bye.active .byeline .hdot { animation: dotStamp .45s var(--bounce) calc(var(--cue-happy) + 1.06s) backwards; }
+  @keyframes dotStamp { from { opacity: 0; scale: 2.4; } }
   #s-bye .byesub {
     position: absolute;
     left: 50%; top: 91%;
@@ -4085,7 +4627,9 @@
     color: var(--mauve);
     white-space: nowrap;
   }
-  #s-bye.active .byesub { animation: fadeup .9s var(--pop) 3.5s backwards; }
+  /* the sub enters BEFORE the heading — narration order: "Go find
+     yours." then "Happy harnessing." */
+  #s-bye.active .byesub { animation: fadeup .9s var(--pop) var(--cue-find) backwards; }
 </style>
 </head>
 <body>
@@ -4758,9 +5302,9 @@
         <span class="conn c-1" aria-hidden="true"></span>
         <span class="conn c-2" aria-hidden="true"></span>
         <span class="conn c-3" aria-hidden="true"></span>
-        <div class="job j1" style="--d:2.95s;--jp:4.2s"><b>discover</b><small>what can this environment do?</small></div>
-        <div class="job j2" style="--d:3.25s;--jp:5.5s"><b>prove</b><small>am I done? run the checks</small></div>
-        <div class="job j3" style="--d:3.55s;--jp:6.8s"><b>improve</b><small>missing a feature? add it here</small></div>
+        <div class="job j1" style="--d:calc(var(--cue-encode) + .2s);--jp:calc(var(--cue-friction) + 1.5s)"><b>discover</b><small>what can this environment do?</small></div>
+        <div class="job j2" style="--d:calc(var(--cue-check) + .2s);--jp:calc(var(--cue-friction) + 2.8s)"><b>prove</b><small>am I done? run the checks</small></div>
+        <div class="job j3" style="--d:calc(var(--cue-friction) + .2s);--jp:calc(var(--cue-friction) + 4.1s)"><b>improve</b><small>missing a feature? add it here</small></div>
 
         <div class="term">
           <div class="trow"><span class="ps">$</span><span class="tw" style="--ch:14ch">harness --help</span><span class="tcur"></span></div>
