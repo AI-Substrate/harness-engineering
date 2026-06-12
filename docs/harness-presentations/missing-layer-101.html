@@ -822,15 +822,25 @@
   #s-stack.active .stand .human-chip,
   #s-stack.active .stand .agent-chip { animation: castPop .55s var(--bounce) backwards; }
   #s-stack.active .st-you .human-chip { animation-delay: var(--cue-you); }
-  #s-stack.active .st-agent .agent-chip { animation-delay: var(--cue-agent); }
+  /* the agent idles: a slow hover after landing (translate channel only —
+     castPop owns scale/rotate), shadow breathing in counter-scale with it */
+  #s-stack.active .st-agent .agent-chip {
+    animation: castPop .55s var(--bounce) var(--cue-agent) backwards,
+               agentIdle 3.4s ease-in-out calc(var(--cue-agent) + .55s) infinite alternate;
+  }
   /* shadows arrive WITH their owners, not before */
   #s-stack.active .stand .shdw { animation: shdwIn .55s var(--bounce) backwards; }
   #s-stack.active .st-you .shdw { animation-delay: var(--cue-you); }
-  #s-stack.active .st-agent .shdw { animation-delay: var(--cue-agent); }
+  #s-stack.active .st-agent .shdw {
+    animation: shdwIn .55s var(--bounce) var(--cue-agent) backwards,
+               shdwBreathe 3.4s ease-in-out calc(var(--cue-agent) + .55s) infinite alternate;
+  }
   #s-stack .st-you { left: 42.5%; top: 21%; }
   #s-stack .st-agent { left: 75%; top: 48%; }
   @keyframes castPop { from { scale: 0; rotate: -10deg; } }
   @keyframes shdwIn { from { opacity: 0; scale: .2 1; } }
+  @keyframes agentIdle { from { translate: 0 0; } to { translate: 0 -.35cqh; } }
+  @keyframes shdwBreathe { from { scale: 1 1; } to { scale: .93 1; } }
 
   /* the flows, called out beside the stack: two rails with traveling
      light pulses — intent runs down the near rail, code & claims run
@@ -937,14 +947,19 @@
     49%, 100% { opacity: 0; }
   }
 
-  /* the agent visibly processes the work on its floor, both directions */
-  #s-stack.active .st-agent .eyes { animation: agentScan var(--TRIP) linear var(--cue-down) infinite; }
+  /* the agent visibly processes the work on its floor, both directions.
+     blinkEyes re-listed (the shorthand replaces it) and agentScan kept
+     off the transform channel so the blink survives the glow. */
+  #s-stack.active .st-agent .eyes {
+    animation: blinkEyes 4.6s ease-in-out infinite,
+               agentScan var(--TRIP) linear var(--cue-down) infinite;
+  }
   @keyframes agentScan {
-    0%, 16%   { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
-    21%, 28%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
-    35%, 58%  { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
-    63%, 67%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
-    74%, 100% { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
+    0%, 16%   { color: var(--white); text-shadow: none; }
+    21%, 28%  { color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
+    35%, 58%  { color: var(--white); text-shadow: none; }
+    63%, 67%  { color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
+    74%, 100% { color: var(--white); text-shadow: none; }
   }
 
   /* #########################################################
@@ -1273,6 +1288,18 @@
     35%      { opacity: 1; transform: translateY(-.3cqh); }
   }
   #s-infer.active .think { animation: castPop .5s var(--bounce) calc(var(--cue-agent) + .35s) backwards; }
+
+  /* these cards fly a long way out of the agent — the shared cardIn's
+     mid keyframe + overshoot easing reads as a hitch over that distance.
+     Single-segment glide instead: fast out, hard decel at the end. */
+  #s-infer.active .acard {
+    animation-name: cardGlide;
+    animation-timing-function: cubic-bezier(.19,1,.22,1);
+  }
+  @keyframes cardGlide {
+    from { opacity: 0; transform: translate(var(--fx, 0cqw), var(--fy, 4cqh)) scale(.22); }
+    to   { opacity: 1; transform: translate(0cqw, 0cqh) scale(1); }
+  }
 
   /* the "inferred" sheen: light ripples across every card once per
      cycle, in dealing order (--shd staggers the wave) */

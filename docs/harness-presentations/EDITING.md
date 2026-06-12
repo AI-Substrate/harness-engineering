@@ -192,6 +192,12 @@ cues (recipe B steps 4–6).
   one-shot flares must not animate properties a `forwards` fill is holding
   (use color/filter/box-shadow), and `uniFlash`-style one-shots must be
   listed AFTER an infinite loop on the same property.
+- Every agent gets its idle blink from the base `.agent-chip .eyes` rule.
+  Any slide that puts its own `animation:` on `.eyes` must re-list
+  `blinkEyes 4.6s ease-in-out infinite` in the comma list AND keep its own
+  keyframes off the `transform` channel (the blink lives there — glow with
+  color/text-shadow only). S2 shipped a frozen agent because `agentScan`
+  forgot both.
 - Background `&` launches don't notify; use the harness's background runner
   or a Monitor on the log file.
 
