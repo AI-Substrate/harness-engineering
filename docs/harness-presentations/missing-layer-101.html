@@ -3254,9 +3254,16 @@
     box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22);
   }
   #s-name .job small {
+    /* out of flow so a two-line caption can't push its pill off the
+       shared centerline (pills align on the pill, captions hang below) */
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    translate: -50% 0;
     margin-top: 1cqh;
     font-size: .92cqw;
     color: var(--mauve);
+    width: max-content;
     max-width: 13cqw;
   }
   #s-name.active .job b { animation: castPop .5s var(--bounce) var(--d) backwards, jobPulse 3.9s ease-in-out var(--jp) infinite; }
@@ -4566,8 +4573,8 @@
         </div>
         <div class="qcard qink qb">
           <p class="qn">Question 02</p>
-          <h3>Where does your backpressure live<span class="qm">?</span></h3>
-          <p class="qs">so teammates and future you get it for free</p>
+          <h3>Where does the learning go<span class="qm">?</span></h3>
+          <p class="qs">your backpressure &middot; frictions &middot; workarounds</p>
         </div>
       </div>
     </section>
@@ -4590,8 +4597,8 @@
         </div>
         <div class="qcard qink qb" aria-hidden="true">
           <p class="qn">Question 02</p>
-          <h3>Where does your backpressure live<span class="qm">?</span></h3>
-          <p class="qs">so teammates and future you get it for free</p>
+          <h3>Where does the learning go<span class="qm">?</span></h3>
+          <p class="qs">your backpressure &middot; frictions &middot; workarounds</p>
         </div>
         <p class="slab sa"><b>A</b> · tools to know it is done</p>
         <p class="slab sb"><b>B</b> · a place to encode friction away</p>
