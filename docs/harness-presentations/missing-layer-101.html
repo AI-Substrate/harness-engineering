@@ -643,6 +643,8 @@
     background: radial-gradient(closest-side, rgba(12,0,30,.45), transparent 70%);
     pointer-events: none;
   }
+  /* ground shadow fades in as the plates land on it */
+  #s-stack.active .gshadow { animation: fadein .9s ease .35s backwards; }
   /* isometric rig: the parent carries the camera (orthographic, no
      perspective); each floor only travels along Z. preserve-3d does
      the projection. */
@@ -796,9 +798,14 @@
   #s-stack.active .stand .agent-chip { animation: castPop .55s var(--bounce) backwards; }
   #s-stack.active .st-you .human-chip { animation-delay: 1.7s; }
   #s-stack.active .st-agent .agent-chip { animation-delay: 1.9s; }
+  /* shadows arrive WITH their owners, not before */
+  #s-stack.active .stand .shdw { animation: shdwIn .55s var(--bounce) backwards; }
+  #s-stack.active .st-you .shdw { animation-delay: 1.7s; }
+  #s-stack.active .st-agent .shdw { animation-delay: 1.9s; }
   #s-stack .st-you { left: 42.5%; top: 21%; }
   #s-stack .st-agent { left: 75%; top: 48%; }
   @keyframes castPop { from { scale: 0; rotate: -10deg; } }
+  @keyframes shdwIn { from { opacity: 0; scale: .2 1; } }
 
   /* the work: intent falls through the floors, a claim rises back */
   #s-stack .drop {
@@ -819,45 +826,75 @@
     box-shadow: 0 0 1.6cqh .25cqh rgba(255,255,255,.7);
   }
   #s-stack.active .d-up { animation: dropRise var(--TRIP) linear 2.3s infinite; }
+  /* intent HOPS down the stack: land, squash, rest while the layer
+     works (coat flash), anticipate, drop to the next. Absorbed by 03. */
   @keyframes dropFall {
-    0%        { top: 14%; opacity: 0; }
-    5%        { top: 17%; opacity: 1; }
-    40%       { top: 70%; opacity: 1; }
-    44%, 100% { top: 74%; opacity: 0; }
+    0%        { top: 12%;   opacity: 0; scale: 1 1; }
+    3%        { top: 15%;   opacity: 1; scale: .88 1.22; }
+    5.5%      { top: 20%;   scale: 1.32 .55; }
+    7.5%      { top: 19.3%; scale: .95 1.06; }
+    10%       { top: 19.6%; scale: 1 1; }
+    12%       { top: 18.2%; scale: .92 1.14; }
+    16%       { top: 38%;   scale: .88 1.24; }
+    19%       { top: 59%;   scale: 1.32 .55; }
+    21%       { top: 58.3%; scale: .95 1.06; }
+    24.5%     { top: 58.6%; scale: 1 1; }
+    26.5%     { top: 57.2%; scale: .92 1.14; }
+    31%       { top: 65.5%; scale: .88 1.24; }
+    35%       { top: 72.5%; scale: 1.32 .55; }
+    37%       { top: 71.8%; scale: .95 1.06; }
+    40%       { top: 72.1%; opacity: 1; scale: 1 1; }
+    43%       { top: 73%;   opacity: .9; scale: .35 .35; }
+    45%, 100% { top: 73.4%; opacity: 0; scale: .2 .2; }
   }
+  /* the claim hops back UP: out of the codebase, off 02, delivered to 01 */
   @keyframes dropRise {
-    0%, 50%   { top: 74%; opacity: 0; }
-    55%       { top: 70%; opacity: 1; }
-    88%       { top: 17%; opacity: 1; }
-    92%, 100% { top: 14%; opacity: 0; }
+    0%, 50%   { top: 72.5%; opacity: 0; scale: .3 .3; }
+    52.5%     { top: 70.5%; opacity: 1; scale: .9 1.18; }
+    57%       { top: 64%;   scale: .88 1.22; }
+    61%       { top: 59%;   scale: 1.28 .6; }
+    63.5%     { top: 58.3%; scale: .96 1.05; }
+    66%       { top: 58.6%; scale: 1 1; }
+    68%       { top: 57.2%; scale: .92 1.14; }
+    73%       { top: 38%;   scale: .88 1.22; }
+    77%       { top: 20%;   scale: 1.28 .6; }
+    79.5%     { top: 19.3%; scale: .96 1.05; }
+    83%       { top: 19.6%; opacity: 1; scale: 1 1; }
+    88%       { top: 19.6%; opacity: 1; scale: 1 1; }
+    92%, 100% { top: 17%;   opacity: 0; scale: .4 .4; }
   }
-  /* floors flash as the work passes (same 2.3s start = phase-locked) */
+  /* floors flash as the work lands on them (same 2.3s start = phase-locked);
+     02 and 03 flash again as the claim passes back up */
   #s-stack.active .f-1 .coat { animation: coat1 var(--TRIP) linear 2.3s infinite; }
   #s-stack.active .f-2 .coat { animation: coat2 var(--TRIP) linear 2.3s infinite; }
   #s-stack.active .f-3 .coat { animation: coat3 var(--TRIP) linear 2.3s infinite; }
   @keyframes coat1 {
     0%        { opacity: .55; }
-    9%, 86%   { opacity: 0; }
-    93%       { opacity: .6; }
+    11%, 84%  { opacity: 0; }
+    91%       { opacity: .6; }
     100%      { opacity: 0; }
   }
   @keyframes coat2 {
-    0%, 15%   { opacity: 0; }
-    21%, 27%  { opacity: .5; }
-    35%, 100% { opacity: 0; }
+    0%, 17%   { opacity: 0; }
+    21%, 26%  { opacity: .5; }
+    33%, 59%  { opacity: 0; }
+    63%, 66%  { opacity: .4; }
+    73%, 100% { opacity: 0; }
   }
   @keyframes coat3 {
-    0%, 36%   { opacity: 0; }
-    42%, 48%  { opacity: .5; }
-    56%, 100% { opacity: 0; }
+    0%, 33%   { opacity: 0; }
+    38%, 44%  { opacity: .5; }
+    49%, 100% { opacity: 0; }
   }
 
-  /* the agent visibly processes the work as it passes its floor */
+  /* the agent visibly processes the work on its floor, both directions */
   #s-stack.active .st-agent .eyes { animation: agentScan var(--TRIP) linear 2.3s infinite; }
   @keyframes agentScan {
-    0%, 14%   { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
-    20%, 30%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
-    38%, 100% { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
+    0%, 16%   { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
+    21%, 28%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
+    35%, 58%  { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
+    63%, 67%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
+    74%, 100% { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
   }
 
   /* #########################################################
