@@ -2295,8 +2295,9 @@
   }
   #s-you.active .dust i { animation: puff .7s ease-out calc(var(--cue-not) + .7s) forwards; }
   #s-you.active .field { animation: jolt .45s ease-out calc(var(--cue-not) + .68s); }
-  /* the scene is already standing when we arrive */
-  #s-you.active :is(.stampwrap, .agentside2, .ticker) { animation: fadein .4s ease .05s backwards; }
+  /* the scene is already standing when we arrive: this slide opens ON
+     S8's final composition, so stamp, agent and ticker get NO entrance —
+     a fade here reads as a blink at the 008→009 cut in the stitch. */
   /* the human walks in with the magnifier */
   #s-you .you { position: absolute; left: 21%; top: 49%; translate: 0 -50%; }
   #s-you.active .you { animation: youIn .9s var(--pop) var(--cue-you) backwards; }
@@ -2378,8 +2379,8 @@
   }
   #s-back .yb { position: absolute; left: 24%; top: 56%; translate: -50% -50%; }
   #s-back .ab { position: absolute; left: 76%; top: 56%; translate: -50% -50%; }
-  #s-back.active .yb { animation: castPop .55s var(--bounce) .2s backwards; }
-  #s-back.active .ab { animation: castPop .55s var(--bounce) .4s backwards; }
+  /* the cast carries over from S9 — no entrance pop, they're on stage
+     at frame 0 (kills the blank-frame blink at the 009→010 cut) */
   /* the pressure arrow: dashes march from you toward the agent */
   #s-back .flow {
     position: absolute;
@@ -4105,11 +4106,11 @@
     --cue-compound: 35.62s;  /* "that's COMPOUNDING value in action" */
   }
   #s-fix.active .kicker { animation: fadeup .7s var(--pop) .1s backwards; }
-  /* recreate the S17 end-state quietly */
-  #s-fix.active :is(.hplate, .aag2) { animation: fadein .35s ease .05s backwards; }
+  /* recreate the S17 end-state: bar, agent and PR card are on stage at
+     frame 0 — NO entrance fades, or the 017→018 cut blinks in the
+     stitched video. */
   #s-fix.active .hplate {
-    animation: fadein .35s ease .05s backwards,
-               hglow 3.2s ease-in-out infinite,
+    animation: hglow 3.2s ease-in-out infinite,
                plateFlare .9s ease var(--cue-harness);
   }
   /* "because the HARNESS exists as its own clearly defined thing" —
@@ -4119,8 +4120,7 @@
     35%, 55% { filter: brightness(1.3) drop-shadow(0 0 1.2cqh rgba(196,151,254,.5)); }
   }
   #s-fix.active .prcard {
-    animation: fadein .35s ease .05s backwards,
-               reworkGlow .9s ease-in-out var(--cue-agent) 2,
+    animation: reworkGlow .9s ease-in-out var(--cue-agent) 2,
                floaty 5.2s ease-in-out .4s infinite alternate;
   }
   #s-fix .prcard { left: 70%; top: 12%; width: 14cqw; --rot: 1.5deg; }
