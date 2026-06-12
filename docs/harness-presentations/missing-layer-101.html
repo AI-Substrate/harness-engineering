@@ -1492,6 +1492,24 @@
     --cue-configs: 6.32s;   /* "CONFIGS," */
     --cue-db: 6.96s;        /* "DATABASES." */
     --cue-where: 14.22s;    /* "WHERE all the real engineering complexity lives" */
+    /* quirk gags — "every one has its own QUIRKS." The pile acts the line
+       out: each card does one dumb in-character trick, staggered so the
+       eye wanders. All one-shots except zzz/snore (README stays asleep). */
+    --gag-flip: 8.56s;    /* "EVERY repo" — tests/ backflips, lands crooked */
+    --gag-bloat: 9.72s;   /* "DIFFERENT." — package.json inhales node_modules */
+    --gag-spout: 10.40s;  /* breath gap — Dockerfile blows its spout */
+    --gag-waddle: 11.16s; /* "every ONE" — migrations/ migrates (and back) */
+    --gag-shifty: 11.50s; /* "HAS its own" — .env.example glances, then redacts */
+    --gag-dash: 12.16s;   /* "QUIRKS." — deploy.sh ships itself, rolls back */
+    --gag-stars: 13.40s;  /* "AND" — ci.yml goes double-green, spews stars */
+    --gag-jelly: 14.50s;  /* "ALL the real" — the db wobbles, nervous */
+    --gag-rainbow: 15.20s;/* "ENGINEERING" — lint.config gets prettier */
+    --gag-creak: 16.50s;  /* "LIVES." — Makefile's hinge gives out */
+    --gag-rumble: 17.58s; /* "KEEP" — infra/ rumbles; mig + db feel it */
+    --gag-zzz: 18.06s;    /* "PICTURE" — README.md dozes off for good */
+    --gag-sprout: 19.00s; /* after "head." — seed-db.sh sprouts a leaf */
+    --gag-flaky: 19.78s;  /* "IT" — *.test.ts fails, shakes, passes on retry */
+    --gag-bye: 20.44s;    /* "LATER." — a nameless chip slips away forever */
   }
   /* wordmark + traits arrive on their name (overrides .lhead defaults) */
   #s-code .lword { animation-delay: var(--cue-codebase); }
@@ -1562,11 +1580,17 @@
   /* ci.yml status dots: pass/fail, alternating (brand colours) */
   #s-code .ci .dots { display: flex; gap: .45cqw; margin-top: .65cqh; }
   #s-code .ci .dots i { width: .72cqw; height: .72cqw; border-radius: 50%; background: rgba(0,0,0,.28); }
-  #s-code.active .ci .d1 { animation: ciBlink 2.3s steps(1, end) 2.3s infinite; }
-  #s-code.active .ci .d2 { animation: ciBlink 2.3s steps(1, end) 3.45s infinite; }
+  /* ciProud is the gag: for 1.6s BOTH dots hold pass-purple at once
+     (ciBlink alternates them, so this never otherwise happens). One-shot
+     listed AFTER the infinite loop so it wins the background while live. */
+  #s-code.active .ci .d1 { animation: ciBlink 2.3s steps(1, end) 2.3s infinite, ciProud 1.6s steps(1, end) var(--gag-stars); }
+  #s-code.active .ci .d2 { animation: ciBlink 2.3s steps(1, end) 3.45s infinite, ciProud 1.6s steps(1, end) var(--gag-stars); }
   @keyframes ciBlink {
     0%, 100% { background: var(--purple); }
     50%      { background: rgba(0,0,0,.28); }
+  }
+  @keyframes ciProud {
+    0%, 100% { background: var(--purple); }
   }
   /* the database: a small cylinder whose lid blips with activity */
   #s-code .db {
@@ -1652,6 +1676,384 @@
   #s-code .c-m3     { left: 50%; top: 30%; --rot: -6deg; --d: 1.26s; --rd: calc(var(--cue-code) + .14s); }
   #s-code .c-m3 .ln { width: 2.6cqw; margin-top: .5cqh; }
   #s-code .c-m3 .ln + .ln { width: 1.9cqw; }
+
+  /* =========== THE QUIRKS (--gag-* block above has the schedule) ===========
+     Each override re-lists the card's base pair (rainIn + its jostle).
+     PARITY MATTERS: even .field children carry jostle (translate channel),
+     odd carry jostleR (rotate channel) — mirror the :nth-child split above.
+     If you insert/remove .field children, re-check every parity here.
+     Gag motion rides the `transform` channel (free once rainIn ends) or
+     `scale`, so nothing fights the jostle loops. */
+
+  /* tests/ (even): backflip on "Every repo" — sticks the landing, 4° off.
+     Forwards fill keeps it crooked: even its trick doesn't reproduce. */
+  #s-code.active .ccard.c-tests {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               backflip .85s ease-in-out var(--gag-flip) forwards;
+  }
+  @keyframes backflip {
+    0%   { transform: none; }
+    45%  { transform: translateY(-4cqh) rotate(-180deg); }
+    88%  { transform: translateY(.3cqh) rotate(-362deg); }
+    100% { transform: translateY(0cqh) rotate(-356deg); }
+  }
+
+  /* package.json (odd): inhales node_modules, exhales. scale channel. */
+  #s-code.active .ccard.c-pkg {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite,
+               bloat 1.1s ease-in-out var(--gag-bloat);
+  }
+  @keyframes bloat {
+    0%, 100% { scale: 1 1; }
+    35%      { scale: 1.5 1.2; }
+    55%      { scale: 1.42 1.24; }
+    78%      { scale: .96 .99; }
+  }
+
+  /* Dockerfile (even): a little whale spout + hop. */
+  #s-code.active .ccard.c-docker {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               spoutHop .7s var(--pop) var(--gag-spout);
+  }
+  @keyframes spoutHop {
+    0%, 100% { transform: translateY(0cqh); }
+    30%      { transform: translateY(-1.1cqh) scale(1.04, .98); }
+  }
+  #s-code .c-docker::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: -1.2cqh;
+    width: 1.4cqw; height: 3.6cqh;
+    translate: -50% 0;
+    border-radius: 45% 45% 60% 60%;
+    background: linear-gradient(var(--white), var(--lavender) 60%, transparent);
+    filter: drop-shadow(0 0 .5cqh rgba(255,255,255,.6));
+    opacity: 0;
+  }
+  #s-code.active .c-docker::after { animation: spout .9s ease-out var(--gag-spout); }
+  @keyframes spout {
+    0%   { opacity: 0; transform: translateY(.8cqh) scaleY(.2); }
+    25%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-3.2cqh) scaleY(1.2); }
+  }
+
+  /* migrations/ (even): migrates. Waddles four steps right, realises,
+     waddles home. Also feels infra/'s rumble later (feltThat). */
+  #s-code.active .ccard.c-mig {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               waddle 1.7s ease-in-out var(--gag-waddle),
+               feltThat .5s ease-out calc(var(--gag-rumble) + .12s);
+  }
+  @keyframes waddle {
+    0%   { transform: translateX(0cqw) rotate(0deg); }
+    10%  { transform: translateX(1.1cqw) rotate(4deg); }
+    20%  { transform: translateX(2.2cqw) rotate(-4deg); }
+    30%  { transform: translateX(3.3cqw) rotate(4deg); }
+    40%  { transform: translateX(4.4cqw) rotate(-4deg); }
+    50%  { transform: translateX(4.4cqw) rotate(0deg); }
+    60%  { transform: translateX(3.3cqw) rotate(-4deg); }
+    70%  { transform: translateX(2.2cqw) rotate(4deg); }
+    80%  { transform: translateX(1.1cqw) rotate(-4deg); }
+    92%  { transform: translateX(0cqw) rotate(2deg); }
+    100% { transform: translateX(0cqw) rotate(0deg); }
+  }
+  @keyframes feltThat {
+    0%, 100% { transform: translate(0cqw, 0cqh); }
+    35%      { transform: translate(.5cqw, -.5cqh) rotate(1.5deg); }
+  }
+
+  /* .env.example (odd): shifty glances, then redacts its own line —
+     and STAYS redacted (forwards). It has secrets. */
+  #s-code.active .ccard.cfg.c-env {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite,
+               shifty 1.1s ease-in-out var(--gag-shifty);
+  }
+  @keyframes shifty {
+    0%, 100% { transform: none; }
+    20%, 38% { transform: translateX(-.5cqw) rotate(-3deg); }
+    58%, 80% { transform: translateX(.5cqw) rotate(3deg); }
+  }
+  #s-code.active .c-env .ln { animation: redact .45s steps(2, end) calc(var(--gag-shifty) + .66s) forwards; }
+  @keyframes redact {
+    to { background: var(--ink); width: 5.2cqw; }
+  }
+
+  /* deploy.sh (odd): ships itself on "QUIRKS." — wind-up, smoke, gone off
+     stage right, beat, skids back in and acts natural. Rollback. */
+  #s-code.active .ccard.sh.c-deploy {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite,
+               shipIt 2.3s linear var(--gag-dash);
+  }
+  @keyframes shipIt {
+    0%   { transform: none; }
+    10%  { transform: translateX(-1.4cqw) rotate(-3deg) scaleX(.94); }
+    16%  { transform: translateX(-1.4cqw) rotate(-3deg) scaleX(1.06); animation-timing-function: cubic-bezier(.6,0,1,1); }
+    34%  { transform: translateX(74cqw) rotate(5deg); }
+    60%  { transform: translateX(74cqw) rotate(0deg); animation-timing-function: cubic-bezier(0,0,.2,1); }
+    88%  { transform: translateX(-.9cqw) rotate(-2.5deg); }
+    100% { transform: none; }
+  }
+  #s-code .vroom {
+    position: absolute;
+    left: 37%; top: 31.5%;
+    width: 2.6cqw; height: 2.6cqw;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.9), rgba(255,255,255,0) 70%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  #s-code.active .vroom { animation: vroomPuff 1s ease-out calc(var(--gag-dash) + .38s); }
+  @keyframes vroomPuff {
+    0%   { opacity: 0; transform: scale(.3); }
+    12%  { opacity: .9; }
+    100% { opacity: 0; transform: scale(2.4) translateX(-1.2cqw); }
+  }
+
+  /* ci.yml (even): the never-event — both dots pass at once (ciProud,
+     up at the .d1/.d2 rules). The card hops and spews stars. */
+  #s-code.active .ccard.ci.c-ci {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               proudHop .6s var(--bounce) calc(var(--gag-stars) + .1s);
+  }
+  @keyframes proudHop {
+    0%, 100% { transform: translateY(0cqh); }
+    40%      { transform: translateY(-1.4cqh); }
+  }
+  #s-code .c-ci .stars { position: absolute; left: 50%; top: 0; pointer-events: none; }
+  #s-code .c-ci .stars i {
+    position: absolute;
+    left: 0; top: 0;
+    font-style: normal;
+    font-size: 1.5cqw;
+    line-height: 1;
+    color: var(--white);
+    text-shadow: 0 0 .8cqh rgba(255,255,255,.85);
+    opacity: 0;
+  }
+  #s-code .c-ci .stars i:nth-child(1) { --sx: -3.6cqw; --sy: -5cqh; --gs: calc(var(--gag-stars) + .12s); }
+  #s-code .c-ci .stars i:nth-child(2) { --sx: 1.6cqw; --sy: -6.4cqh; --gs: calc(var(--gag-stars) + .2s); font-size: 1.2cqw; color: var(--lavender); }
+  #s-code .c-ci .stars i:nth-child(3) { --sx: 3.8cqw; --sy: -3.8cqh; --gs: calc(var(--gag-stars) + .28s); font-size: 1cqw; color: var(--mauve); }
+  #s-code .c-ci .stars i:nth-child(4) { --sx: -1.4cqw; --sy: -7cqh; --gs: calc(var(--gag-stars) + .36s); font-size: 1.3cqw; color: var(--lavender); }
+  #s-code .c-ci .stars i:nth-child(5) { --sx: 3cqw; --sy: -5.6cqh; --gs: calc(var(--gag-stars) + .44s); font-size: .9cqw; }
+  #s-code.active .c-ci .stars i { animation: starSpew .9s ease-out var(--gs); }
+  @keyframes starSpew {
+    0%   { opacity: 0; transform: translate(0cqw, 0cqh) scale(.4) rotate(0deg); }
+    15%  { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--sx), var(--sy)) scale(1.1) rotate(160deg); }
+  }
+
+  /* the db (even): stateful and it knows it — jelly wobble (scale channel,
+     squashes from the base) + one bead of sweat. Feels the rumble too. */
+  #s-code .db { transform-origin: 50% 90%; }
+  #s-code.active .db.c-db {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               dbJelly .9s ease-in-out var(--gag-jelly),
+               feltThat .5s ease-out calc(var(--gag-rumble) + .18s);
+  }
+  @keyframes dbJelly {
+    0%, 100% { scale: 1 1; }
+    25%      { scale: 1.12 .9; }
+    50%      { scale: .93 1.08; }
+    75%      { scale: 1.05 .96; }
+  }
+  #s-code .db::after {
+    content: '';
+    position: absolute;
+    right: .5cqw; top: -.4cqh;
+    width: .55cqw; height: 1.1cqh;
+    border-radius: 50% 50% 50% 50% / 35% 35% 65% 65%;
+    background: var(--white);
+    opacity: 0;
+  }
+  #s-code.active .db::after { animation: sweat 1.1s ease-in calc(var(--gag-jelly) + .25s); }
+  @keyframes sweat {
+    0%   { opacity: 0; transform: translateY(0cqh) scale(.6); }
+    20%  { opacity: .95; transform: translateY(.2cqh) scale(1); }
+    100% { opacity: 0; transform: translateY(2.6cqh) scale(.9); }
+  }
+
+  /* lint.config (odd): gets prettier. The deck's one sanctioned rainbow. */
+  #s-code .ccard.c-lint { overflow: hidden; }
+  #s-code .c-lint::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 8%, rgba(255,0,90,.5), rgba(255,170,0,.5), rgba(255,235,0,.5), rgba(0,200,120,.5), rgba(0,140,255,.5), rgba(150,60,255,.55), transparent 92%);
+    transform: translateX(-115%);
+    opacity: 0;
+  }
+  #s-code.active .c-lint::before { animation: prettier 1.15s ease-in-out var(--gag-rainbow); }
+  @keyframes prettier {
+    0%   { opacity: 0; transform: translateX(-115%); }
+    12%  { opacity: 1; }
+    88%  { opacity: 1; }
+    100% { opacity: 0; transform: translateX(115%); }
+  }
+  #s-code.active .ccard.cfg.c-lint {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite,
+               prettierPulse 1.15s ease-in-out var(--gag-rainbow);
+  }
+  @keyframes prettierPulse {
+    0%, 100% { scale: 1; }
+    50%      { scale: 1.09; }
+  }
+
+  /* Makefile (odd): the hinge gives out — jerky steps()-eased sag off a
+     bottom-left pivot, then hauls itself back up. Sheds dust. */
+  #s-code .ccard.c-make { transform-origin: 12% 88%; }
+  #s-code.active .ccard.sh.c-make {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite,
+               creak 1.3s var(--gag-creak);
+  }
+  @keyframes creak {
+    0%   { transform: rotate(0deg); animation-timing-function: steps(3, end); }
+    45%  { transform: rotate(-7deg) translateY(.3cqh); }
+    60%  { transform: rotate(-7deg) translateY(.3cqh); animation-timing-function: steps(2, end); }
+    78%  { transform: rotate(1.5deg); }
+    100% { transform: rotate(0deg); }
+  }
+  #s-code .c-make::after {
+    content: '';
+    position: absolute;
+    left: -.6cqw; bottom: -.5cqh;
+    width: 1.6cqw; height: 1.2cqh;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(235,220,253,.8), transparent 70%);
+    opacity: 0;
+  }
+  #s-code.active .c-make::after { animation: dustPuff .8s ease-out calc(var(--gag-creak) + .42s); }
+  @keyframes dustPuff {
+    0%   { opacity: 0; transform: scale(.3); }
+    20%  { opacity: .8; }
+    100% { opacity: 0; transform: scale(1.9) translate(-.8cqw, -.4cqh); }
+  }
+
+  /* infra/ (even): heavy. One decaying rumble; migrations/ and the db
+     above each get a feltThat nudge a beat later. */
+  #s-code.active .ccard.c-infra {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               rumble .85s linear var(--gag-rumble);
+  }
+  @keyframes rumble {
+    0%, 100% { transform: translate(0cqw, 0cqh); }
+    10% { transform: translate(-.45cqw, .2cqh) rotate(-1deg); }
+    22% { transform: translate(.45cqw, -.15cqh) rotate(1deg); }
+    34% { transform: translate(-.4cqw, .15cqh) rotate(-.8deg); }
+    46% { transform: translate(.35cqw, -.1cqh) rotate(.7deg); }
+    58% { transform: translate(-.25cqw, .1cqh) rotate(-.5deg); }
+    72% { transform: translate(.18cqw, 0cqh) rotate(.3deg); }
+    86% { transform: translate(-.08cqw, 0cqh); }
+  }
+
+  /* README.md (even): nobody has read it since 2023 — dozes off and stays
+     asleep: snore-breathe (scale) + three drifting z's, both infinite. */
+  #s-code.active .ccard.c-readme {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               snore 3.1s ease-in-out var(--gag-zzz) infinite;
+  }
+  @keyframes snore {
+    0%, 100% { scale: 1 1; }
+    50%      { scale: 1.035 1.05; }
+  }
+  #s-code .c-readme .zz { position: absolute; right: -.4cqw; top: -1cqh; pointer-events: none; }
+  #s-code .c-readme .zz i {
+    position: absolute;
+    right: 0; bottom: 0;
+    font-style: normal;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.05cqw;
+    line-height: 1;
+    color: var(--white);
+    text-shadow: 0 0 .6cqh rgba(0,0,0,.35);
+    opacity: 0;
+  }
+  #s-code .c-readme .zz i:nth-child(1) { --gz: var(--gag-zzz); }
+  #s-code .c-readme .zz i:nth-child(2) { --gz: calc(var(--gag-zzz) + .55s); font-size: .85cqw; }
+  #s-code .c-readme .zz i:nth-child(3) { --gz: calc(var(--gag-zzz) + 1.1s); font-size: .7cqw; }
+  #s-code.active .c-readme .zz i { animation: zfloat 3.1s ease-out var(--gz) infinite; }
+  @keyframes zfloat {
+    0%        { opacity: 0; transform: translate(0cqw, 0cqh) rotate(0deg) scale(.7); }
+    18%       { opacity: .95; }
+    60%, 100% { opacity: 0; transform: translate(1.6cqw, -4.2cqh) rotate(14deg) scale(1.15); }
+  }
+
+  /* seed-db.sh (even): it's a seed. A leaf sprouts and stays (forwards). */
+  #s-code.active .ccard.sh.c-seed {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               seedHop .5s var(--pop) calc(var(--gag-sprout) + .15s);
+  }
+  @keyframes seedHop {
+    0%, 100% { transform: none; }
+    45%      { transform: translateY(-.8cqh); }
+  }
+  #s-code .c-seed::after {
+    content: '';
+    position: absolute;
+    left: 1.2cqw; top: -1.55cqh;
+    width: 1.05cqw; height: 1.7cqh;
+    border-radius: 0 100% 0 100%;
+    background: var(--lavender);
+    transform-origin: 0% 100%;
+    transform: scale(0);
+    opacity: 0;
+  }
+  #s-code.active .c-seed::after { animation: sprout 1.4s var(--pop) var(--gag-sprout) forwards; }
+  @keyframes sprout {
+    0%   { opacity: 0; transform: scale(0) rotate(-24deg); }
+    45%  { opacity: 1; transform: scale(1.12) rotate(8deg); }
+    68%  { opacity: 1; transform: scale(1) rotate(-4deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  /* *.test.ts (odd): flaky — fails (ink), shakes, passes on retry and
+     holds its proud pass-purple line (forwards). */
+  #s-code.active .ccard.c-test2 {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite,
+               flakyShake .7s linear var(--gag-flaky);
+  }
+  @keyframes flakyShake {
+    0%, 100% { transform: translateX(0cqw); }
+    15% { transform: translateX(-.5cqw); }
+    30% { transform: translateX(.5cqw); }
+    45% { transform: translateX(-.4cqw); }
+    60% { transform: translateX(.3cqw); }
+    78% { transform: translateX(-.15cqw); }
+  }
+  #s-code.active .c-test2 .ln { animation: flakyLn 1.5s steps(1, end) var(--gag-flaky) forwards; }
+  @keyframes flakyLn {
+    0%, 38%   { background: var(--ink); }
+    46%       { background: rgba(0,0,0,.14); }
+    54%, 64%  { background: var(--ink); }
+    72%, 100% { background: var(--purple); }
+  }
+
+  /* the nameless chip (even): dead code. On "later." it slips out stage
+     left, never to return (forwards). Nobody notices. That's the joke. */
+  #s-code.active .ccard.cfg.c-m2 {
+    animation: rainIn .5s var(--pop) var(--rd, var(--d, .5s)) backwards,
+               jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite,
+               slipAway 1.4s ease-in var(--gag-bye) forwards;
+  }
+  @keyframes slipAway {
+    0%   { transform: translateX(0cqw); opacity: 1; }
+    18%  { transform: translateX(.6cqw) rotate(2deg); opacity: 1; }
+    100% { transform: translateX(-26cqw) rotate(-10deg); opacity: 0; }
+  }
 
   /* the line the presenter lands on */
   #s-code .caption {
@@ -4962,7 +5364,7 @@
         <div class="ccard sh c-deploy"><b>deploy.sh</b><span class="ln"></span></div>
         <div class="ccard sh c-seed"><b>seed-db.sh</b><span class="ln"></span></div>
         <div class="ccard sh c-make"><b>Makefile</b><span class="ln"></span></div>
-        <div class="ccard cfg ci c-ci"><b>ci.yml</b><span class="dots"><i class="d1"></i><i class="d2"></i></span></div>
+        <div class="ccard cfg ci c-ci"><b>ci.yml</b><span class="dots"><i class="d1"></i><i class="d2"></i></span><span class="stars" aria-hidden="true"><i>✦</i><i>✦</i><i>✦</i><i>✦</i><i>✦</i></span></div>
         <div class="ccard cfg c-env"><b>.env.example</b><span class="ln"></span></div>
         <div class="ccard c-mig"><b>migrations/</b><span class="ln"></span></div>
         <div class="ccard c-m1"><span class="ln"></span><span class="ln"></span></div>
@@ -4970,11 +5372,14 @@
         <div class="ccard cfg c-comp"><b>compose.yml</b><span class="ln"></span></div>
         <div class="ccard c-schema"><b>schema.sql</b><span class="ln"></span></div>
         <div class="ccard cfg c-lint"><b>lint.config</b><span class="ln"></span></div>
-        <div class="ccard c-readme"><b>README.md</b><span class="ln"></span></div>
+        <div class="ccard c-readme"><b>README.md</b><span class="ln"></span><span class="zz" aria-hidden="true"><i>z</i><i>z</i><i>z</i></span></div>
         <div class="ccard c-test2"><b>*.test.ts</b><span class="ln"></span></div>
         <div class="ccard c-infra"><b>infra/</b><span class="ln"></span></div>
         <div class="ccard c-m3"><span class="ln"></span><span class="ln"></span></div>
         <div class="db c-db" aria-hidden="true"><i>db</i></div>
+        <!-- deploy.sh's exhaust cloud — appended LAST so the cards' nth-child
+             jostle parity above stays untouched -->
+        <span class="vroom" aria-hidden="true"></span>
 
         <p class="caption">where the real complexity lives</p>
       </div>
