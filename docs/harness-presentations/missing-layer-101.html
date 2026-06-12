@@ -3558,8 +3558,10 @@
   }
   #s-need .ba { left: 45.8%; top: 59.6%; background: var(--white); color: var(--ink); }
   #s-need .bb2 { left: 54.2%; top: 59.6%; background: var(--ink); color: var(--white); border: .16cqw solid var(--lavender); }
-  #s-need.active .ba { animation: castPop .5s var(--bounce) var(--cue-A) backwards, bdgFloat 4.2s ease-in-out infinite alternate; }
-  #s-need.active .bb2 { animation: castPop .5s var(--bounce) var(--cue-B) backwards, bdgFloat 4.2s ease-in-out 2.1s infinite alternate; }
+  /* badges start EARLY so the pop's impact (~60% of castPop) lands ON
+     the spoken "A:" / "B:" — starting on the cue reads as a beat late */
+  #s-need.active .ba { animation: castPop .5s var(--bounce) calc(var(--cue-A) - .3s) backwards, bdgFloat 4.2s ease-in-out infinite alternate; }
+  #s-need.active .bb2 { animation: castPop .5s var(--bounce) calc(var(--cue-B) - .3s) backwards, bdgFloat 4.2s ease-in-out 2.1s infinite alternate; }
   @keyframes bdgFloat { to { transform: translateY(-.4cqh); } }
   #s-need .nsub {
     position: absolute;
