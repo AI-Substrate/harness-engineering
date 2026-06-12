@@ -1,0 +1,4973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engineering Harness 101 · The Missing Layer</title>
+<!--
+  "The Missing Layer" — Engineering Harness 101, lived-experience edition.
+  Run sheet: docs/harness-presentations/missing-layer-101.md
+
+  Brand tokens: Purple #7B14EF leads; Lavender #C497FE; Mauve #EBDCFD;
+  McQueen SemiBold headings; Inter body; no em dashes in branded copy;
+  no invented purples. Stage pattern: a bordered 16:9 stage on a dark
+  pasteboard, all sizing in container-query units so the composition
+  holds at any size.
+
+  FRAMEWORK (no dependencies):
+  - Each slide is ONE self-contained <section class="slide" id="..." data-title="...">.
+    All of its markup and scoped CSS (#its-id ...) live with it. Add / remove /
+    reorder slides by moving the <section> block. Nothing else to edit.
+  - Stepped reveals: elements carry data-step="1..n". The controller adds .on
+    to every element whose step <= current step. Entry/ambient animation keys
+    off .slide.active; step animation keys off .on.
+  - Keys: ArrowRight / Space / PageDown = next step-or-slide. ArrowLeft /
+    PageUp = back. Home / End = first / last slide. Click stage = next.
+  - Deep link: #slide-id/step (e.g. #s-stack/2), synced on navigation.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: 'McQueen';
+    src: url('nucleus-assets/McQueen-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'McQueen';
+    src: url('nucleus-assets/McQueen-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+  }
+
+  :root {
+    --purple: #7B14EF;
+    --lavender: #C497FE;
+    --mauve: #EBDCFD;
+    --ink: #000000;
+    --white: #ffffff;
+
+    --paste: #0c0c0e;
+
+    --mcqueen: 'McQueen', 'Inter', Arial, sans-serif;
+    --body: 'Inter', Arial, Helvetica, sans-serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --pop: cubic-bezier(.2,.8,.3,1);
+    --bounce: cubic-bezier(.34,1.56,.64,1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--paste);
+    font-family: var(--body);
+    line-height: 1.6;
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    display: grid;
+    place-items: center;
+  }
+
+  ::selection { background: var(--lavender); color: var(--ink); }
+
+  /* =========================================================
+     16:9 STAGE (content-box border trick: the area just inside
+     the line is exactly 16:9)
+  ========================================================== */
+  .stage-wrap {
+    position: relative;
+    width: min(94vw, calc(86vh * 16 / 9));
+  }
+  .frame-lbl {
+    position: absolute;
+    top: -26px; right: 2px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.38);
+  }
+  .stage {
+    box-sizing: content-box;
+    width: calc(100% - 4px);
+    aspect-ratio: 16 / 9;
+    border: 2px solid rgba(255,255,255,.4);
+    container-type: size;
+    position: relative;
+    overflow: hidden;
+    color: var(--white);
+    background: var(--purple);
+  }
+  /* big lavender flow-shape, off-canvas (brand shape system) */
+  .stage::before {
+    content: '';
+    position: absolute;
+    top: -28cqh; right: -16cqw;
+    width: 58cqw; height: 58cqw;
+    border-radius: 50%;
+    background: rgba(196,151,254,.16);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* =========================================================
+     SLIDE FRAME — one section per slide, only .active shows
+  ========================================================== */
+  .slide {
+    display: none;
+    position: absolute;
+    inset: 0;
+    flex-direction: column;
+    padding: clamp(10px, 3cqh, 34px) clamp(14px, 3.5cqw, 60px);
+    z-index: 1;
+  }
+  .slide.active { display: flex; }
+
+  /* stepped reveals: hidden until .on. !important is the framework invariant:
+     no slide-local styling may unhide a step element early. Once .on, the
+     element's natural opacity applies. */
+  [data-step]:not(.on) { opacity: 0 !important; }
+
+  /* =========================================================
+     SHARED COMPONENTS (the recurring cast)
+  ========================================================== */
+  .kicker {
+    font-size: 1.05cqw;
+    font-weight: 600;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--lavender);
+  }
+  .kicker::before { content: '— '; color: var(--mauve); }
+
+  /* layer plates: slabs with physical thickness (hard offset shadow),
+     McQueen mixed-case wordmark + purple full stop, McQueen descriptor,
+     ghost index numeral. Same poster language as .lhead. --slab is
+     reused inside the pulse keyframes so the edge never vanishes. */
+  .plate {
+    --slab: 0 .9cqh 0 rgba(0,0,0,.22), 0 2cqh 3.2cqh rgba(0,0,0,.16);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2cqw;
+    width: 64cqw;
+    padding: 1.7cqh 2.8cqw;
+    border-radius: 1.1cqw;
+    color: var(--ink);
+    box-shadow: var(--slab);
+  }
+  .plate .ptxt {
+    display: flex;
+    flex-direction: column;
+    gap: .2cqh;
+    min-width: 0;
+  }
+  .plate b {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 3cqw;
+    letter-spacing: -.015em;
+    line-height: 1.05;
+    white-space: nowrap;
+  }
+  .plate b .pdot { color: var(--purple); }
+  .plate .desc {
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.2cqw;
+    opacity: .8;
+  }
+  .plate .pnum {
+    position: absolute;
+    right: 2.4cqw;
+    top: 50%;
+    transform: translateY(-46%);
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 6.4cqw;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: .1cqw rgba(0,0,0,.16);
+    pointer-events: none;
+  }
+  .plate.p-human    { background: var(--mauve); }
+  .plate.p-infer    { background: var(--lavender); }
+  .plate.p-code     { background: var(--white); }
+
+  /* the agent character */
+  .agent-chip {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .25cqh;
+    width: 5cqw; height: 5cqw;
+    border-radius: 1cqw;
+    background: var(--ink);
+    box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3);
+  }
+  .agent-chip .eyes {
+    font-family: var(--mono);
+    font-size: 1.25cqw;
+    font-weight: 700;
+    letter-spacing: .28em;
+    color: var(--white);
+    line-height: 1;
+    transform: translateX(.14em); /* recentre letterspaced glyphs */
+    animation: blinkEyes 4.6s ease-in-out infinite;
+  }
+  /* the agent is alive: periodic blink (scaleY squash on the eye glyphs) */
+  @keyframes blinkEyes {
+    0%, 90%, 100% { transform: translateX(.14em) scaleY(1); }
+    93%, 95%      { transform: translateX(.14em) scaleY(.12); }
+  }
+  .agent-chip .glyph {
+    font-family: var(--mono);
+    font-size: .95cqw;
+    font-weight: 700;
+    color: var(--lavender);
+    line-height: 1;
+  }
+  /* mood eyes: alt pairs sit stacked over the base pair and
+     crossfade in (confused > <, happy ^ ^). The blink keeps
+     running on the container regardless of mood. */
+  .agent-chip .eyes { position: relative; display: inline-block; }
+  .eyes .alt {
+    position: absolute;
+    left: 50%; top: 50%;
+    translate: -50% -50%;
+    white-space: nowrap;
+    opacity: 0;
+  }
+  @keyframes eyesOut { to { opacity: 0; } }
+  @keyframes eyesIn  { to { opacity: 1; } }
+
+  /* the human character */
+  .human-chip {
+    position: relative;
+    width: 5cqw; height: 5cqw;
+    border-radius: 50%;
+    background: var(--mauve);
+    overflow: hidden;
+    box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.22);
+  }
+  .human-chip::before { /* head */
+    content: '';
+    position: absolute;
+    top: 22%; left: 50%;
+    width: 32%; aspect-ratio: 1;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  .human-chip::after { /* shoulders */
+    content: '';
+    position: absolute;
+    bottom: -14%; left: 50%;
+    width: 66%; aspect-ratio: 1.4;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  .cast {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .9cqh;
+  }
+  .cast small {
+    font-size: .85cqw;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: var(--white);
+    border-radius: 999px;
+    padding: .2em 1em;
+  }
+
+  /* the scene area below a layer-tour header */
+  .field {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+  }
+
+  /* artifact cards: born from their scene's source (--fx/--fy is the
+     fly-vector pointing back at it), bounce into place, then idle on
+     a slow float. Shared cast across the layer tours. */
+  .acard {
+    position: absolute;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: .9cqw;
+    padding: 1.3cqh 1.3cqw;
+    box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
+    rotate: var(--rot, 0deg);
+  }
+  .slide.active .acard { animation: cardIn .85s var(--bounce) var(--d, 0s) backwards; }
+  @keyframes cardIn {
+    0%   { opacity: 0; transform: translate(var(--fx, 0cqw), var(--fy, 4cqh)) scale(.22); }
+    45%  { opacity: 1; transform: translate(calc(var(--fx, 0cqw) * .25), calc(var(--fy, 4cqh) * .25)) scale(.78); }
+    100% { opacity: 1; transform: translate(0cqw, 0cqh) scale(1); }
+  }
+  .acard .fl { animation: floaty 5.2s ease-in-out var(--d, 0s) infinite alternate; }
+  @keyframes floaty { to { transform: translateY(-.9cqh); } }
+  .acard h4 {
+    font-size: .78cqw;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--purple);
+    margin-bottom: .8cqh;
+  }
+
+  @keyframes fadeup { from { opacity: 0; transform: translateY(22px); } }
+  @keyframes fadein { from { opacity: 0; } }
+
+  /* =========================================================
+     HUD — lives OUTSIDE the stage so captures stay clean
+  ========================================================== */
+  .hud {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 12px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.45);
+    user-select: none;
+  }
+  .hud .nav {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.28);
+    background: transparent;
+    color: rgba(255,255,255,.75);
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .hud .nav:hover { background: var(--lavender); border-color: var(--lavender); color: var(--ink); }
+  .hud .count { font-family: var(--mono); color: rgba(255,255,255,.7); }
+  .hud .dots { display: flex; gap: 7px; }
+  .hud .dots i {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.22);
+    cursor: pointer;
+    transition: background .25s, transform .25s;
+  }
+  .hud .dots i.cur { background: var(--lavender); transform: scale(1.25); }
+  .hud .steps { font-family: var(--mono); letter-spacing: .05em; }
+  .hud .keys { margin-left: auto; color: rgba(255,255,255,.28); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  /* #########################################################
+     S1 · TITLE — Engineering Harness 101
+  ######################################################### */
+  #s-title .tags {
+    display: flex;
+    align-items: center;
+    animation: fadeup .9s var(--pop) .05s backwards;
+  }
+  #s-title .tag {
+    font-size: clamp(7px, .8cqw, 12px);
+    font-weight: 600;
+    letter-spacing: .04em;
+    padding: .55em 1.2em;
+    background: var(--lavender);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  #s-title .tag.flag {
+    background: var(--mauve);
+    clip-path: polygon(0 0, calc(100% - .9em) 0, 100% 50%, calc(100% - .9em) 100%, 0 100%, .9em 50%);
+    padding-left: 1.9em;
+    padding-right: 2.1em;
+    margin-left: -.2em;
+  }
+  #s-title .card {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+    gap: clamp(18px, 5cqw, 72px);
+    align-items: center;
+    min-height: 0;
+  }
+  #s-title h1 {
+    font-family: var(--mcqueen);
+    font-size: clamp(34px, 8.6cqw, 150px);
+    font-weight: 600;
+    line-height: .98;
+    letter-spacing: -.02em;
+    margin: clamp(8px, 2cqh, 22px) 0;
+    animation: fadeup 1s var(--pop) .18s backwards;
+  }
+  #s-title h1 .n101 {
+    color: transparent;
+    -webkit-text-stroke: .022em var(--white);
+  }
+  #s-title h1 .dot { color: var(--lavender); }
+  #s-title .sub {
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: clamp(10px, 1.5cqw, 22px);
+    color: var(--mauve);
+    max-width: 28em;
+    line-height: 1.5;
+    animation: fadeup 1s var(--pop) .3s backwards;
+  }
+  #s-title .sub strong { color: var(--white); font-weight: 600; }
+  #s-title .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: clamp(10px, 3cqh, 32px);
+    animation: fadeup 1s var(--pop) .42s backwards;
+  }
+  #s-title .chip {
+    font-size: clamp(6.5px, .74cqw, 11px);
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .65em 1.3em;
+    border-radius: 999px;
+    background: var(--lavender);
+    color: var(--ink);
+  }
+  /* orbit: the three layers you have, and the one you don't */
+  #s-title .scene {
+    display: grid;
+    place-items: center;
+    min-height: 0;
+    animation: fadein 1.4s ease .3s backwards;
+  }
+  #s-title .nucleus { position: relative; width: min(46cqh, 30cqw); aspect-ratio: 1; }
+  #s-title .ring { position: absolute; border: 1px dashed rgba(255,255,255,.4); border-radius: 50%; }
+  #s-title .ring.r1 { inset: 26%; }
+  #s-title .ring.r2 { inset: 13%; }
+  #s-title .ring.r3 { inset: 0; }
+  #s-title .core {
+    position: absolute;
+    inset: 37%;
+    border-radius: 50%;
+    background: var(--ink);
+    display: grid;
+    place-content: center;
+    text-align: center;
+    gap: 2px;
+    box-shadow: 0 0 0 5px rgba(196,151,254,.35), 0 0 44px rgba(0,0,0,.35);
+    animation: corepulse 3.2s ease-in-out infinite;
+  }
+  #s-title .core .glyph { font-family: var(--mono); font-size: clamp(10px, 1.6cqw, 24px); font-weight: 700; color: var(--lavender); }
+  #s-title .core .lbl {
+    font-size: clamp(5px, .6cqw, 9.5px);
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mauve);
+    line-height: 1.5;
+  }
+  @keyframes corepulse {
+    50% { box-shadow: 0 0 0 8px rgba(196,151,254,.5), 0 0 54px rgba(0,0,0,.4); }
+  }
+  #s-title .orb { position: absolute; border-radius: 50%; animation: spin linear infinite; z-index: 2; }
+  #s-title .orb.o1  { inset: 26%; animation-duration: 16s; }
+  #s-title .orb.o2a, #s-title .orb.o2b { inset: 13%; animation-duration: 24s; }
+  #s-title .orb.o2b { animation-delay: -12s; }
+  #s-title .orb.o3  { inset: 0; animation-duration: 34s; animation-delay: -6s; }
+  #s-title .e { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); }
+  #s-title .e .pill {
+    font-size: clamp(5.5px, .66cqw, 10px);
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--et, var(--ink));
+    background: var(--ec);
+    border-radius: 999px;
+    padding: .5em 1.1em;
+    white-space: nowrap;
+    display: inline-block;
+    animation: spin linear infinite reverse;
+  }
+  #s-title .e .pill::before {
+    content: '';
+    display: inline-block;
+    width: .62em; height: .62em;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: .7em;
+    vertical-align: -.02em;
+  }
+  /* the missing-layer tease: a ghost electron that quietly pings */
+  #s-title .e .pill.ghost {
+    background: transparent;
+    border: 1.5px dashed rgba(255,255,255,.75);
+    color: var(--white);
+  }
+  #s-title .orb.o3 .pill.ghost {
+    animation: spin 34s linear -6s infinite reverse, ghostPing 4.5s ease-in-out infinite;
+  }
+  @keyframes ghostPing {
+    0%, 70%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); background: rgba(255,255,255,0); }
+    78%           { box-shadow: 0 0 0 .55cqw rgba(255,255,255,.16); background: rgba(255,255,255,.14); }
+    88%           { box-shadow: 0 0 0 1.1cqw rgba(255,255,255,0); background: rgba(255,255,255,0); }
+  }
+  #s-title .orb.o1 .pill { animation-duration: 16s; }
+  #s-title .orb.o2a .pill, #s-title .orb.o2b .pill { animation-duration: 24s; }
+  #s-title .orb.o2b .pill { animation-delay: -12s; }
+  #s-title .orb.o3 .pill { animation-duration: 34s; animation-delay: -6s; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #s-title .foot {
+    display: flex;
+    align-items: center;
+    gap: clamp(14px, 2.4cqw, 40px);
+    animation: fadeup 1s var(--pop) .55s backwards;
+  }
+  #s-title .termbar {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--mono);
+    font-size: clamp(6.5px, .76cqw, 12.5px);
+    line-height: 1.7;
+    color: var(--white);
+    background: var(--ink);
+    border-radius: 999px;
+    padding: clamp(6px, 1.2cqh, 12px) clamp(12px, 1.8cqw, 28px);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  #s-title .termbar .ps { color: var(--lavender); font-weight: 700; margin-right: 10px; }
+  /* the equation types itself; the cursor rides the clipped edge */
+  #s-title .termbar .tline {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    max-width: 0;
+    animation: typeOn 3.6s steps(88, end) 1.1s forwards;
+  }
+  @keyframes typeOn { to { max-width: 92ch; } }
+  #s-title .termbar .br { color: rgba(255,255,255,.45); }
+  #s-title .termbar .t-a { color: var(--lavender); }
+  #s-title .termbar .t-b { color: var(--white); }
+  #s-title .termbar .t-c { color: var(--mauve); }
+  #s-title .termbar .cur {
+    display: inline-block;
+    width: .55em; height: 1.05em;
+    background: var(--lavender);
+    vertical-align: -2px;
+    margin-left: 8px;
+    animation: blink 1.1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* #########################################################
+     S2 · THE STACK YOU ALREADY HAVE — isometric scene.
+     Asymmetric split: editorial McQueen column left, the three
+     layers as floating isometric floors right. The work
+     physically falls through the floors and a claim rises back.
+  ######################################################### */
+  #s-stack { --TRIP: 4.6s; }
+  #s-stack .s2-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 27cqw 1fr;
+    align-items: center;
+    gap: 1.5cqw;
+  }
+  #s-stack .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
+  #s-stack h2 {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 4.3cqw;
+    line-height: 1.05;
+    letter-spacing: -.015em;
+    margin-top: 2cqh;
+    animation: fadeup .9s var(--pop) .22s backwards;
+  }
+  #s-stack h2 .hdot { color: var(--lavender); }
+  #s-stack .s2-legend {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.1cqh;
+    margin-top: 3.4cqh;
+    font-family: var(--mono);
+    font-size: .92cqw;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mauve);
+  }
+  #s-stack.active .s2-legend { animation: fadein .9s ease 2s backwards; }
+  #s-stack .s2-legend .lg { animation: legPulse 2.3s ease-in-out infinite; }
+  #s-stack .s2-legend .lg-up { animation-delay: 1.15s; }
+  @keyframes legPulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+  #s-stack .scene3d { position: relative; height: 100%; min-height: 0; }
+  #s-stack .bloom {
+    position: absolute;
+    left: 56%; top: 50%;
+    width: 56cqw; height: 56cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(196,151,254,.3), rgba(196,151,254,0) 72%);
+    pointer-events: none;
+    animation: fadein 1.2s ease .2s backwards;
+  }
+  #s-stack .gshadow {
+    position: absolute;
+    left: 56%; top: 88%;
+    width: 36cqw; height: 12cqh;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(12,0,30,.45), transparent 70%);
+    pointer-events: none;
+  }
+  /* isometric rig: the parent carries the camera (orthographic, no
+     perspective); each floor only travels along Z. preserve-3d does
+     the projection. */
+  #s-stack .iso {
+    position: absolute;
+    left: 56%; top: 53%;
+    width: 30cqw; height: 30cqw;
+    margin: -15cqw 0 0 -15cqw;
+    transform: rotateX(57deg) rotateZ(-43deg);
+    transform-style: preserve-3d;
+    pointer-events: none;
+    animation: isoBob 7s ease-in-out infinite alternate;
+  }
+  @keyframes isoBob {
+    from { translate: 0 0; }
+    to   { translate: 0 .9cqh; }
+  }
+  #s-stack .floor {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.2cqw;
+    background: var(--pc);
+    transform: translateZ(var(--z));
+    transform-style: preserve-3d;
+  }
+  /* slab thickness: a dark copy hovering just under each floor */
+  #s-stack .floor::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(18,0,44,.55);
+    transform: translateZ(-1cqw);
+  }
+  /* painted floor grid (foreshortened on purpose, like floor decals) */
+  #s-stack .floor::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3.75cqw),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3.75cqw);
+  }
+  #s-stack .floor .pnum3 {
+    position: absolute;
+    right: 1.6cqw; bottom: .4cqw;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 8cqw;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: .11cqw rgba(0,0,0,.2);
+  }
+  /* the flash coat: lights the floor when the work passes through */
+  #s-stack .floor .coat {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--white);
+    opacity: 0;
+  }
+  #s-stack .f-3 .coat { background: var(--lavender); }
+  #s-stack .f-1 { --pc: var(--mauve);    --z: 10cqw; }
+  #s-stack .f-2 { --pc: var(--lavender); --z: 2.6cqw; }
+  /* the larger gap under f-2 is the slot the missing layer will fill */
+  #s-stack .f-3 { --pc: var(--white);    --z: -6.4cqw; }
+  /* AUTOPLAY: the whole scene runs off .active on a single timed
+     clock; no presenter steps. floors land → labels in → cast pops →
+     the work-drop loop begins (everything past 2.3s is the loop). */
+  #s-stack.active .floor { animation: floorLand .85s var(--pop) backwards; }
+  #s-stack.active .f-1 { animation-delay: .15s; }
+  #s-stack.active .f-2 { animation-delay: .38s; }
+  #s-stack.active .f-3 { animation-delay: .61s; }
+  @keyframes floorLand {
+    0%   { opacity: 0; transform: translateZ(calc(var(--z) + 17cqw)); }
+    70%  { opacity: 1; transform: translateZ(calc(var(--z) - 1cqw)); }
+    100% { opacity: 1; transform: translateZ(var(--z)); }
+  }
+
+  /* billboard labels float beside their floors, leader-lined in.
+     The box is the WORDMARK alone (traits hang below, absolutely),
+     so every leader starts the same distance after the full stop
+     and all three dots land on one vertical line. */
+  #s-stack .bb {
+    position: absolute;
+    text-align: right;
+  }
+  #s-stack .bb b {
+    display: block;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 2.3cqw;
+    line-height: 1;
+    color: var(--white);
+  }
+  #s-stack .bb b .pdot { color: var(--lavender); }
+  #s-stack .bb .tr {
+    position: absolute;
+    top: calc(100% + .5cqh);
+    right: 0;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: .9cqw;
+    color: rgba(255,255,255,.95);
+    white-space: nowrap;
+  }
+  #s-stack .bb i {
+    position: absolute;
+    top: 1.5cqw; /* optical centerline of the McQueen caps */
+    left: calc(100% + .9cqw);
+    width: 2.8cqw;
+    height: 0;
+    border-top: 2px dashed rgba(255,255,255,.85);
+  }
+  #s-stack .bb i::after {
+    content: '';
+    position: absolute;
+    right: -.3cqw; top: -.37cqw;
+    width: .66cqw; height: .66cqw;
+    border-radius: 50%;
+    background: var(--white);
+    box-shadow: 0 0 0 .17cqw rgba(0,0,0,.35);
+  }
+  #s-stack .bb-1 { right: 78%; top: 33%; }
+  #s-stack .bb-2 { right: 78%; top: 47%; }
+  #s-stack .bb-3 { right: 78%; top: 60%; }
+  #s-stack.active .bb { animation: bbIn .6s var(--pop) backwards; }
+  #s-stack.active .bb-1 { animation-delay: 1s; }
+  #s-stack.active .bb-2 { animation-delay: 1.18s; }
+  #s-stack.active .bb-3 { animation-delay: 1.36s; }
+  @keyframes bbIn { from { opacity: 0; transform: translateX(-1.8cqw); } }
+
+  /* the cast stands on their floors (billboarded, grounded by shadows) */
+  #s-stack .stand {
+    position: absolute;
+    display: grid;
+    justify-items: center;
+  }
+  #s-stack .stand .human-chip,
+  #s-stack .stand .agent-chip { scale: .8; }
+  #s-stack .stand .human-chip { background: var(--white); }
+  #s-stack .stand .shdw {
+    width: 3.6cqw; height: 1.1cqw;
+    margin-top: -.2cqh;
+    border-radius: 50%;
+    background: rgba(14,0,36,.42);
+    filter: blur(3px);
+  }
+  #s-stack.active .stand .human-chip,
+  #s-stack.active .stand .agent-chip { animation: castPop .55s var(--bounce) backwards; }
+  #s-stack.active .st-you .human-chip { animation-delay: 1.7s; }
+  #s-stack.active .st-agent .agent-chip { animation-delay: 1.9s; }
+  #s-stack .st-you { left: 42.5%; top: 21%; }
+  #s-stack .st-agent { left: 75%; top: 48%; }
+  @keyframes castPop { from { scale: 0; rotate: -10deg; } }
+
+  /* the work: intent falls through the floors, a claim rises back */
+  #s-stack .drop {
+    position: absolute;
+    left: 55.4%;
+    top: 0;
+    width: 1.15cqw; height: 1.15cqw;
+    margin-left: -.575cqw;
+    border-radius: 50%;
+    background: var(--lavender);
+    box-shadow: 0 0 1.6cqh .25cqh rgba(196,151,254,.8);
+    opacity: 0;
+  }
+  #s-stack.active .drop { animation: dropFall var(--TRIP) linear 2.3s infinite; }
+  #s-stack .d-up {
+    margin-left: 1.5cqw;
+    background: var(--white);
+    box-shadow: 0 0 1.6cqh .25cqh rgba(255,255,255,.7);
+  }
+  #s-stack.active .d-up { animation: dropRise var(--TRIP) linear 2.3s infinite; }
+  @keyframes dropFall {
+    0%        { top: 14%; opacity: 0; }
+    5%        { top: 17%; opacity: 1; }
+    40%       { top: 70%; opacity: 1; }
+    44%, 100% { top: 74%; opacity: 0; }
+  }
+  @keyframes dropRise {
+    0%, 50%   { top: 74%; opacity: 0; }
+    55%       { top: 70%; opacity: 1; }
+    88%       { top: 17%; opacity: 1; }
+    92%, 100% { top: 14%; opacity: 0; }
+  }
+  /* floors flash as the work passes (same 2.3s start = phase-locked) */
+  #s-stack.active .f-1 .coat { animation: coat1 var(--TRIP) linear 2.3s infinite; }
+  #s-stack.active .f-2 .coat { animation: coat2 var(--TRIP) linear 2.3s infinite; }
+  #s-stack.active .f-3 .coat { animation: coat3 var(--TRIP) linear 2.3s infinite; }
+  @keyframes coat1 {
+    0%        { opacity: .55; }
+    9%, 86%   { opacity: 0; }
+    93%       { opacity: .6; }
+    100%      { opacity: 0; }
+  }
+  @keyframes coat2 {
+    0%, 15%   { opacity: 0; }
+    21%, 27%  { opacity: .5; }
+    35%, 100% { opacity: 0; }
+  }
+  @keyframes coat3 {
+    0%, 36%   { opacity: 0; }
+    42%, 48%  { opacity: .5; }
+    56%, 100% { opacity: 0; }
+  }
+
+  /* the agent visibly processes the work as it passes its floor */
+  #s-stack.active .st-agent .eyes { animation: agentScan var(--TRIP) linear 2.3s infinite; }
+  @keyframes agentScan {
+    0%, 14%   { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
+    20%, 30%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
+    38%, 100% { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
+  }
+
+  /* #########################################################
+     S3 · LAYER TOUR — HUMAN
+  ######################################################### */
+  /* layer-tour header: poster treatment, parameterised by --lc (layer
+     colour). Big McQueen wordmark wipes in, traits stamp in one at a
+     time, a rule draws underneath, and a giant ghost layer index
+     floats behind the whole scene. Template for S4/S5 tours. */
+  .lhead {
+    --lc: var(--mauve);
+    position: relative;
+    display: flex;
+    align-items: baseline;
+    gap: 2.2cqw;
+    padding-top: .5cqh;
+  }
+  .lhead .lnum {
+    position: absolute;
+    top: -6cqh; right: -1cqw;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 17cqw;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: .12cqw rgba(255,255,255,.17);
+    pointer-events: none;
+    z-index: -1;
+    animation: numDrift 9s ease-in-out infinite alternate;
+  }
+  @keyframes numDrift {
+    from { transform: translateY(0); }
+    to   { transform: translateY(1.8cqh); }
+  }
+  .lhead .lword {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 5.6cqw;
+    line-height: 1;
+    letter-spacing: -.015em;
+    color: var(--white);
+    clip-path: inset(-12% -4% -12% 0);
+    animation: wordWipe .9s var(--pop) .15s backwards;
+  }
+  .lhead .lword .ldot { color: var(--lc); }
+  @keyframes wordWipe {
+    from { clip-path: inset(-12% 100% -12% 0); transform: translateX(-1.2cqw); }
+  }
+  .lhead .ltraits { display: flex; align-items: baseline; gap: 1.1cqw; }
+  .lhead .ltraits .t {
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.75cqw;
+    color: var(--lc);
+    animation: stampIn .5s var(--bounce) backwards;
+  }
+  .lhead .ltraits .t + .t::before {
+    content: '·';
+    color: rgba(255,255,255,.55);
+    margin-right: 1.1cqw;
+  }
+  .lhead .ltraits .t:nth-child(1) { animation-delay: .8s; }
+  .lhead .ltraits .t:nth-child(2) { animation-delay: 1s; }
+  .lhead .ltraits .t:nth-child(3) { animation-delay: 1.2s; }
+  @keyframes stampIn {
+    from { opacity: 0; transform: scale(1.8) rotate(3deg); }
+  }
+  .lhead::after {
+    content: '';
+    position: absolute;
+    left: 0; bottom: -1.6cqh;
+    height: .34cqh;
+    width: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--lc), transparent 72%);
+    transform-origin: left center;
+    animation: ruleDraw 1.1s var(--pop) .45s backwards;
+  }
+  @keyframes ruleDraw { from { transform: scaleX(0); } }
+
+  /* the little human at work: ink silhouette typing at a laptop.
+     Arm taps, head bobs, the screen flickers, fragments of work
+     rise off the laptop. The artifact cards are born HERE and fly
+     out to their positions (see cardIn). */
+  #s-human .field .cast {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -54%);
+  }
+  #s-human.active .field .cast { animation: castPop .6s var(--bounce) .15s backwards; }
+  .deskscene svg { width: 21cqw; height: auto; display: block; overflow: visible; }
+  /* SVG gotcha: outer <g> keeps the SVG transform attribute (placement),
+     inner <g class> takes the CSS animation. transform-origin explicit. */
+  .deskscene .head { animation: headBob 2.7s ease-in-out infinite; }
+  @keyframes headBob {
+    0%, 100% { transform: translateY(0); }
+    55%      { transform: translateY(1.8px); }
+  }
+  .deskscene .arm { transform-origin: 0 0; animation: armTap .3s ease-in-out infinite; }
+  @keyframes armTap {
+    0%, 100% { transform: rotate(0deg); }
+    50%      { transform: rotate(5deg); }
+  }
+  .deskscene .lglow { animation: glowFlick 1.3s steps(3, end) infinite; }
+  @keyframes glowFlick {
+    0%, 100% { opacity: .55; }
+    40%      { opacity: .3; }
+    70%      { opacity: .7; }
+  }
+  /* fragments of work rising off the laptop */
+  .deskscene .bit {
+    position: absolute;
+    left: 66%; top: 34%;
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 700;
+    color: var(--mauve);
+    white-space: nowrap;
+    opacity: 0;
+    animation: bitRise 3.9s linear var(--bd, 0s) infinite;
+  }
+  .deskscene .bit.b2 { left: 72%; --bd: 1.3s; }
+  .deskscene .bit.b3 { left: 62%; --bd: 2.6s; }
+  @keyframes bitRise {
+    0%        { opacity: 0;   transform: translateY(.5cqh) translateX(0); }
+    10%       { opacity: .95; transform: translateY(-1cqh) translateX(.1cqw); }
+    55%       { opacity: .6;  transform: translateY(-6cqh) translateX(.5cqw); }
+    72%, 100% { opacity: 0;   transform: translateY(-8cqh) translateX(.7cqw); }
+  }
+
+  /* artifact cards: shared .acard cast; only positions + internals here.
+     Cards are born at the desk (--fx/--fy points back at it). */
+  /* backlog card */
+  #s-human .a-backlog { left: 13%; top: 12%; --rot: -4deg; --d: .5s; --fx: 18cqw; --fy: 16cqh; }
+  #s-human .a-backlog .row {
+    display: flex; align-items: center; gap: .7cqw;
+    font-family: var(--mono); font-size: .85cqw; font-weight: 700;
+    margin-top: .55cqh;
+  }
+  #s-human .a-backlog .bar { height: .9cqh; border-radius: 999px; background: var(--mauve); }
+  #s-human .a-backlog .row:nth-child(2) .bar { width: 9cqw; background: var(--lavender); }
+  #s-human .a-backlog .row:nth-child(3) .bar { width: 6.5cqw; }
+  #s-human .a-backlog .row:nth-child(4) .bar { width: 4.5cqw; }
+  /* judgement card */
+  #s-human .a-judge { right: 12%; top: 9%; --rot: 3deg; --d: .85s; --fx: -18cqw; --fy: 16cqh; }
+  #s-human .a-judge .opts { display: flex; gap: .6cqw; }
+  #s-human .a-judge .opt {
+    font-size: .85cqw; font-weight: 600;
+    padding: .35em 1em; border-radius: 999px;
+    white-space: nowrap;
+  }
+  #s-human .a-judge .opt.yes { background: var(--lavender); }
+  #s-human .a-judge .opt.no { border: 1.5px solid rgba(0,0,0,.3); opacity: .65; }
+  /* risk dial */
+  #s-human .a-risk { left: 11%; bottom: 14%; --rot: -3deg; --d: 1.2s; --fx: 18cqw; --fy: -12cqh; }
+  #s-human .gauge { position: relative; width: 7cqw; height: 3.5cqw; overflow: hidden; }
+  #s-human .gauge::before {
+    content: '';
+    position: absolute; inset: 0 0 -3.5cqw 0;
+    border-radius: 50%;
+    border: .55cqw solid var(--mauve);
+    border-bottom-color: var(--lavender);
+    border-right-color: var(--lavender);
+    transform: rotate(45deg);
+  }
+  #s-human .needle {
+    position: absolute;
+    left: 50%; bottom: 0;
+    width: .22cqw; height: 2.9cqw;
+    background: var(--ink);
+    border-radius: 999px;
+    transform-origin: bottom center;
+    rotate: 24deg;
+    animation: needleWob 3.6s ease-in-out infinite alternate;
+  }
+  @keyframes needleWob { from { rotate: 14deg; } to { rotate: 34deg; } }
+  /* taste card */
+  #s-human .a-taste { right: 9%; top: 47%; --rot: 5deg; --d: 1.55s; --fx: -16cqw; --fy: 2cqh; }
+  #s-human .a-taste .star { font-size: 2cqw; color: var(--purple); line-height: 1; text-align: center; }
+  /* review note */
+  #s-human .a-note { right: 26%; bottom: 11%; --rot: -2deg; --d: 1.9s; --fx: -6cqw; --fy: -12cqh; background: var(--mauve); }
+  #s-human .a-note q { font-style: italic; font-size: 1.05cqw; quotes: '"' '"'; }
+  /* ghosted rest-of-stack at the very bottom */
+  #s-human .ghosts {
+    position: absolute;
+    bottom: 1.6cqh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56cqw;
+    display: flex;
+    flex-direction: column;
+    gap: .7cqh;
+    opacity: .22;
+    pointer-events: none;
+  }
+  #s-human .ghosts i { display: block; height: 1.5cqh; border-radius: 999px; }
+  #s-human .ghosts i:first-child { background: var(--lavender); }
+  #s-human .ghosts i:last-child { background: var(--white); width: 92%; align-self: center; }
+
+  /* #########################################################
+     S4 · LAYER TOUR — INFERENCE. The agent deals its artifacts
+     out of itself and never stops producing: the diff types
+     itself in, checklist boxes tick over, the thinking bubble
+     pulses, and once per cycle a faint lavender sheen ripples
+     across everything it made (its output is inference).
+  ######################################################### */
+  #s-infer { --TRIP: 4.6s; }
+  /* the layers above and below, ghosted: we are inside 02 */
+  #s-infer .gline {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56cqw;
+    height: 1.5cqh;
+    border-radius: 999px;
+    opacity: .22;
+    pointer-events: none;
+  }
+  #s-infer .g-above { top: 2.8cqh; background: var(--mauve); }
+  #s-infer .g-below { bottom: 1.2cqh; background: var(--white); }
+  #s-infer.active .gline { animation: fadein .9s ease .4s backwards; }
+
+  /* the agent, centre stage and bigger: this is its layer */
+  #s-infer .cast {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -54%);
+  }
+  #s-infer.active .cast { animation: castPop .6s var(--bounce) .5s backwards; }
+  #s-infer .agent-chip { width: 7.2cqw; height: 7.2cqw; border-radius: 1.5cqw; gap: .6cqh; }
+  #s-infer .agent-chip .eyes { font-size: 1.8cqw; }
+  #s-infer .agent-chip .glyph { font-size: 1.3cqw; }
+  /* processing flash, phase-locked to the production loop */
+  #s-infer.active .agent-chip .eyes {
+    animation: blinkEyes 4.6s ease-in-out infinite,
+               inferGlow var(--TRIP) linear 2.3s infinite;
+  }
+  @keyframes inferGlow {
+    0%, 28%   { color: var(--white); text-shadow: none; }
+    34%, 52%  { color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }
+    60%, 100% { color: var(--white); text-shadow: none; }
+  }
+
+  /* thinking bubble: always mid-thought */
+  #s-infer .think {
+    position: absolute;
+    top: -3.4cqh;
+    left: calc(50% + 3.4cqw);
+    display: flex;
+    align-items: center;
+    gap: .5cqw;
+    background: var(--white);
+    border-radius: 999px;
+    padding: 1cqh 1cqw;
+    box-shadow: 0 .6cqh 1.8cqh rgba(0,0,0,.25);
+  }
+  #s-infer .think::after { /* bubble tail */
+    content: '';
+    position: absolute;
+    left: -.45cqw; bottom: -.5cqh;
+    width: .75cqw; height: .75cqw;
+    border-radius: 50%;
+    background: var(--white);
+  }
+  #s-infer .think i {
+    width: .55cqw; height: .55cqw;
+    border-radius: 50%;
+    background: var(--ink);
+    animation: thinkDot 1.35s ease-in-out var(--td, 0s) infinite;
+  }
+  #s-infer .think i:nth-child(2) { --td: .18s; }
+  #s-infer .think i:nth-child(3) { --td: .36s; }
+  @keyframes thinkDot {
+    0%, 100% { opacity: .22; transform: translateY(0); }
+    35%      { opacity: 1; transform: translateY(-.3cqh); }
+  }
+  #s-infer.active .think { animation: castPop .5s var(--bounce) .85s backwards; }
+
+  /* the "inferred" sheen: light ripples across every card once per
+     cycle, in dealing order (--shd staggers the wave) */
+  #s-infer .acard::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(115deg, transparent 35%, rgba(196,151,254,.4) 50%, transparent 65%) no-repeat 135% 0 / 240% 100%;
+    opacity: 0;
+  }
+  #s-infer.active .acard::after { animation: sheen var(--TRIP) linear var(--shd, 2.3s) infinite; }
+  @keyframes sheen {
+    0%, 62%   { opacity: 0; background-position: 135% 0; }
+    66%       { opacity: 1; background-position: 105% 0; }
+    82%       { opacity: 1; background-position: -5% 0; }
+    86%, 100% { opacity: 0; background-position: -35% 0; }
+  }
+
+  /* spec.md: tidy skeleton */
+  #s-infer .a-spec { left: 12%; top: 12%; --rot: -4deg; --d: 1s; --fx: 18cqw; --fy: 15cqh; --shd: 2.3s; }
+  #s-infer .a-spec h4 { text-transform: none; font-family: var(--mono); letter-spacing: .08em; }
+  #s-infer .a-spec .ln {
+    display: block;
+    height: .8cqh;
+    border-radius: 999px;
+    background: var(--mauve);
+    margin-top: .6cqh;
+    width: 8.5cqw;
+  }
+  #s-infer .a-spec .ln:nth-of-type(1) { width: 6cqw; background: var(--lavender); }
+  #s-infer .a-spec .ln:nth-of-type(3) { width: 7cqw; margin-left: 1cqw; }
+  #s-infer .a-spec .ln:nth-of-type(4) { width: 5.5cqw; margin-left: 1cqw; }
+
+  /* the plan: two done, the loop keeps ticking the rest over */
+  #s-infer .a-plan { right: 11%; top: 11%; --rot: 3deg; --d: 1.25s; --fx: -18cqw; --fy: 15cqh; --shd: 2.45s; }
+  #s-infer .ck { display: flex; align-items: center; gap: .6cqw; margin-top: .6cqh; }
+  #s-infer .ck .bx {
+    width: 1.15cqw; height: 1.15cqw;
+    border-radius: .25cqw;
+    border: 1.5px solid rgba(0,0,0,.32);
+    display: grid;
+    place-items: center;
+    font-size: .72cqw;
+    font-weight: 700;
+    line-height: 1;
+    color: rgba(0,0,0,0);
+    background: rgba(196,151,254,0);
+  }
+  #s-infer .ck.done .bx { background: var(--lavender); border-color: var(--lavender); color: var(--ink); }
+  #s-infer .ck .bar { height: .8cqh; border-radius: 999px; background: var(--mauve); width: 6.5cqw; }
+  #s-infer .ck:nth-of-type(2) .bar { width: 5.2cqw; }
+  #s-infer .ck:nth-of-type(3) .bar { width: 7cqw; }
+  #s-infer .ck:nth-of-type(4) .bar { width: 4.6cqw; }
+  #s-infer.active .ck.c3 .bx { animation: ckOn3 var(--TRIP) linear 2.3s infinite; }
+  #s-infer.active .ck.c4 .bx { animation: ckOn4 var(--TRIP) linear 2.3s infinite; }
+  @keyframes ckOn3 {
+    0%, 30%   { background: rgba(196,151,254,0); border-color: rgba(0,0,0,.32); color: rgba(0,0,0,0); }
+    36%, 88%  { background: var(--lavender); border-color: var(--lavender); color: var(--ink); }
+    94%, 100% { background: rgba(196,151,254,0); border-color: rgba(0,0,0,.32); color: rgba(0,0,0,0); }
+  }
+  @keyframes ckOn4 {
+    0%, 56%   { background: rgba(196,151,254,0); border-color: rgba(0,0,0,.32); color: rgba(0,0,0,0); }
+    62%, 88%  { background: var(--lavender); border-color: var(--lavender); color: var(--ink); }
+    94%, 100% { background: rgba(196,151,254,0); border-color: rgba(0,0,0,.32); color: rgba(0,0,0,0); }
+  }
+
+  /* the diff: it keeps writing code. Types in, holds, resets. */
+  #s-infer .a-diff { left: 12%; bottom: 13%; --rot: -3deg; --d: 1.5s; --fx: 18cqw; --fy: -12cqh; --shd: 2.6s; }
+  #s-infer .drow {
+    display: flex;
+    align-items: center;
+    gap: .6cqw;
+    margin-top: .5cqh;
+    font-family: var(--mono);
+    font-size: .92cqw;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #s-infer .drow i { font-style: normal; width: .8cqw; text-align: center; }
+  #s-infer .drow.add i { color: var(--purple); }
+  #s-infer .drow.del i { color: rgba(0,0,0,.42); }
+  #s-infer .drow .bar { height: .75cqh; border-radius: 999px; }
+  #s-infer .drow.add .bar { background: var(--lavender); }
+  #s-infer .drow.del .bar { background: rgba(0,0,0,.14); }
+  #s-infer .drow:nth-child(1) .bar { width: 5.4cqw; }
+  #s-infer .drow:nth-child(2) .bar { width: 6.8cqw; }
+  #s-infer .drow:nth-child(3) .bar { width: 4.2cqw; }
+  #s-infer .drow:nth-child(4) .bar { width: 7.4cqw; }
+  #s-infer .drow:nth-child(5) .bar { width: 3.6cqw; }
+  #s-infer.active .dlines { animation: dType var(--TRIP) linear 2.3s infinite; }
+  @keyframes dType {
+    0%   { clip-path: inset(0 0 100% 0); animation-timing-function: steps(5, jump-none); }
+    52%  { clip-path: inset(0 0 0% 0); animation-timing-function: linear; }
+    96%  { clip-path: inset(0 0 0% 0); animation-timing-function: steps(1, jump-start); }
+    100% { clip-path: inset(0 0 100% 0); }
+  }
+
+  /* the prompt that started it */
+  #s-infer .a-chat { right: 11%; bottom: 22%; --rot: 4deg; --d: 1.75s; --fx: -16cqw; --fy: -10cqh; --shd: 2.75s; }
+  #s-infer .a-chat .cline { font-family: var(--mono); font-size: 1cqw; font-weight: 700; white-space: nowrap; }
+  #s-infer .a-chat .ps { color: var(--purple); margin-right: .55cqw; }
+  #s-infer .a-chat .cur {
+    display: inline-block;
+    width: .55em; height: 1em;
+    background: var(--purple);
+    vertical-align: -.12em;
+    margin-left: .45cqw;
+    animation: blink 1.1s steps(1) infinite;
+  }
+
+  /* the one deconfliction beat: agent harness ≠ today's harness */
+  #s-infer .decon {
+    position: absolute;
+    right: 0; bottom: 4.6cqh;
+    font-family: var(--mono);
+    font-size: .85cqw;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--mauve);
+    border: 1.5px dashed rgba(255,255,255,.55);
+    border-radius: 999px;
+    padding: .8cqh 1.3cqw;
+  }
+  #s-infer.active .decon { animation: stampShake .55s var(--bounce) 2.2s backwards; }
+  @keyframes stampShake {
+    0%   { opacity: 0; transform: scale(1.7) rotate(2deg); }
+    60%  { opacity: 1; transform: scale(.95) rotate(-1.4deg); }
+    80%  { opacity: 1; transform: scale(1.03) rotate(.7deg); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+
+  /* #########################################################
+     S5 · LAYER TOUR — CODEBASE. The visual opposite of the two
+     layers above: dense. The clutter rains in fast (tight 40ms
+     stagger, intentionally busy) and then never quite sits
+     still: cards micro-jostle at offset phases, the CI dots
+     blink pass/fail, the database lid blips. This pile is the
+     setup S16 pays off ("a simple view over the complex").
+  ######################################################### */
+  #s-code { --TRIP: 4.6s; }
+  /* the two layers above, ghosted: we are at the bottom */
+  #s-code .gline {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56cqw;
+    height: 1.5cqh;
+    border-radius: 999px;
+    opacity: .22;
+    pointer-events: none;
+  }
+  #s-code .g-1 { top: 2.2cqh; background: var(--mauve); }
+  #s-code .g-2 { top: 5.4cqh; background: var(--lavender); }
+  #s-code.active .gline { animation: fadein .9s ease .3s backwards; }
+
+  /* clutter cards: small, mono-labelled, overlapping, tilted */
+  #s-code .ccard {
+    position: absolute;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: .7cqw;
+    padding: 1cqh 1.1cqw;
+    box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.22);
+    rotate: var(--rot, 0deg);
+    font-family: var(--mono);
+    font-size: .95cqw;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #s-code .ccard b { display: block; font-weight: 700; letter-spacing: .04em; white-space: nowrap; }
+  #s-code .ccard .ln {
+    display: block;
+    height: .55cqh;
+    border-radius: 999px;
+    background: rgba(0,0,0,.14);
+    margin-top: .55cqh;
+    width: 4.2cqw;
+  }
+  /* scripts read as little terminals */
+  #s-code .ccard.sh { background: var(--ink); color: var(--white); }
+  #s-code .ccard.sh b::before { content: '$ '; color: var(--lavender); }
+  #s-code .ccard.sh .ln { background: rgba(255,255,255,.22); }
+  /* configs */
+  #s-code .ccard.cfg { background: var(--mauve); }
+  #s-code .ccard.cfg .ln { background: rgba(0,0,0,.18); }
+  /* the src/ fan: two ghost copies behind the front card */
+  #s-code .ccard.fan::before,
+  #s-code .ccard.fan::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--white);
+    box-shadow: 0 .6cqh 1.6cqh rgba(0,0,0,.18);
+    z-index: -1;
+  }
+  #s-code .ccard.fan::before { transform: rotate(-6deg) translate(-.6cqw, .4cqh); }
+  #s-code .ccard.fan::after  { transform: rotate(5deg) translate(.6cqw, -.3cqh); }
+  /* nameless filler chips thicken the pile without adding words */
+  #s-code .c-m1 .ln, #s-code .c-m2 .ln { width: 2.6cqw; margin-top: .5cqh; }
+  #s-code .c-m1 .ln + .ln, #s-code .c-m2 .ln + .ln { width: 1.9cqw; }
+  /* ci.yml status dots: pass/fail, alternating (brand colours) */
+  #s-code .ci .dots { display: flex; gap: .45cqw; margin-top: .65cqh; }
+  #s-code .ci .dots i { width: .72cqw; height: .72cqw; border-radius: 50%; background: rgba(0,0,0,.28); }
+  #s-code.active .ci .d1 { animation: ciBlink 2.3s steps(1, end) 2.3s infinite; }
+  #s-code.active .ci .d2 { animation: ciBlink 2.3s steps(1, end) 3.45s infinite; }
+  @keyframes ciBlink {
+    0%, 100% { background: var(--purple); }
+    50%      { background: rgba(0,0,0,.28); }
+  }
+  /* the database: a small cylinder whose lid blips with activity */
+  #s-code .db {
+    position: absolute;
+    width: 4.8cqw; height: 10cqh;
+    background: var(--mauve);
+    border-radius: 2.4cqw / 1.7cqh;
+    box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
+    rotate: var(--rot, 0deg);
+  }
+  #s-code .db::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: -1.2cqh;
+    height: 3.4cqh;
+    border-radius: 50%;
+    background: var(--lavender);
+  }
+  #s-code .db i {
+    position: absolute;
+    left: 50%; bottom: 1.2cqh;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: .8cqw;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  #s-code.active .db::before { animation: dbPulse var(--TRIP) ease-in-out 2.3s infinite; }
+  @keyframes dbPulse {
+    0%, 100% { background: var(--lavender); }
+    10%      { background: var(--white); }
+    22%      { background: var(--lavender); }
+  }
+
+  /* the rain: everything drops in fast, then keeps shifting.
+     jostle/jostleR phases are scattered off each card's own --d. */
+  #s-code.active :is(.ccard, .db) {
+    animation:
+      rainIn .5s var(--pop) var(--d, .5s) backwards,
+      jostle 4.6s ease-in-out calc(var(--d, .5s) * 7 - 10s) infinite;
+  }
+  #s-code.active :is(.ccard, .db):nth-child(odd) {
+    animation:
+      rainIn .5s var(--pop) var(--d, .5s) backwards,
+      jostleR 4.6s ease-in-out calc(var(--d, .5s) * 9 - 12s) infinite;
+  }
+  @keyframes rainIn {
+    0%   { opacity: 0; transform: translateY(-16cqh) rotate(8deg); }
+    70%  { opacity: 1; transform: translateY(.7cqh) rotate(-2deg); }
+    100% { opacity: 1; transform: translateY(0cqh) rotate(0deg); }
+  }
+  @keyframes jostle {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 0 .4cqh; }
+  }
+  @keyframes jostleR {
+    0%, 100% { rotate: var(--rot, 0deg); }
+    50%      { rotate: calc(var(--rot, 0deg) + 1.4deg); }
+  }
+
+  /* the pile, placed (left/top are % of the field). Deliberately
+     tight: neighbours overlap, the whole field carries clutter. */
+  #s-code .c-src    { left: 27%; top: 18%; --rot: -5deg; --d: .50s; }
+  #s-code .c-tests  { left: 41%; top: 13%; --rot: 3deg;  --d: .54s; }
+  #s-code .c-pkg    { left: 53%; top: 25%; --rot: -2deg; --d: .58s; }
+  #s-code .c-docker { left: 19%; top: 40%; --rot: 4deg;  --d: .62s; }
+  #s-code .c-deploy { left: 36%; top: 32%; --rot: -3deg; --d: .66s; }
+  #s-code .c-seed   { left: 55%; top: 44%; --rot: 2deg;  --d: .70s; }
+  #s-code .c-make   { left: 26%; top: 58%; --rot: -4deg; --d: .74s; }
+  #s-code .c-ci     { left: 44%; top: 49%; --rot: 5deg;  --d: .78s; }
+  #s-code .c-env    { left: 9%;  top: 22%; --rot: -6deg; --d: .82s; }
+  #s-code .c-mig    { left: 69%; top: 60%; --rot: -3deg; --d: .86s; }
+  #s-code .c-m1     { left: 66%; top: 15%; --rot: -5deg; --d: .90s; }
+  #s-code .c-m2     { left: 8%;  top: 56%; --rot: 6deg;  --d: .94s; }
+  #s-code .c-db     { left: 76%; top: 26%; --rot: 3deg;  --d: .98s; }
+  #s-code .c-comp   { left: 35%; top: 74%; --rot: 3deg;  --d: 1.02s; }
+  #s-code .c-schema { left: 53%; top: 70%; --rot: -4deg; --d: 1.06s; }
+  #s-code .c-lint   { left: 13%; top: 75%; --rot: -3deg; --d: 1.10s; }
+  #s-code .c-readme { left: 74%; top: 12%; --rot: 2deg;  --d: 1.14s; }
+  #s-code .c-test2  { left: 7%;  top: 36%; --rot: 3deg;  --d: 1.18s; }
+  #s-code .c-infra  { left: 73%; top: 42%; --rot: -2deg; --d: 1.22s; }
+  #s-code .c-m3     { left: 50%; top: 30%; --rot: -6deg; --d: 1.26s; }
+  #s-code .c-m3 .ln { width: 2.6cqw; margin-top: .5cqh; }
+  #s-code .c-m3 .ln + .ln { width: 1.9cqw; }
+
+  /* the line the presenter lands on */
+  #s-code .caption {
+    position: absolute;
+    right: 0; bottom: 2cqh;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.35cqw;
+    color: var(--ink);
+    background: var(--lavender);
+    border-radius: 999px;
+    padding: 1cqh 1.8cqw;
+    box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.25);
+  }
+  #s-code.active .caption { animation: stampShake .55s var(--bounce) 1.6s backwards; }
+
+  /* #########################################################
+     S6 · LET'S SAY YOU'RE WORKING ON YOUR PLAN. The story
+     begins, competently: the human types, plan.md rises off
+     their laptop and assembles (header types, lines wipe,
+     ticks stamp), the agent arrives, the plan docks under it
+     like a baton handoff, and it settles into building.
+  ######################################################### */
+  #s-plan { --TRIP: 4.6s; }
+  #s-plan .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
+  #s-plan .deskscene svg { width: 24cqw; }
+  #s-plan .field .cast.deskscene {
+    position: absolute;
+    left: 19%; top: 57%;
+    transform: translate(-50%, -50%);
+  }
+  #s-plan.active .field .cast.deskscene { animation: castPop .6s var(--bounce) .15s backwards; }
+
+  /* plan.md: born at the desk, assembled in place, then handed off */
+  #s-plan .plan {
+    position: absolute;
+    left: 32%; top: 24%;
+    width: 17cqw;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: .9cqw;
+    padding: 1.8cqh 1.6cqw;
+    box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
+  }
+  #s-plan.active .plan {
+    animation: planRise .9s var(--bounce) .4s backwards,
+               planDock .9s var(--pop) 3.8s forwards;
+  }
+  @keyframes planRise {
+    0%   { opacity: 0; transform: translate(-13cqw, 16cqh) scale(.25); }
+    60%  { opacity: 1; transform: translate(1cqw, -1cqh) scale(1.02); }
+    100% { opacity: 1; transform: translate(0cqw, 0cqh) scale(1); }
+  }
+  @keyframes planDock {
+    0%   { transform: translate(0cqw, 0cqh) scale(1); }
+    100% { transform: translate(22cqw, 9cqh) scale(.42); }
+  }
+  #s-plan .ph {
+    font-family: var(--mono);
+    font-size: 1.05cqw;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--purple);
+  }
+  #s-plan .ph .tw {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    max-width: 0;
+  }
+  #s-plan.active .ph .tw { animation: planType .6s steps(7, end) 1.2s forwards; }
+  @keyframes planType { to { max-width: 8ch; } }
+  #s-plan .plan .ln {
+    display: block;
+    height: .8cqh;
+    border-radius: 999px;
+    background: var(--mauve);
+    margin-top: .7cqh;
+    transform-origin: left center;
+  }
+  #s-plan .plan .l1 { width: 12.5cqw; margin-top: 1cqh; }
+  #s-plan .plan .l2 { width: 9.5cqw; }
+  #s-plan .plan .l3 { width: 11cqw; }
+  #s-plan.active .plan .ln { animation: lineWipe .5s var(--pop) backwards; }
+  #s-plan.active .plan .l1 { animation-delay: 1.5s; }
+  #s-plan.active .plan .l2 { animation-delay: 1.65s; }
+  #s-plan.active .plan .l3 { animation-delay: 1.8s; }
+  @keyframes lineWipe { from { transform: scaleX(0); } }
+  #s-plan .tick {
+    font-family: var(--mono);
+    font-size: .92cqw;
+    font-weight: 700;
+    margin-top: .8cqh;
+    white-space: nowrap;
+  }
+  #s-plan .tick:first-of-type { margin-top: 1.2cqh; }
+  #s-plan .tick b { color: var(--purple); margin-left: .35cqw; }
+  #s-plan.active .t1 { animation: stampIn .5s var(--bounce) 2.1s backwards; }
+  #s-plan.active .t2 { animation: stampIn .5s var(--bounce) 2.45s backwards; }
+  #s-plan.active .t3 { animation: stampIn .5s var(--bounce) 2.8s backwards; }
+
+  /* the agent arrives, takes the handoff, gets to work */
+  #s-plan .agentside { position: absolute; left: 70%; top: 42%; }
+  #s-plan.active .agentside { animation: agentIn .8s var(--pop) 2.9s backwards; }
+  @keyframes agentIn { from { opacity: 0; transform: translateX(13cqw); } }
+  #s-plan.active .agentside .agent-chip { animation: recvNod .5s var(--bounce) 4.6s; }
+  @keyframes recvNod {
+    0%, 100% { scale: 1; }
+    45%      { scale: .9 1.06; }
+  }
+  /* working: eyes flash on the master cycle once it has the plan */
+  #s-plan.active .agentside .eyes {
+    animation: blinkEyes 4.6s ease-in-out infinite,
+               inferGlow var(--TRIP) linear 4.8s infinite;
+  }
+  #s-plan .status {
+    display: inline-flex;
+    align-items: center;
+    gap: .5cqw;
+    font-family: var(--mono);
+    font-size: .85cqw;
+    font-weight: 700;
+    letter-spacing: .06em;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: .55cqh .9cqw;
+  }
+  #s-plan .status .dots { display: inline-flex; gap: .3cqw; }
+  #s-plan .status .dots i {
+    width: .4cqw; height: .4cqw;
+    border-radius: 50%;
+    background: var(--ink);
+    animation: thinkDot 1.35s ease-in-out var(--td, 0s) infinite;
+  }
+  #s-plan .status .dots i:nth-child(2) { --td: .18s; }
+  #s-plan .status .dots i:nth-child(3) { --td: .36s; }
+  #s-plan .pbar {
+    position: relative;
+    width: 9cqw; height: .9cqh;
+    border-radius: 999px;
+    background: rgba(0,0,0,.3);
+    overflow: hidden;
+  }
+  #s-plan .pbar i {
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 3.2cqw;
+    border-radius: 999px;
+    background: var(--lavender);
+    transform: translateX(-3.6cqw);
+  }
+  #s-plan.active .status,
+  #s-plan.active .pbar { animation: fadeup .6s var(--pop) 4.7s backwards; }
+  #s-plan.active .pbar i { animation: sweep 2.3s ease-in-out 4.8s infinite; }
+  @keyframes sweep {
+    0%   { transform: translateX(-3.6cqw); }
+    100% { transform: translateX(9.6cqw); }
+  }
+
+  /* #########################################################
+     S7 · FRICTION. The journey: the agent treks the drawn
+     route from the docked plan toward somewhere off-stage
+     right. The route runs straight through three obstacles;
+     the agent does not. It stops at each one, wobbles
+     confused (? bubble, > < eyes), then loops a little
+     detour around it and keeps going. The token meter spins
+     the whole way and flares during every detour. One trek
+     cycle loops forever.
+  ######################################################### */
+  #s-friction { --TREK: 16s; }
+  #s-friction .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
+
+  /* the intended route, stretched to the field; dashes march
+     toward the destination so the line has a direction */
+  #s-friction .trail {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  #s-friction .trail path {
+    fill: none;
+    stroke: rgba(255,255,255,.38);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 10 13;
+    vector-effect: non-scaling-stroke;
+    animation: antMarch 1.15s linear infinite;
+  }
+  @keyframes antMarch { to { stroke-dashoffset: -23; } }
+  #s-friction.active .trail { animation: fadein .9s ease .35s backwards; }
+
+  /* where we left off: the plan, docked at the trailhead */
+  #s-friction .planmini {
+    position: absolute;
+    left: 5.5%; top: 88%;
+    translate: -50% -50%;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: .55cqw;
+    padding: .8cqh .9cqw;
+    box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22);
+    rotate: -3deg;
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 700;
+    line-height: 1;
+  }
+  #s-friction .planmini .ln {
+    display: block;
+    height: .5cqh;
+    border-radius: 999px;
+    background: var(--mauve);
+    margin-top: .5cqh;
+    width: 3.4cqw;
+  }
+  #s-friction .planmini .ln + .ln { width: 2.4cqw; }
+  #s-friction.active .planmini { animation: cardIn .7s var(--bounce) .45s backwards; --fx: 0cqw; --fy: 5cqh; }
+
+  /* the three frictions, pinned to the route */
+  #s-friction .pin {
+    position: absolute;
+    width: 1.05cqw; height: 1.05cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--mauve);
+    box-shadow: 0 0 0 .3cqw rgba(235,220,253,.28);
+  }
+  #s-friction .pin.k1 { left: 27%; top: 57.14%; }
+  #s-friction .pin.k2 { left: 52%; top: 71.43%; }
+  #s-friction .pin.k3 { left: 76%; top: 42.86%; }
+  #s-friction.active .pin { animation: castPop .5s var(--bounce) var(--d, .8s) backwards; }
+  #s-friction .obs {
+    position: absolute;
+    translate: -50% -50%;
+    background: var(--white);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: .92cqw;
+    font-weight: 700;
+    white-space: nowrap;
+    padding: .8cqh 1.1cqw;
+    border-radius: .6cqw;
+    box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.25);
+    rotate: var(--rot, -2deg);
+  }
+  #s-friction .obs::after { /* stem down to its pin */
+    content: '';
+    position: absolute;
+    left: 50%; top: 100%;
+    width: .22cqw; height: 1.7cqh;
+    background: rgba(255,255,255,.55);
+  }
+  #s-friction .obs.o1 { left: 27%; top: 45%;   --rot: -3deg; }
+  #s-friction .obs.o2 { left: 52%; top: 84.5%; --rot: 2deg; }
+  #s-friction .obs.o2::after { top: auto; bottom: 100%; }
+  #s-friction .obs.o3 { left: 76%; top: 30.5%; --rot: -2deg; }
+  #s-friction.active .obs { animation: stampIn .5s var(--bounce) var(--d, .9s) backwards; }
+
+  /* the trek: left/top keyframes trace the drawn route but bulge
+     into a small loop at each obstacle. The holds are the
+     confusion windows; everything else phases off them. */
+  #s-friction .trek {
+    position: absolute;
+    left: 3%; top: 79%;
+    translate: -50% -88%;
+    opacity: 0;
+  }
+  #s-friction.active .trek { animation: trekWalk var(--TREK) linear 1.6s infinite; }
+  /* generated from the trail path (arc-length sampled, see the
+     route <path> data): every walking keyframe sits ON the curve;
+     detours arc around each pin on its label-free side. */
+  @keyframes trekWalk {
+    0%     { left: 3%;      top: 79.05%; opacity: 0; }
+    1.5%   { left: 3%;      top: 79.05%; opacity: 1; }
+    3%     { left: 5.5%;    top: 78.05%; opacity: 1; }
+    4.5%   { left: 7.97%;   top: 76.66%; opacity: 1; }
+    6%     { left: 10.39%;  top: 74.9%;  opacity: 1; }
+    7.5%   { left: 12.77%;  top: 72.82%; opacity: 1; }
+    9%     { left: 15.11%;  top: 70.48%; opacity: 1; }
+    10.5%  { left: 17.42%;  top: 67.97%; opacity: 1; }
+    12%    { left: 19.7%;   top: 65.36%; opacity: 1; }
+    13.5%  { left: 21.98%;  top: 62.72%; opacity: 1; }
+    15%    { left: 24.27%;  top: 60.12%; opacity: 1; }
+    20%    { left: 24.27%;  top: 60.12%; opacity: 1; }
+    21.3%  { left: 24.39%;  top: 65.58%; opacity: 1; }
+    22.7%  { left: 26.31%;  top: 69.95%; opacity: 1; }
+    24%    { left: 29.14%;  top: 69.97%; opacity: 1; }
+    25.3%  { left: 31.2%;   top: 65.32%; opacity: 1; }
+    26.7%  { left: 31.33%;  top: 59%;    opacity: 1; }
+    28%    { left: 29.84%;  top: 54.85%; opacity: 1; }
+    29.4%  { left: 32.11%;  top: 54.06%; opacity: 1; }
+    30.9%  { left: 34.41%;  top: 54.21%; opacity: 1; }
+    32.3%  { left: 36.66%;  top: 55.22%; opacity: 1; }
+    33.8%  { left: 38.85%;  top: 56.9%;  opacity: 1; }
+    35.2%  { left: 40.98%;  top: 59%;    opacity: 1; }
+    36.7%  { left: 43.05%;  top: 61.35%; opacity: 1; }
+    38.1%  { left: 45.11%;  top: 63.8%;  opacity: 1; }
+    39.6%  { left: 47.17%;  top: 66.25%; opacity: 1; }
+    41%    { left: 49.25%;  top: 68.6%;  opacity: 1; }
+    46%    { left: 49.25%;  top: 68.6%;  opacity: 1; }
+    47.3%  { left: 49.29%;  top: 63.17%; opacity: 1; }
+    48.7%  { left: 51.13%;  top: 58.68%; opacity: 1; }
+    50%    { left: 53.93%;  top: 58.41%; opacity: 1; }
+    51.3%  { left: 56.04%;  top: 62.82%; opacity: 1; }
+    52.7%  { left: 56.28%;  top: 69.06%; opacity: 1; }
+    54%    { left: 54.88%;  top: 73.35%; opacity: 1; }
+    55.4%  { left: 57.36%;  top: 73.49%; opacity: 1; }
+    56.9%  { left: 59.78%;  top: 72.09%; opacity: 1; }
+    58.3%  { left: 62%;     top: 69.44%; opacity: 1; }
+    59.8%  { left: 64.03%;  top: 66.02%; opacity: 1; }
+    61.2%  { left: 65.94%;  top: 62.2%;  opacity: 1; }
+    62.7%  { left: 67.78%;  top: 58.23%; opacity: 1; }
+    64.1%  { left: 69.64%;  top: 54.27%; opacity: 1; }
+    65.6%  { left: 71.53%;  top: 50.43%; opacity: 1; }
+    67%    { left: 73.5%;   top: 46.8%;  opacity: 1; }
+    72%    { left: 73.5%;   top: 46.8%;  opacity: 1; }
+    73.3%  { left: 73.97%;  top: 52.16%; opacity: 1; }
+    74.7%  { left: 76.15%;  top: 55.77%; opacity: 1; }
+    76%    { left: 78.96%;  top: 54.74%; opacity: 1; }
+    77.3%  { left: 80.68%;  top: 49.38%; opacity: 1; }
+    78.7%  { left: 80.4%;   top: 43.09%; opacity: 1; }
+    80%    { left: 78.65%;  top: 39.53%; opacity: 1; }
+    81.5%  { left: 81.42%;  top: 36.96%; opacity: 1; }
+    83%    { left: 84.29%;  top: 35.07%; opacity: 1; }
+    84.5%  { left: 87.21%;  top: 33.75%; opacity: 1; }
+    86%    { left: 90.16%;  top: 32.84%; opacity: 1; }
+    87.5%  { left: 93.12%;  top: 32.16%; opacity: 1; }
+    89%    { left: 96.09%;  top: 31.55%; opacity: 1; }
+    90.5%  { left: 99.05%;  top: 30.86%; opacity: 1; }
+    92%    { left: 102%;    top: 30%;    opacity: 1; }
+    93.5%  { left: 102%;    top: 30%;    opacity: 0; }
+    98%    { left: 3%;      top: 79.05%; opacity: 0; }
+    100%   { left: 3%;      top: 79.05%; opacity: 0; }
+  }
+  #s-friction .agent-chip { width: 4.4cqw; height: 4.4cqw; border-radius: .9cqw; }
+  #s-friction .agent-chip .eyes { font-size: 1.1cqw; }
+  #s-friction .agent-chip .glyph { font-size: .82cqw; }
+  /* walking bob + the confused shake at each stop */
+  #s-friction.active .trek .agent-chip {
+    animation: trekBob .46s ease-in-out infinite alternate,
+               trekWob var(--TREK) linear 1.6s infinite;
+  }
+  @keyframes trekBob { from { translate: 0 0; } to { translate: 0 -.45cqh; } }
+  @keyframes trekWob {
+    0%, 15.5%    { rotate: 0deg; }
+    16.5%        { rotate: -8deg; }
+    17.5%        { rotate: 7deg; }
+    18.5%        { rotate: -6deg; }
+    19.5%        { rotate: 4deg; }
+    20.5%, 41.5% { rotate: 0deg; }
+    42.5%        { rotate: -8deg; }
+    43.5%        { rotate: 7deg; }
+    44.5%        { rotate: -6deg; }
+    45.5%        { rotate: 4deg; }
+    46.5%, 67.5% { rotate: 0deg; }
+    68.5%        { rotate: -8deg; }
+    69.5%        { rotate: 7deg; }
+    70.5%        { rotate: -6deg; }
+    71.5%        { rotate: 4deg; }
+    72.5%, 100%  { rotate: 0deg; }
+  }
+  /* eye mood swaps in the same windows */
+  #s-friction.active .trek .conf { animation: s7conf var(--TREK) linear 1.6s infinite; }
+  #s-friction.active .trek .base { animation: s7base var(--TREK) linear 1.6s infinite; }
+  @keyframes s7conf {
+    0%, 15%   { opacity: 0; }
+    16%, 20%  { opacity: 1; }
+    21%, 41%  { opacity: 0; }
+    42%, 46%  { opacity: 1; }
+    47%, 67%  { opacity: 0; }
+    68%, 72%  { opacity: 1; }
+    73%, 100% { opacity: 0; }
+  }
+  @keyframes s7base {
+    0%, 15%   { opacity: 1; }
+    16%, 20%  { opacity: 0; }
+    21%, 41%  { opacity: 1; }
+    42%, 46%  { opacity: 0; }
+    47%, 67%  { opacity: 1; }
+    68%, 72%  { opacity: 0; }
+    73%, 100% { opacity: 1; }
+  }
+  /* the ? bubble pops over its head at each stop */
+  #s-friction .qb {
+    position: absolute;
+    left: 78%; top: -3.2cqh;
+    width: 2.2cqw; height: 2.2cqw;
+    display: grid;
+    place-items: center;
+    background: var(--white);
+    color: var(--purple);
+    border-radius: 50% 50% 50% .3cqw;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.4cqw;
+    box-shadow: 0 .6cqh 1.8cqh rgba(0,0,0,.25);
+    opacity: 0;
+  }
+  #s-friction.active .qb { animation: qPop var(--TREK) linear 1.6s infinite; }
+  @keyframes qPop {
+    0%, 15%     { opacity: 0; scale: .3; }
+    16.5%, 20%  { opacity: 1; scale: 1; }
+    21.5%, 41%  { opacity: 0; scale: .3; }
+    42.5%, 46%  { opacity: 1; scale: 1; }
+    47.5%, 67%  { opacity: 0; scale: .3; }
+    68.5%, 72%  { opacity: 1; scale: 1; }
+    73.5%, 100% { opacity: 0; scale: .3; }
+  }
+
+  /* the token meter: a little ink instrument, shared with S8/S9.
+     Reel digits spin at odometer rates; the lavender dot says
+     "live". The .sq dot and static digits say "stopped". */
+  .ticker {
+    position: absolute;
+    right: 0; bottom: 2cqh;
+    display: flex;
+    align-items: center;
+    gap: .8cqw;
+    background: var(--ink);
+    color: var(--white);
+    border-radius: .7cqw;
+    padding: 1cqh 1.3cqw;
+    box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3);
+    font-family: var(--mono);
+    font-weight: 700;
+  }
+  .ticker .tl {
+    font-size: .8cqw;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--lavender);
+  }
+  .ticker .odo { display: flex; align-items: center; font-size: 1.25cqw; line-height: 1; }
+  .ticker .d.r { height: 1em; overflow: hidden; }
+  .ticker .reel { display: flex; flex-direction: column; }
+  .ticker .reel b { font-weight: 700; height: 1em; line-height: 1; }
+  .ticker .dot { width: .55cqw; height: .55cqw; border-radius: 50%; background: var(--lavender); }
+  .ticker .dot.sq { border-radius: .12cqw; background: rgba(255,255,255,.4); }
+  #s-friction .ticker .dot { animation: thinkDot 1.35s ease-in-out infinite; }
+  #s-friction .r-h .reel { animation: reelSpin 120s steps(10, end) infinite; }
+  #s-friction .r-c .reel { animation: reelSpin 12s  steps(10, end) infinite; }
+  #s-friction .r-t .reel { animation: reelSpin 1.2s steps(10, end) infinite; }
+  #s-friction .r-o .reel { animation: reelSpin .55s steps(10, end) infinite; }
+  @keyframes reelSpin { to { translate: 0 -10em; } }
+  /* burns brighter while the agent detours (same trek clock) */
+  #s-friction.active .ticker {
+    animation: fadeup .7s var(--pop) 1.5s backwards,
+               burn var(--TREK) linear 1.6s infinite;
+  }
+  @keyframes burn {
+    0%, 15%   { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
+    18%, 26%  { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3), 0 0 2.4cqh .3cqh rgba(196,151,254,.55); }
+    29%, 41%  { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
+    44%, 52%  { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3), 0 0 2.4cqh .3cqh rgba(196,151,254,.55); }
+    55%, 67%  { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
+    70%, 78%  { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3), 0 0 2.4cqh .3cqh rgba(196,151,254,.55); }
+    81%, 100% { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
+  }
+
+  /* #########################################################
+     S8 · "DONE." Punch slide. Near-empty stage: the agent
+     trots in from the left, plants itself centre, and the
+     claim arrives as a giant rubber stamp slamming down from
+     camera. Dust kicks out, the stage jolts, the eyes go
+     ^ ^, the meter freezes on the final tally.
+  ######################################################### */
+  .bigstamp {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 6.5cqw;
+    line-height: 1;
+    letter-spacing: .01em;
+    white-space: nowrap;
+    color: var(--lavender);
+    border: .55cqw solid var(--lavender);
+    border-radius: 1.4cqw;
+    padding: 2.2cqh 2.8cqw;
+  }
+  .bigstamp b { font-weight: 600; margin-left: 1.4cqw; }
+  .stampwrap {
+    position: absolute;
+    left: 50%; top: 40%;
+    translate: -50% -50%;
+  }
+  .stampwrap .dust i {
+    position: absolute;
+    left: 50%; top: 62%;
+    width: .8cqw; height: .8cqw;
+    border-radius: 50%;
+    background: var(--mauve);
+    opacity: 0;
+  }
+  @keyframes puff {
+    0%   { opacity: 0;   translate: 0 0; scale: .4; }
+    12%  { opacity: .95; translate: calc(var(--px) * .12) calc(var(--py) * .12); scale: .7; }
+    100% { opacity: 0;   translate: var(--px) var(--py); scale: 1; }
+  }
+  @keyframes jolt {
+    0%   { translate: 0 0; }
+    25%  { translate: 0 1cqh; }
+    55%  { translate: 0 -.35cqh; }
+    100% { translate: 0 0; }
+  }
+
+  #s-done .bigstamp { rotate: -5deg; opacity: 0; }
+  #s-done.active .bigstamp { animation: slam .6s cubic-bezier(.16,1.1,.4,1) 2.1s forwards; }
+  @keyframes slam {
+    0%   { opacity: 0; transform: scale(3.6); }
+    55%  { opacity: 1; transform: scale(.92); }
+    75%  { opacity: 1; transform: scale(1.07); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  #s-done.active .dust i { animation: puff .8s ease-out 2.4s forwards; }
+  #s-done.active .field { animation: jolt .5s ease-out 2.35s; }
+  /* afterglow: the claim radiates quiet confidence */
+  #s-done.active .stampwrap { animation: stampBreathe 4.6s ease-in-out 3.4s infinite; }
+  @keyframes stampBreathe {
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(196,151,254,0)); }
+    50%      { filter: drop-shadow(0 0 1.6cqh rgba(196,151,254,.5)); }
+  }
+  /* the agent trots in, then bounces with pride */
+  #s-done .cast { position: absolute; left: 50%; top: 73%; translate: -50% -50%; }
+  #s-done.active .cast { animation: s8walk 1.4s var(--pop) .3s backwards; }
+  @keyframes s8walk { from { opacity: 0; transform: translateX(-36cqw); } }
+  #s-done.active .agent-chip {
+    animation: trekBob .35s ease-in-out .3s 4 alternate,
+               hopJoy 2.6s ease-in-out 3.2s infinite;
+  }
+  @keyframes hopJoy {
+    0%, 100% { translate: 0 0; }
+    6%       { translate: 0 -1.3cqh; }
+    12%      { translate: 0 0; }
+    16%      { translate: 0 -.7cqh; }
+    21%, 99% { translate: 0 0; }
+  }
+  #s-done.active .eyes .base     { animation: eyesOut .12s linear 2.45s forwards; }
+  #s-done.active .eyes .alt.joy  { animation: eyesIn  .12s linear 2.45s forwards; }
+  #s-done.active .ticker { animation: fadeup .6s var(--pop) 2.8s backwards; }
+
+  /* #########################################################
+     S9 · YOU GO AND LOOK. The S8 scene, recreated — then the
+     human arrives with a magnifier, sweeps it across the
+     claim, and the stamp flips on its Y axis to the truth.
+     Heavy thunk, stage jolt, the agent's eyes drop to > <.
+  ######################################################### */
+  #s-you .stampwrap { perspective: 70cqw; }
+  #s-you .flip { transform-style: preserve-3d; }
+  #s-you.active .flip { animation: flipTruth .75s cubic-bezier(.6,.04,.3,1.35) 3.6s forwards; }
+  @keyframes flipTruth { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
+  #s-you .face { backface-visibility: hidden; rotate: -5deg; }
+  #s-you .face.f-not {
+    position: absolute;
+    inset: 0;
+    transform: rotateY(180deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 4.9cqw;
+    background: var(--white);
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  #s-you.active .dust i { animation: puff .7s ease-out 4.3s forwards; }
+  #s-you.active .field { animation: jolt .45s ease-out 4.28s; }
+  /* the scene is already standing when we arrive */
+  #s-you.active :is(.stampwrap, .agentside2, .ticker) { animation: fadein .4s ease .05s backwards; }
+  /* the human walks in with the magnifier */
+  #s-you .you { position: absolute; left: 21%; top: 49%; translate: 0 -50%; }
+  #s-you.active .you { animation: youIn .9s var(--pop) .5s backwards; }
+  @keyframes youIn { from { opacity: 0; transform: translateX(-26cqw); } }
+  #s-you .mag {
+    position: absolute;
+    left: 27%; top: 44%;
+    width: 5cqw; height: 5cqw;
+    opacity: 0;
+  }
+  #s-you .mag::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: .5cqw solid var(--white);
+    border-radius: 50%;
+    background: rgba(255,255,255,.13);
+    box-shadow: 0 .8cqh 2.4cqh rgba(0,0,0,.3);
+  }
+  #s-you .mag::after {
+    content: '';
+    position: absolute;
+    left: 86%; top: 82%;
+    width: .85cqw; height: 3.4cqw;
+    border-radius: 999px;
+    background: var(--white);
+    rotate: -38deg;
+    transform-origin: 50% 0;
+  }
+  #s-you.active .mag {
+    animation: magSweep 2.4s ease-in-out 1.5s forwards,
+               magOff .55s ease 3.55s forwards; /* lowered as the truth lands */
+  }
+  @keyframes magSweep {
+    0%   { opacity: 0; left: 27%; top: 44%; }
+    12%  { opacity: 1; left: 33%; top: 38%; }
+    45%  { opacity: 1; left: 44%; top: 31%; }
+    70%  { opacity: 1; left: 56%; top: 37%; }
+    100% { opacity: 1; left: 47%; top: 33%; }
+  }
+  @keyframes magOff { to { opacity: 0; translate: -7cqw 8cqh; } }
+  /* the agent takes it badly */
+  #s-you .agentside2 { position: absolute; left: 50%; top: 73%; translate: -50% -50%; }
+  #s-you.active .agentside2 .agent-chip {
+    animation: sadWob .65s ease-in-out 4.35s,
+               sadBob 3.2s ease-in-out 5.2s infinite alternate;
+  }
+  @keyframes sadWob {
+    0%, 100% { rotate: 0deg; }
+    20%      { rotate: -7deg; }
+    45%      { rotate: 6deg; }
+    70%      { rotate: -4deg; }
+  }
+  @keyframes sadBob { from { translate: 0 0; } to { translate: 0 .5cqh; } }
+  #s-you.active .agentside2 .base     { animation: eyesOut .12s linear 4.4s forwards; }
+  #s-you.active .agentside2 .alt.conf { animation: eyesIn  .12s linear 4.4s forwards; }
+  #s-you .ticker.dim { opacity: .75; }
+
+  /* #########################################################
+     S10 · HUMAN BACKPRESSURE. The warm resolution: the two
+     face off, a labelled pressure arrow pulses from human to
+     agent, corrections pop along it, the agent re-works with
+     a lavender shimmer, and a TRUE stamp lands: actually
+     done. Both characters bounce; confetti. A success story.
+  ######################################################### */
+  #s-back .yb { position: absolute; left: 24%; top: 56%; translate: -50% -50%; }
+  #s-back .ab { position: absolute; left: 76%; top: 56%; translate: -50% -50%; }
+  #s-back.active .yb { animation: castPop .55s var(--bounce) .2s backwards; }
+  #s-back.active .ab { animation: castPop .55s var(--bounce) .4s backwards; }
+  /* the pressure arrow: dashes march from you toward the agent */
+  #s-back .flow {
+    position: absolute;
+    left: 30%; right: 31.5%;
+    top: 56%;
+    height: .55cqh;
+    translate: 0 -50%;
+    background: repeating-linear-gradient(90deg, var(--lavender) 0 1.2cqw, transparent 1.2cqw 2.4cqw);
+    border-radius: 999px;
+    transform-origin: left center;
+  }
+  #s-back .flow::after {
+    content: '';
+    position: absolute;
+    right: -1.2cqw; top: 50%;
+    translate: 0 -50%;
+    border-left: 1.3cqw solid var(--lavender);
+    border-top: .95cqh solid transparent;
+    border-bottom: .95cqh solid transparent;
+  }
+  #s-back.active .flow {
+    animation: flowDraw .7s var(--pop) .7s backwards,
+               flowMarch .9s linear infinite;
+  }
+  @keyframes flowDraw  { from { transform: scaleX(0); } }
+  @keyframes flowMarch { to { background-position: 2.4cqw 0; } }
+  /* the concept, named */
+  #s-back .flowlab {
+    position: absolute;
+    left: 50%; top: 42%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.5cqw;
+    color: var(--ink);
+    background: var(--lavender);
+    border-radius: 999px;
+    padding: .9cqh 1.7cqw;
+    box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.25);
+    white-space: nowrap;
+  }
+  #s-back.active .flowlab { animation: stampIn .5s var(--bounce) 1.1s backwards; }
+  /* corrections riding the arrow */
+  #s-back .note {
+    position: absolute;
+    translate: -50% -50%;
+    background: var(--white);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: .92cqw;
+    font-weight: 700;
+    white-space: nowrap;
+    padding: .8cqh 1.1cqw;
+    border-radius: .6cqw;
+    box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.25);
+    rotate: var(--rot, 0deg);
+  }
+  #s-back .note.n1 { left: 39%; top: 68%; --rot: -3deg; --d: 1.5s; }
+  #s-back .note.n2 { left: 50%; top: 70.5%; --rot: 2deg;  --d: 1.9s; }
+  #s-back .note.n3 { left: 61%; top: 68%; --rot: -2deg; --d: 2.3s; }
+  #s-back.active .note {
+    animation: castPop .5s var(--bounce) var(--d) backwards,
+               floaty 5.2s ease-in-out var(--d) infinite alternate;
+  }
+  /* the agent takes it on board (shimmer), then both celebrate */
+  #s-back.active .ab .agent-chip {
+    animation: reworkGlow .9s ease 2.9s,
+               hopJoy 2.6s ease-in-out 4.35s infinite;
+  }
+  @keyframes reworkGlow {
+    0%, 100% { box-shadow: 0 .8cqh 2.2cqh rgba(0,0,0,.3); }
+    40%      { box-shadow: 0 0 2.6cqh .5cqw rgba(196,151,254,.85); }
+  }
+  #s-back.active .ab .eyes {
+    animation: blinkEyes 4.6s ease-in-out infinite,
+               inferGlow .9s linear 2.9s;
+  }
+  #s-back.active .ab .base     { animation: eyesOut .12s linear 4.3s forwards; }
+  #s-back.active .ab .alt.joy  { animation: eyesIn  .12s linear 4.3s forwards; }
+  #s-back.active .yb .human-chip { animation: hopJoy 2.6s ease-in-out 4.45s infinite; }
+  /* the true stamp: solid lavender, human-verified */
+  #s-back .stampwrap { top: 22%; }
+  #s-back .bigstamp.adone {
+    font-size: 3.6cqw;
+    padding: 1.6cqh 2.2cqw;
+    background: var(--lavender);
+    border-color: var(--lavender);
+    color: var(--ink);
+    rotate: 3deg;
+    opacity: 0;
+  }
+  #s-back.active .adone { animation: slam .55s cubic-bezier(.16,1.1,.4,1) 3.9s forwards; }
+  #s-back.active .stampwrap { animation: stampBreathe 4.6s ease-in-out 4.8s infinite; }
+  #s-back.active .field { animation: jolt .45s ease-out 4.1s; }
+  /* confetti tick */
+  #s-back .conf i {
+    position: absolute;
+    left: 50%; top: 70%;
+    width: .55cqw; height: .9cqh;
+    border-radius: .15cqw;
+    background: var(--cc, var(--lavender));
+    opacity: 0;
+  }
+  #s-back.active .conf i { animation: confFall 1.5s ease-out 4.15s forwards; }
+  @keyframes confFall {
+    0%   { opacity: 0; translate: 0 0; rotate: 0deg; }
+    12%  { opacity: 1; translate: calc(var(--cx) * .25) calc(var(--cy) * .12 - 2.2cqh); rotate: calc(var(--cr) * .3); }
+    100% { opacity: 0; translate: var(--cx) var(--cy); rotate: var(--cr); }
+  }
+
+  /* #########################################################
+     S11 · AND THEN IT'S GONE. The rug-pull. The whole happy
+     scene lives inside a little chat-window card, "that
+     session". It flickers once, dissolves bottom-to-top into
+     drifting particles (the loss motif, debut), and the line
+     lands. In the corner, faintly, the next person is already
+     walking toward the same obstacle.
+  ######################################################### */
+  #s-gone .sesh {
+    position: absolute;
+    left: 50%; top: 40%;
+    translate: -50% -50%;
+    width: 26cqw;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: .9cqw;
+    box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
+    overflow: hidden;
+  }
+  #s-gone.active .sesh {
+    animation: castPop .6s var(--bounce) .25s backwards,
+               seshFlick .45s linear 1.6s,
+               seshGone 1.5s linear 2.2s forwards;
+  }
+  @keyframes seshFlick {
+    0%, 100% { opacity: 1; }
+    25%      { opacity: .25; }
+    50%      { opacity: 1; }
+    75%      { opacity: .3; }
+  }
+  @keyframes seshGone {
+    from { clip-path: inset(0 -8% 0 -8%); opacity: 1; }
+    to   { clip-path: inset(0 -8% 102% -8%); opacity: .9; }
+  }
+  #s-gone .sesh .bar {
+    display: flex;
+    align-items: center;
+    gap: .45cqw;
+    padding: .9cqh 1.1cqw;
+    background: var(--mauve);
+  }
+  #s-gone .sesh .bar i { width: .6cqw; height: .6cqw; border-radius: 50%; background: rgba(0,0,0,.28); }
+  #s-gone .sesh .bar b {
+    margin-left: .6cqw;
+    font-family: var(--mono);
+    font-size: .85cqw;
+    font-weight: 700;
+    letter-spacing: .06em;
+  }
+  #s-gone .sesh .body { padding: 1.4cqh 1.5cqw 1.8cqh; }
+  /* the mini S10 souvenir inside */
+  #s-gone .mini { display: flex; align-items: center; gap: .8cqw; }
+  #s-gone .mini .mhu { width: 1.7cqw; height: 1.7cqw; border-radius: 50%; background: var(--mauve); position: relative; }
+  #s-gone .mini .mhu::before { content: ''; position: absolute; left: 50%; top: 26%; width: 36%; aspect-ratio: 1; translate: -50% 0; border-radius: 50%; background: var(--ink); }
+  #s-gone .mini .mar { flex: 1; height: .4cqh; border-radius: 999px; background: repeating-linear-gradient(90deg, var(--lavender) 0 .8cqw, transparent .8cqw 1.6cqw); }
+  #s-gone .mini .mag2 { width: 1.7cqw; height: 1.7cqw; border-radius: .35cqw; background: var(--ink); display: grid; place-items: center; color: var(--white); font-family: var(--mono); font-size: .6cqw; font-weight: 700; letter-spacing: .18em; }
+  #s-gone .sesh .ln { display: block; height: .65cqh; border-radius: 999px; background: rgba(0,0,0,.12); margin-top: .8cqh; width: 19cqw; }
+  #s-gone .sesh .ln + .ln { width: 14cqw; }
+  #s-gone .sesh .mstamp {
+    display: inline-block;
+    margin-top: 1.1cqh;
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 700;
+    background: var(--lavender);
+    border-radius: 999px;
+    padding: .45cqh .9cqw;
+  }
+  /* the particles it becomes (sibling cloud, so the clip never cuts them) */
+  #s-gone .pcloud {
+    position: absolute;
+    left: 50%; top: 40%;
+    translate: -50% -50%;
+    width: 26cqw; height: 16cqh;
+    pointer-events: none;
+  }
+  #s-gone .pcloud i {
+    position: absolute;
+    left: var(--x); top: var(--y);
+    width: var(--s, .5cqw); height: var(--s, .5cqw);
+    border-radius: 50%;
+    background: var(--c, var(--lavender));
+    opacity: 0;
+  }
+  #s-gone.active .pcloud i { animation: drift 1.6s ease-out var(--pd) forwards; }
+  @keyframes drift {
+    0%   { opacity: 0; translate: 0 0; scale: 1; }
+    14%  { opacity: .95; }
+    100% { opacity: 0; translate: var(--dx, .6cqw) -10cqh; scale: .4; }
+  }
+  /* the line */
+  #s-gone .lost {
+    position: absolute;
+    left: 50%; top: 36%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 4.1cqw;
+    letter-spacing: -.015em;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-gone .lost b { color: var(--lavender); font-weight: 600; }
+  #s-gone .lostsub {
+    position: absolute;
+    left: 50%; top: 47%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.65cqw;
+    color: var(--mauve);
+    white-space: nowrap;
+  }
+  #s-gone.active .lost    { animation: fadeup .9s var(--pop) 4.1s backwards; }
+  #s-gone.active .lostsub { animation: fadeup .9s var(--pop) 4.7s backwards; }
+  /* faintly, it's already happening again */
+  #s-gone .gwalk {
+    position: absolute;
+    right: 7%; bottom: 10%;
+    width: 20cqw; height: 5cqh;
+    opacity: 0;
+  }
+  #s-gone.active .gwalk { animation: gwIn 1.2s ease 5.2s forwards; }
+  @keyframes gwIn { to { opacity: .22; } }
+  #s-gone .gwalk .gline2 { position: absolute; left: 0; right: 0; bottom: 0; border-top: 2px dashed rgba(255,255,255,.6); }
+  #s-gone .gwalk .gpin { position: absolute; left: 66%; bottom: 0; width: .8cqw; height: .8cqw; translate: -50% 50%; border-radius: 50%; background: var(--mauve); }
+  #s-gone .gwalk .ga {
+    position: absolute;
+    left: 0; bottom: .25cqh;
+    width: 1.9cqw; height: 1.9cqw;
+    border-radius: .4cqw;
+    background: var(--ink);
+    display: grid;
+    place-items: center;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: .65cqw;
+    font-weight: 700;
+    letter-spacing: .18em;
+    opacity: 0;
+  }
+  #s-gone.active .gwalk .ga { animation: gwLoop 6s linear 5.4s infinite; }
+  @keyframes gwLoop {
+    0%       { transform: translateX(0); rotate: 0deg; opacity: 0; }
+    8%       { transform: translateX(1cqw); rotate: 0deg; opacity: 1; }
+    46%      { transform: translateX(11.2cqw); rotate: 0deg; opacity: 1; }
+    52%      { transform: translateX(11.2cqw); rotate: -7deg; opacity: 1; }
+    58%      { transform: translateX(11.2cqw); rotate: 6deg; opacity: 1; }
+    64%      { transform: translateX(11.2cqw); rotate: 0deg; opacity: 1; }
+    86%      { transform: translateX(11.2cqw); rotate: 0deg; opacity: 0; }
+    100%     { transform: translateX(0); rotate: 0deg; opacity: 0; }
+  }
+
+  /* #########################################################
+     S12 · MULTIPLY IT. Six work-lanes, every one silently
+     replaying the friction loop at its own phase: walk, hit
+     the snag, shake, carry on; learnings drift up and
+     evaporate. One lane's crumbs fall into an overflowing
+     agents.md. The meter counts in millions.
+  ######################################################### */
+  #s-mult .lane {
+    position: absolute;
+    width: 26%; height: 30%;
+    background: rgba(255,255,255,.09);
+    border: 1.5px solid rgba(255,255,255,.16);
+    border-radius: 1cqw;
+  }
+  #s-mult .l1 { left: 4%;  top: 3%; --lp: 0s; }
+  #s-mult .l2 { left: 37%; top: 3%; --lp: .8s; }
+  #s-mult .l3 { left: 70%; top: 3%; --lp: 1.5s; }
+  #s-mult .l4 { left: 4%;  top: 37%; --lp: 2.3s; }
+  #s-mult .l5 { left: 37%; top: 37%; --lp: 3.1s; }
+  #s-mult .l6 { left: 70%; top: 37%; --lp: 3.8s; }
+  #s-mult.active .lane { animation: castPop .55s var(--bounce) var(--d, .9s) backwards; }
+  #s-mult.active .l1 { animation-delay: .3s; }
+  #s-mult.active .l2 { animation-delay: .95s; }
+  #s-mult.active .l3 { animation-delay: 1.1s; }
+  #s-mult.active .l4 { animation-delay: 1.25s; }
+  #s-mult.active .l5 { animation-delay: 1.4s; }
+  #s-mult.active .l6 { animation-delay: 1.55s; }
+  /* lane internals: a tiny silent cast */
+  #s-mult .mh {
+    position: absolute;
+    left: 5%; bottom: 26%;
+    width: 1.7cqw; height: 1.7cqw;
+    border-radius: 50%;
+    background: var(--mauve);
+    overflow: hidden;
+  }
+  #s-mult .mh::before { /* head */
+    content: '';
+    position: absolute;
+    left: 50%; top: 18%;
+    width: 34%; aspect-ratio: 1;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  #s-mult .mh::after { /* shoulders */
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -16%;
+    width: 70%; aspect-ratio: 1.4;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  #s-mult .trk {
+    position: absolute;
+    left: 16%; right: 10%;
+    bottom: 32%;
+    border-top: 2px dashed rgba(255,255,255,.35);
+  }
+  #s-mult .fpin {
+    position: absolute;
+    left: 48%; bottom: 32%;
+    width: .75cqw; height: .75cqw;
+    translate: -50% 50%;
+    border-radius: 50%;
+    background: var(--mauve);
+  }
+  #s-mult .ma {
+    position: absolute;
+    left: 15%; bottom: 32%;
+    translate: 0 42%;
+    width: 1.9cqw; height: 1.9cqw;
+    border-radius: .4cqw;
+    background: var(--ink);
+    display: grid;
+    place-items: center;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: .65cqw;
+    font-weight: 700;
+    letter-spacing: .18em;
+    opacity: 0;
+  }
+  #s-mult .ma { animation: laneRun 4.6s linear var(--lp) infinite; }
+  @keyframes laneRun {
+    0%        { transform: translateX(0); rotate: 0deg; opacity: 0; }
+    5%        { transform: translateX(.8cqw); rotate: 0deg; opacity: 1; }
+    34%       { transform: translateX(6.6cqw); rotate: 0deg; opacity: 1; }
+    38%       { transform: translateX(6.6cqw); rotate: -8deg; opacity: 1; }
+    42%       { transform: translateX(6.6cqw); rotate: 7deg; opacity: 1; }
+    46%       { transform: translateX(6.6cqw); rotate: -5deg; opacity: 1; }
+    50%       { transform: translateX(6.6cqw); rotate: 0deg; opacity: 1; }
+    76%       { transform: translateX(13.5cqw); rotate: 0deg; opacity: 1; }
+    82%, 100% { transform: translateX(15cqw); rotate: 0deg; opacity: 0; }
+  }
+  /* every snag sheds learnings that evaporate */
+  #s-mult .lp1, #s-mult .lp2 {
+    position: absolute;
+    left: 48%; bottom: 36%;
+    width: .5cqw; height: .5cqw;
+    border-radius: 50%;
+    background: var(--lavender);
+    opacity: 0;
+  }
+  #s-mult .lp2 { left: 52%; background: var(--mauve); }
+  #s-mult .lp1 { animation: mrise 4.6s linear calc(var(--lp) + 1.7s) infinite; }
+  #s-mult .lp2 { animation: mrise 4.6s linear calc(var(--lp) + 2s) infinite; }
+  @keyframes mrise {
+    0%        { opacity: 0; translate: 0 0; }
+    8%        { opacity: .9; translate: .15cqw -1.6cqh; }
+    30%, 100% { opacity: 0; translate: .6cqw -7cqh; }
+  }
+  /* ...except one lane's crumbs, which fall into agents.md */
+  #s-mult .l4 .lp1, #s-mult .l4 .lp2 { animation-name: mfall; }
+  @keyframes mfall {
+    0%        { opacity: 0; translate: 0 0; }
+    8%        { opacity: .95; translate: .1cqw 2cqh; }
+    30%, 100% { opacity: 0; translate: .5cqw 13cqh; }
+  }
+  #s-mult .amd {
+    position: absolute;
+    left: 9%; bottom: 3.4cqh;
+    width: 13cqw;
+    background: var(--white);
+    color: var(--ink);
+    border-radius: .8cqw;
+    padding: 1.2cqh 1.2cqw;
+    box-shadow: 0 .8cqh 2.4cqh rgba(0,0,0,.22);
+    rotate: -2deg;
+  }
+  #s-mult .amd h4 { text-transform: none; font-family: var(--mono); letter-spacing: .06em; margin-bottom: .5cqh; }
+  #s-mult .amd .ln { display: block; height: .6cqh; border-radius: 999px; background: var(--mauve); margin-top: .55cqh; width: 9cqw; }
+  #s-mult .amd .ln:nth-of-type(2) { width: 10.5cqw; }
+  #s-mult .amd .ln.sp1 { width: 11.5cqw; margin-left: 1.2cqw; rotate: 2deg; opacity: .8; }
+  #s-mult .amd .ln.sp2 { position: absolute; left: 52%; bottom: -1.5cqh; width: 7.5cqw; rotate: -5deg; opacity: .55; }
+  #s-mult .amd .ln.sp3 { position: absolute; left: -8%; bottom: -.7cqh; width: 6cqw; rotate: 4deg; opacity: .45; }
+  #s-mult.active .amd {
+    animation: castPop .55s var(--bounce) 2.2s backwards,
+               amdPulse 4.6s ease-in-out 5s infinite;
+  }
+  @keyframes amdPulse {
+    0%, 100% { scale: 1; }
+    8%       { scale: 1.05; }
+    16%      { scale: 1; }
+  }
+  /* the line + the meter, in millions */
+  #s-mult .mline {
+    position: absolute;
+    left: 50%; bottom: 3.2cqh;
+    translate: -50% 0;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 2.1cqw;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-mult .mline b { color: var(--lavender); font-weight: 600; }
+  #s-mult.active .mline { animation: fadeup .9s var(--pop) 2.8s backwards; }
+  #s-mult.active .ticker { animation: fadeup .7s var(--pop) 1.9s backwards; }
+  #s-mult .ticker .dot { animation: thinkDot .8s ease-in-out infinite; }
+  #s-mult .r-m1 .reel { animation: reelSpin 18s steps(10, end) infinite; }
+  #s-mult .r-m2 .reel { animation: reelSpin 1.8s steps(10, end) infinite; }
+
+  /* #########################################################
+     S13 · THE TWO QUESTIONS — the quietest slide in the deck.
+     The stage strips back to two cards: the title termbar's
+     questions, now earned. They flip up with weight, then just
+     breathe while the presenter talks. Nothing else on stage.
+  ######################################################### */
+  .qfield { position: absolute; inset: 0; perspective: 95cqw; }
+  /* the question cards are shared with S14 ("still on stage",
+     same coordinates there), so they live unscoped */
+  .qcard {
+    position: absolute;
+    width: 27cqw;
+    padding: 3cqh 2.2cqw 3.4cqh;
+    border-radius: 1.3cqw;
+    translate: -50% -50%;
+    transform-origin: 50% 100%;
+    background: var(--white);
+    color: var(--ink);
+    box-shadow: 0 1.6cqh 4cqh rgba(0,0,0,.28);
+  }
+  .qcard .qn {
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 700;
+    letter-spacing: .24em;
+    text-transform: uppercase;
+    color: var(--purple);
+  }
+  .qcard h3 {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 2.3cqw;
+    line-height: 1.18;
+    letter-spacing: -.01em;
+    margin-top: 1.3cqh;
+  }
+  .qcard h3 .qm { color: var(--purple); }
+  .qcard .qs {
+    margin-top: 1.5cqh;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.12cqw;
+    opacity: .72;
+  }
+  .qcard.qink {
+    background: var(--ink);
+    color: var(--white);
+    border: .22cqw solid var(--lavender);
+  }
+  .qcard.qink .qn { color: var(--lavender); }
+  .qcard.qink h3 .qm { color: var(--lavender); }
+  .qcard.qink .qs { color: var(--mauve); opacity: .92; }
+
+  #s-quest .qa { left: 28.5%; top: 46%; }
+  #s-quest .qb { left: 71.5%; top: 46%; }
+  /* AUTOPLAY: A flips up, B answers it, then both idle on a slow
+     offset breath (the scale property composes under the flip) */
+  #s-quest.active .qa { animation: qFlip 1.05s var(--pop) .6s backwards, qBreathe 5.4s ease-in-out 1.65s infinite; }
+  #s-quest.active .qb { animation: qFlip 1.05s var(--pop) 1.8s backwards, qBreathe 5.4s ease-in-out 4.35s infinite; }
+  @keyframes qFlip {
+    0%   { opacity: 0; transform: rotateX(58deg) translateY(7cqh); }
+    62%  { opacity: 1; transform: rotateX(-6deg) translateY(-.5cqh); }
+    100% { opacity: 1; transform: rotateX(0deg) translateY(0); }
+  }
+  @keyframes qBreathe {
+    0%, 100% { scale: 1; }
+    50%      { scale: 1.015; }
+  }
+
+  /* #########################################################
+     S14 · WHAT WE NEED — the design brief. The two question
+     cards (recreated in place) shrink and travel down their
+     spokes into one glowing focal node, leaving the A / B
+     labels behind. Ambient: the questions keep feeding it.
+  ######################################################### */
+  #s-need .nhead { position: absolute; left: 3.5cqw; top: 3.4cqh; z-index: 4; }
+  #s-need .nhead h2 {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 3.4cqw;
+    line-height: 1.05;
+    letter-spacing: -.015em;
+    margin-top: 1.1cqh;
+  }
+  #s-need .nhead .hdot { color: var(--lavender); }
+  #s-need.active .nhead .kicker { animation: fadeup .7s var(--pop) .45s backwards; }
+  #s-need.active .nhead h2 { animation: fadeup .8s var(--pop) .6s backwards; }
+
+  /* the S13 cards, still on stage at the same coordinates, then
+     they shrink and sink into the node (forwards = they stay gone) */
+  #s-need .qa { left: 28.5%; top: 46%; }
+  #s-need .qb { left: 71.5%; top: 46%; }
+  #s-need.active .qa { animation: fadein .35s ease .05s backwards, qTravelA .9s cubic-bezier(.55,.05,.7,1) 1.9s forwards; }
+  #s-need.active .qb { animation: fadein .35s ease .05s backwards, qTravelB .9s cubic-bezier(.55,.05,.7,1) 2.05s forwards; }
+  @keyframes qTravelA {
+    0%   { left: 28.5%; top: 46%; scale: 1; opacity: 1; }
+    78%  { opacity: 1; }
+    100% { left: 50%; top: 64%; scale: .1; opacity: 0; }
+  }
+  @keyframes qTravelB {
+    0%   { left: 71.5%; top: 46%; scale: 1; opacity: 1; }
+    78%  { opacity: 1; }
+    100% { left: 50%; top: 64%; scale: .1; opacity: 0; }
+  }
+
+  /* spokes resolve into the node (drawn beneath the cards) */
+  #s-need .spokes { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #s-need .sp {
+    stroke: rgba(255,255,255,.5);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  #s-need.active .spA { animation: spDraw .7s ease 1.5s forwards; }
+  #s-need.active .spB { animation: spDraw .7s ease 1.65s forwards; }
+  @keyframes spDraw { to { stroke-dashoffset: 0; } }
+
+  /* what each card leaves behind: its question, distilled */
+  #s-need .slab {
+    position: absolute;
+    translate: -50% -50%;
+    padding: 1.1cqh 1.7cqw;
+    border: .14cqw solid rgba(255,255,255,.4);
+    border-radius: 999px;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.3cqw;
+    white-space: nowrap;
+    color: var(--white);
+  }
+  #s-need .slab b { font-weight: 600; color: var(--lavender); }
+  #s-need .sa { left: 28.5%; top: 46%; }
+  #s-need .sb { left: 71.5%; top: 46%; }
+  #s-need.active .slab { animation: fadein .6s ease 2.75s backwards; }
+
+  /* the focal node */
+  #s-need .fnode {
+    position: absolute;
+    left: 50%; top: 64%;
+    width: 7.2cqw; height: 7.2cqw;
+    translate: -50% -50%;
+    z-index: 2;
+  }
+  #s-need.active .fnode { animation: nodeIn .7s var(--bounce) 1.2s backwards, nodeTick 1.8s ease-in-out 4.65s infinite; }
+  @keyframes nodeIn { from { scale: 0; } }
+  @keyframes nodeTick {
+    0%, 16%, 100% { scale: 1; }
+    8%            { scale: 1.06; }
+  }
+  #s-need .fnode .ringd {
+    position: absolute;
+    inset: -1.3cqw;
+    border-radius: 50%;
+    border: .16cqw dashed rgba(196,151,254,.85);
+    animation: spinSlow 16s linear infinite;
+  }
+  @keyframes spinSlow { to { rotate: 360deg; } }
+  #s-need .fnode .core {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    border: .3cqw solid var(--lavender);
+    box-shadow: 0 0 3cqw .5cqw rgba(196,151,254,.5), inset 0 0 2cqw rgba(196,151,254,.35);
+  }
+  #s-need .fnode .core::after {
+    content: '';
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 46%; height: 46%;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--lavender), rgba(196,151,254,0) 72%);
+    animation: coreBreathe 2.6s ease-in-out infinite;
+  }
+  @keyframes coreBreathe {
+    0%, 100% { opacity: .7; scale: 1; }
+    50%      { opacity: 1; scale: 1.2; }
+  }
+  /* one-shot pulse as the cards land inside */
+  #s-need .ping {
+    position: absolute;
+    left: 50%; top: 64%;
+    width: 9cqw; height: 9cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    border: .3cqw solid var(--lavender);
+    opacity: 0;
+  }
+  #s-need.active .ping { animation: pingOnce 1s ease-out 2.85s; }
+  @keyframes pingOnce {
+    0%   { opacity: .85; scale: .5; }
+    100% { opacity: 0; scale: 1.8; }
+  }
+  /* the cards become the node's two jobs, pinned on its rim */
+  #s-need .bdg {
+    position: absolute;
+    width: 2.3cqw; height: 2.3cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: .95cqw;
+    z-index: 3;
+  }
+  #s-need .ba { left: 45.8%; top: 59.6%; background: var(--white); color: var(--ink); }
+  #s-need .bb2 { left: 54.2%; top: 59.6%; background: var(--ink); color: var(--white); border: .16cqw solid var(--lavender); }
+  #s-need.active .ba { animation: castPop .5s var(--bounce) 2.62s backwards, bdgFloat 4.2s ease-in-out infinite alternate; }
+  #s-need.active .bb2 { animation: castPop .5s var(--bounce) 2.76s backwards, bdgFloat 4.2s ease-in-out 2.1s infinite alternate; }
+  @keyframes bdgFloat { to { transform: translateY(-.4cqh); } }
+  #s-need .nsub {
+    position: absolute;
+    left: 50%; top: 79%;
+    translate: -50% -50%;
+    font-family: var(--mono);
+    font-size: .95cqw;
+    font-weight: 600;
+    letter-spacing: .26em;
+    text-transform: uppercase;
+    color: var(--mauve);
+    white-space: nowrap;
+  }
+  #s-need.active .nsub { animation: fadeup .8s var(--pop) 3.15s backwards; }
+
+  /* ambient: packets keep feeding the focal point, phase-locked
+     to the node's absorb tick (arrivals land on the 1.8s grid) */
+  #s-need .pk {
+    position: absolute;
+    width: .95cqw; height: .95cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--lavender);
+    box-shadow: 0 0 1.4cqh .2cqh rgba(196,151,254,.8);
+    opacity: 0;
+  }
+  #s-need.active .pkA { animation: pkRunA 3.6s linear 3.3s infinite; }
+  #s-need.active .pkB { animation: pkRunB 3.6s linear 5.1s infinite; }
+  @keyframes pkRunA {
+    0%        { left: 32.2%; top: 49.2%; opacity: 0; }
+    8%        { left: 33.6%; top: 50.3%; opacity: 1; }
+    34%       { left: 47.6%; top: 61.6%; opacity: 1; }
+    38%, 100% { left: 49.4%; top: 63%; opacity: 0; }
+  }
+  @keyframes pkRunB {
+    0%        { left: 67.8%; top: 49.2%; opacity: 0; }
+    8%        { left: 66.4%; top: 50.3%; opacity: 1; }
+    34%       { left: 52.4%; top: 61.6%; opacity: 1; }
+    38%, 100% { left: 50.6%; top: 63%; opacity: 0; }
+  }
+
+  /* #########################################################
+     S15 · THE MISSING PIECE — the money shot. The S2 stack
+     re-assembles fast, inference and codebase crack apart, and
+     the ink Deterministic plate slides into the slot it was
+     always leaving open. The S14 node arcs in and splits into
+     the done? / encode decals. One unified stack pulse, then
+     ambient: proof rises, backpressure sinks in and stays.
+  ######################################################### */
+  #s-miss .m-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 27cqw 1fr;
+    align-items: center;
+    gap: 1.5cqw;
+  }
+  #s-miss.active .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
+  #s-miss h2 {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 4.3cqw;
+    line-height: 1.05;
+    letter-spacing: -.015em;
+    margin-top: 2cqh;
+  }
+  #s-miss.active h2 { animation: fadeup .9s var(--pop) .22s backwards; }
+  #s-miss h2 .hdot { color: var(--lavender); }
+  #s-miss .m-sub {
+    margin-top: 3cqh;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.3cqw;
+    color: var(--mauve);
+  }
+  #s-miss.active .m-sub { animation: fadein .9s ease 4.9s backwards; }
+
+  /* same rig as S2: orthographic camera on the parent, floors
+     travel along Z only */
+  #s-miss .scene3d { position: relative; height: 100%; min-height: 0; }
+  #s-miss .bloom {
+    position: absolute;
+    left: 56%; top: 50%;
+    width: 56cqw; height: 56cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(196,151,254,.3), rgba(196,151,254,0) 72%);
+    pointer-events: none;
+  }
+  #s-miss.active .bloom { animation: fadein 1s ease .1s backwards; }
+  #s-miss .gshadow {
+    position: absolute;
+    left: 56%; top: 88%;
+    width: 36cqw; height: 12cqh;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(12,0,30,.45), transparent 70%);
+    pointer-events: none;
+  }
+  #s-miss .iso {
+    position: absolute;
+    left: 56%; top: 53%;
+    width: 30cqw; height: 30cqw;
+    margin: -15cqw 0 0 -15cqw;
+    transform: rotateX(57deg) rotateZ(-43deg);
+    transform-style: preserve-3d;
+    pointer-events: none;
+  }
+  /* the unified pulse rides the scale property over isoBob's translate */
+  #s-miss.active .iso { animation: isoBob 7s ease-in-out infinite alternate, stackPulse .9s ease 5.15s; }
+  @keyframes stackPulse {
+    0%, 100% { scale: 1; }
+    35%      { scale: 1.04; }
+  }
+  #s-miss .floor {
+    position: absolute;
+    inset: 0;
+    border-radius: 2.2cqw;
+    background: var(--pc);
+    transform: translateZ(var(--z));
+    transform-style: preserve-3d;
+  }
+  #s-miss .floor::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(18,0,44,.55);
+    transform: translateZ(-1cqw);
+  }
+  #s-miss .floor::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3.75cqw),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3.75cqw);
+  }
+  #s-miss .floor .pnum3 {
+    position: absolute;
+    right: 1.6cqw; bottom: .4cqw;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 8cqw;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: .11cqw rgba(0,0,0,.2);
+  }
+  #s-miss .floor .coat {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--white);
+    opacity: 0;
+  }
+  #s-miss .f-3 .coat, #s-miss .f-d .coat { background: var(--lavender); }
+  #s-miss .f-1 { --pc: var(--mauve);    --z: 10cqw; }
+  #s-miss .f-2 { --pc: var(--lavender); --z: 2.6cqw; }
+  #s-miss .f-3 { --pc: var(--white);    --z: -6.4cqw; }
+  /* AUTOPLAY: re-assemble fast, then the crack opens. gapUp/Down
+     take over transform after floorLand has finished and hold. */
+  #s-miss.active .f-1 { animation: floorLand .55s var(--pop) .15s backwards, gapUp1 .9s ease 1.6s forwards; }
+  #s-miss.active .f-2 { animation: floorLand .55s var(--pop) .32s backwards, gapUp2 .9s ease 1.6s forwards; }
+  #s-miss.active .f-3 { animation: floorLand .55s var(--pop) .49s backwards, gapDown3 .9s ease 1.6s forwards; }
+  @keyframes gapUp1   { from { transform: translateZ(10cqw); }   to { transform: translateZ(11.6cqw); } }
+  @keyframes gapUp2   { from { transform: translateZ(2.6cqw); }  to { transform: translateZ(4.4cqw); } }
+  @keyframes gapDown3 { from { transform: translateZ(-6.4cqw); } to { transform: translateZ(-11.6cqw); } }
+  /* the slot glows while it waits for the plate */
+  #s-miss .gap-glow {
+    position: absolute;
+    inset: 6%;
+    border-radius: 2.2cqw;
+    transform: translateZ(-3.6cqw);
+    background: radial-gradient(closest-side, rgba(196,151,254,.9), rgba(196,151,254,0) 75%);
+    opacity: 0;
+  }
+  #s-miss.active .gap-glow { animation: gapGlow 2.2s ease 1.8s; }
+  @keyframes gapGlow {
+    0%   { opacity: 0; }
+    40%  { opacity: .65; }
+    100% { opacity: 0; }
+  }
+  /* the deterministic plate: ink, glowing, slides in along the
+     plane's own X axis with a weighty settle */
+  #s-miss .f-d {
+    --pc: var(--ink);
+    --z: -3.6cqw;
+    opacity: 0;
+    transform: translateZ(-3.6cqw) translateX(46cqw);
+    box-shadow: 0 0 3.2cqw .4cqw rgba(196,151,254,.45);
+  }
+  #s-miss .f-d::before {
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3.75cqw),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.07) 0 1px, transparent 1px 3.75cqw);
+  }
+  #s-miss.active .f-d { animation: plateIn 1.15s cubic-bezier(.25,.7,.3,1.04) 2.5s forwards, plateBreathe 2.8s ease-in-out 5.6s infinite; }
+  @keyframes plateIn {
+    0%   { opacity: 0; transform: translateZ(-3.6cqw) translateX(46cqw); }
+    22%  { opacity: 1; }
+    82%  { transform: translateZ(-3.6cqw) translateX(-1.4cqw); }
+    100% { opacity: 1; transform: translateZ(-3.6cqw) translateX(0cqw); }
+  }
+  /* breathing glow, brightest right as the backpressure dot sinks in */
+  @keyframes plateBreathe {
+    0%, 100% { box-shadow: 0 0 3.2cqw .4cqw rgba(196,151,254,.4); }
+    88%      { box-shadow: 0 0 5cqw .9cqw rgba(196,151,254,.75); }
+  }
+  /* landing flash, then a second blink as the chips stamp on */
+  #s-miss.active .f-d .coat { animation: dCoat 1.4s ease 3.5s, uniFlash .7s ease 5.15s; }
+  @keyframes dCoat {
+    0%        { opacity: .75; }
+    35%, 75%  { opacity: 0; }
+    82%       { opacity: .45; }
+    100%      { opacity: 0; }
+  }
+  #s-miss.active .f-1 .coat { animation: uniFlash .7s ease 5.15s, coatPass1 2.8s linear 5.6s infinite; }
+  #s-miss.active .f-2 .coat { animation: uniFlash .7s ease 5.15s, coatPass2 2.8s linear 5.6s infinite; }
+  #s-miss.active .f-3 .coat { animation: uniFlash .7s ease 5.15s; }
+  @keyframes uniFlash { 30% { opacity: .5; } }
+  /* the floors react as the dots pass: proof going up (first bump),
+     backpressure coming down (second). Same 2.8s clock = phase-locked. */
+  @keyframes coatPass1 {
+    0%, 41%   { opacity: 0; }
+    45%       { opacity: .4; }
+    49%, 60%  { opacity: 0; }
+    64%       { opacity: .35; }
+    68%, 100% { opacity: 0; }
+  }
+  @keyframes coatPass2 {
+    0%, 27%   { opacity: 0; }
+    31%       { opacity: .4; }
+    35%, 76%  { opacity: 0; }
+    80%       { opacity: .35; }
+    84%, 100% { opacity: 0; }
+  }
+  /* the node's two jobs, embedded as decals lying on the plate */
+  #s-miss .dchip {
+    position: absolute;
+    padding: .9cqw 1.6cqw;
+    border-radius: 999px;
+    border: .28cqw solid var(--lavender);
+    background: rgba(196,151,254,.22);
+    color: var(--lavender);
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 2.1cqw;
+    letter-spacing: .08em;
+  }
+  /* the plate's exposed band (not shaded by the floor above) is its
+     local bottom-right half: keep the decals there, like the numerals */
+  #s-miss .c1 { left: 26%; top: 78%; }
+  #s-miss .c2 { left: 60%; top: 73%; }
+  #s-miss.active .dchip { animation: castPop .55s var(--bounce) backwards; }
+  #s-miss.active .c1 { animation-delay: 4.55s; }
+  #s-miss.active .c2 { animation-delay: 4.7s; }
+
+  /* billboard labels (screen space, like S2). Only the new layer
+     carries a trait line: the other three have been toured. */
+  #s-miss .bb { position: absolute; text-align: right; }
+  #s-miss .bb b {
+    display: block;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 2.1cqw;
+    line-height: 1;
+    color: var(--white);
+  }
+  #s-miss .bb b .pdot { color: var(--lavender); }
+  #s-miss .bb .tr {
+    position: absolute;
+    top: calc(100% + .5cqh);
+    right: 0;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: .9cqw;
+    color: rgba(255,255,255,.95);
+    white-space: nowrap;
+  }
+  #s-miss .bb i {
+    position: absolute;
+    top: 1.35cqw;
+    left: calc(100% + .9cqw);
+    width: 2.8cqw;
+    height: 0;
+    border-top: 2px dashed rgba(255,255,255,.85);
+  }
+  #s-miss .bb i::after {
+    content: '';
+    position: absolute;
+    right: -.3cqw; top: -.37cqw;
+    width: .66cqw; height: .66cqw;
+    border-radius: 50%;
+    background: var(--white);
+    box-shadow: 0 0 0 .17cqw rgba(0,0,0,.35);
+  }
+  #s-miss .bb-1 { right: 79%; top: 30%; }
+  #s-miss .bb-2 { right: 79%; top: 44%; }
+  #s-miss .bb-d { right: 79%; top: 56%; }
+  #s-miss .bb-3 { right: 79%; top: 76%; }
+  #s-miss.active .bb { animation: bbIn .5s var(--pop) backwards; }
+  #s-miss.active .bb-1 { animation-delay: .85s; }
+  #s-miss.active .bb-2 { animation-delay: .95s; }
+  #s-miss.active .bb-3 { animation-delay: 1.05s; }
+  #s-miss.active .bb-d { animation-delay: 3.75s; }
+
+  /* the S14 focal node arcs in and splits into the two decals */
+  #s-miss .node2 {
+    position: absolute;
+    left: 58%; top: -6%;
+    translate: -50% -50%;
+    width: 4cqw; height: 4cqw;
+    border-radius: 50%;
+    background: var(--ink);
+    border: .26cqw solid var(--lavender);
+    box-shadow: 0 0 2.4cqw .4cqw rgba(196,151,254,.55);
+    display: grid;
+    place-items: center;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: .95cqw;
+    letter-spacing: .12em;
+    color: var(--white);
+    opacity: 0;
+  }
+  #s-miss.active .node2 { animation: nodeArc .85s cubic-bezier(.4,.1,.7,1) 3.85s forwards; }
+  @keyframes nodeArc {
+    0%   { left: 58%; top: -6%; opacity: 0; scale: 1; }
+    12%  { opacity: 1; }
+    55%  { left: 47%; top: 26%; opacity: 1; scale: .9; }
+    88%  { left: 56%; top: 53%; opacity: 1; scale: .5; }
+    100% { left: 57%; top: 56%; opacity: 0; scale: .3; }
+  }
+
+  /* ambient: runnable proof rises out of the plate; encoded
+     backpressure sinks in and STAYS (same clock = phase-locked) */
+  #s-miss .drop2 {
+    position: absolute;
+    left: 54.5%;
+    top: 58%;
+    width: 1.15cqw; height: 1.15cqw;
+    margin-left: -.575cqw;
+    border-radius: 50%;
+    opacity: 0;
+  }
+  #s-miss .proof { background: var(--white); box-shadow: 0 0 1.6cqh .25cqh rgba(255,255,255,.7); }
+  #s-miss .enc { margin-left: 1.2cqw; top: 24%; background: var(--lavender); box-shadow: 0 0 1.6cqh .25cqh rgba(196,151,254,.8); }
+  #s-miss.active .proof { animation: proofRise 2.8s linear 5.6s infinite; }
+  #s-miss.active .enc { animation: encFall 2.8s linear 5.6s infinite; }
+  @keyframes proofRise {
+    0%, 8%    { top: 58%; opacity: 0; }
+    16%       { top: 54%; opacity: 1; }
+    55%       { top: 26%; opacity: 1; }
+    64%, 100% { top: 20%; opacity: 0; }
+  }
+  @keyframes encFall {
+    0%, 50%   { top: 24%; opacity: 0; }
+    58%       { top: 28%; opacity: 1; }
+    88%       { top: 52%; opacity: 1; }
+    94%, 100% { top: 56%; opacity: 0; }
+  }
+
+  /* =========================================================
+     SHARED · the parked harness plate (recurring set piece for
+     S17 onward) + terminal typing bits
+  ========================================================== */
+  .hplate {
+    position: absolute;
+    left: 50%; bottom: 4.5cqh;
+    translate: -50% 0;
+    width: 58cqw;
+    padding: 1.5cqh 2cqw 1.7cqh;
+    border-radius: 1.1cqw;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 1.1cqw;
+    box-shadow: 0 0 2.6cqw .25cqw rgba(196,151,254,.3);
+  }
+  .slide.active .hplate { animation: hglow 3.2s ease-in-out infinite; }
+  @keyframes hglow {
+    0%, 100% { box-shadow: 0 0 2.6cqw .25cqw rgba(196,151,254,.3); }
+    50%      { box-shadow: 0 0 4cqw .6cqw rgba(196,151,254,.55); }
+  }
+  .hplate .hl {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.5cqw;
+    color: var(--white);
+    margin-right: .6cqw;
+  }
+  .hplate .hl i { color: var(--lavender); font-style: normal; }
+  .hplate .hchip {
+    font-family: var(--mono);
+    font-size: .95cqw;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: var(--lavender);
+    border: .16cqw solid rgba(196,151,254,.75);
+    background: rgba(196,151,254,.12);
+    border-radius: 999px;
+    padding: .55cqh 1.1cqw;
+    white-space: nowrap;
+  }
+  /* a span that types itself: width 0 -> --ch in steps */
+  .tw {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    width: 0;
+  }
+  @keyframes typeW { to { width: var(--ch); } }
+  .tcur {
+    display: inline-block;
+    width: .55cqw; height: 1.15cqw;
+    margin-left: .25cqw;
+    background: var(--lavender);
+    animation: curBlink 1.1s steps(1) infinite;
+  }
+  @keyframes curBlink { 50% { opacity: 0; } }
+
+  /* #########################################################
+     S16 · IT HAS A NAME — the deterministic plate zooms up to
+     hero and gets its name. The S5 clutter reappears, scattered,
+     then sweeps into a tidy grid BEHIND the plate (a simple view
+     over the complex). Three jobs pop out; the terminal proves
+     it's real; the agent leans in, delighted.
+  ######################################################### */
+  #s-name.active .kicker { animation: fadeup .7s var(--pop) .1s backwards; }
+  /* the ghost clutter: faint outline cards, scattered, then tidy */
+  #s-name .gcard {
+    position: absolute;
+    left: var(--sx); top: var(--sy);
+    translate: -50% -50%;
+    rotate: var(--sr);
+    z-index: 1;
+    border: .14cqw solid rgba(255,255,255,.4);
+    background: rgba(255,255,255,.07);
+    color: rgba(255,255,255,.8);
+    border-radius: .6cqw;
+    padding: .7cqh 1cqw;
+    font-family: var(--mono);
+    font-size: .85cqw;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: .55;
+  }
+  #s-name.active .gcard {
+    animation: fadein .45s ease var(--fd) backwards,
+               tidy .8s var(--pop) 1.6s forwards;
+  }
+  @keyframes tidy { to { left: var(--gx); top: var(--gy); rotate: 0deg; } }
+
+  /* the plate, zooming up from the S15 stack to hero scale */
+  #s-name .nplate {
+    position: absolute;
+    left: 50%; top: 32%;
+    translate: -50% -50%;
+    z-index: 2;
+    text-align: center;
+    background: var(--ink);
+    border-radius: 1.4cqw;
+    padding: 3cqh 4cqw 3.4cqh;
+    box-shadow: 0 0 3.4cqw .4cqw rgba(196,151,254,.45);
+  }
+  #s-name .nplate h3 {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 4.4cqw;
+    line-height: 1;
+    letter-spacing: -.015em;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-name .nplate h3 .hdot { color: var(--lavender); }
+  #s-name .nplate .nsub2 {
+    margin-top: 1.4cqh;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.3cqw;
+    color: var(--mauve);
+  }
+  #s-name.active .nplate {
+    animation: nzoom .9s var(--pop) .2s backwards,
+               nbump .5s ease 2.55s,
+               nglow 3.4s ease-in-out 3s infinite;
+  }
+  @keyframes nzoom {
+    0%   { opacity: 0; scale: .22; }
+    75%  { opacity: 1; scale: 1.04; }
+    100% { opacity: 1; scale: 1; }
+  }
+  @keyframes nbump {
+    0%, 100% { scale: 1; }
+    40%      { scale: 1.02; }
+  }
+  @keyframes nglow {
+    0%, 100% { box-shadow: 0 0 3.4cqw .4cqw rgba(196,151,254,.45); }
+    50%      { box-shadow: 0 0 5.2cqw .8cqw rgba(196,151,254,.7); }
+  }
+  #s-name.active .nplate h3 { animation: fadeup .7s var(--pop) .75s backwards; }
+  #s-name.active .nplate .nsub2 { animation: fadein .8s ease 2.6s backwards; }
+
+  /* the three jobs, popped out of the plate on connector stems */
+  #s-name .conn {
+    position: absolute;
+    top: 42%;
+    height: 13cqh;
+    width: 0;
+    border-left: .16cqw dashed rgba(255,255,255,.55);
+    transform-origin: top;
+  }
+  #s-name .c-1 { left: 30%; }
+  #s-name .c-2 { left: 50%; }
+  #s-name .c-3 { left: 70%; }
+  #s-name.active .conn { animation: connDraw .4s ease backwards; }
+  #s-name.active .c-1 { animation-delay: 2.75s; }
+  #s-name.active .c-2 { animation-delay: 3.05s; }
+  #s-name.active .c-3 { animation-delay: 3.35s; }
+  @keyframes connDraw { from { transform: scaleY(0); } }
+  #s-name .job {
+    position: absolute;
+    top: 60%;
+    translate: -50% -50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  #s-name .j1 { left: 30%; }
+  #s-name .j2 { left: 50%; }
+  #s-name .j3 { left: 70%; }
+  #s-name .job b {
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.6cqw;
+    color: var(--ink);
+    background: var(--white);
+    border-radius: 999px;
+    padding: .7cqh 1.7cqw;
+    box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22);
+  }
+  #s-name .job small {
+    margin-top: 1cqh;
+    font-size: .92cqw;
+    color: var(--mauve);
+    max-width: 13cqw;
+  }
+  #s-name.active .job b { animation: castPop .5s var(--bounce) var(--d) backwards, jobPulse 3.9s ease-in-out var(--jp) infinite; }
+  #s-name.active .job small { animation: fadein .5s ease calc(var(--d) + .18s) backwards; }
+  /* ambient: the three jobs light up in turn, like being browsed */
+  @keyframes jobPulse {
+    0%, 24%, 100% { box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22); scale: 1; }
+    10%           { box-shadow: 0 .7cqh 2cqh rgba(0,0,0,.22), 0 0 2.2cqw .3cqw rgba(196,151,254,.8); scale: 1.06; }
+  }
+
+  /* the terminal: the plate is real, you can ask it things */
+  #s-name .term {
+    position: absolute;
+    left: 50%; top: 82%;
+    translate: -50% -50%;
+    width: 40cqw;
+    background: var(--ink);
+    border-radius: .9cqw;
+    padding: 1.6cqh 2cqw;
+    font-family: var(--mono);
+    font-size: 1.05cqw;
+    color: var(--white);
+    box-shadow: 0 1cqh 3cqh rgba(0,0,0,.3);
+  }
+  #s-name.active .term { animation: fadeup .7s var(--pop) 4s backwards; }
+  #s-name .term .ps { color: var(--lavender); font-weight: 700; margin-right: .7cqw; }
+  #s-name .term .tw { font-weight: 600; }
+  #s-name.active .term .tw { animation: typeW 1s steps(14, end) 4.3s forwards; }
+  #s-name .term .out {
+    display: flex;
+    gap: 1.2cqw;
+    margin-top: .9cqh;
+    font-size: .95cqw;
+  }
+  #s-name .term .out .cmd { color: var(--lavender); font-weight: 700; min-width: 11cqw; }
+  #s-name .term .out .dsc { color: rgba(255,255,255,.75); }
+  #s-name.active .term .out { animation: fadeup .35s var(--pop) backwards; }
+  #s-name.active .term .o1 { animation-delay: 5.5s; }
+  #s-name.active .term .o2 { animation-delay: 5.7s; }
+  #s-name.active .term .o3 { animation-delay: 5.9s; }
+
+  /* the agent leans in to read the help output */
+  #s-name .leanin { position: absolute; left: 77%; top: 76%; }
+  #s-name.active .leanin { animation: fadein .3s ease 5.6s backwards; }
+  #s-name.active .leanin .agent-chip {
+    animation: castPop .5s var(--bounce) 5.6s backwards,
+               leanIn .5s ease 6.1s forwards;
+  }
+  @keyframes leanIn { to { rotate: -7deg; } }
+  #s-name.active .leanin .joy { animation: eyesIn .12s ease 6.3s forwards; }
+
+  /* #########################################################
+     S17 · LIFE WITH IT: PR TIME — green PR, human catches an
+     architecture problem anyway. The beat: you, the agent and
+     the reviewer all point at the same place. Not the code,
+     not a doc: the arch check chip on the harness plate.
+  ######################################################### */
+  #s-pr.active .kicker { animation: fadeup .7s var(--pop) .15s backwards; }
+  #s-pr.active .hchip { animation: castPop .5s var(--bounce) backwards; }
+  #s-pr.active .hchip:nth-of-type(1) { animation-delay: .6s; }
+  #s-pr.active .hchip:nth-of-type(2) { animation-delay: .72s; }
+  #s-pr.active .hchip:nth-of-type(3) { animation-delay: .84s; }
+  #s-pr.active .ck-arch {
+    animation: castPop .5s var(--bounce) .96s backwards,
+               chipLift .6s var(--bounce) 5.6s forwards,
+               archGlow 2.6s ease-in-out 6.4s infinite;
+  }
+  @keyframes chipLift {
+    to { translate: 0 -1.5cqh; scale: 1.15; background: rgba(196,151,254,.3); }
+  }
+  @keyframes archGlow {
+    0%, 100% { box-shadow: 0 0 1.2cqw .1cqw rgba(196,151,254,.5); }
+    50%      { box-shadow: 0 0 2.4cqw .4cqw rgba(196,151,254,.9); }
+  }
+
+  /* the PR card */
+  .prcard { width: 21cqw; }
+  .prcard h4 {
+    font-family: var(--mono);
+    text-transform: none;
+    letter-spacing: .08em;
+    font-size: .85cqw;
+    margin-bottom: .9cqh;
+  }
+  .prcard .drow {
+    display: flex;
+    align-items: center;
+    gap: .6cqw;
+    margin-top: .55cqh;
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 700;
+  }
+  .prcard .drow i { font-style: normal; color: var(--purple); width: .8cqw; }
+  .prcard .drow.del i { color: rgba(0,0,0,.45); }
+  .prcard .drow .bar {
+    height: .55cqh;
+    border-radius: 999px;
+    background: var(--mauve);
+    transform-origin: left;
+  }
+  .prcard .drow.del .bar { background: rgba(0,0,0,.18); }
+  .prcard .b1 { width: 13cqw; }
+  .prcard .b2 { width: 10cqw; }
+  .prcard .b3 { width: 7.5cqw; }
+  .prcard .b4 { width: 11.5cqw; }
+  @keyframes rlWipe { from { transform: scaleX(0); } }
+  #s-pr .prcard { left: 33.5%; top: 26%; --d: 1s; --fx: 14cqw; --fy: -3cqh; }
+  #s-pr.active .prcard .bar { animation: rlWipe .45s var(--pop) backwards; }
+  #s-pr.active .drow:nth-of-type(1) .bar { animation-delay: 1.35s; }
+  #s-pr.active .drow:nth-of-type(2) .bar { animation-delay: 1.45s; }
+  #s-pr.active .drow:nth-of-type(3) .bar { animation-delay: 1.55s; }
+  #s-pr.active .drow:nth-of-type(4) .bar { animation-delay: 1.65s; }
+  /* the status row: everything passes (brand purple, not green) */
+  .prcard .status { display: flex; gap: .6cqw; margin-top: 1.2cqh; }
+  .prcard .st {
+    background: var(--mauve);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: .35cqh .8cqw;
+    font-family: var(--mono);
+    font-size: .74cqw;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .prcard .st b { color: var(--purple); }
+  #s-pr.active .st { animation: castPop .45s var(--bounce) backwards; }
+  #s-pr.active .s1 { animation-delay: 1.9s; }
+  #s-pr.active .s2 { animation-delay: 2.1s; }
+  /* arch check ticked too... and wobbles when the reviewer speaks */
+  #s-pr.active .s3 { animation: castPop .45s var(--bounce) 2.3s backwards, tickWob .6s ease 4.6s; }
+  @keyframes tickWob {
+    0%, 100% { rotate: 0deg; }
+    25%      { rotate: -4deg; }
+    55%      { rotate: 3deg; }
+    80%      { rotate: -2deg; }
+  }
+
+  /* cast: you (watching), the agent (proud), the reviewer (incoming) */
+  #s-pr .aoyu { position: absolute; left: 18%; top: 36%; }
+  #s-pr .aag { position: absolute; left: 66%; top: 28%; }
+  #s-pr .arev { position: absolute; left: 79%; top: 39%; }
+  #s-pr .human-chip.tm { background: var(--lavender); }
+  #s-pr.active .aoyu { animation: castPop .55s var(--bounce) .85s backwards; }
+  #s-pr.active .aag { animation: castPop .55s var(--bounce) .7s backwards; }
+  #s-pr.active .aag .joy {
+    animation: eyesIn .12s ease 2.6s forwards,
+               eyesOut .12s ease 4.3s forwards;
+  }
+  #s-pr.active .arev { animation: revIn .65s var(--pop) 3.2s backwards; }
+  @keyframes revIn { from { opacity: 0; transform: translateX(7cqw); } }
+
+  /* the reviewer's catch (the status row stays green: dissonance) */
+  #s-pr .bub {
+    position: absolute;
+    left: 73%; top: 21%;
+    translate: -50% -50%;
+    background: var(--white);
+    color: var(--ink);
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.45cqw;
+    padding: 1.2cqh 1.7cqw;
+    border-radius: 1cqw;
+    box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.25);
+    white-space: nowrap;
+  }
+  #s-pr .bub::after {
+    content: '';
+    position: absolute;
+    right: 2.6cqw; bottom: -.55cqw;
+    width: 1.2cqw; height: 1.2cqw;
+    background: var(--white);
+    rotate: 45deg;
+  }
+  #s-pr.active .bub {
+    animation: castPop .5s var(--bounce) 3.8s backwards,
+               bubPulse 1.6s ease-in-out 4.5s infinite;
+  }
+  @keyframes bubPulse {
+    0%, 100% { scale: 1; }
+    50%      { scale: 1.045; }
+  }
+
+  /* the convergence: all three point at the same chip */
+  #s-pr .conv { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #s-pr .cv {
+    stroke: rgba(255,255,255,.55);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+  }
+  #s-pr.active .cv1 { animation: spDraw .55s ease 4.9s forwards; }
+  #s-pr.active .cv2 { animation: spDraw .55s ease 5.05s forwards; }
+  #s-pr.active .cv3 { animation: spDraw .55s ease 5.2s forwards; }
+  #s-pr .cvd {
+    position: absolute;
+    width: .85cqw; height: .85cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--lavender);
+    box-shadow: 0 0 1.2cqh .2cqh rgba(196,151,254,.8);
+    opacity: 0;
+  }
+  #s-pr.active .cvd1 { animation: cvdRun1 2.4s linear 6.2s infinite; }
+  #s-pr.active .cvd2 { animation: cvdRun2 2.4s linear 7s infinite; }
+  #s-pr.active .cvd3 { animation: cvdRun3 2.4s linear 7.8s infinite; }
+  @keyframes cvdRun1 {
+    0%        { left: 19.5%; top: 50%; opacity: 0; }
+    10%       { left: 22.9%; top: 53.6%; opacity: 1; }
+    42%       { left: 52.7%; top: 85.5%; opacity: 1; }
+    48%, 100% { left: 54.8%; top: 88%; opacity: 0; }
+  }
+  @keyframes cvdRun2 {
+    0%        { left: 70%;   top: 43.5%; opacity: 0; }
+    10%       { left: 68.5%; top: 47.5%; opacity: 1; }
+    42%       { left: 56.2%; top: 84.5%; opacity: 1; }
+    48%, 100% { left: 55.1%; top: 87.5%; opacity: 0; }
+  }
+  @keyframes cvdRun3 {
+    0%        { left: 79%;   top: 54%; opacity: 0; }
+    10%       { left: 76.2%; top: 57.4%; opacity: 1; }
+    42%       { left: 57.4%; top: 85.5%; opacity: 1; }
+    48%, 100% { left: 55.7%; top: 88%; opacity: 0; }
+  }
+
+  #s-pr .cap {
+    position: absolute;
+    left: 50%; top: 69%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 1.9cqw;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-pr.active .cap { animation: fadeup .8s var(--pop) 6.1s backwards; }
+
+  /* #########################################################
+     S18 · FIX THE CHECK, THEN THE CODE — the chip opens into a
+     rule card, the new rule types in, the re-run CATCHES it,
+     the code gets fixed, the PR merges. Then the loss motif in
+     reverse: the rule flows DOWN into the plate and sticks.
+  ######################################################### */
+  #s-fix.active .kicker { animation: fadeup .7s var(--pop) .1s backwards; }
+  /* recreate the S17 end-state quietly */
+  #s-fix.active :is(.hplate, .aag2) { animation: fadein .35s ease .05s backwards; }
+  #s-fix.active .hplate { animation: fadein .35s ease .05s backwards, hglow 3.2s ease-in-out infinite; }
+  #s-fix.active .prcard { animation: fadein .35s ease .05s backwards, reworkGlow .9s ease-in-out 5s 2; }
+  #s-fix .prcard { left: 70%; top: 12%; width: 14cqw; --rot: 1.5deg; }
+  #s-fix .prcard .b1 { width: 8.5cqw; }
+  #s-fix .prcard .b2 { width: 6.5cqw; }
+  #s-fix .prcard .b4 { width: 7.5cqw; }
+  #s-fix .merged {
+    position: absolute;
+    right: -1.2cqw; top: -1.4cqh;
+    rotate: -8deg;
+    background: var(--lavender);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 700;
+    padding: .4cqh .9cqw;
+    border-radius: 999px;
+    box-shadow: 0 .5cqh 1.4cqh rgba(0,0,0,.3);
+  }
+  #s-fix.active .merged { animation: castPop .55s var(--bounce) 7.3s backwards; }
+  /* the agent works the fix */
+  #s-fix .aag2 { position: absolute; left: 53%; top: 14%; }
+  #s-fix.active .aag2 .conf {
+    animation: eyesIn .12s ease 4.35s forwards,
+               eyesOut .12s ease 5.6s forwards;
+  }
+  #s-fix.active .aag2 .joy { animation: eyesIn .12s ease 8.9s forwards; }
+  /* the chip, opened up: the rule card (flies out of the chip) */
+  #s-fix .rulecard { left: 14%; top: 26%; width: 21cqw; --d: .6s; --fx: 37cqw; --fy: 44cqh; --rot: -1.5deg; }
+  #s-fix .rulecard h4 {
+    font-family: var(--mono);
+    text-transform: none;
+    letter-spacing: .08em;
+  }
+  #s-fix .rulecard .ln {
+    display: block;
+    height: .6cqh;
+    border-radius: 999px;
+    background: var(--mauve);
+    margin-top: .7cqh;
+    width: 14cqw;
+    transform-origin: left;
+  }
+  #s-fix .rulecard .ln:nth-of-type(2) { width: 11cqw; }
+  #s-fix.active .rulecard .ln { animation: rlWipe .5s var(--pop) backwards; }
+  #s-fix.active .rulecard .ln:nth-of-type(1) { animation-delay: 1.15s; }
+  #s-fix.active .rulecard .ln:nth-of-type(2) { animation-delay: 1.3s; }
+  #s-fix .nrule {
+    margin-top: 1cqh;
+    font-family: var(--mono);
+    font-size: .92cqw;
+    font-weight: 700;
+    color: var(--purple);
+    white-space: nowrap;
+  }
+  #s-fix.active .nrule .tw { animation: typeW 1s steps(32, end) 1.7s forwards; }
+
+  /* the re-run strip: the checker now catches it */
+  #s-fix .runstrip {
+    position: absolute;
+    left: 54%; top: 47%;
+    translate: -50% -50%;
+    width: 33cqw;
+    background: var(--ink);
+    border-radius: .9cqw;
+    padding: 1.5cqh 1.9cqw;
+    font-family: var(--mono);
+    font-size: 1cqw;
+    color: var(--white);
+    box-shadow: 0 1cqh 3cqh rgba(0,0,0,.3);
+  }
+  #s-fix.active .runstrip { animation: fadeup .6s var(--pop) 2.8s backwards, stripShake .5s ease 4.35s; }
+  @keyframes stripShake {
+    0%, 100% { rotate: 0deg; }
+    25%      { rotate: -.7deg; }
+    55%      { rotate: .5deg; }
+    80%      { rotate: -.3deg; }
+  }
+  #s-fix .runstrip .ps { color: var(--lavender); font-weight: 700; margin-right: .7cqw; }
+  #s-fix .runstrip .rrow { margin-top: .7cqh; }
+  #s-fix .runstrip .rrow:first-child { margin-top: 0; }
+  #s-fix .runstrip .tw { font-weight: 600; }
+  #s-fix.active .cmd1 { animation: typeW 1s steps(26, end) 3.1s forwards; }
+  #s-fix.active .cmd2 { animation: typeW .55s steps(26, end) 6.2s forwards; }
+  #s-fix .res {
+    display: flex;
+    align-items: center;
+    gap: .8cqw;
+    font-weight: 700;
+  }
+  #s-fix .res .x {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5cqw; height: 1.5cqw;
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--ink);
+    font-size: .9cqw;
+  }
+  #s-fix .res .ok { color: var(--lavender); font-size: 1.2cqw; }
+  #s-fix .res small { font-weight: 400; color: rgba(255,255,255,.7); font-size: .85cqw; }
+  #s-fix.active .res1 { animation: castPop .45s var(--bounce) 4.35s backwards; }
+  #s-fix.active .res2 { animation: castPop .45s var(--bounce) 6.95s backwards; }
+
+  /* the reversed loss motif: the rule sinks into the plate */
+  #s-fix .spark {
+    position: absolute;
+    left: 22%; top: 36%;
+    width: 1cqw; height: 1cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--lavender);
+    box-shadow: 0 0 1.6cqh .3cqh rgba(196,151,254,.85);
+    opacity: 0;
+  }
+  #s-fix.active .spark { animation: sparkArc 1s cubic-bezier(.5,.05,.7,1) 7.9s forwards; }
+  @keyframes sparkArc {
+    0%   { left: 22%; top: 36%; opacity: 0; scale: 1; }
+    12%  { opacity: 1; }
+    45%  { left: 34%; top: 64%; opacity: 1; scale: 1; }
+    92%  { left: 62%; top: 86%; opacity: 1; scale: .6; }
+    100% { left: 62.5%; top: 88%; opacity: 0; scale: .4; }
+  }
+  /* the chip starts lifted (S17 end state), then crystallises and
+     re-seats: brighter, permanent, part of the plate now */
+  #s-fix .ck-arch {
+    translate: 0 -1.5cqh;
+    scale: 1.12;
+    background: rgba(196,151,254,.3);
+    box-shadow: 0 0 1.8cqw .25cqw rgba(196,151,254,.65);
+  }
+  #s-fix.active .ck-arch { animation: chipCryst .55s var(--bounce) 8.75s forwards; }
+  @keyframes chipCryst {
+    45%  { translate: 0 -1.8cqh; scale: 1.3; }
+    100% { translate: 0 0; scale: 1.05; background: var(--lavender); color: var(--ink); box-shadow: 0 0 2.6cqw .45cqw rgba(196,151,254,.8); }
+  }
+  #s-fix .badge {
+    position: absolute;
+    left: 62%; top: 77%;
+    translate: -50% -50%;
+    font-family: var(--mono);
+    font-size: .85cqw;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--ink);
+    background: var(--mauve);
+    border-radius: 999px;
+    padding: .5cqh 1.2cqw;
+    white-space: nowrap;
+  }
+  #s-fix.active .badge { animation: castPop .5s var(--bounce) 9.1s backwards; }
+  #s-fix .fline {
+    position: absolute;
+    left: 50%; top: 64%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 3cqw;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-fix .fline b { color: var(--lavender); font-weight: 600; }
+  #s-fix.active .fline { animation: fadeup .9s var(--pop) 9.5s backwards; }
+
+  /* #########################################################
+     S19 · FINALE — the team, compounding. S12's lanes return,
+     but the loss motif finally runs in reverse at team scale:
+     every fixed friction streams DOWN into the full-width
+     harness plate and crystallises as a new chip. The plate
+     visibly grows; the agents get happier. Close on the brand
+     equation in the termbar. Hold here for Q&A.
+  ######################################################### */
+  #s-fin.active > .kicker { animation: fadein .4s ease .1s backwards; }
+  #s-fin .lane {
+    position: absolute;
+    width: 26%; height: 23%;
+    background: rgba(255,255,255,.09);
+    border: 1.5px solid rgba(255,255,255,.16);
+    border-radius: 1cqw;
+  }
+  #s-fin .l1 { left: 4%;  top: 6%; }
+  #s-fin .l2 { left: 37%; top: 6%; }
+  #s-fin .l3 { left: 70%; top: 6%; }
+  #s-fin .l4 { left: 4%;  top: 32%; }
+  #s-fin .l5 { left: 37%; top: 32%; }
+  #s-fin .l6 { left: 70%; top: 32%; }
+  #s-fin.active .lane { animation: castPop .5s var(--bounce) backwards; }
+  #s-fin.active .l1 { animation-delay: .3s; }
+  #s-fin.active .l2 { animation-delay: .45s; }
+  #s-fin.active .l3 { animation-delay: .6s; }
+  #s-fin.active .l4 { animation-delay: .75s; }
+  #s-fin.active .l5 { animation-delay: .9s; }
+  #s-fin.active .l6 { animation-delay: 1.05s; }
+  /* the same silent cast as S12 */
+  #s-fin .mh {
+    position: absolute;
+    left: 5%; bottom: 26%;
+    width: 1.7cqw; height: 1.7cqw;
+    border-radius: 50%;
+    background: var(--mauve);
+    overflow: hidden;
+  }
+  #s-fin .mh::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 18%;
+    width: 34%; aspect-ratio: 1;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  #s-fin .mh::after {
+    content: '';
+    position: absolute;
+    left: 50%; bottom: -16%;
+    width: 70%; aspect-ratio: 1.4;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+  #s-fin .trk {
+    position: absolute;
+    left: 16%; right: 10%;
+    bottom: 32%;
+    border-top: 2px dashed rgba(255,255,255,.35);
+  }
+  #s-fin .fpin {
+    position: absolute;
+    left: 48%; bottom: 32%;
+    width: .75cqw; height: .75cqw;
+    translate: -50% 50%;
+    border-radius: 50%;
+    background: var(--mauve);
+  }
+  #s-fin .ma {
+    position: absolute;
+    left: 15%; bottom: 32%;
+    translate: 0 42%;
+    width: 1.9cqw; height: 1.9cqw;
+    border-radius: .4cqw;
+    background: var(--ink);
+    display: grid;
+    place-items: center;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: .65cqw;
+    font-weight: 700;
+    letter-spacing: .18em;
+    opacity: 0;
+    animation: laneRun 4.6s linear var(--lp) infinite;
+  }
+  /* two stacked faces: each lane flips to joy when its fix lands (--jt) */
+  #s-fin .ma b { grid-area: 1 / 1; font-style: normal; }
+  #s-fin .ma .mj { opacity: 0; color: var(--lavender); }
+  #s-fin.active .ma .mb { animation: eyesOut .12s ease var(--jt) forwards; }
+  #s-fin.active .ma .mj { animation: eyesIn  .12s ease var(--jt) forwards; }
+  /* the reversed loss motif, ×5: a fix detaches and falls into the plate */
+  #s-fin .fall, #s-fin .drip {
+    position: absolute;
+    left: 0; top: 0;
+    width: .95cqw; height: .95cqw;
+    translate: -50% -50%;
+    border-radius: 50%;
+    background: var(--lavender);
+    box-shadow: 0 0 1.4cqh .25cqh rgba(196,151,254,.8);
+    opacity: 0;
+    z-index: 3;
+  }
+  /* waypoints --xa/--ya and --xm/--ym route each dot out through the
+     row gap and down a gutter BETWEEN lanes, never through one */
+  #s-fin.active .fall { animation: finFall .95s cubic-bezier(.55,.05,.65,1) var(--fd) forwards; }
+  @keyframes finFall {
+    0%   { left: var(--x0); top: var(--y0); opacity: 0; scale: 1; }
+    10%  { opacity: 1; }
+    30%  { left: var(--xa); top: var(--ya); }
+    60%  { left: var(--xm); top: var(--ym); }
+    90%  { left: var(--x1); top: var(--y1); opacity: 1; scale: .55; }
+    100% { left: var(--x1); top: calc(var(--y1) + 1.5%); opacity: 0; scale: .4; }
+  }
+  /* ...then forever: ambient drips phase-locked to the plate glow,
+     so every pulse reads as the plate absorbing the team's fixes */
+  #s-fin.active .drip { animation: finDrip 3.2s linear var(--dd) infinite; }
+  @keyframes finDrip {
+    0%, 8%    { left: var(--x0); top: var(--y0); opacity: 0; scale: 1; }
+    14%       { opacity: .95; }
+    20%       { left: var(--xa); top: var(--ya); }
+    32%       { left: var(--xm); top: var(--ym); }
+    50%       { left: var(--x1); top: var(--y1); opacity: 1; scale: .5; }
+    56%, 100% { left: var(--x1); top: var(--y1); opacity: 0; scale: .4; }
+  }
+  /* the plate: full stage width, already carrying S18's arch check */
+  #s-fin .hplate { width: 92cqw; bottom: 8.5cqh; gap: 1cqw; }
+  #s-fin .hplate .hchip { font-size: .88cqw; padding: .5cqh .95cqw; }
+  #s-fin .ck-arch {
+    background: var(--lavender);
+    color: var(--ink);
+    box-shadow: 0 0 1.8cqw .3cqw rgba(196,151,254,.7);
+  }
+  #s-fin.active .hplate {
+    animation: fadeup .7s var(--pop) .55s backwards,
+               hglow 3.2s ease-in-out infinite,
+               plateKick .5s ease 3.35s,
+               plateKick .5s ease 4.15s,
+               plateKick .5s ease 4.85s,
+               plateKick .5s ease 5.65s,
+               plateKick .5s ease 6.45s;
+  }
+  @keyframes plateKick {
+    0%, 100% { box-shadow: 0 0 2.6cqw .25cqw rgba(196,151,254,.3); }
+    40%      { box-shadow: 0 0 5cqw .9cqw rgba(196,151,254,.9); }
+  }
+  /* new chips crystallise in: pop solid lavender, settle to chip dress */
+  #s-fin.active .nc {
+    animation: castPop .5s var(--bounce) var(--cd) backwards,
+               chipFlash 1.6s ease calc(var(--cd) + .45s) backwards;
+  }
+  @keyframes chipFlash {
+    from { background: var(--lavender); color: var(--ink); box-shadow: 0 0 1.8cqw .35cqw rgba(196,151,254,.85); }
+    to   { background: rgba(196,151,254,.12); color: var(--lavender); box-shadow: 0 0 0 0 rgba(196,151,254,0); }
+  }
+  #s-fin .closeline {
+    position: absolute;
+    left: 50%; top: 66%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 2.9cqw;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-fin .closeline b { color: var(--lavender); font-weight: 600; }
+  #s-fin.active .closeline { animation: fadeup .9s var(--pop) 7.2s backwards; }
+  /* the closing equation: S1's termbar language, resolved */
+  #s-fin .termbar {
+    position: absolute;
+    left: 50%; bottom: .6cqh;
+    translate: -50% 0;
+    width: 92cqw;
+    font-family: var(--mono);
+    font-size: .78cqw;
+    line-height: 1.7;
+    color: var(--white);
+    background: var(--ink);
+    border-radius: 999px;
+    padding: .9cqh 1.8cqw;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  #s-fin.active .termbar { animation: fadeup .7s var(--pop) 8.2s backwards; }
+  #s-fin .termbar .ps { color: var(--lavender); font-weight: 700; margin-right: .8cqw; }
+  #s-fin .termbar .tline {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    vertical-align: bottom;
+    max-width: 0;
+    animation: typeFin 2.4s steps(54, end) 8.8s forwards;
+  }
+  @keyframes typeFin { to { max-width: 54ch; } }
+  #s-fin .termbar .br { color: rgba(255,255,255,.45); }
+  #s-fin .termbar .t-a { color: var(--lavender); }
+  #s-fin .termbar .t-b { color: var(--white); }
+  #s-fin .termbar .t-c { color: var(--mauve); }
+  #s-fin .termbar .cur {
+    display: inline-block;
+    width: .55em; height: 1.05em;
+    background: var(--lavender);
+    vertical-align: -2px;
+    margin-left: .7cqw;
+    animation: blink 1.1s steps(1) infinite;
+  }
+
+  /* #########################################################
+     S20 · SIGN-OFF — the title card's orbit scene returns as
+     the bookend, and the deck's opening question resolves:
+     the ghost ? pill crossfades into an ink "your harness"
+     pill in the plate's dress. Happy harnessing.
+  ######################################################### */
+  #s-bye .scene {
+    position: absolute;
+    inset: 0 0 26% 0;
+    display: grid;
+    place-items: center;
+  }
+  #s-bye.active .scene { animation: fadein 1.2s ease .15s backwards; }
+  #s-bye .nucleus { position: relative; width: min(52cqh, 32cqw); aspect-ratio: 1; }
+  #s-bye .ring { position: absolute; border: 1px dashed rgba(255,255,255,.4); border-radius: 50%; }
+  #s-bye .ring.r1 { inset: 26%; }
+  #s-bye .ring.r2 { inset: 13%; }
+  #s-bye .ring.r3 { inset: 0; }
+  #s-bye .core {
+    position: absolute;
+    inset: 37%;
+    border-radius: 50%;
+    background: var(--ink);
+    display: grid;
+    place-content: center;
+    text-align: center;
+    gap: 2px;
+    box-shadow: 0 0 0 5px rgba(196,151,254,.35), 0 0 44px rgba(0,0,0,.35);
+    animation: corepulse 3.2s ease-in-out infinite;
+  }
+  #s-bye .core .glyph { font-family: var(--mono); font-size: clamp(10px, 1.6cqw, 24px); font-weight: 700; color: var(--lavender); }
+  #s-bye .core .lbl {
+    font-size: clamp(5px, .6cqw, 9.5px);
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mauve);
+    line-height: 1.5;
+  }
+  #s-bye .orb { position: absolute; border-radius: 50%; animation: spin linear infinite; z-index: 2; }
+  #s-bye .orb.o1  { inset: 26%; animation-duration: 16s; }
+  #s-bye .orb.o2a, #s-bye .orb.o2b { inset: 13%; animation-duration: 24s; }
+  #s-bye .orb.o2b { animation-delay: -12s; }
+  #s-bye .orb.o3  { inset: 0; animation-duration: 34s; animation-delay: -6s; }
+  #s-bye .e { position: absolute; top: 0; left: 50%; }
+  /* pills stack on the ring point: translate centers, spin counter-rotates,
+     so the ghost and its resolved self can crossfade in place */
+  #s-bye .e .pill {
+    position: absolute;
+    left: 0; top: 0;
+    translate: -50% -50%;
+    font-size: clamp(5.5px, .7cqw, 10.5px);
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--et, var(--ink));
+    background: var(--ec);
+    border-radius: 999px;
+    padding: .5em 1.1em;
+    white-space: nowrap;
+    animation: spin linear infinite reverse;
+  }
+  #s-bye .e .pill::before {
+    content: '';
+    display: inline-block;
+    width: .62em; height: .62em;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: .7em;
+    vertical-align: -.02em;
+  }
+  #s-bye .orb.o1 .pill { animation-duration: 16s; }
+  #s-bye .orb.o2a .pill, #s-bye .orb.o2b .pill { animation-duration: 24s; }
+  #s-bye .orb.o2b .pill { animation-delay: -12s; }
+  #s-bye .orb.o3 .pill { animation-duration: 34s; animation-delay: -6s; }
+  #s-bye .pill.ghost {
+    background: transparent;
+    border: 1.5px dashed rgba(255,255,255,.75);
+    color: var(--white);
+  }
+  #s-bye.active .pill.ghost { animation: spin 34s linear -6s infinite reverse, eyesOut .45s ease 2.1s forwards; }
+  #s-bye .pill.hh {
+    background: var(--ink);
+    color: var(--lavender);
+    border: 1.5px solid rgba(196,151,254,.8);
+    opacity: 0;
+  }
+  #s-bye.active .pill.hh {
+    animation: spin 34s linear -6s infinite reverse,
+               eyesIn .45s ease 2.1s forwards,
+               castPop .5s var(--bounce) 2.1s backwards,
+               hhPing 1.1s ease 2.2s,
+               hhGlow 3.2s ease-in-out 3.4s infinite;
+  }
+  @keyframes hhPing {
+    0%   { box-shadow: 0 0 0 0 rgba(196,151,254,.7); }
+    100% { box-shadow: 0 0 0 1.6cqw rgba(196,151,254,0); }
+  }
+  @keyframes hhGlow {
+    0%, 100% { box-shadow: 0 0 .6cqw .05cqw rgba(196,151,254,.35); }
+    50%      { box-shadow: 0 0 1.4cqw .2cqw rgba(196,151,254,.6); }
+  }
+  #s-bye .byeline {
+    position: absolute;
+    left: 50%; top: 79%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 6cqw;
+    letter-spacing: -.02em;
+    color: var(--white);
+    white-space: nowrap;
+  }
+  #s-bye .byeline .hdot { color: var(--lavender); }
+  #s-bye.active .byeline { animation: fadeup 1s var(--pop) 2.75s backwards; }
+  #s-bye .byesub {
+    position: absolute;
+    left: 50%; top: 91%;
+    translate: -50% -50%;
+    font-family: var(--mcqueen);
+    font-weight: 400;
+    font-size: 1.7cqw;
+    color: var(--mauve);
+    white-space: nowrap;
+  }
+  #s-bye.active .byesub { animation: fadeup .9s var(--pop) 3.5s backwards; }
+</style>
+</head>
+<body>
+
+<div class="stage-wrap">
+  <span class="frame-lbl">16 : 9 · grab inside the line</span>
+  <div class="stage" id="stage">
+
+    <!-- ================= S1 · TITLE ================= -->
+    <section class="slide" id="s-title" data-title="Title">
+      <div class="tags">
+        <span class="tag">Engineering Harness</span>
+        <span class="tag flag">A Lived Experience</span>
+      </div>
+
+      <main class="card">
+        <div>
+          <h1>Engineering<br>Harness<br><span class="n101">101</span><span class="dot">.</span></h1>
+          <p class="sub">One team. One piece of work. And <strong>the layer that was missing</strong> the whole time.</p>
+          <div class="meta">
+            <span class="chip">is it done? · where did the learning go?</span>
+          </div>
+        </div>
+
+        <div class="scene" aria-hidden="true">
+          <div class="nucleus">
+            <span class="ring r1"></span>
+            <span class="ring r2"></span>
+            <span class="ring r3"></span>
+
+            <span class="orb o1" style="--ec: var(--white); --et: var(--purple)">
+              <span class="e"><span class="pill">you</span></span>
+            </span>
+            <span class="orb o2a" style="--ec: var(--lavender)">
+              <span class="e"><span class="pill">the agent</span></span>
+            </span>
+            <span class="orb o2b" style="--ec: var(--mauve)">
+              <span class="e"><span class="pill">your codebase</span></span>
+            </span>
+            <span class="orb o3">
+              <span class="e"><span class="pill ghost">?</span></span>
+            </span>
+
+            <div class="core">
+              <span class="glyph">&gt;_</span>
+              <span class="lbl">one piece<br>of work</span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <footer class="foot">
+        <div class="termbar">
+          <span class="ps">$</span><span class="tline"><span class="br">[</span><span class="t-a">a normal day</span><span class="br">]</span> + <span class="br">[</span><span class="t-b">one piece of work</span><span class="br">]</span> = <span class="t-c">is it actually done?</span> + <span class="t-a">where did the learning go?</span></span><span class="cur"></span>
+        </div>
+      </footer>
+    </section>
+
+    <!-- ================= S2 · THE STACK ================= -->
+    <section class="slide" id="s-stack" data-title="The stack you already have">
+      <div class="s2-grid">
+        <div class="s2-copy">
+          <p class="kicker">A typical setup</p>
+          <h2>The stack<br>you already<br>have<span class="hdot">.</span></h2>
+          <p class="s2-legend">
+            <span class="lg">▼&ensp;intent</span>
+            <span class="lg lg-up">▲&ensp;code &amp; claims</span>
+          </p>
+        </div>
+
+        <div class="scene3d">
+          <span class="bloom" aria-hidden="true"></span>
+          <span class="gshadow" aria-hidden="true"></span>
+
+          <div class="iso" aria-hidden="true">
+            <div class="floor f-3"><span class="pnum3">03</span><span class="coat"></span></div>
+            <div class="floor f-2"><span class="pnum3">02</span><span class="coat"></span></div>
+            <div class="floor f-1"><span class="pnum3">01</span><span class="coat"></span></div>
+          </div>
+
+          <div class="bb bb-1">
+            <b>Human<span class="pdot">.</span></b>
+            <span class="tr">intent · judgement · taste</span>
+            <i aria-hidden="true"></i>
+          </div>
+          <div class="bb bb-2">
+            <b>Inference<span class="pdot">.</span></b>
+            <span class="tr">plans · reasons · writes code</span>
+            <i aria-hidden="true"></i>
+          </div>
+          <div class="bb bb-3">
+            <b>Codebase<span class="pdot">.</span></b>
+            <span class="tr">your product · your tests · your build</span>
+            <i aria-hidden="true"></i>
+          </div>
+
+          <span class="stand st-you"><span class="human-chip"></span><i class="shdw" aria-hidden="true"></i></span>
+          <span class="stand st-agent"><span class="agent-chip"><span class="eyes">··</span><span class="glyph">&gt;_</span></span><i class="shdw" aria-hidden="true"></i></span>
+
+          <span class="drop d-down" aria-hidden="true"></span>
+          <span class="drop d-up" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S3 · LAYER TOUR: HUMAN ================= -->
+    <section class="slide" id="s-human" data-title="Layer tour · Human">
+      <header class="lhead">
+        <span class="lnum" aria-hidden="true">01</span>
+        <div class="lword">Human<span class="ldot">.</span></div>
+        <div class="ltraits">
+          <span class="t">intent</span>
+          <span class="t">judgement</span>
+          <span class="t">taste</span>
+        </div>
+      </header>
+
+      <div class="field">
+        <span class="cast deskscene">
+          <svg viewBox="0 0 240 175" aria-hidden="true">
+            <!-- chair -->
+            <rect x="50" y="98" width="9" height="40" rx="4" fill="#000" opacity=".5"/>
+            <rect x="38" y="136" width="33" height="6" rx="3" fill="#000" opacity=".5"/>
+            <!-- person (side profile, facing the laptop) -->
+            <g>
+              <g class="head"><circle cx="94" cy="56" r="15" fill="#000"/></g>
+            </g>
+            <path d="M 94 72 C 72 76 62 98 64 130 L 106 130 C 112 100 108 78 94 72 Z" fill="#000"/>
+            <g transform="translate(100 86) rotate(34)">
+              <g class="arm">
+                <rect x="-2" y="-4.5" width="46" height="9" rx="4.5" fill="#000"/>
+                <circle cx="46" cy="0" r="5" fill="#000"/>
+              </g>
+            </g>
+            <!-- laptop, side view, screen glow -->
+            <circle class="lglow" cx="170" cy="106" r="15" fill="rgba(196,151,254,.55)"/>
+            <rect x="138" y="124" width="46" height="5" rx="2.5" fill="#000"/>
+            <rect x="177" y="88" width="7" height="40" rx="3" fill="#000"/>
+            <!-- desk -->
+            <rect x="120" y="129" width="96" height="6" rx="3" fill="#fff"/>
+            <rect x="128" y="135" width="7" height="30" rx="3" fill="#fff" opacity=".75"/>
+            <rect x="200" y="135" width="7" height="30" rx="3" fill="#fff" opacity=".75"/>
+          </svg>
+          <span class="bit b1">{ }</span>
+          <span class="bit b2">plan.md</span>
+          <span class="bit b3">v2 ✓</span>
+          <small>you</small>
+        </span>
+
+        <div class="acard a-backlog"><div class="fl">
+          <h4>priorities</h4>
+          <div class="row">1<span class="bar"></span></div>
+          <div class="row">2<span class="bar"></span></div>
+          <div class="row">3<span class="bar"></span></div>
+        </div></div>
+
+        <div class="acard a-judge"><div class="fl">
+          <h4>judgement</h4>
+          <div class="opts">
+            <span class="opt yes">ship it</span>
+            <span class="opt no">not yet</span>
+          </div>
+        </div></div>
+
+        <div class="acard a-risk"><div class="fl">
+          <h4>risk</h4>
+          <div class="gauge"><span class="needle"></span></div>
+        </div></div>
+
+        <div class="acard a-taste"><div class="fl">
+          <h4>taste</h4>
+          <div class="star">✦</div>
+        </div></div>
+
+        <div class="acard a-note"><div class="fl">
+          <q>is this actually good?</q>
+        </div></div>
+
+        <div class="ghosts" aria-hidden="true"><i></i><i></i></div>
+      </div>
+    </section>
+
+    <!-- ================= S4 · LAYER TOUR: INFERENCE ================= -->
+    <section class="slide" id="s-infer" data-title="Layer tour · Inference">
+      <header class="lhead" style="--lc: var(--lavender)">
+        <span class="lnum" aria-hidden="true">02</span>
+        <div class="lword">Inference<span class="ldot">.</span></div>
+        <div class="ltraits">
+          <span class="t">plans</span>
+          <span class="t">reasons</span>
+          <span class="t">writes code</span>
+        </div>
+      </header>
+
+      <div class="field">
+        <span class="gline g-above" aria-hidden="true"></span>
+        <span class="gline g-below" aria-hidden="true"></span>
+
+        <span class="cast">
+          <span class="agent-chip"><span class="eyes">··</span><span class="glyph">&gt;_</span></span>
+          <span class="think" aria-hidden="true"><i></i><i></i><i></i></span>
+          <small>the agent</small>
+        </span>
+
+        <div class="acard a-spec"><div class="fl">
+          <h4>spec.md</h4>
+          <span class="ln"></span>
+          <span class="ln"></span>
+          <span class="ln"></span>
+          <span class="ln"></span>
+        </div></div>
+
+        <div class="acard a-plan"><div class="fl">
+          <h4>plan</h4>
+          <div class="ck done"><span class="bx">✓</span><span class="bar"></span></div>
+          <div class="ck done"><span class="bx">✓</span><span class="bar"></span></div>
+          <div class="ck c3"><span class="bx">✓</span><span class="bar"></span></div>
+          <div class="ck c4"><span class="bx">✓</span><span class="bar"></span></div>
+        </div></div>
+
+        <div class="acard a-diff"><div class="fl">
+          <h4>diff</h4>
+          <div class="dlines">
+            <div class="drow add"><i>+</i><span class="bar"></span></div>
+            <div class="drow add"><i>+</i><span class="bar"></span></div>
+            <div class="drow del"><i>−</i><span class="bar"></span></div>
+            <div class="drow add"><i>+</i><span class="bar"></span></div>
+            <div class="drow del"><i>−</i><span class="bar"></span></div>
+          </div>
+        </div></div>
+
+        <div class="acard a-chat"><div class="fl">
+          <h4>prompt</h4>
+          <div class="cline"><span class="ps">&gt;</span>make it so<span class="cur"></span></div>
+        </div></div>
+
+        <p class="decon">the &ldquo;agent harness&rdquo; lives here &middot; not today&rsquo;s harness</p>
+      </div>
+    </section>
+
+    <!-- ================= S5 · LAYER TOUR: CODEBASE ================= -->
+    <section class="slide" id="s-code" data-title="Layer tour · Codebase">
+      <header class="lhead" style="--lc: var(--white)">
+        <span class="lnum" aria-hidden="true">03</span>
+        <div class="lword">Codebase<span class="ldot">.</span></div>
+        <div class="ltraits">
+          <span class="t">your product</span>
+          <span class="t">your tests</span>
+          <span class="t">your build</span>
+        </div>
+      </header>
+
+      <div class="field">
+        <span class="gline g-1" aria-hidden="true"></span>
+        <span class="gline g-2" aria-hidden="true"></span>
+
+        <div class="ccard fan c-src"><b>src/&hellip;</b><span class="ln"></span><span class="ln"></span></div>
+        <div class="ccard c-tests"><b>tests/</b><span class="ln"></span></div>
+        <div class="ccard c-pkg"><b>package.json</b><span class="ln"></span></div>
+        <div class="ccard c-docker"><b>Dockerfile</b><span class="ln"></span></div>
+        <div class="ccard sh c-deploy"><b>deploy.sh</b><span class="ln"></span></div>
+        <div class="ccard sh c-seed"><b>seed-db.sh</b><span class="ln"></span></div>
+        <div class="ccard sh c-make"><b>Makefile</b><span class="ln"></span></div>
+        <div class="ccard cfg ci c-ci"><b>ci.yml</b><span class="dots"><i class="d1"></i><i class="d2"></i></span></div>
+        <div class="ccard cfg c-env"><b>.env.example</b><span class="ln"></span></div>
+        <div class="ccard c-mig"><b>migrations/</b><span class="ln"></span></div>
+        <div class="ccard c-m1"><span class="ln"></span><span class="ln"></span></div>
+        <div class="ccard cfg c-m2"><span class="ln"></span><span class="ln"></span></div>
+        <div class="ccard cfg c-comp"><b>compose.yml</b><span class="ln"></span></div>
+        <div class="ccard c-schema"><b>schema.sql</b><span class="ln"></span></div>
+        <div class="ccard cfg c-lint"><b>lint.config</b><span class="ln"></span></div>
+        <div class="ccard c-readme"><b>README.md</b><span class="ln"></span></div>
+        <div class="ccard c-test2"><b>*.test.ts</b><span class="ln"></span></div>
+        <div class="ccard c-infra"><b>infra/</b><span class="ln"></span></div>
+        <div class="ccard c-m3"><span class="ln"></span><span class="ln"></span></div>
+        <div class="db c-db" aria-hidden="true"><i>db</i></div>
+
+        <p class="caption">where the real complexity lives</p>
+      </div>
+    </section>
+
+    <!-- ================= S6 · YOU'RE WORKING ON YOUR PLAN ================= -->
+    <section class="slide" id="s-plan" data-title="You're working on your plan">
+      <p class="kicker">Let's say&hellip;</p>
+
+      <div class="field">
+        <span class="cast deskscene">
+          <svg viewBox="0 0 240 175" aria-hidden="true">
+            <!-- chair -->
+            <rect x="50" y="98" width="9" height="40" rx="4" fill="#000" opacity=".5"/>
+            <rect x="38" y="136" width="33" height="6" rx="3" fill="#000" opacity=".5"/>
+            <!-- person (side profile, facing the laptop) -->
+            <g>
+              <g class="head"><circle cx="94" cy="56" r="15" fill="#000"/></g>
+            </g>
+            <path d="M 94 72 C 72 76 62 98 64 130 L 106 130 C 112 100 108 78 94 72 Z" fill="#000"/>
+            <g transform="translate(100 86) rotate(34)">
+              <g class="arm">
+                <rect x="-2" y="-4.5" width="46" height="9" rx="4.5" fill="#000"/>
+                <circle cx="46" cy="0" r="5" fill="#000"/>
+              </g>
+            </g>
+            <!-- laptop, side view, screen glow -->
+            <circle class="lglow" cx="170" cy="106" r="15" fill="rgba(196,151,254,.55)"/>
+            <rect x="138" y="124" width="46" height="5" rx="2.5" fill="#000"/>
+            <rect x="177" y="88" width="7" height="40" rx="3" fill="#000"/>
+            <!-- desk -->
+            <rect x="120" y="129" width="96" height="6" rx="3" fill="#fff"/>
+            <rect x="128" y="135" width="7" height="30" rx="3" fill="#fff" opacity=".75"/>
+            <rect x="200" y="135" width="7" height="30" rx="3" fill="#fff" opacity=".75"/>
+          </svg>
+          <span class="bit b1">spec ✓</span>
+          <span class="bit b2">prompts</span>
+          <span class="bit b3">v3</span>
+          <small>you</small>
+        </span>
+
+        <div class="plan">
+          <h4 class="ph"><span class="tw">plan.md</span></h4>
+          <span class="ln l1"></span>
+          <span class="ln l2"></span>
+          <span class="ln l3"></span>
+          <div class="tick t1">spec done<b>✓</b></div>
+          <div class="tick t2">prompts shaped<b>✓</b></div>
+          <div class="tick t3">looks great<b>✓</b></div>
+        </div>
+
+        <span class="cast agentside">
+          <span class="agent-chip"><span class="eyes">··</span><span class="glyph">&gt;_</span></span>
+          <span class="status">building<span class="dots"><i></i><i></i><i></i></span></span>
+          <span class="pbar" aria-hidden="true"><i></i></span>
+        </span>
+      </div>
+    </section>
+
+    <!-- ================= S7 · FRICTION ================= -->
+    <section class="slide" id="s-friction" data-title="Friction">
+      <p class="kicker">Some time later</p>
+
+      <div class="field">
+        <svg class="trail" viewBox="0 0 1000 420" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M 30 332 C 120 320 180 280 270 240 C 360 200 420 260 520 300 C 620 340 660 240 760 180 C 840 132 920 140 1020 126"/>
+        </svg>
+
+        <div class="planmini" aria-hidden="true">plan.md<span class="ln"></span><span class="ln"></span></div>
+
+        <span class="pin k1" style="--d:.85s" aria-hidden="true"></span>
+        <span class="pin k2" style="--d:1.1s" aria-hidden="true"></span>
+        <span class="pin k3" style="--d:1.35s" aria-hidden="true"></span>
+        <p class="obs o1" style="--d:.95s">env won&rsquo;t boot</p>
+        <p class="obs o2" style="--d:1.2s">weird test setup</p>
+        <p class="obs o3" style="--d:1.45s">how do I even run this?</p>
+
+        <span class="trek" aria-hidden="true">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">··</span><span class="alt conf">&gt;&lt;</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <span class="qb">?</span>
+        </span>
+
+        <div class="ticker" aria-hidden="true">
+          <span class="dot"></span>
+          <span class="tl">tokens</span>
+          <span class="odo"><span class="d">1</span><span class="d">2</span><span class="d r r-h"><span class="reel"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span><span class="d">,</span><span class="d r r-c"><span class="reel"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span><span class="d r r-t"><span class="reel"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span><span class="d r r-o"><span class="reel"><b>0</b><b>3</b><b>7</b><b>1</b><b>9</b><b>4</b><b>8</b><b>2</b><b>6</b><b>5</b></span></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S8 · "DONE." ================= -->
+    <section class="slide" id="s-done" data-title="&ldquo;Done.&rdquo;">
+      <div class="field">
+        <div class="stampwrap">
+          <div class="bigstamp">DONE<b>&#10003;</b></div>
+          <span class="dust" aria-hidden="true">
+            <i style="--px:-9cqw;--py:-1.2cqh"></i>
+            <i style="--px:-7cqw;--py:2cqh"></i>
+            <i style="--px:-4cqw;--py:3cqh"></i>
+            <i style="--px:-11.5cqw;--py:.6cqh"></i>
+            <i style="--px:9cqw;--py:-1.2cqh"></i>
+            <i style="--px:7cqw;--py:2cqh"></i>
+            <i style="--px:4cqw;--py:3cqh"></i>
+            <i style="--px:11.5cqw;--py:.6cqh"></i>
+          </span>
+        </div>
+
+        <span class="cast">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">··</span><span class="alt joy">^^</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <small>the agent</small>
+        </span>
+
+        <div class="ticker" aria-hidden="true">
+          <span class="dot sq"></span>
+          <span class="tl">tokens</span>
+          <span class="odo"><span class="d">3</span><span class="d">1</span><span class="d">2</span><span class="d">,</span><span class="d">4</span><span class="d">0</span><span class="d">6</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S9 · YOU GO AND LOOK ================= -->
+    <section class="slide" id="s-you" data-title="You go and look">
+      <div class="field">
+        <div class="stampwrap">
+          <div class="flip">
+            <div class="bigstamp face f-done">DONE<b>&#10003;</b></div>
+            <div class="bigstamp face f-not">not done<b>&#10007;</b></div>
+          </div>
+          <span class="dust" aria-hidden="true">
+            <i style="--px:-7cqw;--py:-1cqh"></i>
+            <i style="--px:7cqw;--py:-1cqh"></i>
+            <i style="--px:-4.5cqw;--py:2.4cqh"></i>
+            <i style="--px:4.5cqw;--py:2.4cqh"></i>
+          </span>
+        </div>
+
+        <span class="cast agentside2">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">^^</span><span class="alt conf">&gt;&lt;</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <small>the agent</small>
+        </span>
+
+        <span class="cast you">
+          <span class="human-chip"></span>
+          <small>you</small>
+        </span>
+        <span class="mag" aria-hidden="true"></span>
+
+        <div class="ticker dim" aria-hidden="true">
+          <span class="dot sq"></span>
+          <span class="tl">tokens</span>
+          <span class="odo"><span class="d">3</span><span class="d">1</span><span class="d">2</span><span class="d">,</span><span class="d">4</span><span class="d">0</span><span class="d">6</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S10 · HUMAN BACKPRESSURE ================= -->
+    <section class="slide" id="s-back" data-title="Human backpressure">
+      <div class="field">
+        <span class="cast yb"><span class="human-chip"></span><small>you</small></span>
+
+        <span class="flow" aria-hidden="true"></span>
+        <p class="flowlab">human backpressure</p>
+        <p class="note n1">that bit&rsquo;s wrong</p>
+        <p class="note n2">this never ran</p>
+        <p class="note n3">fix that</p>
+
+        <span class="cast ab">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">··</span><span class="alt joy">^^</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <small>the agent</small>
+        </span>
+
+        <div class="stampwrap">
+          <div class="bigstamp adone">actually done<b>&#10003;</b></div>
+          <span class="conf" aria-hidden="true">
+            <i style="--cx:-9cqw;--cy:11cqh;--cr:-260deg;--cc:var(--lavender)"></i>
+            <i style="--cx:-6cqw;--cy:13cqh;--cr:200deg;--cc:var(--white)"></i>
+            <i style="--cx:-2.5cqw;--cy:14cqh;--cr:-160deg;--cc:var(--mauve)"></i>
+            <i style="--cx:1.5cqw;--cy:13.5cqh;--cr:240deg;--cc:var(--lavender)"></i>
+            <i style="--cx:5cqw;--cy:14cqh;--cr:-220deg;--cc:var(--white)"></i>
+            <i style="--cx:8cqw;--cy:12cqh;--cr:180deg;--cc:var(--mauve)"></i>
+            <i style="--cx:10.5cqw;--cy:10cqh;--cr:-280deg;--cc:var(--lavender)"></i>
+            <i style="--cx:-10.5cqw;--cy:9cqh;--cr:300deg;--cc:var(--mauve)"></i>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S11 · AND THEN IT'S GONE ================= -->
+    <section class="slide" id="s-gone" data-title="And then it's gone">
+      <div class="field">
+        <div class="sesh" aria-hidden="true">
+          <div class="bar"><i></i><i></i><i></i><b>that session</b></div>
+          <div class="body">
+            <div class="mini">
+              <span class="mhu"></span>
+              <span class="mar"></span>
+              <span class="mag2">··</span>
+            </div>
+            <span class="ln"></span>
+            <span class="ln"></span>
+            <span class="mstamp">actually done &#10003;</span>
+          </div>
+        </div>
+
+        <span class="pcloud" aria-hidden="true">
+          <i style="--x:12%;--y:84%;--pd:2.25s;--dx:-.8cqw;--c:var(--lavender)"></i>
+          <i style="--x:34%;--y:88%;--pd:2.3s;--dx:.4cqw;--c:var(--mauve)"></i>
+          <i style="--x:58%;--y:86%;--pd:2.35s;--dx:1cqw;--s:.65cqw;--c:var(--white)"></i>
+          <i style="--x:80%;--y:82%;--pd:2.4s;--dx:-.5cqw;--c:var(--lavender)"></i>
+          <i style="--x:22%;--y:64%;--pd:2.55s;--dx:.7cqw;--s:.4cqw;--c:var(--white)"></i>
+          <i style="--x:48%;--y:62%;--pd:2.6s;--dx:-.9cqw;--c:var(--mauve)"></i>
+          <i style="--x:70%;--y:66%;--pd:2.65s;--dx:.5cqw;--c:var(--lavender)"></i>
+          <i style="--x:90%;--y:60%;--pd:2.7s;--dx:1.1cqw;--s:.4cqw;--c:var(--mauve)"></i>
+          <i style="--x:15%;--y:42%;--pd:2.85s;--dx:-.6cqw;--c:var(--lavender)"></i>
+          <i style="--x:40%;--y:40%;--pd:2.9s;--dx:.8cqw;--s:.65cqw;--c:var(--white)"></i>
+          <i style="--x:64%;--y:44%;--pd:2.95s;--dx:-.4cqw;--c:var(--mauve)"></i>
+          <i style="--x:86%;--y:38%;--pd:3s;--dx:.6cqw;--c:var(--lavender)"></i>
+          <i style="--x:28%;--y:18%;--pd:3.15s;--dx:-.7cqw;--s:.4cqw;--c:var(--mauve)"></i>
+          <i style="--x:52%;--y:14%;--pd:3.2s;--dx:.9cqw;--c:var(--lavender)"></i>
+          <i style="--x:76%;--y:16%;--pd:3.25s;--dx:-.5cqw;--s:.65cqw;--c:var(--white)"></i>
+        </span>
+
+        <h2 class="lost">That interaction was <b>lost.</b></h2>
+        <p class="lostsub">Next time it happens to a teammate. Or to future you.</p>
+
+        <span class="gwalk" aria-hidden="true">
+          <span class="gline2"></span>
+          <span class="gpin"></span>
+          <span class="ga">··</span>
+        </span>
+      </div>
+    </section>
+
+    <!-- ================= S12 · MULTIPLY IT ================= -->
+    <section class="slide" id="s-mult" data-title="Multiply it">
+      <div class="field">
+        <div class="lane l1" aria-hidden="true"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma">··</span><i class="lp1"></i><i class="lp2"></i></div>
+        <div class="lane l2" aria-hidden="true"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma">··</span><i class="lp1"></i><i class="lp2"></i></div>
+        <div class="lane l3" aria-hidden="true"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma">··</span><i class="lp1"></i><i class="lp2"></i></div>
+        <div class="lane l4" aria-hidden="true"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma">··</span><i class="lp1"></i><i class="lp2"></i></div>
+        <div class="lane l5" aria-hidden="true"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma">··</span><i class="lp1"></i><i class="lp2"></i></div>
+        <div class="lane l6" aria-hidden="true"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma">··</span><i class="lp1"></i><i class="lp2"></i></div>
+
+        <div class="acard amd"><div>
+          <h4>agents.md</h4>
+          <span class="ln"></span>
+          <span class="ln"></span>
+          <span class="ln sp1"></span>
+          <span class="ln sp2"></span>
+          <span class="ln sp3"></span>
+        </div></div>
+
+        <p class="mline">Every person. Every day. <b>Many times.</b></p>
+
+        <div class="ticker" aria-hidden="true">
+          <span class="dot"></span>
+          <span class="tl">tokens</span>
+          <span class="odo"><span class="d">4</span><span class="d">.</span><span class="d r r-m1"><span class="reel"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span><span class="d r r-m2"><span class="reel"><b>0</b><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b></span></span><span class="d">M</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S13 · THE TWO QUESTIONS ================= -->
+    <section class="slide" id="s-quest" data-title="The two questions">
+      <div class="qfield">
+        <div class="qcard qa">
+          <p class="qn">Question 01</p>
+          <h3>How does the agent know when it&rsquo;s done<span class="qm">?</span></h3>
+          <p class="qs">without you standing there</p>
+        </div>
+        <div class="qcard qink qb">
+          <p class="qn">Question 02</p>
+          <h3>Where does your backpressure live<span class="qm">?</span></h3>
+          <p class="qs">so teammates and future you get it for free</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S14 · WHAT WE NEED ================= -->
+    <section class="slide" id="s-need" data-title="What we need">
+      <header class="nhead">
+        <p class="kicker">The design brief</p>
+        <h2>What we need<span class="hdot">.</span></h2>
+      </header>
+      <div class="qfield">
+        <svg class="spokes" viewBox="0 0 1000 562.5" preserveAspectRatio="none" aria-hidden="true">
+          <line class="sp spA" x1="322" y1="277" x2="487" y2="352" pathLength="1"/>
+          <line class="sp spB" x1="678" y1="277" x2="513" y2="352" pathLength="1"/>
+        </svg>
+        <div class="qcard qa" aria-hidden="true">
+          <p class="qn">Question 01</p>
+          <h3>How does the agent know when it&rsquo;s done<span class="qm">?</span></h3>
+          <p class="qs">without you standing there</p>
+        </div>
+        <div class="qcard qink qb" aria-hidden="true">
+          <p class="qn">Question 02</p>
+          <h3>Where does your backpressure live<span class="qm">?</span></h3>
+          <p class="qs">so teammates and future you get it for free</p>
+        </div>
+        <p class="slab sa"><b>A</b> · tools to know it is done</p>
+        <p class="slab sb"><b>B</b> · a place to encode friction away</p>
+        <span class="fnode" aria-hidden="true"><i class="ringd"></i><b class="core"></b></span>
+        <span class="ping" aria-hidden="true"></span>
+        <span class="bdg ba" aria-hidden="true">A</span>
+        <span class="bdg bb2" aria-hidden="true">B</span>
+        <p class="nsub">simple · first class · one place</p>
+        <span class="pk pkA" aria-hidden="true"></span>
+        <span class="pk pkB" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <!-- ================= S15 · THE MISSING PIECE ================= -->
+    <section class="slide" id="s-miss" data-title="The missing piece">
+      <div class="m-grid">
+        <div class="m-copy">
+          <p class="kicker">Remember the stack?</p>
+          <h2>It was missing<br>a layer<span class="hdot">.</span></h2>
+          <p class="m-sub">between the agent and your codebase</p>
+        </div>
+
+        <div class="scene3d">
+          <span class="bloom" aria-hidden="true"></span>
+          <span class="gshadow" aria-hidden="true"></span>
+
+          <div class="iso" aria-hidden="true">
+            <div class="floor f-3"><span class="pnum3">03</span><span class="coat"></span></div>
+            <div class="floor f-d"><span class="coat"></span><span class="dchip c1">done?</span><span class="dchip c2">encode</span></div>
+            <span class="gap-glow"></span>
+            <div class="floor f-2"><span class="pnum3">02</span><span class="coat"></span></div>
+            <div class="floor f-1"><span class="pnum3">01</span><span class="coat"></span></div>
+          </div>
+
+          <div class="bb bb-1">
+            <b>Human<span class="pdot">.</span></b>
+            <i aria-hidden="true"></i>
+          </div>
+          <div class="bb bb-2">
+            <b>Inference<span class="pdot">.</span></b>
+            <i aria-hidden="true"></i>
+          </div>
+          <div class="bb bb-d">
+            <b>Deterministic<span class="pdot">.</span></b>
+            <span class="tr">runnable proof · encoded backpressure</span>
+            <i aria-hidden="true"></i>
+          </div>
+          <div class="bb bb-3">
+            <b>Codebase<span class="pdot">.</span></b>
+            <i aria-hidden="true"></i>
+          </div>
+
+          <span class="node2" aria-hidden="true">A·B</span>
+          <span class="drop2 proof" aria-hidden="true"></span>
+          <span class="drop2 enc" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S16 · IT HAS A NAME ================= -->
+    <section class="slide" id="s-name" data-title="It has a name">
+      <p class="kicker">It has a name</p>
+
+      <div class="field">
+        <span class="gcard" style="--sx:14%;--sy:24%;--sr:-9deg;--gx:32%;--gy:13%;--fd:1.15s" aria-hidden="true"><b>src/&hellip;</b></span>
+        <span class="gcard" style="--sx:27%;--sy:11%;--sr:7deg;--gx:41%;--gy:13%;--fd:1.19s" aria-hidden="true"><b>tests/</b></span>
+        <span class="gcard" style="--sx:42%;--sy:20%;--sr:-5deg;--gx:50%;--gy:13%;--fd:1.23s" aria-hidden="true"><b>ci.yml</b></span>
+        <span class="gcard" style="--sx:58%;--sy:9%;--sr:8deg;--gx:59%;--gy:13%;--fd:1.27s" aria-hidden="true"><b>deploy.sh</b></span>
+        <span class="gcard" style="--sx:73%;--sy:17%;--sr:-7deg;--gx:68%;--gy:13%;--fd:1.31s" aria-hidden="true"><b>seed-db.sh</b></span>
+        <span class="gcard" style="--sx:86%;--sy:28%;--sr:6deg;--gx:32%;--gy:47%;--fd:1.35s" aria-hidden="true"><b>Makefile</b></span>
+        <span class="gcard" style="--sx:17%;--sy:48%;--sr:8deg;--gx:41%;--gy:47%;--fd:1.39s" aria-hidden="true"><b>compose.yml</b></span>
+        <span class="gcard" style="--sx:35%;--sy:56%;--sr:-6deg;--gx:50%;--gy:47%;--fd:1.43s" aria-hidden="true"><b>migrations/</b></span>
+        <span class="gcard" style="--sx:64%;--sy:54%;--sr:5deg;--gx:59%;--gy:47%;--fd:1.47s" aria-hidden="true"><b>.env.example</b></span>
+        <span class="gcard" style="--sx:83%;--sy:47%;--sr:-8deg;--gx:68%;--gy:47%;--fd:1.51s" aria-hidden="true"><b>schema.sql</b></span>
+
+        <div class="nplate">
+          <h3>Engineering harness<span class="hdot">.</span></h3>
+          <p class="nsub2">a simple view over the complex engineering reality below</p>
+        </div>
+
+        <span class="conn c-1" aria-hidden="true"></span>
+        <span class="conn c-2" aria-hidden="true"></span>
+        <span class="conn c-3" aria-hidden="true"></span>
+        <div class="job j1" style="--d:2.95s;--jp:4.2s"><b>discover</b><small>what can this environment do?</small></div>
+        <div class="job j2" style="--d:3.25s;--jp:5.5s"><b>prove</b><small>am I done? run the checks</small></div>
+        <div class="job j3" style="--d:3.55s;--jp:6.8s"><b>improve</b><small>missing a feature? add it here</small></div>
+
+        <div class="term">
+          <div class="trow"><span class="ps">$</span><span class="tw" style="--ch:14ch">harness --help</span><span class="tcur"></span></div>
+          <div class="trow out o1"><span class="cmd">boot</span><span class="dsc">start the env, seeded</span></div>
+          <div class="trow out o2"><span class="cmd">test</span><span class="dsc">run what matters</span></div>
+          <div class="trow out o3"><span class="cmd">smoke checkout-flow</span><span class="dsc">prove the flow, end to end</span></div>
+        </div>
+
+        <span class="cast leanin">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">··</span><span class="alt joy">^^</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <small>the agent</small>
+        </span>
+      </div>
+    </section>
+
+    <!-- ================= S17 · LIFE WITH IT: PR TIME ================= -->
+    <section class="slide" id="s-pr" data-title="Life with it · PR time">
+      <p class="kicker">A few weeks later · PR review</p>
+
+      <div class="field">
+        <svg class="conv" viewBox="0 0 1000 562.5" preserveAspectRatio="none" aria-hidden="true">
+          <line class="cv cv1" x1="195" y1="282" x2="548" y2="505" pathLength="1"/>
+          <line class="cv cv2" x1="700" y1="245" x2="551" y2="497" pathLength="1"/>
+          <line class="cv cv3" x1="790" y1="305" x2="557" y2="505" pathLength="1"/>
+        </svg>
+
+        <div class="acard prcard">
+          <h4>PR #214</h4>
+          <div class="drow add"><i>+</i><span class="bar b1"></span></div>
+          <div class="drow add"><i>+</i><span class="bar b2"></span></div>
+          <div class="drow del"><i>&minus;</i><span class="bar b3"></span></div>
+          <div class="drow add"><i>+</i><span class="bar b4"></span></div>
+          <div class="status">
+            <span class="st s1">build <b>&#10003;</b></span>
+            <span class="st s2">tests <b>&#10003;</b></span>
+            <span class="st s3">arch check <b>&#10003;</b></span>
+          </div>
+        </div>
+
+        <span class="cast aoyu"><span class="human-chip"></span><small>you</small></span>
+        <span class="cast aag">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">··</span><span class="alt joy">^^</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <small>the agent</small>
+        </span>
+        <span class="cast arev"><span class="human-chip tm"></span><small>teammate</small></span>
+
+        <p class="bub">&ldquo;the architecture is wrong&rdquo;</p>
+
+        <span class="cvd cvd1" aria-hidden="true"></span>
+        <span class="cvd cvd2" aria-hidden="true"></span>
+        <span class="cvd cvd3" aria-hidden="true"></span>
+
+        <p class="cap">everyone already knows where the fix goes</p>
+
+        <div class="hplate">
+          <span class="hl">harness<i>.</i></span>
+          <span class="hchip">boot</span>
+          <span class="hchip">test</span>
+          <span class="hchip">smoke</span>
+          <span class="hchip ck-arch">arch check</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S18 · FIX THE CHECK, THEN THE CODE ================= -->
+    <section class="slide" id="s-fix" data-title="Fix the check, then the code">
+      <p class="kicker">The fix goes where everyone pointed</p>
+
+      <div class="field">
+        <div class="acard prcard">
+          <div class="fl2">
+            <h4>PR #214</h4>
+            <div class="drow add"><i>+</i><span class="bar b1"></span></div>
+            <div class="drow del"><i>&minus;</i><span class="bar b3"></span></div>
+            <div class="drow add"><i>+</i><span class="bar b4"></span></div>
+          </div>
+          <span class="merged">merged &#10003;</span>
+        </div>
+
+        <span class="cast aag2">
+          <span class="agent-chip">
+            <span class="eyes"><span class="base">··</span><span class="alt conf">&gt;&lt;</span><span class="alt joy">^^</span></span>
+            <span class="glyph">&gt;_</span>
+          </span>
+          <small>the agent</small>
+        </span>
+
+        <div class="acard rulecard">
+          <h4>arch check</h4>
+          <span class="ln"></span>
+          <span class="ln"></span>
+          <div class="nrule"><span class="tw" style="--ch:32ch">+ rule: ui never talks to the db</span></div>
+        </div>
+
+        <div class="runstrip">
+          <div class="rrow"><span class="ps">$</span><span class="tw cmd1" style="--ch:26ch">harness check architecture</span></div>
+          <div class="rrow res res1"><span class="x">&#10007;</span>1 violation <small>&middot; src/checkout/&hellip;</small></div>
+          <div class="rrow"><span class="ps">$</span><span class="tw cmd2" style="--ch:26ch">harness check architecture</span></div>
+          <div class="rrow res res2"><span class="ok">&#10003;</span>clean<span class="tcur"></span></div>
+        </div>
+
+        <span class="spark" aria-hidden="true"></span>
+
+        <p class="fline">Fixed once. <b>Caught forever.</b></p>
+        <p class="badge">every teammate · every future session</p>
+
+        <div class="hplate">
+          <span class="hl">harness<i>.</i></span>
+          <span class="hchip">boot</span>
+          <span class="hchip">test</span>
+          <span class="hchip">smoke</span>
+          <span class="hchip ck-arch">arch check</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= S19 · FINALE · THE TEAM, COMPOUNDING ================= -->
+    <section class="slide" id="s-fin" data-title="Finale · compounding">
+      <p class="kicker">A month later · the whole team</p>
+
+      <div class="field">
+        <div class="lane l1" aria-hidden="true" style="--lp: 0s;   --jt: 3.45s"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma"><b class="mb">··</b><b class="mj">^^</b></span></div>
+        <div class="lane l2" aria-hidden="true" style="--lp: .8s;  --jt: 4.25s"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma"><b class="mb">··</b><b class="mj">^^</b></span></div>
+        <div class="lane l3" aria-hidden="true" style="--lp: 1.5s; --jt: 4.95s"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma"><b class="mb">··</b><b class="mj">^^</b></span></div>
+        <div class="lane l4" aria-hidden="true" style="--lp: 2.3s; --jt: 5.75s"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma"><b class="mb">··</b><b class="mj">^^</b></span></div>
+        <div class="lane l5" aria-hidden="true" style="--lp: 3.1s; --jt: 6.55s"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma"><b class="mb">··</b><b class="mj">^^</b></span></div>
+        <div class="lane l6" aria-hidden="true" style="--lp: 3.8s; --jt: 11.3s"><span class="mh"></span><span class="trk"></span><span class="fpin"></span><span class="ma"><b class="mb">··</b><b class="mj">^^</b></span></div>
+
+        <span class="fall" aria-hidden="true" style="--x0:16.5%; --y0:21.6%; --xa:33%;   --ya:33%; --xm:36%; --ym:58%; --x1:45%; --y1:86%; --fd:2.4s"></span>
+        <span class="fall" aria-hidden="true" style="--x0:49.5%; --y0:21.6%; --xa:64.5%; --ya:31%; --xm:67%; --ym:57%; --x1:53%; --y1:86%; --fd:3.2s"></span>
+        <span class="fall" aria-hidden="true" style="--x0:82.5%; --y0:21.6%; --xa:67.5%; --ya:31%; --xm:65%; --ym:57%; --x1:62%; --y1:86%; --fd:3.9s"></span>
+        <span class="fall" aria-hidden="true" style="--x0:16.5%; --y0:47.6%; --xa:20%;   --ya:58%; --xm:45%; --ym:72%; --x1:72%; --y1:86%; --fd:4.7s"></span>
+        <span class="fall" aria-hidden="true" style="--x0:49.5%; --y0:47.6%; --xa:54%;   --ya:60%; --xm:68%; --ym:72%; --x1:83%; --y1:86%; --fd:5.5s"></span>
+
+        <span class="drip" aria-hidden="true" style="--x0:82.5%; --y0:47.6%; --xa:79%; --ya:60%; --xm:74%; --ym:72%; --x1:70%; --y1:86%; --dd:9.6s"></span>
+        <span class="drip" aria-hidden="true" style="--x0:16.5%; --y0:21.6%; --xa:33%; --ya:33%; --xm:36%; --ym:58%; --x1:41%; --y1:86%; --dd:12.8s"></span>
+        <span class="drip" aria-hidden="true" style="--x0:16.5%; --y0:47.6%; --xa:20%; --ya:60%; --xm:32%; --ym:72%; --x1:50%; --y1:86%; --dd:16s"></span>
+
+        <p class="closeline">Your experience, <b>encoded</b>. Everyone benefits.</p>
+
+        <div class="hplate">
+          <span class="hl">harness<i>.</i></span>
+          <span class="hchip">boot</span>
+          <span class="hchip">test</span>
+          <span class="hchip">smoke</span>
+          <span class="hchip ck-arch">arch check</span>
+          <span class="hchip nc" style="--cd: 3.25s">seed db</span>
+          <span class="hchip nc" style="--cd: 4.05s">reset env</span>
+          <span class="hchip nc" style="--cd: 4.75s">flaky setup</span>
+          <span class="hchip nc" style="--cd: 5.55s">lint imports</span>
+          <span class="hchip nc" style="--cd: 6.35s">smoke checkout</span>
+        </div>
+
+        <footer class="termbar" aria-hidden="true">
+          <span class="ps">$</span><span class="tline"><span class="br">[</span><span class="t-a">friction found</span><span class="br">]</span> + <span class="br">[</span><span class="t-b">encoded once</span><span class="br">]</span> = <span class="t-c">never rediscovered</span></span><span class="cur"></span>
+        </footer>
+      </div>
+    </section>
+
+    <!-- ================= S20 · SIGN-OFF · HAPPY HARNESSING ================= -->
+    <section class="slide" id="s-bye" data-title="Happy harnessing.">
+      <div class="field">
+        <div class="scene" aria-hidden="true">
+          <div class="nucleus">
+            <span class="ring r1"></span>
+            <span class="ring r2"></span>
+            <span class="ring r3"></span>
+
+            <span class="orb o1" style="--ec: var(--white); --et: var(--purple)">
+              <span class="e"><span class="pill">you</span></span>
+            </span>
+            <span class="orb o2a" style="--ec: var(--lavender)">
+              <span class="e"><span class="pill">the agent</span></span>
+            </span>
+            <span class="orb o2b" style="--ec: var(--mauve)">
+              <span class="e"><span class="pill">your codebase</span></span>
+            </span>
+            <span class="orb o3">
+              <span class="e"><span class="pill ghost">?</span><span class="pill hh">your harness</span></span>
+            </span>
+
+            <div class="core">
+              <span class="glyph">&gt;_</span>
+              <span class="lbl">whatever<br>comes next</span>
+            </div>
+          </div>
+        </div>
+
+        <h1 class="byeline">Happy harnessing<span class="hdot">.</span></h1>
+        <p class="byesub">go find your missing layer</p>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="hud" id="hud">
+    <button class="nav" id="nav-prev" aria-label="Previous slide" title="Back">&lsaquo;</button>
+    <button class="nav" id="nav-next" aria-label="Next slide" title="Forward">&rsaquo;</button>
+    <span class="count" id="hud-count">01 / 01</span>
+    <span class="dots" id="hud-dots"></span>
+    <span id="hud-title"></span>
+    <span class="steps" id="hud-steps"></span>
+    <span class="keys">← → · space · click</span>
+  </div>
+</div>
+
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const dotsEl = document.getElementById('hud-dots');
+  const countEl = document.getElementById('hud-count');
+  const titleEl = document.getElementById('hud-title');
+  const stepsEl = document.getElementById('hud-steps');
+
+  const maxStep = (s) =>
+    Math.max(0, ...[...s.querySelectorAll('[data-step]')].map((e) => +e.dataset.step));
+
+  let cur = 0, step = 0;
+
+  // dots, built from the DOM (reorder sections -> everything follows)
+  slides.forEach((s, i) => {
+    const d = document.createElement('i');
+    d.title = s.dataset.title || s.id;
+    d.addEventListener('click', (ev) => { ev.stopPropagation(); go(i, 0); });
+    dotsEl.appendChild(d);
+  });
+
+  function apply() {
+    slides.forEach((s, i) => {
+      const active = i === cur;
+      s.classList.toggle('active', active);
+      s.querySelectorAll('[data-step]').forEach((e) =>
+        e.classList.toggle('on', active && +e.dataset.step <= step));
+    });
+    [...dotsEl.children].forEach((d, i) => d.classList.toggle('cur', i === cur));
+    const total = maxStep(slides[cur]);
+    countEl.textContent =
+      String(cur + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+    titleEl.textContent = slides[cur].dataset.title || slides[cur].id;
+    stepsEl.textContent = total ? '▸ ' + step + '/' + total : '';
+    history.replaceState(null, '', '#' + slides[cur].id + (step ? '/' + step : ''));
+  }
+
+  function go(i, st) {
+    cur = Math.max(0, Math.min(slides.length - 1, i));
+    step = Math.max(0, Math.min(maxStep(slides[cur]), st));
+    apply();
+  }
+  function next() {
+    if (step < maxStep(slides[cur])) step += 1;
+    else if (cur < slides.length - 1) { cur += 1; step = 0; }
+    apply();
+  }
+  function prev() {
+    if (step > 0) step -= 1;
+    else if (cur > 0) { cur -= 1; step = maxStep(slides[cur]); }
+    apply();
+  }
+
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    else if (e.key === 'Home') go(0, 0);
+    else if (e.key === 'End') go(slides.length - 1, 0);
+  });
+  // stage click: left edge goes back, anywhere else forward
+  const stageEl = document.getElementById('stage');
+  stageEl.addEventListener('click', (e) => {
+    const r = stageEl.getBoundingClientRect();
+    if ((e.clientX - r.left) / r.width < 0.15) prev(); else next();
+  });
+  document.getElementById('nav-prev').addEventListener('click', prev);
+  document.getElementById('nav-next').addEventListener('click', next);
+
+  // deep link: #slide-id/step (on load, and on manual hash edits)
+  function syncFromHash() {
+    const m = location.hash.match(/^#([\w-]+)(?:\/(\d+))?/);
+    if (!m) return;
+    const i = slides.findIndex((s) => s.id === m[1]);
+    if (i >= 0) { cur = i; step = Math.min(maxStep(slides[i]), +(m[2] || 0)); }
+  }
+  addEventListener('hashchange', () => { syncFromHash(); apply(); });
+  syncFromHash();
+  apply();
+})();
+</script>
+
+</body>
+</html>
