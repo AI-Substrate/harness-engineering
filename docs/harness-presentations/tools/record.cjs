@@ -169,17 +169,24 @@ const preset = opt('preset', 'slow');
         '-of', 'default=noprint_wrappers=1:nokey=1', f,
       ]).toString().trim());
       const audioDur = probe(mp3);
+      const lead = +opt('lead', 1);
       const tmp = path.join(out, `${stem}.mux.mp4`);
+      // Narration starts after a silent lead-in, and apad runs silence out to
+      // the end of the clip so the audio stream is exactly video-length.
+      // Equal-length streams are what keep the stream-copy stitch in sync —
+      // sparse/short audio makes players drag the next clip's narration early.
       execFileSync('ffmpeg', [
         '-y', '-i', mp4, '-i', mp3,
         '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+        '-af', `adelay=${Math.round(lead * 1000)}:all=1,apad`,
+        '-t', String(durSec),
         '-movflags', '+faststart',
         tmp,
       ], { stdio: ['ignore', 'ignore', 'pipe'] });
       fs.renameSync(tmp, mp4);
-      muxNote = `, audio muxed (${audioDur.toFixed(2)}s)`;
-      if (audioDur > durSec) {
-        muxNote += ` — WARNING: audio outlasts video; re-record with --dur=${(Math.ceil(audioDur * 10) / 10).toFixed(1)}`;
+      muxNote = `, audio muxed (${audioDur.toFixed(2)}s after ${lead}s lead)`;
+      if (lead + audioDur > durSec) {
+        muxNote += ` — WARNING: narration runs past the video; re-record with --dur=${(Math.ceil((lead + audioDur + 1) * 10) / 10).toFixed(1)}`;
       }
     }
 
