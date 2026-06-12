@@ -730,14 +730,24 @@
   /* AUTOPLAY: the whole scene runs off .active on a single timed
      clock; no presenter steps. floors land → labels in → cast pops →
      the work-drop loop begins (everything past 2.3s is the loop). */
-  #s-stack.active .floor { animation: floorLand .85s var(--pop) backwards; }
-  #s-stack.active .f-1 { animation-delay: .15s; }
-  #s-stack.active .f-2 { animation-delay: .38s; }
-  #s-stack.active .f-3 { animation-delay: .61s; }
+  /* land, hold a beat, then a stroke runs down the stack: each plate
+     swells and glows for an instant, top to bottom. scale + box-shadow
+     only — filter would flatten the preserve-3d slab. */
+  #s-stack.active .floor {
+    animation: floorLand .85s var(--pop) backwards,
+               plateKiss .8s ease-in-out backwards;
+  }
+  #s-stack.active .f-1 { animation-delay: .15s, 3.2s; }
+  #s-stack.active .f-2 { animation-delay: .38s, 3.5s; }
+  #s-stack.active .f-3 { animation-delay: .61s, 3.8s; }
   @keyframes floorLand {
     0%   { opacity: 0; transform: translateZ(calc(var(--z) + 17cqw)); }
     70%  { opacity: 1; transform: translateZ(calc(var(--z) - 1cqw)); }
     100% { opacity: 1; transform: translateZ(var(--z)); }
+  }
+  @keyframes plateKiss {
+    0%, 100% { scale: 1; box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    45%      { scale: 1.04; box-shadow: 0 0 2.4cqh .2cqh rgba(255,255,255,.5); }
   }
 
   /* billboard labels float beside their floors, leader-lined in.
@@ -856,7 +866,7 @@
     background: rgba(255,255,255,.25);
     border-radius: 999px;
   }
-  #s-stack .rail-down { left: 87%; }
+  #s-stack .rail-down { left: 88.5%; }
   #s-stack .rail-up   { left: 93.5%; }
   /* arrowheads, colored to their tracer */
   #s-stack .rail::after {
