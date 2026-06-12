@@ -632,32 +632,7 @@
     animation: fadeup .9s var(--pop) .22s backwards;
   }
   #s-stack h2 .hdot { color: var(--lavender); }
-  #s-stack .s2-legend {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.1cqh;
-    margin-top: 3.4cqh;
-    font-family: var(--mono);
-    font-size: .92cqw;
-    font-weight: 600;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    color: var(--mauve);
-  }
-  /* each legend arrow enters ON its spoken phrase, then settles into the
-     ambient pulse (fadein owns opacity until the pulse takes over at 1) */
-  #s-stack.active .lg {
-    animation: fadein .6s ease var(--cue-down) backwards,
-               legPulse 2.3s ease-in-out calc(var(--cue-down) + .6s) infinite;
-  }
-  #s-stack.active .lg-up {
-    animation: fadein .6s ease var(--cue-up) backwards,
-               legPulse 2.3s ease-in-out calc(var(--cue-up) + .6s) infinite,
-               claimFlash .9s var(--pop) var(--cue-claims);
-  }
-  @keyframes legPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
-  /* "note the word: claims" — the ▲ legend flares as the word lands */
+  /* "note the word: claims" — the up rail's label flares as the word lands */
   @keyframes claimFlash {
     0%, 100% { color: var(--mauve); text-shadow: none; }
     25%, 60% { color: var(--white); text-shadow: 0 0 1.2cqh rgba(196,151,254,.9); }
@@ -857,63 +832,86 @@
   @keyframes castPop { from { scale: 0; rotate: -10deg; } }
   @keyframes shdwIn { from { opacity: 0; scale: .2 1; } }
 
-  /* the work: intent falls through the floors, a claim rises back */
-  #s-stack .drop {
+  /* the flows, called out beside the stack: two rails with traveling
+     light pulses — intent runs down the near rail, code & claims run
+     back up the far one. Tracers share the --TRIP clock from
+     --cue-down, the same phase the coats and the agent's eyes are
+     locked to: first down pulse departs on "intent flows down", and
+     an up pulse leaves the bottom right on "note the word: claims". */
+  #s-stack .rail {
     position: absolute;
-    left: 55.4%;
-    top: 0;
-    width: 1.15cqw; height: 1.15cqw;
-    margin-left: -.575cqw;
-    border-radius: 50%;
-    background: var(--lavender);
-    box-shadow: 0 0 1.6cqh .25cqh rgba(196,151,254,.8);
+    top: 17%;
+    height: 62%;
+    width: .18cqw;
+    background: rgba(255,255,255,.25);
+    border-radius: 999px;
+  }
+  #s-stack .rail-down { left: 87%; }
+  #s-stack .rail-up   { left: 93.5%; }
+  /* arrowheads, colored to their tracer */
+  #s-stack .rail::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    translate: -50% 0;
+    border-left: .5cqw solid transparent;
+    border-right: .5cqw solid transparent;
+  }
+  #s-stack .rail-down::after { bottom: -1cqh; border-top: 1cqh solid var(--lavender); }
+  #s-stack .rail-up::after   { top: -1cqh; border-bottom: 1cqh solid var(--white); }
+  /* the traveling pulse */
+  #s-stack .rail .tracer {
+    position: absolute;
+    left: 50%;
+    translate: -50% 0;
+    width: .5cqw;
+    height: 20%;
+    border-radius: 999px;
     opacity: 0;
   }
-  /* the loop's first fall departs on "intent flows down"; phase math then
-     puts the first risen claim's emergence on "note the word: claims" */
-  #s-stack.active .drop { animation: dropFall var(--TRIP) linear var(--cue-down) infinite; }
-  #s-stack .d-up {
-    margin-left: 1.5cqw;
-    background: var(--white);
-    box-shadow: 0 0 1.6cqh .25cqh rgba(255,255,255,.7);
+  #s-stack .rail-down .tracer {
+    background: linear-gradient(180deg, transparent, var(--lavender) 55%, var(--lavender));
+    box-shadow: 0 0 1.4cqh .15cqh rgba(196,151,254,.65);
   }
-  #s-stack.active .d-up { animation: dropRise var(--TRIP) linear var(--cue-down) infinite; }
-  /* intent HOPS down the stack: land, squash, rest while the layer
-     works (coat flash), anticipate, drop to the next. Absorbed by 03. */
-  @keyframes dropFall {
-    0%        { top: 12%;   opacity: 0; scale: 1 1; }
-    3%        { top: 15%;   opacity: 1; scale: .88 1.22; }
-    5.5%      { top: 20%;   scale: 1.32 .55; }
-    7.5%      { top: 19.3%; scale: .95 1.06; }
-    10%       { top: 19.6%; scale: 1 1; }
-    12%       { top: 18.2%; scale: .92 1.14; }
-    16%       { top: 38%;   scale: .88 1.24; }
-    19%       { top: 59%;   scale: 1.32 .55; }
-    21%       { top: 58.3%; scale: .95 1.06; }
-    24.5%     { top: 58.6%; scale: 1 1; }
-    26.5%     { top: 57.2%; scale: .92 1.14; }
-    31%       { top: 65.5%; scale: .88 1.24; }
-    35%       { top: 72.5%; scale: 1.32 .55; }
-    37%       { top: 71.8%; scale: .95 1.06; }
-    40%       { top: 72.1%; opacity: 1; scale: 1 1; }
-    43%       { top: 73%;   opacity: .9; scale: .35 .35; }
-    45%, 100% { top: 73.4%; opacity: 0; scale: .2 .2; }
+  #s-stack .rail-up .tracer {
+    background: linear-gradient(0deg, transparent, var(--white) 55%, var(--white));
+    box-shadow: 0 0 1.4cqh .15cqh rgba(255,255,255,.55);
   }
-  /* the claim hops back UP: out of the codebase, off 02, delivered to 01 */
-  @keyframes dropRise {
-    0%, 50%   { top: 72.5%; opacity: 0; scale: .3 .3; }
-    52.5%     { top: 70.5%; opacity: 1; scale: .9 1.18; }
-    57%       { top: 64%;   scale: .88 1.22; }
-    61%       { top: 59%;   scale: 1.28 .6; }
-    63.5%     { top: 58.3%; scale: .96 1.05; }
-    66%       { top: 58.6%; scale: 1 1; }
-    68%       { top: 57.2%; scale: .92 1.14; }
-    73%       { top: 38%;   scale: .88 1.22; }
-    77%       { top: 20%;   scale: 1.28 .6; }
-    79.5%     { top: 19.3%; scale: .96 1.05; }
-    83%       { top: 19.6%; opacity: 1; scale: 1 1; }
-    88%       { top: 19.6%; opacity: 1; scale: 1 1; }
-    92%, 100% { top: 17%;   opacity: 0; scale: .4 .4; }
+  /* labels run along the rails (direction is the arrowheads' job —
+     vertical-rl would rotate an arrow glyph sideways) */
+  #s-stack .rail b {
+    position: absolute;
+    top: 0;
+    font-family: var(--mono);
+    font-size: .8cqw;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--mauve);
+    writing-mode: vertical-rl;
+    white-space: nowrap;
+  }
+  #s-stack .rail-down b { right: calc(100% + .55cqw); }
+  #s-stack .rail-up b   { left: calc(100% + .55cqw); }
+  #s-stack.active .rail-down { animation: fadein .5s ease var(--cue-down) backwards; }
+  #s-stack.active .rail-up   { animation: fadein .5s ease var(--cue-up) backwards; }
+  #s-stack.active .rail-down .tracer { animation: traceDown var(--TRIP) linear var(--cue-down) infinite; }
+  #s-stack.active .rail-up .tracer   { animation: traceUp var(--TRIP) linear var(--cue-down) infinite; }
+  /* "note the word: claims" — the up label flares as the word lands */
+  #s-stack.active .rail-up b { animation: claimFlash .9s var(--pop) var(--cue-claims); }
+  /* down pulse occupies the first half of the cycle, up the second —
+     same halves the old hop dots used, so the coat flashes still track */
+  @keyframes traceDown {
+    0%        { top: -20%; opacity: 0; }
+    5%        { opacity: 1; }
+    38%       { opacity: 1; }
+    45%, 100% { top: 100%; opacity: 0; }
+  }
+  @keyframes traceUp {
+    0%, 50%   { top: 100%; opacity: 0; }
+    55%       { opacity: 1; }
+    88%       { opacity: 1; }
+    95%, 100% { top: -20%; opacity: 0; }
   }
   /* floors flash as the work lands on them (same 2.3s start = phase-locked);
      02 and 03 flash again as the claim passes back up */
@@ -1197,6 +1195,7 @@
     --cue-prompts: 9.34s;       /* "and your PROMPTS live here." */
     --cue-agentharness: 16.06s; /* "the AGENT HARNESS." */
     --cue-not: 23.34s;          /* "that is NOT the harness this talk is about." */
+    --cue-inferred: 32.84s;     /* "is, at the end of the day, INFERRED." */
     --loop0: 2.388s;            /* derived — see note above */
   }
   /* header lands on its name (overrides .lhead defaults) */
@@ -1403,6 +1402,34 @@
     animation: stampShake .55s var(--bounce) var(--cue-agentharness) backwards,
                deconNope .8s ease var(--cue-not);
   }
+
+  /* the verdict: a big red diagonal stamp drops onto the whole scene
+     as the narration lands — everything this layer makes is, at the
+     end of the day, INFERRED. Slam impact = end of the .6s zoom, so
+     it starts at cue − .6s; the stage jolts on the hit. */
+  #s-infer .infstamp {
+    position: absolute;
+    left: 50%; top: 46%;
+    translate: -50% -50%;
+    rotate: -12deg;
+    z-index: 5;
+    font-family: var(--mcqueen);
+    font-weight: 600;
+    font-size: 6.5cqw;
+    line-height: 1;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #ff4545;
+    border: .55cqw solid #ff4545;
+    border-radius: 1.2cqw;
+    padding: 1.8cqh 2.8cqw;
+    background: rgba(226, 61, 61, .08);
+    filter: drop-shadow(0 .6cqh 1.8cqh rgba(0, 0, 0, .4));
+    opacity: 0;
+    pointer-events: none;
+  }
+  #s-infer.active .infstamp { animation: slam .6s cubic-bezier(.16,1.1,.4,1) calc(var(--cue-inferred) - .6s) forwards; }
+  #s-infer.active .field { animation: jolt .5s ease-out calc(var(--cue-inferred) - .27s); }
   /* "that is NOT the harness this talk is about" — the note flares on "not" */
   @keyframes deconNope {
     0%, 100% { color: var(--mauve); border-color: rgba(255,255,255,.55); text-shadow: none; }
@@ -4694,10 +4721,6 @@
         <div class="s2-copy">
           <p class="kicker">A typical setup</p>
           <h2>The stack<br>you already<br>have<span class="hdot">.</span></h2>
-          <p class="s2-legend">
-            <span class="lg">▼&ensp;intent</span>
-            <span class="lg lg-up">▲&ensp;code &amp; claims</span>
-          </p>
         </div>
 
         <div class="scene3d">
@@ -4729,8 +4752,8 @@
           <span class="stand st-you"><span class="human-chip"></span><i class="shdw" aria-hidden="true"></i></span>
           <span class="stand st-agent"><span class="agent-chip"><span class="eyes">··</span><span class="glyph">&gt;_</span></span><i class="shdw" aria-hidden="true"></i></span>
 
-          <span class="drop d-down" aria-hidden="true"></span>
-          <span class="drop d-up" aria-hidden="true"></span>
+          <span class="rail rail-down" aria-hidden="true"><i class="tracer"></i><b>intent</b></span>
+          <span class="rail rail-up" aria-hidden="true"><i class="tracer"></i><b>code &amp; claims</b></span>
         </div>
       </div>
     </section>
@@ -4867,6 +4890,8 @@
         </div></div>
 
         <p class="decon">the &ldquo;agent harness&rdquo; lives here &middot; not today&rsquo;s harness</p>
+
+        <span class="infstamp" aria-hidden="true">inferred</span>
       </div>
     </section>
 
