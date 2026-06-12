@@ -1,0 +1,1 @@
+And this is what it looks like when the whole team lives in it. Same people. Same work. Same frictions. But now every fix lands in one place, as something runnable. The harness gets a little more capable every day. And everyone, including every future agent session, starts on top of everything the team has ever learned. That's the missing layer. That's an engineering harness.

@@ -1,0 +1,1 @@
+Here's the stack most teams run today. You at the top. The agent in the middle. Your codebase at the bottom. Intent flows down. Code, and claims of success, flow up. Note the word: claims. Looks complete, right? Let's meet each layer for a second.

@@ -1,0 +1,1 @@
+Bottom layer: the codebase. Code, tests, scripts, pipelines, configs, databases. Every repo is different. Every one has its own quirks. And this is where all the real engineering complexity lives. Keep this picture in your head. It matters later.
