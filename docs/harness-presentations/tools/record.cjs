@@ -54,10 +54,13 @@ if (!slideArg) {
   process.exit(1);
 }
 const deck = path.resolve(positional[1] || path.join(__dirname, '..', 'missing-layer-101.html'));
+// Defaults are the approved "hq" recipe: 60fps for motion smoothness,
+// 2x supersampled capture (4K) downscaled to the 1080p target in the
+// encode for stable text. See the launch flags + encode -vf below.
 const durSec = +opt('dur', 12);
-const fps = +opt('fps', 30);
+const fps = +opt('fps', 60);
 const W = +opt('w', 1920), H = +opt('h', 1080);
-const scale = +opt('scale', 1);
+const scale = +opt('scale', 2);
 // Default output: repo scratch/ (gitignored) so clips are visible in-repo.
 const out = opt('out', path.join(__dirname, '..', '..', '..', 'scratch', 'ml-video'));
 const crf = opt('crf', '16');
