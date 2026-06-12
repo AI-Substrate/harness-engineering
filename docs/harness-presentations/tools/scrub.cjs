@@ -35,11 +35,26 @@ const deck = path.resolve(opts.deck || path.join(__dirname, '..', 'missing-layer
 const dir = opts.out || path.join('/tmp/scrub', hash.replace('#', ''));
 
 (async () => {
-  const browser = await puppeteer.launch({ headless: 'shell' });
+  const browser = await puppeteer.launch({
+    headless: 'shell',
+    // same determinism flags as record.cjs — keeps scrub frames
+    // pixel-identical to recorded frames
+    args: [
+      '--disable-threaded-animation',
+      '--disable-threaded-scrolling',
+      '--run-all-compositor-stages-before-draw',
+      '--disable-checker-imaging',
+      '--disable-image-animation-resync',
+    ],
+  });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 800 });
-  // kill rAF before page scripts run — the deck must not advance itself
-  await page.evaluateOnNewDocument(() => { window.requestAnimationFrame = () => 0; });
+  // kill rAF before page scripts run — the deck must not advance itself.
+  // __realRAF survives for the settle-wait below (see record.cjs).
+  await page.evaluateOnNewDocument(() => {
+    window.__realRAF = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = () => 0;
+  });
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
   await page.goto(`file://${deck}${hash}`, { waitUntil: 'networkidle0' });
@@ -47,9 +62,17 @@ const dir = opts.out || path.join('/tmp/scrub', hash.replace('#', ''));
   await new Promise((r) => setTimeout(r, 250));
   await page.evaluate(() => document.getAnimations().forEach((a) => a.pause()));
   for (const t of times) {
-    // re-query every frame: browsers hand back fresh animation arrays
+    // re-query every frame: browsers hand back fresh animation arrays.
+    // Then wait for the renderer to commit (double rAF, timeout-guarded)
+    // so the screenshot can't race the compositor.
     await page.evaluate((ms) => {
       document.getAnimations().forEach((a) => { try { a.currentTime = ms; } catch (e) {} });
+      return new Promise((resolve) => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        window.__realRAF(() => window.__realRAF(finish));
+        setTimeout(finish, 50);
+      });
     }, t * 1000);
     const f = `${dir}/t${t.toFixed(2).padStart(6, '0')}.png`;
     await page.screenshot({ path: f });

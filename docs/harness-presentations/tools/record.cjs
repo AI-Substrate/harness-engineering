@@ -73,6 +73,17 @@ const preset = opt('preset', 'slow');
       `--window-size=${W},${H}`,
       '--hide-scrollbars',
       '--disable-background-timer-throttling',
+      // Determinism: Page.captureScreenshot does NOT wait for a fresh
+      // compositor commit, so composited transforms (rotateX etc.) could
+      // lag main-thread paint by a frame — visible as tearing/judder in
+      // fast moves. Keep every animation on the main thread and make the
+      // compositor finish all stages before any draw. (BeginFrameControl
+      // would be the gold fix but is unreliable on macOS headless.)
+      '--disable-threaded-animation',
+      '--disable-threaded-scrolling',
+      '--run-all-compositor-stages-before-draw',
+      '--disable-checker-imaging',
+      '--disable-image-animation-resync',
     ],
   });
   try {
@@ -82,8 +93,11 @@ const preset = opt('preset', 'slow');
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 
     // rAF-kill BEFORE any page script runs: a live rAF loop would mutate DOM
-    // state between the currentTime scrub and the screenshot.
+    // state between the currentTime scrub and the screenshot. Keep a private
+    // handle to the REAL rAF first — the scrub loop uses it to wait for the
+    // rendering lifecycle to commit each frame before screenshotting.
     await page.evaluateOnNewDocument(() => {
+      window.__realRAF = window.requestAnimationFrame.bind(window);
       window.requestAnimationFrame = () => 0;
       window.cancelAnimationFrame = () => {};
     });
@@ -133,8 +147,18 @@ const preset = opt('preset', 'slow');
 
     const t0 = Date.now();
     for (let i = 0; i < total; i++) {
+      // Scrub, then let the renderer fully commit before capturing: double
+      // rAF = "a frame was produced after this style change" (the first rAF
+      // runs before paint, the second after the commit). The timeout guard
+      // covers frames where nothing invalidated, so no frame is scheduled.
       await page.evaluate((t) => {
         for (const a of document.getAnimations()) { try { a.currentTime = t; } catch (e) {} }
+        return new Promise((resolve) => {
+          let done = false;
+          const finish = () => { if (!done) { done = true; resolve(); } };
+          window.__realRAF(() => window.__realRAF(finish));
+          setTimeout(finish, 50);
+        });
       }, i * (1000 / fps));
       await page.screenshot({
         path: path.join(framesDir, `f_${String(i).padStart(pad, '0')}.png`),
