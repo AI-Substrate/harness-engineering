@@ -207,6 +207,24 @@ cues (recipe B steps 4–6).
   Check a boundary with:
   `ffmpeg -sseof -0.1 -i NNN.mp4 -frames:v 1 last.png` vs
   `ffmpeg -i MMM.mp4 -frames:v 1 first.png`.
+- An intermediate keyframe that lists `transform` SPLITS the transform
+  interpolation into segments, and the easing function restarts per
+  segment — velocity decays to ~0 into the keyframe then relaunches
+  fast, a visible 2-frame jolt at 30fps (qFlip shipped this at its old
+  62% keyframe). Keep a move's transform ONE from→to segment; put
+  mid-animation opacity/color beats on their own keyframes — a keyframe
+  only segments the properties it actually lists. To hunt this class:
+  consecutive-frame diffs (`blend=all_mode=difference,signalstats`)
+  near-zero then spiking mid-animation = a velocity snap.
+- "Tearing"/judder suspicions about the recorder: captures are
+  deterministic and commit-synced (record.cjs runs Chromium with
+  threaded-animation off + all-compositor-stages-before-draw, and
+  waits a double-rAF after each scrub before screenshotting). To prove
+  a render is clean, full-clip-compare two renders of the same deck:
+  `ffmpeg -i a.mp4 -i b.mp4 -filter_complex "psnr=stats_file=p.log" -f null -`
+  — every frame ≥50dB means identical captures. Residual "part of one
+  frame, part of the next" feel on fast moves is 30fps temporal
+  aliasing, not a capture bug — A/B it with `record.cjs N --fps 60`.
 
 ## Numbering & layout
 

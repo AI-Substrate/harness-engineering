@@ -3348,21 +3348,24 @@
   /* AUTOPLAY: A flips up, B answers it, then both idle on a slow
      offset breath (the scale property composes under the flip) */
   /* word-sync cues from narration/013-s-quest.words.json (+1s mux lead).
-     Flips key their IMPACT (~75% of the 1.05s qFlip) on the counted
-     word: start = cue − .7s. The .qb breathe offset (+4.27s) keeps the
-     two cards breathing in perfect counter-phase (1.5 periods apart)
-     while still starting after its flip ends. */
+     Flips visually SETTLE (~60% of the 1.05s glide) on the counted
+     word: start = cue − .55s. The .qb breathe offset (+4.27s) keeps the
+     two cards breathing in perfect counter-phase (1.5 periods apart).
+     qFlip is ONE transform segment (glide): an intermediate transform
+     keyframe + eased segments restarts velocity mid-flight — measured
+     as a 2-frame jolt at the old 62% keyframe. Opacity keyframes its
+     own channel; that doesn't segment the transform interpolation. */
   #s-quest {
     --cue-one: 2.74s;   /* "ONE: how does the agent know when it's done?" */
     --cue-two: 6.92s;   /* "And TWO: where does the learning go?" */
     --cue-enum: 10.10s; /* "The BACKPRESSURE… frictions… workarounds" */
   }
   #s-quest.active .qa {
-    animation: qFlip 1.05s var(--pop) calc(var(--cue-one) - .7s) backwards,
+    animation: qFlip 1.05s var(--glide) calc(var(--cue-one) - .55s) backwards,
                qBreathe 5.4s ease-in-out calc(var(--cue-one) + .35s) infinite;
   }
   #s-quest.active .qb {
-    animation: qFlip 1.05s var(--pop) calc(var(--cue-two) - .7s) backwards,
+    animation: qFlip 1.05s var(--glide) calc(var(--cue-two) - .55s) backwards,
                qBreathe 5.4s ease-in-out calc(var(--cue-two) + 4.27s) infinite;
   }
   /* "the backpressure… the frictions… the workarounds" — the inked
@@ -3376,7 +3379,7 @@
   }
   @keyframes qFlip {
     0%   { opacity: 0; transform: rotateX(58deg) translateY(7cqh); }
-    62%  { opacity: 1; transform: rotateX(-6deg) translateY(-.5cqh); }
+    45%  { opacity: 1; }
     100% { opacity: 1; transform: rotateX(0deg) translateY(0); }
   }
   @keyframes qBreathe {
