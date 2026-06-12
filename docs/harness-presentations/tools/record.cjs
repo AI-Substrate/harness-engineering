@@ -22,7 +22,8 @@
 //   <slide>  1-based slide number (e.g. 2) or slide id (s-stack / #s-stack)
 //   --dur    clip length in SECONDS (float ok) — adjust per slide once
 //            voiceover timings are known
-//   --scale  deviceScaleFactor: 1 = 1920x1080, 2 = 4K
+//   --scale  deviceScaleFactor on top of --w/--h: >1 supersamples the
+//            capture and the encode lanczos-downscales back to --w/--h
 //
 // Known-good NODE_PATH on this machine:
 //   /Users/jordanknight/.npm-global/lib/node_modules/@mermaid-js/mermaid-cli/node_modules
@@ -54,13 +55,15 @@ if (!slideArg) {
   process.exit(1);
 }
 const deck = path.resolve(positional[1] || path.join(__dirname, '..', 'missing-layer-101.html'));
-// Defaults are the approved "hq" recipe: 60fps for motion smoothness,
-// 2x supersampled capture (4K) downscaled to the 1080p target in the
-// encode for stable text. See the launch flags + encode -vf below.
+// Defaults are the approved recipe: native 4K60 output. Text stability
+// comes from the stable-raster launch flags + the 2x glyph resolution
+// 4K gives over a 1080p view (players downscale-average the rest).
+// For a 1080p file with the same stability: --w 1920 --h 1080 --scale 2
+// (supersampled capture, lanczos-downscaled in the encode).
 const durSec = +opt('dur', 12);
 const fps = +opt('fps', 60);
-const W = +opt('w', 1920), H = +opt('h', 1080);
-const scale = +opt('scale', 2);
+const W = +opt('w', 3840), H = +opt('h', 2160);
+const scale = +opt('scale', 1);
 // Default output: repo scratch/ (gitignored) so clips are visible in-repo.
 const out = opt('out', path.join(__dirname, '..', '..', '..', 'scratch', 'ml-video'));
 const crf = opt('crf', '16');

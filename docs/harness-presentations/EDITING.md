@@ -30,7 +30,7 @@ missing-layer-101.html ──record.cjs──▶ NNN-id.mp4 (video+audio muxed)
 |---|---|---|
 | `tts.cjs` | One slide's narration → mp3 via ElevenLabs | `<slide> --file narration/NNN-id.txt`, `--list-voices`, `--stability`, `--speed` |
 | `align.cjs` | Forced alignment: approved mp3 + known transcript → word grid | `<slide>` or `--all`, `--force`, `--lead 1` |
-| `record.cjs` | Deterministic WAAPI scrub → frames → mp4; auto-muxes same-stem mp3 | `<slide> --dur 24.5 --lead 1`; defaults `--fps 60 --scale 2` (the approved hq recipe — see below) |
+| `record.cjs` | Deterministic WAAPI scrub → frames → mp4; auto-muxes same-stem mp3 | `<slide> --dur 24.5 --lead 1`; defaults to native 4K60 (the approved recipe — see below) |
 | `scrub.cjs` | Screenshot exact clip times — verify cues before rendering | `'#s-stack' 6.0,8.2,18.9` |
 | `comp.cjs` | Full driver: tts (if txt newer) → record (if needed) → stitch + A/V table | `--only N`, `--force-tts`, `--force-video`, `--stitch-only`, `--lead 1 --tail 1 --min 6` |
 
@@ -41,24 +41,26 @@ missing-layer-101.html ──record.cjs──▶ NNN-id.mp4 (video+audio muxed)
 - **60 fps** (`--fps 60` default). The deck animates on a 60 Hz grid in a
   browser; 30 fps folds two HTML frames into each video frame and fast
   moves strobe ("part of one frame, part of the next").
-- **2× supersampled capture** (`--scale 2` default): frames are grabbed
-  at 4K and lanczos-downscaled to the 1080p target in the encode.
-  Combined with the stable-raster launch flags
-  (`--disable-font-subpixel-positioning --disable-lcd-text
-  --font-render-hinting=none --force-color-profile=srgb`) this kills
-  text shimmer — glyphs re-rasterize every frame, and fractional
-  offsets (translate(-50%,-50%), 1.015 breathe scales) otherwise make
-  the AA pattern dance. Measured: text-card noise floor 0.108 → 0.067.
+- **Native 4K output** (`--w 3840 --h 2160` default) + stable-raster
+  launch flags (`--disable-font-subpixel-positioning --disable-lcd-text
+  --font-render-hinting=none --force-color-profile=srgb`). Together
+  these kill text shimmer — glyphs re-rasterize every frame, and
+  fractional offsets (translate(-50%,-50%), 1.015 breathe scales)
+  otherwise make the AA pattern dance; at 4K the glyph raster is 2× a
+  1080p view's, and players downscale-average the rest. For a 1080p
+  file with the same stability, supersample instead:
+  `--w 1920 --h 1080 --scale 2` (capture at 4K, lanczos-downscale in
+  the encode — measured text-card noise floor 0.108 → 0.067).
 - **Commit-synced screenshots**: compositor determinism flags
   (threaded animation/scrolling off, all-compositor-stages-before-draw)
   plus a double-rAF wait after each scrub, so a capture can never race
   the renderer.
 
 Capture cost at the defaults is ~0.2 s/frame — a full 20-clip rebuild
-is a 1.5–2 h background run, a single clip a few minutes. If a tool
-change alters rendering (fonts, scale, flags), re-render ALL clips in
-one pass — mixing old and new captures in a stitch shows as a subtle
-text-character shift across cuts.
+is a 1.5–2 h background run (4K60 encodes add a tail on top), a single
+clip a few minutes. If a tool change alters rendering (fonts, size,
+flags), re-render ALL clips in one pass — mixing old and new captures
+in a stitch shows as a subtle text-character shift across cuts.
 
 Puppeteer comes from the mermaid-cli install; prefix node with:
 
