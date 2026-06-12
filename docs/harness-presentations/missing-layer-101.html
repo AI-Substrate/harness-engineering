@@ -57,6 +57,10 @@
 
     --pop: cubic-bezier(.2,.8,.3,1);
     --bounce: cubic-bezier(.34,1.56,.64,1);
+    /* card/panel fly-ins: fast launch, hard decel at the very end.
+       --bounce stays for character pops (castPop) only — flying
+       panels with overshoot read as jank. */
+    --glide: cubic-bezier(.19,1,.22,1);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -300,7 +304,7 @@
   }
 
   /* artifact cards: born from their scene's source (--fx/--fy is the
-     fly-vector pointing back at it), bounce into place, then idle on
+     fly-vector pointing back at it), glide into place, then idle on
      a slow float. Shared cast across the layer tours. */
   .acard {
     position: absolute;
@@ -311,11 +315,10 @@
     box-shadow: 0 .9cqh 2.6cqh rgba(0,0,0,.22);
     rotate: var(--rot, 0deg);
   }
-  .slide.active .acard { animation: cardIn .85s var(--bounce) var(--d, 0s) backwards; }
-  @keyframes cardIn {
-    0%   { opacity: 0; transform: translate(var(--fx, 0cqw), var(--fy, 4cqh)) scale(.22); }
-    45%  { opacity: 1; transform: translate(calc(var(--fx, 0cqw) * .25), calc(var(--fy, 4cqh) * .25)) scale(.78); }
-    100% { opacity: 1; transform: translate(0cqw, 0cqh) scale(1); }
+  .slide.active .acard { animation: cardGlide .85s var(--glide) var(--d, 0s) backwards; }
+  @keyframes cardGlide {
+    from { opacity: 0; transform: translate(var(--fx, 0cqw), var(--fy, 4cqh)) scale(.22); }
+    to   { opacity: 1; transform: translate(0cqw, 0cqh) scale(1); }
   }
   .acard .fl { animation: floaty 5.2s ease-in-out var(--d, 0s) infinite alternate; }
   @keyframes floaty { to { transform: translateY(-.9cqh); } }
@@ -1080,7 +1083,7 @@
   /* the little human at work: ink silhouette typing at a laptop.
      Arm taps, head bobs, the screen flickers, fragments of work
      rise off the laptop. The artifact cards are born HERE and fly
-     out to their positions (see cardIn). */
+     out to their positions (see cardGlide). */
   #s-human .field .cast {
     position: absolute;
     left: 50%; top: 50%;
@@ -1298,18 +1301,6 @@
     35%      { opacity: 1; transform: translateY(-.3cqh); }
   }
   #s-infer.active .think { animation: castPop .5s var(--bounce) calc(var(--cue-agent) + .35s) backwards; }
-
-  /* these cards fly a long way out of the agent — the shared cardIn's
-     mid keyframe + overshoot easing reads as a hitch over that distance.
-     Single-segment glide instead: fast out, hard decel at the end. */
-  #s-infer.active .acard {
-    animation-name: cardGlide;
-    animation-timing-function: cubic-bezier(.19,1,.22,1);
-  }
-  @keyframes cardGlide {
-    from { opacity: 0; transform: translate(var(--fx, 0cqw), var(--fy, 4cqh)) scale(.22); }
-    to   { opacity: 1; transform: translate(0cqw, 0cqh) scale(1); }
-  }
 
   /* the "inferred" sheen: light ripples across every card once per
      cycle, in dealing order (--shd staggers the wave) */
@@ -1928,7 +1919,7 @@
     width: 3.4cqw;
   }
   #s-friction .planmini .ln + .ln { width: 2.4cqw; }
-  #s-friction.active .planmini { animation: cardIn .7s var(--bounce) .45s backwards; --fx: 0cqw; --fy: 5cqh; }
+  #s-friction.active .planmini { animation: cardGlide .7s var(--glide) .45s backwards; --fx: 0cqw; --fy: 5cqh; }
 
   /* the three frictions, pinned to the route */
   #s-friction .pin {
@@ -3923,7 +3914,7 @@
   /* prcard has no .fl child — give it its own ambient float so the
      long unsynced midsection never sits still */
   #s-pr.active .prcard {
-    animation: cardIn .85s var(--bounce) var(--d) backwards,
+    animation: cardGlide .85s var(--glide) var(--d) backwards,
                floaty 5.2s ease-in-out calc(var(--d) + .85s) infinite alternate;
   }
   #s-pr.active .prcard .bar { animation: rlWipe .45s var(--pop) backwards; }
@@ -4144,7 +4135,7 @@
   /* the chip, opened up: the rule card (flies out of the chip) */
   #s-fix .rulecard { left: 14%; top: 26%; width: 21cqw; --fx: 37cqw; --fy: 44cqh; --rot: -1.5deg; }
   #s-fix.active .rulecard {
-    animation: cardIn .85s var(--bounce) var(--cue-encode) backwards,
+    animation: cardGlide .85s var(--glide) var(--cue-encode) backwards,
                floaty 5.2s ease-in-out calc(var(--cue-encode) + 1s) infinite alternate;
   }
   #s-fix .rulecard h4 {
