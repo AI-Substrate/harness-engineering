@@ -3483,15 +3483,22 @@
     background: var(--white);
     box-shadow: 0 0 0 .17cqw rgba(0,0,0,.35);
   }
-  #s-miss .bb-1 { right: 79%; top: 30%; }
-  #s-miss .bb-2 { right: 79%; top: 44%; }
+  /* labels start ON their plates (pre-gap positions), then ride the gap
+     move with the same .9s ease clock as gapUp1/gapUp2/gapDown3 — the
+     z→screen projection is linear, so equal easing = no relative slide.
+     ~2% top per 1cqw of z. */
+  #s-miss .bb-1 { right: 79%; top: 33%; }
+  #s-miss .bb-2 { right: 79%; top: 47.5%; }
   #s-miss .bb-d { right: 79%; top: 56%; }
-  #s-miss .bb-3 { right: 79%; top: 76%; }
+  #s-miss .bb-3 { right: 79%; top: 65.5%; }
   #s-miss.active .bb { animation: bbIn .5s var(--pop) backwards; }
-  #s-miss.active .bb-1 { animation-delay: var(--cue-looked); }
-  #s-miss.active .bb-2 { animation-delay: calc(var(--cue-looked) + .12s); }
-  #s-miss.active .bb-3 { animation-delay: calc(var(--cue-looked) + .24s); }
+  #s-miss.active .bb-1 { animation: bbIn .5s var(--pop) var(--cue-looked) backwards, bbGap1 .9s ease var(--cue-missing) forwards; }
+  #s-miss.active .bb-2 { animation: bbIn .5s var(--pop) calc(var(--cue-looked) + .12s) backwards, bbGap2 .9s ease var(--cue-missing) forwards; }
+  #s-miss.active .bb-3 { animation: bbIn .5s var(--pop) calc(var(--cue-looked) + .24s) backwards, bbGap3 .9s ease var(--cue-missing) forwards; }
   #s-miss.active .bb-d { animation-delay: var(--cue-layer2); }
+  @keyframes bbGap1 { to { top: 30%; } }
+  @keyframes bbGap2 { to { top: 44%; } }
+  @keyframes bbGap3 { to { top: 76%; } }
   /* the narration walks the diagram: wordmarks flare on their words
      (bbMeet keyframes shared from S2) */
   #s-miss.active .bb-2 b { animation: bbMeet .5s ease var(--cue-agent); }
