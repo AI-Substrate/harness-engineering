@@ -235,6 +235,43 @@ Then work normally, with the loop around you: run `harness instructions <verb>` 
 
 ---
 
+## Keeping the harness current (update)
+
+Two things drift independently over time — the **CLI** and the **skills**. Update them in this order (CLI first, so the renamed-skill list it carries is current).
+
+### a) Update the harness CLI
+
+The CLI is a GitHub dependency, so updating it is a re-install:
+
+```bash
+# Unpinned (tracks the default branch): re-resolve to the latest commit
+npm install github:AI-Substrate/harness-engineering
+
+# Pinned (`…#vX.Y.Z` in package.json): bump the tag in package.json, then
+npm install
+
+# Vendored tarball (Stage 1 fallback): rebuild the .tgz the same way, then re-install it
+```
+
+Verify the new build, then commit the changed `package.json` (+ lockfile, + tarball if vendored):
+
+```bash
+npx --no-install harness --version
+npx --no-install harness doctor --json
+```
+
+### b) Optionally update the skills
+
+```bash
+npx --no-install harness skills update --target <your-cli>   # add --global if you installed globally
+```
+
+`skills update` does two things the plain installer can't: it **refreshes** every skill to the latest published version (and pulls any newly added ones), then **prunes** skills this harness has since **renamed or removed** — so a rename never leaves a stale twin loading beside its replacement (e.g. an old `harness-1-boot` next to the current `eng-harness-1-boot`). It is a thin wrapper over `npx skills add` + `npx skills remove` and announces both exact commands before running. Run it **after** updating the CLI, since the CLI carries the list of renamed-away slugs to prune. Skills load at session start, so **restart your CLI** afterwards to pick up the changes.
+
+> `npx skills` itself has no prune — its `add`/`update` are additive, so without this a renamed skill's old copy lingers forever. That's the gap `skills update` closes.
+
+---
+
 ## What done looks like (first-time adoption)
 
 - [ ] `npx --no-install harness --help` prints usage (CLI is repo-local)
@@ -255,6 +292,7 @@ Then work normally, with the loop around you: run `harness instructions <verb>` 
 | `harness new <name> [--wrap "<cmd>"]` | Scaffold a new extension package into `.harness/extensions/<name>/` |
 | `harness docs [id]` | List/print the bundled offline docs |
 | `harness skills install --target <cli> [--branch <ref>]` | Install this harness's skills (pass-through to `npx skills add`, always non-interactive) |
+| `harness skills update --target <cli> [--global]` | Refresh this harness's skills to latest **and prune** renamed/removed ones (wraps `npx skills add` + `npx skills remove`) |
 | `harness observe "<desc>" --kind … --severity …` | Capture one friction observation to the transient buffer |
 | `harness record [type]` | Scaffold a committed record (e.g. `retro`) into `.harness/records/<type>/` |
 | `harness <verb>` | Anything an extension contributes (e.g. `boot`), with its own `--help` and envelope |

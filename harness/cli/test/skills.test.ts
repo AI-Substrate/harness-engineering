@@ -9,9 +9,10 @@ import { FakeProcess } from '../src/adapters/process/fake-process.js';
 import { buildProgram } from '../src/app.js';
 import type { CliIo, OutputMode, Writers } from '../src/output/output-port.js';
 import type { VerbRegistry } from '../src/services/extensions/registry.js';
-import { DEFAULT_SKILLS_SOURCE } from '../src/services/skills/contract.js';
+import { DEFAULT_SKILLS_SOURCE, LEGACY_SKILL_SLUGS } from '../src/services/skills/contract.js';
 import {
   buildInstallArgv,
+  buildRemoveArgv,
   formatInstallCommand,
   resolveSkillsSource,
 } from '../src/services/skills/skills-service.js';
@@ -92,6 +93,50 @@ describe('buildInstallArgv (pure)', () => {
     expect(formatInstallCommand(['skills@latest', 'add', 's', '-a', 'codex', '-y'])).toBe(
       'npx skills@latest add s -a codex -y',
     );
+  });
+});
+
+describe('buildRemoveArgv (pure)', () => {
+  /*
+  Test Doc:
+  - Why: `harness skills update` prunes renamed/removed skills with `npx skills remove`
+    (the installer has no native prune — add/update are additive). The contract is the
+    EXACT argv: slugs are POSITIONAL, one -a per target, -g iff global, always -y.
+  - Contract: buildRemoveArgv is pure; the act feeds the array to the injected ExecPort.
+  */
+  it('builds the canonical argv: skills@latest remove <slug> -a <t> -y', () => {
+    expect(
+      buildRemoveArgv({ slugs: ['harness-1-boot'], targets: ['codex'], global: false }),
+    ).toEqual(['skills@latest', 'remove', 'harness-1-boot', '-a', 'codex', '-y']);
+  });
+
+  it('passes multiple slugs as positionals, fans out -a per target, adds -g iff global', () => {
+    expect(
+      buildRemoveArgv({
+        slugs: ['harness-1-boot', 'eng-harness-0-setup'],
+        targets: ['claude-code', 'codex'],
+        global: true,
+      }),
+    ).toEqual([
+      'skills@latest',
+      'remove',
+      'harness-1-boot',
+      'eng-harness-0-setup',
+      '-a',
+      'claude-code',
+      '-a',
+      'codex',
+      '-g',
+      '-y',
+    ]);
+  });
+
+  it('always pins skills@latest and appends -y last (never blocks)', () => {
+    const argv = buildRemoveArgv({ slugs: ['a'], targets: ['pi'], global: false });
+    expect(argv[0]).toBe('skills@latest');
+    expect(argv[1]).toBe('remove');
+    expect(argv.at(-1)).toBe('-y');
+    expect(buildRemoveArgv({ slugs: ['a'], targets: ['pi'], global: false })).not.toContain('-g');
   });
 });
 
@@ -338,5 +383,121 @@ describe('harness skills install (pass-through act)', () => {
     const env = JSON.parse(out);
     expect(env.status).toBe('error');
     expect(env.error.code).toBe('E108');
+  });
+});
+
+describe('harness skills update (refresh + prune act)', () => {
+  /**
+   * Test Doc:
+   * - Why: `npx skills` has NO native prune — `add`/`update` are additive, so a renamed
+   *   skill's OLD copy lingers forever. `update` = `add` (refresh to latest, pull new)
+   *   THEN `remove` the curated LEGACY_SKILL_SLUGS (prune). The contract is: TWO ordered
+   *   npx calls (add first, then remove); refresh failure aborts BEFORE pruning (no
+   *   regression); prune failure degrades (latest is in, old copies may linger).
+   * - Contract: both halves shell out only through the injected ExecPort.
+   */
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('refreshes (add) THEN prunes (remove legacy slugs) — two ordered npx calls, exit 0', async () => {
+    const { out, code, exec } = await runSkills(['skills', 'update', '--target', 'codex'], 'json');
+    expect(exec.calls).toHaveLength(2);
+    // 1) refresh = the same `add` argv install uses (whole set, no -s filter).
+    expect(exec.calls[0]).toEqual({
+      command: 'npx',
+      args: buildInstallArgv({ source: DEFAULT_SKILLS_SOURCE, targets: ['codex'], global: false }),
+      cwd: '/repo',
+    });
+    // 2) prune = `remove` the curated legacy slugs.
+    expect(exec.calls[1]).toEqual({
+      command: 'npx',
+      args: buildRemoveArgv({ slugs: [...LEGACY_SKILL_SLUGS], targets: ['codex'], global: false }),
+      cwd: '/repo',
+    });
+    expect(code).toBe(0);
+    const env = JSON.parse(out);
+    expect(env.command).toBe('skills');
+    expect(env.status).toBe('ok');
+    expect(env.data.refresh_command).toBe(
+      'npx skills@latest add AI-Substrate/harness-engineering/skills -a codex -y',
+    );
+    expect(env.data.prune_command).toContain('npx skills@latest remove ');
+    expect(env.data.pruned_candidates).toEqual([...LEGACY_SKILL_SLUGS]);
+  });
+
+  it('--global fans -g into BOTH the refresh and the prune calls', async () => {
+    const { exec, code } = await runSkills(
+      ['skills', 'update', '--target', 'claude-code', '--target', 'codex', '--global'],
+      'json',
+    );
+    expect(code).toBe(0);
+    expect(exec.calls[0]?.args).toContain('-g');
+    expect(exec.calls[1]?.args).toContain('-g');
+    expect(exec.calls[1]?.args.slice(0, 2)).toEqual(['skills@latest', 'remove']);
+  });
+
+  it('missing --target → E108, exit 1, no exec call (non-blocking, agent-first)', async () => {
+    const { out, code, exec } = await runSkills(['skills', 'update'], 'json');
+    expect(exec.calls).toHaveLength(0);
+    expect(code).toBe(1);
+    const env = JSON.parse(out);
+    expect(env.status).toBe('error');
+    expect(env.error.code).toBe('E108');
+  });
+
+  it('refresh (add) failure → E170, exit 1, prune NOT attempted (no regression)', async () => {
+    const { out, code, exec } = await runSkills(['skills', 'update', '--target', 'codex'], 'json', {
+      npx: { code: 1, stderr: 'network down' },
+    });
+    // Only the refresh ran; the prune was skipped so existing skills stay intact.
+    expect(exec.calls).toHaveLength(1);
+    expect(code).toBe(1);
+    const env = JSON.parse(out);
+    expect(env.status).toBe('error');
+    expect(env.error.code).toBe('E170');
+    expect(env.next_action).toContain('harness skills update --target codex');
+  });
+
+  it('refresh ok but prune fails → degraded, exit 0 (latest in; old copies may linger)', async () => {
+    const pruneArgv = buildRemoveArgv({
+      slugs: [...LEGACY_SKILL_SLUGS],
+      targets: ['codex'],
+      global: false,
+    });
+    const pruneKey = formatInstallCommand(pruneArgv); // FakeExec keys by full `npx …` line
+    const { out, code, exec } = await runSkills(['skills', 'update', '--target', 'codex'], 'json', {
+      [pruneKey]: { code: 1, stderr: 'remove blew up' },
+    });
+    expect(exec.calls).toHaveLength(2);
+    expect(code).toBe(0); // degraded → exit 0
+    const env = JSON.parse(out);
+    expect(env.status).toBe('degraded');
+    expect(env.data.prune_failed).toBe(true);
+    expect(env.next_action).toContain('Re-run the prune manually');
+  });
+
+  it('human mode announces BOTH the refresh and prune commands on stderr before running', async () => {
+    const { err, out } = await runSkills(['skills', 'update', '--target', 'codex'], 'human');
+    expect(err).toContain('about to run:');
+    expect(err).toContain(
+      'npx skills@latest add AI-Substrate/harness-engineering/skills -a codex -y',
+    );
+    expect(err).toContain('npx skills@latest remove ');
+    // human stdout must NOT carry a JSON envelope
+    expect(out).not.toContain('"command":"skills"');
+  });
+
+  it('--branch rewrites the refresh source to a /tree/<ref>/skills URL', async () => {
+    const { exec, out, code } = await runSkills(
+      ['skills', 'update', '--target', 'codex', '--branch', '005-harness-core-refactor'],
+      'json',
+    );
+    expect(code).toBe(0);
+    expect(exec.calls[0]?.args).toContain(
+      'https://github.com/AI-Substrate/harness-engineering/tree/005-harness-core-refactor/skills',
+    );
+    const env = JSON.parse(out);
+    expect(env.data.branch).toBe('005-harness-core-refactor');
   });
 });

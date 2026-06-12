@@ -19,6 +19,12 @@ The first-class way is the harness CLI's own command (a transparent pass-through
 harness skills install --target claude-code --global      # or --target github-copilot, codex, cursor, opencode, pi…
 ```
 
+To **refresh** installed skills to latest and **prune** any this repo has since renamed or removed (so an old slug never lingers beside its replacement), use `update` — `npx skills` itself has no prune, so this is the supported way to keep skills clean:
+
+```bash
+harness skills update --target claude-code --global       # refresh to latest + remove renamed/removed skills
+```
+
 Equivalent direct `npx` invocation (what the command wraps):
 
 ```bash

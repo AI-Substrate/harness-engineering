@@ -165,6 +165,17 @@ npx skills@latest add "$(pwd)" \
   -y
 ```
 
+## Updating installed skills
+
+Once skills are installed, refresh them to the latest published version **and** prune any this repo has since renamed or removed. The Vercel installer's `add`/`update` are additive — they never remove a renamed skill's old copy, so without a prune it lingers and keeps loading beside its replacement.
+
+```bash
+harness skills update --target claude-code --global
+# repeatable --target; drop --global for a project-local update; --branch <ref> / --source owner/repo#ref to pin a branch
+```
+
+`harness skills update` wraps `npx skills add` (refresh + pull any new skills), then `npx skills remove` of the renamed-away slugs — announcing both exact commands before running. Run it after updating the harness CLI itself, so the renamed-skill list it prunes is current, and restart your CLI afterwards (skills load at session start).
+
 ## Just recipes
 
 This repository also exposes convenience wrappers:

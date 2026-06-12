@@ -100,7 +100,7 @@ This repo publishes a **setup group** (`skills/eng-harness-setup/`) and an **int
 npx skills@latest add AI-Substrate/harness-engineering/skills -a claude-code -g
 ```
 
-Swap `-a` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `-g` for a project-local install; add `-s <skill-name>` for a single skill. The harness CLI also wraps this as `harness skills install`. The full per-CLI / global-vs-local matrix is in [`INSTALL.md`](./INSTALL.md), and [`skills/README.md`](skills/README.md) explains when to run each skill.
+Swap `-a` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `-g` for a project-local install; add `-s <skill-name>` for a single skill. The harness CLI also wraps this as `harness skills install` (and `harness skills update` to refresh to latest **and prune** skills this repo has renamed or removed). The full per-CLI / global-vs-local matrix is in [`INSTALL.md`](./INSTALL.md), and [`skills/README.md`](skills/README.md) explains when to run each skill.
 
 ## Engineering harness versus agent harness
 

@@ -1,4 +1,4 @@
-import type { SkillsInstallOptions } from './contract.js';
+import type { SkillsInstallOptions, SkillsRemoveOptions } from './contract.js';
 
 /**
  * Outcome of resolving a `--source` (+ optional branch) into a specifier `npx
@@ -122,7 +122,34 @@ export function buildInstallArgv(opts: SkillsInstallOptions): string[] {
   return argv;
 }
 
-/** The human-readable command line we announce before running (and echo in the JSON envelope). */
+/**
+ * Pure `npx skills remove …` argv builder — the PRUNE half of `harness skills
+ * update` (Principle 8: wrap, don't rebuild). No I/O. Renamed/removed skills are
+ * passed as POSITIONAL slugs; `npx skills remove` no-ops (exit 0) on any slug that
+ * isn't installed, so it is safe to call with the full legacy list every time.
+ * Like the install builder it fans out `-a <target>`, adds `-g` iff global, and
+ * always appends `-y` (never blocks). Returns the args AFTER `npx`:
+ * `['skills@latest', 'remove', <slug>, …, '-a', <t>, …, '-g'?, '-y']`.
+ *
+ * Precondition: `slugs` and `targets` are both non-empty — enforced by the act.
+ */
+export function buildRemoveArgv(opts: SkillsRemoveOptions): string[] {
+  const argv: string[] = ['skills@latest', 'remove', ...opts.slugs];
+  for (const target of opts.targets) {
+    argv.push('-a', target);
+  }
+  if (opts.global) {
+    argv.push('-g');
+  }
+  // Unconditional: never let the Vercel interactive picker block (mirrors install).
+  argv.push('-y');
+  return argv;
+}
+
+/**
+ * The human-readable command line we announce before running (and echo in the JSON
+ * envelope). Generic over any `npx skills …` argv — used for both `add` and `remove`.
+ */
 export function formatInstallCommand(argv: string[]): string {
   return `npx ${argv.join(' ')}`;
 }

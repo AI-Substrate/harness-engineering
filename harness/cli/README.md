@@ -92,6 +92,7 @@ See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract
 | `harness new <name>` | Scaffold a new, immediately-loadable extension package into `./.harness/extensions/<name>/` (entry + starter `instructions.md`). | ✅ core |
 | `harness docs [id]` | List the bundled, curated docs (`harness docs`), or print one verbatim to stdout (`harness docs <id>`). Offline; ships with the CLI. | ✅ core |
 | `harness skills install` | Install **this harness's own skills** into a CLI — a transparent pass-through to Vercel's [`npx skills add`](https://github.com/vercel-labs/skills). Picks target(s) (`--target claude-code\|codex\|cursor\|github-copilot\|opencode\|pi`, repeatable) and scope (`--global` or project-local). **Announces the exact `npx` line before running** and always passes `-y` (the blocking picker never appears). Missing `--target` → `E108` (non-blocking). | ✅ core |
+| `harness skills update` | Refresh this harness's skills to latest **and prune** renamed/removed ones. Same target/scope flags as `install`; wraps `npx skills add` (refresh + pull new) **then** `npx skills remove` of the renamed-away slugs (the installer has no native prune, so a rename would otherwise leave a stale twin). Announces both commands; refresh failure aborts before pruning (no regression). | ✅ core |
 | `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
 
 `help`, `doctor`, `new`, `docs`, and `skills` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
@@ -102,6 +103,7 @@ harness doctor                          # readiness + extension enumeration
 harness docs                            # list the bundled docs
 harness docs extend-the-harness         # print one doc's markdown to stdout
 harness skills install --target github-copilot --global   # install this harness's skills (wraps npx skills add)
+harness skills update  --target github-copilot --global   # refresh to latest + prune renamed/removed
 harness --no-extensions help            # core-only (skip discovery)
 ```
 
