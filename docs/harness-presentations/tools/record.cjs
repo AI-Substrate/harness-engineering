@@ -84,6 +84,15 @@ const preset = opt('preset', 'slow');
       '--run-all-compositor-stages-before-draw',
       '--disable-checker-imaging',
       '--disable-image-animation-resync',
+      // Text stability: glyphs re-rasterize every frame, and subpixel
+      // positioning + hinting make the AA pattern land differently as
+      // elements move through fractional offsets — text "wiggles".
+      // Force one stable grayscale raster model. (The other half of the
+      // fix is --scale 2 capture + lanczos downscale in the encode.)
+      '--disable-font-subpixel-positioning',
+      '--disable-lcd-text',
+      '--font-render-hinting=none',
+      '--force-color-profile=srgb',
     ],
   });
   try {
@@ -171,10 +180,15 @@ const preset = opt('preset', 'slow');
     console.log(`  (capture ${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
     const mp4 = path.join(out, `${stem}.mp4`);
+    // scale > 1 means the frames are supersampled (e.g. 4K for a 1080p
+    // target): downscale with lanczos in the encode. Averaging 4 capture
+    // pixels per output pixel is what kills text AA shimmer.
+    const vf = scale > 1 ? ['-vf', `scale=${W}:${H}:flags=lanczos`] : [];
     execFileSync('ffmpeg', [
       '-y',
       '-framerate', String(fps),
       '-i', path.join(framesDir, `f_%0${pad}d.png`),
+      ...vf,
       '-c:v', 'libx264',
       '-pix_fmt', 'yuv420p',
       '-crf', String(crf),
