@@ -1,0 +1,251 @@
+{
+  "loss": 0.10708919982338666,
+  "lead": 1,
+  "words": [
+    {
+      "text": "Let's",
+      "start": 0.079,
+      "end": 0.34
+    },
+    {
+      "text": "start",
+      "start": 0.419,
+      "end": 0.699
+    },
+    {
+      "text": "by",
+      "start": 0.799,
+      "end": 0.899
+    },
+    {
+      "text": "looking",
+      "start": 1.019,
+      "end": 1.279
+    },
+    {
+      "text": "at",
+      "start": 1.319,
+      "end": 1.419
+    },
+    {
+      "text": "the",
+      "start": 1.48,
+      "end": 1.539
+    },
+    {
+      "text": "stack",
+      "start": 1.62,
+      "end": 1.959
+    },
+    {
+      "text": "most",
+      "start": 2.119,
+      "end": 2.359
+    },
+    {
+      "text": "teams",
+      "start": 2.5,
+      "end": 2.839
+    },
+    {
+      "text": "have",
+      "start": 2.939,
+      "end": 3.119
+    },
+    {
+      "text": "today.",
+      "start": 3.179,
+      "end": 3.659
+    },
+    {
+      "text": "You",
+      "start": 5.039,
+      "end": 5.259
+    },
+    {
+      "text": "at",
+      "start": 5.44,
+      "end": 5.659
+    },
+    {
+      "text": "the",
+      "start": 5.719,
+      "end": 5.779
+    },
+    {
+      "text": "top.",
+      "start": 5.9,
+      "end": 6.239
+    },
+    {
+      "text": "The",
+      "start": 6.96,
+      "end": 7.039
+    },
+    {
+      "text": "agent",
+      "start": 7.239,
+      "end": 7.619
+    },
+    {
+      "text": "in",
+      "start": 7.659,
+      "end": 7.739
+    },
+    {
+      "text": "the",
+      "start": 7.779,
+      "end": 7.839
+    },
+    {
+      "text": "middle.",
+      "start": 7.94,
+      "end": 8.239
+    },
+    {
+      "text": "Your",
+      "start": 8.819,
+      "end": 8.94
+    },
+    {
+      "text": "codebase",
+      "start": 9.059,
+      "end": 9.599
+    },
+    {
+      "text": "at",
+      "start": 9.639,
+      "end": 9.739
+    },
+    {
+      "text": "the",
+      "start": 9.76,
+      "end": 9.859
+    },
+    {
+      "text": "bottom.",
+      "start": 9.92,
+      "end": 10.319
+    },
+    {
+      "text": "Intent",
+      "start": 11.039,
+      "end": 11.479
+    },
+    {
+      "text": "flows",
+      "start": 11.579,
+      "end": 11.859
+    },
+    {
+      "text": "down.",
+      "start": 11.979,
+      "end": 12.379
+    },
+    {
+      "text": "Code,",
+      "start": 13.119,
+      "end": 13.479
+    },
+    {
+      "text": "and",
+      "start": 13.759,
+      "end": 13.88
+    },
+    {
+      "text": "claims",
+      "start": 14.019,
+      "end": 14.399
+    },
+    {
+      "text": "of",
+      "start": 14.439,
+      "end": 14.5
+    },
+    {
+      "text": "success,",
+      "start": 14.619,
+      "end": 15.179
+    },
+    {
+      "text": "flow",
+      "start": 15.38,
+      "end": 15.639
+    },
+    {
+      "text": "up.",
+      "start": 15.759,
+      "end": 16.039
+    },
+    {
+      "text": "Note",
+      "start": 16.799,
+      "end": 17.079
+    },
+    {
+      "text": "the",
+      "start": 17.119,
+      "end": 17.199
+    },
+    {
+      "text": "word:",
+      "start": 17.299,
+      "end": 17.659
+    },
+    {
+      "text": "claims.",
+      "start": 17.879,
+      "end": 18.459
+    },
+    {
+      "text": "Looks",
+      "start": 19.139,
+      "end": 19.479
+    },
+    {
+      "text": "complete,",
+      "start": 19.539,
+      "end": 20.039
+    },
+    {
+      "text": "right?",
+      "start": 20.199,
+      "end": 20.499
+    },
+    {
+      "text": "Let's",
+      "start": 21.299,
+      "end": 21.599
+    },
+    {
+      "text": "meet",
+      "start": 21.68,
+      "end": 21.879
+    },
+    {
+      "text": "each",
+      "start": 21.959,
+      "end": 22.159
+    },
+    {
+      "text": "layer",
+      "start": 22.26,
+      "end": 22.579
+    },
+    {
+      "text": "for",
+      "start": 22.639,
+      "end": 22.719
+    },
+    {
+      "text": "a",
+      "start": 22.779,
+      "end": 22.799
+    },
+    {
+      "text": "second.",
+      "start": 22.899,
+      "end": 23.379
+    }
+  ]
+}

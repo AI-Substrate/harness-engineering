@@ -1,0 +1,176 @@
+{
+  "loss": 0.03139782493764704,
+  "lead": 1,
+  "words": [
+    {
+      "text": "Remember",
+      "start": 0.099,
+      "end": 0.539
+    },
+    {
+      "text": "the",
+      "start": 0.599,
+      "end": 0.659
+    },
+    {
+      "text": "stack",
+      "start": 0.779,
+      "end": 1.099
+    },
+    {
+      "text": "that",
+      "start": 1.179,
+      "end": 1.339
+    },
+    {
+      "text": "looked",
+      "start": 1.439,
+      "end": 1.679
+    },
+    {
+      "text": "complete?",
+      "start": 1.779,
+      "end": 2.279
+    },
+    {
+      "text": "It",
+      "start": 3.139,
+      "end": 3.24
+    },
+    {
+      "text": "was",
+      "start": 3.319,
+      "end": 3.48
+    },
+    {
+      "text": "missing",
+      "start": 3.619,
+      "end": 4
+    },
+    {
+      "text": "a",
+      "start": 4.099,
+      "end": 4.119
+    },
+    {
+      "text": "layer.",
+      "start": 4.239,
+      "end": 4.639
+    },
+    {
+      "text": "A",
+      "start": 5.42,
+      "end": 5.44
+    },
+    {
+      "text": "deterministic",
+      "start": 5.5,
+      "end": 6.279
+    },
+    {
+      "text": "layer,",
+      "start": 6.379,
+      "end": 6.699
+    },
+    {
+      "text": "sitting",
+      "start": 7.299,
+      "end": 7.619
+    },
+    {
+      "text": "between",
+      "start": 7.679,
+      "end": 8.039
+    },
+    {
+      "text": "the",
+      "start": 8.099,
+      "end": 8.159
+    },
+    {
+      "text": "agent",
+      "start": 8.319,
+      "end": 8.76
+    },
+    {
+      "text": "and",
+      "start": 8.819,
+      "end": 8.92
+    },
+    {
+      "text": "your",
+      "start": 9,
+      "end": 9.119
+    },
+    {
+      "text": "codebase.",
+      "start": 9.199,
+      "end": 9.8
+    },
+    {
+      "text": "Runnable",
+      "start": 10.519,
+      "end": 10.899
+    },
+    {
+      "text": "proof",
+      "start": 11.099,
+      "end": 11.46
+    },
+    {
+      "text": "going",
+      "start": 11.539,
+      "end": 11.819
+    },
+    {
+      "text": "up.",
+      "start": 11.96,
+      "end": 12.179
+    },
+    {
+      "text": "Encoded",
+      "start": 12.659,
+      "end": 13.279
+    },
+    {
+      "text": "backpressure",
+      "start": 13.399,
+      "end": 14.059
+    },
+    {
+      "text": "living",
+      "start": 14.219,
+      "end": 14.439
+    },
+    {
+      "text": "inside.",
+      "start": 14.5,
+      "end": 15.219
+    },
+    {
+      "text": "This",
+      "start": 15.88,
+      "end": 16.199
+    },
+    {
+      "text": "is",
+      "start": 16.42,
+      "end": 16.579
+    },
+    {
+      "text": "the",
+      "start": 16.639,
+      "end": 16.699
+    },
+    {
+      "text": "missing",
+      "start": 16.84,
+      "end": 17.18
+    },
+    {
+      "text": "piece.",
+      "start": 17.319,
+      "end": 17.699
+    }
+  ]
+}

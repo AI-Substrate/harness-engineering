@@ -1,0 +1,201 @@
+{
+  "loss": 0.03236300867747485,
+  "lead": 1,
+  "words": [
+    {
+      "text": "Bottom",
+      "start": 0.099,
+      "end": 0.399
+    },
+    {
+      "text": "layer:",
+      "start": 0.479,
+      "end": 0.779
+    },
+    {
+      "text": "the",
+      "start": 1.159,
+      "end": 1.259
+    },
+    {
+      "text": "codebase.",
+      "start": 1.319,
+      "end": 1.899
+    },
+    {
+      "text": "Code,",
+      "start": 2.5,
+      "end": 2.859
+    },
+    {
+      "text": "tests,",
+      "start": 3.179,
+      "end": 3.699
+    },
+    {
+      "text": "scripts,",
+      "start": 3.859,
+      "end": 4.38
+    },
+    {
+      "text": "pipelines,",
+      "start": 4.5,
+      "end": 5.199
+    },
+    {
+      "text": "configs,",
+      "start": 5.319,
+      "end": 5.859
+    },
+    {
+      "text": "databases.",
+      "start": 5.96,
+      "end": 6.759
+    },
+    {
+      "text": "Every",
+      "start": 7.559,
+      "end": 7.859
+    },
+    {
+      "text": "repo",
+      "start": 8,
+      "end": 8.439
+    },
+    {
+      "text": "is",
+      "start": 8.5,
+      "end": 8.659
+    },
+    {
+      "text": "different.",
+      "start": 8.72,
+      "end": 9.179
+    },
+    {
+      "text": "Every",
+      "start": 9.8,
+      "end": 10.039
+    },
+    {
+      "text": "one",
+      "start": 10.159,
+      "end": 10.38
+    },
+    {
+      "text": "has",
+      "start": 10.5,
+      "end": 10.619
+    },
+    {
+      "text": "its",
+      "start": 10.659,
+      "end": 10.819
+    },
+    {
+      "text": "own",
+      "start": 10.88,
+      "end": 11.059
+    },
+    {
+      "text": "quirks.",
+      "start": 11.159,
+      "end": 11.679
+    },
+    {
+      "text": "And",
+      "start": 12.399,
+      "end": 12.559
+    },
+    {
+      "text": "this",
+      "start": 12.619,
+      "end": 12.899
+    },
+    {
+      "text": "is",
+      "start": 13.039,
+      "end": 13.159
+    },
+    {
+      "text": "where",
+      "start": 13.219,
+      "end": 13.42
+    },
+    {
+      "text": "all",
+      "start": 13.5,
+      "end": 13.659
+    },
+    {
+      "text": "the",
+      "start": 13.699,
+      "end": 13.819
+    },
+    {
+      "text": "real",
+      "start": 13.899,
+      "end": 14.099
+    },
+    {
+      "text": "engineering",
+      "start": 14.199,
+      "end": 14.719
+    },
+    {
+      "text": "complexity",
+      "start": 14.819,
+      "end": 15.399
+    },
+    {
+      "text": "lives.",
+      "start": 15.5,
+      "end": 15.899
+    },
+    {
+      "text": "Keep",
+      "start": 16.579,
+      "end": 16.76
+    },
+    {
+      "text": "this",
+      "start": 16.799,
+      "end": 16.959
+    },
+    {
+      "text": "picture",
+      "start": 17.059,
+      "end": 17.379
+    },
+    {
+      "text": "in",
+      "start": 17.42,
+      "end": 17.5
+    },
+    {
+      "text": "your",
+      "start": 17.559,
+      "end": 17.739
+    },
+    {
+      "text": "head.",
+      "start": 17.799,
+      "end": 18.079
+    },
+    {
+      "text": "It",
+      "start": 18.779,
+      "end": 18.879
+    },
+    {
+      "text": "matters",
+      "start": 19,
+      "end": 19.34
+    },
+    {
+      "text": "later.",
+      "start": 19.439,
+      "end": 19.819
+    }
+  ]
+}

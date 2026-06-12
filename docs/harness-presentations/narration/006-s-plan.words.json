@@ -1,0 +1,176 @@
+{
+  "loss": 0.07270923271850126,
+  "lead": 1,
+  "words": [
+    {
+      "text": "Let's",
+      "start": 0.099,
+      "end": 0.379
+    },
+    {
+      "text": "say",
+      "start": 0.439,
+      "end": 0.659
+    },
+    {
+      "text": "you're",
+      "start": 0.74,
+      "end": 0.959
+    },
+    {
+      "text": "working",
+      "start": 0.979,
+      "end": 1.36
+    },
+    {
+      "text": "on",
+      "start": 1.399,
+      "end": 1.5
+    },
+    {
+      "text": "your",
+      "start": 1.559,
+      "end": 1.679
+    },
+    {
+      "text": "plan.",
+      "start": 1.779,
+      "end": 2.239
+    },
+    {
+      "text": "And",
+      "start": 2.859,
+      "end": 2.96
+    },
+    {
+      "text": "you've",
+      "start": 3.039,
+      "end": 3.299
+    },
+    {
+      "text": "done",
+      "start": 3.339,
+      "end": 3.559
+    },
+    {
+      "text": "this",
+      "start": 3.599,
+      "end": 3.759
+    },
+    {
+      "text": "properly.",
+      "start": 3.919,
+      "end": 4.399
+    },
+    {
+      "text": "Spec",
+      "start": 5.159,
+      "end": 5.44
+    },
+    {
+      "text": "driven",
+      "start": 5.519,
+      "end": 5.799
+    },
+    {
+      "text": "development,",
+      "start": 5.879,
+      "end": 6.599
+    },
+    {
+      "text": "good",
+      "start": 7.099,
+      "end": 7.359
+    },
+    {
+      "text": "prompts,",
+      "start": 7.46,
+      "end": 8.019
+    },
+    {
+      "text": "a",
+      "start": 8.359,
+      "end": 8.46
+    },
+    {
+      "text": "plan",
+      "start": 8.519,
+      "end": 8.88
+    },
+    {
+      "text": "that",
+      "start": 8.96,
+      "end": 9.139
+    },
+    {
+      "text": "genuinely",
+      "start": 9.319,
+      "end": 9.96
+    },
+    {
+      "text": "looks",
+      "start": 10.099,
+      "end": 10.359
+    },
+    {
+      "text": "great.",
+      "start": 10.5,
+      "end": 10.92
+    },
+    {
+      "text": "The",
+      "start": 11.859,
+      "end": 11.94
+    },
+    {
+      "text": "agent",
+      "start": 12.119,
+      "end": 12.639
+    },
+    {
+      "text": "picks",
+      "start": 12.679,
+      "end": 12.939
+    },
+    {
+      "text": "it",
+      "start": 13,
+      "end": 13.099
+    },
+    {
+      "text": "up",
+      "start": 13.199,
+      "end": 13.34
+    },
+    {
+      "text": "and",
+      "start": 13.38,
+      "end": 13.519
+    },
+    {
+      "text": "gets",
+      "start": 13.579,
+      "end": 13.859
+    },
+    {
+      "text": "going.",
+      "start": 13.92,
+      "end": 14.359
+    },
+    {
+      "text": "So",
+      "start": 15.159,
+      "end": 15.319
+    },
+    {
+      "text": "far,",
+      "start": 15.439,
+      "end": 15.759
+    },
+    {
+      "text": "textbook.",
+      "start": 16.18,
+      "end": 16.839
+    }
+  ]
+}

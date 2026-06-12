@@ -1,0 +1,281 @@
+{
+  "loss": 0.0719712895482875,
+  "lead": 1,
+  "words": [
+    {
+      "text": "What",
+      "start": 0.099,
+      "end": 0.239
+    },
+    {
+      "text": "we",
+      "start": 0.28,
+      "end": 0.379
+    },
+    {
+      "text": "need",
+      "start": 0.5,
+      "end": 0.779
+    },
+    {
+      "text": "is",
+      "start": 0.819,
+      "end": 0.919
+    },
+    {
+      "text": "one",
+      "start": 1,
+      "end": 1.22
+    },
+    {
+      "text": "really",
+      "start": 1.379,
+      "end": 1.599
+    },
+    {
+      "text": "simple,",
+      "start": 1.74,
+      "end": 2.079
+    },
+    {
+      "text": "first",
+      "start": 2.419,
+      "end": 2.619
+    },
+    {
+      "text": "class",
+      "start": 2.72,
+      "end": 2.98
+    },
+    {
+      "text": "focal",
+      "start": 3.099,
+      "end": 3.339
+    },
+    {
+      "text": "point.",
+      "start": 3.419,
+      "end": 3.759
+    },
+    {
+      "text": "A:",
+      "start": 5.179,
+      "end": 5.44
+    },
+    {
+      "text": "a",
+      "start": 5.859,
+      "end": 5.98
+    },
+    {
+      "text": "single",
+      "start": 6.059,
+      "end": 6.339
+    },
+    {
+      "text": "place",
+      "start": 6.48,
+      "end": 6.739
+    },
+    {
+      "text": "to",
+      "start": 6.819,
+      "end": 6.899
+    },
+    {
+      "text": "find",
+      "start": 7,
+      "end": 7.219
+    },
+    {
+      "text": "all",
+      "start": 7.379,
+      "end": 7.659
+    },
+    {
+      "text": "the",
+      "start": 7.759,
+      "end": 7.819
+    },
+    {
+      "text": "tools",
+      "start": 7.94,
+      "end": 8.38
+    },
+    {
+      "text": "your",
+      "start": 8.439,
+      "end": 8.539
+    },
+    {
+      "text": "engineering",
+      "start": 8.619,
+      "end": 9.079
+    },
+    {
+      "text": "environment",
+      "start": 9.119,
+      "end": 9.639
+    },
+    {
+      "text": "offers.",
+      "start": 9.739,
+      "end": 10.099
+    },
+    {
+      "text": "B:",
+      "start": 11.019,
+      "end": 11.299
+    },
+    {
+      "text": "the",
+      "start": 11.619,
+      "end": 11.699
+    },
+    {
+      "text": "obvious",
+      "start": 11.859,
+      "end": 12.299
+    },
+    {
+      "text": "place",
+      "start": 12.399,
+      "end": 12.659
+    },
+    {
+      "text": "to",
+      "start": 12.739,
+      "end": 12.799
+    },
+    {
+      "text": "encode",
+      "start": 12.859,
+      "end": 13.299
+    },
+    {
+      "text": "the",
+      "start": 13.34,
+      "end": 13.399
+    },
+    {
+      "text": "friction",
+      "start": 13.519,
+      "end": 13.859
+    },
+    {
+      "text": "away,",
+      "start": 13.92,
+      "end": 14.279
+    },
+    {
+      "text": "for",
+      "start": 14.819,
+      "end": 14.88
+    },
+    {
+      "text": "the",
+      "start": 14.92,
+      "end": 14.979
+    },
+    {
+      "text": "next",
+      "start": 15.059,
+      "end": 15.339
+    },
+    {
+      "text": "person,",
+      "start": 15.399,
+      "end": 15.819
+    },
+    {
+      "text": "and",
+      "start": 16.279,
+      "end": 16.379
+    },
+    {
+      "text": "for",
+      "start": 16.459,
+      "end": 16.52
+    },
+    {
+      "text": "future",
+      "start": 16.639,
+      "end": 17.039
+    },
+    {
+      "text": "you.",
+      "start": 17.159,
+      "end": 17.459
+    },
+    {
+      "text": "One",
+      "start": 18.119,
+      "end": 18.26
+    },
+    {
+      "text": "place.",
+      "start": 18.379,
+      "end": 18.779
+    },
+    {
+      "text": "Not",
+      "start": 19.139,
+      "end": 19.299
+    },
+    {
+      "text": "scattered",
+      "start": 19.399,
+      "end": 19.799
+    },
+    {
+      "text": "docs.",
+      "start": 19.879,
+      "end": 20.26
+    },
+    {
+      "text": "Not",
+      "start": 20.6,
+      "end": 20.779
+    },
+    {
+      "text": "tribal",
+      "start": 20.859,
+      "end": 21.199
+    },
+    {
+      "text": "knowledge.",
+      "start": 21.299,
+      "end": 21.719
+    },
+    {
+      "text": "So",
+      "start": 22.02,
+      "end": 22.18
+    },
+    {
+      "text": "what",
+      "start": 22.219,
+      "end": 22.439
+    },
+    {
+      "text": "shape",
+      "start": 22.559,
+      "end": 22.779
+    },
+    {
+      "text": "is",
+      "start": 22.819,
+      "end": 22.939
+    },
+    {
+      "text": "that",
+      "start": 22.979,
+      "end": 23.159
+    },
+    {
+      "text": "thing?",
+      "start": 23.219,
+      "end": 23.439
+    }
+  ]
+}

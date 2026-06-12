@@ -1,0 +1,111 @@
+{
+  "loss": 0.027268372349819894,
+  "lead": 1,
+  "words": [
+    {
+      "text": "That's",
+      "start": 0.119,
+      "end": 0.399
+    },
+    {
+      "text": "the",
+      "start": 0.439,
+      "end": 0.5
+    },
+    {
+      "text": "talk.",
+      "start": 0.599,
+      "end": 0.919
+    },
+    {
+      "text": "Same",
+      "start": 1.559,
+      "end": 1.879
+    },
+    {
+      "text": "three",
+      "start": 1.939,
+      "end": 2.159
+    },
+    {
+      "text": "layers",
+      "start": 2.24,
+      "end": 2.559
+    },
+    {
+      "text": "you",
+      "start": 2.619,
+      "end": 2.72
+    },
+    {
+      "text": "walked",
+      "start": 2.759,
+      "end": 3.039
+    },
+    {
+      "text": "in",
+      "start": 3.079,
+      "end": 3.199
+    },
+    {
+      "text": "with,",
+      "start": 3.24,
+      "end": 3.46
+    },
+    {
+      "text": "plus",
+      "start": 3.879,
+      "end": 4.099
+    },
+    {
+      "text": "the",
+      "start": 4.179,
+      "end": 4.239
+    },
+    {
+      "text": "one",
+      "start": 4.36,
+      "end": 4.5
+    },
+    {
+      "text": "that",
+      "start": 4.559,
+      "end": 4.679
+    },
+    {
+      "text": "was",
+      "start": 4.739,
+      "end": 4.88
+    },
+    {
+      "text": "missing.",
+      "start": 4.94,
+      "end": 5.279
+    },
+    {
+      "text": "Go",
+      "start": 5.879,
+      "end": 5.98
+    },
+    {
+      "text": "find",
+      "start": 6.099,
+      "end": 6.339
+    },
+    {
+      "text": "yours.",
+      "start": 6.399,
+      "end": 6.799
+    },
+    {
+      "text": "Happy",
+      "start": 7.239,
+      "end": 7.46
+    },
+    {
+      "text": "harnessing.",
+      "start": 7.539,
+      "end": 8.099
+    }
+  ]
+}

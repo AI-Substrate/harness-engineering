@@ -585,7 +585,21 @@
      layers as floating isometric floors right. The work
      physically falls through the floors and a claim rises back.
   ######################################################### */
-  #s-stack { --TRIP: 4.6s; }
+  /* word-sync cues from narration/002-s-stack.words.json (+1s mux lead).
+     Each --cue-* is the clip time of the spoken word that names the
+     element; choreography below keys its delays off these. If the
+     narration is re-taken, re-run tools/align.cjs and update only
+     this block. */
+  #s-stack {
+    --TRIP: 4.6s;
+    --cue-you: 6.04s;     /* "You at the top." */
+    --cue-agent: 8.24s;   /* "the AGENT in the middle." */
+    --cue-code: 10.06s;   /* "your CODEBASE at the bottom." */
+    --cue-down: 12.04s;   /* "INTENT flows down." — trip loop phase-locks here */
+    --cue-up: 14.12s;     /* "CODE, and claims of success, flow up." */
+    --cue-claims: 18.7s;  /* "note the word: CLAIMS." (word at 18.88) */
+    --cue-meet: 22.3s;    /* "let's MEET EACH LAYER for a second." */
+  }
   #s-stack .s2-grid {
     flex: 1;
     min-height: 0;
@@ -618,10 +632,23 @@
     text-transform: uppercase;
     color: var(--mauve);
   }
-  #s-stack.active .s2-legend { animation: fadein .9s ease 2s backwards; }
-  #s-stack .s2-legend .lg { animation: legPulse 2.3s ease-in-out infinite; }
-  #s-stack .s2-legend .lg-up { animation-delay: 1.15s; }
-  @keyframes legPulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+  /* each legend arrow enters ON its spoken phrase, then settles into the
+     ambient pulse (fadein owns opacity until the pulse takes over at 1) */
+  #s-stack.active .lg {
+    animation: fadein .6s ease var(--cue-down) backwards,
+               legPulse 2.3s ease-in-out calc(var(--cue-down) + .6s) infinite;
+  }
+  #s-stack.active .lg-up {
+    animation: fadein .6s ease var(--cue-up) backwards,
+               legPulse 2.3s ease-in-out calc(var(--cue-up) + .6s) infinite,
+               claimFlash .9s var(--pop) var(--cue-claims);
+  }
+  @keyframes legPulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+  /* "note the word: claims" — the ▲ legend flares as the word lands */
+  @keyframes claimFlash {
+    0%, 100% { color: var(--mauve); text-shadow: none; }
+    25%, 60% { color: var(--white); text-shadow: 0 0 1.2cqh rgba(196,151,254,.9); }
+  }
 
   #s-stack .scene3d { position: relative; height: 100%; min-height: 0; }
   #s-stack .bloom {
@@ -773,10 +800,20 @@
   #s-stack .bb-2 { right: 78%; top: 47%; }
   #s-stack .bb-3 { right: 78%; top: 60%; }
   #s-stack.active .bb { animation: bbIn .6s var(--pop) backwards; }
-  #s-stack.active .bb-1 { animation-delay: 1s; }
-  #s-stack.active .bb-2 { animation-delay: 1.18s; }
-  #s-stack.active .bb-3 { animation-delay: 1.36s; }
+  /* labels land on their spoken nouns: "you" / "agent" / "codebase" */
+  #s-stack.active .bb-1 { animation-delay: var(--cue-you); }
+  #s-stack.active .bb-2 { animation-delay: var(--cue-agent); }
+  #s-stack.active .bb-3 { animation-delay: var(--cue-code); }
   @keyframes bbIn { from { opacity: 0; transform: translateX(-1.8cqw); } }
+  /* "let's meet each layer" — the three wordmarks glow in reading order,
+     teeing up the layer tour on the next slides */
+  #s-stack.active .bb-1 b { animation: bbMeet .5s ease var(--cue-meet); }
+  #s-stack.active .bb-2 b { animation: bbMeet .5s ease calc(var(--cue-meet) + .35s); }
+  #s-stack.active .bb-3 b { animation: bbMeet .5s ease calc(var(--cue-meet) + .7s); }
+  @keyframes bbMeet {
+    0%, 100% { filter: none; }
+    40% { filter: brightness(1.55) drop-shadow(0 0 .8cqh rgba(196,151,254,.85)); }
+  }
 
   /* the cast stands on their floors (billboarded, grounded by shadows) */
   #s-stack .stand {
@@ -796,12 +833,12 @@
   }
   #s-stack.active .stand .human-chip,
   #s-stack.active .stand .agent-chip { animation: castPop .55s var(--bounce) backwards; }
-  #s-stack.active .st-you .human-chip { animation-delay: 1.7s; }
-  #s-stack.active .st-agent .agent-chip { animation-delay: 1.9s; }
+  #s-stack.active .st-you .human-chip { animation-delay: var(--cue-you); }
+  #s-stack.active .st-agent .agent-chip { animation-delay: var(--cue-agent); }
   /* shadows arrive WITH their owners, not before */
   #s-stack.active .stand .shdw { animation: shdwIn .55s var(--bounce) backwards; }
-  #s-stack.active .st-you .shdw { animation-delay: 1.7s; }
-  #s-stack.active .st-agent .shdw { animation-delay: 1.9s; }
+  #s-stack.active .st-you .shdw { animation-delay: var(--cue-you); }
+  #s-stack.active .st-agent .shdw { animation-delay: var(--cue-agent); }
   #s-stack .st-you { left: 42.5%; top: 21%; }
   #s-stack .st-agent { left: 75%; top: 48%; }
   @keyframes castPop { from { scale: 0; rotate: -10deg; } }
@@ -819,13 +856,15 @@
     box-shadow: 0 0 1.6cqh .25cqh rgba(196,151,254,.8);
     opacity: 0;
   }
-  #s-stack.active .drop { animation: dropFall var(--TRIP) linear 2.3s infinite; }
+  /* the loop's first fall departs on "intent flows down"; phase math then
+     puts the first risen claim's emergence on "note the word: claims" */
+  #s-stack.active .drop { animation: dropFall var(--TRIP) linear var(--cue-down) infinite; }
   #s-stack .d-up {
     margin-left: 1.5cqw;
     background: var(--white);
     box-shadow: 0 0 1.6cqh .25cqh rgba(255,255,255,.7);
   }
-  #s-stack.active .d-up { animation: dropRise var(--TRIP) linear 2.3s infinite; }
+  #s-stack.active .d-up { animation: dropRise var(--TRIP) linear var(--cue-down) infinite; }
   /* intent HOPS down the stack: land, squash, rest while the layer
      works (coat flash), anticipate, drop to the next. Absorbed by 03. */
   @keyframes dropFall {
@@ -865,9 +904,9 @@
   }
   /* floors flash as the work lands on them (same 2.3s start = phase-locked);
      02 and 03 flash again as the claim passes back up */
-  #s-stack.active .f-1 .coat { animation: coat1 var(--TRIP) linear 2.3s infinite; }
-  #s-stack.active .f-2 .coat { animation: coat2 var(--TRIP) linear 2.3s infinite; }
-  #s-stack.active .f-3 .coat { animation: coat3 var(--TRIP) linear 2.3s infinite; }
+  #s-stack.active .f-1 .coat { animation: coat1 var(--TRIP) linear var(--cue-down) infinite; }
+  #s-stack.active .f-2 .coat { animation: coat2 var(--TRIP) linear var(--cue-down) infinite; }
+  #s-stack.active .f-3 .coat { animation: coat3 var(--TRIP) linear var(--cue-down) infinite; }
   @keyframes coat1 {
     0%        { opacity: .55; }
     11%, 84%  { opacity: 0; }
@@ -888,7 +927,7 @@
   }
 
   /* the agent visibly processes the work on its floor, both directions */
-  #s-stack.active .st-agent .eyes { animation: agentScan var(--TRIP) linear 2.3s infinite; }
+  #s-stack.active .st-agent .eyes { animation: agentScan var(--TRIP) linear var(--cue-down) infinite; }
   @keyframes agentScan {
     0%, 16%   { transform: translateX(.14em) scaleY(1); color: var(--white); text-shadow: none; }
     21%, 28%  { transform: translateX(.14em) scaleY(1); color: var(--lavender); text-shadow: 0 0 .9cqh rgba(196,151,254,.95); }

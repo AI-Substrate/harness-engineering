@@ -1,0 +1,66 @@
+{
+  "loss": 0.17372846603393555,
+  "lead": 1,
+  "words": [
+    {
+      "text": "And",
+      "start": 0.079,
+      "end": 0.219
+    },
+    {
+      "text": "eventually:",
+      "start": 0.259,
+      "end": 0.939
+    },
+    {
+      "text": "done.",
+      "start": 1.24,
+      "end": 1.599
+    },
+    {
+      "text": "The",
+      "start": 2.24,
+      "end": 2.299
+    },
+    {
+      "text": "agent",
+      "start": 2.44,
+      "end": 2.819
+    },
+    {
+      "text": "believes",
+      "start": 2.859,
+      "end": 3.259
+    },
+    {
+      "text": "it.",
+      "start": 3.339,
+      "end": 3.479
+    },
+    {
+      "text": "The",
+      "start": 4,
+      "end": 4.119
+    },
+    {
+      "text": "tests",
+      "start": 4.159,
+      "end": 4.619
+    },
+    {
+      "text": "are",
+      "start": 4.639,
+      "end": 4.759
+    },
+    {
+      "text": "green.",
+      "start": 4.799,
+      "end": 5.199
+    },
+    {
+      "text": "Done.",
+      "start": 5.48,
+      "end": 5.819
+    }
+  ]
+}

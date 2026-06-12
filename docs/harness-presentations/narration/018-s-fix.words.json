@@ -1,0 +1,441 @@
+{
+  "loss": 0.03832368720830183,
+  "lead": 1,
+  "words": [
+    {
+      "text": "So",
+      "start": 0.079,
+      "end": 0.219
+    },
+    {
+      "text": "we",
+      "start": 0.299,
+      "end": 0.419
+    },
+    {
+      "text": "encode",
+      "start": 0.459,
+      "end": 0.919
+    },
+    {
+      "text": "what",
+      "start": 0.959,
+      "end": 1.1
+    },
+    {
+      "text": "the",
+      "start": 1.159,
+      "end": 1.199
+    },
+    {
+      "text": "reviewer",
+      "start": 1.259,
+      "end": 1.62
+    },
+    {
+      "text": "saw",
+      "start": 1.699,
+      "end": 1.939
+    },
+    {
+      "text": "into",
+      "start": 2,
+      "end": 2.18
+    },
+    {
+      "text": "the",
+      "start": 2.22,
+      "end": 2.279
+    },
+    {
+      "text": "checker,",
+      "start": 2.379,
+      "end": 2.72
+    },
+    {
+      "text": "and",
+      "start": 3.179,
+      "end": 3.339
+    },
+    {
+      "text": "re-run",
+      "start": 3.419,
+      "end": 3.779
+    },
+    {
+      "text": "it.",
+      "start": 3.859,
+      "end": 4.019
+    },
+    {
+      "text": "Now",
+      "start": 4.759,
+      "end": 4.88
+    },
+    {
+      "text": "it",
+      "start": 4.94,
+      "end": 5.039
+    },
+    {
+      "text": "points",
+      "start": 5.159,
+      "end": 5.5
+    },
+    {
+      "text": "straight",
+      "start": 5.559,
+      "end": 5.94
+    },
+    {
+      "text": "at",
+      "start": 5.96,
+      "end": 6.079
+    },
+    {
+      "text": "the",
+      "start": 6.119,
+      "end": 6.199
+    },
+    {
+      "text": "problem.",
+      "start": 6.279,
+      "end": 6.699
+    },
+    {
+      "text": "The",
+      "start": 7.559,
+      "end": 7.619
+    },
+    {
+      "text": "agent",
+      "start": 7.779,
+      "end": 8.119
+    },
+    {
+      "text": "fixes",
+      "start": 8.22,
+      "end": 8.539
+    },
+    {
+      "text": "the",
+      "start": 8.599,
+      "end": 8.679
+    },
+    {
+      "text": "code,",
+      "start": 8.76,
+      "end": 9.059
+    },
+    {
+      "text": "everything's",
+      "start": 9.479,
+      "end": 10.019
+    },
+    {
+      "text": "green,",
+      "start": 10.119,
+      "end": 10.439
+    },
+    {
+      "text": "the",
+      "start": 10.719,
+      "end": 10.819
+    },
+    {
+      "text": "PR",
+      "start": 11,
+      "end": 11.259
+    },
+    {
+      "text": "merges.",
+      "start": 11.34,
+      "end": 11.84
+    },
+    {
+      "text": "But",
+      "start": 12.46,
+      "end": 12.579
+    },
+    {
+      "text": "look",
+      "start": 12.699,
+      "end": 12.84
+    },
+    {
+      "text": "at",
+      "start": 12.899,
+      "end": 13
+    },
+    {
+      "text": "what",
+      "start": 13.079,
+      "end": 13.239
+    },
+    {
+      "text": "just",
+      "start": 13.319,
+      "end": 13.559
+    },
+    {
+      "text": "happened.",
+      "start": 13.599,
+      "end": 14.059
+    },
+    {
+      "text": "That",
+      "start": 14.739,
+      "end": 14.96
+    },
+    {
+      "text": "correction",
+      "start": 15.079,
+      "end": 15.719
+    },
+    {
+      "text": "isn't",
+      "start": 15.799,
+      "end": 16.039
+    },
+    {
+      "text": "a",
+      "start": 16.119,
+      "end": 16.219
+    },
+    {
+      "text": "comment",
+      "start": 16.299,
+      "end": 16.659
+    },
+    {
+      "text": "in",
+      "start": 16.699,
+      "end": 16.76
+    },
+    {
+      "text": "a",
+      "start": 16.799,
+      "end": 16.84
+    },
+    {
+      "text": "PR",
+      "start": 17.079,
+      "end": 17.319
+    },
+    {
+      "text": "thread",
+      "start": 17.399,
+      "end": 17.68
+    },
+    {
+      "text": "anymore.",
+      "start": 17.739,
+      "end": 18.26
+    },
+    {
+      "text": "It's",
+      "start": 19.02,
+      "end": 19.199
+    },
+    {
+      "text": "a",
+      "start": 19.239,
+      "end": 19.319
+    },
+    {
+      "text": "sensor.",
+      "start": 19.399,
+      "end": 19.899
+    },
+    {
+      "text": "Every",
+      "start": 20.639,
+      "end": 20.879
+    },
+    {
+      "text": "teammate,",
+      "start": 21,
+      "end": 21.519
+    },
+    {
+      "text": "and",
+      "start": 21.84,
+      "end": 21.959
+    },
+    {
+      "text": "every",
+      "start": 22.159,
+      "end": 22.439
+    },
+    {
+      "text": "future",
+      "start": 22.559,
+      "end": 22.899
+    },
+    {
+      "text": "agent",
+      "start": 22.979,
+      "end": 23.26
+    },
+    {
+      "text": "session,",
+      "start": 23.34,
+      "end": 23.739
+    },
+    {
+      "text": "inherits",
+      "start": 24.1,
+      "end": 24.559
+    },
+    {
+      "text": "it",
+      "start": 24.619,
+      "end": 24.879
+    },
+    {
+      "text": "automatically.",
+      "start": 24.959,
+      "end": 25.76
+    },
+    {
+      "text": "Because",
+      "start": 26.659,
+      "end": 26.959
+    },
+    {
+      "text": "the",
+      "start": 27,
+      "end": 27.079
+    },
+    {
+      "text": "harness",
+      "start": 27.199,
+      "end": 27.579
+    },
+    {
+      "text": "exists",
+      "start": 27.659,
+      "end": 28.139
+    },
+    {
+      "text": "as",
+      "start": 28.18,
+      "end": 28.279
+    },
+    {
+      "text": "its",
+      "start": 28.319,
+      "end": 28.519
+    },
+    {
+      "text": "own",
+      "start": 28.579,
+      "end": 28.84
+    },
+    {
+      "text": "clearly",
+      "start": 28.92,
+      "end": 29.299
+    },
+    {
+      "text": "defined",
+      "start": 29.34,
+      "end": 29.799
+    },
+    {
+      "text": "thing,",
+      "start": 29.899,
+      "end": 30.179
+    },
+    {
+      "text": "the",
+      "start": 30.739,
+      "end": 30.839
+    },
+    {
+      "text": "team's",
+      "start": 30.92,
+      "end": 31.279
+    },
+    {
+      "text": "workflow",
+      "start": 31.34,
+      "end": 31.739
+    },
+    {
+      "text": "itself",
+      "start": 31.799,
+      "end": 32.459
+    },
+    {
+      "text": "just",
+      "start": 32.54,
+      "end": 32.799
+    },
+    {
+      "text": "got",
+      "start": 32.86,
+      "end": 33.099
+    },
+    {
+      "text": "better.",
+      "start": 33.159,
+      "end": 33.539
+    },
+    {
+      "text": "That's",
+      "start": 34.279,
+      "end": 34.579
+    },
+    {
+      "text": "compounding",
+      "start": 34.619,
+      "end": 35.2
+    },
+    {
+      "text": "value",
+      "start": 35.259,
+      "end": 35.579
+    },
+    {
+      "text": "in",
+      "start": 35.619,
+      "end": 35.719
+    },
+    {
+      "text": "action.",
+      "start": 35.799,
+      "end": 36.18
+    },
+    {
+      "text": "Now",
+      "start": 36.86,
+      "end": 37.04
+    },
+    {
+      "text": "watch",
+      "start": 37.099,
+      "end": 37.299
+    },
+    {
+      "text": "it",
+      "start": 37.36,
+      "end": 37.459
+    },
+    {
+      "text": "at",
+      "start": 37.5,
+      "end": 37.619
+    },
+    {
+      "text": "team",
+      "start": 37.7,
+      "end": 37.959
+    },
+    {
+      "text": "scale.",
+      "start": 38.02,
+      "end": 38.459
+    }
+  ]
+}
