@@ -3852,10 +3852,12 @@
     font-size: 2.1cqw;
     letter-spacing: .08em;
   }
-  /* the plate's exposed band (not shaded by the floor above) is its
-     local bottom-right half: keep the decals there, like the numerals */
-  #s-miss .c1 { left: 26%; top: 78%; }
-  #s-miss .c2 { left: 60%; top: 73%; }
+  /* the plate's exposed band (between f-2's slab edge ~73.7% and the
+     plate's bottom edge ~93%) is only ~19% tall — exactly chip height.
+     Keep both chips fully ON the plate: right/bottom edges clear of
+     the plate boundary, tops just kissing the slab shadow line. */
+  #s-miss .c1 { left: 13%; top: 73.8%; }
+  #s-miss .c2 { left: 52%; top: 72.5%; }
   #s-miss.active .dchip { animation: castPop .55s var(--bounce) backwards; }
   #s-miss.active .c1 { animation-delay: calc(var(--cue-node) + .7s); }
   /* c2 carries the "encoded backpressure" flare, so it gets a full list */
