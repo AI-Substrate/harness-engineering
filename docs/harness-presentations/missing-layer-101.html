@@ -3842,7 +3842,14 @@
   /* the node's two jobs, embedded as decals lying on the plate */
   #s-miss .dchip {
     position: absolute;
-    padding: .9cqw 1.6cqw;
+    /* identical pills: fixed box, text dead-centred by grid (no
+       baseline/padding guesswork). text-indent rebalances the trailing
+       letter-space so the glyphs sit on the optical centre. */
+    width: 12.3cqw;
+    height: 5.2cqw;
+    display: grid;
+    place-items: center;
+    text-indent: .08em;
     border-radius: 999px;
     border: .28cqw solid var(--lavender);
     background: rgba(196,151,254,.22);
@@ -3856,8 +3863,10 @@
      plate's bottom edge ~93%) is only ~19% tall — exactly chip height.
      Keep both chips fully ON the plate: right/bottom edges clear of
      the plate boundary, tops just kissing the slab shadow line. */
-  #s-miss .c1 { left: 13%; top: 73.8%; }
-  #s-miss .c2 { left: 52%; top: 72.5%; }
+  /* one shared baseline, distributed in equal thirds across the band:
+     margin == gap == margin (6% / 41% / 6% / 41% / 6%) */
+  #s-miss .c1 { left: 6%; top: 74.7%; }
+  #s-miss .c2 { left: 53%; top: 74.7%; }
   #s-miss.active .dchip { animation: castPop .55s var(--bounce) backwards; }
   #s-miss.active .c1 { animation-delay: calc(var(--cue-node) + .7s); }
   /* c2 carries the "encoded backpressure" flare, so it gets a full list */
