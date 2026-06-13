@@ -757,6 +757,14 @@
      The box is the WORDMARK alone (traits hang below, absolutely),
      so every leader starts the same distance after the full stop
      and all three dots land on one vertical line. */
+  /* the label group rides the SAME isoBob clock as .iso (both ungated,
+     so phases match) — leader dots stay docked to their plate corners
+     instead of the stack bobbing under static pips */
+  #s-stack .bbs {
+    position: absolute;
+    inset: 0;
+    animation: isoBob 7s ease-in-out infinite alternate;
+  }
   #s-stack .bb {
     position: absolute;
     text-align: right;
@@ -797,9 +805,12 @@
     background: var(--white);
     box-shadow: 0 0 0 .17cqw rgba(0,0,0,.35);
   }
-  #s-stack .bb-1 { right: 78%; top: 33%; }
-  #s-stack .bb-2 { right: 78%; top: 47%; }
-  #s-stack .bb-3 { right: 78%; top: 60%; }
+  /* tops/right are measured against the projected plate corners: the
+     rig puts every plate's left corner tip on one vertical line, and
+     each dot docks .75cqw left of its tip (ring kisses the corner). */
+  #s-stack .bb-1 { right: 82.4%; top: 33.5%; }
+  #s-stack .bb-2 { right: 82.4%; top: 45.2%; }
+  #s-stack .bb-3 { right: 82.4%; top: 59.5%; }
   #s-stack.active .bb { animation: bbIn .6s var(--pop) backwards; }
   /* labels land on their spoken nouns: "you" / "agent" / "codebase" */
   #s-stack.active .bb-1 { animation-delay: var(--cue-you); }
@@ -3860,6 +3871,12 @@
 
   /* billboard labels (screen space, like S2). Only the new layer
      carries a trait line: the other three have been toured. */
+  /* label group rides the rig's isoBob (gated like the iso here, so
+     phases match) — pips stay docked while the stack bobs. stackPulse
+     is deliberately NOT copied: the stack swelling past static labels
+     is the emphasis. */
+  #s-miss .bbs { position: absolute; inset: 0; }
+  #s-miss.active .bbs { animation: isoBob 7s ease-in-out infinite alternate; }
   #s-miss .bb { position: absolute; text-align: right; }
   #s-miss .bb b {
     display: block;
@@ -3901,18 +3918,18 @@
      move with the same .9s ease clock as gapUp1/gapUp2/gapDown3 — the
      z→screen projection is linear, so equal easing = no relative slide.
      ~2% top per 1cqw of z. */
-  #s-miss .bb-1 { right: 79%; top: 33%; }
-  #s-miss .bb-2 { right: 79%; top: 47.5%; }
-  #s-miss .bb-d { right: 79%; top: 56%; }
-  #s-miss .bb-3 { right: 79%; top: 65.5%; }
+  #s-miss .bb-1 { right: 82.4%; top: 33.8%; }
+  #s-miss .bb-2 { right: 82.4%; top: 45.5%; }
+  #s-miss .bb-d { right: 82.4%; top: 55.4%; }
+  #s-miss .bb-3 { right: 82.4%; top: 59.8%; }
   #s-miss.active .bb { animation: bbIn .5s var(--pop) backwards; }
   #s-miss.active .bb-1 { animation: bbIn .5s var(--pop) var(--cue-looked) backwards, bbGap1 .9s ease var(--cue-missing) forwards; }
   #s-miss.active .bb-2 { animation: bbIn .5s var(--pop) calc(var(--cue-looked) + .12s) backwards, bbGap2 .9s ease var(--cue-missing) forwards; }
   #s-miss.active .bb-3 { animation: bbIn .5s var(--pop) calc(var(--cue-looked) + .24s) backwards, bbGap3 .9s ease var(--cue-missing) forwards; }
   #s-miss.active .bb-d { animation-delay: var(--cue-layer2); }
-  @keyframes bbGap1 { to { top: 30%; } }
-  @keyframes bbGap2 { to { top: 44%; } }
-  @keyframes bbGap3 { to { top: 76%; } }
+  @keyframes bbGap1 { to { top: 31.2%; } }
+  @keyframes bbGap2 { to { top: 42.7%; } }
+  @keyframes bbGap3 { to { top: 68%; } }
   /* the narration walks the diagram: wordmarks flare on their words
      (bbMeet keyframes shared from S2) */
   #s-miss.active .bb-2 b { animation: bbMeet .5s ease var(--cue-agent); }
@@ -5190,6 +5207,7 @@
             <div class="floor f-1"><span class="pnum3">01</span><span class="coat"></span></div>
           </div>
 
+          <div class="bbs">
           <div class="bb bb-1">
             <b>Human<span class="pdot">.</span></b>
             <span class="tr">intent · judgement · taste</span>
@@ -5204,6 +5222,7 @@
             <b>Codebase<span class="pdot">.</span></b>
             <span class="tr">your product · your tests · your build</span>
             <i aria-hidden="true"></i>
+          </div>
           </div>
 
           <span class="stand st-you"><span class="human-chip"></span><i class="shdw" aria-hidden="true"></i></span>
@@ -5738,6 +5757,7 @@
             <div class="floor f-1"><span class="pnum3">01</span><span class="coat"></span></div>
           </div>
 
+          <div class="bbs">
           <div class="bb bb-1">
             <b>Human<span class="pdot">.</span></b>
             <i aria-hidden="true"></i>
@@ -5754,6 +5774,7 @@
           <div class="bb bb-3">
             <b>Codebase<span class="pdot">.</span></b>
             <i aria-hidden="true"></i>
+          </div>
           </div>
 
           <span class="node2" aria-hidden="true">A·B</span>
