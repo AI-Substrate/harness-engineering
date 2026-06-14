@@ -70,7 +70,7 @@ interface RunRecord {
   runDir: string | null;
   logPath: string;
   pid: string | null;
-  harnessSource: 'local' | 'github';
+  harnessSource: 'local' | 'github' | 'global';
   error?: string;
 }
 
@@ -223,6 +223,7 @@ async function probeClone(
   ctx: VerbContext,
   dest: string,
   report: WorkerReport,
+  harnessSource: 'local' | 'github' | 'global',
 ): Promise<CloneProbes> {
   const probes: CloneProbes = {
     assessment: NA,
@@ -253,8 +254,11 @@ async function probeClone(
 
   if (report.verdict === 'ABANDONED') return probes;
 
-  const bin = `${dest}/node_modules/.bin/harness`;
-  const cliInstalled = ctx.fs.exists(bin);
+  // In `global` mode the product install is skipped by design: the CLI lives on
+  // PATH (`harness`) rather than in the clone's node_modules, so probe through it.
+  const isGlobal = harnessSource === 'global';
+  const bin = isGlobal ? 'harness' : `${dest}/node_modules/.bin/harness`;
+  const cliInstalled = isGlobal || ctx.fs.exists(bin);
   const noCli: ProbeOutcome = { v: 'fail', note: 'harness CLI not installed in the clone' };
 
   // doctor --json parses + conventions clean (incl. the 015 temp-hygiene check).
@@ -349,26 +353,34 @@ async function probeClone(
       : { v: 'pass' };
 
   // Skills installed PROJECT-LOCAL in the clone (the minih mount does not count).
-  let skillsNote = 'no project-local eng-harness-* skills (the minih mount does not count)';
-  let skillsPass = false;
-  for (const dir of LOCAL_SKILL_DIRS) {
-    const full = `${dest}/${dir}`;
-    if (!ctx.fs.exists(full)) continue;
-    const entries = ctx.fs.readdir(full);
-    const setup = entries.filter((e) => e.startsWith('eng-harness-0-'));
-    const loop = entries.filter(
-      (e) => e.startsWith('eng-harness-') && !e.startsWith('eng-harness-0-'),
-    );
-    if (setup.length > 0 && loop.length > 0) {
-      skillsPass = true;
-      skillsNote = `${dir}: ${setup.length} setup + ${loop.length} loop`;
-      break;
+  // In `global` mode the project-local install is skipped by design → N/A (not a fail).
+  if (isGlobal) {
+    probes.skillsLocal = {
+      v: 'na',
+      note: 'harnessSource=global — product install skipped by design',
+    };
+  } else {
+    let skillsNote = 'no project-local eng-harness-* skills (the minih mount does not count)';
+    let skillsPass = false;
+    for (const dir of LOCAL_SKILL_DIRS) {
+      const full = `${dest}/${dir}`;
+      if (!ctx.fs.exists(full)) continue;
+      const entries = ctx.fs.readdir(full);
+      const setup = entries.filter((e) => e.startsWith('eng-harness-0-'));
+      const loop = entries.filter(
+        (e) => e.startsWith('eng-harness-') && !e.startsWith('eng-harness-0-'),
+      );
+      if (setup.length > 0 && loop.length > 0) {
+        skillsPass = true;
+        skillsNote = `${dir}: ${setup.length} setup + ${loop.length} loop`;
+        break;
+      }
+      if (entries.some((e) => e.startsWith('eng-harness-'))) {
+        skillsNote = `${dir}: one group only`;
+      }
     }
-    if (entries.some((e) => e.startsWith('eng-harness-'))) {
-      skillsNote = `${dir}: one group only`;
-    }
+    probes.skillsLocal = { v: skillsPass ? 'pass' : 'fail', note: skillsNote };
   }
-  probes.skillsLocal = { v: skillsPass ? 'pass' : 'fail', note: skillsNote };
 
   // Probe-vs-self-report cross-check (advisory — flagged, never verdict-changing).
   const cross: Array<[string, boolean | undefined, ProbeOutcome]> = [
@@ -505,7 +517,7 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
       }
       // (4) deterministic probes against the clone (FX004-5) — DONE runs only;
       // ABANDONED reports get the assessment probe alone inside probeClone.
-      if (res.report) res.probes = await probeClone(ctx, r.dest, res.report);
+      if (res.report) res.probes = await probeClone(ctx, r.dest, res.report, r.harnessSource);
     }
     results.push(res);
   }
@@ -700,6 +712,11 @@ const validateHarnessFlow: HarnessVerb = {
       description: 'install the harness into each clone from github instead of the local project',
     },
     {
+      flags: '--global',
+      description:
+        'workers use the globally-installed harness on PATH and skip installing it into each clone (sets harnessSource=global; probes adapt — CLI is probed via PATH and skills-local becomes N/A)',
+    },
+    {
       flags: '--collect',
       description: 'aggregate finished workers’ records + reports into the runs/ folder',
     },
@@ -738,7 +755,8 @@ const validateHarnessFlow: HarnessVerb = {
         : DEFAULT_REPOS;
     const keep = ctx.options.keep === true;
     const model = typeof ctx.options.model === 'string' ? ctx.options.model : undefined;
-    const harnessSource: 'local' | 'github' = ctx.options.github === true ? 'github' : 'local';
+    const harnessSource: 'local' | 'github' | 'global' =
+      ctx.options.global === true ? 'global' : ctx.options.github === true ? 'github' : 'local';
 
     // 2. Make the temp env.
     const tmpRoot = `/tmp/harness-flow-selftest-${fsSafe(ctx.clock.nowIso())}`;
@@ -790,7 +808,8 @@ const validateHarnessFlow: HarnessVerb = {
       // Fire detached WITHOUT interpolating any user-controlled value into shell
       // syntax: the script reads only `"$@"` (literal argv), so `dest`/`model`/
       // `logPath` can never be re-parsed by the shell (no injection). Param
-      // contract: always `-p targetRepo=<dest>`; `--github` ⇒ `-p harnessSource=github`.
+      // contract: always `-p targetRepo=<dest>`; non-`local` source ⇒
+      // `-p harnessSource=<github|global>` (`--github` / `--global`).
       const fireArgv = [
         '-c',
         'log="$1"; shift; nohup "$@" > "$log" 2>&1 & echo $!',
@@ -801,7 +820,7 @@ const validateHarnessFlow: HarnessVerb = {
         AGENT_SLUG,
         '-p',
         `targetRepo=${dest}`,
-        ...(harnessSource === 'github' ? ['-p', 'harnessSource=github'] : []),
+        ...(harnessSource !== 'local' ? ['-p', `harnessSource=${harnessSource}`] : []),
         ...(model ? ['-m', model] : []),
         ...SKILL_FLAGS,
       ];

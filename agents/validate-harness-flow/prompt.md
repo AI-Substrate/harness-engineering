@@ -54,7 +54,11 @@ point.
   harness. Work **inside** this clone.
 - `harnessSource` (default `local`): where the product (CLI **and** skills) is
   installed from — `local` = the checkout at `$PROJECT_ROOT`; `github` = the
-  public repo `github:AI-Substrate/harness-engineering`. This is source
+  public repo `github:AI-Substrate/harness-engineering`; `global` = the product
+  is **already installed on this machine** (the `harness` CLI is on `PATH` and
+  the `eng-harness-*` skills are available) — **skip the install step entirely**:
+  confirm `harness --version` works, then go straight to the setup flow
+  (assess → adopt → boot → prove → retro). For `local`/`github` this is source
   configuration only — *how* to install is yours to discover.
 - `keepTarget` (default `false`): the orchestrator owns the clone's lifecycle;
   honour this only for extra scratch you create yourself.
