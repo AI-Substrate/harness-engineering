@@ -30,8 +30,8 @@ The doc is a thin **Boot / Interact / Observe contract** plus a signal inventory
 | **Observe method** | how an agent captures evidence — logs, screenshots, traces, snapshots (boot's Stage 3). |
 | **Deterministic signal inventory** | the sensors that let a human/agent prove behaviour without inference: runtime inspectability, smoke paths, architecture/static checks, security/dependency/schema checks. |
 | **Evidence paths** | where artifacts land (log/trace/screenshot/output locations) so they're discoverable. |
-| **Back-pressure gaps** | behaviours that still rely on inference or human eyeballing — named honestly as improvement candidates, never as scores. |
 | **Injection map** | where the repo's *extant* dev/SDD flow calls `/eng-harness-flow` — one row per seam event (`session-start`, `post-spec`, `pre-implement`, `task-pause`, `phase-end`, `plan-complete`): where it fires from and what fires it. The host flow is swappable (`the-flow`, another SDD pipeline, plain PR work); the seam vocabulary is the constant. This section is the durable signal behind the router's S3 rung — without it a cold agent has no structural reason to call the harness. |
+| **Back-pressure gaps** | behaviours that still rely on inference or human eyeballing — named honestly as improvement candidates, never as scores. |
 | **Current maturity snapshot** | the **single, current** L0–L4 level the harness is *actually* at (see [`maturity-assessment.md`](./maturity-assessment.md)). The doc holds only the *current* snapshot — the trajectory lives in `history.md`. |
 
 The doc is a **contract, not a log**: it says what the harness *is right now*, not what happened each session.

@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerHelpAct } from './acts/help.js';
+import { registerInitAct } from './acts/init.js';
 import { registerInstructionsAct } from './acts/instructions.js';
 import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
@@ -175,6 +176,7 @@ export function buildProgram(
 
   registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
+  registerInitAct(program, io, deps);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
   registerSkillsAct(program, io, deps);

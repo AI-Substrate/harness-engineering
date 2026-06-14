@@ -62,6 +62,7 @@ describe('buildProgram — composition root wiring', () => {
     expect(names).toEqual([
       'help',
       'doctor',
+      'init',
       'new',
       'docs',
       'skills',
