@@ -1,7 +1,7 @@
 # Fix FX001: `harness init` — seed the governance-doc skeleton
 
 **Created**: 2026-06-15
-**Status**: Open — not started. Validated 2026-06-15 (⚠️ VALIDATED WITH FIXES — see Validation Record at end)
+**Status**: ✅ **Implemented 2026-06-15** on `feat/harness-init-command` (commits `b40d6c1` FX001-1, `faa8e2a` FX001-2/3) — all acceptance criteria met; reviewed live by `code-review-companion`. Full suite **535 green**, `npm run build` clean, `harness arch-check` ok, biome clean. Validated 2026-06-15 (⚠️ VALIDATED WITH FIXES — see Validation Record at end).
 **Plan**: [008-harness-setup-flow](../harness-setup-flow-plan.md)
 **Source**: Plan 008 named Non-Goal ("Not building the `harness init` CLI command (forward dependency)") + the `init` reference audit (10 live surfaces reference a command that doesn't exist)
 **Workshop**: [`../workshops/001-harness-init-command.md`](../workshops/001-harness-init-command.md) (Contract Ready)
@@ -58,7 +58,7 @@ Explicit scope guards (don't boil the ocean):
 | [x] | FX001-1 | **Skeleton template + pure builder** — `GOVERNANCE_SKELETON` constant (the exact skeleton from workshop §1) + `buildGovernanceSkeleton(): string`; I/O-free | harness-cli | `harness/cli/src/services/init/governance-template.ts` | Builder returns the skeleton **mirroring the canonical governance-doc section set + order** (verified against this repo's `.harness/engineering-harness.md` / `governance-doc.md:24-35`): `## Boot command`, `## Health check`, `## Interact method`, `## Observe method`, `## Deterministic signal inventory`, `## Evidence paths`, `## Injection map` (empty table), `## Back-pressure gaps`, then a trailing `## Current maturity snapshot` whose body is `**L0 — …**`; plus the `AGENTS START HERE → npx harness instructions` breadcrumb. No imports of fs/clock | Inline constant ships via `dist` (workshop §4 Packaging); section names are verbatim so boot/adopt read it as a real governance doc |
 | [x] | FX001-2 | **Act + service wiring** — `InitActDeps = { fs, proc, clock }` (mirrors `RecordActDeps`/`NewActDeps`: the **act** needs `clock` for the envelope timestamp; the **builder** stays pure). `services/init/init-service.ts` resolves the doc path from `proc.cwd()` (POSIX-joined, cf. `record-service.ts:95`); **exists-check FIRST** → present ⇒ return `created:false` (skip mkdirp+write, never clobber) → absent ⇒ `mkdirp` `.harness/` then `writeText` the skeleton; returns typed `InitOutcome = {ok:true; path; created} | {ok:false; code; message; next_action}`. `acts/init.ts` (`registerInitAct(program, io, deps)`) maps the outcome to the envelope; register in `app.ts` `main`; add `'init'` to `RESERVED_NAMES` | harness-cli | `harness/cli/src/services/init/init-service.ts` · `harness/cli/src/acts/init.ts` · `harness/cli/src/app.ts` · `harness/cli/src/services/extensions/registry.ts` | `harness init` runs, creates the doc, is reserved (an extension verb named `init` is refused like `record`); service does the fs side-effects via `proc`+`fs`, builder stays pure | Sibling of `new`/`record`; **service** uses `fs`+`proc`; **act** also `clock` |
 | [x] | FX001-3 | **Envelope + exit + error code** — created→`ok` `data:{path,created:true,maturity_seed:'L0'}`; exists→`ok` `data:{path,created:false}` (idempotent, no clobber; **`maturity_seed` only on `created:true`** — it names what was seeded this run); fs failure→`error` exit 1 with new `ErrorCodes.INIT_WRITE_FAILED='E190'` + `next_action` | harness-cli | `harness/cli/src/acts/init.ts` · `harness/cli/src/output/error-codes.ts` | All three paths return the contracted envelope; created/exists exit `0`, failure exit `1`; `evidence[0].path` = the doc path; no stack trace | `E190` (E150 taken) |
-| [ ] | FX001-4 | **Tests + build + commit** — pure builder snapshot; act tests via FakeFs (creates incl. `mkdirp .harness/` in empty repo; idempotent no-clobber → `created:false`, byte-identical; reserved-name conflict; fs-error → `E190`); `npm run build` clean; full vitest green; conventional commit | harness-cli | `harness/cli/test/services/init/*.test.ts` · `harness/cli/test/acts/init.test.ts` | Snapshot pins the skeleton bytes; all four act paths covered by FakeFs; `npm run build` exit 0; `cd harness/cli && vitest run` all pass; `feat(init): …` commit referencing FX001 | — |
+| [x] | FX001-4 | **Tests + build + commit** — pure builder snapshot; act tests via FakeFs (creates incl. `mkdirp .harness/` in empty repo; idempotent no-clobber → `created:false`, byte-identical; reserved-name conflict; fs-error → `E190`); `npm run build` clean; full vitest green; conventional commit | harness-cli | `harness/cli/test/services/init/*.test.ts` · `harness/cli/test/acts/init.test.ts` | Snapshot pins the skeleton bytes; all four act paths covered by FakeFs; `npm run build` exit 0; `cd harness/cli && vitest run` all pass; `feat(init): …` commit referencing FX001 | — |
 
 ## Workshops Consumed
 
@@ -66,13 +66,13 @@ Explicit scope guards (don't boil the ocean):
 
 ## Acceptance
 
-- [ ] `harness init` in a repo with no `.harness/` creates `.harness/engineering-harness.md` whose section set + order **match the canonical governance doc verbatim** (`## Boot command`, `## Health check`, `## Interact method`, `## Observe method`, `## Deterministic signal inventory`, `## Evidence paths`, `## Injection map`, `## Back-pressure gaps`, `## Current maturity snapshot` — per this repo's `.harness/engineering-harness.md`), with the `## Current maturity snapshot` body seeded `L0` and an empty `## Injection map` table → exit `0`, `data.created:true`, `data.maturity_seed:'L0'`.
-- [ ] Re-running `harness init` leaves the file **byte-identical**, returns `data.created:false`, exit `0` (idempotent; never clobbers).
-- [ ] `harness init --json` emits a valid envelope with `data.path` + `evidence[0].path` = `.harness/engineering-harness.md`.
-- [ ] An extension declaring a verb named `init` is refused (reserved-name conflict, like `record`).
-- [ ] `buildGovernanceSkeleton()` is pure (no fs/clock import) and matches a committed snapshot.
-- [ ] An fs write failure surfaces `status:error`, exit `1`, `error.code === 'E190'`, `next_action` present, no stack trace.
-- [ ] No change to the `Envelope`/`Evidence` contract, ports, or existing acts; only `dist`-shipped code added (no `package.json` `files`/build/`gen:docs` change).
+- [x] `harness init` in a repo with no `.harness/` creates `.harness/engineering-harness.md` whose section set + order **match the canonical governance doc verbatim** (`## Boot command`, `## Health check`, `## Interact method`, `## Observe method`, `## Deterministic signal inventory`, `## Evidence paths`, `## Injection map`, `## Back-pressure gaps`, `## Current maturity snapshot` — per this repo's `.harness/engineering-harness.md`), with the `## Current maturity snapshot` body seeded `L0` and an empty `## Injection map` table → exit `0`, `data.created:true`, `data.maturity_seed:'L0'`.
+- [x] Re-running `harness init` leaves the file **byte-identical**, returns `data.created:false`, exit `0` (idempotent; never clobbers).
+- [x] `harness init --json` emits a valid envelope with `data.path` + `evidence[0].path` = `.harness/engineering-harness.md`.
+- [x] An extension declaring a verb named `init` is refused (reserved-name conflict, like `record`).
+- [x] `buildGovernanceSkeleton()` is pure (no fs/clock import) and matches a committed snapshot.
+- [x] An fs write failure surfaces `status:error`, exit `1`, `error.code === 'E190'`, `next_action` present, no stack trace.
+- [x] No change to the `Envelope`/`Evidence` contract, ports, or existing acts; only `dist`-shipped code added (no `package.json` `files`/build/`gen:docs` change).
 
 ## Discoveries & Learnings
 

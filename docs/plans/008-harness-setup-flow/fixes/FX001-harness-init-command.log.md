@@ -34,4 +34,29 @@
 - **Live smoke** (`node harness/cli/bin/harness.js init --json`): clean temp dir → `created:true`, mkdirp `.harness/`, 1741-byte doc; re-run → `created:false`, **byte-identical**; this repo → existing doc **untouched**.
 - **F001 resolved** (companion MED): `governance-doc.md` contents-table order swapped (Injection map before Back-pressure gaps) so all sources agree — single authoritative order.
 - Gates: **full suite 535 green**, `npm run build` clean, `harness arch-check` **ok (0 violations)**, biome clean.
-- Commit `feat(init): FX001-2/3` · companion pinged.
+- Commit `feat(init): FX001-2/3` (`faa8e2a`) · companion pinged.
+
+### FX001-4 — tests + build + finalize ✅
+
+All FX001-4 deliverables landed across the prior commits; this is the finalization checkpoint.
+
+- **Final gate**: full suite **535 green** (baseline 515 + 20 new), `npm run build` clean, `harness arch-check` **ok (0 violations)**, biome clean. Init-specific: 18 tests (8 builder + 4 service + 5 act + 1 reserved-name).
+
+**Acceptance criteria → evidence:**
+
+| Acceptance | Evidence |
+|---|---|
+| Empty repo → creates doc w/ canonical section set+order, L0 snapshot, empty injection map, exit 0, `created:true` | Live smoke (1741-byte doc); `init-service`/`act` create tests; `governance-template` heading-order test |
+| Re-run → byte-identical, `created:false`, exit 0 (idempotent) | Live smoke (sha match); `init-service` never-clobber test; `act` existing-doc test |
+| `init --json` → envelope w/ `data.path` + `evidence[0].path` = the doc | Live `--json` smoke; `act` created-envelope test |
+| Extension verb `init` refused (reserved like `record`) | `registry.test.ts` reserved-name conflict case; registered unconditionally (safe-mode covered by app empty-registry test) |
+| `buildGovernanceSkeleton()` pure + matches committed snapshot | `governance-template` purity test (reads own source) + inline snapshot |
+| fs failure → `error`, exit 1, `E190`, `next_action`, no stack | `init-service` + `act` E190 tests (write + mkdirp) |
+| No Envelope/ports/existing-act change; only `dist`-shipped code | Inline TS constant (ships via dist glob); no `package.json`/build/`gen:docs` change; arch-check ok |
+
+- Commit `feat(init): FX001-4` (finalize) · companion drained + debriefed (below).
+
+---
+
+## Companion debrief
+
