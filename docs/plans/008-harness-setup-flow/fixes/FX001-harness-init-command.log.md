@@ -60,3 +60,19 @@ All FX001-4 deliverables landed across the prior commits; this is the finalizati
 
 ## Companion debrief
 
+`code-review-companion` (runId `2026-06-15T07-57-06-414Z-c5c8`) ran in Power-On-Mode across the whole phase, reviewing every commit live. Drained → `control:stop` → farewell (`stop_requested`); run `completed` cleanly.
+
+**Findings reconciliation:**
+
+| ID | Sev | Commit | Status | Disposition |
+|----|-----|--------|--------|-------------|
+| F001 | MEDIUM | b40d6c1 | ✅ closed | governance-doc.md contents-table section order swapped to match the skeleton/workshop/.harness doc (faa8e2a); companion confirmed closed |
+
+- **Per-commit verdicts**: FX001-1 `b40d6c1` → APPROVE_WITH_NOTES (F001); FX001-2/3 `faa8e2a` → **APPROVE, 0 findings** (F001 confirmed closed + all hazards verified: exists-before-mkdirp, `maturity_seed` create-only, E190 no stack leak, injected fs/proc no `node:fs`, `init` reserved); final drain `a505b04` → **APPROVE, 0 new** (full-phase sweep: contract coherent).
+- **magicWand**: none surfaced.
+- **Net**: 1 finding raised, 1 resolved, 0 deferred. A separate post-hoc `/the-flow 7 review` is **redundant** — the companion reviewed every commit (the Graph carries that decoration).
+
+## Phase-end seam
+
+This is the harness's own repo (dogfood). Phase friction was captured inline: the single friction signal this phase (F001, contract drift) is recorded in the Discoveries table and was resolved in-phase — **no open friction to drain**. The router seam (`--event phase-end`) is advisory/best-effort; not invoked as a sub-skill here. Long-horizon harvest is the user's next step (the `validate-harness-flow` dogfood run).
+
