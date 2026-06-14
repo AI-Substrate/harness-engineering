@@ -1,251 +1,251 @@
 {
-  "loss": 0.10708919982338666,
+  "loss": 0.10033024825266938,
   "lead": 1,
   "words": [
     {
       "text": "Let's",
-      "start": 0.079,
+      "start": 0.119,
       "end": 0.34
     },
     {
       "text": "start",
-      "start": 0.419,
-      "end": 0.699
+      "start": 0.399,
+      "end": 0.719
     },
     {
       "text": "by",
       "start": 0.799,
-      "end": 0.899
+      "end": 0.919
     },
     {
       "text": "looking",
       "start": 1.019,
-      "end": 1.279
+      "end": 1.259
     },
     {
       "text": "at",
-      "start": 1.319,
+      "start": 1.299,
       "end": 1.419
     },
     {
       "text": "the",
-      "start": 1.48,
-      "end": 1.539
+      "start": 1.439,
+      "end": 1.5
     },
     {
-      "text": "stack",
+      "text": "layers",
       "start": 1.62,
-      "end": 1.959
+      "end": 2.039
     },
     {
       "text": "most",
-      "start": 2.119,
+      "start": 2.139,
       "end": 2.359
     },
     {
       "text": "teams",
       "start": 2.5,
-      "end": 2.839
+      "end": 2.819
     },
     {
       "text": "have",
-      "start": 2.939,
-      "end": 3.119
+      "start": 2.899,
+      "end": 3.079
     },
     {
       "text": "today.",
-      "start": 3.179,
-      "end": 3.659
+      "start": 3.139,
+      "end": 3.639
     },
     {
       "text": "You",
       "start": 5.039,
-      "end": 5.259
+      "end": 5.139
     },
     {
       "text": "at",
-      "start": 5.44,
-      "end": 5.659
+      "start": 5.199,
+      "end": 5.319
     },
     {
       "text": "the",
-      "start": 5.719,
-      "end": 5.779
+      "start": 5.359,
+      "end": 5.42
     },
     {
       "text": "top.",
-      "start": 5.9,
-      "end": 6.239
+      "start": 5.539,
+      "end": 5.839
     },
     {
       "text": "The",
-      "start": 6.96,
-      "end": 7.039
+      "start": 6.259,
+      "end": 6.339
     },
     {
       "text": "agent",
-      "start": 7.239,
-      "end": 7.619
+      "start": 6.519,
+      "end": 6.839
     },
     {
       "text": "in",
-      "start": 7.659,
-      "end": 7.739
+      "start": 6.899,
+      "end": 6.98
     },
     {
       "text": "the",
-      "start": 7.779,
-      "end": 7.839
+      "start": 7,
+      "end": 7.059
     },
     {
       "text": "middle.",
-      "start": 7.94,
-      "end": 8.239
+      "start": 7.139,
+      "end": 7.439
     },
     {
       "text": "Your",
-      "start": 8.819,
-      "end": 8.94
+      "start": 7.899,
+      "end": 8.039
     },
     {
       "text": "codebase",
-      "start": 9.059,
-      "end": 9.599
+      "start": 8.119,
+      "end": 8.639
     },
     {
       "text": "at",
-      "start": 9.639,
-      "end": 9.739
+      "start": 8.679,
+      "end": 8.779
     },
     {
       "text": "the",
-      "start": 9.76,
-      "end": 9.859
+      "start": 8.8,
+      "end": 8.899
     },
     {
       "text": "bottom.",
-      "start": 9.92,
-      "end": 10.319
+      "start": 8.96,
+      "end": 9.319
     },
     {
       "text": "Intent",
-      "start": 11.039,
-      "end": 11.479
+      "start": 10.019,
+      "end": 10.439
     },
     {
       "text": "flows",
-      "start": 11.579,
-      "end": 11.859
+      "start": 10.539,
+      "end": 10.859
     },
     {
       "text": "down.",
-      "start": 11.979,
-      "end": 12.379
+      "start": 10.96,
+      "end": 11.359
     },
     {
       "text": "Code,",
-      "start": 13.119,
-      "end": 13.479
+      "start": 12.019,
+      "end": 12.399
     },
     {
       "text": "and",
-      "start": 13.759,
-      "end": 13.88
+      "start": 12.659,
+      "end": 12.779
     },
     {
       "text": "claims",
-      "start": 14.019,
-      "end": 14.399
+      "start": 12.939,
+      "end": 13.279
     },
     {
       "text": "of",
-      "start": 14.439,
-      "end": 14.5
+      "start": 13.319,
+      "end": 13.399
     },
     {
       "text": "success,",
-      "start": 14.619,
-      "end": 15.179
+      "start": 13.5,
+      "end": 14.079
     },
     {
       "text": "flow",
-      "start": 15.38,
-      "end": 15.639
+      "start": 14.399,
+      "end": 14.679
     },
     {
       "text": "up.",
-      "start": 15.759,
-      "end": 16.039
+      "start": 14.819,
+      "end": 15.059
     },
     {
       "text": "Note",
-      "start": 16.799,
-      "end": 17.079
+      "start": 15.819,
+      "end": 16.059
     },
     {
       "text": "the",
-      "start": 17.119,
-      "end": 17.199
+      "start": 16.139,
+      "end": 16.199
     },
     {
       "text": "word:",
-      "start": 17.299,
-      "end": 17.659
+      "start": 16.319,
+      "end": 16.699
     },
     {
       "text": "claims.",
-      "start": 17.879,
-      "end": 18.459
+      "start": 16.879,
+      "end": 17.459
     },
     {
       "text": "Looks",
-      "start": 19.139,
-      "end": 19.479
+      "start": 18.119,
+      "end": 18.42
     },
     {
       "text": "complete,",
-      "start": 19.539,
-      "end": 20.039
+      "start": 18.459,
+      "end": 18.939
     },
     {
       "text": "right?",
-      "start": 20.199,
-      "end": 20.499
+      "start": 19.079,
+      "end": 19.399
     },
     {
       "text": "Let's",
-      "start": 21.299,
-      "end": 21.599
+      "start": 20.159,
+      "end": 20.439
     },
     {
       "text": "meet",
-      "start": 21.68,
-      "end": 21.879
+      "start": 20.52,
+      "end": 20.719
     },
     {
       "text": "each",
-      "start": 21.959,
-      "end": 22.159
+      "start": 20.779,
+      "end": 20.999
     },
     {
       "text": "layer",
-      "start": 22.26,
-      "end": 22.579
+      "start": 21.079,
+      "end": 21.399
     },
     {
       "text": "for",
-      "start": 22.639,
-      "end": 22.719
+      "start": 21.459,
+      "end": 21.52
     },
     {
       "text": "a",
-      "start": 22.779,
-      "end": 22.799
+      "start": 21.579,
+      "end": 21.639
     },
     {
       "text": "second.",
-      "start": 22.899,
-      "end": 23.379
+      "start": 21.699,
+      "end": 22.139
     }
   ]
 }

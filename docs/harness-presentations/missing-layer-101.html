@@ -609,12 +609,12 @@
   #s-stack {
     --TRIP: 4.6s;
     --cue-you: 6.04s;     /* "You at the top." */
-    --cue-agent: 8.24s;   /* "the AGENT in the middle." */
-    --cue-code: 10.06s;   /* "your CODEBASE at the bottom." */
-    --cue-down: 12.04s;   /* "INTENT flows down." — trip loop phase-locks here */
-    --cue-up: 14.12s;     /* "CODE, and claims of success, flow up." */
-    --cue-claims: 18.7s;  /* "note the word: CLAIMS." (word at 18.88) */
-    --cue-meet: 22.3s;    /* "let's MEET EACH LAYER for a second." */
+    --cue-agent: 7.52s;   /* "the AGENT in the middle." */
+    --cue-code: 9.12s;    /* "your CODEBASE at the bottom." */
+    --cue-down: 11.02s;   /* "INTENT flows down." — trip loop phase-locks here */
+    --cue-up: 13.02s;     /* "CODE, and claims of success, flow up." */
+    --cue-claims: 17.70s; /* "note the word: CLAIMS." (word clip 17.88, −.18 lead) */
+    --cue-meet: 21.32s;   /* "let's MEET EACH LAYER for a second." (meet 21.52, −.2 lead) */
   }
   #s-stack .s2-grid {
     flex: 1;
@@ -3634,19 +3634,19 @@
      If the narration is re-taken, re-run tools/align.cjs, update this
      block, and re-derive --cue-loop: ("up." clip time) − 1.54s. */
   #s-miss {
-    --cue-remember: 1.10s;  /* "REMEMBER the stack" — floors snap back */
-    --cue-looked:   2.44s;  /* "that LOOKED complete?" — labels dress it */
-    --cue-missing:  4.62s;  /* "it was MISSING a layer" — the crack opens */
-    --cue-determ:   6.42s;  /* "A DETERMINISTIC…" — ink plate flies in */
-    --cue-layer2:   7.38s;  /* "…LAYER," — plate docks; its label lands */
-    --cue-between:  8.68s;  /* "sitting BETWEEN" — subtitle fades in */
-    --cue-agent:    9.32s;  /* "the AGENT" — Inference wordmark flares */
-    --cue-code:    10.20s;  /* "your CODEBASE" — Codebase wordmark flares */
-    --cue-node:    10.55s;  /* breath after "codebase." — A·B node arcs in */
-    --cue-loop:    11.42s;  /* phase root: proof tops out on "UP." (+55%),
-                               enc dot buries on "ENCODED" (+88%) */
-    --cue-encoded: 13.66s;  /* "ENCODED backpressure" — encode chip flares */
-    --cue-piece:   18.32s;  /* "the missing PIECE." — unified stack pulse */
+    --cue-remember: 1.08s;  /* "REMEMBER those layers" — floors snap back */
+    --cue-looked:   2.56s;  /* "that LOOKED complete?" — labels dress it */
+    --cue-missing:  4.38s;  /* "they were MISSING one" — the crack opens */
+    --cue-determ:   5.90s;  /* "A DETERMINISTIC…" — ink plate flies in */
+    --cue-layer2:   6.76s;  /* "…LAYER," — plate docks; its label lands */
+    --cue-between:  7.96s;  /* "sitting BETWEEN" — subtitle fades in */
+    --cue-agent:    8.52s;  /* "the AGENT" — Inference wordmark flares */
+    --cue-code:     9.32s;  /* "your CODEBASE" — Codebase wordmark flares */
+    --cue-node:     9.67s;  /* breath after "codebase." — A·B node arcs in */
+    --cue-loop:    10.18s;  /* phase root: proof tops out on "UP." (+55%),
+                               enc dot buries on "ENCODED" (+88%) — up clip 11.72 − 1.54 */
+    --cue-encoded: 12.36s;  /* "ENCODED backpressure" — encode chip flares */
+    --cue-piece:   16.22s;  /* "the missing PIECE." — unified stack pulse */
   }
   #s-miss.active .kicker { animation: fadeup .8s var(--pop) .1s backwards; }
   #s-miss h2 {
@@ -5201,11 +5201,11 @@
     </section>
 
     <!-- ================= S2 · THE STACK ================= -->
-    <section class="slide" id="s-stack" data-title="The stack you already have">
+    <section class="slide" id="s-stack" data-title="The layers you already have">
       <div class="s2-grid">
         <div class="s2-copy">
           <p class="kicker">A typical setup</p>
-          <h2>The stack<br>you already<br>have<span class="hdot">.</span></h2>
+          <h2>The layers<br>you already<br>have<span class="hdot">.</span></h2>
         </div>
 
         <div class="scene3d">
@@ -5751,7 +5751,7 @@
     <section class="slide" id="s-miss" data-title="The missing piece">
       <div class="m-grid">
         <div class="m-copy">
-          <p class="kicker">Remember the stack?</p>
+          <p class="kicker">Remember those layers?</p>
           <h2>It was missing<br>a layer<span class="hdot">.</span></h2>
           <p class="m-sub">between the agent and your codebase</p>
         </div>
