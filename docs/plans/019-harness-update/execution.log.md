@@ -54,3 +54,9 @@
 - Contract doc: the additive / MCP-stable note is the `UpdateAvailable` JSDoc in `output/envelope.ts` (the plan's pointer to `services/docs/contract.ts` was imprecise — that file is the docs-tool seam, unrelated to the envelope).
 - Tests: `banner.test.ts` (fakes — human sets field+stderr, json sets field only, no-update silent) + `exit.test.ts` (decorator consulted before emit; no-op when unset) + envelope `toEqual` still green — **19 pass**.
 - **Composition wiring is T007; the bespoke-port conformance test is T006B (done after T007, which it depends on).**
+- Commit: `293a10d`.
+
+### T007 — wire the banner into the composition root ✅
+- `buildProgram` now calls `setBannerDecorator(buildBannerDecorator({fs, env, installed: version, mode, writers}))` ONCE, before registering acts. Both `main()` and the integration harness assemble through `buildProgram`, so every command's exit gets the banner; a single sync cache read on the hot path (no await).
+- **Deviation from plan:** the plan also said "NodeVersionLookup in defaultDeps + extend VerbActDeps". The banner doesn't need the lookup (cache-only). The async lookup is built from `deps.exec` inside the update act (T008), so `VerbActDeps` is untouched (zero churn to every test's deps helper). `NodeEnv.home()` is already in `defaultDeps` via `new NodeEnv()`.
+- **Full suite green: 60 files / 576 tests** (existing tests' `FakeEnv` has no home ⇒ banner never fires there).

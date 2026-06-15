@@ -20,7 +20,7 @@ import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
 import { NodeProcess } from './adapters/process/node-process.js';
 import { type Envelope, formatError, formatOk } from './output/envelope.js';
 import { ErrorCodes } from './output/error-codes.js';
-import { exitWithEnvelope } from './output/exit.js';
+import { exitWithEnvelope, setBannerDecorator } from './output/exit.js';
 import {
   type CliIo,
   createOutputPort,
@@ -41,6 +41,7 @@ import {
   coreRecordTypes,
   type ExtensionRecordType,
 } from './services/record/registry.js';
+import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
 /**
@@ -173,6 +174,20 @@ export function buildProgram(
     .exitOverride();
 
   const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
+
+  // Cross-cutting: register the update banner ONCE so every command's exit
+  // chokepoint surfaces a known update (JSON field + human stderr line) from a
+  // single sync cache read. No-op until the cache holds a newer version (AC9);
+  // with no resolvable home (test fakes) it never fires.
+  setBannerDecorator(
+    buildBannerDecorator({
+      fs: deps.fs,
+      env: deps.env,
+      installed: version,
+      mode: io.mode,
+      writers: io.writers,
+    }),
+  );
 
   registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
