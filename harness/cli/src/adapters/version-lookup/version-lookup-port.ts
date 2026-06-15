@@ -1,6 +1,6 @@
 /**
  * Version-lookup port — the latest published version of the harness package on
- * its registry (GitHub Packages, plan 018).
+ * its registry (the public npm registry).
  *
  * Injected so the update service stays unit-testable with `FakeVersionLookup`
  * and never shells a child or touches the network directly. The Node adapter

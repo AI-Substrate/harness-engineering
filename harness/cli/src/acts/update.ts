@@ -409,9 +409,9 @@ export function registerUpdateAct(
     .command('self-install')
     .description('Install the harness CLI globally from the registry (first-time bootstrap)')
     .action(async () => {
-      // Convenience global install from the GitHub Packages release. A missing
-      // `.npmrc` / `read:packages` token surfaces as an auth error + setup
-      // next_action via classifyInstallFailure (AC4/AC10). No skills phase.
+      // Convenience global install from the public npm registry. A registry or
+      // transport failure surfaces as a classified error + next_action via
+      // classifyInstallFailure (AC4/AC10). No skills phase.
       const o = await runNpmInstall(io, deps, 'self-install', installed, 'latest', null);
       emitBinary(io, deps, 'self-install', o);
     });

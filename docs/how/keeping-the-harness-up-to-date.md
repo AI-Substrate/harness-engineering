@@ -4,12 +4,12 @@ The engineering harness reaches you through **two channels**, and they update in
 
 | Channel | What it is | Updated by |
 |---|---|---|
-| **The CLI binary** | `@ai-substrate/engineering-harness` (the `harness` command), published to GitHub Packages | `harness update` / `harness self-install` (this guide) |
+| **The CLI binary** | `@ai-substrate/engineering-harness` (the `harness` command), published to the public npm registry | `harness update` / `harness self-install` (this guide) |
 | **The skills** | the `eng-harness-*` skills installed into your agent CLI via Vercel `npx skills` | `harness skills update --target <cli>` (or folded into `harness update --target`) |
 
 `harness update` is the one command that can reconcile **both**.
 
-> One-time prerequisite (same as install): the `@ai-substrate` scope must point at GitHub Packages and you need a `read:packages` token in your `.npmrc`. See *Install / run* in [`harness/cli/README.md`](../../harness/cli/README.md). Every command below relies on it.
+> No setup needed: the package is **public on npm**, so `npm i -g @ai-substrate/engineering-harness` (and everything below) works with **no token or `.npmrc`**. See *Install / run* in [`harness/cli/README.md`](../../harness/cli/README.md).
 
 ## Update the CLI
 
@@ -31,7 +31,7 @@ harness self-install        # first-time global bootstrap from the registry
 
 | `error.code` | Cause | Fix |
 |---|---|---|
-| `E201` | registry auth missing/expired (401/403), or the `@ai-substrate` scope/registry isn't configured | add the `.npmrc` scope line + a `read:packages` token (see the install prerequisite) |
+| `E201` | the npm registry rejected the install — unexpected auth (wrong registry / stale login) on the public package, or it isn't published yet / registry unreachable | confirm `npm config get registry` is `https://registry.npmjs.org` and the package exists on npmjs.com, then re-run |
 | `E202` | the global `npm -g` install was denied (filesystem permissions) | use a Node version manager (nvm/Volta) or a prefix-writable / elevated npm |
 | `E203` | `npm` is not on `PATH` | install Node.js + npm (https://nodejs.org) |
 | `E204` | `--pin` named a version that isn't in the registry | run `harness update --check` to see the latest, then pin a published version |

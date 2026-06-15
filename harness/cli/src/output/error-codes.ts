@@ -45,7 +45,7 @@ export const ErrorCodes = {
   INIT_WRITE_FAILED: 'E190',
   /** `harness update`/`self-install`: the global npm install failed (generic / unclassified). */
   UPDATE_FAILED: 'E200',
-  /** `harness update`/`self-install`: registry authentication failed (401/403 — missing/expired `.npmrc` token). */
+  /** `harness update`/`self-install`: the npm registry rejected the install — unexpected auth on the public package (wrong registry / stale login), or it isn't published yet / the registry is unreachable. */
   UPDATE_AUTH_FAILED: 'E201',
   /** `harness update`/`self-install`: the global npm install was denied (filesystem permissions). */
   UPDATE_PERMISSION_DENIED: 'E202',

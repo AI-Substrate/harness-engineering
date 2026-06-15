@@ -37,11 +37,11 @@ describe('classifyInstallFailure (AC10)', () => {
     ).toBe('E203');
   });
 
-  it('401/403 → E201 auth with a .npmrc + read:packages next_action', () => {
+  it('401/403 → E201 (unexpected auth on a public package) with a registry next_action', () => {
     const f = classifyInstallFailure(result({ stderr: 'npm ERR! 401 Unauthorized' }), COMMAND);
     expect(f.code).toBe('E201');
-    expect(f.next_action).toMatch(/\.npmrc/);
-    expect(f.next_action).toMatch(/read:packages/);
+    expect(f.next_action).toMatch(/registry/i);
+    expect(f.next_action).toContain('registry.npmjs.org');
     expect(classifyInstallFailure(result({ stderr: 'E403 Forbidden' }), COMMAND).code).toBe('E201');
   });
 
@@ -56,26 +56,26 @@ describe('classifyInstallFailure (AC10)', () => {
     expect(f.next_action).toContain('--pin');
   });
 
-  it('PINNED + GENERIC 404 (no version text) → E201 setup, not E204 (companion F006)', () => {
-    // first-time user with an unconfigured @ai-substrate scope hits a generic 404
+  it('PINNED + GENERIC 404 (no version text) → E201 registry, not E204 (companion F006)', () => {
+    // a generic 404 (no version-specific text) means not-published / registry, not "version absent"
     const f = classifyInstallFailure(
       result({
-        stderr: 'npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@ai-substrate%2f...',
+        stderr: 'npm ERR! 404 Not Found - GET https://registry.npmjs.org/@ai-substrate%2f...',
       }),
       `npm i -g ${PKG}@9.9.9`,
       { pinned: '9.9.9' },
     );
-    expect(f.code).toBe('E201'); // a generic 404 on a pin is a config/auth issue, not "version absent"
-    expect(f.next_action).toMatch(/\.npmrc/);
+    expect(f.code).toBe('E201'); // a generic 404 on a pin is a registry/not-published issue, not "version absent"
+    expect(f.next_action).toMatch(/registry/i);
   });
 
-  it('NON-pinned 404 → E201 (scope/registry unconfigured) with the setup next_action', () => {
+  it('NON-pinned 404 → E201 (not published / registry) with the registry next_action', () => {
     const f = classifyInstallFailure(
       result({ stderr: 'npm ERR! 404 Not Found - GET ...' }),
       COMMAND,
     );
-    expect(f.code).toBe('E201'); // not version-not-found: no pin ⇒ it's a config/auth issue
-    expect(f.next_action).toMatch(/\.npmrc/);
+    expect(f.code).toBe('E201'); // not version-not-found: no pin ⇒ it's a registry/not-published issue
+    expect(f.next_action).toMatch(/registry/i);
   });
 
   it('EACCES/EPERM → E202 permission denied', () => {

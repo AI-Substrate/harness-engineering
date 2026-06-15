@@ -3,12 +3,12 @@ import type { VersionLookupPort } from './version-lookup-port.js';
 
 /**
  * Real version lookup — shells `npm view <pkg> version --json` via the injected
- * `ExecPort` (so the only child spawn stays in `NodeExec`). Relies on the user's
- * `.npmrc` for the `@ai-substrate` scope registry + `read:packages` auth (plan
- * 018); cwd is only used so npm can pick up a project `.npmrc` if present.
+ * `ExecPort` (so the only child spawn stays in `NodeExec`). Reads the PUBLIC npm
+ * registry — no auth needed for a public package (FX001); cwd only lets npm pick
+ * up a project `.npmrc` if one is present.
  *
- * Never throws: a non-zero exit (not-found, 401/403 auth) or unparseable output
- * maps to null so the update check degrades silently (AC9).
+ * Never throws: a non-zero exit (not-found, registry unreachable) or unparseable
+ * output maps to null so the update check degrades silently (AC9).
  */
 export class NodeVersionLookup implements VersionLookupPort {
   constructor(

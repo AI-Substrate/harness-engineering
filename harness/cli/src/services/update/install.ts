@@ -52,9 +52,9 @@ export function classifyInstallFailure(
   }
 
   // A PINNED version that 404s genuinely doesn't exist — but ONLY when the npm
-  // text is VERSION-specific. A generic 404/"not found" on a pinned install is
-  // usually the @ai-substrate scope/registry being unconfigured (a first-time
-  // user), which must fall through to the auth/setup branch (companion F006).
+  // text is VERSION-specific. A generic 404/"not found" on a pinned install is a
+  // registry / not-yet-published issue (not "that version is absent"), so it
+  // falls through to the registry branch below (companion F006).
   if (opts?.pinned && /no matching version|no such version|notarget/.test(text)) {
     return {
       code: ErrorCodes.UPDATE_VERSION_NOT_FOUND,
@@ -64,9 +64,10 @@ export function classifyInstallFailure(
     };
   }
 
-  // Auth / registry-not-configured. A 401/403 is plainly auth; a NON-pinned 404
-  // means the @ai-substrate scope/registry is unconfigured or the token lacks
-  // access — both fixed by the same one-time .npmrc + read:packages setup (AC4/AC10).
+  // Registry trouble. For a PUBLIC npm package install needs no auth, so a 401/403
+  // almost always means npm is pointed at the wrong registry or carries a stale
+  // login; a NON-pinned (or generic) 404 means the package isn't published yet or
+  // the registry is unreachable. Neither is a token problem (FX001 — public npm).
   {
     const looksAuth =
       /\b(e?401|e?403)\b|unauthorized|forbidden|authentication|auth.*requir|need.*auth/.test(text);
@@ -75,11 +76,11 @@ export function classifyInstallFailure(
       return {
         code: ErrorCodes.UPDATE_AUTH_FAILED,
         message: looksAuth
-          ? 'registry authentication failed (401/403).'
-          : `${PACKAGE_NAME} could not be resolved — the GitHub Packages registry/scope is unconfigured or the token lacks access.`,
+          ? `the npm registry rejected the install — ${PACKAGE_NAME} is public and needs no auth, so npm is likely pointed at the wrong registry or has a stale login.`
+          : `${PACKAGE_NAME} could not be resolved — it may not be published yet, or the npm registry is unreachable.`,
         next_action:
-          `Configure a GitHub Packages \`.npmrc\` for the @ai-substrate scope with a ` +
-          `\`read:packages\` token (see "keeping the harness up to date"), then re-run: ${command}`,
+          `Confirm npm uses the public registry (\`npm config get registry\` → https://registry.npmjs.org) ` +
+          `and that ${PACKAGE_NAME} is published on npmjs.com, then re-run: ${command}`,
       };
     }
   }

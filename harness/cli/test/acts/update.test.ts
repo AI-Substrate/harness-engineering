@@ -214,7 +214,7 @@ describe('harness self-install', () => {
     expect(exec.calls.map(execLine)).toEqual([INSTALL('latest')]);
   });
 
-  it('maps a missing-token 401 to an auth error with a .npmrc next_action (AC4/AC10)', async () => {
+  it('maps an unexpected 401 to a registry error with a registry next_action (AC4/AC10)', async () => {
     const { out, code } = await run(['self-install'], 'json', {
       scripts: {
         [INSTALL('latest')]: { code: 1, stderr: 'npm ERR! code E401\nnpm ERR! 401 Unauthorized' },
@@ -223,7 +223,7 @@ describe('harness self-install', () => {
     const env = JSON.parse(out);
     expect(env.status).toBe('error');
     expect(env.error.code).toBe('E201');
-    expect(env.next_action).toMatch(/\.npmrc|read:packages/);
+    expect(env.next_action).toMatch(/registry/i);
     expect(code).toBe(1);
   });
 });
