@@ -1,0 +1,1 @@
+The built-in path is the simpler of the two. You type the-flow, and then, in plain words, whatever it is you need. Pull this ticket, and begin the work. And that's all. The harness takes your request and carries it the whole way through, from spec, to plan, to finished change. There's nothing more to learn.

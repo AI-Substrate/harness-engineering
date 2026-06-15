@@ -1,0 +1,1 @@
+Installing it into your own repository could hardly be easier. You could run the command yourself, by hand. But the simplest way, and the best, is to point your agent at the agent readme. It reads the instructions, and quietly does the rest for you. So let the agent do the work.

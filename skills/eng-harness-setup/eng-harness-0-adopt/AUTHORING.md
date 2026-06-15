@@ -6,7 +6,7 @@
 
 A **lean orchestration flow**. It installs the harness CLI from npx and drives a 3-step journey — install → (conditional) eng-harness-0-harnessability-assessment → stand up a basic `boot` via eng-harness-0-add-extension. It **generates no artifacts of its own**.
 
-This is a deliberate, breaking simplification of the earlier skill, which generated a governance doc, a placeholder `harness/cli/`, a `docs/harness/` scaffold, an `AGENTS.md` block, and seeded known-difficulties from 19 templates. All of that deterministic substrate now lives in the **harness CLI** as real code (and in a future `harness init`). The skill orchestrates those surfaces; it no longer reimplements them.
+This is a deliberate, breaking simplification of the earlier skill, which generated a governance doc, a placeholder `harness/cli/`, a `docs/harness/` scaffold, an `AGENTS.md` block, and seeded known-difficulties from 19 templates. All of that deterministic substrate now lives in the **harness CLI** as real code (`harness init` stamps the governance doc). The skill orchestrates those surfaces; it no longer reimplements them.
 
 ## Sources
 
@@ -24,7 +24,7 @@ This is a deliberate, breaking simplification of the earlier skill, which genera
 5. **Public-safe.** Shipped surfaces (`SKILL.md`, `README.md`) must never contain a private repo name/path, person, or internal codeword — this is a public repo. Describe boot shapes generically. (`AI-Substrate/harness-engineering` is the public CLI repo URL and is fine.)
 6. **Envelope-only consumption.** Any programmatic read of CLI output uses `--json` envelope fields + exit codes, never scraped prose — so a future MCP server reuses the same surfaces unchanged.
 7. **Canonical boundary sentence.** *"The agent harness drives. The engineering harness proves."* appears verbatim in `SKILL.md` and `README.md`. Don't drift it.
-8. **`harness init` is a forward dependency.** The flow documents calling it but must degrade gracefully when the installed CLI predates it (`.harness/extensions/` is created lazily by `harness new`).
+8. **`harness init` ships (FX001) — keep the older-CLI fallback.** The flow calls it to stamp the governance doc, but must still degrade gracefully when an *older* installed CLI predates it (`.harness/extensions/` is created lazily by `harness new`).
 
 ## How to extend this skill
 

@@ -3,7 +3,7 @@
 // to spoken words. Alignment, not STT: we hand the API the known transcript
 // (narration/NNN-id.txt) plus the audio and it snaps the text to the audio.
 //
-// Output: docs/harness-presentations/narration/NNN-id.words.json
+// Output: docs/harness-presentations/<slug>/narration/NNN-id.words.json
 //   { loss, words: [{ text, start, end }] }   times in seconds, audio clock.
 // The clip clock = audio clock + lead (record.cjs muxes audio at +1s by
 // default), so an animation cue for a word at start=4.2 lands at 5.2s of
@@ -12,15 +12,15 @@
 // Usage:
 //   node docs/harness-presentations/tools/align.cjs <slide>      one slide
 //   node docs/harness-presentations/tools/align.cjs --all        every slide
+//   --pres       presentation slug (auto-detected when only one exists)
 //   --lead 1     lead offset used for the clip-time column (default 1)
-//   --audio-dir  where the mp3s live (default <repo>/scratch/ml-video)
+//   --audio-dir  where the mp3s live (default <repo>/scratch/ml-video/<slug>)
 //   --force      re-align even if words.json is newer than the mp3
 
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
-const NARR = path.join(__dirname, '..', 'narration');
 
 // Tiny .env loader (no deps). Real env vars win over .env values.
 const envPath = path.join(ROOT, '.env');
@@ -55,13 +55,14 @@ if (!key) {
   process.exit(1);
 }
 
-const deck = path.join(__dirname, '..', 'missing-layer-101.html');
+const { deck, narrDir: NARR, outDir: audioDir } = require('./pres.cjs').resolvePres({
+  pres: opt('pres'), out: opt('audio-dir'),
+});
 const html = fs.readFileSync(deck, 'utf8');
 // ^-anchored so the authoring note at the top of the deck (which quotes the
 // markup pattern in prose) doesn't count as a slide.
 const slides = [...html.matchAll(/^\s*<section class="slide" id="([^"]+)"/gm)].map((m) => m[1]);
 
-const audioDir = opt('audio-dir', path.join(ROOT, 'scratch', 'ml-video'));
 const lead = +opt('lead', 1);
 
 let targets;

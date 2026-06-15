@@ -1,7 +1,7 @@
 ---
 name: eng-harness-4-retro
 description: |
-  The friction lifecycle of the harness loop: notice → hold safely → present at the seam → route to encoding. One skill, three surfaces. IN-FLIGHT CAPTURE is one CLI call — `npx harness observe "<what>" --kind <kind>` — into the gitignored session buffer; the CLI owns paths, IDs, timestamps, and validation, you bring only the noticing. `--drain` (session-end soft prompt) lists pending entries, presents the `[s/t/p/e/d/a]` menu with an encoding hint per entry, materializes saved entries via `harness record retro`, then clears the buffer. `--harvest` (long-horizon curation) scans `.harness/records/retro/**` plus legacy paths, dedups, clusters by kind+target, ages stale entries, and prints a prioritized view (`--json`) where recurrence is framed as token cost. Encode, don't document. Empty buffer = silent. No on-disk index files.
+  The friction lifecycle of the harness loop: notice → hold safely → present at the seam → route to encoding. One skill, three surfaces. IN-FLIGHT CAPTURE is one CLI call — `harness observe "<what>" --kind <kind>` — into the gitignored session buffer; the CLI owns paths, IDs, timestamps, and validation, you bring only the noticing. `--drain` (session-end soft prompt) lists pending entries, presents the `[s/t/p/e/d/a]` menu with an encoding hint per entry, materializes saved entries via `harness record retro`, then clears the buffer. `--harvest` (long-horizon curation) scans `.harness/records/retro/**` plus legacy paths, dedups, clusters by kind+target, ages stale entries, and prints a prioritized view (`--json`) where recurrence is framed as token cost. Encode, don't document. Empty buffer = silent. No on-disk index files.
 ---
 
 # eng-harness-4-retro
@@ -10,7 +10,7 @@ One skill, the whole **friction lifecycle**: *notice → hold safely → present
 
 | Surface | When | What |
 |---|---|---|
-| **In-flight capture** | during work, silent | one `npx harness observe` call per noticing — the CLI does the rest |
+| **In-flight capture** | during work, silent | one `harness observe` call per noticing — the CLI does the rest |
 | **`--drain`** | session end / logical pause | read pending via `harness observe --list --json`, soft prompt `[s/t/p/e/d/a]`, materialize via `harness record retro`, then `harness observe --clear` |
 | **`--harvest`** | long-horizon (final debrief, merge end, ad-hoc) | scan committed retros, cluster, prioritize, lifecycle ops |
 
@@ -24,7 +24,7 @@ One skill, the whole **friction lifecycle**: *notice → hold safely → present
 $ARGUMENTS
 # Surfaces:
 # (no flag)   In-flight capture guidance lives in § The two questions / § Capture is one command —
-#             there is nothing to "run"; you call `npx harness observe` directly as you work.
+#             there is nothing to "run"; you call `harness observe` directly as you work.
 # --drain     Session-end: read pending observations (all buckets), present the soft prompt,
 #             materialize saved entries into a committed record via `harness record retro`
 # --harvest   Long-horizon: scan + cluster + prioritize committed retro records; print the curated view
@@ -52,7 +52,7 @@ The second question is the harness thesis pointed at yourself: every place you *
 1. **The boot dance re-derived.** You spent ten minutes re-discovering how to start the app and prove it's healthy, because nothing wrote it down as a command:
 
    ```bash
-   npx harness observe "re-derived the boot+healthcheck dance from scratch; no single boot command exists" \
+   harness observe "re-derived the boot+healthcheck dance from scratch; no single boot command exists" \
      --kind difficulty --target project-sensor --severity degrading \
      --suggested-encoding "a 'just boot' recipe + harness doctor health layer"
    ```
@@ -60,7 +60,7 @@ The second question is the harness thesis pointed at yourself: every place you *
 2. **The architecture rule eyeballed.** You checked dependency direction by reading imports, because no deterministic check exists:
 
    ```bash
-   npx harness observe "had to eyeball that services don't import adapters directly — no dependency-direction check fails the build" \
+   harness observe "had to eyeball that services don't import adapters directly — no dependency-direction check fails the build" \
      --kind difficulty --target architecture-fitness --severity degrading \
      --workaround "read the imports manually" --suggested-encoding "architecture test or lint rule"
    ```
@@ -68,17 +68,17 @@ The second question is the harness thesis pointed at yourself: every place you *
 3. **The endpoint inferred, no smoke path.** You shipped a change to an endpoint whose behavior you could only infer, because there's no smoke route or evidence capture:
 
    ```bash
-   npx harness observe "inferred the /export endpoint's behavior from code; no smoke path or response fixture proves it" \
+   harness observe "inferred the /export endpoint's behavior from code; no smoke path or response fixture proves it" \
      --kind difficulty --target project-sensor --severity degrading \
      --suggested-encoding "smoke command hitting /export with a recorded expected shape"
    ```
 
-Prefer "no smoke/evidence path proved X" over "I was confused" — the former is encodable into deterministic back-pressure. Don't invent new kinds (`signal-gap`, `sensor-gap`): use `kind: difficulty` or `improvement-suggestion` with targets like `project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `tooling`.
+Prefer "no smoke/evidence path proved X" over "I was confused" — the former is encodable into deterministic back-pressure. Don't invent new kinds (`signal-gap`, `sensor-gap`): use `kind: difficulty` or `improvement-suggestion` with targets like `project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `tooling`, or `harness-itself` — the last for friction with the **harness product** (a `harness …` CLI verb, a SKILL.md instruction, the loop machinery) rather than your own repo. In a consumer repo that class can't be fixed locally; the drain routes it to an **upstream issue** (see § Harness-itself entries).
 
 ## Capture is one command
 
 ```bash
-npx harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
+harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
   [--target <t>] [--severity <s>] [--workaround <w>] [--suggested-encoding <hint>] [--agent <slug>]
 ```
 
@@ -157,7 +157,7 @@ Single prompt at end of session. **Never asks twice.** Format:
 Before you choose — the two questions, one last pass:
 "If you had a magic wand, what one command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change would make the next run easier, safer, or higher quality?"
 "What did you have to infer that the harness should have proved?"
-(Anything new → capture it now with `npx harness observe …`; it joins this drain.)
+(Anything new → capture it now with `harness observe …`; it joins this drain.)
 
 [s]ave selected · [t]ask: /plan-5 --fix emits · [p]lan: /plan-1b emits
 [e]ncode: stage diffs · [d]ismiss all · [a]ll-save (default — press Enter)
@@ -249,6 +249,40 @@ Compound lifecycle:
 
 `harness observe --clear` without saving anything. Print one line: "✓ buffer dismissed (3 entries dropped)". Unrecoverable — use sparingly.
 
+#### Harness-itself entries → offer an upstream issue
+
+Some friction is with the **harness product itself** — a confusing or broken `harness …` CLI verb, a wrong/missing SKILL.md instruction, a gap in the `eng-harness-*` loop machinery — **not** with the consumer's own repo. You can't encode that fix locally: the CLI and skills are *vendored* from `AI-Substrate/harness-engineering`. The encoding move for this class is **filing it upstream** so the fix lands for every consumer, not just this checkout.
+
+**Detect**: any drained entry with `target: harness-itself`, or whose description/workaround clearly points at a `harness …` command, a vendored SKILL.md instruction, or the loop skills themselves.
+
+**In the harness's own repo** — origin remote contains `harness-engineering`, or `harness/cli/src/` exists locally → **no issue**; the fix is a local source edit, so route it through `[e]ncode` / `[t]ask` like any other entry.
+
+**Otherwise (a consumer repo)** → after the chosen save action completes, ask **once** (never twice):
+
+```
+🔧 N entr{y/ies} point at the harness product itself, not your repo:
+   - "<entry.description>"
+Open a GitHub issue on AI-Substrate/harness-engineering so the fix lands for everyone? [y/N]: ▮
+```
+
+On **`y`**, print a ready-to-run `gh` command per selected entry (pre-filled from the entry fields) and let the user run it:
+
+```bash
+gh issue create --repo AI-Substrate/harness-engineering \
+  --title "<short imperative title from entry.description>" \
+  --body "Reported via eng-harness-4-retro --drain (consumer repo).
+
+**Friction:** <entry.description>
+**Kind / target:** <entry.kind> / <entry.target>
+**Workaround:** <entry.workaround or 'none'>
+**Suggested fix:** <entry.suggested_encoding or 'none'>
+**Harness version:** <output of \`harness --version\`, or 'unknown'>"
+```
+
+No `gh` installed, or not authenticated → give the **web fallback**: open <https://github.com/AI-Substrate/harness-engineering/issues/new> and paste the same title + body. (Optionally list open issues first with `gh issue list --repo AI-Substrate/harness-engineering` to avoid a duplicate.)
+
+The entry is **still saved to the record** regardless of the answer — the offer never blocks the save. Once the issue exists, its URL is a good `resolved_by:` value at the next `--harvest`. On **`N`**, do nothing extra; the entry waits in the record for a later harvest.
+
 ### Step 4 — Plan-ID detection
 
 `frontmatter.plan_id` resolves: (1) cwd matches `docs/plans/<NNN-slug>/` → that slug; (2) else git branch matches `<NNN>-<slug>` → the branch name; (3) else `null`.
@@ -256,7 +290,7 @@ Compound lifecycle:
 ### Encoding-hint generation (one line per entry)
 
 1. `entry.suggested_encoding` set → use it verbatim
-2. Else derive from kind + target: `difficulty/tooling` → "wrap in a justfile recipe" · `difficulty/skill` → "edit the SKILL.md" · `magic-wand/*` → "encode as the suggestion above" · `gift/*` → "no encoding needed" · `insight/*` → "document in AGENTS.md or a docs/how article"
+2. Else derive from kind + target: `difficulty/tooling` → "wrap in a justfile recipe" · `difficulty/skill` → "edit the SKILL.md" · `*/harness-itself` → "file an upstream issue on AI-Substrate/harness-engineering (or edit the source if this IS the harness repo)" · `magic-wand/*` → "encode as the suggestion above" · `gift/*` → "no encoding needed" · `insight/*` → "document in AGENTS.md or a docs/how article"
 3. Else → "(no encoding hint — review manually)"
 
 ### `--drain` edge cases
@@ -361,13 +395,15 @@ The drain's `[s/t/p/e/d/a]` actions (operating on cluster selections; save/all-s
 - **`[w]ontfix`** → `status: wontfix`
 - **`[s]tale`** → `status: stale`
 
+A cluster whose `target` is `harness-itself` (or that clearly points at a `harness …` command / vendored skill) in a **consumer repo** can't be resolved by a local edit — recurrence here is token cost paid every session. Offer the same **upstream issue** as the drain's § Harness-itself entries (`gh issue create --repo AI-Substrate/harness-engineering …`, or the web fallback), framing the cluster `count` as the cost. Once filed, use the issue URL as `resolved_by:` and mark `[r]esolved`. In the harness's own repo, route it to a local source fix instead.
+
 ### Pruning (`--prune`)
 
 `--harvest --prune --older-than 90d` → **dry-run by default**: list what would be deleted, then print "This is a dry run. Add `--apply` to actually delete (recommend a clean git working tree)." With `--apply` → single confirmation, then delete. Never auto-prunes.
 
 ### `--harvest` edge cases
 
-- **Empty tree**: `🌾 No retros found. Capture friction via npx harness observe during sessions.` and exit.
+- **Empty tree**: `🌾 No retros found. Capture friction via harness observe during sessions.` and exit.
 - **`docs/retros/` absent**: skip the back-compat path, no error.
 - **retro_id collision, both canonical**: keep the first, warn.
 
@@ -379,7 +415,7 @@ No on-disk index files · no auto-applied diffs · no transient-buffer reads bey
 
 ## References
 
-- `harness/cli` — the `observe` act (capture/list/clear), `record` act (committed placement), doctor temp-hygiene check; `npx harness instructions` carries the zero-context briefing
+- `harness/cli` — the `observe` act (capture/list/clear), `record` act (committed placement), doctor temp-hygiene check; `harness instructions` carries the zero-context briefing
 - Workshop 001 — self-improvement vibe (anti-vibe 7 over-introspection; terse one-line hints)
 - Workshop 005 — universal retro contract (entry schema; D5 kinds; D6 identity; D9 minih round-trip)
 - Workshop 006 — compound folder layout (D4 KISS no-indexes; D6 pruning; D7 minih back-compat)

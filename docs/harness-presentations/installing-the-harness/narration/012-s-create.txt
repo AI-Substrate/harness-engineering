@@ -1,0 +1,1 @@
+You might imagine that building one of these would be a daunting affair. It's not. The command line tool does most of the work for you, laying out each piece, while the agent walks beside you, guiding every choice. You just follow along, and an extension takes shape, almost on its own.

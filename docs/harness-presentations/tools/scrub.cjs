@@ -4,7 +4,7 @@
 //
 // Usage:
 //   NODE_PATH=<dir-with-puppeteer> node docs/harness-presentations/tools/scrub.cjs \
-//     '#s-stack' 6.0,8.2,12.5 [--out /tmp/scrub/s-stack] [--deck path.html]
+//     '#s-stack' 6.0,8.2,12.5 [--out /tmp/scrub/s-stack] [--pres <slug>] [--deck path.html]
 //
 // Times are CLIP seconds (CSS clock). Narration audio sits at +1s in
 // every clip, so a word at audio time T is clip time T + 1 — cue-block
@@ -31,7 +31,7 @@ if (!hash || !times.length) {
   console.error("usage: scrub.cjs '#slide-id' 1.0,2.5,6.0 [--out dir] [--deck path]");
   process.exit(1);
 }
-const deck = path.resolve(opts.deck || path.join(__dirname, '..', 'missing-layer-101.html'));
+const { deck } = require('./pres.cjs').resolvePres({ pres: opts.pres, deck: opts.deck });
 const dir = opts.out || path.join('/tmp/scrub', hash.replace('#', ''));
 
 (async () => {

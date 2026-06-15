@@ -73,7 +73,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 ## The intended loop
 
 1. **Install** the skills (above).
-2. **Adopt** the harness with `eng-harness-0-adopt` when a repo has no working `harness boot` — installs the CLI (`harness doctor` passes), ensures a harnessability report exists, and stands up a basic `boot` extension. Writes no governance doc / `harness/cli/` / `AGENTS.md` / `docs/harness/` scaffold — that substrate is owned by the harness CLI (and a future `harness init`).
+2. **Adopt** the harness with `eng-harness-0-adopt` when a repo has no working `harness boot` — installs the CLI (`harness doctor` passes), ensures a harnessability report exists, and stands up a basic `boot` extension. Writes no governance doc / `harness/cli/` / `AGENTS.md` / `docs/harness/` scaffold — that substrate is owned by the harness CLI (`harness init` stamps the governance doc).
 3. **Assess** with `eng-harness-0-harnessability-assessment` for a target-aware readiness report (evidence vs inference vs unknowns vs next safe actions; affordance recommendations are proposal-only).
 4. **Boot** with `eng-harness-1-boot` at session start — read the contract instead of guessing commands.
 5. **Observe** quietly during work with one CLI call per noticing — `npx harness observe "<what>" --kind <kind>` — for confusing failures, retries/backtracking, slow/missing commands, missing fixtures/sensors, "if only there were…" ideas (capture judgment lives in `eng-harness-4-retro`). Don't nag mid-flow.

@@ -1,0 +1,231 @@
+{
+  "loss": 0.047515219379319504,
+  "lead": 1,
+  "words": [
+    {
+      "text": "One",
+      "start": 0.079,
+      "end": 0.34
+    },
+    {
+      "text": "small",
+      "start": 0.459,
+      "end": 0.819
+    },
+    {
+      "text": "piece",
+      "start": 0.939,
+      "end": 1.199
+    },
+    {
+      "text": "of",
+      "start": 1.24,
+      "end": 1.339
+    },
+    {
+      "text": "housekeeping.",
+      "start": 1.399,
+      "end": 2.059
+    },
+    {
+      "text": "Depending",
+      "start": 2.819,
+      "end": 3.24
+    },
+    {
+      "text": "on",
+      "start": 3.279,
+      "end": 3.399
+    },
+    {
+      "text": "which",
+      "start": 3.439,
+      "end": 3.639
+    },
+    {
+      "text": "coding",
+      "start": 3.759,
+      "end": 4.079
+    },
+    {
+      "text": "agent",
+      "start": 4.159,
+      "end": 4.44
+    },
+    {
+      "text": "you",
+      "start": 4.5,
+      "end": 4.639
+    },
+    {
+      "text": "use,",
+      "start": 4.779,
+      "end": 5.039
+    },
+    {
+      "text": "you",
+      "start": 5.559,
+      "end": 5.659
+    },
+    {
+      "text": "might",
+      "start": 5.719,
+      "end": 5.94
+    },
+    {
+      "text": "need",
+      "start": 6.019,
+      "end": 6.199
+    },
+    {
+      "text": "to",
+      "start": 6.239,
+      "end": 6.339
+    },
+    {
+      "text": "give",
+      "start": 6.399,
+      "end": 6.5
+    },
+    {
+      "text": "it",
+      "start": 6.539,
+      "end": 6.619
+    },
+    {
+      "text": "a",
+      "start": 6.679,
+      "end": 6.739
+    },
+    {
+      "text": "gentle",
+      "start": 6.799,
+      "end": 7.079
+    },
+    {
+      "text": "nudge,",
+      "start": 7.199,
+      "end": 7.579
+    },
+    {
+      "text": "so",
+      "start": 8.059,
+      "end": 8.159
+    },
+    {
+      "text": "that",
+      "start": 8.199,
+      "end": 8.319
+    },
+    {
+      "text": "it",
+      "start": 8.38,
+      "end": 8.479
+    },
+    {
+      "text": "notices",
+      "start": 8.579,
+      "end": 9.059
+    },
+    {
+      "text": "its",
+      "start": 9.139,
+      "end": 9.34
+    },
+    {
+      "text": "new",
+      "start": 9.42,
+      "end": 9.559
+    },
+    {
+      "text": "skill.",
+      "start": 9.679,
+      "end": 10.079
+    },
+    {
+      "text": "In",
+      "start": 10.88,
+      "end": 10.96
+    },
+    {
+      "text": "Copilot's",
+      "start": 11.059,
+      "end": 11.739
+    },
+    {
+      "text": "command",
+      "start": 11.779,
+      "end": 12.159
+    },
+    {
+      "text": "line,",
+      "start": 12.239,
+      "end": 12.519
+    },
+    {
+      "text": "for",
+      "start": 12.759,
+      "end": 12.859
+    },
+    {
+      "text": "instance,",
+      "start": 12.92,
+      "end": 13.42
+    },
+    {
+      "text": "a",
+      "start": 13.859,
+      "end": 13.939
+    },
+    {
+      "text": "simple",
+      "start": 14.039,
+      "end": 14.439
+    },
+    {
+      "text": "reload",
+      "start": 14.5,
+      "end": 15.019
+    },
+    {
+      "text": "will",
+      "start": 15.059,
+      "end": 15.239
+    },
+    {
+      "text": "do.",
+      "start": 15.319,
+      "end": 15.599
+    },
+    {
+      "text": "A",
+      "start": 16.319,
+      "end": 16.34
+    },
+    {
+      "text": "little",
+      "start": 16.42,
+      "end": 16.619
+    },
+    {
+      "text": "thing,",
+      "start": 16.76,
+      "end": 17.02
+    },
+    {
+      "text": "and",
+      "start": 17.479,
+      "end": 17.619
+    },
+    {
+      "text": "easily",
+      "start": 17.779,
+      "end": 18.119
+    },
+    {
+      "text": "forgotten.",
+      "start": 18.219,
+      "end": 18.719
+    }
+  ]
+}

@@ -1,0 +1,326 @@
+{
+  "loss": 0.07253169066285434,
+  "lead": 1,
+  "words": [
+    {
+      "text": "Now,",
+      "start": 0.099,
+      "end": 0.299
+    },
+    {
+      "text": "here's",
+      "start": 0.68,
+      "end": 0.939
+    },
+    {
+      "text": "the",
+      "start": 0.979,
+      "end": 1.059
+    },
+    {
+      "text": "clever",
+      "start": 1.12,
+      "end": 1.399
+    },
+    {
+      "text": "part.",
+      "start": 1.48,
+      "end": 1.779
+    },
+    {
+      "text": "The",
+      "start": 2.44,
+      "end": 2.579
+    },
+    {
+      "text": "core",
+      "start": 2.639,
+      "end": 2.919
+    },
+    {
+      "text": "of",
+      "start": 2.98,
+      "end": 3.059
+    },
+    {
+      "text": "the",
+      "start": 3.099,
+      "end": 3.159
+    },
+    {
+      "text": "harness",
+      "start": 3.24,
+      "end": 3.619
+    },
+    {
+      "text": "is",
+      "start": 3.679,
+      "end": 3.819
+    },
+    {
+      "text": "shared.",
+      "start": 3.879,
+      "end": 4.239
+    },
+    {
+      "text": "It's",
+      "start": 4.92,
+      "end": 5.079
+    },
+    {
+      "text": "maintained",
+      "start": 5.139,
+      "end": 5.759
+    },
+    {
+      "text": "and",
+      "start": 5.819,
+      "end": 5.899
+    },
+    {
+      "text": "improved",
+      "start": 5.96,
+      "end": 6.46
+    },
+    {
+      "text": "centrally,",
+      "start": 6.539,
+      "end": 7.059
+    },
+    {
+      "text": "and",
+      "start": 7.519,
+      "end": 7.619
+    },
+    {
+      "text": "every",
+      "start": 7.699,
+      "end": 7.899
+    },
+    {
+      "text": "team",
+      "start": 8.019,
+      "end": 8.199
+    },
+    {
+      "text": "inherits",
+      "start": 8.26,
+      "end": 8.72
+    },
+    {
+      "text": "those",
+      "start": 8.779,
+      "end": 8.96
+    },
+    {
+      "text": "improvements",
+      "start": 9.019,
+      "end": 9.719
+    },
+    {
+      "text": "as",
+      "start": 9.779,
+      "end": 9.88
+    },
+    {
+      "text": "they",
+      "start": 9.939,
+      "end": 10.059
+    },
+    {
+      "text": "arrive.",
+      "start": 10.119,
+      "end": 10.619
+    },
+    {
+      "text": "But",
+      "start": 11.759,
+      "end": 11.88
+    },
+    {
+      "text": "each",
+      "start": 11.96,
+      "end": 12.099
+    },
+    {
+      "text": "repository",
+      "start": 12.179,
+      "end": 12.959
+    },
+    {
+      "text": "is",
+      "start": 13.019,
+      "end": 13.139
+    },
+    {
+      "text": "its",
+      "start": 13.159,
+      "end": 13.34
+    },
+    {
+      "text": "own",
+      "start": 13.5,
+      "end": 13.699
+    },
+    {
+      "text": "world.",
+      "start": 13.779,
+      "end": 14.179
+    },
+    {
+      "text": "So",
+      "start": 14.92,
+      "end": 15.159
+    },
+    {
+      "text": "the",
+      "start": 15.46,
+      "end": 15.519
+    },
+    {
+      "text": "harness",
+      "start": 15.619,
+      "end": 16
+    },
+    {
+      "text": "carries",
+      "start": 16.059,
+      "end": 16.359
+    },
+    {
+      "text": "an",
+      "start": 16.399,
+      "end": 16.459
+    },
+    {
+      "text": "extension",
+      "start": 16.52,
+      "end": 17
+    },
+    {
+      "text": "system:",
+      "start": 17.119,
+      "end": 17.44
+    },
+    {
+      "text": "a",
+      "start": 18.059,
+      "end": 18.139
+    },
+    {
+      "text": "way",
+      "start": 18.199,
+      "end": 18.379
+    },
+    {
+      "text": "to",
+      "start": 18.44,
+      "end": 18.539
+    },
+    {
+      "text": "tune",
+      "start": 18.6,
+      "end": 18.799
+    },
+    {
+      "text": "itself,",
+      "start": 18.84,
+      "end": 19.219
+    },
+    {
+      "text": "precisely,",
+      "start": 19.439,
+      "end": 19.959
+    },
+    {
+      "text": "to",
+      "start": 20.199,
+      "end": 20.26
+    },
+    {
+      "text": "the",
+      "start": 20.299,
+      "end": 20.399
+    },
+    {
+      "text": "codebase",
+      "start": 20.459,
+      "end": 20.92
+    },
+    {
+      "text": "it",
+      "start": 20.959,
+      "end": 21.079
+    },
+    {
+      "text": "finds",
+      "start": 21.139,
+      "end": 21.36
+    },
+    {
+      "text": "itself",
+      "start": 21.379,
+      "end": 21.76
+    },
+    {
+      "text": "in.",
+      "start": 21.819,
+      "end": 21.959
+    },
+    {
+      "text": "A",
+      "start": 22.659,
+      "end": 22.699
+    },
+    {
+      "text": "shared",
+      "start": 22.76,
+      "end": 23.039
+    },
+    {
+      "text": "core.",
+      "start": 23.1,
+      "end": 23.439
+    },
+    {
+      "text": "And",
+      "start": 23.799,
+      "end": 23.899
+    },
+    {
+      "text": "a",
+      "start": 23.959,
+      "end": 23.979
+    },
+    {
+      "text": "local",
+      "start": 24.059,
+      "end": 24.359
+    },
+    {
+      "text": "shape.",
+      "start": 24.439,
+      "end": 24.719
+    },
+    {
+      "text": "The",
+      "start": 25,
+      "end": 25.059
+    },
+    {
+      "text": "best",
+      "start": 25.119,
+      "end": 25.299
+    },
+    {
+      "text": "of",
+      "start": 25.34,
+      "end": 25.439
+    },
+    {
+      "text": "both.",
+      "start": 25.5,
+      "end": 25.799
+    }
+  ]
+}

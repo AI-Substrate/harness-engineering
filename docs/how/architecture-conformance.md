@@ -16,7 +16,7 @@ exemplar extension turns them into a command the agent runs — yes or no, no
 guessing — on every run and every PR.
 
 The rule file is **encoded team memory** ("encode the fix, not the memory" —
-[intro to harness](../harness-presentations/intro-to-harness.md)): instead of a
+[intro to harness](../harness-presentations/missing-layer-101/intro-to-harness.md)): instead of a
 markdown paragraph explaining the layering that every fresh session must
 re-infer, the invariant is executable, and its explanation travels with the
 violation. The agent can say the architecture holds; the harness decides

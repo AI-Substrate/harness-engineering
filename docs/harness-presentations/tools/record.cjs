@@ -16,10 +16,13 @@
 //
 // Usage:
 //   NODE_PATH=<dir-with-puppeteer> node docs/harness-presentations/tools/record.cjs \
-//     <slide> [deck.html] [--dur=12] [--fps=30] [--w=1920] [--h=1080] \
-//     [--scale=1] [--out=<repo>/scratch/ml-video] [--crf=16] [--preset=slow] [--keep-frames]
+//     <slide> [deck.html] [--pres=<slug>] [--dur=12] [--fps=30] [--w=1920] [--h=1080] \
+//     [--scale=1] [--out=<repo>/scratch/ml-video/<slug>] [--crf=16] [--preset=slow] [--keep-frames]
 //
 //   <slide>  1-based slide number (e.g. 2) or slide id (s-stack / #s-stack)
+//   --pres   presentation slug (subfolder under docs/harness-presentations/);
+//            auto-detected when only one presentation exists. A deck.html
+//            positional overrides it (slug = the deck's parent folder).
 //   --dur    clip length in SECONDS (float ok) — adjust per slide once
 //            voiceover timings are known
 //   --scale  deviceScaleFactor on top of --w/--h: >1 supersamples the
@@ -54,7 +57,9 @@ if (!slideArg) {
   console.error('usage: record.cjs <slide-number-or-id> [deck.html] [--dur=12] [--fps=30] ...');
   process.exit(1);
 }
-const deck = path.resolve(positional[1] || path.join(__dirname, '..', 'missing-layer-101.html'));
+const { deck, outDir } = require('./pres.cjs').resolvePres({
+  pres: opt('pres'), deck: positional[1], out: opt('out'),
+});
 // Defaults are the approved recipe: native 4K60 output. Text stability
 // comes from the stable-raster launch flags + the 2x glyph resolution
 // 4K gives over a 1080p view (players downscale-average the rest).
@@ -64,8 +69,8 @@ const durSec = +opt('dur', 12);
 const fps = +opt('fps', 60);
 const W = +opt('w', 3840), H = +opt('h', 2160);
 const scale = +opt('scale', 1);
-// Default output: repo scratch/ (gitignored) so clips are visible in-repo.
-const out = opt('out', path.join(__dirname, '..', '..', '..', 'scratch', 'ml-video'));
+// Default output: repo scratch/ml-video/<slug>/ (gitignored), per-presentation.
+const out = outDir;
 const crf = opt('crf', '16');
 const preset = opt('preset', 'slow');
 

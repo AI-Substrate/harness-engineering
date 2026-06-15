@@ -1,0 +1,476 @@
+{
+  "loss": 0.06735904248799564,
+  "lead": 1,
+  "words": [
+    {
+      "text": "And",
+      "start": 0.079,
+      "end": 0.219
+    },
+    {
+      "text": "so",
+      "start": 0.28,
+      "end": 0.5
+    },
+    {
+      "text": "we",
+      "start": 0.799,
+      "end": 0.919
+    },
+    {
+      "text": "meet",
+      "start": 0.979,
+      "end": 1.179
+    },
+    {
+      "text": "the",
+      "start": 1.22,
+      "end": 1.339
+    },
+    {
+      "text": "first,",
+      "start": 1.379,
+      "end": 1.74
+    },
+    {
+      "text": "and",
+      "start": 1.839,
+      "end": 1.919
+    },
+    {
+      "text": "most",
+      "start": 2.019,
+      "end": 2.299
+    },
+    {
+      "text": "important,",
+      "start": 2.379,
+      "end": 2.919
+    },
+    {
+      "text": "of",
+      "start": 2.98,
+      "end": 3.079
+    },
+    {
+      "text": "them",
+      "start": 3.119,
+      "end": 3.24
+    },
+    {
+      "text": "all.",
+      "start": 3.279,
+      "end": 3.599
+    },
+    {
+      "text": "The",
+      "start": 4,
+      "end": 4.059
+    },
+    {
+      "text": "boot",
+      "start": 4.139,
+      "end": 4.339
+    },
+    {
+      "text": "extension.",
+      "start": 4.44,
+      "end": 5
+    },
+    {
+      "text": "Every",
+      "start": 5.839,
+      "end": 6.099
+    },
+    {
+      "text": "harness",
+      "start": 6.219,
+      "end": 6.599
+    },
+    {
+      "text": "loop,",
+      "start": 6.719,
+      "end": 6.92
+    },
+    {
+      "text": "without",
+      "start": 7.219,
+      "end": 7.539
+    },
+    {
+      "text": "exception,",
+      "start": 7.659,
+      "end": 8.18
+    },
+    {
+      "text": "begins",
+      "start": 8.3,
+      "end": 8.699
+    },
+    {
+      "text": "here.",
+      "start": 8.8,
+      "end": 9.139
+    },
+    {
+      "text": "Its",
+      "start": 9.96,
+      "end": 10.139
+    },
+    {
+      "text": "task",
+      "start": 10.219,
+      "end": 10.519
+    },
+    {
+      "text": "is",
+      "start": 10.579,
+      "end": 10.679
+    },
+    {
+      "text": "to",
+      "start": 10.719,
+      "end": 10.8
+    },
+    {
+      "text": "ask",
+      "start": 10.88,
+      "end": 11.099
+    },
+    {
+      "text": "one",
+      "start": 11.179,
+      "end": 11.34
+    },
+    {
+      "text": "simple",
+      "start": 11.46,
+      "end": 11.779
+    },
+    {
+      "text": "question:",
+      "start": 11.859,
+      "end": 12.3
+    },
+    {
+      "text": "is",
+      "start": 13.019,
+      "end": 13.339
+    },
+    {
+      "text": "this",
+      "start": 13.399,
+      "end": 13.599
+    },
+    {
+      "text": "repository",
+      "start": 13.699,
+      "end": 14.299
+    },
+    {
+      "text": "ready",
+      "start": 14.439,
+      "end": 14.639
+    },
+    {
+      "text": "for",
+      "start": 14.719,
+      "end": 14.799
+    },
+    {
+      "text": "work?",
+      "start": 14.899,
+      "end": 15.199
+    },
+    {
+      "text": "In",
+      "start": 15.96,
+      "end": 16.039
+    },
+    {
+      "text": "every",
+      "start": 16.119,
+      "end": 16.319
+    },
+    {
+      "text": "codebase",
+      "start": 16.44,
+      "end": 17.139
+    },
+    {
+      "text": "the",
+      "start": 17.199,
+      "end": 17.279
+    },
+    {
+      "text": "answer",
+      "start": 17.379,
+      "end": 17.719
+    },
+    {
+      "text": "looks",
+      "start": 17.779,
+      "end": 18.139
+    },
+    {
+      "text": "a",
+      "start": 18.199,
+      "end": 18.239
+    },
+    {
+      "text": "little",
+      "start": 18.299,
+      "end": 18.5
+    },
+    {
+      "text": "different.",
+      "start": 18.619,
+      "end": 19.059
+    },
+    {
+      "text": "But",
+      "start": 19.799,
+      "end": 19.92
+    },
+    {
+      "text": "at",
+      "start": 20.02,
+      "end": 20.139
+    },
+    {
+      "text": "its",
+      "start": 20.18,
+      "end": 20.359
+    },
+    {
+      "text": "core,",
+      "start": 20.42,
+      "end": 20.739
+    },
+    {
+      "text": "it",
+      "start": 21.139,
+      "end": 21.279
+    },
+    {
+      "text": "checks",
+      "start": 21.379,
+      "end": 21.699
+    },
+    {
+      "text": "that",
+      "start": 21.779,
+      "end": 21.879
+    },
+    {
+      "text": "the",
+      "start": 21.939,
+      "end": 22.039
+    },
+    {
+      "text": "code",
+      "start": 22.139,
+      "end": 22.5
+    },
+    {
+      "text": "still",
+      "start": 22.6,
+      "end": 22.879
+    },
+    {
+      "text": "builds,",
+      "start": 22.939,
+      "end": 23.459
+    },
+    {
+      "text": "that",
+      "start": 23.899,
+      "end": 24.019
+    },
+    {
+      "text": "the",
+      "start": 24.059,
+      "end": 24.199
+    },
+    {
+      "text": "services",
+      "start": 24.279,
+      "end": 24.719
+    },
+    {
+      "text": "it",
+      "start": 24.779,
+      "end": 24.899
+    },
+    {
+      "text": "needs",
+      "start": 24.979,
+      "end": 25.339
+    },
+    {
+      "text": "can",
+      "start": 25.379,
+      "end": 25.519
+    },
+    {
+      "text": "wake",
+      "start": 25.559,
+      "end": 25.779
+    },
+    {
+      "text": "and",
+      "start": 25.799,
+      "end": 25.939
+    },
+    {
+      "text": "run,",
+      "start": 26,
+      "end": 26.26
+    },
+    {
+      "text": "and",
+      "start": 26.739,
+      "end": 26.84
+    },
+    {
+      "text": "a",
+      "start": 26.879,
+      "end": 26.959
+    },
+    {
+      "text": "good",
+      "start": 27.019,
+      "end": 27.199
+    },
+    {
+      "text": "deal",
+      "start": 27.26,
+      "end": 27.5
+    },
+    {
+      "text": "more",
+      "start": 27.559,
+      "end": 27.959
+    },
+    {
+      "text": "besides.",
+      "start": 28.019,
+      "end": 28.639
+    },
+    {
+      "text": "Modest,",
+      "start": 29.379,
+      "end": 29.739
+    },
+    {
+      "text": "at",
+      "start": 29.799,
+      "end": 29.92
+    },
+    {
+      "text": "first.",
+      "start": 30,
+      "end": 30.379
+    },
+    {
+      "text": "But",
+      "start": 30.859,
+      "end": 30.939
+    },
+    {
+      "text": "it'll",
+      "start": 31,
+      "end": 31.26
+    },
+    {
+      "text": "grow,",
+      "start": 31.319,
+      "end": 31.699
+    },
+    {
+      "text": "in",
+      "start": 31.779,
+      "end": 31.939
+    },
+    {
+      "text": "time,",
+      "start": 32,
+      "end": 32.539
+    },
+    {
+      "text": "into",
+      "start": 32.579,
+      "end": 32.819
+    },
+    {
+      "text": "something",
+      "start": 32.86,
+      "end": 33.259
+    },
+    {
+      "text": "far",
+      "start": 33.439,
+      "end": 33.619
+    },
+    {
+      "text": "more",
+      "start": 33.68,
+      "end": 33.86
+    },
+    {
+      "text": "capable.",
+      "start": 33.919,
+      "end": 34.38
+    },
+    {
+      "text": "For",
+      "start": 35.68,
+      "end": 35.779
+    },
+    {
+      "text": "now,",
+      "start": 35.84,
+      "end": 36.059
+    },
+    {
+      "text": "though,",
+      "start": 36.099,
+      "end": 36.36
+    },
+    {
+      "text": "this",
+      "start": 36.84,
+      "end": 37.219
+    },
+    {
+      "text": "single",
+      "start": 37.279,
+      "end": 37.579
+    },
+    {
+      "text": "extension",
+      "start": 37.68,
+      "end": 38.299
+    },
+    {
+      "text": "is",
+      "start": 38.36,
+      "end": 38.579
+    },
+    {
+      "text": "all",
+      "start": 38.659,
+      "end": 38.84
+    },
+    {
+      "text": "we",
+      "start": 38.899,
+      "end": 39.079
+    },
+    {
+      "text": "need.",
+      "start": 39.139,
+      "end": 39.479
+    }
+  ]
+}

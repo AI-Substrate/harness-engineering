@@ -1,0 +1,1 @@
+The first part is the command line tool. It's installed just once, with a single npm command, and from that moment it lives across your whole machine, ready in every repository you open. One install, and the tool is simply there, wherever you go.

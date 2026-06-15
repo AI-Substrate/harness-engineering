@@ -1,0 +1,1 @@
+And what does all this cost your repository? Remarkably little. The only change it has to accept is a single new folder, named dot-harness. This is where the harness keeps everything: its extensions, its configuration, all it needs, kept tidily in one place. One folder. Nothing else is disturbed.
