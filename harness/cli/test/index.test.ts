@@ -66,6 +66,8 @@ describe('buildProgram — composition root wiring', () => {
       'new',
       'docs',
       'skills',
+      'update',
+      'self-install',
       'record',
       'observe',
       'instructions',

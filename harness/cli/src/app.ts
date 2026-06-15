@@ -8,6 +8,7 @@ import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerSkillsAct } from './acts/skills.js';
+import { registerUpdateAct } from './acts/update.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
@@ -20,7 +21,7 @@ import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
 import { NodeProcess } from './adapters/process/node-process.js';
 import { type Envelope, formatError, formatOk } from './output/envelope.js';
 import { ErrorCodes } from './output/error-codes.js';
-import { exitWithEnvelope } from './output/exit.js';
+import { exitWithEnvelope, setBannerDecorator } from './output/exit.js';
 import {
   type CliIo,
   createOutputPort,
@@ -41,6 +42,7 @@ import {
   coreRecordTypes,
   type ExtensionRecordType,
 } from './services/record/registry.js';
+import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
 /**
@@ -174,12 +176,27 @@ export function buildProgram(
 
   const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
 
+  // Cross-cutting: register the update banner ONCE so every command's exit
+  // chokepoint surfaces a known update (JSON field + human stderr line) from a
+  // single sync cache read. No-op until the cache holds a newer version (AC9);
+  // with no resolvable home (test fakes) it never fires.
+  setBannerDecorator(
+    buildBannerDecorator({
+      fs: deps.fs,
+      env: deps.env,
+      installed: version,
+      mode: io.mode,
+      writers: io.writers,
+    }),
+  );
+
   registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
   registerInitAct(program, io, deps);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
   registerSkillsAct(program, io, deps);
+  registerUpdateAct(program, io, deps, version);
   registerRecordAct(program, io, deps, recordRegistry);
   registerObserveAct(program, io, deps);
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
@@ -238,6 +255,19 @@ export async function main(
   const mode = selectMode({ json: jsonFlag(argv) }, env, isTty);
   const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
   const port = createOutputPort(io.mode, io.writers);
+
+  // Register the update banner BEFORE any exit — incl. the pre-build discovery /
+  // registry-validation error envelopes below, which exit before buildProgram
+  // (which re-registers it) runs (companion F004). Idempotent: same decorator.
+  setBannerDecorator(
+    buildBannerDecorator({
+      fs: deps.fs,
+      env: deps.env,
+      installed: version,
+      mode: io.mode,
+      writers: io.writers,
+    }),
+  );
 
   let registry: VerbRegistry;
   try {

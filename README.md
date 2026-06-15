@@ -2,8 +2,7 @@
 
 An engineering harness productises the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run.
 
-> [!TIP]
-> **Fastest start — let your agent do it.** Copy this into Claude Code / Copilot / Cursor / Codex in your repo:
+> **💡 Fastest start — let your agent do it.** Copy this into Claude Code / Copilot / Cursor / Codex in your repo:
 >
 > ```text
 > Install the engineering harness from https://github.com/AI-Substrate/harness-engineering
@@ -44,32 +43,9 @@ The harness is not throwaway scaffolding. It is a **productised development surf
 
 Intent flows down. Evidence flows up. The engineering harness is the **deterministic layer** — the one your repo probably doesn't have as a first-class thing.
 
-```mermaid
-%%{init: {"flowchart": {"wrappingWidth": 520, "nodeSpacing": 60, "rankSpacing": 64}} }%%
-flowchart TD
-    H["<b>HUMAN STEERING LAYER</b> (THIS IS YOU)<br/><i>Intent, judgement, risk, taste, priorities.</i><br/>Humans decide what matters and what gets encoded."]
-    I["<b>INFERENCE LAYER</b> · Agent Harness<br/><i>Reasoning, planning, semantic review, architecture judgement. Writes code.<br/>Spec Driven Development etc. lives here.</i><br/>Where the agent works through ambiguity and discovers friction."]
-    D["<b>DETERMINISTIC LAYER</b> · Engineering Harness<br/><i>Runnable proof, backpressure, and token savings.</i><br/><br/><b>Proof</b> — can it build, run, pass, render, respond, migrate, comply?<br/><b>Backpressure</b> — tests, linters, type checks, architecture rules, security checks,<br/>smoke tests, health checks, endpoint checks, browser flows.<br/><b>Evidence</b> — logs, traces, screenshots, reports, command output, API responses.<br/><b>Token savings</b> — less rediscovery, fewer loops, less markdown-as-runtime.<br/>Encode repeatable knowledge into commands, scripts and checks."]
-    C["<b>CODEBASE LAYER</b><br/><i>Bootable, observable, testable, mockable, stable.</i><br/>Engineering Fundamentals — the substrate that makes deterministic proof possible."]
-
-    H -->|"steers: intent, decisions, what matters"| I
-    I -->|"shows receipts: evidence, proposals, magic-wand asks"| H
-    I -->|"asks for proof: boot, checks, smoke — discovered via --help, not memory"| D
-    D -->|"verdicts &amp; evidence — friction comes back as new commands"| I
-    D -->|"wraps what exists: build / test / run / seed, as-is"| C
-    C -->|"demands harnessability: fakes, seams, bootability"| D
-
-    classDef human fill:#fbf1dd,stroke:#b8760f,stroke-width:2px,color:#23282f
-    classDef infer fill:#e7eefb,stroke:#2a66c9,stroke-width:2px,color:#23282f
-    classDef det fill:#e4f3ec,stroke:#0e8f5a,stroke-width:2px,color:#23282f
-    classDef code fill:#eceef0,stroke:#67707b,stroke-width:2px,color:#23282f
-    class H human
-    class I infer
-    class D det
-    class C code
-```
-
-> "If the agent had to infer it twice, encode it here."
+<!-- Diagram source: docs/media/harness-layers.mmd — re-render to docs/media/harness-layers.png
+     (image, not a ```mermaid block, so it renders on npm too — npm doesn't render Mermaid). -->
+![The engineering harness layers — intent flows down, evidence flows up; the deterministic (engineering harness) layer sits between the inference layer and the codebase.](docs/media/harness-layers.png)
 
 ## The focal point
 

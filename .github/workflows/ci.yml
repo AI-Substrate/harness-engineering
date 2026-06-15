@@ -186,8 +186,10 @@ jobs:
           # config (exits 0 without auth — never contacts the registry) and proves
           # the scoped name + bin/dist are in the packed set.
           npm publish --dry-run 2>&1 | tee /tmp/pub.txt
-          grep -q "npm.pkg.github.com" /tmp/pub.txt \
-            || { echo "::error title=dry-run::not targeting GitHub Packages"; exit 1; }
+          grep -q "registry.npmjs.org" /tmp/pub.txt \
+            || { echo "::error title=dry-run::not targeting the public npm registry"; exit 1; }
+          grep -qi "public access" /tmp/pub.txt \
+            || { echo "::error title=dry-run::not publishing with public access"; exit 1; }
           npm pack --dry-run --json > /tmp/pack.json
           jq -e '.[0].name == "@ai-substrate/engineering-harness"' /tmp/pack.json >/dev/null \
             || { echo "::error title=dry-run::scoped name mismatch"; exit 1; }
@@ -195,7 +197,7 @@ jobs:
             || { echo "::error title=dry-run::bin not packed"; exit 1; }
           jq -e '[.[0].files[].path] | any(startswith("harness/cli/dist/"))' /tmp/pack.json >/dev/null \
             || { echo "::error title=dry-run::dist not packed"; exit 1; }
-          echo "OK: scoped name + bin + dist present; targeting GitHub Packages"
+          echo "OK: scoped name + bin + dist present; targeting the public npm registry (public access)"
 
       - name: Pack and smoke-test the installed bin (with a .ts extension fixture)
         run: |

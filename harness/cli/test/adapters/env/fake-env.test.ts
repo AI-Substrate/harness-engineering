@@ -17,6 +17,22 @@ describe('FakeEnv', () => {
     expect(env.get('MISSING')).toBeUndefined();
     expect(env.gets).toEqual(['HARNESS_JSON', 'MISSING']);
   });
+
+  it('given_seeded_home_when_home_called_then_returns_it_and_records_the_call', () => {
+    /*
+    Test Doc:
+    - Why: services placing user-global state (the update-check cache) need the
+      home dir via the port, never os.homedir() (P2).
+    - Contract: FakeEnv.home returns the seeded home (or undefined) and counts calls.
+    - Usage Notes: pass home as the 2nd constructor arg; assert on `homeCalls`.
+    - Quality Contribution: keeps home-dependent path logic deterministic in tests.
+    - Worked Example: new FakeEnv({}, '/home/u').home() === '/home/u'.
+    */
+    const withHome = new FakeEnv({}, '/home/u');
+    expect(withHome.home()).toBe('/home/u');
+    expect(withHome.homeCalls).toBe(1);
+    expect(new FakeEnv().home()).toBeUndefined();
+  });
 });
 
 describe('NodeEnv', () => {
@@ -27,6 +43,24 @@ describe('NodeEnv', () => {
       expect(new NodeEnv().get('HARNESS_DEFINITELY_UNSET_VAR')).toBeUndefined();
     } finally {
       delete process.env.HARNESS_TEST_VAR;
+    }
+  });
+
+  it('home() falls back past an EMPTY HOME to USERPROFILE (companion F001)', () => {
+    // `||` (not `??`) means an empty HOME is NOT treated as resolved — it falls
+    // through to %USERPROFILE% (then os.homedir(), which is host-dependent so not
+    // asserted here). Deterministic: empty HOME + a set USERPROFILE.
+    const prevHome = process.env.HOME;
+    const prevProfile = process.env.USERPROFILE;
+    try {
+      process.env.HOME = '';
+      process.env.USERPROFILE = '/profile/u';
+      expect(new NodeEnv().home()).toBe('/profile/u');
+    } finally {
+      if (prevHome === undefined) delete process.env.HOME;
+      else process.env.HOME = prevHome;
+      if (prevProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = prevProfile;
     }
   });
 });

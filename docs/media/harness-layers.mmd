@@ -1,0 +1,22 @@
+%%{init: {"flowchart": {"wrappingWidth": 520, "nodeSpacing": 60, "rankSpacing": 64}} }%%
+flowchart TD
+    H["<b>HUMAN STEERING LAYER</b> (THIS IS YOU)<br/><i>Intent, judgement, risk, taste, priorities.</i><br/>Humans decide what matters and what gets encoded."]
+    I["<b>INFERENCE LAYER</b> · Agent Harness<br/><i>Reasoning, planning, semantic review, architecture judgement. Writes code.<br/>Spec Driven Development etc. lives here.</i><br/>Where the agent works through ambiguity and discovers friction."]
+    D["<b>DETERMINISTIC LAYER</b> · Engineering Harness<br/><i>Runnable proof, backpressure, and token savings.</i><br/><br/><b>Proof</b> — can it build, run, pass, render, respond, migrate, comply?<br/><b>Backpressure</b> — tests, linters, type checks, architecture rules, security checks,<br/>smoke tests, health checks, endpoint checks, browser flows.<br/><b>Evidence</b> — logs, traces, screenshots, reports, command output, API responses.<br/><b>Token savings</b> — less rediscovery, fewer loops, less markdown-as-runtime.<br/>Encode repeatable knowledge into commands, scripts and checks."]
+    C["<b>CODEBASE LAYER</b><br/><i>Bootable, observable, testable, mockable, stable.</i><br/>Engineering Fundamentals — the substrate that makes deterministic proof possible."]
+
+    H -->|"steers: intent, decisions, what matters"| I
+    I -->|"shows receipts: evidence, proposals, magic-wand asks"| H
+    I -->|"asks for proof: boot, checks, smoke — discovered via --help, not memory"| D
+    D -->|"verdicts &amp; evidence — friction comes back as new commands"| I
+    D -->|"wraps what exists: build / test / run / seed, as-is"| C
+    C -->|"demands harnessability: fakes, seams, bootability"| D
+
+    classDef human fill:#fbf1dd,stroke:#b8760f,stroke-width:2px,color:#23282f
+    classDef infer fill:#e7eefb,stroke:#2a66c9,stroke-width:2px,color:#23282f
+    classDef det fill:#e4f3ec,stroke:#0e8f5a,stroke-width:2px,color:#23282f
+    classDef code fill:#eceef0,stroke:#67707b,stroke-width:2px,color:#23282f
+    class H human
+    class I infer
+    class D det
+    class C code

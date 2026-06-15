@@ -2,7 +2,7 @@ name: Release
 
 on:
   # Main: release-please maintains the Release PR; merging it cuts the release
-  # and (below) publishes to GitHub Packages. canary/**: pre-merge publish proof.
+  # and (below) publishes to the public npm registry. canary/**: pre-merge proof.
   push:
     branches: [main, 'canary/**']
   # workflow_dispatch is only registered once this workflow is on the DEFAULT
@@ -17,9 +17,11 @@ permissions:
 # release-please manages semver tags + CHANGELOG from conventional commits. It
 # opens/refreshes a Release PR; merging that PR tags + creates a GitHub release,
 # which sets `release_created` → the `publish` job pushes the matching version to
-# GitHub Packages as @ai-substrate/engineering-harness. Installs now use the
-# registry (see README — consumer .npmrc + read:packages token). The `canary` job
-# proves the whole publish + authed-install path from a branch BEFORE merge.
+# the PUBLIC npm registry as @ai-substrate/engineering-harness, with npm
+# PROVENANCE attaching a verifiable link from the version back to this workflow
+# run + commit (shown on npmjs.com). Anonymous `npm i -g @ai-substrate/engineering-harness`
+# then works with no token. The `canary` job proves the whole publish +
+# ANONYMOUS-install path from a branch BEFORE merge.
 jobs:
   release-please:
     runs-on: ubuntu-latest
@@ -47,27 +49,31 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # Publish to GitHub Packages — ONLY when release-please actually cut a release.
-  # Singular `release_created` (the plural `releases_created` is a v3→v4 trap that
-  # defaults truthy); string compare because Actions outputs are strings. The
-  # published version is whatever release-please already committed to package.json.
+  # Publish to the public npm registry — ONLY when release-please actually cut a
+  # release. Singular `release_created` (the plural `releases_created` is a v3→v4
+  # trap that defaults truthy); string compare because Actions outputs are strings.
+  # The published version is whatever release-please already committed to package.json.
   publish:
     needs: [release-please]
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write # required for npm provenance (links the version to this run)
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Node (GitHub Packages registry)
+      - name: Set up Node (npm registry)
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          registry-url: https://npm.pkg.github.com
+          registry-url: https://registry.npmjs.org
           scope: '@ai-substrate'
+
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.
+      - name: Ensure npm >= 11.5.1 (OIDC trusted publishing)
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -75,33 +81,38 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish (latest)
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # OIDC trusted publishing — no NODE_AUTH_TOKEN; npm exchanges the GitHub
+      # OIDC token (id-token: write) with the registry's trusted-publisher config.
+      # Provenance is automatic under trusted publishing (flag kept for clarity).
+      - name: Publish (latest, public, OIDC trusted publishing + provenance)
+        run: npm publish --access public --provenance
 
-  # Canary (AC-11) — prove publish + authed-install from a branch BEFORE merge.
+  # Canary (AC-11) — prove publish + ANONYMOUS install from a branch BEFORE merge.
   # Triggered by a push to `canary/**` (pre-merge) or workflow_dispatch (post-merge
   # ergonomics). Publishes an ephemeral, NEVER-committed `<base>-canary.<run>`
   # under the `canary` dist-tag (the --tag is load-bearing — without it npm would
-  # clobber `latest`). github.run_number guarantees a unique version (GitHub
-  # Packages versions are immutable).
+  # clobber `latest`). github.run_number guarantees a unique version (npm versions
+  # are immutable).
   canary:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/heads/canary/')
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      id-token: write # required for npm provenance
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up Node (GitHub Packages registry)
+      - name: Set up Node (npm registry)
         uses: actions/setup-node@v6
         with:
           node-version: '22'
-          registry-url: https://npm.pkg.github.com
+          registry-url: https://registry.npmjs.org
           scope: '@ai-substrate'
+
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.
+      - name: Ensure npm >= 11.5.1 (OIDC trusted publishing)
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
@@ -115,20 +126,24 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish (canary dist-tag — never touches latest)
-        run: npm publish --tag canary
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish (canary dist-tag — never touches latest; OIDC, no token)
+        run: npm publish --tag canary --access public --provenance
 
-      - name: Verify — authed install of @canary runs; latest untouched (AC-11)
+      - name: Verify — ANONYMOUS install of @canary runs; latest untouched (AC-11)
         run: |
           VER=$(node -p "require('./package.json').version")
           echo "published canary version: $VER"
           SMOKE=$(mktemp -d); cd "$SMOKE"
           npm init -y >/dev/null 2>&1
-          # Authed consumer install: scope → GitHub Packages + token.
-          printf '@ai-substrate:registry=https://npm.pkg.github.com\n//npm.pkg.github.com/:_authToken=%s\n' "$NODE_AUTH_TOKEN" > .npmrc
-          npm install "@ai-substrate/engineering-harness@canary"
+          # Anonymous consumer install: PUBLIC package, no .npmrc, no token — that
+          # is the whole point of the npmjs migration (FX001). The registry read
+          # replica can lag a few seconds behind a fresh publish, so retry the
+          # anonymous install until the new canary version propagates.
+          for attempt in $(seq 1 10); do
+            npm install "@ai-substrate/engineering-harness@canary" && break
+            echo "canary not visible yet (attempt $attempt/10) — waiting 15s for propagation…"; sleep 15
+          done
+          test -x ./node_modules/.bin/harness || { echo "::error title=canary::@canary did not become installable after retries"; exit 1; }
           echo "installed bin:"; ls -l node_modules/.bin/harness
           ./node_modules/.bin/harness --json help | tee help.json
           grep -q '"status":"ok"' help.json || { echo "::error title=canary::installed bin did not return status ok"; exit 1; }
@@ -138,6 +153,4 @@ jobs:
           if [ -n "$LATEST" ] && [ "$LATEST" = "$VER" ]; then
             echo "::error title=canary::the canary clobbered the latest dist-tag"; exit 1
           fi
-          echo "OK: @canary installs + runs (status ok); latest not clobbered"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "OK: @canary installs + runs ANONYMOUSLY (status ok); latest not clobbered"

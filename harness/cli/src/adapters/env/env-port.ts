@@ -7,4 +7,11 @@
 export interface EnvPort {
   /** Value of an env var, or undefined if unset. */
   get(name: string): string | undefined;
+  /**
+   * Absolute path to the user's home directory (`$HOME` / `%USERPROFILE%`), or
+   * undefined if it cannot be resolved. Lets services place user-global state
+   * (e.g. the update-check cache under `~/.harness/`) without reading
+   * `os.homedir()` directly — keeping them free of `node:*` (P2).
+   */
+  home(): string | undefined;
 }

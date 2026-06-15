@@ -6,30 +6,16 @@ The agent-friendly **front door** to this repo's engineering harness. A small, w
 
 ## Install / run
 
-The CLI is published to **GitHub Packages** as `@ai-substrate/engineering-harness` (bin `harness`). GitHub Packages requires authentication even for public packages, so a one-time consumer setup is needed:
+The CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness` (bin `harness`) — install it like any public package, **no auth or `.npmrc` setup** (Node `>= 22`):
 
-1. Point the `@ai-substrate` scope at GitHub Packages — add to your repo's (or `~/`) `.npmrc`:
+```bash
+npm install -g @ai-substrate/engineering-harness
+harness doctor
+```
 
-   ```ini
-   @ai-substrate:registry=https://npm.pkg.github.com
-   ```
+…or run it without installing: `npx @ai-substrate/engineering-harness doctor`.
 
-2. Authenticate with a GitHub token carrying the **`read:packages`** scope (a classic PAT, or `GITHUB_TOKEN` in CI) — either log in once:
-
-   ```bash
-   npm login --scope=@ai-substrate --registry=https://npm.pkg.github.com
-   ```
-
-   …or add the token to `.npmrc`: `//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}`.
-
-3. Install and run (Node `>= 22`):
-
-   ```bash
-   npm install @ai-substrate/engineering-harness
-   npx harness doctor
-   ```
-
-The published tarball bakes in the built `dist` and declares `commander` + `jiti` as runtime dependencies, so an `--omit=dev` install resolves everything — no install-time build, no git-clone fragility. Pin a version the usual way (`@ai-substrate/engineering-harness@0.1.0`).
+The published tarball bakes in the built `dist` and declares `commander` + `jiti` as runtime dependencies, so an `--omit=dev` install resolves everything — no install-time build, no git-clone fragility. Pin a version the usual way (`@ai-substrate/engineering-harness@0.3.0`). Every release is published with **npm provenance**, so each version links back to the GitHub Actions run + commit that built it.
 
 For local development in this repo:
 
@@ -38,6 +24,23 @@ npm install
 npm run build
 node harness/cli/dist/index.js doctor
 ```
+
+### Keeping it current
+
+Once installed globally, the CLI keeps **itself** fresh from the same registry:
+
+```bash
+harness update              # upgrade the global install to @latest (no-op if already current)
+harness update --check      # report installed vs latest — exit 0, installs nothing
+harness update --pin v0.3.0 # install one exact version (not persisted)
+harness self-install        # first-time global bootstrap from the registry
+```
+
+`harness update` announces, then runs, `npm i -g @ai-substrate/engineering-harness@latest`. A failed install maps to an actionable error: the registry rejected it (the package is public — check `npm config get registry` and that the version is published), a denied global install (use a Node version manager such as nvm/Volta, or a prefix-writable npm), or npm absent.
+
+**Staleness is hard to miss.** The registry lookup is **throttled to once per 24h** and **cached** under `~/.harness/` (failure-silent). `harness update` and `harness update --check` perform that lookup; once a newer version is cached, **every** command surfaces it from a single fast cache read (no per-command network call) until you update — a top-level `update_available` field in JSON output, and one `update available to <latest> from <installed> — run: harness update` line on **stderr** in human mode (never stdout or the JSON payload). Run `harness update --check` periodically — a daily cron, a CI step, or your agent's session-start — to keep the signal fresh. (Ordinary commands deliberately never touch the network, so the CLI stays instant.)
+
+**Skills too.** The harness binary (this registry package) and its **skills** (installed via `npx skills`) are two channels; `harness update --target <cli> [--global]` reconciles both — it upgrades the CLI *and* refreshes + prunes this harness's skills for that CLI (reusing the `harness skills update` path). Without `--target` it *reports* the skills situation (what would refresh/prune) without changing anything. Full guide: [keeping the harness up to date](../../docs/how/keeping-the-harness-up-to-date.md).
 
 ## Extensions: the focal point
 
@@ -93,9 +96,11 @@ See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract
 | `harness docs [id]` | List the bundled, curated docs (`harness docs`), or print one verbatim to stdout (`harness docs <id>`). Offline; ships with the CLI. | ✅ core |
 | `harness skills install` | Install **this harness's own skills** into a CLI — a transparent pass-through to Vercel's [`npx skills add`](https://github.com/vercel-labs/skills). Picks target(s) (`--target claude-code\|codex\|cursor\|github-copilot\|opencode\|pi`, repeatable) and scope (`--global` or project-local). **Announces the exact `npx` line before running** and always passes `-y` (the blocking picker never appears). Missing `--target` → `E108` (non-blocking). | ✅ core |
 | `harness skills update` | Refresh this harness's skills to latest **and prune** renamed/removed ones. Same target/scope flags as `install`; wraps `npx skills add` (refresh + pull new) **then** `npx skills remove` of the renamed-away slugs (the installer has no native prune, so a rename would otherwise leave a stale twin). Announces both commands; refresh failure aborts before pruning (no regression). | ✅ core |
+| `harness update` | Keep the globally-installed CLI current from the registry. Bare: upgrade to `@latest` (no-op if already current, not an error). `--check`: report installed vs latest (exit 0, no install). `--pin vX.Y.Z`: one exact version. `--target <cli> [--global]`: **also** reconcile this harness's skills (refresh + prune). Every `update` envelope carries a `skills` sub-object (report-only without `--target`). Announces the `npm i -g` line; failures map to actionable errors (registry `E201` / permission `E202` / npm-missing `E203` / pinned-not-found `E204`). | ✅ core |
+| `harness self-install` | First-time global bootstrap — installs `@ai-substrate/engineering-harness@latest` from the public npm registry (no auth needed); a registry/transport failure returns an actionable `next_action`. | ✅ core |
 | `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
 
-`help`, `doctor`, `new`, `docs`, and `skills` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
+`help`, `doctor`, `new`, `docs`, `skills`, `update`, and `self-install` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
 
 ```bash
 harness help --json                     # machine-readable verb map (data.verbs[])
@@ -134,6 +139,7 @@ Selection precedence (highest wins):
 | `2` | `unconfigured` — a verb reported it has no behaviour mapped yet. |
 | `E140/E141/E142` | (in `error.code`) extension load failure / runtime throw / verb-name conflict. |
 | `E160` | (in `error.code`) `harness docs <id>` — no curated doc with that id (exit 1). |
+| `E200`–`E204` | (in `error.code`) `harness update`/`self-install` — generic failure / registry rejected (unexpected auth, or not-yet-published / unreachable) / global-install permission denied / npm not on PATH / pinned version not in registry. |
 
 `unconfigured → 2` is deliberate: a script or agent can distinguish "not built yet" (2) from "broke" (1), and `doctor` still exits `0` because it succeeded at *reporting*.
 
@@ -163,7 +169,7 @@ CI runs on every pull request and on pushes to `main` (`.github/workflows/ci.yml
 - **`package-smoke`** — packs the tarball, installs it into a clean temp project with `--omit=dev`, drops a real `.harness/extensions/hello/extension.ts` package fixture, and asserts the installed `harness` bin discovers + jiti-loads the verb and runs it (proving jiti resolves as a runtime dependency), plus a flat `legacy.ts` file is rejected with `E143` — the npx/bin-symlink + extension contract end-to-end.
 - **`ci-required`** — a stable aggregation job that fails if any required job failed. Branch protection requires this one matrix-independent check.
 
-**Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release **and the `publish` job pushes `@ai-substrate/engineering-harness` to GitHub Packages** (gated on release-please actually cutting a release). A branch-dispatchable **canary** job proves the publish + authed-install path before merge (push a `canary/**` branch, or `workflow_dispatch` once the workflow is on `main`). Install from the registry — see *Install / run* above.
+**Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release **and the `publish` job pushes `@ai-substrate/engineering-harness` to the public npm registry with provenance** (gated on release-please actually cutting a release). A branch-dispatchable **canary** job proves the publish + **anonymous-install** path before merge (push a `canary/**` branch, or `workflow_dispatch` once the workflow is on `main`). Install from npm — see *Install / run* above.
 
 **Branch protection** on `main` requires the `ci-required` check to pass before merge. Applied with (requires repo admin):
 
