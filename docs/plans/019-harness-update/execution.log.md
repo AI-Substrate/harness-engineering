@@ -28,3 +28,8 @@
 - New port `latest(): Promise<string|null>`. `NodeVersionLookup` composes `ExecPort` → `npm view <pkg> version --json`, parses a JSON string or array (last entry), and maps any non-ok exit / parse failure to `null` (degrade silently, AC9). `FakeVersionLookup` scripts result-or-throw and counts calls.
 - No `node:*` in the adapter (spawning stays in `NodeExec`); `pkg` is injected so there's no service→adapter import.
 - Tests: `test/adapters/version-lookup` — 6 pass.
+- Commit: `6295c34`.
+
+### T003 — semver is-newer compare ✅
+- Pure `isNewer(latest, installed)` in `services/update/semver.ts`: numeric core compare, SemVer §11.4 pre-release precedence (release > `-canary.N`), tolerates leading `v`, ignores `+build`. Malformed either side ⇒ `false` (no phantom update).
+- No `node:*` (pure). Tests: `test/services/update/semver.test.ts` — 6 pass (29 assertions across core/equal/older/v-prefix/prerelease/malformed).
