@@ -74,3 +74,8 @@
 - bare `update`: installs `@latest` unless a lookup proves already-current (before==after no-op, not error) (AC1).
 - Announce-then-run via `ExecPort` (mirrors the skills act); 5 new error codes E200–E204.
 - Tests: `test/acts/update.test.ts` 8 pass; updated 4 surface snapshots (command list ×3 + ErrorCodes table). **Full suite 62 files / 589 green.**
+- Commit: `a1b46a6`.
+
+### T009 — self-install convenience ✅
+- `harness self-install` command (in `registerUpdateAct`): global install from the registry, reusing the shared `installSpec('latest')`. A missing `.npmrc`/`read:packages` token surfaces as an auth error + setup next_action via `classifyInstallFailure` (AC4).
+- Tests: self-install ok + 401→E201 auth/next_action; updated command-list snapshots ×3 (added `self-install`). 23 pass across update/app/index.

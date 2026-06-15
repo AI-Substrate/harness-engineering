@@ -186,6 +186,16 @@ export function registerUpdateAct(
       }
       await installSpec('update', io, deps, installed, 'latest', result.latest);
     });
+
+  program
+    .command('self-install')
+    .description('Install the harness CLI globally from the registry (first-time bootstrap)')
+    .action(async () => {
+      // Convenience global install from the GitHub Packages release. A missing
+      // `.npmrc` / `read:packages` token surfaces as an auth error + setup
+      // next_action via classifyInstallFailure (AC4/AC10).
+      await installSpec('self-install', io, deps, installed, 'latest', null);
+    });
 }
 
 export { installSpec };

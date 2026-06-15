@@ -155,3 +155,33 @@ describe('harness update (bare)', () => {
     expect(exec.calls.map(execLine)).toEqual([VIEW]); // never installed
   });
 });
+
+describe('harness self-install', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('installs @latest globally, exit 0 (AC4)', async () => {
+    const { out, code, exec } = await run(['self-install'], 'json', {
+      scripts: { [INSTALL('latest')]: { code: 0 } },
+    });
+    const env = JSON.parse(out);
+    expect(env.command).toBe('self-install');
+    expect(env.data).toEqual({
+      installed_before: '0.2.0',
+      installed_after: null,
+      command: 'npm i -g @ai-substrate/engineering-harness@latest',
+    });
+    expect(code).toBe(0);
+    expect(exec.calls.map(execLine)).toEqual([INSTALL('latest')]);
+  });
+
+  it('maps a missing-token 401 to an auth error with a .npmrc next_action (AC4/AC10)', async () => {
+    const { out, code } = await run(['self-install'], 'json', {
+      scripts: { [INSTALL('latest')]: { code: 1, stderr: 'npm ERR! code E401\nnpm ERR! 401 Unauthorized' } },
+    });
+    const env = JSON.parse(out);
+    expect(env.status).toBe('error');
+    expect(env.error.code).toBe('E201');
+    expect(env.next_action).toMatch(/\.npmrc|read:packages/);
+    expect(code).toBe(1);
+  });
+});
