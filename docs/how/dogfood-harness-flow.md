@@ -55,6 +55,9 @@ harness validate-harness-flow --repo https://github.com/chalk/chalk.git
 # Install the harness from GitHub instead of the local checkout:
 harness validate-harness-flow --github
 
+# Skip the install step — use the harness already installed globally on this machine:
+harness validate-harness-flow --global
+
 # Keep the temp clones + run dirs for inspection:
 harness validate-harness-flow --keep
 ```
@@ -70,6 +73,7 @@ poll. The workers keep running after it exits.
 | `--keep` | keep the temp clones + run dirs |
 | `--model <model>` | pass-through model for `minih run -m` |
 | `--github` | install the harness into each clone from GitHub (sets the worker's `harnessSource=github`) |
+| `--global` | skip the install step — workers use the globally-installed `harness` on PATH (sets `harnessSource=global`). Probes adapt: the CLI is probed via PATH and **Skills local** renders `—` (N/A), since the project-local install is skipped by design. Use when the product is already installed on the machine (e.g. validating the *flow* — adopt/init/boot — without re-testing install plumbing). |
 | `--collect` | aggregate finished workers' records + reports, probe the clones |
 | `--wait <seconds>` | with `--collect`: max seconds to poll workers to terminal (default 120) |
 | `--out <dir>` | collection sink dir (default `docs/plans/013-dogfood-harness-flow/runs`) |

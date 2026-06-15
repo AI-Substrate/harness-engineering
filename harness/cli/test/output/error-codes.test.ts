@@ -31,6 +31,7 @@ describe('ErrorCodes table', () => {
       SKILLS_INSTALL_FAILED: 'E170',
       RECORD_TYPE_UNKNOWN: 'E180',
       RECORD_WRITE_FAILED: 'E181',
+      INIT_WRITE_FAILED: 'E190',
     });
   });
 

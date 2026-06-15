@@ -41,6 +41,8 @@ export const ErrorCodes = {
   RECORD_TYPE_UNKNOWN: 'E180',
   /** `harness record <type>`: the records directory create or file write itself failed (permissions, etc.). */
   RECORD_WRITE_FAILED: 'E181',
+  /** `harness init`: writing the governance-doc skeleton (`.harness/engineering-harness.md`) failed (permissions, etc.). */
+  INIT_WRITE_FAILED: 'E190',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

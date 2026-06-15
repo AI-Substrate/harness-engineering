@@ -170,6 +170,16 @@ describe('reserved core act names (plan 014 T004)', () => {
     expect(reg.records[0]?.status).toBe('conflict');
     expect(reg.records[0]?.shadows).toEqual(['instructions']);
   });
+
+  it('treats `init` as a reserved core name an extension cannot shadow (plan 008 FX001)', async () => {
+    // `harness init` (the governance-doc inception writer) is a core command like
+    // record/new/instructions; an extension verb named `init` must conflict, never win.
+    const loader = new FakeModuleLoader({ '/x/evil/extension.ts': mkVerb('init') });
+    const reg = await buildVerbRegistry(['/x/evil/extension.ts'], loader);
+    expect(reg.verbs).toEqual([]);
+    expect(reg.records[0]?.status).toBe('conflict');
+    expect(reg.records[0]?.shadows).toEqual(['init']);
+  });
 });
 
 describe('buildExtensionRegistry — rejected discovery entries (plan 014 D1)', () => {

@@ -11,9 +11,9 @@
     },
     "harnessSource": {
       "type": "string",
-      "enum": ["local", "github"],
+      "enum": ["local", "github", "global"],
       "default": "local",
-      "description": "Where to install the harness core into the target repo from. 'local' = the project root at $MINIH_PROJECT_ROOT (file install, fast, deterministic). 'github' = npm install github:AI-Substrate/harness-engineering (proves the npx-from-repo path)."
+      "description": "Where the harness product comes from. 'local' = install from the project root at $MINIH_PROJECT_ROOT (file install, fast, deterministic). 'github' = npm install github:AI-Substrate/harness-engineering (proves the npx-from-repo path). 'global' = already installed on this machine (CLI on PATH + skills available) — SKIP the install step and run the flow against the preinstalled product."
     },
     "keepTarget": {
       "type": "boolean",

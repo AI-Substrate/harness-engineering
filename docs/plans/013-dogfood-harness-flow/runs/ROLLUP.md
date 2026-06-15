@@ -1,7 +1,7 @@
 # validate-harness-flow — Run Rollup
 
-**Collected**: 2026-06-10T05:16:50.492Z  ·  **Fired**: 2026-06-10T05:03:58.744Z
-**Agent**: validate-harness-flow  ·  **Temp root**: /tmp/harness-flow-selftest-2026-06-10T05-03-54-224Z
+**Collected**: 2026-06-15T00:01:12.686Z  ·  **Fired**: 2026-06-14T23:52:27.387Z
+**Agent**: validate-harness-flow  ·  **Temp root**: /tmp/harness-flow-selftest-2026-06-14T23-52-23-096Z
 
 **Totals**: DONE 1 · TIMED_OUT 0 · MISSING_REPORT 0 · NOT_FIRED 0
 
@@ -11,7 +11,7 @@
 
 | Repo | State | Verdict | Grade | Operate/Adapt | Abandoned | Boot | Retro | Copied |
 |------|-------|---------|-------|---------------|-----------|------|-------|--------|
-| chalk | DONE | PASS | B | C/B | no | ✓ | ✓ | 4 files |
+| chalk | DONE | PASS | B | B/B | no | ✓ | ✓ | 4 files |
 
 ## Probes (deterministic, per clone)
 
@@ -19,9 +19,7 @@
 
 | Repo | Assessed | Doctor | Boot env | Retro rec | Drained | Temp ignore | Temp clean | Skills local | Observe (INFO) |
 |------|----------|--------|----------|-----------|---------|-------------|------------|--------------|----------------|
-| chalk | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | 0 pending / 3 recorded |
-
-- **chalk** skills-local ✗ — no project-local eng-harness-* skills (the minih mount does not count)
+| chalk | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | 0 pending / 4 recorded |
 
 ### ⚠️ Probe vs self-report discrepancies
 
@@ -29,18 +27,21 @@ _None — self-reports and probes agree._
 
 ## Magic-wand wishes (surfaced)
 
-- **chalk** (project): Make local-source dogfood install a single deterministic command that builds the harness package outside the consumer repo and installs a packed artifact into the target, so the target repo's older dev toolchain cannot break harness setup.
+- **chalk** (project): Make the harnessability assessment skill expose one deterministic command that writes and schema-validates the assessment report skeleton from gathered evidence, so adoption can consume `latest.json` without the agent hand-assembling optional v0.2 arrays.
 
 ## Difficulties (surfaced)
 
+### minih
+
+- **chalk** `VF-004` [config]: The run input allowed `harnessSource: global`, but the worker output schema's `harnessSource` enum only listed `local` and `github`.
+
 ### project
 
-- **chalk** `VF-001` [build]: Local-source CLI install first failed because npm ran the harness package prepare script against Chalk's older TypeScript toolchain.
-- **chalk** `VF-002` [config]: `harness init --json` is documented as a graceful missing-command fallback, but this CLI returned a generic E108 root parser error instead of an init-specific unavailable envelope.
-- **chalk** `VF-003` [knowledge]: Piping `harness instructions boot` for a short preview switched output to JSON because stdout was non-TTY, which made a quick human text preview less direct.
-- **chalk** `VF-004` [debug]: A `harness observe` capture used backticks inside a double-quoted shell argument, so the shell executed the command before `harness observe` saw the text and bloated the observation buffer.
+- **chalk** `VF-001` [knowledge]: The assessment skill is a long authoring contract rather than a runnable assessment command, so producing its artifact required manually assembling JSON/Markdown and fixing schema-specific optional survey fields.
+- **chalk** `VF-002` [knowledge]: The adoption skill says to propose and ask before edits, but this validator is a single-shot onboarding probe with prior throwaway-clone permission and no human approval turn.
+- **chalk** `VF-003` [config]: `harness doctor --json` reported `degraded` because the global toolchain layer wanted `biome`, even though this consumer repo's extension layer loaded and `harness boot --json` returned `ok`.
 
 
 ## Per-run artifacts
 
-- **chalk/** — report.json, harnessability/latest.md, harnessability/latest.json, retro/2026-06-10/001-validate-harness-flow.md
+- **chalk/** — report.json, harnessability/latest.md, harnessability/latest.json, retro/2026-06-14/001-validate-harness-flow.md
