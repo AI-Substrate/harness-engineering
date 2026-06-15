@@ -99,3 +99,11 @@
 - Arch boundary: `no-direct-exit` + `no-direct-node-io` both pass. No real `node:*` import in `services/update/*` (the only grep hit is a JSDoc line) nor in the `version-lookup` adapter (it composes `ExecPort`).
 - **P3**: zero `vi.mock`; `vi.spyOn` only on `process.exit` (the sanctioned terminal exception, matching the existing harness idiom) — every new service/unit test uses pure fakes.
 - **MCP-stable envelope seam additive-only** (AC11): the 4 `toEqual` sites + snapshot/round-trip all green (18) with the optional `update_available` field; existing consumers unaffected.
+- Commit: `5799245`.
+
+### T013 — docs ✅
+- `harness/cli/README.md`: new **"Keeping it current"** subsection (`update`/`--check`/`--pin`/`self-install`, the daily check + banner, skills reconcile); `update` + `self-install` rows in the command surface; reserved-commands line updated; exit-codes table gains `E200`–`E204`.
+- NEW `docs/how/keeping-the-harness-up-to-date.md`: the two channels, the update commands, failure→fix table, the throttled daily check + JSON/stderr banner, and the `--target` skills reconcile — consistent with 018's `.npmrc`/`read:packages` install prerequisite (cross-linked, no contradiction).
+
+### T000 / T0ZZ — harness seams
+- T000 pre-implement: boot HEALTHY (535 baseline). T0ZZ phase-end: fired after the last task (see footer).

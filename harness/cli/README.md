@@ -39,6 +39,23 @@ npm run build
 node harness/cli/dist/index.js doctor
 ```
 
+### Keeping it current
+
+Once installed globally, the CLI keeps **itself** fresh from the same registry:
+
+```bash
+harness update              # upgrade the global install to @latest (no-op if already current)
+harness update --check      # report installed vs latest — exit 0, installs nothing
+harness update --pin v0.3.0 # install one exact version (not persisted)
+harness self-install        # first-time global bootstrap from the registry
+```
+
+`harness update` announces, then runs, `npm i -g @ai-substrate/engineering-harness@latest`. A failed install maps to an actionable error: registry auth missing/expired (add the `.npmrc` + `read:packages` token above), a denied global install (use a Node version manager such as nvm/Volta, or a prefix-writable npm), or npm absent.
+
+**Staleness is impossible to miss.** Roughly once a day the CLI checks the registry (throttled, failure-silent, cached under `~/.harness/`); when a newer version is known, **every** command surfaces it — a top-level `update_available` field in JSON output, and one `update available to <latest> from <installed> — run: harness update` line on **stderr** in human mode. So an agent or a human always sees it, without it polluting stdout or the JSON payload.
+
+**Skills too.** The harness binary (this registry package) and its **skills** (installed via `npx skills`) are two channels; `harness update --target <cli> [--global]` reconciles both — it upgrades the CLI *and* refreshes + prunes this harness's skills for that CLI (reusing the `harness skills update` path). Without `--target` it *reports* the skills situation (what would refresh/prune) without changing anything. Full guide: [keeping the harness up to date](../../docs/how/keeping-the-harness-up-to-date.md).
+
 ## Extensions: the focal point
 
 The core ships **no** built-in verb list. In your *own* repo, each extension is a little **package folder**:
@@ -93,9 +110,11 @@ See [`docs/authoring-verbs.md`](./docs/authoring-verbs.md) for the full contract
 | `harness docs [id]` | List the bundled, curated docs (`harness docs`), or print one verbatim to stdout (`harness docs <id>`). Offline; ships with the CLI. | ✅ core |
 | `harness skills install` | Install **this harness's own skills** into a CLI — a transparent pass-through to Vercel's [`npx skills add`](https://github.com/vercel-labs/skills). Picks target(s) (`--target claude-code\|codex\|cursor\|github-copilot\|opencode\|pi`, repeatable) and scope (`--global` or project-local). **Announces the exact `npx` line before running** and always passes `-y` (the blocking picker never appears). Missing `--target` → `E108` (non-blocking). | ✅ core |
 | `harness skills update` | Refresh this harness's skills to latest **and prune** renamed/removed ones. Same target/scope flags as `install`; wraps `npx skills add` (refresh + pull new) **then** `npx skills remove` of the renamed-away slugs (the installer has no native prune, so a rename would otherwise leave a stale twin). Announces both commands; refresh failure aborts before pruning (no regression). | ✅ core |
+| `harness update` | Keep the globally-installed CLI current from the registry. Bare: upgrade to `@latest` (no-op if already current, not an error). `--check`: report installed vs latest (exit 0, no install). `--pin vX.Y.Z`: one exact version. `--target <cli> [--global]`: **also** reconcile this harness's skills (refresh + prune). Every `update` envelope carries a `skills` sub-object (report-only without `--target`). Announces the `npm i -g` line; failures map to actionable errors (auth `E201` / permission `E202` / npm-missing `E203` / pinned-not-found `E204`). | ✅ core |
+| `harness self-install` | First-time global bootstrap — installs `@ai-substrate/engineering-harness@latest` from the registry; a missing `.npmrc`/`read:packages` token returns the one-time setup steps. | ✅ core |
 | `harness <verb> […]` | Any verb a discovered extension contributes, with its own `--help`, options, args, Envelope, and exit code. | 🧩 extension |
 
-`help`, `doctor`, `new`, `docs`, and `skills` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
+`help`, `doctor`, `new`, `docs`, `skills`, `update`, and `self-install` are **reserved** core commands — no extension can shadow them (doctor is the diagnostic that *checks* the extension system). Safe mode: `--no-extensions` or `HARNESS_NO_EXTENSIONS=1` skips discovery entirely (core commands only).
 
 ```bash
 harness help --json                     # machine-readable verb map (data.verbs[])
@@ -134,6 +153,7 @@ Selection precedence (highest wins):
 | `2` | `unconfigured` — a verb reported it has no behaviour mapped yet. |
 | `E140/E141/E142` | (in `error.code`) extension load failure / runtime throw / verb-name conflict. |
 | `E160` | (in `error.code`) `harness docs <id>` — no curated doc with that id (exit 1). |
+| `E200`–`E204` | (in `error.code`) `harness update`/`self-install` — generic failure / registry auth (401·403, `.npmrc` token) / global-install permission denied / npm not on PATH / pinned version not in registry. |
 
 `unconfigured → 2` is deliberate: a script or agent can distinguish "not built yet" (2) from "broke" (1), and `doctor` still exits `0` because it succeeded at *reporting*.
 
