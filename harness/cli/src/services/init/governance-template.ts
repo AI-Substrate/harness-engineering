@@ -20,9 +20,9 @@
  */
 export const GOVERNANCE_SKELETON = `# Engineering harness
 
-> **AGENTS START HERE → \`npx --no-install harness instructions\`** — the CLI's
-> baked agent briefing (envelope contract, role split, discovery loop). Then
-> \`npx --no-install harness instructions <verb>\` per verb.
+> **AGENTS START HERE → \`harness instructions\`** — the CLI's baked agent
+> briefing (envelope contract, role split, discovery loop). Then
+> \`harness instructions <verb>\` per verb.
 
 ## Boot command
 <!-- TODO (eng-harness-0-adopt / \`harness new boot --wrap "<cmd>"\`):

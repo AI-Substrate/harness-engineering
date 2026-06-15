@@ -1,0 +1,276 @@
+{
+  "loss": 0.06794998514542885,
+  "lead": 1,
+  "words": [
+    {
+      "text": "Its",
+      "start": 0.079,
+      "end": 0.219
+    },
+    {
+      "text": "first",
+      "start": 0.319,
+      "end": 0.579
+    },
+    {
+      "text": "instinct",
+      "start": 0.659,
+      "end": 1.139
+    },
+    {
+      "text": "isn't",
+      "start": 1.199,
+      "end": 1.48
+    },
+    {
+      "text": "to",
+      "start": 1.539,
+      "end": 1.599
+    },
+    {
+      "text": "build,",
+      "start": 1.679,
+      "end": 2
+    },
+    {
+      "text": "but",
+      "start": 2.379,
+      "end": 2.5
+    },
+    {
+      "text": "to",
+      "start": 2.559,
+      "end": 2.639
+    },
+    {
+      "text": "observe.",
+      "start": 2.72,
+      "end": 3.279
+    },
+    {
+      "text": "A",
+      "start": 4.279,
+      "end": 4.36
+    },
+    {
+      "text": "harnessability",
+      "start": 4.38,
+      "end": 5.159
+    },
+    {
+      "text": "survey",
+      "start": 5.299,
+      "end": 5.699
+    },
+    {
+      "text": "moves",
+      "start": 5.739,
+      "end": 6.039
+    },
+    {
+      "text": "quietly",
+      "start": 6.119,
+      "end": 6.539
+    },
+    {
+      "text": "across",
+      "start": 6.659,
+      "end": 6.94
+    },
+    {
+      "text": "the",
+      "start": 6.98,
+      "end": 7.059
+    },
+    {
+      "text": "codebase,",
+      "start": 7.119,
+      "end": 7.659
+    },
+    {
+      "text": "studying",
+      "start": 8.159,
+      "end": 8.679
+    },
+    {
+      "text": "every",
+      "start": 8.76,
+      "end": 9.059
+    },
+    {
+      "text": "way",
+      "start": 9.119,
+      "end": 9.34
+    },
+    {
+      "text": "a",
+      "start": 9.399,
+      "end": 9.5
+    },
+    {
+      "text": "harness",
+      "start": 9.579,
+      "end": 9.92
+    },
+    {
+      "text": "might",
+      "start": 10,
+      "end": 10.18
+    },
+    {
+      "text": "fit",
+      "start": 10.3,
+      "end": 10.479
+    },
+    {
+      "text": "here.",
+      "start": 10.539,
+      "end": 10.819
+    },
+    {
+      "text": "And",
+      "start": 11.559,
+      "end": 11.659
+    },
+    {
+      "text": "when",
+      "start": 11.719,
+      "end": 11.84
+    },
+    {
+      "text": "it's",
+      "start": 11.88,
+      "end": 12.079
+    },
+    {
+      "text": "done,",
+      "start": 12.139,
+      "end": 12.399
+    },
+    {
+      "text": "it",
+      "start": 12.779,
+      "end": 12.859
+    },
+    {
+      "text": "reports",
+      "start": 12.899,
+      "end": 13.299
+    },
+    {
+      "text": "back,",
+      "start": 13.359,
+      "end": 13.599
+    },
+    {
+      "text": "honestly.",
+      "start": 13.92,
+      "end": 14.46
+    },
+    {
+      "text": "Here,",
+      "start": 15.179,
+      "end": 15.5
+    },
+    {
+      "text": "your",
+      "start": 15.779,
+      "end": 15.899
+    },
+    {
+      "text": "strengths.",
+      "start": 16,
+      "end": 16.6
+    },
+    {
+      "text": "And",
+      "start": 16.899,
+      "end": 17.039
+    },
+    {
+      "text": "here,",
+      "start": 17.159,
+      "end": 17.459
+    },
+    {
+      "text": "more",
+      "start": 17.779,
+      "end": 17.979
+    },
+    {
+      "text": "delicately,",
+      "start": 18.039,
+      "end": 18.639
+    },
+    {
+      "text": "your",
+      "start": 18.959,
+      "end": 19.079
+    },
+    {
+      "text": "weaknesses.",
+      "start": 19.18,
+      "end": 19.819
+    },
+    {
+      "text": "The",
+      "start": 20.439,
+      "end": 20.5
+    },
+    {
+      "text": "lay",
+      "start": 20.639,
+      "end": 20.819
+    },
+    {
+      "text": "of",
+      "start": 20.879,
+      "end": 20.959
+    },
+    {
+      "text": "the",
+      "start": 21,
+      "end": 21.06
+    },
+    {
+      "text": "land,",
+      "start": 21.159,
+      "end": 21.459
+    },
+    {
+      "text": "mapped,",
+      "start": 21.579,
+      "end": 21.92
+    },
+    {
+      "text": "before",
+      "start": 22.139,
+      "end": 22.439
+    },
+    {
+      "text": "a",
+      "start": 22.519,
+      "end": 22.599
+    },
+    {
+      "text": "single",
+      "start": 22.659,
+      "end": 23.019
+    },
+    {
+      "text": "step",
+      "start": 23.079,
+      "end": 23.299
+    },
+    {
+      "text": "is",
+      "start": 23.34,
+      "end": 23.459
+    },
+    {
+      "text": "taken.",
+      "start": 23.519,
+      "end": 23.879
+    }
+  ]
+}

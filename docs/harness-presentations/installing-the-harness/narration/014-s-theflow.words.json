@@ -1,0 +1,286 @@
+{
+  "loss": 0.0844779908657074,
+  "lead": 1,
+  "words": [
+    {
+      "text": "The",
+      "start": 0.079,
+      "end": 0.199
+    },
+    {
+      "text": "built-in",
+      "start": 0.239,
+      "end": 0.62
+    },
+    {
+      "text": "path",
+      "start": 0.74,
+      "end": 1.079
+    },
+    {
+      "text": "is",
+      "start": 1.339,
+      "end": 1.459
+    },
+    {
+      "text": "the",
+      "start": 1.519,
+      "end": 1.639
+    },
+    {
+      "text": "simpler",
+      "start": 1.699,
+      "end": 2.059
+    },
+    {
+      "text": "of",
+      "start": 2.099,
+      "end": 2.2
+    },
+    {
+      "text": "the",
+      "start": 2.259,
+      "end": 2.319
+    },
+    {
+      "text": "two.",
+      "start": 2.419,
+      "end": 2.72
+    },
+    {
+      "text": "You",
+      "start": 3.419,
+      "end": 3.519
+    },
+    {
+      "text": "type",
+      "start": 3.559,
+      "end": 3.839
+    },
+    {
+      "text": "the-flow,",
+      "start": 3.879,
+      "end": 4.4
+    },
+    {
+      "text": "and",
+      "start": 4.88,
+      "end": 5.039
+    },
+    {
+      "text": "then,",
+      "start": 5.079,
+      "end": 5.46
+    },
+    {
+      "text": "in",
+      "start": 5.519,
+      "end": 5.659
+    },
+    {
+      "text": "plain",
+      "start": 5.739,
+      "end": 6.019
+    },
+    {
+      "text": "words,",
+      "start": 6.079,
+      "end": 6.46
+    },
+    {
+      "text": "whatever",
+      "start": 6.779,
+      "end": 7.339
+    },
+    {
+      "text": "it",
+      "start": 7.419,
+      "end": 7.519
+    },
+    {
+      "text": "is",
+      "start": 7.579,
+      "end": 7.699
+    },
+    {
+      "text": "you",
+      "start": 7.759,
+      "end": 7.879
+    },
+    {
+      "text": "need.",
+      "start": 7.96,
+      "end": 8.319
+    },
+    {
+      "text": "Pull",
+      "start": 9.099,
+      "end": 9.26
+    },
+    {
+      "text": "this",
+      "start": 9.3,
+      "end": 9.46
+    },
+    {
+      "text": "ticket,",
+      "start": 9.559,
+      "end": 9.88
+    },
+    {
+      "text": "and",
+      "start": 10.26,
+      "end": 10.38
+    },
+    {
+      "text": "begin",
+      "start": 10.42,
+      "end": 10.739
+    },
+    {
+      "text": "the",
+      "start": 10.779,
+      "end": 10.84
+    },
+    {
+      "text": "work.",
+      "start": 10.979,
+      "end": 11.339
+    },
+    {
+      "text": "And",
+      "start": 12.059,
+      "end": 12.159
+    },
+    {
+      "text": "that's",
+      "start": 12.199,
+      "end": 12.479
+    },
+    {
+      "text": "all.",
+      "start": 12.559,
+      "end": 12.859
+    },
+    {
+      "text": "The",
+      "start": 13.519,
+      "end": 13.599
+    },
+    {
+      "text": "harness",
+      "start": 13.699,
+      "end": 14.119
+    },
+    {
+      "text": "takes",
+      "start": 14.179,
+      "end": 14.399
+    },
+    {
+      "text": "your",
+      "start": 14.439,
+      "end": 14.519
+    },
+    {
+      "text": "request",
+      "start": 14.599,
+      "end": 15.099
+    },
+    {
+      "text": "and",
+      "start": 15.139,
+      "end": 15.239
+    },
+    {
+      "text": "carries",
+      "start": 15.38,
+      "end": 15.719
+    },
+    {
+      "text": "it",
+      "start": 15.779,
+      "end": 15.899
+    },
+    {
+      "text": "the",
+      "start": 15.939,
+      "end": 16.079
+    },
+    {
+      "text": "whole",
+      "start": 16.139,
+      "end": 16.359
+    },
+    {
+      "text": "way",
+      "start": 16.42,
+      "end": 16.639
+    },
+    {
+      "text": "through,",
+      "start": 16.68,
+      "end": 17.039
+    },
+    {
+      "text": "from",
+      "start": 17.539,
+      "end": 17.68
+    },
+    {
+      "text": "spec,",
+      "start": 17.779,
+      "end": 18.119
+    },
+    {
+      "text": "to",
+      "start": 18.479,
+      "end": 18.52
+    },
+    {
+      "text": "plan,",
+      "start": 18.639,
+      "end": 19.039
+    },
+    {
+      "text": "to",
+      "start": 19.34,
+      "end": 19.399
+    },
+    {
+      "text": "finished",
+      "start": 19.5,
+      "end": 19.799
+    },
+    {
+      "text": "change.",
+      "start": 19.899,
+      "end": 20.42
+    },
+    {
+      "text": "There's",
+      "start": 21.079,
+      "end": 21.36
+    },
+    {
+      "text": "nothing",
+      "start": 21.479,
+      "end": 21.84
+    },
+    {
+      "text": "more",
+      "start": 21.939,
+      "end": 22.159
+    },
+    {
+      "text": "to",
+      "start": 22.26,
+      "end": 22.359
+    },
+    {
+      "text": "learn.",
+      "start": 22.42,
+      "end": 22.76
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 // Full-composition builder: narration text -> ElevenLabs audio -> per-slide
 // clip (record.cjs, which muxes the audio) -> one stitched mp4.
 //
-// Narration lives in docs/harness-presentations/narration/NNN-<id>.txt, one
-// file per slide; the NNN-<id> stem matches tts.cjs/record.cjs output naming.
+// Narration lives in docs/harness-presentations/<slug>/narration/NNN-<id>.txt,
+// one file per slide; the NNN-<id> stem matches tts.cjs/record.cjs output
+// naming. The stitched result is scratch/ml-video/<slug>/<slug>-full.mp4.
 // Each slide's video duration = its audio length + a settle pad (min 6s).
 //
 // Incremental: a slide's audio regenerates only when its .txt is newer than
@@ -11,8 +12,9 @@
 //
 // Usage:
 //   NODE_PATH=<dir-with-puppeteer> node docs/harness-presentations/tools/comp.cjs \
-//     [--only 7] [--lead 1] [--tail 1] [--min 6] [--force-tts] [--force-video] [--stitch-only]
+//     [--pres <slug>] [--only 7] [--lead 1] [--tail 1] [--min 6] [--force-tts] [--force-video] [--stitch-only]
 //
+//   --pres SLUG     presentation subfolder (auto-detected when only one exists)
 //   --only N        rebuild just slide N (then restitch)
 //   --lead SECONDS  silence before the narration starts (default 1)
 //   --tail SECONDS  silence after the narration ends (default 1)
@@ -25,9 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const ROOT = path.join(__dirname, '..', '..', '..');
-const NARR = path.join(ROOT, 'docs', 'harness-presentations', 'narration');
-const OUT = path.join(ROOT, 'scratch', 'ml-video');
+// NARR (narration source) and OUT (scratch render dir) are resolved per
+// presentation from --pres, after flag parsing — see resolvePres below.
 
 const BOOLEAN_FLAGS = new Set(['force-tts', 'force-video', 'stitch-only']);
 const args = process.argv.slice(2);
@@ -47,6 +48,10 @@ const lead = +opt('lead', 1);
 const tail = +opt('tail', 1);
 const minDur = +opt('min', 6);
 const only = opt('only', null);
+
+const { slug, narrDir: NARR, outDir: OUT } = require('./pres.cjs').resolvePres({
+  pres: opt('pres'), out: opt('out'),
+});
 
 const TOOLS = __dirname;
 const run = (script, runArgs) =>
@@ -88,7 +93,7 @@ for (const s of slides) {
 
   if (flag('force-tts') || mtime(s.txt) > mtime(s.mp3)) {
     console.log(`\n=== ${s.stem}: narration`);
-    run('tts.cjs', [s.id, '--file', s.txt]);
+    run('tts.cjs', [s.id, '--file', s.txt, '--pres', slug]);
   }
   const audio = probe(s.mp3);
   const dur = Math.max(minDur, Math.ceil((lead + audio + tail) * 10) / 10);
@@ -97,7 +102,7 @@ for (const s of slides) {
     (fs.existsSync(s.mp4) && Math.abs(probe(s.mp4) - dur) > 0.15);
   if (videoStale || !fs.existsSync(s.mp4)) {
     console.log(`=== ${s.stem}: clip (${dur}s = ${lead}s lead + ${audio.toFixed(2)}s narration + tail)`);
-    run('record.cjs', [s.id, '--dur', String(dur), '--lead', String(lead)]);
+    run('record.cjs', [s.id, '--dur', String(dur), '--lead', String(lead), '--pres', slug]);
   } else {
     console.log(`=== ${s.stem}: up to date (${dur}s)`);
   }
@@ -111,7 +116,7 @@ if (missing.length) {
 }
 const list = path.join(OUT, 'concat.txt');
 fs.writeFileSync(list, slides.map((s) => `file '${s.mp4}'`).join('\n') + '\n');
-const full = path.join(OUT, 'missing-layer-101-full.mp4');
+const full = path.join(OUT, `${slug}-full.mp4`);
 execFileSync('ffmpeg', [
   '-y', '-f', 'concat', '-safe', '0', '-i', list,
   '-c', 'copy', '-movflags', '+faststart',

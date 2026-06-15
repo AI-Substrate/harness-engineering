@@ -18,8 +18,8 @@ Check the rows **top-to-bottom**; the **first row whose condition passes** tells
 | 1 | `eng-harness-flow` appears in **your own list of invocable skills/commands** (introspect your skill registry — not `harness help`, which lists CLI verbs, not agent skills) | Skilled — ready to go | [Stage 5 — Go](#stage-5--go-enter-the-harness-loop) |
 | 2 | `ls ./.claude/skills ./.agents/skills 2>/dev/null \| grep eng-harness` is non-empty (skill **files** on disk) but row 1 failed | Pre-restart — skills installed but not loaded | [Stage 4 — Restart](#stage-4--restart-load-the-skills) |
 | 3 | `test -f .harness/engineering-harness.md && test -d .harness/extensions/boot` (harness substrate exists; no skills loaded) | Run 2+, unskilled | [Operating an existing harness](#operating-an-existing-harness-run-2) |
-| 4 | `npx --no-install harness --version` exits 0 (the repo-local CLI resolves) | CLI installed, no skills | [Stage 3 — Install the skills](#stage-3--install-the-harness-skills-project-local) |
-| 5 | None of the above passed | Fresh repo | [Stage 1 — Install the CLI](#stage-1--install-the-harness-cli-into-the-repo) |
+| 4 | `harness --version` exits 0 (the CLI resolves on PATH) | CLI installed, no skills | [Stage 3 — Install the skills](#stage-3--install-the-harness-skills-project-local) |
+| 5 | None of the above passed | Fresh repo | [Stage 1 — Make the CLI available](#stage-1--make-the-harness-cli-available) |
 
 Two of these probes only **you** can answer:
 
@@ -40,7 +40,7 @@ The nucleus in one line: **[CLI focal point + required agent use] + [determinist
 
 Concretely, you will leave behind:
 
-- the **`harness` CLI** installed as a repo dependency — the agent-friendly front door (`harness help`, `harness doctor`, structured JSON envelopes, honest exit codes);
+- the **`harness` CLI** available as an ambient global tool — the agent-friendly front door (`harness help`, `harness doctor`, structured JSON envelopes, honest exit codes);
 - a **`boot` verb** that proves the product runs (wraps the repo's canonical test/build/smoke lane);
 - the **harness skills** installed project-local, so future agents get the choreography, not just the tools;
 - an **`AGENTS.md` route**, so the next agent in this repo finds all of the above at session start;
@@ -50,46 +50,33 @@ The harness never fakes success. A `boot` that honestly reports `degraded` or `u
 
 ---
 
-## Stage 1 — Install the harness CLI into the repo
+## Stage 1 — Make the harness CLI available
 
-The CLI is a Node package installed straight from GitHub (Node >= 22 required; pin a tag with `#vX.Y.Z` for reproducibility):
+The harness CLI is an **ambient tool** — like `git`, `node`, or `gh` — installed **globally on the machine, never into the repo**. It's published to the **public npm registry** as `@ai-substrate/engineering-harness`, so this needs **no token or `.npmrc`** (Node >= 22). Check first; only install if it's missing:
 
 ```bash
-# Repos with no package.json (typical for Python/Go): npm walks UP to the
-# nearest manifest and installs OUTSIDE the repo. Seed a manifest first:
-[ -f package.json ] || npm init -y
-
-npm install github:AI-Substrate/harness-engineering
+harness --version 2>/dev/null || npm install -g @ai-substrate/engineering-harness
+# pin a release for reproducibility:  npm install -g @ai-substrate/engineering-harness@vX.Y.Z
 ```
 
-The first run clones and compiles TypeScript via the package's `prepare` step — expect **20–60 seconds**. It is not hung.
+Nothing about the CLI is committed into the repo — no `package.json` entry, no lockfile, no `node_modules`. Adoption leaves only `.harness/` substrate and (with consent) `AGENTS.md` edits. Once installed, `harness` is on PATH, so every command below is just `harness …`.
 
 Verify — this must print the CLI's usage:
 
 ```bash
-npx --no-install harness --help
+harness --help
 ```
 
-> **Never run bare `npx harness`** — that fetches an unrelated `harness` package from the npm registry. After the install above, always use `npx --no-install harness …` (or `./node_modules/.bin/harness …`) so you get the repo-local binary. This applies to **consumer installs** (harness as a dependency — the bin link is proven by the package-smoke CI job); inside the harness-engineering source repo itself, invoke the bin via node directly (`node harness/cli/bin/harness.js …`) — `npx` resolution of a root package's *own* bin is unreliable across npm majors.
+> **Never run bare `npx harness`** — that fetches an unrelated `harness` package from the npm registry. Use the globally-installed `harness`. A no-global-write alternative is `npx @ai-substrate/engineering-harness <command>` (the scoped package, run from the npm cache); inside the harness-engineering *source* repo itself, invoke the bin via node directly (`node harness/cli/bin/harness.js …`) — `npx` resolution of a root package's *own* bin is unreliable across npm majors.
 
-**If the install fails in the `prepare` build step** (the package compiles TypeScript on install, and a consumer repo's own toolchain can interfere): build a clean tarball outside the repo and vendor it —
-
-```bash
-git clone --depth 1 https://github.com/AI-Substrate/harness-engineering /tmp/he-build
-(cd /tmp/he-build && npm install --ignore-scripts && npm run build && npm pack)
-mkdir -p .harness/vendor
-cp /tmp/he-build/ai-substrate-engineering-harness-*.tgz .harness/vendor/
-npm install ./.harness/vendor/ai-substrate-engineering-harness-*.tgz
-```
-
-This also makes the install deterministic for everyone who clones the repo later — `npm install` restores the harness from the vendored artifact with no network fetch.
+**If the global install is denied** with `EACCES`, that's a filesystem-permissions issue (not auth): set a user-writable prefix (`npm config set prefix ~/.npm-global`, then add its `bin` to PATH) and re-run, or use a Node version manager (nvm/Volta). A `404` / registry rejection means the wrong registry — confirm `npm config get registry` is `https://registry.npmjs.org`; the package is public, so no token is needed.
 
 ## Stage 2 — Read the CLI's own briefing
 
 ```bash
-npx --no-install harness instructions   # the agent briefing — envelope contract, self-briefing loop
-npx --no-install harness help --json    # the verb map + safe first actions
-npx --no-install harness docs           # bundled offline docs (then `harness docs <id>`)
+harness instructions   # the agent briefing — envelope contract, self-briefing loop
+harness help --json    # the verb map + safe first actions
+harness docs           # bundled offline docs (then `harness docs <id>`)
 ```
 
 The contract in one breath: every command emits one envelope `{command, status, data, error?, next_action?, timestamp}`; `status` is `ok | degraded | unconfigured | error`; exit codes are `0` (ok/degraded), `2` (unconfigured), `1` (error); `next_action` is required on any non-ok status — **follow it before improvising**. Pass `--json` for machine-readable output (piped output auto-selects JSON).
@@ -99,7 +86,7 @@ The contract in one breath: every command emits one envelope `{command, status, 
 The CLI brings determinism; the **skills** bring the choreography. Install them into the repo for your agent CLI (the self-ID map in *Where are you?* tells you your `--target` value):
 
 ```bash
-npx --no-install harness skills install --target <your-cli>
+harness skills install --target <your-cli>
 # targets (repeatable): claude-code | codex | cursor | github-copilot | opencode | pi
 ```
 
@@ -155,7 +142,7 @@ Whether the router drives it or you follow the adopt skill inline (Stage 4 fallb
 2. **Stand up `boot`** — find the repo's canonical "prove it runs" command (test suite, build + smoke, dev-server health check), then scaffold a real verb around it:
 
    ```bash
-   npx --no-install harness new boot --wrap "<canonical command>"
+   harness new boot --wrap "<canonical command>"
    # e.g. --wrap "npm test"   or   --wrap "make check"   or   --wrap "pytest -q"
    ```
 
@@ -163,9 +150,9 @@ Whether the router drives it or you follow the adopt skill inline (Stage 4 fallb
 3. **Verify independently** — don't trust your own scaffold:
 
    ```bash
-   npx --no-install harness doctor --json          # extension loaded, no convention complaints
-   npx --no-install harness instructions boot      # the briefing reads true
-   npx --no-install harness boot --json            # a real run: honest status + legal exit code
+   harness doctor --json          # extension loaded, no convention complaints
+   harness instructions boot      # the briefing reads true
+   harness boot --json            # a real run: honest status + legal exit code
    ```
 
 Then finish with Stage 6 — those steps are this guide's, not the router's.
@@ -181,16 +168,16 @@ This is what makes run 2 work. Add this block to the repo's `AGENTS.md` (create 
 
 This repo has an engineering harness. At session start:
 
-1. `npm install` — restores the repo-local `harness` CLI
-2. `npx --no-install harness instructions` — the agent briefing (AGENTS START HERE)
-3. `npx --no-install harness doctor --json` — what's configured + which extensions loaded
-4. `npx --no-install harness boot --json` — prove the product runs before changing it
+1. `harness --version` — ensure the global CLI is installed (`npm i -g @ai-substrate/engineering-harness` if missing)
+2. `harness instructions` — the agent briefing (AGENTS START HERE)
+3. `harness doctor --json` — what's configured + which extensions loaded
+4. `harness boot --json` — prove the product runs before changing it
 
 If the eng-harness skills are loaded in your CLI, `/eng-harness-flow` routes you
 to the right next harness action at any point.
 
 Capture friction the moment it happens:
-`npx --no-install harness observe "<what happened>" --kind difficulty --severity degrading`
+`harness observe "<what happened>" --kind difficulty --severity degrading`
 Drain at session end: `harness observe --list --json` → `harness record retro` → `harness observe --clear`.
 ```
 
@@ -200,33 +187,33 @@ You just had the most valuable experience this repo will ever get: a fresh entra
 
 ```bash
 # As you work (the moment friction happens — don't batch):
-npx --no-install harness observe "<what happened, 10+ chars>" \
+harness observe "<what happened, 10+ chars>" \
   --kind difficulty --severity degrading \
   --workaround "<what you did>" --suggested-encoding "<how to fix it for the next agent>"
 # kinds: difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion
 # severities: blocking | degrading | annoying
 
 # At the end — drain the buffer into a committed record:
-npx --no-install harness observe --list --json
-npx --no-install harness record retro     # returns data.path — write the retro there
-npx --no-install harness observe --clear
+harness observe --list --json
+harness record retro     # returns data.path — write the retro there
+harness observe --clear
 ```
 
 Two storage classes: `.harness/records/` is **committed team memory**; `.harness/temp/` is **gitignored session scratch** (the capture self-heals that protection; `doctor` checks it).
 
-Then commit everything durable: `package.json` (+ lockfile, + vendored tarball if used), `.harness/extensions/`, `.harness/records/`, `.harness/reports/`, the `AGENTS.md` block, and the project-local skills directory.
+Then commit everything durable: `.harness/extensions/`, `.harness/records/`, `.harness/reports/`, the `AGENTS.md` block, and the project-local skills directory. (The `harness` CLI itself isn't committed — it's a global tool; the `AGENTS.md` block above tells the next agent to ensure it's installed.)
 
 ---
 
 ## Operating an existing harness (run 2+)
 
-Signs a repo already has a harness: a `.harness/` directory, `@ai-substrate/engineering-harness` in `package.json`, an `AGENTS.md` harness block, or skills in `./.agents/skills/` / `./.claude/skills/`.
+Signs a repo already has a harness: a `.harness/` directory, an `AGENTS.md` harness block, or skills in `./.agents/skills/` / `./.claude/skills/`.
 
 ```bash
-npm install                                    # restore the CLI from the repo's own manifest
-npx --no-install harness instructions          # the briefing — read it before acting
-npx --no-install harness doctor --json         # what loaded, what failed, why (every complaint has a next_action)
-npx --no-install harness boot --json           # prove it runs BEFORE you change anything
+harness --version             # ensure the global CLI is installed (npm i -g @ai-substrate/engineering-harness if missing)
+harness instructions          # the briefing — read it before acting
+harness doctor --json         # what loaded, what failed, why (every complaint has a next_action)
+harness boot --json           # prove it runs BEFORE you change anything
 ```
 
 If the eng-harness skills are loaded in your CLI, `/eng-harness-flow` does all of this routing for you — run it at session start, at phase ends, or whenever you're unsure what the right next harness action is. (Skills installed in the repo but not loaded? Stage 4.)
@@ -241,29 +228,26 @@ Two things drift independently over time — the **CLI** and the **skills**. Upd
 
 ### a) Update the harness CLI
 
-The CLI is a GitHub dependency, so updating it is a re-install:
+The CLI knows how to update itself — it's a global install, so there's nothing to commit:
 
 ```bash
-# Unpinned (tracks the default branch): re-resolve to the latest commit
-npm install github:AI-Substrate/harness-engineering
-
-# Pinned (`…#vX.Y.Z` in package.json): bump the tag in package.json, then
-npm install
-
-# Vendored tarball (Stage 1 fallback): rebuild the .tgz the same way, then re-install it
+harness update            # upgrade the global install to @latest (no-op if already current)
+harness update --check    # report installed vs latest, change nothing (safe to script)
+harness update --pin vX.Y.Z   # move to one exact published version
 ```
 
-Verify the new build, then commit the changed `package.json` (+ lockfile, + tarball if vendored):
+`harness update` announces, then runs, `npm i -g @ai-substrate/engineering-harness@latest`; a denied global install / wrong registry maps to an actionable error (`E201`–`E204`). First-time bootstrap when no copy exists yet: `harness self-install` (or `npm i -g @ai-substrate/engineering-harness`). Verify:
 
 ```bash
-npx --no-install harness --version
-npx --no-install harness doctor --json
+harness --version
+harness doctor --json
 ```
 
 ### b) Optionally update the skills
 
 ```bash
-npx --no-install harness skills update --target <your-cli>   # add --global if you installed globally
+harness skills update --target <your-cli>   # add --global if your skills are installed globally
+# …or fold it into the CLI update in one step:  harness update --target <your-cli> [--global]
 ```
 
 `skills update` does two things the plain installer can't: it **refreshes** every skill to the latest published version (and pulls any newly added ones), then **prunes** skills this harness has since **renamed or removed** — so a rename never leaves a stale twin loading beside its replacement (e.g. an old `harness-1-boot` next to the current `eng-harness-1-boot`). It is a thin wrapper over `npx skills add` + `npx skills remove` and announces both exact commands before running. Run it **after** updating the CLI, since the CLI carries the list of renamed-away slugs to prune. Skills load at session start, so **restart your CLI** afterwards to pick up the changes.
@@ -274,7 +258,7 @@ npx --no-install harness skills update --target <your-cli>   # add --global if y
 
 ## What done looks like (first-time adoption)
 
-- [ ] `npx --no-install harness --help` prints usage (CLI is repo-local)
+- [ ] `harness --help` prints usage (CLI on PATH, installed globally)
 - [ ] `harness doctor --json` → extensions loaded, no convention complaints
 - [ ] `harness boot --json` → an honest envelope from a **real** run (a `degraded`/`unconfigured` status with `next_action` is honest; a fake `ok` is failure)
 - [ ] Harness skills installed **project-local** (both setup and loop groups — all seven)
@@ -303,10 +287,10 @@ And once the skills are loaded: `/eng-harness-flow` (a skill, not a CLI verb) ro
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `npx` seems to hang on the very first run | First-run clone + TypeScript compile (~20–60s) | Wait it out; subsequent runs are fast. |
+| `npm i -g` denied with `EACCES` | Global npm prefix not writable | Set a user-writable prefix (`npm config set prefix ~/.npm-global`, add its `bin` to PATH), or use nvm/Volta; re-run. |
 | `spawn npx ENOENT` from `harness skills install` (Windows) | The CLI spawns without a shell, which can't launch `npx.cmd` on Windows — known issue, upstream fix pending | Run the exact `npx skills@latest add …` line the command announced before failing — identical result. *(Temporary note: remove once the win32 spawn fix ships.)* |
-| Install fails during the `prepare` build | Consumer repo's toolchain interferes with the package build | Vendor-tarball fallback in Stage 1. |
-| `harness init` → unknown command | The installed CLI predates the deterministic bootstrap | Expected today — skip it; `harness new` creates `.harness/` lazily. |
+| `npm i -g` → 404 / registry rejects | Wrong registry, or offline | Confirm `npm config get registry` is `https://registry.npmjs.org`; the package is public — no token needed. |
+| `harness init` → unknown command | An older global CLI predates the bootstrap | Upgrade with `harness update` (or `npm i -g @ai-substrate/engineering-harness@latest`); meanwhile `harness new` creates `.harness/` lazily. |
 | Skills installed but you can't invoke them | Your CLI loads skills at session start | Stage 4 — ask your operator to reload/restart you (you can't do it yourself), then have them re-feed this file. |
 
 ## Further reading

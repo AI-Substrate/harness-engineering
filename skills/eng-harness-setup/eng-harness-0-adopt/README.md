@@ -2,7 +2,7 @@
 
 Install a repo's **engineering harness** from npx and guide the user to a working basic `boot` — the command every engineering task starts from.
 
-This skill is a **flow**, not a generator. It installs the harness CLI, then orchestrates two sibling skills — `eng-harness-0-harnessability-assessment` (size up the repo) and `eng-harness-0-add-extension` (author the first extension). It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code, and by a future `harness init`.
+This skill is a **flow**, not a generator. It installs the harness CLI, then orchestrates two sibling skills — `eng-harness-0-harnessability-assessment` (size up the repo) and `eng-harness-0-add-extension` (author the first extension). It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code, with `harness init` stamping the governance doc.
 
 > **The agent harness drives. The engineering harness proves.**
 
@@ -10,7 +10,7 @@ This skill is a **flow**, not a generator. It installs the harness CLI, then orc
 
 ```mermaid
 flowchart TD
-    A["1 · Install harness<br/>npx + (future) harness init"] --> Ad{harness doctor OK?}
+    A["1 · Install harness<br/>npx + harness init"] --> Ad{harness doctor OK?}
     Ad -- no --> At["Troubleshoot<br/>Node · network/gh · build"] --> A
     Ad -- yes --> C{".harness/reports/harnessability/latest.json<br/>exists?"}
     C -- no --> D["2 · Run eng-harness-0-harnessability-assessment skill"] --> E
@@ -25,7 +25,7 @@ Run this when a repo has no working `harness boot` (or no harness front door at 
 
 ## What it does
 
-1. **Install the harness** via `npx github:AI-Substrate/harness-engineering`, make it resolve locally (`npm install github:AI-Substrate/harness-engineering`), initialise the nucleus with `npx harness init` (graceful fallback if your CLI predates it), and sanity-check with `npx harness doctor` (a fresh consumer repo can still report `degraded` on individual layers — the signal is that the CLI runs and returns an envelope, exit 0).
+1. **Install the harness** via `npx github:AI-Substrate/harness-engineering`, make it resolve locally (`npm install github:AI-Substrate/harness-engineering`), stamp the governance doc with `npx harness init` (seeds it empty — L0, `TODO` fields; idempotent; older CLIs that predate it fall back gracefully), and sanity-check with `npx harness doctor` (a fresh consumer repo can still report `degraded` on individual layers — the signal is that the CLI runs and returns an envelope, exit 0).
 2. **Assess harnessability** — only if no report exists at `.harness/reports/harnessability/latest.json` (or any file under `.harness/reports/harnessability/`). Runs the `eng-harness-0-harnessability-assessment` skill and reads its recommendations.
 3. **Stand up a basic `boot`** — via the `eng-harness-0-add-extension` skill, wrapping the repo's real readiness command (build / run / health) chosen from the assessment. Boot returns a ready/degraded/error verdict and re-orients the agent.
 

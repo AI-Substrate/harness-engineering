@@ -61,7 +61,7 @@ describe('buildGovernanceSkeleton', () => {
   it('opens with the title + AGENTS START HERE breadcrumb to the instructions channel', () => {
     const md = buildGovernanceSkeleton();
     expect(md.startsWith('# Engineering harness\n')).toBe(true);
-    expect(md).toContain('AGENTS START HERE → `npx --no-install harness instructions`');
+    expect(md).toContain('AGENTS START HERE → `harness instructions`');
   });
 
   it('seeds maturity at L0 in its own trailing section (honest — nothing proven yet)', () => {
@@ -105,9 +105,9 @@ describe('buildGovernanceSkeleton', () => {
     expect(buildGovernanceSkeleton()).toMatchInlineSnapshot(`
       "# Engineering harness
 
-      > **AGENTS START HERE → \`npx --no-install harness instructions\`** — the CLI's
-      > baked agent briefing (envelope contract, role split, discovery loop). Then
-      > \`npx --no-install harness instructions <verb>\` per verb.
+      > **AGENTS START HERE → \`harness instructions\`** — the CLI's baked agent
+      > briefing (envelope contract, role split, discovery loop). Then
+      > \`harness instructions <verb>\` per verb.
 
       ## Boot command
       <!-- TODO (eng-harness-0-adopt / \`harness new boot --wrap "<cmd>"\`):

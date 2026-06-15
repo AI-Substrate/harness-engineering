@@ -1,0 +1,1 @@
+But before we install anything, let's look closely at the thing itself. For all its reputation, the harness is a humble thing. In truth, it's just two parts. A command line tool. And a skill, that your agent already knows how to use. That's all. Two simple things, working quietly together.

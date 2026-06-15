@@ -1,0 +1,1 @@
+With the tool in place, and the folder made, the real work begins. Adoption. The harness now sets out to learn this particular repository, its quirks and its character, guided by a flow that walks you through it, step by patient step. Let's follow along.

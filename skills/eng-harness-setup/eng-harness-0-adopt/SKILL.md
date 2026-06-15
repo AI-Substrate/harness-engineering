@@ -1,12 +1,12 @@
 ---
 name: eng-harness-0-adopt
-description: Guide a repo through adopting the engineering harness — install the CLI, wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `boot`. A lean flow that orchestrates other skills — it installs/initialises the harness CLI, runs eng-harness-0-harnessability-assessment when no report exists yet, records the injection map (where the repo's extant dev/SDD flow will call /eng-harness-flow, so the harness gets used instead of disappearing on a cold agent start), then stands up a basic `boot` extension via eng-harness-0-add-extension. It generates no artifacts of its own; the CLI (and a future `harness init`) own the deterministic substrate.
+description: Guide a repo through adopting the engineering harness — make the CLI available (an ambient global tool, not a repo dependency), wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `boot`. A lean flow that orchestrates other skills — it checks for / globally installs the harness CLI, runs eng-harness-0-harnessability-assessment when no report exists yet, records the injection map (where the repo's extant dev/SDD flow will call /eng-harness-flow, so the harness gets used instead of disappearing on a cold agent start), then stands up a basic `boot` extension via eng-harness-0-add-extension. The only repo artifacts are `.harness/` substrate and AGENTS.md edits; the CLI itself is never committed. It generates no artifacts of its own; the CLI (including `harness init`) owns the deterministic substrate.
 ---
 # eng-harness-0-adopt
 
 Walk a repo through **adopting** the engineering harness — the moment it decides to make its **deterministic layer** a first-class thing. Adoption wraps what already exists (build / test / run, as-is), weaves the loop into the repo's extant dev flow, and leaves behind the one thing every engineering task starts from: a **basic `boot`**. This is hand-held, not silent: every step that touches the user's repo is proposed first.
 
-This skill is a **flow**, not a generator. It installs the harness CLI from npx, then **orchestrates other skills** — `eng-harness-0-harnessability-assessment` to size up the repo, and `eng-harness-0-add-extension` to author the first extension. It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (and by a future `harness init`), not re-generated here.
+This skill is a **flow**, not a generator. It makes the harness CLI available (an ambient tool, installed **globally** — never a repo dependency), then **orchestrates other skills** — `eng-harness-0-harnessability-assessment` to size up the repo, and `eng-harness-0-add-extension` to author the first extension. It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (`harness init` stamps the governance doc), not re-generated here.
 
 > **The agent harness drives. The engineering harness proves.**
 
@@ -14,8 +14,8 @@ This skill is a **flow**, not a generator. It installs the harness CLI from npx,
 
 ```mermaid
 flowchart TD
-    P{"already installed?<br/>npx harness doctor responds"} -- yes --> C
-    P -- no --> A["1 · Install harness<br/>npx + (future) harness init"] --> Ad{harness doctor OK?}
+    P{"already available?<br/>harness --version responds"} -- yes --> C
+    P -- no --> A["1 · Make CLI available<br/>npm i -g + harness init"] --> Ad{harness doctor OK?}
     Ad -- no --> At["Troubleshoot<br/>Node · network/gh · build"] --> A
     Ad -- yes --> C{".harness/reports/harnessability/latest.json<br/>exists?"}
     C -- no --> D["2 · Run eng-harness-0-harnessability-assessment skill"] --> E
@@ -43,54 +43,47 @@ Keep it a **basic nucleus**. Do **not** boil the ocean — a thin wrapper over t
 
 ---
 
-## Step 1 — Install the harness
+## Step 1 — Make the harness CLI available
 
-The harness CLI installs two ways: **straight from its GitHub repo via `npx`/`npm` (zero registry setup — the default used below)**, or as the published package `@ai-substrate/engineering-harness` from **GitHub Packages** (versioned releases; needs a one-time registry + token setup — see the [CLI README](https://github.com/AI-Substrate/harness-engineering/blob/main/harness/cli/README.md) for that path). Prefer the repo path when setting up unattended — it needs no auth ceremony.
+The harness CLI is an **ambient tool** — like `git`, `node`, or `gh` — **not** a repo dependency. The job here is *check it's available*, and only install (globally) if it's missing. **Nothing about the CLI is committed into the user's repo**: no `package.json` entry, no `.npmrc`, no `node_modules`, no lockfile. The only things this flow leaves in the repo are `.harness/` substrate and (with consent) `AGENTS.md` edits. The CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness`, so a global install needs **no token or `.npmrc`** (Node `>= 22`).
 
-1. **Check whether the harness is already installed — never blindly (re)install:**
+1. **Check whether the CLI is already available — never blindly (re)install:**
 
    ```bash
-   npx harness doctor --json 2>/dev/null || echo "NO_HARNESS"
+   harness --version 2>/dev/null || echo "NO_HARNESS"
    ```
 
-   An envelope back (any `status` — `degraded` counts) means the CLI already resolves in this repo: **skip the install entirely (steps 2–3)** and jump to the sanity-check (step 5) — re-running setup only fills whatever gaps `doctor` names from there (step 4's `harness init` still applies if the nucleus is missing). A `.harness/` directory or a harness dependency already in `package.json` are the same signal. Only `NO_HARNESS` (or command-not-found) proceeds with the install below.
+   A version back means `harness` is on PATH: **skip the install (step 2)** and jump to the nucleus + sanity-check (steps 3–4). A `.harness/` directory is the same signal the repo is already adopted. Only `NO_HARNESS` (or command-not-found) proceeds with the install below.
 
-2. **Prove the installer runs** (checks Node + network + the CLI itself):
-
-   ```bash
-   npx github:AI-Substrate/harness-engineering help
-   ```
-
-3. **Make `harness` resolve locally** for repeated use — install it into the target repo (its `prepare` step builds the CLI):
+2. **Install the CLI globally** (only if missing) — public npm, zero auth:
 
    ```bash
-   # Repos with no package.json (typical for Python/Go): npm walks UP to the
-   # nearest manifest and installs OUTSIDE the repo. Seed a manifest first
-   # (or pin the prefix: `npm install … --prefix "$PWD"`):
-   [ -f package.json ] || npm init -y
-
-   npm install github:AI-Substrate/harness-engineering
+   npm install -g @ai-substrate/engineering-harness
    # pin a release if you want reproducibility:
-   # npm install github:AI-Substrate/harness-engineering#vX.Y.Z
+   # npm install -g @ai-substrate/engineering-harness@vX.Y.Z
    ```
 
-   Afterwards use `npx harness <command>` (it resolves the locally-installed CLI whether or not `harness` is on PATH). **All examples below use `npx harness …`; drop the `npx` prefix only if `harness` is already on your PATH.**
+   This writes to your **global** npm prefix (the user's machine), **never the repo** — no `package.json`, lockfile, or `node_modules` is added to the project. Afterwards `harness` resolves on PATH, so every example below calls `harness <command>` directly. (Once any copy is available, `harness self-install` does the same global bootstrap from the registry.)
 
-4. **Initialise the nucleus** — run the deterministic bootstrap:
+   > **Never run bare `npx harness`** — that fetches an unrelated `harness` package from the npm registry. Use the globally-installed `harness`. (Inside the engineering-harness *source* repo itself, invoke `node harness/cli/bin/harness.js …`.) A no-global-write alternative is `npx @ai-substrate/engineering-harness <command>` — the scoped package, run from the npm cache.
+
+   > **`EACCES` writing the global prefix?** That's a permissions problem, not auth: set a user-writable prefix (`npm config set prefix ~/.npm-global`, then add its `bin` to PATH) and re-run, or use a Node version manager (nvm/Volta).
+
+3. **Initialise the nucleus** — run the deterministic bootstrap:
 
    ```bash
-   npx harness init
+   harness init
    ```
 
-   > **Graceful fallback (important).** `harness init` is the planned bootstrap that creates the `.harness/` nucleus deterministically. If your installed CLI does **not** recognise it yet (unknown-command error), **do not fail** — continue. `.harness/extensions/` is created lazily by `harness new` (Step 3), so the flow still works today. Note the gap so it's encoded once `init` ships.
+   > **What `init` does (and the rare miss).** `harness init` stamps `.harness/engineering-harness.md` deterministically — the BIO skeleton, seeded maturity **L0**, every other field a `TODO`; it is idempotent (an existing doc is left untouched, `created:false`). On a current CLI this just works. If an **older** installed CLI doesn't recognise it (unknown-command error), **do not fail** — continue; `.harness/extensions/` is still created lazily by `harness new` (Step 3). Upgrade the CLI to get the governance doc stamped.
 
    `.harness/temp/` is transient agent scratch — never committed; the CLI self-heals its nested `.gitignore` and `harness doctor` checks the convention.
 
-5. **Sanity-check** with the CLI's own front door:
+4. **Sanity-check** with the CLI's own front door:
 
    ```bash
-   npx harness doctor          # human-readable
-   npx harness doctor --json    # envelope: status / data / error / next_action
+   harness doctor          # human-readable
+   harness doctor --json    # envelope: status / data / error / next_action
    ```
 
    On a fresh consumer repo, the `cli-build` layer reports **ok (n/a)** — it only runs a real build check inside the CLI's own repo (FX001) — and `.harness/extensions/` is **empty**; both are expected, not failures. `doctor` can still go `status: degraded` for other reasons (a missing tool, a failed extension), so the signal you need is that the CLI **runs and returns an envelope** (exit 0); read `data.layers` / `data.extensions` rather than gating on a top-level `ok`.
@@ -99,10 +92,10 @@ The harness CLI installs two ways: **straight from its GitHub repo via `npx`/`np
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| `command not found: npx` / very old Node | Node toolchain missing/old | Install a current Node LTS; re-run. |
-| `npx` hangs or 404 on the GitHub spec | No network / no GitHub access | Check connectivity and `gh auth status`; retry, or pin a `#vX.Y.Z` tag. |
-| Install errors during `prepare`/build | Build toolchain issue | Read the build error; ensure devDeps can install; re-run `npm install`. |
-| `harness init` → unknown command | CLI predates `init` | Expected today — skip per the graceful fallback above; `harness new` still creates `.harness/`. |
+| `command not found: npm` / `node` / very old Node | Node toolchain missing/old | Install a current Node LTS (>= 22); re-run. |
+| `npm install -g …` → `EACCES` | Global prefix not writable | Set a user-writable prefix (`npm config set prefix ~/.npm-global`, add its `bin` to PATH), or use nvm/Volta; re-run. |
+| `npm install -g …` 404 / registry rejects | Wrong registry, or offline | Confirm `npm config get registry` is `https://registry.npmjs.org`; the package is public, so no token is needed. |
+| `harness init` → unknown command | CLI older than `init` (FX001) | Rare — upgrade the CLI (`npm install -g @ai-substrate/engineering-harness@latest`); meanwhile skip per the note above, `harness new` still creates `.harness/`. |
 | `harness doctor` non-zero with a real error | Genuine config problem | Follow the envelope's `next_action`; it prescribes the fix. |
 
 **Read only the envelope.** When parsing CLI output programmatically, use `--json` (the `status` / `data` / `error` / `next_action` fields) and exit codes — never scrape human prose. This keeps the flow forward-compatible with a future MCP server over the same surfaces.
@@ -146,7 +139,7 @@ An installed harness that nothing calls **disappears on the next cold agent star
 
    A declined weave is a fine outcome — record what was decided either way (a map row can say `declined` or `manual`).
 
-5. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per seam: the seam event, where it fires from, and what fires it. This is the durable artifact the router's S3 rung reads; without it, the stateless router re-offers this step on every call. **When governance is still owed** (the `harness init` writer hasn't shipped or run), the injection map is owed with it — propose the map in conversation, note it as owed, and move on; never create the governance doc here. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md).
+5. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per seam: the seam event, where it fires from, and what fires it. This is the durable artifact the router's S3 rung reads; without it, the stateless router re-offers this step on every call. `harness init` stamps the `## Injection map` section as an empty table; this step fills its rows. **If the governance doc isn't present yet** (`harness init` wasn't run, or an older CLI predates it), propose the map in conversation, note it as pending, and move on; never hand-create the governance doc here — run `harness init` to stamp it first. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md).
 
 **Ask first, always.** The weave edits the user's own files; nothing in this step is applied without the user having seen the specific change and said yes to it. Keep descriptions of the host flow generic and public-safe (name the flow's *shape*, never private tooling identifiers the repo doesn't already commit).
 
@@ -168,7 +161,7 @@ Author it via the skill, e.g.:
 
 ```bash
 # the eng-harness-0-add-extension skill runs, under the hood, something like:
-npx harness new boot --wrap "<the readiness command for this repo>"
+harness new boot --wrap "<the readiness command for this repo>"
 ```
 
 Then **fill the handler only as much as needed** to:
@@ -181,9 +174,9 @@ Keep it minimal. Resist adding seed/reset/observe/sensors now — capture those 
 ### Verify
 
 ```bash
-npx harness doctor      # boot now shows as a loaded extension
-npx harness help        # the `boot` verb appears in the command surface
-npx harness boot        # runs it — inspect the envelope/exit code for the verdict
+harness doctor      # boot now shows as a loaded extension
+harness help        # the `boot` verb appears in the command surface
+harness boot        # runs it — inspect the envelope/exit code for the verdict
 ```
 
 When `harness boot` returns a usable verdict and re-orients the agent, the nucleus is in place. Stop here — the rest compounds through normal use.
@@ -200,13 +193,13 @@ The harness ships its own **skills** — the `eng-harness-*` adopt + loop suite 
 2. **Only with the user's explicit go-ahead**, run the first-class command — a transparent pass-through to the Vercel `npx skills` installer. It **prints the exact `npx` line before running** and always passes `-y`, so nothing blocks on an interactive picker:
 
    ```bash
-   npx harness skills install --target <cli> [--global]
-   # e.g.  npx harness skills install --target github-copilot --global
+   harness skills install --target <cli> [--global]
+   # e.g.  harness skills install --target github-copilot --global
    ```
 
 3. **If the user declines, do not install.** Tell them how to do it later:
 
-   > To install the harness skills later, run: `npx harness skills install --target <cli> [--global]`
+   > To install the harness skills later, run: `harness skills install --target <cli> [--global]`
 
 More about the underlying installer: <https://github.com/vercel-labs/skills>.
 
@@ -216,7 +209,7 @@ More about the underlying installer: <https://github.com/vercel-labs/skills>.
 
 ## What this skill does **not** do
 
-- It does **not** generate a governance doc, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or known-difficulties/retro/back-pressure files. Those are deterministic CLI concerns (`harness init` + the CLI), not this skill's output. The governance doc is therefore **owed, not provisioned** by this flow until `harness init` ships: this skill attempts `npx harness init` (with the graceful fallback above) and, when it isn't available yet, the governance rung stays owed and downstream readers degrade to `UNAVAILABLE` rather than erroring. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md) for what the doc contains and when it is written. (Step 3 is the one narrow exception: with the user's go-ahead it **updates** the `## Injection map` section of an *existing* governance doc and weaves seam calls into the user's own flow surfaces — it still never *creates* the doc.)
+- It does **not** generate a governance doc, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or known-difficulties/retro/back-pressure files. Those are deterministic CLI concerns (`harness init` + the CLI), not this skill's output. The governance doc is therefore **stamped by `harness init`, not hand-written by this flow**: this skill runs `harness init` (which seeds the doc empty — L0, `TODO` fields) and, on an older CLI that predates it, the governance rung stays unprovisioned and downstream readers degrade to `UNAVAILABLE` rather than erroring. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md) for what the doc contains and when it is written. (Step 3 is the one narrow exception: with the user's go-ahead it **updates** the `## Injection map` section of an *existing* governance doc and weaves seam calls into the user's own flow surfaces — it still never *creates* the doc.)
 - It does **not** reimplement `eng-harness-0-harnessability-assessment` or `eng-harness-0-add-extension` — it calls them.
 - It does **not** build a comprehensive boot. Basic nucleus only.
 

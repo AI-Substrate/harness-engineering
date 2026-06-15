@@ -66,7 +66,19 @@ The agent explores it the way it explores the git CLI: it has never seen your re
 
 - **[The full deck](https://ai-substrate.github.io/harness-engineering/)** — readable scrolling page with commentary, or hit `P` to present it.
 - **[The layers, one page](https://ai-substrate.github.io/harness-engineering/layers.html)** — the layer model as a self-contained visual explainer.
-- The canonical deck source lives at [`docs/harness-presentations/intro-to-harness.md`](docs/harness-presentations/intro-to-harness.md).
+- The canonical deck source lives at [`docs/harness-presentations/missing-layer-101/intro-to-harness.md`](docs/harness-presentations/missing-layer-101/intro-to-harness.md).
+
+## Install the CLI
+
+The harness CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness` — an **ambient global tool** (like `git`/`node`), installed once per machine and **never committed into a repo** (Node >= 22, **no token or `.npmrc`**):
+
+```bash
+npm install -g @ai-substrate/engineering-harness
+harness doctor          # sanity-check the install
+harness update          # later: upgrade the global install to @latest (no-op if current)
+```
+
+`harness update --check` reports installed-vs-latest without changing anything, and `harness self-install` is the first-time bootstrap. Every release is published with npm provenance. Full install/run notes live in [`harness/cli/README.md`](harness/cli/README.md).
 
 ## Install the skills
 
@@ -102,7 +114,7 @@ Prompts and checklists are useful guides, but high-risk or repeated invariants s
 | Area | What it is |
 |---|---|
 | [`harness-foundations/`](harness-foundations/) | The thesis: [first principles](harness-foundations/first-principles.md), [patterns that work](harness-foundations/patterns-that-work.md), [directives](harness-foundations/directives.md), [the simple version](harness-foundations/simple-mode.md), and [source notes](harness-foundations/source-notes/). |
-| [`harness/cli/`](harness/cli/) | The harness CLI core — npx-installed, upgradeable, extended per repo from `.harness/extensions/`. |
+| [`harness/cli/`](harness/cli/) | The harness CLI core — a global tool (`npm i -g`), self-updating via `harness update`, extended per repo from `.harness/extensions/`. |
 | [`skills/`](skills/) | The deployable skills. Adoption: [`eng-harness-0-adopt`](skills/eng-harness-setup/eng-harness-0-adopt/SKILL.md), [`eng-harness-0-harnessability-assessment`](skills/eng-harness-setup/eng-harness-0-harnessability-assessment/SKILL.md), [`eng-harness-0-add-extension`](skills/eng-harness-setup/eng-harness-0-add-extension/SKILL.md). Loop: `eng-harness-1-boot`, `eng-harness-2-backpressure`, `eng-harness-4-retro`. See [`skills/README.md`](skills/README.md). |
 | [`docs/`](docs/) | How-to guides ([records](docs/how/record-and-record-types.md), [architecture conformance](docs/how/architecture-conformance.md), [dogfooding](docs/how/dogfood-harness-flow.md)), presentations, plans, and project rules. |
 

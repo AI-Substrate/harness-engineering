@@ -1,0 +1,251 @@
+{
+  "loss": 0.05639157311282174,
+  "lead": 1,
+  "words": [
+    {
+      "text": "And",
+      "start": 0.079,
+      "end": 0.199
+    },
+    {
+      "text": "what",
+      "start": 0.259,
+      "end": 0.459
+    },
+    {
+      "text": "does",
+      "start": 0.5,
+      "end": 0.639
+    },
+    {
+      "text": "all",
+      "start": 0.719,
+      "end": 0.819
+    },
+    {
+      "text": "this",
+      "start": 0.879,
+      "end": 1.039
+    },
+    {
+      "text": "cost",
+      "start": 1.179,
+      "end": 1.459
+    },
+    {
+      "text": "your",
+      "start": 1.519,
+      "end": 1.62
+    },
+    {
+      "text": "repository?",
+      "start": 1.679,
+      "end": 2.299
+    },
+    {
+      "text": "Remarkably",
+      "start": 2.939,
+      "end": 3.619
+    },
+    {
+      "text": "little.",
+      "start": 3.74,
+      "end": 4.039
+    },
+    {
+      "text": "The",
+      "start": 5.039,
+      "end": 5.159
+    },
+    {
+      "text": "only",
+      "start": 5.239,
+      "end": 5.48
+    },
+    {
+      "text": "change",
+      "start": 5.619,
+      "end": 5.9
+    },
+    {
+      "text": "it",
+      "start": 5.96,
+      "end": 6.059
+    },
+    {
+      "text": "has",
+      "start": 6.119,
+      "end": 6.259
+    },
+    {
+      "text": "to",
+      "start": 6.339,
+      "end": 6.399
+    },
+    {
+      "text": "accept",
+      "start": 6.5,
+      "end": 6.92
+    },
+    {
+      "text": "is",
+      "start": 7.179,
+      "end": 7.259
+    },
+    {
+      "text": "a",
+      "start": 7.319,
+      "end": 7.44
+    },
+    {
+      "text": "single",
+      "start": 7.5,
+      "end": 7.799
+    },
+    {
+      "text": "new",
+      "start": 7.919,
+      "end": 8.079
+    },
+    {
+      "text": "folder,",
+      "start": 8.22,
+      "end": 8.619
+    },
+    {
+      "text": "named",
+      "start": 9.059,
+      "end": 9.359
+    },
+    {
+      "text": "dot-harness.",
+      "start": 9.5,
+      "end": 10.239
+    },
+    {
+      "text": "This",
+      "start": 11.239,
+      "end": 11.539
+    },
+    {
+      "text": "is",
+      "start": 11.599,
+      "end": 11.699
+    },
+    {
+      "text": "where",
+      "start": 11.759,
+      "end": 11.899
+    },
+    {
+      "text": "the",
+      "start": 11.96,
+      "end": 12.039
+    },
+    {
+      "text": "harness",
+      "start": 12.119,
+      "end": 12.539
+    },
+    {
+      "text": "keeps",
+      "start": 12.619,
+      "end": 12.979
+    },
+    {
+      "text": "everything:",
+      "start": 13.079,
+      "end": 13.639
+    },
+    {
+      "text": "its",
+      "start": 14.239,
+      "end": 14.38
+    },
+    {
+      "text": "extensions,",
+      "start": 14.46,
+      "end": 15.099
+    },
+    {
+      "text": "its",
+      "start": 15.339,
+      "end": 15.479
+    },
+    {
+      "text": "configuration,",
+      "start": 15.539,
+      "end": 16.299
+    },
+    {
+      "text": "all",
+      "start": 16.619,
+      "end": 16.76
+    },
+    {
+      "text": "it",
+      "start": 16.779,
+      "end": 16.899
+    },
+    {
+      "text": "needs,",
+      "start": 16.979,
+      "end": 17.519
+    },
+    {
+      "text": "kept",
+      "start": 17.959,
+      "end": 18.239
+    },
+    {
+      "text": "tidily",
+      "start": 18.299,
+      "end": 18.939
+    },
+    {
+      "text": "in",
+      "start": 19,
+      "end": 19.119
+    },
+    {
+      "text": "one",
+      "start": 19.199,
+      "end": 19.319
+    },
+    {
+      "text": "place.",
+      "start": 19.439,
+      "end": 19.84
+    },
+    {
+      "text": "One",
+      "start": 20.579,
+      "end": 20.76
+    },
+    {
+      "text": "folder.",
+      "start": 20.899,
+      "end": 21.259
+    },
+    {
+      "text": "Nothing",
+      "start": 21.92,
+      "end": 22.26
+    },
+    {
+      "text": "else",
+      "start": 22.359,
+      "end": 22.579
+    },
+    {
+      "text": "is",
+      "start": 22.619,
+      "end": 22.719
+    },
+    {
+      "text": "disturbed.",
+      "start": 22.799,
+      "end": 23.399
+    }
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "loss": 0.0823115643921432,
+  "lead": 1,
+  "words": [
+    {
+      "text": "With",
+      "start": 0.079,
+      "end": 0.219
+    },
+    {
+      "text": "the",
+      "start": 0.239,
+      "end": 0.379
+    },
+    {
+      "text": "harness",
+      "start": 0.419,
+      "end": 0.799
+    },
+    {
+      "text": "in",
+      "start": 0.839,
+      "end": 1
+    },
+    {
+      "text": "place,",
+      "start": 1.039,
+      "end": 1.339
+    },
+    {
+      "text": "one",
+      "start": 1.779,
+      "end": 1.979
+    },
+    {
+      "text": "last",
+      "start": 2.079,
+      "end": 2.44
+    },
+    {
+      "text": "question",
+      "start": 2.519,
+      "end": 2.899
+    },
+    {
+      "text": "remains,",
+      "start": 2.96,
+      "end": 3.559
+    },
+    {
+      "text": "and",
+      "start": 4.019,
+      "end": 4.139
+    },
+    {
+      "text": "the",
+      "start": 4.199,
+      "end": 4.259
+    },
+    {
+      "text": "agent",
+      "start": 4.46,
+      "end": 4.819
+    },
+    {
+      "text": "puts",
+      "start": 4.98,
+      "end": 5.199
+    },
+    {
+      "text": "it",
+      "start": 5.259,
+      "end": 5.46
+    },
+    {
+      "text": "to",
+      "start": 5.519,
+      "end": 5.719
+    },
+    {
+      "text": "you.",
+      "start": 5.779,
+      "end": 5.939
+    },
+    {
+      "text": "How",
+      "start": 6.759,
+      "end": 6.92
+    },
+    {
+      "text": "would",
+      "start": 6.96,
+      "end": 7.119
+    },
+    {
+      "text": "you",
+      "start": 7.159,
+      "end": 7.259
+    },
+    {
+      "text": "like",
+      "start": 7.319,
+      "end": 7.48
+    },
+    {
+      "text": "to",
+      "start": 7.579,
+      "end": 7.699
+    },
+    {
+      "text": "work,",
+      "start": 7.759,
+      "end": 8.059
+    },
+    {
+      "text": "from",
+      "start": 8.159,
+      "end": 8.319
+    },
+    {
+      "text": "here",
+      "start": 8.38,
+      "end": 8.579
+    },
+    {
+      "text": "on?",
+      "start": 8.659,
+      "end": 8.96
+    },
+    {
+      "text": "You",
+      "start": 9.659,
+      "end": 9.739
+    },
+    {
+      "text": "can",
+      "start": 9.779,
+      "end": 9.899
+    },
+    {
+      "text": "use",
+      "start": 9.979,
+      "end": 10.139
+    },
+    {
+      "text": "the",
+      "start": 10.199,
+      "end": 10.3
+    },
+    {
+      "text": "harness's",
+      "start": 10.359,
+      "end": 10.979
+    },
+    {
+      "text": "own",
+      "start": 11.099,
+      "end": 11.319
+    },
+    {
+      "text": "built-in",
+      "start": 11.439,
+      "end": 11.84
+    },
+    {
+      "text": "flow,",
+      "start": 11.979,
+      "end": 12.3
+    },
+    {
+      "text": "which",
+      "start": 12.859,
+      "end": 12.979
+    },
+    {
+      "text": "it",
+      "start": 13.039,
+      "end": 13.179
+    },
+    {
+      "text": "calls,",
+      "start": 13.239,
+      "end": 13.679
+    },
+    {
+      "text": "simply,",
+      "start": 13.899,
+      "end": 14.359
+    },
+    {
+      "text": "the-flow.",
+      "start": 14.619,
+      "end": 15.159
+    },
+    {
+      "text": "Or",
+      "start": 15.839,
+      "end": 16.02
+    },
+    {
+      "text": "you",
+      "start": 16.479,
+      "end": 16.559
+    },
+    {
+      "text": "can",
+      "start": 16.619,
+      "end": 16.779
+    },
+    {
+      "text": "bring",
+      "start": 16.84,
+      "end": 17.02
+    },
+    {
+      "text": "your",
+      "start": 17.1,
+      "end": 17.239
+    },
+    {
+      "text": "own.",
+      "start": 17.34,
+      "end": 17.619
+    },
+    {
+      "text": "Both",
+      "start": 18.319,
+      "end": 18.779
+    },
+    {
+      "text": "are",
+      "start": 18.859,
+      "end": 19
+    },
+    {
+      "text": "equally",
+      "start": 19.1,
+      "end": 19.479
+    },
+    {
+      "text": "welcome.",
+      "start": 19.619,
+      "end": 20.039
+    },
+    {
+      "text": "Let's",
+      "start": 20.739,
+      "end": 21
+    },
+    {
+      "text": "look",
+      "start": 21.079,
+      "end": 21.219
+    },
+    {
+      "text": "at",
+      "start": 21.279,
+      "end": 21.379
+    },
+    {
+      "text": "each,",
+      "start": 21.459,
+      "end": 21.799
+    },
+    {
+      "text": "in",
+      "start": 22.1,
+      "end": 22.199
+    },
+    {
+      "text": "turn.",
+      "start": 22.34,
+      "end": 22.76
+    }
+  ]
+}

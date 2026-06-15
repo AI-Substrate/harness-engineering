@@ -1,0 +1,1 @@
+With the harness in place, one last question remains, and the agent puts it to you. How would you like to work, from here on? You can use the harness's own built-in flow, which it calls, simply, the-flow. Or you can bring your own. Both are equally welcome. Let's look at each, in turn.

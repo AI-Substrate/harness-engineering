@@ -198,3 +198,20 @@
 - **magicWand** (target: coordination): Make the companion farewell transition atomic: provide a single coordination command that checks for unread messages and conditionally transitions to stopping only when the inbox is still empty.
 - difficulties:
   - [degrading] coordination: A late task arrived during the final pre-completion inbox check while I had already emitted the idle-budget farewell path in parallel. (workaround: Acknowledged the task, transitioned back from stopping to reading, sent a superseding progress note, completed the review, and waited for an explicit stop.)
+
+## 2026-06-14T22:14:23.410Z — code-review-companion / 2026-06-15T07-57-06-414Z-c5c8
+
+- runId: 2026-06-15T07-57-06-414Z-c5c8
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-15T07-57-06-414Z-c5c8
+- summary: Reviewed FX001 harness-init commits b40d6c1, faa8e2a, and a505b04. I sent one MEDIUM contract-drift finding about canonical governance-doc section order, confirmed it was fixed by faa8e2a, and approved the final phase drain with no new findings; the implementation preserves L0-only skeleton honesty, empty injection map, never-clobber init service behavior, E190 write-failure mapping, injected fs/proc I/O, and reserved init command registration.
+- **magicWand** (target: coordination): Add a minih companion helper command like `minih inside drain-before-stop --types task,control --settle-ms 5000` that atomically checks unread inbox messages before allowing a farewell/state=stopping transition.
+- difficulties:
+  - [annoying] test: I initially used the Jest-style `--runInBand` flag with Vitest during the final focused test slice; Vitest rejected it as an unknown option. (workaround: Reran the same focused test files without `--runInBand`, which passed.)
+  - [degrading] coordination: A new review task arrived during the final inbox drain while shutdown state/farewell were being published in parallel. (workaround: Cancelled shutdown by transitioning back to reading, acknowledged the task, completed the review, and waited for explicit control:stop.)
+
+## 2026-06-15T03:35:41.628Z — code-review-companion / 2026-06-15T12-33-03-542Z-8339
+
+- runId: 2026-06-15T12-33-03-542Z-8339
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-15T12-33-03-542Z-8339
+- summary: Reviewed the full plan 019 commit sequence plus final drain. The final tree still has seven outstanding findings, including three HIGH-severity contract/correctness issues around --pin validation, pinned 404 classification, and documentation that promises an unwired background update lookup. The companion is exiting after the outside stop request.
+- **magicWand** (target: coordination): Add a lightweight contract-drift audit surface that maps documented user-facing claims to implementation call sites for critical contracts like update checks, pin validation, and exit-envelope decoration.

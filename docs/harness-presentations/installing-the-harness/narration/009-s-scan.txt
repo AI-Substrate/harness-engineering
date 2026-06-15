@@ -1,0 +1,1 @@
+Its first instinct isn't to build, but to observe. A harnessability survey moves quietly across the codebase, studying every way a harness might fit here. And when it's done, it reports back, honestly. Here, your strengths. And here, more delicately, your weaknesses. The lay of the land, mapped, before a single step is taken.

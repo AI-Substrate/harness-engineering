@@ -27,7 +27,7 @@ flowchart TB
     subgraph setupzone["🧰 ADOPTION GATE · once per repo · boot LAST"]
         S0["S0 · install<br/>eng-harness-0-adopt"]:::setup
         S1["S1 · scout (skippable)<br/>eng-harness-0-harnessability-assessment"]:::setup
-        S2["S2 · governance<br/>(owed — harness init is deferred)"]:::setup
+        S2["S2 · governance<br/>harness init stamps it (seeded empty)"]:::setup
         S3["S3 · inject (advisory)<br/>map the extant flow → seams; record in governance"]:::setup
         S4["S4 · build + run boot LAST<br/>eng-harness-0-add-extension"]:::setup
     end
@@ -35,7 +35,7 @@ flowchart TB
     subgraph loopzone["⚙️ ENGINEERING LOOP · every session · ↺"]
         B["Boot<br/>eng-harness-1-boot --validate"]:::loop
         BP["Backpressure Check<br/>eng-harness-2-backpressure"]:::loop
-        O["Do Work + Observe<br/>npx harness observe (CLI verb)"]:::verb
+        O["Do Work + Observe<br/>harness observe (CLI verb)"]:::verb
         RD["Retro drain<br/>eng-harness-4-retro --drain"]:::loop
         RH["Retro harvest<br/>eng-harness-4-retro --harvest"]:::loop
         I["Improve<br/>encode the fix into the harness"]:::loop
@@ -63,7 +63,7 @@ Three rungs are **required** before the router will route into the loop — with
 |---|---|---|
 | **S0 · Install** | harness CLI present, `harness doctor` healthy | **required** |
 | **S1 · Scout** | a harnessability report exists | skippable |
-| **S2 · Governance** | `.harness/engineering-harness.md` (the BIO contract) | **required** — *owed until `harness init` ships; readers degrade gracefully* |
+| **S2 · Governance** | `.harness/engineering-harness.md` (the BIO contract) | **required** — *stamped by `harness init` (seeded empty); body fills at the Improve beat* |
 | **S3 · Inject** | the governance doc's `## Injection map` — which seams your extant dev/SDD flow fires, from where (so the harness gets *used*, not just installed) | advisory |
 | **S4 · Boot** | a working boot verb, authored **and run once** | **required** |
 
@@ -72,7 +72,7 @@ Boot ─────────────────────────
   │                         Do Work                                     │
   │  ┌────────────────────────────────────────────────────────────┐    │
   └─►│   your normal dev flow (specs, plans, tasks, commits…)      │◄───┘
-     │   (npx harness observe fires one-liner captures throughout)  │
+     │   (harness observe fires one-liner captures throughout)  │
      └────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,7 +85,7 @@ Boot ─────────────────────────
 | **Front door** | `/eng-harness-flow` | **You**, or a parent flow, anytime | Whenever you're unsure where you are. Stateless — safe to call repeatedly; it re-derives position from repo signals every call and routes exactly one next step. |
 | **Boot** | `eng-harness-1-boot --validate` | **You** (or the router) at session start | Re-runs the boot that adoption built — proves the system is healthy *before* any code is written. Reports `UNAVAILABLE` (not an error) when no governance doc exists → routes back to adoption. |
 | **Backpressure Check** | `eng-harness-2-backpressure` | **You**, recommended, post-spec | After scoped work is defined, before you architect/build it. Surveys whether the work is *provable by deterministic sensors* (build/type/test/lint/smoke/boot/architecture/schema) vs inference; writes `backpressure-coverage.md`; may recommend an optional "Phase 0: Establish Backpressure". Advisory — the sensors prove, never the LLM. Never blocks. |
-| **Observe** | `npx --no-install harness observe "<what>" --kind <kind>` | **You/your agent, the moment friction happens** | A CLI verb, not a skill — one silent call per noticing (confusing failure, retry, backtrack, slow command, "if only there were…"). Lands in the gitignored buffer `.harness/temp/`. Capture judgment lives in `eng-harness-4-retro` § in-flight capture. |
+| **Observe** | `harness observe "<what>" --kind <kind>` | **You/your agent, the moment friction happens** | A CLI verb, not a skill — one silent call per noticing (confusing failure, retry, backtrack, slow command, "if only there were…"). Lands in the gitignored buffer `.harness/temp/`. Capture judgment lives in `eng-harness-4-retro` § in-flight capture. |
 | **Retro (drain)** | `eng-harness-4-retro --drain` | **You** at phase/session end, buffer non-empty | The one normal user-facing retro prompt: triage `[s/t/p/e/d/a]`, materialize kept entries into a committed record via `harness record retro`, then clear the buffer. |
 | **Retro (harvest)** | `eng-harness-4-retro --harvest` | **You**, at plan completion / periodically | Read-only curation across `.harness/records/retro/**` — what recurs, what's stale, what to encode next. Recurrence is framed as token cost. Drain first if the buffer is non-empty. |
 | **Improve** | retro `[e]ncode` / `eng-harness-0-add-extension` | **You**, when a retro names a fix | The beat where the loop compounds: ship the fix as a command, sensor, fixture, or doc — then `.harness/history.md` gains a row. Most loop runs encode nothing, and that's fine. |
@@ -99,7 +99,7 @@ flowchart LR
 
     B["eng-harness-1-boot<br/>━━━━━━<br/>session start<br/>prove it runs"]:::manual
     BP["eng-harness-2-backpressure<br/>━━━━━━<br/>post-spec · recommended<br/>what's provable?"]:::manual
-    O["npx harness observe<br/>━━━━━━<br/>during work · silent<br/>one call per friction"]:::auto
+    O["harness observe<br/>━━━━━━<br/>during work · silent<br/>one call per friction"]:::auto
     D["eng-harness-4-retro --drain<br/>━━━━━━<br/>phase/session end"]:::manual
     H["eng-harness-4-retro --harvest<br/>━━━━━━<br/>plan complete"]:::manual
 
@@ -112,7 +112,7 @@ flowchart LR
 
 ## Two on-ramps: fresh repo vs existing harness
 
-The router tells these apart from signals alone (a `.harness/` directory, `harness-engineering` in `package.json`, a governance doc) — you never have to know which path you're on.
+The router tells these apart from signals alone (a `.harness/` directory, project-local skills, a governance doc) — you never have to know which path you're on.
 
 ```mermaid
 flowchart LR
@@ -151,21 +151,22 @@ flowchart LR
        install first; boot comes last."
 
 1.  eng-harness-0-adopt        (S0 · install)
-    → npm install github:AI-Substrate/harness-engineering
-    → npx --no-install harness instructions   ← the agent briefing (AGENTS START HERE)
-    → npx --no-install harness doctor --json  ← envelope healthy, exit 0
+    → npm install -g @ai-substrate/engineering-harness   ← global, public npm, no auth
+    → harness instructions   ← the agent briefing (AGENTS START HERE)
+    → harness doctor --json  ← envelope healthy, exit 0
 
 2.  eng-harness-0-harnessability-assessment   (S1 · scout, offered)
     → Writes .harness/reports/harnessability/latest.{md,json}
       — Operate-Today + Adaptability grades, proof ceilings, back-pressure surfaces.
       An honest "this repo isn't workable" here is a valid outcome.
 
-3.  Governance (S2) — owed: the `harness init` writer is deferred to a later
-    plan. The router says so honestly and the loop skills report UNAVAILABLE
-    until the doc exists at .harness/engineering-harness.md. Nothing errors.
+3.  Governance (S2) — harness init
+    → stamps .harness/engineering-harness.md (BIO skeleton, maturity L0, every
+      other field a TODO). Idempotent never-clobber. The doc now exists but is empty;
+      boot stays UNAVAILABLE until S4 builds the boot command. Nothing errors.
 
 4.  eng-harness-0-add-extension               (S4 · boot, built LAST)
-    → npx --no-install harness new boot --wrap "npm test"
+    → harness new boot --wrap "npm test"
     → Verify independently — never trust your own scaffold:
       harness doctor --json · harness instructions boot · harness boot --json
     → 🎉 boot's working — that's the harness alive. Cross the bridge.
@@ -173,7 +174,7 @@ flowchart LR
 5.  Work normally, loop around you:
     → eng-harness-1-boot --validate at each session start (re-RUN, never re-build)
     → eng-harness-2-backpressure once scoped work is specced, before building
-    → npx --no-install harness observe "doctor's E143 message pointed at the
+    → harness observe "doctor's E143 message pointed at the
       wrong dir" --kind difficulty --severity degrading     ← the moment it happens
 
 6.  eng-harness-4-retro --drain               (session end)
@@ -199,13 +200,13 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 | `eng-harness-0-add-extension` | Guided authoring of a new `harness <verb>` (incl. `boot` at S4) | `.harness/extensions/<name>/` (entry + `instructions.md`) |
 | `eng-harness-1-boot` | Re-run the boot adoption built; readiness verdict + maturity read | terminal report (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
 | `eng-harness-2-backpressure` | Deterministic-sensor coverage survey for scoped work | `docs/plans/<ordinal>-<slug>/backpressure-coverage.md` |
-| `npx --no-install harness observe "<what>" --kind <kind>` | Capture one friction entry (CLI verb, not a skill) | one buffer entry in gitignored `.harness/temp/` |
+| `harness observe "<what>" --kind <kind>` | Capture one friction entry (CLI verb, not a skill) | one buffer entry in gitignored `.harness/temp/` |
 | `eng-harness-4-retro --drain` | Soft-prompt triage of the buffer (`[s/t/p/e/d/a]`) | committed record via `harness record retro` |
 | `eng-harness-4-retro --harvest` | Curated cross-plan friction view (read-only) | terminal print (`--json` for tooling) |
-| `npx --no-install harness doctor --json` | What's configured + which extensions loaded/failed | JSON envelope, every complaint has a `next_action` |
-| `npx --no-install harness instructions [verb]` | The agent briefing — AGENTS START HERE | terminal print |
+| `harness doctor --json` | What's configured + which extensions loaded/failed | JSON envelope, every complaint has a `next_action` |
+| `harness instructions [verb]` | The agent briefing — AGENTS START HERE | terminal print |
 
-> **Never run bare `npx harness`** — that fetches an unrelated npm package. After install, always `npx --no-install harness …` (or `./node_modules/.bin/harness …`).
+> **Never run bare `npx harness`** — that fetches an unrelated npm package. The CLI is an **ambient global tool**, so after install just call `harness …` directly (it's on PATH). A no-global-write alternative is `npx @ai-substrate/engineering-harness …` (the scoped package, run from the npm cache).
 
 ---
 
@@ -215,7 +216,7 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 <your-repo>/
 ├── .harness/
 │   ├── engineering-harness.md      ← governance doc (BIO contract) — canonical, only location
-│   │                                  (owed until `harness init` ships; see references/governance-doc.md)
+│   │                                  (stamped by `harness init`, seeded empty; see references/governance-doc.md)
 │   ├── history.md                  ← sparse changelog: one row per ENCODED improvement, never per session
 │   ├── extensions/
 │   │   └── boot/
@@ -227,9 +228,10 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 │   ├── records/
 │   │   └── retro/                  ← COMMITTED team memory (drain materializes here)
 │   └── temp/                       ← GITIGNORED session scratch (the observe buffer)
-├── AGENTS.md                       ← routes future agents to the harness at session start
-└── package.json                    ← harness-engineering installed as a repo dependency
+└── AGENTS.md                       ← routes future agents to the harness at session start
 ```
+
+The `harness` CLI itself is **not** in this tree — it's an **ambient tool** (installed globally, like `git`/`node`), never committed. Adoption leaves only `.harness/` substrate and the `AGENTS.md` cue in the repo.
 
 Two storage classes, one rule: `.harness/records/` is **committed team memory**; `.harness/temp/` is **gitignored session scratch** (the CLI self-heals that protection; `doctor` checks it).
 

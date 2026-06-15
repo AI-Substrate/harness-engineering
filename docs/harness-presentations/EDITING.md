@@ -1,34 +1,57 @@
-# Editing the Missing-Layer explainer video
+# Editing the harness explainer videos
 
-Everything needed to rebuild, retime, or re-voice `missing-layer-101.html` →
-`scratch/ml-video/missing-layer-101-full.mp4` from a cold start. Clips and
-audio are **never committed** — only scripts, narration text, word grids, and
-the deck. The pipeline is fully deterministic: run it twice, get the same
-video twice.
+The shared pipeline + tooling for building narrated explainer videos from an
+animated HTML deck. Each presentation is self-contained in its own subfolder;
+the tools, fonts, and this guide stay one level up and serve every deck:
+
+```
+docs/harness-presentations/
+  tools/                     these scripts (shared)
+  nucleus-assets/            brand fonts (shared; a deck loads ../nucleus-assets/)
+  EDITING.md                 this guide
+  missing-layer-101/         ← the first deck (the worked example throughout)
+      missing-layer-101.html   the deck
+      missing-layer-101.md     slide-by-slide script
+      intro-to-harness.md      source notes
+      narration/NNN-id.txt     one narration file per slide (+ .words.json)
+```
+
+Pick the target deck with `--pres <slug>` on any tool. When exactly one
+presentation exists the tools auto-detect it, so `--pres` is optional — until a
+second deck appears, when it becomes required (the tools refuse to guess).
+
+Rendered clips and audio are **never committed** — only scripts, narration
+text, word grids, and the deck. The pipeline is fully deterministic: run it
+twice, get the same video twice. Clips for `<slug>` land in
+`scratch/ml-video/<slug>/` (gitignored); the stitched result is
+`scratch/ml-video/<slug>/<slug>-full.mp4`.
 
 ## The pipeline at a glance
 
 ```
-narration/NNN-id.txt ──tts.cjs──▶ scratch/ml-video/NNN-id.mp3
-        │                                   │
-        └────────────align.cjs◀─────────────┘
+<slug>/narration/NNN-id.txt ──tts.cjs──▶ scratch/ml-video/<slug>/NNN-id.mp3
+        │                                          │
+        └────────────────align.cjs◀───────────────┘
                         │
                         ▼
-narration/NNN-id.words.json   (exact start/end per word, audio clock)
+<slug>/narration/NNN-id.words.json   (exact start/end per word, audio clock)
                         │
         (human/LLM craft pass: --cue-* blocks in the deck CSS)
                         ▼
-missing-layer-101.html ──record.cjs──▶ NNN-id.mp4 (video+audio muxed)
+<slug>/<slug>.html ──record.cjs──▶ NNN-id.mp4 (video+audio muxed)
                         │
                   comp.cjs (orchestrates all of the above, then
-                  concat-stitches missing-layer-101-full.mp4)
+                  concat-stitches <slug>-full.mp4)
 ```
 
 ### Tools (`docs/harness-presentations/tools/`)
 
+Every tool resolves its deck + narration + scratch dir from `--pres <slug>`
+(auto-detected when only one deck exists) via the shared `pres.cjs` resolver.
+
 | Tool | Job | Key flags |
 |---|---|---|
-| `tts.cjs` | One slide's narration → mp3 via ElevenLabs | `<slide> --file narration/NNN-id.txt`, `--list-voices`, `--stability`, `--speed` |
+| `tts.cjs` | One slide's narration → mp3 via ElevenLabs | `<slide> --file <slug>/narration/NNN-id.txt`, `--list-voices`, `--stability`, `--speed` |
 | `align.cjs` | Forced alignment: approved mp3 + known transcript → word grid | `<slide>` or `--all`, `--force`, `--lead 1` |
 | `record.cjs` | Deterministic WAAPI scrub → frames → mp4; auto-muxes same-stem mp3 | `<slide> --dur 24.5 --lead 1`; defaults to native 4K60 (the approved recipe — see below) |
 | `scrub.cjs` | Screenshot exact clip times — verify cues before rendering | `'#s-stack' 6.0,8.2,18.9` |
@@ -146,7 +169,7 @@ definition, but in short:
 
 ### A. Re-take ONE slide's narration (text change)
 
-1. Edit `narration/NNN-id.txt`.
+1. Edit `<slug>/narration/NNN-id.txt`.
 2. `node tools/comp.cjs --only N` — regenerates the mp3 (txt newer than
    mp3), re-records, restitches.
 3. `node tools/align.cjs N --force` — fresh word grid.
@@ -159,7 +182,7 @@ definition, but in short:
 ### B. Change pace / voice / model (EVERY cue moves)
 
 1. Set `.env` (`ELEVENLABS_SPEED`, voice, model).
-2. **Back up first**: `cp scratch/ml-video/*.mp3 scratch/ml-video/backup-<date>/`
+2. **Back up first**: `cp scratch/ml-video/<slug>/*.mp3 scratch/ml-video/<slug>/backup-<date>/`
    — approved takes are irreplaceable; rollback is free, regeneration isn't.
 3. `node tools/comp.cjs --force-tts --force-video` — all audio + video.
    Listen to a few clips BEFORE doing the cue work — if the voice is wrong,
@@ -263,5 +286,8 @@ cues (recipe B steps 4–6).
   pattern in prose and must not count).
 - Stems: `001-s-title`, `002-s-stack`, … shared by txt / words.json / mp3 /
   mp4 so muxing is mechanical.
-- Output dir: `scratch/ml-video/` (gitignored). Full comp:
-  `missing-layer-101-full.mp4`.
+- Output dir: `scratch/ml-video/<slug>/` (gitignored). Full comp:
+  `<slug>-full.mp4` (e.g. `missing-layer-101-full.mp4`).
+- Each presentation is its own subfolder under `docs/harness-presentations/`
+  (`<slug>/<slug>.html` + `<slug>/narration/`); `tools/` and `nucleus-assets/`
+  are shared across all decks.

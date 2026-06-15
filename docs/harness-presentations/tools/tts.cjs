@@ -14,10 +14,12 @@
 //
 //   <slide>    1-based slide number (e.g. 2) or slide id (s-stack / #s-stack);
 //              slide order is read from the deck HTML (no browser needed)
+//   --pres     presentation slug (subfolder under docs/harness-presentations/);
+//              auto-detected when only one presentation exists
 //   --voice    override ELEVENLABS_VOICE_ID
 //   --model    override model id
 //   --stability / --similarity   voice_settings (defaults .5 / .75)
-//   --out      output dir (default <repo>/scratch/ml-video, same as videos)
+//   --out      output dir (default <repo>/scratch/ml-video/<slug>, same as videos)
 //   --format   ElevenLabs output_format (default mp3_44100_128)
 //
 // After writing the mp3 it prints the audio duration and the matching
@@ -79,7 +81,9 @@ if (!key) {
   }
 
   // Slide order from the deck HTML — keeps numbering identical to record.cjs.
-  const deck = path.resolve(positional[1] || path.join(__dirname, '..', 'missing-layer-101.html'));
+  const { deck, outDir, slug } = require('./pres.cjs').resolvePres({
+    pres: opt('pres'), deck: positional[1], out: opt('out'),
+  });
   const html = fs.readFileSync(deck, 'utf8');
   // ^-anchored so the authoring note at the top of the deck (which quotes the
   // markup pattern in prose) doesn't count as a slide.
@@ -107,7 +111,7 @@ if (!key) {
   }
   const model = opt('model', process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2');
   const format = opt('format', 'mp3_44100_128');
-  const out = opt('out', path.join(ROOT, 'scratch', 'ml-video'));
+  const out = outDir;
   fs.mkdirSync(out, { recursive: true });
 
   const res = await fetch(`${API}/text-to-speech/${voice}?output_format=${format}`, {
@@ -142,6 +146,6 @@ if (!key) {
 
   console.log(`wrote ${mp3} (${kb} KB${dur ? `, ${dur.toFixed(2)}s` : ''})`);
   if (dur) {
-    console.log(`matching video: node docs/harness-presentations/tools/record.cjs ${id} --dur=${(Math.ceil(dur * 10) / 10).toFixed(1)}`);
+    console.log(`matching video: node docs/harness-presentations/tools/record.cjs ${id} --pres=${slug} --dur=${(Math.ceil(dur * 10) / 10).toFixed(1)}`);
   }
 })();

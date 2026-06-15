@@ -1,0 +1,266 @@
+{
+  "loss": 0.019180744677990465,
+  "lead": 1,
+  "words": [
+    {
+      "text": "You",
+      "start": 0.14,
+      "end": 0.239
+    },
+    {
+      "text": "might",
+      "start": 0.299,
+      "end": 0.519
+    },
+    {
+      "text": "imagine",
+      "start": 0.659,
+      "end": 1.039
+    },
+    {
+      "text": "that",
+      "start": 1.079,
+      "end": 1.299
+    },
+    {
+      "text": "building",
+      "start": 1.339,
+      "end": 1.699
+    },
+    {
+      "text": "one",
+      "start": 1.74,
+      "end": 1.859
+    },
+    {
+      "text": "of",
+      "start": 1.879,
+      "end": 1.999
+    },
+    {
+      "text": "these",
+      "start": 2.039,
+      "end": 2.5
+    },
+    {
+      "text": "would",
+      "start": 2.559,
+      "end": 2.72
+    },
+    {
+      "text": "be",
+      "start": 2.74,
+      "end": 2.799
+    },
+    {
+      "text": "a",
+      "start": 2.879,
+      "end": 2.96
+    },
+    {
+      "text": "daunting",
+      "start": 3.019,
+      "end": 3.439
+    },
+    {
+      "text": "affair.",
+      "start": 3.559,
+      "end": 3.939
+    },
+    {
+      "text": "It's",
+      "start": 4.46,
+      "end": 4.679
+    },
+    {
+      "text": "not.",
+      "start": 4.719,
+      "end": 5.019
+    },
+    {
+      "text": "The",
+      "start": 6.019,
+      "end": 6.079
+    },
+    {
+      "text": "command",
+      "start": 6.119,
+      "end": 6.48
+    },
+    {
+      "text": "line",
+      "start": 6.559,
+      "end": 6.819
+    },
+    {
+      "text": "tool",
+      "start": 6.879,
+      "end": 7.299
+    },
+    {
+      "text": "does",
+      "start": 7.359,
+      "end": 7.599
+    },
+    {
+      "text": "most",
+      "start": 7.639,
+      "end": 7.919
+    },
+    {
+      "text": "of",
+      "start": 7.94,
+      "end": 8.039
+    },
+    {
+      "text": "the",
+      "start": 8.079,
+      "end": 8.159
+    },
+    {
+      "text": "work",
+      "start": 8.22,
+      "end": 8.439
+    },
+    {
+      "text": "for",
+      "start": 8.5,
+      "end": 8.619
+    },
+    {
+      "text": "you,",
+      "start": 8.659,
+      "end": 8.92
+    },
+    {
+      "text": "laying",
+      "start": 9.439,
+      "end": 9.679
+    },
+    {
+      "text": "out",
+      "start": 9.76,
+      "end": 9.979
+    },
+    {
+      "text": "each",
+      "start": 10.079,
+      "end": 10.279
+    },
+    {
+      "text": "piece,",
+      "start": 10.34,
+      "end": 10.639
+    },
+    {
+      "text": "while",
+      "start": 11.039,
+      "end": 11.179
+    },
+    {
+      "text": "the",
+      "start": 11.239,
+      "end": 11.3
+    },
+    {
+      "text": "agent",
+      "start": 11.5,
+      "end": 11.84
+    },
+    {
+      "text": "walks",
+      "start": 11.939,
+      "end": 12.239
+    },
+    {
+      "text": "beside",
+      "start": 12.259,
+      "end": 12.759
+    },
+    {
+      "text": "you,",
+      "start": 12.819,
+      "end": 12.98
+    },
+    {
+      "text": "guiding",
+      "start": 13.519,
+      "end": 14.059
+    },
+    {
+      "text": "every",
+      "start": 14.159,
+      "end": 14.479
+    },
+    {
+      "text": "choice.",
+      "start": 14.539,
+      "end": 15
+    },
+    {
+      "text": "You",
+      "start": 16.139,
+      "end": 16.279
+    },
+    {
+      "text": "just",
+      "start": 16.34,
+      "end": 16.559
+    },
+    {
+      "text": "follow",
+      "start": 16.699,
+      "end": 16.94
+    },
+    {
+      "text": "along,",
+      "start": 17.059,
+      "end": 17.479
+    },
+    {
+      "text": "and",
+      "start": 18,
+      "end": 18.12
+    },
+    {
+      "text": "an",
+      "start": 18.159,
+      "end": 18.219
+    },
+    {
+      "text": "extension",
+      "start": 18.34,
+      "end": 18.939
+    },
+    {
+      "text": "takes",
+      "start": 19,
+      "end": 19.34
+    },
+    {
+      "text": "shape,",
+      "start": 19.379,
+      "end": 19.68
+    },
+    {
+      "text": "almost",
+      "start": 20.039,
+      "end": 20.68
+    },
+    {
+      "text": "on",
+      "start": 20.76,
+      "end": 20.84
+    },
+    {
+      "text": "its",
+      "start": 20.899,
+      "end": 21.079
+    },
+    {
+      "text": "own.",
+      "start": 21.18,
+      "end": 21.439
+    }
+  ]
+}

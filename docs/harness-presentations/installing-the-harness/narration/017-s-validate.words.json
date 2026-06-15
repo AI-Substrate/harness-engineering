@@ -1,0 +1,401 @@
+{
+  "loss": 0.034299632219167854,
+  "lead": 1,
+  "words": [
+    {
+      "text": "The",
+      "start": 0.079,
+      "end": 0.219
+    },
+    {
+      "text": "second",
+      "start": 0.28,
+      "end": 0.599
+    },
+    {
+      "text": "moment",
+      "start": 0.699,
+      "end": 1.059
+    },
+    {
+      "text": "arrives",
+      "start": 1.179,
+      "end": 1.599
+    },
+    {
+      "text": "once",
+      "start": 1.679,
+      "end": 1.899
+    },
+    {
+      "text": "your",
+      "start": 1.959,
+      "end": 2.079
+    },
+    {
+      "text": "plan",
+      "start": 2.18,
+      "end": 2.48
+    },
+    {
+      "text": "is",
+      "start": 2.519,
+      "end": 2.639
+    },
+    {
+      "text": "written.",
+      "start": 2.72,
+      "end": 3.059
+    },
+    {
+      "text": "You",
+      "start": 3.879,
+      "end": 4
+    },
+    {
+      "text": "call",
+      "start": 4.059,
+      "end": 4.219
+    },
+    {
+      "text": "the",
+      "start": 4.299,
+      "end": 4.36
+    },
+    {
+      "text": "skill",
+      "start": 4.44,
+      "end": 4.679
+    },
+    {
+      "text": "again,",
+      "start": 4.759,
+      "end": 5.159
+    },
+    {
+      "text": "and",
+      "start": 5.619,
+      "end": 5.739
+    },
+    {
+      "text": "this",
+      "start": 5.799,
+      "end": 5.98
+    },
+    {
+      "text": "time",
+      "start": 6.079,
+      "end": 6.46
+    },
+    {
+      "text": "it",
+      "start": 6.539,
+      "end": 6.639
+    },
+    {
+      "text": "looks",
+      "start": 6.719,
+      "end": 6.98
+    },
+    {
+      "text": "further",
+      "start": 7.099,
+      "end": 7.379
+    },
+    {
+      "text": "ahead,",
+      "start": 7.46,
+      "end": 7.839
+    },
+    {
+      "text": "asking",
+      "start": 8.399,
+      "end": 8.739
+    },
+    {
+      "text": "a",
+      "start": 8.8,
+      "end": 8.819
+    },
+    {
+      "text": "harder",
+      "start": 8.979,
+      "end": 9.279
+    },
+    {
+      "text": "question.",
+      "start": 9.359,
+      "end": 9.84
+    },
+    {
+      "text": "When",
+      "start": 10.96,
+      "end": 11.079
+    },
+    {
+      "text": "this",
+      "start": 11.139,
+      "end": 11.319
+    },
+    {
+      "text": "work",
+      "start": 11.46,
+      "end": 11.659
+    },
+    {
+      "text": "is",
+      "start": 11.719,
+      "end": 11.84
+    },
+    {
+      "text": "finished,",
+      "start": 11.979,
+      "end": 12.38
+    },
+    {
+      "text": "will",
+      "start": 12.759,
+      "end": 12.92
+    },
+    {
+      "text": "we",
+      "start": 13,
+      "end": 13.099
+    },
+    {
+      "text": "be",
+      "start": 13.199,
+      "end": 13.34
+    },
+    {
+      "text": "able",
+      "start": 13.479,
+      "end": 13.759
+    },
+    {
+      "text": "to",
+      "start": 13.799,
+      "end": 13.92
+    },
+    {
+      "text": "prove",
+      "start": 14,
+      "end": 14.239
+    },
+    {
+      "text": "it?",
+      "start": 14.299,
+      "end": 14.5
+    },
+    {
+      "text": "Deterministically,",
+      "start": 15.38,
+      "end": 16.379
+    },
+    {
+      "text": "beyond",
+      "start": 16.819,
+      "end": 17.239
+    },
+    {
+      "text": "all",
+      "start": 17.579,
+      "end": 17.76
+    },
+    {
+      "text": "doubt?",
+      "start": 17.819,
+      "end": 18.199
+    },
+    {
+      "text": "If",
+      "start": 19.319,
+      "end": 19.399
+    },
+    {
+      "text": "the",
+      "start": 19.459,
+      "end": 19.52
+    },
+    {
+      "text": "harness",
+      "start": 19.619,
+      "end": 20.18
+    },
+    {
+      "text": "isn't",
+      "start": 20.239,
+      "end": 20.5
+    },
+    {
+      "text": "yet",
+      "start": 20.6,
+      "end": 20.76
+    },
+    {
+      "text": "equipped",
+      "start": 20.819,
+      "end": 21.18
+    },
+    {
+      "text": "to",
+      "start": 21.219,
+      "end": 21.299
+    },
+    {
+      "text": "do",
+      "start": 21.379,
+      "end": 21.519
+    },
+    {
+      "text": "so,",
+      "start": 21.579,
+      "end": 21.779
+    },
+    {
+      "text": "it'll",
+      "start": 22.279,
+      "end": 22.539
+    },
+    {
+      "text": "say",
+      "start": 22.6,
+      "end": 22.799
+    },
+    {
+      "text": "so,",
+      "start": 22.859,
+      "end": 23.079
+    },
+    {
+      "text": "plainly.",
+      "start": 23.379,
+      "end": 23.84
+    },
+    {
+      "text": "And",
+      "start": 24.539,
+      "end": 24.619
+    },
+    {
+      "text": "it",
+      "start": 24.68,
+      "end": 24.76
+    },
+    {
+      "text": "might",
+      "start": 24.84,
+      "end": 25.079
+    },
+    {
+      "text": "suggest",
+      "start": 25.139,
+      "end": 25.579
+    },
+    {
+      "text": "you",
+      "start": 25.639,
+      "end": 25.739
+    },
+    {
+      "text": "strengthen",
+      "start": 25.799,
+      "end": 26.26
+    },
+    {
+      "text": "the",
+      "start": 26.299,
+      "end": 26.399
+    },
+    {
+      "text": "harness",
+      "start": 26.459,
+      "end": 26.799
+    },
+    {
+      "text": "itself,",
+      "start": 26.859,
+      "end": 27.399
+    },
+    {
+      "text": "first,",
+      "start": 27.939,
+      "end": 28.319
+    },
+    {
+      "text": "before",
+      "start": 28.599,
+      "end": 28.939
+    },
+    {
+      "text": "the",
+      "start": 28.979,
+      "end": 29.079
+    },
+    {
+      "text": "main",
+      "start": 29.139,
+      "end": 29.359
+    },
+    {
+      "text": "work",
+      "start": 29.439,
+      "end": 29.659
+    },
+    {
+      "text": "begins.",
+      "start": 29.719,
+      "end": 30.299
+    },
+    {
+      "text": "A",
+      "start": 31.059,
+      "end": 31.079
+    },
+    {
+      "text": "little",
+      "start": 31.159,
+      "end": 31.479
+    },
+    {
+      "text": "preparation",
+      "start": 31.559,
+      "end": 32.239
+    },
+    {
+      "text": "now,",
+      "start": 32.319,
+      "end": 32.639
+    },
+    {
+      "text": "to",
+      "start": 33.059,
+      "end": 33.139
+    },
+    {
+      "text": "make",
+      "start": 33.18,
+      "end": 33.36
+    },
+    {
+      "text": "the",
+      "start": 33.399,
+      "end": 33.52
+    },
+    {
+      "text": "proof",
+      "start": 33.579,
+      "end": 33.939
+    },
+    {
+      "text": "possible",
+      "start": 34,
+      "end": 34.419
+    },
+    {
+      "text": "later.",
+      "start": 34.479,
+      "end": 34.84
+    }
+  ]
+}
