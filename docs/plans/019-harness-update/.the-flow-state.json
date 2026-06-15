@@ -3,12 +3,12 @@
   "slug": "harness-update",
   "plan_dir": "docs/plans/019-harness-update",
   "mode": "Simple",
-  "current_stage": "awaiting-3",
-  "pending_command": "/the-flow 6 implement --plan docs/plans/019-harness-update/harness-update-plan.md",
+  "current_stage": "awaiting-6",
+  "pending_command": "/the-flow 8 merge --plan docs/plans/019-harness-update/harness-update-plan.md",
   "intent": "Add harness self-update: `harness update` (+ `--check`/`--pin`) and an npx `self-install` bootstrap; a once-a-day update check that suggests the update command; an 'update available vX→vY — run: <cmd>' banner injected into every CLI envelope (JSON + human); plus a skills check + reconcile on update.",
   "milestones_total": 4,
-  "milestones_done": 2,
-  "last_checkpoint_at": "2026-06-15T02:40:00Z",
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-15T03:32:00Z",
   "compacted_seams": [],
   "status": "active"
 }
