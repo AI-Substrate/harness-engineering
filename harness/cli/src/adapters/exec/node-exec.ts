@@ -1,13 +1,17 @@
 import { spawn } from 'node:child_process';
 import type { ExecPort, ExecResult } from './exec-port.js';
+import { resolveSpawn } from './windows-command.js';
 
 /**
  * Real process execution — the only place a child is spawned for the verb path.
- * `shell: false` + an args array means no shell-injection surface (KF-06). Never
- * rejects: a spawn error or non-zero exit resolves to an `ExecResult` so the verb
- * handler can map it to an Envelope rather than throwing through the kernel. This
- * includes a SYNCHRONOUS spawn throw (e.g. a null byte in the command), which is
- * caught and resolved as code 127 rather than rejecting the promise.
+ * `shell: false` + an args array means no shell-injection surface (KF-06). On
+ * Windows, {@link resolveSpawn} first maps `.cmd`/`.bat` shims to a `cmd.exe`
+ * invocation (CreateProcess cannot exec them) WITHOUT reintroducing a shell —
+ * see that module for the `/s` verbatim-quoting details. Never rejects: a spawn
+ * error or non-zero exit resolves to an `ExecResult` so the verb handler can map
+ * it to an Envelope rather than throwing through the kernel. This includes a
+ * SYNCHRONOUS spawn throw (e.g. a null byte in the command), which is caught and
+ * resolved as code 127 rather than rejecting the promise.
  */
 export class NodeExec implements ExecPort {
   run(command: string, args: string[], opts: { cwd: string }): Promise<ExecResult> {
@@ -15,7 +19,12 @@ export class NodeExec implements ExecPort {
       let stdout = '';
       let stderr = '';
       try {
-        const child = spawn(command, args, { cwd: opts.cwd, shell: false });
+        const spec = resolveSpawn(command, args, opts.cwd);
+        const child = spawn(spec.command, spec.args, {
+          cwd: opts.cwd,
+          shell: false,
+          windowsVerbatimArguments: spec.windowsVerbatimArguments ?? false,
+        });
         child.stdout?.on('data', (chunk) => {
           stdout += chunk.toString();
         });

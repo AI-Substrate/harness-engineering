@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.3.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.2.0...v0.3.0) (2026-06-15)
+
+
+### Features
+
+* **019:** harness self-update (`harness update`) + zero-auth public-npm distribution ([#19](https://github.com/AI-Substrate/harness-engineering/issues/19)) ([7f11fdc](https://github.com/AI-Substrate/harness-engineering/commit/7f11fdcb9407cb97f1e4bf82873421642c9b6479))
+* **cli:** 'harness skills update' — refresh skills and prune renamed-away slugs ([62520ab](https://github.com/AI-Substrate/harness-engineering/commit/62520abcb04db14787cdcd4c3acd9c025ccdaf0e))
+* **cli:** add 'engh' alias bin alongside 'harness' ([3906e83](https://github.com/AI-Substrate/harness-engineering/commit/3906e83985a80c2dd88e1941a5ec3f02af134525))
+* **deck:** glide is the law for flying panels — cardIn retired ([9bd4d6a](https://github.com/AI-Substrate/harness-engineering/commit/9bd4d6ab5dfeb7309d65cf0c276629eaa0d7fa15))
+* **deck:** little next/prev buttons in read mode ([9bdaaaa](https://github.com/AI-Substrate/harness-engineering/commit/9bdaaaa55864e8d41d54ef26f16facac37a0fe5a))
+* **deck:** reword "stack" → "layers" on S2/S15 (narration + on-screen) ([3537294](https://github.com/AI-Substrate/harness-engineering/commit/3537294776aece9e4e45a77f506bdc3eac52d9c5))
+* **deck:** S14 re-take ('tools AND BACKPRESSURE SENSORS') + true S13→S14 match-cut ([953a3e4](https://github.com/AI-Substrate/harness-engineering/commit/953a3e41cce14156fb01fd969e6bc1ac5ad501b2))
+* **deck:** S2 flow rails replace hop dots; S4 INFERRED verdict stamp ([a7651d4](https://github.com/AI-Substrate/harness-engineering/commit/a7651d48ccd7b84a27f4a5d240de75c52254d29b))
+* **deck:** S2 plate stroke flourish; intent rail clears the stack ([df8b81e](https://github.com/AI-Substrate/harness-engineering/commit/df8b81ea25fd50276c0e3492729efd617934e2c1))
+* **deck:** S5 quirk gags — the codebase pile acts out its own line ([5550511](https://github.com/AI-Substrate/harness-engineering/commit/5550511c6b19eb60a9a3c7c2b4af11bcb02f1ab0))
+* **deck:** top-and-tail install CTAs with copy-button prompt ([32d6b90](https://github.com/AI-Substrate/harness-engineering/commit/32d6b90e5cd51277792332cfe741d6f36a061597))
+* **deck:** word-sync all slides to narration via cue blocks ([0b33304](https://github.com/AI-Substrate/harness-engineering/commit/0b333048dd769c47ada7e1bf0ed979efee5ee57a))
+* **deck:** word-sync S2 to narration via forced alignment ([cb2516e](https://github.com/AI-Substrate/harness-engineering/commit/cb2516e6400f8d1a1c4920619d76a3bfaa0941b1))
+* **init:** `harness init` — INCEPTION writer of the governance doc (FX001) ([#17](https://github.com/AI-Substrate/harness-engineering/issues/17)) ([9e2224a](https://github.com/AI-Substrate/harness-engineering/commit/9e2224aab8f4d2c39ad80c9793f41705f3e63975))
+* **layers:** HUMAN STEERING LAYER (THIS IS YOU) across all mirrors ([b57d54c](https://github.com/AI-Substrate/harness-engineering/commit/b57d54cc04b64eefb52a2fa5927a6c0c9190cb30))
+* **layers:** single-view layer map at top of layers.html ([da2a672](https://github.com/AI-Substrate/harness-engineering/commit/da2a67211190345d26c9cee0b6bf8bc8c73da4a6))
+* **presentations:** auto-mux same-stem narration into recorded clips ([488c3df](https://github.com/AI-Substrate/harness-engineering/commit/488c3df0805cf49a7471b52182eadde387861a0e))
+* **presentations:** Missing Layer 101 — 20 self-playing animated scenes ([10064a6](https://github.com/AI-Substrate/harness-engineering/commit/10064a6eb7b9981502f62f22f6660c1c53555452))
+* **presentations:** numbered clip stems + ElevenLabs narration script ([2744212](https://github.com/AI-Substrate/harness-engineering/commit/27442124952b428cb066adb7cd777a8ef6c10716))
+* **presentations:** per-slide narration + full-comp builder ([21fae96](https://github.com/AI-Substrate/harness-engineering/commit/21fae965962ad5120e74d217fade59c0b672f7ce))
+* **presentations:** per-slide video recorder (WAAPI scrub -&gt; mp4) ([3b3896a](https://github.com/AI-Substrate/harness-engineering/commit/3b3896a9efc5a323b13ecb5332d79468547a3f4d))
+* **presentations:** speaking-speed control for narration ([b1e91f5](https://github.com/AI-Substrate/harness-engineering/commit/b1e91f5f226ff90bbf2fed11dc126dc38dba1c1b))
+* **skills,cli:** surface the deterministic-layer thesis on first-contact surfaces ([6771655](https://github.com/AI-Substrate/harness-engineering/commit/67716551b32a405a9fd9993a08725bcfb7357cee))
+* **skills:** real inject step (S3) — record the injection map so the harness survives cold starts ([2e2ec94](https://github.com/AI-Substrate/harness-engineering/commit/2e2ec94e3a5e68d1c5267e2dd00507ed9177fadd))
+* **static-site:** full intro deck (index.html) + layers overview ([dcb4b3b](https://github.com/AI-Substrate/harness-engineering/commit/dcb4b3b14fc12338f39a8c1ddeb8cebefbf947bb))
+* **tools:** hq recipe is the default — 60fps, 2x supersampled capture ([9a77b29](https://github.com/AI-Substrate/harness-engineering/commit/9a77b296a329dcc7ad4cece0326fff1770c1a00c))
+* **tools:** native 4K60 is the output default ([8023ac3](https://github.com/AI-Substrate/harness-engineering/commit/8023ac3cf7ae4b27d9db4bdb6d98eef390b620a9))
+* **tools:** stable text raster + supersampled capture path in record.cjs ([3dd51c4](https://github.com/AI-Substrate/harness-engineering/commit/3dd51c4e141c84c8e9ae9b8b60db3ac8f8192ae4))
+
+
+### Bug Fixes
+
+* **deck:** agenda heading 'Where we're going' -&gt; 'The contents.' ([b5dd6c0](https://github.com/AI-Substrate/harness-engineering/commit/b5dd6c067cdf7eacdb72f38ad5ba8e3e21e79bad))
+* **deck:** dock S2/S15 leader pips to plate corners, riding the rig bob ([0edff63](https://github.com/AI-Substrate/harness-engineering/commit/0edff63a68435efdc35eeb5df728a85188596aa0))
+* **deck:** keep S15 done?/encode decals fully on the ink plate ([2238778](https://github.com/AI-Substrate/harness-engineering/commit/223877803a946cd13b314c981c5eb0f7a16a9b8c))
+* **deck:** no entrance fades on scenes that continue across a cut ([99b76e8](https://github.com/AI-Substrate/harness-engineering/commit/99b76e8f52c49805153df204b5735fb4cb93d9f4))
+* **deck:** restore canonical layer wording on the layers slide ([75c0891](https://github.com/AI-Substrate/harness-engineering/commit/75c0891193f6f7ccfe8600f3f66c75727cb4e6ef))
+* **deck:** S13 qFlip is one transform segment — kills the 62% velocity snap ([82221b7](https://github.com/AI-Substrate/harness-engineering/commit/82221b7f98a63cc6706bd2cb89ef832e8d230f78))
+* **deck:** S14 A/B badges pop .3s early — impact lands on the spoken word ([e20936f](https://github.com/AI-Substrate/harness-engineering/commit/e20936f5f1c70ea5abdc05199709104c02defcf5))
+* **deck:** S15 done?/encode pills — equal boxes, centred text, even spread ([a11d268](https://github.com/AI-Substrate/harness-engineering/commit/a11d26867f1faf380a23042984c6bb5bc8e97a29))
+* **deck:** S15 labels ride their plates through the gap move ([4cf2bb2](https://github.com/AI-Substrate/harness-engineering/commit/4cf2bb25f6f462c89849462cada08eea127529ea))
+* **deck:** S16 pill alignment; S13/S14 question-2 broadened to all learning ([7b44b5e](https://github.com/AI-Substrate/harness-engineering/commit/7b44b5e9aae59599ba4146f9cf8226787941b57b))
+* **deck:** S17 convergence dots derived exactly from the cv line endpoints ([a2a10e0](https://github.com/AI-Substrate/harness-engineering/commit/a2a10e094ce21086ff16b323871c4d566f280786))
+* **deck:** S2 agent blink+idle survives agentScan; S4 cards glide in clean ([e96a508](https://github.com/AI-Substrate/harness-engineering/commit/e96a508bf64322b71b11bc1a5e0d3917719d7603))
+* **deck:** S2 shadows arrive with their owners; pips hop the stack ([51d4f11](https://github.com/AI-Substrate/harness-engineering/commit/51d4f119064bfbbd2b5399c03e2ddfb3b6175673))
+* **deck:** S7 agent rides the trail line; callout stems reach their pins ([7e7d9ee](https://github.com/AI-Substrate/harness-engineering/commit/7e7d9ee1662ce5135277e293d362296f9bd4b0d7))
+* **deck:** vs slide — concrete examples on the engineering-harness card ([2056e57](https://github.com/AI-Substrate/harness-engineering/commit/2056e570987bbc4cab8743ca3634c9eb63a420e7))
+* **layers:** lead each layer section with the layer NAME, not its descriptor ([90094ec](https://github.com/AI-Substrate/harness-engineering/commit/90094ecf3d895f219f1281f6f8353cbcd102c8d5))
+* **presentations:** accept --flag value form in tool arg parsing ([63a00f7](https://github.com/AI-Substrate/harness-engineering/commit/63a00f764d22733423e1c209389dcafcbe942cdf))
+* **presentations:** equal-length audio/video streams + 1s narration lead/tail ([71df681](https://github.com/AI-Substrate/harness-engineering/commit/71df681ccdacc406668a6d00d36c37bbbe33b0cf))
+* **presentations:** pin v3 voice with Robust stability ([3e9673d](https://github.com/AI-Substrate/harness-engineering/commit/3e9673d6f5256dcdbb42a6266c015838aa2fe975))
+* **skills:** full GitHub URLs for repo-content references ([9ba602c](https://github.com/AI-Substrate/harness-engineering/commit/9ba602ca1798783dfe7e45d37fd515278d3d9d63))
+* **skills:** inject step asks first, per surface — hand-hold, never bomb-in ([90d8f39](https://github.com/AI-Substrate/harness-engineering/commit/90d8f39b80cfd58cafdb784d22eafccff284a309))
+* **skills:** scope installer source to /skills subpath ([e98b03b](https://github.com/AI-Substrate/harness-engineering/commit/e98b03b29c341e26957cc130c816432f425c4a23))
+* **skills:** setup probes for an existing harness before installing ([ab79196](https://github.com/AI-Substrate/harness-engineering/commit/ab79196e3291ecd4ee829d2bcb3b06e4a331b50f))
+* **tools:** recorder waits for compositor commit; determinism flags ([e148956](https://github.com/AI-Substrate/harness-engineering/commit/e148956dd44333cb6d917203b99a8c5e2391a7e8))
+
 ## [0.2.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.1.0...v0.2.0) (2026-06-11)
 
 
