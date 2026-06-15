@@ -7,6 +7,8 @@ import { FakeExec, type ExecScript } from '../../src/adapters/exec/fake-exec.js'
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
+import { DEFAULT_SKILLS_SOURCE, LEGACY_SKILL_SLUGS } from '../../src/services/skills/contract.js';
+import { buildInstallArgv, buildRemoveArgv } from '../../src/services/skills/skills-service.js';
 
 const PKG = '@ai-substrate/engineering-harness';
 const VIEW = `npm view ${PKG} version --json`;
@@ -64,9 +66,10 @@ describe('harness update --check (report-only)', () => {
     const env = JSON.parse(out);
     expect(env.command).toBe('update');
     expect(env.status).toBe('ok');
-    expect(env.data).toEqual({ installed: '0.2.0', latest: '0.3.0', update_available: true });
+    expect(env.data).toMatchObject({ installed: '0.2.0', latest: '0.3.0', update_available: true });
+    expect(env.data.skills.reconciled).toBe(false); // report-only without --target
     expect(code).toBe(0);
-    // only the lookup ran — never an install
+    // only the lookup ran — never an install or a skills mutation
     expect(exec.calls.map(execLine)).toEqual([VIEW]);
   });
 
@@ -74,7 +77,7 @@ describe('harness update --check (report-only)', () => {
     const { out } = await run(['update', '--check'], 'json', {
       scripts: { [VIEW]: { code: 0, stdout: '"0.2.0"' } },
     });
-    expect(JSON.parse(out).data).toEqual({ installed: '0.2.0', latest: '0.2.0', update_available: false });
+    expect(JSON.parse(out).data).toMatchObject({ installed: '0.2.0', latest: '0.2.0', update_available: false });
   });
 
   it('degrades gracefully when the registry lookup fails (latest null, exit 0)', async () => {
@@ -83,7 +86,7 @@ describe('harness update --check (report-only)', () => {
     });
     const env = JSON.parse(out);
     expect(env.status).toBe('ok');
-    expect(env.data).toEqual({ installed: '0.2.0', latest: null, update_available: false });
+    expect(env.data).toMatchObject({ installed: '0.2.0', latest: null, update_available: false });
     expect(code).toBe(0);
   });
 
@@ -104,11 +107,12 @@ describe('harness update --pin', () => {
       scripts: { [INSTALL('0.3.0')]: { code: 0 } },
     });
     const env = JSON.parse(out);
-    expect(env.data).toEqual({
+    expect(env.data).toMatchObject({
       installed_before: '0.2.0',
       installed_after: '0.3.0',
       command: 'npm i -g @ai-substrate/engineering-harness@0.3.0',
     });
+    expect(env.data.skills.reconciled).toBe(false);
     expect(code).toBe(0);
     expect(exec.calls.map(execLine)).toEqual([INSTALL('0.3.0')]); // no lookup, exact install
   });
@@ -151,7 +155,7 @@ describe('harness update (bare)', () => {
       scripts: { [VIEW]: { code: 0, stdout: '"0.3.0"' }, [INSTALL('latest')]: { code: 0 } },
     });
     const env = JSON.parse(out);
-    expect(env.data).toEqual({
+    expect(env.data).toMatchObject({
       installed_before: '0.2.0',
       installed_after: '0.3.0',
       command: 'npm i -g @ai-substrate/engineering-harness@latest',
@@ -201,5 +205,77 @@ describe('harness self-install', () => {
     expect(env.error.code).toBe('E201');
     expect(env.next_action).toMatch(/\.npmrc|read:packages/);
     expect(code).toBe(1);
+  });
+});
+
+describe('harness update — skills reconcile (--target)', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const refreshKey = (t: string[], g = false) =>
+    `npx ${buildInstallArgv({ source: DEFAULT_SKILLS_SOURCE, targets: t, global: g }).join(' ')}`;
+  const pruneKey = (t: string[], g = false) =>
+    `npx ${buildRemoveArgv({ slugs: [...LEGACY_SKILL_SLUGS], targets: t, global: g }).join(' ')}`;
+
+  it('reconciles (refresh + prune) and folds skills into the envelope (AC14)', async () => {
+    // bare update, already latest ⇒ no binary install; skills refresh+prune succeed (unscripted npx ⇒ ok)
+    const { out, code, exec } = await run(['update', '--target', 'github-copilot'], 'json', {
+      scripts: { [VIEW]: { code: 0, stdout: '"0.2.0"' } },
+    });
+    const env = JSON.parse(out);
+    expect(env.status).toBe('ok');
+    expect(env.data.skills).toMatchObject({
+      reconciled: true,
+      refreshed: true,
+      pruned: true,
+      targets: ['github-copilot'],
+    });
+    expect(code).toBe(0);
+    const npx = exec.calls.filter((c) => c.command === 'npx');
+    expect(npx.map((c) => c.args[1])).toEqual(['add', 'remove']); // refresh then prune
+  });
+
+  it('refresh succeeds but prune fails ⇒ degraded, exit 0 (AC14)', async () => {
+    const { out, code } = await run(['update', '--target', 'github-copilot'], 'json', {
+      scripts: {
+        [VIEW]: { code: 0, stdout: '"0.2.0"' },
+        [pruneKey(['github-copilot'])]: { code: 1, stderr: 'remove failed' },
+      },
+    });
+    const env = JSON.parse(out);
+    expect(env.status).toBe('degraded');
+    expect(env.data.skills).toMatchObject({ refreshed: true, pruned: false });
+    expect(code).toBe(0);
+  });
+
+  it('refresh fails ⇒ error, exit 1 (AC14)', async () => {
+    const { out, code } = await run(['update', '--target', 'github-copilot'], 'json', {
+      scripts: {
+        [VIEW]: { code: 0, stdout: '"0.2.0"' },
+        [refreshKey(['github-copilot'])]: { code: 1, stderr: 'add failed' },
+      },
+    });
+    const env = JSON.parse(out);
+    expect(env.status).toBe('error');
+    expect(env.error.code).toBe('E170');
+    expect(code).toBe(1);
+  });
+
+  it('--check --target stays report-only (no skills mutation)', async () => {
+    const { out, exec } = await run(['update', '--check', '--target', 'github-copilot'], 'json', {
+      scripts: { [VIEW]: { code: 0, stdout: '"0.3.0"' } },
+    });
+    expect(JSON.parse(out).data.skills.reconciled).toBe(false);
+    expect(exec.calls.some((c) => c.command === 'npx')).toBe(false);
+  });
+
+  it('no --target reports prune candidates without mutating (AC13)', async () => {
+    const { out, exec } = await run(['update', '--check'], 'json', {
+      scripts: { [VIEW]: { code: 0, stdout: '"0.3.0"' } },
+    });
+    const env = JSON.parse(out);
+    expect(env.data.skills.reconciled).toBe(false);
+    expect(env.data.skills.prune_candidates.length).toBeGreaterThan(0);
+    expect(env.data.skills.suggested_command).toContain('harness skills update --target');
+    expect(exec.calls.some((c) => c.command === 'npx')).toBe(false);
   });
 });

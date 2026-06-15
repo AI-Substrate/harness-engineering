@@ -84,3 +84,11 @@
 ### T010 — update/auth failure mapping ✅
 - Reordered `classifyInstallFailure`: **pinned-404 → E204 (version-not-found) checked BEFORE auth** (a pin miss is never mislabeled); a **non-pinned 404 → E201** (the @ai-substrate scope/registry is unconfigured or the token lacks access — same `.npmrc` + `read:packages` setup next_action as 401/403). Classes: E203 npm-absent (127/command-not-found) · E201 auth/registry · E204 pinned-version-not-found · E202 EACCES/EPERM · E200 generic — each with an actionable, command-echoing next_action.
 - Tests: `test/services/update/install.test.ts` (argv/format/normalizePin + all 6 failure classes) + 2 act-level (EACCES→E202, 127→E203). 20 pass.
+- Commit: `e920645`.
+
+### T011 — skills reconcile orchestration ✅
+- Rewrote `acts/update.ts` around **outcome objects** so `update` emits ONE combined envelope: a binary (CLI) outcome + a `skills` sub-object. Binary failure ⇒ pure error envelope (skills skipped — fix the CLI first).
+- `--target <cli> [--global]` (and not `--check`) ⇒ **reconcile** via the existing skills path: refresh (`npx skills add`) then prune the `LEGACY_SKILL_SLUGS` (`npx skills remove`), reusing the **already-exported** `buildInstallArgv`/`buildRemoveArgv`/`formatInstallCommand` + `DEFAULT_SKILLS_SOURCE`/`KNOWN_SKILL_TARGETS`/`LEGACY_SKILL_SLUGS` (KF-05 — no new exports). Refresh-fail ⇒ **error/1** (E170); prune-fail ⇒ **degraded/0** (AC14).
+- No `--target` (or under `--check`) ⇒ **report-only**: `skills:{reconciled:false, prune_candidates, suggested_command}` + a next_action listing `KNOWN_SKILL_TARGETS`; mutates nothing (AC13).
+- `self-install` keeps its single binary envelope (no skills phase).
+- Tests: 17 in `update.test.ts` (existing data asserts → `toMatchObject` + `skills` checks; new reconcile/degraded/error/report-only cases). **Full suite 63 files / 606 green.**
