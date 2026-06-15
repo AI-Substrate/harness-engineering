@@ -42,15 +42,15 @@
     "fix": "biome check --write harness/cli"
   },
   "dependencies": {
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "jiti": "2.7.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
-    "@types/node": "^22",
+    "@biomejs/biome": "^2.5.0",
+    "@types/node": "^25",
     "@vitest/coverage-v8": "^4.1.8",
     "dependency-cruiser": "^17.4.3",
-    "typescript": "^5.7.0",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }
 }

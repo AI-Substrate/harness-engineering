@@ -35,11 +35,11 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Release Please
         id: release
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@v5
         with:
           # A user/PAT token (not the built-in GITHUB_TOKEN) so the Release PRs
           # release-please opens TRIGGER CI — GitHub intentionally suppresses
@@ -62,10 +62,10 @@ jobs:
       id-token: write # required for npm provenance (links the version to this run)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node (npm registry)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           registry-url: https://registry.npmjs.org
@@ -101,10 +101,10 @@ jobs:
       id-token: write # required for npm provenance
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node (npm registry)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           registry-url: https://registry.npmjs.org
