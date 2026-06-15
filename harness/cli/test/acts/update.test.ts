@@ -121,6 +121,16 @@ describe('harness update --pin', () => {
     expect(exec.calls.map(execLine)).toEqual([INSTALL('0.3.0')]); // no lookup, exact install
   });
 
+  it('rejects a dist-tag pin (latest/canary) with E108, no install (companion F005/AC3)', async () => {
+    const { out, code, exec } = await run(['update', '--pin', 'latest'], 'json');
+    const env = JSON.parse(out);
+    expect(env.status).toBe('error');
+    expect(env.error.code).toBe('E108');
+    expect(env.next_action).toContain('--pin');
+    expect(code).toBe(1);
+    expect(exec.calls.length).toBe(0); // never shelled out
+  });
+
   it('maps a not-in-registry pin to E204 + actionable next_action (AC3)', async () => {
     const { out, code } = await run(['update', '--pin', '9.9.9'], 'json', {
       scripts: {

@@ -45,4 +45,22 @@ describe('NodeEnv', () => {
       delete process.env.HARNESS_TEST_VAR;
     }
   });
+
+  it('home() falls back past an EMPTY HOME to USERPROFILE (companion F001)', () => {
+    // `||` (not `??`) means an empty HOME is NOT treated as resolved — it falls
+    // through to %USERPROFILE% (then os.homedir(), which is host-dependent so not
+    // asserted here). Deterministic: empty HOME + a set USERPROFILE.
+    const prevHome = process.env.HOME;
+    const prevProfile = process.env.USERPROFILE;
+    try {
+      process.env.HOME = '';
+      process.env.USERPROFILE = '/profile/u';
+      expect(new NodeEnv().home()).toBe('/profile/u');
+    } finally {
+      if (prevHome === undefined) delete process.env.HOME;
+      else process.env.HOME = prevHome;
+      if (prevProfile === undefined) delete process.env.USERPROFILE;
+      else process.env.USERPROFILE = prevProfile;
+    }
+  });
 });

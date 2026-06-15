@@ -17,8 +17,17 @@ interface Parsed {
 }
 
 const NUMERIC = /^\d+$/;
+/** A numeric identifier with no leading zero (SemVer §9 — `0` ok, `01` not). */
+const NUMERIC_NOLEAD = /^(0|[1-9]\d*)$/;
+/** A pre-release identifier's legal alphabet (SemVer §9). */
+const PRERELEASE_ID = /^[0-9A-Za-z-]+$/;
 
-/** Parse `vX.Y.Z[-pre][+build]` → Parsed, or null if it isn't a clean triple. */
+/**
+ * Parse `vX.Y.Z[-pre][+build]` → Parsed, or null if it isn't a clean triple.
+ * Strict per SemVer §9 (companion F002): core/numeric-prerelease identifiers
+ * reject leading zeroes; pre-release identifiers reject illegal characters — so
+ * malformed input can never slip through and compare as "newer".
+ */
 function parse(raw: string): Parsed | null {
   if (typeof raw !== 'string') return null;
   let v = raw.trim();
@@ -35,13 +44,20 @@ function parse(raw: string): Parsed | null {
 
   const parts = core.split('.');
   if (parts.length !== 3) return null;
-  const nums = parts.map((p) => (NUMERIC.test(p) ? Number(p) : Number.NaN));
-  if (nums.some(Number.isNaN)) return null;
+  if (!parts.every((p) => NUMERIC_NOLEAD.test(p))) return null; // reject leading zeroes / non-numeric
 
   const prerelease = pre === '' ? [] : pre.split('.');
-  if (prerelease.some((id) => id === '')) return null; // e.g. "1.0.0-" or "1.0.0-a..b"
+  for (const id of prerelease) {
+    if (!PRERELEASE_ID.test(id)) return null; // empty or illegal character
+    if (NUMERIC.test(id) && !NUMERIC_NOLEAD.test(id)) return null; // numeric with a leading zero
+  }
 
-  return { major: nums[0], minor: nums[1], patch: nums[2], prerelease };
+  return { major: Number(parts[0]), minor: Number(parts[1]), patch: Number(parts[2]), prerelease };
+}
+
+/** True iff `v` is a valid, concrete SemVer version (used to reject dist-tag pins — companion F005). */
+export function isValidVersion(v: string): boolean {
+  return parse(v) !== null;
 }
 
 function compareCore(a: Parsed, b: Parsed): number {

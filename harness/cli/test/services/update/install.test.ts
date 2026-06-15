@@ -56,6 +56,19 @@ describe('classifyInstallFailure (AC10)', () => {
     expect(f.next_action).toContain('--pin');
   });
 
+  it('PINNED + GENERIC 404 (no version text) → E201 setup, not E204 (companion F006)', () => {
+    // first-time user with an unconfigured @ai-substrate scope hits a generic 404
+    const f = classifyInstallFailure(
+      result({
+        stderr: 'npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@ai-substrate%2f...',
+      }),
+      `npm i -g ${PKG}@9.9.9`,
+      { pinned: '9.9.9' },
+    );
+    expect(f.code).toBe('E201'); // a generic 404 on a pin is a config/auth issue, not "version absent"
+    expect(f.next_action).toMatch(/\.npmrc/);
+  });
+
   it('NON-pinned 404 → E201 (scope/registry unconfigured) with the setup next_action', () => {
     const f = classifyInstallFailure(
       result({ stderr: 'npm ERR! 404 Not Found - GET ...' }),

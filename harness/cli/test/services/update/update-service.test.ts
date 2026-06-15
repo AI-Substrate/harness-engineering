@@ -123,6 +123,34 @@ describe('runCheck', () => {
     expect(fs.writes).toEqual([]);
   });
 
+  it('a cache write failure does not break a successful check (companion F003)', async () => {
+    // a throwing FsPort (read-only home / permission denied) must not throw through runCheck
+    const throwingFs = {
+      exists: () => false,
+      readText: () => null,
+      readdir: () => [],
+      mkdirp: () => {
+        throw new Error('EACCES');
+      },
+      writeText: () => {
+        throw new Error('EACCES');
+      },
+    };
+    const result = await runCheck(
+      {
+        fs: throwingFs,
+        env: new FakeEnv({}, HOME),
+        clock: new FakeClock(T0),
+        lookup: new FakeVersionLookup('0.4.0'),
+      },
+      '0.2.0',
+      { force: true },
+    );
+    expect(result.refreshed).toBe(true);
+    expect(result.latest).toBe('0.4.0');
+    expect(result.update_available?.latest).toBe('0.4.0');
+  });
+
   it('an empty (null) lookup is treated like a failure — cache preserved', async () => {
     const fs = new FakeFs(cacheJson(T0, '0.3.0'));
     const lookup = new FakeVersionLookup(null);

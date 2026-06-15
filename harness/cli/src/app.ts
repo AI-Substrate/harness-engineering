@@ -256,6 +256,19 @@ export async function main(
   const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
   const port = createOutputPort(io.mode, io.writers);
 
+  // Register the update banner BEFORE any exit — incl. the pre-build discovery /
+  // registry-validation error envelopes below, which exit before buildProgram
+  // (which re-registers it) runs (companion F004). Idempotent: same decorator.
+  setBannerDecorator(
+    buildBannerDecorator({
+      fs: deps.fs,
+      env: deps.env,
+      installed: version,
+      mode: io.mode,
+      writers: io.writers,
+    }),
+  );
+
   let registry: VerbRegistry;
   try {
     registry = await loadRegistry(argv, env, deps, loader);

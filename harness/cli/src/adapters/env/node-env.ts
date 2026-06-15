@@ -9,9 +9,10 @@ export class NodeEnv implements EnvPort {
 
   home(): string | undefined {
     // Prefer the explicit env vars ($HOME on POSIX, %USERPROFILE% on Windows),
-    // then fall back to os.homedir(). Empty string ⇒ unresolved ⇒ undefined.
-    const fromEnv = process.env.HOME ?? process.env.USERPROFILE;
-    const resolved = fromEnv ?? homedir();
+    // then fall back to os.homedir(). `||` (not `??`) so an EMPTY string falls
+    // through to the next source rather than being treated as a resolved value
+    // (companion F001). Empty after all sources ⇒ unresolved ⇒ undefined.
+    const resolved = process.env.HOME || process.env.USERPROFILE || homedir();
     return resolved ? resolved : undefined;
   }
 }

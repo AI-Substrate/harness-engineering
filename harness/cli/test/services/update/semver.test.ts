@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isNewer } from '../../../src/services/update/semver.js';
+import { isNewer, isValidVersion } from '../../../src/services/update/semver.js';
 
 describe('isNewer', () => {
   it('given_higher_core_version_when_compared_then_true', () => {
@@ -50,5 +50,21 @@ describe('isNewer', () => {
     expect(isNewer('0.3', '0.2.0')).toBe(false); // not a clean triple
     expect(isNewer('', '0.2.0')).toBe(false);
     expect(isNewer('1.2.x', '1.2.0')).toBe(false);
+    // strict SemVer §9 (companion F002): these were previously accepted
+    expect(isNewer('01.0.0', '1.0.0')).toBe(false); // leading-zero core
+    expect(isNewer('1.0.0-01', '1.0.0-1')).toBe(false); // leading-zero numeric pre-release
+    expect(isNewer('1.0.0-@', '1.0.0-alpha')).toBe(false); // illegal pre-release character
+  });
+});
+
+describe('isValidVersion', () => {
+  it('accepts concrete SemVer, rejects dist-tags and malformed', () => {
+    expect(isValidVersion('0.3.0')).toBe(true);
+    expect(isValidVersion('v0.3.0')).toBe(true);
+    expect(isValidVersion('0.3.0-canary.1')).toBe(true);
+    expect(isValidVersion('latest')).toBe(false); // dist-tag, not a version
+    expect(isValidVersion('canary')).toBe(false);
+    expect(isValidVersion('01.0.0')).toBe(false);
+    expect(isValidVersion('1.2')).toBe(false);
   });
 });

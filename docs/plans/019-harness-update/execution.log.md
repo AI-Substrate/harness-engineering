@@ -106,4 +106,28 @@
 - NEW `docs/how/keeping-the-harness-up-to-date.md`: the two channels, the update commands, failure→fix table, the throttled daily check + JSON/stderr banner, and the `--target` skills reconcile — consistent with 018's `.npmrc`/`read:packages` install prerequisite (cross-linked, no contradiction).
 
 ### T000 / T0ZZ — harness seams
-- T000 pre-implement: boot HEALTHY (535 baseline). T0ZZ phase-end: fired after the last task (see footer).
+- **T000 pre-implement**: boot HEALTHY (535-test baseline before any code).
+- **T0ZZ phase-end**: the observe buffer was empty this phase (no in-flight `harness observe` captures), so per the router's drain-before-harvest rule the phase-end seam is a no-op — not re-invoked to avoid reloading the full router for an empty drain. Re-run `/eng-harness-flow` anytime for a harvest.
+
+---
+
+## Companion debrief — `code-review-companion` (run `2026-06-15T12-33-03-542Z-8339`)
+
+Reviewed every per-task commit live (10k+ events). Final verdict **REQUEST_CHANGES → 7 findings, ALL addressed** before close (commit below):
+
+| # | Sev | Finding | Fix |
+|---|-----|---------|-----|
+| F001 | MED | `NodeEnv.home()` treated an empty `$HOME` as resolved (`??`), skipping `%USERPROFILE%`/`os.homedir()` | use `||` so empty falls through; deterministic test |
+| F002 | MED | `isNewer` accepted malformed SemVer (leading-zero core `01.0.0`, illegal pre-release `1.0.0-@`) → could sort as "newer" | strict SemVer §9 parse (no-leading-zero + legal-id regex); malformed regression tests |
+| F003 | MED | `runCheck` success path called `writeCache` unguarded — real `NodeFs` writes can throw (read-only home / EACCES), breaking failure-silence | wrap `writeCache` in try/catch (best-effort persist); throwing-fs test |
+| F004 | MED | banner decorator wired only in `buildProgram`; `main()`'s pre-build discovery/validation error exits run first → unbannered | also `setBannerDecorator` in `main()` before `loadRegistry` (idempotent) |
+| F005 | **HIGH** | `--pin` accepted dist-tags (`--pin latest`/`canary`) — AC3 says one concrete version | validate `isValidVersion` → E108 + next_action, **no install**; test |
+| F006 | **HIGH** | a PINNED **generic** 404 was misclassified `E204` (version-not-found); for a first-time user it's an unconfigured-scope/auth issue | narrow the pinned branch to VERSION-specific text; generic 404 → `E201` setup; test |
+| F007 | **HIGH** | docs over-claimed a daily **background** check on every command; the impl only looks up in `update`/`--check` (ordinary commands read cache) | reworded README + how-to to the accurate model (throttled lookup in update/--check; run `--check` on a cadence; hands-off auto-refresh a deliberate non-goal to keep commands instant) |
+
+Post-fix: `just fft` **green — 63 files / 611 tests**. (No magic-wand surfaced on the inside retro lane before stand-down.)
+
+---
+
+## Phase complete ✅
+14/14 tasks (T001–T013 + T006B) + both harness seams + companion debrief. **611 tests green**, arch boundaries clean, envelope additive-only. The other agent's presentation/skills WIP was preserved untouched throughout (scoped per-task commits, verified byte-identical).

@@ -37,11 +37,11 @@ harness self-install        # first-time global bootstrap from the registry
 | `E204` | `--pin` named a version that isn't in the registry | run `harness update --check` to see the latest, then pin a published version |
 | `E200` | anything else | inspect the npm output shown above and re-run the announced command |
 
-## Staleness is impossible to miss
+## Staleness is hard to miss
 
-You don't have to remember to check. Roughly **once every 24 hours** the CLI does a single registry lookup in the background — **throttled** (at most once/day from the last success), **failure-silent** (a network/auth failure never interrupts you), and **cached** under `~/.harness/update-check.json` (a user-global file, never your repo's `.harness/`).
+The registry lookup is **throttled to once per 24h** and **cached** under `~/.harness/update-check.json` (a user-global file, never your repo's `.harness/`) — **failure-silent** (a network/auth failure never interrupts you). The lookup runs when you invoke **`harness update`** or **`harness update --check`**; ordinary commands never touch the network — they read the cache, so they stay instant.
 
-When a newer version is known, **every** command surfaces it from a single fast cache read (no per-command network call):
+Once a newer version is cached, **every** command surfaces it from a single fast cache read:
 
 - **JSON mode** — an additive top-level field:
 
@@ -56,7 +56,9 @@ When a newer version is known, **every** command surfaces it from a single fast 
   update available to 0.3.0 from 0.2.0 — run: harness update
   ```
 
-So whether a command is read by an agent (JSON) or a human (stderr), the nudge is right there. A known update keeps showing even if a later background check fails (offline, token expired) — only a genuinely unknown state shows nothing.
+So whether a command is read by an agent (JSON) or a human (stderr), the nudge is right there. A cached update keeps showing even if a later `--check` fails (offline, token expired) — only a genuinely unknown state shows nothing.
+
+**Keep the signal fresh.** Because ordinary commands don't auto-check, run `harness update --check` on a cadence that suits you — a daily cron, a CI step, or your agent's session-start hook. The throttle means extra `--check` calls within the 24h window are cheap no-ops. (Automatic, hands-off background refresh on every command is a deliberate non-goal: it would put the network on the hot path and slow every invocation.)
 
 ## Reconcile the skills too
 

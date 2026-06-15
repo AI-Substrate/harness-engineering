@@ -104,7 +104,13 @@ export async function runCheck(
   }
 
   if (latest !== null) {
-    writeCache(fs, env, { last_success_iso: now, latest });
+    // Best-effort persist: a cache write failure (read-only home, permission
+    // denied) must NOT turn a successful lookup into a thrown check (companion F003).
+    try {
+      writeCache(fs, env, { last_success_iso: now, latest });
+    } catch {
+      // ignore — the check still returns its result; next run re-checks.
+    }
     return {
       installed,
       latest,

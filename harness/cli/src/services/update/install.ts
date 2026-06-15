@@ -51,9 +51,11 @@ export function classifyInstallFailure(
     };
   }
 
-  // A PINNED version that 404s genuinely doesn't exist — checked BEFORE auth so a
-  // pin miss is never mislabeled as an auth problem.
-  if (opts?.pinned && /e?404|not found|no matching version|notarget|no such version/.test(text)) {
+  // A PINNED version that 404s genuinely doesn't exist — but ONLY when the npm
+  // text is VERSION-specific. A generic 404/"not found" on a pinned install is
+  // usually the @ai-substrate scope/registry being unconfigured (a first-time
+  // user), which must fall through to the auth/setup branch (companion F006).
+  if (opts?.pinned && /no matching version|no such version|notarget/.test(text)) {
     return {
       code: ErrorCodes.UPDATE_VERSION_NOT_FOUND,
       message: `version ${opts.pinned} was not found in the registry.`,

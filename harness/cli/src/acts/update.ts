@@ -26,6 +26,7 @@ import {
   normalizePin,
   npmInstallArgv,
 } from '../services/update/install.js';
+import { isValidVersion } from '../services/update/semver.js';
 import { runCheck } from '../services/update/update-service.js';
 
 const MAX_STDERR_TAIL = 800;
@@ -279,6 +280,20 @@ async function binaryOutcome(
 
   if (opts.pin) {
     const spec = normalizePin(opts.pin);
+    // --pin is for ONE concrete version (AC3). Reject dist-tags like `latest`/
+    // `canary` — bare `harness update` is the way to track @latest (companion F005).
+    if (!isValidVersion(spec)) {
+      return {
+        status: 'error',
+        data: { pin: opts.pin },
+        error: {
+          code: ErrorCodes.INVALID_ARGS,
+          message: `--pin needs a concrete version (e.g. v0.3.0), not '${opts.pin}'.`,
+        },
+        next_action: `Pass an exact version: harness update --pin v0.3.0 (run harness update --check for the latest, or bare harness update to track @latest).`,
+        summary: `update --pin: invalid version '${opts.pin}'`,
+      };
+    }
     return runNpmInstall(io, deps, 'update', installed, spec, spec);
   }
 
