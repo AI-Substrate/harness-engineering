@@ -71,16 +71,21 @@ jobs:
           registry-url: https://registry.npmjs.org
           scope: '@ai-substrate'
 
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.
+      - name: Ensure npm >= 11.5.1 (OIDC trusted publishing)
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
 
-      - name: Publish (latest, public, with provenance)
+      # OIDC trusted publishing — no NODE_AUTH_TOKEN; npm exchanges the GitHub
+      # OIDC token (id-token: write) with the registry's trusted-publisher config.
+      # Provenance is automatic under trusted publishing (flag kept for clarity).
+      - name: Publish (latest, public, OIDC trusted publishing + provenance)
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   # Canary (AC-11) — prove publish + ANONYMOUS install from a branch BEFORE merge.
   # Triggered by a push to `canary/**` (pre-merge) or workflow_dispatch (post-merge
@@ -105,6 +110,10 @@ jobs:
           registry-url: https://registry.npmjs.org
           scope: '@ai-substrate'
 
+      # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships npm 10.
+      - name: Ensure npm >= 11.5.1 (OIDC trusted publishing)
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: npm ci
 
@@ -117,10 +126,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish (canary dist-tag — never touches latest)
+      - name: Publish (canary dist-tag — never touches latest; OIDC, no token)
         run: npm publish --tag canary --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Verify — ANONYMOUS install of @canary runs; latest untouched (AC-11)
         run: |
