@@ -33,3 +33,8 @@
 ### T003 — semver is-newer compare ✅
 - Pure `isNewer(latest, installed)` in `services/update/semver.ts`: numeric core compare, SemVer §11.4 pre-release precedence (release > `-canary.N`), tolerates leading `v`, ignores `+build`. Malformed either side ⇒ `false` (no phantom update).
 - No `node:*` (pure). Tests: `test/services/update/semver.test.ts` — 6 pass (29 assertions across core/equal/older/v-prefix/prerelease/malformed).
+- Commit: `2645fb9`.
+
+### T004 — update-check cache ✅
+- `services/update/cache.ts`: `cachePath/readCache/writeCache` over `~/.harness/update-check.json` (user-global via `EnvPort.home()` — **never** repo `cwd()/.harness`). Reads are total (missing/corrupt/wrong-shape/home-unresolved ⇒ null, no throw); writes mkdirp the dir, no-op if home unresolved.
+- Path via shared `posixJoin` + `HARNESS_DIR`; no `node:*`. Tests: `test/services/update/cache.test.ts` — 8 pass (incl. round-trip + null-home no-op + reads-nothing-when-home-unresolved).
