@@ -1,12 +1,14 @@
 {
-  "targetRepo": "/tmp/harness-flow-selftest-2026-06-10T05-03-54-224Z/chalk",
-  "harnessSource": "local",
+  "targetRepo": "/tmp/harness-flow-selftest-2026-06-14T23-52-23-096Z/chalk",
+  "harnessSourceInput": "global",
+  "harnessVersion": "0.2.0",
   "harnessInstalled": true,
+  "installationSkipped": true,
   "harnessabilityGrade": "B",
   "axisTuple": {
-    "operateTodayPercent": 67,
-    "operateTodayGrade": "C",
-    "adaptabilityPercent": 81,
+    "operateTodayPercent": 70,
+    "operateTodayGrade": "B",
+    "adaptabilityPercent": 77,
     "adaptabilityGrade": "B"
   },
   "assessmentReportPaths": {
@@ -19,74 +21,72 @@
   "bootAuthored": true,
   "bootRuns": true,
   "bootPath": ".harness/extensions/boot/extension.ts",
-  "bootEnvelope": {
-    "status": "ok",
-    "command": "npm test",
-    "coverageGenerated": true,
-    "evidence": [
-      {
-        "label": "coverage report",
-        "path": "coverage/lcov.info"
-      }
-    ]
-  },
+  "bootStatus": "ok",
+  "bootProofCommand": "npm test",
+  "doctorStatus": "degraded",
+  "doctorDegradedReason": "The consumer repo extension layer was healthy, but the global doctor toolchain layer reported missing biome.",
+  "helpShowsBoot": true,
   "retroRecorded": true,
   "retroRecordPaths": [
-    ".harness/records/retro/2026-06-10/001-validate-harness-flow.md"
+    ".harness/records/retro/2026-06-14/001-validate-harness-flow.md"
   ],
+  "recordWritePathRepaired": false,
   "verdict": "PASS",
-  "summary": "Installed the local harness CLI into the throwaway Chalk clone, drove the harnessability assessment skill to produce the required reports, used `harness new` through the add-extension flow to author a `boot` extension, and independently verified `harness doctor`, `harness help`, `harness instructions boot`, and `harness boot --json`. The final boot honestly runs Chalk's canonical `npm test` lane and returns an ok envelope with coverage evidence; a retro record was created and filled through the harness record mechanism.",
+  "summary": "Confirmed the globally installed harness CLI, assessed the fresh Chalk clone as harnessable, initialized the clone-local harness nucleus, scaffolded `boot` with `harness new`, filled the generated boot extension to install missing npm dev tools and run the existing `npm test` lane, independently verified doctor/help/instructions/boot, and recorded the run friction with `harness record retro`. `harness boot --json` returned `ok` and proved the repo through XO, c8/AVA, and tsd.",
   "retrospective": {
-    "workedWell": "Once the CLI was available, the core harness surfaces were straightforward: `harness new boot --wrap \"npm test\"` produced a loadable extension, `doctor` and `help` exposed it clearly, and `boot --json` produced an agent-usable envelope.",
-    "confusing": "The local-source install path was not obvious because a direct file install ran the harness package prepare script inside the consumer repo's dependency graph. `harness init` also failed with a generic E108 root-argument error rather than an init-specific unavailable/fallback envelope.",
-    "magicWand": "Make local-source dogfood install a single deterministic command that builds the harness package outside the consumer repo and installs a packed artifact into the target, so the target repo's older dev toolchain cannot break harness setup.",
+    "workedWell": "The CLI path was strong once the assessment sentinel existed: `harness init`, `harness new boot`, `harness doctor --json`, `harness help --json`, `harness instructions boot --json`, `harness boot --json`, and `harness record retro` all worked in the throwaway clone with parseable output or clear next actions.",
+    "confusing": "The assessment and adoption skills are still partly conversation/authoring contracts, so a single-shot validator has to infer how to proceed non-interactively. `harness doctor` also reported a degraded global toolchain layer for missing `biome` in a consumer repo even though the boot extension loaded and boot passed.",
+    "magicWand": "Make the harnessability assessment skill expose one deterministic command that writes and schema-validates the assessment report skeleton from gathered evidence, so adoption can consume `latest.json` without the agent hand-assembling optional v0.2 arrays.",
     "magicWandTarget": "project",
     "coordination": {
       "peerUpdatesSent": 0,
       "unresolvedPeerRequests": 0,
       "statePublished": false,
-      "notes": "No peer coordination was needed in this single-shot run."
+      "notes": "No peer coordination was used; this was a single-shot disposable clone run."
     },
     "difficulties": [
       {
         "id": "VF-001",
         "layer": "project",
-        "category": "build",
-        "description": "Local-source CLI install first failed because npm ran the harness package prepare script against Chalk's older TypeScript toolchain.",
-        "mitigation": "Built the copied harness source in isolation, packed it to `.harness/vendor/harness-engineering-0.1.0.tgz`, installed that tarball into the target, and re-ran doctor and boot after deleting build scratch.",
+        "category": "knowledge",
+        "description": "The assessment skill is a long authoring contract rather than a runnable assessment command, so producing its artifact required manually assembling JSON/Markdown and fixing schema-specific optional survey fields.",
+        "mitigation": "Invoked the skill, followed its contract, copied the published schema into the clone, parsed and schema-validated `latest.json`, then corrected field names before adoption consumed it.",
         "severity": "degrading"
       },
       {
         "id": "VF-002",
         "layer": "project",
-        "category": "config",
-        "description": "`harness init --json` is documented as a graceful missing-command fallback, but this CLI returned a generic E108 root parser error instead of an init-specific unavailable envelope.",
-        "mitigation": "Treated it as the documented missing-init fallback, recorded the friction, and continued with `harness new`.",
-        "severity": "annoying"
+        "category": "knowledge",
+        "description": "The adoption skill says to propose and ask before edits, but this validator is a single-shot onboarding probe with prior throwaway-clone permission and no human approval turn.",
+        "mitigation": "Treated the task prompt as operator approval for clone-local writes, avoided interactive routers, kept changes inside the target repo, and recorded the injection map decision in governance.",
+        "severity": "degrading"
       },
       {
         "id": "VF-003",
         "layer": "project",
-        "category": "knowledge",
-        "description": "Piping `harness instructions boot` for a short preview switched output to JSON because stdout was non-TTY, which made a quick human text preview less direct.",
-        "mitigation": "Used the JSON envelope and checked the on-disk briefing content through independent verification.",
+        "category": "config",
+        "description": "`harness doctor --json` reported `degraded` because the global toolchain layer wanted `biome`, even though this consumer repo's extension layer loaded and `harness boot --json` returned `ok`.",
+        "mitigation": "Parsed the envelope by layer and used the boot/help/extension evidence for the adoption verdict while reporting the degraded doctor status honestly.",
         "severity": "annoying"
       },
       {
         "id": "VF-004",
-        "layer": "project",
-        "category": "debug",
-        "description": "A `harness observe` capture used backticks inside a double-quoted shell argument, so the shell executed the command before `harness observe` saw the text and bloated the observation buffer.",
-        "mitigation": "Preserved the issue in the retro record and summarized it concisely here; future observe examples should prefer single-quoted descriptions when mentioning backticked commands.",
+        "layer": "minih",
+        "category": "config",
+        "description": "The run input allowed `harnessSource: global`, but the worker output schema's `harnessSource` enum only listed `local` and `github`.",
+        "mitigation": "Omitted the optional schema-constrained `harnessSource` field and recorded the actual value in an additional `harnessSourceInput` field.",
         "severity": "annoying"
       }
     ]
   },
-  "verification": {
-    "doctorStatus": "ok",
-    "helpIncludedBoot": true,
-    "bootStatus": "ok",
-    "retroRecordFilled": true,
-    "scratchCleaned": true
+  "evidence": {
+    "assessmentLatestJsonReadable": true,
+    "assessmentSchemaValidated": true,
+    "doctorExtensionsLoaded": 1,
+    "doctorExtensionsFailed": 0,
+    "helpVerb": "boot",
+    "bootEnvelopeStatus": "ok",
+    "coverageArtifact": "coverage/lcov.info",
+    "retroRecord": ".harness/records/retro/2026-06-14/001-validate-harness-flow.md"
   }
 }
