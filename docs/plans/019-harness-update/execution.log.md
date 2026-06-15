@@ -79,3 +79,8 @@
 ### T009 — self-install convenience ✅
 - `harness self-install` command (in `registerUpdateAct`): global install from the registry, reusing the shared `installSpec('latest')`. A missing `.npmrc`/`read:packages` token surfaces as an auth error + setup next_action via `classifyInstallFailure` (AC4).
 - Tests: self-install ok + 401→E201 auth/next_action; updated command-list snapshots ×3 (added `self-install`). 23 pass across update/app/index.
+- Commit: `ab4747d`.
+
+### T010 — update/auth failure mapping ✅
+- Reordered `classifyInstallFailure`: **pinned-404 → E204 (version-not-found) checked BEFORE auth** (a pin miss is never mislabeled); a **non-pinned 404 → E201** (the @ai-substrate scope/registry is unconfigured or the token lacks access — same `.npmrc` + `read:packages` setup next_action as 401/403). Classes: E203 npm-absent (127/command-not-found) · E201 auth/registry · E204 pinned-version-not-found · E202 EACCES/EPERM · E200 generic — each with an actionable, command-echoing next_action.
+- Tests: `test/services/update/install.test.ts` (argv/format/normalizePin + all 6 failure classes) + 2 act-level (EACCES→E202, 127→E203). 20 pass.

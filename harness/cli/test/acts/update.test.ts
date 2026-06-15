@@ -123,6 +123,24 @@ describe('harness update --pin', () => {
     expect(env.next_action).toContain('--pin');
     expect(code).toBe(1);
   });
+
+  it('surfaces a permission-denied install as E202 (AC10)', async () => {
+    const { out, code } = await run(['update', '--pin', '0.3.0'], 'json', {
+      scripts: { [INSTALL('0.3.0')]: { code: 1, stderr: 'npm ERR! Error: EACCES: permission denied' } },
+    });
+    const env = JSON.parse(out);
+    expect(env.error.code).toBe('E202');
+    expect(code).toBe(1);
+  });
+
+  it('surfaces a missing npm (exit 127) as E203 (AC10)', async () => {
+    const { out, code } = await run(['update', '--pin', '0.3.0'], 'json', {
+      scripts: { [INSTALL('0.3.0')]: { code: 127, stderr: 'spawn npm ENOENT' } },
+    });
+    const env = JSON.parse(out);
+    expect(env.error.code).toBe('E203');
+    expect(code).toBe(1);
+  });
 });
 
 describe('harness update (bare)', () => {

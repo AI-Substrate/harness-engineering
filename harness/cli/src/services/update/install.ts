@@ -51,16 +51,8 @@ export function classifyInstallFailure(
     };
   }
 
-  if (/\b(e?401|e?403)\b|unauthorized|forbidden|authentication|auth.*requir|need.*auth/.test(text)) {
-    return {
-      code: ErrorCodes.UPDATE_AUTH_FAILED,
-      message: 'registry authentication failed (401/403).',
-      next_action:
-        `Configure a GitHub Packages \`.npmrc\` for the @ai-substrate scope with a ` +
-        `\`read:packages\` token (see "keeping the harness up to date"), then re-run: ${command}`,
-    };
-  }
-
+  // A PINNED version that 404s genuinely doesn't exist — checked BEFORE auth so a
+  // pin miss is never mislabeled as an auth problem.
   if (opts?.pinned && /e?404|not found|no matching version|notarget|no such version/.test(text)) {
     return {
       code: ErrorCodes.UPDATE_VERSION_NOT_FOUND,
@@ -68,6 +60,25 @@ export function classifyInstallFailure(
       next_action:
         'Pick a published version (`harness update --check` shows the latest), then re-run with `--pin <version>`.',
     };
+  }
+
+  // Auth / registry-not-configured. A 401/403 is plainly auth; a NON-pinned 404
+  // means the @ai-substrate scope/registry is unconfigured or the token lacks
+  // access — both fixed by the same one-time .npmrc + read:packages setup (AC4/AC10).
+  {
+    const looksAuth = /\b(e?401|e?403)\b|unauthorized|forbidden|authentication|auth.*requir|need.*auth/.test(text);
+    const looks404 = /e?404|not found|no matching version|notarget|no such version/.test(text);
+    if (looksAuth || looks404) {
+      return {
+        code: ErrorCodes.UPDATE_AUTH_FAILED,
+        message: looksAuth
+          ? 'registry authentication failed (401/403).'
+          : `${PACKAGE_NAME} could not be resolved — the GitHub Packages registry/scope is unconfigured or the token lacks access.`,
+        next_action:
+          `Configure a GitHub Packages \`.npmrc\` for the @ai-substrate scope with a ` +
+          `\`read:packages\` token (see "keeping the harness up to date"), then re-run: ${command}`,
+      };
+    }
   }
 
   if (/eacces|eperm|permission denied|access is denied/.test(text)) {
