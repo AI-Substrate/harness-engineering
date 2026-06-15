@@ -12,6 +12,21 @@ export interface Evidence {
   none?: boolean;
 }
 
+/**
+ * Optional, additive "an update is available" notice (plan 019). Set ONLY at the
+ * exit chokepoint (exit.ts), never by the format* constructors — so existing
+ * envelope snapshots / `toEqual` tests are unaffected when no update is known,
+ * and the MCP-stable seam stays additive (P4).
+ */
+export interface UpdateAvailable {
+  /** Currently-installed CLI version. */
+  installed: string;
+  /** Latest version available on the registry. */
+  latest: string;
+  /** Exact command to run to update — pinned to "harness update". */
+  command: string;
+}
+
 export interface Envelope {
   command: string;
   status: Status;
@@ -25,6 +40,8 @@ export interface Envelope {
   };
   evidence?: Evidence[];
   next_action?: string;
+  /** Optional additive update notice (plan 019); set only at the exit chokepoint. */
+  update_available?: UpdateAvailable;
 }
 
 /**

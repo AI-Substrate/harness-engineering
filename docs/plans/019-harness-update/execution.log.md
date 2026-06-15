@@ -38,3 +38,10 @@
 ### T004 — update-check cache ✅
 - `services/update/cache.ts`: `cachePath/readCache/writeCache` over `~/.harness/update-check.json` (user-global via `EnvPort.home()` — **never** repo `cwd()/.harness`). Reads are total (missing/corrupt/wrong-shape/home-unresolved ⇒ null, no throw); writes mkdirp the dir, no-op if home unresolved.
 - Path via shared `posixJoin` + `HARNESS_DIR`; no `node:*`. Tests: `test/services/update/cache.test.ts` — 8 pass (incl. round-trip + null-home no-op + reads-nothing-when-home-unresolved).
+- Commit: `9c66c67`.
+
+### T005 — throttle + check orchestration ✅
+- `services/update/update-service.ts`: `bannerFromCache` (sync hot-path source — one cache read, no network), `isDue` (24h window; clock-backwards⇒fresh; corrupt-ts⇒due), `runCheck` (force/window → exactly one lookup; success advances cache; **failure/empty keeps cache so a known update survives — AC9**), `toUpdateAvailable` (pins `command:"harness update"`).
+- `services/update/constants.ts`: `PACKAGE_NAME`, `UPDATE_COMMAND`.
+- **Envelope groundwork** (additive, harmless now): added `UpdateAvailable` interface + optional `Envelope.update_available?` to `output/envelope.ts`. format* constructors never set it → the 4 `toEqual` snapshots still pass (verified). T006 wires the exit-chokepoint emission.
+- No `node:*` in services. Tests: `test/services/update/update-service.test.ts` — 14 pass; re-ran `output/envelope` + `output/output-port` (27 total green).
