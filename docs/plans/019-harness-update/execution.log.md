@@ -22,3 +22,9 @@
 - `EnvPort` gains `home(): string | undefined`. `NodeEnv` resolves `$HOME` → `%USERPROFILE%` → `os.homedir()` (empty ⇒ undefined). `FakeEnv` returns an injected home and counts `homeCalls`.
 - Verified only `NodeEnv`/`FakeEnv` implement the port; all `new FakeEnv()` call sites unaffected (optional 2nd ctor arg).
 - Tests: `test/adapters/env` — 3 pass.
+- Commit: `c62f30b`.
+
+### T002 — VersionLookupPort ✅
+- New port `latest(): Promise<string|null>`. `NodeVersionLookup` composes `ExecPort` → `npm view <pkg> version --json`, parses a JSON string or array (last entry), and maps any non-ok exit / parse failure to `null` (degrade silently, AC9). `FakeVersionLookup` scripts result-or-throw and counts calls.
+- No `node:*` in the adapter (spawning stays in `NodeExec`); `pkg` is injected so there's no service→adapter import.
+- Tests: `test/adapters/version-lookup` — 6 pass.
