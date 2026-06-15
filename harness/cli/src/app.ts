@@ -8,6 +8,7 @@ import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerSkillsAct } from './acts/skills.js';
+import { registerUpdateAct } from './acts/update.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
@@ -195,6 +196,7 @@ export function buildProgram(
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
   registerSkillsAct(program, io, deps);
+  registerUpdateAct(program, io, deps, version);
   registerRecordAct(program, io, deps, recordRegistry);
   registerObserveAct(program, io, deps);
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);

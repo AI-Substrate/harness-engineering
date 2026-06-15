@@ -103,6 +103,7 @@ describe('buildProgram — composition root wiring', () => {
       'new',
       'docs',
       'skills',
+      'update',
       'record',
       'observe',
       'instructions',
@@ -115,7 +116,7 @@ describe('buildProgram — composition root wiring', () => {
     expect(program.version()).toBe('1.2.3');
   });
 
-  it('registers core help/doctor/init/new/docs/skills/record/instructions even with an empty registry', () => {
+  it('registers core help/doctor/init/new/docs/skills/update/record/instructions even with an empty registry', () => {
     const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
     expect(program.commands.map((c) => c.name())).toEqual([
       'help',
@@ -124,6 +125,7 @@ describe('buildProgram — composition root wiring', () => {
       'new',
       'docs',
       'skills',
+      'update',
       'record',
       'observe',
       'instructions',

@@ -43,6 +43,16 @@ export const ErrorCodes = {
   RECORD_WRITE_FAILED: 'E181',
   /** `harness init`: writing the governance-doc skeleton (`.harness/engineering-harness.md`) failed (permissions, etc.). */
   INIT_WRITE_FAILED: 'E190',
+  /** `harness update`/`self-install`: the global npm install failed (generic / unclassified). */
+  UPDATE_FAILED: 'E200',
+  /** `harness update`/`self-install`: registry authentication failed (401/403 — missing/expired `.npmrc` token). */
+  UPDATE_AUTH_FAILED: 'E201',
+  /** `harness update`/`self-install`: the global npm install was denied (filesystem permissions). */
+  UPDATE_PERMISSION_DENIED: 'E202',
+  /** `harness update`/`self-install`: npm was not found on PATH. */
+  UPDATE_NPM_MISSING: 'E203',
+  /** `harness update --pin`: the requested version is not published in the registry. */
+  UPDATE_VERSION_NOT_FOUND: 'E204',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

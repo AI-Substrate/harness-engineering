@@ -65,3 +65,12 @@
 ### T006B — banner reaches every emit path ✅
 - **Audit:** the `no-direct-exit` arch test guarantees `process.exit` lives ONLY in `output/exit.ts`, i.e. EVERY command terminates through `exitWithEnvelope`. The decorator sits there, so it structurally reaches all 43 exit sites **and** all ~24 bespoke human `{ emit }` ports — no site can bypass it. (The naive "decorate `createOutputPort`" fix would have missed every bespoke human port.)
 - **Conformance test** (`test/integration/update-banner.test.ts`, full `buildProgram` wiring, installed 9.9.9 vs cached 9.9.10): banner on `doctor` human (the bespoke `{emit}` path — the critical KF-09 case) + on the bare orientation (shared `createOutputPort` human path) + as the additive `update_available` JSON field on `doctor --json`; stderr-only (never stdout); absent when cache is equal/older/missing. 4 pass.
+- Commit: `e4b9aae`.
+
+### T008 — update act (bare / --check / --pin) ✅
+- `acts/update.ts` + pure `services/update/install.ts` (`npmInstallArgv`, `formatNpmCommand`, `normalizePin`, `classifyInstallFailure`). Registered in `buildProgram` as a top-level `update` (non-colliding — only `skills update` existed). Shares an `installSpec` helper (self-install reuses it in T009).
+- `--check`: fresh forced lookup, report-only, **exit 0, never installs** — `data:{installed, latest, update_available}`; degrades to `latest:null` on lookup failure (AC2).
+- `--pin vX.Y.Z`: installs the exact (v-stripped) version; not-in-registry ⇒ **E204** + actionable next_action (AC3).
+- bare `update`: installs `@latest` unless a lookup proves already-current (before==after no-op, not error) (AC1).
+- Announce-then-run via `ExecPort` (mirrors the skills act); 5 new error codes E200–E204.
+- Tests: `test/acts/update.test.ts` 8 pass; updated 4 surface snapshots (command list ×3 + ErrorCodes table). **Full suite 62 files / 589 green.**

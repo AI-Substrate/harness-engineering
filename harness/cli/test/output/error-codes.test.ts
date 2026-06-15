@@ -32,6 +32,11 @@ describe('ErrorCodes table', () => {
       RECORD_TYPE_UNKNOWN: 'E180',
       RECORD_WRITE_FAILED: 'E181',
       INIT_WRITE_FAILED: 'E190',
+      UPDATE_FAILED: 'E200',
+      UPDATE_AUTH_FAILED: 'E201',
+      UPDATE_PERMISSION_DENIED: 'E202',
+      UPDATE_NPM_MISSING: 'E203',
+      UPDATE_VERSION_NOT_FOUND: 'E204',
     });
   });
 
