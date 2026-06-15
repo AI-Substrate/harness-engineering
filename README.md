@@ -47,8 +47,6 @@ Intent flows down. Evidence flows up. The engineering harness is the **determini
      (image, not a ```mermaid block, so it renders on npm too — npm doesn't render Mermaid). -->
 ![The engineering harness layers — intent flows down, evidence flows up; the deterministic (engineering harness) layer sits between the inference layer and the codebase.](docs/media/harness-layers.png)
 
-> "If the agent had to infer it twice, encode it here."
-
 ## The focal point
 
 Reduce all that diffuse engineering-environment information to a single focal point — the harness CLI — and you get three things:
