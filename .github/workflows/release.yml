@@ -136,8 +136,14 @@ jobs:
           SMOKE=$(mktemp -d); cd "$SMOKE"
           npm init -y >/dev/null 2>&1
           # Anonymous consumer install: PUBLIC package, no .npmrc, no token — that
-          # is the whole point of the npmjs migration (FX001).
-          npm install "@ai-substrate/engineering-harness@canary"
+          # is the whole point of the npmjs migration (FX001). The registry read
+          # replica can lag a few seconds behind a fresh publish, so retry the
+          # anonymous install until the new canary version propagates.
+          for attempt in $(seq 1 10); do
+            npm install "@ai-substrate/engineering-harness@canary" && break
+            echo "canary not visible yet (attempt $attempt/10) — waiting 15s for propagation…"; sleep 15
+          done
+          test -x ./node_modules/.bin/harness || { echo "::error title=canary::@canary did not become installable after retries"; exit 1; }
           echo "installed bin:"; ls -l node_modules/.bin/harness
           ./node_modules/.bin/harness --json help | tee help.json
           grep -q '"status":"ok"' help.json || { echo "::error title=canary::installed bin did not return status ok"; exit 1; }
