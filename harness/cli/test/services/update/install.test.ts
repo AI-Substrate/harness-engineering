@@ -57,14 +57,24 @@ describe('classifyInstallFailure (AC10)', () => {
   });
 
   it('NON-pinned 404 → E201 (scope/registry unconfigured) with the setup next_action', () => {
-    const f = classifyInstallFailure(result({ stderr: 'npm ERR! 404 Not Found - GET ...' }), COMMAND);
+    const f = classifyInstallFailure(
+      result({ stderr: 'npm ERR! 404 Not Found - GET ...' }),
+      COMMAND,
+    );
     expect(f.code).toBe('E201'); // not version-not-found: no pin ⇒ it's a config/auth issue
     expect(f.next_action).toMatch(/\.npmrc/);
   });
 
   it('EACCES/EPERM → E202 permission denied', () => {
-    expect(classifyInstallFailure(result({ stderr: 'npm ERR! Error: EACCES: permission denied' }), COMMAND).code).toBe('E202');
-    expect(classifyInstallFailure(result({ stderr: 'EPERM: operation not permitted' }), COMMAND).code).toBe('E202');
+    expect(
+      classifyInstallFailure(
+        result({ stderr: 'npm ERR! Error: EACCES: permission denied' }),
+        COMMAND,
+      ).code,
+    ).toBe('E202');
+    expect(
+      classifyInstallFailure(result({ stderr: 'EPERM: operation not permitted' }), COMMAND).code,
+    ).toBe('E202');
   });
 
   it('anything else → E200 generic, echoing the command to re-run', () => {

@@ -92,3 +92,10 @@
 - No `--target` (or under `--check`) ⇒ **report-only**: `skills:{reconciled:false, prune_candidates, suggested_command}` + a next_action listing `KNOWN_SKILL_TARGETS`; mutates nothing (AC13).
 - `self-install` keeps its single binary envelope (no skills phase).
 - Tests: 17 in `update.test.ts` (existing data asserts → `toMatchObject` + `skills` checks; new reconcile/degraded/error/report-only cases). **Full suite 63 files / 606 green.**
+- Commit: `c8d6b8e`.
+
+### T012 — conformance + MCP-seam regression ✅
+- `just fft` (biome fix → format → full suite) **green: 606 tests / 63 files**. Biome reformatted 7 of my files (line-wrapping only, no logic change) — committed here.
+- Arch boundary: `no-direct-exit` + `no-direct-node-io` both pass. No real `node:*` import in `services/update/*` (the only grep hit is a JSDoc line) nor in the `version-lookup` adapter (it composes `ExecPort`).
+- **P3**: zero `vi.mock`; `vi.spyOn` only on `process.exit` (the sanctioned terminal exception, matching the existing harness idiom) — every new service/unit test uses pure fakes.
+- **MCP-stable envelope seam additive-only** (AC11): the 4 `toEqual` sites + snapshot/round-trip all green (18) with the optional `update_available` field; existing consumers unaffected.

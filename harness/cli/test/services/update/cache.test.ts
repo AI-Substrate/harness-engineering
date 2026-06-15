@@ -33,7 +33,9 @@ describe('readCache', () => {
   });
 
   it('parses a valid cache record', () => {
-    const fs = new FakeFs({ [PATH]: '{"last_success_iso":"2026-06-15T00:00:00.000Z","latest":"0.3.0"}' });
+    const fs = new FakeFs({
+      [PATH]: '{"last_success_iso":"2026-06-15T00:00:00.000Z","latest":"0.3.0"}',
+    });
     expect(readCache(fs, new FakeEnv({}, HOME))).toEqual({
       last_success_iso: '2026-06-15T00:00:00.000Z',
       latest: '0.3.0',
@@ -41,7 +43,9 @@ describe('readCache', () => {
   });
 
   it('accepts a null latest (registry returned none)', () => {
-    const fs = new FakeFs({ [PATH]: '{"last_success_iso":"2026-06-15T00:00:00.000Z","latest":null}' });
+    const fs = new FakeFs({
+      [PATH]: '{"last_success_iso":"2026-06-15T00:00:00.000Z","latest":null}',
+    });
     expect(readCache(fs, new FakeEnv({}, HOME))?.latest).toBeNull();
   });
 
@@ -50,7 +54,9 @@ describe('readCache', () => {
     expect(readCache(new FakeFs({ [PATH]: 'not json' }), env)).toBeNull();
     expect(readCache(new FakeFs({ [PATH]: '{"latest":"0.3.0"}' }), env)).toBeNull(); // missing ts
     expect(readCache(new FakeFs({ [PATH]: '"a string"' }), env)).toBeNull();
-    expect(readCache(new FakeFs({ [PATH]: '{"last_success_iso":1,"latest":"x"}' }), env)).toBeNull();
+    expect(
+      readCache(new FakeFs({ [PATH]: '{"last_success_iso":1,"latest":"x"}' }), env),
+    ).toBeNull();
   });
 });
 
@@ -61,12 +67,18 @@ describe('writeCache', () => {
     writeCache(fs, env, { last_success_iso: '2026-06-15T00:00:00.000Z', latest: '0.3.0' });
     expect(fs.mkdirs).toContain('/home/u/.harness');
     expect(fs.writes).toEqual([PATH]);
-    expect(readCache(fs, env)).toEqual({ last_success_iso: '2026-06-15T00:00:00.000Z', latest: '0.3.0' });
+    expect(readCache(fs, env)).toEqual({
+      last_success_iso: '2026-06-15T00:00:00.000Z',
+      latest: '0.3.0',
+    });
   });
 
   it('is a no-op when home is unresolved', () => {
     const fs = new FakeFs();
-    writeCache(fs, new FakeEnv(), { last_success_iso: '2026-06-15T00:00:00.000Z', latest: '0.3.0' });
+    writeCache(fs, new FakeEnv(), {
+      last_success_iso: '2026-06-15T00:00:00.000Z',
+      latest: '0.3.0',
+    });
     expect(fs.writes).toEqual([]);
     expect(fs.mkdirs).toEqual([]);
   });

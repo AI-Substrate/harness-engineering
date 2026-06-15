@@ -98,7 +98,11 @@ async function runNpmInstall(
       stdout: result.stdout,
     };
   }
-  const failure = classifyInstallFailure(result, command, spec === 'latest' ? undefined : { pinned: spec });
+  const failure = classifyInstallFailure(
+    result,
+    command,
+    spec === 'latest' ? undefined : { pinned: spec },
+  );
   return {
     status: 'error',
     data: { command },
@@ -155,7 +159,11 @@ function emitBinary(io: CliIo, deps: UpdateActDeps, commandName: string, o: Bina
  * (or under `--check`) it is REPORT-ONLY: it mutates nothing, lists the prune
  * candidates, and suggests the exact command (AC13/AC14).
  */
-async function skillsOutcome(io: CliIo, deps: UpdateActDeps, opts: UpdateOpts): Promise<SkillsOutcome> {
+async function skillsOutcome(
+  io: CliIo,
+  deps: UpdateActDeps,
+  opts: UpdateOpts,
+): Promise<SkillsOutcome> {
   const targets = opts.target ?? [];
   const global = Boolean(opts.global);
   const reconcile = !opts.check && targets.length > 0;
@@ -178,7 +186,9 @@ async function skillsOutcome(io: CliIo, deps: UpdateActDeps, opts: UpdateOpts): 
   const pruneArgv = buildRemoveArgv({ slugs: [...LEGACY_SKILL_SLUGS], targets, global });
   const pruneCommand = formatInstallCommand(pruneArgv);
   if (io.mode !== 'json') {
-    io.writers.err(`harness update — reconciling skills:\n  ${refreshCommand}\n  ${pruneCommand}\n`);
+    io.writers.err(
+      `harness update — reconciling skills:\n  ${refreshCommand}\n  ${pruneCommand}\n`,
+    );
   }
   const cwd = deps.proc.cwd();
 
@@ -238,13 +248,22 @@ async function skillsOutcome(io: CliIo, deps: UpdateActDeps, opts: UpdateOpts): 
 }
 
 /** Compute the binary (CLI) outcome for the chosen mode (--check / --pin / bare). */
-async function binaryOutcome(io: CliIo, deps: UpdateActDeps, installed: string, opts: UpdateOpts): Promise<BinaryOutcome> {
+async function binaryOutcome(
+  io: CliIo,
+  deps: UpdateActDeps,
+  installed: string,
+  opts: UpdateOpts,
+): Promise<BinaryOutcome> {
   const lookup = new NodeVersionLookup(deps.exec, PACKAGE_NAME, deps.proc.cwd());
 
   if (opts.check) {
-    const result = await runCheck({ fs: deps.fs, env: deps.env, clock: deps.clock, lookup }, installed, {
-      force: true,
-    });
+    const result = await runCheck(
+      { fs: deps.fs, env: deps.env, clock: deps.clock, lookup },
+      installed,
+      {
+        force: true,
+      },
+    );
     const available = result.update_available !== null;
     return {
       status: 'ok',
@@ -263,14 +282,23 @@ async function binaryOutcome(io: CliIo, deps: UpdateActDeps, installed: string, 
     return runNpmInstall(io, deps, 'update', installed, spec, spec);
   }
 
-  const result = await runCheck({ fs: deps.fs, env: deps.env, clock: deps.clock, lookup }, installed, {
-    force: true,
-  });
+  const result = await runCheck(
+    { fs: deps.fs, env: deps.env, clock: deps.clock, lookup },
+    installed,
+    {
+      force: true,
+    },
+  );
   if (result.latest && result.update_available === null) {
     const command = formatNpmCommand(npmInstallArgv('latest'));
     return {
       status: 'ok',
-      data: { installed_before: installed, installed_after: installed, command, already_latest: true },
+      data: {
+        installed_before: installed,
+        installed_after: installed,
+        command,
+        already_latest: true,
+      },
       next_action: `Already on the latest version (${installed}).`,
       summary: `update: already on latest (${installed})`,
     };
@@ -293,10 +321,15 @@ export function registerUpdateAct(
 ): void {
   program
     .command('update')
-    .description('Update the globally-installed harness CLI from the registry (and reconcile skills with --target)')
+    .description(
+      'Update the globally-installed harness CLI from the registry (and reconcile skills with --target)',
+    )
     .option('--check', 'check for a newer version without installing (exit 0)')
     .option('--pin <version>', 'install one exact version (e.g. v0.3.0), not persisted')
-    .option('-t, --target <cli...>', `also reconcile skills for CLI target(s): ${KNOWN_SKILL_TARGETS.join(', ')}`)
+    .option(
+      '-t, --target <cli...>',
+      `also reconcile skills for CLI target(s): ${KNOWN_SKILL_TARGETS.join(', ')}`,
+    )
     .option('-g, --global', 'with --target: reconcile the global skills install')
     .action(async (opts: UpdateOpts) => {
       const binary = await binaryOutcome(io, deps, installed, opts);

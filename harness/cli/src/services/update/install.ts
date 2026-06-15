@@ -66,7 +66,8 @@ export function classifyInstallFailure(
   // means the @ai-substrate scope/registry is unconfigured or the token lacks
   // access — both fixed by the same one-time .npmrc + read:packages setup (AC4/AC10).
   {
-    const looksAuth = /\b(e?401|e?403)\b|unauthorized|forbidden|authentication|auth.*requir|need.*auth/.test(text);
+    const looksAuth =
+      /\b(e?401|e?403)\b|unauthorized|forbidden|authentication|auth.*requir|need.*auth/.test(text);
     const looks404 = /e?404|not found|no matching version|notarget|no such version/.test(text);
     if (looksAuth || looks404) {
       return {
@@ -85,8 +86,7 @@ export function classifyInstallFailure(
     return {
       code: ErrorCodes.UPDATE_PERMISSION_DENIED,
       message: 'the global npm install was denied (permissions).',
-      next_action:
-        `Use a Node version manager (nvm/Volta) or a prefix-writable/elevated npm, then re-run: ${command}`,
+      next_action: `Use a Node version manager (nvm/Volta) or a prefix-writable/elevated npm, then re-run: ${command}`,
     };
   }
 

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerUpdateAct, type UpdateActDeps } from '../../src/acts/update.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
-import { FakeExec, type ExecScript } from '../../src/adapters/exec/fake-exec.js';
+import { type ExecScript, FakeExec } from '../../src/adapters/exec/fake-exec.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
@@ -77,7 +77,11 @@ describe('harness update --check (report-only)', () => {
     const { out } = await run(['update', '--check'], 'json', {
       scripts: { [VIEW]: { code: 0, stdout: '"0.2.0"' } },
     });
-    expect(JSON.parse(out).data).toMatchObject({ installed: '0.2.0', latest: '0.2.0', update_available: false });
+    expect(JSON.parse(out).data).toMatchObject({
+      installed: '0.2.0',
+      latest: '0.2.0',
+      update_available: false,
+    });
   });
 
   it('degrades gracefully when the registry lookup fails (latest null, exit 0)', async () => {
@@ -119,7 +123,9 @@ describe('harness update --pin', () => {
 
   it('maps a not-in-registry pin to E204 + actionable next_action (AC3)', async () => {
     const { out, code } = await run(['update', '--pin', '9.9.9'], 'json', {
-      scripts: { [INSTALL('9.9.9')]: { code: 1, stderr: 'npm ERR! 404 No matching version found for ...' } },
+      scripts: {
+        [INSTALL('9.9.9')]: { code: 1, stderr: 'npm ERR! 404 No matching version found for ...' },
+      },
     });
     const env = JSON.parse(out);
     expect(env.status).toBe('error');
@@ -130,7 +136,9 @@ describe('harness update --pin', () => {
 
   it('surfaces a permission-denied install as E202 (AC10)', async () => {
     const { out, code } = await run(['update', '--pin', '0.3.0'], 'json', {
-      scripts: { [INSTALL('0.3.0')]: { code: 1, stderr: 'npm ERR! Error: EACCES: permission denied' } },
+      scripts: {
+        [INSTALL('0.3.0')]: { code: 1, stderr: 'npm ERR! Error: EACCES: permission denied' },
+      },
     });
     const env = JSON.parse(out);
     expect(env.error.code).toBe('E202');
@@ -198,7 +206,9 @@ describe('harness self-install', () => {
 
   it('maps a missing-token 401 to an auth error with a .npmrc next_action (AC4/AC10)', async () => {
     const { out, code } = await run(['self-install'], 'json', {
-      scripts: { [INSTALL('latest')]: { code: 1, stderr: 'npm ERR! code E401\nnpm ERR! 401 Unauthorized' } },
+      scripts: {
+        [INSTALL('latest')]: { code: 1, stderr: 'npm ERR! code E401\nnpm ERR! 401 Unauthorized' },
+      },
     });
     const env = JSON.parse(out);
     expect(env.status).toBe('error');

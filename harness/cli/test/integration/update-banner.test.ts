@@ -44,7 +44,12 @@ function run(
   opts: { cacheLatest?: string } = {},
 ): { out: string; err: string; code: number } {
   const files = opts.cacheLatest
-    ? { [CACHE_PATH]: JSON.stringify({ last_success_iso: '2026-06-15T00:00:00.000Z', latest: opts.cacheLatest }) }
+    ? {
+        [CACHE_PATH]: JSON.stringify({
+          last_success_iso: '2026-06-15T00:00:00.000Z',
+          latest: opts.cacheLatest,
+        }),
+      }
     : {};
   const fs = new FakeFs(files);
   const env = new FakeEnv({}, HOME);
@@ -93,7 +98,11 @@ describe('update banner reaches every emit path (T006B / KF-09)', () => {
   it('appears as the additive JSON field on doctor --json (no human line)', () => {
     const { out, err } = run(['doctor'], 'json', { cacheLatest: '9.9.10' });
     const env = JSON.parse(out);
-    expect(env.update_available).toEqual({ installed: '9.9.9', latest: '9.9.10', command: 'harness update' });
+    expect(env.update_available).toEqual({
+      installed: '9.9.9',
+      latest: '9.9.10',
+      command: 'harness update',
+    });
     expect(err).not.toContain('update available'); // no human line in json mode
   });
 

@@ -29,9 +29,9 @@ function envelope(): Envelope {
 
 describe('formatUpdateBanner', () => {
   it('renders exactly the AC8 line, sourcing the command from the field', () => {
-    expect(formatUpdateBanner({ installed: '0.2.0', latest: '0.3.0', command: 'harness update' })).toBe(
-      'update available to 0.3.0 from 0.2.0 — run: harness update\n',
-    );
+    expect(
+      formatUpdateBanner({ installed: '0.2.0', latest: '0.3.0', command: 'harness update' }),
+    ).toBe('update available to 0.3.0 from 0.2.0 — run: harness update\n');
   });
 });
 
@@ -56,7 +56,11 @@ describe('buildBannerDecorator', () => {
     });
     const env = envelope();
     decorate(env);
-    expect(env.update_available).toEqual({ installed: '0.2.0', latest: '0.3.0', command: 'harness update' });
+    expect(env.update_available).toEqual({
+      installed: '0.2.0',
+      latest: '0.3.0',
+      command: 'harness update',
+    });
     expect(writers.errText).toBe('update available to 0.3.0 from 0.2.0 — run: harness update\n');
     expect(writers.outText).toBe(''); // never stdout
   });
