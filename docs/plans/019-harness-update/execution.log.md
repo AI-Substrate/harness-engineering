@@ -60,3 +60,8 @@
 - `buildProgram` now calls `setBannerDecorator(buildBannerDecorator({fs, env, installed: version, mode, writers}))` ONCE, before registering acts. Both `main()` and the integration harness assemble through `buildProgram`, so every command's exit gets the banner; a single sync cache read on the hot path (no await).
 - **Deviation from plan:** the plan also said "NodeVersionLookup in defaultDeps + extend VerbActDeps". The banner doesn't need the lookup (cache-only). The async lookup is built from `deps.exec` inside the update act (T008), so `VerbActDeps` is untouched (zero churn to every test's deps helper). `NodeEnv.home()` is already in `defaultDeps` via `new NodeEnv()`.
 - **Full suite green: 60 files / 576 tests** (existing tests' `FakeEnv` has no home ⇒ banner never fires there).
+- Commit: `b6e01aa`.
+
+### T006B — banner reaches every emit path ✅
+- **Audit:** the `no-direct-exit` arch test guarantees `process.exit` lives ONLY in `output/exit.ts`, i.e. EVERY command terminates through `exitWithEnvelope`. The decorator sits there, so it structurally reaches all 43 exit sites **and** all ~24 bespoke human `{ emit }` ports — no site can bypass it. (The naive "decorate `createOutputPort`" fix would have missed every bespoke human port.)
+- **Conformance test** (`test/integration/update-banner.test.ts`, full `buildProgram` wiring, installed 9.9.9 vs cached 9.9.10): banner on `doctor` human (the bespoke `{emit}` path — the critical KF-09 case) + on the bare orientation (shared `createOutputPort` human path) + as the additive `update_available` JSON field on `doctor --json`; stderr-only (never stdout); absent when cache is equal/older/missing. 4 pass.
