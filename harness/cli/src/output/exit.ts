@@ -13,8 +13,32 @@ export function exitCodeFor(env: Envelope): number {
   return EXIT_BY_STATUS[env.status];
 }
 
+/**
+ * A decorator applied to every outgoing envelope at the single exit chokepoint,
+ * registered ONCE by the composition root (plan 019, T007). It may mutate the
+ * envelope (e.g. set the additive `update_available` field, which the JSON
+ * renderer then serializes) and/or write a side-channel line (e.g. the human-mode
+ * update banner to stderr).
+ *
+ * Centralising it here is deliberate (KF-09): `exitWithEnvelope` is the ONE path
+ * every command exits through (43 call sites), and the per-act bespoke human
+ * `{ emit }` ports bypass `renderHuman` — so decorating here is the only place
+ * that reaches EVERY command with zero per-site plumbing. Default null = no-op.
+ */
+export type BannerDecorator = (env: Envelope) => void;
+
+let bannerDecorator: BannerDecorator | null = null;
+
+/** Register (or clear, with null) the exit-chokepoint banner decorator. */
+export function setBannerDecorator(decorator: BannerDecorator | null): void {
+  bannerDecorator = decorator;
+}
+
 /** Single exit point for the whole CLI — only the kernel calls process.exit. */
 export function exitWithEnvelope(env: Envelope, io: OutputPort): never {
+  // Decorate BEFORE emit so the JSON renderer serializes any field the decorator
+  // sets (e.g. update_available) and the human banner precedes the act's output.
+  bannerDecorator?.(env);
   io.emit(env);
   process.exit(exitCodeFor(env));
 }

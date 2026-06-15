@@ -45,3 +45,12 @@
 - `services/update/constants.ts`: `PACKAGE_NAME`, `UPDATE_COMMAND`.
 - **Envelope groundwork** (additive, harmless now): added `UpdateAvailable` interface + optional `Envelope.update_available?` to `output/envelope.ts`. format* constructors never set it → the 4 `toEqual` snapshots still pass (verified). T006 wires the exit-chokepoint emission.
 - No `node:*` in services. Tests: `test/services/update/update-service.test.ts` — 14 pass; re-ran `output/envelope` + `output/output-port` (27 total green).
+- Commit: `04db38b`.
+
+### T006 — envelope field + banner at the exit chokepoint ✅
+- **Design deviation from the literal plan, faithful to KF-09:** instead of threading a `banner?` 3rd param through all 43 `exitWithEnvelope` sites (churn + miss-risk — exactly what T006B would have to audit), registered a module-level **`setBannerDecorator`** the kernel consults *inside* `exitWithEnvelope`. This reaches EVERY exit — including the ~24 bespoke human `{ emit }` ports — with **zero per-site edits** and no possibility of missing a site. It is the stronger realization of "decorate at the one universal chokepoint."
+- `output/exit.ts`: `BannerDecorator` type + `setBannerDecorator(null-able)` + consult-before-emit (JSON serializes the field; human banner precedes the act's own output). `process.exit` still the only one (arch test green).
+- `services/update/banner.ts`: `formatUpdateBanner` (exact AC8 line, em-dash) + `buildBannerDecorator` — ONE sync cache read (no network, AC9); sets the additive field always (AC7), writes the stderr line only in human mode (AC8). Returns structural `(env)=>void` so the exit kernel never imports the service layer.
+- Contract doc: the additive / MCP-stable note is the `UpdateAvailable` JSDoc in `output/envelope.ts` (the plan's pointer to `services/docs/contract.ts` was imprecise — that file is the docs-tool seam, unrelated to the envelope).
+- Tests: `banner.test.ts` (fakes — human sets field+stderr, json sets field only, no-update silent) + `exit.test.ts` (decorator consulted before emit; no-op when unset) + envelope `toEqual` still green — **19 pass**.
+- **Composition wiring is T007; the bespoke-port conformance test is T006B (done after T007, which it depends on).**

@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Envelope, Status } from '../../src/output/envelope.js';
-import { emitRawAndExit, exitCodeFor } from '../../src/output/exit.js';
-import type { Writers } from '../../src/output/output-port.js';
+import {
+  emitRawAndExit,
+  exitCodeFor,
+  exitWithEnvelope,
+  setBannerDecorator,
+} from '../../src/output/exit.js';
+import type { OutputPort, Writers } from '../../src/output/output-port.js';
 
 const env = (status: Status): Envelope => ({
   command: 'x',
@@ -54,5 +59,56 @@ describe('emitRawAndExit (verbatim passthrough, flush-safe)', () => {
     expect(written).toBe('# Doc\n\nbody');
     expect(process.exitCode).toBe(0);
     process.exitCode = prev;
+  });
+});
+
+describe('exitWithEnvelope (banner decorator chokepoint, plan 019)', () => {
+  afterEach(() => {
+    setBannerDecorator(null); // never leak the module singleton across tests
+    vi.restoreAllMocks();
+  });
+
+  it('applies the registered decorator to the envelope BEFORE emit, then exits', () => {
+    /*
+    Test Doc:
+    - Why: the additive update_available field must be on the envelope the JSON
+      renderer serializes — so the decorator has to run before io.emit (KF-09).
+    - Contract: exitWithEnvelope calls the registered decorator, then emit, then process.exit.
+    - Usage Notes: process.exit is spied (the one sanctioned exception — no port for the terminal).
+    - Quality Contribution: pins the chokepoint ordering every command relies on.
+    - Worked Example: decorator sets update_available ⇒ emitted envelope carries it.
+    */
+    setBannerDecorator((e) => {
+      e.update_available = { installed: '0.2.0', latest: '0.3.0', command: 'harness update' };
+    });
+    let emitted: Envelope | null = null;
+    const port: OutputPort = {
+      emit: (e) => {
+        emitted = e;
+      },
+    };
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c}`);
+    }) as never);
+    expect(() => exitWithEnvelope(env('ok'), port)).toThrow('exit:0');
+    expect(emitted?.update_available).toEqual({
+      installed: '0.2.0',
+      latest: '0.3.0',
+      command: 'harness update',
+    });
+  });
+
+  it('is a no-op when no decorator is registered (back-compat)', () => {
+    let emitted: Envelope | null = null;
+    const port: OutputPort = {
+      emit: (e) => {
+        emitted = e;
+      },
+    };
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c}`);
+    }) as never);
+    expect(() => exitWithEnvelope(env('error'), port)).toThrow('exit:1');
+    expect(emitted?.update_available).toBeUndefined();
   });
 });
