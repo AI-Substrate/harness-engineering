@@ -46,5 +46,36 @@
 - Appended the `harness-value-measures` entry to `docs-manifest.json` (id/title/summary/audience/sourcePath).
 - Ran `npm run gen:docs` **once** (after T001–T003) → `gen-docs: wrote 7 docs` (was 6); `docs-content.ts` regenerated (+11/−2: the new entry + the re-inlined `record-and-record-types.md` and `AGENTS_README.md`).
 - Did **not** hand-edit `docs-content.ts`. The regen also picked up the T002/T003 edits (proves the all-edits-first-then-gen-once ordering held).
-- **Commit**: docs sync (T002+T003+T004) committed together so every commit leaves the bundle in sync.
+- **Commit**: `ec314fb` — docs sync (T002+T003+T004) committed together so every commit leaves the bundle in sync. Companion pinged: `review-request: T002-T004 ec314fb`.
 - **Status**: ✅ complete.
+
+---
+
+## T005 — VERIFY full CI gate (AC-11)
+
+- **lint** (`biome check harness/cli`): exit 0 — 154 files, no fixes.
+- **build** (`gen:docs` + `tsc -p harness/cli`, the typecheck): exit 0 — clean.
+- **check:docs** (`gen:docs && git diff --exit-code docs-content.ts`): exit 0 — no bundle drift after commit.
+- **test** (`vitest run --coverage`): exit 0 — **639 passed / 65 files** (was 638; +1 = the per-doc bundle test now also covers `harness-value-measures`). Coverage 90.85% stmts (report-only). Includes the architecture/guard tests (`history-md-guard` etc.) — the in-suite arch-check.
+- **Negative scope check**: 0 SQL/scanner-impl markers in the new doc; 0 `.harness/history.md` reintroductions; Phase 5 touched **only** docs + the docs bundle + the plan dir — **0** `SKILL.md`, **0** `*.schema.json`, **0** CLI source outside `services/docs/`. No `SKILL.md` edited → all skill `description:` values unchanged, still under the 900-char band.
+- **Note**: `package-smoke` / `ci-required` / `skills-check` are CI-workflow jobs (no local npm script); they run on push. `skills-check` is unaffected here (no `SKILL.md` changed). The deterministic local gate (lint / build / check:docs / vitest incl. arch+guard tests) is **green**.
+- **Status**: ✅ complete — **AC-10 + AC-11 satisfied**.
+
+---
+
+## T00z — Harness phase-end (phase-end seam)
+
+- **Seam fired**: `/eng-harness-flow --event phase-end --plan-dir docs/plans/020-harness-bypass-change-records --json`.
+- **Router decision**: observe buffer is **empty** (`harness observe --list` → count 0, malformed 0) → **nothing to drain**. The router would offer `--harvest` (a cross-plan `.retro.md` view), but that's advisory and needs no action for a clean docs phase. No friction captured this phase.
+- **Status**: ✅ handled.
+
+---
+
+## Companion debrief (code-review-companion)
+
+- **Run**: `2026-06-16T09-51-19-305Z-8a77` (Power-On-Mode, booted at phase start).
+- **Pings**: `review-request: T001 b48b032`, `review-request: T002-T004 ec314fb` — both ack'd by the companion (`lastAckOf` confirmed).
+- **Findings**: **1 MEDIUM** (Domain Compliance, `record-and-record-types.md`, id `01KV7XY0Q6TZZQNTCRT3GYYJ4G`) — provenance section described an unset `agent` as "omitted"; source (`provenance.ts` + `record-service.ts:194`) always stamps `agent`, rendering `null` when unset. **Verified true against source and FIXED** in both docs (`agent` is a nullable stamped key — all 8 keys always present). Fix → commit below; re-pinged for companion verification.
+- **Companion summaries**: 3 (one per review-request); all three reviews completed.
+- **magicWand** (companion retrospective): "Auto-derive more of the farewell retrospective directly from the coordination ledger" — a minih-internal suggestion, not actionable for plan 020; noted only.
+- **Lifecycle**: reviewed 3 / acked 4 / 0 unresolved peer requests; coordination mode enabled.

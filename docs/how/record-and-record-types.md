@@ -157,7 +157,7 @@ harness_version: 0.3.0
 branch: 020-harness-bypass-change-records
 repo: https://github.com/AI-Substrate/harness-engineering
 created_at: 2026-06-16T08:42:11Z
-agent: the-flow-implementer        # optional provenance slug
+agent: the-flow-implementer        # optional value — null when unset
 plan_id: 020-harness-bypass-change-records
 schema_version: "1.0"              # ← 8th key — template-owned, never spliced
 # … then the type's body keys …
@@ -170,9 +170,11 @@ schema_version: "1.0"              # ← 8th key — template-owned, never splic
 - `schema_version` is **template-owned** — the CLI never splices it (that would
   duplicate the YAML key). The splice is **idempotent**: it strips any existing
   top-level copy of a spliced key first, then prepends.
-- `agent` is optional identity (`--agent <slug>` → `HARNESS_AGENT` env →
-  omitted); capture never fails when it's absent, and it is aggregated
-  **team-level only**, never per-person.
+- `agent` carries optional identity — `--agent <slug>` → `HARNESS_AGENT` env →
+  `null` when unset. The **key is always present** (stamped `agent: null`, so all
+  8 keys appear in every record); only its *value* is optional. Capture never
+  fails when it's absent, and it is aggregated **team-level only**, never
+  per-person.
 
 ---
 

@@ -196,7 +196,7 @@ it all four with **no extra schema**:
 | Scope it to a plan or initiative | `plan_id` |
 | Separate the two record families and version the parse | `record_kind` + `schema_version` |
 | Read the harness version it was produced under | `harness_version` |
-| Aggregate **at team level only** | `agent` (an optional slug — see § d) |
+| Aggregate **at team level only** | `agent` (optional value, stamped `null` when unset — see § d) |
 
 This mirrors the source notes' **canonical-joins** discipline: a measurement
 system fails when IDs don't join, so every dashboard should report **linkage
@@ -243,9 +243,10 @@ The source notes are blunt: harness measurement requires **team-level governance
 that prevents individual surveillance and productivity leaderboards.** Apply it
 literally here:
 
-- The `agent` key is an **optional provenance slug**, aggregated **only** at the
-  team or repo level. It is never a per-person scoreboard, and capture never
-  fails when it's absent.
+- The `agent` key carries an **optional provenance value** — stamped `null` when
+  unset, so the key itself is always present (one of the fixed 8) and never a
+  source of join-coverage gaps. It is aggregated **only** at the team or repo
+  level, never a per-person scoreboard, and capture never fails when it's absent.
 - These rates join the explicit do-**not**-use-for-individuals list from the
   source notes — alongside prompt count, token count, commit count, PR count,
   and lines of code. They are aggregate diagnostic context, **not** performance
