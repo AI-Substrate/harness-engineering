@@ -17,7 +17,7 @@ import type { HarnessRecordType } from '../contract.js';
  * schema's open `system` object — NOT a schema-defined field.
  */
 export const RETRO_TEMPLATE = `---
-schema_version: "1.0"
+schema_version: "1.1"
 retro_id: "<ISO8601Z>-<agent>-<hash>"     # e.g. 2026-06-09T09:55:00Z-github-copilot-a8f3
 agent: "<your-agent-slug>"                 # lowercase kebab, e.g. github-copilot
 plan_id: "<NNN-slug or null>"
@@ -26,9 +26,9 @@ ended_at: "<ISO8601Z>"
 summary: "<one paragraph: what happened this session>"
 entries:
   # One block per observation. id = <PREFIX>-<3+ digits>. Any uppercase prefix is valid;
-  # DL/MW/GFT/INS/COORD/SUGG/CONF are the recommended per-kind defaults, and run-scoped
+  # DL/MW/GFT/INS/COORD/SUGG/CONF/WIN are the recommended per-kind defaults, and run-scoped
   # prefixes (e.g. VF- for a flow worker's own numbering) are equally fine.
-  # kind in difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion
+  # kind in difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion | win
   - id: DL-001
     kind: difficulty
     description: "<>=10 chars - the friction, concretely>"

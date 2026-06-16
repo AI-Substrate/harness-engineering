@@ -3,6 +3,7 @@
   "$id": "https://github.com/jakkaj/tools/blob/main/docs/harness/schemas/retro.schema.json",
   "title": "Retro",
   "description": "A universal retrospective — produced by minih agents, compound skills, and other agentic workflows. One retro per run/session.",
+  "x-schema-version": "1.1",
   "type": "object",
   "required": ["schema_version", "retro_id", "agent", "started_at"],
   "additionalProperties": false,
@@ -59,7 +60,7 @@
         "id": {
           "type": "string",
           "pattern": "^[A-Z]+-\\d{3,}$",
-          "description": "Short entry ID, scoped within this retro. Convention: <PREFIX>-<3+ digit number>. Recommended prefixes: DL (difficulty), MW (magic-wand), GFT (gift), INS (insight), COORD (coordination), SUGG (improvement-suggestion), CONF (confusion)."
+          "description": "Short entry ID, scoped within this retro. Convention: <PREFIX>-<3+ digit number>. Recommended prefixes: DL (difficulty), MW (magic-wand), GFT (gift), INS (insight), COORD (coordination), SUGG (improvement-suggestion), CONF (confusion), WIN (win)."
         },
         "kind": {
           "type": "string",
@@ -70,7 +71,8 @@
             "insight",
             "coordination",
             "improvement-suggestion",
-            "confusion"
+            "confusion",
+            "win"
           ],
           "description": "Semantic kind of this entry. Determines which sibling fields are meaningful."
         },

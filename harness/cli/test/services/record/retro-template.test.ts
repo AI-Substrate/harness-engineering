@@ -66,4 +66,24 @@ describe('retro core record type', () => {
     expect(RETRO_TEMPLATE).toContain('system:');
     expect(RETRO_TEMPLATE).toContain('compound:');
   });
+
+  it('the schema kind enum includes "win" — the 8th retro kind (plan 020 Phase 2)', () => {
+    const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8')) as {
+      $defs: { Entry: { properties: { kind: { enum: string[] } } } };
+    };
+    const kinds = schema.$defs.Entry.properties.kind.enum;
+    expect(kinds).toContain('win');
+    // additive: the seven original kinds remain (1.0 docs stay valid under 1.1)
+    expect(kinds).toContain('difficulty');
+    expect(kinds).toContain('confusion');
+  });
+
+  it('template schema_version and schema x-schema-version are in lockstep at 1.1', () => {
+    // No ajv in repo (KF-05); this is the deterministic version-sync red-line (KF-06/R6).
+    const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8')) as { 'x-schema-version'?: string };
+    const templateVersion = frontmatter(RETRO_TEMPLATE).match(/^schema_version:\s*"([^"]+)"/m)?.[1];
+    expect(templateVersion).toBe('1.1');
+    expect(schema['x-schema-version']).toBe('1.1');
+    expect(templateVersion).toBe(schema['x-schema-version']);
+  });
 });
