@@ -1,4 +1,6 @@
 import type { HarnessRecordType } from './contract.js';
+import { harnessBypassRecordType } from './core-types/harness-bypass.js';
+import { harnessChangeRecordType } from './core-types/harness-change.js';
 import { retroRecordType } from './core-types/retro.js';
 
 /** Same name rule as verb names — the `<type>` arg + the records subdir name. */
@@ -37,7 +39,11 @@ export interface RecordRegistry {
 }
 
 /** The core-bundled record types — always present, even under `--no-extensions`. */
-export const coreRecordTypes: HarnessRecordType[] = [retroRecordType];
+export const coreRecordTypes: HarnessRecordType[] = [
+  retroRecordType,
+  harnessBypassRecordType,
+  harnessChangeRecordType,
+];
 
 /**
  * Field-level issues for a record-type export (empty array = well-formed). Mirrors

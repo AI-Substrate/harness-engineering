@@ -31,3 +31,14 @@
 - Verify: full suite **626 green**; P2 grep clean (no `node:*` in `record-service.ts`/`provenance.ts`); `tsc --noEmit` OK.
 
 ---
+
+## T005 + T006 — the two new core types (red→green) ✅
+- **T005 (RED)**: scaffold + frozen-body-keys tests via the `CORE` registry (`harness-bypass` → cause/attempted/command/severity; `harness-change` → resolves/change_type/target; each body excludes the other's keys; locked enums pinned). 3 RED (types absent).
+- **T006 (GREEN)**: created `core-types/harness-bypass.ts` + `core-types/harness-change.ts` (mirror `retro.ts`: `*_TEMPLATE` + 4-field `HarnessRecordType`, body keys + commented enums, no provenance keys in the template — those are spliced). Registered both at `registry.ts:40` → `coreRecordTypes = [retro, harness-bypass, harness-change]`. 24/24 green.
+
+## T007 — list/doctor enumeration + end-to-end VERIFY ✅
+- **Assertion-only** (KF-07, no production change): updated the doctor `record-types` test (2→4 available, 1→3 core, ordered `[retro, harness-bypass, harness-change, dev-survey]`, text rows for both new types); added a registry test (both new types `source: core`, no `entryPath`); extended the act `--list` test.
+- **VERIFY (real CLI smoke)**: built dist, ran `harness record harness-bypass` in a throwaway git repo with env set → written record carried all 8 provenance keys exactly once (`repo` from **real `ExecGit.remoteUrl()`** = `git@github.com:acme/smoke.git`, `harness_version` = real `readVersion` `0.3.0`, `agent`/`plan_id` from env, `branch: null` = correct null-degradation on an unborn branch, `schema_version` template-owned at the tail) + the 4 body keys. `record --list` shows all 3 core types.
+- Full suite **633 green**; biome clean (auto-wrapped one long description); typecheck OK.
+
+---

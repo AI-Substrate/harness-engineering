@@ -158,6 +158,9 @@ describe('registerRecordAct', () => {
     const ds = types.find((t) => t.type === 'dev-survey');
     expect(retro).toMatchObject({ source: 'core' });
     expect(retro?.entryPath).toBeUndefined();
+    // The two new core types enumerate alongside retro (source: core).
+    expect(types.find((t) => t.type === 'harness-bypass')).toMatchObject({ source: 'core' });
+    expect(types.find((t) => t.type === 'harness-change')).toMatchObject({ source: 'core' });
     expect(ds).toMatchObject({
       source: 'extension',
       entryPath: '.harness/extensions/dev-survey.record.ts',

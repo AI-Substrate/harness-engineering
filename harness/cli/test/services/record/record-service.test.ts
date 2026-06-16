@@ -5,17 +5,17 @@ import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import { ErrorCodes } from '../../../src/output/error-codes.js';
+import { RETRO_TEMPLATE } from '../../../src/services/record/core-types/retro.js';
+import {
+  type ProvenanceFields,
+  spliceProvenance,
+} from '../../../src/services/record/provenance.js';
 import {
   createRecord,
   ensureTemp,
   type RecordDeps,
   slugify,
 } from '../../../src/services/record/record-service.js';
-import { RETRO_TEMPLATE } from '../../../src/services/record/core-types/retro.js';
-import {
-  type ProvenanceFields,
-  spliceProvenance,
-} from '../../../src/services/record/provenance.js';
 import { buildRecordRegistry } from '../../../src/services/record/registry.js';
 
 /*
@@ -349,5 +349,56 @@ describe('spliceProvenance — pure helper (idempotent, in-fence, YAML-safe)', (
     const out = spliceProvenance(TEMPLATE, { ...fields, branch: 'feat/x', repo: null });
     expect(out).toContain('branch: "feat/x"');
     expect(out).toContain('repo: null');
+  });
+});
+
+// ── T005: the two new core types scaffold + carry exactly the frozen body keys ──
+
+describe('new core types — scaffold + frozen body keys (T005)', () => {
+  it('harness record harness-bypass → ok/core; body carries exactly cause/attempted/command/severity', () => {
+    const fs = configuredFs();
+    const outcome = createRecord({ type: 'harness-bypass' }, CORE, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, type: 'harness-bypass', source: 'core' });
+    const fm = frontmatter(readWritten(fs, outcome));
+    for (const k of ['cause', 'attempted', 'command', 'severity']) {
+      expect(countKey(fm, k), `harness-bypass should declare ${k} once`).toBe(1);
+    }
+    // ...and NOT the other type's body keys.
+    for (const k of ['resolves', 'change_type']) expect(countKey(fm, k)).toBe(0);
+    // Provenance still spliced over the new template.
+    expect(countKey(fm, 'record_kind')).toBe(1);
+    expect(countKey(fm, 'schema_version')).toBe(1);
+    expect(fm).toContain('record_kind: "harness-bypass"');
+  });
+
+  it('harness record harness-change → ok/core; body carries exactly resolves/change_type/target', () => {
+    const fs = configuredFs();
+    const outcome = createRecord({ type: 'harness-change' }, CORE, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, type: 'harness-change', source: 'core' });
+    const fm = frontmatter(readWritten(fs, outcome));
+    for (const k of ['resolves', 'change_type', 'target']) {
+      expect(countKey(fm, k), `harness-change should declare ${k} once`).toBe(1);
+    }
+    for (const k of ['cause', 'attempted', 'severity']) expect(countKey(fm, k)).toBe(0);
+    expect(fm).toContain('record_kind: "harness-change"');
+  });
+
+  it('pins the locked enums in the type templates (cause / change_type)', () => {
+    const bypass = CORE.types.find((t) => t.type === 'harness-bypass');
+    const change = CORE.types.find((t) => t.type === 'harness-change');
+    expect(bypass?.template).toContain(
+      'missing-command|command-failed|too-slow|unclear-output|no-coverage|policy|agent-could-not',
+    );
+    expect(change?.template).toContain(
+      'new-command|sensor|fixture|template|doc|skill-edit|routing',
+    );
+  });
+
+  it('still rejects an unknown type, and is unconfigured without .harness/', () => {
+    const unknown = createRecord({ type: 'no-such-type' }, CORE, depsAt(configuredFs()));
+    expect(unknown.ok).toBe(false);
+    const unconfigured = createRecord({ type: 'harness-bypass' }, CORE, depsAt(new FakeFs()));
+    expect(unconfigured.ok).toBe(false);
+    if (!unconfigured.ok) expect(unconfigured.status).toBe('unconfigured');
   });
 });
