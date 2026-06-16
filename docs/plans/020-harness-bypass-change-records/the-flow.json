@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-bypass-change-records",
+  "plan_dir": "docs/plans/020-harness-bypass-change-records",
+  "mode": "Full",
+  "cursor": "p5",
+  "recommended_next": "p5-tasks",
+  "now": "Phase 4 COMPLETE — in-repo capture seams wired (CS-2, prose-only, no companion). Three skill edits: eng-harness-4-retro/SKILL.md gained a `### Capture seams` subsection at the end of the --drain block (bypass backstop -> `harness record harness-bypass` with the full `cause` enum verbatim + a `win` 'what worked well?' beat -> `harness observe --kind win`), leaving the [s/t/p/e/d/a] menu + field-source comment untouched; eng-harness-flow/SKILL.md documents a stateless `bypass_recommended`/`bypass_cause` --json envelope field (router only FLAGS — never writes/blocks); eng-harness-0-add-extension/SKILL.md gained a best-effort `### 4. Record the change` step (`harness record harness-change`, exits unconfigured/2 when absent). Tracked drift folded in: `| win` added to the Kinds list at eng-harness-4-retro/SKILL.md:85 (full 8-kind set). VERIFY: enum/kind/CLI strings all present zero-typo; negative scope check clean (no AGENTS_README/measures/gen:docs — Phase-5 boundary held); descriptions 834/859/461 all <900, none edited (body-only); architecture guards 3/3 incl. history-md-guard; full suite 638 green. NOT committed.",
+  "next": "Phase 5 tasks (measures doc + docs sync) — the last build phase. Carries the SECOND `| win` tracked-drift surface (AGENTS_README.md:193 + docs/how gen:docs sources). Compact first recommended (between-phase seam).",
+  "_comment": "Router IS installed (~/.agents/skills/eng-harness-flow) so harness seam nodes are emitted: backpressure on the spine post-spec, plus a plan-complete retro seam. Spine + future nodes are speculative until stage 30 reveals the real phase count. the-flow.md is generated FROM this file. validate-v2 runs are recorded as :::harness `validation`-type nodes (vv3/vv4) dotted to the artifact they checked.",
+  "agents": [
+    { "id": "crc", "kind": "companion", "slug": "code-review-companion", "run_id": "2026-06-16T14-08-21-533Z-7cf0", "render": "wrap", "covers": ["p1"], "status": "done", "note": "minih Power-On review of all 3 Phase-1 commits (cebb4e1/fe741f1/c92d280) — 0 code findings; supersedes a separate review pass for Phase 1." },
+    { "id": "crc2", "kind": "companion", "slug": "code-review-companion", "run_id": "2026-06-16T15-59-40-923Z-d583", "render": "wrap", "covers": ["p2"], "status": "done", "note": "minih Power-On review of both Phase-2 code commits (271c731/eca4117) — 1 MEDIUM, 0 HIGH/CRITICAL. Caught two stale 7-kind guidance surfaces validate-v2 missed (eng-harness-4-retro/SKILL.md:85, AGENTS_README:193); ACCEPTED + deferred-with-tracking (SKILL.md->P4, AGENTS_README->P5). Supersedes a separate review pass for Phase 2." },
+    { "id": "crc3", "kind": "companion", "slug": "code-review-companion", "run_id": "2026-06-16T07-18-47-309Z-3ebc", "render": "wrap", "covers": ["p3"], "status": "done", "note": "minih Power-On review of both Phase-3 commits (3354d79 migration record / f5db6e0 delete+guard+sweep). Independently re-ran the architecture suite (npx vitest run test/architecture) to verify the guard, declared T002-T005 clean -> 0 findings. Supersedes a separate review pass for Phase 3." }
+  ],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research (2 passes)", "status": "done",
+      "command": "/the-flow 1a explore", "ran_at": "2026-06-16T01:54Z",
+      "user_input": "get a new flow up then run explore command and log in the ask as well, which is a distillation of this chat",
+      "note": "Pass 1 (6 lenses): broad landscape — record types plug in at registry.ts:40, no new verb. Pass 2 (3 lenses): validated the DECIDED design (distilled-ask.md, 10 decisions). Provenance stamping = GitPort.remoteUrl + version dep + prepend header (P2-clean). history.md removal = 17 prose ops + migrate 1 row, zero code writers. 4 in-repo capture seams (prose, inert until types ship). Code-first 4-phase shape; 4 open Qs for spec.",
+      "artifacts": ["original-ask.md", "distilled-ask.md", "research-dossier.md"], "next": ["spec"] },
+
+    { "id": "spec", "type": "spec", "label": "Spec (Full, CS-4)", "status": "done",
+      "command": "/the-flow 1b specify", "ran_at": "2026-06-16T02:05Z",
+      "user_input": "specify now please then run validate",
+      "note": "Full, CS-4 (9), 5 phases, 11 ACs. validate-v2 (4 agents) → VALIDATED WITH FIXES: CRITICAL AC3↔AC5 header-shape contradiction fixed (locked merged frontmatter); CRITICAL dropped plan_id re-added to frozen contract; resolves format locked; under-reporting tradeoff named (R6); R5 resolved. 2 low-stakes open Qs remain: base HEAD (OUT), the-flow edit (OOS follow-up).",
+      "artifacts": ["harness-bypass-change-records-spec.md"], "next": ["bp"] },
+
+    { "id": "bp", "type": "backpressure", "label": "Backpressure Check (post-spec seam)", "status": "done",
+      "command": "/eng-harness-flow --event post-spec --spec <spec path>", "branch_of": "spec",
+      "ran_at": "2026-06-16T02:36Z",
+      "user_input": "run the post-spec event",
+      "note": "Routed via /eng-harness-flow (decision=route, preconditions met: spec+gov+boot hold, doctor=ok). Survey → Certainty: Partial. EXISTS: record-service/registry/doctor/observe/retro-template harnesses with working fakes (AC-1/2/5a/11). BUILDABLE (6): provenance-coverage test + null-degradation (AC-3/4/5b, FakeGit needs remoteUrl), body-superset for 2 new templates (AC-6), observe --kind win + win-enum assertion (AC-7a/b — NO ajv in repo, enum-membership is cheapest proof). Legit-inferential: AC-9 seam prose (dogfood), AC-10 doc sufficiency. CI nuance flagged: arch-check/skills-check ship WARN/exit0, coverage report-only — only check:docs+biome+build+typecheck+vitest hard-block. Phase 0 = test-first set folded into Phase 1/2, not a separate phase.",
+      "artifacts": ["backpressure-coverage.md"],
+      "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan (READY · validated)", "status": "done",
+      "command": "/the-flow 3 architect", "ran_at": "2026-06-16T02:45Z",
+      "user_input": "architect then validate",
+      "note": "Status READY (G2 Constitution + G3 Architecture PASS, G4 ADR N/A); 2 research agents source-verified integration points. validate-v2 (4 agents) → VALIDATED WITH FIXES: harmonized 7-spliced-vs-8-present provenance keys (schema_version template-owned); AC-6 reframed to frozen-body-keys (new types have no schema file); AC-5 scope locked to Phase-1 provenance (R2 resolved); guarded the cross-phase schema_version test hazard; history.md grep-guard now mandatory. 2 low-stakes Qs locked: base HEAD OUT, the-flow OOS.",
+      "artifacts": ["harness-bypass-change-records-plan.md"], "next": ["p1"] },
+
+    { "id": "p1", "type": "phase", "label": "P1 · CLI core: record types + provenance", "status": "done",
+      "command": "/the-flow 6 implement --phase \"Phase 1: CLI core: record types + provenance stamping\"",
+      "ran_at": "2026-06-16T04:25Z",
+      "user_input": "impleemnt with companion",
+      "note": "COMPLETE — 9 tasks T000-T008, test-first, with a live code-review-companion (minih). T000/T008 harness seams (boot healthy / phase-end). GitPort.remoteUrl() (origin-only, null-degrading). Pure spliceProvenance: strips existing top-level decls of the 7 keys then prepends → retro (which ships its own agent/plan_id) carries all 8 keys exactly once, stamped; schema_version stays template-owned (KF-01). RecordDeps/RecordActDeps gain git+env; version threads via a new registerRecordAct arg. harness-bypass + harness-change core types registered. 633 tests green, P2 grep clean, tsc + biome clean, end-to-end CLI smoke verified the real 8-key header. Companion reviewed all 3 commits → 0 code findings. Discovery: dossier's split('---\\n',2) would drop the body → used indexOf/slice. 4 path-scoped commits (cebb4e1/fe741f1/c92d280/5387aff); staged presentation deletions untouched.",
+      "artifacts": ["tasks/phase-1-cli-core-record-types-provenance-stamping/tasks.md", "tasks/phase-1-cli-core-record-types-provenance-stamping/execution.log.md"], "next": ["p2"] },
+
+    { "id": "p2", "type": "phase", "label": "P2 · win retro kind", "status": "done",
+      "command": "/the-flow 6 implement --companion --phase \"Phase 2: win retro kind\"",
+      "ran_at": "2026-06-16T06:25Z",
+      "user_input": "please inplement with companon",
+      "note": "COMPLETE — T000-T006, test-first, with a live code-review-companion (minih). `win` added to OBSERVATION_KINDS (8th kind, WIN prefix) + core-instructions Kinds line (in-phase); `win` added to retro.schema.json kind enum + top-level x-schema-version:1.1; RETRO_TEMPLATE schema_version 1.0->1.1 (its sole edit in the plan). Two decoupled RED->GREEN pairs + positive additivity (win legacy-block parse). Full suite 637 green; tsc/biome/check:docs clean; record-service provenance unaffected (dynamic schema_version read held); harness-bypass/change stayed 1.0. T000 pre-implement boot HEALTHY; T006 phase-end -> drain (1 stale prior-session entry surfaced, not auto-actioned). Companion (crc2): 1 MEDIUM finding (two stale 7-kind guidance surfaces validate-v2 missed) ACCEPTED -> deferred-with-tracking (SKILL.md->P4, AGENTS_README->P5). DOGFOOD note: this phase's own friction (a git-pathspec gotcha) went to the exec log + Discoveries, NOT the observe buffer — the integration-dossier gap, live. 3 path-scoped commits (271c731/eca4117/8756c0d).",
+      "artifacts": ["tasks/phase-2-win-retro-kind/tasks.md", "tasks/phase-2-win-retro-kind/execution.log.md"],
+      "next": ["p3"] },
+
+    { "id": "p3", "type": "phase", "label": "P3 · remove history.md", "status": "done",
+      "command": "/the-flow 6 implement --companion --phase \"Phase 3: Remove history.md\"",
+      "ran_at": "2026-06-16T07:31Z",
+      "user_input": "go, use companion",
+      "note": "COMPLETE — T000-T00z, with a live code-review-companion (crc3). T000 pre-implement boot HEALTHY (637 green, 1.04s, doctor ok). T001 migrated the one 2026-06-10 row into a harness-change record (`harness record harness-change` -> 001-migrate-cwd-independent-test-suite.md; 8-key provenance auto-stamped non-null; change_type=fixture/target/resolves filled; original 2026-06-10 date preserved in body) and committed it ALONE (commit A 3354d79) BEFORE the delete (data safety, visible in git history). T002 git-rm'd .harness/history.md. T003 added history-md-guard.test.ts (import.meta.url root 4-up, recursive .md walk of skills/+docs/how/+.harness/, regex /\\.harness\\/history\\.md/, excludes records/+temp/) -> RED listing exactly the 7 offenders (migration record correctly excluded). T004 swept all 17 live refs (prefixed + bare) across the 7 docs incl. the G3 governance-section rewrite (G4/G5 numbering preserved) -> guard GREEN, zero refs remain. T005 VERIFY: 638 tests green (637 + guard), tsc/biome clean, check:docs exit 0 with NO docs-content.ts diff (no swept file is a gen:docs source -> validate-v2's finding held), migration record present, and a deliberate re-introduced ref spot-check went RED then GREEN. T00z phase-end seam fired. Boundary held: retro SKILL.md edited ONLY at :385 (field-source comment), NOT the :85 Kinds list (Phase 4); no AGENTS_README/docs-how creep (Phase 5). Companion (crc3) independently re-ran the arch suite + reviewed both commits -> 0 findings; supersedes a separate review pass. Two path-scoped commits (3354d79 / f5db6e0); 93 staged presentation deletions untouched.",
+      "artifacts": ["tasks/phase-3-remove-history-md/tasks.md", "tasks/phase-3-remove-history-md/execution.log.md", ".harness/records/harness-change/2026-06-16/001-migrate-cwd-independent-test-suite.md"],
+      "next": ["p4"] },
+
+    { "id": "p4", "type": "phase", "label": "P4 · in-repo capture seams", "status": "done",
+      "command": "/the-flow 6 implement --phase \"Phase 4: In-repo capture seams\"",
+      "ran_at": "2026-06-16T08:23Z",
+      "user_input": "ersiouly, just do the edit? doesnt ned the full fanfare",
+      "note": "COMPLETE — T000-T00z, prose-only, NO companion (user wanted minimal ceremony). Three skill edits: (T001) eng-harness-4-retro/SKILL.md `### Capture seams` subsection at the end of the --drain block — bypass backstop -> `harness record harness-bypass` with the full `cause` enum verbatim + a `win` 'what worked well?' beat -> `harness observe --kind win`; [s/t/p/e/d/a] menu + field-source comment untouched; (T002) `| win` added to the Kinds list at :85 (full 8-kind set — the tracked drift, crc2 F1); (T003) eng-harness-flow/SKILL.md stateless `bypass_recommended`/`bypass_cause` --json envelope field + prose (router only FLAGS, never writes/blocks); (T004) eng-harness-0-add-extension/SKILL.md `### 4. Record the change` best-effort step (`harness record harness-change`, exits unconfigured/2 when absent). VERIFY (T005): enum/kind/CLI strings zero-typo; negative scope check clean (no AGENTS_README/measures/gen:docs — Phase-5 boundary held); descriptions 834/859/461 all <900, none edited (body-only); architecture guards 3/3 incl. history-md-guard; full suite 638 green. T00z phase-end: observe buffer empty (no friction worth recording). NOT committed yet. validate-v2 (vv4, 4 lenses) ran on the tasks dossier pre-build -> VALIDATED WITH FIXES (0 CRITICAL; 9 refinements applied).",
+      "artifacts": ["tasks/phase-4-in-repo-capture-seams/tasks.md", "tasks/phase-4-in-repo-capture-seams/execution.log.md"],
+      "next": ["p5"] },
+
+    { "id": "p5", "type": "phase", "label": "P5 · measures doc + docs sync", "status": "known",
+      "command": "/the-flow 5 tasks --phase \"Phase 5: Measures doc + docs sync\"",
+      "note": "docs/how/harness-value-measures.md (all 8 keys in examples; describes not builds); update record doc + manifest + gen:docs; full CI gate. Depends on P1. TRACKED DRIFT (P2 dossier + companion F1): the `| win` kind-list update lands here for the gen:docs SOURCES — docs/how/record-and-record-types.md:168 (plan task 5.2), docs/how/dogfood-harness-flow.md (NOT yet in P5 scope — add it), and AGENTS_README.md:193 (a gen:docs source — confirmed: editing it regenerates docs-content.ts, so it belongs in this docs-sync + check:docs phase, not P2). check:docs is the gate that proves docs-content.ts stays in sync.",
+      "next": ["review"] },
+
+    { "id": "review", "type": "review", "label": "Review", "status": "assumed",
+      "command": "/the-flow 7 review", "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
+      "command": "/the-flow 8 merge", "next": ["hh"] },
+
+    { "id": "hh", "type": "harness-retro", "label": "Harness plan-complete (seam)", "status": "assumed",
+      "command": "/eng-harness-flow --event plan-complete", "branch_of": "merge",
+      "note": "Plan-complete harness seam — fired by /the-flow 8 merge after the merge.", "next": [] },
+
+    { "id": "vv3", "type": "validation", "label": "validate-v2 (4 lenses) · VALIDATED WITH FIXES", "status": "done",
+      "branch_of": "p3", "ran_at": "2026-06-16T07:30Z",
+      "note": "Phase-3 plan/tasks validation pass — VALIDATED WITH FIXES (recorded against P3)." },
+
+    { "id": "vv4", "type": "validation", "label": "validate-v2 (4 lenses) · VALIDATED WITH FIXES", "status": "done",
+      "branch_of": "p4", "ran_at": "2026-06-16T08:08Z",
+      "user_input": "then run valiation skill",
+      "note": "Phase-4 TASKS-dossier validation: 4 lenses (source-truth, cross-ref+completeness, thesis-alignment, forward-compatibility). 0 CRITICAL design defects; every load-bearing enum/kind/CLI/line claim verified 100% against source. 9 refinements applied to tasks.md: defer the contested description char-count to skills-check; name the AGENTS_README.md:193 Phase-5 hand-off; couple T001<->T002; sharpen T003 envelope insertion + read-only framing; harden T005 (enum-string typo grep + negative Phase-5 scope check); add an AC-9 coverage table + a seam-row legend note." }
+  ]
+}

@@ -51,3 +51,15 @@ Fired `/eng-harness-flow --event pre-implement --phase "Phase 3: Remove history.
 - `npm run check:docs` → **exit 0**, and `git diff` on `harness/cli/src/services/docs/docs-content.ts` is **CLEAN** — confirming none of the 7 swept files are gen:docs sources (validate-v2's finding holds; the swept skill/gov docs are not in `docs-manifest.json`). ✓
 - Migration record present: `.harness/records/harness-change/2026-06-16/001-migrate-cwd-independent-test-suite.md` (proves the "row migrated" leg of AC-8 — the guard alone only proves "no live refs"). ✓
 - **Guard spot-check**: a re-introduced `.harness/history.md` ref in a throwaway `skills/__guard_spotcheck__.md` made the guard go **RED** (caught it); removing the scratch returned it to **GREEN**. The sensor genuinely catches regressions.
+
+## Dogfood — observe capture (live this phase)
+
+Unlike Phase 2 (whose friction leaked to the exec log — the integration-dossier gap), Phase 3 recorded its real friction in the observe buffer the moment it happened: `harness observe … --kind difficulty` → `DL-001` in `.harness/temp/agent/session-buffer.md`. The friction: **`git add` aborts on an already-`git rm`'d path** — passing a deleted file to `git add -- <paths>` alongside new files raised a `fatal` that aborted the whole add (new files never staged → the first path-scoped commit failed). Worked around by excluding the deleted path from `git add` and including it only in `git commit -- <pathspec>`. Sharp specifically because this repo carries 93 pre-staged presentation deletions.
+
+## T00z — Harness phase-end seam (`--event phase-end`)
+
+Fired `/eng-harness-flow --event phase-end --plan-dir docs/plans/020-harness-bypass-change-records --json`. S0+S2+S4 hold → engineering dispatch; **observe buffer non-empty (1 entry, DL-001)** → router routed **`eng-harness-4-retro --drain`** (drain-before-harvest; `next_suggested: --harvest`). Best-effort, non-blocking — the entry persists in the buffer until triaged, so the drain is offered as a follow-up rather than auto-materialized (matching the Phase-2 precedent).
+
+## Companion debrief (crc3)
+
+Briefed once at start; pinged at both commit boundaries (T001, T002-T005). The companion transitioned to `reviewing`, **independently re-ran `npx vitest run test/architecture`** to verify the guard, and reported **T002-T005 clean — 0 findings**. Drain-request acknowledged ("Drain is complete"); `control:stop` sent → farewell read. A clean companion pass that reviewed every commit **supersedes a separate post-hoc review** for Phase 3 (the flight-plan Graph carries that decoration via `crc3`).
