@@ -1,1 +1,0 @@
-Then, reality. The environment won't boot the way the docs say. The test setup is weird. Half the battle is just working out how to run the thing. The agent is resourceful, so it works around each of these. Burning tokens the whole way.
