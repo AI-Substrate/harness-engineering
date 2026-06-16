@@ -113,6 +113,9 @@ describe('record under a Windows-shaped cwd', () => {
     fs,
     clock: new FakeClock('2026-06-10T07:20:00.000Z'),
     proc: new FakeProcess({}, WIN_CWD),
+    git: new FakeGit({ isRepo: true, branch: 'main' }),
+    env: new FakeEnv(),
+    version: '0.0.0-test',
   });
 
   it('returns a POSIX relative data.path and writes to the POSIX absolute key', () => {

@@ -1,6 +1,8 @@
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
+import type { EnvPort } from '../adapters/env/env-port.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
+import type { GitPort } from '../adapters/git/git-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
 import { type Envelope, formatError, formatOk, formatUnconfigured } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
@@ -14,6 +16,10 @@ export interface RecordActDeps {
   fs: FsPort;
   proc: ProcessPort;
   clock: Clock;
+  /** Provenance `branch` + `repo` — forwarded to the record service. */
+  git: GitPort;
+  /** Provenance `agent` + `plan_id` — forwarded to the record service. */
+  env: EnvPort;
 }
 
 interface RecordOpts {
@@ -37,6 +43,7 @@ export function registerRecordAct(
   io: CliIo,
   deps: RecordActDeps,
   registry: RecordRegistry,
+  version: string,
 ): void {
   program
     .command('record')
@@ -52,7 +59,9 @@ export function registerRecordAct(
         return;
       }
 
-      const outcome = createRecord({ type, slug: opts.slug }, registry, deps);
+      // `version` is the only provenance input not already on the act's ports
+      // (git/env ride in via VerbActDeps); merge it in for the service.
+      const outcome = createRecord({ type, slug: opts.slug }, registry, { ...deps, version });
 
       if (outcome.ok) {
         const envelope = formatOk(
