@@ -42,3 +42,14 @@
 - Full suite **633 green**; biome clean (auto-wrapped one long description); typecheck OK.
 
 ---
+
+## T008 — Phase-end harness seam ✅
+- Fired `/eng-harness-flow --event phase-end --plan-dir … --json`. Observe buffer empty (no `harness observe` calls this phase) → router routes `eng-harness-4-retro --harvest`. Advisory; harvest deferred to plan-complete (no captured friction to drain, 4 phases remain).
+
+## Companion (code-review-companion) — debrief
+- Ran in Power-On mode reviewing each commit (T001-T002, T003-T004, T005-T007); fire-and-forget pings. Debrief: drain → control:stop → farewell.
+
+## Phase 1 — COMPLETE
+- 9 tasks T000-T008 all ✅. Net: `GitPort.remoteUrl()`; pure `spliceProvenance` (strip-then-prepend, P2); `harness-bypass` + `harness-change` core types; provenance stamped on every record write. **633 tests green**, typecheck + biome clean, end-to-end verified. 3 path-scoped commits (`cebb4e1`, `fe741f1`, `c92d280`) on `020-harness-bypass-change-records`; pre-existing staged presentation deletions left untouched.
+
+---
