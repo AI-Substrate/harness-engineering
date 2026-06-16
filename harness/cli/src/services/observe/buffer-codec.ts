@@ -8,7 +8,10 @@
  * npx-installed core stays at commander+jiti only (constitution P10).
  */
 
-/** The 7 universal-schema kinds and their ID prefixes (workshop 005 § D5/D6). */
+/**
+ * The 8 universal-schema kinds and their ID prefixes (workshop 005 § D5/D6;
+ * `win` added plan 020 Phase 2 as the positive counterpart to `difficulty`).
+ */
 export const OBSERVATION_KINDS = {
   difficulty: 'DL',
   'magic-wand': 'MW',
@@ -17,6 +20,7 @@ export const OBSERVATION_KINDS = {
   coordination: 'COORD',
   'improvement-suggestion': 'SUGG',
   confusion: 'CONF',
+  win: 'WIN',
 } as const;
 
 export type ObservationKind = keyof typeof OBSERVATION_KINDS;
