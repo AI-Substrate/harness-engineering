@@ -23,6 +23,23 @@ describe('FakeGit', () => {
     expect(git.isRepo()).toBe(false);
     expect(git.currentBranch()).toBeNull();
   });
+
+  it('returns the seeded remoteUrl (→ provenance `repo`), null when unseeded, and records the call', () => {
+    // Why: the provenance header's `repo` key comes from GitPort.remoteUrl(); the
+    // service must be unit-testable without a real `origin` remote.
+    const withRemote = new FakeGit({
+      isRepo: true,
+      branch: 'main',
+      remoteUrl: 'git@github.com:AI-Substrate/harness-engineering.git',
+    });
+    expect(withRemote.remoteUrl()).toBe('git@github.com:AI-Substrate/harness-engineering.git');
+    expect(withRemote.calls).toContain('remoteUrl');
+
+    // A repo with a branch but no seeded remote → null (no remote configured).
+    expect(new FakeGit({ isRepo: true, branch: 'main' }).remoteUrl()).toBeNull();
+    // Not-a-repo (unseeded) → null.
+    expect(new FakeGit().remoteUrl()).toBeNull();
+  });
 });
 
 describe('ExecGit', () => {
@@ -34,5 +51,13 @@ describe('ExecGit', () => {
     expect(git.isRepo()).toBe(true);
     const branch = git.currentBranch();
     expect(branch === null || typeof branch === 'string').toBe(true);
+  });
+
+  it('reports the origin remote URL as a string, or null when there is none', () => {
+    // Real `git remote get-url origin`: this repo usually has an origin, but
+    // detached/remote-less checkouts (CI/packaging) legitimately return null —
+    // accept both; the null contract is pinned deterministically by FakeGit above.
+    const url = new ExecGit().remoteUrl();
+    expect(url === null || typeof url === 'string').toBe(true);
   });
 });
