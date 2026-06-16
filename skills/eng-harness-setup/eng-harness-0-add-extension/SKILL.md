@@ -95,6 +95,20 @@ harness <name>          # invoke it — ok (filled) or unconfigured exit 2 (stil
 Report to the user: the path created, that `doctor` shows it loaded, and the
 result of invoking it.
 
+### 4. Record the change (best-effort)
+
+Once the extension verifies, log it as a `harness-change` record so the
+changelog reflects what was added:
+
+```bash
+harness record harness-change --slug <name>
+# change_type: new-command (or sensor) · target: the verb/recipe added · resolves: why it was added
+```
+
+Optional and non-blocking — if the harness isn't configured the command exits
+`unconfigured` (exit 2) and nothing else changes. Skip it for throwaway or
+experimental extensions.
+
 ## Guardrails
 
 - **Reserved names**: `help`, `doctor`, `new` are core commands — `harness new`
