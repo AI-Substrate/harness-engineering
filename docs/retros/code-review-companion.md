@@ -215,3 +215,33 @@
 - runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-15T12-33-03-542Z-8339
 - summary: Reviewed the full plan 019 commit sequence plus final drain. The final tree still has seven outstanding findings, including three HIGH-severity contract/correctness issues around --pin validation, pinned 404 classification, and documentation that promises an unwired background update lookup. The companion is exiting after the outside stop request.
 - **magicWand** (target: coordination): Add a lightweight contract-drift audit surface that maps documented user-facing claims to implementation call sites for critical contracts like update checks, pin validation, and exit-envelope decoration.
+
+## 2026-06-16T04:29:36.680Z — code-review-companion / 2026-06-16T14-08-21-533Z-7cf0
+
+- runId: 2026-06-16T14-08-21-533Z-7cf0
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-16T14-08-21-533Z-7cf0
+- summary: Reviewed Plan 020 Phase 1 commit-boundary requests for T001-T002 (cebb4e1), T003-T004 (fe741f1, including a corrected-SHA follow-up), T005-T007 (c92d280), and the final drain. No code-review findings were sent; the reviewed changes aligned with the stated provenance, record-type, registry, list, and doctor contracts.
+- **magicWand** (target: minih): Make minih set MINIH_PROJECT_ROOT to the repository root for inside agents, or expose a `minih context --json` command that returns projectRoot, runId, outputPath, and active plan paths from one canonical source.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory even though the companion prompt required starting from the project root. (workaround: Used the repository root from the environment context for all project-relative reads and commands.)
+  - [annoying] test: The first targeted test and architecture-check commands used the wrong package/script layout: harness/cli has no package.json and the root package has no arch-check script. (workaround: Read the root package.json and reran targeted tests via `npm test -- <vitest paths>` from the repository root; manually grepped services/record for forbidden runtime node/process imports.)
+  - [annoying] coordination: One review request named cebb4e1 for T003-T004 even though cebb4e1 only contained T001-T002; the provenance implementation was uncommitted at that moment. (workaround: Reviewed the matching working-tree diff, noted the mismatch in the summary, then re-reviewed the corrected fe741f1 commit when the outside peer sent it.)
+
+## 2026-06-16T06:22:08.957Z — code-review-companion / 2026-06-16T15-59-40-923Z-d583
+
+- runId: 2026-06-16T15-59-40-923Z-d583
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-16T15-59-40-923Z-d583
+- summary: Oriented on plan 020, reviewed two Phase 2 commit requests for the `win` retro kind, and sent one MEDIUM contract-drift finding. Commit 271c731 had no findings. Commit eca4117 correctly widened the retro schema/template and left harness-bypass/change at 1.0, but exposed stale Kinds guidance in the retro skill and AGENTS_README; the outside peer accepted and deferred that drift to the owning later phases before merge.
+- **magicWand** (target: coordination): Add an explicit companion-mode rule for task-local quiet-mode phrases like 'reply only if issues': whether they suppress zero-finding summaries, or whether the mandatory summary always wins.
+- difficulties:
+  - [annoying] coordination: Task-local instructions requested 'reply only if you find issues', but the agent prompt separately requires a summary message at the end of each task. (workaround: Sent the required summary messages and kept them concise, while reserving finding messages for actual issues.)
+  - [annoying] tooling: The ripgrep wrapper rejected a negative lookahead used during the drift audit because the default regex engine does not support look-around. (workaround: Reran the audit with simpler patterns and inspected the matched context directly.)
+
+## 2026-06-16T07:35:24.365Z — code-review-companion / 2026-06-16T07-18-47-309Z-3ebc
+
+- runId: 2026-06-16T07-18-47-309Z-3ebc
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-16T07-18-47-309Z-3ebc
+- summary: Reviewed Plan 020 Phase 3 commit requests for the history.md retirement work: T001 migration record, T002-T005 delete/guard/prose sweep, and the final drain. I found no issues; the record contract, migrate-before-delete ordering, guard implementation, phase boundaries, and commit hygiene all checked out.
+- **magicWand** (target: minih): Make minih validate and expose the project root consistently for coordinated agents: set MINIH_PROJECT_ROOT to the repository root, or add a coordination-provided projectRoot field so the first cd cannot land in the run directory.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory rather than the repository root, contradicting the companion prompt and causing the initial project-orientation command to inspect the wrong location. (workaround: Used the known repository root path from the environment context for all subsequent git, file, and validation commands.)

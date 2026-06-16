@@ -57,7 +57,7 @@ compaction (the buffer lives on disk):
   harness observe "<what happened, 10+ chars>" --kind difficulty --severity degrading
 
 - Kinds: difficulty | magic-wand | gift | insight | coordination |
-  improvement-suggestion | confusion. Severities: blocking | degrading |
+  improvement-suggestion | confusion | win. Severities: blocking | degrading |
   annoying. \`--target\`, \`--workaround\`, \`--suggested-encoding\` optional.
 - Identity is optional: \`--agent <slug>\` → \`HARNESS_AGENT\` env → a shared
   \`agent\` bucket. Capture never fails on identity.

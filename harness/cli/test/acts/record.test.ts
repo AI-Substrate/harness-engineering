@@ -2,7 +2,9 @@ import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerRecordAct } from '../../src/acts/record.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
+import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
+import { FakeGit } from '../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import { ErrorCodes } from '../../src/output/error-codes.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
@@ -55,6 +57,8 @@ function depsWith(fs: FakeFs) {
     fs,
     proc: new FakeProcess({}, '/repo'),
     clock: new FakeClock('2026-06-08T07:20:00.000Z'),
+    git: new FakeGit({ isRepo: true, branch: 'main' }),
+    env: new FakeEnv(),
   };
 }
 
@@ -81,7 +85,7 @@ describe('registerRecordAct', () => {
       throw new Error(`exit:${code}`);
     }) as never);
     const program = new Command().name('harness');
-    registerRecordAct(program, io, depsWith(fs), registry);
+    registerRecordAct(program, io, depsWith(fs), registry, '0.0.0-test');
     expect(() => program.parse(['node', 'harness', 'record', ...args])).toThrow(/^exit:/);
     return code;
   }
@@ -154,6 +158,9 @@ describe('registerRecordAct', () => {
     const ds = types.find((t) => t.type === 'dev-survey');
     expect(retro).toMatchObject({ source: 'core' });
     expect(retro?.entryPath).toBeUndefined();
+    // The two new core types enumerate alongside retro (source: core).
+    expect(types.find((t) => t.type === 'harness-bypass')).toMatchObject({ source: 'core' });
+    expect(types.find((t) => t.type === 'harness-change')).toMatchObject({ source: 'core' });
     expect(ds).toMatchObject({
       source: 'extension',
       entryPath: '.harness/extensions/dev-survey.record.ts',

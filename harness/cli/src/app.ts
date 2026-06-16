@@ -197,7 +197,7 @@ export function buildProgram(
   registerDocsAct(program, io);
   registerSkillsAct(program, io, deps);
   registerUpdateAct(program, io, deps, version);
-  registerRecordAct(program, io, deps, recordRegistry);
+  registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {

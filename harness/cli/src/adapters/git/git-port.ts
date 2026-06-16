@@ -9,4 +9,10 @@ export interface GitPort {
   isRepo(): boolean;
   /** Current branch name, or null if not a repo / detached HEAD. */
   currentBranch(): string | null;
+  /**
+   * The `origin` remote URL — the provenance header's `repo` join key. `null`
+   * when there is no `origin` remote (or not a repo). `origin`-only by design:
+   * it's the conventional canonical remote and keeps the join key stable.
+   */
+  remoteUrl(): string | null;
 }

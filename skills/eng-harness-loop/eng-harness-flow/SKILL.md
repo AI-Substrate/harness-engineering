@@ -185,6 +185,8 @@ When a hint conflicts with the detected signals, the router resolves **determini
   "preconditions_met": false,
   "missing_rung": "S4-build-and-run-boot",
   "next_suggested": "<the command after this one, e.g. --harvest after --drain>",
+  "bypass_recommended": false,
+  "bypass_cause": "<a harness-bypass `cause` enum value when bypass_recommended is true, else null>",
   "rail":  { "zone": "adopt", "adopt_pips": "◆◆◐◇◇", "loop_pips": "◇◇◇◇◇", "cursor": "governance" },
   "now":   "<current stage, one line>",
   "next":  "<what follows, one line>",
@@ -194,6 +196,8 @@ When a hint conflicts with the detected signals, the router resolves **determini
 ```
 
 The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Per-turn UX) so a machine caller can render the same pleasant rail + flag beat a human gets. This matters precisely *because* the router is stateless: the rail, now/next, and flags are all **recomputed from substrate every call** — a pure function of "what the repo looks like right now," which is why the UX survives `/compact`, serves any caller, and never drifts from reality.
+
+`bypass_recommended` / `bypass_cause` are **advisory flags only**. When the router detects that the caller hit (or is about to hit) harness friction worth recording, it *flags* it — setting `bypass_recommended: true` and a `bypass_cause` drawn from the `harness-bypass` `cause` enum — so the parent can offer `harness record harness-bypass`. Consistent with the stateless contract, the router **never writes a record and never blocks** on this; it only reads/derives the flag (default `false` / `null`).
 
 ---
 
@@ -339,5 +343,5 @@ This is the inversion of `the-flow`'s hard-coded harness cues: instead of a pare
 ## References
 
 - [`references/getting-started.md`](./references/getting-started.md) — the visual guide to the whole skill family: the two-zone big picture, who pulls each trigger, a worked walkthrough, quick reference, and the `.harness/` directory map. The on-ramp for anyone new to the loop.
-- [`references/governance-doc.md`](./references/governance-doc.md) — what the governance doc (`​.harness/engineering-harness.md`) contains, the `.harness/history.md` changelog semantics, and the write conditions.
+- [`references/governance-doc.md`](./references/governance-doc.md) — what the governance doc (`​.harness/engineering-harness.md`) contains, the `harness-change` record ledger semantics, and the write conditions.
 - [`references/maturity-assessment.md`](./references/maturity-assessment.md) — the canonical L0–L4 maturity ladder and how to assess which rung a harness sits on.

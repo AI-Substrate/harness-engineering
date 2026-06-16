@@ -97,5 +97,6 @@ at every seam, so nothing extra is woven into context surfaces here.
 (`harness doctor`) reads ok, build/test/lint confirmed runnable (L2 floor), and
 the retro→encode loop has now shipped a harness change: the plan-014
 orchestrator retro's magic wand (cwd-sensitive tests; mute stale-dist failures)
-was encoded same-day — see `.harness/history.md` row 1. Not L4: improvements do
+was encoded same-day — see the `harness-change` record under
+`.harness/records/harness-change/`. Not L4: improvements do
 not yet arrive routinely during normal work without a retro prompting them.

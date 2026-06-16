@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
+import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
+import { FakeGit } from '../../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import { ErrorCodes } from '../../../src/output/error-codes.js';
+import { RETRO_TEMPLATE } from '../../../src/services/record/core-types/retro.js';
+import {
+  type ProvenanceFields,
+  spliceProvenance,
+} from '../../../src/services/record/provenance.js';
 import {
   createRecord,
   ensureTemp,
@@ -31,6 +38,9 @@ function depsAt(fs: FakeFs): RecordDeps {
     fs,
     clock: new FakeClock('2026-06-08T07:20:00.000Z'),
     proc: new FakeProcess({}, '/repo'),
+    git: new FakeGit({ isRepo: true, branch: 'main' }),
+    env: new FakeEnv(),
+    version: '0.0.0-test',
   };
 }
 
@@ -216,5 +226,179 @@ describe('ensureTemp', () => {
     const fs = configuredFs();
     createRecord({ type: 'retro', slug: 'x' }, CORE, depsAt(fs));
     expect(fs.writes).toContain('/repo/.harness/temp/.gitignore');
+  });
+});
+
+// ── T003: provenance-coverage + null-degradation (the Frozen 8-key contract) ──
+
+/** The 8 Frozen-Contract frontmatter keys (1 template-owned + 7 spliced). */
+const FROZEN_KEYS = [
+  'schema_version',
+  'record_kind',
+  'harness_version',
+  'branch',
+  'repo',
+  'created_at',
+  'agent',
+  'plan_id',
+];
+
+/** Extract the first `---`-fenced frontmatter block's inner YAML text. */
+function frontmatter(content: string): string {
+  const m = content.match(/^---\n([\s\S]*?)\n---/);
+  return m ? m[1] : '';
+}
+
+/** Count TOP-LEVEL occurrences of `key:` in a frontmatter block. */
+function countKey(fm: string, key: string): number {
+  return (fm.match(new RegExp(`^${key}:`, 'gm')) ?? []).length;
+}
+
+/** Read the written file for an ok outcome under cwd `/repo`. */
+function readWritten(fs: FakeFs, outcome: ReturnType<typeof createRecord>): string {
+  if (!outcome.ok) throw new Error(`expected ok, got ${JSON.stringify(outcome)}`);
+  return fs.readText(`/repo/${outcome.path}`);
+}
+
+describe('createRecord — provenance stamping (Frozen 8-key contract, T003)', () => {
+  /** Deps that stamp every provenance key with a concrete, distinct value. */
+  const stamped = (fs: FakeFs): RecordDeps => ({
+    fs,
+    clock: new FakeClock('2026-06-08T07:20:00.000Z'),
+    proc: new FakeProcess({}, '/repo'),
+    git: new FakeGit({ isRepo: true, branch: 'feat/x', remoteUrl: 'git@github.com:acme/repo.git' }),
+    env: new FakeEnv({ HARNESS_AGENT: 'github-copilot', HARNESS_PLAN_ID: '020-bypass' }),
+    version: '9.9.9',
+  });
+
+  it('writes all 8 keys exactly once — even though RETRO_TEMPLATE ships its own agent/plan_id', () => {
+    const fs = configuredFs();
+    const fm = frontmatter(readWritten(fs, createRecord({ type: 'retro' }, CORE, stamped(fs))));
+    for (const key of FROZEN_KEYS) {
+      expect(countKey(fm, key), `${key} should appear exactly once`).toBe(1);
+    }
+    // The 7 spliced values are the stamped ones (not the template's placeholders).
+    expect(fm).toContain('record_kind: "retro"');
+    expect(fm).toContain('harness_version: "9.9.9"');
+    expect(fm).toContain('branch: "feat/x"');
+    expect(fm).toContain('repo: "git@github.com:acme/repo.git"');
+    expect(fm).toContain('created_at: "2026-06-08T07:20:00.000Z"');
+    expect(fm).toContain('agent: "github-copilot"');
+    expect(fm).toContain('plan_id: "020-bypass"');
+  });
+
+  it('leaves schema_version template-owned (present once, value read from the template — never spliced/hardcoded)', () => {
+    const fs = configuredFs();
+    const fm = frontmatter(readWritten(fs, createRecord({ type: 'retro' }, CORE, stamped(fs))));
+    const templateSchemaLine = RETRO_TEMPLATE.match(/^schema_version:.*$/m)?.[0];
+    expect(templateSchemaLine).toBeDefined();
+    expect(fm).toContain(templateSchemaLine as string); // Phase-2-proof: whatever the template declares
+    expect(countKey(fm, 'schema_version')).toBe(1); // the splice never adds a second one
+  });
+
+  it('null-degrades each git/env-sourced key when unavailable; the write still succeeds', () => {
+    const fs = configuredFs();
+    const deps: RecordDeps = {
+      fs,
+      clock: new FakeClock('2026-06-08T07:20:00.000Z'),
+      proc: new FakeProcess({}, '/repo'),
+      git: new FakeGit({ isRepo: false }), // not a repo → null branch + null remote
+      env: new FakeEnv({}), // no HARNESS_AGENT / HARNESS_PLAN_ID
+      version: '9.9.9',
+    };
+    const outcome = createRecord({ type: 'retro' }, CORE, deps);
+    expect(outcome.ok).toBe(true);
+    const fm = frontmatter(readWritten(fs, outcome));
+    expect(fm).toContain('branch: null');
+    expect(fm).toContain('repo: null');
+    expect(fm).toContain('agent: null');
+    expect(fm).toContain('plan_id: null');
+    // Never-null keys are still present.
+    expect(fm).toContain('record_kind: "retro"');
+    expect(fm).toContain('harness_version: "9.9.9"');
+  });
+});
+
+describe('spliceProvenance — pure helper (idempotent, in-fence, YAML-safe)', () => {
+  const fields: ProvenanceFields = {
+    record_kind: 'harness-bypass',
+    harness_version: '1.2.3',
+    branch: 'feat/x',
+    repo: 'git@github.com:acme/repo.git',
+    created_at: '2026-06-08T07:20:00.000Z',
+    agent: 'github-copilot',
+    plan_id: '020-bypass',
+  };
+  const TEMPLATE = '---\nschema_version: "1.0"\nbody_key: "<fill>"\n---\n\n# Body\n';
+
+  it('prepends the 7 keys INSIDE the first frontmatter block (right after the opening fence)', () => {
+    const out = spliceProvenance(TEMPLATE, fields);
+    expect(out.startsWith('---\nrecord_kind: "harness-bypass"\n')).toBe(true);
+    // schema_version stays template-owned; body + closing fence are intact.
+    expect(out).toContain('schema_version: "1.0"');
+    expect(out).toContain('body_key: "<fill>"');
+    expect(out).toContain('\n---\n\n# Body\n');
+  });
+
+  it('is idempotent — re-splicing the same fields is a no-op', () => {
+    const once = spliceProvenance(TEMPLATE, fields);
+    expect(spliceProvenance(once, fields)).toBe(once);
+  });
+
+  it('double-quotes string values so a slash-bearing branch round-trips; null stays bare', () => {
+    const out = spliceProvenance(TEMPLATE, { ...fields, branch: 'feat/x', repo: null });
+    expect(out).toContain('branch: "feat/x"');
+    expect(out).toContain('repo: null');
+  });
+});
+
+// ── T005: the two new core types scaffold + carry exactly the frozen body keys ──
+
+describe('new core types — scaffold + frozen body keys (T005)', () => {
+  it('harness record harness-bypass → ok/core; body carries exactly cause/attempted/command/severity', () => {
+    const fs = configuredFs();
+    const outcome = createRecord({ type: 'harness-bypass' }, CORE, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, type: 'harness-bypass', source: 'core' });
+    const fm = frontmatter(readWritten(fs, outcome));
+    for (const k of ['cause', 'attempted', 'command', 'severity']) {
+      expect(countKey(fm, k), `harness-bypass should declare ${k} once`).toBe(1);
+    }
+    // ...and NOT the other type's body keys.
+    for (const k of ['resolves', 'change_type']) expect(countKey(fm, k)).toBe(0);
+    // Provenance still spliced over the new template.
+    expect(countKey(fm, 'record_kind')).toBe(1);
+    expect(countKey(fm, 'schema_version')).toBe(1);
+    expect(fm).toContain('record_kind: "harness-bypass"');
+  });
+
+  it('harness record harness-change → ok/core; body carries exactly resolves/change_type/target', () => {
+    const fs = configuredFs();
+    const outcome = createRecord({ type: 'harness-change' }, CORE, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, type: 'harness-change', source: 'core' });
+    const fm = frontmatter(readWritten(fs, outcome));
+    for (const k of ['resolves', 'change_type', 'target']) {
+      expect(countKey(fm, k), `harness-change should declare ${k} once`).toBe(1);
+    }
+    for (const k of ['cause', 'attempted', 'severity']) expect(countKey(fm, k)).toBe(0);
+    expect(fm).toContain('record_kind: "harness-change"');
+  });
+
+  it('pins the locked enums in the type templates (cause / change_type)', () => {
+    const bypass = CORE.types.find((t) => t.type === 'harness-bypass');
+    const change = CORE.types.find((t) => t.type === 'harness-change');
+    expect(bypass?.template).toContain(
+      'missing-command|command-failed|too-slow|unclear-output|no-coverage|policy|agent-could-not',
+    );
+    expect(change?.template).toContain(
+      'new-command|sensor|fixture|template|doc|skill-edit|routing',
+    );
+  });
+
+  it('still rejects an unknown type, and is unconfigured without .harness/', () => {
+    const unknown = createRecord({ type: 'no-such-type' }, CORE, depsAt(configuredFs()));
+    expect(unknown.ok).toBe(false);
+    const unconfigured = createRecord({ type: 'harness-bypass' }, CORE, depsAt(new FakeFs()));
+    expect(unconfigured.ok).toBe(false);
+    if (!unconfigured.ok) expect(unconfigured.status).toBe('unconfigured');
   });
 });

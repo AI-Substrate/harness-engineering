@@ -44,6 +44,16 @@ describe('buildRecordRegistry — core only (default)', () => {
       coreRecordTypes.map((t) => t.type),
     );
   });
+
+  it('enumerates harness-bypass + harness-change as core types (no entryPath)', () => {
+    const reg = buildRecordRegistry();
+    for (const type of ['harness-bypass', 'harness-change']) {
+      const entry = reg.types.find((t) => t.type === type);
+      expect(entry?.source).toBe('core');
+      expect(entry?.entryPath).toBeUndefined();
+      expect(entry?.description.length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('buildRecordRegistry — core ∪ extension', () => {

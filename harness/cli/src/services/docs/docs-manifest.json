@@ -42,6 +42,13 @@
       "summary": "Self-contained bootstrap guide: point an agent at a repo and it installs the harness CLI + skills, orients itself, and enters the loop.",
       "audience": "both",
       "sourcePath": "AGENTS_README.md"
+    },
+    {
+      "id": "harness-value-measures",
+      "title": "Harness value measures",
+      "summary": "Measures for harness value — bypass rate, change rate, the PR denominator, DORA correlation, and the anti-Goodhart / team-level framing.",
+      "audience": "both",
+      "sourcePath": "docs/how/harness-value-measures.md"
     }
   ]
 }

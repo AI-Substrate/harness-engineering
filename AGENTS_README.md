@@ -190,7 +190,7 @@ You just had the most valuable experience this repo will ever get: a fresh entra
 harness observe "<what happened, 10+ chars>" \
   --kind difficulty --severity degrading \
   --workaround "<what you did>" --suggested-encoding "<how to fix it for the next agent>"
-# kinds: difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion
+# kinds: difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion | win
 # severities: blocking | degrading | annoying
 
 # At the end — drain the buffer into a committed record:

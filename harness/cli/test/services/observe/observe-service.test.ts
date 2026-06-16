@@ -42,6 +42,7 @@ const KIND_PREFIXES: Record<string, string> = {
   coordination: 'COORD',
   'improvement-suggestion': 'SUGG',
   confusion: 'CONF',
+  win: 'WIN',
 };
 
 function depsAt(fs: FakeFs, env: FakeEnv = new FakeEnv()): ObserveDeps {
@@ -79,7 +80,7 @@ function legacyEntry(id: string, kind: string): string {
 }
 
 describe('captureObservation — happy path (AC-1, AC-3, D10)', () => {
-  it('accepts all 7 schema kinds, assigning the per-kind prefix with a 001 start', () => {
+  it('accepts all 8 schema kinds (incl. win), assigning the per-kind prefix with a 001 start', () => {
     for (const [kind, prefix] of Object.entries(KIND_PREFIXES)) {
       const fs = configuredFs();
       const outcome = captureObservation({ description: DESC, kind }, depsAt(fs));
@@ -94,6 +95,15 @@ describe('captureObservation — happy path (AC-1, AC-3, D10)', () => {
       expect(buffer).toContain(`- id: ${prefix}-001`);
       expect(buffer).toContain(`kind: ${kind}`);
     }
+  });
+
+  it('captures kind=win → WIN-001, the positive counterpart to difficulty (AC-7)', () => {
+    const fs = configuredFs();
+    const outcome = captureObservation({ description: DESC, kind: 'win' }, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, bucket: 'agent', id: 'WIN-001', kind: 'win' });
+    const buffer = fs.readText(AGENT_BUFFER) ?? '';
+    expect(buffer).toContain('- id: WIN-001');
+    expect(buffer).toContain('kind: win');
   });
 
   it('writes the full system.compound block with the ClockPort ISO timestamp (D10)', () => {
@@ -127,7 +137,7 @@ describe('captureObservation — happy path (AC-1, AC-3, D10)', () => {
 });
 
 describe('captureObservation — validation at write (AC-4, D6)', () => {
-  it('rejects an unknown kind with the 7 allowed values named, buffer untouched', () => {
+  it('rejects an unknown kind with the 8 allowed values named, buffer untouched', () => {
     const fs = configuredFs();
     const outcome = captureObservation({ description: DESC, kind: 'signal-gap' }, depsAt(fs));
     expect(outcome.ok).toBe(false);
@@ -135,6 +145,7 @@ describe('captureObservation — validation at write (AC-4, D6)', () => {
       expect(outcome.status).toBe('unconfigured');
       expect(outcome.next_action).toContain('difficulty');
       expect(outcome.next_action).toContain('confusion');
+      expect(outcome.next_action).toContain('win');
     }
     expect(fs.writes).toEqual([]);
   });
@@ -340,9 +351,16 @@ describe('captureObservation — unconfigured / error states (AC-4, D6)', () => 
 });
 
 describe('buffer-codec — the entry grammar (D2/D3)', () => {
-  it('exports the 7 schema kinds with their prefixes and the 3 severities', () => {
+  it('exports the 8 schema kinds with their prefixes and the 3 severities', () => {
     expect(OBSERVATION_KINDS).toEqual(KIND_PREFIXES);
     expect([...OBSERVATION_SEVERITIES]).toEqual(['blocking', 'degrading', 'annoying']);
+  });
+
+  it('parses a hand-written `win` legacy block (additive: the 1.1 kind round-trips, D3)', () => {
+    const { entries, malformed } = parseBuffer(legacyEntry('WIN-001', 'win'));
+    expect(malformed).toBe(0);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ id: 'WIN-001', kind: 'win' });
   });
 
   it("parses the old skill's exact template — inline comments and all (D3)", () => {

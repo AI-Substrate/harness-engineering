@@ -82,7 +82,7 @@ harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
   [--target <t>] [--severity <s>] [--workaround <w>] [--suggested-encoding <hint>] [--agent <slug>]
 ```
 
-- **Kinds**: `difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion`. **Severities**: `blocking | degrading | annoying` (recommended for difficulties).
+- **Kinds**: `difficulty | magic-wand | gift | insight | coordination | improvement-suggestion | confusion | win`. **Severities**: `blocking | degrading | annoying` (recommended for difficulties).
 - **The CLI owns the mechanics** — buffer path, per-kind sequential IDs (`DL-001`, `MW-001`, …), ISO timestamps, schema validation at write, the full `system.compound` lifecycle block, and the gitignore guarantee (`.harness/temp/` is created self-gitignored on first capture; `harness doctor` checks the protection). You supply no path, no ID, no timestamp.
 - **Identity is optional** (provenance, not ceremony): `--agent <slug>` → `HARNESS_AGENT` env → a shared `agent` bucket. Capture never fails on identity. Distinct agents that opt in get distinct buckets, so simultaneous agents never trample each other.
 - **Crash-resilient by construction**: the entry is on disk the moment you notice it. After `/compact` or a lost context window, nothing is re-derived — capture again with the same one command; drain finds everything.
@@ -304,6 +304,25 @@ The entry is **still saved to the record** regardless of the answer — the offe
 
 No mid-session prompting · no auto-applying encoded diffs · no editing committed `.retro.md` files after writing them (lifecycle mutations are `--harvest`'s job) · no cross-session aggregation (that's `--harvest`).
 
+### Capture seams — bypass backstop + the `win` beat
+
+Two highly-suggestive, **non-blocking** nudges at the drain seam. Both degrade silently when the harness (or the record type) isn't set up — never gate, never block, never error.
+
+- **Bypass backstop** — if the drain prompt is dismissed, or you clearly hit harness friction this session but captured nothing, suggest recording the non-use *once* (the bypass is itself a signal — "zero bypasses = not measured, not perfect"):
+
+  ```bash
+  harness record harness-bypass --slug <slug>
+  # cause: missing-command | command-failed | too-slow | unclear-output | no-coverage | policy | agent-could-not
+  ```
+
+  Never force it — a declined prompt just means the next drain sees the same state.
+
+- **The `win` beat** — also ask the positive question: *"what worked well — was the harness effective here?"* A yes is a first-class signal, captured like any other observation:
+
+  ```bash
+  harness observe "<what worked well>" --kind win
+  ```
+
 ---
 
 ## Mode: `--harvest` (long-horizon)
@@ -382,7 +401,7 @@ Stable contract (`schema_version` semver, bump on breaking change):
 
 - `entries.*` counts by `system.compound.status` (missing status counts as `open`).
 - `top_clusters` capped at 10, same priority order as the default view.
-- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever `.harness/history.md` doesn't supply; no governance doc → all four `null`.
+- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever the `harness-change` record ledger doesn't supply; no governance doc → all four `null`.
 - Empty tree → `{"retros": 0, "entries": {"total": 0, …}, "top_clusters": []}` — still valid JSON.
 
 Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harvest --json | jq …` elsewhere.

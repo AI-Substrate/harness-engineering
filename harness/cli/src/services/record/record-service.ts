@@ -1,9 +1,12 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
+import type { GitPort } from '../../adapters/git/git-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp, HARNESS_DIR } from '../shared/temp.js';
+import { type ProvenanceFields, spliceProvenance } from './provenance.js';
 import type { RecordRegistry } from './registry.js';
 
 // Relocated to services/shared/temp.ts (plan 015 D1); re-exported so existing
@@ -28,6 +31,12 @@ export interface RecordDeps {
   fs: FsPort;
   clock: Clock;
   proc: ProcessPort;
+  /** Provenance `branch` + `repo` (`GitPort.currentBranch()` / `remoteUrl()`). */
+  git: GitPort;
+  /** Provenance `agent` + `plan_id` (`HARNESS_AGENT` / `HARNESS_PLAN_ID`). */
+  env: EnvPort;
+  /** Provenance `harness_version` — an injected string (`readVersion` reads `node:fs`, so it stays in the wiring, never the service — P2). */
+  version: string;
 }
 
 export interface RecordCreateOptions {
@@ -63,6 +72,11 @@ function dateStamp(clock: Clock): string {
   return clock.nowIso().slice(0, 10);
 }
 
+/** Env value → itself when set & non-blank, else null (provenance never guesses). */
+function envOrNull(value: string | undefined): string | null {
+  return value !== undefined && value.trim().length > 0 ? value : null;
+}
+
 /**
  * Next 1-based ordinal for a date dir: 1 + the highest `NNN` prefix already
  * present (files are named `<NNN>[-slug].md`). Missing/empty dir → 1.
@@ -90,7 +104,7 @@ export function createRecord(
   registry: RecordRegistry,
   deps: RecordDeps,
 ): RecordOutcome {
-  const { fs, clock, proc } = deps;
+  const { fs, clock, proc, git, env, version } = deps;
   // Logical paths are POSIX on every OS (plan 017) — convert once at the boundary.
   const cwd = toPosix(proc.cwd());
   const harnessDir = posixJoin(cwd, HARNESS_DIR);
@@ -166,12 +180,28 @@ export function createRecord(
     };
   }
 
-  // 6. Ensure the scratch buffer (AC-17) + write the template — both under ONE guard so
-  //    a permissions failure on `.harness/` surfaces as E181 (not a generic E100).
+  // 6. Stamp the CLI-owned provenance header into the template's frontmatter
+  //    (the 7 env/identity keys; `schema_version` stays template-owned). A pure
+  //    string splice — the service reads only injected ports, never node:fs/git
+  //    or process.cwd directly (Constitution P2). Values degrade to `null`, never
+  //    guessed, when git/env can't supply them; the write still succeeds.
+  const provenance: ProvenanceFields = {
+    record_kind: type,
+    harness_version: version,
+    branch: git.currentBranch(),
+    repo: git.remoteUrl(),
+    created_at: clock.nowIso(),
+    agent: envOrNull(env.get('HARNESS_AGENT')),
+    plan_id: envOrNull(env.get('HARNESS_PLAN_ID')),
+  };
+  const content = spliceProvenance(entry.template, provenance);
+
+  // 7. Ensure the scratch buffer (AC-17) + write the stamped record — both under ONE
+  //    guard so a permissions failure on `.harness/` surfaces as E181 (not a generic E100).
   try {
     ensureTemp(deps);
     fs.mkdirp(dir);
-    fs.writeText(fileAbs, entry.template);
+    fs.writeText(fileAbs, content);
   } catch (err) {
     return {
       ok: false,

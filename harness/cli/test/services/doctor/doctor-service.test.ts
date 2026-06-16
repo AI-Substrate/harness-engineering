@@ -365,14 +365,22 @@ describe('record-types layer', () => {
     const report = buildDoctorReport(deps(), EMPTY, recordReg);
     const layer = report.layers.find((l) => l.name === 'record-types');
     expect(layer?.ok).toBe(true);
-    expect(layer?.detail).toContain('2 available');
-    expect(layer?.detail).toContain('1 core');
+    // 3 core (retro + harness-bypass + harness-change) + 1 extension.
+    expect(layer?.detail).toContain('4 available');
+    expect(layer?.detail).toContain('3 core');
     expect(layer?.detail).toContain('1 extension');
-    expect(report.recordTypes.map((t) => t.type)).toEqual(['retro', 'dev-survey']);
+    expect(report.recordTypes.map((t) => t.type)).toEqual([
+      'retro',
+      'harness-bypass',
+      'harness-change',
+      'dev-survey',
+    ]);
 
     const text = renderDoctorText(report);
     expect(text).toContain('record-types');
     expect(text).toContain('retro [core]');
+    expect(text).toContain('harness-bypass [core]');
+    expect(text).toContain('harness-change [core]');
     expect(text).toContain('dev-survey [extension] .harness/extensions/dev-survey.record.ts');
   });
 

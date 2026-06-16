@@ -20,4 +20,15 @@ export class ExecGit implements GitPort {
     const branch = result.stdout.trim();
     return branch && branch !== 'HEAD' ? branch : null;
   }
+
+  remoteUrl(): string | null {
+    const result = spawnSync('git', ['remote', 'get-url', 'origin'], {
+      encoding: 'utf8',
+    });
+    if (result.status !== 0) {
+      return null;
+    }
+    const url = result.stdout.trim();
+    return url.length > 0 ? url : null;
+  }
 }
