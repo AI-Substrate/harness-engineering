@@ -1,6 +1,6 @@
 {
   "name": "@ai-substrate/engineering-harness",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
   "type": "module",
   "repository": {
