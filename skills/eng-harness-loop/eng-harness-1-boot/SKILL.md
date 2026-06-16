@@ -145,13 +145,13 @@ Report:
 
 Quick read-only report — no validation, no changes.
 
-Read the governance doc at `.harness/engineering-harness.md` and report: project type, maturity level (the current snapshot in the doc), and checklist completion. If a `.harness/history.md` changelog exists, the most recent encoded-improvement row is the last *trajectory* change; boot does not itself track a "last validation date" (it writes nothing), so report that only if `history.md` supplies it, otherwise omit it. No harness boots or health checks. If the doc is absent → report `UNAVAILABLE`.
+Read the governance doc at `.harness/engineering-harness.md` and report: project type, maturity level (the current snapshot in the doc), and checklist completion. If `harness-change` records exist, the most recent one is the last *trajectory* change; boot does not itself track a "last validation date" (it writes nothing), so report that only if a `harness-change` record supplies it, otherwise omit it. No harness boots or health checks. If the doc is absent → report `UNAVAILABLE`.
 
 ---
 
 ## Measure compounding value
 
-> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `.harness/history.md` changelog — one row **per encoded improvement** (the Improve beat), written when a harness change actually ships, **not** per session/boot — is the trajectory; a maturity level that climbs (or a boot time that shrinks) across those rows is the compounding value made visible. Boot only *reads* this trajectory; it never appends to it. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`eng-harness-4-retro --harvest`).
+> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `harness-change` record ledger — one record **per encoded improvement** (the Improve beat), written when a harness change actually ships, **not** per session/boot — is the trajectory; a maturity level that climbs (or a boot time that shrinks) across those records is the compounding value made visible. Boot only *reads* this trajectory; it never writes to it. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`eng-harness-4-retro --harvest`).
 
 ---
 

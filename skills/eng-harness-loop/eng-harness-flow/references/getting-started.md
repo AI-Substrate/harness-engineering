@@ -88,7 +88,7 @@ Boot ─────────────────────────
 | **Observe** | `harness observe "<what>" --kind <kind>` | **You/your agent, the moment friction happens** | A CLI verb, not a skill — one silent call per noticing (confusing failure, retry, backtrack, slow command, "if only there were…"). Lands in the gitignored buffer `.harness/temp/`. Capture judgment lives in `eng-harness-4-retro` § in-flight capture. |
 | **Retro (drain)** | `eng-harness-4-retro --drain` | **You** at phase/session end, buffer non-empty | The one normal user-facing retro prompt: triage `[s/t/p/e/d/a]`, materialize kept entries into a committed record via `harness record retro`, then clear the buffer. |
 | **Retro (harvest)** | `eng-harness-4-retro --harvest` | **You**, at plan completion / periodically | Read-only curation across `.harness/records/retro/**` — what recurs, what's stale, what to encode next. Recurrence is framed as token cost. Drain first if the buffer is non-empty. |
-| **Improve** | retro `[e]ncode` / `eng-harness-0-add-extension` | **You**, when a retro names a fix | The beat where the loop compounds: ship the fix as a command, sensor, fixture, or doc — then `.harness/history.md` gains a row. Most loop runs encode nothing, and that's fine. |
+| **Improve** | retro `[e]ncode` / `eng-harness-0-add-extension` | **You**, when a retro names a fix | The beat where the loop compounds: ship the fix as a command, sensor, fixture, or doc — then a `harness-change` record is written. Most loop runs encode nothing, and that's fine. |
 
 **Opt-out is conversational.** There is no `.disabled` sentinel for the loop — if you don't want it, say so and the agent stops calling the loop skills. Nothing gates, scores, or blocks.
 
@@ -183,7 +183,7 @@ flowchart LR
 
 7.  eng-harness-4-retro --harvest             (later, across sessions)
     → "this friction recurred 3× — encode it" → eng-harness-0-add-extension
-    → the Improve beat ships a fix; .harness/history.md gains a row. ↺
+    → the Improve beat ships a fix; a harness-change record is written. ↺
 ```
 
 You can drive every step by hand, but you never have to *route* by hand — `/eng-harness-flow` at any point answers "where am I and what's next?" from the repo itself.
@@ -217,7 +217,6 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 ├── .harness/
 │   ├── engineering-harness.md      ← governance doc (BIO contract) — canonical, only location
 │   │                                  (stamped by `harness init`, seeded empty; see references/governance-doc.md)
-│   ├── history.md                  ← sparse changelog: one row per ENCODED improvement, never per session
 │   ├── extensions/
 │   │   └── boot/
 │   │       ├── extension.ts        ← the verb (default-exports a HarnessVerb)
@@ -226,7 +225,8 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 │   │   └── harnessability/
 │   │       └── latest.{md,json}    ← the scout's graded report
 │   ├── records/
-│   │   └── retro/                  ← COMMITTED team memory (drain materializes here)
+│   │   ├── retro/                  ← COMMITTED team memory (drain materializes here)
+│   │   └── harness-change/         ← the harness changelog: one record per ENCODED improvement
 │   └── temp/                       ← GITIGNORED session scratch (the observe buffer)
 └── AGENTS.md                       ← routes future agents to the harness at session start
 ```
@@ -258,7 +258,7 @@ One command per call; the parent calls again for the next seam. Hints are valida
 
 ### Maturity (L0–L4)
 
-The ladder runs from L0 (no harness — tribal knowledge) to L4 (self-improving — the harness regularly produces improvements during normal work). Boot *reads* the current level from the governance doc; the trajectory lives in `.harness/history.md`. Report the level that's actually working, never the aspirational one. Full ladder + assessment guide: [`maturity-assessment.md`](./maturity-assessment.md).
+The ladder runs from L0 (no harness — tribal knowledge) to L4 (self-improving — the harness regularly produces improvements during normal work). Boot *reads* the current level from the governance doc; the trajectory lives in the `harness-change` record ledger. Report the level that's actually working, never the aspirational one. Full ladder + assessment guide: [`maturity-assessment.md`](./maturity-assessment.md).
 
 ### The harness loop in one sentence
 

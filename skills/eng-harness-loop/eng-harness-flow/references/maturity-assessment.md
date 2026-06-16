@@ -2,7 +2,7 @@
 
 This is the **one canonical home** for the engineering-harness maturity ladder. It moved here out of `eng-harness-1-boot/SKILL.md` so it lives in exactly one place; boot and any other skill **link** to it rather than restating the table.
 
-The ladder is the **nucleus / self-improving** ladder. A reader reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc's maturity section (see [`governance-doc.md`](./governance-doc.md)). The governance doc holds only the **current** snapshot; the *trajectory* across improvements lives in `.harness/history.md`.
+The ladder is the **nucleus / self-improving** ladder. A reader reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc's maturity section (see [`governance-doc.md`](./governance-doc.md)). The governance doc holds only the **current** snapshot; the *trajectory* across improvements lives in the `harness-change` record ledger.
 
 ---
 
@@ -27,8 +27,8 @@ Read the deterministic signals (the same A–J catalog the router uses) and find
 | **L0** | No governance doc, no `.harness/` nucleus, no CLI front door — commands are tribal. | A, D absent |
 | **L1** | A governance doc / `.harness/` / CLI skeleton / `AGENTS.md` pointer exists — the *front door* — even if commands aren't all wired. | A, D present |
 | **L2** | The boot command boots cleanly and the health/build/test/run commands are confirmed runnable (not just declared). | C (boots cleanly), B (doctor healthy) |
-| **L3** | The retro ledger has entries **and ≥1 has been encoded** into the harness (a `history.md` row exists); magic-wand prompts have shipped at least one harness change. | E (loop substrate), `history.md` non-empty |
-| **L4** | Improvements arrive *during normal work* as a matter of course; new agents onboard with no human help; proof-level ceilings are tracked. | sustained `history.md` cadence; low onboarding cost |
+| **L3** | The retro ledger has entries **and ≥1 has been encoded** into the harness (a `harness-change` record exists); magic-wand prompts have shipped at least one harness change. | E (loop substrate), ≥1 `harness-change` record |
+| **L4** | Improvements arrive *during normal work* as a matter of course; new agents onboard with no human help; proof-level ceilings are tracked. | sustained `harness-change` record cadence; low onboarding cost |
 
 - **Report the working level, never the aspirational one.** A repo with a governance doc but an unproven boot is **L1**, not L2 — the boot command must actually boot to claim L2.
 - **The level is a reading, not a score or a gate.** It is the dashboard reading the loop drives upward; it never blocks work.

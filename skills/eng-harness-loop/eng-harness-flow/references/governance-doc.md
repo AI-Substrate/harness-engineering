@@ -1,10 +1,10 @@
 # The engineering-harness governance doc — contents & write conditions
 
-This is the **one canonical description** of the engineering-harness governance doc: where it lives, what it contains, the companion `history.md` changelog, and *when* each is written. Skills that touch the doc (`eng-harness-1-boot`, `eng-harness-0-adopt`, `eng-harness-2-backpressure`, `eng-harness-4-retro`, `eng-harness-0-harnessability-assessment`) **link here** rather than restating these rules, so there is a single source of truth.
+This is the **one canonical description** of the engineering-harness governance doc: where it lives, what it contains, the `harness-change` record ledger, and *when* each is written. Skills that touch the doc (`eng-harness-1-boot`, `eng-harness-0-adopt`, `eng-harness-2-backpressure`, `eng-harness-4-retro`, `eng-harness-0-harnessability-assessment`) **link here** rather than restating these rules, so there is a single source of truth.
 
 > **Separation of concerns (the load-bearing idea):**
 > - **governance doc = contract** — what the harness *is*, plus the *current* maturity snapshot.
-> - **`history.md` = changelog** — what *improved*, sparse (one row per encoded improvement).
+> - **`harness-change` records = changelog** — what *improved*, sparse (one record per encoded improvement).
 > - **boot = runtime read** — it *reports*, it never *writes*.
 
 ---
@@ -32,21 +32,21 @@ The doc is a thin **Boot / Interact / Observe contract** plus a signal inventory
 | **Evidence paths** | where artifacts land (log/trace/screenshot/output locations) so they're discoverable. |
 | **Injection map** | where the repo's *extant* dev/SDD flow calls `/eng-harness-flow` — one row per seam event (`session-start`, `post-spec`, `pre-implement`, `task-pause`, `phase-end`, `plan-complete`): where it fires from and what fires it. The host flow is swappable (`the-flow`, another SDD pipeline, plain PR work); the seam vocabulary is the constant. This section is the durable signal behind the router's S3 rung — without it a cold agent has no structural reason to call the harness. |
 | **Back-pressure gaps** | behaviours that still rely on inference or human eyeballing — named honestly as improvement candidates, never as scores. |
-| **Current maturity snapshot** | the **single, current** L0–L4 level the harness is *actually* at (see [`maturity-assessment.md`](./maturity-assessment.md)). The doc holds only the *current* snapshot — the trajectory lives in `history.md`. |
+| **Current maturity snapshot** | the **single, current** L0–L4 level the harness is *actually* at (see [`maturity-assessment.md`](./maturity-assessment.md)). The doc holds only the *current* snapshot — the trajectory lives in the `harness-change` record ledger. |
 
 The doc is a **contract, not a log**: it says what the harness *is right now*, not what happened each session.
 
 ---
 
-## G3 · `.harness/history.md` is a changelog, not a log
+## G3 · The change ledger = `harness-change` records (a changelog, not a log)
 
-`.harness/history.md` is a **sparse harness changelog**: **one row per improvement *encoded into the harness*** — the *Improve* beat of the loop. It is explicitly **not** a per-session or per-boot log.
+The harness changelog is the **`harness-change` record ledger** (`.harness/records/harness-change/`, written via `harness record harness-change`): **one record per improvement *encoded into the harness*** — the *Improve* beat of the loop. It is explicitly **not** a per-session or per-boot log.
 
-- A row is written **only** when a retro / magic-wand actually *ships a harness change*: a new command, a new sensor, a faster boot, a maturity-level move.
-- **Most loop runs add zero rows.** Booting, observing, even draining a retro buffer do **not** touch `history.md` unless an improvement is encoded.
-- It is the **trajectory**; the governance doc holds only the *current* snapshot. A maturity level that climbs (or a boot time that shrinks) across rows is the compounding value made visible.
+- A record is written **only** when a retro / magic-wand actually *ships a harness change*: a new command, a new sensor, a faster boot, a maturity-level move.
+- **Most loop runs add zero records.** Booting, observing, even draining a retro buffer do **not** write a `harness-change` record unless an improvement is encoded.
+- It is the **trajectory**; the governance doc holds only the *current* snapshot. A maturity level that climbs (or a boot time that shrinks) across records is the compounding value made visible.
 
-Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity snapshot from `.harness/engineering-harness.md` and treat `.harness/history.md` as the sparse changelog **if present**; any field with no live source (last validation, boot ms, verdict) is reported `null` rather than fabricated.
+Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity snapshot from `.harness/engineering-harness.md` and treat the `harness-change` record ledger as the changelog; any field with no live source (last validation, boot ms, verdict) is reported `null` rather than fabricated.
 
 ---
 
@@ -61,7 +61,7 @@ Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity s
 | Event | What changes | Who |
 |---|---|---|
 | **Inception** (once) | the doc is *created* with the BIO headings, the signal inventory skeleton, evidence paths, and the seed maturity snapshot | **the `harness init` writer** (a CLI command — shipped, FX001). `npx harness init` stamps the skeleton and seeds maturity **L0**, leaving every other BIO field a `TODO`/empty placeholder (the Injection map an empty table); it is **idempotent + never-clobber**. (Setup *drives* setup by calling it; it does not itself generate the governance doc.) |
-| **Improve beat** (on a capability change) | the **body** (boot cmd / signals / evidence paths / back-pressure gaps) **and** the **current maturity snapshot** are edited to match new reality; a row is appended to `.harness/history.md` | the Improve beat — when the harness gains or changes a capability |
+| **Improve beat** (on a capability change) | the **body** (boot cmd / signals / evidence paths / back-pressure gaps) **and** the **current maturity snapshot** are edited to match new reality; a `harness-change` record is written (`harness record harness-change`) | the Improve beat — when the harness gains or changes a capability |
 | **Inject decision** (adoption S3, or when the host flow changes) | the `## Injection map` section is added/updated in an *existing* doc — never created standalone (`harness init` stamps an empty Injection map table; S3 adds its rows) | `eng-harness-0-adopt` Step 3, with the user's go-ahead |
 | **Every other loop run** | **nothing** — boot reads, observe writes its buffer, retro writes `.retro.md`; the governance doc is untouched | — |
 

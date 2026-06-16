@@ -382,7 +382,7 @@ Stable contract (`schema_version` semver, bump on breaking change):
 
 - `entries.*` counts by `system.compound.status` (missing status counts as `open`).
 - `top_clusters` capped at 10, same priority order as the default view.
-- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever `.harness/history.md` doesn't supply; no governance doc → all four `null`.
+- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever the `harness-change` record ledger doesn't supply; no governance doc → all four `null`.
 - Empty tree → `{"retros": 0, "entries": {"total": 0, …}, "top_clusters": []}` — still valid JSON.
 
 Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harvest --json | jq …` elsewhere.

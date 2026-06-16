@@ -339,5 +339,5 @@ This is the inversion of `the-flow`'s hard-coded harness cues: instead of a pare
 ## References
 
 - [`references/getting-started.md`](./references/getting-started.md) — the visual guide to the whole skill family: the two-zone big picture, who pulls each trigger, a worked walkthrough, quick reference, and the `.harness/` directory map. The on-ramp for anyone new to the loop.
-- [`references/governance-doc.md`](./references/governance-doc.md) — what the governance doc (`​.harness/engineering-harness.md`) contains, the `.harness/history.md` changelog semantics, and the write conditions.
+- [`references/governance-doc.md`](./references/governance-doc.md) — what the governance doc (`​.harness/engineering-harness.md`) contains, the `harness-change` record ledger semantics, and the write conditions.
 - [`references/maturity-assessment.md`](./references/maturity-assessment.md) — the canonical L0–L4 maturity ladder and how to assess which rung a harness sits on.
