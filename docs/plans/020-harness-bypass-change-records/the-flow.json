@@ -4,10 +4,10 @@
   "slug": "harness-bypass-change-records",
   "plan_dir": "docs/plans/020-harness-bypass-change-records",
   "mode": "Full",
-  "cursor": "review",
-  "recommended_next": "review",
+  "cursor": "merge",
+  "recommended_next": "merge",
   "now": "Phase 5 COMPLETE — the last build phase landed (with a live companion). Wrote docs/how/harness-value-measures.md (4-part measures doc: bypass/change rate + PR denominator · two hand-traced records proving the 8-key join contract · DORA leading/lagging not a 5th metric · anti-Goodhart/team-level/R6; DESCRIBES, never builds the scanner — OOS). Synced record-and-record-types.md (2 new core types + a provenance-header section + `| win` at :167) and AGENTS_README.md (`| win` at :193); added the manifest entry + ran gen:docs ONCE (6->7 docs). Full gate GREEN: biome / build / check:docs (exit 0) / typecheck / vitest 639 passed / coverage 90.85%; negative scope clean (0 SKILL.md, 0 schema, 0 CLI-src outside services/docs). Live code-review-companion raised 1 MEDIUM (provenance docs called an unset `agent` 'omitted', but provenance.ts always stamps it -> `agent: null`; the key is always present) -> VERIFIED against provenance.ts + record-service.ts:194 and FIXED in both docs; the companion re-reviewed the fix (reviewed 4) with no new finding, then stopped cleanly (verdict=completed). 3 path-scoped commits (b48b032 / ec314fb / 24d6dee); 93 staged presentation deletions untouched. ALL 5 PHASES NOW BUILT.",
-  "next": "Review (stage 7) — the inferential/eyeball tier. The companion reviewed every commit live for Phases 1/2/3/5 (supersedes a post-hoc pass for those), but Phase 4 had NO companion — a review covering Phases 4+5 is the reasonable scope; otherwise go straight to merge. Then merge (stage 8, base main) executes ONLY on typed PROCEED, and DRAFT PR #23 should be marked ready at/around merge. Compact recommended first (post-build seam).",
+  "next": "Merge (stage 8) — review SKIPPED by decision: the live code-review-companion reviewed every commit for Phases 1/2/3/5, which supersedes a post-hoc review pass (the Graph's own decoration), and Phase 4 was prose-only that passed its T005 gate + the full suite. The merge stage builds the holistic whole-PR analysis across the branch and executes ONLY on a typed PROCEED. Pre-merge housekeeping it will surface: push Phase 5's 4 local commits (b48b032/ec314fb/24d6dee/85597cb) and mark DRAFT PR #23 ready (base main). Compact recommended first (post-build seam).",
   "_comment": "Router IS installed (~/.agents/skills/eng-harness-flow) so harness seam nodes are emitted: backpressure on the spine post-spec, plus a plan-complete retro seam. Spine + future nodes are speculative until stage 30 reveals the real phase count. the-flow.md is generated FROM this file. validate-v2 runs are recorded as :::harness `validation`-type nodes (vv3/vv4) dotted to the artifact they checked.",
   "agents": [
     { "id": "crc", "kind": "companion", "slug": "code-review-companion", "run_id": "2026-06-16T14-08-21-533Z-7cf0", "render": "wrap", "covers": ["p1"], "status": "done", "note": "minih Power-On review of all 3 Phase-1 commits (cebb4e1/fe741f1/c92d280) — 0 code findings; supersedes a separate review pass for Phase 1." },
@@ -81,8 +81,9 @@
       "artifacts": ["tasks/phase-5-measures-doc-docs-sync/tasks.md", "tasks/phase-5-measures-doc-docs-sync/execution.log.md", "docs/how/harness-value-measures.md"],
       "next": ["review"] },
 
-    { "id": "review", "type": "review", "label": "Review", "status": "assumed",
-      "command": "/the-flow 7 review", "next": ["merge"] },
+    { "id": "review", "type": "review", "label": "Review (skipped — companion supersedes)", "status": "assumed",
+      "command": "/the-flow 7 review",
+      "note": "SKIPPED by decision: the code-review-companion reviewed every commit live for Phases 1/2/3/5 (supersedes a post-hoc review pass — the Graph decoration); Phase 4 was prose-only and passed its own T005 gate + the full suite. The holistic whole-PR view happens in the merge stage. Re-runnable any time if a dedicated pass is wanted — never a gate.", "next": ["merge"] },
 
     { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
       "command": "/the-flow 8 merge", "next": ["hh"] },
