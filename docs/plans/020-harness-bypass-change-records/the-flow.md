@@ -20,7 +20,7 @@ flowchart TD
   p2["P2 · win retro kind<br/>(✓ COMPLETE · 637 green)"]:::done
   p3["P3 · remove history.md<br/>(✓ COMPLETE · 638 green)"]:::done
   p4["P4 · capture seams<br/>(✓ COMPLETE · 638 green)"]:::done
-  p5["P5 · measures doc + docs sync"]:::known
+  p5["P5 · measures doc + docs sync<br/>(✓ COMPLETE · 639 green)"]:::done
   review["Review"]:::assumed
   merge["Merge"]:::assumed
   hh["Harness plan-complete<br/>(seam)"]:::harness
@@ -40,11 +40,20 @@ flowchart TD
   crc3["🤖 code-review-companion<br/>reviewed 2 commits · 0 findings"]:::companion
   crc3 -. reviews .-> p3
 
+  crc5["🤖 code-review-companion<br/>reviewed 3 commits · 1 MED → fixed (24d6dee)"]:::companion
+  crc5 -. reviews .-> p5
+
   vv3["🔎 validate-v2 (4 lenses)<br/>VALIDATED WITH FIXES"]:::harness
   vv3 -. validates .-> p3
 
   vv4["🔎 validate-v2 (4 lenses)<br/>tasks · VALIDATED WITH FIXES"]:::harness
   vv4 -. validates .-> p4
+
+  vv5["🔎 validate-v2 (4 lenses)<br/>tasks · VALIDATED (0 critical)"]:::harness
+  vv5 -. validates .-> p5
+
+  pr["⬆ DRAFT PR #23 (base main)<br/>Phases 1–4 pushed · P5 committed local"]:::harness
+  pr -. tracks .-> p4
 
   say_p1>"🗣 impleemnt with companion"]:::said
   say_p1 -.- p1
@@ -58,6 +67,12 @@ flowchart TD
   say_p4>"🗣 ersiouly, just do the edit? doesnt ned the full fanfare"]:::said
   say_p4 -.- p4
 
+  say_p5>"🗣 imeplemt pleae, use companion"]:::said
+  say_p5 -.- p5
+
+  say_vv5>"🗣 write phase 5 tasks and then validate when ready"]:::said
+  say_vv5 -.- vv5
+
   say_vv4>"🗣 then run valiation skill"]:::said
   say_vv4 -.- vv4
 
@@ -67,4 +82,4 @@ flowchart TD
 
 **Legend** — 🟩 done · 🟧 in progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🗣 your words · 🟪 harness loop / validation
 
-_Cursor: **Phase 4 — COMPLETE** (In-repo capture seams, CS-2, prose-only, no companion). Three skill edits: **retro** gained a `### Capture seams` subsection at the end of the `--drain` block (**bypass backstop** → `harness record harness-bypass` with the full `cause` enum verbatim + a `win` "what worked well?" beat → `harness observe --kind win`), leaving the `[s/t/p/e/d/a]` menu + field-source comment untouched; **eng-harness-flow** documents a **stateless** `bypass_recommended`/`bypass_cause` `--json` envelope field (router only *flags* — never writes/blocks); **add-extension** gained a best-effort `### 4. Record the change` step (`harness record harness-change`, exits `unconfigured`/2 when absent). Tracked drift folded in: `| win` added to the Kinds list at `eng-harness-4-retro/SKILL.md:85` (full 8-kind set). **Verify**: enum/kind/CLI strings zero-typo; negative scope check clean (no `AGENTS_README`/measures/`gen:docs` — Phase-5 boundary held); descriptions 834/859/461 all <900, none edited; architecture guards 3/3 incl. `history-md-guard`; full suite **638 green**. Pre-build, **validate-v2** (vv4, 4 lenses) ran on the tasks dossier → VALIDATED WITH FIXES (0 CRITICAL; 9 refinements). Not committed. **Next: Phase 5 tasks** (measures doc + docs sync — the last build phase; carries the 2nd `| win` surface at `AGENTS_README.md:193`)._
+_Cursor: **Phase 5 — COMPLETE → all 5 phases built** (the last build phase, CS-2, docs-only, with a live `code-review-companion`). Phase 5 wrote `docs/how/harness-value-measures.md` — the 4-part measures **design** doc: bypass/change rate + the **PR denominator** · **two** hand-traced records (a `harness-bypass` and the `harness-change` that `resolves` it) proving the **8-key** frozen-frontmatter join contract · DORA as a **leading/lagging correlation, not a 5th metric** · anti-Goodhart / team-level / R6 under-reporting; it **describes**, never builds, the scanner (OOS). It synced `record-and-record-types.md` (2 new core types + a provenance-header section + `| win` at `:167`) and `AGENTS_README.md` (`| win` at `:193`), and added the manifest entry + ran `gen:docs` **once** (6→7 docs). **Full gate GREEN** — biome / build / `check:docs` (exit 0) / typecheck / **vitest 639 passed** / coverage 90.85%; negative scope clean (**0** `SKILL.md` / schema / CLI-src outside `services/docs`). The **companion** (crc5) raised **1 MEDIUM** — the docs called an unset `agent` "omitted", but `provenance.ts` always stamps it (`null` when unset; the key is always present) — **verified against source and FIXED** in both docs (`24d6dee`); it re-reviewed the fix with **no new finding** and stopped clean. **3 path-scoped commits** (`b48b032` / `ec314fb` / `24d6dee`); the **93 staged presentation deletions stayed untouched**. **Next: Review** (stage 7, the inferential tier) — the companion already reviewed every commit for Phases 1/2/3/5 (supersedes a post-hoc pass for those); **Phase 4 had no companion**, so a review covering Phases 4+5 is the reasonable scope, else straight to **Merge** (base `main`; executes only on typed `PROCEED`; DRAFT PR #23 marked ready at/around merge). `/compact` recommended first (post-build seam)._

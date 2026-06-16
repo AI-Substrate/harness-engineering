@@ -78,4 +78,5 @@
 - **Findings**: **1 MEDIUM** (Domain Compliance, `record-and-record-types.md`, id `01KV7XY0Q6TZZQNTCRT3GYYJ4G`) — provenance section described an unset `agent` as "omitted"; source (`provenance.ts` + `record-service.ts:194`) always stamps `agent`, rendering `null` when unset. **Verified true against source and FIXED** in both docs (`agent` is a nullable stamped key — all 8 keys always present). Fix → commit below; re-pinged for companion verification.
 - **Companion summaries**: 3 (one per review-request); all three reviews completed.
 - **magicWand** (companion retrospective): "Auto-derive more of the farewell retrospective directly from the coordination ledger" — a minih-internal suggestion, not actionable for plan 020; noted only.
-- **Lifecycle**: reviewed 3 / acked 4 / 0 unresolved peer requests; coordination mode enabled.
+- **Lifecycle**: coordination mode enabled; 0 unresolved peer requests.
+- **Stop**: `control:stop` honored — the companion re-reviewed the fix (`review-request: fix 24d6dee`), raised **no new finding**, and stopped cleanly (`verdict=completed`, run process exit 0). Final ledger: **reviewed 4 / acked 6 / findings 1** (the fixed MEDIUM). A separate post-hoc review pass is therefore redundant for Phase 5 (the Graph carries the decoration).

@@ -4,11 +4,11 @@
   "plan_dir": "docs/plans/020-harness-bypass-change-records",
   "mode": "Full",
   "current_stage": "awaiting-6",
-  "pending_command": "/the-flow 5 tasks --phase \"Phase 5: Measures doc + docs sync\" --plan docs/plans/020-harness-bypass-change-records/harness-bypass-change-records-plan.md",
+  "pending_command": "/the-flow 7 review --plan docs/plans/020-harness-bypass-change-records/harness-bypass-change-records-plan.md",
   "intent": "DECIDED (see distilled-ask.md): two committed record types harness-bypass + harness-change (separate types, not kinds); a NEW positive retro kind 'win' (schema minor bump); in-repo capture seams only (retro --drain bypass backstop + win prompt, router bypass_recommended envelope flag, add-extension change prompt); CLI-stamped provenance header (harness_version + branch + repo + created_at + agent) on ALL record types; remove history.md (records become the changelog); a measures design doc. Cross-repo rate scanner + DORA correlation are OOS.",
   "milestones_total": 9,
   "milestones_done": 7,
-  "last_checkpoint_at": "2026-06-16T08:23:10Z",
+  "last_checkpoint_at": "2026-06-16T10:05:00Z",
   "compacted_seams": [],
   "status": "active"
 }
