@@ -97,6 +97,85 @@ core ∪ extension types.
 
 ---
 
+## Bundled core record types
+
+Beyond `retro`, two **core** types ship for documenting the harness's own
+deterministic layer (both always present, even under `--no-extensions`):
+
+### `harness-bypass` — the paved path was avoided
+
+Records that an agent or human reached for a shortcut instead of the supported
+command, and why. Body keys (the template's schema):
+
+| Key | Type / values |
+|---|---|
+| `cause` | `missing-command \| command-failed \| too-slow \| unclear-output \| no-coverage \| policy \| agent-could-not` |
+| `attempted` | bool — was the supported command tried first? |
+| `command` | string — the supported command that was bypassed |
+| `severity` | `blocking \| degrading \| annoying` |
+
+```bash
+harness record harness-bypass --slug "prove-too-slow"
+# → .harness/records/harness-bypass/<date>/001-prove-too-slow.md
+```
+
+### `harness-change` — the harness was improved
+
+Records an improvement to the harness, optionally pointing back at the friction
+it resolves. Body keys:
+
+| Key | Type / values |
+|---|---|
+| `change_type` | `new-command \| sensor \| fixture \| template \| doc \| skill-edit \| routing` |
+| `target` | string — what was changed |
+| `resolves` | free-form ref (≤200 chars) — the friction this closes, e.g. a `harness-bypass` record |
+
+```bash
+harness record harness-change --slug "prove-fast-path"
+# → .harness/records/harness-change/<date>/001-prove-fast-path.md
+```
+
+Together these make the deterministic layer **self-documenting**: every bypass
+and every improvement becomes a committed, joinable record. See
+[Harness value measures](./harness-value-measures.md) for how they roll up into
+bypass / change rates.
+
+---
+
+## The provenance header (stamped on every record)
+
+Every record `harness record <type>` scaffolds carries a **provenance header**
+the CLI splices into the frontmatter at write time — so records join to a repo,
+branch, time, and plan with no manual bookkeeping. It is the **8-key frozen
+contract**: **7 keys spliced by the CLI**, plus the **template-owned**
+`schema_version`.
+
+```yaml
+---
+record_kind: harness-bypass        # ← 7 spliced keys, in this order
+harness_version: 0.3.0
+branch: 020-harness-bypass-change-records
+repo: https://github.com/AI-Substrate/harness-engineering
+created_at: 2026-06-16T08:42:11Z
+agent: the-flow-implementer        # optional provenance slug
+plan_id: 020-harness-bypass-change-records
+schema_version: "1.0"              # ← 8th key — template-owned, never spliced
+# … then the type's body keys …
+---
+```
+
+- The 7 spliced keys, in order: `record_kind`, `harness_version`, `branch`,
+  `repo`, `created_at`, `agent`, `plan_id`. Values come from deterministic
+  substrate (`git`, the CLI version, the clock); `repo` is the git remote URL.
+- `schema_version` is **template-owned** — the CLI never splices it (that would
+  duplicate the YAML key). The splice is **idempotent**: it strips any existing
+  top-level copy of a spliced key first, then prepends.
+- `agent` is optional identity (`--agent <slug>` → `HARNESS_AGENT` env →
+  omitted); capture never fails when it's absent, and it is aggregated
+  **team-level only**, never per-person.
+
+---
+
 ## Author a new record type
 
 A record type needs only four fields:
@@ -165,7 +244,7 @@ harness observe "grep on src/ took 47s — should use ripgrep" \
 ```
 
 - Kinds: `difficulty | magic-wand | gift | insight | coordination |
-  improvement-suggestion | confusion`; severities `blocking | degrading | annoying`.
+  improvement-suggestion | confusion | win`; severities `blocking | degrading | annoying`.
 - Identity is optional provenance: `--agent <slug>` → `HARNESS_AGENT` env → a
   shared `agent` bucket. Capture never fails on identity.
 - Bad input (`unconfigured`, exit 2) names the allowed values and leaves the

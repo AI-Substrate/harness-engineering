@@ -23,5 +23,28 @@
   - **(d)** **Anti-Goodhart** + **team-level-only** (no individual attribution) + the **R6 under-reporting defense** ("zero bypasses = not measured, not perfect"; lean on the PR denominator + linkage coverage).
 - **OOS honoured**: a `## What this does not build` section states no scanner / SQL / DORA-correlation engine / dashboard ships — the doc describes the consumers of the contract, never builds them.
 - **Grounding**: `harness-foundations/source-notes/notes3.md` (bypass = measure 9, encoded-mitigation = measure 11, routing rule, canonical joins, DORA mapping, anti-productivity guardrails). No `.harness/history.md` reference introduced (history-md-guard stays green).
-- **Commit**: see T001 commit below (companion pinged).
+- **Commit**: `b48b032` (companion pinged: `review-request: T001 b48b032`).
+- **Status**: ✅ complete.
+
+---
+
+## T002 — Update `docs/how/record-and-record-types.md`
+
+- Added a **`## Bundled core record types`** section cataloguing `harness-bypass` (cause/attempted/command/severity) and `harness-change` (change_type/target/resolves) with their body-key tables — every enum copied verbatim from source.
+- Added a **`## The provenance header`** section documenting the 8-key frozen contract (7 spliced keys in order + template-owned `schema_version`, idempotent splice, `repo` = git remote URL, `agent` optional + team-level-only) with a worked frontmatter block.
+- Added `win` to the Kinds bullet (`:167`) → `… improvement-suggestion | confusion | win`.
+- Cross-links the new measures doc. Zero `history.md` references introduced.
+- **Status**: ✅ complete.
+
+## T003 — Update `AGENTS_README.md`
+
+- Added `win` to the observation-kinds comment line (`:193`) → `# kinds: … confusion | win`. Only the kinds line changed; no other edits.
+- **Status**: ✅ complete.
+
+## T004 — Manifest entry + regenerate the bundle
+
+- Appended the `harness-value-measures` entry to `docs-manifest.json` (id/title/summary/audience/sourcePath).
+- Ran `npm run gen:docs` **once** (after T001–T003) → `gen-docs: wrote 7 docs` (was 6); `docs-content.ts` regenerated (+11/−2: the new entry + the re-inlined `record-and-record-types.md` and `AGENTS_README.md`).
+- Did **not** hand-edit `docs-content.ts`. The regen also picked up the T002/T003 edits (proves the all-edits-first-then-gen-once ordering held).
+- **Commit**: docs sync (T002+T003+T004) committed together so every commit leaves the bundle in sync.
 - **Status**: ✅ complete.
