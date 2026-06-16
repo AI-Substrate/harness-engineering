@@ -1,1 +1,0 @@
-Let's say you're working on your plan. And you've done this properly. Spec driven development, good prompts, a plan that genuinely looks great. The agent picks it up and gets going. So far, textbook.

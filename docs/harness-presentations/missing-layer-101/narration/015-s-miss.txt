@@ -1,1 +1,0 @@
-Remember those layers that looked complete? They were missing one. A deterministic layer, sitting between the agent and your codebase. Runnable proof going up. Encoded backpressure living inside. This is the missing piece.

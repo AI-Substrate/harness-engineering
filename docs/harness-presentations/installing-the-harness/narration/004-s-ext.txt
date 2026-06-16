@@ -1,1 +1,0 @@
-Now, here's the clever part. The core of the harness is shared. It's maintained and improved centrally, and every team inherits those improvements as they arrive. But each repository is its own world. So the harness carries an extension system: a way to tune itself, precisely, to the codebase it finds itself in. A shared core. And a local shape. The best of both.

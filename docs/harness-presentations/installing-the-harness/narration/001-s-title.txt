@@ -1,1 +1,0 @@
-Today, we'll walk through how to get the engineering harness set up in your repo.
