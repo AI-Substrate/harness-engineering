@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.3.0...v0.4.0) (2026-06-16)
+
+
+### Features
+
+* **019:** ambient CLI model + retro routing, deck/static-site rework ([#22](https://github.com/AI-Substrate/harness-engineering/issues/22)) ([f47a08a](https://github.com/AI-Substrate/harness-engineering/commit/f47a08a3dee5a3ac92a4ee21079ae0e043acc8e0))
+* **020:** harness-bypass/-change record types, win kind, capture seams, measures doc ([#23](https://github.com/AI-Substrate/harness-engineering/issues/23)) ([03b4a2d](https://github.com/AI-Substrate/harness-engineering/commit/03b4a2dbc3f6e90a3820ba175a5338ca6bbce41a))
+* **cli:** cross-platform exec — run Windows .cmd/.bat shims safely ([#20](https://github.com/AI-Substrate/harness-engineering/issues/20)) ([fe9c834](https://github.com/AI-Substrate/harness-engineering/commit/fe9c8346ddb35f35f9d5304c24321a90e9ecf5ad))
+
 ## [0.3.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.2.0...v0.3.0) (2026-06-15)
 
 
