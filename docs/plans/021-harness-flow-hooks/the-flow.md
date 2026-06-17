@@ -1,6 +1,6 @@
 # Flight Plan — harness-flow-hooks
 
-**Mode**: Full · **now**: Phase 2 **implemented** with `--companion` — `--hooks` discovery manifest (full 5×9 JSONC, Shape A) + `--help` synopsis added to SKILL.md; commits 8027ae1 / 25cf0d6 / 014735b + F001 fix d2b0504 + F002/progress 79561cd. Companion F001 (HIGH — manifest dropped the non-inferable `invoke`, incl. `coding`=`harness observe`) + F002 (MEDIUM — persist the budget decision) **both fixed**; run then died mid-verify on an external model 400 (findings captured first; F001 self-verified). ⚠️ AC-03 line guard NOT met → **+131 overage (final 478) surfaced + accepted** as new public contract, carried to Phase 3 3.4 · **next**: Phase 3 (Docs sync + neutrality + guards) — table tasks, then implement (review superseded by the live companion)
+**Mode**: Full · **now**: Phase 3 tasks **tabled** (CS-2, lean) + **validated** — 6 tasks (T000 pre-flight seam · T001 `getting-started.md` sync `--hook` primary/`--event` alias, sites L45 + L248–254 · T002 governance-doc injection-map verify-or-edit · T003 neutrality grep · T004 closing guards: line guard **explicit ≤ 478** + `validate-harness-flow` replay + `harness doctor` · T0Z post-coding seam). validate-v2 narrow (3 agents) = **VALIDATED WITH FIXES**: 2 MEDIUM fixed inline (T004 baseline made explicit ≤ 478; T002 "inject handshake" defined) + L45/L248–254 wording tightened · **next**: **implement** Phase 3 (final) — optional `--companion` live reviewer (as P1/P2), then merge
 
 ```mermaid
 flowchart TD
@@ -17,7 +17,7 @@ flowchart TD
     plan["Plan: spec + impl ✓ (v1.2.0, validated)"]:::done
     p1["Phase 1 · Hook vocab + --hook alias — implemented ✓"]:::done
     p2["Phase 2 · --hooks manifest + --help — implemented ✓"]:::done
-    p3["Phase 3 · Docs sync + neutrality + guards"]:::known
+    p3["Phase 3 · Docs sync + neutrality + guards — tasks tabled ✓ (validated)"]:::wip
     pv2["--emit-injection → deferred to v2"]:::assumed
     merge["Merge"]:::known
 
@@ -62,6 +62,8 @@ flowchart TD
     said4 -.- p2
     said5>"🗣 implemenet with companion"]:::said
     said5 -.- p2
+    said6>"🗣 generaet the tasks please. not war and peace, its a simple phase, then validate skill"]:::said
+    said6 -.- p3
 ```
 
 _Legend: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed future) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop (↺) · 🤝 companion (reviews live)._

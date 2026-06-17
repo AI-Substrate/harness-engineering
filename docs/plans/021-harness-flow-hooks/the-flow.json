@@ -6,8 +6,8 @@
   "mode": "Full",
   "cursor": "p3",
   "recommended_next": "p3",
-  "now": "Phase 2 IMPLEMENTED with --companion. SKILL.md gains the --hooks discovery manifest (full 5x9 JSONC, Shape A) + --help synopsis; prose trimmed. Commits 8027ae1 (manifest) / 25cf0d6 (help) / 014735b (trim) + F001 fix d2b0504 + F002/progress 79561cd. Companion (code-review-companion) reviewed live: F001 HIGH (manifest dropped the non-inferable invoke incl. coding=harness observe) -> FIXED full 5x9 manifest; F002 MEDIUM (budget decision not persisted to artifacts) -> FIXED. Companion run then died mid-F001-verify on an EXTERNAL model 400 (findings captured+resolved first; F001 self-verified). Review SUPERSEDED. AC-03 line guard NOT met: +131 overage (final 478) SURFACED + ACCEPTED as new public contract (not bloat), carried to Phase 3 3.4 (done-when re-baselined this phase).",
-  "next": "Phase 3 (Docs sync + neutrality + guards): table the tasks, then implement. Review superseded by the live companion.",
+  "now": "Phase 3 tasks TABLED (CS-2, lean) + validated. 6 tasks: T000 pre-flight seam / T001 getting-started.md sync (--hook primary, --event alias; sites L45 + L248-254) / T002 governance-doc injection-map verify-or-edit / T003 neutrality grep (no the-flow edits) / T004 closing guards (line guard EXPLICIT <=478 + validate-harness-flow replay + harness doctor) / T0Z post-coding seam. validate-v2 narrow (3 agents) = VALIDATED WITH FIXES: 2 MEDIUM fixed inline (T004 baseline made explicit <=478; T002 'inject handshake' term defined) + L45/L248-254 wording tightened. (Phase 2 prior: IMPLEMENTED with --companion; --hooks manifest + --help; F001 HIGH + F002 MEDIUM fixed; +131 overage accepted as public contract; review SUPERSEDED.)",
+  "next": "Implement Phase 3 (final): run the 4 doc/guard tasks. Optional --companion live reviewer (as P1/P2). Then merge. Review superseded if a companion reviews every commit.",
   "agents": [
     { "id": "crc", "kind": "companion", "render": "wrap", "slug": "code-review-companion", "covers": ["p1"],
       "run_id": "2026-06-17T02-18-28-773Z-e8b5", "verdict": "completed",
@@ -83,9 +83,12 @@
       "note": "Post-coding seam after Phase 2: noop — observe buffer empty (friction logged to the execution-log Discoveries table instead). Dogfoods --hook post-coding (--event phase-end alias).",
       "next": [] },
 
-    { "id": "p3", "type": "phase", "phase": 3, "label": "Docs sync + neutrality + guards", "status": "known",
-      "note": "Next: table Phase 3 tasks then implement. 3.1 sync getting-started.md to the new --hooks/--help vocabulary (and the offload-prose option to absorb the +131 overage); 3.2 inject-handshake = verify-only (Phase 2 was additive to S3); 3.3 neutrality grep (no the-flow edits); 3.4 line guard RE-BASELINED to the accepted budget + validate-harness-flow replay + harness doctor.",
-      "next": ["merge"] },
+    { "id": "p3", "type": "phase", "phase": 3, "label": "Docs sync + neutrality + guards", "status": "in_progress",
+      "ran_at": "2026-06-17",
+      "user_input": "generaet the tasks please. not war and peace, its a simple phase, then validate skill",
+      "command": "/the-flow 5 tasks --phase \"Phase 3: Docs sync + neutrality + guards\" --plan docs/plans/021-harness-flow-hooks/harness-flow-hooks-plan.md",
+      "note": "Phase 3 tasks TABLED (CS-2, lean). 6 tasks: T000 pre-flight seam / T001 getting-started.md sync (--hook primary, --event alias; the two --event sites L45 + L248-254) / T002 governance-doc injection-map verify-or-edit / T003 neutrality grep (no the-flow edits) / T004 closing guards (line guard EXPLICIT <=478 + validate-harness-flow replay + harness doctor) / T0Z post-coding seam. validate-v2 narrow (3 agents) = VALIDATED WITH FIXES: 2 MEDIUM fixed inline (T004 baseline made explicit <=478; T002 'inject handshake' defined) + L45/L248-254 wording tightened. Next: implement Phase 3 (review superseded by a live companion if used).",
+      "artifacts": ["tasks/phase-3-docs-sync-neutrality-guards/tasks.md"], "next": ["merge"] },
     { "id": "pv2", "type": "phase", "label": "--emit-injection -> deferred to v2 (WS-3)", "status": "assumed", "branch_of": "plan",
       "note": "Not built in v1; full v2 design in workshops/003-emit-injection-scope.md. AC-04 migrated here.", "next": [] },
 
