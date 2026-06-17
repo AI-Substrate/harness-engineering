@@ -15,14 +15,7 @@ The router is also a **guide on a journey**: most callers meet the loop cold, so
 
 ## The stateless contract (read this first)
 
-`eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It:
-
-- ❌ **Writes no artifacts of its own** — no state file, no flight-plan `.json`/`.md`, no journey log. Child skills own *their* artifacts (the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`).
-- ❌ **Never gates, scores, or blocks** — every route is a *suggestion*; `at=` is a hint, never a command; the adoption gate *informs* but never forces. There is **no `.disabled` sentinel** for the loop — declining the harness is **conversational** (the user says so and the agent stops calling the loop skills), not a file.
-- ❌ **Never runs `minih`** (companions are owned by the plan-6 companion skill) and **never runs `/compact`** (a user-typed CLI built-in — it can only *recommend* it).
-- ❌ **Never invents a verdict** — "is the harness healthy?" is answered by `harness doctor` (the JSON envelope), not by the router's opinion.
-- ✅ **Reads** repo signals + conversation, **routes** to exactly one harness skill (with a one-line *why*, the artifact it produces, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and is **safe to call any number of times**.
-- ✅ **Re-derives every call.** Re-entry after `/compact` needs nothing reloaded — just re-detect. The rail itself is recomputed from substrate each call (never persisted).
+`eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **writes no artifacts of its own** (child skills own the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`); **never gates, scores, or blocks** (every route is a suggestion; `at=`/`--hook` is a hint, never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion). It only **reads** signals + conversation, **routes** to exactly one harness skill (with a one-line *why*, its artifact, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and **re-derives every call** — re-entry after `/compact` needs nothing reloaded, and the rail is recomputed from substrate, never persisted.
 
 > **The unifying rule:** state that must persist lives in deterministic substrate a child skill owns (reports, buffers, `.retro.md`, the governance doc) — **never in this router**. If a need for router-owned memory ever appears, that is a signal the missing state belongs in substrate, not in `eng-harness-flow`.
 
@@ -117,8 +110,7 @@ The skill works with **no** arguments (full auto-detect), but a parent driving i
                   [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json] [--hooks] [--help]
 
 at=auto            (default) detect from signals A–J
-at=adopt           force the on-ramp (install / finish adoption / stamp governance via harness init)
-                   (`at=setup` is an accepted back-compat alias)
+at=adopt           force the on-ramp (install / finish adoption / stamp governance); alias at=setup
 at=boot            force eng-harness-1-boot --validate
 at=backpressure    force eng-harness-2-backpressure (post-spec seam)
 at=observe         guidance only; with --entry-* it silently runs `harness observe`
@@ -141,10 +133,8 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 --json             return the routing decision as a machine-readable envelope
 ```
 
-- **`--hook`/`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the adoption gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
-- **Observe needs a payload to do anything.** In-flight capture is a *silent CLI producer that logs one entry per call* — `harness observe "<what>" --kind <kind>` (the merged `eng-harness-4-retro` skill carries the capture judgment). So `at=observe` with no payload is **guidance only** ("observe fires silently — here's how friction gets logged"); to actually record, the parent passes the entry fields and the router runs the capture command silently.
-- **Optional offers don't self-suppress.** Because the router is stateless, a skipped optional (scout, an offered backpressure) is *re-offered next call* unless the parent sets `--prompt-optional=false` or the child artifact now exists. The router treats only **child artifacts** as durable completion — never its own memory.
-- **`--repo` is reserved for v2.** Multi-repo execution is documented but not implemented in v1; the router operates on `cwd`.
+- **`--hook`/`at=`/`--event` is a hint, not a command.** The router validates the precondition (the adoption gate + the conflict matrix below) and **redirects** when a hint contradicts the signals (e.g. `at=boot` with no governance doc) — it never blindly runs the named stage. `--repo` is **reserved for v2** (the router operates on `cwd`).
+- **Observe needs a payload; optionals re-offer.** `at=observe` with no payload is **guidance only**; to actually record, the parent passes the entry fields and the router runs `harness observe "<what>" --kind <kind>` silently (one entry per call). Because the router is stateless, a skipped optional (scout, backpressure) is **re-offered next call** unless `--prompt-optional=false` or the child artifact exists — only child artifacts count as durable completion.
 
 ### Lifecycle hooks
 
