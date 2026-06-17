@@ -231,35 +231,70 @@ The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Pe
 
 `--hooks --json` returns a **top-level** object (Shape A — never wrapped in `data`), so a host detects future shape changes via `manifest_version`:
 
+All five entries pin the **same nine fields** (`hook`, `intent`, `run_at`, `kind`, `invoke`, `aliases`, `produces`, `needs`, `preconditions`). Comments annotate the first entry; the fields repeat. Note `coding`'s `invoke` — it is the **silent `harness observe` capture**, *not* an inferable `/eng-harness-flow --hook coding` fire; a host must hand-wire it from the exact string here:
+
 ```jsonc
 {
   "manifest_version": 1,
   "hooks": [
     {
-      "hook": "pre-flight",                  // the lifecycle hook (one of the fixed five)
+      "hook": "pre-flight",                              // one of the fixed five lifecycle hooks
       "intent": "prove the system runs before work starts",
       "run_at": "session open / before implementing",
-      "kind": "fire",                        // "fire" | "silent"
+      "kind": "fire",                                    // "fire" | "silent"
       "invoke": "/eng-harness-flow --hook pre-flight --json",
-      "aliases": ["session-start", "pre-implement"],  // the --event seams this hook subsumes
-      "produces": "boot verdict",            // artifact/effect, or null
-      "needs": [],                           // upstream inputs this hook expects
-      "preconditions": ["S2-governance", "S4-boot"]   // adoption rungs that must hold; [] otherwise
+      "aliases": ["session-start", "pre-implement"],     // the --event seams this hook subsumes
+      "produces": "boot verdict",                        // artifact/effect, or null
+      "needs": [],                                       // upstream inputs this hook expects
+      "preconditions": ["S2-governance", "S4-boot"]      // adoption rungs that must hold; [] otherwise
+    },
+    {
+      "hook": "pre-coding",
+      "intent": "survey what the work can prove deterministically, before building",
+      "run_at": "spec settled, before building",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook pre-coding --json",
+      "aliases": ["post-spec"],
+      "produces": "backpressure-coverage.md",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "coding",
+      "intent": "capture in-flight friction, one entry at a time",
+      "run_at": "mid-build, in flight",
+      "kind": "silent",
+      "invoke": "harness observe \"<what>\" --kind <kind>",
+      "aliases": ["task-pause"],
+      "produces": "one observe-buffer entry",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "post-coding",
+      "intent": "drain this phase's captured friction into a retro",
+      "run_at": "a phase / work-unit just ended",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook post-coding --json",
+      "aliases": ["phase-end"],
+      "produces": "drained .retro.md",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "post-flight",
+      "intent": "close out the whole plan — harvest, present improvements, encode",
+      "run_at": "the whole plan / journey is complete",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook post-flight --json",
+      "aliases": ["plan-complete"],
+      "produces": "harvested cross-plan view + encoded improvements",
+      "needs": [],
+      "preconditions": []
     }
-    // … four more entries — same nine fields, values per the table below
   ]
 }
 ```
-
-All five entries carry the **same nine fields** (`hook`, `intent`, `run_at`, `kind`, `invoke`, `aliases`, `produces`, `needs`, `preconditions`); only the values differ:
-
-| `hook` | `kind` | `run_at` | `aliases` | `produces` | `preconditions` |
-|---|---|---|---|---|---|
-| `pre-flight` | fire | before work starts | `session-start`, `pre-implement` | boot verdict | `["S2-governance","S4-boot"]` |
-| `pre-coding` | fire | spec settled, pre-build | `post-spec` | `backpressure-coverage.md` | `[]` |
-| `coding` | **silent** | mid-build, in flight | `task-pause` | one observe entry | `[]` |
-| `post-coding` | fire | a phase just ended | `phase-end` | drained retro | `[]` |
-| `post-flight` | fire | the whole plan is complete | `plan-complete` | harvest + encoded improvements | `[]` |
 
 - The spine is **fixed at five** — `--hooks` never grows or shrinks per-repo (closed spine); the *only* per-repo variability rides in each entry's `preconditions`.
 - `--hooks` is a **pure discovery** call: derived every call (never stored), it runs no detection, reads no plan signals, and writes nothing.
