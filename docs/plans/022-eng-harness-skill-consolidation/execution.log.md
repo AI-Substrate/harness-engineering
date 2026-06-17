@@ -75,4 +75,22 @@
 | T001 rollback anchor | ✅ | tag | `pre-eng-harness-consolidation` @ d2ee535 |
 | T002 engine extract | ✅ | e6db6d1 | flat home + 00-routing.md + destination map; contract relocated verbatim |
 | T003 coach extract | ✅ | 08e907d | references/coach.md — rail (3 forms) + Orient→Flag→Insight→Suggest→Invite + why-table + Flag beat + tone; voice centralised |
-| T004 modules batch 1 | ✅ | (this) | boot.md / backpressure.md / retro.md stamped from the template, de-leaked (loop-seq, /plan-2d, plan-* names, eng-harness-* slugs, old self-refs scrubbed); CLI invocations + artifact paths verbatim; retro.schema.json moved to references/; preliminary L1 grep CLEAN |
+| T004 modules batch 1 | ✅ | 4b8df48 | boot.md / backpressure.md / retro.md stamped from the template, de-leaked (loop-seq, /plan-2d, plan-* names, eng-harness-* slugs, old self-refs scrubbed); CLI invocations + artifact paths verbatim; retro.schema.json moved to references/; preliminary L1 grep CLEAN |
+| T005 modules batch 2 | ✅ | (this) | adopt.md (delegating verb) + add-extension.md; declared delegation; gate-order graph-owned; hook vocabulary delegated; full per-pattern L1 grep CLEAN across all 5 modules |
+
+## T005 — per-module elision audit (done-when)
+
+Each setup module's Entry/Procedure/Output diffed against its source skill; every removed block tagged:
+
+**adopt.md** (vs `eng-harness-0-adopt`):
+- S0→S4 adoption-gate **order** (Step-3 intro parenthetical "orders S3·Inject before S4·Boot") → **(graph-owned → 00-routing.md § The 🧰 adoption gate)**
+- the inline five-hook enumeration + `--event` seam map (old Step 3.2) → **(graph-owned → 00-routing.md § Lifecycle hooks)**
+- sibling-skill names `eng-harness-0-harnessability-assessment` / `eng-harness-0-add-extension` → **(replaced — declared delegation `**Delegates**: assess; add-extension`, resolved via the Registry)**
+- `/plan-*` / `task-*` flow-shape examples → **(removed — flow-leak; rephrased "planning/task skills")**
+- `eng-harness-*` family enumeration in Step 5 → **(removed — flow-leak; rephrased "router + assessment peer")**
+- governance-doc.md cross-ref path `../../eng-harness-loop/eng-harness-flow/references/governance-doc.md` → `../governance-doc.md` (relocation, not elision)
+- **No domain content removed** — install / `harness init` / troubleshooting / inject-map recording / boot stand-up / skills-install offer all preserved verbatim; orchestration survived as declared delegation + the Graph, it did not vanish.
+
+**add-extension.md** (vs `eng-harness-0-add-extension`):
+- YAML frontmatter → **(removed — skill→module; not a published skill)**
+- **No other removals** — named no siblings, no flow position, no hooks; pure template-stamp (the cleanest module). All `harness new`/`doctor`/`help`/`record` invocations + GitHub doc links preserved.
