@@ -211,6 +211,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
 {
   "requested_stage": "boot",
   "actual_stage": "adopt",
+  "hook": "<the lifecycle hook this call resolves to: pre-flight|pre-coding|coding|post-coding|post-flight — the --hook value, or the hook the --event seam aliases to>",
   "decision": "route | redirect | noop | ambiguous",
   "command": "<exact next harness command>",
   "why": "<one line>",
@@ -227,6 +228,8 @@ When a hint conflicts with the detected signals, the router resolves **determini
   "insight": "<one interesting real detail>"
 }
 ```
+
+The `hook` field is **additive** — no existing field is reshaped or renamed. A routing call (`--hook X --json`, or its `--event` alias) returns the envelope above **plus** `hook` (the resolved lifecycle hook for the call); the routing envelope never embeds a hooks manifest.
 
 The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Per-turn UX) so a machine caller can render the same pleasant rail + flag beat a human gets. This matters precisely *because* the router is stateless: the rail, now/next, and flags are all **recomputed from substrate every call** — a pure function of "what the repo looks like right now," which is why the UX survives `/compact`, serves any caller, and never drifts from reality.
 
