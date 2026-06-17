@@ -156,6 +156,20 @@ The original run (`…f95d`) **self-completed after T008** (idled out / `result:
 
 Covers AC-02, AC-03, AC-04, AC-05.
 
+## T011 — deploy + tidy (PASS)
+
+**Before** (both stores): 7 eng-harness slugs — the 2 kept + the 5 retired (`0-add-extension`, `0-adopt`, `1-boot`, `2-backpressure`, `4-retro`). Canonical `~/.agents/skills` = real dirs; `~/.claude/skills` = per-skill symlinks into canonical; `~/.pi/skills` absent.
+
+**Deploy**: `just install-skills-global` → installed exactly **2 skills** (`eng-harness-flow`, `eng-harness-0-harnessability-assessment`) to canonical + per-CLI views (Codex/OpenCode/GitHub Copilot = universal → read canonical directly; Claude Code/Pi = symlinked).
+
+**Prune** (additive install leaves the 5 retired behind; CLI prune-list wasn't updated this plan, so manual is correct per the plan): removed the 5 retired slugs from `~/.agents/skills` (real dirs) **and** `~/.claude/skills` (symlinks).
+
+> Gotcha: zsh does **not** word-split unquoted `$vars` — a `for x in $LIST` loop ran once on the whole string and pruned nothing; fixed with explicit arrays. (Worth a retro entry.)
+
+**After**: each store carries **exactly** `eng-harness-flow` + `eng-harness-0-harnessability-assessment`. `just doctor-skills`: canonical OK, **zero dangling symlinks**. Deployed `eng-harness-flow` carries the new structure (88-line SKILL.md, 5 modules under `references/stages/`, `00-routing.md` + `coach.md`, zero retired slugs in modules).
+
+**No target resolves a retired eng-harness slug.** Pre-existing unrelated noise (acceptable per plan, not a blocker): a `engineering-harness-setup` duplicate subdir in the Claude view, and a legacy `~/.copilot/skills` orphan holding only non-eng-harness skills (docx/loop/pptx/web-artifacts-builder/xlsx). Reversible via the T001 tag → `just install-skills-global`. Covers AC-11.
+
 ## T005 — per-module elision audit (done-when)
 
 Each setup module's Entry/Procedure/Output diffed against its source skill; every removed block tagged:
