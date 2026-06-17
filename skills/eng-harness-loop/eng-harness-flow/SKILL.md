@@ -275,6 +275,32 @@ All five entries carry the **same nine fields** (`hook`, `intent`, `run_at`, `ki
 - `--hooks` is a **pure discovery** call: derived every call (never stored), it runs no detection, reads no plan signals, and writes nothing.
 - **Routing and discovery stay separate**: a routing call (`--hook X --json`) returns the envelope **plus** `hook` and **never** embeds this manifest; a discovery call (`--hooks --json`) returns **only** the top-level `{ manifest_version, hooks }` and never a routing envelope.
 
+### `--help` — synopsis (print-and-stop)
+
+`--help` prints a static synopsis and **stops** — no signal detection, no state, no routing, nothing fires. It is the one-screen orientation for the surface (CLI `--help` spirit):
+
+```text
+eng-harness-flow — stateless router to the harness loop (one front door).
+
+USAGE
+  /eng-harness-flow [--hook <name> | --event <seam>] [--plan-dir <p>] [--spec <p>]
+                    [--phase <id>] [--prompt-optional <bool>] [--json] [--hooks] [--help]
+
+LIFECYCLE HOOKS  (--hook, the primary invocation)
+  pre-flight    before work starts       -> boot validation
+  pre-coding    spec settled, pre-build   -> backpressure survey
+  coding        mid-build (silent)        -> one in-flight capture
+  post-coding   a phase just ended        -> per-phase retro drain
+  post-flight   the whole plan is done    -> terminal harvest + improve
+
+DISCOVERY
+  --hooks [--json]   the five-hook manifest: { manifest_version, hooks[5] }
+  --json             machine-readable routing envelope (+ the resolved hook)
+
+--event <seam> is a permanent alias for --hook — session-start, pre-implement,
+post-spec, task-pause, phase-end, plan-complete (see "Lifecycle hooks").
+```
+
 ---
 
 ## Per-turn UX (human mode)
