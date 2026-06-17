@@ -170,6 +170,57 @@ Covers AC-02, AC-03, AC-04, AC-05.
 
 **No target resolves a retired eng-harness slug.** Pre-existing unrelated noise (acceptable per plan, not a blocker): a `engineering-harness-setup` duplicate subdir in the Claude view, and a legacy `~/.copilot/skills` orphan holding only non-eng-harness skills (docx/loop/pptx/web-artifacts-builder/xlsx). Reversible via the T001 tag → `just install-skills-global`. Covers AC-11.
 
+## T012 — behavioural drive (all three observations PASS)
+
+Hand-driven against this repo's real signals (driving the live `/eng-harness-flow` inside this the-flow run would risk the T000 seam-recursion; the envelope is deterministic from the contract + signals, so a controlled render is faithful and avoids the recursion).
+
+**Repo signals**: S0 (CLI present, `doctor` returns an envelope), S2 (`.harness/engineering-harness.md` present), S4 (boot = `just test`) all hold → `--hook pre-flight` routes to **boot validation**.
+
+### (a) `--hooks --json` + `--hook pre-flight --json` parity
+- `--hooks --json` driven output is **byte-identical to pre-tag** (2304 b): `manifest_version: 1` + the five fixed hooks (pre-flight, pre-coding, coding, post-coding, post-flight).
+- `--hook pre-flight --json` rendered for this repo (every contract field filled; field set matches the byte-identical envelope template):
+```jsonc
+{
+  "requested_stage": "boot",
+  "actual_stage": "boot",
+  "hook": "pre-flight",
+  "decision": "route",
+  "command": "just test",
+  "why": "pre-flight → prove the system runs before work starts; S0+S2+S4 hold",
+  "produces": "a boot verdict (healthy / SLOW / UNHEALTHY / UNAVAILABLE)",
+  "preconditions_met": true,
+  "missing_rung": null,
+  "next_suggested": "/eng-harness-flow --hook pre-coding  (backpressure survey once a spec is settled)",
+  "bypass_recommended": false,
+  "bypass_cause": null,
+  "rail":  { "zone": "engineering", "adopt_pips": "—", "loop_pips": "◐◇◇◇◇", "cursor": "boot" },
+  "now":   "session start — re-running boot (the CLI's vitest suite via `just test`)",
+  "next":  "backpressure survey when a spec is settled",
+  "flags": [],
+  "insight": "boot here is the CLI's own 639-test vitest suite — the harness proving itself"
+}
+```
+
+### (b) One module per route (progressive-disclosure proof)
+- Routing table (00-routing.md Verb/slug resolution) maps each verb to **exactly one** module file: `boot|backpressure|retro|adopt|add-extension → references/stages/<verb>.md`; `observe → harness observe` CLI verb (documented exception, not a module).
+- **Marker exclusivity**: each module's `**Purpose**` line appears in **1** module file only (5/5 unique) → driving `pre-flight` reads `boot.md` and nothing else; no sibling module's marker can leak into the response.
+
+### (c) Coach path renders rail + the five beats
+- coach.md carries 4 glyph-rail forms + all five beats (**Orient**, **Flag**, **Insight + why**, **Suggest**, **Invite**). Rendered for the pre-flight/boot drive:
+```
+[eng-harness-flow] ⚙ ◐─◇─◇─◇─◇ ↺  [boot] · backpressure · observe · retro · improve
+
+ now  · session start — re-running boot (`just test`, the CLI's vitest suite)
+ next · ▸ backpressure survey, once a spec is settled
+```
+- Orient — "You're in the engineering loop, right at the top — about to re-run boot."
+- Flag — clean (boot healthy) → "nothing flagged — clean."
+- Insight + why — "boot here is the CLI's own 639-test vitest suite — that matters because boot is orientation by *evidence, not memory*: prove the system runs before you touch it."
+- Suggest — `just test`
+- Invite — "Want me to run it? (`yes` / run it yourself — either way I'll pick up from here.)"
+
+Covers AC-04, AC-08, AC-12.
+
 ## T005 — per-module elision audit (done-when)
 
 Each setup module's Entry/Procedure/Output diffed against its source skill; every removed block tagged:
