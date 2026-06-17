@@ -137,6 +137,25 @@ The live companion reviewed T002–T008 and raised **two MEDIUM** issues; both a
 
 The recurring `MINIH_PROJECT_ROOT` difficulty is the known/planned minih fix — not re-surfaced here.
 
+### Companion restart (for T009 review gap + T010–T013)
+
+The original run (`…f95d`) **self-completed after T008** (idled out / `result: degraded` — a minih findings-schema `id` nit, not a review failure), so the d64f9ad ping hit a dead inbox. Per the user's call, a **fresh companion** was booted: RUN_ID **`2026-06-17T07-05-43-674Z-528d`**, briefed to first review d64f9ad (the T009 gap) then stand by for T010–T013.
+
+- **Boot required `--no-skills`**: a normal `minih run` hit **E211** because `.minih.json` still wires minih to the deleted `skills/eng-harness-setup` / `-loop` sources + the 7 retired slugs (the original run booted at 06:15 *before* T008's delete, so it was unaffected). This re-confirms the deferred **out-of-scope** `.minih.json` dogfood drift. The code-review companion doesn't need the harness skills loaded to review commits, so `--no-skills` sidesteps the broken wiring without editing the out-of-scope file. **Follow-up plan still owes the `.minih.json` realignment.**
+- **Debrief target updated**: T013 debriefs `…528d` (the live run), not `…f95d`.
+
+## T010 — structural proof (all five checks PASS)
+
+| Check | Result |
+|---|---|
+| (a) **L1 de-leak grep** across `references/stages/*.md` | sibling slugs **0**, flow-position (`plan-1b/2c/3/2d`) **0**, lifecycle-hook self-refs (`--hook`/`--event`/hook names) **0**, Next-routing markers **0** → ✅ |
+| (b) **contract parity** (pre-tag SKILL.md ↔ `00-routing.md`) | hook-token table (5 rows) **byte-identical**; `--event`→`--hook` map (6 rows) **byte-identical**; `--json` envelope **1018 b identical**; `--hooks` manifest **2304 b identical** → ✅ (behavioural-drive half is T012(a)) |
+| (c) **`wc -l SKILL.md`** | **88** ≤ ~150 → ✅ |
+| (d) **per-module structure** | all 5 modules (adopt/add-extension/boot/backpressure/retro) carry 6/6 header fields (Verb/Purpose/Consumes/Flags/Produces/Side effects) + the byte-exact constant Exit line → ✅ |
+| (e) **destination-map completeness** | 25 pre-tag `#`/`##`/`###` headings; 25 map rows; **0 unmatched** after normalization (every heading has a destination — no silent drop) → ✅ |
+
+Covers AC-02, AC-03, AC-04, AC-05.
+
 ## T005 — per-module elision audit (done-when)
 
 Each setup module's Entry/Procedure/Output diffed against its source skill; every removed block tagged:
