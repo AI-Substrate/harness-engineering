@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "slug": "harness-flow-hooks",
+  "plan_dir": "docs/plans/021-harness-flow-hooks",
+  "mode": "Full",
+  "current_stage": "awaiting-6",
+  "pending_command": "/the-flow 5 tasks --phase \"Phase 2: --hooks manifest + --help\" --plan docs/plans/021-harness-flow-hooks/harness-flow-hooks-plan.md",
+  "branch": "021-harness-flow-hooks",
+  "workshops_done": "WS-1 (skill-first), WS-2 (manifest Shape A + aliases field), WS-3 (emit-injection deferred to v2 -> v1 = 3 phases; AC-04 migrated). All validated and FOLDED into plan v1.2.0. No open forks.",
+  "intent": "Re-map eng-harness-flow to expose its loop as five neutral lifecycle hooks (pre-flight, pre-coding, coding, post-coding, post-flight) for host flows, with --hooks discovery manifest, --hook invocation (aliasing --event), --emit-injection <idiom> host snippets (v2), and a concise --help; neutral from the-flow, kept lean.",
+  "ws1_resolution": "skill-first (Option A) — no CLI phase; routing is irreducibly skill; --hooks is the named CLI escalation seam if a non-agent consumer ever needs byte-stable --hooks --json. See workshops/001-execution-substrate.md.",
+  "plan_version": "1.2.0 — WS-1/2/3 all folded; READY; CS-3; conf 0.90; 3 phases (emit-injection deferred to v2).",
+  "phase1_tasks": "tasks/phase-1-hook-vocabulary-hook-alias/tasks.md produced 2026-06-17 (T000-T0Z: 5 real tasks + 2 harness seams). Inline validation pass (parallel agent pool was 529-overloaded) across 4 lenses (source-truth / cross-ref / thesis / forward-compat): all clean; 2 LOW nits applied. Source anchors verified against live 347-line SKILL.md.",
+  "phase1_done": "Phase 1 IMPLEMENTED 2026-06-17 with --companion (code-review-companion, run 2026-06-17T02-18-28-773Z-e8b5, read-only). 5 tasks T001-T005 + 2 seams (T000 pre-flight boot=degraded-but-benign biome-only; T0Z phase-end=noop, buffer empty). Commits: T001 8e1b4ed, T002 f53b323, T003 0b853dc, T004 b55bf20 (T005 read-back, no diff). SKILL.md 347->387 (+40; offset is Phase 2 task 2.3, expected). Post-hoc review SUPERSEDED by the live companion.",
+  "milestones_total": 6,
+  "milestones_done": 3,
+  "milestones_note": "Dynamic per-phase rail: research + plan + 3 phases + merge = 6. Done=3 (research, plan, Phase 1). Phase 1 landed; Phase 2 (--hooks manifest + --help) next.",
+  "last_checkpoint_at": "2026-06-17T02:30:00Z",
+  "compacted_seams": [],
+  "status": "active"
+}

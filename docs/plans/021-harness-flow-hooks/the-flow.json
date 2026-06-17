@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-flow-hooks",
+  "plan_dir": "docs/plans/021-harness-flow-hooks",
+  "mode": "Full",
+  "cursor": "p2",
+  "recommended_next": "p2",
+  "now": "Phase 1 implemented (5 tasks + 2 seams) with live companion review — 2 MEDIUM contract-drift fixed (F001 commit f115f15, F002 dossier superseded), 0 HIGH/CRIT; review superseded. SKILL.md 347->387.",
+  "next": "Phase 2 tasks (--hooks manifest + --help) — or /compact then tasks",
+  "agents": [
+    { "id": "crc", "kind": "companion", "render": "wrap", "slug": "code-review-companion", "covers": ["p1"],
+      "run_id": "2026-06-17T02-18-28-773Z-e8b5", "verdict": "completed",
+      "note": "minih Power-On-Mode, read-only. Reviewed every Phase 1 commit live; 2 MEDIUM contract-drift findings (both resolved), 0 HIGH/CRITICAL. Supersedes the post-hoc review stage." }
+  ],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research", "status": "done",
+      "command": "/the-flow 1a explore", "ran_at": "2026-06-16T22:06Z",
+      "user_input": "lets prep a flow for this wrk, make it first clas. do research, then build the plan then run the validation skill, all without stopping to ask. then surfgace any workshops needed.",
+      "note": "4 targeted agents (structure / blast-radius / prior-art / prior-learnings); landed the 4-hook projection, the pre-implement->pre-flight correction, the frozen-envelope + ~88 call-site constraints, and 3 workshop forks.",
+      "artifacts": ["research-dossier.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan (spec + impl)", "status": "done",
+      "command": "/the-flow 1b plan", "ran_at": "2026-06-17",
+      "note": "v1.2.0 re-plan: WS-1 (skill-first), WS-2 (manifest Shape A), WS-3 (emit-injection deferred to v2 -> v1 = 3 phases) all folded. Full, CS-3, Status READY, conf 0.90. validate-v2 ran on every fold.",
+      "artifacts": ["harness-flow-hooks-plan.md"], "next": ["p1"] },
+
+    { "id": "ws1", "type": "workshop", "label": "WS-1 - execution substrate (skill vs CLI)", "status": "done",
+      "branch_of": "plan", "ran_at": "2026-06-17",
+      "command": "/the-flow 2c workshop \"WS-1: execution substrate\"",
+      "note": "RESOLVED -> skill-first (Option A). --hooks is the named, additive CLI escalation seam IFF a non-agent consumer needs byte-stable --hooks --json.",
+      "artifacts": ["workshops/001-execution-substrate.md"], "next": ["plan"] },
+    { "id": "ws2", "type": "workshop", "label": "WS-2 - manifest shape", "status": "done",
+      "branch_of": "plan", "ran_at": "2026-06-17",
+      "command": "/the-flow 2c workshop \"WS-2: manifest shape\"",
+      "note": "RESOLVED -> Shape A: --hooks --json returns top-level {manifest_version, hooks[5]}; routing call (--hook X) stays envelope + additive `hook`, no embedded manifest. Fixed-5 spine, coding=silent.",
+      "artifacts": ["workshops/002-manifest-shape.md"], "next": ["plan"] },
+    { "id": "ws3", "type": "workshop", "label": "WS-3 - --emit-injection scope", "status": "done",
+      "branch_of": "plan", "ran_at": "2026-06-17",
+      "command": "/the-flow 2c workshop \"WS-3: --emit-injection scope\"",
+      "note": "RESOLVED -> defer --emit-injection to v2. v1 ships --hooks as the wiring contract; v1 drops to 3 phases (1,2,3); AC-04 migrates to v2.",
+      "artifacts": ["workshops/003-emit-injection-scope.md"], "next": ["plan"] },
+
+    { "id": "hb", "type": "harness-boot", "label": "Harness pre-flight (pre-implement seam)", "status": "done",
+      "command": "/eng-harness-flow --event pre-implement --plan-dir docs/plans/021-harness-flow-hooks", "branch_of": "p1",
+      "ran_at": "2026-06-17",
+      "note": "Fired before Phase 1 via `harness doctor` (markdown-only phase). Verdict: degraded — only toolchain:biome missing (benign, runs via npx). Proceeded with note. (--event pre-implement is the alias; post-impl this seam reads as --hook pre-flight.)",
+      "next": ["p1"] },
+
+    { "id": "p1", "type": "phase", "phase": 1, "label": "Hook vocabulary + --hook alias", "status": "done",
+      "ran_at": "2026-06-17",
+      "user_input": "implement with companion / try again",
+      "command": "/the-flow 6 implement --companion --phase \"Phase 1: Hook vocabulary + --hook alias\" --plan docs/plans/021-harness-flow-hooks/harness-flow-hooks-plan.md",
+      "note": "IMPLEMENTED with --companion. 5 tasks: T001 Lifecycle-hooks subsection+mapping (8e1b4ed) / T002 call-site rows pre-implement+task-pause (f53b323) / T003 --hook primary, --event permanent alias (0b853dc) / T004 additive envelope `hook` field, Shape A (b55bf20) / T005 read-back (no diff, all six seams -> one hook each, verified). Seams: T000 pre-flight (boot degraded-benign), T0Z phase-end (noop, buffer empty). Companion: 2 MEDIUM contract-drift -> F001 fixed (f115f15), F002 dossier superseded; 0 HIGH/CRIT -> review superseded. SKILL.md 347->387 (+40; offset is Phase 2 task 2.3).",
+      "artifacts": ["tasks/phase-1-hook-vocabulary-hook-alias/tasks.md", "tasks/phase-1-hook-vocabulary-hook-alias/execution.log.md"], "next": ["he1", "p2"] },
+
+    { "id": "he1", "type": "harness-retro", "label": "Harness phase-end (post-coding seam)", "status": "done",
+      "command": "/eng-harness-flow --event phase-end --plan-dir docs/plans/021-harness-flow-hooks", "branch_of": "p1",
+      "ran_at": "2026-06-17",
+      "note": "Phase-end seam after Phase 1: noop — observe buffer empty (no harness observe entries captured; the phase's friction was logged to the execution log Discoveries table instead). (--event phase-end alias; post-impl reads as --hook post-coding.)",
+      "next": [] },
+
+    { "id": "p2", "type": "phase", "phase": 2, "label": "--hooks manifest + --help", "status": "known", "next": ["p3"] },
+    { "id": "p3", "type": "phase", "phase": 3, "label": "Docs sync + neutrality + guards", "status": "known", "next": ["merge"] },
+    { "id": "pv2", "type": "phase", "label": "--emit-injection -> deferred to v2 (WS-3)", "status": "assumed", "branch_of": "plan",
+      "note": "Not built in v1; full v2 design in workshops/003-emit-injection-scope.md. AC-04 migrated here.", "next": [] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "known", "command": "/the-flow 8 merge", "next": ["hh"] },
+    { "id": "hh", "type": "harness-retro", "label": "Harness post-flight (plan-complete seam)", "status": "known",
+      "command": "/eng-harness-flow --event plan-complete --plan-dir docs/plans/021-harness-flow-hooks", "branch_of": "merge",
+      "note": "post-flight (terminal close-out): harvest + present improvement opportunities + encode. Fired by the merge verb after merge; --event plan-complete alias (post-impl reads as --hook post-flight).", "next": [] }
+  ]
+}
