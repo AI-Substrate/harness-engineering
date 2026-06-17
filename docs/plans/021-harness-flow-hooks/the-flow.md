@@ -1,6 +1,6 @@
 # Flight Plan — harness-flow-hooks
 
-**Mode**: Full · **now**: Phase 3 tasks **tabled** (CS-2, lean) + **validated** — 6 tasks (T000 pre-flight seam · T001 `getting-started.md` sync `--hook` primary/`--event` alias, sites L45 + L248–254 · T002 governance-doc injection-map verify-or-edit · T003 neutrality grep · T004 closing guards: line guard **explicit ≤ 478** + `validate-harness-flow` replay + `harness doctor` · T0Z post-coding seam). validate-v2 narrow (3 agents) = **VALIDATED WITH FIXES**: 2 MEDIUM fixed inline (T004 baseline made explicit ≤ 478; T002 "inject handshake" defined) + L45/L248–254 wording tightened · **next**: **implement** Phase 3 (final) — optional `--companion` live reviewer (as P1/P2), then merge
+**Mode**: Full · **now**: Phase 3 **IMPLEMENTED** (final phase, plain — no companion) — docs-only sync to the hooks vocab (commit a9ae77e): `getting-started.md` "seam contract"→"hook contract" (leads with the five hooks, `--event` permanent alias) · governance-doc injection-map · neutrality clean (no `the-flow` edits) · guards green (line **478 ≤ 478**, skills-check ok, extension loads, doctor degraded-benign). **All v1 ACs discharged** (AC-04 → v2). SKILL.md final = 478 · **next**: Phase 3 wasn't companion-reviewed → **review** Phase 3 (recommended), then **merge** (docs-only + already validate-v2'd → straight-to-merge is also your call)
 
 ```mermaid
 flowchart TD
@@ -17,7 +17,7 @@ flowchart TD
     plan["Plan: spec + impl ✓ (v1.2.0, validated)"]:::done
     p1["Phase 1 · Hook vocab + --hook alias — implemented ✓"]:::done
     p2["Phase 2 · --hooks manifest + --help — implemented ✓"]:::done
-    p3["Phase 3 · Docs sync + neutrality + guards — tasks tabled ✓ (validated)"]:::wip
+    p3["Phase 3 · Docs sync + neutrality + guards — implemented ✓"]:::done
     pv2["--emit-injection → deferred to v2"]:::assumed
     merge["Merge"]:::known
 
@@ -45,11 +45,15 @@ flowchart TD
     he1["⚙ post-coding ✓ P1 (phase-end: noop)"]:::harness
     hb2["⚙ pre-flight ✓ P2 (boot: degraded-benign)"]:::harness
     he2["⚙ post-coding ✓ P2 (phase-end: noop)"]:::harness
+    hb3["⚙ pre-flight ✓ P3 (boot: degraded-benign)"]:::harness
+    he3["⚙ post-coding ✓ P3 (phase-end: noop)"]:::harness
     hh["⚙ post-flight (plan-complete seam)"]:::harness
     hb -.-> p1
     p1 -.-> he1
     hb2 -.-> p2
     p2 -.-> he2
+    hb3 -.-> p3
+    p3 -.-> he3
     merge -.-> hh
 
     said1>"🗣 prep a flow… research, plan, validation, without stopping; surface workshops"]:::said
@@ -64,6 +68,8 @@ flowchart TD
     said5 -.- p2
     said6>"🗣 generaet the tasks please. not war and peace, its a simple phase, then validate skill"]:::said
     said6 -.- p3
+    said7>"🗣 implement it yeah"]:::said
+    said7 -.- p3
 ```
 
 _Legend: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed future) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop (↺) · 🤝 companion (reviews live)._
