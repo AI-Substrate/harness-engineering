@@ -1,6 +1,6 @@
 # The engineering-harness governance doc — contents & write conditions
 
-This is the **one canonical description** of the engineering-harness governance doc: where it lives, what it contains, the `harness-change` record ledger, and *when* each is written. Skills that touch the doc (`eng-harness-1-boot`, `eng-harness-0-adopt`, `eng-harness-2-backpressure`, `eng-harness-4-retro`, `eng-harness-0-harnessability-assessment`) **link here** rather than restating these rules, so there is a single source of truth.
+This is the **one canonical description** of the engineering-harness governance doc: where it lives, what it contains, the `harness-change` record ledger, and *when* each is written. The verb modules that touch the doc (`boot`, `adopt`, `backpressure`, `retro`) and the `eng-harness-0-harnessability-assessment` peer **link here** rather than restating these rules, so there is a single source of truth.
 
 > **Separation of concerns (the load-bearing idea):**
 > - **governance doc = contract** — what the harness *is*, plus the *current* maturity snapshot.
@@ -46,13 +46,13 @@ The harness changelog is the **`harness-change` record ledger** (`.harness/recor
 - **Most loop runs add zero records.** Booting, observing, even draining a retro buffer do **not** write a `harness-change` record unless an improvement is encoded.
 - It is the **trajectory**; the governance doc holds only the *current* snapshot. A maturity level that climbs (or a boot time that shrinks) across records is the compounding value made visible.
 
-Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity snapshot from `.harness/engineering-harness.md` and treat the `harness-change` record ledger as the changelog; any field with no live source (last validation, boot ms, verdict) is reported `null` rather than fabricated.
+Consumers (e.g. the `retro` verb `--harvest`) read the **current** maturity snapshot from `.harness/engineering-harness.md` and treat the `harness-change` record ledger as the changelog; any field with no live source (last validation, boot ms, verdict) is reported `null` rather than fabricated.
 
 ---
 
 ## G4 · Boot is read-only
 
-`eng-harness-1-boot` only **reads** maturity from the governance doc — it does **not** write governance or history. There is no per-validate `## History` append and no per-session write anywhere. Boot *reports* the level that is actually working; it never edits the contract.
+The `boot` verb only **reads** maturity from the governance doc — it does **not** write governance or history. There is no per-validate `## History` append and no per-session write anywhere. Boot *reports* the level that is actually working; it never edits the contract.
 
 ---
 
@@ -62,7 +62,7 @@ Consumers (e.g. `eng-harness-4-retro --harvest`) read the **current** maturity s
 |---|---|---|
 | **Inception** (once) | the doc is *created* with the BIO headings, the signal inventory skeleton, evidence paths, and the seed maturity snapshot | **the `harness init` writer** (a CLI command — shipped, FX001). `npx harness init` stamps the skeleton and seeds maturity **L0**, leaving every other BIO field a `TODO`/empty placeholder (the Injection map an empty table); it is **idempotent + never-clobber**. (Setup *drives* setup by calling it; it does not itself generate the governance doc.) |
 | **Improve beat** (on a capability change) | the **body** (boot cmd / signals / evidence paths / back-pressure gaps) **and** the **current maturity snapshot** are edited to match new reality; a `harness-change` record is written (`harness record harness-change`) | the Improve beat — when the harness gains or changes a capability |
-| **Inject decision** (adoption S3, or when the host flow changes) | the `## Injection map` section is added/updated in an *existing* doc — never created standalone (`harness init` stamps an empty Injection map table; S3 adds its rows) | `eng-harness-0-adopt` Step 3, with the user's go-ahead |
+| **Inject decision** (adoption S3, or when the host flow changes) | the `## Injection map` section is added/updated in an *existing* doc — never created standalone (`harness init` stamps an empty Injection map table; S3 adds its rows) | the `adopt` verb Step 3, with the user's go-ahead |
 | **Every other loop run** | **nothing** — boot reads, observe writes its buffer, retro writes `.retro.md`; the governance doc is untouched | — |
 
 The doc is therefore written at **inception once**, and its body + snapshot change **only at the Improve beat**. It is never rewritten just to record that a session happened.

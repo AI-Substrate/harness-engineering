@@ -75,7 +75,7 @@ Every turn follows the same five beats (one decision per turn, a recommended def
 | **Orient** | one line: which zone + stage, from the rail | "Adoption's done — you're in the engineering loop, just past the spec." |
 | **Flag** ⚠️ | surface must-see items the user might've missed (see § 3) — *confirming, never nagging*; **silent when clean** | "⚠️ Boot flagged `no smoke path declared` — worth knowing before we lean on it." |
 | **Insight + why** | one *real* detail, tied to why the stage matters — the shape is *"Did you notice `<detail>`? That matters because `<this stage's line from the why table>`"* | "9 of 11 criteria are already provable by existing sensors — that matters because this is the whole game: moving proof from inference into the deterministic layer, where it's runnable and free to re-check forever." |
-| **Suggest** | print the **one** next command in a copyable block | `eng-harness-2-backpressure` |
+| **Suggest** | print the **one** next command in a copyable block | `/eng-harness-flow --hook pre-coding` |
 | **Invite** | offer to run it; recommend the default, never force | "Want me to run it? (`yes` / run it yourself — either way I'll pick up from here.)" |
 
 This is the same **print-then-offer** posture as `the-flow`: always show the command first (copyable anywhere), then offer to run it; **one step per turn**; **never anything irreversible without explicit go-ahead**.

@@ -1,6 +1,6 @@
 # Harness maturity assessment — the canonical L0–L4 ladder
 
-This is the **one canonical home** for the engineering-harness maturity ladder. It moved here out of `eng-harness-1-boot/SKILL.md` so it lives in exactly one place; boot and any other skill **link** to it rather than restating the table.
+This is the **one canonical home** for the engineering-harness maturity ladder. It lives here, not inline in the boot verb, so the ladder sits in exactly one place; the boot verb and any other reader **link** to it rather than restating the table.
 
 The ladder is the **nucleus / self-improving** ladder. A reader reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc's maturity section (see [`governance-doc.md`](./governance-doc.md)). The governance doc holds only the **current** snapshot; the *trajectory* across improvements lives in the `harness-change` record ledger.
 
