@@ -79,7 +79,34 @@
 | T005 modules batch 2 | ✅ | b572247 | adopt.md (delegating verb) + add-extension.md; declared delegation; gate-order graph-owned; hook vocabulary delegated; full per-pattern L1 grep CLEAN across all 5 modules |
 | T006 thin dispatch | ✅ | a5fca0d | SKILL.md rewritten — **88 lines** (≤~150); frontmatter (name + activation description) preserved VERBATIM; Registry + Command grammar + stateless invariants + progressive-disclosure rule + --help; contract detail points to 00-routing.md. **Contract JSON blocks (--json envelope + --hooks manifest) BYTE-IDENTICAL vs pre-tag — 3362 bytes each.** Zero rail-glyph (`◆◐◇↺`) prose; the 3 "narration"-word grep hits are pointers to coach.md, not voice content. |
 | T007 bundled refs | ✅ | 1167a89 | getting-started.md fully rewritten to the 2-skill surface (router + verbs/modules + kept peer); retired-slug refs scrubbed from governance-doc.md (×4) + maturity-assessment.md (×1) + coach.md Suggest example. **Zero of the 5 retired slugs across the whole consolidated skill**; bundle complete (12 files); modules still L1-clean; kept-peer slug retained intentionally in SKILL.md/00-routing.md/getting-started/governance-doc. |
-| T008 deletion + peer move | ✅ | (this) | `git mv` peer → `skills/eng-harness-0-harnessability-assessment/` (8 templates + AUTHORING + README intact); `git rm -r` the 5 absorbed child folders; removed empty `eng-harness-loop/` + `eng-harness-setup/` grouping dirs. **`skills/` now = exactly `eng-harness-flow/` + `eng-harness-0-harnessability-assessment/` + README.md.** Restore path = the T001 tag. |
+| T008 deletion + peer move | ✅ | 34078f7 | `git mv` peer → `skills/eng-harness-0-harnessability-assessment/` (8 templates + AUTHORING + README intact); `git rm -r` the 5 absorbed child folders; removed empty `eng-harness-loop/` + `eng-harness-setup/` grouping dirs. **`skills/` now = exactly `eng-harness-flow/` + `eng-harness-0-harnessability-assessment/` + README.md.** Restore path = the T001 tag. |
+| T009 catalog sweep | 🔶 in progress | (this) | Pre-audit done; test-path fix + INSTALL.md done — see resume note below |
+
+---
+
+## ⏸️ RESUME NOTE (checkpoint before /compact) — 2026-06-17
+
+**Branch**: `022-eng-harness-skill-consolidation` · **Companion**: minih `code-review-companion`, RUN_ID `2026-06-17T06-15-38-151Z-f95d` (still active — keep pinging per-commit; debrief at phase end via the progress sub-skill).
+
+**Done & committed**: T000–T008 (commits d2ee535 plan, e6db6d1 T002, 08e907d T003, 4b8df48 T004, b572247 T005, a5fca0d T006, 1167a89 T007, 34078f7 T008) + rollback tag `pre-eng-harness-consolidation`@d2ee535. Contract JSON byte-identical; all 5 modules L1-clean; `skills/` = 2 skills.
+
+**Forced fix (this commit)**: T004's `retro.schema.json` move + T008's folder delete broke `harness/cli/test/services/record/retro-template.test.ts` (hard-coded old path). Updated its `SCHEMA_PATH` → `skills/eng-harness-flow/references/retro.schema.json`. `just test` GREEN again (639/639). This is a path-follow forced by the sanctioned move, not a CLI behaviour change.
+
+**T009 REMAINING (catalog doc sweep) — pick up here:**
+1. ✅ INSTALL.md (intro + 7-row table → 2 skills; `-s eng-harness-0-adopt` → `-s eng-harness-flow`) — committed this checkpoint.
+2. ⬜ `skills/README.md` (21 hits) — rewrite to 2-skill surface (router + verbs-as-modules + peer); fix the `skills/eng-harness-loop` install example + the `-s eng-harness-0-adopt` example; update the slug note.
+3. ⬜ `AGENTS_README.md` (9 hits, ~L17/104-109/126/139/255) — collapse skill table to 2; **bundled into docs-content.ts → MUST `npm run gen:docs` after**.
+4. ⬜ `README.md` root (L10, L85, L118) — adopt→router framing; fix `skills/eng-harness-setup`/`-loop` paths + the `eng-harness-0-adopt`/`-1-boot` slugs.
+5. ⬜ `AGENTS.md` root (L9, L17, L21) — fix `skills/eng-harness-setup`/`-loop` paths + `eng-harness-1-boot` ref.
+6. ⬜ `docs/how/extend-the-harness.md` (L4, L180, L182, L186) — `eng-harness-0-add-extension` skill → the `add-extension` verb (via `/eng-harness-flow`); **bundled → part of the same `gen:docs` regen**.
+7. ⬜ Peer de-stale: `skills/eng-harness-0-harnessability-assessment/SKILL.md` L104 + L869 — `eng-harness-0-adopt` flow → the adoption flow (`adopt` verb via `/eng-harness-flow`).
+8. ⬜ `npm run gen:docs` → regenerate `harness/cli/src/services/docs/docs-content.ts` (else `check:docs` CI fails). Then `just test` to confirm green.
+9. ⬜ Re-grep: zero of the 5 retired slugs across in-scope live surfaces (skills/, INSTALL.md, skills/README.md, AGENTS_README.md, README.md, AGENTS.md, docs/how/, .harness/engineering-harness.md).
+10. `.harness/engineering-harness.md` injection map — already CLEAN (no retired slugs).
+
+**OUT OF SCOPE / DEFERRED (per plan Non-Goals + domain "Boundary Excludes" — document, do NOT edit in this plan):** `harness/cli/**` source comments + `contract.ts` rename map + `skills.test.ts` fixtures (CLI untouched); `.harness/extensions/validate-harness-flow|validate-harnessability/*.ts` + `instructions.md` (dogfood verbs); `.minih.json` + `agents/*/prompt.md` (minih/installer infra) — these still reference deleted `skills/eng-harness-setup` / `-loop` paths + old slugs and will need a **follow-up "dogfood + CLI slug realignment" plan**; they do NOT break `just test`. `CHANGELOG.md` + `.harness/records/**` are history — never rewritten.
+
+**AFTER T009**: T010 structural proof (L1 grep + contract diff + `wc -l` + per-module review + destination-map completeness), T011 deploy+tidy (`just install-skills-global` / `harness skills update` prune), T012 behavioural drive (`/eng-harness-flow --hook pre-flight --json`, `--hooks --json`, one-module-per-route), T013 phase-end seam + companion debrief.
 
 ## T005 — per-module elision audit (done-when)
 
