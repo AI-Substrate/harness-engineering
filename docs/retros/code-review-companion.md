@@ -245,3 +245,20 @@
 - **magicWand** (target: minih): Make minih validate and expose the project root consistently for coordinated agents: set MINIH_PROJECT_ROOT to the repository root, or add a coordination-provided projectRoot field so the first cd cannot land in the run directory.
 - difficulties:
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory rather than the repository root, contradicting the companion prompt and causing the initial project-orientation command to inspect the wrong location. (workaround: Used the known repository root path from the environment context for all subsequent git, file, and validation commands.)
+
+## 2026-06-17T02:31:53.796Z — code-review-companion / 2026-06-17T02-18-28-773Z-e8b5
+
+- runId: 2026-06-17T02-18-28-773Z-e8b5
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-17T02-18-28-773Z-e8b5
+- summary: Reviewed the Plan 021 Phase 1 code-review-companion commit stream for T001-T004 plus the phase drain/T005 read-back. T001, T002, and T004 were clean; T003 correctly documented `--hook` as primary and `--event` as permanent, but the required drift audit found two MEDIUM stale-contract references that remained outstanding at stop time. No HIGH or CRITICAL issues were found.
+- **magicWand** (target: minih): Have `minih run` export a reliable `MINIH_PROJECT_ROOT` and add a startup self-check that fails or warns when it points at the run folder instead of the project root.
+- difficulties:
+  - [degrading] config: The prompt's required `cd $MINIH_PROJECT_ROOT` did not enter the repository root; the shell reported the code-review-companion run directory instead. (workaround: Used the repository root provided by the execution environment context: /Users/jordanknight/substrate/harness-engineering.)
+
+> ⚠️ ## 2026-06-17T03:30:26.226Z — code-review-companion / 2026-06-17T03-17-49-557Z-6252
+>
+> - runId: 2026-06-17T03-17-49-557Z-6252
+> - runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-17T03-17-49-557Z-6252
+> - result: failed
+> - magicWand: (unavailable — run terminated as failed)
+> - stderr (last line): Execution failed: CAPIError: 400 The requested model is not supported. (Request ID: DFA0:1A6931:10F73D9:12CAC61:6A3214D0)

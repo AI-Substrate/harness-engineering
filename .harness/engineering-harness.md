@@ -66,17 +66,19 @@ Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 ## Injection map
 
 This repo's extant flow is the SDD `plan-*` pipeline guided by `the-flow` —
-a **self-firing host**: its skills already call `/eng-harness-flow --event …`
-at every seam, so nothing extra is woven into context surfaces here.
+a **self-firing host**: its skills already call `/eng-harness-flow` at every
+moment (via the `--event` alias, which maps onto the five lifecycle hooks), so
+nothing extra is woven into context surfaces here. Rows are keyed by lifecycle
+hook; the `--event` seam in parentheses is what `the-flow` actually emits.
 
-| Seam event | Fires from | What fires it |
+| Lifecycle hook (`--event` alias) | Fires from | What fires it |
 |---|---|---|
-| `session-start` | `/plan-1a` (and `the-flow` at `start`) | the flow skill's session-start seam step |
-| `post-spec` | `the-flow` `awaiting-1b` → `/plan-2d` alias | recommended pre-architect step |
-| `pre-implement` | `/plan-6` / `/plan-6-companion` Step 2a | before any task starts |
-| `phase-end` | `/plan-6` phase ceremony | after the last task lands |
-| `plan-complete` | `/plan-8` after merge | long-horizon reflection |
-| `task-pause` | — (manual) | the operator, at a natural pause |
+| `pre-flight` (`session-start`) | `/plan-1a` (and `the-flow` at `start`) | the flow skill's session-start step |
+| `pre-flight` (`pre-implement`) | `/plan-6` / `/plan-6-companion` Step 2a | before any task starts |
+| `pre-coding` (`post-spec`) | `the-flow` `awaiting-1b` → `/plan-2d` alias | recommended pre-architect step |
+| `post-coding` (`phase-end`) | `/plan-6` phase ceremony | after the last task lands |
+| `post-flight` (`plan-complete`) | `/plan-8` after merge | long-horizon reflection |
+| `coding` (`task-pause`) | — (manual) | the operator, at a natural pause |
 
 ## Back-pressure gaps (honest)
 

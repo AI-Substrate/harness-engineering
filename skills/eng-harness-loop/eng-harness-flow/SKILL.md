@@ -15,14 +15,7 @@ The router is also a **guide on a journey**: most callers meet the loop cold, so
 
 ## The stateless contract (read this first)
 
-`eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It:
-
-- ❌ **Writes no artifacts of its own** — no state file, no flight-plan `.json`/`.md`, no journey log. Child skills own *their* artifacts (the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`).
-- ❌ **Never gates, scores, or blocks** — every route is a *suggestion*; `at=` is a hint, never a command; the adoption gate *informs* but never forces. There is **no `.disabled` sentinel** for the loop — declining the harness is **conversational** (the user says so and the agent stops calling the loop skills), not a file.
-- ❌ **Never runs `minih`** (companions are owned by the plan-6 companion skill) and **never runs `/compact`** (a user-typed CLI built-in — it can only *recommend* it).
-- ❌ **Never invents a verdict** — "is the harness healthy?" is answered by `harness doctor` (the JSON envelope), not by the router's opinion.
-- ✅ **Reads** repo signals + conversation, **routes** to exactly one harness skill (with a one-line *why*, the artifact it produces, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and is **safe to call any number of times**.
-- ✅ **Re-derives every call.** Re-entry after `/compact` needs nothing reloaded — just re-detect. The rail itself is recomputed from substrate each call (never persisted).
+`eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **writes no artifacts of its own** (child skills own the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`); **never gates, scores, or blocks** (every route is a suggestion; `at=`/`--hook` is a hint, never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion). It only **reads** signals + conversation, **routes** to exactly one harness skill (with a one-line *why*, its artifact, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and **re-derives every call** — re-entry after `/compact` needs nothing reloaded, and the rail is recomputed from substrate, never persisted.
 
 > **The unifying rule:** state that must persist lives in deterministic substrate a child skill owns (reports, buffers, `.retro.md`, the governance doc) — **never in this router**. If a need for router-owned memory ever appears, that is a signal the missing state belongs in substrate, not in `eng-harness-flow`.
 
@@ -113,12 +106,11 @@ The router decides purely from signals it can **read** (no state of its own). Th
 The skill works with **no** arguments (full auto-detect), but a parent driving its own flow can **pin** position so detection is never ambiguous.
 
 ```
-/eng-harness-flow [at=<stage>] [--event <seam>] [--plan-dir <path>] [--spec <path>]
-                  [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json]
+/eng-harness-flow [--hook <name>] [at=<stage>] [--event <seam>] [--plan-dir <path>] [--spec <path>]
+                  [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json] [--hooks] [--help]
 
 at=auto            (default) detect from signals A–J
-at=adopt           force the on-ramp (install / finish adoption / stamp governance via harness init)
-                   (`at=setup` is an accepted back-compat alias)
+at=adopt           force the on-ramp (install / finish adoption / stamp governance); alias at=setup
 at=boot            force eng-harness-1-boot --validate
 at=backpressure    force eng-harness-2-backpressure (post-spec seam)
 at=observe         guidance only; with --entry-* it silently runs `harness observe`
@@ -126,8 +118,13 @@ at=retro-drain     force eng-harness-4-retro --drain (phase/session end)
 at=retro-harvest   force eng-harness-4-retro --harvest (plan complete)
 at=improve         route a chosen improvement (retro [e]ncode / add-extension / fix-plan)
 
+--hook <name>      pre-flight | pre-coding | coding | post-coding | post-flight
+                   the PRIMARY invocation — names one of the five neutral lifecycle
+                   hooks directly (§ Lifecycle hooks)
 --event <seam>     session-start | post-spec | pre-implement | task-pause |
-                   phase-end | plan-complete   (a higher-level alias for at=)
+                   phase-end | plan-complete
+                   a permanent, transparent ALIAS for --hook (maps per § Lifecycle
+                   hooks); kept zero-break for every existing call site — never deprecated
 --plan-dir <path>  pin the plan the loop stage refers to (disambiguates >1 plan)
 --spec <path>      pin the spec for backpressure scoping
 --phase <id>       pin the phase for boot/retro
@@ -136,10 +133,36 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 --json             return the routing decision as a machine-readable envelope
 ```
 
-- **`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the adoption gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
-- **Observe needs a payload to do anything.** In-flight capture is a *silent CLI producer that logs one entry per call* — `harness observe "<what>" --kind <kind>` (the merged `eng-harness-4-retro` skill carries the capture judgment). So `at=observe` with no payload is **guidance only** ("observe fires silently — here's how friction gets logged"); to actually record, the parent passes the entry fields and the router runs the capture command silently.
-- **Optional offers don't self-suppress.** Because the router is stateless, a skipped optional (scout, an offered backpressure) is *re-offered next call* unless the parent sets `--prompt-optional=false` or the child artifact now exists. The router treats only **child artifacts** as durable completion — never its own memory.
-- **`--repo` is reserved for v2.** Multi-repo execution is documented but not implemented in v1; the router operates on `cwd`.
+- **`--hook`/`at=`/`--event` is a hint, not a command.** The router validates the precondition (the adoption gate + the conflict matrix below) and **redirects** when a hint contradicts the signals (e.g. `at=boot` with no governance doc) — it never blindly runs the named stage. `--repo` is **reserved for v2** (the router operates on `cwd`).
+- **Observe needs a payload; optionals re-offer.** `at=observe` with no payload is **guidance only**; to actually record, the parent passes the entry fields and the router runs `harness observe "<what>" --kind <kind>` silently (one entry per call). Because the router is stateless, a skipped optional (scout, backpressure) is **re-offered next call** unless `--prompt-optional=false` or the child artifact exists — only child artifacts count as durable completion.
+
+### Lifecycle hooks
+
+The router exposes its loop to host flows as a **closed set of five neutral lifecycle hooks** — the stable, stage-neutral vocabulary a host names when it calls the router (`--hook <name>`). The set is **fixed at five** (never grown per-repo) and **stateless** (derived every call, never stored). Each hook names a *moment in the host's lifecycle*, never a child-skill slug.
+
+| Hook | When in the host's lifecycle | Behaviour | What the call drives |
+|---|---|---|---|
+| `pre-flight` | before work starts — session open, or about to implement | fire | boot validation (`harness-boot`) |
+| `pre-coding` | spec settled, before building | fire | backpressure survey |
+| `coding` | mid-build, in flight | **silent** — one capture per call | in-flight capture (`harness observe`) |
+| `post-coding` | a phase / work-unit just ended | fire | per-phase retro drain |
+| `post-flight` | the whole plan / journey is complete | fire | terminal close-out — harvest + present improvements + encode |
+
+**`--event` seam → `--hook` mapping** (the six host seams alias onto the five hooks — `session-start` and `pre-implement` both open onto `pre-flight`):
+
+| `--event` seam | `--hook` |
+|---|---|
+| `session-start` | `pre-flight` |
+| `pre-implement` | `pre-flight` |
+| `post-spec` | `pre-coding` |
+| `task-pause` | `coding` |
+| `phase-end` | `post-coding` |
+| `plan-complete` | `post-flight` |
+
+Two mappings are load-bearing and easy to get wrong:
+
+- **`pre-implement` opens onto `pre-flight`, not `pre-coding`.** It fires the `harness-boot` node — prove the system runs before a line of code — the same boot `session-start` re-runs. (Naming it `pre-coding` would route it to the backpressure survey, which is wrong.)
+- **`phase-end` → `post-coding` and `plan-complete` → `post-flight` are distinct.** Per-phase drain (`post-coding`) and the terminal harvest-and-improve (`post-flight`) are different lifecycle positions; collapsing both onto one hook would bury the **Improve** beat.
 
 ### Slug resolution (avoid version drift)
 
@@ -178,6 +201,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
 {
   "requested_stage": "boot",
   "actual_stage": "adopt",
+  "hook": "<the lifecycle hook this call resolves to: pre-flight|pre-coding|coding|post-coding|post-flight — the --hook value, or the hook the --event seam aliases to>",
   "decision": "route | redirect | noop | ambiguous",
   "command": "<exact next harness command>",
   "why": "<one line>",
@@ -195,9 +219,112 @@ When a hint conflicts with the detected signals, the router resolves **determini
 }
 ```
 
+The `hook` field is **additive** — no existing field is reshaped or renamed. A routing call (`--hook X --json`, or its `--event` alias) returns the envelope above **plus** `hook` (the resolved lifecycle hook for the call); the routing envelope never embeds a hooks manifest.
+
 The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Per-turn UX) so a machine caller can render the same pleasant rail + flag beat a human gets. This matters precisely *because* the router is stateless: the rail, now/next, and flags are all **recomputed from substrate every call** — a pure function of "what the repo looks like right now," which is why the UX survives `/compact`, serves any caller, and never drifts from reality.
 
 `bypass_recommended` / `bypass_cause` are **advisory flags only**. When the router detects that the caller hit (or is about to hit) harness friction worth recording, it *flags* it — setting `bypass_recommended: true` and a `bypass_cause` drawn from the `harness-bypass` `cause` enum — so the parent can offer `harness record harness-bypass`. Consistent with the stateless contract, the router **never writes a record and never blocks** on this; it only reads/derives the flag (default `false` / `null`).
+
+### The `--hooks` discovery manifest
+
+`--hooks [--json]` is the **discovery** surface — the routing envelope's counterpart. A routing call (`--hook X`) answers *"what do I do now?"*; `--hooks` answers *"what hooks exist, and how does a host wire them?"* — a host (e.g. `the-flow`) reads it once to learn the contract, then routes against it.
+
+`--hooks --json` returns a **top-level** object (Shape A — never wrapped in `data`), so a host detects future shape changes via `manifest_version`:
+
+All five entries pin the **same nine fields** (`hook`, `intent`, `run_at`, `kind`, `invoke`, `aliases`, `produces`, `needs`, `preconditions`). Comments annotate the first entry; the fields repeat. Note `coding`'s `invoke` — it is the **silent `harness observe` capture**, *not* an inferable `/eng-harness-flow --hook coding` fire; a host must hand-wire it from the exact string here:
+
+```jsonc
+{
+  "manifest_version": 1,
+  "hooks": [
+    {
+      "hook": "pre-flight",                              // one of the fixed five lifecycle hooks
+      "intent": "prove the system runs before work starts",
+      "run_at": "session open / before implementing",
+      "kind": "fire",                                    // "fire" | "silent"
+      "invoke": "/eng-harness-flow --hook pre-flight --json",
+      "aliases": ["session-start", "pre-implement"],     // the --event seams this hook subsumes
+      "produces": "boot verdict",                        // artifact/effect, or null
+      "needs": [],                                       // upstream inputs this hook expects
+      "preconditions": ["S2-governance", "S4-boot"]      // adoption rungs that must hold; [] otherwise
+    },
+    {
+      "hook": "pre-coding",
+      "intent": "survey what the work can prove deterministically, before building",
+      "run_at": "spec settled, before building",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook pre-coding --json",
+      "aliases": ["post-spec"],
+      "produces": "backpressure-coverage.md",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "coding",
+      "intent": "capture in-flight friction, one entry at a time",
+      "run_at": "mid-build, in flight",
+      "kind": "silent",
+      "invoke": "harness observe \"<what>\" --kind <kind>",
+      "aliases": ["task-pause"],
+      "produces": "one observe-buffer entry",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "post-coding",
+      "intent": "drain this phase's captured friction into a retro",
+      "run_at": "a phase / work-unit just ended",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook post-coding --json",
+      "aliases": ["phase-end"],
+      "produces": "drained .retro.md",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "post-flight",
+      "intent": "close out the whole plan — harvest, present improvements, encode",
+      "run_at": "the whole plan / journey is complete",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook post-flight --json",
+      "aliases": ["plan-complete"],
+      "produces": "harvested cross-plan view + encoded improvements",
+      "needs": [],
+      "preconditions": []
+    }
+  ]
+}
+```
+
+- The spine is **fixed at five** — `--hooks` never grows or shrinks per-repo (closed spine); the *only* per-repo variability rides in each entry's `preconditions`.
+- `--hooks` is a **pure discovery** call: derived every call (never stored), it runs no detection, reads no plan signals, and writes nothing.
+- **Routing and discovery stay separate**: a routing call (`--hook X --json`) returns the envelope **plus** `hook` and **never** embeds this manifest; a discovery call (`--hooks --json`) returns **only** the top-level `{ manifest_version, hooks }` and never a routing envelope.
+
+### `--help` — synopsis (print-and-stop)
+
+`--help` prints a static synopsis and **stops** — no signal detection, no state, no routing, nothing fires. It is the one-screen orientation for the surface (CLI `--help` spirit):
+
+```text
+eng-harness-flow — stateless router to the harness loop (one front door).
+
+USAGE
+  /eng-harness-flow [--hook <name> | --event <seam>] [--plan-dir <p>] [--spec <p>]
+                    [--phase <id>] [--prompt-optional <bool>] [--json] [--hooks] [--help]
+
+LIFECYCLE HOOKS  (--hook, the primary invocation)
+  pre-flight    before work starts       -> boot validation
+  pre-coding    spec settled, pre-build   -> backpressure survey
+  coding        mid-build (silent)        -> one in-flight capture
+  post-coding   a phase just ended        -> per-phase retro drain
+  post-flight   the whole plan is done    -> terminal harvest + improve
+
+DISCOVERY
+  --hooks [--json]   the five-hook manifest: { manifest_version, hooks[5] }
+  --json             machine-readable routing envelope (+ the resolved hook)
+
+--event <seam> is a permanent alias for --hook — session-start, pre-implement,
+post-spec, task-pause, phase-end, plan-complete (see "Lifecycle hooks").
+```
 
 ---
 
@@ -325,12 +452,16 @@ The router is designed to be **invoked again and again** by a parent running its
 
 ```
 P → H: session start    (--event session-start)            → eng-harness-1-boot --validate
+P → H: pre-implement     (--event pre-implement --phase <p>) → eng-harness-1-boot --validate   (--hook pre-flight)
 P → H: post-spec         (--event post-spec --spec <path>)   → eng-harness-2-backpressure
+P → H: task-pause        (--event task-pause)                → harness observe                 (--hook coding, silent)
 P → H: end-of-phase      (--event phase-end --plan-dir <p>)  → eng-harness-4-retro --drain   (buffer non-empty)
 P → H: plan-complete     (--event plan-complete)             → eng-harness-4-retro --harvest (buffer now empty)
 ```
 
-This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness skill to mention at each seam, it can simply call `/eng-harness-flow at=<seam>` and let this skill own the harness-routing logic in **one** place. (Refactoring `the-flow` to do so is a follow-up, not a dependency.)
+Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks).
+
+This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness skill to mention at each seam, it can simply call `/eng-harness-flow --hook <name>` (or the `--event <seam>` alias) and let this skill own the harness-routing logic in **one** place. (Refactoring `the-flow` to do so is a follow-up, not a dependency.)
 
 ---
 
