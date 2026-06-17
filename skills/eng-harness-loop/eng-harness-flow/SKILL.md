@@ -114,7 +114,7 @@ The skill works with **no** arguments (full auto-detect), but a parent driving i
 
 ```
 /eng-harness-flow [--hook <name>] [at=<stage>] [--event <seam>] [--plan-dir <path>] [--spec <path>]
-                  [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json]
+                  [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json] [--hooks] [--help]
 
 at=auto            (default) detect from signals A–J
 at=adopt           force the on-ramp (install / finish adoption / stamp governance via harness init)
@@ -234,6 +234,46 @@ The `hook` field is **additive** — no existing field is reshaped or renamed. A
 The `rail`/`now`/`next`/`flags`/`insight` fields carry the UX signals (see § Per-turn UX) so a machine caller can render the same pleasant rail + flag beat a human gets. This matters precisely *because* the router is stateless: the rail, now/next, and flags are all **recomputed from substrate every call** — a pure function of "what the repo looks like right now," which is why the UX survives `/compact`, serves any caller, and never drifts from reality.
 
 `bypass_recommended` / `bypass_cause` are **advisory flags only**. When the router detects that the caller hit (or is about to hit) harness friction worth recording, it *flags* it — setting `bypass_recommended: true` and a `bypass_cause` drawn from the `harness-bypass` `cause` enum — so the parent can offer `harness record harness-bypass`. Consistent with the stateless contract, the router **never writes a record and never blocks** on this; it only reads/derives the flag (default `false` / `null`).
+
+### The `--hooks` discovery manifest
+
+`--hooks [--json]` is the **discovery** surface — the routing envelope's counterpart. A routing call (`--hook X`) answers *"what do I do now?"*; `--hooks` answers *"what hooks exist, and how does a host wire them?"* — a host (e.g. `the-flow`) reads it once to learn the contract, then routes against it.
+
+`--hooks --json` returns a **top-level** object (Shape A — never wrapped in `data`), so a host detects future shape changes via `manifest_version`:
+
+```jsonc
+{
+  "manifest_version": 1,
+  "hooks": [
+    {
+      "hook": "pre-flight",                  // the lifecycle hook (one of the fixed five)
+      "intent": "prove the system runs before work starts",
+      "run_at": "session open / before implementing",
+      "kind": "fire",                        // "fire" | "silent"
+      "invoke": "/eng-harness-flow --hook pre-flight --json",
+      "aliases": ["session-start", "pre-implement"],  // the --event seams this hook subsumes
+      "produces": "boot verdict",            // artifact/effect, or null
+      "needs": [],                           // upstream inputs this hook expects
+      "preconditions": ["S2-governance", "S4-boot"]   // adoption rungs that must hold; [] otherwise
+    }
+    // … four more entries — same nine fields, values per the table below
+  ]
+}
+```
+
+All five entries carry the **same nine fields** (`hook`, `intent`, `run_at`, `kind`, `invoke`, `aliases`, `produces`, `needs`, `preconditions`); only the values differ:
+
+| `hook` | `kind` | `run_at` | `aliases` | `produces` | `preconditions` |
+|---|---|---|---|---|---|
+| `pre-flight` | fire | before work starts | `session-start`, `pre-implement` | boot verdict | `["S2-governance","S4-boot"]` |
+| `pre-coding` | fire | spec settled, pre-build | `post-spec` | `backpressure-coverage.md` | `[]` |
+| `coding` | **silent** | mid-build, in flight | `task-pause` | one observe entry | `[]` |
+| `post-coding` | fire | a phase just ended | `phase-end` | drained retro | `[]` |
+| `post-flight` | fire | the whole plan is complete | `plan-complete` | harvest + encoded improvements | `[]` |
+
+- The spine is **fixed at five** — `--hooks` never grows or shrinks per-repo (closed spine); the *only* per-repo variability rides in each entry's `preconditions`.
+- `--hooks` is a **pure discovery** call: derived every call (never stored), it runs no detection, reads no plan signals, and writes nothing.
+- **Routing and discovery stay separate**: a routing call (`--hook X --json`) returns the envelope **plus** `hook` and **never** embeds this manifest; a discovery call (`--hooks --json`) returns **only** the top-level `{ manifest_version, hooks }` and never a routing envelope.
 
 ---
 
