@@ -370,7 +370,7 @@ P → H: plan-complete     (--event plan-complete)             → eng-harness-4
 
 Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks).
 
-This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness skill to mention at each seam, it can simply call `/eng-harness-flow at=<seam>` and let this skill own the harness-routing logic in **one** place. (Refactoring `the-flow` to do so is a follow-up, not a dependency.)
+This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness skill to mention at each seam, it can simply call `/eng-harness-flow --hook <name>` (or the `--event <seam>` alias) and let this skill own the harness-routing logic in **one** place. (Refactoring `the-flow` to do so is a follow-up, not a dependency.)
 
 ---
 
