@@ -353,10 +353,14 @@ The router is designed to be **invoked again and again** by a parent running its
 
 ```
 P → H: session start    (--event session-start)            → eng-harness-1-boot --validate
+P → H: pre-implement     (--event pre-implement --phase <p>) → eng-harness-1-boot --validate   (--hook pre-flight)
 P → H: post-spec         (--event post-spec --spec <path>)   → eng-harness-2-backpressure
+P → H: task-pause        (--event task-pause)                → harness observe                 (--hook coding, silent)
 P → H: end-of-phase      (--event phase-end --plan-dir <p>)  → eng-harness-4-retro --drain   (buffer non-empty)
 P → H: plan-complete     (--event plan-complete)             → eng-harness-4-retro --harvest (buffer now empty)
 ```
+
+Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks).
 
 This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness skill to mention at each seam, it can simply call `/eng-harness-flow at=<seam>` and let this skill own the harness-routing logic in **one** place. (Refactoring `the-flow` to do so is a follow-up, not a dependency.)
 
