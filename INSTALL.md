@@ -2,19 +2,14 @@
 
 > **For AI agents reading this**: this is the canonical install reference for the skills in this repository. If a user asks you to install them, identify which CLI they use and whether they want a global install or project-local install, then run the matching `npx skills@latest add ...` command below. The harness CLI also wraps this as `harness skills install` (a transparent pass-through — it prints the exact `npx` command before running it and always passes `-y`).
 
-This repository publishes two skill groups through the [`npx skills@latest`](https://github.com/vercel-labs/skills) installer: the **setup group** (`skills/eng-harness-setup/`) and the **interactive loop group** (`skills/eng-harness-loop/`, formerly hosted in `jakkaj/tools`). There is no separate repository-specific installer — `harness skills install` is a thin wrapper over the same `npx skills` tool.
+This repository publishes **two skills** through the [`npx skills@latest`](https://github.com/vercel-labs/skills) installer: the **`eng-harness-flow`** router (the single front door to the harness loop) and the standalone **`eng-harness-0-harnessability-assessment`** peer. There is no separate repository-specific installer — `harness skills install` is a thin wrapper over the same `npx skills` tool.
 
 ## Skills
 
-| Skill | Group | Purpose |
-|---|---|---|
-| `eng-harness-0-adopt` | setup | Guide a repo through adopting the harness: install the CLI, run the harnessability assessment if needed, record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`), and stand up a basic `boot`. |
-| `eng-harness-0-harnessability-assessment` | setup | Score a repository's harnessability (Operate-Today and Adaptability) and report back-pressure surfaces, proof ceilings, command tiers, and proposal-only affordances. |
-| `eng-harness-0-add-extension` | setup | Guided authoring of a new `harness <verb>` extension. |
-| `eng-harness-flow` | loop | Stateless harness-loop router — the single front door; a host can pin a moment with one of five lifecycle hooks (`--hook pre-flight\|pre-coding\|coding\|post-coding\|post-flight`, with `--event` as a permanent alias), and it re-derives loop position every call and routes to the one right skill. |
-| `eng-harness-1-boot` | loop | Boot stage — validate the harness is healthy at session start. |
-| `eng-harness-2-backpressure` | loop | Backpressure Check — advisory deterministic-sensor coverage survey. |
-| `eng-harness-4-retro` | loop | The friction lifecycle — in-flight capture (via the `harness observe` CLI verb), session-end drain, long-horizon harvest. |
+| Skill | Purpose |
+|---|---|
+| `eng-harness-flow` | Stateless harness-loop router — the single front door; a host can pin a moment with one of five lifecycle hooks (`--hook pre-flight\|pre-coding\|coding\|post-coding\|post-flight`, with `--event` as a permanent alias), and it re-derives loop position every call and routes to the one right harness action. Its **boot / backpressure / retro / adopt / add-extension** verbs are harness-blind modules under `references/stages/`, loaded one at a time by the router — never installed or called directly. |
+| `eng-harness-0-harnessability-assessment` | Score a repository's harnessability (Operate-Today and Adaptability) and report back-pressure surfaces, proof ceilings, command tiers, and proposal-only affordances. |
 
 ## Canonical install patterns
 
@@ -105,11 +100,11 @@ Use `--copy` when you want the installed skill files to be physically present in
 
 Use `-s` / `--skill` to install only one skill explicitly. Swap `-a <agent>` for your CLI and use `-g` for a global install or omit it for a project-local install into `./.agents/skills/`.
 
-Adopt skill, global, Claude Code:
+Router skill, global, Claude Code:
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering/skills \
-  -s eng-harness-0-adopt \
+  -s eng-harness-flow \
   -a claude-code \
   -g
 ```

@@ -7,7 +7,7 @@ An engineering harness productises the software-development loop so humans and a
 > ```text
 > Install the engineering harness from https://github.com/AI-Substrate/harness-engineering
 > and adopt it in this repo: read that repo's README and skills/README.md, install the
-> skills with npx skills, then run the eng-harness-0-adopt skill.
+> skills with npx skills, then run /eng-harness-flow (it routes adoption).
 > ```
 
 ## The problem
@@ -82,7 +82,7 @@ harness update          # later: upgrade the global install to @latest (no-op if
 
 ## Install the skills
 
-This repo publishes a **setup group** (`skills/eng-harness-setup/`) and an **interactive loop group** (`skills/eng-harness-loop/`), consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills):
+This repo publishes **two skills** — the **`eng-harness-flow`** router (the single front door; adoption and every loop stage live inside it as modules) and the standalone **`eng-harness-0-harnessability-assessment`** peer — consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering/skills -a claude-code -g
@@ -115,7 +115,7 @@ Prompts and checklists are useful guides, but high-risk or repeated invariants s
 |---|---|
 | [`harness-foundations/`](harness-foundations/) | The thesis: [first principles](harness-foundations/first-principles.md), [patterns that work](harness-foundations/patterns-that-work.md), [directives](harness-foundations/directives.md), [the simple version](harness-foundations/simple-mode.md), and [source notes](harness-foundations/source-notes/). |
 | [`harness/cli/`](harness/cli/) | The harness CLI core — a global tool (`npm i -g`), self-updating via `harness update`, extended per repo from `.harness/extensions/`. |
-| [`skills/`](skills/) | The deployable skills. Adoption: [`eng-harness-0-adopt`](skills/eng-harness-setup/eng-harness-0-adopt/SKILL.md), [`eng-harness-0-harnessability-assessment`](skills/eng-harness-setup/eng-harness-0-harnessability-assessment/SKILL.md), [`eng-harness-0-add-extension`](skills/eng-harness-setup/eng-harness-0-add-extension/SKILL.md). Loop: `eng-harness-1-boot`, `eng-harness-2-backpressure`, `eng-harness-4-retro`. See [`skills/README.md`](skills/README.md). |
+| [`skills/`](skills/) | The two deployable skills: the [`eng-harness-flow`](skills/eng-harness-flow/SKILL.md) router (the front door — adoption and every loop stage live inside it as modules) and the standalone [`eng-harness-0-harnessability-assessment`](skills/eng-harness-0-harnessability-assessment/SKILL.md) peer. See [`skills/README.md`](skills/README.md). |
 | [`docs/`](docs/) | How-to guides ([records](docs/how/record-and-record-types.md), [architecture conformance](docs/how/architecture-conformance.md), [dogfooding](docs/how/dogfood-harness-flow.md)), presentations, plans, and project rules. |
 
 Start with [first-principles](harness-foundations/first-principles.md) for the thesis, [patterns-that-work](harness-foundations/patterns-that-work.md) for practical moves, or [directives](harness-foundations/directives.md) for the shortest operating version.

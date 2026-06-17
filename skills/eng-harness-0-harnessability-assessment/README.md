@@ -20,7 +20,7 @@ The skill writes a per-run history directory plus stable root "latest" files:
 .harness/reports/harnessability/schema.json
 ```
 
-Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel `eng-harness-0-adopt` reads to decide whether an assessment already exists.
+Every run overwrites the root `latest.*`/`schema.json` so the newest run is always at a stable path. The root `latest.json` is the sentinel the adoption flow (`/eng-harness-flow`) reads to decide whether an assessment already exists.
 
 The Markdown report is for humans and agent skim-reading. The JSON report follows `templates/assessment-report.schema.json` (schema version `harnessability-assessment.v0.2`) and is for comparison, automation, and future skills. See `templates/assessment-latest.md` and `templates/assessment-latest.json` for sanitized examples.
 
@@ -35,12 +35,12 @@ It does not install dependencies, boot services, mutate state, read secrets, cal
 ## Where it fits
 
 ```text
-eng-harness-0-adopt -> eng-harness-0-harnessability-assessment -> tools runtime skills
+/eng-harness-flow (adopt) -> eng-harness-0-harnessability-assessment -> /eng-harness-flow (loop)
 ```
 
-- `eng-harness-0-adopt` creates or validates the local harness nucleus.
+- The adoption flow (`/eng-harness-flow`) creates or validates the local harness nucleus.
 - `eng-harness-0-harnessability-assessment` reports target-aware harnessability and next safe actions.
-- tools runtime skills operate the loop: boot, observe, retro, harvest, and advisory Backpressure Check.
+- The loop (`/eng-harness-flow`) operates: boot, observe, retro, harvest, and the advisory Backpressure Check.
 
 The advisory Backpressure Check surveys whether enough deterministic sensors exist for scoped work. It is not itself proof, and this skill never introduces a generic core `backpressure` command. When a gap is found, it recommends the specific sensor, command, fixture, fake, sink, diagnostic, schema check, smoke path, architecture rule, or evidence capture that would prove the scoped work.
 

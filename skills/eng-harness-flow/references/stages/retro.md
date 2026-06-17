@@ -1,12 +1,18 @@
----
-name: eng-harness-4-retro
-description: |
-  The friction lifecycle of the harness loop: notice → hold safely → present at the seam → route to encoding. One skill, three surfaces. IN-FLIGHT CAPTURE is one CLI call — `harness observe "<what>" --kind <kind>` — into the gitignored session buffer; the CLI owns paths, IDs, timestamps, and validation, you bring only the noticing. `--drain` (session-end soft prompt) lists pending entries, presents the `[s/t/p/e/d/a]` menu with an encoding hint per entry, materializes saved entries via `harness record retro`, then clears the buffer. `--harvest` (long-horizon curation) scans `.harness/records/retro/**` plus legacy paths, dedups, clusters by kind+target, ages stale entries, and prints a prioritized view (`--json`) where recurrence is framed as token cost. Encode, don't document. Empty buffer = silent. No on-disk index files.
----
+# retro
 
-# eng-harness-4-retro
+> Sub-skill — a harness-blind verb module. Knows only its own domain work
+> (the `harness observe` / `harness record` CLI, the observe buffer, committed
+> retro records, its schema). No sibling names, no flow position, no
+> lifecycle-hook self-reference, no routing. Composition is the router's job.
 
-One skill, the whole **friction lifecycle**: *notice → hold safely → present at the seam → route to encoding.* Three surfaces:
+**Verb**: retro
+**Purpose**: the whole **friction lifecycle** — *notice → hold safely → present at the seam → route to encoding.* Three surfaces: in-flight capture (silent `harness observe`), `--drain` (session-end soft prompt → committed record), `--harvest` (long-horizon curation of committed records).
+**Consumes**: the gitignored observe buffer (`.harness/temp/`); committed retro records (`.harness/records/retro/**`) + legacy paths (`docs/harness/agents/**/*.retro.md`, `docs/retros/*.md`); the bundled [`../retro.schema.json`](../retro.schema.json) for validation.
+**Flags**: (no flag) in-flight capture guidance · `--drain` (session end) · `--harvest` (long-horizon) · `--harvest --json` · harvest filters `--plan <slug>` / `--agent <slug>` / `--since <date>` / `--kind <kind>` · `--harvest --prune --older-than <Nd> [--apply]` (reversible stale-retro pruning, dry-run by default).
+**Produces**: committed retro records via `harness record retro` (drain); a curated view (harvest — no on-disk writes); staged encode diffs in `scratch/`.
+**Side effects**: drain materializes records + clears the buffer; harvest mutates `system.compound.status` in-place on lifecycle ops; `--prune --apply` deletes stale records after one confirmation.
+
+This verb is the whole **friction lifecycle**: *notice → hold safely → present at the seam → route to encoding.* Three surfaces:
 
 | Surface | When | What |
 |---|---|---|
@@ -18,7 +24,9 @@ One skill, the whole **friction lifecycle**: *notice → hold safely → present
 
 > **Track compounding value.** Every difficulty catalogued is a gift to your future self. The meta-question is never whether one task succeeded; it is whether the development infrastructure gets cheaper, safer, and clearer every iteration.
 
-## Input
+---
+
+## Procedure
 
 ```
 $ARGUMENTS
@@ -35,9 +43,7 @@ $ARGUMENTS
 
 Always on, no opt-out file — if a user doesn't want capture or a drain, they say so in chat and the calling agent stops.
 
----
-
-## The two questions (ask them as you work — this is the strong signal)
+### The two questions (ask them as you work — this is the strong signal)
 
 Locked wording — ask both, verbatim. They are the headline capture trigger, not item 7 of a checklist:
 
@@ -75,7 +81,7 @@ The second question is the harness thesis pointed at yourself: every place you *
 
 Prefer "no smoke/evidence path proved X" over "I was confused" — the former is encodable into deterministic back-pressure. Don't invent new kinds (`signal-gap`, `sensor-gap`): use `kind: difficulty` or `improvement-suggestion` with targets like `project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `tooling`, or `harness-itself` — the last for friction with the **harness product** (a `harness …` CLI verb, a SKILL.md instruction, the loop machinery) rather than your own repo. In a consumer repo that class can't be fixed locally; the drain routes it to an **upstream issue** (see § Harness-itself entries).
 
-## Capture is one command
+### Capture is one command
 
 ```bash
 harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
@@ -88,7 +94,7 @@ harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
 - **Crash-resilient by construction**: the entry is on disk the moment you notice it. After `/compact` or a lost context window, nothing is re-derived — capture again with the same one command; drain finds everything.
 - A bad kind/severity/too-short description is rejected with the allowed values named (`unconfigured`, exit 2) and the buffer untouched. The CLI appends, never rewrites: malformed text already in a buffer is skipped (and counted) by every read, never destroyed by a write.
 
-### When to fire (trigger heuristics)
+#### When to fire (trigger heuristics)
 
 - A tool call took >30 seconds and you were waiting on it
 - A search returned zero results where you expected matches
@@ -96,19 +102,19 @@ harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
 - A test/build failure required guesswork to interpret
 - You had to infer runtime behavior with no smoke path, screenshot, log, trace, or health evidence
 - You eyeballed an architecture, dependency, security, schema, or data constraint a deterministic check could have proved
-- Boot reported a missing signal-readiness dimension that affected the work
+- A boot/health-check run reported a missing signal-readiness dimension that affected the work
 - You caught yourself muttering "if only there were a…" (the magic-wand reflex)
 
-### Calibration (soft targets, anti-over-introspection)
+#### Calibration (soft targets, anti-over-introspection)
 
 - Self-prompt rate: **≤ 1 per 5 minutes** of clock time
 - Entries per session: **≤ 5** on average
 
-**Task-boundary heuristic**: at a natural pause (phase complete, file written, test passed), check whether you've captured anything yet (`harness observe --list --json` shows the pending set):
+**Task-boundary heuristic**: at a natural pause (work-unit complete, file written, test passed), check whether you've captured anything yet (`harness observe --list --json` shows the pending set):
 - Buffer **empty** → fire the question pair once, pointed at provability. If nothing concrete comes to mind, don't force it.
 - Buffer **non-empty** → do NOT additionally prompt; the existing entries are sufficient signal. Ask once per pause, only when otherwise silent.
 
-### What in-flight capture does NOT do
+#### What in-flight capture does NOT do
 
 - **No user-facing output** — not even "logged". The drain at session end is the only user surface.
 - **No fix application, no sensor implementation** — entries describe friction; encoding happens at the drain/harvest.
@@ -120,13 +126,13 @@ harness observe "<what you noticed, ≥10 chars>" --kind <kind> \
 
 ## Mode: `--drain` (session end)
 
-The consumer-side surface. The ONE place this skill talks to the user.
+The consumer-side surface. The ONE place this verb talks to the user.
 
 ### When to fire
 
-- **Auto-fired** by pipeline skills at natural logical pauses (plan-1a end, plan-3 end, plan-6 end-of-phase, plan-6-companion end-of-phase, plan-7 end, plan-8 end)
-- **Manually** by the user at any time
-- **Cross-session leftover check**: at the start of any auto-firing skill, run `harness observe --list --json` — the sweep covers **all buckets by default**, so entries stranded by a prior session (or another agent's bucket) surface immediately. Non-empty → drain first, then proceed.
+- **Auto-fired** by host flows at natural logical pauses (session end, work-unit/phase end, plan/journey end).
+- **Manually** by the user at any time.
+- **Cross-session leftover check**: at the start of any auto-firing run, run `harness observe --list --json` — the sweep covers **all buckets by default**, so entries stranded by a prior session (or another agent's bucket) surface immediately. Non-empty → drain first, then proceed.
 
 ### Step 1 — Read the pending set
 
@@ -159,7 +165,7 @@ Before you choose — the two questions, one last pass:
 "What did you have to infer that the harness should have proved?"
 (Anything new → capture it now with `harness observe …`; it joins this drain.)
 
-[s]ave selected · [t]ask: /plan-5 --fix emits · [p]lan: /plan-1b emits
+[s]ave selected · [t]ask: emit fix-task descriptors · [p]lan: emit plan specs
 [e]ncode: stage diffs · [d]ismiss all · [a]ll-save (default — press Enter)
 
 [s/t/p/e/d/a]: ▮
@@ -188,7 +194,7 @@ agent: <bucket>
 plan_id: <plan-id-or-null>
 started_at: "<first entry's first_seen_at>"
 ended_at: "<now ISO UTC>"
-summary: "eng-harness-4-retro --drain session-end save (N entries)"
+summary: "retro --drain session-end save (N entries)"
 entries:
   # ... the drained entries verbatim (id/kind/description/…/system.compound)
 system:
@@ -207,13 +213,13 @@ harness observe --clear
 
 Prompt "Which entries to save? [1,2,3 or a]". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
 
-#### `[t]ask` — emit copy-pasteable fix dossiers
+#### `[t]ask` — emit copy-pasteable fix descriptors
 
-For each encodable entry print `/plan-5 --fix --description "<entry.description>" --target <entry.target>`. Entries are ALSO saved to the record (the suggestion is captured even if the user runs none of them). Clear.
+For each encodable entry, print a copy-pasteable **fix-task descriptor** (the entry's `description` + `target` + `suggested_encoding`) for the user to route into whatever planning/fix flow they run. Entries are ALSO saved to the record (the suggestion is captured even if the user routes none of them). Clear.
 
 #### `[p]lan` — emit copy-pasteable specs
 
-For each entry suggesting larger work print `/plan-1b "<one-line spec from description + suggested_encoding>"`. Entries also saved. Clear.
+For each entry suggesting larger work, print a **one-line plan spec** (from `description` + `suggested_encoding`) for the user's planning flow. Entries also saved. Clear.
 
 #### `[e]ncode` — stage diffs (nothing auto-applies)
 
@@ -251,9 +257,9 @@ Compound lifecycle:
 
 #### Harness-itself entries → offer an upstream issue
 
-Some friction is with the **harness product itself** — a confusing or broken `harness …` CLI verb, a wrong/missing SKILL.md instruction, a gap in the `eng-harness-*` loop machinery — **not** with the consumer's own repo. You can't encode that fix locally: the CLI and skills are *vendored* from `AI-Substrate/harness-engineering`. The encoding move for this class is **filing it upstream** so the fix lands for every consumer, not just this checkout.
+Some friction is with the **harness product itself** — a confusing or broken `harness …` CLI verb, a wrong/missing SKILL.md instruction, a gap in the harness loop machinery — **not** with the consumer's own repo. You can't encode that fix locally: the CLI and skills are *vendored* from `AI-Substrate/harness-engineering`. The encoding move for this class is **filing it upstream** so the fix lands for every consumer, not just this checkout.
 
-**Detect**: any drained entry with `target: harness-itself`, or whose description/workaround clearly points at a `harness …` command, a vendored SKILL.md instruction, or the loop skills themselves.
+**Detect**: any drained entry with `target: harness-itself`, or whose description/workaround clearly points at a `harness …` command, a vendored SKILL.md instruction, or the loop machinery itself.
 
 **In the harness's own repo** — origin remote contains `harness-engineering`, or `harness/cli/src/` exists locally → **no issue**; the fix is a local source edit, so route it through `[e]ncode` / `[t]ask` like any other entry.
 
@@ -270,7 +276,7 @@ On **`y`**, print a ready-to-run `gh` command per selected entry (pre-filled fro
 ```bash
 gh issue create --repo AI-Substrate/harness-engineering \
   --title "<short imperative title from entry.description>" \
-  --body "Reported via eng-harness-4-retro --drain (consumer repo).
+  --body "Reported via the harness retro drain (consumer repo).
 
 **Friction:** <entry.description>
 **Kind / target:** <entry.kind> / <entry.target>
@@ -331,9 +337,9 @@ The reader/curator side. Auto-fires at long-horizon reflection moments; runnable
 
 ### When to fire
 
-- **AUTO**: `plan-6-companion` FINAL-phase debrief (the dominant flow), `plan-8-merge` end, `plan-7-code-review` end (rare solo flow)
-- **SUGGESTED**: at `plan-1a` start (≥5 unharvested entries) or `plan-3` start (≥10) — print the invocation as a one-liner, don't auto-fire
-- **Manually**: `--harvest [--plan <slug>] [--agent <slug>] [--since <date>] [--kind <kind>]`
+- **AUTO**: at a host flow's final-phase debrief (the dominant flow), merge end, or review end.
+- **SUGGESTED**: at a session/flow start when there are unharvested entries (≥5, or ≥10) — print the invocation as a one-liner, don't auto-fire.
+- **Manually**: `--harvest [--plan <slug>] [--agent <slug>] [--since <date>] [--kind <kind>]`.
 
 ### Buffer-non-empty advisory
 
@@ -348,7 +354,7 @@ Then proceed anyway (harvest reads committed records; transient scratch is unrel
 - **Canonical**: `.harness/records/retro/**/*.md` — the records `--drain` materializes (dated subdirs).
 - **Legacy (back-compat)**: `docs/harness/agents/**/*.retro.md`, then `docs/retros/*.md` (minih's old per-agent format; skip `*.legacy.md`; map blocks via workshop 005 § D9 `minihToUniversal`).
 
-Per file: parse the YAML frontmatter; validate against the bundled `references/retro.schema.json` (mirror of the frozen `docs/harness/schemas/retro.schema.json`; neither present → `⚠ retro schema not found — skipping validation`, never block). Invalid → warn with the path, skip the whole retro (no half-parse).
+Per file: parse the YAML frontmatter; validate against the bundled [`../retro.schema.json`](../retro.schema.json) (mirror of the frozen `docs/harness/schemas/retro.schema.json`; neither present → `⚠ retro schema not found — skipping validation`, never block). Invalid → warn with the path, skip the whole retro (no half-parse).
 
 ### Step 2 — Dedup, version skew
 
@@ -438,4 +444,8 @@ No on-disk index files · no auto-applied diffs · no transient-buffer reads bey
 - Workshop 001 — self-improvement vibe (anti-vibe 7 over-introspection; terse one-line hints)
 - Workshop 005 — universal retro contract (entry schema; D5 kinds; D6 identity; D9 minih round-trip)
 - Workshop 006 — compound folder layout (D4 KISS no-indexes; D6 pruning; D7 minih back-compat)
-- [docs/harness-presentations/](https://github.com/AI-Substrate/harness-engineering/tree/main/docs/harness-presentations) + [harness-foundations/simple-mode.md](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/simple-mode.md) — Rule 2 (encode the fix, not the memory) and Rule 5 (the question pair this skill headlines)
+- [docs/harness-presentations/](https://github.com/AI-Substrate/harness-engineering/tree/main/docs/harness-presentations) + [harness-foundations/simple-mode.md](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/simple-mode.md) — Rule 2 (encode the fix, not the memory) and Rule 5 (the question pair this verb headlines)
+
+## Exit
+
+Print the output-contract summary (✅: what was produced, where, key fields). Then STOP — do not name a next step or route onward. Routing is the router's job.

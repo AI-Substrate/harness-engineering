@@ -6,7 +6,7 @@ This repository is a public-facing engineering-harness first-principles and tuto
 
 This repository is **two things at once** — keep them distinct (the full version is in `docs/project-rules/constitution.md` §1):
 
-1. **The home/source of the harness product.** The harness CLI (`harness/cli/`) and the engineering-harness skills (`skills/eng-harness-setup/`, `skills/eng-harness-loop/`) are *authored here* and *deployed out to other repos* via `npx skills` / `harness skills install`. A change here propagates to every consumer.
+1. **The home/source of the harness product.** The harness CLI (`harness/cli/`) and the engineering-harness skills (`skills/eng-harness-flow/`, `skills/eng-harness-0-harnessability-assessment/`) are *authored here* and *deployed out to other repos* via `npx skills` / `harness skills install`. A change here propagates to every consumer.
 2. **A dogfooding site.** We also *use* the harness on this repo: `.minih.json` wires the loop skills as `minih` agents, and `.harness/extensions/` holds extensions this repo authored for itself.
 
 Other repos are **consumers**: they install the CLI + skills, and *their* harness substrate (`.harness/extensions/`, governance doc, fixtures) lives in *their* tree — not here.
@@ -14,11 +14,11 @@ Other repos are **consumers**: they install the CLI + skills, and *their* harnes
 ### Build mode vs. dogfood mode (do not conflate)
 
 - **Editing** `skills/eng-harness-*/SKILL.md` or `harness/cli/` is **product development** — it changes the harness shipped to every consumer. Treat it as source work, governed by the repo's tests/checks/constitution.
-- **Running** a loop skill (e.g. `eng-harness-1-boot`) is **dogfooding** — it operates on *this* repo only. Friction or improvements found while dogfooding usually belong in the **product source** (the skill or CLI), because that is where the fix helps every consumer, not just this checkout.
+- **Running** the loop (e.g. `/eng-harness-flow`'s boot stage) is **dogfooding** — it operates on *this* repo only. Friction or improvements found while dogfooding usually belong in the **product source** (the skill or CLI), because that is where the fix helps every consumer, not just this checkout.
 
 ### Self-reference caveat (boot / setup)
 
-This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-written in plan 014; boot = the CLI's vitest suite via `just test`) — `eng-harness-1-boot` reads it and reports normally here. The repo's *rules* (constitution, architecture, idioms) still live separately in `docs/project-rules/`. **Do not run `eng-harness-0-adopt` against this repo** — this is the harness's own home, not a target repo; its governance doc is maintained by hand like any other repo's. For a zero-context start **in this repo**, invoke the bin via node directly: `node harness/cli/bin/harness.js instructions` (the agent briefing), then `… help` / `… doctor --json`. Don't lean on `npx` for the repo's *own* bin — `npx --no-install` resolution of the root package's own bin is nondeterministic across npm majors (plan 017; npm 10 ok, npm 11.13 `Permission denied`), and bare `npx harness` fetches an unrelated registry package. In **consumer** repos (harness installed as a dependency) `npx --no-install harness …` is fine — that path is proven by the package-smoke CI job.
+This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-written in plan 014; boot = the CLI's vitest suite via `just test`) — `/eng-harness-flow` boots it and reports normally here. The repo's *rules* (constitution, architecture, idioms) still live separately in `docs/project-rules/`. **Do not run `/eng-harness-flow` adoption against this repo** — this is the harness's own home, not a target repo; its governance doc is maintained by hand like any other repo's. For a zero-context start **in this repo**, invoke the bin via node directly: `node harness/cli/bin/harness.js instructions` (the agent briefing), then `… help` / `… doctor --json`. Don't lean on `npx` for the repo's *own* bin — `npx --no-install` resolution of the root package's own bin is nondeterministic across npm majors (plan 017; npm 10 ok, npm 11.13 `Permission denied`), and bare `npx harness` fetches an unrelated registry package. In **consumer** repos (harness installed as a dependency) `npx --no-install harness …` is fine — that path is proven by the package-smoke CI job.
 
 ## Repo framing
 

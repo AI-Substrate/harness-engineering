@@ -1,14 +1,22 @@
----
-name: eng-harness-0-adopt
-description: Guide a repo through adopting the engineering harness — make the CLI available (an ambient global tool, not a repo dependency), wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `boot`. A lean flow that orchestrates other skills — it checks for / globally installs the harness CLI, runs eng-harness-0-harnessability-assessment when no report exists yet, records the injection map (where the repo's extant dev/SDD flow will call /eng-harness-flow, so the harness gets used instead of disappearing on a cold agent start), then stands up a basic `boot` extension via eng-harness-0-add-extension. The only repo artifacts are `.harness/` substrate and AGENTS.md edits; the CLI itself is never committed. It generates no artifacts of its own; the CLI (including `harness init`) owns the deterministic substrate.
----
-# eng-harness-0-adopt
+# adopt
 
-Walk a repo through **adopting** the engineering harness — the moment it decides to make its **deterministic layer** a first-class thing. Adoption wraps what already exists (build / test / run, as-is), weaves the loop into the repo's extant dev flow, and leaves behind the one thing every engineering task starts from: a **basic `boot`**. This is hand-held, not silent: every step that touches the user's repo is proposed first.
+> Sub-skill — a harness-blind verb module. Knows only its own domain work
+> (the `harness` CLI, `.harness/` substrate, the governance doc's injection
+> map, the user's repo surfaces). No sibling slugs, no flow position, no
+> lifecycle-hook self-reference, no routing — sibling protocols are reached
+> only through the declared **Delegates** line. Composition is the router's job.
 
-This skill is a **flow**, not a generator. It makes the harness CLI available (an ambient tool, installed **globally** — never a repo dependency), then **orchestrates other skills** — `eng-harness-0-harnessability-assessment` to size up the repo, and `eng-harness-0-add-extension` to author the first extension. It **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (`harness init` stamps the governance doc), not re-generated here.
+**Verb**: adopt
+**Purpose**: Guide a repo through **adopting** the engineering harness — make the CLI available (an ambient global tool, never a repo dependency), wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `boot`. A **flow that orchestrates**, not a generator: hand-held (every repo-touching step is proposed first), and safe to re-run (detects what exists, fills only the gap).
+**Consumes**: repo signals (is the CLI available? is there a harnessability report? what is the extant dev/SDD flow?). When present, the harnessability report's recommendations + its `engineering_flows[]` inventory.
+**Flags**: none — a hand-held conversational flow.
+**Produces**: **no artifacts of its own.** It drives `harness init` (which stamps the governance skeleton), records the `## Injection map` in the governance doc, and stands up a basic `boot` extension. The only repo artifacts left behind are `.harness/` substrate and (with consent) `AGENTS.md` edits; the CLI itself is never committed.
+**Side effects**: global CLI install (only if missing); `harness init`; with per-file consent, weaves router calls into the user's flow surfaces and fills the governance doc's `## Injection map`.
+**Delegates**: `assess` — harnessability survey (sizes up the repo, emits recommendations); `add-extension` — boot authoring (scaffolds + fills the first extension). Resolved via the Registry; this verb calls them, never reimplements them.
 
 > **The agent harness drives. The engineering harness proves.**
+
+Adoption wraps what already exists (build / test / run, as-is), weaves the loop into the repo's extant dev flow, and leaves behind the one thing every engineering task starts from: a **basic `boot`**. This verb is a flow, not a generator — it **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (`harness init` stamps the governance doc), not re-generated here.
 
 ## The flow
 
@@ -18,15 +26,15 @@ flowchart TD
     P -- no --> A["1 · Make CLI available<br/>npm i -g + harness init"] --> Ad{harness doctor OK?}
     Ad -- no --> At["Troubleshoot<br/>Node · network/gh · build"] --> A
     Ad -- yes --> C{".harness/reports/harnessability/latest.json<br/>exists?"}
-    C -- no --> D["2 · Run eng-harness-0-harnessability-assessment skill"] --> E
+    C -- no --> D["2 · Delegate → assess<br/>(harnessability survey)"] --> E
     C -- yes --> E["Read assessment recommendations"]
-    E --> I["3 · Record the injection map<br/>extant dev/SDD flow → /eng-harness-flow seams"]
-    I --> F["4 · eng-harness-0-add-extension skill →<br/>basic `boot` (wrap build / run / health)"]
+    E --> I["3 · Record the injection map<br/>extant dev/SDD flow → /eng-harness-flow"]
+    I --> F["4 · Delegate → add-extension →<br/>basic `boot` (wrap build / run / health)"]
     F --> V["Verify · harness doctor / harness boot / harness help"]
-    V --> S["5 · Offer (opt-in) · harness skills install<br/>→ install the eng-harness skills into the user's CLI"]
+    V --> S["5 · Offer (opt-in) · harness skills install<br/>→ install the harness skills into the user's CLI"]
 ```
 
-Four steps to a working boot, plus an opt-in fifth that offers to install the harness's own skills. Each box is a CLI call, a hand-off to another skill, or a recorded decision. The goal is **a working boot, even if basic** — the nucleus a team self-improves from — already wired into the flow the repo actually runs.
+Four steps to a working boot, plus an opt-in fifth that offers to install the harness's own skills. Each box is a CLI call, a hand-off to a delegate, or a recorded decision. The goal is **a working boot, even if basic** — the nucleus a team self-improves from — already wired into the flow the repo actually runs.
 
 ## When to use
 
@@ -43,7 +51,9 @@ Keep it a **basic nucleus**. Do **not** boil the ocean — a thin wrapper over t
 
 ---
 
-## Step 1 — Make the harness CLI available
+## Procedure
+
+### Step 1 — Make the harness CLI available
 
 The harness CLI is an **ambient tool** — like `git`, `node`, or `gh` — **not** a repo dependency. The job here is *check it's available*, and only install (globally) if it's missing. **Nothing about the CLI is committed into the user's repo**: no `package.json` entry, no `.npmrc`, no `node_modules`, no lockfile. The only things this flow leaves in the repo are `.harness/` substrate and (with consent) `AGENTS.md` edits. The CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness`, so a global install needs **no token or `.npmrc`** (Node `>= 22`).
 
@@ -88,7 +98,7 @@ The harness CLI is an **ambient tool** — like `git`, `node`, or `gh` — **not
 
    On a fresh consumer repo, the `cli-build` layer reports **ok (n/a)** — it only runs a real build check inside the CLI's own repo (FX001) — and `.harness/extensions/` is **empty**; both are expected, not failures. `doctor` can still go `status: degraded` for other reasons (a missing tool, a failed extension), so the signal you need is that the CLI **runs and returns an envelope** (exit 0); read `data.layers` / `data.extensions` rather than gating on a top-level `ok`.
 
-### Troubleshooting
+#### Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
@@ -100,11 +110,9 @@ The harness CLI is an **ambient tool** — like `git`, `node`, or `gh` — **not
 
 **Read only the envelope.** When parsing CLI output programmatically, use `--json` (the `status` / `data` / `error` / `next_action` fields) and exit codes — never scrape human prose. This keeps the flow forward-compatible with a future MCP server over the same surfaces.
 
----
+### Step 2 — Assess harnessability (only if not already done)
 
-## Step 2 — Assess harnessability (only if not already done)
-
-Check for an existing assessment report. The canonical sentinel is `latest.json`; treat **any** file under the report directory as an existing report (the AC4 fallback):
+Check for an existing assessment report. The canonical sentinel is `latest.json`; treat **any** file under the report directory as an existing report (the fallback):
 
 ```bash
 # reuse if the sentinel exists, OR any report file is present in the dir:
@@ -113,41 +121,37 @@ test -f .harness/reports/harnessability/latest.json \
 ```
 
 - **Report exists** (sentinel `latest.json`, or any file under `.harness/reports/harnessability/`) → reuse it. Read its recommendations (highest-leverage improvements / remediations) — they tell you what `boot` should prove first for *this* repo. (The producer keeps the root `latest.json` current on every run and stores per-run history under `.harness/reports/harnessability/<ordinal>-<slug>/`; reading the root `latest.json` always gives the newest run.)
-- **No report** → run the **`eng-harness-0-harnessability-assessment`** skill (read-only by default). It scores Operate-Today and Adaptability and emits the recommendations that drive Step 3.
+- **No report** → **delegate to `assess`** (read-only by default). It scores Operate-Today and Adaptability and emits the recommendations that drive Step 3.
 
-> The assessment is a separate skill — invoke it, don't reimplement it. The flow only needs its **recommendations** to choose the first `boot`.
+> The survey is a **delegate** — call it, don't reimplement it. The flow only needs its **recommendations** to choose the first `boot`.
 
----
+### Step 3 — Record the injection map (so the harness gets *used*)
 
-## Step 3 — Record the injection map (so the harness gets *used*)
+An installed harness that nothing calls **disappears on the next cold agent start** — a fresh agent only runs what's in the surfaces it already loads. This step makes usage structural instead of memorial: identify the repo's *extant* development flow, map its natural moments onto the router's lifecycle hooks, weave the calls into surfaces a cold agent loads anyway, and record the result. It runs **before** boot deliberately, so the instant boot works, the harness is already plugged into real work.
 
-An installed harness that nothing calls **disappears on the next cold agent start** — a fresh agent only runs what's in the surfaces it already loads. This step makes usage structural instead of memorial: identify the repo's *extant* development flow, map its natural moments onto the harness's five lifecycle hooks, weave the calls into surfaces a cold agent loads anyway, and record the result. It runs **before** boot deliberately (the router's adoption gate orders S3 · Inject before S4 · Boot) so the instant boot works, the harness is already plugged into real work.
+1. **Identify the extant flow.** Read `engineering_flows[]` from the harnessability report (Step 2) — the survey already inventories SDD-like pipelines (a `plans/` directory, planning/task skills, RFC/ADR conventions) alongside build/test/release/review flows. No report or no entry → take a quick look yourself (skills directories, `docs/plans/`, CI workflow names, CONTRIBUTING).
 
-1. **Identify the extant flow.** Read `engineering_flows[]` from the harnessability report (Step 2) — the assessment already inventories SDD-like pipelines (a `plans/` directory, `/plan-*` or `task-*` skills, RFC/ADR conventions) alongside build/test/release/review flows. No report or no entry → take a quick look yourself (skills directories, `docs/plans/`, CI workflow names, CONTRIBUTING).
+2. **Map flow moments → router lifecycle hooks.** The router exposes its loop as a closed set of neutral lifecycle hooks (plus permanent seam aliases) — that vocabulary is the **router's contract**: read it in [`../00-routing.md` § Lifecycle hooks]; this module does not restate it. Whatever the host flow calls its stages, find where those moments fall onto that set. Not every flow has every moment — map what exists, skip the rest.
 
-2. **Map flow moments → hooks.** The router exposes its loop as five neutral lifecycle hooks: `pre-flight | pre-coding | coding | post-coding | post-flight` (the six `--event` seams — `session-start`/`pre-implement`→`pre-flight`, `post-spec`→`pre-coding`, `task-pause`→`coding`, `phase-end`→`post-coding`, `plan-complete`→`post-flight` — are the permanent alias). Whatever the host flow calls its stages, find where those moments fall. Not every flow has every hook — map what exists, skip the rest.
-
-3. **Propose the map to the user before touching anything.** This is *their* flow — the step is a hand-held conversation, never a silent batch edit. Show the proposed map as a small table (flow moment → hook → the surface that would carry the call), with one line per hook on why it earns its place. Invite pruning: the user reshapes or declines hooks freely, and "none, thanks" is a perfectly good answer.
+3. **Propose the map to the user before touching anything.** This is *their* flow — the step is a hand-held conversation, never a silent batch edit. Show the proposed map as a small table (flow moment → router lifecycle hook → the surface that would carry the call), with one line per row on why it earns its place. Invite pruning: the user reshapes or declines rows freely, and "none, thanks" is a perfectly good answer.
 
 4. **Weave the accepted calls** into surfaces a cold agent already loads — **per surface**: show the exact edit (which file, what gets inserted, where) and get an explicit go-ahead for *each* file before applying it. Never bundle the edits into one approval, and never present the weave as already done:
 
-   | Repo shape | Where the hooks go |
+   | Repo shape | Where the calls go |
    |------------|--------------------|
-   | Flow is already harness-aware (its skills/guides fire `/eng-harness-flow --hook …` — or the `--event` alias — themselves) | Nothing to weave — record "host flow self-fires" and which hooks it covers |
-   | Flow skills / instructions live **in this repo** | Add `/eng-harness-flow --hook <name>` calls at the mapped moments in those files |
-   | No formal flow (plain branch/PR work) | The agent-context surface (`AGENTS.md` or equivalent) carries the cues: `--hook pre-flight` when work begins, `--hook post-coding` before a PR/handoff |
+   | Flow is already harness-aware (its skills/guides fire `/eng-harness-flow` at the lifecycle moments themselves) | Nothing to weave — record "host flow self-fires" and which moments it covers |
+   | Flow skills / instructions live **in this repo** | Add `/eng-harness-flow` calls (each naming the chosen lifecycle hook from § Lifecycle hooks) at the mapped moments in those files |
+   | No formal flow (plain branch/PR work) | The agent-context surface (`AGENTS.md` or equivalent) carries the cues: a router call when work begins, and one before a PR/handoff |
 
    A declined weave is a fine outcome — record what was decided either way (a map row can say `declined` or `manual`).
 
-5. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per lifecycle hook: the hook, where it fires from, and what fires it. This is the durable artifact the router's S3 rung reads; without it, the stateless router re-offers this step on every call. `harness init` stamps the `## Injection map` section as an empty table; this step fills its rows. **If the governance doc isn't present yet** (`harness init` wasn't run, or an older CLI predates it), propose the map in conversation, note it as pending, and move on; never hand-create the governance doc here — run `harness init` to stamp it first. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md).
+5. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per lifecycle hook: the hook, where it fires from, and what fires it. This is the durable artifact the router reads to know injection is done; without it, the stateless router re-offers this step on every call. `harness init` stamps the `## Injection map` section as an empty table; this step fills its rows. **If the governance doc isn't present yet** (`harness init` wasn't run, or an older CLI predates it), propose the map in conversation, note it as pending, and move on; never hand-create the governance doc here — run `harness init` to stamp it first. See [`../governance-doc.md`](../governance-doc.md).
 
 **Ask first, always.** The weave edits the user's own files; nothing in this step is applied without the user having seen the specific change and said yes to it. Keep descriptions of the host flow generic and public-safe (name the flow's *shape*, never private tooling identifiers the repo doesn't already commit).
 
----
+### Step 4 — Stand up a basic `boot`
 
-## Step 4 — Stand up a basic `boot`
-
-Use the assessment's recommendations to pick the **cheapest, most valuable** readiness proof for this repo, then author it with the **`eng-harness-0-add-extension`** skill (which drives `harness new` under the hood — never hand-write the file).
+Use the assessment's recommendations to pick the **cheapest, most valuable** readiness proof for this repo, then author it by **delegating to `add-extension`** (which drives `harness new` under the hood — never hand-write the file).
 
 Pick the boot shape from what the repo actually has:
 
@@ -157,10 +161,10 @@ Pick the boot shape from what the repo actually has:
 | Web app / API with a dev server | start the server + hit a health/smoke route |
 | Library / CLI (no running service) | `build` then `test`, with a printed "ready" note |
 
-Author it via the skill, e.g.:
+Author it via the delegate, e.g.:
 
 ```bash
-# the eng-harness-0-add-extension skill runs, under the hood, something like:
+# the add-extension delegate runs, under the hood, something like:
 harness new boot --wrap "<the readiness command for this repo>"
 ```
 
@@ -171,7 +175,7 @@ Then **fill the handler only as much as needed** to:
 
 Keep it minimal. Resist adding seed/reset/observe/sensors now — capture those as harness friction for later; the loop will encode them when they earn their place.
 
-### Verify
+#### Verify
 
 ```bash
 harness doctor      # boot now shows as a loaded extension
@@ -181,11 +185,9 @@ harness boot        # runs it — inspect the envelope/exit code for the verdict
 
 When `harness boot` returns a usable verdict and re-orients the agent, the nucleus is in place. Stop here — the rest compounds through normal use.
 
----
+### Step 5 — Offer to install the harness skills (opt-in)
 
-## Step 5 — Offer to install the harness skills (opt-in)
-
-The harness ships its own **skills** — the `eng-harness-*` adopt + loop suite (`boot` / `backpressure` / `observe` / `retro`). Once the nucleus is in place, **offer** — never force — to install them into the user's CLI so they can run the loop directly.
+The harness ships its own **skills** (the router front door + the harnessability-assessment peer). Once the nucleus is in place, **offer** — never force — to install them into the user's CLI so they can run the loop directly.
 
 1. **Ask** which CLI target(s) and scope:
    - Targets: `claude-code`, `codex`, `cursor`, `github-copilot`, `opencode`, `pi`.
@@ -203,20 +205,24 @@ The harness ships its own **skills** — the `eng-harness-*` adopt + loop suite 
 
 More about the underlying installer: <https://github.com/vercel-labs/skills>.
 
-> **Offer, don't force.** This step never runs the install unprompted. The CLI command takes explicit `--target`/`--global` flags and never blocks on a prompt — *this skill* is what asks the user, then runs the command with their answers.
+> **Offer, don't force.** This step never runs the install unprompted. The CLI command takes explicit `--target`/`--global` flags and never blocks on a prompt — *this verb* is what asks the user, then runs the command with their answers.
 
 ---
 
-## What this skill does **not** do
+## What this verb does **not** do
 
-- It does **not** generate a governance doc, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or known-difficulties/retro/back-pressure files. Those are deterministic CLI concerns (`harness init` + the CLI), not this skill's output. The governance doc is therefore **stamped by `harness init`, not hand-written by this flow**: this skill runs `harness init` (which seeds the doc empty — L0, `TODO` fields) and, on an older CLI that predates it, the governance rung stays unprovisioned and downstream readers degrade to `UNAVAILABLE` rather than erroring. See [`../../eng-harness-loop/eng-harness-flow/references/governance-doc.md`](../../eng-harness-loop/eng-harness-flow/references/governance-doc.md) for what the doc contains and when it is written. (Step 3 is the one narrow exception: with the user's go-ahead it **updates** the `## Injection map` section of an *existing* governance doc and weaves seam calls into the user's own flow surfaces — it still never *creates* the doc.)
-- It does **not** reimplement `eng-harness-0-harnessability-assessment` or `eng-harness-0-add-extension` — it calls them.
+- It does **not** generate a governance doc, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or known-difficulties/retro/back-pressure files. Those are deterministic CLI concerns (`harness init` + the CLI), not this verb's output. The governance doc is therefore **stamped by `harness init`, not hand-written by this flow**: this verb runs `harness init` (which seeds the doc empty — L0, `TODO` fields) and, on an older CLI that predates it, the governance rung stays unprovisioned and downstream readers degrade to `UNAVAILABLE` rather than erroring. See [`../governance-doc.md`](../governance-doc.md) for what the doc contains and when it is written. (Step 3 is the one narrow exception: with the user's go-ahead it **updates** the `## Injection map` section of an *existing* governance doc and weaves seam calls into the user's own flow surfaces — it still never *creates* the doc.)
+- It does **not** reimplement the `assess` or `add-extension` delegates — it calls them (declared delegation, resolved via the Registry).
 - It does **not** build a comprehensive boot. Basic nucleus only.
 
 ## Guardrails
 
-- **Orchestrate, don't generate.** Install and drive the harness; hand off judgement to the sibling skills.
+- **Orchestrate, don't generate.** Install and drive the harness; hand off judgement to the delegates.
 - **Wrap, don't rebuild.** `boot` wraps existing repo commands.
 - **Don't boil the ocean.** A working basic boot is success.
-- **Public-safe.** This skill ships in a public repo — never bake in a private repo name, path, person, or internal codeword. Describe boot shapes generically.
+- **Public-safe.** This verb ships in a public repo — never bake in a private repo name, path, person, or internal codeword. Describe boot shapes generically.
 - **Envelope-only.** Depend on `--json` envelope fields + exit codes, not scraped prose — so a future MCP server reuses the same surfaces.
+
+## Exit
+
+Print the output-contract summary (✅: what was produced, where, key fields). Then STOP — do not name a next step or route onward. Routing is the router's job.

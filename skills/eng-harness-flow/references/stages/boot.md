@@ -1,22 +1,28 @@
----
-name: eng-harness-1-boot
-description: Boot stage of the harness loop (Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve). Validate that the engineering harness is healthy at session start and report its maturity. VALIDATE mode runs the Boot → Interact → Observe health check; STATUS mode gives a quick read-only maturity report. Reads `.harness/engineering-harness.md` (the canonical governance path — the only location). Boot is read-only — it never writes governance or history. Reports `UNAVAILABLE` gracefully when no governance doc and no boot command exist — boot never creates the doc; provisioning it is the `harness init` CLI writer's job (and populating it is the Improve beat's), so a doc may be absent or seeded-empty (no boot command yet) and boot simply reports `UNAVAILABLE`.
----
-# eng-harness-1-boot
+# boot
 
-The **Boot** stage of the harness loop. Run it at session start to confirm the engineering harness is healthy and to report where it sits on the maturity curve. Two modes: `--validate` (run the live Boot → Interact → Observe checks) and `--status` (read-only maturity report).
+> Sub-skill — a harness-blind verb module. Knows only its own domain work
+> (the `harness` CLI, `.harness/`, the governance doc, its verdict). No sibling
+> names, no flow position, no lifecycle-hook self-reference, no routing.
+> Composition is the router's job.
+
+**Verb**: boot
+**Purpose**: Validate that the engineering harness is healthy and report its maturity. `--validate` runs the live Boot → Interact → Observe health check; `--status` gives a quick read-only maturity report. Boot is **read-only** — it never writes governance or history.
+**Consumes**: `.harness/engineering-harness.md` (the canonical governance doc — the only location). Reads: boot command, health check, interaction method, observe method, current maturity snapshot, deterministic signal inventory, evidence paths, declared back-pressure gaps.
+**Flags**: `--validate` (live 3-stage check; default if the governance doc exists) · `--status` (read-only maturity report — no boots, no changes) · (no flags) auto-detect: validate if the doc exists, else report `UNAVAILABLE`.
+**Produces**: a boot verdict (`HEALTHY` / `SLOW` / `UNHEALTHY` / `UNAVAILABLE`) + a signal-readiness summary + a maturity reading. No file writes.
+**Side effects**: none — boot reads; it never creates `.harness/engineering-harness.md`, `docs/harness/`, command maps, fixtures, or CLI scripts.
 
 > **The harness IS the product.** Development infrastructure — CLI tools, build scripts, test harnesses, `just`/`make` recipes, seed scripts, environment setup, plus the agent-facing Boot/Interact/Observe loop on top — is not scaffolding. It is the first-class product of engineering work. Boot exists because if a brand-new agent session can't reach a healthy, observable running system in 30-60 seconds using only the governance doc, that is the most important thing to fix before any feature work. Every "no" here is harness work to do.
 
-**Engineering harness governance**: `.harness/engineering-harness.md` — the canonical and ONLY governance location (the legacy fallback chain is retired). This skill never *creates* the governance doc; provisioning it is the `harness init` CLI writer's job — it stamps the skeleton, seeded empty (L0, `TODO` fields). If the doc is absent, boot degrades gracefully (reports `UNAVAILABLE`) rather than blocking the session. See [`../eng-harness-flow/references/governance-doc.md`](../eng-harness-flow/references/governance-doc.md) for what the governance doc contains and when it is written.
+**Engineering harness governance**: `.harness/engineering-harness.md` — the canonical and ONLY governance location (the legacy fallback chain is retired). This module never *creates* the governance doc; provisioning it is the `harness init` CLI writer's job — it stamps the skeleton, seeded empty (L0, `TODO` fields). If the doc is absent, boot degrades gracefully (reports `UNAVAILABLE`) rather than blocking the session. See [`../governance-doc.md`](../governance-doc.md) for what the governance doc contains and when it is written.
 
-**Layering**: the agent-facing Boot/Interact/Observe loop sits **on top of** the engineering substrate (the project's `justfile`/`Makefile`/`package.json scripts.dev` boot command, test runner, etc.). The Boot command the governance doc records IS the engineering harness substrate. If no substrate exists, the verdict is `UNAVAILABLE` — Boot can't work without something to boot.
+**Layering**: the agent-facing Boot/Interact/Observe loop sits **on top of** the engineering substrate (the project's `justfile`/`Makefile`/`package.json scripts.dev` boot command, test runner, etc.). The boot command the governance doc records IS the engineering harness substrate. If no substrate exists, the verdict is `UNAVAILABLE` — boot can't work without something to boot.
 
-**Signal readiness**: Boot reports more than "can the process start?" It also checks whether the harness exposes enough deterministic signals for a human or agent to prove behavior without inference: runtime inspectability, smoke paths, architecture/static checks, security/dependency/schema checks, evidence paths, and known back-pressure gaps. Missing signals are improvement candidates, not blockers or scores.
+**Signal readiness**: boot reports more than "can the process start?" It also checks whether the harness exposes enough deterministic signals for a human or agent to prove behavior without inference: runtime inspectability, smoke paths, architecture/static checks, security/dependency/schema checks, evidence paths, and known back-pressure gaps. Missing signals are improvement candidates, not blockers or scores.
 
 ---
 
-## Input
+## Procedure
 
 ```
 $ARGUMENTS
@@ -26,9 +32,7 @@ $ARGUMENTS
 # (no flags)   Auto-detect: VALIDATE if governance doc exists, else report UNAVAILABLE
 ```
 
----
-
-## Step 0: Self-brief from the harness CLI (agent instructions)
+### Step 0: Self-brief from the harness CLI (agent instructions)
 
 If the repo has the harness CLI installed, brief yourself BEFORE validating:
 
@@ -36,13 +40,9 @@ If the repo has the harness CLI installed, brief yourself BEFORE validating:
 npx harness instructions --json
 ```
 
-Read the core agent briefing it returns (envelope contract, role split,
-discovery loop), then for every harness verb you expect to use this session,
-read its briefing too: `npx harness instructions <verb>`. The
-`verbs_with_instructions[]` field tells you which briefings exist. If the repo
-has no harness CLI, skip this step silently — it is an enrichment, not a gate.
+Read the core agent briefing it returns (envelope contract, role split, discovery loop), then for every harness verb you expect to use this session, read its briefing too: `npx harness instructions <verb>`. The `verbs_with_instructions[]` field tells you which briefings exist. If the repo has no harness CLI, skip this step silently — it is an enrichment, not a gate.
 
-## Step 0b: Read the governance doc (canonical path)
+### Step 0b: Read the governance doc (canonical path)
 
 ```
 Check governance file — ONE location, no fallbacks:
@@ -53,24 +53,22 @@ Mode resolution:
   ├── EXISTS + --status         → STATUS mode (read-only report)
   └── MISSING                   → report UNAVAILABLE gracefully (no governance doc to validate;
                                    provisioning it is the
-                                   `harness init` CLI writer, not this skill — run `npx harness init`)
+                                   `harness init` CLI writer, not this module — run `npx harness init`)
 ```
 
----
+### VALIDATE mode
 
-## VALIDATE Mode
-
-### Step 1: Read the engineering harness governance doc
+#### Step 1: Read the engineering harness governance doc
 
 Read the governance doc at `.harness/engineering-harness.md` (the only location — Step 0b). Parse: boot command, health check, interaction method, observe method, current maturity level, deterministic signal inventory, evidence paths, and any declared back-pressure gaps.
 
-If the doc is missing or unparseable → report `UNAVAILABLE` (verdict table below). Provisioning the governance doc is the `harness init` CLI writer's job, not this skill — so boot does not block the session; it notes the harness is not yet provisioned (run `npx harness init` to stamp the doc) and proceeds.
+If the doc is missing or unparseable → report `UNAVAILABLE` (verdict table below). Provisioning the governance doc is the `harness init` CLI writer's job, not this module — so boot does not block the session; it notes the harness is not yet provisioned (run `npx harness init` to stamp the doc) and proceeds.
 
 If the governance doc exists but omits signal-readiness sections, continue normally and report those dimensions as "not declared". Do not scaffold or rewrite the doc just to add them.
 
-### Step 2: Execute 3-Stage Validation
+#### Step 2: Execute 3-stage validation
 
-Run checks using bash tool:
+Run checks using the bash tool:
 
 **Stage 1: Boot Check** (5s if running, 60s cold boot)
 ```
@@ -93,7 +91,7 @@ Run checks using bash tool:
    └── Empty or failed → ❌
 ```
 
-### Step 3: Classify Verdict
+#### Step 3: Classify verdict
 
 | Verdict | Criteria |
 |---------|----------|
@@ -102,7 +100,7 @@ Run checks using bash tool:
 | **❌ UNHEALTHY** | Any check fails |
 | **🔴 UNAVAILABLE** | No governance doc at `.harness/engineering-harness.md` and no boot command |
 
-### Step 4: Read signal/back-pressure readiness
+#### Step 4: Read signal/back-pressure readiness
 
 Build a short signal-readiness summary from the governance doc and observed evidence. Use plain categories; do not invent a numeric score or threshold:
 
@@ -115,11 +113,11 @@ Build a short signal-readiness summary from the governance doc and observed evid
 | Evidence paths | Screenshots, logs, traces, snapshots, artifacts, or command output locations are discoverable. | present / missing / not declared |
 | Back-pressure gaps | The doc names behaviors that still rely on inference or human eyeballing. | list / none declared |
 
-Treat absent dimensions as harness-improvement signals for Observe/Retro. They do not change `HEALTHY` to `UNHEALTHY` unless the actual Boot, Interact, or Observe checks fail.
+Treat absent dimensions as harness-improvement signals. They do not change `HEALTHY` to `UNHEALTHY` unless the actual Boot, Interact, or Observe checks fail.
 
-### Step 5: Report
+#### Step 5: Report
 
-Boot is **read-only**: it reports the current maturity it *read* from the governance doc — it does **not** write governance or history. (Provisioning happens at inception; the body + maturity snapshot change only at the Improve beat — see [`../eng-harness-flow/references/governance-doc.md`](../eng-harness-flow/references/governance-doc.md).)
+Boot is **read-only**: it reports the current maturity it *read* from the governance doc — it does **not** write governance or history. (Provisioning happens at inception; the body + maturity snapshot change only when an improvement is encoded — see [`../governance-doc.md`](../governance-doc.md).)
 
 (If the verdict is `UNAVAILABLE`, there is no governance doc — report the gap.)
 
@@ -139,34 +137,32 @@ Report:
   Missing:   [list unchecked items]
 ```
 
----
-
-## STATUS Mode
+### STATUS mode
 
 Quick read-only report — no validation, no changes.
 
 Read the governance doc at `.harness/engineering-harness.md` and report: project type, maturity level (the current snapshot in the doc), and checklist completion. If `harness-change` records exist, the most recent one is the last *trajectory* change; boot does not itself track a "last validation date" (it writes nothing), so report that only if a `harness-change` record supplies it, otherwise omit it. No harness boots or health checks. If the doc is absent → report `UNAVAILABLE`.
 
----
+### Measure compounding value
 
-## Measure compounding value
+> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level boot reports IS the dashboard reading. If a later session boots faster, cleaner, or at a higher maturity level than an earlier one because the previous session encoded what it learned, that is data proving the loop is closing. The `harness-change` record ledger — one record **per encoded improvement**, written when a harness change actually ships, **not** per session/boot — is the trajectory; a maturity level that climbs (or a boot time that shrinks) across those records is the compounding value made visible. Boot only *reads* this trajectory; it never writes to it. A flat or regressing trajectory is a signal that observed friction is not getting encoded — surface it for curation.
 
-> **Measure.** Note what each session encodes — not for estimates, for evidence. The maturity level Boot reports IS the dashboard reading. If Session N+1 boots faster, cleaner, or at a higher maturity level than Session N because the previous session encoded what it learned, that is data proving the loop is closing. The `harness-change` record ledger — one record **per encoded improvement** (the Improve beat), written when a harness change actually ships, **not** per session/boot — is the trajectory; a maturity level that climbs (or a boot time that shrinks) across those records is the compounding value made visible. Boot only *reads* this trajectory; it never writes to it. A flat or regressing trajectory is a signal that observed friction is not getting encoded — check the retro ledger (`eng-harness-4-retro --harvest`).
+### Maturity model (reference)
 
----
+The canonical maturity ladder is the **nucleus / self-improving** ladder — the same one `harness init` seeds into the governance doc at inception (maturity L0). Boot reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc. The single canonical **L0–L4 ladder** (and how to assess which rung holds) is a **shared convention** — pull it from [`../00-routing.md` § Shared conventions](../00-routing.md), which points to [`../maturity-assessment.md`](../maturity-assessment.md). Boot does not restate it.
 
-## Maturity model (reference)
-
-The canonical maturity ladder is the **nucleus / self-improving** ladder — the same one `harness init` seeds into the governance doc at inception (maturity L0). Boot reports the level that is *actually working* (not aspirational), reading the current snapshot from the governance doc. The single canonical **L0–L4 ladder** (and how to assess which rung holds) now lives in one place — see [`../eng-harness-flow/references/maturity-assessment.md`](../eng-harness-flow/references/maturity-assessment.md). Boot does not restate it.
-
-### Agent-harness capability axis (separate from maturity)
+#### Agent-harness capability axis (separate from maturity)
 
 This is a **capability axis**, not the maturity ladder — it describes what the agent-facing Boot → Interact → Observe layer can do, independent of where the engineering harness sits on the nucleus ladder above. It is deliberately **unnumbered** so it never collides with the L0–L4 maturity levels: a bare "L2" always means maturity, never capability. Useful when reporting how richly an agent can drive and observe the running system, roughly progressing:
 
 **no interaction** (agent writes code, human tests) → **manual boot + API** (human starts the stack, agent sends requests) → **auto boot + API** (agent starts the stack, health check, API interaction) → **full interaction + evidence** (agent boots, drives UI/CLI, captures screenshots) → **self-healing** (auto-recovery from stale processes, auth expiry).
 
-## What Boot does NOT do
+### What boot does NOT do
 
 - **No setup or scaffolding**. It never creates `.harness/engineering-harness.md`, `docs/harness/`, command maps, fixtures, or harness CLI scripts. Those are provisioned by the `harness init` CLI writer, not by boot.
 - **No gates, scores, or thresholds for back-pressure**. Signal-readiness gaps are advisory improvement candidates. Boot only fails when the live Boot, Interact, or Observe checks fail.
 - **No product-specific sensor implementation**. It reports whether sensors are present or missing; it does not invent downstream project checks.
+
+## Exit
+
+Print the output-contract summary (✅: what was produced, where, key fields). Then STOP — do not name a next step or route onward. Routing is the router's job.

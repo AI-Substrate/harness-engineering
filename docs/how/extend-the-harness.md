@@ -1,7 +1,7 @@
 # Extend the harness
 
 How to add a new `harness <verb>` command to your repo — the fast path
-(`harness new`) and the guided path (the `eng-harness-0-add-extension` skill).
+(`harness new`) and the guided path (the `add-extension` verb, reached via `/eng-harness-flow`).
 
 > **Where docs live (for now):** user guides live under `docs/how/`. Documentation
 > is planned to become a first-class, CLI-surfaced concept later; this guide is
@@ -177,13 +177,14 @@ by hand.
 
 ---
 
-## Guided path: the `eng-harness-0-add-extension` skill
+## Guided path: the `add-extension` verb (`/eng-harness-flow`)
 
-If you're working with an agent, the **`eng-harness-0-add-extension` skill** does the whole
+If you're working with an agent, the **`add-extension` verb** — reached through the
+`/eng-harness-flow` router — does the whole
 flow for you: it reuses any intent already gathered (a spec/plan/workshop or the
 conversation), runs `harness new`, fills the handler AND the briefing, and
 verifies. It only asks when something is genuinely unclear. See
-[`skills/eng-harness-setup/eng-harness-0-add-extension/`](../../skills/eng-harness-setup/eng-harness-0-add-extension/).
+[`skills/eng-harness-flow/references/stages/add-extension.md`](../../skills/eng-harness-flow/references/stages/add-extension.md).
 
 ---
 
