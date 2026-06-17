@@ -113,7 +113,7 @@ The router decides purely from signals it can **read** (no state of its own). Th
 The skill works with **no** arguments (full auto-detect), but a parent driving its own flow can **pin** position so detection is never ambiguous.
 
 ```
-/eng-harness-flow [at=<stage>] [--event <seam>] [--plan-dir <path>] [--spec <path>]
+/eng-harness-flow [--hook <name>] [at=<stage>] [--event <seam>] [--plan-dir <path>] [--spec <path>]
                   [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json]
 
 at=auto            (default) detect from signals A–J
@@ -126,8 +126,13 @@ at=retro-drain     force eng-harness-4-retro --drain (phase/session end)
 at=retro-harvest   force eng-harness-4-retro --harvest (plan complete)
 at=improve         route a chosen improvement (retro [e]ncode / add-extension / fix-plan)
 
+--hook <name>      pre-flight | pre-coding | coding | post-coding | post-flight
+                   the PRIMARY invocation — names one of the five neutral lifecycle
+                   hooks directly (§ Lifecycle hooks)
 --event <seam>     session-start | post-spec | pre-implement | task-pause |
-                   phase-end | plan-complete   (a higher-level alias for at=)
+                   phase-end | plan-complete
+                   a permanent, transparent ALIAS for --hook (maps per § Lifecycle
+                   hooks); kept zero-break for every existing call site — never deprecated
 --plan-dir <path>  pin the plan the loop stage refers to (disambiguates >1 plan)
 --spec <path>      pin the spec for backpressure scoping
 --phase <id>       pin the phase for boot/retro
@@ -136,7 +141,7 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 --json             return the routing decision as a machine-readable envelope
 ```
 
-- **`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the adoption gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
+- **`--hook`/`at=`/`--event` is a hint, not a command.** The router *validates the precondition* (the adoption gate + the conflict matrix below). `at=boot` on a repo with no governance doc politely **redirects** to provisioning and says why; it never blindly runs the named stage when signals contradict it.
 - **Observe needs a payload to do anything.** In-flight capture is a *silent CLI producer that logs one entry per call* — `harness observe "<what>" --kind <kind>` (the merged `eng-harness-4-retro` skill carries the capture judgment). So `at=observe` with no payload is **guidance only** ("observe fires silently — here's how friction gets logged"); to actually record, the parent passes the entry fields and the router runs the capture command silently.
 - **Optional offers don't self-suppress.** Because the router is stateless, a skipped optional (scout, an offered backpressure) is *re-offered next call* unless the parent sets `--prompt-optional=false` or the child artifact now exists. The router treats only **child artifacts** as durable completion — never its own memory.
 - **`--repo` is reserved for v2.** Multi-repo execution is documented but not implemented in v1; the router operates on `cwd`.
