@@ -76,7 +76,8 @@
 | T002 engine extract | ✅ | e6db6d1 | flat home + 00-routing.md + destination map; contract relocated verbatim |
 | T003 coach extract | ✅ | 08e907d | references/coach.md — rail (3 forms) + Orient→Flag→Insight→Suggest→Invite + why-table + Flag beat + tone; voice centralised |
 | T004 modules batch 1 | ✅ | 4b8df48 | boot.md / backpressure.md / retro.md stamped from the template, de-leaked (loop-seq, /plan-2d, plan-* names, eng-harness-* slugs, old self-refs scrubbed); CLI invocations + artifact paths verbatim; retro.schema.json moved to references/; preliminary L1 grep CLEAN |
-| T005 modules batch 2 | ✅ | (this) | adopt.md (delegating verb) + add-extension.md; declared delegation; gate-order graph-owned; hook vocabulary delegated; full per-pattern L1 grep CLEAN across all 5 modules |
+| T005 modules batch 2 | ✅ | b572247 | adopt.md (delegating verb) + add-extension.md; declared delegation; gate-order graph-owned; hook vocabulary delegated; full per-pattern L1 grep CLEAN across all 5 modules |
+| T006 thin dispatch | ✅ | (this) | SKILL.md rewritten — **88 lines** (≤~150); frontmatter (name + activation description) preserved VERBATIM; Registry + Command grammar + stateless invariants + progressive-disclosure rule + --help; contract detail points to 00-routing.md. **Contract JSON blocks (--json envelope + --hooks manifest) BYTE-IDENTICAL vs pre-tag — 3362 bytes each.** Zero rail-glyph (`◆◐◇↺`) prose; the 3 "narration"-word grep hits are pointers to coach.md, not voice content. |
 
 ## T005 — per-module elision audit (done-when)
 
