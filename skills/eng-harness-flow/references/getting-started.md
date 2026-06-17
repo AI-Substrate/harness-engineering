@@ -1,6 +1,6 @@
 # The Harness Loop — Getting Started
 
-A visual guide to the **engineering harness** and the loop it operates. The harness ships as **two public skills**: `eng-harness-flow` — the stateless front-door router (this skill) — and `eng-harness-0-harnessability-assessment` — a standalone "size up my repo" peer. The entry point is almost always **`/eng-harness-flow`**: it works out where your repo sits and hands back the one right next command, loading exactly one **verb module** (`references/stages/<verb>.md`) to do it. Everything else chains from there.
+A visual guide to the **engineering harness** and the loop it operates. The harness ships as **two public skills**: `eng-harness-flow` — the stateless front-door router (this skill) — and `eng-harness-0-harnessability-assessment` — a standalone "size up my repo" peer. The entry point is almost always **`/eng-harness-flow`**: it works out where your repo sits and hands back the one right next command — for most routes by loading exactly one **verb module** (`references/stages/<verb>.md`), and for the two exceptions by handing off to the assessment peer skill (`assess`) or the `harness observe` CLI verb (`coding`). Everything else chains from there.
 
 > Repo reference: the router + its verb modules live at `skills/eng-harness-flow/` and the kept-public assessment peer at `skills/eng-harness-0-harnessability-assessment/` in [`AI-Substrate/harness-engineering`](https://github.com/AI-Substrate/harness-engineering). Full skill matrix: `skills/README.md`. Zero-context consumer-agent onboarding: `AGENTS_README.md`. CLI details: `harness/cli/README.md` (or in-CLI via `harness docs`).
 
@@ -198,7 +198,7 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 
 | Command | What it does | Produces |
 |---|---|---|
-| `/eng-harness-flow` | **Front door** — stateless router; host flows pin a lifecycle hook (`--hook pre-flight\|pre-coding\|coding\|post-coding\|post-flight`, with `--event` as an accepted alias); re-derives position from signals A–J and routes one next step, loading one verb module | nothing of its own (a routing decision; `--json` envelope for machine callers) |
+| `/eng-harness-flow` | **Front door** — stateless router; host flows pin a lifecycle hook (`--hook pre-flight\|pre-coding\|coding\|post-coding\|post-flight`, with `--event` as an accepted alias); re-derives position from signals A–J and routes one next step — usually loading one verb module (or, for two routes, handing off to the assessment peer / the `harness observe` CLI verb) | nothing of its own (a routing decision; `--json` envelope for machine callers) |
 | `adopt` verb | The adoption flow: install CLI → scout → inject → stand up `boot` (delegates: assess, add-extension) | installed CLI; orchestrates the rungs |
 | `/eng-harness-0-harnessability-assessment` | The public peer — size up the repo: evidence vs inference vs unknowns | `.harness/reports/harnessability/latest.{md,json}` |
 | `add-extension` verb | Guided authoring of a new `harness <verb>` (incl. `boot` at S4) | `.harness/extensions/<name>/` (entry + `instructions.md`) |

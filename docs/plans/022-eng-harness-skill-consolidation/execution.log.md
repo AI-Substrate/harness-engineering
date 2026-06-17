@@ -80,7 +80,7 @@
 | T006 thin dispatch | ✅ | a5fca0d | SKILL.md rewritten — **88 lines** (≤~150); frontmatter (name + activation description) preserved VERBATIM; Registry + Command grammar + stateless invariants + progressive-disclosure rule + --help; contract detail points to 00-routing.md. **Contract JSON blocks (--json envelope + --hooks manifest) BYTE-IDENTICAL vs pre-tag — 3362 bytes each.** Zero rail-glyph (`◆◐◇↺`) prose; the 3 "narration"-word grep hits are pointers to coach.md, not voice content. |
 | T007 bundled refs | ✅ | 1167a89 | getting-started.md fully rewritten to the 2-skill surface (router + verbs/modules + kept peer); retired-slug refs scrubbed from governance-doc.md (×4) + maturity-assessment.md (×1) + coach.md Suggest example. **Zero of the 5 retired slugs across the whole consolidated skill**; bundle complete (12 files); modules still L1-clean; kept-peer slug retained intentionally in SKILL.md/00-routing.md/getting-started/governance-doc. |
 | T008 deletion + peer move | ✅ | 34078f7 | `git mv` peer → `skills/eng-harness-0-harnessability-assessment/` (8 templates + AUTHORING + README intact); `git rm -r` the 5 absorbed child folders; removed empty `eng-harness-loop/` + `eng-harness-setup/` grouping dirs. **`skills/` now = exactly `eng-harness-flow/` + `eng-harness-0-harnessability-assessment/` + README.md.** Restore path = the T001 tag. |
-| T009 catalog sweep | 🔶 in progress | (this) | Pre-audit done; test-path fix + INSTALL.md done — see resume note below |
+| T009 catalog sweep | ✅ | (this) | Full sweep done — see T009 completion below; all in-scope live surfaces clean of retired slugs (only intentional rename-teaching notes remain); docs bundle regen'd; 639/639 green; both companion findings resolved |
 
 ---
 
@@ -107,6 +107,35 @@
 **OUT OF SCOPE / DEFERRED (per plan Non-Goals + domain "Boundary Excludes" — document, do NOT edit in this plan):** `harness/cli/**` source comments + `contract.ts` rename map + `skills.test.ts` fixtures (CLI untouched); `.harness/extensions/validate-harness-flow|validate-harnessability/*.ts` + `instructions.md` (dogfood verbs); `.minih.json` + `agents/*/prompt.md` (minih/installer infra) — these still reference deleted `skills/eng-harness-setup` / `-loop` paths + old slugs and will need a **follow-up "dogfood + CLI slug realignment" plan**; they do NOT break `just test`. `CHANGELOG.md` + `.harness/records/**` are history — never rewritten.
 
 **AFTER T009**: T010 structural proof (L1 grep + contract diff + `wc -l` + per-module review + destination-map completeness), T011 deploy+tidy (`just install-skills-global` / `harness skills update` prune), T012 behavioural drive (`/eng-harness-flow --hook pre-flight --json`, `--hooks --json`, one-module-per-route), T013 phase-end seam + companion debrief.
+
+## T009 — catalog sweep (completion)
+
+Every in-scope live catalog surface rewritten to the 2-skill / verb-module surface:
+
+| Surface | Edit |
+|---|---|
+| `INSTALL.md` | (prior checkpoint) intro + table → 2 skills; `-s eng-harness-0-adopt` → `-s eng-harness-flow` |
+| `skills/README.md` | full rewrite — 2-skill intro + Install (single-skill examples → `eng-harness-flow` / peer) + **The verbs inside the router** module table + intended-loop/foundation/operating-rules reframed via `/eng-harness-flow`; slug note rewritten (old per-stage names are now modules, reach via the router) |
+| `AGENTS_README.md` | "seven skills, two groups" → **two skills**; collapsed skill table; probe row 0, no-restart `cat` path, getting-started link path, prune example all de-staled |
+| `README.md` (root) | fastest-start (`run /eng-harness-flow`), publish framing (two skills), "What's in this repo" skills row (correct flat paths) |
+| `AGENTS.md` (root) | dual-role skill paths, dogfood example, self-reference caveat — all via `/eng-harness-flow` |
+| `docs/how/extend-the-harness.md` | `eng-harness-0-add-extension` skill → the `add-extension` verb (via `/eng-harness-flow`); module path link |
+| peer `SKILL.md` | L104 + L869 `eng-harness-0-adopt` flow → adoption flow (`/eng-harness-flow`) |
+
+**Forced fix (prior checkpoint, carried)**: `retro-template.test.ts` `SCHEMA_PATH` → `skills/eng-harness-flow/references/retro.schema.json` (path-follow from the T004 schema move).
+
+**Docs bundle**: `npm run gen:docs` regenerated `harness/cli/src/services/docs/docs-content.ts` (2 bundled sources touched — `agents-readme`, `extend-the-harness`); `npm run build` rebuilt dist so `docs.test.ts` (dist↔source parity) passes. `just test` → **639/639 green**.
+
+**Re-grep (in-scope live surfaces)**: zero *stale* retired-slug references. Two intentional retentions remain and are correct: `skills/README.md` slug-note + `AGENTS_README.md` prune example — both must name old slugs to *teach the rename* (mirrors the-flow's alias table). OUT-OF-SCOPE surfaces (`harness/cli/**`, `.harness/extensions/**`, `.minih.json`, `agents/**`) untouched per plan Non-Goals — deferred to a "dogfood + CLI slug realignment" follow-up.
+
+### Companion findings (RUN_ID 2026-06-17T06-15-38-151Z-f95d) — both resolved
+
+The live companion reviewed T002–T008 and raised **two MEDIUM** issues; both addressed before this commit:
+
+1. **T002 — "verbatim public-contract proof not fully met."** Re-verified rigorously: **all four machine-contract surfaces are byte-identical** pre-tag↔`00-routing.md` — hook-token table (5 rows), `--event`→`--hook` map (6 rows), `--json` envelope (1018 b), `--hooks` manifest (2304 b). These are exactly what the-flow's `harness-seams.md` mirrors downstream → the hard invariant holds. The only deltas in the Lifecycle-hooks *region* are (a) the **documented** internal-target adaptation (child slugs → `references/stages/*` modules / the `assess` peer / the `harness observe` CLI in the `at=`/P→H *descriptions*) and (b) required framing de-leak ("child-skill"→"child-verb", "Slug resolution"→"Verb/slug resolution", `§ Per-turn UX`→`coach.md`). **Resolution**: the T002 "relocated verbatim" claim is precise about the *contract mechanics* (byte-identical) but the surrounding framing prose was de-leaked **as the plan requires** — not a defect. Finding closed as documentation-precision.
+2. **T007 — getting-started overstated "every route loads a verb module."** Real accuracy gap: `assess` routes to the public peer skill and `coding` to the `harness observe` CLI verb (the doc body already carved these out at L54/85/92/207/215, but the L3 headline + L201 quick-ref did not). **Resolution**: L3 + L201 edited to name the two exceptions. (getting-started.md is not in the docs bundle → no gen:docs needed.)
+
+The recurring `MINIH_PROJECT_ROOT` difficulty is the known/planned minih fix — not re-surfaced here.
 
 ## T005 — per-module elision audit (done-when)
 

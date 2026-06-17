@@ -14,7 +14,7 @@ Check the rows **top-to-bottom**; the **first row whose condition passes** tells
 
 | # | Probe (passes if…) | You are | Go to |
 |---|---|---|---|
-| 0 | The root `package.json` declares `"name": "@ai-substrate/engineering-harness"` (this repo IS the package, not a dependency) | In the harness's own home repo | **Stop** — this file is for consumer repos. Read `AGENTS.md` instead; never run `eng-harness-0-adopt` here. |
+| 0 | The root `package.json` declares `"name": "@ai-substrate/engineering-harness"` (this repo IS the package, not a dependency) | In the harness's own home repo | **Stop** — this file is for consumer repos. Read `AGENTS.md` instead; never run the adopt flow (`/eng-harness-flow` adoption) here. |
 | 1 | `eng-harness-flow` appears in **your own list of invocable skills/commands** (introspect your skill registry — not `harness help`, which lists CLI verbs, not agent skills) | Skilled — ready to go | [Stage 5 — Go](#stage-5--go-enter-the-harness-loop) |
 | 2 | `ls ./.claude/skills ./.agents/skills 2>/dev/null \| grep eng-harness` is non-empty (skill **files** on disk) but row 1 failed | Pre-restart — skills installed but not loaded | [Stage 4 — Restart](#stage-4--restart-load-the-skills) |
 | 3 | `test -f .harness/engineering-harness.md && test -d .harness/extensions/boot` (harness substrate exists; no skills loaded) | Run 2+, unskilled | [Operating an existing harness](#operating-an-existing-harness-run-2) |
@@ -96,17 +96,12 @@ Installing from a branch (pre-release/pinned): add `--branch <ref>` — or write
 
 **Consent note**: if your operator asked you to set up the harness end-to-end (including by handing you this document), that instruction is your go-ahead for a project-local install. If you are pairing interactively with a human, offer first.
 
-What you get — **seven skills, two groups**:
+What you get — **two skills** (the front-door router plus a standalone peer):
 
-| Skill | Group | Purpose |
-|---|---|---|
-| `eng-harness-flow` ⭐ | loop | **The front door** — stateless router; detects where the repo is on the loop and hands back the one right next command. After Stage 4, this is the only skill you need to remember. |
-| `eng-harness-0-adopt` | setup | The adoption flow — install, assess, inject, stand up `boot`, route agents. |
-| `eng-harness-0-harnessability-assessment` | setup | Score the repo's harnessability; map back-pressure surfaces and proof ceilings. |
-| `eng-harness-0-add-extension` | setup | Guided authoring of a new `harness <verb>` extension. |
-| `eng-harness-1-boot` | loop | Boot stage — validate harness health at session start. |
-| `eng-harness-2-backpressure` | loop | Advisory survey of deterministic-sensor coverage for the current scope. |
-| `eng-harness-4-retro` | loop | The friction lifecycle — capture (via `harness observe`), drain, harvest. |
+| Skill | Purpose |
+|---|---|
+| `eng-harness-flow` ⭐ | **The front door** — stateless router; detects where the repo is on the loop and hands back the one right next command. After Stage 4, this is the only skill you need to remember. Adoption (install, assess, inject, stand up `boot`) and every loop stage (boot, backpressure, observe, retro, improve) live inside it as harness-blind modules, loaded one at a time — you never invoke them directly. |
+| `eng-harness-0-harnessability-assessment` | The standalone peer — score the repo's harnessability; map back-pressure surfaces and proof ceilings. The router offers it during adoption; also runnable on its own. |
 
 > Heads-up: your own CLI most likely won't *see* these new skills until your operator reloads it — that's Stage 4, next.
 
@@ -123,7 +118,8 @@ On re-entry, the *Where are you?* table routes you to Stage 5 in one hop.
 **No-restart fallback**: the installed skills are just markdown on disk. You can read them and follow them inline without skill invocation:
 
 ```bash
-cat ./.claude/skills/eng-harness-0-adopt/SKILL.md   # or ./.agents/skills/… per your CLI
+cat ./.claude/skills/eng-harness-flow/SKILL.md   # or ./.agents/skills/… per your CLI
+# then follow it to its adoption module: cat ./.claude/skills/eng-harness-flow/references/stages/adopt.md
 ```
 
 If a SKILL.md proves unreadable or incomplete this way, fall back to the restart script above rather than improvising.
@@ -136,7 +132,7 @@ If a SKILL.md proves unreadable or incomplete this way, fall back to the restart
 
 `/eng-harness-flow` is the front door to the harness loop. It is **stateless**: every time you run it, it re-reads the repo's signals and hands back the ONE right next command — finishing adoption if anything is missing (install → assess → governance → a working `boot`, built last), then cycling the loop (Boot → Backpressure → Observe → Retro → Improve). Run it any number of times, at any point, even after your context is wiped — it never guesses, never blocks, and says why it chose what it chose.
 
-Running it bare (as above) is all a working agent needs — the router figures out the moment for you. A **host flow** driving its own pipeline (an SDD flow like `the-flow`, a CI agent) can instead *name* the moment with one of five neutral lifecycle hooks — `--hook pre-flight | pre-coding | coding | post-coding | post-flight` (`--event` is the permanent alias) — so the router skips detection. Full hook contract: [the loop guide § The hook contract](https://github.com/AI-Substrate/harness-engineering/blob/main/skills/eng-harness-loop/eng-harness-flow/references/getting-started.md#the-hook-contract-for-parent-flows).
+Running it bare (as above) is all a working agent needs — the router figures out the moment for you. A **host flow** driving its own pipeline (an SDD flow like `the-flow`, a CI agent) can instead *name* the moment with one of five neutral lifecycle hooks — `--hook pre-flight | pre-coding | coding | post-coding | post-flight` (`--event` is the permanent alias) — so the router skips detection. Full hook contract: [the loop guide § The hook contract](https://github.com/AI-Substrate/harness-engineering/blob/main/skills/eng-harness-flow/references/getting-started.md#the-hook-contract-for-parent-flows).
 
 Whether the router drives it or you follow the adopt skill inline (Stage 4 fallback), the first-time work has the same shape:
 
@@ -252,7 +248,7 @@ harness skills update --target <your-cli>   # add --global if your skills are in
 # …or fold it into the CLI update in one step:  harness update --target <your-cli> [--global]
 ```
 
-`skills update` does two things the plain installer can't: it **refreshes** every skill to the latest published version (and pulls any newly added ones), then **prunes** skills this harness has since **renamed or removed** — so a rename never leaves a stale twin loading beside its replacement (e.g. an old `harness-1-boot` next to the current `eng-harness-1-boot`). It is a thin wrapper over `npx skills add` + `npx skills remove` and announces both exact commands before running. Run it **after** updating the CLI, since the CLI carries the list of renamed-away slugs to prune. Skills load at session start, so **restart your CLI** afterwards to pick up the changes.
+`skills update` does two things the plain installer can't: it **refreshes** every skill to the latest published version (and pulls any newly added ones), then **prunes** skills this harness has since **renamed or removed** — so a rename never leaves a stale twin loading beside its replacement (e.g. the now-removed per-stage `eng-harness-1-boot` left behind after the loop stages folded into `eng-harness-flow`). It is a thin wrapper over `npx skills add` + `npx skills remove` and announces both exact commands before running. Run it **after** updating the CLI, since the CLI carries the list of renamed-away slugs to prune. Skills load at session start, so **restart your CLI** afterwards to pick up the changes.
 
 > `npx skills` itself has no prune — its `add`/`update` are additive, so without this a renamed skill's old copy lingers forever. That's the gap `skills update` closes.
 

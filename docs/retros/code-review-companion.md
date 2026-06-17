@@ -262,3 +262,13 @@
 > - result: failed
 > - magicWand: (unavailable — run terminated as failed)
 > - stderr (last line): Execution failed: CAPIError: 400 The requested model is not supported. (Request ID: DFA0:1A6931:10F73D9:12CAC61:6A3214D0)
+
+## 2026-06-17T06:56:27.433Z — code-review-companion / 2026-06-17T06-15-38-151Z-f95d
+
+- runId: 2026-06-17T06-15-38-151Z-f95d
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-17T06-15-38-151Z-f95d
+- summary: Reviewed seven commit-boundary requests for plan 022: T002 through T008 of the eng-harness skill consolidation. I found two MEDIUM issues: T002's routing-engine extraction did not meet the stated verbatim public-contract proof despite preserving field/table shape, and T007's getting-started guide overstated that every router path loads a verb module despite the assess peer and coding CLI exceptions. The other reviewed commits preserved their requested contracts, including coach extraction, loop/setup module de-leaking, thin dispatch frontmatter/registry reachability, peer relocation, template count, and the final two-skill tree.
+- **magicWand** (target: coordination): Add an explicit summaryPolicy field to the briefing protocol so an outside actor can choose findings-only or always-summary without conflicting with the companion prompt.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder, not the repository root, during orientation. (workaround: Used git rev-parse --show-toplevel and absolute paths for all project reads.)
+  - [annoying] coordination: The outside brief repeatedly said 'reply only if issues', but the companion working contract required a summary response after every task. (workaround: Followed the companion contract and sent concise zero-finding summaries, while keeping findings as separate messages.)
