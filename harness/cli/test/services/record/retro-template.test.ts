@@ -15,10 +15,7 @@ Test Doc:
 
 /** Path to the frozen schema this template echoes (single source of truth). */
 const SCHEMA_PATH = fileURLToPath(
-  new URL(
-    '../../../../../skills/eng-harness-flow/references/retro.schema.json',
-    import.meta.url,
-  ),
+  new URL('../../../../../skills/eng-harness-flow/references/retro.schema.json', import.meta.url),
 );
 
 /** Extract the `---`-fenced frontmatter block from a markdown template. */
