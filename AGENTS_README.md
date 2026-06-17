@@ -259,7 +259,7 @@ harness skills update --target <your-cli>   # add --global if your skills are in
 - [ ] `harness --help` prints usage (CLI on PATH, installed globally)
 - [ ] `harness doctor --json` → extensions loaded, no convention complaints
 - [ ] `harness boot --json` → an honest envelope from a **real** run (a `degraded`/`unconfigured` status with `next_action` is honest; a fake `ok` is failure)
-- [ ] Harness skills installed **project-local** (both setup and loop groups — all seven)
+- [ ] Harness skills installed **project-local** (both public skills — `eng-harness-flow` + `eng-harness-0-harnessability-assessment`)
 - [ ] `AGENTS.md` carries the harness block (Stage 6)
 - [ ] A retro record exists under `.harness/records/retro/` describing your onboarding — friction, workarounds, and what you'd magic-wand
 - [ ] All of the above committed
