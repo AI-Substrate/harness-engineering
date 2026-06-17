@@ -261,7 +261,7 @@ Pinned by [workshops/002-manifest-shape.md](./workshops/002-manifest-shape.md):
 | 3.1 | Update `getting-started.md`: seam-contract section + quick-reference table → hooks vocabulary; show `--event` as an accepted alias | eng-harness-flow | Docs lead with `--hook`; `--event` noted as alias | AC-01/AC-06 |
 | 3.2 | Update `governance-doc.md` injection-map reference if `--hooks` changes the inject handshake | eng-harness-flow | Inject story consistent with `--hooks` | Per finding (S3 handshake) |
 | 3.3 | Neutrality verification: `grep` confirms no `the-flow` files changed in this repo; only `eng-harness-flow` touched | eng-harness-flow | `the-flow` untouched; AC-07 holds | AC-07 |
-| 3.4 | Closing guards: `wc -l SKILL.md ≤ 347`; run the `validate-harness-flow` extension replay + `harness doctor` | eng-harness-flow | Line guard passes; replay + doctor clean | AC-03 + testing strategy |
+| 3.4 | Closing guards: line-count check **against the accepted Phase-2 budget decision** — Phase 2 surfaced a **+131 overage** (final SKILL.md 478) as an *accepted, documented* decision: the additions are new **public contract** (five-hook vocabulary + discovery manifest + `--help`), not prose bloat (see `tasks/phase-2-hooks-manifest-help/execution.log.md` T003). So **re-baseline AC-03** to the new surface size (and/or offload teaching prose to `getting-started.md` in 3.1), then assert against *that* baseline — **not** a clean ≤ 347. Also run the `validate-harness-flow` extension replay + `harness doctor` | eng-harness-flow | Line guard passes **against the re-baselined/accepted budget** (never a bare ≤ 347); replay + doctor clean | AC-03 + testing strategy |
 | 3.z | **Harness phase-end** — `/eng-harness-flow --hook post-coding --plan-dir docs/plans/021-harness-flow-hooks` | — | Router envelope handled at phase end | _Harness seam_ |
 
 ### Acceptance Coverage Map
@@ -270,7 +270,7 @@ Pinned by [workshops/002-manifest-shape.md](./workshops/002-manifest-shape.md):
 |----|-----------|-------------|
 | AC-01 | 1.1, 1.2, 3.1 | hooks route correctly; docs lead with `--hook` |
 | AC-02 | 2.1 | `--hooks` manifest fixed 5 (Shape A), `coding` silent, additive JSON |
-| AC-03 | 2.2, 2.3, 3.4 | `--help` print-and-stop; line-count ≤ 347 guard |
+| AC-03 | 2.2, 2.3, 3.4 | `--help` print-and-stop; line-count guard **re-baselined** in 3.4 (Phase 2 accepted a +131 overage — new public contract, not bloat; see Phase 2 exec log T003) |
 | AC-04 | — (**deferred to v2** with `--emit-injection` — WS-3) | not a v1 criterion; v2 design in workshops/003 |
 | AC-05 | 1.4 | six `--event` strings still route (alias) |
 | AC-06 | 1.1, 3.1 | mapping correct — incl. `pre-implement → pre-flight`, `task-pause → coding`, `plan-complete → post-flight` |
