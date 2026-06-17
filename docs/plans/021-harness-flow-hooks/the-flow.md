@@ -1,6 +1,6 @@
 # Flight Plan — harness-flow-hooks
 
-**Mode**: Full · **now**: Phase 1 implemented (5 tasks + 2 seams) with live companion review — 2 MEDIUM drift fixed (F001 `f115f15`, F002 dossier superseded), 0 HIGH/CRIT; review superseded. SKILL.md 347→387 · **next**: Phase 2 tasks (`--hooks` manifest + `--help`) — or `/compact` then tasks
+**Mode**: Full · **now**: Phase 2 **implemented** with `--companion` — `--hooks` discovery manifest (full 5×9 JSONC, Shape A) + `--help` synopsis added to SKILL.md; commits 8027ae1 / 25cf0d6 / 014735b + F001 fix d2b0504 + F002/progress 79561cd. Companion F001 (HIGH — manifest dropped the non-inferable `invoke`, incl. `coding`=`harness observe`) + F002 (MEDIUM — persist the budget decision) **both fixed**; run then died mid-verify on an external model 400 (findings captured first; F001 self-verified). ⚠️ AC-03 line guard NOT met → **+131 overage (final 478) surfaced + accepted** as new public contract, carried to Phase 3 3.4 · **next**: Phase 3 (Docs sync + neutrality + guards) — table tasks, then implement (review superseded by the live companion)
 
 ```mermaid
 flowchart TD
@@ -16,8 +16,8 @@ flowchart TD
     research["Research ✓"]:::done
     plan["Plan: spec + impl ✓ (v1.2.0, validated)"]:::done
     p1["Phase 1 · Hook vocab + --hook alias — implemented ✓"]:::done
-    p2["Phase 2 · --hooks manifest + --help"]:::known
-    p3["Phase 3 · Docs sync + guards"]:::known
+    p2["Phase 2 · --hooks manifest + --help — implemented ✓"]:::done
+    p3["Phase 3 · Docs sync + neutrality + guards"]:::known
     pv2["--emit-injection → deferred to v2"]:::assumed
     merge["Merge"]:::known
 
@@ -25,10 +25,14 @@ flowchart TD
     plan --> p1 --> p2 --> p3 --> merge
     plan -.-> pv2
 
-    subgraph crc["🤝 code-review-companion · reviewed every commit (2 MEDIUM fixed, 0 HIGH/CRIT → review superseded)"]
+    subgraph crc["🤝 code-review-companion · Phase 1 (2 MEDIUM fixed, 0 HIGH/CRIT → review superseded)"]
         p1
     end
+    subgraph crc2["🤝 code-review-companion · Phase 2 (1 HIGH + 1 MEDIUM fixed; run died mid-verify on external model 400 → review superseded)"]
+        p2
+    end
     class crc companion
+    class crc2 companion
 
     ws1["WS-1 · execution substrate → skill-first ✓"]:::done
     ws2["WS-2 · manifest shape → Shape A ✓"]:::done
@@ -36,13 +40,16 @@ flowchart TD
     plan -.-> ws1
     plan -.-> ws2
     plan -.-> ws3
-    ws1 -.-> plan
 
-    hb["⚙ pre-flight ✓ (boot: degraded-benign)"]:::harness
-    he1["⚙ post-coding ✓ (phase-end: noop, buffer empty)"]:::harness
+    hb["⚙ pre-flight ✓ P1 (boot: degraded-benign)"]:::harness
+    he1["⚙ post-coding ✓ P1 (phase-end: noop)"]:::harness
+    hb2["⚙ pre-flight ✓ P2 (boot: degraded-benign)"]:::harness
+    he2["⚙ post-coding ✓ P2 (phase-end: noop)"]:::harness
     hh["⚙ post-flight (plan-complete seam)"]:::harness
     hb -.-> p1
     p1 -.-> he1
+    hb2 -.-> p2
+    p2 -.-> he2
     merge -.-> hh
 
     said1>"🗣 prep a flow… research, plan, validation, without stopping; surface workshops"]:::said
@@ -51,6 +58,10 @@ flowchart TD
     said2 -.- p1
     said3>"🗣 implement with companion / try again"]:::said
     said3 -.- p1
+    said4>"🗣 prep next phase then validate skill please"]:::said
+    said4 -.- p2
+    said5>"🗣 implemenet with companion"]:::said
+    said5 -.- p2
 ```
 
 _Legend: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed future) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop (↺) · 🤝 companion (reviews live)._
