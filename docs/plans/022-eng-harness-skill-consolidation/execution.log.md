@@ -74,4 +74,5 @@
 | T000 pre-flight | ✅ | — | HEALTHY (639 tests green) |
 | T001 rollback anchor | ✅ | tag | `pre-eng-harness-consolidation` @ d2ee535 |
 | T002 engine extract | ✅ | e6db6d1 | flat home + 00-routing.md + destination map; contract relocated verbatim |
-| T003 coach extract | ✅ | (this) | references/coach.md — rail (3 forms) + Orient→Flag→Insight→Suggest→Invite + why-table + Flag beat + tone; voice centralised |
+| T003 coach extract | ✅ | 08e907d | references/coach.md — rail (3 forms) + Orient→Flag→Insight→Suggest→Invite + why-table + Flag beat + tone; voice centralised |
+| T004 modules batch 1 | ✅ | (this) | boot.md / backpressure.md / retro.md stamped from the template, de-leaked (loop-seq, /plan-2d, plan-* names, eng-harness-* slugs, old self-refs scrubbed); CLI invocations + artifact paths verbatim; retro.schema.json moved to references/; preliminary L1 grep CLEAN |
