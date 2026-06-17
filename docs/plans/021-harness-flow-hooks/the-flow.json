@@ -7,8 +7,8 @@
   "cursor": "merge",
   "recommended_next": "merge",
   "status": "closed-out",
-  "now": "FLOW CLOSED OUT at user request (2026-06-17, 'work done then, close out the flow please, we will merge after'). v1 FEATURE-COMPLETE: all 3 phases implemented, all v1 ACs discharged (AC-04 -> v2); SKILL.md final surface = 478 (accepted +131 public contract). Review skipped at user direction (P1/P2 companion-reviewed -> superseded; P3 docs-only + validate-v2'd). Phase commits: P1 (8e1b4ed/f53b323/0b853dc/b55bf20 + f115f15) / P2 (8027ae1/25cf0d6/014735b/d2b0504/79561cd) / P3 (a9ae77e) + flight-plan (151e9c1).",
-  "next": "MERGE — DEFERRED TO USER (manual git/PR merge; 'we will merge after'). the-flow did NOT execute it (no PROCEED — nothing irreversible). The post-flight/plan-complete harness seam (harvest + improvement opportunities) fires when they merge, or run it manually via /eng-harness-flow. Re-run `/the-flow 8 merge` for the merge analysis if wanted.",
+  "now": "FLOW CLOSED OUT at user request (2026-06-17), now with an explicit P3 review. v1 FEATURE-COMPLETE: all 3 phases implemented, all v1 ACs discharged (AC-04 -> v2); SKILL.md final surface = 478 (accepted +131 public contract). Reviews: P1/P2 companion-reviewed -> superseded; P3 got an explicit stage-7 review = APPROVE WITH NOTES (no REQUEST_CHANGES; F001 MEDIUM replay-skip ratified as proportionate docs-only deviation; F002 LOW EOF whitespace FIXED 95bda2d). Phase commits: P1 (8e1b4ed..f115f15) / P2 (8027ae1..79561cd) / P3 (a9ae77e) + review/fix (95bda2d) + flight-plan (151e9c1/2fe9334).",
+  "next": "MERGE — DEFERRED TO USER (manual git/PR merge; 'we will merge after'). the-flow did NOT execute it (no PROCEED — nothing irreversible). Review is now clean (APPROVE WITH NOTES). The post-flight/plan-complete harness seam (harvest + improvement opportunities) fires when they merge, or run it manually via /eng-harness-flow. Re-run `/the-flow 8 merge` for the merge analysis if wanted.",
   "agents": [
     { "id": "crc", "kind": "companion", "render": "wrap", "slug": "code-review-companion", "covers": ["p1"],
       "run_id": "2026-06-17T02-18-28-773Z-e8b5", "verdict": "completed",
@@ -102,6 +102,14 @@
       "ran_at": "2026-06-17",
       "note": "Post-coding seam after Phase 3: noop — observe buffer empty (friction logged to the execution-log Discoveries table instead). Dogfoods --hook post-coding (--event phase-end alias).",
       "next": [] },
+
+    { "id": "rev3", "type": "review", "label": "Review (Phase 3)", "status": "done", "branch_of": "p3",
+      "ran_at": "2026-06-17",
+      "user_input": "Review complete: APPROVE WITH NOTES",
+      "command": "/the-flow 7 review --phase \"Phase 3: Docs sync + neutrality + guards\" --plan docs/plans/021-harness-flow-hooks/harness-flow-hooks-plan.md",
+      "note": "Stage-7 review (user-run). Verdict APPROVE WITH NOTES — no REQUEST_CHANGES, no fix tasks; overall coverage confidence 88%, all v1 ACs evidenced. F001 MEDIUM: validate-harness-flow replay skipped -> ratified as proportionate docs-only deviation. F002 LOW: EOF blank line in execution.log.md -> FIXED (95bda2d). Review file committed; _computed.diff gitignored. (Subagent fanout was blocked by a local user-extension parse error; review done in parent session by direct inspection.)",
+      "artifacts": ["tasks/phase-3-docs-sync-neutrality-guards/reviews/review.phase-3-docs-sync-neutrality-guards.md"],
+      "next": ["merge"] },
     { "id": "pv2", "type": "phase", "label": "--emit-injection -> deferred to v2 (WS-3)", "status": "assumed", "branch_of": "plan",
       "note": "Not built in v1; full v2 design in workshops/003-emit-injection-scope.md. AC-04 migrated here.", "next": [] },
 

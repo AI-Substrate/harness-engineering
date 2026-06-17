@@ -1,6 +1,6 @@
 # Flight Plan — harness-flow-hooks
 
-**Mode**: Full · **Status: 🔒 CLOSED-OUT** (2026-06-17, user request) · **now**: ✅ **v1 FEATURE-COMPLETE** — all 3 phases implemented, **all v1 ACs discharged** (AC-04 → v2); SKILL.md final surface = **478** (accepted +131 public contract). Review skipped at user direction (P1/P2 companion-superseded; P3 docs-only + validate-v2'd) · **next**: **MERGE — deferred to the user** (manual git/PR merge; "we will merge after"). the-flow did **not** execute it (no `PROCEED` — nothing irreversible). Re-run `/the-flow 8 merge` for the analysis if wanted; the post-flight harvest fires at merge.
+**Mode**: Full · **Status: 🔒 CLOSED-OUT** (2026-06-17, user request) · **now**: ✅ **v1 FEATURE-COMPLETE** — all 3 phases implemented, **all v1 ACs discharged** (AC-04 → v2); SKILL.md final surface = **478** (accepted +131 public contract). Reviews: P1/P2 companion-superseded; **P3 reviewed → APPROVE WITH NOTES** (no REQUEST_CHANGES; F002 EOF whitespace fixed; F001 replay-skip ratified as proportionate docs-only) · **next**: **MERGE — deferred to the user** (manual git/PR merge; "we will merge after"). the-flow did **not** execute it (no `PROCEED` — nothing irreversible). Re-run `/the-flow 8 merge` for the analysis if wanted; the post-flight harvest fires at merge.
 
 ```mermaid
 flowchart TD
@@ -20,10 +20,13 @@ flowchart TD
     p3["Phase 3 · Docs sync + neutrality + guards — implemented ✓"]:::done
     pv2["--emit-injection → deferred to v2"]:::assumed
     merge["Merge"]:::known
+    rev3["Review P3 ✓ — APPROVE WITH NOTES"]:::done
 
     research --> plan
     plan --> p1 --> p2 --> p3 --> merge
     plan -.-> pv2
+    p3 -.-> rev3
+    rev3 -.-> merge
 
     subgraph crc["🤝 code-review-companion · Phase 1 (2 MEDIUM fixed, 0 HIGH/CRIT → review superseded)"]
         p1
@@ -70,6 +73,8 @@ flowchart TD
     said6 -.- p3
     said7>"🗣 implement it yeah"]:::said
     said7 -.- p3
+    said8>"🗣 Review complete: APPROVE WITH NOTES"]:::said
+    said8 -.- rev3
 ```
 
 _Legend: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed future) · ⬜ assumed (speculative) · 🗣 user input · 🟪 harness loop (↺) · 🤝 companion (reviews live)._
