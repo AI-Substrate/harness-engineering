@@ -141,6 +141,34 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 - **Optional offers don't self-suppress.** Because the router is stateless, a skipped optional (scout, an offered backpressure) is *re-offered next call* unless the parent sets `--prompt-optional=false` or the child artifact now exists. The router treats only **child artifacts** as durable completion — never its own memory.
 - **`--repo` is reserved for v2.** Multi-repo execution is documented but not implemented in v1; the router operates on `cwd`.
 
+### Lifecycle hooks
+
+The router exposes its loop to host flows as a **closed set of five neutral lifecycle hooks** — the stable, stage-neutral vocabulary a host names when it calls the router (`--hook <name>`). The set is **fixed at five** (never grown per-repo) and **stateless** (derived every call, never stored). Each hook names a *moment in the host's lifecycle*, never a child-skill slug.
+
+| Hook | When in the host's lifecycle | Behaviour | What the call drives |
+|---|---|---|---|
+| `pre-flight` | before work starts — session open, or about to implement | fire | boot validation (`harness-boot`) |
+| `pre-coding` | spec settled, before building | fire | backpressure survey |
+| `coding` | mid-build, in flight | **silent** — one capture per call | in-flight capture (`harness observe`) |
+| `post-coding` | a phase / work-unit just ended | fire | per-phase retro drain |
+| `post-flight` | the whole plan / journey is complete | fire | terminal close-out — harvest + present improvements + encode |
+
+**`--event` seam → `--hook` mapping** (the six host seams alias onto the five hooks — `session-start` and `pre-implement` both open onto `pre-flight`):
+
+| `--event` seam | `--hook` |
+|---|---|
+| `session-start` | `pre-flight` |
+| `pre-implement` | `pre-flight` |
+| `post-spec` | `pre-coding` |
+| `task-pause` | `coding` |
+| `phase-end` | `post-coding` |
+| `plan-complete` | `post-flight` |
+
+Two mappings are load-bearing and easy to get wrong:
+
+- **`pre-implement` opens onto `pre-flight`, not `pre-coding`.** It fires the `harness-boot` node — prove the system runs before a line of code — the same boot `session-start` re-runs. (Naming it `pre-coding` would route it to the backpressure survey, which is wrong.)
+- **`phase-end` → `post-coding` and `plan-complete` → `post-flight` are distinct.** Per-phase drain (`post-coding`) and the terminal harvest-and-improve (`post-flight`) are different lifecycle positions; collapsing both onto one hook would bury the **Improve** beat.
+
 ### Slug resolution (avoid version drift)
 
 Like `the-flow`'s alias table, the router maps friendly stage names → the **exact installed slug at call time** and **never appends a guessed version suffix**. The current map:
