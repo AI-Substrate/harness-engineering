@@ -73,4 +73,5 @@
 |------|--------|--------|-------|
 | T000 pre-flight | ✅ | — | HEALTHY (639 tests green) |
 | T001 rollback anchor | ✅ | tag | `pre-eng-harness-consolidation` @ d2ee535 |
-| T002 engine extract | ✅ | (this) | flat home + 00-routing.md + destination map; contract relocated verbatim |
+| T002 engine extract | ✅ | e6db6d1 | flat home + 00-routing.md + destination map; contract relocated verbatim |
+| T003 coach extract | ✅ | (this) | references/coach.md — rail (3 forms) + Orient→Flag→Insight→Suggest→Invite + why-table + Flag beat + tone; voice centralised |
