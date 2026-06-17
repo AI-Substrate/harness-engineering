@@ -126,6 +126,7 @@ Every in-scope live catalog surface rewritten to the 2-skill / verb-module surfa
 | `AGENTS.md` (root) | dual-role skill paths, dogfood example, self-reference caveat — all via `/eng-harness-flow` |
 | `docs/how/extend-the-harness.md` | `eng-harness-0-add-extension` skill → the `add-extension` verb (via `/eng-harness-flow`); module path link |
 | peer `SKILL.md` | L104 + L869 `eng-harness-0-adopt` flow → adoption flow (`/eng-harness-flow`) |
+| peer `AUTHORING.md` + `README.md` | **addendum** — 4 more `eng-harness-0-adopt` refs (AUTHORING §Why, README sentinel + "Where it fits" diagram + bullets) found during the post-push "properly published?" verification (the original peer sweep only checked SKILL.md). Reframed to the adoption flow (`/eng-harness-flow`); redeployed; whole-`skills/`-tree re-sweep now zero. |
 
 **Forced fix (prior checkpoint, carried)**: `retro-template.test.ts` `SCHEMA_PATH` → `skills/eng-harness-flow/references/retro.schema.json` (path-follow from the T004 schema move).
 
