@@ -3,8 +3,9 @@
   "slug": "harness-flow-hooks",
   "plan_dir": "docs/plans/021-harness-flow-hooks",
   "mode": "Full",
-  "current_stage": "awaiting-6",
-  "pending_command": "/the-flow 7 review --phase \"Phase 3: Docs sync + neutrality + guards\" --plan docs/plans/021-harness-flow-hooks/harness-flow-hooks-plan.md",
+  "current_stage": "awaiting-8",
+  "pending_command": "/the-flow 8 merge --plan docs/plans/021-harness-flow-hooks/harness-flow-hooks-plan.md",
+  "closed_out": "2026-06-17 at user request ('work done then, close out the flow please, we will merge after'). v1 FEATURE-COMPLETE: all 3 phases implemented, all v1 ACs discharged (AC-04 deferred to v2). Review skipped at user direction (P1/P2 companion-reviewed; P3 docs-only + validate-v2'd). MERGE DEFERRED TO USER — a manual git/PR merge they will run themselves; the-flow did NOT execute it (no PROCEED, nothing irreversible). The post-flight/plan-complete harness seam (harvest) will fire when they merge, or can be run manually via /eng-harness-flow. Re-run /the-flow anytime to resume the merge analysis.",
   "branch": "021-harness-flow-hooks",
   "workshops_done": "WS-1 (skill-first), WS-2 (manifest Shape A + aliases field), WS-3 (emit-injection deferred to v2 -> v1 = 3 phases; AC-04 migrated). All validated and FOLDED into plan v1.2.0. No open forks.",
   "intent": "Re-map eng-harness-flow to expose its loop as five neutral lifecycle hooks (pre-flight, pre-coding, coding, post-coding, post-flight) for host flows, with --hooks discovery manifest, --hook invocation (aliasing --event), --emit-injection <idiom> host snippets (v2), and a concise --help; neutral from the-flow, kept lean.",
@@ -18,8 +19,8 @@
   "phase3_review_note": "Phase 3 ran WITHOUT a companion (plain implement), so its commits were NOT live-reviewed -> review is NOT superseded for P3. Recommended next: review Phase 3 (stage 7), then merge. (Phases 1 & 2 WERE companion-reviewed -> their reviews superseded.) Phase 3 is docs-only + already validate-v2'd + guards green, so the user may also go straight to merge -- their call, never gated.",
   "milestones_total": 6,
   "milestones_done": 5,
-  "milestones_note": "Dynamic per-phase rail: research + plan + 3 phases + merge = 6. Done=5 (research, plan, Phase 1, Phase 2, Phase 3). Phase 3 IMPLEMENTED. Review is a sub-step (not a milestone) before the merge milestone. Next milestone: merge.",
-  "last_checkpoint_at": "2026-06-17T04:04:33Z",
+  "milestones_note": "Dynamic per-phase rail: research + plan + 3 phases + merge = 6. Done=5 (research, plan, Phase 1, Phase 2, Phase 3). All build phases IMPLEMENTED. Milestone 6 (merge) is DEFERRED TO USER (manual) — not executed by the-flow, so it stays 5/6. Flow closed out at the merge boundary.",
+  "last_checkpoint_at": "2026-06-17T04:10:35Z",
   "compacted_seams": [],
-  "status": "active"
+  "status": "closed-out"
 }

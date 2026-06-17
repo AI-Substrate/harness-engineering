@@ -1,6 +1,6 @@
 # Flight Plan — harness-flow-hooks
 
-**Mode**: Full · **now**: Phase 3 **IMPLEMENTED** (final phase, plain — no companion) — docs-only sync to the hooks vocab (commit a9ae77e): `getting-started.md` "seam contract"→"hook contract" (leads with the five hooks, `--event` permanent alias) · governance-doc injection-map · neutrality clean (no `the-flow` edits) · guards green (line **478 ≤ 478**, skills-check ok, extension loads, doctor degraded-benign). **All v1 ACs discharged** (AC-04 → v2). SKILL.md final = 478 · **next**: Phase 3 wasn't companion-reviewed → **review** Phase 3 (recommended), then **merge** (docs-only + already validate-v2'd → straight-to-merge is also your call)
+**Mode**: Full · **Status: 🔒 CLOSED-OUT** (2026-06-17, user request) · **now**: ✅ **v1 FEATURE-COMPLETE** — all 3 phases implemented, **all v1 ACs discharged** (AC-04 → v2); SKILL.md final surface = **478** (accepted +131 public contract). Review skipped at user direction (P1/P2 companion-superseded; P3 docs-only + validate-v2'd) · **next**: **MERGE — deferred to the user** (manual git/PR merge; "we will merge after"). the-flow did **not** execute it (no `PROCEED` — nothing irreversible). Re-run `/the-flow 8 merge` for the analysis if wanted; the post-flight harvest fires at merge.
 
 ```mermaid
 flowchart TD
