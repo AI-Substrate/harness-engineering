@@ -80,7 +80,12 @@
 | T006 thin dispatch | ✅ | a5fca0d | SKILL.md rewritten — **88 lines** (≤~150); frontmatter (name + activation description) preserved VERBATIM; Registry + Command grammar + stateless invariants + progressive-disclosure rule + --help; contract detail points to 00-routing.md. **Contract JSON blocks (--json envelope + --hooks manifest) BYTE-IDENTICAL vs pre-tag — 3362 bytes each.** Zero rail-glyph (`◆◐◇↺`) prose; the 3 "narration"-word grep hits are pointers to coach.md, not voice content. |
 | T007 bundled refs | ✅ | 1167a89 | getting-started.md fully rewritten to the 2-skill surface (router + verbs/modules + kept peer); retired-slug refs scrubbed from governance-doc.md (×4) + maturity-assessment.md (×1) + coach.md Suggest example. **Zero of the 5 retired slugs across the whole consolidated skill**; bundle complete (12 files); modules still L1-clean; kept-peer slug retained intentionally in SKILL.md/00-routing.md/getting-started/governance-doc. |
 | T008 deletion + peer move | ✅ | 34078f7 | `git mv` peer → `skills/eng-harness-0-harnessability-assessment/` (8 templates + AUTHORING + README intact); `git rm -r` the 5 absorbed child folders; removed empty `eng-harness-loop/` + `eng-harness-setup/` grouping dirs. **`skills/` now = exactly `eng-harness-flow/` + `eng-harness-0-harnessability-assessment/` + README.md.** Restore path = the T001 tag. |
-| T009 catalog sweep | ✅ | (this) | Full sweep done — see T009 completion below; all in-scope live surfaces clean of retired slugs (only intentional rename-teaching notes remain); docs bundle regen'd; 639/639 green; both companion findings resolved |
+| T009 catalog sweep | ✅ | d64f9ad | Full sweep to the 2-skill surface (see T009 completion); all in-scope live surfaces clean of retired slugs (only intentional rename-teaching notes remain); docs bundle regen'd; 639/639 green |
+| (companion F001/F002) | ✅ | ddcd411 | Fixed the 2 catalog-drift leaks the scoped grep missed (docs-manifest summary + AGENTS_README "all seven"); broadened re-sweep clean |
+| T010 structural proof | ✅ | ff6f1f4 | All 5 checks pass: L1 de-leak 0, contract byte-parity (4 surfaces), SKILL.md 88 lines, 5/5 module structure, 25/25 destination map |
+| T011 deploy + tidy | ✅ | cdc0621 | 2-skill surface deployed global; 5 retired slugs pruned from canonical + views; doctor-skills clean; no target resolves a retired slug |
+| T012 behavioural drive | ✅ | a1f6851 | --hooks manifest byte-identical; pre-flight envelope rendered; one-module-per-route proven (5/5 unique markers); coach rail + 5 beats rendered |
+| T013 phase-end + debrief | ✅ | 6419150 | phase-end seam → drain → committed retro record (4 entries); companion APPROVE, control:stop, farewell |
 
 ---
 
