@@ -221,6 +221,32 @@ Hand-driven against this repo's real signals (driving the live `/eng-harness-flo
 
 Covers AC-04, AC-08, AC-12.
 
+## T013 — harness phase-end seam + companion debrief (DONE)
+
+### Harness phase-end seam (advisory; this repo's adopted harness)
+Fired `/eng-harness-flow --event phase-end --plan-dir docs/plans/022-eng-harness-skill-consolidation`. phase-end → `--hook post-coding` → **retro drain** (observe buffer non-empty). Rendered envelope (hand-driven to avoid the T000 self-recursion):
+```jsonc
+{ "requested_stage":"retro-drain", "actual_stage":"retro-drain", "hook":"post-coding",
+  "decision":"route", "command":"harness record retro  (drain 3 observations)",
+  "why":"phase-end with a non-empty observe buffer → drain before harvest",
+  "produces":".harness/records/retro/2026-06-17/001-022-eng-harness-consolidation-phase.md",
+  "preconditions_met":true, "missing_rung":null,
+  "next_suggested":"/eng-harness-flow --event plan-complete  (harvest, once drained)",
+  "rail":{"zone":"engineering","loop_pips":"◆◆◆◐◇","cursor":"retro"},
+  "now":"phase end — draining 3 observations", "next":"harvest at plan-complete",
+  "flags":["3 buffered observations pending drain"],
+  "insight":".minih.json dogfood wiring breaks on skill rename/delete — a real product gap" }
+```
+
+**Drain performed** (genuine dogfood close-out): recorded 3 real friction observations via `harness observe`, then materialised them to a committed retro record (`harness record retro`) → `.harness/records/retro/2026-06-17/001-022-eng-harness-consolidation-phase.md` (4 entries: DL-001 zsh word-split false-green, DL-002 `.minih.json` dogfood drift, SUGG-001 sweep-by-bundled-source, WIN-001 companion-earned-its-cost), then `harness observe --clear` (buffer empty ✅).
+
+### Companion debrief (run `…528d`)
+Drain ping → companion verified **ddcd411 closes F001+F002** → final verdict **APPROVE**. Farewell envelope (`output/report.json`): "00-routing.md byte-identical to its creation blob; stage-module forbidden scan clean (no sibling-skill/SDD-flow/Next-routing leaks); the stale `.minih.json`/agents old-skill wiring is **already documented as an out-of-scope follow-up**, not an in-scope phase-close finding." Then `control: stop` → `exitReason: stop_requested` → graceful farewell (run stopping).
+
+**Companion scorecard (whole phase, both runs):** caught **4 real MEDIUMs** — contract-claim precision (T002), getting-started overstatement (T007), docs-manifest summary (F001), adoption-checklist "all seven" (F002) — all fixed. It independently confirmed the byte-stable contract + module de-leak + the out-of-scope boundary.
+
+Covers the T013 harness seam (advisory).
+
 ## T005 — per-module elision audit (done-when)
 
 Each setup module's Entry/Procedure/Output diffed against its source skill; every removed block tagged:

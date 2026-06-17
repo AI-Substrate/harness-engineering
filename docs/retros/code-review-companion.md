@@ -272,3 +272,12 @@
 - difficulties:
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder, not the repository root, during orientation. (workaround: Used git rev-parse --show-toplevel and absolute paths for all project reads.)
   - [annoying] coordination: The outside brief repeatedly said 'reply only if issues', but the companion working contract required a summary response after every task. (workaround: Followed the companion contract and sent concise zero-finding summaries, while keeping findings as separate messages.)
+
+## 2026-06-17T07:22:46.402Z — code-review-companion / 2026-06-17T07-05-43-674Z-528d
+
+- runId: 2026-06-17T07-05-43-674Z-528d
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-17T07-05-43-674Z-528d
+- summary: Reviewed the tail of plan 022 as the code-review companion. The initial d64f9ad T009 catalog sweep review found two MEDIUM catalog-contract drift issues: the CLI docs summary still named the retired eng-harness-0-add-extension skill, and the adoption checklist still said both setup and loop groups/all seven. The phase-end drain review of ddcd411 verified both were fixed, the docs bundle was regenerated, 00-routing.md remained byte-identical to its creation blob, the stage-module forbidden scan was clean for sibling-skill slug / SDD-flow / Next-routing leaks, and the remaining stale .minih.json / agents old-skill wiring is already documented as an out-of-scope follow-up rather than an in-scope phase-close finding.
+- **magicWand** (target: minih): Expose a reliable projectRoot value to shell commands (or make MINIH_PROJECT_ROOT consistently point to the repo root) and show it in coordination status so companions do not have to rediscover it with git.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not usable as the repository root in the shell session even though the companion prompt required cd $MINIH_PROJECT_ROOT as the first action. (workaround: Used git rev-parse --show-toplevel from the run folder and ran all repository commands from that path.)
