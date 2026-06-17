@@ -42,7 +42,7 @@ flowchart TB
     end
 
     R -.->|first missing rung| setupzone
-    R -.->|by seam / --event| loopzone
+    R -.->|by hook / --hook| loopzone
     S0 --> S1 --> S2 --> S3 --> S4
     S4 ==>|"🎉 boot works — cross the bridge"| B
     B --> BP --> O --> RD --> RH --> I
@@ -194,7 +194,7 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 
 | Command | What it does | Produces |
 |---|---|---|
-| `/eng-harness-flow` | **Front door** — stateless router; re-derives position from signals A–J and routes one next step | nothing of its own (a routing decision; `--json` envelope for machine callers) |
+| `/eng-harness-flow` | **Front door** — stateless router; host flows pin a lifecycle hook (`--hook pre-flight\|pre-coding\|coding\|post-coding\|post-flight`, with `--event` as an accepted alias); re-derives position from signals A–J and routes one next step | nothing of its own (a routing decision; `--json` envelope for machine callers) |
 | `eng-harness-0-adopt` | The adoption flow: install CLI → scout → inject → stand up `boot` | installed CLI; orchestrates the rungs |
 | `eng-harness-0-harnessability-assessment` | Size up the repo — evidence vs inference vs unknowns | `.harness/reports/harnessability/latest.{md,json}` |
 | `eng-harness-0-add-extension` | Guided authoring of a new `harness <verb>` (incl. `boot` at S4) | `.harness/extensions/<name>/` (entry + `instructions.md`) |
@@ -243,18 +243,29 @@ Two storage classes, one rule: `.harness/records/` is **committed team memory**;
 
 `/eng-harness-flow` writes no state file and owns no artifacts. It re-derives position on every call from deterministic substrate (`harness doctor`, the governance doc, the harnessability report, plan artifacts, the observe buffer) — so it survives `/compact`, serves any caller (a human, a parent flow like the SDD pipeline's `/the-flow`, a CI agent), and never drifts from reality. The only durable "done" signal is a **child skill's artifact**, never the router's memory. If the router ever seems to need memory, that state belongs in substrate a child skill owns.
 
-### The seam contract (for parent flows)
+### The hook contract (for parent flows)
 
-A parent running its own flow pins position with `--event` instead of letting the router guess:
+A parent running its own flow pins each seam with a **lifecycle hook** (`--hook <name>`) instead of letting the router guess. There are exactly **five neutral hooks** — stage names for a moment in *your* lifecycle, never child-skill slugs:
 
 ```
---event session-start                      → eng-harness-1-boot --validate
---event post-spec      --spec <path>       → eng-harness-2-backpressure
---event phase-end      --plan-dir <path>   → eng-harness-4-retro --drain    (buffer non-empty)
---event plan-complete                      → eng-harness-4-retro --harvest  (buffer empty)
+--hook pre-flight   [--phase <id>] [--plan-dir <p>]   → eng-harness-1-boot --validate    (prove it runs)
+--hook pre-coding   --spec <path>                     → eng-harness-2-backpressure       (what's provable?)
+--hook coding       (silent: harness observe "<what>" --kind <kind>)                      (capture friction)
+--hook post-coding  --plan-dir <path>                 → eng-harness-4-retro --drain       (per-phase)
+--hook post-flight                                    → eng-harness-4-retro --harvest     (terminal)
 ```
 
-One command per call; the parent calls again for the next seam. Hints are validated, never blindly obeyed — `at=boot` on a repo with no governance politely redirects to adoption and says why.
+`--event` is an accepted, **permanent alias** (`the-flow` and other hosts still emit it) — the six host seams map onto the five hooks:
+
+```
+--event session-start | pre-implement   → --hook pre-flight
+--event post-spec                        → --hook pre-coding
+--event task-pause                       → --hook coding
+--event phase-end                        → --hook post-coding
+--event plan-complete                    → --hook post-flight
+```
+
+One command per call; the parent calls again for the next seam. Hints are validated, never blindly obeyed — `--hook pre-flight` (alias `at=boot`) on a repo with no governance politely redirects to adoption and says why. Full vocabulary: the router's SKILL.md § Lifecycle hooks.
 
 ### Maturity (L0–L4)
 
