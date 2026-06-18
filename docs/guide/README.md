@@ -24,6 +24,7 @@ This guide describes **shipped-today** behaviour, verified against the real CLI.
 
 **Understand it**
 - [02 · What Is an Engineering Harness?](02-what-is-an-engineering-harness.md) — the missing layer; engineering vs agent harness.
+- [02b · Harness Engineering vs an Engineering Harness](02b-harness-engineering-vs-an-engineering-harness.md) — one overloaded word, untangled: the discipline vs the artifact, and where the popular term points.
 - [03 · The Harness Loop](03-the-harness-loop.md) — Boot → Backpressure → Observe → Retro / Magic Wand → Improve.
 
 **Adopt it**

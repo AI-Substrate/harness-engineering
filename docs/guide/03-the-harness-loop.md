@@ -54,4 +54,4 @@ You choose how many of these to wire in. [08 · Fitting Your Workflow](08-fittin
 
 ---
 
-<sub>[← Prev: What Is an Engineering Harness?](02-what-is-an-engineering-harness.md) · [↑ Start Here](README.md) · [Next: Adopting the Harness →](04-adopting-the-harness.md)</sub>
+<sub>[← Prev: Harness Engineering vs an Engineering Harness](02b-harness-engineering-vs-an-engineering-harness.md) · [↑ Start Here](README.md) · [Next: Adopting the Harness →](04-adopting-the-harness.md)</sub>

@@ -10,7 +10,7 @@ An **engineering harness** closes that gap.
 
 | | **Agent harness** | **Engineering harness** |
 |---|---|---|
-| Makes operable… | the **model** | the **product** |
+| Makes operable… | the **model** | the **productisation of your engineering environment** |
 | Examples | Copilot, Claude Code, Cursor, Codex, Cline | `harness doctor`, a repo-authored `boot`, your tests, fixtures, checks |
 | Job | tool dispatch, permissions, memory, orchestration | boot, run, seed, observe, and **prove** real behaviour |
 
@@ -44,4 +44,4 @@ The agent can *say* it is done. The harness decides whether that claim is suppor
 
 ---
 
-<sub>[← Prev: Quick Start](01-quick-start.md) · [↑ Start Here](README.md) · [Next: The Harness Loop →](03-the-harness-loop.md)</sub>
+<sub>[← Prev: Quick Start](01-quick-start.md) · [↑ Start Here](README.md) · [Next: Harness Engineering vs an Engineering Harness →](02b-harness-engineering-vs-an-engineering-harness.md)</sub>
