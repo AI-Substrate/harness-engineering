@@ -8,7 +8,7 @@
 Almost nothing. Adoption adds **one directory** — `.harness/` — and (optionally) installs skills into your agent. Your build, tests, CI, and workflow stay exactly as they are. The harness *wraps* what you already have; it does not replace it. ([06 · Repo Layouts](06-repo-layouts.md) shows the full tree.)
 
 ## Two ways to drive it
-- **The agent drives, you approve (the easy start)** — paste the [`AGENTS_README.md`](https://github.com/AI-Substrate/harness-engineering/blob/main/AGENTS_README.md) GitHub link to your agent and ask it to set the repo up. It installs the CLI (you don't need it first), installs the skills, and walks adoption. Once the CLI is installed, `harness docs agents-readme` re-prints the same guide.
+- **The agent drives, you approve (the easy start)** — paste the [`AGENTS_README.md`](https://github.com/AI-Substrate/harness-engineering/blob/main/AGENTS_README.md) GitHub link to your agent and ask it to set the repo up. It installs the CLI (you don't need it first), installs the skills, and walks adoption. Use a capable model for this — a recent Claude Opus or GPT model — since adoption is reasoning-heavy and a stronger one sets the repo up more cleanly. Once the CLI is installed, `harness docs agents-readme` re-prints the same guide.
 - **You drive, the agent helps** — run the commands yourself; the agent answers questions and authors extensions on request.
 
 ## The shape of it: five rungs

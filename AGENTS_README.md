@@ -2,7 +2,7 @@
 
 > **For AI agents reading this**: this is the canonical self-contained guide for standing up — or operating — a repo-local engineering harness using the harness CLI and skills published from [`AI-Substrate/harness-engineering`](https://github.com/AI-Substrate/harness-engineering). If a human gave you this document (or its URL) and pointed you at a repository, your mission is below. You need nothing else: no access to the harness-engineering repo, no prior knowledge of the product. **This file is re-entrant** — you may be reading it for the first time, or again after a restart wiped your context. Either way, start at *Where are you?* below; it self-locates.
 >
-> **For humans**: paste this into your agent — *"Read https://raw.githubusercontent.com/AI-Substrate/harness-engineering/main/AGENTS_README.md and follow it in this repo."* If your agent loses context partway (including the restart in Stage 4), feed it the same line again — the guide picks up where it left off.
+> **For humans**: paste this into your agent — *"Read https://raw.githubusercontent.com/AI-Substrate/harness-engineering/main/AGENTS_README.md and follow it in this repo."* If your agent loses context partway (including the restart in Stage 4), feed it the same line again — the guide picks up where it left off. For best results, point your agent at a **capable model** — a recent Claude Opus or GPT model — since adoption is reasoning-heavy and multi-step.
 
 **Audience note**: this guide is for agents working in **consumer repos** (any codebase that wants a harness). If you are contributing to the harness-engineering repo itself, read its `AGENTS.md` instead — that is a different job (probe row 0 below catches this).
 

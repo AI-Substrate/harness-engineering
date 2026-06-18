@@ -12,7 +12,7 @@ This is the brisk path: install the CLI, install the skills, and let the router 
 > and follow it: install the CLI, install the skills, then run /eng-harness-flow.
 > ```
 >
-> It installs everything (CLI included) and walks adoption. Prefer to do it by hand? Continue below.
+> It installs everything (CLI included) and walks adoption. **Use a capable model for this** — a recent Claude Opus or GPT model; adoption is multi-step reasoning, and a stronger model sets the repo up noticeably better. Prefer to do it by hand? Continue below.
 
 ## Before you start
 - **Node.js** (the CLI ships as an npm package) and **git**.

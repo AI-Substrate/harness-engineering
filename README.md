@@ -15,6 +15,8 @@ and follow it in this repo.
 
 That one file is self-contained, re-entrant, and self-locating: it works out where your repo already is in the process and does the right next step — typically installing the CLI and skills, then running adoption. Nothing needs to be set up first; if the agent loses context partway, paste the same line again and it picks up where it left off.
 
+For this, point your agent at a **capable model** — a recent Claude Opus or GPT model. Adoption is a reasoning-heavy, multi-step task, and a stronger model sets the repo up noticeably better.
+
 Prefer to drive it by hand? Follow **[01 · Quick Start](docs/guide/01-quick-start.md)** — install the CLI and skills yourself and reach a green boot.
 
 ## Documentation
@@ -112,7 +114,7 @@ This repo is about the **engineering harness**, not agent runtimes themselves. A
 | [`harness-foundations/`](harness-foundations/) | The thesis: [first principles](harness-foundations/first-principles.md), [patterns that work](harness-foundations/patterns-that-work.md), [directives](harness-foundations/directives.md), [the simple version](harness-foundations/simple-mode.md), and [source notes](harness-foundations/source-notes/). |
 | [`harness/cli/`](harness/cli/) | The harness CLI core — a global tool (`npm i -g`), self-updating via `harness update`, extended per repo from `.harness/extensions/`. |
 | [`skills/`](skills/) | The two deployable skills: the [`eng-harness-flow`](skills/eng-harness-flow/SKILL.md) router (the front door — adoption and every loop stage live inside it as modules) and the standalone [`eng-harness-0-harnessability-assessment`](skills/eng-harness-0-harnessability-assessment/SKILL.md) peer. See [`skills/README.md`](skills/README.md). |
-| [`docs/`](docs/) | How-to guides ([records](docs/how/record-and-record-types.md), [architecture conformance](docs/how/architecture-conformance.md), [dogfooding](docs/how/dogfood-harness-flow.md)), presentations, plans, and project rules. |
+| [`docs/`](docs/) | How-to guides ([records](docs/how/record-and-record-types.md), [architecture conformance](docs/how/architecture-conformance.md), [the `harness flow` verbs](docs/how/harness-flow.md), [dogfooding](docs/how/dogfood-harness-flow.md)), presentations, plans, and project rules. |
 
 Start with [first-principles](harness-foundations/first-principles.md) for the thesis, [patterns-that-work](harness-foundations/patterns-that-work.md) for practical moves, or [directives](harness-foundations/directives.md) for the shortest operating version.
 
