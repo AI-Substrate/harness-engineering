@@ -2,7 +2,7 @@
 
 An engineering harness productises the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run.
 
-It is the **deterministic layer** between your agent and your codebase: one CLI focal point where a fresh human or agent can boot the product, prove a change is good, and encode the fix so the next run is easier.
+It is the **missing layer** between your agent and your codebase — the deterministic one: a single CLI focal point where a fresh human or agent can boot the product, prove a change is good, and encode the fix so the next run is easier.
 
 ## Quick start
 
@@ -13,7 +13,7 @@ Read https://raw.githubusercontent.com/AI-Substrate/harness-engineering/main/AGE
 and follow it in this repo.
 ```
 
-That one file is self-contained and re-entrant: the agent installs the CLI (if it's missing), installs the skills, and runs adoption — nothing needs to be set up first. If the agent loses context partway, paste the same line again and it picks up where it left off.
+That one file is self-contained, re-entrant, and self-locating: it works out where your repo already is in the process and does the right next step — typically installing the CLI and skills, then running adoption. Nothing needs to be set up first; if the agent loses context partway, paste the same line again and it picks up where it left off.
 
 Prefer to drive it by hand? Follow **[01 · Quick Start](docs/guide/01-quick-start.md)** — install the CLI and skills yourself and reach a green boot.
 
@@ -41,11 +41,11 @@ Out of all the problems with agent-driven development, two matter most:
 
 Underneath both: every agent session is a fresh developer onboarding into your repo — cold. If the supported path lives in scattered scripts, docs, and tribal memory, the agent has to infer it, and you pay for that inference every session, on every dev machine.
 
-And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives only in that one session, then it's gone. Tomorrow the same friction hits a teammate, or your future self. An engineering harness gives that hard-earned knowledge a permanent home: **encode the fix, not the memory**, so every loop you solve makes the next one cheaper instead of being re-discovered from scratch. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
+And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives only in that one session, then it's gone. Tomorrow the same friction hits a teammate, or your future self. An engineering harness gives that hard-earned knowledge a permanent home: **encode the fix, not the memory**, so a problem you solve once becomes permanent capability — never re-discovered from scratch tomorrow. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
 
-> Can a fresh human or agent move from clean start to proved product behaviour without private tribal knowledge?
+> Two questions decide it: how does a fresh agent know when a change is *actually* done — and where does the fix go so it isn't lost tomorrow, on a teammate's machine or your own?
 
-If the answer is no, the engineering harness is the surface to improve.
+If your repo has no reliable answer, the engineering harness is the surface to improve.
 
 ## The loop
 
