@@ -98,6 +98,7 @@ describe('T010 — mutations fire built-in events + stamp datetime; provenance u
     if (!res.ok) return;
     const node = res.doc.nodes.find((n) => n.id === 'd');
     expect(node?.created_at).toBe('2026-06-18T05:00:00.000Z');
+    expect(node?.modified_at).toBe('2026-06-18T05:00:00.000Z'); // trio present on a new node
     expect(lastEvent(res.doc).kind).toBe('node-created');
     expect(lastEvent(res.doc).details).toEqual({ node: 'd', type: 'improve' });
   });
@@ -191,7 +192,9 @@ describe('T011 — insert-node edge algebra + DAG re-check (E309) + audit events
     const a = res.doc.nodes.find((x) => x.id === 'a');
     const n = res.doc.nodes.find((x) => x.id === 'n');
     expect(a?.next).toEqual(['n']);
+    expect(a?.modified_at).toBe('2026-06-18T05:00:00.000Z'); // rewired target → modified_at bumped
     expect(n?.next).toEqual(['b']); // inherited a's old out-edge
+    expect(n?.modified_at).toBe('2026-06-18T05:00:00.000Z'); // new node carries the trio
     const kinds = res.doc.events.map((e) => e.kind);
     expect(kinds).toEqual(['node-created', 'node-updated']);
     expect(res.doc.events[1]?.details).toEqual({
@@ -236,6 +239,9 @@ describe('T011 — insert-node edge algebra + DAG re-check (E309) + audit events
     expect(res.doc.nodes.find((p) => p.id === 'a')?.next).toEqual(['n']);
     expect(res.doc.nodes.find((p) => p.id === 'b')?.next).toEqual(['n']);
     expect(res.doc.nodes.find((p) => p.id === 'n')?.next).toEqual(['x']);
+    // both rewired predecessors got their modified_at bumped
+    expect(res.doc.nodes.find((p) => p.id === 'a')?.modified_at).toBe('2026-06-18T05:00:00.000Z');
+    expect(res.doc.nodes.find((p) => p.id === 'b')?.modified_at).toBe('2026-06-18T05:00:00.000Z');
     const updates = res.doc.events.filter((e) => e.kind === 'node-updated');
     expect(updates).toHaveLength(2); // one per rewired predecessor
     expect(

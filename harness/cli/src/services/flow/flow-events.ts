@@ -1,4 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import type { ProvenanceFields } from '../record/provenance.js';
 
 /**
  * Flow data model + the embedded event/comment surfaces (plan 024 Phase 1;
@@ -55,18 +56,13 @@ export interface FlowEvent {
 
 /**
  * Root provenance — the record 7-key block (ws-002 §E5), stamped ONCE at create.
- * Mirrors `services/record/provenance.ts` `ProvenanceFields` by SHAPE (reused per
- * Finding 04); `branch` IS the user's requested `created_from_branch`.
+ * REUSES `services/record/provenance.ts` `ProvenanceFields` directly (Finding 04;
+ * companion anti-reinvention finding) so the shape can never drift from the record
+ * service's. Type-only import — no runtime coupling. The JSON-object provenance
+ * here cannot use the markdown-specific `spliceProvenance`, so only the TYPE is
+ * shared; `branch` IS the user's requested `created_from_branch`.
  */
-export interface FlowProvenance {
-  record_kind: string;
-  harness_version: string;
-  branch: string | null;
-  repo: string | null;
-  created_at: string;
-  agent: string | null;
-  plan_id: string | null;
-}
+export type FlowProvenance = ProvenanceFields;
 
 /** A single flow node. Overlays add/constrain the `type`/`status` vocabularies. */
 export interface FlowNode {

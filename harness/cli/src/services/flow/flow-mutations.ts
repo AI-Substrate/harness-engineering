@@ -122,6 +122,9 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
     status: spec.status,
     next: spec.next ? [...spec.next] : [],
     created_at: now,
+    // A new node carries modified_at = created_at so the datetime trio is always
+    // queryable (companion HIGH: every node a mutation touches must have it).
+    modified_at: now,
     ...(spec.branch_of !== undefined && { branch_of: spec.branch_of }),
     ...(spec.user_input !== undefined && { user_input: spec.user_input }),
     ...(spec.authority !== undefined && { authority: spec.authority }),
@@ -319,6 +322,7 @@ export function insertNode(
     if (target === undefined) return nodeNotFound(placement.after);
     node.next = [...target.next]; // N inherits X's out-edges
     target.next = [node.id]; // X now points only at N
+    target.modified_at = now; // its edge set changed → bump (companion HIGH)
     events.push({ node: target.id, edge_op: 'splice-after' });
   } else if (placement.before !== undefined) {
     const target = findNode(next, placement.before);
@@ -327,6 +331,7 @@ export function insertNode(
     for (const p of next.nodes) {
       if (p.next.includes(placement.before)) {
         p.next = p.next.map((e) => (e === placement.before ? node.id : e));
+        p.modified_at = now; // its edge set changed → bump
         events.push({ node: p.id, edge_op: 'splice-before' });
       }
     }

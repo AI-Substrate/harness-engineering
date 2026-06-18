@@ -77,7 +77,17 @@ All 16 tasks done + committed + green. The `harness flow` engine stands up: shar
 - **Branch**: `024-first-class-flow-system`. Commits: 126bc7f (T007-T009) · 11c3ee2 (T010-T014) · c727994 (T015) · `<T016 pending>`.
 - **AC coverage**: AC-01/02 (create/template/--bare/--schema), AC-03/10/11 (schema), AC-04/05 (events/comments/datetime), AC-07 (Envelope/E3xx/containment/version), AC-08 (two snapshots), AC-14 (E308), AC-15 (insert-node). Renderer ACs (AC-06) + the-flow migration (AC-09) are out of Phase-1 scope by design.
 
-## Companion debrief (run `2026-06-18T00-27-49-683Z-f765`)
+## Companion debrief (run `2026-06-18T01-05-49-449Z-93ae` — the T007–T016 resume)
+
+- **Coverage**: reviewed all 4 commit boundaries (T007-T009 / T010-T014 / T015 / T016) — 4 reviewed, **3 findings**, 4 summaries, coordination mode enabled, 0 unresolved peer requests. Authoritative source: `minih companion findings`.
+- **Findings reconciliation** (all addressed before phase close):
+  - **HIGH** `flow-mutations.ts` — new/rewired nodes missing `modified_at` → **FIXED** (`materialize` stamps it; `insertNode` bumps rewired nodes) + tests.
+  - **HIGH** `acts/flow.ts` — `runMutation` wrote without post-mutation `validateFlowDoc` (contradicting its own contract) → **FIXED** (`validateMutatedDoc` gate, E300 + nothing written) + act-level tests proving file-unchanged.
+  - **MEDIUM** anti-reinvention (`FlowProvenance`/`nextEventId` duplication) → **PARTIALLY ADDRESSED**: `FlowProvenance` now reuses `ProvenanceFields` (type-only). `nextEventId` kept (observe's `nextId` is private; shared-helper extraction deferred to Phase 2 to avoid touching observe). Logged.
+- **magicWand** (companion's own retro): "auto-derive more of the farewell retrospective from the coordination ledger" — a `minih` self-improvement, not 024 scope. (Backlog.)
+- The fixes shipped in commit `<companion-fix pending>`; full suite **719 green** after.
+
+## Companion debrief (run `2026-06-18T00-27-49-683Z-f765` — earlier T001–T003 session)
 
 - **Coverage**: reviewed T001/T002/T003 commit boundaries; **stood down on an idle check-in BEFORE the schema group** (f7fc71f, T004–T006) → schema group is **companion-unreviewed** (covered by a re-booted companion on resume, or the review stage).
 - **Findings reconciliation**: T001 ✅ approved (no findings) · T003 ✅ approved (no findings) · T002 ⚠️ **1 MEDIUM** (E307/E108 comment overlap) → **FIXED `7533e1a`** (companion stood down, so verification deferred to resume/review).

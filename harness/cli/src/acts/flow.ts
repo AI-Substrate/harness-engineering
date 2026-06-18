@@ -19,6 +19,7 @@ import {
   setNode,
   setStatus,
 } from '../services/flow/flow-mutations.js';
+import { resolveFlowSchema, validateFlowDoc } from '../services/flow/flow-schema.js';
 import {
   createFlow,
   FLOWS_DIR,
@@ -456,9 +457,36 @@ function splitIds(raw: string | undefined): string[] | undefined {
 }
 
 /**
+ * Re-resolve the overlay by the doc's `kind` and validate the mutated doc against
+ * it — returns a `FlowFailure` (E300) on schema issues, else `null`. If the
+ * overlay can't be resolved (e.g. a flow created from an out-of-repo `--schema`
+ * not re-passed on this mutation), validation is SKIPPED (tolerant): the create
+ * already validated, and we won't block a mutation we can't re-verify.
+ */
+function validateMutatedDoc(
+  doc: FlowDoc,
+  repoRoot: string,
+  svc: FlowServiceDeps,
+): FlowFailure | null {
+  const resolved = resolveFlowSchema({ type: doc.kind, repoRoot }, { fs: svc.fs });
+  if (!resolved.ok) return null; // can't re-resolve → tolerant skip
+  const issues = validateFlowDoc(doc, resolved.schema);
+  if (issues.length === 0) return null;
+  return {
+    ok: false,
+    status: 'error',
+    code: ErrorCodes.FLOW_SCHEMA_INVALID,
+    message: `the mutation would make the flow invalid: ${issues.join('; ')}`,
+    next_action:
+      'Fix the argument (status/type/next) to satisfy the flow schema — nothing was written.',
+  };
+}
+
+/**
  * The read → mutate → write pipeline shared by every mutation subcommand: resolve
  * the flow path, read it (E301/E300/E308), apply the mutation (E305/E108/E309),
- * write atomically (E303/E302), and emit the node summary envelope.
+ * validate the result against the overlay (E300), write atomically (E303/E302),
+ * and emit the node summary envelope.
  */
 function runMutation(
   io: CliIo,
@@ -474,6 +502,13 @@ function runMutation(
   if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
   const result = mutate(read.doc);
   if (!result.ok) return emit(io, failureEnvelope(result, deps.clock));
+  // Post-mutation schema validation (companion HIGH): the mechanical mutation
+  // preserves shape, but a bad --status/--type/--next could still violate the
+  // resolved overlay. Re-resolve by kind + validate; refuse the write on issues.
+  // If the overlay can't be re-resolved (e.g. a flow created from an out-of-repo
+  // --schema not re-passed here), skip validation — the create already validated.
+  const invalid = validateMutatedDoc(result.doc, root, svc);
+  if (invalid !== null) return emit(io, failureEnvelope(invalid, deps.clock));
   const written = writeFlowAtomic(resolved.path, root, result.doc, svc);
   if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
   emit(io, formatOk('flow', summary(result.doc, written.path), deps.clock));
