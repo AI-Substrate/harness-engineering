@@ -33,8 +33,9 @@
   },
   "scripts": {
     "gen:docs": "node scripts/gen-docs.mjs",
+    "gen:flows": "node scripts/gen-flows.mjs",
     "check:docs": "npm run gen:docs && git diff --exit-code harness/cli/src/services/docs/docs-content.ts",
-    "build": "npm run gen:docs && tsc -p harness/cli/tsconfig.json",
+    "build": "npm run gen:docs && npm run gen:flows && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
     "test": "cd harness/cli && vitest run --coverage",
     "lint": "biome check harness/cli",
