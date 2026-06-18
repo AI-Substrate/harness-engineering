@@ -63,9 +63,40 @@ export function readJson<T>(ctx: VerbContext, path: string): T | null {
   }
 }
 
-/** Copy one file into destDir (mkdir -p first). Returns true on success. */
-export async function copyInto(ctx: VerbContext, src: string, destDir: string): Promise<boolean> {
+/**
+ * Copy one file into destDir (mkdir -p first). Returns true on success.
+ *
+ * When `confineRoot` is given, the source is treated as living inside an
+ * UNTRUSTED clone: the copy is REFUSED unless the source's resolved real path
+ * stays within `confineRoot`'s real path. A malicious clone can commit a fixed
+ * artifact path (e.g. `.harness/reports/harnessability/latest.json`) as a
+ * symlink to an absolute host path (`~/.ssh/id_rsa`, cloud creds); plain `cp`
+ * dereferences it and would exfiltrate the contents into the operator's tree
+ * (CWE-59). The realpath containment check lets only files genuinely inside the
+ * clone subtree be copied; an escaping symlink is skipped (returns false).
+ */
+export async function copyInto(
+  ctx: VerbContext,
+  src: string,
+  destDir: string,
+  confineRoot?: string,
+): Promise<boolean> {
   if (!ctx.fs.exists(src)) return false;
+  if (confineRoot !== undefined) {
+    // realpath both sides and assert src resolves under the clone root. Positional
+    // argv only — never interpolate the paths into the bash string (injection).
+    // Quoted "$2" keeps the root literal; only the trailing /* is a glob. A
+    // realpath failure (missing tool / dangling link) exits non-zero ⇒ skip.
+    const guard = await ctx.exec('bash', [
+      '-c',
+      'rp=$(realpath "$1" 2>/dev/null) || exit 3; rr=$(realpath "$2" 2>/dev/null) || exit 3; ' +
+        'case "$rp/" in "$rr"/*) exit 0 ;; *) exit 4 ;; esac',
+      'copyInto-confine',
+      src,
+      confineRoot,
+    ]);
+    if (!guard.ok) return false;
+  }
   const mk = await ctx.exec('mkdir', ['-p', destDir]);
   if (!mk.ok) return false;
   const cp = await ctx.exec('cp', [src, destDir]);

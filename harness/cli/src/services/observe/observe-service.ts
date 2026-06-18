@@ -3,7 +3,7 @@ import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import { posixJoin, toPosix } from '../shared/posix-path.js';
+import { isWithin, posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp, HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 import {
   OBSERVATION_KINDS,
@@ -269,6 +269,16 @@ function sweepBuckets(
   const buckets: SweptBucket[] = [];
   for (const name of candidates) {
     const bufferAbs = posixJoin(tempDir, name, BUFFER_FILE);
+    // readdir entries are attacker-controllable: a cloned repo can commit a
+    // bucket dir whose literal name embeds backslashes + `..` (e.g.
+    // `a\..\..\tmp\x`). toPosix rewrites `\`→`/` and posix.join then collapses
+    // the `..`, so the join escapes .harness/temp — an out-of-tree read
+    // (--list) or truncate (--clear) of any session-buffer.md (CWE-22). The
+    // --agent/capture paths are sanitizeBucket-guarded; the sweep was not, so
+    // containment-check the resolved path and skip anything that climbs out.
+    if (!isWithin(tempDir, bufferAbs)) {
+      continue;
+    }
     if (!deps.fs.exists(bufferAbs)) {
       continue; // not a bucket (e.g. the nested .gitignore) or nothing captured yet
     }

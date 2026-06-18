@@ -488,20 +488,22 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
       if (res.reportPath && (await copyInto(ctx, res.reportPath, destDir))) {
         res.copied.push('report.json');
       }
-      // (2) the harnessability report (from the clone)
+      // (2) the harnessability report (from the clone) — confined to the clone
+      // subtree so a committed symlink can't exfiltrate an out-of-tree file.
       for (const f of ['latest.md', 'latest.json']) {
         const src = `${r.dest}/.harness/reports/harnessability/${f}`;
-        if (await copyInto(ctx, src, destDir)) res.copied.push(`harnessability/${f}`);
+        if (await copyInto(ctx, src, destDir, r.dest)) res.copied.push(`harnessability/${f}`);
       }
       // (3) every retro the worker recorded (from the clone). `harness record
       // retro` writes dated subdirectories (.harness/records/retro/<YYYY-MM-DD>/
       // <ord>-<slug>.md), so walk one level of subdirs as well as any flat .md
       // (companion F003) — keeping the date segment so filenames never collide.
+      // Confined to the clone subtree (symlink-exfil guard, as above).
       const retroDir = `${r.dest}/.harness/records/retro`;
       if (ctx.fs.exists(retroDir)) {
         for (const name of ctx.fs.readdir(retroDir)) {
           if (name.endsWith('.md')) {
-            if (await copyInto(ctx, `${retroDir}/${name}`, `${destDir}/retro`)) {
+            if (await copyInto(ctx, `${retroDir}/${name}`, `${destDir}/retro`, r.dest)) {
               res.copied.push(`retro/${name}`);
             }
             continue;
@@ -509,7 +511,9 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
           // A dated subdir (readdir on a file returns [] — harmless skip).
           for (const inner of ctx.fs.readdir(`${retroDir}/${name}`)) {
             if (!inner.endsWith('.md')) continue;
-            if (await copyInto(ctx, `${retroDir}/${name}/${inner}`, `${destDir}/retro/${name}`)) {
+            if (
+              await copyInto(ctx, `${retroDir}/${name}/${inner}`, `${destDir}/retro/${name}`, r.dest)
+            ) {
               res.copied.push(`retro/${name}/${inner}`);
             }
           }
