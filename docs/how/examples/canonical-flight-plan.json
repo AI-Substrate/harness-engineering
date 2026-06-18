@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "canonical-flight-plan",
+  "created_at": "2026-06-18T09:52:24.998Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "026-flow-nav-rail-zone",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-18T09:52:24.998Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.008Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "canonical-flight-plan"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.077Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.145Z",
+      "details": {
+        "node": "review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.207Z",
+      "details": {
+        "node": "p2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.273Z",
+      "details": {
+        "node": "p1",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.341Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.410Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.479Z",
+      "details": {
+        "node": "ws-cursor",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "NOD-008",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.549Z",
+      "details": {
+        "node": "ws-nav",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "NOD-009",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.622Z",
+      "details": {
+        "node": "adr-zone",
+        "type": "adr"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:52:25.695Z",
+      "details": {
+        "from": "",
+        "to": "p1"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "next": [],
+      "created_at": "2026-06-18T09:52:25.077Z",
+      "modified_at": "2026-06-18T09:52:25.077Z"
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-18T09:52:25.145Z",
+      "modified_at": "2026-06-18T09:52:25.145Z"
+    },
+    {
+      "id": "p2",
+      "type": "phase",
+      "label": "Phase 2",
+      "status": "known",
+      "next": [
+        "review"
+      ],
+      "created_at": "2026-06-18T09:52:25.207Z",
+      "modified_at": "2026-06-18T09:52:25.207Z"
+    },
+    {
+      "id": "p1",
+      "type": "phase",
+      "label": "Phase 1",
+      "status": "in_progress",
+      "next": [
+        "p2"
+      ],
+      "created_at": "2026-06-18T09:52:25.273Z",
+      "modified_at": "2026-06-18T09:52:25.273Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "next": [
+        "p1"
+      ],
+      "created_at": "2026-06-18T09:52:25.341Z",
+      "modified_at": "2026-06-18T09:52:25.341Z"
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T09:52:25.410Z",
+      "modified_at": "2026-06-18T09:52:25.410Z"
+    },
+    {
+      "id": "ws-cursor",
+      "type": "workshop",
+      "label": "Workshop: cursor vs meta",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T09:52:25.479Z",
+      "modified_at": "2026-06-18T09:52:25.479Z",
+      "branch_of": "plan"
+    },
+    {
+      "id": "ws-nav",
+      "type": "workshop",
+      "label": "Workshop: nav object",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T09:52:25.549Z",
+      "modified_at": "2026-06-18T09:52:25.549Z",
+      "branch_of": "plan"
+    },
+    {
+      "id": "adr-zone",
+      "type": "adr",
+      "label": "ADR: zone enum",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T09:52:25.621Z",
+      "modified_at": "2026-06-18T09:52:25.621Z",
+      "branch_of": "plan"
+    }
+  ],
+  "title": "Canonical flight plan",
+  "nav": {
+    "now": "p1",
+    "next": "p2",
+    "intent": "Phase 2 — wire the renderer"
+  }
+}

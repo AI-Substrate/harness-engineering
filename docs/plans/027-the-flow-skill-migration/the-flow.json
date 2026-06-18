@@ -1,0 +1,321 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "the-flow-skill-migration",
+  "created_at": "2026-06-18T10:55:28.423Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "026-flow-nav-rail-zone",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-18T10:55:28.423Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.434Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "the-flow-skill-migration"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.502Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.574Z",
+      "details": {
+        "node": "review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.644Z",
+      "details": {
+        "node": "p2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.716Z",
+      "details": {
+        "node": "p1",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.780Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.844Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.914Z",
+      "details": {
+        "node": "ws-migrate",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "NOD-008",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:28.981Z",
+      "details": {
+        "node": "ws-eval",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T10:55:29.053Z",
+      "details": {
+        "from": "",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:05:01.112Z",
+      "details": {
+        "node": "plan",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:13:53.862Z",
+      "details": {
+        "node": "p1",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:13:53.930Z",
+      "details": {
+        "from": "plan",
+        "to": "p1"
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:27:11.046Z",
+      "details": {
+        "node": "p1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:27:11.130Z",
+      "details": {
+        "node": "p2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:27:11.201Z",
+      "details": {
+        "from": "p1",
+        "to": "p2"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:54:27.780Z",
+      "details": {
+        "node": "p2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:54:27.853Z",
+      "details": {
+        "node": "p2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T11:54:27.927Z",
+      "details": {
+        "from": "p2",
+        "to": "review"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge / deploy",
+      "status": "known",
+      "next": [],
+      "created_at": "2026-06-18T10:55:28.502Z",
+      "modified_at": "2026-06-18T10:55:28.502Z"
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-18T10:55:28.574Z",
+      "modified_at": "2026-06-18T10:55:28.574Z"
+    },
+    {
+      "id": "p2",
+      "type": "phase",
+      "label": "minih eval harness + run",
+      "status": "done",
+      "next": [
+        "review"
+      ],
+      "created_at": "2026-06-18T10:55:28.644Z",
+      "modified_at": "2026-06-18T11:54:27.853Z",
+      "ran_at": "2026-06-18T11:54:27.780Z",
+      "comments": [
+        {
+          "at": "2026-06-18T11:54:27.853Z",
+          "text": "Eval harness built + run; scorer discriminates (migrated exit 0, un-migrated exit 1); all 6 ACs proven.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "p1",
+      "type": "phase",
+      "label": "Fix the-flow prompts",
+      "status": "done",
+      "next": [
+        "p2"
+      ],
+      "created_at": "2026-06-18T10:55:28.716Z",
+      "modified_at": "2026-06-18T11:27:11.046Z",
+      "ran_at": "2026-06-18T11:27:11.046Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan the fix",
+      "status": "done",
+      "next": [
+        "p1"
+      ],
+      "created_at": "2026-06-18T10:55:28.780Z",
+      "modified_at": "2026-06-18T11:05:01.112Z",
+      "ran_at": "2026-06-18T11:05:01.112Z"
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Design (workshops)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T10:55:28.844Z",
+      "modified_at": "2026-06-18T10:55:28.844Z"
+    },
+    {
+      "id": "ws-migrate",
+      "type": "workshop",
+      "label": "WS004: skill migration spec",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T10:55:28.914Z",
+      "modified_at": "2026-06-18T10:55:28.914Z",
+      "branch_of": "plan"
+    },
+    {
+      "id": "ws-eval",
+      "type": "workshop",
+      "label": "WS005: minih eval harness",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T10:55:28.981Z",
+      "modified_at": "2026-06-18T10:55:28.981Z",
+      "branch_of": "plan"
+    }
+  ],
+  "title": "the-flow skill migration",
+  "nav": {
+    "now": "review",
+    "next": "merge",
+    "intent": "Build complete — cursor→nav migration + minih eval harness done; all 6 ACs proven; next: review then deploy (CLI-first)"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intent"],
+  "properties": {
+    "intent": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The small feature/change intent fed to the-flow (e.g. 'add a foo widget'). the-flow turns it into a flight plan; the eval checks the plan's structure, not the feature."
+    }
+  }
+}

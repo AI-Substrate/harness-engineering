@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "flow-skill-eval — the-flow migration eval report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "railTitle",
+    "railClean",
+    "workshopsAsExcursions",
+    "spineShape",
+    "navUsed",
+    "cursorCalled",
+    "validates",
+    "flowPath",
+    "summary",
+    "retrospective"
+  ],
+  "properties": {
+    "railTitle": {
+      "type": "string",
+      "description": "The `harness flow rail` line for the authored flow; expected to start with [the-flow]."
+    },
+    "railClean": {
+      "type": "boolean",
+      "description": "True if the rail line contains no Workshop/ADR text (excursions excluded from the spine)."
+    },
+    "workshopsAsExcursions": {
+      "type": "boolean",
+      "description": "True if every node of type workshop/adr has a non-empty branch_of."
+    },
+    "spineShape": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Ordered node types of the main spine (nodes WITHOUT branch_of), e.g. [research, plan, phase]."
+    },
+    "navUsed": {
+      "type": "boolean",
+      "description": "True if position was advanced with `harness flow nav set` (the migrated surface)."
+    },
+    "cursorCalled": {
+      "type": "boolean",
+      "description": "MUST be false. True means the skill told you to run the removed `harness flow cursor` verb."
+    },
+    "validates": {
+      "type": "boolean",
+      "description": "True if `harness flow render` on the flow exits 0 (no E300/E308/E309)."
+    },
+    "flowPath": {
+      "type": "string",
+      "description": "Absolute path to the authored throwaway flight plan ($OUT/the-flow.json)."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 50,
+      "description": "What happened end to end: did the migrated skill drive cleanly to a [the-flow] rail with the workshop as an excursion?"
+    },
+    "retrospective": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["workedWell", "confusing", "magicWand"],
+      "properties": {
+        "workedWell": { "type": "string", "minLength": 10 },
+        "confusing": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Where the migrated skill stalled or was ambiguous to drive autonomously — a finding for the prompt-tune loop."
+        },
+        "magicWand": {
+          "type": "string",
+          "minLength": 10,
+          "description": "The single the-flow PROMPT edit that would most reduce the friction you hit (specific, your own words)."
+        }
+      }
+    }
+  }
+}
