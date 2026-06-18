@@ -300,3 +300,42 @@ describe('T009 — new (scaffold a custom flow-type overlay)', () => {
     if (!res.ok) expect(res.code).toBe(ErrorCodes.INVALID_ARGS);
   });
 });
+
+describe('T016 — version gate (unknown major → E306; runs on every load)', () => {
+  /** A non-legacy flow (has provenance) but a FORWARD major version. */
+  const forwardFlow = JSON.stringify({
+    schema_version: 2,
+    kind: 'harness-loop',
+    slug: 'future',
+    cursor: 'boot',
+    created_at: '2026-06-18T00:00:00.000Z',
+    provenance: {
+      record_kind: 'flow',
+      harness_version: '9.9.9',
+      branch: null,
+      repo: null,
+      created_at: '2026-06-18T00:00:00.000Z',
+      agent: null,
+      plan_id: null,
+    },
+    events: [],
+    nodes: [{ id: 'boot', type: 'boot', label: 'Boot', status: 'assumed', next: [] }],
+  });
+
+  it('readFlowDoc rejects an unknown-major flow with E306 + a `harness update` next_action', () => {
+    const path = '/repo/future.json';
+    const { d } = deps({ [path]: forwardFlow });
+    const res = readFlowDoc(path, d);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe(ErrorCodes.FLOW_SCHEMA_VERSION);
+      expect(res.next_action).toContain('harness update');
+    }
+  });
+
+  it('a known-major (v1) flow loads fine', () => {
+    const path = '/repo/fresh.json';
+    const { d } = deps({ [path]: freshFixture });
+    expect(readFlowDoc(path, d).ok).toBe(true);
+  });
+});

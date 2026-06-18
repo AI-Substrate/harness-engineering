@@ -63,6 +63,20 @@
 - **Evidence**: full suite **713 pass + 0 todo** (the checkpoint-2 todo is now a real test); `app.test.ts`/`index.test.ts` command-list assertions updated (`flow` after `observe`); tsc + biome clean.
 - **Discovery**: `emit`/`runMutation` typed `: never` (they always exit via `exitWithEnvelope`) so the `return emit(…)` early-out satisfies biome `noVoidTypeReturn` cleanly.
 
+## T016 — version-gated schema validation (E306) ✅
+
+- **Commit**: `<pending>` `feat(024): version-gate flow schema_version → E306 on every load [T016]`
+- **What**: `checkSchemaVersion(doc)` refactored to a **doc-only** gate vs `SUPPORTED_SCHEMA_MAJOR` (was overlay-coupled, unused, untested); wired into `readFlowDoc` after the E308 legacy check, so EVERY load (`show` + all mutations + `event`) gates the version. A forward-major flow (`schema_version: 2`) → `E306` with a `harness update` next_action; v1 loads fine. Ships GATED (Open Question resolved).
+- **Evidence**: 2 new tests; full suite **715 pass**; `npm run build` (gen:docs + gen:flows + tsc) green with **zero generated-artifact drift**; biome clean.
+
+## ✅ Phase 1 COMPLETE — 16/16
+
+All 16 tasks done + committed + green. The `harness flow` engine stands up: shared-core + overlay schema (hand-rolled validator), atomic state I/O (temp+rename via new `FsPort.rename`), fine-grained mutations + `insert-node` edge algebra (pre-write DAG re-check → E309), embedded event log (3-tier taxonomy + duck-typer) + per-node comments + datetime trio, the `E300–E309` block, the `gen:flows` bundle, the frozen contract snapshots (checkpoint 1 hook-contract + checkpoint 2 flow-Envelope), and the `E308` clean-break + `E306` version gate. Renderer is **Phase 2**; the-flow migration is **Phase 3**.
+
+- **Suite**: 639 (pre-024) → **715 green** (+76 over the phase). tsc + biome + `npm run build` all clean.
+- **Branch**: `024-first-class-flow-system`. Commits: 126bc7f (T007-T009) · 11c3ee2 (T010-T014) · c727994 (T015) · `<T016 pending>`.
+- **AC coverage**: AC-01/02 (create/template/--bare/--schema), AC-03/10/11 (schema), AC-04/05 (events/comments/datetime), AC-07 (Envelope/E3xx/containment/version), AC-08 (two snapshots), AC-14 (E308), AC-15 (insert-node). Renderer ACs (AC-06) + the-flow migration (AC-09) are out of Phase-1 scope by design.
+
 ## Companion debrief (run `2026-06-18T00-27-49-683Z-f765`)
 
 - **Coverage**: reviewed T001/T002/T003 commit boundaries; **stood down on an idle check-in BEFORE the schema group** (f7fc71f, T004–T006) → schema group is **companion-unreviewed** (covered by a re-booted companion on resume, or the review stage).

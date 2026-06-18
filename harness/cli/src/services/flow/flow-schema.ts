@@ -299,23 +299,29 @@ export function validateFlowDoc(doc: unknown, schema: ResolvedFlowSchema): strin
   return issues;
 }
 
-/** Version gate (T016 / AC-07): an unknown major → E306, with a `harness update` next_action. */
+/**
+ * Version gate (T016 / AC-07): a flow whose `schema_version` MAJOR is not the one
+ * this CLI understands → `E306`, with a `harness update` next_action. Doc-only
+ * (independent of the overlay) so a forward-version flow is rejected before any
+ * schema resolution — it ships GATED (the Open Question resolved). Absence is a
+ * legacy / required-field concern handled by the E308 detector + `validateFlowDoc`.
+ */
 export function checkSchemaVersion(
   doc: unknown,
-  schema: ResolvedFlowSchema,
 ): { ok: true } | { ok: false; code: string; message: string; next_action: string } {
-  const major =
+  const raw =
     doc !== null &&
     typeof doc === 'object' &&
     typeof (doc as Record<string, unknown>).schema_version === 'number'
       ? ((doc as Record<string, unknown>).schema_version as number)
       : undefined;
-  if (major === undefined) return { ok: true }; // absence is a legacy/required-field concern, handled elsewhere
-  if (major !== schema.schemaVersionMajor) {
+  if (raw === undefined) return { ok: true };
+  const major = Math.trunc(raw);
+  if (major !== SUPPORTED_SCHEMA_MAJOR) {
     return {
       ok: false,
       code: ErrorCodes.FLOW_SCHEMA_VERSION,
-      message: `flow schema_version ${major} is not supported (this CLI handles major ${schema.schemaVersionMajor}).`,
+      message: `flow schema_version ${raw} has an unsupported major (this CLI understands major ${SUPPORTED_SCHEMA_MAJOR}).`,
       next_action: 'Run `harness update` to get a CLI that understands this flow version.',
     };
   }

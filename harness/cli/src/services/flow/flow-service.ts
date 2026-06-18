@@ -10,7 +10,7 @@ import {
   type FlowNode,
   type FlowProvenance,
 } from './flow-events.js';
-import { resolveFlowSchema, validateFlowDoc } from './flow-schema.js';
+import { checkSchemaVersion, resolveFlowSchema, validateFlowDoc } from './flow-schema.js';
 import { BUNDLED_FLOW_TEMPLATES } from './schemas-content.js';
 
 /**
@@ -117,6 +117,9 @@ export function readFlowDoc(
       'The `harness flow` CLI does not migrate legacy flows (clean break). If this is unexpected, the file may be malformed — re-create it with `harness flow create`.',
     );
   }
+  // Version gate (T016): a forward-major flow is rejected before any operation.
+  const version = checkSchemaVersion(parsed);
+  if (!version.ok) return fail(version.code, version.message, version.next_action);
   return { ok: true, doc: parsed as FlowDoc };
 }
 

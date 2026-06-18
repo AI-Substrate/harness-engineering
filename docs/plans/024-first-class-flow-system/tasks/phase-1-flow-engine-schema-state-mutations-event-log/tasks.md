@@ -96,7 +96,7 @@ flowchart TD
 
     subgraph Wire["Wiring"]
         T015["T015 · acts/flow.ts + app.ts"]:::completed
-        T016["T016 · version-gate E306"]:::pending
+        T016["T016 · version-gate E306"]:::completed
     end
 
     T001 --> T002 --> T003 --> T004 --> T005 --> T006
@@ -143,7 +143,7 @@ flowchart TD
 | [x] | T013 | **IMPL — `flow-mutations.ts`** (cursor/status/add-node/set-node/comment **+ `insert-node`**) + built-in event firing. Implements the 3-mode edge algebra + **pre-write DAG re-check (`E309`)**; `cursor --recommend` sets `recommended_next` **without** moving the cursor; `node-updated` fires on `set-node`/`comment`/`insert-node` (insert carries `edge_op`); `modified_at`/`ran_at` set | harness-cli·flow | `harness/cli/src/services/flow/flow-mutations.ts` | T010 + T011 pass; events auto-logged; insert-node splices + DAG-re-checks; `--recommend` does not move cursor | plan 1.7; AC-04/05/15; ws-002 §E2; ws-003 I2–I4 |
 | [x] | T014 | **IMPL — `flow-events.ts`** (event log + duck-typed custom events + comments + duration-source timestamps) | harness-cli·flow | `harness/cli/src/services/flow/flow-events.ts` | T012 pass; durations **derivable at read time** (not stored); ids via observe helper; provenance once | plan 1.8; AC-05; ws-002 §E4 |
 | [x] | T015 | **WIRE — `acts/flow.ts`** (subcommand dispatcher, Envelope, `E3xx`, exit 0/1/2) + register `registerFlowAct` in `app.ts` + reserve `flow` as a core command. **Then baseline T001 checkpoint 2** (flow-Envelope `data` shapes for `create`/`show`/`event`) | harness-cli·flow | `harness/cli/src/acts/flow.ts`, `harness/cli/src/app.ts` | `harness flow …` returns correct Envelope + exit codes; `flow` reserved; **flow-Envelope snapshot (`create`/`show`/`event`) created + committed here as the final Phase-1 act — frozen before Phase 2 opens** (→ T001 checkpoint 2, re-run 3.1) | plan 1.9; AC-07/08; ws-001 §D1; mirror `registerObserveAct` + `formatOk/Error/Unconfigured` + `exitWithEnvelope` |
-| [ ] | T016 | **IMPL — version-gated schema validation.** `schema_version` unknown-major → **`E306`**; ships gated (Open Question resolved) | harness-cli·flow | `harness/cli/src/services/flow/flow-schema.ts` | Unknown major rejected with `E306`; known majors validate | plan 1.10; AC-07; Open Question → resolved |
+| [x] | T016 | **IMPL — version-gated schema validation.** `schema_version` unknown-major → **`E306`**; ships gated (Open Question resolved) | harness-cli·flow | `harness/cli/src/services/flow/flow-schema.ts` | Unknown major rejected with `E306`; known majors validate | plan 1.10; AC-07; Open Question → resolved |
 
 **Legend**: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blocked.
 **TDD ordering invariant**: each test task (T004/T005/T007/T008/T010/T011/T012) lands *before* its impl pair (T006/T009/T013/T014) and is red→green. **T001 is the hard first task** (snapshot on unmodified main); **T003 must precede T006** (bundle before loader test).
