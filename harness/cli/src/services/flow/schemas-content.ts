@@ -31,17 +31,8 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
     comment: { required: ['at', 'text'], optional: ['source', 'kind', 'refs'] },
     authority: { values: ['cursor', 'substrate'], default: 'cursor' },
     root: {
-      required: [
-        'schema_version',
-        'kind',
-        'slug',
-        'cursor',
-        'created_at',
-        'provenance',
-        'events',
-        'nodes',
-      ],
-      optional: ['recommended_next', 'agents', 'plan_dir', 'mode', 'now', 'next', '_comment'],
+      required: ['schema_version', 'kind', 'slug', 'created_at', 'provenance', 'events', 'nodes'],
+      optional: ['nav', 'agents', 'plan_dir', 'mode', 'title', '_comment'],
     },
   },
   'harness-loop': {

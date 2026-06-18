@@ -190,12 +190,16 @@ export function renderFlow(doc: FlowDoc): string {
   );
   out.push(`# Flow · ${escapeMd(doc.slug ?? doc.kind ?? 'flow')}`);
   out.push('');
+  const nav = doc.nav;
   const meta = [
     `**Kind**: ${escapeMd(doc.kind ?? 'unknown')}`,
-    `**Cursor**: ${escapeMd(doc.cursor ?? '—')}`,
+    `**Now**: ${escapeMd(nav?.now ?? '—')}`,
   ];
-  if (typeof doc.recommended_next === 'string' && doc.recommended_next.length > 0) {
-    meta.push(`**Next**: ${escapeMd(doc.recommended_next)}`);
+  if (typeof nav?.next === 'string' && nav.next.length > 0) {
+    meta.push(`**Next**: ${escapeMd(nav.next)}`);
+  }
+  if (typeof nav?.intent === 'string' && nav.intent.length > 0) {
+    meta.push(`**Intent**: ${escapeMd(nav.intent)}`);
   }
   meta.push(`**Nodes**: ${nodes.length}`);
   meta.push(`**Events**: ${Array.isArray(doc.events) ? doc.events.length : 0}`);

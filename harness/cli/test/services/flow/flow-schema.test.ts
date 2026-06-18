@@ -176,10 +176,10 @@ describe('T004 — schema validation (shared-core + overlay, kind discriminator 
   it('flags missing required root fields', () => {
     const doc = harnessLoopDoc();
     delete (doc as Record<string, unknown>).provenance;
-    delete (doc as Record<string, unknown>).cursor;
+    delete (doc as Record<string, unknown>).slug;
     const issues = validateFlowDoc(doc, harnessLoopSchema());
     expect(issues.join(' ')).toMatch(/provenance/);
-    expect(issues.join(' ')).toMatch(/cursor/);
+    expect(issues.join(' ')).toMatch(/slug/);
   });
 
   it('flags a node missing required fields', () => {
@@ -225,5 +225,26 @@ describe('T004 — schema validation (shared-core + overlay, kind discriminator 
       cursor: 'boot',
     });
     expect(validateFlowDoc(doc, harnessLoopSchema())).toEqual([]);
+  });
+});
+
+describe('T002a — descriptor tracks the nav migration (cursor dropped; nav optional + ref-validated)', () => {
+  it('rootRequired no longer includes cursor; rootOptional includes nav', () => {
+    const schema = harnessLoopSchema();
+    expect(schema.rootRequired).not.toContain('cursor');
+    expect(schema.rootOptional).toContain('nav');
+  });
+
+  it('a doc WITHOUT cursor validates clean (cursor no longer required)', () => {
+    const doc = harnessLoopDoc();
+    delete (doc as Record<string, unknown>).cursor;
+    expect(validateFlowDoc(doc, harnessLoopSchema())).toEqual([]);
+  });
+
+  it('validates nav.now / nav.next node refs at validate time', () => {
+    const ok = harnessLoopDoc({ nav: { now: 'boot', next: 'bp' } });
+    expect(validateFlowDoc(ok, harnessLoopSchema())).toEqual([]);
+    const bad = harnessLoopDoc({ nav: { now: 'ghost', next: null } });
+    expect(validateFlowDoc(bad, harnessLoopSchema()).join(' ')).toMatch(/nav\.now/);
   });
 });

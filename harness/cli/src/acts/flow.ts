@@ -12,11 +12,15 @@ import { buildCustomEvent, buildManualEvent, type FlowDoc } from '../services/fl
 import {
   addComment,
   addNode,
+  getMeta,
   insertNode,
   type MutationResult,
-  moveCursor,
-  recommendNext,
+  navShow,
+  setIntent,
+  setMeta,
+  setNext,
   setNode,
+  setNow,
   setStatus,
 } from '../services/flow/flow-mutations.js';
 import { renderFlow } from '../services/flow/flow-renderer.js';
@@ -77,8 +81,8 @@ function summary(doc: FlowDoc, path: string): Record<string, unknown> {
     path,
     slug: doc.slug,
     kind: doc.kind,
-    cursor: doc.cursor,
-    recommended_next: doc.recommended_next ?? null,
+    now: doc.nav?.now ?? null,
+    next: doc.nav?.next ?? null,
     node_count: doc.nodes.length,
     event_count: doc.events.length,
   };
@@ -126,10 +130,25 @@ export function registerFlowAct(
     .option('--schema <path>', 'overlay schema override (may be out-of-repo)')
     .option('--template <path>', 'create-seed override (may be out-of-repo)')
     .option('--bare', 'root-only — copy no template nodes')
+    .option(
+      '--agent <name>',
+      'stamp provenance.agent (the rail-title source); wins over $HARNESS_AGENT',
+    )
+    .option('--plan-id <id>', 'stamp provenance.plan_id; wins over $HARNESS_PLAN_ID')
+    .option('--title <title>', 'an explicit rail-title label (preferred over the slug)')
     .action(
       (
         type: string,
-        opts: { slug: string; path?: string; schema?: string; template?: string; bare?: boolean },
+        opts: {
+          slug: string;
+          path?: string;
+          schema?: string;
+          template?: string;
+          bare?: boolean;
+          agent?: string;
+          planId?: string;
+          title?: string;
+        },
       ) => {
         const res = createFlow(
           {
@@ -141,6 +160,9 @@ export function registerFlowAct(
             schemaPath: opts.schema,
             templatePath: opts.template,
             bare: opts.bare,
+            agent: opts.agent,
+            planId: opts.planId,
+            title: opts.title,
           },
           svc,
         );
@@ -149,7 +171,7 @@ export function registerFlowAct(
           io,
           formatOk('flow', summary(res.doc, res.path), deps.clock, {
             evidence: [{ label: 'flow', path: res.path }],
-            next_action: `Mutate it: \`harness flow cursor --path ${res.path} --to <node>\`.`,
+            next_action: `Set position: \`harness flow nav set --path ${res.path} --now <node>\`.`,
           }),
         );
       },
@@ -196,34 +218,121 @@ export function registerFlowAct(
       emit(io, formatOk('flow', { flows: res.flows, count: res.flows.length }, deps.clock));
     });
 
-  // --- cursor ------------------------------------------------------------
-  flow
-    .command('cursor')
-    .description('Move the cursor (--to) or set the recommended next node (--recommend)')
+  // --- nav (show / set / meta) -------------------------------------------
+  // The cursor-spine position object (workshop 002) — supersedes the old `cursor`
+  // verb (clean break, no alias). The CLI persists position; the LLM dispatches.
+  const nav = flow
+    .command('nav')
+    .description('Position object: show / set (now/next/intent) / meta (the free-form bag)');
+
+  nav
+    .command('show')
+    .description('Print the nav (now/next/intent/bag) + the now-node neighbours')
     .option('--path <path>', 'flow file path')
     .option('--slug <slug>', 'flow slug')
-    .option('--to <node>', 'move the cursor to this node')
-    .option('--recommend <node>', 'set recommended_next without moving the cursor')
-    .action((opts: { path?: string; slug?: string; to?: string; recommend?: string }) => {
-      if (opts.to === undefined && opts.recommend === undefined) {
-        return emit(
-          io,
-          failureEnvelope(
-            {
-              ok: false,
-              status: 'error',
-              code: ErrorCodes.INVALID_ARGS,
-              message: 'cursor needs --to or --recommend.',
-              next_action: 'Pass --to <node> or --recommend <node>.',
-            },
-            deps.clock,
-          ),
-        );
-      }
-      runMutation(io, deps, opts, (doc) =>
-        opts.to !== undefined
-          ? moveCursor(doc, opts.to, { clock: deps.clock })
-          : recommendNext(doc, opts.recommend as string, { clock: deps.clock }),
+    .action((opts: { path?: string; slug?: string }) => {
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+      const read = readFlowDoc(resolved.path, svc);
+      if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
+      emit(
+        io,
+        formatOk('flow', navShow(read.doc) as unknown as Record<string, unknown>, deps.clock),
+      );
+    });
+
+  nav
+    .command('set')
+    .description('Set position/intent: --now (move), --next/--clear-next (advisory), --intent')
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .option('--now <node>', 'move the position to this node')
+    .option('--next <node>', 'set the advisory next node')
+    .option('--clear-next', 'clear the advisory next (→ null)')
+    .option('--intent <text>', 'set the leg intent')
+    .action(
+      (opts: {
+        path?: string;
+        slug?: string;
+        now?: string;
+        next?: string;
+        clearNext?: boolean;
+        intent?: string;
+      }) => {
+        if (
+          opts.now === undefined &&
+          opts.next === undefined &&
+          opts.clearNext !== true &&
+          opts.intent === undefined
+        ) {
+          return emit(
+            io,
+            failureEnvelope(
+              {
+                ok: false,
+                status: 'error',
+                code: ErrorCodes.INVALID_ARGS,
+                message: 'nav set needs at least one of --now / --next / --clear-next / --intent.',
+                next_action: 'Pass --now <node>, --next <node>, --clear-next, or --intent "<text>".',
+              },
+              deps.clock,
+            ),
+          );
+        }
+        const clk = { clock: deps.clock };
+        runMutation(io, deps, opts, (doc) => {
+          let r: MutationResult = { ok: true, doc };
+          if (opts.now !== undefined) {
+            r = setNow(r.doc, opts.now, clk);
+            if (!r.ok) return r;
+          }
+          if (opts.clearNext === true) {
+            r = setNext(r.doc, null, clk);
+            if (!r.ok) return r;
+          } else if (opts.next !== undefined) {
+            r = setNext(r.doc, opts.next, clk);
+            if (!r.ok) return r;
+          }
+          if (opts.intent !== undefined) {
+            r = setIntent(r.doc, opts.intent, clk);
+            if (!r.ok) return r;
+          }
+          return r;
+        });
+      },
+    );
+
+  const navMeta = nav
+    .command('meta')
+    .description('The free-form qualifier bag (shallow key/value, no schema)');
+
+  navMeta
+    .command('set <key> <value>')
+    .description('Shallow-merge one key into the nav bag (other keys preserved)')
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .action((key: string, value: string, opts: { path?: string; slug?: string }) => {
+      runMutation(io, deps, opts, (doc) => setMeta(doc, key, value, { clock: deps.clock }));
+    });
+
+  navMeta
+    .command('get [key]')
+    .description('Read one key (or the whole bag when no key is given)')
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .action((key: string | undefined, opts: { path?: string; slug?: string }) => {
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+      const read = readFlowDoc(resolved.path, svc);
+      if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
+      const value = getMeta(read.doc, key);
+      emit(
+        io,
+        formatOk(
+          'flow',
+          key === undefined ? { bag: value } : { key, value: value ?? null },
+          deps.clock,
+        ),
       );
     });
 

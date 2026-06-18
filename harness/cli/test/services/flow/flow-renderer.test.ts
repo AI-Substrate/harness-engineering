@@ -16,7 +16,7 @@ function doc(nodes: Partial<FlowNode>[], extra: Partial<FlowDoc> = {}): FlowDoc 
     schema_version: 1,
     kind: 'flight-plan',
     slug: 'test',
-    cursor: nodes[0]?.id ?? '',
+    nav: { now: nodes[0]?.id ?? '', next: null },
     created_at: '2026-01-01T00:00:00Z',
     provenance: {
       record_kind: 'flow',
@@ -65,7 +65,7 @@ describe('flow-renderer · golden-file parity', () => {
   it('detects drift — a mutated doc no longer matches the committed golden', () => {
     const fp = loadFixture('flight-plan-024');
     const golden = readFileSync(`${FIXTURE_DIR}/flight-plan-024.md`, 'utf8');
-    const mutated = { ...fp, cursor: 'merge' } as FlowDoc;
+    const mutated = { ...fp, nav: { now: 'merge', next: null } } as FlowDoc;
     expect(renderFlow(mutated)).not.toBe(golden);
   });
 

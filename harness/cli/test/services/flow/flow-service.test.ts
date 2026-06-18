@@ -201,7 +201,7 @@ describe('T009 — create (template deep-copy + root identity + atomic temp+rena
     // root identity stamped
     expect(doc.kind).toBe('harness-loop');
     expect(doc.slug).toBe('demo');
-    expect(doc.cursor).toBe('boot');
+    expect(doc.nav?.now).toBe('boot'); // nav seeded from the template's initial node
     expect(doc.schema_version).toBe(1);
     // provenance = the record 7-key block; branch = created_from_branch
     expect(Object.keys(doc.provenance).sort()).toEqual(
@@ -243,7 +243,7 @@ describe('T009 — create (template deep-copy + root identity + atomic temp+rena
     expect(res.ok).toBe(true);
     if (res.ok) {
       expect(res.doc.nodes).toEqual([]);
-      expect(res.doc.cursor).toBe('');
+      expect(res.doc.nav).toBeUndefined(); // bare/no-node → nav-less (graceful)
     }
   });
 
@@ -298,6 +298,44 @@ describe('T009 — new (scaffold a custom flow-type overlay)', () => {
     const res = newFlowSchema({ type: 'dup', repoRoot: REPO }, d);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.code).toBe(ErrorCodes.INVALID_ARGS);
+  });
+});
+
+describe('T011 — create --agent/--plan-id/--title stamp provenance + title (D-06)', () => {
+  it('--agent + --plan-id stamp provenance non-null, overriding the env', () => {
+    const { d } = deps(); // env has HARNESS_AGENT=claude-opus, HARNESS_PLAN_ID=024-…
+    const res = createFlow(
+      {
+        type: 'harness-loop',
+        slug: 'agented',
+        repoRoot: REPO,
+        harnessVersion: '0.4.0',
+        agent: 'the-flow',
+        planId: '026-the-flow-cursor-meta-migration',
+        title: 'the-flow',
+      },
+      d,
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.doc.provenance.agent).toBe('the-flow'); // --agent wins over env
+    expect(res.doc.provenance.plan_id).toBe('026-the-flow-cursor-meta-migration');
+    expect(res.doc.title).toBe('the-flow');
+  });
+
+  it('without --agent (and no env) provenance.agent is null — harness-less create stays valid (slug fallback at rail)', () => {
+    const d: FlowServiceDeps = {
+      fs: new FakeFs(),
+      clock: new FakeClock('2026-06-18T03:00:00.000Z'),
+      git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'r' }),
+      env: new FakeEnv({}),
+    };
+    const res = createFlow(
+      { type: 'harness-loop', slug: 'agentless', repoRoot: REPO, harnessVersion: '0.4.0' },
+      d,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.doc.provenance.agent).toBeNull();
   });
 });
 

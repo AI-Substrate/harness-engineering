@@ -147,3 +147,80 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     expect(bad.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
   });
 });
+
+describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function seed(slug = 'demo', bare = false): Promise<VerbActDeps> {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    const argv = ['flow', 'create', 'harness-loop', '--slug', slug];
+    if (bare) argv.push('--bare');
+    await runFlow(deps, argv);
+    return deps;
+  }
+
+  it('nav set --now moves position; nav show reflects it + the now-node neighbours', async () => {
+    const deps = await seed();
+    const set = await runFlow(deps, [
+      'flow', 'nav', 'set', '--slug', 'demo', '--now', 'backpressure', '--intent', 'survey',
+    ]);
+    expect(set.code).toBe(0);
+    expect((set.env.data as { now: string }).now).toBe('backpressure');
+
+    const show = await runFlow(deps, ['flow', 'nav', 'show', '--slug', 'demo']);
+    expect(show.code).toBe(0);
+    const d = show.env.data as {
+      nav: { now: string; next: string | null; intent?: string };
+      predecessors: { id: string }[];
+      successors: { id: string }[];
+    };
+    expect(d.nav.now).toBe('backpressure');
+    expect(d.nav.intent).toBe('survey');
+    expect(d.predecessors.map((n) => n.id)).toEqual(['boot']);
+    expect(d.successors.map((n) => n.id)).toEqual(['observe']);
+  });
+
+  it('nav set --next then --clear-next sets and clears the advisory next', async () => {
+    const deps = await seed();
+    await runFlow(deps, ['flow', 'nav', 'set', '--slug', 'demo', '--next', 'observe']);
+    let show = await runFlow(deps, ['flow', 'nav', 'show', '--slug', 'demo']);
+    expect((show.env.data as { nav: { next: string | null } }).nav.next).toBe('observe');
+    await runFlow(deps, ['flow', 'nav', 'set', '--slug', 'demo', '--clear-next']);
+    show = await runFlow(deps, ['flow', 'nav', 'show', '--slug', 'demo']);
+    expect((show.env.data as { nav: { next: string | null } }).nav.next).toBeNull();
+  });
+
+  it('nav set --now on a missing node → E305; nav set with no flags → E108', async () => {
+    const deps = await seed();
+    const e305 = await runFlow(deps, ['flow', 'nav', 'set', '--slug', 'demo', '--now', 'ghost']);
+    expect(e305.code).toBe(1);
+    expect(e305.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
+    const e108 = await runFlow(deps, ['flow', 'nav', 'set', '--slug', 'demo']);
+    expect(e108.code).toBe(1);
+    expect(e108.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+  });
+
+  it('nav meta set shallow-merges; nav meta get reads one key + the whole bag', async () => {
+    const deps = await seed();
+    await runFlow(deps, ['flow', 'nav', 'meta', 'set', 'replan_reason', 'draft', '--slug', 'demo']);
+    await runFlow(deps, ['flow', 'nav', 'meta', 'set', 'attempts', '2', '--slug', 'demo']);
+    const one = await runFlow(deps, ['flow', 'nav', 'meta', 'get', 'replan_reason', '--slug', 'demo']);
+    expect((one.env.data as { value: unknown }).value).toBe('draft');
+    const all = await runFlow(deps, ['flow', 'nav', 'meta', 'get', '--slug', 'demo']);
+    expect((all.env.data as { bag: Record<string, unknown> }).bag).toEqual({
+      replan_reason: 'draft',
+      attempts: '2',
+    });
+  });
+
+  it('nav show on a bare (nav-less) flow returns nav:null, not an error (graceful)', async () => {
+    const deps = await seed('bare', true);
+    const show = await runFlow(deps, ['flow', 'nav', 'show', '--slug', 'bare']);
+    expect(show.code).toBe(0);
+    expect((show.env.data as { nav: unknown }).nav).toBeNull();
+  });
+});

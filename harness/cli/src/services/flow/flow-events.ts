@@ -86,13 +86,28 @@ export interface FlowNode {
   [key: string]: unknown;
 }
 
+/**
+ * The position object (workshop 002) — the flow's single source of "where am I":
+ *   - `now`     the validated current node id (the truth),
+ *   - `next`    an advisory next node id, or `null` (the LLM dispatches; the CLI never routes),
+ *   - `intent`  a free-text statement of what this leg is for,
+ *   - `bag`     a free-form, shallow qualifier map (NO schema — D7).
+ * Replaces the pre-migration top-level `cursor`/`recommended_next` (clean break).
+ */
+export interface Nav {
+  now: string;
+  next: string | null;
+  intent?: string;
+  bag?: Record<string, unknown>;
+}
+
 /** The whole flow document — the canonical state `the-flow.json` shape. */
 export interface FlowDoc {
   schema_version: number;
   kind: string;
   slug: string;
-  cursor: string;
-  recommended_next?: string;
+  /** Position + intent + bag (workshop 002). Absent on a bare/uninitialised flow. */
+  nav?: Nav;
   created_at: string;
   provenance: FlowProvenance;
   events: FlowEvent[];

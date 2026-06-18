@@ -5,12 +5,12 @@ exports[`contract: harness flow Envelope data shapes (T001 checkpoint 2 — froz
   "create": {
     "command": "flow",
     "data": {
-      "cursor": "boot",
       "event_count": 1,
       "kind": "harness-loop",
+      "next": null,
       "node_count": 5,
+      "now": "boot",
       "path": "/repo/.harness/flows/demo.json",
-      "recommended_next": null,
       "slug": "demo",
     },
     "status": "ok",
@@ -30,12 +30,12 @@ exports[`contract: harness flow Envelope data shapes (T001 checkpoint 2 — froz
   "show": {
     "command": "flow",
     "data": {
-      "cursor": "boot",
       "event_count": 1,
       "kind": "harness-loop",
+      "next": null,
       "node_count": 5,
+      "now": "boot",
       "path": "/repo/.harness/flows/demo.json",
-      "recommended_next": null,
       "slug": "demo",
     },
     "status": "ok",

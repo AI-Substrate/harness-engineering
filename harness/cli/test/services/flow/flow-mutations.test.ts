@@ -6,11 +6,17 @@ import {
   addComment,
   addNode,
   dagIssue,
+  getMeta,
   insertNode,
-  moveCursor,
-  recommendNext,
+  navShow,
+  predecessorsOf,
+  setIntent,
+  setMeta,
+  setNext,
   setNode,
+  setNow,
   setStatus,
+  successorsOf,
 } from '../../../src/services/flow/flow-mutations.js';
 
 /**
@@ -24,7 +30,7 @@ function baseDoc(nodes?: FlowDoc['nodes']): FlowDoc {
     schema_version: 1,
     kind: 'harness-loop',
     slug: 'demo',
-    cursor: 'a',
+    nav: { now: 'a', next: null },
     created_at: '2026-06-18T00:00:00.000Z',
     provenance: {
       record_kind: 'flow',
@@ -49,22 +55,42 @@ const ev = (doc: FlowDoc): FlowEvent[] => doc.events;
 const lastEvent = (doc: FlowDoc): FlowEvent => doc.events[doc.events.length - 1] as FlowEvent;
 
 describe('T010 — mutations fire built-in events + stamp datetime; provenance untouched', () => {
-  it('moveCursor fires cursor-moved {from,to} and updates the cursor', () => {
-    const res = moveCursor(baseDoc(), 'b', deps());
+  it('setNow moves nav.now + fires cursor-moved {from,to}', () => {
+    const res = setNow(baseDoc(), 'b', deps());
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.doc.cursor).toBe('b');
+    expect(res.doc.nav?.now).toBe('b');
     expect(lastEvent(res.doc).kind).toBe('cursor-moved');
     expect(lastEvent(res.doc).details).toEqual({ from: 'a', to: 'b' });
   });
 
-  it('recommendNext sets recommended_next WITHOUT moving the cursor (no event)', () => {
-    const res = recommendNext(baseDoc(), 'c', deps());
+  it('setNext sets advisory nav.next WITHOUT moving now + no event; null clears it', () => {
+    const set = setNext(baseDoc(), 'c', deps());
+    expect(set.ok).toBe(true);
+    if (!set.ok) return;
+    expect(set.doc.nav?.next).toBe('c');
+    expect(set.doc.nav?.now).toBe('a'); // unchanged
+    expect(set.doc.events).toHaveLength(0); // advisory — no transition event
+    const cleared = setNext(set.doc, null, deps());
+    expect(cleared.ok).toBe(true);
+    if (cleared.ok) expect(cleared.doc.nav?.next).toBeNull();
+  });
+
+  it('setIntent sets nav.intent without firing an event', () => {
+    const res = setIntent(baseDoc(), 'ship the nav primitives', deps());
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.doc.recommended_next).toBe('c');
-    expect(res.doc.cursor).toBe('a');
+    expect(res.doc.nav?.intent).toBe('ship the nav primitives');
     expect(res.doc.events).toHaveLength(0);
+  });
+
+  it('setNow AND setNext reject a missing ref → E305 (both validate node-refs)', () => {
+    expect((setNow(baseDoc(), 'nope', deps()) as { code: string }).code).toBe(
+      ErrorCodes.FLOW_NODE_INVALID,
+    );
+    expect((setNext(baseDoc(), 'nope', deps()) as { code: string }).code).toBe(
+      ErrorCodes.FLOW_NODE_INVALID,
+    );
   });
 
   it('setStatus →done fires status-changed + stamps modified_at AND ran_at', () => {
@@ -152,7 +178,7 @@ describe('T010 — mutations fire built-in events + stamp datetime; provenance u
     expect((addComment(baseDoc(), 'nope', 'x', deps()) as { code: string }).code).toBe(
       ErrorCodes.FLOW_NODE_INVALID,
     );
-    expect((moveCursor(baseDoc(), 'nope', deps()) as { code: string }).code).toBe(
+    expect((setNow(baseDoc(), 'nope', deps()) as { code: string }).code).toBe(
       ErrorCodes.FLOW_NODE_INVALID,
     );
   });
@@ -173,9 +199,50 @@ describe('T010 — mutations fire built-in events + stamp datetime; provenance u
 
   it('mutations are pure — the input doc is never mutated', () => {
     const doc = baseDoc();
-    moveCursor(doc, 'b', deps());
-    expect(doc.cursor).toBe('a');
+    setNow(doc, 'b', deps());
+    expect(doc.nav?.now).toBe('a');
     expect(doc.events).toHaveLength(0);
+  });
+});
+
+describe('T003 — nav meta (shallow-merge bag) + neighbour utils + navShow', () => {
+  it('setMeta shallow-merges into bag (other keys preserved); getMeta reads', () => {
+    const r1 = setMeta(baseDoc(), 'replan_reason', 'draft', deps());
+    expect(r1.ok).toBe(true);
+    if (!r1.ok) return;
+    const r2 = setMeta(r1.doc, 'attempts', 2, deps());
+    expect(r2.ok).toBe(true);
+    if (!r2.ok) return;
+    expect(r2.doc.nav?.bag).toEqual({ replan_reason: 'draft', attempts: 2 });
+    expect(getMeta(r2.doc, 'replan_reason')).toBe('draft');
+    expect(getMeta(r2.doc)).toEqual({ replan_reason: 'draft', attempts: 2 });
+    expect(r2.doc.events).toHaveLength(0); // meta is not a transition — no event
+  });
+
+  it('predecessorsOf / successorsOf compute neighbour node sets', () => {
+    const nodes = baseDoc().nodes;
+    expect(successorsOf(nodes, 'a').map((n) => n.id)).toEqual(['b']);
+    expect(predecessorsOf(nodes, 'b').map((n) => n.id)).toEqual(['a']);
+    expect(predecessorsOf(nodes, 'a')).toEqual([]); // root has no predecessor
+    expect(successorsOf(nodes, 'c')).toEqual([]); // leaf has no successor
+  });
+
+  it('navShow assembles {nav, predecessors, successors} with trimmed neighbours', () => {
+    const shown = navShow(baseDoc());
+    expect(shown.nav).toEqual({ now: 'a', next: null });
+    expect(shown.successors).toEqual([
+      { id: 'b', type: 'observe', status: 'in_progress', label: 'B', next: ['c'] },
+    ]);
+    expect(shown.predecessors).toEqual([]);
+  });
+
+  it('navShow returns nav:null when the doc carries no nav (graceful absent)', () => {
+    const doc = baseDoc();
+    doc.nav = undefined;
+    const shown = navShow(doc);
+    expect(shown.nav).toBeNull();
+    expect(shown.predecessors).toEqual([]);
+    expect(shown.successors).toEqual([]);
   });
 });
 

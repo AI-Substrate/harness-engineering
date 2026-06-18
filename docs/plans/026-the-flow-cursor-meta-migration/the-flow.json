@@ -1,0 +1,547 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "the-flow-cursor-meta-migration",
+  "cursor": "plan",
+  "created_at": "2026-06-18T06:07:05.798Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "024-first-class-flow-system",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-18T06:07:05.798Z",
+    "agent": null,
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:05.810Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "the-flow-cursor-meta-migration"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:05.882Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:05.946Z",
+      "details": {
+        "node": "p1",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:06.018Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:06.094Z",
+      "details": {
+        "node": "ws-migration",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:06.159Z",
+      "details": {
+        "node": "ws-migration",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:07:06.232Z",
+      "details": {
+        "from": "",
+        "to": "ws-migration"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:40:42.361Z",
+      "details": {
+        "node": "ws-migration",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:40:42.427Z",
+      "details": {
+        "node": "ws-migration",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T06:49:49.268Z",
+      "details": {
+        "node": "ws-migration",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:20:03.328Z",
+      "details": {
+        "node": "ws-nav",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:20:03.328Z",
+      "details": {
+        "node": "ws-migration",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:20:03.410Z",
+      "details": {
+        "from": "ws-migration",
+        "to": "ws-nav"
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:20:03.482Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:21:23.225Z",
+      "details": {
+        "node": "ws-nav",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:21:23.295Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:31:31.637Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:38:53.604Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:40:32.026Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:42:51.760Z",
+      "details": {
+        "node": "ws-guide",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:42:51.760Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:42:51.836Z",
+      "details": {
+        "from": "ws-nav",
+        "to": "ws-guide"
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:42:51.906Z",
+      "details": {
+        "node": "ws-guide",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:43:52.153Z",
+      "details": {
+        "node": "ws-guide",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:43:52.222Z",
+      "details": {
+        "node": "ws-guide",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:50:36.201Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T07:52:58.101Z",
+      "details": {
+        "node": "ws-nav",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T08:06:15.873Z",
+      "details": {
+        "node": "plan",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T08:06:15.950Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-016",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T08:06:16.029Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-017",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T08:06:16.112Z",
+      "details": {
+        "node": "p1",
+        "fields": [
+          "label"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T08:06:16.192Z",
+      "details": {
+        "from": "ws-guide",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "UPD-018",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T08:32:34.866Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "next": [],
+      "created_at": "2026-06-18T06:07:05.882Z",
+      "modified_at": "2026-06-18T06:07:05.882Z"
+    },
+    {
+      "id": "p1",
+      "type": "phase",
+      "label": "Phase 1 · Build nav/rail/zone + create --agent",
+      "status": "assumed",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-18T06:07:05.946Z",
+      "modified_at": "2026-06-18T08:06:16.112Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (Simple) — folds workshop, auto-validates",
+      "status": "done",
+      "next": [
+        "p1"
+      ],
+      "created_at": "2026-06-18T06:07:06.018Z",
+      "modified_at": "2026-06-18T08:32:34.866Z",
+      "ran_at": "2026-06-18T08:06:15.873Z",
+      "note": "Simple plan, Status READY; 14 tasks (TDD, no mocks, docs/how); CS-3; folds workshops 001/002/003 + the D-06 create --agent fix. Non-goal: the the-flow skill edits (tools repo).",
+      "artifacts": [
+        "the-flow-cursor-meta-migration-plan.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-18T08:06:16.029Z",
+          "text": "validate-v2 (3 agents, narrow) = VALIDATED WITH FIXES: corrected G2/G3 (project-rules exist), added schema-descriptor task T002a, clarified next-validation + N5 (assumed-node) + zone defaults + nav-absent test.",
+          "source": "agent",
+          "kind": "validation",
+          "refs": [
+            "the-flow-cursor-meta-migration-plan.md"
+          ]
+        },
+        {
+          "at": "2026-06-18T08:32:34.866Z",
+          "text": "Validation pass 2 (broad, 4 agents, pre-build gate): source-truth 100% vs live CLI v0.4.0 (cursor exists, no nav/rail yet — matches Findings 01-05); thesis intact (CLI never routes); CS-3 honest. 6 clarifications applied (AC-1 nav-show shape, zone unknown->flight, T006 reader-audit, slug fallback, deploy-order, proof-level wording). READY.",
+          "source": "agent",
+          "kind": "validation",
+          "refs": [
+            "docs/plans/026-the-flow-cursor-meta-migration/the-flow-cursor-meta-migration-plan.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ws-migration",
+      "type": "workshop",
+      "label": "Workshop · the-flow to cursor/meta",
+      "status": "done",
+      "next": [
+        "ws-nav"
+      ],
+      "created_at": "2026-06-18T06:07:06.094Z",
+      "modified_at": "2026-06-18T07:20:03.328Z",
+      "user_input": "do a new flow, simple mode. workshop the migration of the-flow to new system (where skill edits are and how the vibe changes in how it operates). then run validation. then build while dogfooding; observe and report any issues.",
+      "ran_at": "2026-06-18T06:40:42.361Z",
+      "note": "Settled D1–D7: cursor --show read, cursor --to set-anywhere, meta property bag (shallow-merge), meta in CLI core, one-shot migration, LLM-intuits dispatch (no engine). Contract Ready.",
+      "artifacts": [
+        "workshops/001-cursor-meta-migration.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-18T06:49:49.268Z",
+          "text": "validate-v2 (4 agents) = VALIDATED WITH FIXES. Fixed: in-flight count (23/8), added Contract 2b CLI-site map, named meta FlowDoc field + semantics, trimmed neighbour envelope, Q1 dogfood-resolved (cursor --to validates → E305).",
+          "source": "agent",
+          "kind": "validation",
+          "refs": [
+            "workshops/001-cursor-meta-migration.md"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ws-nav",
+      "type": "workshop",
+      "label": "Workshop · nav object (first-class position DB)",
+      "status": "done",
+      "next": [
+        "ws-guide"
+      ],
+      "created_at": "2026-06-18T07:20:03.328Z",
+      "modified_at": "2026-06-18T07:52:58.101Z",
+      "user_input": "next can be null — we're not doing workflow, we're letting the LLM use this as a first-class database. do a workshop and get it sorted properly.",
+      "ran_at": "2026-06-18T07:21:23.225Z",
+      "note": "Resolved N1-N10: one first-class nav{now,next,intent,bag}; now=node-id (validated/truth), next=node-id|null (advisory), bag=free-form qualifiers; CLI validates node-refs+structure only (DB not workflow). Supersedes 001 D1/D3/D5.",
+      "artifacts": [
+        "workshops/002-nav-first-class-position-db.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-18T07:31:31.637Z",
+          "text": "Q2 RESOLVED: clean break — drop cursor entirely; nav is the only position verb (no alias).",
+          "source": "agent",
+          "kind": "decision"
+        },
+        {
+          "at": "2026-06-18T07:38:53.604Z",
+          "text": "Q1 RESOLVED: new sibling verb 'harness flow rail' derives the rail from the spine + live node statuses (pips from status, names from labels); no stored milestone counters; optional nav.rail curation override.",
+          "source": "agent",
+          "kind": "decision"
+        },
+        {
+          "at": "2026-06-18T07:40:32.026Z",
+          "text": "N12: each spine node gets a 'zone' enum (preflight|flight|postflight); harness flow rail renders pre - [flight] - post (brackets = flight zone, deterministic). Default-by-type, --zone override. Named zone (not phase) to avoid colliding with the phase node type.",
+          "source": "agent",
+          "kind": "decision"
+        },
+        {
+          "at": "2026-06-18T07:50:36.201Z",
+          "text": "N13: harness flow rail prefixes the line with the flow TITLE = provenance.agent (e.g. [the-flow]), optional title override, never the filename/slug. New flows get their own prefix automatically (e.g. [eng-harness-flow]).",
+          "source": "agent",
+          "kind": "decision"
+        },
+        {
+          "at": "2026-06-18T07:52:58.101Z",
+          "text": "DOGFOOD D-06: harness flow create stamps provenance but leaves agent + plan_id = null (no --agent/--plan-id flag); branch/repo/version auto-derive correctly. The 024 fixture's agent=the-flow is hand-authored. Phase 1 must add create --agent (and --plan-id) so the rail title (N13) works; slug fallback meanwhile.",
+          "source": "agent",
+          "kind": "warning"
+        }
+      ]
+    },
+    {
+      "id": "ws-guide",
+      "type": "workshop",
+      "label": "Guide · building flows on the flow system",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T07:42:51.759Z",
+      "modified_at": "2026-06-18T07:43:52.222Z",
+      "user_input": "i want a workshop / implementation guide for how to build new flows / skills that rely on this wf system. and: did you doco the rail properly?",
+      "ran_at": "2026-06-18T07:43:52.153Z",
+      "note": "Implementation guide for building new flows/skills on the shared system (flight-plan + nav + rail + zone): the one rule (LLM dispatches, CLI persists), step-by-step recipe, per-turn cadence, position models, rail usage, layering, skeleton. Documents rail USAGE (decisions live in 002).",
+      "artifacts": [
+        "workshops/003-building-flows-on-the-system.md"
+      ]
+    }
+  ],
+  "recommended_next": "p1"
+}

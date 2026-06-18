@@ -293,8 +293,17 @@ export function validateFlowDoc(doc: unknown, schema: ResolvedFlowSchema): strin
     }
   }
 
-  if (typeof d.cursor === 'string' && ids.size > 0 && !ids.has(d.cursor)) {
-    issues.push(`root: cursor "${d.cursor}" does not reference an existing node`);
+  // nav.now / nav.next must reference existing nodes (the cursor-spine position
+  // object replaced the top-level cursor/recommended_next refs — clean break).
+  const nav = d.nav;
+  if (nav !== null && typeof nav === 'object' && !Array.isArray(nav) && ids.size > 0) {
+    const n = nav as Record<string, unknown>;
+    if (typeof n.now === 'string' && n.now.length > 0 && !ids.has(n.now)) {
+      issues.push(`root: nav.now "${n.now}" does not reference an existing node`);
+    }
+    if (typeof n.next === 'string' && n.next.length > 0 && !ids.has(n.next)) {
+      issues.push(`root: nav.next "${n.next}" does not reference an existing node`);
+    }
   }
   return issues;
 }

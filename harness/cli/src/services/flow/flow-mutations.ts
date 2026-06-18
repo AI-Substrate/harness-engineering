@@ -1,6 +1,12 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import { buildBuiltinEvent, buildComment, type FlowDoc, type FlowNode } from './flow-events.js';
+import {
+  buildBuiltinEvent,
+  buildComment,
+  type FlowDoc,
+  type FlowNode,
+  type Nav,
+} from './flow-events.js';
 import { type FlowFailure, fail } from './flow-service.js';
 
 /**
@@ -42,27 +48,129 @@ function nodeNotFound(id: string): FlowFailure {
 }
 
 // ---------------------------------------------------------------------------
-// cursor.
+// nav — position (now/next), intent, and the free-form meta bag (ws-002).
 // ---------------------------------------------------------------------------
 
-/** `flow cursor --to X` — move the cursor, firing `cursor-moved {from,to}`. */
-export function moveCursor(doc: FlowDoc, to: string, deps: MutationDeps): MutationResult {
+/** Read (or seed) the nav object on the CLONED doc — callers always pass a clone. */
+function navOf(doc: FlowDoc): Nav {
+  if (doc.nav === undefined) doc.nav = { now: '', next: null };
+  return doc.nav;
+}
+
+/** `flow nav set --now X` — move position, firing `cursor-moved {from,to}` (reuses the ws-002 kind). */
+export function setNow(doc: FlowDoc, to: string, deps: MutationDeps): MutationResult {
   const next = clone(doc);
   if (findNode(next, to) === undefined) return nodeNotFound(to);
-  const from = next.cursor;
-  next.cursor = to;
+  const nav = navOf(next);
+  const from = nav.now;
+  nav.now = to;
   next.events.push(buildBuiltinEvent('cursor-moved', { from, to }, next.events, deps.clock));
   return { ok: true, doc: next };
 }
 
-/** `flow cursor --recommend X` — set `recommended_next` WITHOUT moving the cursor. */
-export function recommendNext(doc: FlowDoc, nodeId: string, deps: MutationDeps): MutationResult {
+/**
+ * `flow nav set --next X | --clear-next` — set the advisory next (validated when an
+ * id is given — E305) or clear it to `null`. Advisory pointer, NOT a transition →
+ * no built-in event (ws-002 §E2 has none), matching the pre-migration `recommendNext`.
+ */
+export function setNext(doc: FlowDoc, to: string | null, deps: MutationDeps): MutationResult {
   const next = clone(doc);
-  if (findNode(next, nodeId) === undefined) return nodeNotFound(nodeId);
-  next.recommended_next = nodeId;
-  // Advisory pointer, not a transition — no built-in event (ws-002 §E2 has none).
+  if (to !== null && findNode(next, to) === undefined) return nodeNotFound(to);
+  navOf(next).next = to;
   void deps;
   return { ok: true, doc: next };
+}
+
+/** `flow nav set --intent "<t>"` — set the leg's intent. Metadata, not a transition → no event. */
+export function setIntent(doc: FlowDoc, intent: string, deps: MutationDeps): MutationResult {
+  const next = clone(doc);
+  navOf(next).intent = intent;
+  void deps;
+  return { ok: true, doc: next };
+}
+
+/**
+ * `flow nav meta set <k> <v>` — shallow-merge one key into `nav.bag`, preserving the
+ * other keys (D7: free-form, no schema). Metadata, not a transition → no event.
+ */
+export function setMeta(
+  doc: FlowDoc,
+  key: string,
+  value: unknown,
+  deps: MutationDeps,
+): MutationResult {
+  const next = clone(doc);
+  const nav = navOf(next);
+  nav.bag = { ...(nav.bag ?? {}), [key]: value };
+  void deps;
+  return { ok: true, doc: next };
+}
+
+/** Read the meta bag — a single key, or the whole bag when no key is given (read, not a mutation). */
+export function getMeta(doc: FlowDoc, key?: string): unknown {
+  const bag = doc.nav?.bag ?? {};
+  return key === undefined ? bag : bag[key];
+}
+
+// ---------------------------------------------------------------------------
+// neighbours — the shared edge scan (Finding 04; reused by insert-node's
+// --before splice, `nav show`, and `rail`).
+// ---------------------------------------------------------------------------
+
+/** Nodes that point AT `id` (its predecessors) — the reverse-edge scan. */
+export function predecessorsOf(nodes: readonly FlowNode[], id: string): FlowNode[] {
+  return nodes.filter((n) => (Array.isArray(n.next) ? n.next : []).includes(id));
+}
+
+/** Nodes `id` points at (its successors) — resolves `id`'s `next[]` to nodes. */
+export function successorsOf(nodes: readonly FlowNode[], id: string): FlowNode[] {
+  const node = nodes.find((n) => n.id === id);
+  const outs = node && Array.isArray(node.next) ? node.next : [];
+  return outs
+    .map((t) => nodes.find((n) => n.id === t))
+    .filter((n): n is FlowNode => n !== undefined);
+}
+
+/** A trimmed neighbour view for `nav show` (ws-002: don't over-fetch). */
+export interface NavNeighbour {
+  id: string;
+  type: string;
+  status: string;
+  label: string;
+  next: string[];
+}
+
+function trimNeighbour(n: FlowNode): NavNeighbour {
+  return {
+    id: n.id,
+    type: n.type,
+    status: n.status,
+    label: n.label,
+    next: Array.isArray(n.next) ? n.next : [],
+  };
+}
+
+export interface NavShow {
+  nav: Nav | null;
+  predecessors: NavNeighbour[];
+  successors: NavNeighbour[];
+}
+
+/**
+ * `flow nav show` — the position read: the `nav` object (or `null` when the doc
+ * carries none — graceful, never an error) plus the `now` node's trimmed
+ * neighbours. A read, not a mutation (no clone, no event).
+ */
+export function navShow(doc: FlowDoc): NavShow {
+  const nav = doc.nav ?? null;
+  const now = nav?.now ?? '';
+  const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
+  const has = now.length > 0 && nodes.some((n) => n.id === now);
+  return {
+    nav,
+    predecessors: has ? predecessorsOf(nodes, now).map(trimNeighbour) : [],
+    successors: has ? successorsOf(nodes, now).map(trimNeighbour) : [],
+  };
 }
 
 // ---------------------------------------------------------------------------

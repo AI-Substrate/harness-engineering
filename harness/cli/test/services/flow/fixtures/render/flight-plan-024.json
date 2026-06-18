@@ -2,8 +2,7 @@
   "schema_version": 1,
   "kind": "flight-plan",
   "slug": "first-class-flow-system",
-  "cursor": "p2",
-  "recommended_next": "p2",
+  "nav": { "now": "p2", "next": "p2", "intent": "render + CI parity + docs" },
   "created_at": "2026-06-17T21:00:00Z",
   "provenance": {
     "record_kind": "flow",

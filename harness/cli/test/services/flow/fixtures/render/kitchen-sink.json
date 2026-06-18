@@ -2,8 +2,7 @@
   "schema_version": 1,
   "kind": "kitchen-sink",
   "slug": "kitchen-sink",
-  "cursor": "dec",
-  "recommended_next": "a",
+  "nav": { "now": "dec", "next": "a", "intent": "demo every render rule", "bag": { "note": "kitchen sink" } },
   "created_at": "2026-01-01T00:00:00Z",
   "provenance": {
     "record_kind": "flow",

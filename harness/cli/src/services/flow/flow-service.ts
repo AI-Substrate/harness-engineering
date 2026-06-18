@@ -184,6 +184,12 @@ export interface CreateFlowOptions {
   templatePath?: string;
   /** `--bare` — root-only, copy no template nodes. */
   bare?: boolean;
+  /** `--agent` — stamp `provenance.agent` (D-06 fix); wins over `HARNESS_AGENT`. */
+  agent?: string;
+  /** `--plan-id` — stamp `provenance.plan_id`; wins over `HARNESS_PLAN_ID`. */
+  planId?: string;
+  /** `--title` — an explicit rail-title label (the rail prefers it over the slug). */
+  title?: string;
 }
 
 /** Resolve the template node skeleton + its suggested cursor for a create. */
@@ -227,6 +233,8 @@ function resolveTemplate(
   return {
     // Deep-copy the template nodes VERBATIM (preserve next[]/branch_of/all fields).
     nodes: structuredClone(descriptor.nodes) as FlowNode[],
+    // The template DSL's `cursor` key = its seed position (NOT the doc's migrated
+    // `cursor` field — that's gone); createFlow maps it into `nav.now`.
     cursor: typeof descriptor.cursor === 'string' ? descriptor.cursor : undefined,
   };
 }
@@ -272,26 +280,30 @@ export function createFlow(
     branch: deps.git.currentBranch(),
     repo: deps.git.remoteUrl(),
     created_at: createdAt,
-    agent: deps.env.get('HARNESS_AGENT') ?? null,
-    plan_id: deps.env.get('HARNESS_PLAN_ID') ?? null,
+    // --agent/--plan-id win over the env (D-06): the skill stamps its identity at create.
+    agent: opts.agent ?? deps.env.get('HARNESS_AGENT') ?? null,
+    plan_id: opts.planId ?? deps.env.get('HARNESS_PLAN_ID') ?? null,
   };
 
   const ids = new Set(template.nodes.map((n) => n.id));
-  const cursor =
+  const initialNow =
     template.cursor !== undefined && ids.has(template.cursor)
       ? template.cursor
-      : (template.nodes[0]?.id ?? '');
+      : template.nodes[0]?.id;
 
   const doc: FlowDoc = {
     schema_version: resolved.schema.schemaVersionMajor,
     kind: resolved.schema.kind,
     slug: opts.slug,
-    cursor,
+    // Seed nav from the template's initial node; a bare/no-node flow starts nav-less
+    // (position can't reference a node that doesn't exist — nav stays absent, graceful).
+    ...(initialNow !== undefined ? { nav: { now: initialNow, next: null } } : {}),
     created_at: createdAt,
     provenance,
     events: [],
     nodes: template.nodes,
   };
+  if (opts.title !== undefined && opts.title.length > 0) doc.title = opts.title;
   // The `created` (CRT) built-in event — the flow's first audit fact (ws-002 §E2).
   doc.events.push(
     buildBuiltinEvent('created', { kind: doc.kind, slug: doc.slug }, doc.events, deps.clock),
@@ -389,7 +401,7 @@ export function showFlow(
 export interface FlowSummary {
   slug: string;
   kind: string;
-  cursor: string;
+  now: string | null;
   path: string;
 }
 
@@ -412,7 +424,7 @@ export function listFlows(
     flows.push({
       slug: typeof doc.slug === 'string' ? doc.slug : name.replace(/\.json$/, ''),
       kind: typeof doc.kind === 'string' ? doc.kind : 'unknown',
-      cursor: typeof doc.cursor === 'string' ? doc.cursor : '',
+      now: typeof doc.nav?.now === 'string' ? doc.nav.now : null,
       path: posixJoin(dir, name),
     });
   }

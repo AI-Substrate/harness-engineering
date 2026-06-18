@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "the-flow-cursor-meta-migration",
+  "plan_dir": "docs/plans/026-the-flow-cursor-meta-migration",
+  "mode": "Simple",
+  "current_stage": "awaiting-6",
+  "pending_command": "/the-flow 6 implement --plan \"docs/plans/026-the-flow-cursor-meta-migration/the-flow-cursor-meta-migration-plan.md\"",
+  "intent": "Migrate the-flow onto first-class cursor get/set + meta property-bag flow-state (consolidated into a nav object + harness flow rail + zone bands); workshops + builder guide done, plan READY (validated), next build the CLI primitives while dogfooding.",
+  "milestones_total": 4,
+  "milestones_done": 2,
+  "last_checkpoint_at": "2026-06-18T08:32:34Z",
+  "compacted_seams": [],
+  "status": "active"
+}
