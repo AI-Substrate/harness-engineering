@@ -1,14 +1,14 @@
 <!-- GENERATED FROM the-flow.json — do not hand-edit; regenerate from the JSON. -->
 # Flight plan · 024-first-class-flow-system
 
-**Mode**: Full · **CS-4** · **Cursor**: Phase 2 (🟦 next) · **Phase 1**: ✅ 16/16 (719 green) · **Next**: Phase 2 tasks — render + CI parity + docs · **Workshops**: 001 ✅ 002 ✅ 003 ✅ (all folded)
+**Mode**: Full · **CS-4** · **Cursor**: Phase 3 (🟦 the-flow migration) · **Phase 1**: ✅ 16/16 · **Phase 2**: ✅ complete + committed (renderer + `flow render --check` + check:flows CI + docs/how guide + §4 reconcile; 753 green) · **Next**: Phase 3 tasks · **Workshops**: 001 ✅ 002 ✅ 003 ✅ (all folded)
 
 ```mermaid
 flowchart TD
     research["Research ✅<br/>research-dossier.md"]:::done
     plan["Plan ✅ · Full, CS-4, READY (v1.2.0)<br/>first-class-flow-system-plan.md"]:::done
     p1["Phase 1 · Flow engine ✅<br/>16/16 complete · 719 green · companion-reviewed"]:::done
-    p2["Phase 2 · Render + CI parity + docs 🟦"]:::known
+    p2["Phase 2 · Render + CI parity + docs ✅"]:::done
     p3["Phase 3 · the-flow migration 🟦"]:::known
     review["Review 🟦"]:::known
     merge["Merge 🟦"]:::known
