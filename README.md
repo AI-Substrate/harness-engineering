@@ -4,6 +4,8 @@ An engineering harness productises the software-development loop so humans and a
 
 It is the **missing layer** between your agent and your codebase — the deterministic one: a single CLI focal point where a fresh human or agent can boot the product, prove a change is good, and encode the fix so the next run is easier.
 
+**It's an *engineering* harness, not an *agent* harness — and not a new idea.** Teams have built these for decades: boot scripts, test suites, fixtures, health checks. What's new is bringing that surface into the AI world as a first-class, self-improving tool — so a human or agent gets the most out of every token, instead of spending them to relearn your repo every session. → [Engineering harness vs agent harness](#engineering-harness-vs-agent-harness)
+
 ## Quick start
 
 **Fastest start — let your agent do it.** Paste this into your coding agent (Claude Code / Copilot / Cursor / Codex…), pointed at the repo you want to harness:
@@ -41,9 +43,9 @@ Out of all the problems with agent-driven development, two matter most:
 - **The loop closes too slowly.** The agent takes too long to get real feedback from your codebase, so it guesses, loops, or waits for a human.
 - **The loop is hard to trust.** "Looks good to me" from a model is inference, not proof.
 
-Underneath both: every agent session is a fresh developer onboarding into your repo — cold. If the supported path lives in scattered scripts, docs, and tribal memory, the agent has to infer it, and you pay for that inference every session, on every dev machine.
+Underneath both: every agent session is a fresh developer onboarding into your repo — cold. If the supported path lives in scattered scripts, docs, and tribal memory, the agent has to infer it, and you pay for that inference every session, on every dev machine. Those tokens are real money — and tomorrow you spend them again to rediscover what you already solved today.
 
-And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives only in that one session, then it's gone. Tomorrow the same friction hits a teammate, or your future self. An engineering harness gives that hard-earned knowledge a permanent home: **encode the fix, not the memory**, so a problem you solve once becomes permanent capability — never re-discovered from scratch tomorrow. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
+And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives in that one chat session, and then it's gone. Next week the same friction is waiting, unchanged, for the next person on your team — or for you, in a month, when you've forgotten. An engineering harness gives that hard-earned knowledge a permanent home — not scattered docs or tribal memory, but a runnable check: **encode the fix, not the memory**. Fix it once and it's caught forever. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
 
 > Two questions decide it: how does a fresh agent know when a change is *actually* done — and where does the fix go so it isn't lost tomorrow, on a teammate's machine or your own?
 
@@ -61,7 +63,7 @@ Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Imp
 - **Backpressure Check** is an LLM-assisted, advisory survey of the current scope against the deterministic sensors the repo exposes — types, compilers, tests, schemas, health checks, proof gates. Backpressure is how the harness makes wrong, unsafe, or unproven work hard to continue and easy to correct: *not yet, and here is why*. → [Backpressure Patterns](docs/guide/11-backpressure-patterns.md)
 - **Do Work and Observe** exercises real product behaviour through supported surfaces and captures what happened in inspectable forms.
 - **Retro and Magic Wand** turns friction, missing signals, and improvement wishes into reviewable candidates.
-- **Improve** encodes what was learned so the next run is faster, clearer, safer, or backed by stronger signals.
+- **Improve** encodes what was learned so the next run is faster, clearer, safer, or backed by stronger signals — the harness compounds: every teammate and future agent session starts on top of everything the team has encoded.
 
 The harness is not throwaway scaffolding. It is a **productised development surface**: the repo-local commands, fixtures, docs, checks, state, proof paths, and feedback loops every future feature, experiment, human, and agent passes through. → [The Harness Loop](docs/guide/03-the-harness-loop.md)
 
@@ -101,6 +103,8 @@ Swap `-a` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `-g
 ## Engineering harness vs agent harness
 
 This repo is about the **engineering harness**, not agent runtimes themselves. An agent harness can drive an engineering harness, but it cannot replace one: if the product cannot boot, run, seed, observe, and prove behaviour, the agent has nothing reliable to operate.
+
+None of this is new — engineering harnesses (build systems, test harnesses, smoke suites, fixtures, health checks) predate LLMs by decades. What changed is the *load*: a surface a human ran occasionally is now driven every session by every agent, so an under-invested harness gets expensive — paid in tokens and wrong guesses — and a well-made one compounds. → [Harness engineering vs an engineering harness](docs/guide/02b-harness-engineering-vs-an-engineering-harness.md)
 
 | Layer | Makes operable | Proves |
 |---|---|---|
