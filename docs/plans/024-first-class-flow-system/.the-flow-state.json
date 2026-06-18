@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "first-class-flow-system",
+  "plan_dir": "docs/plans/024-first-class-flow-system",
+  "mode": "Full",
+  "current_stage": "awaiting-5",
+  "pending_command": "/the-flow 6 implement --phase \"Phase 1: Flow engine — schema, state, mutations, event log\" --plan \"docs/plans/024-first-class-flow-system/first-class-flow-system-plan.md\"",
+  "intent": "Make the 'flow' (a cursor-spine DAG of timestamped nodes the agent visits, tracked across compaction) a first-class DETERMINISTIC concept inside the harness CLI (a `harness flow` verb family) — deterministic MECHANICS (mutation/history/render), not automated routing. Shared-core schema + per-flow custom overlays; deterministic render; embedded event log + per-node timestamped comments (datetime queryable). Two built-in schemas: the-flow (skill-shipped) + harness-loop (CLI-bundled). the-flow consumes the CLI (capability/version-floor required, no adoption needed); clean break (old flows error, no back-compat). Onboarding/adopt + flow agent deferred. Full, CS-4, 3 phases. Re-planned v1.1.0 + validated; amended to v1.2.0 (folded workshop 003 + render-surface decision) + validated. Phase 1 tasks STAGED + validated (broad validate-v2 = VALIDATED WITH FIXES) -> implement Phase 1 next.",
+  "milestones_total": 6,
+  "milestones_done": 2,
+  "last_checkpoint_at": "2026-06-18T02:10:00Z",
+  "compacted_seams": [],
+  "status": "active"
+}
