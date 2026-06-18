@@ -410,6 +410,39 @@
         "from": "",
         "to": "p1"
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:20:35.470Z",
+      "details": {
+        "node": "p1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:20:35.540Z",
+      "details": {
+        "from": "p1",
+        "to": "p1"
+      }
+    },
+    {
+      "id": "UPD-019",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:20:35.605Z",
+      "details": {
+        "node": "p1",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -426,12 +459,27 @@
       "id": "p1",
       "type": "phase",
       "label": "Phase 1 · Build nav/rail/zone + create --agent",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "merge"
       ],
       "created_at": "2026-06-18T06:07:05.946Z",
-      "modified_at": "2026-06-18T09:14:54.019Z"
+      "modified_at": "2026-06-18T09:20:35.605Z",
+      "ran_at": "2026-06-18T09:20:35.470Z",
+      "comments": [
+        {
+          "at": "2026-06-18T09:20:35.605Z",
+          "text": "Phase 1 built C1-C4: nav core + zone + rail + create --agent; full suite 788 green; check:flows clean; dogfooded live. Companion stalled mid-run -> stage-7 review warranted.",
+          "source": "agent",
+          "kind": "note",
+          "refs": [
+            "1eaf50e",
+            "cd7a434",
+            "cc63c12",
+            "85dae9c"
+          ]
+        }
+      ]
     },
     {
       "id": "plan",
@@ -568,7 +616,7 @@
   "nav": {
     "now": "p1",
     "next": "merge",
-    "intent": "building nav/rail/zone + create --agent — dogfooding the live CLI",
+    "intent": "Phase 1 shipped — nav/rail/zone + create --agent (4 commits, suite 788 green); next: review then merge",
     "bag": {
       "build_commit": "cc63c12"
     }
