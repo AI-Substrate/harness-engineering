@@ -11,6 +11,8 @@ export class FakeFs implements FsPort {
   readonly reads: string[] = [];
   readonly writes: string[] = [];
   readonly mkdirs: string[] = [];
+  /** Every rename as a `${from}->${to}` pair (fakes over mocks — assert on history). */
+  readonly renames: string[] = [];
   private readonly madeDirs = new Set<string>();
 
   constructor(
@@ -62,5 +64,16 @@ export class FakeFs implements FsPort {
   writeText(path: string, contents: string): void {
     this.writes.push(path);
     this.files[path] = contents;
+  }
+
+  rename(from: string, to: string): void {
+    this.renames.push(`${from}->${to}`);
+    const contents = this.files[from];
+    if (contents === undefined) {
+      // Match NodeFs: renaming a missing source throws (callers map to an error).
+      throw new Error(`FakeFs.rename: source does not exist: ${from}`);
+    }
+    this.files[to] = contents;
+    delete this.files[from];
   }
 }

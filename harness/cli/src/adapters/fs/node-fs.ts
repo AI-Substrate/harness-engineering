@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import type { FsPort } from './fs-port.js';
 
 /** Real filesystem — the only place `node:fs` is touched. */
@@ -29,5 +36,10 @@ export class NodeFs implements FsPort {
 
   writeText(path: string, contents: string): void {
     writeFileSync(path, contents, 'utf8');
+  }
+
+  rename(from: string, to: string): void {
+    // Atomic on the same filesystem (POSIX rename(2) / Windows MoveFileEx replace).
+    renameSync(from, to);
   }
 }

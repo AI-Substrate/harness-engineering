@@ -17,4 +17,12 @@ export interface FsPort {
   mkdirp(path: string): void;
   /** Write UTF-8 text to a path, overwriting. Caller ensures the parent dir exists (mkdirp). */
   writeText(path: string, contents: string): void;
+  /**
+   * Atomically move `from` → `to`, replacing any existing file at `to` (the
+   * commit half of a temp-write + rename). Throws on failure (callers map it to
+   * an error envelope); unlike the read ops this is NOT swallowed, because a
+   * failed rename must not look like a successful write. Caller ensures `to`'s
+   * parent dir exists.
+   */
+  rename(from: string, to: string): void;
 }

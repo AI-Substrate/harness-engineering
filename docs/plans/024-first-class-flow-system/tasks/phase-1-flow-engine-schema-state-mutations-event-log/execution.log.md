@@ -36,6 +36,16 @@
 - **Decision (logged)**: **hand-rolled validator over a CLI-owned descriptor** (no JSON-Schema dep; mirrors `recordTypeShapeIssues`). Existing `flight-plan.schema.json` is REFERENCE-ONLY; the-flow conforms via `--schema` in Phase 3. See Discoveries.
 - **Evidence**: T004/T005 RED first (module missing) → GREEN (14 pass) after T006; full suite **659 green + 1 todo**; tsc + biome clean.
 
+## T007 + T008 + T009 — service + atomic state I/O ✅
+
+- **Commit**: `<pending>` `feat(024): flow-service create/new/show/list + atomic temp+rename + E308 [T007,T008,T009]`
+- **What**: `FsPort.rename` (port + `NodeFs` `renameSync` + `FakeFs` in-memory move w/ `renames[]`) · `flow-events.ts` (leaf: `FlowDoc`/`FlowNode`/`FlowEvent`/`FlowComment`/`FlowProvenance` types + event-id/duck-typer/builders — drives T010-T014) · `flow-service.ts` (`createFlow`/`newFlowSchema`/`showFlow`/`listFlows`/`readFlowDoc`/`writeFlowAtomic`) · `harness-loop.template.json` (+ regen `gen:flows` → bundle now 2 schemas + 1 template) · `flow-service.test.ts` + `legacy-flow.json`/`fresh-empty-flow.json` fixtures.
+- **Containment (T007)**: write paths (`--path`/default) `isWithin`-guarded → `E303`; `--schema`/`--template` are READ paths, isWithin-exempt (out-of-repo skill schema accepted, in-repo write redirect accepted).
+- **E308 (T008)**: `isLegacyFlow` keys on the POSITIVE signal — flow-shaped (`nodes`/`cursor`) **and** no `provenance` block — NEVER on empty `events[]`; the fresh-empty fixture (provenance present, `events: []`) does NOT trip it. Honest hedging `next_action`.
+- **Create (T009)**: deep-copies the resolved template's `nodes[]` verbatim (`structuredClone`), stamps root identity + the 7-key provenance (`branch`=`created_from_branch`), fires the `created` (CRT-001) event, validates, atomic temp+rename. `--bare`=root-only; bad `--template`→`E300`; unknown type→`E304`.
+- **Evidence**: `vitest run test/services/flow test/adapters/fs` → 49 pass; full suite **678 pass + 1 todo** (was 659); `tsc --noEmit` clean; biome clean.
+- **Discoveries**: see table (FsPort.rename additive + throws-not-swallows; harness-loop template authored; FlowProvenance inlined to keep flow-events a leaf).
+
 ## Companion debrief (run `2026-06-18T00-27-49-683Z-f765`)
 
 - **Coverage**: reviewed T001/T002/T003 commit boundaries; **stood down on an idle check-in BEFORE the schema group** (f7fc71f, T004–T006) → schema group is **companion-unreviewed** (covered by a re-booted companion on resume, or the review stage).

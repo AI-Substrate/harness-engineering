@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "some-old-hand-written-flow",
+  "cursor": "p1",
+  "now": "a pre-CLI flow written by the old hand-crank cadence — no provenance block",
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research", "status": "done", "next": ["p1"] },
+    { "id": "p1", "type": "phase", "label": "Phase 1", "status": "in_progress", "next": [] }
+  ]
+}

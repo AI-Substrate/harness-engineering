@@ -55,4 +55,33 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
   },
 };
 
-export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {};
+export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
+  'harness-loop': {
+    cursor: 'boot',
+    nodes: [
+      { id: 'boot', type: 'boot', label: 'Boot', status: 'assumed', next: ['backpressure'] },
+      {
+        id: 'backpressure',
+        type: 'backpressure',
+        label: 'Backpressure Check',
+        status: 'assumed',
+        next: ['observe'],
+      },
+      {
+        id: 'observe',
+        type: 'observe',
+        label: 'Do Work + Observe',
+        status: 'assumed',
+        next: ['retro'],
+      },
+      {
+        id: 'retro',
+        type: 'retro',
+        label: 'Retro + Magic Wand',
+        status: 'assumed',
+        next: ['improve'],
+      },
+      { id: 'improve', type: 'improve', label: 'Improve', status: 'assumed', next: [] },
+    ],
+  },
+};
