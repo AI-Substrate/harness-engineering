@@ -80,6 +80,9 @@ jobs:
       - name: Docs drift guard (generated bundle matches the .md sources)
         run: npm run check:docs
 
+      - name: Flows drift guard (bundled schemas + golden renders match the CLI)
+        run: npm run check:flows
+
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit -p harness/cli/tsconfig.json
 

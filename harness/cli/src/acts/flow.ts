@@ -6,7 +6,7 @@ import type { GitPort } from '../adapters/git/git-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
 import { type Envelope, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
-import { exitWithEnvelope } from '../output/exit.js';
+import { emitRawAndExit, exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { buildCustomEvent, buildManualEvent, type FlowDoc } from '../services/flow/flow-events.js';
 import {
@@ -19,6 +19,7 @@ import {
   setNode,
   setStatus,
 } from '../services/flow/flow-mutations.js';
+import { renderFlow } from '../services/flow/flow-renderer.js';
 import { resolveFlowSchema, validateFlowDoc } from '../services/flow/flow-schema.js';
 import {
   createFlow,
@@ -31,7 +32,7 @@ import {
   showFlow,
   writeFlowAtomic,
 } from '../services/flow/flow-service.js';
-import { posixJoin, toPosix } from '../services/shared/posix-path.js';
+import { isWithin, posixDirname, posixJoin, toPosix } from '../services/shared/posix-path.js';
 
 /** The ports the `flow` act injects into the flow service (a subset of VerbActDeps). */
 export interface FlowActDeps {
@@ -432,6 +433,120 @@ export function registerFlowAct(
             deps.clock,
           ),
         );
+      },
+    );
+
+  // --- render ------------------------------------------------------------
+  flow
+    .command('render')
+    .description(
+      'Render a flow to deterministic markdown (mermaid diagram + node log); --check guards drift',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--input <path>', 'alias for --path')
+    .option('--slug <slug>', 'flow slug (resolves .harness/flows/<slug>.json)')
+    .option('--output <file>', 'write the render to this file (default: stdout)')
+    .option('--check', 're-render and diff the committed sibling .md (non-zero on drift)')
+    .option(
+      '--against <path>',
+      'the .md --check compares against (default: the input path, .json→.md)',
+    )
+    .action(
+      (opts: {
+        path?: string;
+        input?: string;
+        slug?: string;
+        output?: string;
+        check?: boolean;
+        against?: string;
+      }) => {
+        const root = repoRoot();
+        const resolved = resolveFlowPath({ path: opts.path ?? opts.input, slug: opts.slug }, root);
+        if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+        const read = readFlowDoc(resolved.path, svc);
+        if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
+        const rendered = renderFlow(read.doc);
+
+        // --check: compare to the committed sibling .md; NEVER writes (CI drift guard).
+        if (opts.check) {
+          const target = opts.against
+            ? toPosix(opts.against)
+            : `${resolved.path.replace(/\.json$/, '')}.md`;
+          const committed = svc.fs.readText(target);
+          if (committed === rendered) {
+            return emit(
+              io,
+              formatOk('flow', { path: resolved.path, against: target, drift: false }, deps.clock),
+            );
+          }
+          return emit(
+            io,
+            failureEnvelope(
+              {
+                ok: false,
+                status: 'error',
+                code: ErrorCodes.FLOW_RENDER_DRIFT,
+                message:
+                  committed === null
+                    ? `no committed render to check against: ${target}`
+                    : `rendered output drifted from the committed ${target}`,
+                next_action:
+                  'Regenerate with `npm run gen:flow-fixtures` (or `harness flow render --output <file>`) and commit the result.',
+              },
+              deps.clock,
+            ),
+          );
+        }
+
+        // --output: write the render inside the repo (containment guard).
+        if (opts.output) {
+          const outPath = toPosix(opts.output);
+          if (!isWithin(root, outPath)) {
+            return emit(
+              io,
+              failureEnvelope(
+                {
+                  ok: false,
+                  status: 'error',
+                  code: ErrorCodes.FLOW_PATH_ESCAPE,
+                  message: `render output path escapes the repo root: ${outPath}`,
+                  next_action: 'Write the render inside the repository.',
+                },
+                deps.clock,
+              ),
+            );
+          }
+          try {
+            svc.fs.mkdirp(posixDirname(outPath));
+            svc.fs.writeText(outPath, rendered);
+          } catch (err) {
+            return emit(
+              io,
+              failureEnvelope(
+                {
+                  ok: false,
+                  status: 'error',
+                  code: ErrorCodes.FLOW_WRITE_FAILED,
+                  message: `failed to write render ${outPath}: ${err instanceof Error ? err.message : String(err)}`,
+                  next_action: 'Check directory permissions and disk space, then retry.',
+                },
+                deps.clock,
+              ),
+            );
+          }
+          return emit(
+            io,
+            formatOk('flow', { path: outPath, bytes: rendered.length }, deps.clock, {
+              evidence: [{ label: 'render', path: outPath }],
+            }),
+          );
+        }
+
+        // default → stdout. JSON: the markdown rides in `data.rendered`; human: raw passthrough.
+        if (io.mode === 'json') {
+          return emit(io, formatOk('flow', { path: resolved.path, rendered }, deps.clock));
+        }
+        return emitRawAndExit(rendered, io.writers, 0);
       },
     );
 }

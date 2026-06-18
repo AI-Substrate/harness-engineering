@@ -47,6 +47,7 @@ describe('ErrorCodes table', () => {
       FLOW_AMBIGUOUS_TARGET: 'E307',
       FLOW_LEGACY_FORMAT: 'E308',
       FLOW_EDGE_INVALID: 'E309',
+      FLOW_RENDER_DRIFT: 'E310',
     });
   });
 

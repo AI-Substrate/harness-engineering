@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "kind": "kitchen-sink",
+  "slug": "kitchen-sink",
+  "cursor": "dec",
+  "recommended_next": "a",
+  "created_at": "2026-01-01T00:00:00Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": null,
+    "repo": "git+https://github.com/AI-Substrate/harness-engineering.git",
+    "created_at": "2026-01-01T00:00:00Z",
+    "agent": null,
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-01-01T00:00:00Z",
+      "details": { "kind": "kitchen-sink", "slug": "kitchen-sink" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "start",
+      "type": "research",
+      "label": "Start",
+      "status": "done",
+      "next": ["dec"]
+    },
+    {
+      "id": "dec",
+      "type": "decision",
+      "label": "Pick a path",
+      "status": "known",
+      "next": ["a", "b"]
+    },
+    {
+      "id": "a",
+      "type": "phase",
+      "label": "Path A (in progress)",
+      "status": "in_progress",
+      "next": ["join"]
+    },
+    {
+      "id": "b",
+      "type": "custom-thing",
+      "label": "Path B (unknown type, blocked)",
+      "status": "blocked",
+      "next": ["join"]
+    },
+    {
+      "id": "join",
+      "type": "phase",
+      "label": "Join (assumed)",
+      "status": "assumed",
+      "next": ["adv"]
+    },
+    {
+      "id": "adv",
+      "type": "weird-node-type",
+      "label": "He said \"hi\" <b>bold</b> | pipe #hash [bracket] {brace}\nsecond line",
+      "status": "mystery-status",
+      "next": ["end"],
+      "user_input": "do the thing\n\"quoted\" & <tag> | pipe ]close} #frag",
+      "comments": [
+        {
+          "at": "2026-01-01T00:10:00Z",
+          "source": "user",
+          "kind": "note",
+          "text": "line one\nline two | piped `code` and ]bracket} <tag> #frag",
+          "refs": ["a|b", "c<d>"]
+        }
+      ]
+    },
+    {
+      "id": "end",
+      "type": "merge",
+      "label": "End",
+      "status": "known",
+      "next": []
+    },
+    {
+      "id": "bp",
+      "type": "backpressure",
+      "label": "Backpressure survey",
+      "status": "known",
+      "branch_of": "dec",
+      "next": ["dec"]
+    },
+    {
+      "id": "boot",
+      "type": "harness-boot",
+      "label": "Pre-flight boot",
+      "status": "done",
+      "branch_of": "a",
+      "next": ["a"]
+    },
+    {
+      "id": "retro",
+      "type": "harness-retro",
+      "label": "Post-coding retro",
+      "status": "known",
+      "branch_of": "a",
+      "next": ["a"]
+    }
+  ],
+  "agents": [
+    {
+      "slug": "code-review-companion",
+      "kind": "companion",
+      "render": "wrap",
+      "run_id": "2026-01-01T00-00-00-companion",
+      "covers": ["a"],
+      "result": "active"
+    },
+    {
+      "slug": "docs-writer",
+      "kind": "worker",
+      "render": "side",
+      "run_id": "2026-01-01T00-00-00-worker",
+      "covers": ["join"],
+      "result": "active"
+    }
+  ]
+}

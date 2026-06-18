@@ -74,6 +74,8 @@ export const ErrorCodes = {
   FLOW_LEGACY_FORMAT: 'E308',
   /** `harness flow insert-node`: the post-splice DAG re-check failed (cycle or orphaned node) — nothing is written. */
   FLOW_EDGE_INVALID: 'E309',
+  /** `harness flow render --check`: the rendered output drifted from the committed sibling `.md` (or none exists) — the derived artifact is stale. `next_action` → regenerate + commit. */
+  FLOW_RENDER_DRIFT: 'E310',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
