@@ -45,4 +45,4 @@ Either way you get the same payoff: deterministic proof before "done," and a loo
 
 ---
 
-<sub>[← Prev: Multi-Repo & Org Rollout](07-multi-repo-and-org-rollout.md) · [↑ Start Here](README.md) · [Next: Operating the Loop →](09-operating-the-loop.md)</sub>
+<sub>[← Prev: Multi-Repo Products](07-multi-repo-and-org-rollout.md) · [↑ Start Here](README.md) · [Next: Operating the Loop →](09-operating-the-loop.md)</sub>

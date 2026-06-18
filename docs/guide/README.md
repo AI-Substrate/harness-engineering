@@ -31,7 +31,7 @@ This guide describes **shipped-today** behaviour, verified against the real CLI.
 - [04 · Adopting the Harness](04-adopting-the-harness.md) — the step-by-step onboarding walkthrough.
 - [05 · Using an Existing Harness](05-using-an-existing-harness.md) — drive a harness that is already set up, no install.
 - [06 · Repo Layouts](06-repo-layouts.md) — what lands in your repo, and what stays out.
-- [07 · Multi-Repo & Org Rollout](07-multi-repo-and-org-rollout.md) — many repos, one shared core.
+- [07 · Multi-Repo Products](07-multi-repo-and-org-rollout.md) — one product across several repos: where the harness lives.
 
 **Operate it**
 - [08 · Fitting Your Workflow](08-fitting-your-workflow.md) — enhance your flow, don't replace it.

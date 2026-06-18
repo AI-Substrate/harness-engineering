@@ -8,7 +8,7 @@ The harness is a living product. Two things drift over time — the **core** CLI
 ```bash
 harness update            # update the global CLI from the registry
 ```
-The core is shared and centrally maintained, so updating it is how your repo inherits everyone's improvements ([07 · Multi-Repo & Org Rollout](07-multi-repo-and-org-rollout.md)). Run it periodically, or when you hear a new version landed.
+The core is shared and centrally maintained, so updating it is how your repo inherits everyone's improvements ([07 · Multi-Repo Products](07-multi-repo-and-org-rollout.md)). Run it periodically, or when you hear a new version landed.
 
 ## Update the skills
 ```bash

@@ -50,9 +50,9 @@ The rule of thumb: **anything that should survive and be shared is committed; on
 Each extension is a small package — an entry file (`extension.ts` or `.js`) plus an `instructions.md` that briefs an agent on the verb. They are discovered at runtime, so `harness help` and `harness doctor` always reflect what your repo actually has. Authoring one is [12 · Extending the Harness](12-extending-the-harness.md); the record types under `records/` are described in [`docs/how/record-and-record-types.md`](../how/record-and-record-types.md).
 
 ## Where next
-- Many repos, one shared core → [07 · Multi-Repo & Org Rollout](07-multi-repo-and-org-rollout.md).
+- One product across several repos → [07 · Multi-Repo Products](07-multi-repo-and-org-rollout.md).
 - The proof ladder your extensions plug into → [11 · Backpressure Patterns](11-backpressure-patterns.md).
 
 ---
 
-<sub>[← Prev: Using an Existing Harness](05-using-an-existing-harness.md) · [↑ Start Here](README.md) · [Next: Multi-Repo & Org Rollout →](07-multi-repo-and-org-rollout.md)</sub>
+<sub>[← Prev: Using an Existing Harness](05-using-an-existing-harness.md) · [↑ Start Here](README.md) · [Next: Multi-Repo Products →](07-multi-repo-and-org-rollout.md)</sub>
