@@ -160,6 +160,21 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/demo.json') as string);
     expect(doc.nodes.find((n: { id: string }) => n.id === 'z').zone).toBe('postflight');
   });
+
+  it('add-node --zone with an invalid band → E108 and the file is UNCHANGED (companion MED)', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    const before = fs.readText('/repo/.harness/flows/demo.json');
+    const bad = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'demo', '--id', 'z', '--type', 'improve',
+      '--label', 'Z', '--zone', 'bogus',
+    ]);
+    expect(bad.code).toBe(1);
+    expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+    expect(fs.readText('/repo/.harness/flows/demo.json')).toBe(before);
+  });
 });
 
 describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () => {

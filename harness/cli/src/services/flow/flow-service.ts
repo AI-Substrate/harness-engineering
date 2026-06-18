@@ -280,9 +280,12 @@ export function createFlow(
     branch: deps.git.currentBranch(),
     repo: deps.git.remoteUrl(),
     created_at: createdAt,
-    // --agent/--plan-id win over the env (D-06): the skill stamps its identity at create.
-    agent: opts.agent ?? deps.env.get('HARNESS_AGENT') ?? null,
-    plan_id: opts.planId ?? deps.env.get('HARNESS_PLAN_ID') ?? null,
+    // Explicit-only (AC-5; companion HIGH): omitted → null (the rail then uses the slug
+    // fallback). The flow's agent identity is set by whoever CREATES it (the-flow passes
+    // `--agent the-flow`) — NOT inherited from the model-runtime env, which would leak the
+    // model name (e.g. `claude-opus`) into the rail title.
+    agent: opts.agent ?? null,
+    plan_id: opts.planId ?? null,
   };
 
   const ids = new Set(template.nodes.map((n) => n.id));

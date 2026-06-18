@@ -243,6 +243,19 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
   };
 }
 
+/** The closed shared-core zone enum (ws-002); an invalid explicit `--zone` is rejected pre-write. */
+const ZONE_VALUES = new Set(['preflight', 'flight', 'postflight']);
+function badZone(spec: NodeSpec): FlowFailure | null {
+  if (spec.zone !== undefined && !ZONE_VALUES.has(spec.zone)) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `invalid zone "${spec.zone}".`,
+      'Use --zone preflight | flight | postflight (or omit it for the type default).',
+    );
+  }
+  return null;
+}
+
 /** `flow add-node` — append a brand-new node, firing `node-created {node,type}`. */
 export function addNode(doc: FlowDoc, spec: NodeSpec, deps: MutationDeps): MutationResult {
   const next = clone(doc);
@@ -253,6 +266,8 @@ export function addNode(doc: FlowDoc, spec: NodeSpec, deps: MutationDeps): Mutat
       'Pick a unique node id, or use `harness flow set-node` to edit the existing one.',
     );
   }
+  const zoneErr = badZone(spec);
+  if (zoneErr !== null) return zoneErr;
   const now = deps.clock.nowIso();
   next.nodes.push(materialize(spec, now));
   next.events.push(
@@ -424,6 +439,8 @@ export function insertNode(
       'Pick a unique node id for the inserted node.',
     );
   }
+  const zoneErr = badZone(spec);
+  if (zoneErr !== null) return zoneErr;
 
   const now = deps.clock.nowIso();
   const node = materialize(spec, now);

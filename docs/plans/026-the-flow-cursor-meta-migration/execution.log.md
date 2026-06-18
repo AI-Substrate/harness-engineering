@@ -51,4 +51,16 @@
 - Observation (task #90): 026's own flight plan was created pre-fix (agent null) so its live rail shows the slug, not `[the-flow]`; provenance is stamped-once → the skill's one-shot migration (Non-Goal) or a re-create adopts the agent title. Not a CLI bug — `create --agent` + the slug fallback are the intended paths (both shown live).
 
 ## Phase 1 complete — all 15 tasks ✅
-4 commits (C1 nav core · C2 zone · C3 rail · C4 docs/dogfood); full suite **788 green**; `check:flows` clean; every AC (1–7) delivered + dogfooded live. **Stage-7 review still warranted** — the live companion stalled, so per-commit review did NOT happen.
+4 build commits (C1 nav core · C2 zone · C3 rail · C4 docs/dogfood); every AC (1–7) delivered + dogfooded live. **See the companion debrief + C5 below** — the companion DID review (the mid-build "stalled" read was wrong); its 2 findings are fixed in C5.
+
+## Companion debrief — the "dead" verdict was the false-positive (it DID review)
+At phase end the companion run exited (`stop_requested`) and wrote `report.json`. Correcting the mid-build observation above: the companion **reviewed all 4 commit boundaries** and raised **2 findings** — they only failed to *send* through minih's inbox (`findingsSent:2` but rejected: `must have required property 'id'` — a minih 0.2.2 schema bug), so my inbox skims saw nothing. The findings survived in `report.json` and were read at the debrief:
+- **HIGH (Contract Integrity, flow-service.ts)** — `createFlow` fell back to `$HARNESS_AGENT`/`$HARNESS_PLAN_ID` when `--agent`/`--plan-id` omitted, contradicting AC-5 (omitted → `null`); env would leak the *model* name into the rail title; the 024 test masked it. **VALID → fixed (C5).**
+- **MEDIUM (Contract Integrity, flow-mutations.ts)** — `--zone` accepted any string (`--zone bogus` succeeded, wrote garbage, rendered as if unset), contradicting the zone enum. **VALID → fixed (C5).**
+- Companion magic-wand (its own retro): minih needs first-class unresolved-finding tracking + an inbox finding-status field — the open findings had to be reconstructed at drain. (A real minih gap; task #90 observation.)
+- **Lesson (task #90):** the minih "dead-while-mid-tool" verdict + the inbox send-validation bug together made a working companion *look* idle. Don't trust the verdict — read `report.json` at debrief. The companion earned its keep (2 real catches I'd missed).
+
+## C5 — address the 2 companion findings — ✅ GREEN
+- **Fix 1 (HIGH):** `createFlow` provenance is now **explicit-only** — `agent: opts.agent ?? null`, `plan_id: opts.planId ?? null` (no env fallback). The flow's identity is set by `--agent` at create (the-flow passes `--agent the-flow`); the rail's slug fallback handles omission. Updated the 024 create test (agent → null) + added a regression guard (env present, no flag → null).
+- **Fix 2 (MEDIUM):** `addNode`/`insertNode` reject a non-enum `zone` → `E108`, nothing written (`badZone` guard, pre-write). Renderer stays tolerant for legacy/pass-through. Act + mutation tests added.
+- Full suite **790 green**; `check:flows` clean. (Note: `--agent`-supersede-review — the companion reviewed C1–C4, not C5; C5 is small + tested.)

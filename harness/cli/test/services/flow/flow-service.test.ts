@@ -209,7 +209,7 @@ describe('T009 — create (template deep-copy + root identity + atomic temp+rena
     );
     expect(doc.provenance.branch).toBe('024-first-class-flow-system');
     expect(doc.provenance.harness_version).toBe('0.4.0');
-    expect(doc.provenance.agent).toBe('claude-opus');
+    expect(doc.provenance.agent).toBeNull(); // explicit-only: no --agent → null even with $HARNESS_AGENT (companion HIGH)
     // the `created` (CRT) event fired
     expect(doc.events).toHaveLength(1);
     expect(doc.events[0]?.kind).toBe('created');
@@ -323,19 +323,18 @@ describe('T011 — create --agent/--plan-id/--title stamp provenance + title (D-
     expect(res.doc.title).toBe('the-flow');
   });
 
-  it('without --agent (and no env) provenance.agent is null — harness-less create stays valid (slug fallback at rail)', () => {
-    const d: FlowServiceDeps = {
-      fs: new FakeFs(),
-      clock: new FakeClock('2026-06-18T03:00:00.000Z'),
-      git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'r' }),
-      env: new FakeEnv({}),
-    };
+  it('without --agent, provenance.agent is null EVEN WHEN $HARNESS_AGENT is set (explicit-only; companion HIGH)', () => {
+    const { d } = deps(); // env has HARNESS_AGENT=claude-opus + HARNESS_PLAN_ID=024-…
     const res = createFlow(
       { type: 'harness-loop', slug: 'agentless', repoRoot: REPO, harnessVersion: '0.4.0' },
       d,
     );
     expect(res.ok).toBe(true);
-    if (res.ok) expect(res.doc.provenance.agent).toBeNull();
+    if (res.ok) {
+      // env must NOT leak into provenance — that would put the model name in the rail title
+      expect(res.doc.provenance.agent).toBeNull();
+      expect(res.doc.provenance.plan_id).toBeNull();
+    }
   });
 });
 

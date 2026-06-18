@@ -267,6 +267,28 @@ describe('T007 — node zone carries through add-node / insert-node', () => {
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.doc.nodes.find((n) => n.id === 'n')?.zone).toBe('flight');
   });
+
+  it('addNode / insertNode reject an invalid zone → E108, nothing written (companion MED)', () => {
+    expect(
+      (
+        addNode(
+          baseDoc(),
+          { id: 'z', type: 'improve', label: 'Z', status: 'known', zone: 'bogus' },
+          deps(),
+        ) as { code: string }
+      ).code,
+    ).toBe(ErrorCodes.INVALID_ARGS);
+    expect(
+      (
+        insertNode(
+          baseDoc(),
+          { id: 'z', type: 'phase', label: 'Z', status: 'known', zone: 'sideways' },
+          { after: 'a' },
+          deps(),
+        ) as { code: string }
+      ).code,
+    ).toBe(ErrorCodes.INVALID_ARGS);
+  });
 });
 
 describe('T011 — insert-node edge algebra + DAG re-check (E309) + audit events', () => {
