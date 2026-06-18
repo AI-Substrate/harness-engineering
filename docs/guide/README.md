@@ -12,7 +12,7 @@ This guide describes **shipped-today** behaviour, verified against the real CLI.
 |---|---|---|
 | **Understand what this is** and why it matters | [02 · What Is an Engineering Harness?](02-what-is-an-engineering-harness.md) | [03 · The Harness Loop](03-the-harness-loop.md) → [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md) |
 | **Install it and bootstrap my repo** | [01 · Quick Start](01-quick-start.md) | [04 · Adopting the Harness](04-adopting-the-harness.md) |
-| **Weave it into my workflow** (or start a fresh flow) | [08 · Fitting Your Workflow](08-fitting-your-workflow.md) | [09 · Operating the Loop](09-operating-the-loop.md) |
+| **Weave it into my workflow** (or start a fresh flow) | [08 · Fitting Your Workflow](08-fitting-your-workflow.md) | [08b · Using the Flow](08b-using-the-flow.md) → [09 · Operating the Loop](09-operating-the-loop.md) |
 | **Use a harness someone already set up** | [05 · Using an Existing Harness](05-using-an-existing-harness.md) | [03 · The Harness Loop](03-the-harness-loop.md) |
 
 > **For agents:** every page is self-contained and ends with a Prev/Next footer, so you can read this guide straight through. Dropped into a repo cold? The fastest orientation is `harness instructions`, then `harness doctor`. To learn the product itself, begin at [01 · Quick Start](01-quick-start.md).
@@ -35,6 +35,7 @@ This guide describes **shipped-today** behaviour, verified against the real CLI.
 
 **Operate it**
 - [08 · Fitting Your Workflow](08-fitting-your-workflow.md) — enhance your flow, don't replace it.
+- [08b · Using the Flow](08b-using-the-flow.md) — drive the optional, spec-driven SDD loop: describe → research → plan → build.
 - [09 · Operating the Loop](09-operating-the-loop.md) — the rhythm of a working session.
 
 **Grow it**

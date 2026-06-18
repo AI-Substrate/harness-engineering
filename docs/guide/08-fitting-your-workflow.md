@@ -15,6 +15,8 @@ If you do not already have a spec-driven workflow (or you want a good one out of
 
 It carries the work through a canonical shape — **research → plan → implement → validate** — driving the spec-driven flow for you. There is little to learn: describe the problem and follow along.
 
+**New to it?** A deeper, optional walkthrough — install, the stages, the mermaids, and how it compounds over time — is [08b · Using the Flow](08b-using-the-flow.md).
+
 ### Path B — bring your own flow
 Already have a workflow you like? Keep it. The harness plugs into it with **one skill, `/eng-harness-flow`, called at three moments**. Your flow has the same shape (research → plan → implement → validate), so the touchpoints land naturally:
 
@@ -40,9 +42,10 @@ Either way you get the same payoff: deterministic proof before "done," and a loo
 > You don't need to master the distinction to use the harness — orient here, and follow the links when you want depth.
 
 ## Where next
+- A deeper walkthrough of the built-in flow → [08b · Using the Flow](08b-using-the-flow.md).
 - The loop these touchpoints drive → [03 · The Harness Loop](03-the-harness-loop.md).
 - The daily rhythm of a session → [09 · Operating the Loop](09-operating-the-loop.md).
 
 ---
 
-<sub>[← Prev: Multi-Repo Products](07-multi-repo-and-org-rollout.md) · [↑ Start Here](README.md) · [Next: Operating the Loop →](09-operating-the-loop.md)</sub>
+<sub>[← Prev: Multi-Repo Products](07-multi-repo-and-org-rollout.md) · [↑ Start Here](README.md) · [Next: Using the Flow →](08b-using-the-flow.md)</sub>

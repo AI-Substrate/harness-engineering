@@ -42,4 +42,4 @@ This is where the magic-wand question gets asked — *what one command, check, o
 
 ---
 
-<sub>[← Prev: Fitting Your Workflow](08-fitting-your-workflow.md) · [↑ Start Here](README.md) · [Next: Encoding & Learning Loops →](10-encoding-and-learning-loops.md)</sub>
+<sub>[← Prev: Using the Flow](08b-using-the-flow.md) · [↑ Start Here](README.md) · [Next: Encoding & Learning Loops →](10-encoding-and-learning-loops.md)</sub>
