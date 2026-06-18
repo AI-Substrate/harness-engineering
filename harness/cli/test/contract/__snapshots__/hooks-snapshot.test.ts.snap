@@ -1,0 +1,143 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`contract: --hook/--event/--hooks/--json byte-stable surface (T001 checkpoint 1) > freezes the full hook-contract bytes (re-run in Phase 3 task 3.1) 1`] = `
+"=== --hook/--event/--hooks/--json contract — frozen snapshot (plan 024 AC-08) ===
+=== source: skills/eng-harness-flow/references/00-routing.md ===
+
+### Lifecycle hooks
+
+The router exposes its loop to host flows as a **closed set of five neutral lifecycle hooks** — the stable, stage-neutral vocabulary a host names when it calls the router (\`--hook <name>\`). The set is **fixed at five** (never grown per-repo) and **stateless** (derived every call, never stored). Each hook names a *moment in the host's lifecycle*, never a child-verb slug.
+
+| Hook | When in the host's lifecycle | Behaviour | What the call drives |
+|---|---|---|---|
+| \`pre-flight\` | before work starts — session open, or about to implement | fire | boot validation (\`harness-boot\`) |
+| \`pre-coding\` | spec settled, before building | fire | backpressure survey |
+| \`coding\` | mid-build, in flight | **silent** — one capture per call | in-flight capture (\`harness observe\`) |
+| \`post-coding\` | a phase / work-unit just ended | fire | per-phase retro drain |
+| \`post-flight\` | the whole plan / journey is complete | fire | terminal close-out — harvest + present improvements + encode |
+
+**\`--event\` seam → \`--hook\` mapping** (the six host seams alias onto the five hooks — \`session-start\` and \`pre-implement\` both open onto \`pre-flight\`):
+
+| \`--event\` seam | \`--hook\` |
+|---|---|
+| \`session-start\` | \`pre-flight\` |
+| \`pre-implement\` | \`pre-flight\` |
+| \`post-spec\` | \`pre-coding\` |
+| \`task-pause\` | \`coding\` |
+| \`phase-end\` | \`post-coding\` |
+| \`plan-complete\` | \`post-flight\` |
+
+Two mappings are load-bearing and easy to get wrong:
+
+- **\`pre-implement\` opens onto \`pre-flight\`, not \`pre-coding\`.** It fires the \`harness-boot\` node — prove the system runs before a line of code — the same boot \`session-start\` re-runs. (Naming it \`pre-coding\` would route it to the backpressure survey, which is wrong.)
+- **\`phase-end\` → \`post-coding\` and \`plan-complete\` → \`post-flight\` are distinct.** Per-phase drain (\`post-coding\`) and the terminal harvest-and-improve (\`post-flight\`) are different lifecycle positions; collapsing both onto one hook would bury the **Improve** beat.
+
+### The \`--json\` routing envelope
+
+\`--json\` returns the routing decision as a machine-readable envelope so a parent agent can act without parsing prose (the harness "return prompting" ethos). It carries at least these fields:
+
+\`\`\`jsonc
+{
+  "requested_stage": "boot",
+  "actual_stage": "adopt",
+  "hook": "<the lifecycle hook this call resolves to: pre-flight|pre-coding|coding|post-coding|post-flight — the --hook value, or the hook the --event seam aliases to>",
+  "decision": "route | redirect | noop | ambiguous",
+  "command": "<exact next harness command>",
+  "why": "<one line>",
+  "produces": "<artifact the routed skill will create, or null>",
+  "preconditions_met": false,
+  "missing_rung": "S4-build-and-run-boot",
+  "next_suggested": "<the command after this one, e.g. --harvest after --drain>",
+  "bypass_recommended": false,
+  "bypass_cause": "<a harness-bypass \`cause\` enum value when bypass_recommended is true, else null>",
+  "rail":  { "zone": "adopt", "adopt_pips": "◆◆◐◇◇", "loop_pips": "◇◇◇◇◇", "cursor": "governance" },
+  "now":   "<current stage, one line>",
+  "next":  "<what follows, one line>",
+  "flags": [ "<must-see item lifted verbatim from the artifact>" ],
+  "insight": "<one interesting real detail>"
+}
+\`\`\`
+
+The \`hook\` field is **additive** — no existing field is reshaped or renamed. A routing call (\`--hook X --json\`, or its \`--event\` alias) returns the envelope above **plus** \`hook\` (the resolved lifecycle hook for the call); the routing envelope never embeds a hooks manifest.
+
+The \`rail\`/\`now\`/\`next\`/\`flags\`/\`insight\` fields carry the UX signals (see [\`coach.md\`](./coach.md)) so a machine caller can render the same pleasant rail + flag beat a human gets. This matters precisely *because* the router is stateless: the rail, now/next, and flags are all **recomputed from substrate every call** — a pure function of "what the repo looks like right now," which is why the UX survives \`/compact\`, serves any caller, and never drifts from reality.
+
+\`bypass_recommended\` / \`bypass_cause\` are **advisory flags only**. When the router detects that the caller hit (or is about to hit) harness friction worth recording, it *flags* it — setting \`bypass_recommended: true\` and a \`bypass_cause\` drawn from the \`harness-bypass\` \`cause\` enum — so the parent can offer \`harness record harness-bypass\`. Consistent with the stateless contract, the router **never writes a record and never blocks** on this; it only reads/derives the flag (default \`false\` / \`null\`).
+
+### The \`--hooks\` discovery manifest
+
+\`--hooks [--json]\` is the **discovery** surface — the routing envelope's counterpart. A routing call (\`--hook X\`) answers *"what do I do now?"*; \`--hooks\` answers *"what hooks exist, and how does a host wire them?"* — a host (e.g. \`the-flow\`) reads it once to learn the contract, then routes against it.
+
+\`--hooks --json\` returns a **top-level** object (Shape A — never wrapped in \`data\`), so a host detects future shape changes via \`manifest_version\`:
+
+All five entries pin the **same nine fields** (\`hook\`, \`intent\`, \`run_at\`, \`kind\`, \`invoke\`, \`aliases\`, \`produces\`, \`needs\`, \`preconditions\`). Comments annotate the first entry; the fields repeat. Note \`coding\`'s \`invoke\` — it is the **silent \`harness observe\` capture**, *not* an inferable \`/eng-harness-flow --hook coding\` fire; a host must hand-wire it from the exact string here:
+
+\`\`\`jsonc
+{
+  "manifest_version": 1,
+  "hooks": [
+    {
+      "hook": "pre-flight",                              // one of the fixed five lifecycle hooks
+      "intent": "prove the system runs before work starts",
+      "run_at": "session open / before implementing",
+      "kind": "fire",                                    // "fire" | "silent"
+      "invoke": "/eng-harness-flow --hook pre-flight --json",
+      "aliases": ["session-start", "pre-implement"],     // the --event seams this hook subsumes
+      "produces": "boot verdict",                        // artifact/effect, or null
+      "needs": [],                                       // upstream inputs this hook expects
+      "preconditions": ["S2-governance", "S4-boot"]      // adoption rungs that must hold; [] otherwise
+    },
+    {
+      "hook": "pre-coding",
+      "intent": "survey what the work can prove deterministically, before building",
+      "run_at": "spec settled, before building",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook pre-coding --json",
+      "aliases": ["post-spec"],
+      "produces": "backpressure-coverage.md",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "coding",
+      "intent": "capture in-flight friction, one entry at a time",
+      "run_at": "mid-build, in flight",
+      "kind": "silent",
+      "invoke": "harness observe \\"<what>\\" --kind <kind>",
+      "aliases": ["task-pause"],
+      "produces": "one observe-buffer entry",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "post-coding",
+      "intent": "drain this phase's captured friction into a retro",
+      "run_at": "a phase / work-unit just ended",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook post-coding --json",
+      "aliases": ["phase-end"],
+      "produces": "drained .retro.md",
+      "needs": [],
+      "preconditions": []
+    },
+    {
+      "hook": "post-flight",
+      "intent": "close out the whole plan — harvest, present improvements, encode",
+      "run_at": "the whole plan / journey is complete",
+      "kind": "fire",
+      "invoke": "/eng-harness-flow --hook post-flight --json",
+      "aliases": ["plan-complete"],
+      "produces": "harvested cross-plan view + encoded improvements",
+      "needs": [],
+      "preconditions": []
+    }
+  ]
+}
+\`\`\`
+
+- The spine is **fixed at five** — \`--hooks\` never grows or shrinks per-repo (closed spine); the *only* per-repo variability rides in each entry's \`preconditions\`.
+- \`--hooks\` is a **pure discovery** call: derived every call (never stored), it runs no detection, reads no plan signals, and writes nothing.
+- **Routing and discovery stay separate**: a routing call (\`--hook X --json\`) returns the envelope **plus** \`hook\` and **never** embeds this manifest; a discovery call (\`--hooks --json\`) returns **only** the top-level \`{ manifest_version, hooks }\` and never a routing envelope.
+
+---"
+`;
