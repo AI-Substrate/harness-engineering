@@ -19,12 +19,6 @@ A monorepo is just one repo: keep a single `.harness/` at the root. Extensions c
 
 That gets you a consistent, centrally-improved core across the org, with each repo tuned to itself.
 
-## What is *not* shipped yet (Roadmap)
-
-> 🚧 **Roadmap — direction, not a feature.** The following are concepts the project is moving toward, **not** shipped capabilities. Do not plan around them yet:
-> - **A shared cross-repo extension registry** — today extensions live per-repo; there is no central place to publish or subscribe to extensions across repos. ("Shared improvements" today means the **core**, not extensions.)
-> - **Org-wide metric rollups / dashboards** — aggregating harness measures across many repos is a reporting concept, not a shipped substrate. See [14 · Metrics & Measures](14-metrics-and-measures.md) for what you can measure per repo today.
-
 ## Where next
 - The single-repo footprint these build on → [06 · Repo Layouts](06-repo-layouts.md).
 - What the harness is, in one read → [`README.md`](../../README.md).

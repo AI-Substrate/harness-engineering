@@ -2,17 +2,37 @@
 
 An engineering harness productises the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run.
 
-> **💡 Fastest start — let your agent do it.** Copy this into Claude Code / Copilot / Cursor / Codex in your repo:
->
-> ```text
-> Install the engineering harness from https://github.com/AI-Substrate/harness-engineering
-> and adopt it in this repo: read that repo's README and skills/README.md, install the
-> skills with npx skills, then run /eng-harness-flow (it routes adoption).
-> ```
+It is the **deterministic layer** between your agent and your codebase: one CLI focal point where a fresh human or agent can boot the product, prove a change is good, and encode the fix so the next run is easier.
 
-> **New to the harness?** The **[adopter's guide](docs/guide/)** walks you from zero to a green boot and on through operating and growing it — read-in-order, no prior context needed.
+## Quick start
 
-## The problem
+**Fastest start — let your agent do it.** Paste this into your coding agent (Claude Code / Copilot / Cursor / Codex…), pointed at the repo you want to harness:
+
+```text
+Read https://raw.githubusercontent.com/AI-Substrate/harness-engineering/main/AGENTS_README.md
+and follow it in this repo.
+```
+
+That one file is self-contained and re-entrant: the agent installs the CLI (if it's missing), installs the skills, and runs adoption — nothing needs to be set up first. If the agent loses context partway, paste the same line again and it picks up where it left off.
+
+Prefer to drive it by hand? Follow **[01 · Quick Start](docs/guide/01-quick-start.md)** — install the CLI and skills yourself and reach a green boot.
+
+## Documentation
+
+New to the harness? Start with the **[adopter's guide](docs/guide/)** — a read-in-order path from zero to a green boot, on through operating, growing, and maintaining the harness. No prior context needed; written to read cleanly in the GitHub UI.
+
+| If you want to… | Go to |
+|---|---|
+| **Adopt it**, step by step | [The adopter's guide](docs/guide/) — start at [01 · Quick Start](docs/guide/01-quick-start.md), then [04 · Adopting the Harness](docs/guide/04-adopting-the-harness.md) |
+| **Understand the idea** | [02 · What Is an Engineering Harness?](docs/guide/02-what-is-an-engineering-harness.md) · [03 · The Harness Loop](docs/guide/03-the-harness-loop.md) |
+| **See the visual intro** | [the deck](https://ai-substrate.github.io/harness-engineering/) (press `P` to present) · [the layers, one page](https://ai-substrate.github.io/harness-engineering/layers.html) |
+| **Install the CLI or skills** | [INSTALL.md](./INSTALL.md) · [`harness/cli/README.md`](harness/cli/README.md) · [`skills/README.md`](skills/README.md) |
+| **Read the thesis** | [`harness-foundations/`](harness-foundations/) — [first principles](harness-foundations/first-principles.md) · [patterns that work](harness-foundations/patterns-that-work.md) |
+| **Contribute to this repo** | [`AGENTS.md`](./AGENTS.md) — this repo is the harness's own home |
+
+Everything below explains *why* the harness exists and how it fits together. To just use it, the two links above are enough.
+
+## Why it exists
 
 Out of all the problems with agent-driven development, two matter most:
 
@@ -20,6 +40,8 @@ Out of all the problems with agent-driven development, two matter most:
 - **The loop is hard to trust.** "Looks good to me" from a model is inference, not proof.
 
 Underneath both: every agent session is a fresh developer onboarding into your repo — cold. If the supported path lives in scattered scripts, docs, and tribal memory, the agent has to infer it, and you pay for that inference every session, on every dev machine.
+
+And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives only in that one session, then it's gone. Tomorrow the same friction hits a teammate, or your future self. An engineering harness gives that hard-earned knowledge a permanent home: **encode the fix, not the memory**, so every loop you solve makes the next one cheaper instead of being re-discovered from scratch. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
 
 > Can a fresh human or agent move from clean start to proved product behaviour without private tribal knowledge?
 
@@ -34,12 +56,12 @@ Boot -> Backpressure Check -> Do Work and Observe -> Retro and Magic Wand -> Imp
 ```
 
 - **Boot** proves the product can start from a known state.
-- **Backpressure Check** is an LLM-assisted, advisory survey of the current scope against the deterministic sensors the repo exposes.
+- **Backpressure Check** is an LLM-assisted, advisory survey of the current scope against the deterministic sensors the repo exposes — types, compilers, tests, schemas, health checks, proof gates. Backpressure is how the harness makes wrong, unsafe, or unproven work hard to continue and easy to correct: *not yet, and here is why*. → [Backpressure Patterns](docs/guide/11-backpressure-patterns.md)
 - **Do Work and Observe** exercises real product behaviour through supported surfaces and captures what happened in inspectable forms.
 - **Retro and Magic Wand** turns friction, missing signals, and improvement wishes into reviewable candidates.
 - **Improve** encodes what was learned so the next run is faster, clearer, safer, or backed by stronger signals.
 
-The harness is not throwaway scaffolding. It is a **productised development surface**: the repo-local commands, fixtures, docs, checks, state, workflows, proof paths, and feedback loops every future feature, experiment, human, and agent passes through.
+The harness is not throwaway scaffolding. It is a **productised development surface**: the repo-local commands, fixtures, docs, checks, state, proof paths, and feedback loops every future feature, experiment, human, and agent passes through. → [The Harness Loop](docs/guide/03-the-harness-loop.md)
 
 ## The layers
 
@@ -49,67 +71,39 @@ Intent flows down. Evidence flows up. The engineering harness is the **determini
      (image, not a ```mermaid block, so it renders on npm too — npm doesn't render Mermaid). -->
 ![The engineering harness layers — intent flows down, evidence flows up; the deterministic (engineering harness) layer sits between the inference layer and the codebase.](docs/media/harness-layers.png)
 
-## The focal point
-
-Reduce all that diffuse engineering-environment information to a single focal point — the harness CLI — and you get three things:
-
-- **A — Discover, in one place.** `--help` instead of tribal memory. Months of team encoding shows up in help text, fetched on demand, not stuffed into agent context.
-- **B — Prove, with backpressure.** One place deterministic verdicts live: yes or no, evidence attached. The agent can claim it's done; the harness decides whether the claim is supported.
-- **C — Improve, on rails.** When friction shows up there's a tangible place to encode the fix — a new command, check, fixture, or sensor — and everyone on the repo, human or agent, gets it.
-
-The agent explores it the way it explores the git CLI: it has never seen your repo, but it knows how to work a CLI. The nucleus, in one line:
+Reduce all that diffuse engineering-environment knowledge to a single focal point — the harness CLI — and a fresh agent explores it the way it explores `git`: it has never seen your repo, but it knows how to work a CLI. `--help` instead of tribal memory; one place deterministic verdicts live, evidence attached; one tangible place to encode the fix when friction shows up, so everyone on the repo gets it. The nucleus, in one line:
 
 ```text
 [CLI focal point + required agent use] + [deterministic backpressure]
   + [friction capture] + [human-selected encoding] = engineering harness nucleus
 ```
 
-## See the full intro
+## Install
 
-- **[The full deck](https://ai-substrate.github.io/harness-engineering/)** — readable scrolling page with commentary, or hit `P` to present it.
-- **[The layers, one page](https://ai-substrate.github.io/harness-engineering/layers.html)** — the layer model as a self-contained visual explainer.
-- The canonical deck source lives at [`docs/harness-presentations/missing-layer-101/intro-to-harness.md`](docs/harness-presentations/missing-layer-101/intro-to-harness.md).
-
-## Install the CLI
-
-The harness CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness` — an **ambient global tool** (like `git`/`node`), installed once per machine and **never committed into a repo** (Node >= 22, **no token or `.npmrc`**):
+The CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness` — an **ambient global tool** (like `git`/`node`), installed once per machine and **never committed into a repo** (Node >= 22, no token or `.npmrc`):
 
 ```bash
 npm install -g @ai-substrate/engineering-harness
 harness doctor          # sanity-check the install
-harness update          # later: upgrade the global install to @latest (no-op if current)
+harness update          # later: upgrade to @latest (no-op if current)
 ```
 
-`harness update --check` reports installed-vs-latest without changing anything, and `harness self-install` is the first-time bootstrap. Every release is published with npm provenance. Full install/run notes live in [`harness/cli/README.md`](harness/cli/README.md).
-
-## Install the skills
-
-This repo publishes **two skills** — the **`eng-harness-flow`** router (the single front door; adoption and every loop stage live inside it as modules) and the standalone **`eng-harness-0-harnessability-assessment`** peer — consumable by [`npx skills@latest`](https://github.com/vercel-labs/skills):
+Then install the **skills** — the choreography agents drive — published via [`npx skills`](https://github.com/vercel-labs/skills):
 
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering/skills -a claude-code -g
 ```
 
-Swap `-a` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `-g` for a project-local install; add `-s <skill-name>` for a single skill. The harness CLI also wraps this as `harness skills install` (and `harness skills update` to refresh to latest **and prune** skills this repo has renamed or removed). The full per-CLI / global-vs-local matrix is in [`INSTALL.md`](./INSTALL.md), and [`skills/README.md`](skills/README.md) explains when to run each skill.
+Swap `-a` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `-g` for a project-local install. The CLI also wraps this as `harness skills install` / `harness skills update`. Full per-CLI matrix and update/prune notes: [`INSTALL.md`](./INSTALL.md), [`harness/cli/README.md`](harness/cli/README.md), [`skills/README.md`](skills/README.md).
 
-## Engineering harness versus agent harness
+## Engineering harness vs agent harness
 
-This repo is about the **engineering harness**, not agent runtimes themselves. (You'll hear the practice called "harness engineering" in the wild — we lead with *engineering harness*, the artifact, so it never gets tangled with agent-harness engineering.)
+This repo is about the **engineering harness**, not agent runtimes themselves. An agent harness can drive an engineering harness, but it cannot replace one: if the product cannot boot, run, seed, observe, and prove behaviour, the agent has nothing reliable to operate.
 
-| Layer | Makes operable | Examples | Proves |
-|---|---|---|---|
-| Engineering harness | The product and its development loop | boot commands, build/test/run flows, seed data, fixtures, health checks, diagnostics, proof bundles, retros, encoded improvements | Whether the actual product can run and prove behaviour |
-| Agent harness | The model as a tool-using agent | tool dispatch, permissions, context, session management, orchestration, memory, execution environment | Whether an agent can attempt or coordinate work |
-
-An agent harness can drive an engineering harness, but it cannot replace one. If the product cannot boot, run, seed, observe, and prove behaviour, the agent has nothing reliable to operate.
-
-## Backpressure
-
-A useful harness is also a **backpressure system**: project-side feedback that makes wrong, unsafe, incomplete, or unproven work hard to continue and easy to correct. It is how the harness says: **not yet, and here is why.**
-
-Good backpressure includes type checks, compilers, linters, schemas, tests and proof gates; health checks, doctor commands, browser traces, logs, screenshots and database checks; structured command output with failure categories and next actions; proof artefacts that show what passed and how to rerun; and human judgement routes for decisions machines cannot make.
-
-Prompts and checklists are useful guides, but high-risk or repeated invariants should move into the strongest practical refusal surface: a command, type, schema, fixture, validation, generated guard, diagnostic, or reviewable proof path. The goal is not ceremony — it is to stop wasting human attention on machine-checkable failure and reserve human judgement for ambiguity, product intent, tradeoffs, taste, and risk.
+| Layer | Makes operable | Proves |
+|---|---|---|
+| **Engineering harness** | The product and its development loop — boot, build/test/run, seed data, fixtures, health checks, diagnostics, proof bundles, retros, encoded improvements | Whether the actual product can run and prove behaviour |
+| **Agent harness** | The model as a tool-using agent — tool dispatch, permissions, context, session management, orchestration, memory, execution environment | Whether an agent can attempt or coordinate work |
 
 ## What's in this repo
 
