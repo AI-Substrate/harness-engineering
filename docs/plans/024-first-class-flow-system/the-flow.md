@@ -1,7 +1,7 @@
 <!-- GENERATED FROM the-flow.json — do not hand-edit; regenerate from the JSON. -->
 # Flight plan · 024-first-class-flow-system
 
-**Mode**: Full · **CS-4** · **Cursor**: Phase 3 (🟦 the-flow migration) · **Phase 1**: ✅ 16/16 · **Phase 2**: ✅ complete + committed (renderer + `flow render --check` + check:flows CI + docs/how guide + §4 reconcile; 753 green) · **Next**: Phase 3 tasks · **Workshops**: 001 ✅ 002 ✅ 003 ✅ (all folded)
+**Mode**: Full · **CS-4** · **Cursor**: Phase 3 🟧 (the-flow migration — tasks tabled + validated) · **Phase 1**: ✅ 16/16 · **Phase 2**: ✅ complete + committed (753 green) · **Phase 3**: 🟧 tasks PRODUCED + VALIDATED (7 T-tasks; validate-v2 broad = WITH FIXES, 1 HIGH applied) · **Next**: Phase 3 implement (cross-repo) · **Workshops**: 001 ✅ 002 ✅ 003 ✅ (all folded)
 
 ```mermaid
 flowchart TD
@@ -9,7 +9,7 @@ flowchart TD
     plan["Plan ✅ · Full, CS-4, READY (v1.2.0)<br/>first-class-flow-system-plan.md"]:::done
     p1["Phase 1 · Flow engine ✅<br/>16/16 complete · 719 green · companion-reviewed"]:::done
     p2["Phase 2 · Render + CI parity + docs ✅"]:::done
-    p3["Phase 3 · the-flow migration 🟦"]:::known
+    p3["Phase 3 · the-flow migration 🟧<br/>tasks tabled + validated"]:::wip
     review["Review 🟦"]:::known
     merge["Merge 🟦"]:::known
 
@@ -40,6 +40,10 @@ flowchart TD
     say_p -.- plan
     say_p1>"🗣 continue with phase 5 taks then validate please"]:::said
     say_p1 -.- p1
+    say_p2>"🗣 next. also what is git status"]:::said
+    say_p2 -.- p2
+    say_p3>"🗣 prepare next phase and do validation"]:::said
+    say_p3 -.- p3
 
     classDef done fill:#C8E6C9,stroke:#2E7D32;
     classDef wip fill:#FFE0B2,stroke:#EF6C00;
