@@ -22,8 +22,14 @@ A **flow** is a cursor-spine DAG persisted as one JSON document (`the-flow.json`
 shape):
 
 - **nodes[]** — each a `{ id, type, label, status, next[] }` (+ optional
-  `branch_of`, `user_input`, `comments[]`, timestamps). The `cursor` marks where
-  the agent is; `recommended_next` is a non-binding hint.
+  `branch_of`, `zone`, `user_input`, `comments[]`, timestamps). `zone`
+  (`preflight | flight | postflight`) places the node in a rail band; unset → a
+  default by node type.
+- **nav** — the position object `{ now, next, intent?, bag? }`. `now` is the
+  validated current node id (the truth); `next` is an advisory node id or `null`
+  (the LLM dispatches — the CLI never routes); `intent` is free text; `bag` is a
+  free-form, shallow qualifier map (no schema). Replaces the old top-level
+  `cursor`/`recommended_next` (a clean break — below).
 - **events[]** — a flow-scoped, append-only audit log: engine-fired built-ins
   (`created`/`cursor-moved`/`status-changed`/`node-created`/`node-updated`),
   public-manual kinds (`build-run`/`test-run`/…), and duck-typed `custom`
@@ -45,20 +51,55 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 
 | Verb | What it does |
 |------|--------------|
-| `create <type> --slug <s>` | Instantiate a flow from its type's template (root identity + provenance stamped). `--bare` for root-only; `--schema`/`--template` to override. |
+| `create <type> --slug <s>` | Instantiate a flow from its type's template (root identity + provenance stamped). `--bare` for root-only; `--schema`/`--template` to override; `--agent <name>` + `--plan-id <id>` stamp provenance (the rail-title source); `--title <t>` sets an explicit rail label. |
 | `new <type>` | Scaffold a custom flow-type **schema overlay** into `.harness/schemas/flows/<type>.schema.json`. |
 | `show` | Read a flow and print its summary envelope. |
 | `list` | Discover flows under `.harness/flows/` (or `--dir`). |
-| `cursor --to <node>` / `--recommend <node>` | Move the cursor / set `recommended_next`. |
+| `nav show` | Print the position: `{ nav: {now,next,intent,bag} \| null, predecessors, successors }` (neighbours trimmed to `{id,type,status,label,next}`; `nav` is `null` when the flow carries none). |
+| `nav set [--now <id>] [--next <id> \| --clear-next] [--intent <t>]` | Move position (`--now`, validated → `E305`, fires `cursor-moved`), set/clear the advisory next (validated; `null`-able), and/or set the intent. |
+| `nav meta set <k> <v>` / `nav meta get [k]` | Shallow-merge one key into the free-form `bag` / read one key (or the whole bag). |
+| `rail [--path\|--slug]` | Emit the one-line rail: `[<title>] <pips>  <names>`, banded `pre ─ [ flight ] ─ post`. |
 | `status --node <id> --to <status>` | Set a node status (stamps `ran_at` on `done`/`blocked`). |
-| `add-node --id --type --label [--status --next]` | Append a node. |
-| `set-node --node <id> [--label --note --user-input]` | Merge fields into a node. |
-| `insert-node --id --type --label (--after\|--before\|--branch-of)` | Insert + splice edges deterministically; the DAG is re-checked before write. |
+| `add-node --id --type --label [--status --next --artifacts --zone]` | Append a node (`--zone preflight\|flight\|postflight`). |
+| `set-node --node <id> [--label --note --user-input --artifacts]` | Merge fields into a node. |
+| `insert-node --id --type --label (--after\|--before\|--branch-of) [--zone]` | Insert + splice edges deterministically (`--zone` optional); the DAG is re-checked before write. |
 | `comment --node <id> --text <t> [--source --kind --refs]` | Append a timestamped comment. |
 | `event <name> [--value --type \| --kind --description]` | Append a manual or duck-typed custom event. |
 | `render [--path\|--slug] [--output --check --against]` | Render the flow to deterministic markdown (below). |
 
 Outcomes are the standard envelope: `ok → 0`, `error → 1`, `unconfigured → 2`.
+
+---
+
+## Position, intent & the rail — `nav` + `rail`
+
+Position lives in one **`nav`** object, not scattered fields. The agent moves it as
+work progresses and reads it back to orient (e.g. after a context reset):
+
+```bash
+harness flow nav set --slug my-flow --now build --next review --intent "ship X"
+harness flow nav meta set --slug my-flow replan_reason draft   # stash a qualifier
+harness flow nav show  --slug my-flow                          # now/next/intent/bag + neighbours
+harness flow rail      --slug my-flow                          # ◆─◆─[ ◐ ]─◇  Spec · Plan ─ [ Build ] ─ Review
+```
+
+- **`now` is truth, `next` is advice.** The CLI validates that `now`/`next`
+  reference real nodes (`E305`) and persists them — it never decides the journey
+  (routing stays with the driving skill).
+- **`rail`** is the glanceable progress view, reusable by any flow type: it walks
+  the main spine, fills one pip per node from **live** status (`done → ◆`,
+  `in_progress → ◐`, `blocked → ✗`, else `◇`) with no stored counters (no drift),
+  and groups nodes into zone bands. The `[<title>]` prefix is `provenance.agent`
+  (so a flow created `--agent the-flow` rails as `[the-flow]`) → an explicit
+  `--title` → the slug.
+- **Zones** (`--zone` on `add-node`/`insert-node`) place each node in a band;
+  unset, a node defaults by type (lead-up types → `preflight`, `phase` → `flight`,
+  review/merge/retro → `postflight`, anything else → `flight`).
+
+> **Clean break:** `nav` replaced the old top-level `cursor`/`recommended_next`,
+> and the `cursor` verb was removed (no alias). A flow written in the old shape
+> still *reads* (extra fields are tolerated); call `nav set` to adopt the new
+> position model.
 
 ---
 

@@ -152,8 +152,8 @@ Extend the 024 flow CLI in place: add the `nav` object + verbs, the `rail` comma
 | [x] | T010 | Implement `harness flow rail` (spine walk, status pips, zone bands, title `provenance.agent`→slug) | flow | `harness/cli/src/services/flow/flow-renderer.ts`, `acts/flow.ts` | T009 green; `harness flow rail` emits the line | N11/N13 |
 | [x] | T011 | Tests: `create --agent/--plan-id` stamps provenance | flow | `harness/cli/test/services/flow/flow-service.test.ts` | red test asserts non-null agent/plan_id | TDD-first; D-06 |
 | [x] | T012 | Add `--agent`/`--plan-id`/`--title` to `create`; stamp provenance (`--agent` omitted → `agent: null`, no error — rail uses slug fallback) | flow | `harness/cli/src/acts/flow.ts`, `flow-service.ts` | T011 green | Finding 01 |
-| [ ] | T013 | Regenerate golden fixtures; `flow-fixtures --check` + full vitest suite green | flow | `harness/cli/test/services/flow/fixtures/*`, `scripts/flow-fixtures.mjs` | drift-guard + suite green | AC-6 |
-| [ ] | T014 | Update `docs/how/harness-flow.md`; dogfood the new verbs on flow 026 | flow | `docs/how/harness-flow.md` | doc reflects nav/rail/zone/create --agent; 026 driven via `nav`/`rail` | AC-7 |
+| [x] | T013 | Regenerate golden fixtures; `flow-fixtures --check` + full vitest suite green | flow | `harness/cli/test/services/flow/fixtures/*`, `scripts/flow-fixtures.mjs` | drift-guard + suite green | AC-6 |
+| [x] | T014 | Update `docs/how/harness-flow.md`; dogfood the new verbs on flow 026 | flow | `docs/how/harness-flow.md` | doc reflects nav/rail/zone/create --agent; 026 driven via `nav`/`rail` | AC-7 |
 
 ### Acceptance Coverage Map
 

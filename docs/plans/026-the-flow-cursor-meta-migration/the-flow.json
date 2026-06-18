@@ -389,6 +389,27 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:14:54.019Z",
+      "details": {
+        "node": "p1",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T09:14:54.086Z",
+      "details": {
+        "from": "",
+        "to": "p1"
+      }
     }
   ],
   "nodes": [
@@ -405,12 +426,12 @@
       "id": "p1",
       "type": "phase",
       "label": "Phase 1 · Build nav/rail/zone + create --agent",
-      "status": "assumed",
+      "status": "in_progress",
       "next": [
         "merge"
       ],
       "created_at": "2026-06-18T06:07:05.946Z",
-      "modified_at": "2026-06-18T08:06:16.112Z"
+      "modified_at": "2026-06-18T09:14:54.019Z"
     },
     {
       "id": "plan",
@@ -543,5 +564,13 @@
       ]
     }
   ],
-  "recommended_next": "p1"
+  "recommended_next": "p1",
+  "nav": {
+    "now": "p1",
+    "next": "merge",
+    "intent": "building nav/rail/zone + create --agent — dogfooding the live CLI",
+    "bag": {
+      "build_commit": "cc63c12"
+    }
+  }
 }

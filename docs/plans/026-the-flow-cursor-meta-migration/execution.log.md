@@ -43,3 +43,12 @@
 
 ## Companion observation (dogfooding — task #90)
 - `code-review-companion` booted + briefed + ack'd the C1 ping, but then stalled in `minih-coordination-wait_for_any` (`minih status` verdict `dead`, ~28min, **no inbox_list polls observed**, zero review replies emitted). Pings for C1–C3 delivered to its inbox but unconsumed. Per the implement sub-skill, the companion is advisory + never blocks → build continued; **stage-7 review still required** (companion did NOT supersede review). Kept pinging in case it revives for the debrief. Likely minih 0.2.2 coordination flakiness (the known `dead`-while-mid-tool false-positive shape, but here with no actual review activity).
+
+## C4 — docs + dogfood + final gate (T013, T014) — ✅ GREEN
+- T013: `check:flows` clean (gen:flows no-drift + `flow-fixtures --check`) + full suite **788 green** — the CI gate. (Fixtures regenerated incrementally in C1/C3.)
+- T014: `docs/how/harness-flow.md` updated — model (nav + zone), verbs table (nav show/set/meta + rail; create --agent/--plan-id/--title; --zone on add/insert; `cursor` row removed), a new "Position, intent & the rail" section + the clean-break note.
+- T014 dogfood (live, local built bin) on flow 026's own flight plan: `nav set --now p1 --next merge --intent …` created nav on the pre-migration flow; `nav meta set build_commit cc63c12`; `rail` → `[the-flow-cursor-meta-migration] ◆─◆─◆─◆─[ ◐ ]─◇ …Plan… ─ [ Phase 1… ] ─ Merge` (zone defaults band it; title = slug — the live D-06 effect); `nav show` → exact AC-1 envelope w/ trimmed neighbours; `create --agent the-flow` throwaway → rail `[the-flow] …` (**D-06 fixed, live-confirmed**; throwaway removed); `render` → the-flow.md regenerated.
+- Observation (task #90): 026's own flight plan was created pre-fix (agent null) so its live rail shows the slug, not `[the-flow]`; provenance is stamped-once → the skill's one-shot migration (Non-Goal) or a re-create adopts the agent title. Not a CLI bug — `create --agent` + the slug fallback are the intended paths (both shown live).
+
+## Phase 1 complete — all 15 tasks ✅
+4 commits (C1 nav core · C2 zone · C3 rail · C4 docs/dogfood); full suite **788 green**; `check:flows` clean; every AC (1–7) delivered + dogfooded live. **Stage-7 review still warranted** — the live companion stalled, so per-commit review did NOT happen.
