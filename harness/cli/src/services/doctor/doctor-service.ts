@@ -58,12 +58,30 @@ export interface DoctorReport {
   recordTypes: RecordTypeEntry[];
 }
 
-const REQUIRED_TOOLS = ['node', 'just', 'biome'];
 /**
- * Relative to cwd. Two modes (FX001 / plan-013 FIND-2):
- * - Dev (this repo, the harness's home): `CLI_DEV_MARKER` present → check the build output.
- * - Consumer (installed clone): marker absent → the dev build check does not apply; the
- *   layer reports ok with a `consumer` detail instead of falsely degrading the envelope.
+ * Dev mode (this repo, the harness's home): the toolchain that builds and checks
+ * the CLI itself. `just` (recipe runner) and `biome` (lint/format) are THIS
+ * repo's dev tools — never a consumer's, so they are enforced only in dev mode.
+ */
+const DEV_TOOLS = ['node', 'just', 'biome'];
+/**
+ * Consumer mode (installed clone): the core cannot know the repo's toolchain, and
+ * deciding "is the repo ready / does it build" is the boot extension's per-repo
+ * job (constitution P10 — the core hardcodes no repo command/tool list). The only
+ * tool the core itself needs is `node` (the CLI is a Node program; engines
+ * node>=22), so that is all consumer mode enforces — `just`/`biome` are not a
+ * consumer's concern.
+ */
+const CORE_TOOLS = ['node'];
+/**
+ * Relative to cwd. The dev-vs-consumer marker (FX001 / plan-013 FIND-2) gates BOTH
+ * the toolchain and cli-build layers:
+ * - Dev (marker present): enforce the full dev toolchain (DEV_TOOLS) and check the
+ *   build output.
+ * - Consumer (marker absent): the dev toolchain + build checks do not apply — the
+ *   toolchain layer enforces only `node` (CORE_TOOLS) and both layers report ok with
+ *   a `consumer` detail instead of falsely degrading the envelope. What "ready" means
+ *   for the consumer's own toolchain is the boot extension's job.
  * The marker is a FILE (not the `harness/cli/` dir) so both NodeFs and FakeFs resolve it
  * with plain exists(); there is no `harness/cli/package.json` — the CLI builds from the
  * root package, so its tsconfig is the stable dev-tree marker.
@@ -71,16 +89,24 @@ const REQUIRED_TOOLS = ['node', 'just', 'biome'];
 const CLI_DEV_MARKER = 'harness/cli/tsconfig.json';
 const CLI_BUILD_PATH = 'harness/cli/dist/index.js';
 
-function checkToolchain(proc: ProcessPort): LayerReport {
-  const missing = REQUIRED_TOOLS.filter((tool) => proc.which(tool) === null);
-  const ok = missing.length === 0;
+function checkToolchain(proc: ProcessPort, fs: FsPort): LayerReport {
+  const dev = fs.exists(CLI_DEV_MARKER);
+  const required = dev ? DEV_TOOLS : CORE_TOOLS;
+  const missing = required.filter((tool) => proc.which(tool) === null);
+  if (missing.length > 0) {
+    return {
+      name: 'toolchain',
+      ok: false,
+      detail: `missing tools: ${missing.join(', ')}`,
+      next_action: `Install the missing tools: ${missing.join(', ')}.`,
+    };
+  }
   return {
     name: 'toolchain',
-    ok,
-    detail: ok
-      ? `all required tools present (${REQUIRED_TOOLS.join(', ')})`
-      : `missing tools: ${missing.join(', ')}`,
-    ...(ok ? {} : { next_action: `Install the missing tools: ${missing.join(', ')}.` }),
+    ok: true,
+    detail: dev
+      ? `all required tools present (${required.join(', ')})`
+      : 'consumer install — core needs only node (present); repo toolchain is owned by the boot extension',
   };
 }
 
@@ -238,7 +264,7 @@ export function buildDoctorReport(
   const recordTypes = recordRegistry?.types ?? [];
   const conventions = checkConventions(deps.fs, deps.proc, registry);
   const layers = [
-    checkToolchain(deps.proc),
+    checkToolchain(deps.proc, deps.fs),
     checkCliBuild(deps.fs),
     checkExtensions(registry, conventions),
     checkCoreInstructions(),
