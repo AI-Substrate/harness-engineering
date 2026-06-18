@@ -68,7 +68,7 @@ export const ErrorCodes = {
   FLOW_NODE_INVALID: 'E305',
   /** `harness flow`: the flow's `schema_version` has an unknown major (version-gated validation). `next_action` → `harness update`. */
   FLOW_SCHEMA_VERSION: 'E306',
-  /** `harness flow insert-node`: the placement target is ambiguous (more than one match, or conflicting placement flags resolve to several). */
+  /** `harness flow insert-node`: the placement TARGET reference is ambiguous — it resolves to more than one node. (Mutually-exclusive placement FLAGS are `E108`, not this; a target that matches nothing is `E305`.) */
   FLOW_AMBIGUOUS_TARGET: 'E307',
   /** `harness flow`: a pre-CLI / legacy-format flow (bare-integer `schema_version` and/or absent `provenance`) — clean break, no tolerant load. `next_action` hedges honestly. */
   FLOW_LEGACY_FORMAT: 'E308',
