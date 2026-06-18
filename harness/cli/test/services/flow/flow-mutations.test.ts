@@ -246,6 +246,29 @@ describe('T003 — nav meta (shallow-merge bag) + neighbour utils + navShow', ()
   });
 });
 
+describe('T007 — node zone carries through add-node / insert-node', () => {
+  it('addNode persists an explicit zone', () => {
+    const res = addNode(
+      baseDoc(),
+      { id: 'd', type: 'improve', label: 'D', status: 'known', zone: 'postflight' },
+      deps(),
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.doc.nodes.find((n) => n.id === 'd')?.zone).toBe('postflight');
+  });
+
+  it('insertNode persists an explicit zone', () => {
+    const res = insertNode(
+      baseDoc(),
+      { id: 'n', type: 'phase', label: 'N', status: 'known', zone: 'flight' },
+      { after: 'a' },
+      deps(),
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.doc.nodes.find((n) => n.id === 'n')?.zone).toBe('flight');
+  });
+});
+
 describe('T011 — insert-node edge algebra + DAG re-check (E309) + audit events', () => {
   it('--after X: N inherits X out-edges, X→[N]; fires node-created + node-updated{splice-after}', () => {
     const res = insertNode(

@@ -29,3 +29,8 @@
 - Contract snapshot (`flow-envelope-snapshot`) regenerated: `data` shape `cursor`/`recommended_next` → `now`/`next` — the exact contract the-flow's skill migration will consume.
 - Discovery: template descriptors keep a `cursor` **seed key** (the template DSL's initial-position indicator) — distinct from the migrated `doc` field, mapped into `nav.now` at create. Grep-clean of `doc.cursor`/`doc.recommended_next` field reads holds; `recommended_next` survives only in 2 comments. (Flagged to companion.)
 - Decision: `--title` stores `doc.title`; rail title precedence (built C3) = `provenance.agent ?? doc.title ?? doc.slug` — AC-4's agent→slug still holds (title is an optional middle rung).
+
+## C2 — per-node zone + default-by-type (T007, T008) — ✅ GREEN
+- `zone?` on `FlowNode` + `NodeSpec` + `materialize`; `--zone` on `add-node`/`insert-node`; schema `node.optional` += `zone` (regenerated `schemas-content.ts`).
+- `effectiveZone(node)` (flow-renderer, exported): explicit valid zone → type default (research/plan/workshop/tasks/adr = preflight; phase = flight; review/merge/retro = postflight) → **flight** (total map; unknown type never errors — AC-3).
+- No render change yet (rail consumes `effectiveZone` in C3) → no fixture drift. Full suite **782 green**; tsc clean.

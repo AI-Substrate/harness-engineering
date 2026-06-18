@@ -82,6 +82,8 @@ export interface FlowNode {
   artifacts?: string[];
   /** Forward-compat (Finding 02b): `cursor | substrate`, default `cursor`, unused in v1. */
   authority?: string;
+  /** Rail band: `preflight | flight | postflight` (ws-002); unset → defaulted by type. */
+  zone?: string;
   /** Tolerated pass-through fields (agents/output/error/command/note/…) round-trip. */
   [key: string]: unknown;
 }

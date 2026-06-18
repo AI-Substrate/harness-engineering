@@ -362,6 +362,7 @@ export function registerFlowAct(
     .option('--status <status>', 'node status', 'known')
     .option('--next <ids>', 'comma-separated successor node ids')
     .option('--artifacts <list>', 'comma-separated artifact paths produced at this node')
+    .option('--zone <band>', 'rail band: preflight | flight | postflight (default: by node type)')
     .action(
       (opts: {
         path?: string;
@@ -372,6 +373,7 @@ export function registerFlowAct(
         status: string;
         next?: string;
         artifacts?: string;
+        zone?: string;
       }) => {
         runMutation(io, deps, opts, (doc) =>
           addNode(
@@ -383,6 +385,7 @@ export function registerFlowAct(
               status: opts.status,
               next: splitIds(opts.next),
               artifacts: splitIds(opts.artifacts),
+              zone: opts.zone,
             },
             { clock: deps.clock },
           ),
@@ -438,6 +441,7 @@ export function registerFlowAct(
     .option('--before <node>', 'splice before this node')
     .option('--branch-of <node>', 'attach as an excursion of this node')
     .option('--rejoin <node>', 'branch rejoin target (default: the branch-of node)')
+    .option('--zone <band>', 'rail band: preflight | flight | postflight (default: by node type)')
     .action(
       (opts: {
         path?: string;
@@ -450,11 +454,18 @@ export function registerFlowAct(
         before?: string;
         branchOf?: string;
         rejoin?: string;
+        zone?: string;
       }) => {
         runMutation(io, deps, opts, (doc) =>
           insertNode(
             doc,
-            { id: opts.id, type: opts.type, label: opts.label, status: opts.status },
+            {
+              id: opts.id,
+              type: opts.type,
+              label: opts.label,
+              status: opts.status,
+              zone: opts.zone,
+            },
             {
               after: opts.after,
               before: opts.before,

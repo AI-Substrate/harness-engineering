@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { FlowDoc, FlowNode } from '../../../src/services/flow/flow-events.js';
-import { renderFlow } from '../../../src/services/flow/flow-renderer.js';
+import { effectiveZone, renderFlow } from '../../../src/services/flow/flow-renderer.js';
 
 const FIXTURE_DIR = fileURLToPath(new URL('./fixtures/render', import.meta.url));
 
@@ -404,5 +404,28 @@ describe('flow-renderer · tolerance + safety', () => {
     expect(out).toContain('end_["End"]:::known'); // suffixed away from the reserved word
     expect(out).toContain('a --> end_');
     expect(out).not.toMatch(/\n {4}end\["End"\]/); // never a bare `end[...]`
+  });
+});
+
+describe('flow-renderer · effectiveZone (zone default-by-type; unknown → flight; total map)', () => {
+  it('maps every the-flow overlay type to its band (AC-3)', () => {
+    for (const t of ['research', 'plan', 'workshop', 'tasks', 'adr']) {
+      expect(effectiveZone({ type: t })).toBe('preflight');
+    }
+    expect(effectiveZone({ type: 'phase' })).toBe('flight');
+    for (const t of ['review', 'merge', 'retro']) {
+      expect(effectiveZone({ type: t })).toBe('postflight');
+    }
+  });
+
+  it('an unknown / unlisted type → flight (graceful total-map fallback, never an error)', () => {
+    expect(effectiveZone({ type: 'totally-made-up' })).toBe('flight');
+    expect(effectiveZone({ type: undefined })).toBe('flight');
+    expect(effectiveZone({})).toBe('flight');
+  });
+
+  it('an explicit valid zone overrides the type default; an invalid zone falls back to type', () => {
+    expect(effectiveZone({ type: 'phase', zone: 'preflight' })).toBe('preflight');
+    expect(effectiveZone({ type: 'research', zone: 'bogus' })).toBe('preflight');
   });
 });

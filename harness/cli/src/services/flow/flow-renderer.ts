@@ -44,6 +44,32 @@ const STATUS_PIP: Record<string, string> = {
   blocked: '✗',
 };
 
+/** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
+export type Zone = 'preflight' | 'flight' | 'postflight';
+const ZONES: ReadonlySet<string> = new Set<string>(['preflight', 'flight', 'postflight']);
+/**
+ * Default rail band by node TYPE (AC-3 / N12) — the the-flow overlay's map. The map
+ * is TOTAL over any overlay: an unlisted/unknown type falls back to `flight` (a
+ * graceful default, never an error), so the rail works for every flow kind.
+ */
+const ZONE_BY_TYPE: Record<string, Zone> = {
+  research: 'preflight',
+  plan: 'preflight',
+  workshop: 'preflight',
+  tasks: 'preflight',
+  adr: 'preflight',
+  phase: 'flight',
+  review: 'postflight',
+  merge: 'postflight',
+  retro: 'postflight',
+};
+
+/** A node's rail band: an explicit valid `zone` wins; else the type default; else `flight`. */
+export function effectiveZone(node: { type?: string; zone?: unknown }): Zone {
+  if (typeof node.zone === 'string' && ZONES.has(node.zone)) return node.zone as Zone;
+  return ZONE_BY_TYPE[node.type ?? ''] ?? 'flight';
+}
+
 /** The classDef block — emitted once at the foot of the diagram (rule 1). */
 const CLASS_DEFS: readonly string[] = [
   'classDef done fill:#C8E6C9,stroke:#2E7D32;',

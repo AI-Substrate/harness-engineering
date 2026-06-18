@@ -26,6 +26,7 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
         'artifacts',
         'phase',
         'reconstructed',
+        'zone',
       ],
     },
     comment: { required: ['at', 'text'], optional: ['source', 'kind', 'refs'] },

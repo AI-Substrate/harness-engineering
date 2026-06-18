@@ -146,6 +146,20 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     expect(bad.code).toBe(1);
     expect(bad.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
   });
+
+  it('add-node --zone persists the rail band (zone round-trips into the flow JSON)', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    const r = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'demo', '--id', 'z', '--type', 'improve',
+      '--label', 'Z', '--next', '', '--zone', 'postflight',
+    ]);
+    expect(r.code).toBe(0);
+    const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/demo.json') as string);
+    expect(doc.nodes.find((n: { id: string }) => n.id === 'z').zone).toBe('postflight');
+  });
 });
 
 describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () => {
