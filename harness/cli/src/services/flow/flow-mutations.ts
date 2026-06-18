@@ -112,6 +112,7 @@ export interface NodeSpec {
   branch_of?: string;
   user_input?: string;
   authority?: string;
+  artifacts?: string[];
 }
 
 function materialize(spec: NodeSpec, now: string): FlowNode {
@@ -128,6 +129,7 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
     ...(spec.branch_of !== undefined && { branch_of: spec.branch_of }),
     ...(spec.user_input !== undefined && { user_input: spec.user_input }),
     ...(spec.authority !== undefined && { authority: spec.authority }),
+    ...(spec.artifacts !== undefined && { artifacts: [...spec.artifacts] }),
   };
 }
 

@@ -269,6 +269,67 @@ describe('flow-renderer · render rules', () => {
     expect(out).toContain('**Rail**:');
     expect(out).toMatch(/\*\*Rail\*\*: ◆─◇ {2}research · merge/);
   });
+
+  it('rails the main spine in flow order incl. `review`, regardless of array order (rail fix)', () => {
+    // Nodes deliberately OUT OF ARRAY ORDER; the edges define the spine.
+    const out = renderFlow(
+      doc([
+        { id: 'merge', type: 'merge', label: 'M', status: 'known', next: [] },
+        { id: 'p2', type: 'phase', label: 'P2', status: 'done', next: ['review'] },
+        { id: 'research', type: 'research', label: 'R', status: 'done', next: ['plan'] },
+        { id: 'review', type: 'review', label: 'Rev', status: 'known', next: ['merge'] },
+        { id: 'plan', type: 'plan', label: 'Pl', status: 'done', next: ['p2'] },
+        {
+          id: 'ws',
+          type: 'workshop',
+          label: 'W',
+          status: 'done',
+          branch_of: 'plan',
+          next: ['plan'],
+        },
+      ]),
+    );
+    // Topological order (NOT array order); `review` (not a legacy "spine type") is on the
+    // rail; the `ws` excursion never is.
+    expect(out).toContain('**Rail**: ◆─◆─◆─◇─◇  research · plan · p2 · review · merge');
+    expect(out).not.toMatch(/· ws\b/);
+  });
+
+  it('badges artifacts[] (`📄N`) and body-logs the paths (artifacts surface)', () => {
+    const out = renderFlow(
+      doc([
+        {
+          id: 'research',
+          type: 'research',
+          label: 'Research',
+          status: 'done',
+          next: [],
+          artifacts: ['research-dossier.md', 'original-ask.md'],
+        },
+      ]),
+    );
+    expect(out).toContain('research["Research 📄2"]:::done'); // count badge
+    expect(out).toContain('## Node log');
+    expect(out).toContain('### research · Research');
+    expect(out).toContain('- 📄 artifacts: research-dossier.md, original-ask.md');
+  });
+
+  it('orders badges 💬 then 📄 when a node has both comments and artifacts', () => {
+    const out = renderFlow(
+      doc([
+        {
+          id: 'plan',
+          type: 'plan',
+          label: 'Plan',
+          status: 'done',
+          next: [],
+          comments: [{ at: '2026-01-01T00:00:00Z', text: 'c', source: 'agent', kind: 'note' }],
+          artifacts: ['plan.md'],
+        },
+      ]),
+    );
+    expect(out).toContain('plan["Plan 💬1 📄1"]:::done');
+  });
 });
 
 // ---------------------------------------------------------------------------

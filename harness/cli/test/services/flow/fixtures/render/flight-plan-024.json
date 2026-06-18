@@ -38,7 +38,8 @@
       "status": "done",
       "next": ["plan"],
       "ran_at": "2026-06-17T21:05:00Z",
-      "user_input": "make this a first class concept ... deterministic ... event log inside the json ... limit phases please"
+      "user_input": "make this a first class concept ... deterministic ... event log inside the json ... limit phases please",
+      "artifacts": ["research-dossier.md", "original-ask.md"]
     },
     {
       "id": "plan",
@@ -48,6 +49,7 @@
       "next": ["p1"],
       "ran_at": "2026-06-17T21:38:00Z",
       "user_input": "the plan phase is a little different on how it talks to phases. re-read it then do the plan please.",
+      "artifacts": ["first-class-flow-system-plan.md"],
       "comments": [
         {
           "at": "2026-06-17T21:38:46Z",
@@ -72,14 +74,15 @@
       "status": "done",
       "next": ["p2"],
       "ran_at": "2026-06-18T01:35:00Z",
-      "user_input": "continue with phase 5 tasks then validate please"
+      "user_input": "continue with phase 5 tasks then validate please",
+      "artifacts": ["tasks/phase-1-flow-engine/tasks.md", "tasks/phase-1-flow-engine/execution.log.md"]
     },
     {
       "id": "p2",
       "type": "phase",
       "label": "Phase 2 · Render + CI parity + docs",
       "status": "in_progress",
-      "next": ["merge"],
+      "next": ["review"],
       "user_input": "implement without companion as we have another task using companion already",
       "comments": [
         {
@@ -125,6 +128,13 @@
       "next": ["plan"],
       "ran_at": "2026-06-17T22:04:20Z",
       "user_input": "do next workshop"
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": ["merge"]
     }
   ]
 }

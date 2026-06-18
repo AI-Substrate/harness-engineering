@@ -3,7 +3,7 @@
 
 **Kind**: kitchen-sink · **Cursor**: dec · **Next**: a · **Nodes**: 10 · **Events**: 1
 
-**Rail**: ◆─◐─◇─◇  start · a · join · end
+**Rail**: ◆─◇─◐─✗─◇─◇─◇  start · dec · a · b · join · adv · end
 
 ```mermaid
 flowchart TD

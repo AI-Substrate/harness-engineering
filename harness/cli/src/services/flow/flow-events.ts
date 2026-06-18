@@ -78,6 +78,8 @@ export interface FlowNode {
   /** The genesis directive that created the node (Phase 2's one 🗣 bubble). */
   user_input?: string;
   comments?: FlowComment[];
+  /** Output artifacts produced at this node (files/paths) — drives the `📄N` badge + body-log. */
+  artifacts?: string[];
   /** Forward-compat (Finding 02b): `cursor | substrate`, default `cursor`, unused in v1. */
   authority?: string;
   /** Tolerated pass-through fields (agents/output/error/command/note/…) round-trip. */

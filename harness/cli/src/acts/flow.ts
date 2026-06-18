@@ -252,6 +252,7 @@ export function registerFlowAct(
     .requiredOption('--label <label>', 'node label')
     .option('--status <status>', 'node status', 'known')
     .option('--next <ids>', 'comma-separated successor node ids')
+    .option('--artifacts <list>', 'comma-separated artifact paths produced at this node')
     .action(
       (opts: {
         path?: string;
@@ -261,6 +262,7 @@ export function registerFlowAct(
         label: string;
         status: string;
         next?: string;
+        artifacts?: string;
       }) => {
         runMutation(io, deps, opts, (doc) =>
           addNode(
@@ -271,6 +273,7 @@ export function registerFlowAct(
               label: opts.label,
               status: opts.status,
               next: splitIds(opts.next),
+              artifacts: splitIds(opts.artifacts),
             },
             { clock: deps.clock },
           ),
@@ -288,6 +291,7 @@ export function registerFlowAct(
     .option('--label <label>', 'new label')
     .option('--note <note>', 'set the node note')
     .option('--user-input <text>', 'set the genesis user_input')
+    .option('--artifacts <list>', 'comma-separated artifact paths (replaces the node list)')
     .action(
       (opts: {
         path?: string;
@@ -296,11 +300,13 @@ export function registerFlowAct(
         label?: string;
         note?: string;
         userInput?: string;
+        artifacts?: string;
       }) => {
         const fields: Record<string, unknown> = {};
         if (opts.label !== undefined) fields.label = opts.label;
         if (opts.note !== undefined) fields.note = opts.note;
         if (opts.userInput !== undefined) fields.user_input = opts.userInput;
+        if (opts.artifacts !== undefined) fields.artifacts = splitIds(opts.artifacts);
         runMutation(io, deps, opts, (doc) =>
           setNode(doc, opts.node, fields, { clock: deps.clock }),
         );

@@ -27,8 +27,6 @@ import type { FlowComment, FlowDoc, FlowNode } from './flow-events.js';
 // Vocabulary (tolerant — unknown values fall back, never throw).
 // ---------------------------------------------------------------------------
 
-/** Node types rendered on the solid main line (the spine). */
-const SPINE_TYPES = new Set(['research', 'spec', 'plan', 'phase', 'merge']);
 /** Harness-loop seam node types — always violet, regardless of status (rule 4/5). */
 const HARNESS_TYPES = new Set(['harness-boot', 'harness-retro', 'backpressure']);
 /** status → classDef name (rule 5); anything else → the neutral `unknown` fallback. */
@@ -148,11 +146,15 @@ function nodeClass(node: FlowNode): string {
   return STATUS_CLASS[node.status] ?? 'unknown';
 }
 
-/** The node label: escaped `label` (or id), plus a `💬N` badge when comments exist. */
+/** The node label: escaped `label` (or id), plus `💬N`/`📄N` badges (comments / artifacts). */
 function nodeLabel(node: FlowNode): string {
   const base = escapeMermaid(node.label ?? node.id);
-  const count = Array.isArray(node.comments) ? node.comments.length : 0;
-  return count > 0 ? `${base} 💬${count}` : base;
+  const badges: string[] = [];
+  const comments = Array.isArray(node.comments) ? node.comments.length : 0;
+  if (comments > 0) badges.push(`💬${comments}`);
+  const artifacts = Array.isArray(node.artifacts) ? node.artifacts.length : 0;
+  if (artifacts > 0) badges.push(`📄${artifacts}`);
+  return badges.length > 0 ? `${base} ${badges.join(' ')}` : base;
 }
 
 /** Declare a node: `decision` is a rhombus fork `{"…"}`; everything else a box `["…"]`. */
@@ -261,24 +263,74 @@ export function renderFlow(doc: FlowDoc): string {
   out.push(LEGEND);
 
   // --- Node log (the markdown half of AC-06; render-only) --------------------
-  const logged = nodes.filter((n) => Array.isArray(n.comments) && n.comments.length > 0);
+  // A node logs when it carries comments OR artifacts — both ride the body-log
+  // (discoverable via the node's 💬/📄 badge): the render-surface "clean box +
+  // auditable body" rule, extended to artifacts so the box stays slim (grill 8).
+  const hasComments = (n: FlowNode): boolean =>
+    Array.isArray(n.comments) && n.comments.length > 0;
+  const hasArtifacts = (n: FlowNode): boolean =>
+    Array.isArray(n.artifacts) && n.artifacts.length > 0;
+  const logged = nodes.filter((n) => hasComments(n) || hasArtifacts(n));
   if (logged.length > 0) {
     out.push('');
     out.push('## Node log');
     for (const n of logged) {
       out.push('');
       out.push(`### ${escapeMd(n.id)} · ${escapeMd(n.label ?? n.id)}`);
-      for (const c of n.comments as FlowComment[]) out.push(renderComment(c));
+      if (hasArtifacts(n)) {
+        const arts = (n.artifacts as string[]).map((a) => escapeMd(String(a))).join(', ');
+        out.push(`- 📄 artifacts: ${arts}`);
+      }
+      if (hasComments(n)) for (const c of n.comments as FlowComment[]) out.push(renderComment(c));
     }
   }
 
   return `${out.join('\n')}\n`;
 }
 
-/** A compact pip rail over the spine nodes (or all main nodes if no spine types). */
+/**
+ * Topologically order the main spine (non-excursion nodes) by following `next[]`
+ * (Kahn's algorithm, insertion-order tie-break → deterministic). "Main" = not a
+ * `branch_of` excursion; node TYPE is irrelevant (a `review`/`adr`/`decision`
+ * on the main line belongs on the rail). Any node left over after the sort (a
+ * cycle within the main subgraph — should not happen post-DAG-check) is appended
+ * in insertion order, so the rail never silently drops a node.
+ */
+function topoOrderMain(nodes: readonly FlowNode[]): FlowNode[] {
+  const main = nodes.filter((n) => !isExcursion(n));
+  const ids = new Set(main.map((n) => n.id));
+  const indeg = new Map<string, number>(main.map((n) => [n.id, 0]));
+  for (const n of main) {
+    for (const t of Array.isArray(n.next) ? n.next : []) {
+      if (ids.has(t)) indeg.set(t, (indeg.get(t) ?? 0) + 1);
+    }
+  }
+  const queue = main.filter((n) => (indeg.get(n.id) ?? 0) === 0); // roots, insertion order
+  const queued = new Set(queue.map((n) => n.id));
+  const order: FlowNode[] = [];
+  while (queue.length > 0) {
+    const n = queue.shift() as FlowNode;
+    order.push(n);
+    for (const t of Array.isArray(n.next) ? n.next : []) {
+      if (!ids.has(t)) continue;
+      const d = (indeg.get(t) ?? 0) - 1;
+      indeg.set(t, d);
+      if (d === 0 && !queued.has(t)) {
+        const node = main.find((m) => m.id === t);
+        if (node) {
+          queue.push(node);
+          queued.add(t);
+        }
+      }
+    }
+  }
+  for (const n of main) if (!order.includes(n)) order.push(n); // cycle remnant — never drop
+  return order;
+}
+
+/** A compact pip rail over the main spine, in flow (topological) order. */
 function renderRail(nodes: readonly FlowNode[]): string {
-  const spine = nodes.filter((n) => SPINE_TYPES.has(n.type));
-  const rail = spine.length > 0 ? spine : nodes.filter((n) => !isExcursion(n));
+  const rail = topoOrderMain(nodes);
   if (rail.length === 0) return '**Rail**: (no nodes)';
   const pips = rail.map((n) => STATUS_PIP[n.status] ?? '◇').join('─');
   const names = rail.map((n) => escapeMd(n.id)).join(' · ');
