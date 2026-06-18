@@ -32,9 +32,12 @@ That is the whole integration: one skill, three call-sites. (The full hook list 
 
 Either way you get the same payoff: deterministic proof before "done," and a loop that improves itself. You are never forced off the workflow your team already knows.
 
-> **Three names, kept straight:** `/the-flow` is the built-in workflow; `/eng-harness-flow` is the single skill you call at the three moments (it works with *either* path). There is also a `harness flow` CLI verb that surfaces the flow engine on the command line.
+> **Three names, kept straight:**
+> - **`/the-flow`** — the built-in **spec-driven design loop** (research → plan → implement → validate). This is what you type to drive a piece of work.
+> - **`/eng-harness-flow`** — the single **loop skill** you call at the three moments above. It works with `the-flow` or your own flow.
+> - **`harness flow`** — the **deterministic workflow engine** on the CLI (it creates and inspects a flow as a structured DAG). `the-flow` builds on it as a dependency; you rarely call it directly.
 >
-> 🚧 **TODO(confirm):** pin down the exact relationship between the `harness flow` CLI verb and the `/eng-harness-flow` skill — and the single canonical doc each should link to — once the flow system (plan 024) settles. For now: orient and link, do not re-teach internals.
+> You don't need to master the distinction to use the harness — orient here, and follow the links when you want depth.
 
 ## Where next
 - The loop these touchpoints drive → [03 · The Harness Loop](03-the-harness-loop.md).

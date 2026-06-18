@@ -10,6 +10,8 @@ An engineering harness productises the software-development loop so humans and a
 > skills with npx skills, then run /eng-harness-flow (it routes adoption).
 > ```
 
+> **New to the harness?** The **[adopter's guide](docs/guide/)** walks you from zero to a green boot and on through operating and growing it — read-in-order, no prior context needed.
+
 ## The problem
 
 Out of all the problems with agent-driven development, two matter most:

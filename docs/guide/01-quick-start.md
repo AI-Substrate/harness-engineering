@@ -4,6 +4,16 @@
 
 This is the brisk path: install the CLI, install the skills, and let the router walk you to your first proven boot. Want the unhurried version with the *why* behind each step? See [04 · Adopting the Harness](04-adopting-the-harness.md).
 
+> **⚡ Fastest start — let your agent do it.** You don't even need the CLI yet. Paste this to your agent, inside your repo:
+>
+> ```text
+> Install and adopt the engineering harness in this repo. Read
+> https://github.com/AI-Substrate/harness-engineering/blob/main/AGENTS_README.md
+> and follow it: install the CLI, install the skills, then run /eng-harness-flow.
+> ```
+>
+> It installs everything (CLI included) and walks adoption. Prefer to do it by hand? Continue below.
+
 ## Before you start
 - **Node.js** (the CLI ships as an npm package) and **git**.
 - Optionally, an agent CLI you already use — Claude Code, Copilot CLI, Cursor, and others are supported. The harness works human-only too.

@@ -8,10 +8,8 @@
 Almost nothing. Adoption adds **one directory** — `.harness/` — and (optionally) installs skills into your agent. Your build, tests, CI, and workflow stay exactly as they are. The harness *wraps* what you already have; it does not replace it. ([06 · Repo Layouts](06-repo-layouts.md) shows the full tree.)
 
 ## Two ways to drive it
-- **You drive, the agent helps** — you run the commands; the agent answers questions and authors extensions on request.
-- **The agent drives, you approve** — point the agent at the repo and let it bootstrap, then review what it did.
-
-> 🚧 **TODO(confirm):** the agent drop-file is surfaced as `harness docs agents-readme`; the underlying source file is `AGENTS_README.md`. Confirm the exact filename/anchor the agent path should reference once onboarding (plan 023) settles.
+- **The agent drives, you approve (the easy start)** — paste the [`AGENTS_README.md`](https://github.com/AI-Substrate/harness-engineering/blob/main/AGENTS_README.md) GitHub link to your agent and ask it to set the repo up. It installs the CLI (you don't need it first), installs the skills, and walks adoption. Once the CLI is installed, `harness docs agents-readme` re-prints the same guide.
+- **You drive, the agent helps** — run the commands yourself; the agent answers questions and authors extensions on request.
 
 ## The shape of it: five rungs
 The `/eng-harness-flow` router walks you up an **adoption gate**, in order, with **boot last**:
@@ -40,7 +38,7 @@ harness skills install --target claude-code --global   # `--help` lists targets
 ### 3 · Scout — harnessability assessment
 The router offers a **harnessability assessment**: a read-only survey of how operable your repo is today (can it boot? what sensors exist? what is missing?). It produces a report under `.harness/reports/harnessability/`.
 
-> 🚧 **TODO(confirm):** the harnessability assessment is an **LLM-assisted skill** — your agent *assembles* it by following the skill, not a single deterministic `harness` command. Phrase expectations accordingly; do not promise one-command determinism here.
+> **Note:** the harnessability assessment is an **LLM-assisted skill** — your agent *assembles* it by following the skill, not a single deterministic `harness` command. (Making this more deterministic is on the roadmap.)
 
 ### 4 · Governance — fill in the operating doc
 ```bash
@@ -62,7 +60,7 @@ harness boot        # starts your product from a known state — and proves it
 ## It is resumable
 Adoption is a journey, not a single sitting. The router is stateless: each time you call it, it re-derives the next likely rung from your repo's signals, so you can stop and pick up later without losing your place.
 
-> 🚧 **TODO(confirm):** onboarding resumability is being made first-class in plan 023 (an ephemeral `.harness/temp/adopt-flow.json` that survives a context compaction, plus cold-start discoverability). Treat the resume mechanism as "it picks up where you left off"; the exact state file is 023's contract and may change.
+> **Note:** onboarding resumability is actively being made more deterministic (an ephemeral `.harness/temp/adopt-flow.json` that survives a context compaction, plus cold-start discoverability — part of the broader flow work). Treat it as "it picks up where you left off"; the exact mechanism is still evolving.
 
 ## Where next
 - Choose how you'll work day-to-day — the built-in `the-flow`, or your own flow plus the harness's three touchpoints → [08 · Fitting Your Workflow](08-fitting-your-workflow.md).
