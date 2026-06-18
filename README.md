@@ -4,7 +4,7 @@ An engineering harness productises the software-development loop so humans and a
 
 It is the **missing layer** between your agent and your codebase — the deterministic one: a single CLI focal point where a fresh human or agent can boot the product, prove a change is good, and encode the fix so the next run is easier.
 
-**It's an *engineering* harness, not an *agent* harness — and not a new idea.** Teams have built these for decades: boot scripts, test suites, fixtures, health checks. What's new is bringing that surface into the AI world as a first-class, self-improving tool — so a human or agent gets the most out of every token, instead of spending them to relearn your repo every session. → [Engineering harness vs agent harness](#engineering-harness-vs-agent-harness)
+**It's an *engineering* harness, not an *agent* harness — and not a new idea.** Teams have built these for decades: boot scripts, test suites, fixtures, health checks. What's new is bringing that surface into the AI world as a first-class tool with an improving feedback loop — so a human or agent gets the most out of every token, instead of spending them to relearn your repo every session. → [Engineering harness vs agent harness](#engineering-harness-vs-agent-harness)
 
 ## Quick start
 

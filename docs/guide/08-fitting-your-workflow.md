@@ -24,7 +24,7 @@ Already have a workflow you like? Keep it. The harness plugs into it with **one 
 |---|---|---|
 | **Before work** | `/eng-harness-flow --hook pre-flight` | makes sure the harness is awake and ready (boot check) |
 | **After the plan** | `/eng-harness-flow --hook pre-coding` | validates back pressure — *can we prove this work is done, deterministically?* It may suggest strengthening the harness **before** you start |
-| **After the work** | `/eng-harness-flow --hook post-flight` | retro + magic wand: gathers how the harness did and what to improve — the self-improving loop |
+| **After the work** | `/eng-harness-flow --hook post-flight` | retro + magic wand: gathers how the harness did and what to improve — the improving feedback loop |
 
 That is the whole integration: one skill, three call-sites. (The full hook list and their `--event` aliases are in [03 · The Harness Loop](03-the-harness-loop.md).)
 
