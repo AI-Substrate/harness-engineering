@@ -1,13 +1,13 @@
 <!-- GENERATED FROM the-flow.json — do not hand-edit; regenerate from the JSON. -->
 # Flight plan · 024-first-class-flow-system
 
-**Mode**: Full · **CS-4** · **Cursor**: Phase 1 (🟧 in progress · 16 tasks staged + validated) · **Next**: implement Phase 1 · **Workshops**: 001 ✅ 002 ✅ 003 ✅ (all folded)
+**Mode**: Full · **CS-4** · **Cursor**: Phase 1 (🟧 in progress · 6/16 built, green) · **Next**: resume implement from T007 (recommend /compact) · **Workshops**: 001 ✅ 002 ✅ 003 ✅ (all folded)
 
 ```mermaid
 flowchart TD
     research["Research ✅<br/>research-dossier.md"]:::done
     plan["Plan ✅ · Full, CS-4, READY (v1.2.0)<br/>first-class-flow-system-plan.md"]:::done
-    p1["Phase 1 · Flow engine 🟧<br/>16 tasks staged + validated · implement next"]:::wip
+    p1["Phase 1 · Flow engine 🟧<br/>6/16 built (foundation + data model) · resume T007"]:::wip
     p2["Phase 2 · Render + CI parity + docs 🟦"]:::known
     p3["Phase 3 · the-flow migration 🟦"]:::known
     review["Review 🟦"]:::known
