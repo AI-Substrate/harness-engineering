@@ -46,6 +46,16 @@
 - **Evidence**: `vitest run test/services/flow test/adapters/fs` → 49 pass; full suite **678 pass + 1 todo** (was 659); `tsc --noEmit` clean; biome clean.
 - **Discoveries**: see table (FsPort.rename additive + throws-not-swallows; harness-loop template authored; FlowProvenance inlined to keep flow-events a leaf).
 
+## T010 + T011 + T012 + T013 + T014 — mutations + events ✅
+
+- **Commit**: `<pending>` `feat(024): flow mutations (cursor/status/add/set/comment/insert-node) + duck-typed events [T010-T014]`
+- **What**: `flow-mutations.ts` (`moveCursor`/`recommendNext`/`setStatus`/`addNode`/`setNode`/`addComment`/`insertNode` + exported `dagIssue`) · `flow-events.ts` builders locked by `flow-events.test.ts` (T012) · `flow-mutations.test.ts` (T010 events/datetime/provenance + T011 insert-node algebra).
+- **Events (T010/T014)**: every mutation auto-fires its built-in event (`cursor-moved`/`status-changed`/`node-created`/`node-updated`) with the ws-002 §E2 `details` payloads; `modified_at` every mutation, `ran_at` only on →done/→blocked; provenance untouched (one block, 7 keys); event ids `<PREFIX>-<NNN>` per-prefix monotonic.
+- **Duck-typing (T012)**: bool/date/int/float/string, leading-zero→string, `--type` override coerces; `type` stored explicitly.
+- **insert-node (T011/T013)**: `--after` (N inherits X out-edges), `--before` (multi-predecessor reverse-scan), `--branch-of` (excursion, X.next unchanged, optional `--rejoin`); mutual-exclusivity→E108, missing target→E305, **DAG re-check BEFORE write → E309 (nothing written)**; audit = `node-created` + one `node-updated{edge_op}` per rewired edge (reuses ws-002 kinds).
+- **Evidence**: `vitest run` flow-mutations + flow-events → 33 pass; full suite **712 pass + 1 todo** (was 678); tsc + biome clean.
+- **Discoveries**: fresh inserts structurally can't cycle (re-check is defensive); E305 = node-existence only, no transition-table enforcement (grill 2); mutations are pure clone-and-return.
+
 ## Companion debrief (run `2026-06-18T00-27-49-683Z-f765`)
 
 - **Coverage**: reviewed T001/T002/T003 commit boundaries; **stood down on an idle check-in BEFORE the schema group** (f7fc71f, T004–T006) → schema group is **companion-unreviewed** (covered by a re-booted companion on resume, or the review stage).

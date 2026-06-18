@@ -48,7 +48,8 @@ export type FlowFailure = {
   next_action: string;
 };
 
-function fail(code: string, message: string, next_action: string): FlowFailure {
+/** Build a canonical flow error result (exported so flow-mutations reuses it). */
+export function fail(code: string, message: string, next_action: string): FlowFailure {
   return { ok: false, status: 'error', code, message, next_action };
 }
 
