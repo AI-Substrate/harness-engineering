@@ -53,6 +53,27 @@ export const ErrorCodes = {
   UPDATE_NPM_MISSING: 'E203',
   /** `harness update --pin`: the requested version is not published in the registry. */
   UPDATE_VERSION_NOT_FOUND: 'E204',
+  // --- `harness flow` family (plan 024; additive — E300–E309 reserved, all free) ---
+  /** `harness flow`: a flow document failed schema validation (shape/required fields/enum), or an invalid `--template` was supplied. */
+  FLOW_SCHEMA_INVALID: 'E300',
+  /** `harness flow`: the flow file could not be located (`--path`/`--plan-dir`/discovery all missed). */
+  FLOW_NOT_FOUND: 'E301',
+  /** `harness flow`: the atomic state write (temp + rename) itself failed (permissions, etc.). */
+  FLOW_WRITE_FAILED: 'E302',
+  /** `harness flow`: a WRITE path (`--path`/`--output`) escapes the repo root (`isWithin` guard). `--schema` is exempt (out-of-repo skill schemas allowed). */
+  FLOW_PATH_ESCAPE: 'E303',
+  /** `harness flow`: the flow type's schema could not be resolved — `--schema` › `.harness/schemas/flows/<type>.schema.json` › bundled built-in all exhausted. */
+  FLOW_TYPE_UNKNOWN: 'E304',
+  /** `harness flow`: a mutation targets a node that does not exist, OR requests an illegal status transition (one code, two related causes — `next_action` says which). */
+  FLOW_NODE_INVALID: 'E305',
+  /** `harness flow`: the flow's `schema_version` has an unknown major (version-gated validation). `next_action` → `harness update`. */
+  FLOW_SCHEMA_VERSION: 'E306',
+  /** `harness flow insert-node`: the placement target is ambiguous (more than one match, or conflicting placement flags resolve to several). */
+  FLOW_AMBIGUOUS_TARGET: 'E307',
+  /** `harness flow`: a pre-CLI / legacy-format flow (bare-integer `schema_version` and/or absent `provenance`) — clean break, no tolerant load. `next_action` hedges honestly. */
+  FLOW_LEGACY_FORMAT: 'E308',
+  /** `harness flow insert-node`: the post-splice DAG re-check failed (cycle or orphaned node) — nothing is written. */
+  FLOW_EDGE_INVALID: 'E309',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
