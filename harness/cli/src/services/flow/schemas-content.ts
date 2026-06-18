@@ -2,6 +2,57 @@
 // Source of truth: harness/cli/src/services/flow/schemas/*.schema.json + *.template.json.
 // Regenerate with `npm run gen:flows`.
 
-export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {};
+export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
+  flow: {
+    kind: 'flow-core',
+    schema_version: 1,
+    description:
+      'Shared-core flow contract (plan 024). Defines the universal field shape every flow overlay extends; overlays add `kind` + `statuses` + `nodeTypes`. Hand-rolled validator (flow-schema.ts) — not a JSON-Schema validator doc.',
+    node: {
+      required: ['id', 'type', 'label', 'status', 'next'],
+      optional: [
+        'branch_of',
+        'created_at',
+        'modified_at',
+        'ran_at',
+        'user_input',
+        'comments',
+        'authority',
+        'agents',
+        'output',
+        'error',
+        'command',
+        'note',
+        'artifacts',
+        'phase',
+        'reconstructed',
+      ],
+    },
+    comment: { required: ['at', 'text'], optional: ['source', 'kind', 'refs'] },
+    authority: { values: ['cursor', 'substrate'], default: 'cursor' },
+    root: {
+      required: [
+        'schema_version',
+        'kind',
+        'slug',
+        'cursor',
+        'created_at',
+        'provenance',
+        'events',
+        'nodes',
+      ],
+      optional: ['recommended_next', 'agents', 'plan_dir', 'mode', 'now', 'next', '_comment'],
+    },
+  },
+  'harness-loop': {
+    kind: 'harness-loop',
+    extends: 'flow-core',
+    schema_version: 1,
+    description:
+      'Bundled harness-loop overlay (plan 024 AC-10). Schema-ONLY in v1 — nothing in 024 creates or drives a harness-loop instance (that is the later eng-harness-flow work). Proves the shared-core + per-flow-custom split alongside the test-fixture overlay.',
+    statuses: ['assumed', 'known', 'in_progress', 'done', 'blocked'],
+    nodeTypes: ['boot', 'backpressure', 'observe', 'retro', 'improve', 'decision'],
+  },
+};
 
 export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {};

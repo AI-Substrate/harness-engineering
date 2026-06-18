@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "kind": "test-flow",
+  "extends": "flow-core",
+  "statuses": ["assumed", "known", "in_progress", "done", "blocked", "declined"],
+  "nodeTypes": ["start", "decision", "branch-a", "branch-b", "finish"]
+}

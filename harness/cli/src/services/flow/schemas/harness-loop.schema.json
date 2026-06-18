@@ -1,0 +1,8 @@
+{
+  "kind": "harness-loop",
+  "extends": "flow-core",
+  "schema_version": 1,
+  "description": "Bundled harness-loop overlay (plan 024 AC-10). Schema-ONLY in v1 — nothing in 024 creates or drives a harness-loop instance (that is the later eng-harness-flow work). Proves the shared-core + per-flow-custom split alongside the test-fixture overlay.",
+  "statuses": ["assumed", "known", "in_progress", "done", "blocked"],
+  "nodeTypes": ["boot", "backpressure", "observe", "retro", "improve", "decision"]
+}
