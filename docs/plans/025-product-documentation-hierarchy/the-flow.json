@@ -4,10 +4,10 @@
   "slug": "product-documentation-hierarchy",
   "plan_dir": "docs/plans/025-product-documentation-hierarchy",
   "mode": "Simple",
-  "cursor": "merge",
-  "recommended_next": "merge",
-  "now": "Implement DONE — 16 docs in docs/guide/ (working tree, UNCOMMITTED); companion-reviewed (3 MEDIUM: 1 accepted-by-design, 2 fixed), drift-guard clean",
-  "next": "Merge — but it commits, and the user deferred commits to another agent (do not touch the branch); hand off rather than auto-run",
+  "cursor": "complete",
+  "recommended_next": null,
+  "now": "CLOSED OUT — flow complete. plan-025 deliverable committed (170eab5) + call-out resolutions & README guide pointer (53095e3) on branch 024-first-class-flow-system",
+  "next": "None — flow closed; merge deferred (this branch's work merges with the other in-flight work later, per the user)",
   "_comment": "Flight plan for 025-product-documentation-hierarchy. Research + Plan DONE. Simple mode -> single implement phase (p1) then merge. Plan validated via /validate-v2 (3 agents: thesis clean; 1 HIGH README-collision + 2 MEDIUM + 1 LOW fixed). No harness seam nodes (this repo is the harness's own home — adoption is not run here). Generated/maintained by /the-flow guided mode; the-flow.md is rendered FROM this file.",
   "agents": [
     { "id": "code-review-companion", "kind": "companion", "render": "wrap", "covers": ["p1"],
@@ -34,8 +34,8 @@
       "note": "Authored 16 docs in docs/guide/ (README router + 01-15; 14-metrics is an intentional stub) per the vibe briefs, WORKING-TREE ONLY (no commits, no branch ops). Commands verified vs app.ts + --help; the installing-the-harness deck reconciled to local reality. Drift guard PASS (every relative link resolves; every harness <cmd> real; nav continuous + acyclic, AC-07). 6 call-outs surfaced (AC-08); root-README guide link supplied to plan 023 (AC-10, not edited here). code-review-companion reviewed every doc + a final drain: 3 MEDIUM (F001 accepted-by-design; F002/F003 fixed) — the companion review supersedes a separate post-hoc review pass.",
       "artifacts": ["docs/guide/ (16 files)", "execution.log.md"], "next": ["merge"] },
 
-    { "id": "merge", "type": "merge", "label": "Merge", "status": "known",
+    { "id": "merge", "type": "merge", "label": "Merge (deferred)", "status": "skipped",
       "command": "/the-flow 8 merge", "next": [],
-      "note": "⚠️ Merge COMMITS/merges. The user deferred commits to another agent and said do not touch the branch — so this is a HAND-OFF, not an auto-run. Stage 8 executes only on a typed PROCEED anyway. The docs sit complete + uncommitted in the working tree for the other agent to commit." }
+      "note": "DEFERRED by the user — work is committed on branch 024-first-class-flow-system (170eab5 + 53095e3) and will be merged together with the other in-flight branch work later, not via this flow. Flow closed out here." }
   ]
 }

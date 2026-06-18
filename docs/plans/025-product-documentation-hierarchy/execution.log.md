@@ -100,3 +100,20 @@ magicWand (target: **coordination / minih-layer**): a coordination-provided run-
 
 ### Discovery D-02
 Medium: a minih run wedged at status `active` (known `code-review-companion@0.2.0` limitation) leaves `minih retros` empty — the farewell retrospective is only in `output/report.json`. Read via the documented fallback after `minih validate` confirmed the envelope schema-valid. Missing surface: no read-only CLI prints a single wedged run's farewell content.
+
+### Call-out resolutions (user answers, 2026-06-18)
+- **#1/#4 RESOLVED** → doc 08: `the-flow` = the SDD design loop; `harness flow` = the deterministic flow-DAG engine (verified `harness flow --help`: create / cursor / status / node mechanics) that `the-flow` takes as a **dependency**; `/eng-harness-flow` = the single loop skill at the 3 moments. 🚧 removed.
+- **#2 RESOLVED** → docs 01 + 04: lead with pasting the **AGENTS_README GitHub link** (`https://github.com/AI-Substrate/harness-engineering/blob/main/AGENTS_README.md`) — the agent installs the CLI (user may not have it yet) + adopts. `harness docs agents-readme` re-prints it post-install. 🚧 removed.
+- **#3** (resumability) → doc 04: softened to its evolving reality (being made more deterministic via the flow work; user: "all good"). 🚧 removed.
+- **#5 RESOLVED** → doc 04: harnessability stated as an **LLM-assisted skill, not deterministic** (roadmap to harden). 🚧 removed.
+- **#6** folder → resolved (`docs/guide/`).
+- Remaining 🚧 in `docs/guide/` are intentional: the Roadmap callout in `07` + the metrics stub in `14` (user: leave 14 as TODO).
+
+### README handling (shared-branch safe)
+`README.md` is concurrently edited by another agent (an uncommitted `harness flow` docs-row link → `docs/how/harness-flow.md`). Added only the "New to the harness?" `docs/guide/` pointer, staged it in **isolation** via `git add -p` (y/n), and committed from the index — the other agent's README hunk was left **unstaged + untouched**.
+
+### Deck-patch list for the presentation agent
+Written to `scratch/installing-the-harness-deck-patches.md` (gitignored) — the reality-corrections to fold into `installing-the-harness.md`.
+
+### Flow CLOSED OUT (no merge)
+Per the user, the flow is closed without a merge stage — this branch's work merges with the other in-flight 024/flow work later. State → `complete`; merge node → `skipped`/deferred. Commits: `170eab5` (16 docs + plan), `53095e3` (call-out resolutions + README pointer).

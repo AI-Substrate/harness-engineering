@@ -2,7 +2,7 @@
 # Flight plan — product-documentation-hierarchy
 
 **Plan**: product-documentation-hierarchy · **Mode**: Simple · **Phases**: 1 (single implement phase)
-**Rail**: `[the-flow] ◆─◆─◆─◇`   ·   **now**: Implement DONE — 16 docs in docs/guide/ (uncommitted), companion-reviewed, drift-clean · **next**: Merge (commits — handed off to another agent; not auto-run)
+**Rail**: `[the-flow] ◆─◆─◆─◆` · CLOSED OUT   ·   **now**: committed (170eab5 + 53095e3) on branch 024-first-class-flow-system · **next**: none — merge deferred (merges with the other in-flight work later)
 
 ```mermaid
 flowchart TD
@@ -21,7 +21,7 @@ flowchart TD
         P1["Implement · 16 docs in docs/guide/ (T001-T017) · /the-flow 6 implement --companion"]:::done
     end
     PL --> P1
-    P1 --> M["Merge · ⚠️ commits — handed off"]:::known
+    P1 --> M["Merge · deferred (committed on branch)"]:::known
 
     %% verbatim user-said bubbles
     UR>"user: new product-doc hierarchy (separate from docs/how), start with quick start; unpick onboarding; each doc links the next; GitHub-native markdown"]:::said
@@ -33,4 +33,4 @@ flowchart TD
 
 **Legend**: done | in progress | blocked | known future | assumed future | user input | 🤝 companion
 
-_Generated from `the-flow.json`. Research + Plan + **Implement** done. Authored 16 docs in `docs/guide/` (README router + 01-15; `14-metrics-and-measures` an intentional stub), working-tree only (no commits, no branch ops, per the user). Commands verified vs `app.ts` + `--help`; the `installing-the-harness` deck reconciled to local reality. Drift guard PASS (links + commands + nav continuity AC-07). 6 call-outs surfaced (AC-08); root-README guide link supplied to plan 023 (AC-10, not edited here). `code-review-companion` reviewed every doc + a final drain (3 MEDIUM: F001 accepted-by-design, F002/F003 fixed) — superseding a separate review pass. **Next is Merge, which commits — the user deferred commits to another agent, so the docs are left complete + uncommitted for hand-off; merge is not auto-run.** Running alongside `023-documentation-updates`._
+_Generated from `the-flow.json`. **Flow CLOSED OUT** — Research + Plan + Implement done; merge deferred. Authored 16 docs in `docs/guide/` (README router + 01-15; `14-metrics-and-measures` an intentional stub). Commands verified vs `app.ts` + `--help`; the `installing-the-harness` deck reconciled to local reality. Drift guard PASS (links + commands + nav continuity AC-07). 6 call-outs were inlined then **resolved** with the user (the-flow / harness flow / eng-harness-flow naming; AGENTS_README-link onboarding; harnessability = LLM skill; resumability) — only the 07 Roadmap callout + the 14 metrics stub remain by design. `code-review-companion` reviewed every doc + a final drain (3 MEDIUM: F001 accepted-by-design, F002/F003 fixed). Committed on branch `024-first-class-flow-system`: `170eab5` (16 docs + plan) and `53095e3` (resolutions + README guide pointer); the README pointer was staged in isolation so a concurrent `harness flow` docs-row edit by another agent was left untouched. Merge deferred — merges with the other in-flight work later. Running alongside `023-documentation-updates`._
