@@ -1,0 +1,516 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "first-class-flow-system",
+  "cursor": "p3",
+  "created_at": "2026-06-18T05:20:58.210Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "024-first-class-flow-system",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-18T05:20:58.210Z",
+    "agent": null,
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.222Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "first-class-flow-system"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.286Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.361Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.361Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.426Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.426Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.521Z",
+      "details": {
+        "node": "review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.521Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-before"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.590Z",
+      "details": {
+        "node": "p2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.590Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.668Z",
+      "details": {
+        "node": "p3",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.668Z",
+      "details": {
+        "node": "p2",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.743Z",
+      "details": {
+        "node": "p1",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.743Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-008",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.817Z",
+      "details": {
+        "node": "ws-cli",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "NOD-009",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.904Z",
+      "details": {
+        "node": "ws-events",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "NOD-010",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:58.976Z",
+      "details": {
+        "node": "ws-insert",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.047Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.133Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.205Z",
+      "details": {
+        "node": "p1",
+        "fields": [
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.277Z",
+      "details": {
+        "node": "p2",
+        "fields": [
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.365Z",
+      "details": {
+        "node": "p3",
+        "fields": [
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.437Z",
+      "details": {
+        "node": "ws-cli",
+        "fields": [
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.511Z",
+      "details": {
+        "node": "ws-events",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.582Z",
+      "details": {
+        "node": "ws-insert",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.666Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-016",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.741Z",
+      "details": {
+        "node": "p3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-18T05:20:59.815Z",
+      "details": {
+        "from": "",
+        "to": "p3"
+      }
+    },
+    {
+      "id": "TST-001",
+      "kind": "test-run",
+      "origin": "manual",
+      "fired_at": "2026-06-18T05:20:59.958Z",
+      "description": "full vitest suite 756 green"
+    },
+    {
+      "id": "CUS-001",
+      "kind": "custom",
+      "origin": "manual",
+      "fired_at": "2026-06-18T05:21:00.053Z",
+      "name": "suite-count",
+      "type": "int",
+      "value": 756
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T05:20:58.285Z",
+      "modified_at": "2026-06-18T05:20:59.047Z",
+      "user_input": "make this a first class concept ... deterministic ... event log inside the json ... limit phases please",
+      "artifacts": [
+        "research-dossier.md",
+        "original-ask.md"
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "next": [],
+      "created_at": "2026-06-18T05:20:58.361Z",
+      "modified_at": "2026-06-18T05:20:58.361Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (spec + impl)",
+      "status": "done",
+      "next": [
+        "p1"
+      ],
+      "created_at": "2026-06-18T05:20:58.426Z",
+      "modified_at": "2026-06-18T05:20:59.666Z",
+      "user_input": "the flow has been sligtly adjusted, the plan phase is a littel differnt on how it talks to phases. re-read it then do the plan please.",
+      "artifacts": [
+        "first-class-flow-system-plan.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-18T05:20:59.666Z",
+          "text": "validate-v2 (NARROW) on v1.2.0 = VALIDATED WITH FIXES.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-18T05:20:58.521Z",
+      "modified_at": "2026-06-18T05:20:58.521Z"
+    },
+    {
+      "id": "p2",
+      "type": "phase",
+      "label": "Phase 2 · Render + CI parity + docs",
+      "status": "done",
+      "next": [
+        "p3"
+      ],
+      "created_at": "2026-06-18T05:20:58.590Z",
+      "modified_at": "2026-06-18T05:20:59.277Z",
+      "user_input": "next. also what is git status",
+      "artifacts": [
+        "tasks/phase-2-deterministic-render-ci-parity-docs/tasks.md"
+      ]
+    },
+    {
+      "id": "p3",
+      "type": "phase",
+      "label": "Phase 3 · the-flow migration",
+      "status": "in_progress",
+      "next": [
+        "review"
+      ],
+      "created_at": "2026-06-18T05:20:58.668Z",
+      "modified_at": "2026-06-18T05:20:59.741Z",
+      "user_input": "prepare next phase and do validation",
+      "artifacts": [
+        "tasks/phase-3-the-flow-migration-onto-the-cli/tasks.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-18T05:20:59.741Z",
+          "text": "validate-v2 (BROAD, 4 agents) on Phase 3 dossier = VALIDATED WITH FIXES; READY for implement GO.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "p1",
+      "type": "phase",
+      "label": "Phase 1 · Flow engine (schema, state, mutations, event log)",
+      "status": "done",
+      "next": [
+        "p2"
+      ],
+      "created_at": "2026-06-18T05:20:58.743Z",
+      "modified_at": "2026-06-18T05:20:59.205Z",
+      "user_input": "continue with phase 5 taks then validate please",
+      "artifacts": [
+        "tasks/phase-1-flow-engine/tasks.md",
+        "tasks/phase-1-flow-engine/execution.log.md"
+      ]
+    },
+    {
+      "id": "ws-cli",
+      "type": "workshop",
+      "label": "Workshop · harness flow CLI surface",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T05:20:58.816Z",
+      "modified_at": "2026-06-18T05:20:59.437Z",
+      "branch_of": "plan",
+      "user_input": "lets do the cli surface workshop.",
+      "artifacts": [
+        "workshops/001-harness-flow-cli-surface.md"
+      ]
+    },
+    {
+      "id": "ws-events",
+      "type": "workshop",
+      "label": "Workshop · event + comment taxonomy",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T05:20:58.904Z",
+      "modified_at": "2026-06-18T05:20:59.511Z",
+      "branch_of": "plan",
+      "user_input": "do next workshop"
+    },
+    {
+      "id": "ws-insert",
+      "type": "workshop",
+      "label": "Workshop · templates, node insertion + decision points",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-18T05:20:58.976Z",
+      "modified_at": "2026-06-18T05:20:59.582Z",
+      "branch_of": "plan",
+      "user_input": "run the workshop"
+    }
+  ],
+  "recommended_next": "p3"
+}

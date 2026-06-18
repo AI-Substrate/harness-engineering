@@ -197,3 +197,24 @@ render ............................................. ok (deterministic .md)
 
 **Review surface**: plain implement (no companion — cross-repo). Reviewability = the pasted transcripts above + the in-repo snapshot baseline. Recommended next: a **stage-7 review** (reads the cross-repo edits directly).
 
+---
+
+## Stage-7 review — APPROVE WITH NOTES
+
+Run against built-HEAD CLI ground truth (live `create --bare → add-node → status/set-node/comment/cursor → insert-node --after/--branch-of --rejoin → render`). **Verdict: APPROVE WITH NOTES** — 0 HIGH/CRITICAL, 1 MEDIUM + 3 LOW, none blocking. Verified: every documented `harness flow` command matches the real verb/flag surface (no drift); the descriptor schema drives the full migrated cadence; AC-08 snapshots green (5 tests); E303 write-guard + symlinked `--schema` resolution correct; 17-node template still validates; deploy target byte-identical to source; sub-skills flow-blind (0 refs); routing Graph untouched; no 2nd schema copy. Artifacts: `reviews/review.phase-3-the-flow-migration-onto-the-cli.md` + `reviews/_computed.diff`.
+
+**Findings disposition:**
+- **F001 (MEDIUM)** — SKILL.md invariant #7 ("record agents in the-flow.json") conflicted with #6 (CLI-only mutation) + no `harness flow agent` verb (v2-deferred). → FIXED in the-flow source: #7 carves out agent bookkeeping as v2-deferred (`agents[]` unpopulated, never hand-edited).
+- **F002 (LOW)** — `<skill base>` undefined in SKILL.md § Prerequisite. → FIXED: defined inline, worded identically to the `00-routing.md` / `coach.md` definitions.
+- **F003 / F004 (LOW, informational)** — 024's own `the-flow.json` now E308 (accepted clean-break casualty); `flight-plan.template.md` left static. → Accepted, no action.
+
+F001/F002 land in the the-flow SOURCE repo (`~/github/tools/skills/SDD/the-flow/`), committed + re-deployed separately from this repo.
+
+## Post-review CLI fix — topological rail + node artifacts (dogfood findings)
+
+Dogfooding the migrated cadence (rebuilding 024's own flow **out of order** via `harness flow`) surfaced two engine gaps, fixed in this repo:
+- **Rail ordering** — `flow-renderer` rendered the rail in node-array order and dropped non-"spine-type" nodes (e.g. `review`). Now a topological walk (Kahn's, insertion-order tie-break) over all non-excursion nodes → correct rail regardless of build order.
+- **Artifacts surface** — no verb could set `node.artifacts[]`. Added `--artifacts` to `add-node` + `set-node`; rendered as a `📄N` badge + per-node Node-log line (mirrors the comment surface; box stays slim per grill 8).
+
+Tests: 3 new renderer tests + enriched `flight-plan-024` golden (routes `p2→review→merge`, `review` last in array, artifacts on nodes). Full suite **756 green**; `flow-fixtures --check` clean. Worked example: `the-flow.cli.json` / `the-flow.cli.md` (this plan dir).
+
