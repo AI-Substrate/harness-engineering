@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "product-documentation-hierarchy",
+  "plan_dir": "docs/plans/025-product-documentation-hierarchy",
+  "mode": "Simple",
+  "current_stage": "awaiting-6",
+  "pending_command": "/the-flow 8 merge --plan \"docs/plans/025-product-documentation-hierarchy/product-documentation-hierarchy-plan.md\"",
+  "intent": "A reader-facing product-documentation hierarchy (GitHub-native markdown, no Pages) at docs/guide/, separate from docs/how: Start Here intent-router -> Quick Start -> adoption -> repo layouts incl. multi-repo -> harness-flow loops -> learning loops -> encoding into the deterministic layer (+ a metrics & measures stub); each doc links the next; unpicks onboarding steps in detail; non-coercive.",
+  "milestones_total": 4,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-18T02:23:18Z",
+  "compacted_seams": [],
+  "status": "active"
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "product-documentation-hierarchy",
+  "plan_dir": "docs/plans/025-product-documentation-hierarchy",
+  "mode": "Simple",
+  "cursor": "merge",
+  "recommended_next": "merge",
+  "now": "Implement DONE — 16 docs in docs/guide/ (working tree, UNCOMMITTED); companion-reviewed (3 MEDIUM: 1 accepted-by-design, 2 fixed), drift-guard clean",
+  "next": "Merge — but it commits, and the user deferred commits to another agent (do not touch the branch); hand off rather than auto-run",
+  "_comment": "Flight plan for 025-product-documentation-hierarchy. Research + Plan DONE. Simple mode -> single implement phase (p1) then merge. Plan validated via /validate-v2 (3 agents: thesis clean; 1 HIGH README-collision + 2 MEDIUM + 1 LOW fixed). No harness seam nodes (this repo is the harness's own home — adoption is not run here). Generated/maintained by /the-flow guided mode; the-flow.md is rendered FROM this file.",
+  "agents": [
+    { "id": "code-review-companion", "kind": "companion", "render": "wrap", "covers": ["p1"],
+      "slug": "code-review-companion", "run_id": "2026-06-18T01-50-01-936Z-ea51",
+      "note": "Power-On companion (booted --no-skills due to a stale .minih.json skills block). Reviewed T001-T016 + a final full-guide drain. 3 MEDIUM findings: F001 README footer accepted-by-design; F002 (boot framing) + F003 (resumability) fixed. magicWand = coordination/minih-layer (routed upstream). NO-COMMIT run: reviewed working-tree diffs, not shas." }
+  ],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research · survey doc surfaces + reconcile onboarding", "status": "done",
+      "command": "/the-flow 1a explore", "ran_at": "2026-06-18T00:27Z",
+      "user_input": "need a new product-documentation hierarchy (separate from docs/how), starting with quick start; unpick the onboarding steps in detail like installing-the-harness.md; each doc links the next; GitHub-native markdown only",
+      "note": "5 parallel explore threads (adapted from the 8-subagent template for a docs-IA topic). Reconciled the aspirational installing-the-harness deck against today's code: harness init NOW exists (CD-01); boot/smoke/arch-check are extensions not core (CD-03); eng-harness-flow != the-flow; docs/guide/ recommended; honor 023's 5-rung adopt flow + 024's exclusion of onboarding. Landed a 15-doc tree + real 10-step onboarding sequence.",
+      "artifacts": ["research-dossier.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan · spec + impl (Simple)", "status": "done",
+      "command": "/the-flow 1b plan", "ran_at": "2026-06-18T00:45Z",
+      "user_input": "Simple mode; docs/guide/ folder; + an empty metrics & measures doc (populate later)",
+      "note": "Atomic plan pass -> product-documentation-hierarchy-plan.md: Business Spec (CS-3, Simple) + Implementation Plan (16 tasks, all gates PASS/N/A, Status READY). Preceded by an 8-question grill (D1-D10) and an added metrics stub. validate-v2 ran (thesis Strong; HIGH README-collision with plan 023 deconflicted; T004/T010/T014 Done-Whens sharpened; extension framing tightened).",
+      "artifacts": ["product-documentation-hierarchy-plan.md"], "next": ["p1"] },
+
+    { "id": "p1", "type": "phase", "phase": 1, "label": "Implement · author docs/guide/ (T001-T017)", "status": "done",
+      "command": "/the-flow 6 implement --companion --plan docs/plans/025-product-documentation-hierarchy/product-documentation-hierarchy-plan.md",
+      "ran_at": "2026-06-18T02:23Z",
+      "user_input": "continue with companion; do not touch the branch, just work here; we will be committing some work from another agent; onboarding follows verified local reality (patch the installing-the-harness deck later)",
+      "note": "Authored 16 docs in docs/guide/ (README router + 01-15; 14-metrics is an intentional stub) per the vibe briefs, WORKING-TREE ONLY (no commits, no branch ops). Commands verified vs app.ts + --help; the installing-the-harness deck reconciled to local reality. Drift guard PASS (every relative link resolves; every harness <cmd> real; nav continuous + acyclic, AC-07). 6 call-outs surfaced (AC-08); root-README guide link supplied to plan 023 (AC-10, not edited here). code-review-companion reviewed every doc + a final drain: 3 MEDIUM (F001 accepted-by-design; F002/F003 fixed) — the companion review supersedes a separate post-hoc review pass.",
+      "artifacts": ["docs/guide/ (16 files)", "execution.log.md"], "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "known",
+      "command": "/the-flow 8 merge", "next": [],
+      "note": "⚠️ Merge COMMITS/merges. The user deferred commits to another agent and said do not touch the branch — so this is a HAND-OFF, not an auto-run. Stage 8 executes only on a typed PROCEED anyway. The docs sit complete + uncommitted in the working tree for the other agent to commit." }
+  ]
+}
