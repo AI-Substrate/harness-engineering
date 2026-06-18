@@ -358,13 +358,58 @@ function topoOrderMain(nodes: readonly FlowNode[]): FlowNode[] {
   return order;
 }
 
-/** A compact pip rail over the main spine, in flow (topological) order. */
+/** Live-status pip for a node (done filled, in-progress half, blocked cross, else hollow). */
+function pipOf(node: FlowNode): string {
+  return STATUS_PIP[node.status] ?? '◇';
+}
+
+/**
+ * The shared rail BODY (Finding 05) — `<pips>  <names>` grouped into zone bands
+ * `pre ─ [ flight ] ─ post`. Walks the main spine (topo order; `branch_of`
+ * excursions excluded), pips from LIVE status (no stored counters → no drift),
+ * names from `label`, bands from `effectiveZone`. Reused by the embedded render
+ * rail (`**Rail**:`) and the standalone `harness flow rail` command.
+ */
+export function renderRailBody(nodes: readonly FlowNode[]): string {
+  const spine = topoOrderMain(nodes);
+  if (spine.length === 0) return '(no nodes)';
+  const bands: Record<Zone, FlowNode[]> = { preflight: [], flight: [], postflight: [] };
+  for (const n of spine) bands[effectiveZone(n)].push(n);
+
+  const pipSeg = (band: FlowNode[]): string => band.map(pipOf).join('─');
+  const nameSeg = (band: FlowNode[]): string => band.map((n) => escapeMd(n.label ?? n.id)).join(' · ');
+
+  const pips: string[] = [];
+  if (bands.preflight.length > 0) pips.push(pipSeg(bands.preflight));
+  if (bands.flight.length > 0) pips.push(`[ ${pipSeg(bands.flight)} ]`);
+  if (bands.postflight.length > 0) pips.push(pipSeg(bands.postflight));
+
+  const names: string[] = [];
+  if (bands.preflight.length > 0) names.push(nameSeg(bands.preflight));
+  if (bands.flight.length > 0) names.push(`[ ${nameSeg(bands.flight)} ]`);
+  if (bands.postflight.length > 0) names.push(nameSeg(bands.postflight));
+
+  return `${pips.join('─')}  ${names.join(' ─ ')}`;
+}
+
+/** The rail title (AC-4): `provenance.agent` → `doc.title` → `slug` → `'flow'`. */
+function railTitle(doc: FlowDoc): string {
+  const agent = doc.provenance?.agent;
+  if (typeof agent === 'string' && agent.length > 0) return agent;
+  if (typeof doc.title === 'string' && doc.title.length > 0) return doc.title;
+  if (typeof doc.slug === 'string' && doc.slug.length > 0) return doc.slug;
+  return 'flow';
+}
+
+/** The standalone `harness flow rail` line: `[<title>] <pips>  <names>` (AC-4). */
+export function renderRailLine(doc: FlowDoc): string {
+  const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
+  return `[${railTitle(doc)}] ${renderRailBody(nodes)}`;
+}
+
+/** The embedded rail line for the rendered `.md` — the shared zoned body, labelled. */
 function renderRail(nodes: readonly FlowNode[]): string {
-  const rail = topoOrderMain(nodes);
-  if (rail.length === 0) return '**Rail**: (no nodes)';
-  const pips = rail.map((n) => STATUS_PIP[n.status] ?? '◇').join('─');
-  const names = rail.map((n) => escapeMd(n.id)).join(' · ');
-  return `**Rail**: ${pips}  ${names}`;
+  return `**Rail**: ${renderRailBody(nodes)}`;
 }
 
 /** One body-log line for a comment: timestamp · source · kind — text [· refs]. */

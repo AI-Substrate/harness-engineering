@@ -2,7 +2,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { FlowDoc, FlowNode } from '../../../src/services/flow/flow-events.js';
-import { effectiveZone, renderFlow } from '../../../src/services/flow/flow-renderer.js';
+import {
+  effectiveZone,
+  renderFlow,
+  renderRailBody,
+  renderRailLine,
+} from '../../../src/services/flow/flow-renderer.js';
 
 const FIXTURE_DIR = fileURLToPath(new URL('./fixtures/render', import.meta.url));
 
@@ -267,7 +272,8 @@ describe('flow-renderer · render rules', () => {
     );
     expect(out).toContain('**Legend**:');
     expect(out).toContain('**Rail**:');
-    expect(out).toMatch(/\*\*Rail\*\*: ◆─◇ {2}research · merge/);
+    // zoned + label names: research(pre,done) ─ merge(post,known)
+    expect(out).toContain('**Rail**: ◆─◇  R ─ M');
   });
 
   it('rails the main spine in flow order incl. `review`, regardless of array order (rail fix)', () => {
@@ -291,7 +297,8 @@ describe('flow-renderer · render rules', () => {
     );
     // Topological order (NOT array order); `review` (not a legacy "spine type") is on the
     // rail; the `ws` excursion never is.
-    expect(out).toContain('**Rail**: ◆─◆─◆─◇─◇  research · plan · p2 · review · merge');
+    // topo order, zone-banded, label names; `review` on the rail, `ws` excursion never
+    expect(out).toContain('**Rail**: ◆─◆─[ ◆ ]─◇─◇  R · Pl ─ [ P2 ] ─ Rev · M');
     expect(out).not.toMatch(/· ws\b/);
   });
 
@@ -427,5 +434,42 @@ describe('flow-renderer · effectiveZone (zone default-by-type; unknown → flig
   it('an explicit valid zone overrides the type default; an invalid zone falls back to type', () => {
     expect(effectiveZone({ type: 'phase', zone: 'preflight' })).toBe('preflight');
     expect(effectiveZone({ type: 'research', zone: 'bogus' })).toBe('preflight');
+  });
+});
+
+describe('flow-renderer · zoned rail (bands pre ─ [ flight ] ─ post + title) — T009', () => {
+  it('bands the spine with status pips + label names', () => {
+    const d = doc([
+      { id: 'research', type: 'research', label: 'Research', status: 'done', next: ['plan'] },
+      { id: 'plan', type: 'plan', label: 'Plan', status: 'done', next: ['p1'] },
+      { id: 'p1', type: 'phase', label: 'Build', status: 'in_progress', next: ['review'] },
+      { id: 'review', type: 'review', label: 'Review', status: 'known', next: ['merge'] },
+      { id: 'merge', type: 'merge', label: 'Merge', status: 'known', next: [] },
+    ]);
+    expect(renderRailBody(d.nodes)).toBe(
+      '◆─◆─[ ◐ ]─◇─◇  Research · Plan ─ [ Build ] ─ Review · Merge',
+    );
+  });
+
+  it('renderRailLine prefixes the title from provenance.agent', () => {
+    const d = doc([{ id: 'p1', type: 'phase', label: 'Build', status: 'in_progress', next: [] }]);
+    d.provenance.agent = 'the-flow';
+    expect(renderRailLine(d)).toBe('[the-flow] [ ◐ ]  [ Build ]');
+  });
+
+  it('title falls back to slug when agent is null (AC-4)', () => {
+    const d = doc([{ id: 'p1', type: 'phase', label: 'Build', status: 'known', next: [] }]);
+    expect(renderRailLine(d)).toBe('[test] [ ◇ ]  [ Build ]'); // slug = 'test'
+  });
+
+  it('title prefers an explicit doc.title over the slug (middle rung)', () => {
+    const d = doc([{ id: 'p1', type: 'phase', label: 'B', status: 'known', next: [] }]);
+    (d as { title?: string }).title = 'My Flow';
+    expect(renderRailLine(d)).toBe('[My Flow] [ ◇ ]  [ B ]');
+  });
+
+  it('(no nodes) rails gracefully', () => {
+    expect(renderRailBody([])).toBe('(no nodes)');
+    expect(renderRailLine(doc([]))).toBe('[test] (no nodes)');
   });
 });

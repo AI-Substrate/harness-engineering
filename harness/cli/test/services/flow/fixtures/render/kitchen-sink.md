@@ -3,7 +3,7 @@
 
 **Kind**: kitchen-sink · **Now**: dec · **Next**: a · **Intent**: demo every render rule · **Nodes**: 10 · **Events**: 1
 
-**Rail**: ◆─◇─◐─✗─◇─◇─◇  start · dec · a · b · join · adv · end
+**Rail**: ◆─[ ◇─◐─✗─◇─◇ ]─◇  Start ─ [ Pick a path · Path A (in progress) · Path B (unknown type, blocked) · Join (assumed) · He said "hi" &lt;b&gt;bold&lt;/b&gt; \| pipe #hash [bracket] {brace} second line ] ─ End
 
 ```mermaid
 flowchart TD

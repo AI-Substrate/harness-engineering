@@ -181,4 +181,14 @@ describe('harness flow render', () => {
     expect(out).toContain('**Legend**');
     expect(out).not.toContain('flow: ok'); // raw passthrough, not the envelope summary
   });
+
+  it('flow rail emits the [title] banded one-line rail (JSON data.rail)', async () => {
+    const deps = fakeDeps(new FakeFs());
+    await seedFlow(deps);
+    const r = await runFlow(deps, ['flow', 'rail', '--slug', 'demo']);
+    expect(r.code).toBe(0);
+    const rail = (r.env.data as { rail: string }).rail;
+    expect(rail.startsWith('[demo] ')).toBe(true); // title = slug (no --agent on this create)
+    expect(rail).toContain('Boot');
+  });
 });

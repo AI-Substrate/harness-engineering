@@ -23,7 +23,7 @@ import {
   setNow,
   setStatus,
 } from '../services/flow/flow-mutations.js';
-import { renderFlow } from '../services/flow/flow-renderer.js';
+import { renderFlow, renderRailLine } from '../services/flow/flow-renderer.js';
 import { resolveFlowSchema, validateFlowDoc } from '../services/flow/flow-schema.js';
 import {
   createFlow,
@@ -334,6 +334,26 @@ export function registerFlowAct(
           deps.clock,
         ),
       );
+    });
+
+  // --- rail --------------------------------------------------------------
+  // The one-line progress view (Finding 05): `[title] pips  names`, banded
+  // `pre ─ [ flight ] ─ post`. Shares the render's rail body — reusable by any flow.
+  flow
+    .command('rail')
+    .description('Emit the one-line rail: [title] pips  names (banded pre ─ [ flight ] ─ post)')
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .action((opts: { path?: string; slug?: string }) => {
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+      const read = readFlowDoc(resolved.path, svc);
+      if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
+      const line = renderRailLine(read.doc);
+      if (io.mode === 'json') {
+        return emit(io, formatOk('flow', { path: resolved.path, rail: line }, deps.clock));
+      }
+      return emitRawAndExit(`${line}\n`, io.writers, 0);
     });
 
   // --- status ------------------------------------------------------------

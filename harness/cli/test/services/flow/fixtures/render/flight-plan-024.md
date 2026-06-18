@@ -3,7 +3,7 @@
 
 **Kind**: flight-plan · **Now**: p2 · **Next**: p2 · **Intent**: render + CI parity + docs · **Nodes**: 8 · **Events**: 2
 
-**Rail**: ◆─◆─◆─◐─◇─◇  research · plan · p1 · p2 · review · merge
+**Rail**: ◆─◆─[ ◆─◐ ]─◇─◇  Research · Plan (spec + impl) ─ [ Phase 1 · Flow engine · Phase 2 · Render + CI parity + docs ] ─ Review · Merge
 
 ```mermaid
 flowchart TD

@@ -34,3 +34,12 @@
 - `zone?` on `FlowNode` + `NodeSpec` + `materialize`; `--zone` on `add-node`/`insert-node`; schema `node.optional` += `zone` (regenerated `schemas-content.ts`).
 - `effectiveZone(node)` (flow-renderer, exported): explicit valid zone → type default (research/plan/workshop/tasks/adr = preflight; phase = flight; review/merge/retro = postflight) → **flight** (total map; unknown type never errors — AC-3).
 - No render change yet (rail consumes `effectiveZone` in C3) → no fixture drift. Full suite **782 green**; tsc clean.
+
+## C3 — harness flow rail + zoned/titled render (T009, T010) — ✅ GREEN
+- Shared `renderRailBody(nodes)`: spine topo order, live-status pips (no stored counters), label names, banded `pre ─ [ flight ] ─ post` via `effectiveZone`. Reused by the embedded render `**Rail**:` AND the standalone `rail` command (Finding 05 factoring).
+- `renderRailLine(doc)` = `[<title>] <body>`; title = `provenance.agent → doc.title → slug → 'flow'` (AC-4). `harness flow rail` act: JSON `{rail}` / human raw line.
+- Render output changed (rail zoned + label names) → goldens regenerated (flight-plan-024 + kitchen-sink); golden-parity + escaping tests green. Full suite **788 green**.
+- Note: banding groups by zone (preserving spine order within a band) — for the-flow's overlay this matches spine order (research/plan = pre, phases = flight, review/merge = post). A foreign overlay whose spine interleaves zones (e.g. harness-loop's `retro` before `improve`) reorders cosmetically in the rail — expected; that overlay sets explicit `--zone`.
+
+## Companion observation (dogfooding — task #90)
+- `code-review-companion` booted + briefed + ack'd the C1 ping, but then stalled in `minih-coordination-wait_for_any` (`minih status` verdict `dead`, ~28min, **no inbox_list polls observed**, zero review replies emitted). Pings for C1–C3 delivered to its inbox but unconsumed. Per the implement sub-skill, the companion is advisory + never blocks → build continued; **stage-7 review still required** (companion did NOT supersede review). Kept pinging in case it revives for the debrief. Likely minih 0.2.2 coordination flakiness (the known `dead`-while-mid-tool false-positive shape, but here with no actual review activity).
