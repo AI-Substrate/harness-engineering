@@ -10,7 +10,7 @@ This document captures the system's high-level structure, boundaries, and intera
 
 ## 1. System Overview
 
-The **Harness CLI Core** is an agent-friendly Node CLI that is the **front door** to a repo's engineering harness. It is installed from **GitHub Packages** (`@ai-substrate/engineering-harness`, bin `harness`) onto a developer's or agent's machine; repo-local **extensions** (a later effort) supply the customisable behaviour at runtime.
+The **Harness CLI Core** is an agent-friendly Node CLI that is the **front door** to a repo's engineering harness. It is installed from the **public npm registry** (`@ai-substrate/engineering-harness`, bin `harness`, zero-auth) onto a developer's or agent's machine; repo-local **extensions** (a later effort) supply the customisable behaviour at runtime.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -96,7 +96,7 @@ interface Envelope {
 
 ## 4. Packaging & Install Topology
 
-- The **npm manifest is the repo-root `package.json`** (`name` `@ai-substrate/engineering-harness`, `bin.harness → ./harness/cli/dist/index.js`, `"prepare": "npm run build"`, `publishConfig.registry` → GitHub Packages, `files` limited to built output, `engines.node >=22`, an `exports` map exposing `./contract` for extension authors, and `jiti` in `dependencies`). The package is **published to GitHub Packages** by release-please on each release; consumers install from the registry (`.npmrc` scope + a `read:packages` token). The `prepare` script (`tsc`) bakes `dist` into the published tarball. *(Plan 018 — reverses the original `npx github:<repo>` / no-publish model.)*
+- The **npm manifest is the repo-root `package.json`** (`name` `@ai-substrate/engineering-harness`, `bin.harness → ./harness/cli/dist/index.js`, `"prepare": "npm run build"`, `publishConfig.registry → https://registry.npmjs.org` with `access: public`, `files` limited to built output, `engines.node >=22`, an `exports` map exposing `./contract` for extension authors, and `jiti` in `dependencies`). The package is **published to the public npm registry** by release-please on each release; consumers install with **no auth** (`npm i -g @ai-substrate/engineering-harness`, `npx`, or `harness update` — no `.npmrc` scope or `read:packages` token). The `prepare` script (`tsc`) bakes `dist` into the published tarball. *(Plan 019 — zero-auth public-npm distribution, superseding plan 018's GitHub Packages model.)*
 - **All CLI source/tests/config live under `harness/cli/`**; only the manifest and shared tool configs (`biome.json`, root `justfile`, CI) sit at the repo root.
 - **Runtime vs dev dependency discipline** (Constitution P10): anything needed at runtime inside a *user's* repo (a future extension loader, `jiti`) goes in `dependencies`; build/test-only tooling goes in `devDependencies`. Distributed/`npx` installs run `--omit=dev`.
 
