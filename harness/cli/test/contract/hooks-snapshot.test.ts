@@ -75,7 +75,7 @@ describe('contract: --hook/--event/--hooks/--json byte-stable surface (T001 chec
     expect(frozen).toMatchSnapshot();
   });
 
-  // Checkpoint 2 — baselined as the FINAL Phase-1 act in T015 (acts/flow.ts wiring),
-  // once `harness flow create/show/event` return real Envelopes to freeze.
-  it.todo('checkpoint 2: freeze harness flow Envelope data shapes (create/show/event) — added in T015');
+  // Checkpoint 2 — the NEW `harness flow` Envelope `data` shapes (create/show/event)
+  // — was baselined as the FINAL Phase-1 act in T015; it lives in the sibling
+  // `flow-envelope-snapshot.test.ts` (it needs the in-process app harness).
 });

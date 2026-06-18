@@ -56,6 +56,13 @@
 - **Evidence**: `vitest run` flow-mutations + flow-events → 33 pass; full suite **712 pass + 1 todo** (was 678); tsc + biome clean.
 - **Discoveries**: fresh inserts structurally can't cycle (re-check is defensive); E305 = node-existence only, no transition-table enforcement (grill 2); mutations are pure clone-and-return.
 
+## T015 — wiring (`acts/flow.ts` + `app.ts`) + checkpoint-2 snapshot ✅
+
+- **Commit**: `<pending>` `feat(024): harness flow act (nested subcommand group) + app wiring + flow-Envelope snapshot [T015]`
+- **What**: `acts/flow.ts` — the **first nested subcommand group** (`flow create/new/show/list/cursor/status/add-node/set-node/insert-node/comment/event`); thin (Commander → service/mutations, read→mutate→write pipeline, Envelope + exit 0/1/2). `app.ts` registers `registerFlowAct` after observe; `flow` added to `RESERVED_NAMES`. Checkpoint-2 snapshot (`test/contract/flow-envelope-snapshot.test.ts`) freezes the `create`/`show`/`event` Envelope `data` shapes in-process (FakeClock → byte-stable); the T001 `it.todo` is now realized.
+- **Evidence**: full suite **713 pass + 0 todo** (the checkpoint-2 todo is now a real test); `app.test.ts`/`index.test.ts` command-list assertions updated (`flow` after `observe`); tsc + biome clean.
+- **Discovery**: `emit`/`runMutation` typed `: never` (they always exit via `exitWithEnvelope`) so the `return emit(…)` early-out satisfies biome `noVoidTypeReturn` cleanly.
+
 ## Companion debrief (run `2026-06-18T00-27-49-683Z-f765`)
 
 - **Coverage**: reviewed T001/T002/T003 commit boundaries; **stood down on an idle check-in BEFORE the schema group** (f7fc71f, T004–T006) → schema group is **companion-unreviewed** (covered by a re-booted companion on resume, or the review stage).

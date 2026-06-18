@@ -107,6 +107,7 @@ describe('buildProgram — composition root wiring', () => {
       'self-install',
       'record',
       'observe',
+      'flow',
       'instructions',
       'hello',
       'build',
@@ -130,6 +131,7 @@ describe('buildProgram — composition root wiring', () => {
       'self-install',
       'record',
       'observe',
+      'flow',
       'instructions',
     ]);
   });
