@@ -102,7 +102,7 @@ Scorer discipline (`scripts/score-flow-eval.sh`): `#!/usr/bin/env bash` (word-sp
 ---
 
 ## External research opportunities
-None — this is internal-substrate work fully grounded in the repo + tools-repo source. No `/deepresearch` needed.
+None — this work is fully grounded in a local review of this repository and the related tools repository. No `/deepresearch` needed.
 
 ---
 

@@ -206,4 +206,38 @@ describe('R-1 — set-node can flag an existing node as a chore', () => {
     );
     expect(res.ok).toBe(false);
   });
+
+  /**
+   * Test Doc — AC-07 idempotency (FT-001).
+   * - **Why**: AC-07 promises re-injection/re-flagging is byte-identical. `setNode`
+   *   used to unconditionally restamp `modified_at` + append a `node-updated` event,
+   *   so re-flagging an already-correct chore churned metadata (retro `idempotent=false`).
+   * - **Contract**: when every requested field already equals the node's current value,
+   *   `setNode` returns the doc UNCHANGED — same object, no new event, no restamp.
+   * - **Usage Notes**: validation (badChore/badZone) still runs before the no-op check.
+   * - **Quality Contribution**: makes the R-1 re-injection path deterministically
+   *   idempotent, the guarantee the coexist scorer's Gate 2 byte-diff relies on.
+   * - **Worked Example**: flag `boot` as a command chore, then flag it again with the
+   *   same fields → second call is a no-op (identical events length, identical node).
+   */
+  it('Given an already-flagged chore, When re-flagged with identical fields, Then it is a byte-identical no-op', () => {
+    const doc = create('harness-loop', 'loop', 'harness-loop');
+    const fields = { chore: { kind: 'command', importance: 'strongly-recommended' } };
+    const first = setNode(doc, 'boot', fields, {
+      clock: new FakeClock('2026-06-19T00:01:00.000Z'),
+    });
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    const eventsAfterFirst = first.doc.events.length;
+    const bootAfterFirst = JSON.stringify(byId(first.doc, 'boot'));
+    // Re-flag with the SAME fields, at a LATER clock — must not restamp or emit.
+    const second = setNode(first.doc, 'boot', fields, {
+      clock: new FakeClock('2026-06-19T12:00:00.000Z'),
+    });
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(second.doc.events.length).toBe(eventsAfterFirst); // no node-updated appended
+    expect(JSON.stringify(byId(second.doc, 'boot'))).toBe(bootAfterFirst); // no modified_at churn
+    expect(second.doc).toBe(first.doc); // same object returned (unchanged)
+  });
 });

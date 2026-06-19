@@ -78,8 +78,10 @@ if [ -n "$NOW" ] && [ "$NOW" != "null" ] && jq -e --arg n "$NOW" 'any(.nodes[]; 
 else fail "GATE 3 — nav.now empty or dangling after injection ('$NOW')"; fi
 
 # --- GATE 4: NO .harness/loop.flow.json while the-flow is active --------------
-# Search the eval scratch + repo root for a standalone loop file (must be absent).
-if find "$EVAL_DIR" . -maxdepth 4 -name 'loop.flow.json' 2>/dev/null | grep -q .; then
+# Search ONLY the eval scratch dir for a standalone loop file (must be absent).
+# Never scan the repo root — the tracked `.harness/loop.flow.json` (T104/D-05)
+# is a legitimate standalone-loop artifact and would false-fail a correct run.
+if find "$EVAL_DIR" -maxdepth 4 -name 'loop.flow.json' 2>/dev/null | grep -q .; then
   fail "GATE 4 — a loop.flow.json exists while the-flow is active (loop must live as chores, not a separate plan)"
 else
   ok "GATE 4 — no .harness/loop.flow.json present (loop lives as chores in the-flow.json)"

@@ -442,6 +442,14 @@ export function setNode(
   if (fields.zone !== undefined && zoneErr !== null) return zoneErr;
   const choreErr = badChore({ chore: fields.chore } as NodeSpec);
   if (fields.chore !== undefined && choreErr !== null) return choreErr;
+  // Idempotent no-op (AC-07): if every requested field already equals the node's
+  // current value, return the doc UNCHANGED — no `modified_at` restamp, no
+  // `node-updated` event. This makes re-flagging an already-correct chore (the
+  // R-1 re-injection path) byte-identical. Validation above still runs first.
+  const unchanged = Object.entries(fields).every(
+    ([key, value]) => key === 'id' || JSON.stringify(node[key]) === JSON.stringify(value),
+  );
+  if (unchanged) return { ok: true, doc };
   const applied: string[] = [];
   for (const [key, value] of Object.entries(fields)) {
     if (key === 'id') continue; // identity is immutable

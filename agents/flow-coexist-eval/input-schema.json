@@ -11,8 +11,8 @@
     },
     "theFlowSchema": {
       "type": "string",
-      "description": "Path to the the-flow flight-plan schema, passed to `harness flow create flight-plan --schema`. The-flow ships it with the skill.",
-      "default": "/Users/jordanknight/.claude/skills/the-flow/references/flight-plan.schema.json"
+      "description": "Path to the the-flow flight-plan schema, passed to `harness flow create flight-plan --schema`. The-flow ships it with the skill; resolve at runtime from the installed skill base (e.g. <agent-harness-root>/skills/the-flow/references/flight-plan.schema.json). Left empty by default so the prompt derives it.",
+      "default": ""
     }
   }
 }

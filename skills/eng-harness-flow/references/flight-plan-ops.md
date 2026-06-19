@@ -114,7 +114,10 @@ them and they stop getting missed). Standalone, it authors its own loop instead
 
 **Dedup key = the `--hook <X>` token inside `command`.** Exactly one chore per hook
 per the-flow plan. Injection is therefore **idempotent** — re-running it produces a
-**byte-identical** node set.
+**byte-identical** node set: `insert-node`/`add-node` de-dup on the hook token (no new
+node), and `set-node` (the found-node re-flag path below) is a **no-op when every
+requested field already matches** — it does not restamp `modified_at` or emit an event
+(plan 032 FT-001). Re-flagging an already-correct chore changes nothing on disk.
 
 **Reconciliation with the-flow's seam emission (R-1).** the-flow may already emit a
 seam node (`harness-boot` / `backpressure` / `harness-retro`) carrying that hook's

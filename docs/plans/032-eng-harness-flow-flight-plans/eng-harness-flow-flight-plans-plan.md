@@ -116,8 +116,8 @@ _Refinement opportunities still open — recorded as evidence; the flow surfaces
 | Gate | Check | Status | Notes |
 |---|---|---|---|
 | G1 | Clarify | PASS | Round 1 defaults recorded; no critical markers |
-| G2 | Constitution | N/A | no `docs/project-rules/constitution.md` |
-| G3 | Architecture | N/A | no `docs/project-rules/architecture.md` |
+| G2 | Constitution | PASS | checked vs `docs/project-rules/constitution.md` — publication boundary (P12: no personal/home/`.claude` paths in shipped/tracked content) applies; enforced in review (FT-002/FT-003 fixed) |
+| G3 | Architecture | PASS | checked vs `docs/project-rules/architecture.md` — no layer/dependency-direction violation (CLI mutation + skill + evals stay in-layer) |
 | G4 | ADR Compliance | N/A | no Accepted ADRs touching this |
 | G5 | Structure | PASS | all required sections present |
 | G6 | Testing Alignment | PASS | Lightweight: ≥1 validation per task group; ACs measurable |
@@ -143,6 +143,7 @@ Author a `harness-adopt` overlay + modernize the `harness-loop` template (CLI), 
 | `agents/loop-flow-eval/**` | eval-harness | internal | NEW |
 | `agents/flow-coexist-eval/**` | eval-harness | internal | NEW |
 | `scripts/score-loop-eval.sh`, `scripts/score-flow-coexist.sh` | eval-harness | internal | NEW deterministic scorers |
+| `docs/retros/{loop-flow-eval,flow-coexist-eval}.md` | eval-harness | internal | NEW — eval runs emit dual-layer retros here (one append per run; repo-relative `runDir`) |
 | `docs/how/harness-flow.md` | docs | internal | document new types/zones/flows |
 
 ### Key Findings

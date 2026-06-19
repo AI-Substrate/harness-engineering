@@ -71,16 +71,21 @@ If a prescribed command errors, STOP and record it (a finding).
 
 ## Step 3 — prove idempotency (re-inject)
 
-Copy the result, then run the **same** injection a second time and save the snapshot:
+Copy the result, then run the skill's injection procedure a **second** time and save the
+snapshot. Re-run the skill's *reconciliation* procedure exactly as written — do NOT blindly
+repeat the original `insert-node` commands. The hooks are now present, so the skill's scan
+resolves them to the **found-node** path and reconciles via `set-node`; repeating `insert-node`
+would collide on node IDs rather than exercise hook-token dedup:
 
 ```bash
 cp "$OUT/the-flow.json" "$OUT/after-first.json"
-# … re-run the exact same injection commands the skill prescribes …
+# … re-run the skill's hook-injection procedure (already-present hooks → found-node set-node reconcile) …
 cp "$OUT/the-flow.json" "$OUT/reinjected.json"
 ```
 
 A correct (dedup-keyed) injection is idempotent: `after-first.json` and `reinjected.json`
-must have a **byte-identical node set**. Report `reinjectedPath = $OUT/reinjected.json`.
+must have a **byte-identical node set** — the second pass adds no node and (since `set-node`
+no-ops when every field already matches) churns no `modified_at`. Report `reinjectedPath = $OUT/reinjected.json`.
 
 ## Step 4 — independent verification (parse `--json`, never trust claims)
 
