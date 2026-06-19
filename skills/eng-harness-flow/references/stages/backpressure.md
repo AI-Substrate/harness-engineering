@@ -133,6 +133,15 @@ Include a **Recommended Phase 0: Establish Backpressure** table **iff** ≥1 beh
 
 Each Phase 0 row specifies a sensor to build: **what to build**, **what it proves** (which criterion/failure-mode), and a suggested **form** (data-check script / dependency-direction rule / ArchUnit / Roslyn analyzer / CodeQL query / smoke route / schema check).
 
+#### Closing suggestions (advisory — offer, then move on)
+
+With the matrix in hand, you can offer the user up to two plain suggestions to inform the planning conversation, then leave the call with them:
+
+- **Encode it** — for a criterion backed by an `EXISTS` or `BUILDABLE` sensor, you can hand over a ready-to-paste line for whatever the plan uses to decide "done" (a spec acceptance criterion, a DoD checklist item, a task): *"<criterion> — done when `<sensor>` is green."* Whoever owns that done-concept can drop it in.
+- **Flag thin coverage** — where material behaviour/architecture criteria are `ABSENT` (or no sensors were found), you can say so plainly and rough-size what closing it would take: a single criterion line, extra work in this plan, or its own follow-up.
+
+These inform the conversation — the survey writes its artifact and leaves any editing to the plan's owner.
+
 ### OUTPUT — write `${PLAN_DIR}/backpressure-coverage.md`
 
 Overwrite if it exists (regeneration-safe). Use this template:
@@ -171,6 +180,15 @@ Overwrite if it exists (regeneration-safe). Use this template:
 | Sensor to build | Proves | Suggested form |
 |-----------------|--------|----------------|
 | <sensor> | <criterion / failure mode> | data-script / dep-rule / ArchUnit / Roslyn / CodeQL / smoke / schema |
+
+## Suggested "done when" lines (advisory)
+
+<!-- Optional. Paste-ready lines the plan's owner can add to whatever decides "done"
+     (a spec acceptance criterion, a DoD item, a task). Offered, not applied. -->
+
+| For criterion | Suggested line | Backed by |
+|---------------|----------------|-----------|
+| <AC / failure mode> | done when `<sensor>` is green | EXISTS / BUILDABLE / thin — needs follow-up |
 ```
 
 ### How this differs from a measurability gate and from after-the-fact review (include a short note in the artifact if useful)
@@ -185,4 +203,4 @@ A missing governance doc (`.harness/engineering-harness.md`) is **not** evidence
 
 ## Exit
 
-Print the output-contract summary (✅: what was produced, where, key fields). Then STOP — do not name a next step or route onward. Routing is the router's job.
+Print the output-contract summary (✅: what was produced, where, key fields), and surface any closing suggestions from STEP 4. Picking the next harness stage is the router's job — this survey just informs the planning conversation and leaves the decision with whoever owns the plan.
