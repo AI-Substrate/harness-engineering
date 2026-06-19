@@ -17,8 +17,11 @@ import { captureNewRun, copyInto, lastRunId, readJson, writeFile } from './lib/w
  * and grades each DONE clone with deterministic probes (FX004-5) — the worker
  * self-report stays as an advisory cross-check, discrepancies flagged.
  *
- * Guardrails (Constitution P2/P4/P5/P8): no `node:*` imports; all I/O via
- * `ctx.exec`/`ctx.fs`; never throws; every non-ok result carries a `next_action`.
+ * Guardrails (Constitution P2/P4/P5/P8 + plan 031 cross-platform): no `node:*`
+ * imports and NO POSIX shell-outs — all I/O via the portable contract
+ * (`ctx.exec` for real repo commands, `ctx.fsWrite` for writes/copies/temp,
+ * `ctx.background.spawnDetached` for the detached worker, `ctx.clock.sleep` for
+ * poll waits); never throws; every non-ok result carries a `next_action`.
  * Pinned by docs/plans/013-dogfood-harness-flow/dogfood-harness-flow-plan.md.
  */
 
@@ -84,14 +87,11 @@ interface FireManifest {
 
 /** `https://github.com/expressjs/express.git` -> `express`, sanitized to a safe basename. */
 function repoName(url: string): string {
-  const tail = (url.split('/').pop() ?? 'repo').replace(/\.git$/, '');
+  // Split on BOTH separators so a backslash Windows path still yields a clean
+  // basename (plan 031 AC-06), not the whole drive path.
+  const tail = (url.split(/[/\\]/).pop() ?? 'repo').replace(/\.git$/, '');
   const safe = tail.replace(/[^A-Za-z0-9._-]/g, '-').replace(/^[-.]+|[-.]+$/g, '');
   return safe || 'repo';
-}
-
-/** ISO -> filesystem-safe (`:`/`.` -> `-`). */
-function fsSafe(iso: string): string {
-  return iso.replace(/[:.]/g, '-');
 }
 
 type CollectState = 'DONE' | 'TIMED_OUT' | 'MISSING_REPORT' | 'NOT_FIRED';
@@ -436,8 +436,8 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
 
   const waitSeconds =
     typeof ctx.options.wait === 'string' ? Math.max(0, parseInt(ctx.options.wait, 10) || 0) : 120;
-  const pollEveryMs = 5;
-  const maxPolls = Math.max(1, Math.ceil((waitSeconds * 1000) / (pollEveryMs * 1000)) || 1);
+  const pollEverySec = 5;
+  const maxPolls = Math.max(1, Math.ceil(waitSeconds / pollEverySec) || 1);
 
   // Poll all runs to terminal (early-exit when none are still pending), up to the cap.
   const pending = new Set(manifest.runs.filter((r) => r.runId && r.runDir).map((r) => r.repo));
@@ -448,7 +448,7 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
         pending.delete(r.repo);
       }
     }
-    if (pending.size > 0) await ctx.exec('sleep', [String(pollEveryMs)]);
+    if (pending.size > 0) await ctx.clock.sleep(pollEverySec * 1000);
   }
 
   // Classify + copy.
@@ -488,20 +488,22 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
       if (res.reportPath && (await copyInto(ctx, res.reportPath, destDir))) {
         res.copied.push('report.json');
       }
-      // (2) the harnessability report (from the clone)
+      // (2) the harnessability report (from the clone) — confined to the clone
+      // subtree so a committed symlink can't exfiltrate an out-of-tree file.
       for (const f of ['latest.md', 'latest.json']) {
         const src = `${r.dest}/.harness/reports/harnessability/${f}`;
-        if (await copyInto(ctx, src, destDir)) res.copied.push(`harnessability/${f}`);
+        if (await copyInto(ctx, src, destDir, r.dest)) res.copied.push(`harnessability/${f}`);
       }
       // (3) every retro the worker recorded (from the clone). `harness record
       // retro` writes dated subdirectories (.harness/records/retro/<YYYY-MM-DD>/
       // <ord>-<slug>.md), so walk one level of subdirs as well as any flat .md
       // (companion F003) — keeping the date segment so filenames never collide.
+      // Confined to the clone subtree (symlink-exfil guard, as above).
       const retroDir = `${r.dest}/.harness/records/retro`;
       if (ctx.fs.exists(retroDir)) {
         for (const name of ctx.fs.readdir(retroDir)) {
           if (name.endsWith('.md')) {
-            if (await copyInto(ctx, `${retroDir}/${name}`, `${destDir}/retro`)) {
+            if (await copyInto(ctx, `${retroDir}/${name}`, `${destDir}/retro`, r.dest)) {
               res.copied.push(`retro/${name}`);
             }
             continue;
@@ -509,7 +511,9 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
           // A dated subdir (readdir on a file returns [] — harmless skip).
           for (const inner of ctx.fs.readdir(`${retroDir}/${name}`)) {
             if (!inner.endsWith('.md')) continue;
-            if (await copyInto(ctx, `${retroDir}/${name}/${inner}`, `${destDir}/retro/${name}`)) {
+            if (
+              await copyInto(ctx, `${retroDir}/${name}/${inner}`, `${destDir}/retro/${name}`, r.dest)
+            ) {
               res.copied.push(`retro/${name}/${inner}`);
             }
           }
@@ -525,7 +529,7 @@ async function runCollect(ctx: VerbContext, runsDir: string): Promise<VerbResult
   // Roll up + write.
   const rollup = buildRollup(ctx, manifest, results);
   const rollupPath = `${runsDir}/ROLLUP.md`;
-  await ctx.exec('mkdir', ['-p', runsDir]);
+  ctx.fsWrite?.mkdirp(runsDir);
   const wroteRollup = await writeFile(ctx, rollupPath, rollup);
 
   const counts = tally(results);
@@ -730,8 +734,20 @@ const validateHarnessFlow: HarnessVerb = {
     },
   ],
   async run(ctx) {
-    // 0. minih must be on PATH (E_MINIH_MISSING -> hard error).
-    const minihCheck = await ctx.exec('bash', ['-c', 'command -v minih']);
+    // 0a. Portable-capability guard (plan 031): this verb needs the write +
+    // background ports. An older core without them can't run it — fail honestly
+    // rather than crash mid-flight on an undefined `ctx.fsWrite`/`ctx.background`.
+    if (!ctx.fsWrite || !ctx.background) {
+      return ctx.error('E_CORE_TOO_OLD', 'this verb needs a newer harness core', {
+        next_action:
+          'Update the harness CLI (the cross-platform fsWrite/background ports landed in plan 031): run `harness update`, then re-run `harness validate-harness-flow`.',
+      });
+    }
+
+    // 0b. minih must be on PATH (E_MINIH_MISSING -> hard error). `minih --version`
+    // resolves the `.cmd` shim on Windows via the core resolver (portable — no
+    // `bash -c 'command -v'`).
+    const minihCheck = await ctx.exec('minih', ['--version']);
     if (!minihCheck.ok) {
       return ctx.error('E_MINIH_MISSING', 'minih is not on PATH', {
         next_action:
@@ -758,13 +774,16 @@ const validateHarnessFlow: HarnessVerb = {
     const harnessSource: 'local' | 'github' | 'global' =
       ctx.options.global === true ? 'global' : ctx.options.github === true ? 'github' : 'local';
 
-    // 2. Make the temp env.
-    const tmpRoot = `/tmp/harness-flow-selftest-${fsSafe(ctx.clock.nowIso())}`;
-    const mk = await ctx.exec('mkdir', ['-p', tmpRoot]);
-    if (!mk.ok) {
-      return ctx.error('E_TMP', `could not create temp dir ${tmpRoot}`, {
-        details: mk.stderr,
-        next_action: 'Check that /tmp is writable, then re-run `harness validate-harness-flow`.',
+    // 2. Make the temp env — a UNIQUE dir under the OS temp dir via the write
+    // port (portable; replaces the hard-coded temp path + its directory create).
+    let tmpRoot: string;
+    try {
+      tmpRoot = ctx.fsWrite.mkdtemp('harness-flow-selftest-');
+    } catch (e) {
+      return ctx.error('E_TMP', 'could not create a temp dir under the OS temp dir', {
+        details: e instanceof Error ? e.message : String(e),
+        next_action:
+          'Check that the OS temp dir is writable, then re-run `harness validate-harness-flow`.',
       });
     }
 
@@ -795,7 +814,14 @@ const validateHarnessFlow: HarnessVerb = {
         harnessSource,
       };
 
-      const clone = await ctx.exec('git', ['clone', '--depth=1', url, dest]);
+      const clone = await ctx.exec('git', [
+        'clone',
+        '-c',
+        'core.longpaths=true',
+        '--depth=1',
+        url,
+        dest,
+      ]);
       if (!clone.ok) {
         rec.error = `clone failed (exit ${clone.code})`;
         runs.push(rec);
@@ -805,17 +831,13 @@ const validateHarnessFlow: HarnessVerb = {
 
       const before = await lastRunId(ctx, AGENT_SLUG);
 
-      // Fire detached WITHOUT interpolating any user-controlled value into shell
-      // syntax: the script reads only `"$@"` (literal argv), so `dest`/`model`/
-      // `logPath` can never be re-parsed by the shell (no injection). Param
-      // contract: always `-p targetRepo=<dest>`; non-`local` source ⇒
-      // `-p harnessSource=<github|global>` (`--github` / `--global`).
-      const fireArgv = [
-        '-c',
-        'log="$1"; shift; nohup "$@" > "$log" 2>&1 & echo $!',
-        'validate-harness-flow', // $0 label
-        logPath, // $1 -> log (then shifted away)
-        'minih',
+      // Fire the worker DETACHED via the background port (portable; replaces the
+      // POSIX detached-launch shell idiom). Args travel as literal argv — never a
+      // shell string — so dest/model/logPath can't be re-parsed (no injection). On
+      // Windows the `minih` shim is launched via cmd.exe by the core resolver
+      // (never a bare `.cmd` spawn). Param contract: always `-p targetRepo=<dest>`;
+      // non-`local` source ⇒ `-p harnessSource=<github|global>`.
+      const workerArgs = [
         'run',
         AGENT_SLUG,
         '-p',
@@ -824,14 +846,20 @@ const validateHarnessFlow: HarnessVerb = {
         ...(model ? ['-m', model] : []),
         ...SKILL_FLAGS,
       ];
-      const fire = await ctx.exec('bash', fireArgv);
-      if (!fire.ok) {
-        rec.error = `background fire failed (exit ${fire.code})`;
+      try {
+        const { pid } = ctx.background.spawnDetached({
+          command: 'minih',
+          args: workerArgs,
+          cwd: ctx.cwd, // run from the repo root so `path:skills` resolves
+          logPath,
+        });
+        rec.fired = true;
+        rec.pid = pid != null ? String(pid) : null;
+      } catch (e) {
+        rec.error = `background fire failed: ${e instanceof Error ? e.message : String(e)}`;
         runs.push(rec);
         continue;
       }
-      rec.fired = true;
-      rec.pid = fire.stdout.trim() || null;
 
       const captured = await captureNewRun(ctx, AGENT_SLUG, before);
       if (captured) {
@@ -856,18 +884,14 @@ const validateHarnessFlow: HarnessVerb = {
       runs,
     };
     let manifestPath: string | null = `${runsDir}/${MANIFEST_NAME}`;
-    const mkRuns = await ctx.exec('mkdir', ['-p', runsDir]);
-    if (mkRuns.ok) {
-      const wrote = await writeFile(ctx, manifestPath, JSON.stringify(manifest, null, 2));
-      if (!wrote) manifestPath = null;
-    } else {
-      manifestPath = null;
-    }
+    ctx.fsWrite?.mkdirp(runsDir);
+    const wrote = await writeFile(ctx, manifestPath, JSON.stringify(manifest, null, 2));
+    if (!wrote) manifestPath = null;
 
     // 6. Return immediately with the durable handles + the runnable prompting.
     const cleanup = keep
       ? `Temp kept at ${tmpRoot} (--keep).`
-      : `Clean up when done: rm -rf ${tmpRoot}`;
+      : `Clean up when done: delete ${tmpRoot}`;
     const pollLines =
       `  • All:    minih status ${AGENT_SLUG}\n` +
       `  • One:    minih tail ${AGENT_SLUG} --run <runId>\n` +

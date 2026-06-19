@@ -70,10 +70,10 @@ function makeStubContext(options: Record<string, unknown>): VerbContext {
     args: {},
     options,
     exec: () => Promise.resolve({ code: 0, stdout: '', stderr: '', ok: true }),
-    fs: { exists: () => false, readText: () => null, readdir: () => [] },
+    fs: { exists: () => false, readText: () => null, readdir: () => [], realpath: () => null },
     env: { get: () => undefined },
     git: { isRepo: () => false, currentBranch: () => null },
-    clock: { nowIso: () => '2026-06-08T00:00:00.000Z' },
+    clock: { nowIso: () => '2026-06-08T00:00:00.000Z', sleep: () => Promise.resolve() },
     ok: (data, opts): VerbResult => ({ status: 'ok', data, ...(opts ?? {}) }),
     degraded: (data, next_action, opts): VerbResult => ({
       status: 'degraded',

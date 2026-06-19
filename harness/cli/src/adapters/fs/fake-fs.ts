@@ -1,4 +1,4 @@
-import type { FsPort } from './fs-port.js';
+import type { FileSystemWritePort, FsPort } from './fs-port.js';
 
 /**
  * Deterministic filesystem for tests. Seeded with a `{path: contents}` map and
@@ -7,10 +7,22 @@ import type { FsPort } from './fs-port.js';
  * mocks — assert on history). Writes mutate the in-memory file map so a later
  * `exists`/`readText` sees what was written.
  */
-export class FakeFs implements FsPort {
+export class FakeFs implements FsPort, FileSystemWritePort {
   readonly reads: string[] = [];
   readonly writes: string[] = [];
   readonly mkdirs: string[] = [];
+  /** Every rename as a `${from}->${to}` pair (fakes over mocks — assert on history). */
+  readonly renames: string[] = [];
+  /** Every `copy` call's logical intent (fakes over mocks — assert on history). */
+  readonly copies: { src: string; destDir: string; confineRoot?: string }[] = [];
+  /**
+   * Sources the fake should treat as ESCAPING a `confineRoot` — so a verb test
+   * can model the CWE-59 refusal the real `NodeFs.copy` enforces (without real
+   * symlinks). A confined `copy` of one of these returns false (plan 031 F002).
+   */
+  readonly confineEscapes = new Set<string>();
+  /** Every `mkdtemp` prefix requested (fakes over mocks — assert on history). */
+  readonly mkdtemps: string[] = [];
   private readonly madeDirs = new Set<string>();
 
   constructor(
@@ -62,5 +74,53 @@ export class FakeFs implements FsPort {
   writeText(path: string, contents: string): void {
     this.writes.push(path);
     this.files[path] = contents;
+  }
+
+  rename(from: string, to: string): void {
+    this.renames.push(`${from}->${to}`);
+    const contents = this.files[from];
+    if (contents === undefined) {
+      // Match NodeFs: renaming a missing source throws (callers map to an error).
+      throw new Error(`FakeFs.rename: source does not exist: ${from}`);
+    }
+    this.files[to] = contents;
+    delete this.files[from];
+  }
+
+  realpath(path: string): string | null {
+    this.reads.push(path);
+    // No symlinks in the fake — realpath is identity for a path that exists,
+    // null otherwise (mirrors NodeFs returning null for a missing/dangling path).
+    return path in this.files || this.madeDirs.has(path) ? path : null;
+  }
+
+  copy(src: string, destDir: string, opts?: { confineRoot?: string }): boolean {
+    // Record the LOGICAL intent (real confinement lives in NodeFs, proven by the
+    // adapter contract test with a planted symlink — the fake never escapes).
+    this.copies.push({
+      src,
+      destDir,
+      ...(opts?.confineRoot !== undefined && { confineRoot: opts.confineRoot }),
+    });
+    // Mirror NodeFs: a missing source is refused (false), never a phantom copy.
+    if (!(src in this.files)) return false;
+    // Model the CWE-59 confine refusal NodeFs enforces with realpath: a seeded
+    // escaping source under a confineRoot is refused (plan 031 F002).
+    if (opts?.confineRoot !== undefined && this.confineEscapes.has(src)) return false;
+    // Model a successful copy so a later exists()/readText() sees the dest file.
+    this.mkdirp(destDir);
+    const name = src.replace(/\\/g, '/').split('/').pop() ?? src;
+    const dest = `${destDir.replace(/\\/g, '/').replace(/\/+$/, '')}/${name}`;
+    this.files[dest] = this.files[src] ?? '';
+    this.writes.push(dest);
+    return true;
+  }
+
+  mkdtemp(prefix: string): string {
+    // Deterministic, unique-per-call fake temp dir (no real fs / os.tmpdir()).
+    const dir = `/tmp/${prefix}${this.mkdtemps.length}`;
+    this.mkdtemps.push(prefix);
+    this.mkdirp(dir);
+    return dir;
   }
 }

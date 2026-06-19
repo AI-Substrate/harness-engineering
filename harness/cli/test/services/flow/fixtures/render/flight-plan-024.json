@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "first-class-flow-system",
+  "nav": { "now": "p2", "next": "p2", "intent": "render + CI parity + docs" },
+  "created_at": "2026-06-17T21:00:00Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "024-first-class-flow-system",
+    "repo": "git+https://github.com/AI-Substrate/harness-engineering.git",
+    "created_at": "2026-06-17T21:00:00Z",
+    "agent": "the-flow",
+    "plan_id": "024-first-class-flow-system"
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-17T21:00:00Z",
+      "details": { "kind": "flight-plan", "slug": "first-class-flow-system" }
+    },
+    {
+      "id": "BLD-001",
+      "kind": "build-run",
+      "origin": "manual",
+      "fired_at": "2026-06-18T01:35:00Z",
+      "description": "Phase 1 suite 719 green"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": ["plan"],
+      "ran_at": "2026-06-17T21:05:00Z",
+      "user_input": "make this a first class concept ... deterministic ... event log inside the json ... limit phases please",
+      "artifacts": ["research-dossier.md", "original-ask.md"]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (spec + impl)",
+      "status": "done",
+      "next": ["p1"],
+      "ran_at": "2026-06-17T21:38:00Z",
+      "user_input": "the plan phase is a little different on how it talks to phases. re-read it then do the plan please.",
+      "artifacts": ["first-class-flow-system-plan.md"],
+      "comments": [
+        {
+          "at": "2026-06-17T21:38:46Z",
+          "source": "agent",
+          "kind": "validation",
+          "text": "validate-v2 broad (4 agents) = VALIDATED WITH FIXES.",
+          "refs": ["first-class-flow-system-plan.md"]
+        },
+        {
+          "at": "2026-06-18T01:25:00Z",
+          "source": "agent",
+          "kind": "validation",
+          "text": "v1.2.0 amendment = VALIDATED WITH FIXES; body-log is render-only.",
+          "refs": ["first-class-flow-system-plan.md"]
+        }
+      ]
+    },
+    {
+      "id": "p1",
+      "type": "phase",
+      "label": "Phase 1 · Flow engine",
+      "status": "done",
+      "next": ["p2"],
+      "ran_at": "2026-06-18T01:35:00Z",
+      "user_input": "continue with phase 5 tasks then validate please",
+      "artifacts": ["tasks/phase-1-flow-engine/tasks.md", "tasks/phase-1-flow-engine/execution.log.md"]
+    },
+    {
+      "id": "p2",
+      "type": "phase",
+      "label": "Phase 2 · Render + CI parity + docs",
+      "status": "in_progress",
+      "next": ["review"],
+      "user_input": "implement without companion as we have another task using companion already",
+      "comments": [
+        {
+          "at": "2026-06-18T02:05:00Z",
+          "source": "agent",
+          "kind": "validation",
+          "text": "Phase 2 dossier = VALIDATED WITH FIXES, 0 HIGH.",
+          "refs": ["tasks/phase-2-deterministic-render-ci-parity-docs/tasks.md"]
+        }
+      ]
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "known",
+      "next": []
+    },
+    {
+      "id": "ws-cli",
+      "type": "workshop",
+      "label": "Workshop · harness flow CLI surface",
+      "status": "done",
+      "branch_of": "plan",
+      "next": ["plan"],
+      "ran_at": "2026-06-17T21:48:08Z",
+      "user_input": "lets do the cli surface workshop.",
+      "comments": [
+        {
+          "at": "2026-06-17T21:48:08Z",
+          "source": "agent",
+          "kind": "decision",
+          "text": "4 CLI questions resolved; single act + subcommand group."
+        }
+      ]
+    },
+    {
+      "id": "ws-events",
+      "type": "workshop",
+      "label": "Workshop · event + comment taxonomy",
+      "status": "done",
+      "branch_of": "plan",
+      "next": ["plan"],
+      "ran_at": "2026-06-17T22:04:20Z",
+      "user_input": "do next workshop"
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": ["merge"]
+    }
+  ]
+}

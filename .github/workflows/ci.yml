@@ -80,6 +80,9 @@ jobs:
       - name: Docs drift guard (generated bundle matches the .md sources)
         run: npm run check:docs
 
+      - name: Flows drift guard (bundled schemas + golden renders match the CLI)
+        run: npm run check:flows
+
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit -p harness/cli/tsconfig.json
 
@@ -132,6 +135,39 @@ jobs:
           if [ "$status" = "degraded" ]; then
             count=$(echo "$out" | jq '.data.warnings')
             echo "::warning title=skills-check::${count} skill description(s) inside the 900–1024 char headroom band — trim before they drift over the spec limit and hosts silently drop them"
+          fi
+          exit ${code:-0}
+
+      # Markdown conformance through the VERB: lint authored markdown + validate
+      # in-repo links/anchors + syntax-check mermaid fences (headless, no Chromium).
+      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
+      # annotation; a missing tool/config (exit 2) or crash (exit 1) fails the step.
+      - name: Markdown conformance (harness markdown-lint)
+        run: |
+          out=$(node harness/cli/bin/harness.js markdown-lint --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.totals.findings')
+            echo "::warning title=markdown-lint::${count} markdown finding(s) at warn severity — see the envelope in this step's log; fix the authored docs and promote the gate once clean"
+          fi
+          exit ${code:-0}
+
+      # Windows-compat conformance through the VERB: statically flag the
+      # cross-platform anti-patterns the extension verbs must avoid (POSIX
+      # shell-outs, /tmp, node:* in a verb, bare-.cmd launch, clone without
+      # core.longpaths, …) — by-construction proof with NO Windows runner
+      # (plan 031, continuing plan 017's posture for the core's windows-command.ts).
+      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
+      # annotation; not a git tree (exit 2) or crash (exit 1) fails the step.
+      - name: Windows-compat conformance (harness windows-check)
+        run: |
+          out=$(node harness/cli/bin/harness.js windows-check --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.findingCount')
+            echo "::warning title=windows-check::${count} Windows-compat finding(s) at warn severity — see the envelope in this step's log; fix per each finding's message or suppress a deliberate line with // win-ok: <reason>"
           fi
           exit ${code:-0}
 

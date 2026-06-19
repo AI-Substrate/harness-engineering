@@ -169,5 +169,6 @@ docs/retros/validate-harness-flow.md
 
 # The review verb writes a computed `git diff` snapshot beside the review file as scratch —
 # it is large, regenerable (`git diff <base>..HEAD`), and immediately stale. The durable
-# artifact is review.*.md (tracked); the computed diff is not.
-docs/plans/*/tasks/*/reviews/_computed.diff
+# artifact is review.*.md (tracked); the computed diff is not. Ignore it anywhere it lands
+# (Simple-Mode `*/reviews/` and Full-Mode `tasks/*/reviews/` both).
+_computed.diff

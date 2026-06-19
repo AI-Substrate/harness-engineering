@@ -16,4 +16,8 @@ export class NodeProcess implements ProcessPort {
   cwd(): string {
     return process.cwd();
   }
+
+  nodeVersion(): string {
+    return process.versions.node;
+  }
 }

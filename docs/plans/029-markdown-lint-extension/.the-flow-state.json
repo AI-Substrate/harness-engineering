@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "slug": "markdown-lint-extension",
+  "plan_dir": "docs/plans/029-markdown-lint-extension",
+  "mode": "Simple",
+  "current_stage": "closed",
+  "pending_command": "",
+  "intent": "Add a markdown-lint harness extension that wraps third-party tools (markdownlint, headless mermaid syntax check, in-repo link validation) behind one verb and wires it into just fft",
+  "milestones_total": 4,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-19T01:30:00Z",
+  "compacted_seams": [],
+  "status": "closed",
+  "closed_note": "Build + review (APPROVE, 2 LOW fixed) shipped to branch 026-flow-nav-rail-zone as commit be78cf7 (pushed via jakkaj). Merge stage intentionally skipped per user."
+}

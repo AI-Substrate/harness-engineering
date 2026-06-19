@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "documentation-updates",
+  "plan_dir": "docs/plans/023-documentation-updates",
+  "mode": "unknown",
+  "cursor": "research",
+  "recommended_next": "plan",
+  "now": "Research done — dossier landed",
+  "next": "Plan (business spec + implementation plan, one atomic pass)",
+  "_comment": "Fresh start reusing the existing 023 folder (held original-ask.md + workshops/001 before the flow was set up). Research ran a 6-lens read-only fan-out -> research-dossier.md. mode unknown until the 1b plan pass sets it + reveals phase count (milestones_total recomputes then). Harness is installed + provisioned here, but no per-phase harness nodes are emitted yet (they appear at the plan pass / phase edges per harness-seams.md); the flow-entry pre-flight seam carried no node (one calm line). the-flow.md is generated FROM this file.",
+  "agents": [],
+  "nodes": [
+    { "id": "research", "type": "research", "label": "Research", "status": "done",
+      "command": "/the-flow 1a explore", "ran_at": "2026-06-17T20:45Z",
+      "user_input": "get teh flow set up and do the research phase please.",
+      "note": "6-lens read-only fan-out (adopt/router state; the-flow coach vs eng-harness coach; CLI cold-start + doc surfaces; prior learnings; contract+CI guards; boundaries). Key: coach port is voice-only; design fits the router's own escape-hatch rule; cold-start breadcrumb doesn't travel; zero deterministic sensors for onboarding (backpressure gap).",
+      "artifacts": ["research-dossier.md"], "next": ["plan"] },
+
+    { "id": "ws1", "type": "workshop", "label": "Workshop 1 · onboarding flow state (adopt-flow.json)", "status": "done",
+      "branch_of": "plan",
+      "user_input": "do a workshop ... detailed mermaid of every stop the onboarding process will make ... i much rather a little flow is set up and we follow it along, self-contained.",
+      "note": "Pre-flow workshop (authored before the-flow was set up). Decision: ephemeral adopt-verb-owned .harness/temp/adopt-flow.json (Option B); cursor/rungs/declined/per-file/boot_shape/narration_thread; self-cleans at completion. Authoritative for the plan.",
+      "artifacts": ["workshops/001-onboarding-flow-state.md"], "next": ["plan"] },
+
+    { "id": "plan", "type": "plan", "label": "Plan (spec + impl)", "status": "known",
+      "command": "/the-flow 1b plan",
+      "note": "One atomic pass -> documentation-updates-plan.md: ## Business Specification on top, ## Implementation Plan below. Will set Mode (CS) + reveal phases (assumed -> known) and recompute milestones_total. Reads research-dossier.md + workshops/001 (authoritative).",
+      "next": ["build"] },
+
+    { "id": "build", "type": "phase", "label": "Build (phases revealed at the plan pass)", "status": "assumed",
+      "note": "Placeholder — the plan pass replaces this with one node per phase (research-dossier implies ~5 owner-scoped workstreams: CLI breadcrumb / adopt-verb state lifecycle / router signal / coach voice port / docs sweep; plus a possible Phase 0 sensor fixture).",
+      "next": ["review"] },
+
+    { "id": "review", "type": "phase", "label": "Review", "status": "assumed", "next": ["merge"] },
+
+    { "id": "merge", "type": "merge", "label": "Merge", "status": "assumed",
+      "command": "/the-flow 8 merge", "next": [] }
+  ]
+}

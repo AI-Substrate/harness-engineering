@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "loop-flow-eval Report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["railTitle", "spineShape", "navUsed", "validates", "flowPath", "summary", "retrospective"],
+  "properties": {
+    "railTitle": { "type": "string", "description": "The rail prefix the skill's loop authored, e.g. \"[harness-loop]\"." },
+    "spineShape": { "type": "array", "items": { "type": "string" }, "description": "The spine node ids in order (excursions excluded), e.g. [boot, backpressure, observe, drain-gate, retro-drain, retro-harvest, improve]." },
+    "navUsed": { "type": "string", "description": "The position verb the skill prescribed and you ran, e.g. \"nav set\". A migrated skill uses nav, not a legacy cursor verb." },
+    "hookCommandsPresent": { "type": "array", "items": { "type": "string" }, "description": "The --hook tokens seen on node command fields, e.g. [pre-flight, pre-coding, post-coding, post-flight]." },
+    "validates": { "type": "boolean", "description": "Did `harness flow render` exit 0 on the authored flow?" },
+    "flowPath": { "type": "string", "description": "Absolute or repo-relative path to the throwaway loop.flow.json under $OUT (the scorer reads this)." },
+    "cursorCalled": { "type": "boolean", "description": "Did any prescribed command use a legacy `flow cursor` verb instead of `nav`? (Expected false.)" },
+    "summary": { "type": "string", "description": "One-paragraph faithful account of what the skill authored and how it was driven." },
+    "retrospective": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "workedWell": { "type": "array", "items": { "type": "string" } },
+        "confusing": { "type": "array", "items": { "type": "string" } },
+        "magicWand": { "type": "string" },
+        "magicWandTarget": { "type": "string", "enum": ["project", "minih"] },
+        "difficulties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "id": { "type": "string", "description": "LF-NNN" },
+              "layer": { "type": "string", "enum": ["project", "minih"] },
+              "description": { "type": "string" },
+              "workaround": { "type": "string" },
+              "severity": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

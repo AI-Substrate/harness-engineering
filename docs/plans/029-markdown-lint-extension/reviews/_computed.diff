@@ -1,0 +1,1176 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index baaa00d..65bd660 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -138,6 +138,21 @@ jobs:
+           fi
+           exit ${code:-0}
+ 
++      # Markdown conformance through the VERB: lint authored markdown + validate
++      # in-repo links/anchors + syntax-check mermaid fences (headless, no Chromium).
++      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
++      # annotation; a missing tool/config (exit 2) or crash (exit 1) fails the step.
++      - name: Markdown conformance (harness markdown-lint)
++        run: |
++          out=$(node harness/cli/bin/harness.js markdown-lint --json) || code=$?
++          echo "$out"
++          status=$(echo "$out" | jq -r .status)
++          if [ "$status" = "degraded" ]; then
++            count=$(echo "$out" | jq '.data.totals.findings')
++            echo "::warning title=markdown-lint::${count} markdown finding(s) at warn severity — see the envelope in this step's log; fix the authored docs and promote the gate once clean"
++          fi
++          exit ${code:-0}
++
+   # Stable, matrix-independent required check for branch protection (T005).
+   # Always runs and fails if any required job failed/cancelled.
+   ci-required:
+diff --git a/.harness/extensions/markdown-lint/decision.test.ts b/.harness/extensions/markdown-lint/decision.test.ts
+new file mode 100644
+index 0000000..aef739b
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/decision.test.ts
+@@ -0,0 +1,82 @@
++import { describe, expect, it } from 'vitest';
++import { type CheckResult, decide } from './lib/decision.js';
++
++const mk = (over: Partial<CheckResult> & Pick<CheckResult, 'name' | 'outcome'>): CheckResult => ({
++  findings: 0,
++  examined: 0,
++  summary: '',
++  ...over,
++});
++
++/**
++ * The decision is the honest-envelope contract (AC-03, warn-launch). All four
++ * reachable states are proven, plus the precedence rule (unavailable beats
++ * findings) and the totals/evidence aggregation.
++ */
++describe('decide', () => {
++  it('all checks pass → ok / exit 0 with evidence counts, no next_action', () => {
++    const d = decide([
++      mk({ name: 'markdownlint', outcome: 'pass', examined: 42 }),
++      mk({ name: 'links', outcome: 'pass', examined: 42 }),
++      mk({ name: 'mermaid', outcome: 'pass', examined: 7 }),
++    ]);
++    expect(d.status).toBe('ok');
++    expect(d.exitIntent).toBe(0);
++    expect(d.next_action).toBeUndefined();
++    expect(d.data.totals).toEqual({
++      findings: 0,
++      filesLinted: 42,
++      linksFilesChecked: 42,
++      fencesParsed: 7,
++    });
++  });
++
++  it('real findings → degraded / exit 0 (warn-launch), next_action names counts', () => {
++    const d = decide([
++      mk({ name: 'markdownlint', outcome: 'findings', findings: 12, examined: 40 }),
++      mk({ name: 'links', outcome: 'pass', examined: 40 }),
++      mk({ name: 'mermaid', outcome: 'findings', findings: 2, examined: 5 }),
++    ]);
++    expect(d.status).toBe('degraded');
++    expect(d.exitIntent).toBe(0);
++    expect(d.data.totals.findings).toBe(14);
++    expect(d.next_action).toContain('14 markdown finding');
++    expect(d.next_action).toMatch(/12 markdown lint/);
++    expect(d.next_action).toMatch(/2 mermaid syntax/);
++  });
++
++  it('a missing tool → unconfigured / exit 2 with an actionable next_action', () => {
++    const d = decide([
++      mk({
++        name: 'markdownlint',
++        outcome: 'unavailable',
++        unavailableReason: 'markdownlint-cli2 not installed',
++      }),
++      mk({ name: 'links', outcome: 'pass', examined: 40 }),
++      mk({ name: 'mermaid', outcome: 'pass', examined: 5 }),
++    ]);
++    expect(d.status).toBe('unconfigured');
++    expect(d.exitIntent).toBe(2);
++    expect(d.next_action).toContain('markdown lint');
++    expect(d.next_action).toContain('markdownlint-cli2 not installed');
++  });
++
++  it('unavailable takes precedence over findings', () => {
++    const d = decide([
++      mk({ name: 'markdownlint', outcome: 'findings', findings: 9, examined: 40 }),
++      mk({ name: 'links', outcome: 'unavailable', unavailableReason: 'remark-validate-links missing' }),
++      mk({ name: 'mermaid', outcome: 'pass', examined: 5 }),
++    ]);
++    expect(d.status).toBe('unconfigured');
++    expect(d.exitIntent).toBe(2);
++  });
++
++  it('carries the per-check breakdown through in data.checks', () => {
++    const checks = [
++      mk({ name: 'markdownlint', outcome: 'pass', examined: 1 }),
++      mk({ name: 'links', outcome: 'pass', examined: 1 }),
++      mk({ name: 'mermaid', outcome: 'pass', examined: 0 }),
++    ];
++    expect(decide(checks).data.checks).toBe(checks);
++  });
++});
+diff --git a/.harness/extensions/markdown-lint/extension.ts b/.harness/extensions/markdown-lint/extension.ts
+new file mode 100644
+index 0000000..5c1f49f
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/extension.ts
+@@ -0,0 +1,207 @@
++import type { HarnessVerb, VerbContext, VerbResult } from '@ai-substrate/engineering-harness/contract';
++import { type CheckResult, decide } from './lib/decision.js';
++import { extractMermaidFences, type MermaidFence } from './lib/extract.js';
++import { filterInScope } from './lib/scope.js';
++
++/**
++ * `harness markdown-lint` — one honest envelope over three third-party markdown
++ * checks (plan 029), wired into `just fft`:
++ *
++ *   1. markdown lint            — markdownlint-cli2 (style/structure)
++ *   2. in-repo links & anchors  — remark-validate-links (relative files + headings)
++ *   3. mermaid syntax           — headless `mermaid.parse()` in a subprocess (AC-07)
++ *
++ * "Wrap, don't rebuild" (P8): every check shells a real local bin via `ctx.exec`
++ * (no shell, argv only → injection-safe) and the verb implements only the glue —
++ * scope resolution, fence extraction, and the warn-launch envelope decision (all
++ * unit-tested under `lib/`). The frozen scope (`lib/scope.ts`) is the single
++ * source of truth for which authored markdown is checked, shared by all three
++ * checks so they never drift (AC-04).
++ *
++ * Guardrails (mirrors arch-check): no `node:*` imports; all I/O via `ctx`; never
++ * throws; every non-ok result carries a `next_action`. Warn-launch: findings land
++ * as `degraded`/exit 0 (visible, non-blocking) until authored docs are clean.
++ */
++
++const MDL_BIN = 'node_modules/.bin/markdownlint-cli2';
++const REMARK_BIN = 'node_modules/.bin/remark';
++const REMARK_PLUGIN = 'node_modules/remark-validate-links';
++const REMARK_CONFIG = '.remarkrc.json';
++const MERMAID_PKG = 'node_modules/mermaid';
++const JSDOM_PKG = 'node_modules/jsdom';
++const RUNNER = '.harness/extensions/markdown-lint/lib/mermaid-runner.mjs';
++
++const stripAnsi = (s: string): string => s.replace(/\u001b\[[0-9;]*m/g, '');
++const snippet = (s: string): string => stripAnsi(s || '').replace(/\s+/g, ' ').trim().slice(0, 300);
++const numFrom = (m: RegExpExecArray | null): number | undefined => (m ? Number(m[1]) : undefined);
++
++function unavailable(name: CheckResult['name'], reason: string, examined = 0): CheckResult {
++  return { name, outcome: 'unavailable', findings: 0, examined, summary: reason, unavailableReason: reason };
++}
++
++/** markdownlint-cli2 over the explicit in-scope file list (config = rules only). */
++async function runMarkdownlint(ctx: VerbContext, files: string[]): Promise<CheckResult> {
++  if (!ctx.fs.exists(`${ctx.cwd}/${MDL_BIN}`)) {
++    return unavailable('markdownlint', 'markdownlint-cli2 not installed — run `npm install` at the repo root');
++  }
++  if (files.length === 0) {
++    return { name: 'markdownlint', outcome: 'pass', findings: 0, examined: 0, summary: 'no in-scope markdown files' };
++  }
++  const r = await ctx.exec(MDL_BIN, files, { cwd: ctx.cwd });
++  const combined = `${r.stdout}\n${r.stderr}`;
++  const filesLinted = numFrom(/Linting:\s*(\d+)\s*file/i.exec(combined)) ?? files.length;
++
++  if (r.code === 0) {
++    return { name: 'markdownlint', outcome: 'pass', findings: 0, examined: filesLinted, summary: `${filesLinted} file(s) linted, 0 issues` };
++  }
++  // Exit code can't be trusted for the count — parse the summary, then fall back
++  // to counting `path:line[:col] (error|warning) MDxxx` lines (finding 03/06).
++  const findingLines = combined.match(/^.+?:\d+(?::\d+)?\s+(?:error|warning)\s+MD\d+.*$/gim) ?? [];
++  const findings = numFrom(/Summary:\s*(\d+)\s*(?:error|warning)/i.exec(combined)) ?? findingLines.length;
++  if (findings > 0) {
++    return {
++      name: 'markdownlint',
++      outcome: 'findings',
++      findings,
++      examined: filesLinted,
++      summary: stripAnsi(findingLines[0] ?? `${findings} markdownlint issue(s)`).trim(),
++    };
++  }
++  // Non-zero exit with nothing parseable → the tool itself failed (e.g. bad config).
++  return unavailable('markdownlint', `markdownlint-cli2 exited ${r.code}: ${snippet(r.stderr)}`, filesLinted);
++}
++
++/** remark-validate-links — check-only (never rewrites files): relative links + heading anchors. */
++async function runLinks(ctx: VerbContext, files: string[]): Promise<CheckResult> {
++  if (!ctx.fs.exists(`${ctx.cwd}/${REMARK_BIN}`) || !ctx.fs.exists(`${ctx.cwd}/${REMARK_PLUGIN}`)) {
++    return unavailable('links', 'remark / remark-validate-links not installed — run `npm install` at the repo root');
++  }
++  // Preflight the config (arch-check pattern): the plugin loads from .remarkrc.json,
++  // so a missing config would silently no-op the check — report it honestly instead.
++  if (!ctx.fs.exists(`${ctx.cwd}/${REMARK_CONFIG}`)) {
++    return unavailable('links', `${REMARK_CONFIG} is missing — restore it (it loads remark-validate-links)`);
++  }
++  if (files.length === 0) {
++    return { name: 'links', outcome: 'pass', findings: 0, examined: 0, summary: 'no in-scope markdown files' };
++  }
++  // No `--output`: that would REWRITE files (finding 04). cwd = repo root so the
++  // plugin resolves and its `git remote -v` lookup works (finding 03 / PL-09).
++  // The plugin comes from .remarkrc.json (preflighted above), not a CLI `--use`.
++  const r = await ctx.exec(REMARK_BIN, ['--frail', '--quiet', ...files], { cwd: ctx.cwd });
++  const findingLines = r.stderr.split('\n').filter((l) => l.includes('remark-validate-links:'));
++  if (findingLines.length > 0) {
++    return {
++      name: 'links',
++      outcome: 'findings',
++      findings: findingLines.length,
++      examined: files.length,
++      summary: stripAnsi(findingLines[0]).trim(),
++    };
++  }
++  if (r.code !== 0) {
++    // Non-zero with no link findings ⇒ a processing failure, not a finding
++    // (e.g. "Cannot process file" — outside a git tree, or a parse error).
++    return unavailable('links', `remark could not process the docs: ${snippet(r.stderr)}`, files.length);
++  }
++  return { name: 'links', outcome: 'pass', findings: 0, examined: files.length, summary: `${files.length} file(s) link-checked, 0 issues` };
++}
++
++/** Headless mermaid syntax check via the subprocess runner (AC-07). */
++async function runMermaid(ctx: VerbContext, files: string[]): Promise<CheckResult> {
++  if (!ctx.fs.exists(`${ctx.cwd}/${MERMAID_PKG}`) || !ctx.fs.exists(`${ctx.cwd}/${JSDOM_PKG}`)) {
++    return unavailable('mermaid', 'mermaid / jsdom not installed — run `npm install` at the repo root');
++  }
++  if (!ctx.fs.exists(`${ctx.cwd}/${RUNNER}`)) {
++    return unavailable('mermaid', `mermaid runner missing at ${RUNNER}`);
++  }
++  const fences: MermaidFence[] = [];
++  for (const f of files) {
++    const text = ctx.fs.readText(`${ctx.cwd}/${f}`);
++    if (text != null) fences.push(...extractMermaidFences(text, f));
++  }
++  if (fences.length === 0) {
++    return { name: 'mermaid', outcome: 'pass', findings: 0, examined: 0, summary: 'no mermaid fences in scope' };
++  }
++  // Fences travel as ONE argv arg (ctx.exec has no stdin; payload is tiny — see plan).
++  const r = await ctx.exec('node', [`${ctx.cwd}/${RUNNER}`, JSON.stringify(fences)], { cwd: ctx.cwd });
++  let parsed:
++    | { ok?: boolean; loadError?: string; results?: Array<{ path: string; line: number; valid: boolean; error?: string }> }
++    | null;
++  try {
++    parsed = JSON.parse(r.stdout.trim().split('\n').pop() ?? '{}');
++  } catch {
++    parsed = null;
++  }
++  if (!parsed || parsed.ok !== true || !Array.isArray(parsed.results)) {
++    const reason = parsed?.loadError ?? `mermaid runner failed (exit ${r.code}): ${snippet(r.stderr || r.stdout)}`;
++    return unavailable('mermaid', reason, fences.length);
++  }
++  const invalid = parsed.results.filter((x) => !x.valid);
++  if (invalid.length > 0) {
++    const first = invalid[0];
++    return {
++      name: 'mermaid',
++      outcome: 'findings',
++      findings: invalid.length,
++      examined: fences.length,
++      summary: `invalid mermaid at ${first.path}:${first.line}${first.error ? ` — ${first.error}` : ''}`,
++    };
++  }
++  return { name: 'mermaid', outcome: 'pass', findings: 0, examined: fences.length, summary: `${fences.length} mermaid fence(s) parsed, 0 invalid` };
++}
++
++const markdownLint: HarnessVerb = {
++  name: 'markdown-lint',
++  summary: 'Lint authored markdown, validate in-repo links/anchors, and syntax-check mermaid fences — one honest envelope.',
++  description:
++    "Runs three third-party checks over the repo's authored markdown (the frozen scope in lib/scope.ts): " +
++    'markdownlint-cli2 (style/structure), remark-validate-links (relative links + heading anchors, check-only), ' +
++    'and a headless mermaid.parse() subprocess (syntax only — no Chromium). Aggregates to one envelope: ' +
++    '0 findings => ok/exit 0 with evidence counts; any findings => degraded/exit 0 (warn-launch — visible, ' +
++    'non-blocking, promote to error once authored docs are clean); a missing tool => unconfigured/exit 2. ' +
++    'See `harness instructions markdown-lint`.',
++  options: [{ flags: '--dir <path>', description: 'restrict the checks to in-scope markdown under this directory' }],
++  async run(ctx): Promise<VerbResult> {
++    try {
++      if (!ctx.git.isRepo()) {
++        return ctx.unconfigured(
++          "markdown-lint checks the repo's tracked markdown — run it from inside the git work tree (repo root).",
++        );
++      }
++      const ls = await ctx.exec('git', ['ls-files', '*.md', '*.markdown'], { cwd: ctx.cwd });
++      if (!ls.ok) {
++        return ctx.unconfigured(
++          `Could not list tracked markdown (git ls-files exited ${ls.code}). Run from the repo root. ${snippet(ls.stderr)}`,
++        );
++      }
++      let files = filterInScope(ls.stdout.split('\n'));
++      const dir = typeof ctx.options.dir === 'string' ? ctx.options.dir.replace(/\\/g, '/').replace(/\/+$/, '') : undefined;
++      if (dir) files = files.filter((f) => f === dir || f.startsWith(`${dir}/`));
++
++      const [mdl, links, mermaid] = await Promise.all([
++        runMarkdownlint(ctx, files),
++        runLinks(ctx, files),
++        runMermaid(ctx, files),
++      ]);
++      const decision = decide([mdl, links, mermaid]);
++
++      if (decision.status === 'unconfigured') {
++        return ctx.unconfigured(decision.next_action as string, { data: decision.data });
++      }
++      if (decision.status === 'degraded') {
++        return ctx.degraded(decision.data, decision.next_action as string);
++      }
++      return ctx.ok(decision.data);
++    } catch (e) {
++      return ctx.error('E_MARKDOWN_LINT_UNEXPECTED', 'markdown-lint failed unexpectedly', {
++        details: e instanceof Error ? e.message : String(e),
++        next_action:
++          'Re-run from the repo root. To localise, run the tools directly: ' +
++          './node_modules/.bin/markdownlint-cli2 <files>; ' +
++          './node_modules/.bin/remark --frail --quiet <files> (plugin from .remarkrc.json)',
++      });
++    }
++  },
++};
++
++export default markdownLint;
+diff --git a/.harness/extensions/markdown-lint/extract.test.ts b/.harness/extensions/markdown-lint/extract.test.ts
+new file mode 100644
+index 0000000..82d5519
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/extract.test.ts
+@@ -0,0 +1,81 @@
++import { describe, expect, it } from 'vitest';
++import { extractMermaidFences } from './lib/extract.js';
++
++/**
++ * The fence extractor decides which blocks reach the mermaid syntax check, so the
++ * tricky cases get teeth here: nested/wrapped fences, varying backtick counts,
++ * tilde fences, info-string variants, CRLF, and unterminated blocks at EOF.
++ */
++describe('extractMermaidFences', () => {
++  it('extracts a single mermaid fence with 1-based opening line and body text', () => {
++    const md = ['# Doc', '', '```mermaid', 'graph TD', '  A-->B', '```', '', 'after'].join('\n');
++    const out = extractMermaidFences(md, 'doc.md');
++    expect(out).toHaveLength(1);
++    expect(out[0]).toEqual({ path: 'doc.md', line: 3, text: 'graph TD\n  A-->B' });
++  });
++
++  it('extracts multiple mermaid fences and ignores non-mermaid code blocks', () => {
++    const md = [
++      '```js', // non-mermaid → skipped
++      'const x = 1;',
++      '```',
++      '```mermaid',
++      'graph TD',
++      '```',
++      'prose',
++      '```mermaid',
++      'sequenceDiagram',
++      '```',
++    ].join('\n');
++    const out = extractMermaidFences(md, 'f.md');
++    expect(out.map((f) => f.line)).toEqual([4, 8]);
++    expect(out.map((f) => f.text)).toEqual(['graph TD', 'sequenceDiagram']);
++  });
++
++  it('does NOT extract a ```mermaid example that is merely shown inside a 4-backtick fence', () => {
++    const md = ['````', '```mermaid', 'graph TD', '```', '````'].join('\n');
++    expect(extractMermaidFences(md, 'doc.md')).toEqual([]);
++  });
++
++  it('handles a 4-backtick mermaid fence whose body contains a 3-backtick line', () => {
++    const md = ['````mermaid', 'graph TD', '```', 'A-->B', '````'].join('\n');
++    const out = extractMermaidFences(md, 'd.md');
++    expect(out).toHaveLength(1);
++    expect(out[0].text).toBe('graph TD\n```\nA-->B');
++  });
++
++  it('detects an info string with attributes/trailing spaces (first token = mermaid)', () => {
++    const md = ['```mermaid  ', 'graph TD', '```'].join('\n');
++    expect(extractMermaidFences(md, 'd.md')).toHaveLength(1);
++    const md2 = ['```mermaidjs', 'graph TD', '```'].join('\n'); // not mermaid
++    expect(extractMermaidFences(md2, 'd.md')).toEqual([]);
++  });
++
++  it('supports tilde fences', () => {
++    const md = ['~~~mermaid', 'graph TD', '~~~'].join('\n');
++    expect(extractMermaidFences(md, 'd.md')).toHaveLength(1);
++  });
++
++  it('emits an unterminated mermaid fence at EOF best-effort', () => {
++    const md = ['```mermaid', 'graph TD', '  A-->B'].join('\n');
++    const out = extractMermaidFences(md, 'd.md');
++    expect(out).toHaveLength(1);
++    expect(out[0].text).toBe('graph TD\n  A-->B');
++  });
++
++  it('normalizes CRLF line endings', () => {
++    const md = '```mermaid\r\ngraph TD\r\n```\r\n';
++    const out = extractMermaidFences(md, 'd.md');
++    expect(out).toHaveLength(1);
++    expect(out[0].text).toBe('graph TD');
++  });
++
++  it('returns [] when there are no mermaid fences', () => {
++    expect(extractMermaidFences('# Just prose\n\nNo fences here.', 'd.md')).toEqual([]);
++  });
++
++  it('passes the path through verbatim', () => {
++    const out = extractMermaidFences('```mermaid\ngraph TD\n```', 'docs/how/x.md');
++    expect(out[0].path).toBe('docs/how/x.md');
++  });
++});
+diff --git a/.harness/extensions/markdown-lint/instructions.md b/.harness/extensions/markdown-lint/instructions.md
+new file mode 100644
+index 0000000..88ec6f1
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/instructions.md
+@@ -0,0 +1,83 @@
++# `harness markdown-lint` — agent briefing
++
++This verb is **deterministic markdown back pressure**: instead of eyeballing docs
++(or prompting "keep the markdown tidy and check the diagrams render"), it proves —
++yes or no — that the repo's **authored** markdown lints clean, that its in-repo
++links and heading anchors resolve, and that its mermaid fences are syntactically
++parseable. Run it after any change that touches authored docs. `just fft` runs it
++too, so the same answer gates the loop and your local check.
++
++It wraps three third-party tools behind **one honest envelope** (P8 "wrap, don't
++rebuild") — the verb only owns the glue (scope, fence extraction, the envelope
++decision), each unit-tested under `lib/`.
++
++## What it computes — and the proof boundary
++
++Over the frozen **authored-docs scope** (`lib/scope.ts` — the single source of
++truth; it filters `git ls-files '*.md'`), it runs three checks and aggregates:
++
++| Check | Tool | Proves |
++|---|---|---|
++| markdown lint | markdownlint-cli2 (`.markdownlint-cli2.jsonc`) | style/structure rules hold |
++| in-repo links & anchors | remark-validate-links (`.remarkrc.json`) | relative file links + heading anchors resolve on disk |
++| mermaid syntax | headless `mermaid.parse()` subprocess (`lib/mermaid-runner.mjs`) | each ` ```mermaid ` fence parses |
++
++**Does not prove**: that mermaid diagrams *render* visually (syntax only — no
++Chromium/mmdc); that **external** `http(s)` URLs are reachable (in-repo links
++only); anything in the **excluded** dirs (generated/transient: `docs/plans/**`,
++`.harness/**`, `agents/**`, `docs/retros/**`, `**/tasks/**`, `**/reviews/**`,
++`**/the-flow.md`, `**/*.fltplan.md`); markdown prose *quality*. A disabled lint
++rule (see `.markdownlint-cli2.jsonc`) stays silently green by design.
++
++## Outcome states
++
++| Condition | `status` | exit | what to do |
++|---|---|---|---|
++| 0 findings across all three checks | `ok` | 0 | nothing — authored markdown is clean |
++| ≥1 finding (lint / link / mermaid) | `degraded` | 0 | **launch posture** — review `data.checks[]`; visible but non-blocking |
++| a tool/config missing | `unconfigured` | 2 | `next_action` says what to install/restore (usually `npm install` at the repo root) |
++| unexpected crash | `error` | 1 | backstop — `error.details` + the raw commands to reproduce |
++
++`data` always carries `checks[]` (per-check `outcome`, `findings`, `examined`,
++`summary`) and `totals` (`findings`, `filesLinted`, `linksFilesChecked`,
++`fencesParsed`) — real evidence counts, never a bare `ok` (P9).
++
++**Launch posture (warn-launch)**: findings land as `degraded`/exit 0 so the verb
++is visible but never blocks `just fft` while the authored-doc backlog is worked
++down. Promote to blocking later by tightening the gate — never by widening the
++ignore set to dodge a finding.
++
++## What to do on a finding
++
++1. Read `data.checks[]`. Each check's `summary` quotes the first finding with its
++   `path:line`; `findings` is the count; `examined` is the evidence count.
++2. **markdown lint** → fix the doc, or (if it's a genuine repo-wide convention)
++   disable the rule in `.markdownlint-cli2.jsonc` **with a one-line rationale**.
++   Never add a rule; re-enable a disabled one as the docs are cleaned.
++3. **links** → fix the relative path or the `#anchor` (anchors are GitHub-slug
++   style). The target is resolved on disk from the linking file's directory.
++4. **mermaid** → open `path:line` and fix the diagram syntax; `harness markdown-lint`
++   re-validates headless.
++
++## Gotchas
++
++- **Run from the repo root.** Scope (`git ls-files`), the local bins, and the
++  configs all resolve against the invocation cwd; remark also shells `git remote -v`,
++  so it needs the git work tree.
++- **Scope is frozen in code** (`lib/scope.ts`), not in the tool configs — all
++  three checks share it so they can't drift (AC-04). Don't add scope to the
++  configs; don't widen the ignore set to silence a finding.
++- **mermaid needs a DOM shim**: the subprocess sets up `jsdom` before importing
++  mermaid — bare `mermaid.parse()` throws `DOMPurify.addHook is not a function`
++  on any *labeled* diagram (a label-less `A-->B` spike misleadingly passes). This
++  is still headless (jsdom is pure JS, not a browser).
++- **Don't trust child exit codes**: markdownlint issues go to **stderr**; the verb
++  parses output, not just `.code`. remark `--frail` exits 1 on findings; the verb
++  distinguishes a link finding (`remark-validate-links:` label) from a processing
++  failure ("Cannot process file").
++
++## Evidence
++
++No durable files are written (P9): counts and per-check detail live in the
++envelope `data`. Capture it if you need a record: `harness markdown-lint --json > out.json`.
++Scope a run with `--dir <path>` (e.g. `harness markdown-lint --dir docs/how`).
+diff --git a/.harness/extensions/markdown-lint/lib/decision.ts b/.harness/extensions/markdown-lint/lib/decision.ts
+new file mode 100644
+index 0000000..8035b6e
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/lib/decision.ts
+@@ -0,0 +1,102 @@
++/**
++ * Pure check-results → envelope decision for `harness markdown-lint` (plan 029).
++ *
++ * No I/O, no `node:*` imports, fully synchronous. The shell runs the three tools,
++ * normalizes each into a {@link CheckResult}, and hands them here; this maps them
++ * to the honest envelope per the plan's warn-launch posture (AC-03):
++ *
++ *   - any check `unavailable` (missing tool/config)  → unconfigured / exit 2
++ *   - else any real findings                         → degraded     / exit 0
++ *   - else                                           → ok           / exit 0
++ *
++ * `exitIntent` documents the contract's exit column so the unit tests can assert
++ * it without running the CLI; the kernel still owns the real exit code.
++ */
++
++export type CheckName = 'markdownlint' | 'links' | 'mermaid';
++export type CheckOutcome = 'pass' | 'findings' | 'unavailable';
++
++export interface CheckResult {
++  name: CheckName;
++  outcome: CheckOutcome;
++  /** Number of issues (0 when `pass`/`unavailable`). */
++  findings: number;
++  /** Evidence count: files linted / files link-checked / fences parsed. */
++  examined: number;
++  /** One-line human summary (first finding, or an evidence sentence). */
++  summary: string;
++  /** Present only when `outcome === 'unavailable'` — why the check could not run. */
++  unavailableReason?: string;
++}
++
++export interface MdLintDecision {
++  status: 'ok' | 'degraded' | 'unconfigured';
++  exitIntent: 0 | 2;
++  data: {
++    checks: CheckResult[];
++    totals: {
++      findings: number;
++      filesLinted: number;
++      linksFilesChecked: number;
++      fencesParsed: number;
++    };
++  };
++  next_action?: string;
++}
++
++const LABEL: Record<CheckName, string> = {
++  markdownlint: 'markdown lint',
++  links: 'in-repo links/anchors',
++  mermaid: 'mermaid syntax',
++};
++
++function find(checks: CheckResult[], name: CheckName): CheckResult | undefined {
++  return checks.find((c) => c.name === name);
++}
++
++function examinedOf(checks: CheckResult[], name: CheckName): number {
++  return find(checks, name)?.examined ?? 0;
++}
++
++export function decide(checks: CheckResult[]): MdLintDecision {
++  const totals = {
++    findings: checks.reduce((n, c) => n + (c.outcome === 'findings' ? c.findings : 0), 0),
++    filesLinted: examinedOf(checks, 'markdownlint'),
++    linksFilesChecked: examinedOf(checks, 'links'),
++    fencesParsed: examinedOf(checks, 'mermaid'),
++  };
++  const data = { checks, totals };
++
++  const unavailable = checks.filter((c) => c.outcome === 'unavailable');
++  if (unavailable.length > 0) {
++    const detail = unavailable
++      .map((c) => `${LABEL[c.name]} (${c.unavailableReason ?? 'unavailable'})`)
++      .join('; ');
++    return {
++      status: 'unconfigured',
++      exitIntent: 2,
++      data,
++      next_action:
++        `Set up the missing check(s): ${detail}. Run \`npm install\` at the repo root, ` +
++        'then re-run `harness markdown-lint` from the repo root.',
++    };
++  }
++
++  if (totals.findings > 0) {
++    const where = checks
++      .filter((c) => c.outcome === 'findings')
++      .map((c) => `${c.findings} ${LABEL[c.name]}`)
++      .join(', ');
++    return {
++      status: 'degraded',
++      exitIntent: 0,
++      data,
++      next_action:
++        `Review ${totals.findings} markdown finding(s) (${where}) in \`data.checks\` — ` +
++        'visible but non-blocking (warn-launch). Fix the authored docs, then promote the ' +
++        'gate to error/exit 1 once they are clean (never widen the scope to dodge a finding).',
++    };
++  }
++
++  return { status: 'ok', exitIntent: 0, data };
++}
+diff --git a/.harness/extensions/markdown-lint/lib/extract.ts b/.harness/extensions/markdown-lint/lib/extract.ts
+new file mode 100644
+index 0000000..9ac03d0
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/lib/extract.ts
+@@ -0,0 +1,82 @@
++/**
++ * Pure ` ```mermaid ` fence extractor for `harness markdown-lint` (plan 029).
++ *
++ * No I/O, no `node:*` imports, fully synchronous — the shell reads each file and
++ * feeds the text in; this returns the mermaid blocks with their source location.
++ * The mermaid syntax check (a subprocess) then validates each block's `text`.
++ *
++ * A line-based fence state machine tracks EVERY fenced code block (not just
++ * mermaid) so that a non-mermaid block which merely *shows* a ` ```mermaid `
++ * example (e.g. docs wrapped in a 4-backtick fence) is correctly skipped — only
++ * top-level mermaid fences are extracted (finding 02).
++ */
++
++export interface MermaidFence {
++  /** Repo-relative path of the source file (passed through verbatim). */
++  path: string;
++  /** 1-based line number of the opening fence. */
++  line: number;
++  /** The fence body (between the open and close markers), `\n`-joined. */
++  text: string;
++}
++
++interface OpenFence {
++  /** The exact fence marker run, e.g. '```' or '~~~~'. */
++  marker: string;
++  isMermaid: boolean;
++  startLine: number;
++  body: string[];
++}
++
++/** Match a fence-open line → its marker run + trimmed info string, or null. */
++function matchFenceOpen(line: string): { marker: string; info: string } | null {
++  const m = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(line);
++  if (!m) return null;
++  const info = m[2];
++  // CommonMark: a backtick info string may not itself contain a backtick.
++  if (m[1][0] === '`' && info.includes('`')) return null;
++  return { marker: m[1], info: info.trim() };
++}
++
++/** A closing fence: same char, length ≥ the opener, nothing but whitespace after. */
++function isFenceClose(line: string, marker: string): boolean {
++  const ch = marker[0] === '`' ? '`' : '~';
++  return new RegExp(`^\\s{0,3}${ch === '`' ? '`' : '~'}{${marker.length},}\\s*$`).test(line);
++}
++
++/** Does an info string declare a mermaid block? (first token, case-insensitive). */
++function isMermaidInfo(info: string): boolean {
++  return info.toLowerCase().split(/\s+/)[0] === 'mermaid';
++}
++
++/**
++ * Extract every top-level mermaid fence from `markdown`. Unterminated mermaid
++ * fences at EOF are emitted best-effort (the parser will judge the body).
++ */
++export function extractMermaidFences(markdown: string, path: string): MermaidFence[] {
++  const lines = markdown.split(/\r?\n/);
++  const fences: MermaidFence[] = [];
++  let open: OpenFence | null = null;
++
++  for (let i = 0; i < lines.length; i++) {
++    const line = lines[i];
++    if (open) {
++      if (isFenceClose(line, open.marker)) {
++        if (open.isMermaid) fences.push({ path, line: open.startLine, text: open.body.join('\n') });
++        open = null;
++      } else if (open.isMermaid) {
++        open.body.push(line);
++      }
++      continue;
++    }
++    const o = matchFenceOpen(line);
++    if (o) {
++      open = { marker: o.marker, isMermaid: isMermaidInfo(o.info), startLine: i + 1, body: [] };
++    }
++  }
++
++  if (open && open.isMermaid) {
++    fences.push({ path, line: open.startLine, text: open.body.join('\n') });
++  }
++  return fences;
++}
+diff --git a/.harness/extensions/markdown-lint/lib/mermaid-runner.mjs b/.harness/extensions/markdown-lint/lib/mermaid-runner.mjs
+new file mode 100644
+index 0000000..e463459
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/lib/mermaid-runner.mjs
+@@ -0,0 +1,93 @@
++/**
++ * Headless mermaid syntax validator — a SUBPROCESS for `harness markdown-lint`
++ * (plan 029, AC-07). Invoked as `node lib/mermaid-runner.mjs` with cwd = repo
++ * root, so `import('mermaid')` resolves from the repo's node_modules.
++ *
++ * Kept OUT of extension.ts on purpose: mermaid is a heavy browser-oriented ESM
++ * graph (finding 02); isolating it in a child process keeps the loader fast and
++ * the verb shell free of that import. It does NOT render (no Chromium / mmdc) —
++ * `mermaid.parse()` is syntax-only.
++ *
++ * Protocol:
++ *   fences ← `process.argv[2]` as a JSON string when present (how the verb shell
++ *            passes them — `ctx.exec` has no stdin), else read JSON from stdin
++ *            (handy for manual runs / spikes)
++ *   stdout → JSON `{ ok: true, results: [{ path, line, valid, diagramType?, error? }] }`
++ *            or, if mermaid can't be loaded, `{ ok: false, loadError }`
++ * Always exits 0 — validity travels in the JSON, never the exit code.
++ */
++
++const orig = { log: console.log, warn: console.warn, error: console.error, info: console.info, debug: console.debug };
++const silenceConsole = () => {
++  console.log = console.warn = console.error = console.info = console.debug = () => {};
++};
++const restoreConsole = () => {
++  Object.assign(console, orig);
++};
++
++const emit = (obj) => {
++  restoreConsole();
++  process.stdout.write(`${JSON.stringify(obj)}\n`);
++};
++
++async function readPayload() {
++  if (typeof process.argv[2] === 'string') return process.argv[2];
++  let raw = '';
++  for await (const chunk of process.stdin) raw += chunk;
++  return raw;
++}
++
++const raw = await readPayload();
++
++let fences;
++try {
++  fences = JSON.parse(raw || '[]');
++  if (!Array.isArray(fences)) throw new Error('stdin payload is not a JSON array');
++} catch (e) {
++  emit({ ok: false, loadError: `bad stdin payload: ${e?.message ?? String(e)}` });
++  process.exit(0);
++}
++
++let mermaid;
++try {
++  silenceConsole();
++  // mermaid sanitizes node-label text through DOMPurify, which needs a DOM —
++  // without one, `mermaid.parse()` throws "DOMPurify.addHook is not a function"
++  // on ANY labeled diagram (trivial `A-->B` graphs skip sanitization, which is
++  // why a label-less spike falsely looked headless-clean). jsdom supplies a
++  // pure-JS DOM (NOT a browser — AC-07 "no Chromium" still holds).
++  const { JSDOM } = await import('jsdom');
++  const dom = new JSDOM('<!DOCTYPE html><body></body>', { pretendToBeVisual: true });
++  globalThis.window = dom.window;
++  globalThis.document = dom.window.document;
++  globalThis.HTMLElement = dom.window.HTMLElement;
++  globalThis.SVGElement = dom.window.SVGElement;
++  mermaid = (await import('mermaid')).default;
++  mermaid.initialize({ startOnLoad: false, securityLevel: 'loose' });
++} catch (e) {
++  emit({ ok: false, loadError: e?.message ?? String(e) });
++  process.exit(0);
++}
++
++const results = [];
++for (const f of fences) {
++  try {
++    const parsed = await mermaid.parse(f.text ?? '', { suppressErrors: true });
++    // suppressErrors → false on invalid; a `{ diagramType }` object on valid.
++    results.push({
++      path: f.path,
++      line: f.line,
++      valid: parsed !== false,
++      diagramType: parsed && parsed.diagramType ? parsed.diagramType : undefined,
++    });
++  } catch (e) {
++    results.push({
++      path: f.path,
++      line: f.line,
++      valid: false,
++      error: String(e?.message ?? e).split('\n')[0],
++    });
++  }
++}
++
++emit({ ok: true, results });
+diff --git a/.harness/extensions/markdown-lint/lib/scope.ts b/.harness/extensions/markdown-lint/lib/scope.ts
+new file mode 100644
+index 0000000..0d98e7c
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/lib/scope.ts
+@@ -0,0 +1,107 @@
++/**
++ * Frozen scope contract for `harness markdown-lint` (plan 029 § Scope contract).
++ *
++ * THE single source of truth for which authored markdown the verb checks. The
++ * shell derives ALL THREE checks' file lists from `inScope()` (it filters
++ * `git ls-files '*.md' '*.markdown'`), so markdownlint, remark-validate-links,
++ * and the mermaid walk can never drift apart — that is what makes AC-04
++ * ("zero findings from excluded dirs") provable here, in one unit-tested place,
++ * rather than re-asserted in two tool configs.
++ *
++ * Pure: no I/O, no `node:*` imports, fully synchronous. The tune step (T009) may
++ * relax markdownlint RULES only — it must never widen these globs.
++ */
++
++/** Authored prose we lint. Exactly the plan's § Scope contract include set. */
++export const INCLUDE_GLOBS: readonly string[] = [
++  'README.md',
++  'AGENTS.md',
++  'AGENTS_README.md',
++  'INSTALL.md',
++  'CHANGELOG.md',
++  'docs/guide/**',
++  'docs/how/**',
++  'docs/project-rules/**',
++  'harness-foundations/**',
++  'skills/**',
++  'harness/cli/docs/**',
++  'harness/cli/README.md',
++];
++
++/** Generated / transient / vendored markdown we never lint. Ignore wins over include. */
++export const IGNORE_GLOBS: readonly string[] = [
++  'docs/plans/**',
++  '.harness/**',
++  'agents/**',
++  'docs/retros/**',
++  'harness/cli/test/**',
++  '**/reviews/**',
++  'node_modules/**',
++  'dist/**',
++  'coverage/**',
++  'scratch/**',
++  '**/the-flow.md',
++  '**/*.fltplan.md',
++  '**/tasks/**',
++];
++
++/**
++ * Convert a path glob into an anchored RegExp. Supports `**` (any chars incl.
++ * `/`), a `**\/` segment (zero or more directories), `*` (within one segment),
++ * and `?` (one non-`/` char). Everything else is matched literally.
++ */
++export function globToRegExp(glob: string): RegExp {
++  let re = '^';
++  for (let i = 0; i < glob.length; i++) {
++    const c = glob[i];
++    if (c === '*') {
++      if (glob[i + 1] === '*') {
++        const prevSlash = i === 0 || glob[i - 1] === '/';
++        const nextIsSlash = glob[i + 2] === '/';
++        if (prevSlash && nextIsSlash) {
++          // `**\/` → zero or more leading directory segments
++          re += '(?:.*/)?';
++          i += 2;
++        } else {
++          // bounded/trailing `**` → any chars including `/`
++          re += '.*';
++          i += 1;
++        }
++      } else {
++        re += '[^/]*';
++      }
++    } else if (c === '?') {
++      re += '[^/]';
++    } else if ('.+^${}()|[]\\/'.includes(c)) {
++      re += `\\${c}`;
++    } else {
++      re += c;
++    }
++  }
++  return new RegExp(`${re}$`);
++}
++
++const INCLUDE_RE = INCLUDE_GLOBS.map(globToRegExp);
++const IGNORE_RE = IGNORE_GLOBS.map(globToRegExp);
++
++/** Normalize to repo-relative POSIX form: backslashes → `/`, drop a leading `./`. */
++export function normalizePath(path: string): string {
++  return path.replace(/\\/g, '/').replace(/^\.\//, '');
++}
++
++/** True when `path` is authored markdown the verb should check. Ignore beats include. */
++export function inScope(path: string): boolean {
++  const p = normalizePath(path);
++  if (IGNORE_RE.some((re) => re.test(p))) return false;
++  return INCLUDE_RE.some((re) => re.test(p));
++}
++
++/** Filter a list of repo-relative paths to the in-scope authored set (sorted, deduped). */
++export function filterInScope(paths: string[]): string[] {
++  const kept = new Set<string>();
++  for (const raw of paths) {
++    const p = normalizePath(raw);
++    if (p && inScope(p)) kept.add(p);
++  }
++  return [...kept].sort();
++}
+diff --git a/.harness/extensions/markdown-lint/scope.test.ts b/.harness/extensions/markdown-lint/scope.test.ts
+new file mode 100644
+index 0000000..d49a813
+--- /dev/null
++++ b/.harness/extensions/markdown-lint/scope.test.ts
+@@ -0,0 +1,119 @@
++import { describe, expect, it } from 'vitest';
++import { filterInScope, globToRegExp, inScope, normalizePath } from './lib/scope.js';
++
++/**
++ * The scope contract is the AC-04 guarantee ("zero findings from excluded dirs"),
++ * so it is unit-proven here: include hits, ignore hits, and the ignore-beats-include
++ * rule that protects generated/transient markdown nested under authored roots.
++ */
++describe('inScope — include set', () => {
++  it.each([
++    'README.md',
++    'AGENTS.md',
++    'AGENTS_README.md',
++    'INSTALL.md',
++    'CHANGELOG.md',
++    'docs/guide/intro.md',
++    'docs/how/extend-the-harness.md',
++    'docs/project-rules/constitution.md',
++    'harness-foundations/source-notes/notes-public.md',
++    'skills/eng-harness-flow/SKILL.md',
++    'harness/cli/docs/authoring-verbs.md',
++    'harness/cli/README.md',
++  ])('includes authored doc %s', (p) => {
++    expect(inScope(p)).toBe(true);
++  });
++
++  it('bare include entries match the repo root only (same-named files under non-included dirs are out)', () => {
++    expect(inScope('docs/README.md')).toBe(false);
++    expect(inScope('harness/cli/src/README.md')).toBe(false);
++  });
++
++  it('a same-named file under an included tree IS in scope via that tree (e.g. skills/**)', () => {
++    expect(inScope('skills/eng-harness-flow/AGENTS.md')).toBe(true);
++  });
++});
++
++describe('inScope — ignore set (ignore beats include)', () => {
++  it.each([
++    'docs/plans/029-markdown-lint-extension/markdown-lint-extension-plan.md',
++    '.harness/extensions/markdown-lint/instructions.md',
++    'agents/validate-harness-flow/prompt.md',
++    'docs/retros/009-harnessability-survey.md',
++    'harness/cli/test/fixtures/x.md',
++    'scratch/sources/raw.md',
++    'node_modules/foo/readme.md',
++    'dist/x.md',
++    'coverage/x.md',
++  ])('ignores generated/transient %s', (p) => {
++    expect(inScope(p)).toBe(false);
++  });
++
++  it('ignores **/the-flow.md, **/*.fltplan.md, **/tasks/**, **/reviews/** at any depth', () => {
++    expect(inScope('docs/plans/x/the-flow.md')).toBe(false);
++    expect(inScope('the-flow.md')).toBe(false);
++    expect(inScope('docs/guide/x.fltplan.md')).toBe(false);
++    expect(inScope('skills/eng-harness-flow/tasks/phase-1/tasks.md')).toBe(false);
++    expect(inScope('docs/how/reviews/r1.md')).toBe(false);
++  });
++
++  it('ignore wins even when the path is under an included root', () => {
++    // skills/** is included, but a tasks/ or reviews/ subtree under it is excluded.
++    expect(inScope('skills/foo/tasks/t.md')).toBe(false);
++    expect(inScope('skills/foo/reviews/r.md')).toBe(false);
++    expect(inScope('skills/foo/SKILL.md')).toBe(true);
++  });
++});
++
++describe('inScope — out-of-scope authored-looking paths', () => {
++  it('excludes markdown outside the include set', () => {
++    expect(inScope('docs/adr/001.md')).toBe(false);
++    expect(inScope('harness/cli/src/x.md')).toBe(false);
++    expect(inScope('some/random/file.md')).toBe(false);
++  });
++});
++
++describe('normalizePath', () => {
++  it('drops a leading ./ and converts backslashes', () => {
++    expect(normalizePath('./README.md')).toBe('README.md');
++    expect(normalizePath('docs\\how\\x.md')).toBe('docs/how/x.md');
++  });
++  it('keeps an already-normal path unchanged', () => {
++    expect(normalizePath('docs/how/x.md')).toBe('docs/how/x.md');
++  });
++});
++
++describe('filterInScope', () => {
++  it('keeps only in-scope paths, normalized, sorted, deduped', () => {
++    const out = filterInScope([
++      './README.md',
++      'README.md',
++      'docs/plans/x/p.md',
++      'docs/how/b.md',
++      'docs/how/a.md',
++      '.harness/x.md',
++    ]);
++    expect(out).toEqual(['README.md', 'docs/how/a.md', 'docs/how/b.md']);
++  });
++  it('ignores empty entries', () => {
++    expect(filterInScope(['', 'README.md'])).toEqual(['README.md']);
++  });
++});
++
++describe('globToRegExp', () => {
++  it('** matches across segments; * stays within a segment', () => {
++    expect(globToRegExp('docs/how/**').test('docs/how/a/b.md')).toBe(true);
++    expect(globToRegExp('*.md').test('a/b.md')).toBe(false);
++    expect(globToRegExp('*.md').test('b.md')).toBe(true);
++  });
++  it('**/ means zero or more leading directories', () => {
++    const re = globToRegExp('**/the-flow.md');
++    expect(re.test('the-flow.md')).toBe(true);
++    expect(re.test('a/b/the-flow.md')).toBe(true);
++    expect(re.test('a/the-flow.md.bak')).toBe(false);
++  });
++  it('escapes regex metacharacters in literals', () => {
++    expect(globToRegExp('a.b+c.md').test('a.b+c.md')).toBe(true);
++    expect(globToRegExp('a.b+c.md').test('aXbXc.md')).toBe(false);
++  });
++});
+diff --git a/.markdownlint-cli2.jsonc b/.markdownlint-cli2.jsonc
+new file mode 100644
+index 0000000..6b6900e
+--- /dev/null
++++ b/.markdownlint-cli2.jsonc
+@@ -0,0 +1,60 @@
++// markdownlint-cli2 config for `harness markdown-lint` (plan 029).
++//
++// RULES ONLY. The authored-docs SCOPE is owned in code by the single source of
++// truth `.harness/extensions/markdown-lint/lib/scope.ts` (the verb passes an
++// explicit, pre-filtered file list), so `globs`/`ignores` here are belt-and-
++// suspenders for anyone running `markdownlint-cli2` directly — NOT the scope
++// contract. Never widen scope to dodge a finding (plan § Scope contract).
++//
++// Disabled rules are deliberate conflicts with this repo's established authored-
++// doc conventions (each with a one-line rationale). New rules are never added;
++// disable a rule here only to record a convention, and re-enable per rule as the
++// docs are cleaned. Warn-launch: residual findings land as degraded/exit 0.
++{
++  "config": {
++    "default": true,
++
++    // — High-volume conventions the repo authored docs deliberately don't follow —
++    "MD013": false, // line-length: authored prose is intentionally long / unwrapped
++    "MD060": false, // table-column-style: repo uses compact pipe tables on purpose
++    "MD055": false, // table-pipe-style: same compact-table convention
++    "MD033": false, // no-inline-html: docs use inline HTML (<details>, <br>, comments)
++    "MD034": false, // no-bare-urls: bare URLs appear by choice in places
++    "MD040": false, // fenced-code-language: bare ``` fences are used for terminal/evidence output
++    "MD041": false, // first-line-h1: doc fragments/partials intentionally don't open with H1
++    "MD056": false, // table-column-count: misfires on skill TEMPLATE placeholder rows ({{VAR}} as a 1-cell row)
++
++    // MD024 duplicate-headings: allow repeats under DIFFERENT parents (changelogs
++    // repeat "### Features" per version); still catches true sibling duplicates.
++    "MD024": { "siblings_only": true },
++
++    // — Whitespace-hygiene backlog: widely violated across authored docs; not mass-
++    //   editing the shared working tree now. Re-enable per rule once docs are cleaned. —
++    "MD012": false, // no-multiple-blanks
++    "MD022": false, // blanks-around-headings
++    "MD031": false, // blanks-around-fences
++    "MD032": false, // blanks-around-lists
++    "MD028": false, // no-blanks-blockquote
++    "MD009": false, // no-trailing-spaces
++    "MD047": false, // single-trailing-newline
++    "MD036": false, // no-emphasis-as-heading
++    "MD038": false  // no-space-in-code-span
++  },
++
++  // Documentation of the same scope the verb enforces in code (not load-bearing here).
++  "ignores": [
++    "docs/plans/**",
++    ".harness/**",
++    "agents/**",
++    "docs/retros/**",
++    "harness/cli/test/**",
++    "**/reviews/**",
++    "node_modules/**",
++    "dist/**",
++    "coverage/**",
++    "scratch/**",
++    "**/the-flow.md",
++    "**/*.fltplan.md",
++    "**/tasks/**"
++  ]
++}
+diff --git a/.remarkrc.json b/.remarkrc.json
+new file mode 100644
+index 0000000..ac8c35c
+--- /dev/null
++++ b/.remarkrc.json
+@@ -0,0 +1,3 @@
++{
++  "plugins": ["remark-validate-links"]
++}
+diff --git a/docs/how/extend-the-harness.md b/docs/how/extend-the-harness.md
+index 279b0e7..6ade5bd 100644
+--- a/docs/how/extend-the-harness.md
++++ b/docs/how/extend-the-harness.md
+@@ -175,6 +175,14 @@ $ harness new ci-smoke --wrap "just ci-smoke"
+ or shell operators, scaffold without `--wrap` and write the `ctx.exec(...)` calls
+ by hand.
+ 
++A worked, multi-tool example lives in-tree: **`harness markdown-lint`**
++([`.harness/extensions/markdown-lint/`](../../.harness/extensions/markdown-lint/))
++wraps three third-party tools behind **one** honest envelope — markdownlint-cli2
++(style), remark-validate-links (in-repo links + heading anchors), and a headless
++`mermaid.parse()` subprocess (mermaid syntax, no Chromium) — with the risk-carrying
++glue (scope, fence extraction, the envelope decision) in unit-tested `lib/` and a
++warn-launch posture (findings = `degraded`/exit 0). It's wired into `just fft`.
++
+ ---
+ 
+ ## Guided path: the `add-extension` verb (`/eng-harness-flow`)
+diff --git a/justfile b/justfile
+index a554b1d..872a6fc 100644
+--- a/justfile
++++ b/justfile
+@@ -170,8 +170,15 @@ format:
+ test:
+     cd harness/cli && npx vitest run --coverage
+ 
+-# fix -> format -> test (the engineering loop).
+-fft: fix format test
++# Lint authored markdown: markdownlint + in-repo links/anchors + mermaid syntax.
++# Warn-launch: findings report as `degraded`/exit 0 (visible, non-blocking), so
++# this never breaks the loop until authored docs are clean and the gate is promoted.
++# Run via node (AGENTS.md: not npx) so it works from this working tree.
++lint-md:
++    node harness/cli/bin/harness.js markdown-lint
++
++# fix -> format -> test -> lint-md (the engineering loop).
++fft: fix format test lint-md
+ 
+ # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
+ test-repo dest="":
+diff --git a/package.json b/package.json
+index c3e4e7f..14857dd 100644
+--- a/package.json
++++ b/package.json
+@@ -41,6 +41,7 @@
+     "prepare": "npm run build",
+     "test": "cd harness/cli && vitest run --coverage",
+     "lint": "biome check harness/cli",
++    "lint:md": "node harness/cli/bin/harness.js markdown-lint",
+     "format": "biome format --write harness/cli",
+     "fix": "biome check --write harness/cli"
+   },
+@@ -53,6 +54,11 @@
+     "@types/node": "^25",
+     "@vitest/coverage-v8": "^4.1.8",
+     "dependency-cruiser": "^17.4.3",
++    "jsdom": "^29.1.1",
++    "markdownlint-cli2": "^0.22.1",
++    "mermaid": "^11.15.0",
++    "remark-cli": "^12.0.1",
++    "remark-validate-links": "^13.1.0",
+     "typescript": "^6.0.3",
+     "vitest": "^4.1.8"
+   }

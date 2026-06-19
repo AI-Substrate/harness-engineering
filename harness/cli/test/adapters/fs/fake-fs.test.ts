@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -180,6 +180,49 @@ describe('FakeFs', () => {
     expect(fs.exists('/repo/.harness')).toBe(true);
     expect(fs.exists('/repo/.harness/extensions')).toBe(true);
   });
+
+  it('realpath returns the path for a seeded/made entry and null for a missing one (plan 031)', () => {
+    /*
+    Test Doc:
+    - Why: ctx.fs.realpath is the in-contract substitute for a POSIX `realpath` shell-out
+      (CWE-59 confine guard). The fake has no symlinks, so realpath is identity for an
+      existing path and null otherwise — mirroring NodeFs returning null for a missing path.
+    - Contract: realpath('<seeded>') === '<seeded>'; realpath('<missing>') === null; probe recorded.
+    */
+    const fs = new FakeFs({ '/repo/x.json': '{}' });
+    fs.mkdirp('/repo/.harness');
+    expect(fs.realpath('/repo/x.json')).toBe('/repo/x.json');
+    expect(fs.realpath('/repo/.harness')).toBe('/repo/.harness');
+    expect(fs.realpath('/repo/missing')).toBeNull();
+    expect(fs.reads).toContain('/repo/x.json');
+  });
+
+  it('copy records the logical intent, models a successful copy, and carries confineRoot (plan 031)', () => {
+    /*
+    Test Doc:
+    - Why: a verb test asserts INTENT — that the verb called ctx.fsWrite.copy with the right
+      src/destDir/confineRoot — while real symlink confinement lives in NodeFs (asserted there
+      with a planted symlink). The fake never escapes; it records and models success.
+    - Contract: copy pushes {src,destDir,confineRoot?} to copies[]; mkdirs destDir; the dest file
+      (destDir/<basename src>) becomes readable; returns true.
+    - Worked Example: copy('/clone/.harness/x.json','/out',{confineRoot:'/clone'}) → /out/x.json exists.
+    */
+    const fs = new FakeFs({ '/clone/.harness/reports/x.json': 'PAYLOAD' });
+    const ok = fs.copy('/clone/.harness/reports/x.json', '/out/dir', { confineRoot: '/clone' });
+    expect(ok).toBe(true);
+    expect(fs.copies).toEqual([
+      { src: '/clone/.harness/reports/x.json', destDir: '/out/dir', confineRoot: '/clone' },
+    ]);
+    expect(fs.exists('/out/dir/x.json')).toBe(true);
+    expect(fs.readText('/out/dir/x.json')).toBe('PAYLOAD');
+  });
+
+  it('copy without confineRoot omits it from the ops log', () => {
+    const fs = new FakeFs({ '/a/b.txt': 'hi' });
+    fs.copy('/a/b.txt', '/dest');
+    expect(fs.copies).toEqual([{ src: '/a/b.txt', destDir: '/dest' }]);
+    expect(fs.exists('/dest/b.txt')).toBe(true);
+  });
 });
 
 describe('NodeFs', () => {
@@ -215,6 +258,118 @@ describe('NodeFs', () => {
       fs.writeText(target, '// real');
       expect(fs.exists(target)).toBe(true);
       expect(fs.readText(target)).toBe('// real');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('realpath resolves a real file and returns null for a missing path (plan 031)', () => {
+    const fs = new NodeFs();
+    const real = fs.realpath(join(CLI_ROOT, 'tsconfig.json'));
+    expect(real).not.toBeNull();
+    expect(real).toContain('tsconfig.json');
+    expect(fs.realpath(join(CLI_ROOT, 'definitely-not-here.xyz'))).toBeNull();
+  });
+
+  it('copy (no confineRoot) copies a file into destDir, basename preserved (plan 031)', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-copy-'));
+    try {
+      writeFileSync(join(base, 'src.json'), 'PAYLOAD');
+      const dest = join(base, 'out');
+      expect(fs.copy(join(base, 'src.json'), dest)).toBe(true);
+      expect(fs.readText(join(dest, 'src.json'))).toBe('PAYLOAD');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('confined copy ALLOWS a source genuinely inside the clone subtree (plan 031 AC-03)', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-confine-'));
+    try {
+      const clone = join(base, 'clone');
+      mkdirSync(join(clone, '.harness', 'reports'), { recursive: true });
+      writeFileSync(join(clone, '.harness', 'reports', 'latest.json'), 'INSIDE');
+      const dest = join(base, 'out');
+      const ok = fs.copy(join(clone, '.harness', 'reports', 'latest.json'), dest, {
+        confineRoot: clone,
+      });
+      expect(ok).toBe(true);
+      expect(fs.readText(join(dest, 'latest.json'))).toBe('INSIDE');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('confined copy REFUSES an out-of-tree symlink — CWE-59 exfil guard, one op (plan 031 AC-03)', () => {
+    /*
+    Test Doc:
+    - Why: a malicious clone can commit a fixed artifact path (e.g.
+      `.harness/reports/harnessability/latest.json`) as a SYMLINK to an absolute
+      host file (~/.ssh/id_rsa, cloud creds). A plain `cp` dereferences it and
+      exfiltrates the contents into the operator's tree (CWE-59). The portable
+      confined copy must REFUSE it — and do so in ONE op (resolve + contain + copy),
+      with no silent skip-all and no check-then-copy TOCTOU window.
+    - Contract: copy(symlinkInsideClone → outsideFile, dest, {confineRoot: clone}) === false,
+      and NOTHING is written to dest. A non-confined copy of the same symlink WOULD
+      copy it (proves the guard, not the absence of a symlink, is what refuses).
+    - Runs on ubuntu/macOS (real symlinks); the ruled-out windows-latest leg is covered
+      by-construction elsewhere (plan 017).
+    */
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-exfil-'));
+    try {
+      const secret = join(base, 'secret.txt');
+      writeFileSync(secret, 'TOP-SECRET');
+      const clone = join(base, 'clone');
+      mkdirSync(join(clone, '.harness', 'reports'), { recursive: true });
+      // The committed artifact path is a symlink escaping the clone to the secret.
+      const planted = join(clone, '.harness', 'reports', 'latest.json');
+      symlinkSync(secret, planted);
+      const dest = join(base, 'out');
+
+      // Guard refuses (one op): returns false, nothing written.
+      expect(fs.copy(planted, dest, { confineRoot: clone })).toBe(false);
+      expect(fs.exists(join(dest, 'latest.json'))).toBe(false);
+
+      // Control: WITHOUT the confineRoot the same symlink copies — so it is the
+      // guard that refuses, not a missing/broken symlink.
+      expect(fs.copy(planted, dest)).toBe(true);
+      expect(fs.readText(join(dest, 'latest.json'))).toBe('TOP-SECRET');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('confined copy refuses a missing source (no silent skip-all distinction) (plan 031)', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-missing-'));
+    try {
+      const clone = join(base, 'clone');
+      mkdirSync(clone, { recursive: true });
+      expect(fs.copy(join(clone, 'nope.json'), join(base, 'out'), { confineRoot: clone })).toBe(
+        false,
+      );
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('confined copy ALLOWS an in-tree path whose first segment starts with ".." (F003 — no over-rejection)', () => {
+    // A real dir literally named `..foo` is INSIDE the clone — its relative path
+    // `..foo/x.json` merely starts with the chars `..` but is not an escape. The
+    // separator-aware containment check must permit it (the old startsWith('..')
+    // over-rejected it; fail-closed, but wrong).
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-dotdot-'));
+    try {
+      const clone = join(base, 'clone');
+      mkdirSync(join(clone, '..foo'), { recursive: true });
+      writeFileSync(join(clone, '..foo', 'x.json'), 'INSIDE');
+      const dest = join(base, 'out');
+      expect(fs.copy(join(clone, '..foo', 'x.json'), dest, { confineRoot: clone })).toBe(true);
+      expect(fs.readText(join(dest, 'x.json'))).toBe('INSIDE');
     } finally {
       rmSync(base, { recursive: true, force: true });
     }

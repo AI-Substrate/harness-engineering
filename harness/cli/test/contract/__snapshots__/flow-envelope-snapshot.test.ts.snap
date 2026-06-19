@@ -1,0 +1,44 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`contract: harness flow Envelope data shapes (T001 checkpoint 2 — frozen for Phase 3) > freezes create / show / event envelope shapes 1`] = `
+{
+  "create": {
+    "command": "flow",
+    "data": {
+      "event_count": 1,
+      "kind": "harness-loop",
+      "next": null,
+      "node_count": 7,
+      "now": "boot",
+      "path": "/repo/.harness/flows/demo.json",
+      "slug": "demo",
+    },
+    "status": "ok",
+  },
+  "event": {
+    "command": "flow",
+    "data": {
+      "event": {
+        "id": "CUS-001",
+        "kind": "custom",
+        "origin": "manual",
+      },
+      "path": "/repo/.harness/flows/demo.json",
+    },
+    "status": "ok",
+  },
+  "show": {
+    "command": "flow",
+    "data": {
+      "event_count": 1,
+      "kind": "harness-loop",
+      "next": null,
+      "node_count": 7,
+      "now": "boot",
+      "path": "/repo/.harness/flows/demo.json",
+      "slug": "demo",
+    },
+    "status": "ok",
+  },
+}
+`;

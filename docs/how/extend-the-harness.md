@@ -175,6 +175,14 @@ $ harness new ci-smoke --wrap "just ci-smoke"
 or shell operators, scaffold without `--wrap` and write the `ctx.exec(...)` calls
 by hand.
 
+A worked, multi-tool example lives in-tree: **`harness markdown-lint`**
+([`.harness/extensions/markdown-lint/`](../../.harness/extensions/markdown-lint/))
+wraps three third-party tools behind **one** honest envelope — markdownlint-cli2
+(style), remark-validate-links (in-repo links + heading anchors), and a headless
+`mermaid.parse()` subprocess (mermaid syntax, no Chromium) — with the risk-carrying
+glue (scope, fence extraction, the envelope decision) in unit-tested `lib/` and a
+warn-launch posture (findings = `degraded`/exit 0). It's wired into `just fft`.
+
 ---
 
 ## Guided path: the `add-extension` verb (`/eng-harness-flow`)

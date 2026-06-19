@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "kind": "harness-adopt",
+  "slug": "harness-adopt",
+  "title": "adopt",
+  "nav": { "now": "install", "next": "governance", "intent": "adopt the harness in this repo", "bag": {} },
+  "created_at": "2026-01-01T00:00:00Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": null,
+    "repo": "git+https://github.com/AI-Substrate/harness-engineering.git",
+    "created_at": "2026-01-01T00:00:00Z",
+    "agent": null,
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-01-01T00:00:00Z",
+      "details": { "kind": "harness-adopt", "slug": "harness-adopt" }
+    }
+  ],
+  "nodes": [
+    { "id": "install", "type": "install", "label": "Install harness", "status": "done", "next": ["governance"], "zone": "preflight" },
+    { "id": "governance", "type": "governance", "label": "Governance + boot contract", "status": "in_progress", "next": ["build-boot"], "zone": "flight" },
+    { "id": "build-boot", "type": "build-boot", "label": "Build + run boot (last)", "status": "assumed", "next": ["bridge"], "zone": "postflight" },
+    { "id": "bridge", "type": "decision", "label": "Bridge → harness loop?", "status": "assumed", "next": [], "zone": "postflight" },
+    { "id": "scout", "type": "scout", "label": "Scout (harnessability)", "status": "skipped", "next": ["governance"], "zone": "preflight", "branch_of": "install" },
+    { "id": "inject", "type": "inject", "label": "Inject (wire seams)", "status": "assumed", "next": ["build-boot"], "zone": "flight", "branch_of": "governance" }
+  ]
+}

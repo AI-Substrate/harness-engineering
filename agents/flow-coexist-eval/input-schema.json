@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "flow-coexist-eval Input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "harnessSource": {
+      "type": "string",
+      "description": "Where eng-harness-flow is loaded from (informational; the run loads it via --skill-source/--skill). Default: skills/eng-harness-flow.",
+      "default": "skills/eng-harness-flow"
+    },
+    "theFlowSchema": {
+      "type": "string",
+      "description": "Path to the the-flow flight-plan schema, passed to `harness flow create flight-plan --schema`. The-flow ships it with the skill; resolve at runtime from the installed skill base (e.g. <agent-harness-root>/skills/the-flow/references/flight-plan.schema.json). Left empty by default so the prompt derives it.",
+      "default": ""
+    }
+  }
+}

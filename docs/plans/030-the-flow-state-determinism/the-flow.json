@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "the-flow-state-determinism",
+  "created_at": "2026-06-19T02:20:20.692Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "026-flow-nav-rail-zone",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-19T02:20:20.692Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:20.706Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "the-flow-state-determinism"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:20.794Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:20.881Z",
+      "details": {
+        "node": "review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:20.980Z",
+      "details": {
+        "node": "phase-1",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:21.074Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:21.175Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:20:21.259Z",
+      "details": {
+        "from": "",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:40:38.969Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:57:32.273Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:57:32.364Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:13:54.033Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:13:54.110Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:13:54.197Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-19T02:20:20.794Z",
+      "modified_at": "2026-06-19T02:20:20.794Z"
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "assumed",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-19T02:20:20.881Z",
+      "modified_at": "2026-06-19T02:20:20.881Z"
+    },
+    {
+      "id": "phase-1",
+      "type": "phase",
+      "label": "Phase 1: Drop the state file onto nav/bag",
+      "status": "done",
+      "next": [
+        "review"
+      ],
+      "created_at": "2026-06-19T02:20:20.980Z",
+      "modified_at": "2026-06-19T03:13:54.197Z",
+      "note": "State file eliminated from the-flow SOURCE (T-A1..A6, 14 sites across SKILL.md/00-routing.md/coach.md/getting-started.md); §6 no-clobber backfill added; eval harness gained no-file + nav.now gates; scorer discrimination proven deterministically. AC-01..06a ✅.",
+      "comments": [
+        {
+          "at": "2026-06-19T03:13:54.110Z",
+          "text": "Group A (source prose) + Group B (eval harness) done. Deferred follow-ups: deploy via just install-skills-from-source (gated), eng-harness-flow repoint (028), full minih e2e behavioural run (T-B3b, AC-06b/08).",
+          "source": "system",
+          "kind": "note"
+        }
+      ],
+      "ran_at": "2026-06-19T03:13:54.197Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "next": [
+        "phase-1"
+      ],
+      "created_at": "2026-06-19T02:20:21.074Z",
+      "modified_at": "2026-06-19T02:40:38.969Z",
+      "comments": [
+        {
+          "at": "2026-06-19T02:40:38.969Z",
+          "text": "validate-v2 (4 parallel agents): VALIDATED WITH FIXES. 3 CRITICAL + 3 HIGH found & fixed — §6 migration redesigned (nav authoritative, never clobber; current_stage->node lift dropped) + eng-harness-flow blast radius captured. Core thesis, edit sites (14/14), field map, nav.bag.status mechanism verified against live source/CLI.",
+          "source": "system",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-19T02:20:21.175Z",
+      "modified_at": "2026-06-19T02:20:21.175Z"
+    }
+  ],
+  "nav": {
+    "now": "phase-1",
+    "next": "review",
+    "intent": "Finish dropping .the-flow-state.json onto the deterministic nav/bag store: fold session state into nav.intent + nav.bag, derive pending_command/milestones/status, eliminate the hand-written state file.",
+    "bag": {
+      "mode": "Simple",
+      "status": "active"
+    }
+  }
+}

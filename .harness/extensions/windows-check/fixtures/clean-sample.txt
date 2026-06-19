@@ -1,0 +1,20 @@
+// A CLEAN, cross-platform sample (test fixture only). Mirrors the ported dogfood
+// verbs — every side effect goes through the portable ctx ports. windows-check
+// must find ZERO hazards here.
+import type { VerbContext } from '@ai-substrate/engineering-harness/contract';
+
+export async function good(ctx: VerbContext, url: string, logPath: string) {
+  const tmp = ctx.fsWrite.mkdtemp('good-');
+  ctx.fsWrite.mkdirp(tmp);
+  await ctx.exec('minih', ['--version']);
+  const clone = await ctx.exec('git', ['clone', '-c', 'core.longpaths=true', '--depth=1', url, tmp]);
+  const name = url.split(/[/\\]/).pop();
+  await ctx.clock.sleep(300);
+  const { pid } = ctx.background.spawnDetached({
+    command: 'minih',
+    args: ['run'],
+    cwd: ctx.cwd,
+    logPath,
+  });
+  return { name, pid };
+}

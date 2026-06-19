@@ -78,6 +78,27 @@ point.
   minih (the runner, skill passing, permissions). Capture friction on both
   layers, at the moment you hit it.
 
+## Plan 032 — also drive + verify the ADOPT FLOW (a first-class CLI flight plan)
+
+Adoption is no longer ad-hoc: `eng-harness-flow` drives it as a **real `harness flow`
+flight plan** (the `harness-adopt` overlay) — the dogfood. As you onboard the clone,
+follow `eng-harness-flow`'s `references/flight-plan-ops.md` guidance to **author and
+advance an adopt flight plan with real `harness flow` commands** (never hand-edit the
+JSON), writing it inside the clone (gitignored scratch is fine). Then **independently
+verify** it from the artifact (parse the global `--json` placed BEFORE `flow`):
+
+```bash
+node "$PROJECT_ROOT"/harness/cli/bin/harness.js --json flow rail     --path <adopt.json>  # rail starts "[adopt]"?
+node "$PROJECT_ROOT"/harness/cli/bin/harness.js --json flow nav show --path <adopt.json>  # .data.nav.now resolves?
+node "$PROJECT_ROOT"/harness/cli/bin/harness.js flow render          --path <adopt.json>  # exit 0?
+```
+
+Confirm and report (in the `adoptFlow` object): the spine is `install → governance →
+build-boot → bridge`; `build-boot` is the **last** build rung (boot LAST); the terminal
+`bridge` is a `decision` node; position was advanced via `harness flow nav set` (not a
+hand-edited JSON); the rail title is `[adopt]`. If the skill's prescribed command
+errors, that is a finding — record it (`VF-NNN`) and report `adoptFlow.authored:false`.
+
 ## Output (the report)
 
 Write your JSON report to the literal path minih shows you

@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "markdown-lint-extension",
+  "created_at": "2026-06-19T00:17:47.302Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "026-flow-nav-rail-zone",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-19T00:17:47.302Z",
+    "agent": "the-flow",
+    "plan_id": "029-markdown-lint-extension"
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:17:47.313Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "markdown-lint-extension"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:17:47.379Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:17:47.449Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:17:47.520Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:17:47.594Z",
+      "details": {
+        "from": "",
+        "to": "research"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:24:21.133Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:24:21.209Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:24:21.289Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:30:52.620Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:30:52.695Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:41:18.673Z",
+      "details": {
+        "node": "plan",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:41:18.754Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:41:18.836Z",
+      "details": {
+        "node": "build",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:41:18.836Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:41:18.912Z",
+      "details": {
+        "from": "plan",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T00:54:35.258Z",
+      "details": {
+        "node": "build",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T01:29:59.280Z",
+      "details": {
+        "node": "build",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T01:30:12.886Z",
+      "details": {
+        "from": "plan",
+        "to": "build"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-19T00:17:47.379Z",
+      "modified_at": "2026-06-19T00:17:47.379Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (spec + impl)",
+      "status": "done",
+      "next": [
+        "build"
+      ],
+      "created_at": "2026-06-19T00:17:47.449Z",
+      "modified_at": "2026-06-19T00:41:18.836Z",
+      "ran_at": "2026-06-19T00:41:18.673Z",
+      "note": "Simple-mode plan, Status READY, CS-3, 12 tasks. Forks: Simple + warn-launch (both user-confirmed). validate-v2 (3 agents): VALIDATED WITH FIXES — 5 MED/LOW fixed (frozen Scope contract, expanded ignores, ctx.cwd risk, tightened Done-Whens). No CRITICAL/HIGH.",
+      "artifacts": [
+        "docs/plans/029-markdown-lint-extension/markdown-lint-extension-plan.md"
+      ]
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research dossier",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-19T00:17:47.520Z",
+      "modified_at": "2026-06-19T00:24:21.289Z",
+      "ran_at": "2026-06-19T00:24:21.133Z",
+      "note": "6 parallel research threads -> curated dossier. Decision: wrap markdownlint-cli2 + remark-validate-links + headless mermaid.parse behind one verb; shell+pure-lib+colocated-test pattern (mirror arch-check/skills-check); subprocess .mjs for mermaid; narrow authored-docs scope; wire into fft. #1 risk: untuned lint over 351 files breaking fft for the shared tree.",
+      "artifacts": [
+        "docs/plans/029-markdown-lint-extension/research-dossier.md",
+        "docs/plans/029-markdown-lint-extension/original-ask.md"
+      ],
+      "user_input": "we are going to add a markdown linter... check that mermaid's render and that links are valid (in repo links)... use third party where possible, wrap it up in an extension... add that extension as part of our just fft flow"
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "label": "Build (implement markdown-lint)",
+      "status": "done",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-19T00:41:18.836Z",
+      "modified_at": "2026-06-19T01:29:59.280Z",
+      "ran_at": "2026-06-19T01:29:59.280Z"
+    }
+  ],
+  "nav": {
+    "now": "build",
+    "next": "merge"
+  }
+}

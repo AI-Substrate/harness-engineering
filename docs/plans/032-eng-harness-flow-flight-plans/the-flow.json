@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "eng-harness-flow-flight-plans",
+  "created_at": "2026-06-19T05:01:24.383Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "026-flow-nav-rail-zone",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-19T05:01:24.383Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:01:24.398Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "eng-harness-flow-flight-plans"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:01:24.480Z",
+      "details": {
+        "node": "ship",
+        "type": "ship"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:01:24.565Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:01:24.649Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:01:24.736Z",
+      "details": {
+        "from": "",
+        "to": "research"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:07:13.257Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:07:13.374Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:07:13.458Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:07:13.597Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:18:43.943Z",
+      "details": {
+        "node": "plan",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:18:44.029Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:18:44.118Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:18:44.207Z",
+      "details": {
+        "from": "plan",
+        "to": "plan"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-19T05:01:24.480Z",
+      "modified_at": "2026-06-19T05:01:24.480Z",
+      "zone": "postflight"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-19T05:01:24.565Z",
+      "modified_at": "2026-06-19T05:18:44.118Z",
+      "ran_at": "2026-06-19T05:18:43.943Z",
+      "note": "Simple plan written (CS-4, user-directed single phase), Status READY. validate-v2 ran (4 agents) → VALIDATED WITH FIXES: corrected edit-target (skill is in-repo not tools), froze the chore shape + dedup key + R-1 ownership, added AC-13 rail-visibility, reordered T102 before T101, specified the coexist scorer gates.",
+      "comments": [
+        {
+          "at": "2026-06-19T05:18:44.118Z",
+          "text": "validate-v2: VALIDATED WITH FIXES — 2 CRITICAL + 3 HIGH addressed; all 4 agents ⚠️→✅; 12→13 ACs all covered.",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-19T05:01:24.649Z",
+      "modified_at": "2026-06-19T05:07:13.374Z",
+      "ran_at": "2026-06-19T05:07:13.257Z",
+      "note": "Dossier written. Plan 028 already specifies the two-flow flight-map; CLI substrate ~80% there (chore model + harness-loop schema exist; harness-adopt overlay + modern loop template missing). 20 prior learnings; key risks R-1 (chore vs seam-node overlap), R-2 (supersede stateless contract)."
+    }
+  ],
+  "nav": {
+    "now": "plan",
+    "next": null,
+    "intent": "First-class CLI-driven harness flow for eng-harness-flow: two mutually-exclusive flows (adopt + loop), chores-into-the-flow integration, schema + nav-mechanics docs, plus three validation agents (validate-harness-flow adapt, loop-flow-eval, flow-coexist-eval).",
+    "bag": {
+      "mode": "Simple",
+      "status": "active"
+    }
+  }
+}

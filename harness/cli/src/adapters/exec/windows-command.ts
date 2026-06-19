@@ -35,6 +35,12 @@ import { win32 as winPath } from 'node:path';
  * Caveat (documented, not a bug): cmd.exe still expands `%VAR%` inside an arg.
  * Our verbs pass filesystem paths and flags, not `%`-bearing values, so this is
  * acceptable; a path containing a literal `%` is the one unsupported case.
+ *
+ * A token containing a literal double-quote `"` is REJECTED on the cmd-wrapped
+ * path (cmdWrap throws): it cannot be escaped for cmd.exe's tokenizer and the
+ * shim's CommandLineToArgvW parser at once, so emitting it would re-open the
+ * BatBadBut / CVE-2024-27980 injection. Every other cmd metacharacter is made
+ * inert by per-arg quoting, so only `"` is refused.
  */
 
 const PATHEXT_DEFAULT = '.COM;.EXE;.BAT;.CMD';
@@ -133,10 +139,33 @@ export function resolveSpawn(
   if (platform !== 'win32') return { command, args };
 
   const cmdWrap = (target: string): ResolvedSpawn => {
+    // A literal double-quote is the ONE byte we cannot encode safely for BOTH
+    // cmd.exe's tokenizer AND the shim's CommandLineToArgvW parser at once: our
+    // `\"` escaping (below, in quoteCmdArg) is correct for CommandLineToArgvW
+    // but is NOT an escape to cmd, which reads the `"` as a quote-state toggle
+    // and exposes any following `& | < >` to its command parser — the
+    // BatBadBut / CVE-2024-27980 injection. Every OTHER cmd metacharacter
+    // (& | < > ^ ( )) is rendered inert because quoteCmdArg wraps any arg
+    // containing one in double quotes, which cmd honours (so e.g. a
+    // `Program Files (x86)` path stays safe). So reject a token bearing a `"`
+    // rather than emit an injectable line — NodeExec maps the throw to a 127
+    // failure, keeping the advertised no-shell-injection guarantee (KF-06).
+    for (const token of [target, ...args]) {
+      if (token.includes('"')) {
+        throw new Error(
+          `unsafe argument for the cmd.exe shim path: a literal double-quote cannot be ` +
+            `escaped for both cmd.exe and the target program at once (${JSON.stringify(token)}). ` +
+            `Remove the double-quote, or invoke a non-shim (.exe) target.`,
+        );
+      }
+    }
     // /d (skip AutoRun) /s + /c (run then terminate). The whole tail is one
     // fully-quoted line wrapped in an OUTER quote pair: cmd /s strips that outer
     // pair, leaving each inner per-arg quote (e.g. around a spaced path) intact.
     // Spawned with windowsVerbatimArguments so Node passes the line unaltered.
+    // This cmd.exe + verbatim route is LOAD-BEARING and must not be "simplified"
+    // away: a bare `.cmd` spawn EINVALs on patched Node (>=20.12.2), and dropping
+    // verbatim corrupts the /s line (plan 031 / workshops/001-windows-cmd-launch-escaping.md).
     const line = `"${[target, ...args].map(quoteCmdArg).join(' ')}"`;
     return { command: 'cmd.exe', args: ['/d', '/s', '/c', line], windowsVerbatimArguments: true };
   };

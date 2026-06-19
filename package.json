@@ -33,11 +33,15 @@
   },
   "scripts": {
     "gen:docs": "node scripts/gen-docs.mjs",
+    "gen:flows": "node scripts/gen-flows.mjs",
+    "gen:flow-fixtures": "node scripts/flow-fixtures.mjs",
     "check:docs": "npm run gen:docs && git diff --exit-code harness/cli/src/services/docs/docs-content.ts",
-    "build": "npm run gen:docs && tsc -p harness/cli/tsconfig.json",
+    "check:flows": "npm run gen:flows && git diff --exit-code harness/cli/src/services/flow/schemas-content.ts && node scripts/flow-fixtures.mjs --check",
+    "build": "npm run gen:docs && npm run gen:flows && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
     "test": "cd harness/cli && vitest run --coverage",
     "lint": "biome check harness/cli",
+    "lint:md": "node harness/cli/bin/harness.js markdown-lint",
     "format": "biome format --write harness/cli",
     "fix": "biome check --write harness/cli"
   },
@@ -50,6 +54,11 @@
     "@types/node": "^25",
     "@vitest/coverage-v8": "^4.1.8",
     "dependency-cruiser": "^17.4.3",
+    "jsdom": "^29.1.1",
+    "markdownlint-cli2": "^0.22.1",
+    "mermaid": "^11.15.0",
+    "remark-cli": "^12.0.1",
+    "remark-validate-links": "^13.1.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
   }

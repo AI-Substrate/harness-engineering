@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "loop-flow-eval Input",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "harnessSource": {
+      "type": "string",
+      "description": "Where eng-harness-flow is loaded from for this run (informational; the run loads the skill via --skill-source/--skill). Default: the in-repo skills/eng-harness-flow.",
+      "default": "skills/eng-harness-flow"
+    },
+    "intent": {
+      "type": "string",
+      "description": "The one-line intent for this loop session (what work the loop is wrapped around).",
+      "default": "a small coding session in this repo"
+    }
+  }
+}

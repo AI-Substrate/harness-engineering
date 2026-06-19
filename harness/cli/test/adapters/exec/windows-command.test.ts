@@ -61,4 +61,62 @@ describe('resolveSpawn', () => {
     expect(r.args).toEqual(['/d', '/s', '/c', '"C:/x/tool.bat --v"']);
     expect(r.windowsVerbatimArguments).toBe(true);
   });
+
+  it('REJECTS a cmd-wrapped arg bearing a double-quote (BatBadBut / CVE-2024-27980)', () => {
+    // The injection vector: x"-&-calc-&-"y — our `\"` escaping is correct for the
+    // shim's CommandLineToArgvW parser but is NOT an escape to cmd.exe, which
+    // reads the `"` as a quote-state toggle and runs `& calc &` as its own
+    // command. Such a token cannot be encoded safely for both, so it is refused.
+    expect(() =>
+      resolveSpawn('C:/npm/npx.cmd', ['x"-&-calc-&-"y'], 'C:/repo', 'win32', {}),
+    ).toThrow(/double-quote/);
+    // A double-quote in the TARGET path is refused too.
+    expect(() => resolveSpawn('C:/np"m/x.cmd', ['ok'], 'C:/repo', 'win32', {})).toThrow(
+      /double-quote/,
+    );
+  });
+
+  it('still allows cmd metacharacters that per-arg quoting renders inert (no over-rejection)', () => {
+    // `& | < > ^ ( )` are SAFE: quoteCmdArg wraps any arg containing one in
+    // double quotes, which cmd.exe honours — so a `Program Files (x86)` path and
+    // `&|` args must NOT be rejected. Only a literal `"` is unencodable.
+    const r = resolveSpawn(
+      'C:\\Program Files (x86)\\nodejs\\npx.cmd',
+      ['a&b', 'c|d', 'e(x86)'],
+      'C:/repo',
+      'win32',
+      {},
+    );
+    expect(r.command).toBe('cmd.exe');
+    expect(r.windowsVerbatimArguments).toBe(true);
+    const line = r.args[3];
+    expect(line).toContain('"C:\\Program Files (x86)\\nodejs\\npx.cmd"');
+    expect(line).toContain('"a&b"');
+    expect(line).toContain('"c|d"');
+    expect(line).toContain('"e(x86)"');
+  });
+
+  it('REGRESSION (plan 031 / workshop 001): the .cmd route MUST stay cmd.exe + windowsVerbatimArguments — never a bare .cmd', () => {
+    /*
+    Test Doc:
+    - Why: workshop 001 (001-windows-cmd-launch-escaping.md) corrected dossier DR-1 —
+      on patched Node (>=20.12.2; the CLI's >=22 floor) `spawn('x.cmd', args, {shell:false})`
+      throws EINVAL, so a bare .cmd can NEVER be spawned directly. The ONLY injection-safe,
+      non-deprecated route is `cmd.exe /d /s /c "<line>"` with windowsVerbatimArguments. A
+      future "simplification" that dropped verbatim would (a) make Node re-quote the /s line,
+      corrupting it, and (b) tempt a bare-.cmd spawn that EINVALs at runtime on Windows. This
+      test is the regression net that keeps that door shut — both the detached adapter
+      (NodeBackground, T002) and the blocking adapter (NodeExec) depend on this contract.
+    - Contract: for a `.cmd` target on win32, command === 'cmd.exe' (never the bare .cmd) AND
+      windowsVerbatimArguments === true.
+    */
+    for (const target of ['C:/npm/minih.cmd', 'C:/x/tool.bat']) {
+      const r = resolveSpawn(target, ['run', 'a b'], 'C:/repo', 'win32', {});
+      expect(r.command, `${target} must route through cmd.exe, never a bare .cmd (EINVAL)`).toBe(
+        'cmd.exe',
+      );
+      expect(r.command).not.toMatch(/\.(cmd|bat)$/i);
+      expect(r.windowsVerbatimArguments, 'verbatim is required for the /s line').toBe(true);
+    }
+  });
 });

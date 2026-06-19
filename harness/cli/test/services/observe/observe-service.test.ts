@@ -532,6 +532,25 @@ describe('listObservations — the all-buckets sweep (AC-7, D9, D-12)', () => {
     expect(outcome.ok).toBe(false);
     if (!outcome.ok) expect(outcome.code).toBe(ErrorCodes.OBSERVE_BUFFER_UNREADABLE);
   });
+
+  it('a backslash/.. bucket name from readdir cannot escape temp on --list (CWE-22)', () => {
+    // A cloned repo can commit a dir under .harness/temp whose literal name is a
+    // backslash + `..` sequence; toPosix rewrites `\`→`/` and posix.join then
+    // collapses it, resolving the buffer to an OUT-OF-TREE file. The sweep must
+    // skip it — never read outside temp (only the legit `agent` bucket survives).
+    const fs = configuredFs(
+      {
+        [AGENT_BUFFER]: legacyEntry('DL-001', 'difficulty'),
+        '/repo/evil/session-buffer.md': legacyEntry('MW-009', 'magic-wand'),
+      },
+      { '/repo/.harness/temp': ['..\\..\\evil', 'agent'] },
+    );
+    const outcome = listObservations({}, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, buckets_scanned: ['agent'] });
+    if (outcome.ok) expect(outcome.observations.map((o) => o.id)).toEqual(['DL-001']);
+    // The escaped path was never even probed.
+    expect(fs.reads).not.toContain('/repo/evil/session-buffer.md');
+  });
 });
 
 describe('clearObservations — truncate what list returns, files kept (AC-7, D6)', () => {
@@ -582,5 +601,23 @@ describe('clearObservations — truncate what list returns, files kept (AC-7, D6
     expect(outcome.ok).toBe(false);
     if (!outcome.ok) expect(outcome.code).toBe(ErrorCodes.OBSERVE_BUFFER_UNREADABLE);
     expect(fs.readText(AGENT_BUFFER)).toContain('DL-001'); // nothing truncated
+  });
+
+  it('a backslash/.. bucket name from readdir cannot truncate out-of-tree on --clear (CWE-22)', () => {
+    // The destructive twin of the --list guard: --clear must not writeText (and
+    // so truncate) a session-buffer.md the join resolved OUTSIDE .harness/temp.
+    const fs = configuredFs(
+      {
+        [AGENT_BUFFER]: legacyEntry('DL-001', 'difficulty'),
+        '/repo/evil/session-buffer.md': legacyEntry('MW-009', 'magic-wand'),
+      },
+      { '/repo/.harness/temp': ['..\\..\\evil', 'agent'] },
+    );
+    const outcome = clearObservations({}, depsAt(fs));
+    expect(outcome).toMatchObject({ ok: true, cleared: 1, buckets_scanned: ['agent'] });
+    // The out-of-tree file is intact (never written) and the legit bucket cleared.
+    expect(fs.readText('/repo/evil/session-buffer.md')).toContain('MW-009');
+    expect(fs.writes).not.toContain('/repo/evil/session-buffer.md');
+    expect(fs.readText(AGENT_BUFFER)).not.toContain('DL-001');
   });
 });

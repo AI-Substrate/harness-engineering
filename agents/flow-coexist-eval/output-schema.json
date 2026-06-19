@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "flow-coexist-eval Report",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["theFlowPath", "choreHooks", "choreCount", "idempotent", "navNow", "loopFileAbsent", "railShowsChores", "summary", "retrospective"],
+  "properties": {
+    "theFlowPath": { "type": "string", "description": "Repo-relative path to the throwaway the-flow.json the chores were injected into (the scorer reads this)." },
+    "reinjectedPath": { "type": "string", "description": "Path to the snapshot taken after re-running the injection (for the scorer's byte-identity idempotency gate)." },
+    "choreHooks": { "type": "array", "items": { "type": "string" }, "description": "The four --hook tokens injected as chores, e.g. [pre-flight, pre-coding, post-coding, post-flight]." },
+    "choreCount": { "type": "integer", "description": "How many fire-hook chores `harness flow chores` reports (expect 4)." },
+    "idempotent": { "type": "boolean", "description": "Did re-running the injection leave the node set byte-identical (your own diff of after-first vs reinjected)?" },
+    "navNow": { "type": "string", "description": "the-flow's nav.now after injection — must still resolve to a real node." },
+    "loopFileAbsent": { "type": "boolean", "description": "True iff NO standalone .harness/loop.flow.json was authored (correct while the-flow is active)." },
+    "railShowsChores": { "type": "boolean", "description": "Did `harness flow rail --chores show` render chore square pips (□/■/▨/▣) for the injected hooks? (AC-13 visibility.)" },
+    "summary": { "type": "string", "description": "One-paragraph faithful account of the coexistence drive." },
+    "retrospective": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "workedWell": { "type": "array", "items": { "type": "string" } },
+        "confusing": { "type": "array", "items": { "type": "string" } },
+        "magicWand": { "type": "string" },
+        "magicWandTarget": { "type": "string", "enum": ["project", "minih"] },
+        "difficulties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "id": { "type": "string", "description": "CX-NNN" },
+              "layer": { "type": "string", "enum": ["project", "minih"] },
+              "description": { "type": "string" },
+              "workaround": { "type": "string" },
+              "severity": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -107,6 +107,7 @@ describe('buildProgram — composition root wiring', () => {
       'self-install',
       'record',
       'observe',
+      'flow',
       'instructions',
       'hello',
       'build',
@@ -130,6 +131,7 @@ describe('buildProgram — composition root wiring', () => {
       'self-install',
       'record',
       'observe',
+      'flow',
       'instructions',
     ]);
   });
@@ -157,6 +159,7 @@ describe('main — unexpected pre-parse error routes through the kernel (bin rej
     // A process port whose cwd() throws makes discovery throw → the pre-parse catch fires.
     const throwingProc = {
       which: () => null,
+      nodeVersion: () => '22.0.0',
       cwd: () => {
         throw new Error('cwd blew up');
       },

@@ -92,6 +92,26 @@ export function isWithin(dir: string, candidate: string): boolean {
   return rel === '' || (!rel.startsWith('../') && rel !== '..' && !posix.isAbsolute(rel));
 }
 
+/** A logical path is already root-anchored: leading `/` (incl. UNC `//`) or a drive root `C:/`. */
+const ABSOLUTE_LOGICAL = /^([A-Za-z]:)?\//;
+
+/**
+ * Resolve a user-supplied path to a logical absolute, anchoring a RELATIVE path
+ * against `repoRoot` first. A bare relative `--path`/`--output` (e.g.
+ * `.harness/flows/x.json`) is the in-repo location the default would write to,
+ * so it must anchor to the repo before any `isWithin` containment check —
+ * otherwise `posixRelative(root, ".harness/…")` yields `../…` and the guard
+ * wrongly rejects an in-repo write with `E303`. An already-absolute path
+ * (leading `/`, UNC `//`, or a drive root) passes through unchanged; containment
+ * still applies AFTER resolution, so a `../escape` still resolves out-of-repo
+ * and is correctly refused. Built on `posixJoin` (never `posix.resolve`, which
+ * would mis-handle drive-letter inputs — see the module header).
+ */
+export function resolveInRepo(rawPath: string, repoRoot: string): string {
+  const p = toPosix(rawPath);
+  return ABSOLUTE_LOGICAL.test(p) ? p : posixJoin(toPosix(repoRoot), p);
+}
+
 /**
  * Stable identity key for dedupe maps: POSIX-normalized, optionally
  * case-folded. Case sensitivity is an EXPLICIT parameter so tests exercise

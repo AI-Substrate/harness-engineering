@@ -43,28 +43,33 @@ Adoption pips = S0 install · S1 scout · S2 governance · S3 inject · S4 boot.
 - **Render the whole rail block as a fenced code block — always.** The rail line(s), any anchored companion line, and the `now`/`next` groups are ONE ``` fence (no language tag). Outside a fence markdown collapses leading spaces — and **never** fake alignment with `&nbsp;` or any HTML entity (terminals print them literally). Real spaces inside the fence are the only alignment tool.
 - **Status line** under the rail: ` now  · <current>` / ` next · <what follows>`, aligned. When `next` has ≥2 options, stack them with `▸` (recommended first), exactly like `the-flow`.
 
-## 1a. The unified rail — when `the-flow` is also live
+## 1a. The unified rail — when `the-flow` is also live (chores on its rail)
 
-Before rendering a solo rail, probe for an active SDD flow: any `docs/plans/*/.the-flow-state.json` with `"status": "active"`. If one exists, the two guides merge into **one unified block** — `the-flow`'s rail on top (fill from that state file's `milestones_done`/`milestones_total`), the harness loop **anchored beneath the active milestone**, then **each flow speaks with its own voice** — its own `now`/`next`, harness lines prefixed `⚙`:
+Before rendering a solo rail, probe for an active SDD flow: a `docs/plans/*/the-flow.json` whose `nav.now` resolves to a mid-spine node (plan 030 — the-flow's position lives in `nav`, **not** a `.the-flow-state.json`, which is retired). If one exists, the loop does **not** draw its own bar. Instead its four fire hooks ride **as chores on the-flow's own rail** (plan 032 — *"so the main flow tracks them for us too and we don't miss things"*). This is the dogfood: render the-flow's rail straight from the CLI —
 
 ```
-[the-flow]  ◆─◆─◐─◇─◇─◇─◇  research · spec · [plan] · tasks · build · review · merge
-                └─ ⚙ ◆─◐─◇─◇─◇ ↺  boot · [backpressure] · observe · retro · improve  (post-spec)
+harness flow rail --path docs/plans/<ord>-<slug>/the-flow.json --chores show
+```
+
+— which already prints the chore square pips (`□` todo · `■` done · `▨` skipped) inline beside the spine diamonds. Show that line verbatim (real spaces only — never `&nbsp;`), then let **each flow speak with its own voice**:
+
+```
+[the-flow] ◆─◆─[ ◐ ]─◇─◇  research · plan · [ □ pre-coding · build ] · □ post-coding · review · □ post-flight
 
  the-flow
-  now  · spec READY + validated (Simple) — AC-11 branch-canary folded in
-  next · ▸ /plan-3   architect — consumes backpressure-coverage.md
+  now  · plan READY + validated (Simple) — mid-build
+  next · ▸ /the-flow 6 implement — consumes the plan
 
- ⚙ engineering harness
-  now  · post-spec seam — running the backpressure survey
-  next · writes backpressure-coverage.md → hands control back to /plan-3
+ ⚙ engineering harness  (chores on the-flow's rail)
+  now  · pre-coding chore is todo (□) — run `/eng-harness-flow --hook pre-coding`
+  next · running it flips □→■ on the next rail render (AC-13 — nothing gets missed)
 ```
 
-- **Anchor placement**: the `└─` sits in the `◐` milestone's column — with the standard prefix `[the-flow]  ` (12 chars) and 2 chars per node, that's column 12 + 2 × (index of `◐`). No `◐` (settled between stages) → anchor under the last `◆`. Column uncertain (e.g. bracket-grouped phase nodes) → a fixed 4-space indent is fine; the anchor is a garnish — never let alignment delay the turn.
-- **The anchored line's shape is fixed**: `└─ ⚙ <all five pips> ↺  <legend with [current]>  (<seam>)`. **Never compress the pips** (no `⚙ ◆ ↺` shorthand) and never swap the legend for prose — narrative belongs in the ` ⚙ engineering harness` `now`/`next` group below. The trailing note is just the seam in parentheses — `(post-spec)`, `(pre-implement)`, `(phase-end)`; the legend's brackets already name the stage.
-- **Two flows, two voices — never merged, each under its own header**: every `now`/`next` group opens with a one-line header naming the flow — ` the-flow` for the SDD voice, ` ⚙ engineering harness` for the loop voice — with the `now`/`next` lines indented one space beneath it (the header owns identity, so the lines themselves carry no prefix). The flow's lines speak SDD position (where the plan is, what command comes next); the harness's speak loop position (what the router is running, what it produces, where control hands back). Each gives the user real context on its own lines.
-- **Never invent the `the-flow` line**: read position from its state file + the newest artifact. State unreadable or stale → fall back to the solo rail.
-- Mid-adoption with an active `the-flow`: same shape, the anchored line carries the 🧰 segment instead — `└─ 🧰 ◆─◆─◐─◇─◇ → ⚙ ◇─◇─◇─◇─◇ ↺  install · scout · [governance] · inject · boot  (adopting)`.
+- **The rail is the-flow's, not a second bar.** Coexistence = chores injected into `the-flow.json` (the four fire hooks: `pre-flight`/`pre-coding`/`post-coding`/`post-flight`, each `run /eng-harness-flow --hook <hook>`). The chore pips ARE the harness loop's visible presence — no separate `└─ ⚙ … ↺` anchored line. The standalone `⚙` loop rail (§ 1) is only for when **no** the-flow is active.
+- **Render from the CLI, never hand-drawn.** Both the solo loop rail (`harness flow rail --slug loop`) and this unified rail (`--path …/the-flow.json --chores show`) come from `harness flow rail` — the dogfood. Hand-drawn glyphs are only an illustration here.
+- **Two flows, two voices — never merged, each under its own header.** ` the-flow` speaks SDD position (where the plan is, the next command); ` ⚙ engineering harness  (chores on the-flow's rail)` speaks the chores — which fire hooks are `todo`/`done`, and that running one flips its pip on the next render. Each group's `now`/`next` lines are indented one space under its header.
+- **Never invent the `the-flow` line**: read it from `harness flow rail`/`nav show` on `the-flow.json` + the newest artifact. Unreadable → fall back to the solo rail.
+- Mid-adoption with an active `the-flow`: adoption is the live harness flow (the loop hasn't started), so there are no loop chores yet; show the-flow's rail plus a one-line ` ⚙ engineering harness` note that adoption is still underway (`🧰` segment, `(adopting)`), and route the missing rung.
 
 ## 2. The per-turn narration contract — Orient → Flag → Insight → Suggest → Invite
 

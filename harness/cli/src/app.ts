@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
+import { registerFlowAct } from './acts/flow.js';
 import { registerHelpAct } from './acts/help.js';
 import { registerInitAct } from './acts/init.js';
 import { registerInstructionsAct } from './acts/instructions.js';
@@ -13,6 +14,7 @@ import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
 import { NodeEnv } from './adapters/env/node-env.js';
+import { NodeBackground } from './adapters/exec/node-background.js';
 import { NodeExec } from './adapters/exec/node-exec.js';
 import { NodeFs } from './adapters/fs/node-fs.js';
 import { ExecGit } from './adapters/git/exec-git.js';
@@ -199,6 +201,7 @@ export function buildProgram(
   registerUpdateAct(program, io, deps, version);
   registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
+  registerFlowAct(program, io, deps, version);
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
@@ -222,9 +225,14 @@ export interface MainOverrides {
 }
 
 function defaultDeps(): VerbActDeps {
+  // One NodeFs instance backs both the read port (`fs`) and the write port
+  // (`fsWrite`) — NodeFs implements FsPort + FileSystemWritePort (plan 031).
+  const nodeFs = new NodeFs();
   return {
     exec: new NodeExec(),
-    fs: new NodeFs(),
+    fs: nodeFs,
+    fsWrite: nodeFs,
+    background: new NodeBackground(),
     env: new NodeEnv(),
     git: new ExecGit(),
     clock: new SystemClock(),

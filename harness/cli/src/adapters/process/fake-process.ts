@@ -10,6 +10,8 @@ export class FakeProcess implements ProcessPort {
   constructor(
     private readonly paths: Record<string, string> = {},
     private readonly cwdPath = '/repo',
+    /** The Node version this fake reports — defaults to a patched ≥22 baseline (plan 031). */
+    private readonly nodeVer = '22.0.0',
   ) {}
 
   which(command: string): string | null {
@@ -19,5 +21,9 @@ export class FakeProcess implements ProcessPort {
 
   cwd(): string {
     return this.cwdPath;
+  }
+
+  nodeVersion(): string {
+    return this.nodeVer;
   }
 }

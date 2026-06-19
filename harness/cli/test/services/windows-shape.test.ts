@@ -298,3 +298,58 @@ describe('AC-2 source guard — NO service imports node:path (repo-wide invarian
     ).not.toMatch(/from 'node:path'/);
   });
 });
+
+describe('plan 031 AC-01 — the dogfood verb sources are cross-platform by construction', () => {
+  /*
+  Test Doc:
+  - Why: the whole point of plan 031 is that validate-harness-flow and
+    validate-harnessability run on Windows. That holds only while their sources
+    carry NO POSIX shell-out, NO /tmp literal, and NO node:* import — the exact
+    regressions windows-check guards in CI. This is the in-suite twin of that
+    verb (a direct AC-01 source assertion that fails the unit run, not just CI).
+  - Contract: each tracked dogfood verb source (extension.ts + lib/*.ts) is free
+    of ctx.exec('bash'|'sh'|coreutil), a `/tmp` path, a `nohup`/`& echo $!` idiom,
+    and a node-builtin import (node:, fs, path, os, child_process). node lives only
+    in the core adapters.
+  */
+  const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+  const DOGFOOD_SOURCES = [
+    '.harness/extensions/validate-harness-flow/extension.ts',
+    '.harness/extensions/validate-harness-flow/lib/worker-io.ts',
+    '.harness/extensions/validate-harnessability/extension.ts',
+  ];
+
+  // Match a code line (ignore // comments) so a *descriptive* comment can't fail
+  // the guard — windows-check (which scans comments too) is the broader net.
+  const codeLines = (src: string): string =>
+    src
+      .split(/\r?\n/)
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+
+  it.each(DOGFOOD_SOURCES)('%s has no POSIX shell-out / /tmp / node:* (AC-01)', (rel) => {
+    const code = codeLines(readFileSync(join(REPO_ROOT, rel), 'utf8'));
+    expect(code, 'no shell/coreutil shell-out').not.toMatch(
+      /(?:ctx\.exec|exec|spawn)\(\s*['"`](?:bash|sh|zsh|mkdir|cp|mv|rm|sleep|realpath|nohup|printf|chmod|touch|cat|ls)\b/,
+    );
+    expect(code, 'no /tmp literal').not.toMatch(/['"`][^'"`]*\/tmp(?:\/|['"`])/);
+    expect(code, 'no nohup / & echo $! background idiom').not.toMatch(/\bnohup\b|&\s*echo\s+\$!/);
+    expect(code, 'no node:* / builtin import (node:* lives in the core)').not.toMatch(
+      /(?:from\s+|require\(\s*)['"](?:node:[a-z_/]+|fs|fs\/promises|path|os|child_process)['"]/,
+    );
+  });
+});
+
+describe('plan 031 — the new write port keeps Windows-shaped input POSIX-clean', () => {
+  it('FakeFs.copy + mkdtemp never leak a backslash into a surfaced/registered path', () => {
+    const fs = new FakeFs({ 'C:/clone/.harness/reports/latest.json': 'X' });
+    // A Windows-shaped destDir must register a POSIX dest (matches NodeFs surfacing rules).
+    fs.copy('C:/clone/.harness/reports/latest.json', 'C:\\out\\dir');
+    for (const w of fs.writes) expect(w).not.toContain('\\');
+    expect(fs.exists('C:/out/dir/latest.json')).toBe(true);
+    // mkdtemp returns a POSIX path and registers it.
+    const tmp = fs.mkdtemp('win-shape-');
+    expect(tmp).not.toContain('\\');
+    expect(fs.exists(tmp)).toBe(true);
+  });
+});

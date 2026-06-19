@@ -10,4 +10,10 @@ export interface ProcessPort {
   which(command: string): string | null;
   /** The current working directory — the root discovery resolves `.harness/extensions/` against. */
   cwd(): string;
+  /**
+   * The RUNNING Node.js version string, e.g. "22.7.0" (`process.versions.node`).
+   * Injected so the doctor's runtime-version guard (plan 031) stays unit-testable
+   * with `FakeProcess` and never reads the global directly.
+   */
+  nodeVersion(): string;
 }

@@ -153,12 +153,75 @@ describe('buildDoctorReport', () => {
     expect(ext?.detail).toContain('1 conflict');
   });
 
-  it('flags a missing tool with a next_action', () => {
+  it('dev mode flags a missing tool with a next_action', () => {
+    // Dev mode: default deps fs = BUILT_CLI (has the harness/cli/tsconfig.json
+    // marker), so the full DEV_TOOLS set (node/just/biome) is enforced.
     const proc = new FakeProcess({ node: '/usr/bin/node' });
     const report = buildDoctorReport(deps({ proc }), EMPTY);
     const toolchain = report.layers.find((l) => l.name === 'toolchain');
     expect(toolchain?.ok).toBe(false);
     expect(toolchain?.detail).toContain('just');
+  });
+
+  it('toolchain consumer mode: node-only, no just/biome enforced (FIND-2 twin)', () => {
+    /*
+    Test Doc:
+    - Why: `just`/`biome` are THIS repo's dev tools. A consumer clone (no
+      harness/cli/tsconfig.json marker) must NOT be told to install them — the
+      same dev-vs-consumer split FX001 made for cli-build, one layer over. What
+      "ready" means for the consumer's own toolchain is the boot extension's
+      per-repo job (constitution P10 — the core hardcodes no repo tool list).
+    - Contract: marker absent + only `node` on PATH → toolchain ok:true, detail
+      mentions `consumer`, names neither just nor biome, carries no next_action,
+      and the whole envelope is not degraded by it.
+    - Quality Contribution: pins that the core stops enforcing a foreign toolchain.
+    */
+    const fs = new FakeFs(); // consumer clone — no dev marker
+    const proc = new FakeProcess({ node: '/usr/bin/node' }); // just/biome absent
+    const report = buildDoctorReport(deps({ fs, proc }), EMPTY);
+    const toolchain = report.layers.find((l) => l.name === 'toolchain');
+    expect(toolchain?.ok).toBe(true);
+    expect(toolchain?.detail).toMatch(/consumer/);
+    expect(toolchain?.detail).not.toMatch(/just|biome/);
+    expect(toolchain?.next_action).toBeUndefined();
+    const env = doctorEnvelope(report, new FakeClock('2026-06-08T07:20:00.000Z'));
+    expect(env.status).toBe('ok');
+  });
+
+  it('toolchain consumer mode still flags a genuinely missing node', () => {
+    const fs = new FakeFs(); // consumer clone
+    const proc = new FakeProcess({ just: '/usr/bin/just' }); // node absent
+    const report = buildDoctorReport(deps({ fs, proc }), EMPTY);
+    const toolchain = report.layers.find((l) => l.name === 'toolchain');
+    expect(toolchain?.ok).toBe(false);
+    expect(toolchain?.detail).toContain('node');
+    expect(toolchain?.next_action).toContain('node');
+  });
+
+  it('node-runtime: an old running Node degrades the layer with an upgrade next_action (plan 031)', () => {
+    /*
+    Test Doc:
+    - Why: engines.node ">=22" is only advisory — npx won't enforce it. The runtime guard
+      catches an actually-old interpreter, which breaks the Windows .cmd launch path (a bare
+      .cmd spawn EINVALs on <20.12.2; the CLI standardises on >=22).
+    - Contract: process.versions.node major < 22 → node-runtime layer ok:false with a clear
+      "upgrade to Node >=22" next_action; an unparseable version is treated as ok (no false alarm).
+    - Worked Example: FakeProcess reporting node 20.11.0 → node-runtime not ok, next_action names 22.
+    */
+    const proc = new FakeProcess({ node: '/usr/bin/node' }, '/repo', '20.11.0');
+    const report = buildDoctorReport(deps({ proc }), EMPTY);
+    const runtime = report.layers.find((l) => l.name === 'node-runtime');
+    expect(runtime?.ok).toBe(false);
+    expect(runtime?.detail).toContain('20.11.0');
+    expect(runtime?.next_action).toContain('>=22');
+  });
+
+  it('node-runtime: a patched >=22 Node reports ok (plan 031)', () => {
+    const proc = new FakeProcess({ node: '/usr/bin/node' }, '/repo', '22.7.0');
+    const report = buildDoctorReport(deps({ proc }), EMPTY);
+    const runtime = report.layers.find((l) => l.name === 'node-runtime');
+    expect(runtime?.ok).toBe(true);
+    expect(runtime?.detail).toContain('22.7.0');
   });
 
   it('reads HARNESS_JSON via the env port into json_env', () => {

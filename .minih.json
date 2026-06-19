@@ -1,20 +1,9 @@
 {
   "$schema": "https://minih.dev/schemas/minih-config.json",
   "skills": {
-    "comment": "Repo-local skills minih agents may invoke. minih's path: source searches a directory's DIRECT children, so with the two-level layout (skills/<category>/<slug>/SKILL.md) the sources must point at the category folders, not skills/.",
-    "sources": [
-      "path:skills/eng-harness-setup",
-      "path:skills/eng-harness-loop"
-    ],
-    "include": [
-      "eng-harness-0-adopt",
-      "eng-harness-0-harnessability-assessment",
-      "eng-harness-0-add-extension",
-      "eng-harness-1-boot",
-      "eng-harness-2-backpressure",
-      "eng-harness-4-retro",
-      "eng-harness-flow"
-    ],
+    "comment": "Source = ~/.agents/skills (the REAL skill dirs), NOT ~/.claude/skills. Under ~/.claude/skills, the-flow + eng-harness-flow are SYMLINKS into ~/.agents/skills, and minih's path: child-scan does not follow symlinks (it discovered only engineering-harness-setup/harnessability-assessment/pack-code there — the real dirs). Direct children of ~/.agents/skills ARE skills. (Plan 027 / workshop 005 D1; the broad eng-harness realignment is a separate follow-up.)",
+    "sources": ["path:/Users/jordanknight/.agents/skills"],
+    "include": ["the-flow", "eng-harness-flow"],
     "exclude": []
   }
 }

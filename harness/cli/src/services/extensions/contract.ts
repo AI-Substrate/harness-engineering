@@ -69,10 +69,49 @@ export interface VerbContext {
     exists(path: string): boolean;
     readText(path: string): string | null;
     readdir(path: string): string[];
+    /** Canonical absolute path with symlinks resolved, or null if missing (never throws). */
+    realpath(path: string): string | null;
+  };
+  /**
+   * OPTIONAL write-side filesystem capability (plan 031). Present when the core
+   * provides it; an author should feature-detect (`if (ctx.fsWrite)`) so a verb
+   * degrades gracefully on an older core. Lets a verb create dirs, write files,
+   * and copy artifacts portably — no POSIX `mkdir`/`cp`/`bash` shell-out. The
+   * confined `copy` is the CWE-59-safe artifact import (resolve+contain+copy in
+   * one call — no skip-all, no check-then-copy TOCTOU).
+   */
+  fsWrite?: {
+    writeText(path: string, contents: string): void;
+    mkdirp(path: string): void;
+    rename(from: string, to: string): void;
+    copy(src: string, destDir: string, opts?: { confineRoot?: string }): boolean;
+    mkdtemp(prefix: string): string;
+  };
+  /**
+   * OPTIONAL detached background-spawn capability (plan 031). Present when the
+   * core provides it; feature-detect (`if (ctx.background)`) for graceful
+   * degradation on an older core. `spawnDetached` launches a fire-and-forget
+   * child that OUTLIVES the verb (stdout+stderr → `logPath`), returning its pid
+   * — the portable, injection-safe replacement for a `nohup … &` shell-out. On
+   * Windows a `.cmd` shim is launched via `cmd.exe` (never a bare `.cmd` spawn —
+   * it EINVALs on patched Node; see the core resolver).
+   */
+  background?: {
+    spawnDetached(input: {
+      command: string;
+      args: string[];
+      cwd: string;
+      env?: Record<string, string | undefined>;
+      logPath: string;
+    }): { pid: number };
   };
   env: { get(name: string): string | undefined };
   git: { isRepo(): boolean; currentBranch(): string | null };
-  clock: { nowIso(): string };
+  clock: {
+    nowIso(): string;
+    /** Resolve after `ms` — the portable, fakeable replacement for a `sleep` shell-out in poll loops (plan 031). */
+    sleep(ms: number): Promise<void>;
+  };
   // Envelope helpers so authors don't import the kernel:
   ok<T>(data: T, opts?: { evidence?: Evidence[]; next_action?: string }): VerbResult;
   degraded<T>(data: T, next_action: string, opts?: { evidence?: Evidence[] }): VerbResult;

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "kind": "harness-loop",
+  "slug": "harness-loop",
+  "title": "harness-loop",
+  "nav": { "now": "observe", "next": "drain-gate", "intent": "the standalone engineering loop", "bag": {} },
+  "created_at": "2026-01-01T00:00:00Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": null,
+    "repo": "git+https://github.com/AI-Substrate/harness-engineering.git",
+    "created_at": "2026-01-01T00:00:00Z",
+    "agent": null,
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-01-01T00:00:00Z",
+      "details": { "kind": "harness-loop", "slug": "harness-loop" }
+    }
+  ],
+  "nodes": [
+    { "id": "boot", "type": "boot", "label": "Boot", "status": "done", "next": ["backpressure"], "zone": "preflight", "command": "run /eng-harness-flow --hook pre-flight" },
+    { "id": "backpressure", "type": "backpressure", "label": "Backpressure Check", "status": "done", "next": ["observe"], "zone": "preflight", "command": "run /eng-harness-flow --hook pre-coding" },
+    { "id": "observe", "type": "observe", "label": "Do Work + Observe", "status": "in_progress", "next": ["drain-gate"], "zone": "flight" },
+    { "id": "drain-gate", "type": "decision", "label": "Buffer non-empty?", "status": "assumed", "next": ["retro-drain", "retro-harvest"], "zone": "flight" },
+    { "id": "retro-drain", "type": "retro", "label": "Retro — drain buffer", "status": "assumed", "next": ["retro-harvest"], "zone": "postflight", "command": "run /eng-harness-flow --hook post-coding" },
+    { "id": "retro-harvest", "type": "retro", "label": "Retro — harvest", "status": "assumed", "next": ["improve"], "zone": "postflight", "command": "run /eng-harness-flow --hook post-flight" },
+    { "id": "improve", "type": "improve", "label": "Improve", "status": "assumed", "next": [], "zone": "postflight" }
+  ]
+}

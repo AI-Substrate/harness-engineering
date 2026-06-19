@@ -1,0 +1,56 @@
+{
+  "_comment": "harness-adopt create-seed (plan 032). The CLI consumes `cursor` (→ nav.now) + `nodes` VERBATIM; root identity (provenance/created_at/events/nav) is stamped by `harness flow create`, so this seed carries none. Build order in the array is spine-first then excursions; zones are explicit because the renderer's ZONE_BY_TYPE has no adopt types (R-3). Boot is built LAST on the spine (028): the moment it exists you run it and cross the bridge into the loop.",
+  "cursor": "install",
+  "nodes": [
+    {
+      "id": "install",
+      "type": "install",
+      "label": "Install harness",
+      "status": "assumed",
+      "next": ["governance"],
+      "zone": "preflight"
+    },
+    {
+      "id": "governance",
+      "type": "governance",
+      "label": "Governance + boot contract",
+      "status": "assumed",
+      "next": ["build-boot"],
+      "zone": "flight"
+    },
+    {
+      "id": "build-boot",
+      "type": "build-boot",
+      "label": "Build + run boot (last)",
+      "status": "assumed",
+      "next": ["bridge"],
+      "zone": "postflight"
+    },
+    {
+      "id": "bridge",
+      "type": "decision",
+      "label": "Bridge → harness loop?",
+      "status": "assumed",
+      "next": [],
+      "zone": "postflight"
+    },
+    {
+      "id": "scout",
+      "type": "scout",
+      "label": "Scout (harnessability)",
+      "status": "assumed",
+      "next": ["governance"],
+      "zone": "preflight",
+      "branch_of": "install"
+    },
+    {
+      "id": "inject",
+      "type": "inject",
+      "label": "Inject (wire seams)",
+      "status": "assumed",
+      "next": ["build-boot"],
+      "zone": "flight",
+      "branch_of": "governance"
+    }
+  ]
+}

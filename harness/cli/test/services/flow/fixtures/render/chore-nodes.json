@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "kind": "harness-loop",
+  "slug": "chore-nodes",
+  "title": "chores demo",
+  "nav": { "now": "build", "next": "review", "intent": "demo chore render rules", "bag": {} },
+  "created_at": "2026-01-01T00:00:00Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": null,
+    "repo": "git+https://github.com/AI-Substrate/harness-engineering.git",
+    "created_at": "2026-01-01T00:00:00Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-01-01T00:00:00Z",
+      "details": { "kind": "harness-loop", "slug": "chore-nodes" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "spec",
+      "type": "plan",
+      "label": "Spec",
+      "status": "done",
+      "next": ["val"]
+    },
+    {
+      "id": "val",
+      "type": "tasks",
+      "label": "Validate",
+      "status": "todo",
+      "next": ["build"],
+      "command": "/validate-v2",
+      "chore": { "kind": "command", "importance": "recommended" }
+    },
+    {
+      "id": "build",
+      "type": "phase",
+      "label": "Build",
+      "status": "in_progress",
+      "next": ["compact"]
+    },
+    {
+      "id": "compact",
+      "type": "phase",
+      "label": "Compact context",
+      "status": "done",
+      "next": ["dec"],
+      "command": "/compact",
+      "chore": { "kind": "builtin", "importance": "optional" }
+    },
+    {
+      "id": "dec",
+      "type": "decision",
+      "label": "Ship or iterate?",
+      "status": "todo",
+      "next": ["review", "archive"],
+      "command": "/some-skill",
+      "chore": { "kind": "skill", "importance": "informational" }
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": ["merge"]
+    },
+    {
+      "id": "archive",
+      "type": "phase",
+      "label": "Archive branch",
+      "status": "skipped",
+      "next": ["merge"],
+      "chore": { "kind": "manual", "importance": "recommended" }
+    },
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "next": []
+    },
+    {
+      "id": "guard",
+      "type": "adr",
+      "label": "Grill the design",
+      "status": "todo",
+      "branch_of": "build",
+      "next": ["build"],
+      "command": "/grill-me",
+      "chore": { "kind": "command", "importance": "strongly-recommended" }
+    }
+  ]
+}

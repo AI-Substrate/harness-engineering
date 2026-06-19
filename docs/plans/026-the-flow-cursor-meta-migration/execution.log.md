@@ -1,0 +1,66 @@
+# Execution Log — 026 the-flow cursor/meta migration (Phase 1, Simple)
+
+**Branch**: `026-flow-nav-rail-zone` (cut from `main`; per-task commits, no push)
+**Companion**: `code-review-companion` run `2026-06-18T08-39-20-769Z-0c4e` (Power-On Mode; reviews each commit live)
+**Approach**: Full TDD; real fixtures; golden render fixtures regenerated via `scripts/flow-fixtures.mjs`, CI drift-guarded by `check:flows`.
+
+> Facts + evidence only. Detail lives in the task table (plan) + diffs + test output.
+
+## Commit plan (4 coherent, each green)
+- **C1** nav core + `create --agent` (T001–T006, T011, T012) — the cursor→nav move in one pass (every reader migrated; clean break, no `cursor` verb/alias).
+- **C2** per-node `zone` + default-by-type (T007, T008).
+- **C3** `harness flow rail` + zoned/titled render shared by `render` (T009, T010) — regen fixtures.
+- **C4** docs + dogfood flow 026 + final drift-guard (T013, T014).
+
+---
+
+## C1 — nav core + create --agent (T001–T006, T011, T012)
+
+### Design (locked before code)
+- `Nav { now: string; next: string | null; intent?: string; bag?: Record<string, unknown> }` on `FlowDoc.nav?` — replaces top-level `cursor`/`recommended_next` (removed).
+- Mutations (`flow-mutations.ts`): `setNow` (E305; fires `cursor-moved {from,to}` — reuses the existing event kind), `setNext` (E305 when an id is given; `null` clears; advisory, **no** event — matches old `recommendNext`), `setIntent` (no event), `setMeta` (shallow-merge into `bag`), `getMeta` (read), `predecessorsOf`/`successorsOf` (shared neighbour util — extracts insert-node's reverse-edge scan, Finding 04), `navShow` (assembles `{nav, predecessors, successors}` with trimmed neighbours `{id,type,status,label,next}`).
+- Act: `nav show|set|meta` group; **`cursor` verb removed** (clean break, Q2 — no alias). `create` gains `--agent`/`--plan-id`/`--title`.
+- Readers migrated (grep-clean of live `doc.cursor`/`doc.recommended_next` field reads): `acts/flow.ts summary()` (→ `now`/`next`), `flow-renderer.ts` meta block (Cursor→Now), `flow-service.ts createFlow` (seeds `nav` from initial node; bare → no nav) + `listFlows`/`FlowSummary` (→ `now`). `isLegacyFlow`'s `'cursor' in doc` probe is KEPT (it detects pre-CLI legacy docs by the OLD field — a legacy-shape probe, not a live reader).
+- Schema: `root.required` drops `cursor`; `root.optional` drops `recommended_next`/`now`/`next` (vestigial top-level placeholders, superseded by `nav`) and adds `nav`; `validateFlowDoc` validates `nav.now`/`nav.next` refs (replacing the dead cursor-ref check).
+
+### Result — ✅ GREEN (T001–T006, T011, T012)
+- TDD: nav-mutation tests authored → ran RED (10 fail: `navShow is not a function` etc.) → impl → GREEN.
+- **Full suite 776 passed (74 files)**; `flow-fixtures --check` clean (no drift). `tsc` exit 0.
+- Contract snapshot (`flow-envelope-snapshot`) regenerated: `data` shape `cursor`/`recommended_next` → `now`/`next` — the exact contract the-flow's skill migration will consume.
+- Discovery: template descriptors keep a `cursor` **seed key** (the template DSL's initial-position indicator) — distinct from the migrated `doc` field, mapped into `nav.now` at create. Grep-clean of `doc.cursor`/`doc.recommended_next` field reads holds; `recommended_next` survives only in 2 comments. (Flagged to companion.)
+- Decision: `--title` stores `doc.title`; rail title precedence (built C3) = `provenance.agent ?? doc.title ?? doc.slug` — AC-4's agent→slug still holds (title is an optional middle rung).
+
+## C2 — per-node zone + default-by-type (T007, T008) — ✅ GREEN
+- `zone?` on `FlowNode` + `NodeSpec` + `materialize`; `--zone` on `add-node`/`insert-node`; schema `node.optional` += `zone` (regenerated `schemas-content.ts`).
+- `effectiveZone(node)` (flow-renderer, exported): explicit valid zone → type default (research/plan/workshop/tasks/adr = preflight; phase = flight; review/merge/retro = postflight) → **flight** (total map; unknown type never errors — AC-3).
+- No render change yet (rail consumes `effectiveZone` in C3) → no fixture drift. Full suite **782 green**; tsc clean.
+
+## C3 — harness flow rail + zoned/titled render (T009, T010) — ✅ GREEN
+- Shared `renderRailBody(nodes)`: spine topo order, live-status pips (no stored counters), label names, banded `pre ─ [ flight ] ─ post` via `effectiveZone`. Reused by the embedded render `**Rail**:` AND the standalone `rail` command (Finding 05 factoring).
+- `renderRailLine(doc)` = `[<title>] <body>`; title = `provenance.agent → doc.title → slug → 'flow'` (AC-4). `harness flow rail` act: JSON `{rail}` / human raw line.
+- Render output changed (rail zoned + label names) → goldens regenerated (flight-plan-024 + kitchen-sink); golden-parity + escaping tests green. Full suite **788 green**.
+- Note: banding groups by zone (preserving spine order within a band) — for the-flow's overlay this matches spine order (research/plan = pre, phases = flight, review/merge = post). A foreign overlay whose spine interleaves zones (e.g. harness-loop's `retro` before `improve`) reorders cosmetically in the rail — expected; that overlay sets explicit `--zone`.
+
+## Companion observation (dogfooding — task #90)
+- `code-review-companion` booted + briefed + ack'd the C1 ping, but then stalled in `minih-coordination-wait_for_any` (`minih status` verdict `dead`, ~28min, **no inbox_list polls observed**, zero review replies emitted). Pings for C1–C3 delivered to its inbox but unconsumed. Per the implement sub-skill, the companion is advisory + never blocks → build continued; **stage-7 review still required** (companion did NOT supersede review). Kept pinging in case it revives for the debrief. Likely minih 0.2.2 coordination flakiness (the known `dead`-while-mid-tool false-positive shape, but here with no actual review activity).
+
+## C4 — docs + dogfood + final gate (T013, T014) — ✅ GREEN
+- T013: `check:flows` clean (gen:flows no-drift + `flow-fixtures --check`) + full suite **788 green** — the CI gate. (Fixtures regenerated incrementally in C1/C3.)
+- T014: `docs/how/harness-flow.md` updated — model (nav + zone), verbs table (nav show/set/meta + rail; create --agent/--plan-id/--title; --zone on add/insert; `cursor` row removed), a new "Position, intent & the rail" section + the clean-break note.
+- T014 dogfood (live, local built bin) on flow 026's own flight plan: `nav set --now p1 --next merge --intent …` created nav on the pre-migration flow; `nav meta set build_commit cc63c12`; `rail` → `[the-flow-cursor-meta-migration] ◆─◆─◆─◆─[ ◐ ]─◇ …Plan… ─ [ Phase 1… ] ─ Merge` (zone defaults band it; title = slug — the live D-06 effect); `nav show` → exact AC-1 envelope w/ trimmed neighbours; `create --agent the-flow` throwaway → rail `[the-flow] …` (**D-06 fixed, live-confirmed**; throwaway removed); `render` → the-flow.md regenerated.
+- Observation (task #90): 026's own flight plan was created pre-fix (agent null) so its live rail shows the slug, not `[the-flow]`; provenance is stamped-once → the skill's one-shot migration (Non-Goal) or a re-create adopts the agent title. Not a CLI bug — `create --agent` + the slug fallback are the intended paths (both shown live).
+
+## Phase 1 complete — all 15 tasks ✅
+4 build commits (C1 nav core · C2 zone · C3 rail · C4 docs/dogfood); every AC (1–7) delivered + dogfooded live. **See the companion debrief + C5 below** — the companion DID review (the mid-build "stalled" read was wrong); its 2 findings are fixed in C5.
+
+## Companion debrief — the "dead" verdict was the false-positive (it DID review)
+At phase end the companion run exited (`stop_requested`) and wrote `report.json`. Correcting the mid-build observation above: the companion **reviewed all 4 commit boundaries** and raised **2 findings** — they only failed to *send* through minih's inbox (`findingsSent:2` but rejected: `must have required property 'id'` — a minih 0.2.2 schema bug), so my inbox skims saw nothing. The findings survived in `report.json` and were read at the debrief:
+- **HIGH (Contract Integrity, flow-service.ts)** — `createFlow` fell back to `$HARNESS_AGENT`/`$HARNESS_PLAN_ID` when `--agent`/`--plan-id` omitted, contradicting AC-5 (omitted → `null`); env would leak the *model* name into the rail title; the 024 test masked it. **VALID → fixed (C5).**
+- **MEDIUM (Contract Integrity, flow-mutations.ts)** — `--zone` accepted any string (`--zone bogus` succeeded, wrote garbage, rendered as if unset), contradicting the zone enum. **VALID → fixed (C5).**
+- Companion magic-wand (its own retro): minih needs first-class unresolved-finding tracking + an inbox finding-status field — the open findings had to be reconstructed at drain. (A real minih gap; task #90 observation.)
+- **Lesson (task #90):** the minih "dead-while-mid-tool" verdict + the inbox send-validation bug together made a working companion *look* idle. Don't trust the verdict — read `report.json` at debrief. The companion earned its keep (2 real catches I'd missed).
+
+## C5 — address the 2 companion findings — ✅ GREEN
+- **Fix 1 (HIGH):** `createFlow` provenance is now **explicit-only** — `agent: opts.agent ?? null`, `plan_id: opts.planId ?? null` (no env fallback). The flow's identity is set by `--agent` at create (the-flow passes `--agent the-flow`); the rail's slug fallback handles omission. Updated the 024 create test (agent → null) + added a regression guard (env present, no flag → null).
+- **Fix 2 (MEDIUM):** `addNode`/`insertNode` reject a non-enum `zone` → `E108`, nothing written (`badZone` guard, pre-write). Renderer stays tolerant for legacy/pass-through. Act + mutation tests added.
+- Full suite **790 green**; `check:flows` clean. (Note: `--agent`-supersede-review — the companion reviewed C1–C4, not C5; C5 is small + tested.)
