@@ -420,3 +420,82 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     expect(nodeById(deps, 'boot')?.command).toBe('/eng-harness-flow --hook session-start');
   });
 });
+
+describe('harness flow act — dangling-edge guard runs regardless of schema resolution', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Bundled (in-repo-resolvable) flow: the mechanical E305 guard now fires BEFORE
+  // the post-mutation schema check (which would also catch the dangling ref as E300).
+  it('add-node --next <ghost> on a bundled flow → E305, file UNCHANGED', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    const before = fs.readText('/repo/.harness/flows/demo.json');
+    const bad = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'demo', '--id', 'x', '--type', 'improve',
+      '--label', 'X', '--next', 'ghost',
+    ]);
+    expect(bad.code).toBe(1);
+    expect(bad.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
+    expect(fs.readText('/repo/.harness/flows/demo.json')).toBe(before);
+  });
+
+  // The the-flow case: a flow created from an OUT-OF-REPO --schema. Mutations
+  // can't re-resolve the overlay, so the act's post-mutation validateFlowDoc is
+  // tolerantly SKIPPED — before the fix a dangling --next was written silently.
+  // The mechanical guard now rejects it even on this skip path.
+  async function seedOutOfRepoSchemaFlow(): Promise<VerbActDeps> {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    fs.mkdirp('/external');
+    fs.writeText(
+      '/external/flight-plan.schema.json',
+      JSON.stringify({
+        kind: 'flight-plan',
+        extends: 'flow-core',
+        schema_version: 1,
+        statuses: ['known', 'in_progress', 'done', 'blocked'],
+        nodeTypes: ['research', 'plan', 'phase', 'review', 'merge'],
+      }),
+    );
+    const deps = fakeDeps(fs);
+    // create resolves the overlay via --schema (flag source); later mutations cannot.
+    const created = await runFlow(deps, [
+      'flow', 'create', 'flight-plan', '--slug', 'fp',
+      '--schema', '/external/flight-plan.schema.json', '--bare',
+    ]);
+    expect(created.code).toBe(0);
+    // one real node to point at (and to prove the skip path writes normally)
+    const seed = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'fp', '--id', 'p1', '--type', 'phase', '--label', 'P1',
+    ]);
+    expect(seed.code).toBe(0);
+    return deps;
+  }
+
+  it('add-node --next <ghost> on an out-of-repo-schema flow → E305 (gap closed), file UNCHANGED', async () => {
+    const deps = await seedOutOfRepoSchemaFlow();
+    const before = deps.fs.readText('/repo/.harness/flows/fp.json');
+    const bad = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'fp', '--id', 'p2', '--type', 'phase', '--label', 'P2',
+      '--next', 'ghost',
+    ]);
+    expect(bad.code).toBe(1);
+    expect(bad.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
+    expect(deps.fs.readText('/repo/.harness/flows/fp.json')).toBe(before);
+  });
+
+  it('add-node --next <existing> on an out-of-repo-schema flow still succeeds (skip path writes normally)', async () => {
+    const deps = await seedOutOfRepoSchemaFlow();
+    const ok = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'fp', '--id', 'p2', '--type', 'phase', '--label', 'P2',
+      '--next', 'p1',
+    ]);
+    expect(ok.code).toBe(0);
+    const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/fp.json') as string);
+    expect(doc.nodes.find((n: { id: string }) => n.id === 'p2').next).toEqual(['p1']);
+  });
+});

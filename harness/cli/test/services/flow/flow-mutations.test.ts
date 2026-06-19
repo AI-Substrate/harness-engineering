@@ -459,3 +459,63 @@ describe('T011 — insert-node edge algebra + DAG re-check (E309) + audit events
     ).toBeNull();
   });
 });
+
+describe('forward-ref / dangling-edge guard (fix-forward-ref-validation-gap)', () => {
+  it('addNode rejects a --next that names a non-existent node → E305, nothing written', () => {
+    const doc = baseDoc();
+    const res = addNode(
+      doc,
+      { id: 'd', type: 'improve', label: 'D', status: 'known', next: ['ghost'] },
+      deps(),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
+    expect(doc.nodes.map((n) => n.id)).toEqual(['a', 'b', 'c']); // pure — input untouched
+  });
+
+  it('addNode accepts a --next that names an existing node', () => {
+    const res = addNode(
+      baseDoc(),
+      { id: 'd', type: 'improve', label: 'D', status: 'known', next: ['c'] },
+      deps(),
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.doc.nodes.find((n) => n.id === 'd')?.next).toEqual(['c']);
+  });
+
+  it('addNode with an empty next[] is fine (the --next "" idiom)', () => {
+    const res = addNode(
+      baseDoc(),
+      { id: 'd', type: 'improve', label: 'D', status: 'known', next: [] },
+      deps(),
+    );
+    expect(res.ok).toBe(true);
+  });
+
+  it('insertNode --branch-of X --rejoin <ghost> rejects the dangling rejoin → E305, nothing written', () => {
+    const doc = baseDoc();
+    const res = insertNode(
+      doc,
+      { id: 'ws', type: 'phase', label: 'WS', status: 'known' },
+      { branchOf: 'a', rejoin: 'ghost' },
+      deps(),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
+    expect(doc.nodes.map((n) => n.id)).toEqual(['a', 'b', 'c']); // pure — input untouched
+  });
+
+  it('insertNode --branch-of X --rejoin <self> is STILL a self-cycle → E309 (guard runs post-push)', () => {
+    // Placement regression: the dangling-next guard must NOT pre-empt the
+    // self-cycle E309. It runs after the node is pushed, so a self-ref resolves
+    // here and is left to the DAG re-check (which reports the cycle).
+    const res = insertNode(
+      baseDoc(),
+      { id: 'n', type: 'phase', label: 'N', status: 'known' },
+      { branchOf: 'a', rejoin: 'n' },
+      deps(),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe(ErrorCodes.FLOW_EDGE_INVALID);
+  });
+});

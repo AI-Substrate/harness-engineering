@@ -357,6 +357,26 @@ function badChore(spec: NodeSpec): FlowFailure | null {
   return null;
 }
 
+/**
+ * Reject any `next[]` target that names a node not present in `doc` — the
+ * dangling-edge guard. Like the nav setters' E305 check, this is a MECHANICAL
+ * integrity guard that runs REGARDLESS of schema resolution, so a forward /
+ * dangling `--next` is refused even on out-of-repo-schema flows (e.g. the-flow
+ * flight plans) where the act's post-mutation `validateFlowDoc` — which also flags
+ * dangling refs — is tolerantly skipped. Returns the E305 failure (nothing
+ * written) or null. Callers run it once `doc`'s node set reflects what the edge
+ * may legitimately point at (add-node: before the new node is pushed, so a forward
+ * / self ref is rejected; insert-node: after, so a self-rejoin resolves and is
+ * left to the DAG re-check's E309).
+ */
+function badNext(doc: FlowDoc, targets: readonly string[] | undefined): FlowFailure | null {
+  if (targets === undefined) return null;
+  for (const target of targets) {
+    if (findNode(doc, target) === undefined) return nodeNotFound(target);
+  }
+  return null;
+}
+
 /** `flow add-node` — append a brand-new node, firing `node-created {node,type}`. */
 export function addNode(doc: FlowDoc, spec: NodeSpec, deps: MutationDeps): MutationResult {
   const next = clone(doc);
@@ -371,6 +391,10 @@ export function addNode(doc: FlowDoc, spec: NodeSpec, deps: MutationDeps): Mutat
   if (zoneErr !== null) return zoneErr;
   const choreErr = badChore(spec);
   if (choreErr !== null) return choreErr;
+  // Dangling-edge guard: every --next target must already exist. The new node is
+  // not yet pushed, so a forward (or self) ref is rejected → build last-to-first.
+  const nextErr = badNext(next, spec.next);
+  if (nextErr !== null) return nextErr;
   const now = deps.clock.nowIso();
   next.nodes.push(materialize(spec, now));
   next.events.push(
@@ -590,6 +614,13 @@ export function insertNode(
   }
 
   next.nodes.push(node);
+
+  // Dangling-edge guard: the inserted node's final next[] (placement-derived,
+  // incl. --rejoin) must all resolve. Runs AFTER the push so a self-rejoin still
+  // resolves here and is left to the DAG re-check below (a self-cycle → E309),
+  // while a genuinely-absent --rejoin target → E305 with nothing written.
+  const nextErr = badNext(next, node.next);
+  if (nextErr !== null) return nextErr;
 
   // DAG re-check BEFORE returning — a bad splice writes NOTHING (AC-15).
   const issue = dagIssue(next.nodes);
