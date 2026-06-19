@@ -245,9 +245,11 @@ Two storage classes, one rule: `.harness/records/` is **committed team memory**;
 
 ## Key Concepts
 
-### The router is stateless — and that's the feature
+### Stateless routing — and CLI-driven flow position
 
-`/eng-harness-flow` writes no state file and owns no artifacts. It re-derives position on every call from deterministic substrate (`harness doctor`, the governance doc, the harnessability report, plan artifacts, the observe buffer) — so it survives `/compact`, serves any caller (a human, a parent flow like the SDD pipeline's `/the-flow`, a CI agent), and never drifts from reality. The only durable "done" signal is a **child artifact**, never the router's memory. If the router ever seems to need memory, that state belongs in substrate a child verb owns.
+`/eng-harness-flow`'s **routing is stateless**: it re-derives *which* flow is live, *which* rung is missing, and *where* the work sits on every call from deterministic substrate (`harness doctor`, the governance doc, the harnessability report, plan artifacts, the observe buffer) — so it survives `/compact`, serves any caller (a human, a parent flow like the SDD pipeline's `/the-flow`, a CI agent), and never drifts from reality. Routing, detection, and verdicts are never remembered.
+
+What it **does** persist — the dogfood (plan 032) — is the **position of the flow it drives**, as a real CLI-owned flight plan (the `harness-adopt` / `harness-loop` overlays), written **only** through `harness flow` (never hand-edited). Alongside an active `the-flow` the loop rides as **chores in `the-flow.json`**; standalone it authors `.harness/loop.flow.json`. This supersession is **scoped to flow position only** — child artifacts remain the durable "done" signal for verb outputs, and flow position lives in the flight plan *by the CLI* (observable substrate, not router memory). See [`flight-plan-ops.md`](./flight-plan-ops.md).
 
 ### The hook contract (for parent flows)
 

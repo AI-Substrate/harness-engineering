@@ -2,7 +2,7 @@
   "kind": "harness-loop",
   "extends": "flow-core",
   "schema_version": 1,
-  "description": "Bundled harness-loop overlay (plan 024 AC-10). Schema-ONLY in v1 — nothing in 024 creates or drives a harness-loop instance (that is the later eng-harness-flow work). Proves the shared-core + per-flow-custom split alongside the test-fixture overlay. `todo`/`skipped` (Phase 4) declare the chore lifecycle (the loop-as-chores case) — the overlay-declared-status path, not a validator change.",
+  "description": "Bundled harness-loop overlay (plan 024 AC-10; driven first-class since plan 032). The cycling ⚙️ engineering loop eng-harness-flow drives — standalone in its own .harness/loop.flow.json — re-entered every coding session: boot → backpressure → observe → drain-gate → retro-drain → retro-harvest → improve. The cycle is a nav RESET, so the graph stays acyclic (improve.next:[]). Disjoint from harness-adopt — detection runs exactly one. `todo`/`skipped` declare the chore lifecycle for the loop-as-chores case (the four fire hooks injected into an active the-flow); the overlay-declared-status path, not a validator change.",
   "statuses": ["assumed", "known", "in_progress", "done", "blocked", "todo", "skipped"],
   "nodeTypes": ["boot", "backpressure", "observe", "retro", "improve", "decision"]
 }

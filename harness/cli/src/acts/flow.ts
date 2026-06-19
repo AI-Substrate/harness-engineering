@@ -285,7 +285,8 @@ export function registerFlowAct(
                 status: 'error',
                 code: ErrorCodes.INVALID_ARGS,
                 message: 'nav set needs at least one of --now / --next / --clear-next / --intent.',
-                next_action: 'Pass --now <node>, --next <node>, --clear-next, or --intent "<text>".',
+                next_action:
+                  'Pass --now <node>, --next <node>, --clear-next, or --intent "<text>".',
               },
               deps.clock,
             ),
@@ -493,6 +494,15 @@ export function registerFlowAct(
     .option('--user-input <text>', 'set the genesis user_input')
     .option('--artifacts <list>', 'comma-separated artifact paths (replaces the node list)')
     .option('--command <cmd>', 'set the command/ref this node runs (e.g. a slash-command)')
+    .option('--zone <band>', 'rail band: preflight | flight | postflight')
+    .option(
+      '--chore-kind <kind>',
+      'flag this node a chore: skill | command | builtin | manual (R-1: turn an existing seam node into a chore)',
+    )
+    .option(
+      '--importance <level>',
+      'chore strength: strongly-recommended | recommended | optional | informational',
+    )
     .action(
       (opts: {
         path?: string;
@@ -503,6 +513,9 @@ export function registerFlowAct(
         userInput?: string;
         artifacts?: string;
         command?: string;
+        zone?: string;
+        choreKind?: string;
+        importance?: string;
       }) => {
         const fields: Record<string, unknown> = {};
         if (opts.label !== undefined) fields.label = opts.label;
@@ -510,6 +523,9 @@ export function registerFlowAct(
         if (opts.userInput !== undefined) fields.user_input = opts.userInput;
         if (opts.artifacts !== undefined) fields.artifacts = splitIds(opts.artifacts);
         if (opts.command !== undefined) fields.command = opts.command;
+        if (opts.zone !== undefined) fields.zone = opts.zone;
+        const chore = choreFromFlags(opts.choreKind, opts.importance);
+        if (chore !== undefined) fields.chore = chore;
         runMutation(io, deps, opts, (doc) =>
           setNode(doc, opts.node, fields, { clock: deps.clock }),
         );

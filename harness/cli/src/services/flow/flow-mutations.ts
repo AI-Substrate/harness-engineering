@@ -433,6 +433,15 @@ export function setNode(
   const next = clone(doc);
   const node = findNode(next, nodeId);
   if (node === undefined) return nodeNotFound(nodeId);
+  // Validate chore/zone when set here (mirrors add-node's pre-write guards). This
+  // matters for the R-1 path — flagging an existing the-flow seam node as a chore —
+  // because the-flow flight plans resolve an out-of-repo schema, so the act's
+  // post-mutation validateFlowDoc is tolerantly skipped; without this a bad value
+  // would slip through. (A no-op for the field editor's other keys.)
+  const zoneErr = badZone({ zone: fields.zone } as NodeSpec);
+  if (fields.zone !== undefined && zoneErr !== null) return zoneErr;
+  const choreErr = badChore({ chore: fields.chore } as NodeSpec);
+  if (fields.chore !== undefined && choreErr !== null) return choreErr;
   const applied: string[] = [];
   for (const [key, value] of Object.entries(fields)) {
     if (key === 'id') continue; // identity is immutable

@@ -1,0 +1,11 @@
+
+## 2026-06-19T06:08:25.481Z — loop-flow-eval / 2026-06-19T06-02-22-102Z-ef68
+
+- runId: 2026-06-19T06-02-22-102Z-ef68
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/loop-flow-eval/runs/2026-06-19T06-02-22-102Z-ef68
+- summary: Drove the standalone eng-harness-flow loop using the CLI-authored throwaway plan at .harness/temp/loop-eval/2026-06-19T06-02-22-102Z-ef68/loop.flow.json: created harness-loop with the prescribed create command, advanced nav from boot through backpressure to observe, marked boot and backpressure done, and independently verified the rail, nav, and render behavior with harness --json flow reads plus render exit status. The final minih validation could not be made to pass because the system schema requires retrospective.workedWell/confusing as strings while agents/loop-flow-eval/output-schema.json requires those same fields as arrays.
+- **magicWand** (target: minih): Make minih's system retrospective schema and per-agent output schemas agree on one type for retrospective.workedWell and retrospective.confusing, or have minih check normalize string/array forms before validation.
+- difficulties:
+  - [degrading] knowledge: flight-plan-ops documents harness flow status as --node/--to but does not show the standalone --path flag on status mutations, which conflicts with the eval rule that every write must stay under $OUT. (workaround: Used the same $OUT/loop.flow.json --path on status commands to keep all CLI writes in the throwaway flow.)
+  - [degrading] tooling: harness --json flow show returns only a summary, and the other JSON read verbs do not expose node command fields, so there was no CLI JSON endpoint for verifying the four --hook command tokens. (workaround: Completed the mandatory --json rail/nav checks, then read the CLI-authored throwaway flow JSON directly for node ids and command tokens.)
+  - [blocking] config: minih check has contradictory validators for loop-flow-eval: the system schema requires retrospective.workedWell/confusing to be strings, while the agent output-schema.json requires those same fields to be arrays. (workaround: Tried both shapes across three validation attempts, then recorded the irreconcilable validation errors in the final report as instructed.)

@@ -1,10 +1,66 @@
 {
+  "_comment": "harness-loop create-seed (plan 032, modernized from the 024 schema-only stub). The CLI consumes `cursor` (→ nav.now) + `nodes` VERBATIM; root identity (provenance/created_at/events/nav block) is stamped by `harness flow create`. The ⚙️ engineering loop eng-harness-flow drives standalone (own .harness/loop.flow.json) when no the-flow is active. The cycle is modeled as a nav RESET (the driver moves nav.now back to observe/boot) — the DAG stays ACYCLIC (improve.next:[]). retro is split into retro-drain (post-coding) + retro-harvest (post-flight); drain-gate is the decision that orders them. The four fire-hook nodes carry their `command` so the standalone loop is self-documenting; observe/improve/drain-gate fire no hook. Zones are explicit (renderer ZONE_BY_TYPE has no loop types — R-3).",
   "cursor": "boot",
   "nodes": [
-    { "id": "boot", "type": "boot", "label": "Boot", "status": "assumed", "next": ["backpressure"] },
-    { "id": "backpressure", "type": "backpressure", "label": "Backpressure Check", "status": "assumed", "next": ["observe"] },
-    { "id": "observe", "type": "observe", "label": "Do Work + Observe", "status": "assumed", "next": ["retro"] },
-    { "id": "retro", "type": "retro", "label": "Retro + Magic Wand", "status": "assumed", "next": ["improve"] },
-    { "id": "improve", "type": "improve", "label": "Improve", "status": "assumed", "next": [] }
+    {
+      "id": "boot",
+      "type": "boot",
+      "label": "Boot",
+      "status": "assumed",
+      "next": ["backpressure"],
+      "zone": "preflight",
+      "command": "run /eng-harness-flow --hook pre-flight"
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure Check",
+      "status": "assumed",
+      "next": ["observe"],
+      "zone": "preflight",
+      "command": "run /eng-harness-flow --hook pre-coding"
+    },
+    {
+      "id": "observe",
+      "type": "observe",
+      "label": "Do Work + Observe",
+      "status": "assumed",
+      "next": ["drain-gate"],
+      "zone": "flight"
+    },
+    {
+      "id": "drain-gate",
+      "type": "decision",
+      "label": "Buffer non-empty?",
+      "status": "assumed",
+      "next": ["retro-drain", "retro-harvest"],
+      "zone": "flight"
+    },
+    {
+      "id": "retro-drain",
+      "type": "retro",
+      "label": "Retro — drain buffer",
+      "status": "assumed",
+      "next": ["retro-harvest"],
+      "zone": "postflight",
+      "command": "run /eng-harness-flow --hook post-coding"
+    },
+    {
+      "id": "retro-harvest",
+      "type": "retro",
+      "label": "Retro — harvest",
+      "status": "assumed",
+      "next": ["improve"],
+      "zone": "postflight",
+      "command": "run /eng-harness-flow --hook post-flight"
+    },
+    {
+      "id": "improve",
+      "type": "improve",
+      "label": "Improve",
+      "status": "assumed",
+      "next": [],
+      "zone": "postflight"
+    }
   ]
 }

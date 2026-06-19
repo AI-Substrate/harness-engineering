@@ -1,0 +1,16 @@
+{
+  "$schema": "https://minih.dev/schemas/agent-manifest.json",
+  "name": "flow-coexist-eval",
+  "version": "0.1.0",
+  "description": "Single-shot eval probe for the-flow + eng-harness-flow COEXISTENCE (plan 032 T203 / AC-11 + AC-13). Drives a throwaway the-flow flight plan to mid-plan, then drives eng-harness-flow alongside it to inject its four fire-hook steps as CHORES into the-flow.json (run /eng-harness-flow --hook <hook>) via real `harness flow` commands, runs the injection twice to prove idempotency, and reports — never self-grading. The deterministic scripts/score-flow-coexist.sh reads the artifacts and decides.",
+  "author": "AI-Substrate",
+  "tags": ["eval", "eng-harness-flow", "the-flow", "coexist", "dogfood"],
+  "minihVersion": ">=0.3.0",
+  "type": "minih-agent",
+  "files": [
+    { "path": "prompt.md", "description": "The goal brief: build a throwaway the-flow flight plan, drive eng-harness-flow to inject the four fire-hook chores into it, re-inject to prove idempotency, verify visibility, and report faithfully." },
+    { "path": "instructions.md", "description": "Rules: drive the skills' prescribed `harness flow` commands faithfully (no hand-crank), a skill-prescribed error is a finding, independent verification via --json, idempotency by re-injection, no standalone loop.flow.json while the-flow active, throwaway writes only." },
+    { "path": "input-schema.json", "description": "Params: harnessSource (where eng-harness-flow is loaded from), theFlowSchema (path to the the-flow flight-plan schema for create)." },
+    { "path": "output-schema.json", "description": "Structured report: theFlowPath, reinjectedPath, choreHooks, choreCount, idempotent, navNow, loopFileAbsent, railShowsChores, summary, retrospective (dual-layer)." }
+  ]
+}

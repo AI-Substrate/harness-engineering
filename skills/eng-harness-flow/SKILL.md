@@ -9,13 +9,31 @@ The **single front door** to the harness loop — the harness-loop analogue of `
 
 **Progressive disclosure is the contract: load exactly one verb module for the current step — never read all of them up front.**
 
-## The stateless contract (read this first)
+## The state contract — stateless routing, CLI-driven flow position (read this first)
 
-`eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **writes no artifacts of its own** (child verbs own the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`); **never gates, scores, or blocks** (every route is a suggestion; a hint is never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion). It only **reads** signals + conversation, **routes** to exactly one verb (with a one-line *why*, the artifact it produces, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and **re-derives every call** — re-entry after `/compact` needs nothing reloaded.
+`eng-harness-flow` is a **stateless dispatcher** for *routing*: `(repo signals, conversation, optional hint) → next harness action`. Its detection — *which* flow is live, *which* rung is missing, *where* the work sits — is **re-derived every call** from deterministic repo signals, never remembered (re-entry after `/compact` needs nothing reloaded). It **never gates, scores, or blocks** (every route is a suggestion; a hint is never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion).
 
-> **The unifying rule:** state that must persist lives in deterministic substrate a child verb owns (reports, buffers, `.retro.md`, the governance doc) — **never in this router**. If a need for router-owned memory ever appears, that is a signal the missing state belongs in substrate, not here.
+**What it *does* persist — and the only thing it does (plan 032):** the **position of the flow it is driving**, as a **first-class, CLI-driven flight plan**, through the **real `harness flow` verb family** (never hand-edited JSON). This is the deliberate, *scoped* supersession of the old "writes nothing" stance — the dogfood + the exemplar. The scope is **flow position only**:
 
-The full engine — detection signals A–J, the two-zone adoption gate (the Graph), the engineering dispatch, the precondition/conflict matrix, and the byte-stable public contract — lives in [`references/00-routing.md`](./references/00-routing.md). The human-mode voice (rail, narration, why-table, tone) lives in [`references/coach.md`](./references/coach.md).
+- ✅ The router drives **two mutually-exclusive flows** as flight plans (🧰 adopt + ⚙️ loop — § below); position lives in `nav`, driven by `harness flow nav`.
+- ✅ When the ⚙️ loop runs **alongside an active the-flow**, it injects its four fire-hook steps as **chores** into `the-flow.json` so that flow's rail tracks them (and they stop getting missed); standalone, it authors its own `.harness/loop.flow.json`.
+- ❌ Routing/detection/verdicts stay signal-derived; verb modules stay **harness-blind**; the five lifecycle hooks + the `--json`/`--hooks` envelope contract are **frozen**.
+
+> **The unifying rule (unchanged for routing):** routing state that *could* drift lives in deterministic substrate a child verb owns (reports, buffers, `.retro.md`, the governance doc) — **never remembered by the router**. *Flow position* is different: it is persisted **in the flight plan, by the CLI** (the single writer), exactly as the-flow does — observable substrate, not router memory.
+
+The mechanics of driving a flow — nav model, spine-vs-excursion, the verb flags + gotchas, the build-order rule, and the AC-07 chore shape — live in [`references/flight-plan-ops.md`](./references/flight-plan-ops.md) (**load it once, before the first flight-plan mutation of a session; run the capability precheck there first**). The full routing engine — detection signals A–J, the two-zone adoption gate (the Graph), the two-flow selection predicate, the engineering dispatch, the precondition/conflict matrix, and the byte-stable public contract — lives in [`references/00-routing.md`](./references/00-routing.md). The human-mode voice (rail, narration, why-table, tone) lives in [`references/coach.md`](./references/coach.md).
+
+## The two first-class flows (🧰 adopt · ⚙️ loop)
+
+Unlike `the-flow` (one linear journey), `eng-harness-flow` drives **two distinct, mutually-exclusive flows** — the adoption gate decides which is live, and they **never co-run**:
+
+| Flow | Shape | Spine (CLI node ids) | Terminal | Lives in |
+|---|---|---|---|---|
+| 🧰 **adopt** (`harness-adopt`) | finite, once per repo | `install → governance → build-boot → bridge` (`scout`/`inject` = `branch_of` excursions) | `bridge` (a `decision`; the adopt→loop gate) | its own adopt flight plan during onboarding |
+| ⚙️ **loop** (`harness-loop`) | cycling, every session | `boot → backpressure → observe → drain-gate → retro-drain → retro-harvest → improve` | `improve` (`next:[]`; the cycle is a **nav reset**, DAG stays acyclic) | **chores in `the-flow.json`** when a the-flow is active; else its own `.harness/loop.flow.json` |
+
+- **Selection predicate**: the adoption gate **S0 (install) + S2 (governance) + S4 (boot)** all hold → the **loop** is live; otherwise **adopt** is live. Exactly one (`00-routing.md` § The two first-class flows).
+- **Coexistence**: when the loop runs alongside an active the-flow, the four **fire** hooks (`pre-flight`/`pre-coding`/`post-coding`/`post-flight`) are injected as **chores** (`run /eng-harness-flow --hook <hook>`) onto `the-flow.json` — idempotent, dedup-keyed on the `--hook` token, lifecycle `todo → done|skipped`. `coding`/observe and `improve` get no chore. The exact shape + the R-1 seam-node reconciliation are in [`references/flight-plan-ops.md`](./references/flight-plan-ops.md).
 
 ## Registry
 
@@ -82,7 +100,8 @@ post-spec, task-pause, phase-end, plan-complete (see "Lifecycle hooks").
 ## References
 
 - [`references/00-routing.md`](./references/00-routing.md) — the routing engine: signals A–J, the adoption gate (the Graph), the engineering dispatch, the precondition/conflict matrix, verb/slug resolution, the `--json` envelope + `--hooks` manifest (the byte-stable contract), and § Shared conventions.
-- [`references/coach.md`](./references/coach.md) — the human-mode voice: the rail, the Orient→Flag→Insight→Suggest→Invite contract, the why-table, the Flag beat, tone.
+- [`references/coach.md`](./references/coach.md) — the human-mode voice: the rail (both flows), the Orient→Flag→Insight→Suggest→Invite contract, the why-table, the Flag beat, tone.
+- [`references/flight-plan-ops.md`](./references/flight-plan-ops.md) — **the dogfood**: how the router drives its two flows as CLI flight plans (nav model, spine-vs-excursion, the `harness flow` verb flags + gotchas, build-order, the AC-07 chore shape + dedup key, standalone loop). Load once, before the first flight-plan mutation of a session.
 - [`references/getting-started.md`](./references/getting-started.md) — the visual guide to the whole skill family: the two-zone big picture, who pulls each trigger, a worked walkthrough, and the `.harness/` directory map. The on-ramp for anyone new to the loop.
 - [`references/governance-doc.md`](./references/governance-doc.md) — what the governance doc (`.harness/engineering-harness.md`) contains, the `harness-change` record ledger semantics, and the write conditions.
 - [`references/maturity-assessment.md`](./references/maturity-assessment.md) — the canonical L0–L4 maturity ladder and how to assess which rung a harness sits on.

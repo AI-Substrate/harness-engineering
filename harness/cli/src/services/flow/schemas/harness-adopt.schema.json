@@ -1,0 +1,8 @@
+{
+  "kind": "harness-adopt",
+  "extends": "flow-core",
+  "schema_version": 1,
+  "description": "Bundled harness-adopt overlay (plan 032; executes plan 028 §4). The finite 🧰 onboarding flow eng-harness-flow drives once per repo: spine install → governance → build-boot → bridge, with scout + inject as branch_of excursions, terminating at a `bridge` decision (the router's adopt→loop gate; next:[]). Disjoint from harness-loop — detection runs exactly one. Statuses include todo/skipped so a skippable excursion (scout/inject) can be marked skipped without a validator change.",
+  "statuses": ["assumed", "known", "in_progress", "done", "blocked", "todo", "skipped"],
+  "nodeTypes": ["install", "scout", "governance", "inject", "build-boot", "decision"]
+}

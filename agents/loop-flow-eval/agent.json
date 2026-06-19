@@ -1,0 +1,16 @@
+{
+  "$schema": "https://minih.dev/schemas/agent-manifest.json",
+  "name": "loop-flow-eval",
+  "version": "0.1.0",
+  "description": "Single-shot eval probe for the eng-harness-flow STANDALONE engineering loop (plan 032 T202 / AC-10). Drives the eng-harness-flow skill FAITHFULLY to author + advance a throwaway harness-loop flight plan via real `harness flow` commands (no the-flow active), then reports what it authored — rail title, spine shape, the position verb used, whether it validates, and the four fire-hook commands. Does NOT self-grade; the deterministic scripts/score-loop-eval.sh reads the artifacts and decides.",
+  "author": "AI-Substrate",
+  "tags": ["eval", "eng-harness-flow", "loop", "dogfood"],
+  "minihVersion": ">=0.3.0",
+  "type": "minih-agent",
+  "files": [
+    { "path": "prompt.md", "description": "The goal brief: load eng-harness-flow, follow its flight-plan-ops guidance to create + drive a throwaway standalone harness-loop flight plan, then report faithfully. Carries the throwaway-path redirect, faithful-drive rule, and report shape." },
+    { "path": "instructions.md", "description": "Rules: drive the skill's prescribed `harness flow` commands faithfully (no added/dropped flags), never hand-crank JSON, a skill-prescribed error is a finding (stop, record), independent verification via --json, throwaway writes only." },
+    { "path": "input-schema.json", "description": "Params: harnessSource (where eng-harness-flow is loaded from), intent (the loop session's one-line intent)." },
+    { "path": "output-schema.json", "description": "Structured report: railTitle, spineShape, navUsed, hookCommandsPresent, validates, flowPath, summary, retrospective (dual-layer project|minih)." }
+  ]
+}

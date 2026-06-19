@@ -189,12 +189,15 @@ describe('T009 — create (template deep-copy + root identity + atomic temp+rena
     const doc = res.doc;
     // default path under .harness/flows/
     expect(res.path).toBe('/repo/.harness/flows/demo.json');
-    // template nodes copied verbatim (the 5-node loop, edges preserved)
+    // template nodes copied verbatim (the modern 7-node loop — plan 032: retro split
+    // into drain + harvest, drain-gate decision added, edges preserved)
     expect(doc.nodes.map((n) => n.id)).toEqual([
       'boot',
       'backpressure',
       'observe',
-      'retro',
+      'drain-gate',
+      'retro-drain',
+      'retro-harvest',
       'improve',
     ]);
     expect(doc.nodes[0]?.next).toEqual(['backpressure']);

@@ -102,7 +102,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 | `rail [--chores show\|collapse\|hide]` | Emit the one-line rail: `[<title>] <pips>  <names>`, banded `pre ─ [ flight ] ─ post`. `--chores` controls chore-name visibility (default `collapse`). |
 | `status --node <id> --to <status>` | Set a node status (stamps `ran_at` on `done`/`blocked`). |
 | `add-node --id --type --label [--status --next --artifacts --zone --command --chore-kind --importance]` | Append a node (`--command` sets its ref; `--chore-kind`+`--importance` mark it a chore). |
-| `set-node --node <id> [--label --note --user-input --artifacts]` | Merge fields into a node. |
+| `set-node --node <id> [--label --note --user-input --artifacts --command --zone --chore-kind --importance]` | Merge fields into a node. `--command`/`--zone`/`--chore-kind`+`--importance` let you **flag an existing node as a chore** in place (e.g. turn a the-flow seam node into a chore — plan 032 R-1); cannot re-parent. |
 | `insert-node --id --type --label (--after\|--before\|--branch-of) [--zone --command --chore-kind --importance]` | Insert + splice edges deterministically; the DAG is re-checked before write. |
 | `comment --node <id> --text <t> [--source --kind --refs]` | Append a timestamped comment. |
 | `chores [--list] [--json]` | List the flow's chore nodes (status · importance · kind · anchor · ref). |
@@ -273,6 +273,59 @@ harness flow render --slug my-flow --check
   `comments[]` JSON is the single source of truth.
 
 ---
+
+## The bundled flows — `harness-adopt` & `harness-loop`
+
+Two overlays ship with the CLI (bundled via `gen:flows`, alongside the-flow's
+`flight-plan`). They are the two first-class flows `eng-harness-flow` drives — the
+**harness-loop analogue of the-flow**. Unlike the-flow's single linear journey, these
+are **two mutually-exclusive flows**: the adoption gate (`S0 install ∧ S2 governance ∧
+S4 boot`) picks the live one — satisfied → ⚙️ loop, else 🧰 adopt. They never co-run.
+
+| Overlay | Shape | Spine (node ids) | Node types | Terminal |
+|---|---|---|---|---|
+| `harness-adopt` | finite, once per repo | `install → governance → build-boot → bridge` (`scout` branch_of `install`, `inject` branch_of `governance`) | `install · scout · governance · inject · build-boot · decision` | `bridge` (a `decision`; the adopt→loop gate) |
+| `harness-loop` | cycling, every session | `boot → backpressure → observe → drain-gate → retro-drain → retro-harvest → improve` | `boot · backpressure · observe · retro · improve · decision` | `improve` (`next:[]`; the cycle is a **nav reset**, so the DAG stays acyclic) |
+
+```bash
+harness flow create harness-adopt --slug adopt --path .harness/flows/adopt.json --title adopt
+harness flow create harness-loop  --slug loop  --path .harness/loop.flow.json   --title harness-loop
+```
+
+- **Zones are explicit.** The renderer's `ZONE_BY_TYPE` default map has no adopt/loop
+  node types, so every node in these templates sets an explicit `--zone` — the bands
+  render correctly without a CLI change.
+- **Decision nodes render as a rhombus.** `bridge` (adopt) and `drain-gate` (loop) are
+  `type: decision` → `{"…"}:::decision` in the mermaid, an orange dashed class.
+- **The loop's four fire nodes** (`boot`/`backpressure`/`retro-drain`/`retro-harvest`)
+  carry `command: run /eng-harness-flow --hook <hook>`, so the standalone loop is
+  self-documenting; `observe`/`improve`/`drain-gate` carry none.
+
+### Chore injection — the loop alongside an active the-flow
+
+When the loop runs **alongside an active `the-flow.json`**, `eng-harness-flow` does not
+author a separate loop plan — it injects the four fire hooks as **chores** onto the
+the-flow flight plan, so the-flow's rail tracks them and they stop getting missed:
+
+```bash
+# add a fire-hook chore inline on the spine (rides the rail):
+harness flow insert-node --path the-flow.json --after plan \
+  --id ehf-pre-coding --type chore --label "pre-coding hook" --status todo \
+  --chore-kind command --importance recommended \
+  --command "run /eng-harness-flow --hook pre-coding" --zone flight
+# or flag an existing the-flow seam node as a chore in place (R-1 — no duplicate):
+harness flow set-node --path the-flow.json --node harness-boot \
+  --chore-kind command --importance strongly-recommended \
+  --command "run /eng-harness-flow --hook pre-flight"
+```
+
+The dedup key is the `--hook <X>` token in `command` — exactly one chore per hook, so
+re-running the injection is idempotent. The result is visible on the-flow's rail as
+chore square pips (`harness flow rail --chores show`):
+
+```
+[the-flow] ◆─▣─□─◆─[ ◇ ]─□─□  ◆ Research · ▣ pre-flight hook · □ pre-coding hook · ◆ Plan · [ ◇ Ship ] · □ post-coding hook · □ post-flight hook
+```
 
 ## Authoring a custom flow type
 

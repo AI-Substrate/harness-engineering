@@ -11,11 +11,78 @@
 
 ---
 
-## The stateless contract (the engine's first principle)
+## The state contract (the engine's first principle)
 
-`eng-harness-flow` is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **writes no artifacts of its own** (child verbs own the harnessability report, `backpressure-coverage.md`, the retro buffers, `.retro.md`); **never gates, scores, or blocks** (every route is a suggestion; `at=`/`--hook` is a hint, never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion). It only **reads** signals + conversation, **routes** to exactly one harness verb (with a one-line *why*, its artifact, and a `next_suggested`), optionally **runs it on an explicit go-ahead** (one step, never irreversible), and **re-derives every call** — re-entry after `/compact` needs nothing reloaded, and the rail is recomputed from substrate, never persisted.
+**Routing is stateless; flow position is persisted (plan 032).** `eng-harness-flow`'s *detection* is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **re-derives every call** (re-entry after `/compact` needs nothing reloaded; the rail is recomputed from substrate, never remembered); **never gates, scores, or blocks** (every route is a suggestion; `at=`/`--hook` is a hint, never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion).
 
-> **The unifying rule:** state that must persist lives in deterministic substrate a child verb owns (reports, buffers, `.retro.md`, the governance doc) — **never in this router**. If a need for router-owned memory ever appears, that is a signal the missing state belongs in substrate, not in `eng-harness-flow`.
+What it **does** persist — the dogfood — is the **position of the flow it drives**, as a CLI-owned flight plan written **only** through `harness flow` (§ The two first-class flows; mechanics in [`flight-plan-ops.md`](./flight-plan-ops.md)). This is a *scoped* supersession of the old "writes nothing" stance: **flow position only**. Routing, verdicts, and the verb modules are unchanged — modules stay harness-blind, the five hooks + envelope contract stay frozen.
+
+> **The unifying rule:** routing state that *could* drift lives in deterministic substrate a child verb owns (reports, buffers, `.retro.md`, the governance doc) — **never remembered by the router**. *Flow position* is persisted in the flight plan **by the CLI** (the single writer) — observable substrate, exactly as the-flow does it, not router memory.
+
+---
+
+## The two first-class flows (CLI-driven flight plans)
+
+The router drives **two distinct, mutually-exclusive flows** as real `harness flow`
+flight plans (the dogfood). The adoption gate below decides which is live; **exactly
+one ever runs** — they never co-run. The *mechanics* of driving them (nav, verbs,
+gotchas, chore shape) are in [`flight-plan-ops.md`](./flight-plan-ops.md); this is
+the **graph + selection** owner.
+
+### Selection predicate
+
+> **gate(S0 install ∧ S2 governance ∧ S4 boot) ⇒ ⚙️ loop is live; else 🧰 adopt is live.**
+
+The same required rungs that hard-gate the engineering zone (below) decide the flow:
+the loop only runs once adoption has established install + governance + a working
+boot; until then the live flow is adopt. The router re-derives this every call from
+signals (A·B·C·D) — it never remembers which flow it picked.
+
+### 🧰 adopt (`harness-adopt` overlay)
+
+A finite onboarding flow, once per repo. Spine `install → governance → build-boot →
+bridge`; `scout` (branch_of `install`) and `inject` (branch_of `governance`) are
+skippable excursions; **boot is built LAST**, then you run it and cross the bridge.
+`bridge` is a `decision` node (`next:[]`) — the adopt→loop gate. Rail title `[adopt]`.
+Created with `harness flow create harness-adopt --slug <s> --title adopt`.
+
+### ⚙️ loop (`harness-loop` overlay)
+
+A cycling flow, re-entered every session. Spine `boot → backpressure → observe →
+drain-gate → retro-drain → retro-harvest → improve`. `drain-gate` is a `decision`;
+`retro` is split into `retro-drain` (post-coding) + `retro-harvest` (post-flight);
+`improve.next:[]` — **the cycle is a nav RESET** (move `nav.now` back to
+`observe`/`boot`), so the graph stays acyclic. Rail title `[harness-loop]`. The four
+fire nodes carry `command: run /eng-harness-flow --hook <hook>`. Where it lives
+depends on whether a the-flow is active:
+
+#### Alongside an active the-flow → chores in `the-flow.json` (no separate plan)
+
+When an active `the-flow.json` exists (a the-flow is mid-journey), the loop does **not**
+author its own plan. Instead the router places its **four fire hooks as chores** on
+the the-flow flight plan, so the-flow's rail tracks them and **they stop getting
+missed**. Exact shape (full detail in [`flight-plan-ops.md`](./flight-plan-ops.md)):
+
+- `chore.kind = command`, `command = run /eng-harness-flow --hook <hook>` for
+  `<hook> ∈ {pre-flight, pre-coding, post-coding, post-flight}`, status `todo`.
+- `importance = recommended`, except `pre-flight`/boot = `strongly-recommended`.
+- **Dedup key = the `--hook <X>` token** — exactly one chore per hook; re-running the
+  injection is **idempotent** (byte-identical node set).
+- **R-1 (single owner).** `eng-harness-flow` owns the chore flag. If a the-flow seam
+  node (`harness-boot`/`backpressure`/`harness-retro`) already carries that hook's
+  command, **flag it in place** (`set-node --chore-kind command --importance …`) rather
+  than adding a duplicate; else `add-node`/`insert-node` a fresh chore. (the-flow's
+  `harness-seams.md` records this ownership so emission + injection don't double-fire.)
+- `coding`/observe stays silent (no chore); `improve` follows a retro (no chore).
+- **No `.harness/loop.flow.json` is authored while the-flow is active.**
+
+#### Standalone (no the-flow) → its own `.harness/loop.flow.json`
+
+With no active the-flow, the router creates and drives `.harness/loop.flow.json`
+(`harness flow create harness-loop --path .harness/loop.flow.json --title harness-loop`),
+moving `nav.now` along the spine and **resetting** to re-enter the cycle. That file is
+**tracked** (committed, like the-flow's flight plans — the dogfood record); only the
+observe scratch (`.harness/temp/`) stays gitignored.
 
 ---
 

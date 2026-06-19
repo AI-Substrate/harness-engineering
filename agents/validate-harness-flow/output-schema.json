@@ -108,6 +108,20 @@
       "minLength": 50,
       "description": "What happened, end to end, in a few sentences."
     },
+    "adoptFlow": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Plan 032 — verification that adoption is driven as a first-class CLI flight plan (the harness-adopt overlay), not hand-cranked. Optional: absent when the run abandoned before adoption.",
+      "properties": {
+        "authored": { "type": "boolean", "description": "An adopt flight plan was created via `harness flow create harness-adopt …` (CLI, not hand-written)." },
+        "railTitle": { "type": "string", "description": "The adopt flow's rail prefix, e.g. \"[adopt]\"." },
+        "spineShape": { "type": "array", "items": { "type": "string" }, "description": "Adopt spine node ids in order — expect install, governance, build-boot, bridge." },
+        "bootBuiltLast": { "type": "boolean", "description": "build-boot is the last build rung before the bridge gate (boot LAST)." },
+        "bridgeIsDecision": { "type": "boolean", "description": "The terminal bridge node is type=decision (the adopt→loop gate)." },
+        "navDriven": { "type": "boolean", "description": "Position advanced via `harness flow nav set` — not a hand-edited cursor/JSON." },
+        "flowPath": { "type": "string", "description": "Path to the adopt flight plan inside the clone (for any deterministic re-check)." }
+      }
+    },
     "retrospective": {
       "type": "object",
       "additionalProperties": true,
