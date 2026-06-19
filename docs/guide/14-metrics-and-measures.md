@@ -2,7 +2,7 @@
 
 > **Is the harness delivering value — not just speed?** For engineering leaders and managers — and the repo owner who runs the loop — who want a tangible way to start measuring what actually matters.
 
-## Speed is the easy thing to measure. It is rarely the thing that matters.
+## Speed is the easy thing to measure — rarely the thing that matters
 
 Pick a quarter where pull requests per developer jumped 20% and the share price rose 15%. By every activity dashboard, things looked excellent — and in that same quarter 78% of developers reported burning out.[^engthrive] Three signals, one quarter, pointing in opposite directions. Any one alone tells a confident, wrong story.
 
