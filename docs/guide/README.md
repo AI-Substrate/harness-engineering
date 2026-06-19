@@ -45,7 +45,7 @@ This guide describes **shipped-today** behaviour, verified against the real CLI.
 
 **Sustain it**
 - [13 · Maintaining the Harness](13-maintaining-the-harness.md) — keep core + skills current.
-- [14 · Metrics & Measures](14-metrics-and-measures.md) — what to measure, and how to gather it.
+- [14 · Metrics & Measures](14-metrics-and-measures.md) — what *value* means, and how to begin measuring it.
 - [15 · Where to Next](15-where-to-next.md) — the reference map out.
 
 ## What this is *not*
