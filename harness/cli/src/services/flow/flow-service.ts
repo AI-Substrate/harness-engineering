@@ -3,7 +3,7 @@ import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import { isWithin, posixDirname, posixJoin, toPosix } from '../shared/posix-path.js';
+import { isWithin, posixDirname, posixJoin, resolveInRepo, toPosix } from '../shared/posix-path.js';
 import {
   buildBuiltinEvent,
   type FlowDoc,
@@ -249,8 +249,11 @@ export function createFlow(
   deps: FlowServiceDeps,
 ): { ok: true; path: string; doc: FlowDoc } | FlowFailure {
   const repoRoot = toPosix(opts.repoRoot);
+  // A relative --path anchors to the repo root before the containment check
+  // (else an in-repo relative path resolves to `../…` and is wrongly rejected);
+  // an absolute path passes through. Containment still applies after resolution.
   const targetPath = opts.path
-    ? toPosix(opts.path)
+    ? resolveInRepo(opts.path, repoRoot)
     : posixJoin(repoRoot, FLOWS_DIR, `${opts.slug}.json`);
 
   // Containment first — an out-of-repo write target is rejected before any work.

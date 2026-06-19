@@ -340,9 +340,7 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
     );
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    const created = r.doc.events.find(
-      (e) => e.kind === 'node-created' && e.details?.node === 'c1',
-    );
+    const created = r.doc.events.find((e) => e.kind === 'node-created' && e.details?.node === 'c1');
     // C7: the discriminator is the full {kind, importance} pair (replayable, no new kind).
     expect(created?.details?.chore).toEqual({ kind: 'command', importance: 'recommended' });
   });
@@ -350,7 +348,13 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
   it('C7: ticking a chore status rides the discriminator on status-changed', () => {
     const inserted = insertNode(
       loopDoc() as unknown as FlowDoc,
-      { id: 'c1', type: 'boot', label: 'C', status: 'todo', chore: { kind: 'skill', importance: 'optional' } },
+      {
+        id: 'c1',
+        type: 'boot',
+        label: 'C',
+        status: 'todo',
+        chore: { kind: 'skill', importance: 'optional' },
+      },
       { after: 'boot' },
       clk,
     );
@@ -363,7 +367,9 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
   });
 
   it('two-overlay (AC-03): the chore object validates under a CUSTOM overlay too (enums are core)', () => {
-    const fs = new FakeFs({ [`${REPO}/.harness/schemas/flows/test-flow.schema.json`]: fixtureOverlay });
+    const fs = new FakeFs({
+      [`${REPO}/.harness/schemas/flows/test-flow.schema.json`]: fixtureOverlay,
+    });
     const res = resolveFlowSchema({ type: 'test-flow', repoRoot: REPO }, { fs });
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -384,14 +390,23 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
     const bad = loopDoc({
       kind: 'test-flow',
       nodes: [
-        { id: 'd1', type: 'decision', label: 'Decide', status: 'declined', next: [], chore: { kind: 'nope', importance: 'optional' } },
+        {
+          id: 'd1',
+          type: 'decision',
+          label: 'Decide',
+          status: 'declined',
+          next: [],
+          chore: { kind: 'nope', importance: 'optional' },
+        },
       ],
     });
     expect(validateFlowDoc(bad, res.schema).join(' ')).toMatch(/chore\.kind/);
   });
 
   it('orthogonality (C1): a chore on a `decision` node validates and lists (chore ⊥ type)', () => {
-    const fs = new FakeFs({ [`${REPO}/.harness/schemas/flows/test-flow.schema.json`]: fixtureOverlay });
+    const fs = new FakeFs({
+      [`${REPO}/.harness/schemas/flows/test-flow.schema.json`]: fixtureOverlay,
+    });
     const res = resolveFlowSchema({ type: 'test-flow', repoRoot: REPO }, { fs });
     if (!res.ok) throw new Error('fixture must resolve');
     // `test-flow` does not declare the chore lifecycle statuses (todo/skipped) — those

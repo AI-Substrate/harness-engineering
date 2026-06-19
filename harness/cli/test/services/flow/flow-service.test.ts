@@ -112,6 +112,58 @@ describe('T007 — write-path containment (isWithin → E303); --schema is exemp
     }
   });
 
+  it('accepts a RELATIVE in-repo --path (anchors to repoRoot before containment) → writes; data.path is absolute', () => {
+    const { d, fs } = deps();
+    const res = createFlow(
+      {
+        type: 'harness-loop',
+        slug: 'demo',
+        repoRoot: REPO,
+        harnessVersion: '0.4.0',
+        path: '.harness/flows/demo.json',
+      },
+      d,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      // Resolved to a logical absolute, not left as the bare relative string.
+      expect(res.path).toBe('/repo/.harness/flows/demo.json');
+      expect(fs.writes.some((p) => p.endsWith('.tmp'))).toBe(true);
+    }
+  });
+
+  it('accepts a RELATIVE Windows-shaped --path (back-slashes) — separator handling holds', () => {
+    const { d } = deps();
+    const res = createFlow(
+      {
+        type: 'harness-loop',
+        slug: 'demo',
+        repoRoot: REPO,
+        harnessVersion: '0.4.0',
+        path: '.harness\\flows\\demo.json',
+      },
+      d,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.path).toBe('/repo/.harness/flows/demo.json');
+  });
+
+  it('a relative ../ escape still resolves out-of-repo and is refused → E303', () => {
+    const { d } = deps();
+    const res = createFlow(
+      {
+        type: 'harness-loop',
+        slug: 'demo',
+        repoRoot: REPO,
+        harnessVersion: '0.4.0',
+        path: '../escape.json',
+      },
+      d,
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.code).toBe(ErrorCodes.FLOW_PATH_ESCAPE);
+  });
+
   it('accepts an OUT-OF-REPO --schema (read path is isWithin-exempt) with an in-repo write', () => {
     const outside = '/Users/x/.claude/skills/the-flow/flight-plan.schema.json';
     const { d } = deps({ [outside]: overlayFixture });

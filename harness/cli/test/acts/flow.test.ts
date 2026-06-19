@@ -81,6 +81,54 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     expect(status.env.status).toBe('ok');
   });
 
+  it('a RELATIVE --path is accepted on create AND on the read path (rail) — no spurious E303', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+
+    // create with an explicit relative in-repo --path (the exact default location)
+    const created = await runFlow(deps, [
+      'flow',
+      'create',
+      'harness-loop',
+      '--slug',
+      'demo',
+      '--path',
+      '.harness/flows/demo.json',
+    ]);
+    expect(created.code).toBe(0);
+    expect((created.env.data as { path: string }).path).toBe('/repo/.harness/flows/demo.json');
+
+    // read it back via a relative --path on the rail verb (previously → E303)
+    const rail = await runFlow(deps, [
+      'flow',
+      'rail',
+      '--path',
+      '.harness/flows/demo.json',
+      '--chores',
+      'show',
+    ]);
+    expect(rail.code).toBe(0);
+    expect(rail.env.status).toBe('ok');
+  });
+
+  it('a relative ../ escape on --path is still refused → E303', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    const res = await runFlow(deps, [
+      'flow',
+      'create',
+      'harness-loop',
+      '--slug',
+      'demo',
+      '--path',
+      '../escape.json',
+    ]);
+    expect(res.code).toBe(1);
+    expect(res.env.error?.code).toBe(ErrorCodes.FLOW_PATH_ESCAPE);
+  });
+
   it('a status OUTSIDE the overlay vocabulary → E300 and the file is UNCHANGED', async () => {
     const fs = new FakeFs();
     fs.mkdirp('/repo/.harness');
@@ -153,8 +201,20 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     const deps = fakeDeps(fs);
     await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
     const r = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'demo', '--id', 'z', '--type', 'improve',
-      '--label', 'Z', '--next', '', '--zone', 'postflight',
+      'flow',
+      'add-node',
+      '--slug',
+      'demo',
+      '--id',
+      'z',
+      '--type',
+      'improve',
+      '--label',
+      'Z',
+      '--next',
+      '',
+      '--zone',
+      'postflight',
     ]);
     expect(r.code).toBe(0);
     const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/demo.json') as string);
@@ -168,8 +228,18 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
     const before = fs.readText('/repo/.harness/flows/demo.json');
     const bad = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'demo', '--id', 'z', '--type', 'improve',
-      '--label', 'Z', '--zone', 'bogus',
+      'flow',
+      'add-node',
+      '--slug',
+      'demo',
+      '--id',
+      'z',
+      '--type',
+      'improve',
+      '--label',
+      'Z',
+      '--zone',
+      'bogus',
     ]);
     expect(bad.code).toBe(1);
     expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
@@ -195,7 +265,15 @@ describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () 
   it('nav set --now moves position; nav show reflects it + the now-node neighbours', async () => {
     const deps = await seed();
     const set = await runFlow(deps, [
-      'flow', 'nav', 'set', '--slug', 'demo', '--now', 'backpressure', '--intent', 'survey',
+      'flow',
+      'nav',
+      'set',
+      '--slug',
+      'demo',
+      '--now',
+      'backpressure',
+      '--intent',
+      'survey',
     ]);
     expect(set.code).toBe(0);
     expect((set.env.data as { now: string }).now).toBe('backpressure');
@@ -237,7 +315,15 @@ describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () 
     const deps = await seed();
     await runFlow(deps, ['flow', 'nav', 'meta', 'set', 'replan_reason', 'draft', '--slug', 'demo']);
     await runFlow(deps, ['flow', 'nav', 'meta', 'set', 'attempts', '2', '--slug', 'demo']);
-    const one = await runFlow(deps, ['flow', 'nav', 'meta', 'get', 'replan_reason', '--slug', 'demo']);
+    const one = await runFlow(deps, [
+      'flow',
+      'nav',
+      'meta',
+      'get',
+      'replan_reason',
+      '--slug',
+      'demo',
+    ]);
     expect((one.env.data as { value: unknown }).value).toBe('draft');
     const all = await runFlow(deps, ['flow', 'nav', 'meta', 'get', '--slug', 'demo']);
     expect((all.env.data as { bag: Record<string, unknown> }).bag).toEqual({
@@ -277,8 +363,20 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   it('insert-node --command persists node.command (closes the ws-003 §I2 gap)', async () => {
     const deps = await seedDemo();
     const r = await runFlow(deps, [
-      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
-      '--label', 'Validate', '--after', 'boot', '--command', '/validate-v2',
+      'flow',
+      'insert-node',
+      '--slug',
+      'demo',
+      '--id',
+      'val',
+      '--type',
+      'backpressure',
+      '--label',
+      'Validate',
+      '--after',
+      'boot',
+      '--command',
+      '/validate-v2',
     ]);
     expect(r.code).toBe(0);
     expect(nodeById(deps, 'val')?.command).toBe('/validate-v2');
@@ -287,8 +385,20 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   it('add-node --command persists node.command', async () => {
     const deps = await seedDemo();
     const r = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'demo', '--id', 'c', '--type', 'improve',
-      '--label', 'C', '--next', '', '--command', '/compact',
+      'flow',
+      'add-node',
+      '--slug',
+      'demo',
+      '--id',
+      'c',
+      '--type',
+      'improve',
+      '--label',
+      'C',
+      '--next',
+      '',
+      '--command',
+      '/compact',
     ]);
     expect(r.code).toBe(0);
     expect(nodeById(deps, 'c')?.command).toBe('/compact');
@@ -297,9 +407,24 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   it('insert-node --chore-kind/--importance assembles the nested chore object', async () => {
     const deps = await seedDemo();
     const r = await runFlow(deps, [
-      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
-      '--label', 'Validate', '--after', 'boot', '--command', '/validate-v2',
-      '--chore-kind', 'command', '--importance', 'strongly-recommended',
+      'flow',
+      'insert-node',
+      '--slug',
+      'demo',
+      '--id',
+      'val',
+      '--type',
+      'backpressure',
+      '--label',
+      'Validate',
+      '--after',
+      'boot',
+      '--command',
+      '/validate-v2',
+      '--chore-kind',
+      'command',
+      '--importance',
+      'strongly-recommended',
     ]);
     expect(r.code).toBe(0);
     expect(nodeById(deps, 'val')?.chore).toEqual({
@@ -312,8 +437,22 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     const deps = await seedDemo();
     const before = deps.fs.readText('/repo/.harness/flows/demo.json');
     const bad = await runFlow(deps, [
-      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
-      '--label', 'Validate', '--after', 'boot', '--chore-kind', 'bogus', '--importance', 'recommended',
+      'flow',
+      'insert-node',
+      '--slug',
+      'demo',
+      '--id',
+      'val',
+      '--type',
+      'backpressure',
+      '--label',
+      'Validate',
+      '--after',
+      'boot',
+      '--chore-kind',
+      'bogus',
+      '--importance',
+      'recommended',
     ]);
     expect(bad.code).toBe(1);
     expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
@@ -323,8 +462,22 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   it('"required" is rejected as an importance (advisory invariant)', async () => {
     const deps = await seedDemo();
     const bad = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'demo', '--id', 'c', '--type', 'improve', '--label', 'C',
-      '--next', '', '--chore-kind', 'skill', '--importance', 'required',
+      'flow',
+      'add-node',
+      '--slug',
+      'demo',
+      '--id',
+      'c',
+      '--type',
+      'improve',
+      '--label',
+      'C',
+      '--next',
+      '',
+      '--chore-kind',
+      'skill',
+      '--importance',
+      'required',
     ]);
     expect(bad.code).toBe(1);
     expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
@@ -333,9 +486,24 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   async function seedWithChore(): Promise<VerbActDeps> {
     const deps = await seedDemo();
     await runFlow(deps, [
-      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
-      '--label', 'Validate', '--after', 'boot', '--command', '/validate-v2',
-      '--chore-kind', 'command', '--importance', 'recommended',
+      'flow',
+      'insert-node',
+      '--slug',
+      'demo',
+      '--id',
+      'val',
+      '--type',
+      'backpressure',
+      '--label',
+      'Validate',
+      '--after',
+      'boot',
+      '--command',
+      '/validate-v2',
+      '--chore-kind',
+      'command',
+      '--importance',
+      'recommended',
     ]);
     return deps;
   }
@@ -381,9 +549,24 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   it('chores lists chore nodes (kind/importance/status/anchor/ref); builtin is not runnable', async () => {
     const deps = await seedWithChore(); // inserts 'val' (command/recommended) after boot
     await runFlow(deps, [
-      'flow', 'insert-node', '--slug', 'demo', '--id', 'cmp', '--type', 'improve',
-      '--label', 'Compact', '--after', 'val', '--command', '/compact',
-      '--chore-kind', 'builtin', '--importance', 'optional',
+      'flow',
+      'insert-node',
+      '--slug',
+      'demo',
+      '--id',
+      'cmp',
+      '--type',
+      'improve',
+      '--label',
+      'Compact',
+      '--after',
+      'val',
+      '--command',
+      '/compact',
+      '--chore-kind',
+      'builtin',
+      '--importance',
+      'optional',
     ]);
     const r = await runFlow(deps, ['flow', 'chores', '--slug', 'demo']);
     expect(r.code).toBe(0);
@@ -413,8 +596,14 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
   it('set-node --command sets the command ref on an EXISTING node (companion MED fix)', async () => {
     const deps = await seedDemo();
     const r = await runFlow(deps, [
-      'flow', 'set-node', '--slug', 'demo', '--node', 'boot',
-      '--command', '/eng-harness-flow --hook session-start',
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--command',
+      '/eng-harness-flow --hook session-start',
     ]);
     expect(r.code).toBe(0);
     expect(nodeById(deps, 'boot')?.command).toBe('/eng-harness-flow --hook session-start');
@@ -435,8 +624,18 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
     const before = fs.readText('/repo/.harness/flows/demo.json');
     const bad = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'demo', '--id', 'x', '--type', 'improve',
-      '--label', 'X', '--next', 'ghost',
+      'flow',
+      'add-node',
+      '--slug',
+      'demo',
+      '--id',
+      'x',
+      '--type',
+      'improve',
+      '--label',
+      'X',
+      '--next',
+      'ghost',
     ]);
     expect(bad.code).toBe(1);
     expect(bad.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
@@ -464,13 +663,28 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     const deps = fakeDeps(fs);
     // create resolves the overlay via --schema (flag source); later mutations cannot.
     const created = await runFlow(deps, [
-      'flow', 'create', 'flight-plan', '--slug', 'fp',
-      '--schema', '/external/flight-plan.schema.json', '--bare',
+      'flow',
+      'create',
+      'flight-plan',
+      '--slug',
+      'fp',
+      '--schema',
+      '/external/flight-plan.schema.json',
+      '--bare',
     ]);
     expect(created.code).toBe(0);
     // one real node to point at (and to prove the skip path writes normally)
     const seed = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'fp', '--id', 'p1', '--type', 'phase', '--label', 'P1',
+      'flow',
+      'add-node',
+      '--slug',
+      'fp',
+      '--id',
+      'p1',
+      '--type',
+      'phase',
+      '--label',
+      'P1',
     ]);
     expect(seed.code).toBe(0);
     return deps;
@@ -480,8 +694,18 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     const deps = await seedOutOfRepoSchemaFlow();
     const before = deps.fs.readText('/repo/.harness/flows/fp.json');
     const bad = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'fp', '--id', 'p2', '--type', 'phase', '--label', 'P2',
-      '--next', 'ghost',
+      'flow',
+      'add-node',
+      '--slug',
+      'fp',
+      '--id',
+      'p2',
+      '--type',
+      'phase',
+      '--label',
+      'P2',
+      '--next',
+      'ghost',
     ]);
     expect(bad.code).toBe(1);
     expect(bad.env.error?.code).toBe(ErrorCodes.FLOW_NODE_INVALID);
@@ -491,8 +715,18 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
   it('add-node --next <existing> on an out-of-repo-schema flow still succeeds (skip path writes normally)', async () => {
     const deps = await seedOutOfRepoSchemaFlow();
     const ok = await runFlow(deps, [
-      'flow', 'add-node', '--slug', 'fp', '--id', 'p2', '--type', 'phase', '--label', 'P2',
-      '--next', 'p1',
+      'flow',
+      'add-node',
+      '--slug',
+      'fp',
+      '--id',
+      'p2',
+      '--type',
+      'phase',
+      '--label',
+      'P2',
+      '--next',
+      'p1',
     ]);
     expect(ok.code).toBe(0);
     const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/fp.json') as string);

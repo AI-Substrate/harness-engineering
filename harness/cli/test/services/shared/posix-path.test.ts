@@ -8,6 +8,7 @@ import {
   posixJoin,
   posixNormalize,
   posixRelative,
+  resolveInRepo,
   toPosix,
 } from '../../../src/services/shared/posix-path.js';
 
@@ -192,6 +193,42 @@ describe('isWithin', () => {
     // the two trees (companion F001).
     expect(isWithin('//server/share/a', '/server/share/a/x.ts')).toBe(false);
     expect(isWithin('/server/share/a', '//server/share/a/x.ts')).toBe(false);
+  });
+});
+
+describe('resolveInRepo', () => {
+  it('anchors a relative path against the repo root', () => {
+    expect(resolveInRepo('.harness/flows/x.json', '/repo')).toBe('/repo/.harness/flows/x.json');
+  });
+
+  it('anchors a relative Windows-shaped path (back-slashes → forward)', () => {
+    expect(resolveInRepo('.harness\\flows\\x.json', '/repo')).toBe('/repo/.harness/flows/x.json');
+  });
+
+  it('anchors a nested relative path', () => {
+    expect(resolveInRepo('scratch/demo.json', '/repo')).toBe('/repo/scratch/demo.json');
+  });
+
+  it('leaves an absolute POSIX path unchanged', () => {
+    expect(resolveInRepo('/etc/evil.json', '/repo')).toBe('/etc/evil.json');
+  });
+
+  it('leaves a drive-rooted path unchanged (and upper-cases the drive)', () => {
+    expect(resolveInRepo('c:/repo/.harness/x.json', '/repo')).toBe('C:/repo/.harness/x.json');
+  });
+
+  it('leaves a UNC-rooted path unchanged', () => {
+    expect(resolveInRepo('//server/share/x.json', '/repo')).toBe('//server/share/x.json');
+  });
+
+  it('a relative ../ escape resolves to an out-of-repo absolute (isWithin then refuses it)', () => {
+    const resolved = resolveInRepo('../escape.json', '/repo');
+    expect(resolved).toBe('/escape.json');
+    expect(isWithin('/repo', resolved)).toBe(false);
+  });
+
+  it('an anchored in-repo relative path passes isWithin (the fixed E303 case)', () => {
+    expect(isWithin('/repo', resolveInRepo('.harness/flows/x.json', '/repo'))).toBe(true);
   });
 });
 

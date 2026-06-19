@@ -48,7 +48,13 @@ import {
   showFlow,
   writeFlowAtomic,
 } from '../services/flow/flow-service.js';
-import { isWithin, posixDirname, posixJoin, toPosix } from '../services/shared/posix-path.js';
+import {
+  isWithin,
+  posixDirname,
+  posixJoin,
+  resolveInRepo,
+  toPosix,
+} from '../services/shared/posix-path.js';
 
 /** The ports the `flow` act injects into the flow service (a subset of VerbActDeps). */
 export interface FlowActDeps {
@@ -105,7 +111,9 @@ function resolveFlowPath(
   opts: { path?: string; slug?: string },
   repoRoot: string,
 ): { ok: true; path: string } | { ok: false } {
-  if (opts.path) return { ok: true, path: toPosix(opts.path) };
+  // A relative --path anchors to the repo root (so an explicit in-repo relative
+  // path is accepted, not read as a `../` escape); an absolute path passes through.
+  if (opts.path) return { ok: true, path: resolveInRepo(opts.path, repoRoot) };
   if (opts.slug) return { ok: true, path: posixJoin(repoRoot, FLOWS_DIR, `${opts.slug}.json`) };
   return { ok: false };
 }
@@ -744,7 +752,9 @@ export function registerFlowAct(
 
         // --output: write the render inside the repo (containment guard).
         if (opts.output) {
-          const outPath = toPosix(opts.output);
+          // Same relative-anchoring as --path: a relative --output resolves
+          // against the repo root before containment, not into a `../` escape.
+          const outPath = resolveInRepo(opts.output, root);
           if (!isWithin(root, outPath)) {
             return emit(
               io,

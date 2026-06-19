@@ -312,8 +312,7 @@ export function renderFlow(doc: FlowDoc): string {
   // A node logs when it carries comments OR artifacts — both ride the body-log
   // (discoverable via the node's 💬/📄 badge): the render-surface "clean box +
   // auditable body" rule, extended to artifacts so the box stays slim (grill 8).
-  const hasComments = (n: FlowNode): boolean =>
-    Array.isArray(n.comments) && n.comments.length > 0;
+  const hasComments = (n: FlowNode): boolean => Array.isArray(n.comments) && n.comments.length > 0;
   const hasArtifacts = (n: FlowNode): boolean =>
     Array.isArray(n.artifacts) && n.artifacts.length > 0;
   const logged = nodes.filter((n) => hasComments(n) || hasArtifacts(n));
