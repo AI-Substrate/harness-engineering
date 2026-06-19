@@ -136,3 +136,20 @@ The 4 Group A files still commingle 030 with uncommitted 035 (`merge`→`ship`).
 > Group A (tools) changes are prose-only; Group B (harness-engineering) changes are a bash script + a markdown prompt — **no TypeScript / CLI source touched**, so neither can affect the CLI build or vitest suite.
 
 **Next the-flow step**: re-run `7 review` to confirm F001/F003 clear, then resolve F002 and proceed to `8 ship`.
+
+---
+
+## Behavioural reps — T-B3b DONE (2026-06-19)
+
+Ran `minih run flow-skill-eval` **4×** against the **migrated source** (`--skill-source path:~/github/tools/skills/SDD --skill the-flow` — sidesteps the deploy gate; no deploy needed). Varied intents: foo-widget, status-badge, doctor-`--json`, fetch-retry.
+
+**Result: 4/4 reps, all 8 gates green.** Every rep: rail `[the-flow]`, clean spine `research·plan·phase·ship`, workshop as `branch_of` excursion, `navUsed` / no `cursor`, **GATE 6 no `.the-flow-state.json` authored**, **GATE 7** `nav.now` resolves, **GATE 8** bag-less legacy copy still resolves via `nav.now`. Run dirs under `agents/flow-skill-eval/runs/2026-06-19T0[34]-*` (gitignored); retros harvested to `docs/retros/flow-skill-eval.md`. This is the behavioural confirmation AC-06b/AC-08 were waiting on.
+
+**Honest scope of the proof** (rep 2 surfaced this precisely): the eval writes to `.harness/temp/flow-eval/$RUN_ID`, so it exercises the CLI **substrate** (`nav show` resolves the bag-less copy) and the **clean-drive + no-file** authoring — but **not** the bare-`/the-flow` discovery *glob* itself (which globs `docs/plans/*/the-flow.json`, not scratch). The F001 discovery-predicate prose is verified by static review + this substrate proof; the real-world end-to-end is the live bag-less flows 026/027, which the fixed predicate now matches.
+
+**Retro findings — the-flow prompt-tune (NOT 030 defects), batched for decision:**
+1. Fresh-start prose lacks a copyable *ordered* (last-to-first) create-command block and hard-codes `docs/plans/` paths (reps 1, 2, 4). magicWand: print one eval-safe `PLAN_DIR`/`FLOW_PATH` block.
+2. `harness flow nav show` renders human output in a TTY; the eval prompt should use `--json` to expose `.data.nav.now` (rep 3 — `agents/flow-skill-eval/prompt.md`).
+3. workshop arg-shape differs between Registry (topic only) and the workshop sub-skill (plan+topic) (rep 4).
+
+**F002 update**: resolved externally — plan 035 was committed (`6594035`/`213f87b`), so the the-flow source files are no longer commingled; the only remaining 030 source change is the F001 fix in `00-routing.md`/`coach.md` (staged in the tools working tree; user owns that repo).
