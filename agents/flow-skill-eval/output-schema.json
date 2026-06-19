@@ -12,6 +12,8 @@
     "cursorCalled",
     "validates",
     "flowPath",
+    "stateFileAbsent",
+    "resumeDerivedPosition",
     "summary",
     "retrospective"
   ],
@@ -48,6 +50,14 @@
     "flowPath": {
       "type": "string",
       "description": "Absolute path to the authored throwaway flight plan ($OUT/the-flow.json)."
+    },
+    "stateFileAbsent": {
+      "type": "boolean",
+      "description": "True iff NO .the-flow-state.json exists under $OUT after the drive (migrated the-flow eliminates the hand-written state file). The deterministic scorer re-checks the filesystem."
+    },
+    "resumeDerivedPosition": {
+      "type": "string",
+      "description": "The nav.now node id a cold resume derives from the flight plan alone (no state file); empty if not derivable."
     },
     "summary": {
       "type": "string",

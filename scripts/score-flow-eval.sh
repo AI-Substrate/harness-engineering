@@ -85,6 +85,24 @@ else
   fail "GATE 5 — flow does not validate (render non-zero — E300/E308/E309?)"
 fi
 
+# --- GATE 6: NO .the-flow-state.json under the eval scratch dir (plan 030) ----
+# The migrated the-flow eliminates the hand-written state file; position lives in
+# nav. This is the discriminating gate: un-migrated authors the file → FAIL.
+EVAL_DIR="$(dirname "$FLOW")"
+if find "$EVAL_DIR" -name '.the-flow-state.json' 2>/dev/null | grep -q .; then
+  fail "GATE 6 — a .the-flow-state.json was authored under $EVAL_DIR (un-migrated the-flow hand-writes it; migrated must not)"
+else
+  ok "GATE 6 — no .the-flow-state.json under the eval scratch dir (state lives in nav)"
+fi
+
+# --- GATE 7: position derivable from the flight plan alone (nav.now real) -----
+NOW="$(hflow nav show --path "$FLOW" 2>/dev/null | jq -r '.data.nav.now // empty')"
+if [ -n "$NOW" ] && [ "$NOW" != "null" ]; then
+  ok "GATE 7 — nav.now resolves to a real node ($NOW) — cold resume needs no state file"
+else
+  fail "GATE 7 — nav.now empty; position not derivable from the flight plan without a state file"
+fi
+
 # --- ADVISORY (not a gate): events show nav, not cursor ----------------------
 if [ -n "${EVENTS:-}" ] && [ -f "$EVENTS" ]; then
   if grep -q 'flow nav' "$EVENTS" 2>/dev/null && ! grep -q 'flow cursor' "$EVENTS" 2>/dev/null; then
@@ -97,5 +115,5 @@ else
 fi
 
 echo
-echo "✅ ALL GATES PASS — migrated the-flow authors a clean, spine-only flight plan"
+echo "✅ ALL GATES PASS — migrated the-flow authors a clean, spine-only flight plan with NO state file (position in nav)"
 exit 0

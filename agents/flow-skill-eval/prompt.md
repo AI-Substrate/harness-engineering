@@ -38,6 +38,14 @@ Invoke the `the-flow` skill in **guided** mode for the `intent` parameter and **
 
 Drive far enough to cover a research node, a plan pass that reveals ≥1 phase, and one workshop — each created **however the skill instructs**, whatever that turns out to be.
 
+## Cold-resume beat (plan 030 — does the skill still hand-write a state file?)
+
+After the drive, **simulate a fresh session** (as if `/compact` then `/the-flow` re-ran) and observe whether the skill needs a `.the-flow-state.json` to resume:
+
+1. **Faithful redirect for the state file too.** If — and only if — the skill's guidance has you author a `.the-flow-state.json`, write it under `$OUT/` (the same single redirect you apply to `--path`; never `docs/plans/`). Do **not** invent one the skill never asks for. A migrated skill drives position through `harness flow nav` only and authors **no** such file.
+2. **Re-derive position with NO state file.** Run `node harness/cli/bin/harness.js flow nav show --path "$OUT/the-flow.json"` and read `.data.nav.now` — that node id is the resume position the skill's entry path lands on from the flight plan alone.
+3. Report `stateFileAbsent` + `resumeDerivedPosition` (below) verbatim.
+
 ## Autonomy contract
 
 - **Never wait for real human input.** You are the user; answer the skill's prompts yourself with minimal sensible choices (Simple mode, small scope).
@@ -55,6 +63,8 @@ Compute these from `$OUT/the-flow.json` and the CLI, and report the **observed**
 - `cursorCalled` — true iff you ran, OR the skill's guidance told you to run, `harness flow cursor` (whether or not it succeeded).
 - `validates` — true iff `harness flow render --path "$OUT/the-flow.json" --output "$OUT/the-flow.md"` exits 0.
 - `flowPath` — the absolute path to `$OUT/the-flow.json`.
+- `stateFileAbsent` — true iff there is **no** `.the-flow-state.json` anywhere under `$OUT` after the full drive (the migrated skill authors none; the deterministic scorer re-checks the filesystem).
+- `resumeDerivedPosition` — the `.data.nav.now` node id from `harness flow nav show` (the position a cold resume derives from the flight plan alone); empty string if it cannot be derived without a state file.
 
 ## Output
 
