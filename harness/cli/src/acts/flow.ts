@@ -8,12 +8,19 @@ import { type Envelope, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { emitRawAndExit, exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
-import { buildCustomEvent, buildManualEvent, type FlowDoc } from '../services/flow/flow-events.js';
+import {
+  buildCustomEvent,
+  buildManualEvent,
+  type Chore,
+  type FlowDoc,
+} from '../services/flow/flow-events.js';
 import {
   addComment,
   addNode,
+  type ChoreRow,
   getMeta,
   insertNode,
+  listChores,
   type MutationResult,
   navShow,
   setIntent,
@@ -23,7 +30,12 @@ import {
   setNow,
   setStatus,
 } from '../services/flow/flow-mutations.js';
-import { renderFlow, renderRailLine } from '../services/flow/flow-renderer.js';
+import {
+  CHORE_RAIL_MODES,
+  type ChoreRailMode,
+  renderFlow,
+  renderRailLine,
+} from '../services/flow/flow-renderer.js';
 import { resolveFlowSchema, validateFlowDoc } from '../services/flow/flow-schema.js';
 import {
   createFlow,
@@ -344,16 +356,61 @@ export function registerFlowAct(
     .description('Emit the one-line rail: [title] pips  names (banded pre ─ [ flight ] ─ post)')
     .option('--path <path>', 'flow file path')
     .option('--slug <slug>', 'flow slug')
-    .action((opts: { path?: string; slug?: string }) => {
+    .option(
+      '--chores <mode>',
+      'chore name visibility: show | collapse | hide (default: collapse)',
+      'collapse',
+    )
+    .action((opts: { path?: string; slug?: string; chores?: string }) => {
+      const mode = opts.chores ?? 'collapse';
+      if (!CHORE_RAIL_MODES.includes(mode as ChoreRailMode)) {
+        return emit(
+          io,
+          failureEnvelope(
+            {
+              ok: false,
+              status: 'error',
+              code: ErrorCodes.INVALID_ARGS,
+              message: `invalid --chores mode "${mode}".`,
+              next_action: `Use --chores ${CHORE_RAIL_MODES.join(' | ')}.`,
+            },
+            deps.clock,
+          ),
+        );
+      }
       const resolved = resolveFlowPath(opts, repoRoot());
       if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
       const read = readFlowDoc(resolved.path, svc);
       if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
-      const line = renderRailLine(read.doc);
+      const line = renderRailLine(read.doc, mode as ChoreRailMode);
       if (io.mode === 'json') {
         return emit(io, formatOk('flow', { path: resolved.path, rail: line }, deps.clock));
       }
       return emitRawAndExit(`${line}\n`, io.writers, 0);
+    });
+
+  // --- chores ------------------------------------------------------------
+  // The pending-upkeep listing (Phase 4): every node carrying a chore marker,
+  // with its kind/importance/status/anchor/ref. A READ — never mutates.
+  flow
+    .command('chores')
+    .description('List the flow’s chore nodes (status · importance · kind · anchor · ref)')
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .option('--list', 'list chores (the default action)')
+    .action((opts: { path?: string; slug?: string; list?: boolean }) => {
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+      const read = readFlowDoc(resolved.path, svc);
+      if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
+      const chores = listChores(read.doc);
+      if (io.mode === 'json') {
+        return emit(
+          io,
+          formatOk('flow', { path: resolved.path, chores, count: chores.length }, deps.clock),
+        );
+      }
+      return emitRawAndExit(`${renderChoresTable(chores)}\n`, io.writers, 0);
     });
 
   // --- status ------------------------------------------------------------
@@ -383,6 +440,12 @@ export function registerFlowAct(
     .option('--next <ids>', 'comma-separated successor node ids')
     .option('--artifacts <list>', 'comma-separated artifact paths produced at this node')
     .option('--zone <band>', 'rail band: preflight | flight | postflight (default: by node type)')
+    .option('--command <cmd>', 'the command/ref this node runs (e.g. a slash-command)')
+    .option('--chore-kind <kind>', 'mark a chore: skill | command | builtin | manual')
+    .option(
+      '--importance <level>',
+      'chore strength: strongly-recommended | recommended | optional | informational',
+    )
     .action(
       (opts: {
         path?: string;
@@ -394,6 +457,9 @@ export function registerFlowAct(
         next?: string;
         artifacts?: string;
         zone?: string;
+        command?: string;
+        choreKind?: string;
+        importance?: string;
       }) => {
         runMutation(io, deps, opts, (doc) =>
           addNode(
@@ -406,6 +472,8 @@ export function registerFlowAct(
               next: splitIds(opts.next),
               artifacts: splitIds(opts.artifacts),
               zone: opts.zone,
+              command: opts.command,
+              chore: choreFromFlags(opts.choreKind, opts.importance),
             },
             { clock: deps.clock },
           ),
@@ -424,6 +492,7 @@ export function registerFlowAct(
     .option('--note <note>', 'set the node note')
     .option('--user-input <text>', 'set the genesis user_input')
     .option('--artifacts <list>', 'comma-separated artifact paths (replaces the node list)')
+    .option('--command <cmd>', 'set the command/ref this node runs (e.g. a slash-command)')
     .action(
       (opts: {
         path?: string;
@@ -433,12 +502,14 @@ export function registerFlowAct(
         note?: string;
         userInput?: string;
         artifacts?: string;
+        command?: string;
       }) => {
         const fields: Record<string, unknown> = {};
         if (opts.label !== undefined) fields.label = opts.label;
         if (opts.note !== undefined) fields.note = opts.note;
         if (opts.userInput !== undefined) fields.user_input = opts.userInput;
         if (opts.artifacts !== undefined) fields.artifacts = splitIds(opts.artifacts);
+        if (opts.command !== undefined) fields.command = opts.command;
         runMutation(io, deps, opts, (doc) =>
           setNode(doc, opts.node, fields, { clock: deps.clock }),
         );
@@ -462,6 +533,12 @@ export function registerFlowAct(
     .option('--branch-of <node>', 'attach as an excursion of this node')
     .option('--rejoin <node>', 'branch rejoin target (default: the branch-of node)')
     .option('--zone <band>', 'rail band: preflight | flight | postflight (default: by node type)')
+    .option('--command <cmd>', 'the command/ref this node runs (e.g. a slash-command)')
+    .option('--chore-kind <kind>', 'mark a chore: skill | command | builtin | manual')
+    .option(
+      '--importance <level>',
+      'chore strength: strongly-recommended | recommended | optional | informational',
+    )
     .action(
       (opts: {
         path?: string;
@@ -475,6 +552,9 @@ export function registerFlowAct(
         branchOf?: string;
         rejoin?: string;
         zone?: string;
+        command?: string;
+        choreKind?: string;
+        importance?: string;
       }) => {
         runMutation(io, deps, opts, (doc) =>
           insertNode(
@@ -485,6 +565,8 @@ export function registerFlowAct(
               label: opts.label,
               status: opts.status,
               zone: opts.zone,
+              command: opts.command,
+              chore: choreFromFlags(opts.choreKind, opts.importance),
             },
             {
               after: opts.after,
@@ -715,6 +797,32 @@ function splitIds(raw: string | undefined): string[] | undefined {
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+}
+
+/**
+ * Assemble the nested `chore: {kind, importance}` object from the flat
+ * `--chore-kind`/`--importance` flags (Phase 4; Q2 = nested encoding, written by
+ * flat flags). Either flag present ⇒ a chore is intended; an empty string for the
+ * absent half is rejected by the pre-write `badChore` guard (so a half-specified
+ * chore fails cleanly with `E108`). Neither flag ⇒ no chore.
+ */
+function choreFromFlags(kind?: string, importance?: string): Chore | undefined {
+  if (kind === undefined && importance === undefined) return undefined;
+  return { kind: kind ?? '', importance: importance ?? '' };
+}
+
+/** Human-readable `harness flow chores` table (JSON mode rides the envelope instead). */
+function renderChoresTable(rows: ChoreRow[]): string {
+  if (rows.length === 0) return 'No chores in this flow.';
+  const lines = [`Chores (${rows.length}):`];
+  for (const c of rows) {
+    const where = c.anchor ? `after ${c.anchor}` : 'unanchored';
+    const ref = c.runnable
+      ? (c.command ?? '(no command)')
+      : `${c.command ?? '—'}  (agent can’t run — ${c.kind})`;
+    lines.push(`  • ${c.id} [${c.status}]  ${c.kind}/${c.importance}  ${where}  ${ref}`);
+  }
+  return lines.join('\n');
 }
 
 /**

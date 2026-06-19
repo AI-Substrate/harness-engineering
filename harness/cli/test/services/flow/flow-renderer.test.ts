@@ -272,8 +272,8 @@ describe('flow-renderer · render rules', () => {
     );
     expect(out).toContain('**Legend**:');
     expect(out).toContain('**Rail**:');
-    // zoned + label names: research(pre,done) ─ merge(post,known)
-    expect(out).toContain('**Rail**: ◆─◇  R ─ M');
+    // zoned; each name carries its pip; bands joined by ` · `: research(pre,done) · merge(post,known)
+    expect(out).toContain('**Rail**: ◆─◇  ◆ R · ◇ M');
   });
 
   it('rails the main spine in flow order incl. `review`, regardless of array order (rail fix)', () => {
@@ -298,7 +298,7 @@ describe('flow-renderer · render rules', () => {
     // Topological order (NOT array order); `review` (not a legacy "spine type") is on the
     // rail; the `ws` excursion never is.
     // topo order, zone-banded, label names; `review` on the rail, `ws` excursion never
-    expect(out).toContain('**Rail**: ◆─◆─[ ◆ ]─◇─◇  R · Pl ─ [ P2 ] ─ Rev · M');
+    expect(out).toContain('**Rail**: ◆─◆─[ ◆ ]─◇─◇  ◆ R · ◆ Pl · [ ◆ P2 ] · ◇ Rev · ◇ M');
     expect(out).not.toMatch(/· ws\b/);
   });
 
@@ -447,25 +447,25 @@ describe('flow-renderer · zoned rail (bands pre ─ [ flight ] ─ post + title
       { id: 'merge', type: 'merge', label: 'Merge', status: 'known', next: [] },
     ]);
     expect(renderRailBody(d.nodes)).toBe(
-      '◆─◆─[ ◐ ]─◇─◇  Research · Plan ─ [ Build ] ─ Review · Merge',
+      '◆─◆─[ ◐ ]─◇─◇  ◆ Research · ◆ Plan · [ ◐ Build ] · ◇ Review · ◇ Merge',
     );
   });
 
   it('renderRailLine prefixes the title from provenance.agent', () => {
     const d = doc([{ id: 'p1', type: 'phase', label: 'Build', status: 'in_progress', next: [] }]);
     d.provenance.agent = 'the-flow';
-    expect(renderRailLine(d)).toBe('[the-flow] [ ◐ ]  [ Build ]');
+    expect(renderRailLine(d)).toBe('[the-flow] [ ◐ ]  [ ◐ Build ]');
   });
 
   it('title falls back to slug when agent is null (AC-4)', () => {
     const d = doc([{ id: 'p1', type: 'phase', label: 'Build', status: 'known', next: [] }]);
-    expect(renderRailLine(d)).toBe('[test] [ ◇ ]  [ Build ]'); // slug = 'test'
+    expect(renderRailLine(d)).toBe('[test] [ ◇ ]  [ ◇ Build ]'); // slug = 'test'
   });
 
   it('title prefers an explicit doc.title over the slug (middle rung)', () => {
     const d = doc([{ id: 'p1', type: 'phase', label: 'B', status: 'known', next: [] }]);
     (d as { title?: string }).title = 'My Flow';
-    expect(renderRailLine(d)).toBe('[My Flow] [ ◇ ]  [ B ]');
+    expect(renderRailLine(d)).toBe('[My Flow] [ ◇ ]  [ ◇ B ]');
   });
 
   it('(no nodes) rails gracefully', () => {

@@ -28,12 +28,21 @@ const SHARED_CORE_KEY = 'flow';
 const MAX_SCHEMA_BYTES = 256 * 1024;
 /** The schema major this CLI understands (version gate → E306). */
 export const SUPPORTED_SCHEMA_MAJOR = 1;
+/** Defensive defaults for the chore vocabulary (Phase 4) if a core descriptor omits the block. */
+const DEFAULT_CHORE_KINDS = ['skill', 'command', 'builtin', 'manual'];
+const DEFAULT_CHORE_IMPORTANCES = [
+  'strongly-recommended',
+  'recommended',
+  'optional',
+  'informational',
+];
 
 interface CoreDescriptor {
   schema_version?: number;
   node?: { required?: string[]; optional?: string[] };
   comment?: { required?: string[]; optional?: string[] };
   authority?: { values?: string[]; default?: string };
+  chore?: { kinds?: string[]; importances?: string[] };
   root?: { required?: string[]; optional?: string[] };
 }
 
@@ -56,6 +65,10 @@ export interface ResolvedFlowSchema {
   commentRequired: string[];
   commentOptional: string[];
   authorityValues: string[];
+  /** Allowed `chore.kind` values (Phase 4) — universal, declared in the shared core. */
+  choreKinds: string[];
+  /** Allowed `chore.importance` values (Phase 4) — advisory only; `required` is intentionally absent. */
+  choreImportances: string[];
   rootRequired: string[];
   rootOptional: string[];
 }
@@ -189,6 +202,8 @@ export function resolveFlowSchema(opts: ResolveSchemaOptions, deps: SchemaDeps):
     commentRequired: core.comment?.required ?? ['at', 'text'],
     commentOptional: core.comment?.optional ?? [],
     authorityValues: core.authority?.values ?? ['cursor', 'substrate'],
+    choreKinds: core.chore?.kinds ?? DEFAULT_CHORE_KINDS,
+    choreImportances: core.chore?.importances ?? DEFAULT_CHORE_IMPORTANCES,
     rootRequired: core.root.required,
     rootOptional: core.root.optional ?? [],
   };
@@ -273,6 +288,27 @@ export function validateFlowDoc(doc: unknown, schema: ResolvedFlowSchema): strin
       issues.push(
         `node ${id}: authority "${String(node.authority)}" is not one of ${schema.authorityValues.join(', ')}`,
       );
+    }
+    // chore (Phase 4): an orthogonal {kind, importance} marker. Present => both
+    // enums are validated against the shared-core vocabulary. `importance` has no
+    // `required` level by design — advisory only, never a gate (ws004 C3).
+    if ('chore' in node) {
+      const chore = node.chore;
+      if (chore === null || typeof chore !== 'object' || Array.isArray(chore)) {
+        issues.push(`node ${id}: chore must be an object { kind, importance }`);
+      } else {
+        const c = chore as Record<string, unknown>;
+        if (!schema.choreKinds.includes(c.kind as string)) {
+          issues.push(
+            `node ${id}: chore.kind "${String(c.kind)}" is not one of ${schema.choreKinds.join(', ')}`,
+          );
+        }
+        if (!schema.choreImportances.includes(c.importance as string)) {
+          issues.push(
+            `node ${id}: chore.importance "${String(c.importance)}" is not one of ${schema.choreImportances.join(', ')}`,
+          );
+        }
+      }
     }
     if ('comments' in node) {
       if (!Array.isArray(node.comments)) {

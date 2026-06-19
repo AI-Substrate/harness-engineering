@@ -43,6 +43,17 @@ const STATUS_PIP: Record<string, string> = {
   in_progress: '◐',
   blocked: '✗',
 };
+/**
+ * Chore status → SQUARE pip (Phase 4; ws-004 C5). Chores read as a distinct shape
+ * from the diamond spine: `□` todo · `■` done · `▨` skipped. A still-`todo` chore
+ * at the strongest importance gets the `▣` attention glyph (handled in `pipOf`).
+ * Squares ALWAYS render — the rail's `--chores` mode only collapses the names.
+ */
+const CHORE_PIP: Record<string, string> = {
+  todo: '□',
+  done: '■',
+  skipped: '▨',
+};
 
 /** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
 export type Zone = 'preflight' | 'flight' | 'postflight';
@@ -82,12 +93,13 @@ const CLASS_DEFS: readonly string[] = [
   'classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;',
   'classDef companion fill:#D1C4E9,stroke:#5E35B1;',
   'classDef worker fill:#B2DFDB,stroke:#00897B;',
+  'classDef chore fill:#E0F2F1,stroke:#00897B,stroke-dasharray:3 2;',
   'classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;',
 ];
 
 const LEGEND =
   '**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative)' +
-  ' · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker.';
+  ' · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker · 🧰 chore (upkeep).';
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -165,10 +177,14 @@ function buildIdMap(nodes: readonly FlowNode[]): Map<string, string> {
 // Per-node render decisions.
 // ---------------------------------------------------------------------------
 
-/** The classDef a node renders with: harness > decision > status-mapped > unknown. */
+/** The classDef a node renders with: harness > decision > chore > status-mapped > unknown.
+ *  A chore wins over its status class (upkeep reads as distinct) but NOT over the
+ *  harness-seam violet or the decision rhombus — those shapes stay primary; a chore on
+ *  such a node still shows its chore-ness via the rail's square pip (Phase 4 / ws-004 C5). */
 function nodeClass(node: FlowNode): string {
   if (HARNESS_TYPES.has(node.type)) return 'harness';
   if (node.type === 'decision') return 'decision';
+  if (node.chore !== undefined) return 'chore';
   return STATUS_CLASS[node.status] ?? 'unknown';
 }
 
@@ -358,26 +374,91 @@ function topoOrderMain(nodes: readonly FlowNode[]): FlowNode[] {
   return order;
 }
 
-/** Live-status pip for a node (done filled, in-progress half, blocked cross, else hollow). */
+/**
+ * Live-status pip for a node. A chore renders a SQUARE by status (Phase 4): `□`
+ * todo · `■` done · `▨` skipped, with `▣` for a still-`todo` strongly-recommended
+ * chore (draw the eye). A non-chore node keeps the diamond family (done filled,
+ * in-progress half, blocked cross, else hollow). Tolerant — an unknown chore
+ * status falls back to the hollow square `□`.
+ */
 function pipOf(node: FlowNode): string {
+  if (node.chore !== undefined) {
+    if (node.chore.importance === 'strongly-recommended' && node.status === 'todo') return '▣';
+    return CHORE_PIP[node.status] ?? '□';
+  }
   return STATUS_PIP[node.status] ?? '◇';
+}
+
+/**
+ * The rail's chore-name visibility (Phase 4; ws-004 C5). Affects ONLY the names
+ * segment — pips (squares) always render, in every mode.
+ *   - `show`     every chore named (plain label — the square pip is the chore marker);
+ *   - `collapse` (default) strongly-recommended chores stay named; recommended/
+ *     optional collapse to a `[*]`/`[*N]` marker; informational are dropped;
+ *   - `hide`     un-named chores (and their markers) vanish — only the pip remains.
+ */
+export type ChoreRailMode = 'show' | 'collapse' | 'hide';
+export const CHORE_RAIL_MODES: readonly ChoreRailMode[] = ['show', 'collapse', 'hide'];
+
+/**
+ * Build a band's NAME segment honouring the chore `mode`. Each NAMED item renders
+ * as `<pip> <label>` — the same pip glyph as the top row (diamond for spine, square
+ * for chore; open/half/closed by status), so the name lane is self-describing.
+ * Spine nodes are always named. A chore is named when `mode==='show'` OR its
+ * importance is `strongly-recommended` (the strongest level refuses to hide — the
+ * advisory invariant's only teeth). Otherwise, in `collapse` a run of recommended/
+ * optional chores folds into one pip-less `[*]`/`[*N]` token (informational
+ * dropped); in `hide` every un-named chore is dropped (its top-row pip is its only
+ * trace).
+ */
+function railNames(band: readonly FlowNode[], mode: ChoreRailMode): string {
+  const tokens: string[] = [];
+  let collapsed = 0;
+  const flush = (): void => {
+    if (collapsed > 0) {
+      tokens.push(collapsed === 1 ? '[*]' : `[*${collapsed}]`);
+      collapsed = 0;
+    }
+  };
+  for (const n of band) {
+    // Each named item carries its own pip (the SAME glyph as the top pip row):
+    // a diamond for spine nodes, a square for chores; open/half/closed by status.
+    const item = `${pipOf(n)} ${escapeMd(n.label ?? n.id)}`;
+    if (n.chore === undefined) {
+      flush();
+      tokens.push(item);
+      continue;
+    }
+    if (mode === 'show' || n.chore.importance === 'strongly-recommended') {
+      flush();
+      tokens.push(item);
+      continue;
+    }
+    if (mode === 'hide' || n.chore.importance === 'informational') continue; // dropped, no marker
+    collapsed++; // recommended / optional in collapse → roll into a pip-less [*N]
+  }
+  flush();
+  return tokens.join(' · ');
 }
 
 /**
  * The shared rail BODY (Finding 05) — `<pips>  <names>` grouped into zone bands
  * `pre ─ [ flight ] ─ post`. Walks the main spine (topo order; `branch_of`
  * excursions excluded), pips from LIVE status (no stored counters → no drift),
- * names from `label`, bands from `effectiveZone`. Reused by the embedded render
- * rail (`**Rail**:`) and the standalone `harness flow rail` command.
+ * names from `label` (chore names obey `mode`), bands from `effectiveZone`. Reused
+ * by the embedded render rail (`**Rail**:`) and the standalone `harness flow rail`.
  */
-export function renderRailBody(nodes: readonly FlowNode[]): string {
+export function renderRailBody(
+  nodes: readonly FlowNode[],
+  mode: ChoreRailMode = 'collapse',
+): string {
   const spine = topoOrderMain(nodes);
   if (spine.length === 0) return '(no nodes)';
   const bands: Record<Zone, FlowNode[]> = { preflight: [], flight: [], postflight: [] };
   for (const n of spine) bands[effectiveZone(n)].push(n);
 
   const pipSeg = (band: FlowNode[]): string => band.map(pipOf).join('─');
-  const nameSeg = (band: FlowNode[]): string => band.map((n) => escapeMd(n.label ?? n.id)).join(' · ');
+  const nameSeg = (band: FlowNode[]): string => railNames(band, mode);
 
   const pips: string[] = [];
   if (bands.preflight.length > 0) pips.push(pipSeg(bands.preflight));
@@ -389,7 +470,10 @@ export function renderRailBody(nodes: readonly FlowNode[]): string {
   if (bands.flight.length > 0) names.push(`[ ${nameSeg(bands.flight)} ]`);
   if (bands.postflight.length > 0) names.push(nameSeg(bands.postflight));
 
-  return `${pips.join('─')}  ${names.join(' ─ ')}`;
+  // The PIP lane keeps the box-drawing band join `─` (regular rail, unchanged); the
+  // NAME lane joins bands with ` · ` (consistent with within-band dots — the `[ … ]`
+  // flight brackets still mark the bands).
+  return `${pips.join('─')}  ${names.join(' · ')}`;
 }
 
 /** The rail title (AC-4): `provenance.agent` → `doc.title` → `slug` → `'flow'`. */
@@ -401,10 +485,11 @@ function railTitle(doc: FlowDoc): string {
   return 'flow';
 }
 
-/** The standalone `harness flow rail` line: `[<title>] <pips>  <names>` (AC-4). */
-export function renderRailLine(doc: FlowDoc): string {
+/** The standalone `harness flow rail` line: `[<title>] <pips>  <names>` (AC-4). The
+ *  `mode` controls chore-name visibility (default `collapse`); pips always render. */
+export function renderRailLine(doc: FlowDoc, mode: ChoreRailMode = 'collapse'): string {
   const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
-  return `[${railTitle(doc)}] ${renderRailBody(nodes)}`;
+  return `[${railTitle(doc)}] ${renderRailBody(nodes, mode)}`;
 }
 
 /** The embedded rail line for the rendered `.md` — the shared zoned body, labelled. */

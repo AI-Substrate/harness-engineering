@@ -253,3 +253,170 @@ describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () 
     expect((show.env.data as { nav: unknown }).nav).toBeNull();
   });
 });
+
+describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function seedDemo(): Promise<VerbActDeps> {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    return deps;
+  }
+
+  function nodeById(deps: VerbActDeps, id: string): Record<string, unknown> | undefined {
+    const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/demo.json') as string) as {
+      nodes: Record<string, unknown>[];
+    };
+    return doc.nodes.find((n) => n.id === id);
+  }
+
+  it('insert-node --command persists node.command (closes the ws-003 §I2 gap)', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
+      '--label', 'Validate', '--after', 'boot', '--command', '/validate-v2',
+    ]);
+    expect(r.code).toBe(0);
+    expect(nodeById(deps, 'val')?.command).toBe('/validate-v2');
+  });
+
+  it('add-node --command persists node.command', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'demo', '--id', 'c', '--type', 'improve',
+      '--label', 'C', '--next', '', '--command', '/compact',
+    ]);
+    expect(r.code).toBe(0);
+    expect(nodeById(deps, 'c')?.command).toBe('/compact');
+  });
+
+  it('insert-node --chore-kind/--importance assembles the nested chore object', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
+      '--label', 'Validate', '--after', 'boot', '--command', '/validate-v2',
+      '--chore-kind', 'command', '--importance', 'strongly-recommended',
+    ]);
+    expect(r.code).toBe(0);
+    expect(nodeById(deps, 'val')?.chore).toEqual({
+      kind: 'command',
+      importance: 'strongly-recommended',
+    });
+  });
+
+  it('a bad --chore-kind → E108 pre-write and the file is UNCHANGED', async () => {
+    const deps = await seedDemo();
+    const before = deps.fs.readText('/repo/.harness/flows/demo.json');
+    const bad = await runFlow(deps, [
+      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
+      '--label', 'Validate', '--after', 'boot', '--chore-kind', 'bogus', '--importance', 'recommended',
+    ]);
+    expect(bad.code).toBe(1);
+    expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+    expect(deps.fs.readText('/repo/.harness/flows/demo.json')).toBe(before);
+  });
+
+  it('"required" is rejected as an importance (advisory invariant)', async () => {
+    const deps = await seedDemo();
+    const bad = await runFlow(deps, [
+      'flow', 'add-node', '--slug', 'demo', '--id', 'c', '--type', 'improve', '--label', 'C',
+      '--next', '', '--chore-kind', 'skill', '--importance', 'required',
+    ]);
+    expect(bad.code).toBe(1);
+    expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+  });
+
+  async function seedWithChore(): Promise<VerbActDeps> {
+    const deps = await seedDemo();
+    await runFlow(deps, [
+      'flow', 'insert-node', '--slug', 'demo', '--id', 'val', '--type', 'backpressure',
+      '--label', 'Validate', '--after', 'boot', '--command', '/validate-v2',
+      '--chore-kind', 'command', '--importance', 'recommended',
+    ]);
+    return deps;
+  }
+  const railOf = (env: Envelope) => (env.data as { rail: string }).rail;
+
+  it('rail --chores show renders the chore name; default collapse hides it behind [*]', async () => {
+    const deps = await seedWithChore();
+    const shown = await runFlow(deps, ['flow', 'rail', '--slug', 'demo', '--chores', 'show']);
+    expect(shown.code).toBe(0);
+    expect(railOf(shown.env)).toContain('Validate');
+
+    const collapsed = await runFlow(deps, ['flow', 'rail', '--slug', 'demo']); // default
+    expect(railOf(collapsed.env)).toContain('[*]');
+    expect(railOf(collapsed.env)).not.toContain('Validate');
+  });
+
+  it('rail --chores hide drops the name AND the [*] marker but keeps the square pip', async () => {
+    const deps = await seedWithChore();
+    const hidden = await runFlow(deps, ['flow', 'rail', '--slug', 'demo', '--chores', 'hide']);
+    expect(hidden.code).toBe(0);
+    expect(railOf(hidden.env)).not.toContain('Validate');
+    expect(railOf(hidden.env)).not.toContain('[*]');
+    expect(railOf(hidden.env)).toContain('□');
+  });
+
+  it('rail --chores with an invalid mode → E108', async () => {
+    const deps = await seedWithChore();
+    const bad = await runFlow(deps, ['flow', 'rail', '--slug', 'demo', '--chores', 'bogus']);
+    expect(bad.code).toBe(1);
+    expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+  });
+
+  type ChoreRow = {
+    id: string;
+    kind: string;
+    importance: string;
+    status: string;
+    anchor: string | null;
+    command: string | null;
+    runnable: boolean;
+  };
+
+  it('chores lists chore nodes (kind/importance/status/anchor/ref); builtin is not runnable', async () => {
+    const deps = await seedWithChore(); // inserts 'val' (command/recommended) after boot
+    await runFlow(deps, [
+      'flow', 'insert-node', '--slug', 'demo', '--id', 'cmp', '--type', 'improve',
+      '--label', 'Compact', '--after', 'val', '--command', '/compact',
+      '--chore-kind', 'builtin', '--importance', 'optional',
+    ]);
+    const r = await runFlow(deps, ['flow', 'chores', '--slug', 'demo']);
+    expect(r.code).toBe(0);
+    const chores = (r.env.data as { chores: ChoreRow[] }).chores;
+    expect(chores.map((c) => c.id).sort()).toEqual(['cmp', 'val']);
+
+    const val = chores.find((c) => c.id === 'val') as ChoreRow;
+    expect(val.kind).toBe('command');
+    expect(val.importance).toBe('recommended');
+    expect(val.command).toBe('/validate-v2');
+    expect(val.anchor).toBe('boot');
+    expect(val.runnable).toBe(true);
+
+    const cmp = chores.find((c) => c.id === 'cmp') as ChoreRow;
+    expect(cmp.kind).toBe('builtin');
+    expect(cmp.anchor).toBe('val');
+    expect(cmp.runnable).toBe(false); // builtin — the agent can't run it
+  });
+
+  it('chores on a flow with no chores → empty list, exit 0', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, ['flow', 'chores', '--slug', 'demo']);
+    expect(r.code).toBe(0);
+    expect((r.env.data as { chores: ChoreRow[] }).chores).toEqual([]);
+  });
+
+  it('set-node --command sets the command ref on an EXISTING node (companion MED fix)', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow', 'set-node', '--slug', 'demo', '--node', 'boot',
+      '--command', '/eng-harness-flow --hook session-start',
+    ]);
+    expect(r.code).toBe(0);
+    expect(nodeById(deps, 'boot')?.command).toBe('/eng-harness-flow --hook session-start');
+  });
+});

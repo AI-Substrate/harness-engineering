@@ -3,6 +3,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import {
   buildBuiltinEvent,
   buildComment,
+  type Chore,
   type FlowDoc,
   type FlowNode,
   type Nav,
@@ -174,6 +175,57 @@ export function navShow(doc: FlowDoc): NavShow {
 }
 
 // ---------------------------------------------------------------------------
+// chores — the read-model for `harness flow chores` (Phase 4; ws-004).
+// ---------------------------------------------------------------------------
+
+/** Kinds an agent can invoke directly; `builtin`/`manual` are noted "agent can't run". */
+const AGENT_RUNNABLE_KINDS = new Set(['skill', 'command']);
+
+/** One row of the `harness flow chores` listing — a chore node projected to its essentials. */
+export interface ChoreRow {
+  id: string;
+  label: string;
+  status: string;
+  kind: string;
+  importance: string;
+  /** The command/ref the chore runs (`node.command`), or `null`. */
+  command: string | null;
+  /** Where it sits: its `branch_of` (excursion) else its first predecessor, else `null`. */
+  anchor: string | null;
+  /** Whether an agent can run it directly (`skill`/`command`); `false` for `builtin`/`manual`. */
+  runnable: boolean;
+}
+
+/**
+ * `flow chores` — list every node carrying a `chore` marker, in document order
+ * (a READ: no clone, no event). Each row carries the chore's kind/importance, its
+ * status, the node's `command` ref, an `anchor` (its `branch_of` or first
+ * predecessor — "where does this upkeep sit?"), and whether an agent can run it.
+ */
+export function listChores(doc: FlowDoc): ChoreRow[] {
+  const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
+  const rows: ChoreRow[] = [];
+  for (const n of nodes) {
+    if (n.chore === undefined) continue;
+    const anchor =
+      typeof n.branch_of === 'string' && n.branch_of.length > 0
+        ? n.branch_of
+        : (predecessorsOf(nodes, n.id)[0]?.id ?? null);
+    rows.push({
+      id: n.id,
+      label: n.label ?? n.id,
+      status: n.status,
+      kind: n.chore.kind,
+      importance: n.chore.importance,
+      command: typeof n.command === 'string' ? n.command : null,
+      anchor,
+      runnable: AGENT_RUNNABLE_KINDS.has(n.chore.kind),
+    });
+  }
+  return rows;
+}
+
+// ---------------------------------------------------------------------------
 // status.
 // ---------------------------------------------------------------------------
 
@@ -199,7 +251,17 @@ export function setStatus(
   next.events.push(
     buildBuiltinEvent(
       'status-changed',
-      { node: nodeId, from, to: toStatus },
+      // A chore tick rides the SAME event kind, discriminated by the chore
+      // {kind, importance} pair in details (ws-004 C7 — no new event kind), so a
+      // log reader can replay upkeep without re-reading the node.
+      {
+        node: nodeId,
+        from,
+        to: toStatus,
+        ...(node.chore !== undefined && {
+          chore: { kind: node.chore.kind, importance: node.chore.importance },
+        }),
+      },
       next.events,
       deps.clock,
     ),
@@ -222,6 +284,10 @@ export interface NodeSpec {
   authority?: string;
   artifacts?: string[];
   zone?: string;
+  /** The command/ref this node runs (Phase 4 — wired by `--command`). */
+  command?: string;
+  /** Orthogonal chore marker (Phase 4 — assembled from `--chore-kind`/`--importance`). */
+  chore?: Chore;
 }
 
 function materialize(spec: NodeSpec, now: string): FlowNode {
@@ -240,6 +306,8 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
     ...(spec.authority !== undefined && { authority: spec.authority }),
     ...(spec.artifacts !== undefined && { artifacts: [...spec.artifacts] }),
     ...(spec.zone !== undefined && { zone: spec.zone }),
+    ...(spec.command !== undefined && { command: spec.command }),
+    ...(spec.chore !== undefined && { chore: { ...spec.chore } }),
   };
 }
 
@@ -251,6 +319,39 @@ function badZone(spec: NodeSpec): FlowFailure | null {
       ErrorCodes.INVALID_ARGS,
       `invalid zone "${spec.zone}".`,
       'Use --zone preflight | flight | postflight (or omit it for the type default).',
+    );
+  }
+  return null;
+}
+
+/**
+ * The shared-core chore vocabularies (Phase 4) — mirrored here for the PRE-WRITE
+ * guard, exactly as `ZONE_VALUES` mirrors the zone enum. `validateFlowDoc` is the
+ * schema-authoritative check; `badChore` gives a fast, clear `E108` before any
+ * write. `required` is intentionally absent from the importances (advisory
+ * invariant — a chore can never gate, ws-004 C3).
+ */
+const CHORE_KINDS = new Set(['skill', 'command', 'builtin', 'manual']);
+const CHORE_IMPORTANCES = new Set([
+  'strongly-recommended',
+  'recommended',
+  'optional',
+  'informational',
+]);
+function badChore(spec: NodeSpec): FlowFailure | null {
+  if (spec.chore === undefined) return null;
+  if (!CHORE_KINDS.has(spec.chore.kind)) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `invalid chore kind "${spec.chore.kind}".`,
+      'Use --chore-kind skill | command | builtin | manual (and pass --importance too).',
+    );
+  }
+  if (!CHORE_IMPORTANCES.has(spec.chore.importance)) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `invalid chore importance "${spec.chore.importance}".`,
+      'Use --importance strongly-recommended | recommended | optional | informational (there is no "required" — chores are advisory).',
     );
   }
   return null;
@@ -268,10 +369,23 @@ export function addNode(doc: FlowDoc, spec: NodeSpec, deps: MutationDeps): Mutat
   }
   const zoneErr = badZone(spec);
   if (zoneErr !== null) return zoneErr;
+  const choreErr = badChore(spec);
+  if (choreErr !== null) return choreErr;
   const now = deps.clock.nowIso();
   next.nodes.push(materialize(spec, now));
   next.events.push(
-    buildBuiltinEvent('node-created', { node: spec.id, type: spec.type }, next.events, deps.clock),
+    buildBuiltinEvent(
+      'node-created',
+      {
+        node: spec.id,
+        type: spec.type,
+        ...(spec.chore !== undefined && {
+          chore: { kind: spec.chore.kind, importance: spec.chore.importance },
+        }),
+      },
+      next.events,
+      deps.clock,
+    ),
   );
   return { ok: true, doc: next };
 }
@@ -441,6 +555,8 @@ export function insertNode(
   }
   const zoneErr = badZone(spec);
   if (zoneErr !== null) return zoneErr;
+  const choreErr = badChore(spec);
+  if (choreErr !== null) return choreErr;
 
   const now = deps.clock.nowIso();
   const node = materialize(spec, now);
@@ -486,9 +602,21 @@ export function insertNode(
   }
 
   // Audit: node-created + one node-updated{edge_op} per rewired edge (reuses
-  // ws-002 kinds — no new built-in event kind).
+  // ws-002 kinds — no new built-in event kind). A chore rides the `chore`
+  // discriminator in details (ws-004 C7).
   next.events.push(
-    buildBuiltinEvent('node-created', { node: node.id, type: node.type }, next.events, deps.clock),
+    buildBuiltinEvent(
+      'node-created',
+      {
+        node: node.id,
+        type: node.type,
+        ...(node.chore !== undefined && {
+          chore: { kind: node.chore.kind, importance: node.chore.importance },
+        }),
+      },
+      next.events,
+      deps.clock,
+    ),
   );
   for (const e of events) {
     next.events.push(

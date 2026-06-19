@@ -22,6 +22,7 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
         'output',
         'error',
         'command',
+        'chore',
         'note',
         'artifacts',
         'phase',
@@ -31,6 +32,10 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
     },
     comment: { required: ['at', 'text'], optional: ['source', 'kind', 'refs'] },
     authority: { values: ['cursor', 'substrate'], default: 'cursor' },
+    chore: {
+      kinds: ['skill', 'command', 'builtin', 'manual'],
+      importances: ['strongly-recommended', 'recommended', 'optional', 'informational'],
+    },
     root: {
       required: ['schema_version', 'kind', 'slug', 'created_at', 'provenance', 'events', 'nodes'],
       optional: ['nav', 'agents', 'plan_dir', 'mode', 'title', '_comment'],
@@ -41,8 +46,8 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
     extends: 'flow-core',
     schema_version: 1,
     description:
-      'Bundled harness-loop overlay (plan 024 AC-10). Schema-ONLY in v1 — nothing in 024 creates or drives a harness-loop instance (that is the later eng-harness-flow work). Proves the shared-core + per-flow-custom split alongside the test-fixture overlay.',
-    statuses: ['assumed', 'known', 'in_progress', 'done', 'blocked'],
+      'Bundled harness-loop overlay (plan 024 AC-10). Schema-ONLY in v1 — nothing in 024 creates or drives a harness-loop instance (that is the later eng-harness-flow work). Proves the shared-core + per-flow-custom split alongside the test-fixture overlay. `todo`/`skipped` (Phase 4) declare the chore lifecycle (the loop-as-chores case) — the overlay-declared-status path, not a validator change.',
+    statuses: ['assumed', 'known', 'in_progress', 'done', 'blocked', 'todo', 'skipped'],
     nodeTypes: ['boot', 'backpressure', 'observe', 'retro', 'improve', 'decision'],
   },
 };

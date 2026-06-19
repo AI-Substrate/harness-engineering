@@ -16,6 +16,7 @@
       "output",
       "error",
       "command",
+      "chore",
       "note",
       "artifacts",
       "phase",
@@ -30,6 +31,10 @@
   "authority": {
     "values": ["cursor", "substrate"],
     "default": "cursor"
+  },
+  "chore": {
+    "kinds": ["skill", "command", "builtin", "manual"],
+    "importances": ["strongly-recommended", "recommended", "optional", "informational"]
   },
   "root": {
     "required": ["schema_version", "kind", "slug", "created_at", "provenance", "events", "nodes"],

@@ -64,6 +64,20 @@ export interface FlowEvent {
  */
 export type FlowProvenance = ProvenanceFields;
 
+/**
+ * An orthogonal **chore** marker (plan 024 Phase 4; ws-004 C1–C3). Presence on a
+ * node flags it as cross-cutting upkeep (compact / validate / a loop seam) without
+ * changing the node `type`. Carries WHAT to run (`kind` + the node's `command` ref)
+ * and HOW STRONGLY it is advised (`importance`). Advisory only — there is no
+ * `required` importance and `importance` NEVER gates (the harness invariant).
+ */
+export interface Chore {
+  /** How the chore is carried out: `skill | command | builtin | manual`. */
+  kind: string;
+  /** Advisory strength: `strongly-recommended | recommended | optional | informational`. */
+  importance: string;
+}
+
 /** A single flow node. Overlays add/constrain the `type`/`status` vocabularies. */
 export interface FlowNode {
   id: string;
@@ -84,7 +98,11 @@ export interface FlowNode {
   authority?: string;
   /** Rail band: `preflight | flight | postflight` (ws-002); unset → defaulted by type. */
   zone?: string;
-  /** Tolerated pass-through fields (agents/output/error/command/note/…) round-trip. */
+  /** The command / ref this node runs (e.g. a slash-command). Settable via `--command` (Phase 4). */
+  command?: string;
+  /** Orthogonal chore marker (Phase 4) — presence flags the node as upkeep. */
+  chore?: Chore;
+  /** Tolerated pass-through fields (agents/output/error/note/…) round-trip. */
   [key: string]: unknown;
 }
 
