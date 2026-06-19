@@ -107,3 +107,32 @@ cold-resume gate.
 Source edits land in the tools repo (~/github/tools/skills/SDD/the-flow);
 eval harness here. Deploy + full minih e2e run are gated follow-ups.
 ```
+
+---
+
+## Post-review fixes — review verdict **APPROVE WITH NOTES** (2026-06-19)
+
+The `7 review` verb returned **APPROVE WITH NOTES** (no CRITICAL; `--strict` off → no fix-tasks file). Three findings; two were already self-flagged (F002 commit boundary, F003 deferred minih). The new actionable one was **F001 (HIGH)** — a real defect in my work — now fixed.
+
+### F001 (HIGH) — discovery predicate vs §6 active-signal ✅ FIXED
+**Defect**: the cold-discovery entry path and the `/compact` handshake keyed on `nav.bag.status == "active"`, but §6 (written later) says the active signal is **`nav.now` being a real non-seed node** *because some live flows lack a bag*. Verified empirically: live flows **026** (`nav.now=p1`, no `bag.status`) and **027** (`nav.now=review`, `bag=null`) would be **MISSED** by a bare `/the-flow` — the exact in-flight flows the migration must carry forward. AC-03 and §6 could not both be right.
+
+**Fix** (aligns the predicate with §6 — the review's recommendation verbatim): a flow is **active** when `bag.status == "active"` **OR** (`bag.status` absent **AND** `nav.now` is a real non-seed node **AND** terminal not done). Two sites:
+- `00-routing.md:13` — entry glob predicate. (grep-verified: now names `nav.now`.)
+- `coach.md` `/compact` handshake — same fallback. (grep-verified.)
+
+F005 (LOW — stale `status:active` files linger) **resolves automatically**: bare `/the-flow` now finds 026/027 → §6 backfill runs → legacy file deleted.
+
+### F003 (MEDIUM) — eval masked the legacy population ✅ STRENGTHENED
+The fresh-flow fixture always seeds `bag.status`, so it never exercised the bag-less shape that exposed F001. Added:
+- **`scripts/score-flow-eval.sh` GATE 8** — derives the legacy shape from the real flow (`jq 'del(.nav.bag.status)'`) and asserts position still resolves via `nav.now`. Validated under bash: **positive** (030 flow → strip → `nav.now=phase-1`, PASS) and **negative** (also strip `nav.now` → correctly FAILS, discriminates). `bash -n` clean.
+- **`agents/flow-skill-eval/prompt.md`** cold-resume beat — new step 3 legacy-shape sub-case: copy with `bag.status` stripped, confirm a bare `/the-flow` still treats it as active (rides the deferred behavioural run, but now covers F001's population).
+
+### F002 (MEDIUM) — commit boundary — UNCHANGED, user's call
+The 4 Group A files still commingle 030 with uncommitted 035 (`merge`→`ship`). Not resolvable to a clean 030-only diff from this tree non-interactively. Awaiting the user's commit-sequencing decision.
+
+### F004 (LOW) — plan §3 omits the `.data` envelope on `nav show` — noted; Group B code already uses `.data.nav.now` correctly. Left as a doc nit.
+
+> Group A (tools) changes are prose-only; Group B (harness-engineering) changes are a bash script + a markdown prompt — **no TypeScript / CLI source touched**, so neither can affect the CLI build or vitest suite.
+
+**Next the-flow step**: re-run `7 review` to confirm F001/F003 clear, then resolve F002 and proceed to `8 ship`.

@@ -44,7 +44,8 @@ After the drive, **simulate a fresh session** (as if `/compact` then `/the-flow`
 
 1. **Faithful redirect for the state file too.** If — and only if — the skill's guidance has you author a `.the-flow-state.json`, write it under `$OUT/` (the same single redirect you apply to `--path`; never `docs/plans/`). Do **not** invent one the skill never asks for. A migrated skill drives position through `harness flow nav` only and authors **no** such file.
 2. **Re-derive position with NO state file.** Run `node harness/cli/bin/harness.js flow nav show --path "$OUT/the-flow.json"` and read `.data.nav.now` — that node id is the resume position the skill's entry path lands on from the flight plan alone.
-3. Report `stateFileAbsent` + `resumeDerivedPosition` (below) verbatim.
+3. **Legacy-shape sub-case (plan 030 F001).** Live in-flight flows often carry a real `nav.now` but **no** `bag.status` (it predates the bag). Copy the flow with `bag.status` stripped (`jq 'del(.nav.bag.status)' "$OUT/the-flow.json" > "$OUT/legacy.json"`) and confirm a bare `/the-flow` discovery STILL treats it as active — the skill must key on `nav.now`, not `bag.status` alone. If discovery misses the bag-less copy, that is a finding — record the exact behaviour in `retrospective.confusing`.
+4. Report `stateFileAbsent` + `resumeDerivedPosition` (below) verbatim.
 
 ## Autonomy contract
 

@@ -103,6 +103,26 @@ else
   fail "GATE 7 — nav.now empty; position not derivable from the flight plan without a state file"
 fi
 
+# --- GATE 8: legacy shape — position derives from nav.now with NO bag.status --
+# Plan 030 F001 regression guard. Live in-flight flows (e.g. 026/027) carry a
+# canonical nav.now but no bag.status. Derive that shape from the real flow
+# (strip bag.status) and assert position still resolves — proving cold discovery
+# must key on nav.now (the §6 signal), not bag.status alone.
+LEGACY="$(dirname "$FLOW")/.score-legacy.json"
+if jq 'del(.nav.bag.status)' "$FLOW" > "$LEGACY" 2>/dev/null; then
+  NOW_LEGACY="$(hflow nav show --path "$LEGACY" 2>/dev/null | jq -r '.data.nav.now // empty')"
+  HAS_STATUS="$(jq -r '.nav.bag.status // "absent"' "$LEGACY" 2>/dev/null)"
+  rm -f "$LEGACY"
+  if [ -n "$NOW_LEGACY" ] && [ "$NOW_LEGACY" != "null" ] && [ "$HAS_STATUS" = "absent" ]; then
+    ok "GATE 8 — legacy shape (no bag.status) still resolves position via nav.now ($NOW_LEGACY) — the bag-less population (live 026/027) stays discoverable"
+  else
+    fail "GATE 8 — legacy-shape resume failed (now='$NOW_LEGACY', bag.status='$HAS_STATUS'); a bag.status-only predicate would miss the live in-flight flows"
+  fi
+else
+  rm -f "$LEGACY" 2>/dev/null
+  fail "GATE 8 — could not synthesize the legacy shape (jq del failed on $FLOW)"
+fi
+
 # --- ADVISORY (not a gate): events show nav, not cursor ----------------------
 if [ -n "${EVENTS:-}" ] && [ -f "$EVENTS" ]; then
   if grep -q 'flow nav' "$EVENTS" 2>/dev/null && ! grep -q 'flow cursor' "$EVENTS" 2>/dev/null; then
@@ -115,5 +135,5 @@ else
 fi
 
 echo
-echo "✅ ALL GATES PASS — migrated the-flow authors a clean, spine-only flight plan with NO state file (position in nav)"
+echo "✅ ALL GATES PASS — migrated the-flow authors a clean, spine-only flight plan with NO state file; position resolves from nav.now even when bag.status is absent (legacy shape)"
 exit 0
