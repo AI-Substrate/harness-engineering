@@ -281,3 +281,96 @@
 - **magicWand** (target: minih): Expose a reliable projectRoot value to shell commands (or make MINIH_PROJECT_ROOT consistently point to the repo root) and show it in coordination status so companions do not have to rediscover it with git.
 - difficulties:
   - [degrading] config: MINIH_PROJECT_ROOT was not usable as the repository root in the shell session even though the companion prompt required cd $MINIH_PROJECT_ROOT as the first action. (workaround: Used git rev-parse --show-toplevel from the run folder and ran all repository commands from that path.)
+
+## 2026-06-18T00:47:14.426Z — code-review-companion / 2026-06-18T00-27-49-683Z-f765
+
+- runId: 2026-06-18T00-27-49-683Z-f765
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-18T00-27-49-683Z-f765
+- summary: Reviewed three plan 024 Phase 1 commit boundaries. T001 hook-contract snapshot and T003 gen:flows pipeline were approved with no findings. T002 additive flow error-code block was approved with notes after one MEDIUM contract-drift finding on the E307 comment overlapping the E108 mutual-exclusivity rule. Stood down after the post-task still-needed check-in went unanswered.
+- **magicWand** (target: coordination): Add a `minih report draft --slug code-review-companion --run <id>` command that emits a schema-valid farewell JSON skeleton prefilled with session times, message counts, and coordination counters.
+- difficulties:
+  - [annoying] test: The first focused test invocation passed a path through the root npm test script in a way Vitest treated as no matching test files while still exiting 0, which could falsely look like validation. (workaround: Re-ran the test from harness/cli with `npx vitest run test/contract/hooks-snapshot.test.ts --coverage=false --reporter=dot`.)
+  - [annoying] coordination: The prompt included two overlapping output schemas: the companion farewell envelope and the generic required JSON object, with different retrospective field names. (workaround: Wrote a superset JSON object containing session/findings plus the generic retrospective fields.)
+
+## 2026-06-18T01:42:49.236Z — code-review-companion / 2026-06-18T01-05-49-449Z-93ae
+
+- runId: 2026-06-18T01-05-49-449Z-93ae
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-18T01-05-49-449Z-93ae
+- summary: Reviewed Plan 024 Phase 1 commits T007-T016 plus the companion fix commit. The final version gate change looked correct, F002 and the bundled-schema portion of F003 were fixed, but a residual HIGH issue remains for out-of-repo schema flows because post-mutation validation is skipped when the overlay cannot be re-resolved.
+- **magicWand** (target: coordination): Add a coordination primitive or convention for bundled final-drain-plus-stop messages so a companion can explicitly complete the drain review before honoring stop without ambiguity.
+- difficulties:
+  - [degrading] coordination: A final verification task and control:stop arrived together, creating ambiguity between strict stop precedence and the peer's explicit request to verify then stand down. (workaround: Acknowledged both, performed the small verification requested by the earlier task, then proceeded directly to farewell without further polling.)
+  - [annoying] config: MINIH_PROJECT_ROOT was not visible to the shell at boot, so the required initial cd command landed in the run folder instead of the repository root. (workaround: Used the repository root path provided in the environment context for all subsequent commands.)
+  - [annoying] test: The npm test script changes into harness/cli, so root-relative test filters produced a no-test run with exit code 0. (workaround: Reran the same tests with harness/cli-relative paths.)
+
+## 2026-06-18T02:20:31.753Z — code-review-companion / 2026-06-18T01-50-01-936Z-ea51
+
+- runId: 2026-06-18T01-50-01-936Z-ea51
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-18T01-50-01-936Z-ea51
+- summary: Reviewed the docs/guide authoring pass as a long-running companion: T001 through T016 plus a final full-guide drain. I sent three MEDIUM findings covering README nav-template drift, unqualified `harness boot` extension wording in the concept doc, and an over-strong resumability claim in the adoption guide; all other per-file reviews and the final sweep found no additional command, link, nav-continuity, terminology, or unmarked-aspirational issues.
+- **magicWand** (target: coordination): Add a coordination-provided run context field or helper command that prints the authoritative project root, active plan path, output path, and task counters as JSON so companion agents do not have to reconcile prompt text, environment variables, and outside messages manually.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run folder even though the companion instructions require starting from the project root. (workaround: Used the repository root from the session environment context and absolute paths for all project reads.)
+  - [annoying] debug: The first holistic sweep command produced too much output to inspect directly. (workaround: Re-ran narrower command, link, and nav checks with focused scripts.)
+
+## 2026-06-18T09:21:53.304Z — code-review-companion / 2026-06-18T08-39-20-769Z-0c4e
+
+- runId: 2026-06-18T08-39-20-769Z-0c4e
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-18T08-39-20-769Z-0c4e
+- summary: Oriented on plan 026 and reviewed four commit-boundary tasks for Phase 1. I sent two findings: one HIGH contract issue in create provenance handling and one MEDIUM zone enum validation issue. C3 rail and C4 docs/dogfood added no new issues, but the two queued findings remained open at the final drain before the outside peer requested stop.
+- **magicWand** (target: coordination): Add a companion inbox command or coordination ledger field for open finding status, so final drain can report unresolved findings without reconstructing them from prior messages.
+- difficulties:
+  - [annoying] coordination: Open findings had to be tracked manually across multiple commit-boundary tasks and re-summarized during final drain. (workaround: Kept the finding ids, severities, ackOf task ids, and open status in working context, then repeated them in the final drain summary and report.)
+
+## 2026-06-18T11:37:48.160Z — code-review-companion / 2026-06-18T11-19-00-476Z-d552
+
+- runId: 2026-06-18T11-19-00-476Z-d552
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-18T11-19-00-476Z-d552
+- summary: Oriented on plan 027, acknowledged the group-A briefing, reviewed the supplied cursor-to-nav migration diff and new `flight-plan-ops.md`, sent two MEDIUM findings plus an APPROVE_WITH_NOTES summary, then stood down after the post-task still-needed check-in received no reply.
+- **magicWand** (target: minih): Have minih set the SDK tool working directory to `$MINIH_PROJECT_ROOT` for non-shell file tools, or expose a visible `toolCwd` field in the prompt so agents know when `rg`/`glob` need absolute paths.
+- difficulties:
+  - [annoying] debug: Non-shell search tools resolved paths relative to the run directory even after the shell-oriented `cd $MINIH_PROJECT_ROOT` instruction, causing initial `rg` searches for project paths to fail. (workaround: Reran the searches with absolute paths under `/Users/jordanknight/substrate/harness-engineering`.)
+
+## 2026-06-18T22:57:10.414Z — code-review-companion / 2026-06-18T22-07-07-751Z-4b93
+
+- runId: 2026-06-18T22-07-07-751Z-4b93
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-18T22-07-07-751Z-4b93
+- summary: Reviewed Plan 024 Phase 4 chore-node work across 14 task diffs plus the final cumulative sweep. The core shape is sound: chore remains an optional orthogonal node attribute, overlay-declared chore statuses stay out of the shared status validator, rail rendering preserves non-chore behavior, and importance remains advisory rather than gating. No HIGH or CRITICAL issues were found. Three MEDIUM contract/documentation drifts were reported and remain the cumulative open review notes.
+- **magicWand** (target: coordination): The companion loop would be easier to audit if the final report helper could automatically materialize sent findings with ackOf IDs from the coordination ledger instead of requiring manual reconstruction.
+
+## 2026-06-19T05:01:57.672Z — code-review-companion / 2026-06-19T04-33-18-697Z-8ae6
+
+- runId: 2026-06-19T04-33-18-697Z-8ae6
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-19T04-33-18-697Z-8ae6
+- summary: Reviewed three working-tree task boundaries for plan 031. T001 was APPROVE_WITH_NOTES with two medium issues around ctx wiring coverage and public contract documentation drift. T002 was REQUEST_CHANGES because NodeBackground's detached-spawn failure path lacks ChildProcess error handling and parent fd cleanup, plus a medium ctx.background/docs drift gap. A late T003 request was APPROVE_WITH_NOTES: clock.sleep and the advisory Node runtime guard looked sound, but ctx.clock.sleep extended the same authoring-doc and ctx wiring-test drift. The companion had previously exited via idle_budget after a post-task still-needed check-in, then processed the late task and refreshed this report.
+- **magicWand** (target: coordination): Add a first-class 'snapshot diff for review-request' attachment or command output capture so the inside reviewer sees an immutable task-boundary diff even when the working tree keeps changing.
+- difficulties:
+  - [degrading] coordination: Working-tree diff review was not snapshot-stable; git diff showed transient typos that were fixed before the file could be viewed. (workaround: Refreshed the scoped diff and line views before reporting findings.)
+  - [annoying] test: The initial focused Vitest command used an unsupported --runInBand flag. (workaround: Reran the focused test with the accepted 'npx vitest run <file>' invocation.)
+
+## 2026-06-19T05:39:53.045Z — code-review-companion / 2026-06-19T05-38-35-220Z-7e96
+
+- runId: 2026-06-19T05-38-35-220Z-7e96
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-19T05-38-35-220Z-7e96
+- summary: Oriented on active plan 032-eng-harness-flow-flight-plans and published ready state, then received an outside stop request before any review task or briefing. No code review findings were produced.
+- **magicWand** (target: minih): Expose MINIH_PROJECT_ROOT and MINIH_OUTPUT_PATH consistently to shell/tool executions, or include a first-class coordination field for the project root and output path so agents do not need literal-path fallback.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not available to the shell tool even though the prompt instructed using it as the first action, causing the initial orientation command to run from the run folder. (workaround: Used the literal repository root provided in the session context and reran orientation from there.)
+
+## 2026-06-19T05:50:28.240Z — code-review-companion / 2026-06-19T05-48-11-751Z-63b0
+
+- runId: 2026-06-19T05-48-11-751Z-63b0
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-19T05-48-11-751Z-63b0
+- summary: Reviewed the uncommitted Group A plan 032 flow changes. Verdict: REQUEST_CHANGES due to one HIGH adopt-flow contract bug and one MEDIUM loop decision drift. The set-node --zone/--chore-kind/--importance extension and guard placement looked consistent with add-node behavior.
+- **magicWand** (target: minih): Expose the project root and output path through a minih doctor/status field inside coordinated runs so agents do not have to recover from unset shell variables.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not visible to the shell even though the prompt instructed cd $MINIH_PROJECT_ROOT first. (workaround: Used the explicit repository root from the environment context for all git, view, and validation operations.)
+
+## 2026-06-19T05:55:55.765Z — code-review-companion / 2026-06-19T05-54-21-174Z-1233
+
+- runId: 2026-06-19T05-54-21-174Z-1233
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-19T05-54-21-174Z-1233
+- summary: Reviewed the requested uncommitted Group B skill changes for plan 032, including SKILL.md, 00-routing.md, coach.md section 1a, the new flight-plan-ops.md, the external the-flow harness-seams.md diff, and the plan AC language. The core changed files are coherent: state-contract supersession is scoped to flow position, S0/S2/S4 selects loop otherwise adopt, AC-07 chore shape and dedup match across 00-routing.md and flight-plan-ops.md, and R-1 single-owner aligns with the the-flow note. I found one medium doctrine-drift issue in existing getting-started.md guidance.
+- **magicWand** (target: coordination): Expose a reliable coordination variable or command such as `minih project-root` that always returns the actual repository root for inside agents.
+- difficulties:
+  - [degrading] config: The prompt instructed `cd $MINIH_PROJECT_ROOT`, but in this run that variable pointed at the run folder, not the git repository root, causing the first file read to miss the requested skill paths. (workaround: Changed to the explicit repository root from the environment context and repeated the scoped reads.)
