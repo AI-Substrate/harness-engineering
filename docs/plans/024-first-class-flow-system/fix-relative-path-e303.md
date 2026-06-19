@@ -59,4 +59,4 @@ Implemented inline (no new flow, no new branch).
 
 - **No new branch** — landed on the current working branch.
 - This is purely a [CLI] fix — no skill-doc edits were needed (the help text already advertised relative in-repo `--path` as valid; the fix makes the behaviour match the docs).
-- The hand-off report (a Windows host on the MYOB fork) applied the fix locally, proved it, then **reverted** in the fork so this upstream fix ports back with no conflict. This repo **is** that upstream.
+- The hand-off report (a Windows host on a downstream fork) applied the fix locally, proved it, then **reverted** in the fork so this upstream fix ports back with no conflict. This repo **is** that upstream.

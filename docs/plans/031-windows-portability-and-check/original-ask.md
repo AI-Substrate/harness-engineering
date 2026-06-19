@@ -4,8 +4,8 @@
 > get a flow set up for this then run the explore phase
 
 **Context for "this"** *(not the user's words — captured so the ask is self-contained):*
-"This" is the Windows-compatibility work surfaced by an upstream handover from the
-MYOB fork (`scratch/paste/20260619T021244.md`, analyzed earlier this session). Two
+"This" is the Windows-compatibility work surfaced by an upstream handover from a
+downstream fork (`scratch/paste/20260619T021244.md`, analyzed earlier this session). Two
 deliverables, treated as one Windows-hardening track:
 
 1. **Re-add the Windows-portability layer** to the `validate-harness-flow` dogfood
