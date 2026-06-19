@@ -1,10 +1,18 @@
 # The Engineering Harness
 
-An engineering harness productises the software-development loop so humans and agents can move from intent to evidence, then encode what they learn into the next run.
+Engineering harnesses aren't new. This repo takes the decades-old idea and modernises it for **agentic software engineering** — a world where the agent starts cold every session, and proof matters more than ever.
 
-It is the **missing layer** between your agent and your codebase — the deterministic one: a single CLI focal point where a fresh human or agent can boot the product, prove a change is good, and encode the fix so the next run is easier.
+An engineering harness takes your codebase — its scripts, tools, fixtures, checks, and hard-won knowledge — and turns them into a **first-class thing**: one focal point for discovery and improvement.
 
-**It's an *engineering* harness, not an *agent* harness — and not a new idea.** Teams have built these for decades: boot scripts, test suites, fixtures, health checks. What's new is bringing that surface into the AI world as a first-class tool with an improving feedback loop — so a human or agent gets the most out of every token, instead of spending them to relearn your repo every session. → [Engineering harness vs agent harness](#engineering-harness-vs-agent-harness)
+Combined with an agent, it becomes something more — a very obvious place to encode discoveries, friction points, and fixes the moment they surface, so they're captured instead of lost.
+
+And it becomes your repo's **home of quality**. The harness guides both you and your agent to *create* **deterministic backpressure** — the types, tests, schemas, and checks that make *"done"* provable — so *"looks good to me"* gives way to *not yet, and here's why.*
+
+Together, that's the **missing layer** between your agent and your codebase: the **first-class, deterministic** one most repos don't have yet.
+
+**It's an *engineering* harness, not an *agent* harness** — the loop that proves your *product*, not the runtime around the *model*. It works through an improving feedback loop, so a human or agent gets the most out of every token instead of spending them to relearn your repo every session. → [Engineering harness vs agent harness](#engineering-harness-vs-agent-harness)
+
+Crucially, the harness never takes the wheel: it holds no LLM and no agents of its own (skills aside) — just deterministic tooling. Your coding agent stays in the driver's seat, driving the harness the way it already drives `git`. Because that tooling is deterministic, the same harness holds whichever model you point at it — a cheap one for routine passes, a stronger one when the work is hard.
 
 ## Quick start
 
@@ -45,7 +53,7 @@ Out of all the problems with agent-driven development, two matter most:
 
 Underneath both: every agent session is a fresh developer onboarding into your repo — cold. If the supported path lives in scattered scripts, docs, and tribal memory, the agent has to infer it, and you pay for that inference every session, on every dev machine. Those tokens are real money — and tomorrow you spend them again to rediscover what you already solved today.
 
-And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives in that one chat session, and then it's gone. Next week the same friction is waiting, unchanged, for the next person on your team — or for you, in a month, when you've forgotten. An engineering harness gives that hard-earned knowledge a permanent home — not scattered docs or tribal memory, but a runnable check: **encode the fix, not the memory**. Fix it once and it's caught forever. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
+And the knowledge you *do* win tends to evaporate. Every correction — the workaround, the fix, the years of codebase instinct a human spends steering the agent right — usually lives in that one chat session, and then it's gone. Next week the same friction is waiting, unchanged, for the next person on your team — or for you, in a month, when you've forgotten. An engineering harness gives that hard-earned knowledge a permanent home — not scattered docs or tribal memory, but a runnable check: **encode the fix, not the memory**. Fix it once and it's caught forever — what used to leak away is now durable, compounding in the repo instead of evaporating, and it's yours. → [Encoding & Learning Loops](docs/guide/10-encoding-and-learning-loops.md)
 
 > Two questions decide it: how does a fresh agent know when a change is *actually* done — and where does the fix go so it isn't lost tomorrow, on a teammate's machine or your own?
 
