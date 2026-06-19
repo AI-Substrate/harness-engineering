@@ -10,6 +10,23 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.5.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.4.0...v0.5.0) (2026-06-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **022:** consolidate eng-harness skills (7 → 2: flow router + assessment peer) ([#27](https://github.com/AI-Substrate/harness-engineering/issues/27))
+
+### Features
+
+* **021:** five neutral lifecycle hooks for eng-harness-flow (--hook/--hooks/--help) ([#25](https://github.com/AI-Substrate/harness-engineering/issues/25)) ([9ce4613](https://github.com/AI-Substrate/harness-engineering/commit/9ce46133705c37cadb7727312dfe63a60191edc1))
+* first-class flow system + the-flow/eng-harness-flow on the CLI (plans 024–032) ([#28](https://github.com/AI-Substrate/harness-engineering/issues/28)) ([ce2b4ff](https://github.com/AI-Substrate/harness-engineering/commit/ce2b4ff35aea7ff3124f02c18724f16ca7ba4426))
+
+
+### Code Refactoring
+
+* **022:** consolidate eng-harness skills (7 → 2: flow router + assessment peer) ([#27](https://github.com/AI-Substrate/harness-engineering/issues/27)) ([9d79a76](https://github.com/AI-Substrate/harness-engineering/commit/9d79a762935927bc5a689505baaa5c7449c55afb))
+
 ## [0.4.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.3.0...v0.4.0) (2026-06-16)
 
 
