@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** the Node runtime floor (`engines.node` `>=22`) is now **enforced at runtime** — `harness doctor` adds a `node-runtime` layer that degrades with an upgrade `next_action` on Node `<22` (previously the floor was advisory only). Launching a `.cmd` shim on Windows requires a patched Node — a bare `.cmd` spawn EINVALs on `<20.12.2` — and the CLI standardises on `>=22` (plan 031 / workshop 001).
+
+### Features
+
+* **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
+
 ## [0.4.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.3.0...v0.4.0) (2026-06-16)
 
 

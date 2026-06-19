@@ -74,6 +74,14 @@ const DEV_TOOLS = ['node', 'just', 'biome'];
  */
 const CORE_TOOLS = ['node'];
 /**
+ * The minimum Node major the CLI supports (mirrors `engines.node` `">=22"`). The
+ * floor is load-bearing on Windows: launching a `.cmd` shim needs a patched Node
+ * — a bare `.cmd` spawn EINVALs on <20.12.2, and the CLI standardises on ≥22
+ * (plan 031 / workshop 001). `engines` is only advisory (npx won't enforce it),
+ * so the doctor `node-runtime` layer enforces it at runtime.
+ */
+const NODE_FLOOR_MAJOR = 22;
+/**
  * Relative to cwd. The dev-vs-consumer marker (FX001 / plan-013 FIND-2) gates BOTH
  * the toolchain and cli-build layers:
  * - Dev (marker present): enforce the full dev toolchain (DEV_TOOLS) and check the
@@ -107,6 +115,34 @@ function checkToolchain(proc: ProcessPort, fs: FsPort): LayerReport {
     detail: dev
       ? `all required tools present (${required.join(', ')})`
       : 'consumer install — core needs only node (present); repo toolchain is owned by the boot extension',
+  };
+}
+
+/**
+ * Runtime Node-version guard (plan 031). Even when `node` is on PATH, an old
+ * RUNNING interpreter breaks the Windows `.cmd` launch path — so flag a Node
+ * below {@link NODE_FLOOR_MAJOR} as not-ok with a clear upgrade `next_action`
+ * (advisory — degrades the envelope, never blocks; the harness never gates).
+ * A version string we cannot parse is treated as ok (don't false-alarm).
+ */
+function checkNodeRuntime(proc: ProcessPort): LayerReport {
+  const version = proc.nodeVersion();
+  const major = Number.parseInt(version.split('.')[0] ?? '', 10);
+  if (Number.isFinite(major) && major < NODE_FLOOR_MAJOR) {
+    return {
+      name: 'node-runtime',
+      ok: false,
+      detail: `Node ${version} is below the supported floor (>=${NODE_FLOOR_MAJOR})`,
+      next_action:
+        `Upgrade to Node >=${NODE_FLOOR_MAJOR} (the CLI's engines floor). Launching a ` +
+        `.cmd shim on Windows needs a patched Node — a bare .cmd spawn EINVALs on older ` +
+        `runtimes. Install Node ${NODE_FLOOR_MAJOR} LTS (e.g. \`nvm install ${NODE_FLOOR_MAJOR}\`) and re-run.`,
+    };
+  }
+  return {
+    name: 'node-runtime',
+    ok: true,
+    detail: `Node ${version} (>=${NODE_FLOOR_MAJOR})`,
   };
 }
 
@@ -265,6 +301,7 @@ export function buildDoctorReport(
   const conventions = checkConventions(deps.fs, deps.proc, registry);
   const layers = [
     checkToolchain(deps.proc, deps.fs),
+    checkNodeRuntime(deps.proc),
     checkCliBuild(deps.fs),
     checkExtensions(registry, conventions),
     checkCoreInstructions(),

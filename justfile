@@ -177,8 +177,16 @@ test:
 lint-md:
     node harness/cli/bin/harness.js markdown-lint
 
-# fix -> format -> test -> lint-md (the engineering loop).
-fft: fix format test lint-md
+# Windows-compat lint: statically flag cross-platform anti-patterns in the
+# extension verbs (POSIX shell-outs, /tmp, node:* in a verb, bare-.cmd launch).
+# Warn-launch: findings report as `degraded`/exit 0 (visible, non-blocking), so
+# this never breaks the loop until the verbs regress. By-construction proof of
+# Windows compatibility with NO Windows runner (plan 031). Run via node (not npx).
+windows-check:
+    node harness/cli/bin/harness.js windows-check
+
+# fix -> format -> test -> lint-md -> windows-check (the engineering loop).
+fft: fix format test lint-md windows-check
 
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":

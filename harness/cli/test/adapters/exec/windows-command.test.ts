@@ -95,4 +95,28 @@ describe('resolveSpawn', () => {
     expect(line).toContain('"c|d"');
     expect(line).toContain('"e(x86)"');
   });
+
+  it('REGRESSION (plan 031 / workshop 001): the .cmd route MUST stay cmd.exe + windowsVerbatimArguments — never a bare .cmd', () => {
+    /*
+    Test Doc:
+    - Why: workshop 001 (001-windows-cmd-launch-escaping.md) corrected dossier DR-1 —
+      on patched Node (>=20.12.2; the CLI's >=22 floor) `spawn('x.cmd', args, {shell:false})`
+      throws EINVAL, so a bare .cmd can NEVER be spawned directly. The ONLY injection-safe,
+      non-deprecated route is `cmd.exe /d /s /c "<line>"` with windowsVerbatimArguments. A
+      future "simplification" that dropped verbatim would (a) make Node re-quote the /s line,
+      corrupting it, and (b) tempt a bare-.cmd spawn that EINVALs at runtime on Windows. This
+      test is the regression net that keeps that door shut — both the detached adapter
+      (NodeBackground, T002) and the blocking adapter (NodeExec) depend on this contract.
+    - Contract: for a `.cmd` target on win32, command === 'cmd.exe' (never the bare .cmd) AND
+      windowsVerbatimArguments === true.
+    */
+    for (const target of ['C:/npm/minih.cmd', 'C:/x/tool.bat']) {
+      const r = resolveSpawn(target, ['run', 'a b'], 'C:/repo', 'win32', {});
+      expect(r.command, `${target} must route through cmd.exe, never a bare .cmd (EINVAL)`).toBe(
+        'cmd.exe',
+      );
+      expect(r.command).not.toMatch(/\.(cmd|bat)$/i);
+      expect(r.windowsVerbatimArguments, 'verbatim is required for the /s line').toBe(true);
+    }
+  });
 });

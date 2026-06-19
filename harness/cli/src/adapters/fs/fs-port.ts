@@ -25,4 +25,50 @@ export interface FsPort {
    * parent dir exists.
    */
   rename(from: string, to: string): void;
+  /**
+   * Canonical absolute path with every symlink resolved, or null if the path is
+   * missing / unresolvable (never throws). The portable replacement for a POSIX
+   * `realpath` shell-out — it underpins the CWE-59 confine guard (plan 031).
+   */
+  realpath(path: string): string | null;
+}
+
+/**
+ * Write-side filesystem capability a verb reaches through `ctx.fsWrite` (plan
+ * 031). It lets a portable verb create dirs, write files, and copy artifacts
+ * WITHOUT a POSIX `mkdir`/`cp`/`bash` shell-out — the in-contract substitute for
+ * the dogfood verbs' old coreutil calls.
+ *
+ * `NodeFs` implements this alongside {@link FsPort}; tests use `FakeFs`, which
+ * records an ops log instead of touching disk.
+ */
+export interface FileSystemWritePort {
+  /** Write UTF-8 text to a path, overwriting. Caller ensures the parent dir exists (mkdirp). */
+  writeText(path: string, contents: string): void;
+  /** Recursively create a directory (no-op if it already exists). */
+  mkdirp(path: string): void;
+  /** Atomically move `from` → `to`, replacing any existing file at `to`. Throws on failure. */
+  rename(from: string, to: string): void;
+  /**
+   * Copy `src` into `destDir` (the source basename is preserved), creating
+   * `destDir` first. Returns true on success, false if the copy was refused or
+   * failed (never throws).
+   *
+   * With `confineRoot`, the source is treated as living inside an UNTRUSTED tree
+   * (e.g. a cloned repo): the copy is REFUSED unless `src`'s real path stays
+   * within `confineRoot`'s real path, and the bytes are read from the RESOLVED
+   * real path — so resolve + contain + copy happen as ONE operation. That closes
+   * the check-then-copy TOCTOU window a separate guard+`cp` would open, and never
+   * silently skips every copy the way a POSIX `realpath` shell-out does on
+   * Windows. Defeats the CWE-59 symlink-exfiltration attack where a malicious
+   * clone commits a fixed artifact path as a symlink to an out-of-tree host file.
+   */
+  copy(src: string, destDir: string, opts?: { confineRoot?: string }): boolean;
+  /**
+   * Create a UNIQUE temp directory under the OS temp dir (`os.tmpdir()`) with the
+   * given name prefix, returning its absolute path. The portable, race-free
+   * replacement for a hand-built `/tmp/<name>-<ts>` literal + `mkdir -p` (plan
+   * 031) — keeps `os`/`fs` in the adapter so verbs stay `node:*`-free.
+   */
+  mkdtemp(prefix: string): string;
 }

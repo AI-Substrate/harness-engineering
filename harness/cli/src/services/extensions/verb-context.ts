@@ -1,7 +1,8 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
+import type { BackgroundProcessPort } from '../../adapters/exec/background-port.js';
 import type { ExecPort } from '../../adapters/exec/exec-port.js';
-import type { FsPort } from '../../adapters/fs/fs-port.js';
+import type { FileSystemWritePort, FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
 import {
   type Envelope,
@@ -20,6 +21,10 @@ export interface VerbContextDeps {
   env: EnvPort;
   git: GitPort;
   clock: Clock;
+  /** OPTIONAL write-side FS capability surfaced as `ctx.fsWrite` (plan 031). */
+  fsWrite?: FileSystemWritePort;
+  /** OPTIONAL detached-spawn capability surfaced as `ctx.background` (plan 031). */
+  background?: BackgroundProcessPort;
 }
 
 /** The parsed invocation a verb is called with. */
@@ -43,6 +48,8 @@ export function buildVerbContext(deps: VerbContextDeps, invocation: VerbInvocati
     exec: (command, args = [], opts) =>
       deps.exec.run(command, args, { cwd: opts?.cwd ?? invocation.cwd }),
     fs: deps.fs,
+    ...(deps.fsWrite && { fsWrite: deps.fsWrite }),
+    ...(deps.background && { background: deps.background }),
     env: deps.env,
     git: deps.git,
     clock: deps.clock,

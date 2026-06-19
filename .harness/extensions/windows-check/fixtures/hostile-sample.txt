@@ -1,0 +1,16 @@
+// A deliberately HOSTILE sample (test fixture only — excluded from the real scan
+// by inScope's /fixtures/ skip). Every line below should trip a windows-check rule.
+import { spawn } from 'node:child_process';
+import { tmpdir } from 'node:os';
+
+export async function bad(ctx, url) {
+  const tmp = `/tmp/bad-${Date.now()}`;
+  await ctx.exec('mkdir', ['-p', tmp]);
+  await ctx.exec('bash', ['-c', 'command -v minih']);
+  const clone = await ctx.exec('git', ['clone', '--depth=1', url, tmp]);
+  const name = url.split('/').pop();
+  const home = process.env.HOME;
+  await ctx.exec('sleep', ['1']);
+  const child = spawn('minih', ['run']);
+  // nohup "$@" > log 2>&1 & echo $!
+}

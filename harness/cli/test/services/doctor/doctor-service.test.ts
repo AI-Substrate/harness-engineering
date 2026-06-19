@@ -198,6 +198,32 @@ describe('buildDoctorReport', () => {
     expect(toolchain?.next_action).toContain('node');
   });
 
+  it('node-runtime: an old running Node degrades the layer with an upgrade next_action (plan 031)', () => {
+    /*
+    Test Doc:
+    - Why: engines.node ">=22" is only advisory — npx won't enforce it. The runtime guard
+      catches an actually-old interpreter, which breaks the Windows .cmd launch path (a bare
+      .cmd spawn EINVALs on <20.12.2; the CLI standardises on >=22).
+    - Contract: process.versions.node major < 22 → node-runtime layer ok:false with a clear
+      "upgrade to Node >=22" next_action; an unparseable version is treated as ok (no false alarm).
+    - Worked Example: FakeProcess reporting node 20.11.0 → node-runtime not ok, next_action names 22.
+    */
+    const proc = new FakeProcess({ node: '/usr/bin/node' }, '/repo', '20.11.0');
+    const report = buildDoctorReport(deps({ proc }), EMPTY);
+    const runtime = report.layers.find((l) => l.name === 'node-runtime');
+    expect(runtime?.ok).toBe(false);
+    expect(runtime?.detail).toContain('20.11.0');
+    expect(runtime?.next_action).toContain('>=22');
+  });
+
+  it('node-runtime: a patched >=22 Node reports ok (plan 031)', () => {
+    const proc = new FakeProcess({ node: '/usr/bin/node' }, '/repo', '22.7.0');
+    const report = buildDoctorReport(deps({ proc }), EMPTY);
+    const runtime = report.layers.find((l) => l.name === 'node-runtime');
+    expect(runtime?.ok).toBe(true);
+    expect(runtime?.detail).toContain('22.7.0');
+  });
+
   it('reads HARNESS_JSON via the env port into json_env', () => {
     const env = new FakeEnv({ HARNESS_JSON: '1' });
     const report = buildDoctorReport(deps({ env }), EMPTY);

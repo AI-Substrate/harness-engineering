@@ -1,8 +1,9 @@
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
+import type { BackgroundProcessPort } from '../adapters/exec/background-port.js';
 import type { ExecPort } from '../adapters/exec/exec-port.js';
-import type { FsPort } from '../adapters/fs/fs-port.js';
+import type { FileSystemWritePort, FsPort } from '../adapters/fs/fs-port.js';
 import type { GitPort } from '../adapters/git/git-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
 import { exitWithEnvelope } from '../output/exit.js';
@@ -18,6 +19,10 @@ export interface VerbActDeps {
   git: GitPort;
   clock: Clock;
   proc: ProcessPort;
+  /** OPTIONAL write-side FS capability surfaced as `ctx.fsWrite` (plan 031). */
+  fsWrite?: FileSystemWritePort;
+  /** OPTIONAL detached-spawn capability surfaced as `ctx.background` (plan 031). */
+  background?: BackgroundProcessPort;
 }
 
 /**

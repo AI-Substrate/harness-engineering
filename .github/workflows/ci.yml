@@ -153,6 +153,24 @@ jobs:
           fi
           exit ${code:-0}
 
+      # Windows-compat conformance through the VERB: statically flag the
+      # cross-platform anti-patterns the extension verbs must avoid (POSIX
+      # shell-outs, /tmp, node:* in a verb, bare-.cmd launch, clone without
+      # core.longpaths, …) — by-construction proof with NO Windows runner
+      # (plan 031, continuing plan 017's posture for the core's windows-command.ts).
+      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
+      # annotation; not a git tree (exit 2) or crash (exit 1) fails the step.
+      - name: Windows-compat conformance (harness windows-check)
+        run: |
+          out=$(node harness/cli/bin/harness.js windows-check --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.findingCount')
+            echo "::warning title=windows-check::${count} Windows-compat finding(s) at warn severity — see the envelope in this step's log; fix per each finding's message or suppress a deliberate line with // win-ok: <reason>"
+          fi
+          exit ${code:-0}
+
   # Stable, matrix-independent required check for branch protection (T005).
   # Always runs and fails if any required job failed/cancelled.
   ci-required:

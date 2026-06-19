@@ -5,8 +5,9 @@ import type { VerbContext } from '@ai-substrate/engineering-harness/contract';
  * split from the flat single-file form; proves AC-14 in production: the entry
  * imports this module via `./lib/worker-io.ts`).
  *
- * Same guardrails as the entry (Constitution P2/P8): no `node:*` imports — all
- * side effects via `ctx.exec` / `ctx.fs`.
+ * Cross-platform (plan 031): NO `node:*` imports and NO POSIX shell-outs — all
+ * side effects go through the portable verb contract (`ctx.exec` for real repo
+ * commands, `ctx.fsWrite` for writes/copies, `ctx.clock.sleep` for poll waits).
  */
 
 /** Newest run id for the slug, or null when there are no runs yet. */
@@ -40,15 +41,20 @@ export async function captureNewRun(
         // not JSON yet — keep polling
       }
     }
-    await ctx.exec('sleep', ['0.3']);
+    await ctx.clock.sleep(300);
   }
   return null;
 }
 
-/** Write `content` to `path` with NO shell re-parsing of the content (argv-only). */
+/** Write `content` to `path` via the portable write port (no shell). Returns true on success. */
 export async function writeFile(ctx: VerbContext, path: string, content: string): Promise<boolean> {
-  const r = await ctx.exec('bash', ['-c', 'printf "%s" "$2" > "$1"', 'writeFile', path, content]);
-  return r.ok;
+  if (!ctx.fsWrite) return false;
+  try {
+    ctx.fsWrite.writeText(path, content);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Read + parse a JSON file via the read-only fs port; null on any failure. */
@@ -70,10 +76,11 @@ export function readJson<T>(ctx: VerbContext, path: string): T | null {
  * UNTRUSTED clone: the copy is REFUSED unless the source's resolved real path
  * stays within `confineRoot`'s real path. A malicious clone can commit a fixed
  * artifact path (e.g. `.harness/reports/harnessability/latest.json`) as a
- * symlink to an absolute host path (`~/.ssh/id_rsa`, cloud creds); plain `cp`
+ * symlink to an absolute host path (`~/.ssh/id_rsa`, cloud creds); a plain copy
  * dereferences it and would exfiltrate the contents into the operator's tree
- * (CWE-59). The realpath containment check lets only files genuinely inside the
- * clone subtree be copied; an escaping symlink is skipped (returns false).
+ * (CWE-59). The portable `ctx.fsWrite.copy` does realpath + containment + copy
+ * as ONE operation (no skip-all on Windows, no check-then-copy TOCTOU); an
+ * escaping symlink is refused (returns false).
  */
 export async function copyInto(
   ctx: VerbContext,
@@ -81,24 +88,6 @@ export async function copyInto(
   destDir: string,
   confineRoot?: string,
 ): Promise<boolean> {
-  if (!ctx.fs.exists(src)) return false;
-  if (confineRoot !== undefined) {
-    // realpath both sides and assert src resolves under the clone root. Positional
-    // argv only — never interpolate the paths into the bash string (injection).
-    // Quoted "$2" keeps the root literal; only the trailing /* is a glob. A
-    // realpath failure (missing tool / dangling link) exits non-zero ⇒ skip.
-    const guard = await ctx.exec('bash', [
-      '-c',
-      'rp=$(realpath "$1" 2>/dev/null) || exit 3; rr=$(realpath "$2" 2>/dev/null) || exit 3; ' +
-        'case "$rp/" in "$rr"/*) exit 0 ;; *) exit 4 ;; esac',
-      'copyInto-confine',
-      src,
-      confineRoot,
-    ]);
-    if (!guard.ok) return false;
-  }
-  const mk = await ctx.exec('mkdir', ['-p', destDir]);
-  if (!mk.ok) return false;
-  const cp = await ctx.exec('cp', [src, destDir]);
-  return cp.ok;
+  if (!ctx.fsWrite) return false;
+  return ctx.fsWrite.copy(src, destDir, confineRoot !== undefined ? { confineRoot } : undefined);
 }

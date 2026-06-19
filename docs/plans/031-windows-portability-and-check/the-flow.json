@@ -1,0 +1,600 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "windows-portability-and-check",
+  "created_at": "2026-06-19T02:32:16.303Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": "026-flow-nav-rail-zone",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-19T02:32:16.303Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:32:16.321Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "windows-portability-and-check"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:32:16.398Z",
+      "details": {
+        "node": "merge",
+        "type": "merge"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:32:16.483Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:32:16.561Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:32:16.640Z",
+      "details": {
+        "from": "",
+        "to": "research"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:39:19.141Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note",
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:39:19.300Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:39:19.386Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:39:27.382Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T02:59:10.616Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:16:39.559Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:16:39.641Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:16:39.726Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:16:39.813Z",
+      "details": {
+        "node": "implement",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:16:39.813Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:16:39.895Z",
+      "details": {
+        "from": "plan",
+        "to": "implement"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:43:52.570Z",
+      "details": {
+        "node": "workshop-f19",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:44:01.274Z",
+      "details": {
+        "node": "workshop-f19",
+        "fields": [
+          "note",
+          "user_input",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:44:01.354Z",
+      "details": {
+        "node": "workshop-f19",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:44:01.433Z",
+      "details": {
+        "node": "workshop-f19",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:44:08.495Z",
+      "details": {
+        "from": "implement",
+        "to": "workshop-f19"
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:51:03.743Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T03:51:03.833Z",
+      "details": {
+        "from": "workshop-f19",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T04:37:32.772Z",
+      "details": {
+        "node": "implement",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T04:37:32.859Z",
+      "details": {
+        "from": "plan",
+        "to": "implement"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T04:37:40.290Z",
+      "details": {
+        "node": "implement",
+        "from": "in_progress",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T04:37:40.398Z",
+      "details": {
+        "from": "implement",
+        "to": "implement"
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T04:37:54.878Z",
+      "details": {
+        "node": "implement",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:38:38.155Z",
+      "details": {
+        "node": "implement",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:38:38.244Z",
+      "details": {
+        "node": "implement",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:38:38.335Z",
+      "details": {
+        "node": "implement",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-008",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T05:38:38.423Z",
+      "details": {
+        "from": "implement",
+        "to": "implement"
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-19T06:47:38.820Z",
+      "details": {
+        "node": "review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T06:47:38.820Z",
+      "details": {
+        "node": "implement",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T06:47:38.918Z",
+      "details": {
+        "node": "review",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T06:47:39.009Z",
+      "details": {
+        "node": "review",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-009",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-19T06:47:39.094Z",
+      "details": {
+        "from": "implement",
+        "to": "review"
+      }
+    },
+    {
+      "id": "UPD-016",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-19T06:50:41.517Z",
+      "details": {
+        "node": "review",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "FLO-001",
+      "kind": "flow-closed",
+      "origin": "manual",
+      "fired_at": "2026-06-19T06:50:41.608Z"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "merge",
+      "type": "merge",
+      "label": "Merge",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-19T02:32:16.398Z",
+      "modified_at": "2026-06-19T02:32:16.398Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan (spec + impl)",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-19T02:32:16.483Z",
+      "modified_at": "2026-06-19T03:51:03.743Z",
+      "comments": [
+        {
+          "at": "2026-06-19T03:16:39.559Z",
+          "text": "validate-v2: 4 agents → VALIDATED WITH FIXES. Thesis advanced (Implementation, Strong); Forward-Compat all 3 consumers ✅. Fixes: CS 4→5 (Simple honoured, Full split recommended), CWE-59 single confine-copy (TOCTOU closed), BatBadBut residual made explicit, run-id-capture-timeout coverage, detached-port contract test, consumer-breaking engines note.",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-06-19T03:51:03.743Z",
+          "text": "F19 folded via surgical edits (not a full plan re-run): corrected AC-07/T002 (reuse resolveSpawn + verbatim, no bare-.cmd spawn — EINVALs on Node >=20.12.2), withdrew T010 rewrite -> regression test, re-scored Risk 03/KF 03. Evidence: workshop 001 (Node docs + CVE-2024-27980). Plan stays Simple/READY. Post-Validation Amendment appended.",
+          "kind": "note"
+        }
+      ],
+      "note": "Simple-mode plan written + validated → windows-portability-and-check-plan.md (READY; CS-5; 10 inline tasks).",
+      "artifacts": [
+        "windows-portability-and-check-plan.md"
+      ],
+      "ran_at": "2026-06-19T03:16:39.726Z"
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Explore Windows-compat scope",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-19T02:32:16.561Z",
+      "modified_at": "2026-06-19T02:59:10.615Z",
+      "note": "Explored Windows-compat scope → research-dossier.md: 14-site POSIX-only port surface (both verbs); 2 ctx capability gaps (read-only fs; no detached spawn); design fork A=sidecar portable.mjs vs B=core primitives vs C=hybrid (recommend B/C); windows-check scaffold + warn-launch + just/CI.",
+      "user_input": "get a flow set up for this then run the explore phase",
+      "artifacts": [
+        "research-dossier.md"
+      ],
+      "ran_at": "2026-06-19T02:39:19.300Z",
+      "comments": [
+        {
+          "at": "2026-06-19T02:39:27.382Z",
+          "text": "Central open decision for the plan: where the detached-spawn primitive lives (core ctx vs sidecar). Handover assumed A (sidecar); research favors B/C — workshop candidate.",
+          "kind": "note"
+        },
+        {
+          "at": "2026-06-19T02:59:10.615Z",
+          "text": "Deep research (Perplexity DR-1/DR-2) folded into dossier → Design Fork RESOLVED toward Option B (core read/write FS port + fakeable BackgroundProcessPort). New F19: core windows-command.ts uses windowsVerbatimArguments:true for .cmd — DR-1 says patched Node (>=20.12.2) makes that the riskier path; simplify/harden as a workshop item.",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "implement",
+      "type": "phase",
+      "label": "Implement (Simple, 10 tasks)",
+      "status": "done",
+      "next": [
+        "review"
+      ],
+      "created_at": "2026-06-19T03:16:39.813Z",
+      "modified_at": "2026-06-19T06:47:38.820Z",
+      "comments": [
+        {
+          "at": "2026-06-19T04:37:54.877Z",
+          "text": "Companion booted (active, working-tree-diff protocol). Build groups: T001-T003 contract+adapters; T004-T005 verb ports; T006-T007 windows-check+wiring; T008 sensors; T009 docs; T010 regression. F19 honoured: T002 reuses resolveSpawn, never bare .cmd.",
+          "kind": "note"
+        },
+        {
+          "at": "2026-06-19T05:38:38.335Z",
+          "text": "Full suite 933 passed (83 files; +43 new). tsc clean; biome-clean (my files); windows-check self-scan ok/0 findings. All 8 ACs met (see execution.log.md phase summary). No per-task commits (shared branch). Companion completed after T008 with no findings.",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-06-19T05:38:38.155Z",
+      "note": "All 10 tasks (T001-T010) done: portable verb contract (fsWrite/realpath/mkdtemp, background.spawnDetached, clock.sleep), both dogfood verbs ported, windows-check lint verb + just/CI wiring, Windows-shaped sensors. 933 tests green (+43); windows-check ok/0."
+    },
+    {
+      "id": "workshop-f19",
+      "type": "workshop",
+      "label": "Workshop: F19 cmd launch & escaping",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-19T03:43:52.570Z",
+      "modified_at": "2026-06-19T03:44:01.433Z",
+      "branch_of": "plan",
+      "note": "F19 resolved: reuse resolveSpawn for both exec + the new detached launch; keep windowsVerbatimArguments (the documented cmd.exe route). DR-1's 'spawn .cmd directly' premise refuted — patched Node EINVALs.",
+      "user_input": "workshop please",
+      "artifacts": [
+        "docs/plans/031-windows-portability-and-check/workshops/001-windows-cmd-launch-escaping.md"
+      ],
+      "ran_at": "2026-06-19T03:44:01.354Z",
+      "comments": [
+        {
+          "at": "2026-06-19T03:44:01.433Z",
+          "text": "Selected Option C: reuse resolveSpawn (cmd.exe /d /s /c + verbatim) for the detached launch. Rejected Option A (bare-.cmd spawn / DR-1 premise) — EINVAL on Node >=20.12.2. T010 'simplify' WITHDRAWN -> regression test only. Rewrites plan AC-07/T002/T010; resolves Risk 03 + Open-Q F19.",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Code review (user-run)",
+      "status": "done",
+      "next": [
+        "merge"
+      ],
+      "created_at": "2026-06-19T06:47:38.820Z",
+      "modified_at": "2026-06-19T06:50:41.517Z",
+      "note": "User-run review → APPROVE WITH NOTES (0 HIGH/CRITICAL). 2 MED + 6 LOW, all addressed: F001 backslash-repoName test; F002 FakeFs confine-refusal hook + copyInto forwarding/refusal tests; F003 sep-aware containment; F004 close log fd; F005 env→resolveSpawn; F006 vhf whole-verb test; F007 plan Manifest/T002/T003 reconciled. F008 evidence caveat documented.",
+      "comments": [
+        {
+          "at": "2026-06-19T06:47:39.008Z",
+          "text": "Post-review fixes applied; full suite 961 passed (+28); tsc + biome clean; windows-check ok/0. reviews/review.md.",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-06-19T06:50:41.517Z",
+          "text": "Flow closed out by user request. Implementation + review complete; 961 tests green; windows-check ok/0. Merge/ship intentionally deferred (no per-task commits this run — shared branch; commit + ship later via /the-flow 8 ship, push as jakkaj).",
+          "kind": "note"
+        }
+      ]
+    }
+  ],
+  "nav": {
+    "now": "review",
+    "next": "merge",
+    "intent": "Flow closed out: explore→plan→workshop(F19)→implement(T001-T010)→review(APPROVE WITH NOTES, all findings fixed) all done. Ship/merge DEFERRED — user commits on 026-flow-nav-rail-zone later (push as jakkaj).",
+    "bag": {
+      "mode": "Simple",
+      "status": "complete",
+      "companion": "code-review-companion@2026-06-19T04-33-18-697Z-8ae6"
+    }
+  }
+}

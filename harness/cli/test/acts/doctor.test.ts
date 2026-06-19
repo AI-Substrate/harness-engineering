@@ -45,6 +45,7 @@ describe('registerDoctorAct', () => {
     expect(['ok', 'degraded']).toContain(env.status);
     expect(env.data.layers.map((l: { name: string }) => l.name)).toEqual([
       'toolchain',
+      'node-runtime',
       'cli-build',
       'extensions',
       'instructions',

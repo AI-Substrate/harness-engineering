@@ -163,6 +163,9 @@ export function resolveSpawn(
     // fully-quoted line wrapped in an OUTER quote pair: cmd /s strips that outer
     // pair, leaving each inner per-arg quote (e.g. around a spaced path) intact.
     // Spawned with windowsVerbatimArguments so Node passes the line unaltered.
+    // This cmd.exe + verbatim route is LOAD-BEARING and must not be "simplified"
+    // away: a bare `.cmd` spawn EINVALs on patched Node (>=20.12.2), and dropping
+    // verbatim corrupts the /s line (plan 031 / workshops/001-windows-cmd-launch-escaping.md).
     const line = `"${[target, ...args].map(quoteCmdArg).join(' ')}"`;
     return { command: 'cmd.exe', args: ['/d', '/s', '/c', line], windowsVerbatimArguments: true };
   };
