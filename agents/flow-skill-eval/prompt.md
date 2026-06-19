@@ -43,8 +43,8 @@ Drive far enough to cover a research node, a plan pass that reveals ≥1 phase, 
 After the drive, **simulate a fresh session** (as if `/compact` then `/the-flow` re-ran) and observe whether the skill needs a `.the-flow-state.json` to resume:
 
 1. **Faithful redirect for the state file too.** If — and only if — the skill's guidance has you author a `.the-flow-state.json`, write it under `$OUT/` (the same single redirect you apply to `--path`; never `docs/plans/`). Do **not** invent one the skill never asks for. A migrated skill drives position through `harness flow nav` only and authors **no** such file.
-2. **Re-derive position with NO state file.** Run `node harness/cli/bin/harness.js flow nav show --path "$OUT/the-flow.json"` and read `.data.nav.now` — that node id is the resume position the skill's entry path lands on from the flight plan alone.
-3. **Legacy-shape sub-case (plan 030 F001).** Live in-flight flows often carry a real `nav.now` but **no** `bag.status` (it predates the bag). Copy the flow with `bag.status` stripped (`jq 'del(.nav.bag.status)' "$OUT/the-flow.json" > "$OUT/legacy.json"`) and confirm a bare `/the-flow` discovery STILL treats it as active — the skill must key on `nav.now`, not `bag.status` alone. If discovery misses the bag-less copy, that is a finding — record the exact behaviour in `retrospective.confusing`.
+2. **Re-derive position with NO state file.** Run `node harness/cli/bin/harness.js --json flow nav show --path "$OUT/the-flow.json"` and read `.data.nav.now` — that node id is the resume position the skill's entry path lands on from the flight plan alone. (Pass the global `--json` **before** `flow`: `nav show` renders a human summary in a TTY and only emits the `.data` envelope under `--json`/non-TTY.)
+3. **Legacy-shape sub-case (plan 030 F001).** Live in-flight flows often carry a real `nav.now` but **no** `bag.status` (it predates the bag). Copy the flow with `bag.status` stripped (`jq 'del(.nav.bag.status)' "$OUT/the-flow.json" > "$OUT/legacy.json"`), run `node harness/cli/bin/harness.js --json flow nav show --path "$OUT/legacy.json"`, and confirm `.data.nav.now` STILL resolves to a real node — the §6 active signal the skill's discovery keys on (it must use `nav.now`, not `bag.status` alone). This verifies the **substrate**; a true bare-`/the-flow` glob scans `docs/plans/`, not `$OUT`, so the glob itself isn't exercised here. If `nav.now` does not resolve without the bag, that is a finding — record it in `retrospective.confusing`.
 4. Report `stateFileAbsent` + `resumeDerivedPosition` (below) verbatim.
 
 ## Autonomy contract
@@ -56,7 +56,7 @@ After the drive, **simulate a fresh session** (as if `/compact` then `/the-flow`
 
 Compute these from `$OUT/the-flow.json` and the CLI, and report the **observed** values verbatim — whatever they are:
 
-- `railTitle` — the `.data.rail` string from `node harness/cli/bin/harness.js flow rail --path "$OUT/the-flow.json"`. Report it exactly, even if it is not what you expected.
+- `railTitle` — the `.data.rail` string from `node harness/cli/bin/harness.js --json flow rail --path "$OUT/the-flow.json"`. Report it exactly, even if it is not what you expected.
 - `railClean` — true iff that rail line contains no `Workshop`/`ADR` text.
 - `workshopsAsExcursions` — true iff every node of type `workshop`/`adr` has a non-empty `branch_of`.
 - `spineShape` — the ordered `type`s of the nodes WITHOUT `branch_of`.
@@ -65,7 +65,7 @@ Compute these from `$OUT/the-flow.json` and the CLI, and report the **observed**
 - `validates` — true iff `harness flow render --path "$OUT/the-flow.json" --output "$OUT/the-flow.md"` exits 0.
 - `flowPath` — the absolute path to `$OUT/the-flow.json`.
 - `stateFileAbsent` — true iff there is **no** `.the-flow-state.json` anywhere under `$OUT` after the full drive (the migrated skill authors none; the deterministic scorer re-checks the filesystem).
-- `resumeDerivedPosition` — the `.data.nav.now` node id from `harness flow nav show` (the position a cold resume derives from the flight plan alone); empty string if it cannot be derived without a state file.
+- `resumeDerivedPosition` — the `.data.nav.now` node id from the `--json flow nav show` above (the position a cold resume derives from the flight plan alone); empty string if it cannot be derived without a state file.
 
 ## Output
 

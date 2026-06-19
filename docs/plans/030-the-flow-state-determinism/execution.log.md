@@ -152,4 +152,11 @@ Ran `minih run flow-skill-eval` **4×** against the **migrated source** (`--skil
 2. `harness flow nav show` renders human output in a TTY; the eval prompt should use `--json` to expose `.data.nav.now` (rep 3 — `agents/flow-skill-eval/prompt.md`).
 3. workshop arg-shape differs between Registry (topic only) and the workshop sub-skill (plan+topic) (rep 4).
 
-**F002 update**: resolved externally — plan 035 was committed (`6594035`/`213f87b`), so the the-flow source files are no longer commingled; the only remaining 030 source change is the F001 fix in `00-routing.md`/`coach.md` (staged in the tools working tree; user owns that repo).
+**F002 update**: resolved externally — plan 035 was committed (`6594035`/`213f87b`), so the the-flow source files are no longer commingled; the only remaining 030 source change is the F001 fix in `00-routing.md`/`coach.md`.
+
+**Retro findings — all three FIXED (2026-06-19):**
+1. `00-routing.md` fresh-start — added a single copyable, **ordered** create+seed block (`PLAN_DIR`/`FLOW_PATH` defined once; spine built last-to-first per `flight-plan-ops.md §6`). [tools]
+2. `agents/flow-skill-eval/prompt.md` — cold-resume beat + report fields now use the global `--json` before `flow` (TTY-robust `.data` envelope), and step 3 states honestly that it verifies the substrate, not the `docs/plans` discovery glob. [harness-engineering]
+3. `SKILL.md` Registry — workshop flags now `<plan> "<topic>" [--from-spec] [--list]`, matching the `25-workshop.md` sub-skill. [tools]
+
+No re-run of the eval needed (per user): the fixes are prompt/doc ergonomics; the behavioural thesis is already proven by the 4/4 green reps above.
