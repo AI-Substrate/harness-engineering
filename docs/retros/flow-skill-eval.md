@@ -36,3 +36,13 @@
 - **magicWand** (target: project): Edit the-flow guided prompt to print a concrete, copyable flight-plan command block for each seam, including add-node ordering, --next wiring, and the exact insert-node --branch-of workshop command.
 - difficulties:
   - [degrading] knowledge: The skill guidance required exact prescribed commands, but the fresh-start and seam docs did not render every concrete harness flow mutation with fully bound ids, labels, and ordering. (workaround: Used the skill's verb cheat-sheet and routing cadence to instantiate the required command shapes in the scratch path without changing verbs or flags.)
+
+## 2026-06-19T03:53:25.192Z — flow-skill-eval / 2026-06-19T03-47-08-900Z-2ce1
+
+- runId: 2026-06-19T03-47-08-900Z-2ce1
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/flow-skill-eval/runs/2026-06-19T03-47-08-900Z-2ce1
+- summary: Drove the-flow guided-mode behavior for intent "add a foo widget" into the required in-repo scratch flight plan. The authored rail is exactly the observed [the-flow] rail, the workshop was attached as an excursion via branch_of, nav set was used for position, no cursor command was called, render exited 0, and cold resume derives nav.now from the flight plan without a state file.
+- **magicWand** (target: project): Edit the the-flow Fresh start prompt to print one concrete, ordered command block for scratch-safe creation: create with --path, add ship/plan/research last-to-first, nav set, meta set, and render, using a single FLOW_PATH placeholder.
+- difficulties:
+  - [degrading] workflow: The skill guidance hard-coded docs/plans for non-flight-plan artifacts while the eval required every write to stay under .harness/temp/flow-eval/$MINIH_RUN_ID. (workaround: Kept the flight plan at the required --path and authored original-ask, research, plan, and workshop artifacts under the eval scratch folder.)
+  - [annoying] knowledge: Fresh-start routing said to seed the research, plan, and ship nodes but did not show a copyable ordered command block; the validator rejects forward --next references. (workaround: Used flight-plan-ops gotcha guidance to create the spine last-to-first before setting nav.)
