@@ -26,6 +26,8 @@ Every recurring friction is a fixable harness defect with an executable answer:
 
 Notice the shape: a prose reminder becomes a **deterministic sensor**. The agent no longer has to *remember* — the harness *refuses* the weak path.
 
+> **From our own loop.** A run here once threw four test "failures" that weren't the code — the tests read from the current working directory, so they broke whenever they ran from the wrong place, and a stale build piled an undiagnosable red on top. The prose fix would have been *"remember to rebuild, and run from the right folder."* The **encoded** fix made the tests resolve paths from their own location and made the stale-build failure name its own remedy (`stale dist — run npm run build`). The payoff: the suite now passes identically from the package directory **and** the repo root — nothing left to remember, no false alarms to chase. *(Taken from a real [`harness-change` record](../../.harness/records/harness-change/2026-06-16/001-migrate-cwd-independent-test-suite.md).)*
+
 ## The magic wand, then close the loop
 
 At the end of a meaningful run, ask the two questions ([09 · Operating the Loop](09-operating-the-loop.md) shows where they fire):
@@ -35,6 +37,8 @@ At the end of a meaningful run, ask the two questions ([09 · Operating the Loop
 > *What did you have to infer that the harness should have proved?*
 
 Then **review the answers** — this part needs a human. Some will be bad. Some too expensive. Some are gold. The point is not to collect lessons; it is to make the next run better. Encode the good ones; let the rest go.
+
+> **From our own loop — one wand, one class of bug gone.** A review at commit time once caught a background command hand-built as a shell string with user-supplied values — a [shell-injection the author hadn't considered](../retros/009-harnessability-survey.md). Fixing the one instance was cheap; the *magic-wand* answer made it permanent: **"give every extension a safe `execDetached(cmd, args)` helper so nobody hand-rolls that again."** That is the difference between patching a bug and **removing the class**. (A neighbouring run produced another: [a fix had gone stale on a sibling doc](../retros/008-harness-setup-flow.md) the moment it landed, so the wand was *"a check that fails until every surface agrees."*) Both began as a one-line answer to *"what would have made this easier?"* — and both were worth encoding.
 
 ## The compounding part
 
