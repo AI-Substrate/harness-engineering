@@ -48,10 +48,14 @@ But after a few iterations, something shifts. The next session starts faster, wi
 
 That is the whole idea: **don't just use agents to write code — use agents to improve the loop the agents themselves use** to write your product and prove it works. A harness without this step is only a test rig; with it, every run pays forward to the next.
 
+And that compounding is only worth so much because what builds up is **durable**. Each fix is a check or a command — not a paragraph to remember and a chat log that scrolls away — so it doesn't evaporate when the session ends or a new teammate arrives. It stays, and it's yours. The same deterministic layer holds whichever model you point at it — a cheap one for the routine passes, a stronger one when the work is hard — because the proof lives in your checks and code, not the model.[^frontier]
+
 ## Keep reading
 - Patterns teams actually encode: [`harness-foundations/patterns-that-work.md`](../../harness-foundations/patterns-that-work.md).
 - The simple, vivid version of this whole argument: [`harness-foundations/simple-mode.md`](../../harness-foundations/simple-mode.md).
 - The proof ladder you encode against → [11 · Backpressure Patterns](11-backpressure-patterns.md).
+
+[^frontier]: The durability framing here — a learning loop an organisation keeps and compounds, independent of any one model — echoes ["A frontier without an ecosystem is not stable"](https://snscratchpad.com/posts/frontier-ecosystem/).
 
 ---
 
