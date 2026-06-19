@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "slug": "markdown-lint-extension",
+  "plan_dir": "docs/plans/029-markdown-lint-extension",
+  "mode": "Simple",
+  "current_stage": "awaiting-8",
+  "pending_command": "/the-flow 8 merge --plan \"docs/plans/029-markdown-lint-extension/markdown-lint-extension-plan.md\"",
+  "intent": "Add a markdown-lint harness extension that wraps third-party tools (markdownlint, headless mermaid syntax check, in-repo link validation) behind one verb and wires it into just fft",
+  "milestones_total": 4,
+  "milestones_done": 3,
+  "last_checkpoint_at": "2026-06-19T01:30:00Z",
+  "compacted_seams": [],
+  "status": "active"
+}

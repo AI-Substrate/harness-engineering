@@ -170,8 +170,15 @@ format:
 test:
     cd harness/cli && npx vitest run --coverage
 
-# fix -> format -> test (the engineering loop).
-fft: fix format test
+# Lint authored markdown: markdownlint + in-repo links/anchors + mermaid syntax.
+# Warn-launch: findings report as `degraded`/exit 0 (visible, non-blocking), so
+# this never breaks the loop until authored docs are clean and the gate is promoted.
+# Run via node (AGENTS.md: not npx) so it works from this working tree.
+lint-md:
+    node harness/cli/bin/harness.js markdown-lint
+
+# fix -> format -> test -> lint-md (the engineering loop).
+fft: fix format test lint-md
 
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":

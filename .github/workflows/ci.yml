@@ -138,6 +138,21 @@ jobs:
           fi
           exit ${code:-0}
 
+      # Markdown conformance through the VERB: lint authored markdown + validate
+      # in-repo links/anchors + syntax-check mermaid fences (headless, no Chromium).
+      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
+      # annotation; a missing tool/config (exit 2) or crash (exit 1) fails the step.
+      - name: Markdown conformance (harness markdown-lint)
+        run: |
+          out=$(node harness/cli/bin/harness.js markdown-lint --json) || code=$?
+          echo "$out"
+          status=$(echo "$out" | jq -r .status)
+          if [ "$status" = "degraded" ]; then
+            count=$(echo "$out" | jq '.data.totals.findings')
+            echo "::warning title=markdown-lint::${count} markdown finding(s) at warn severity — see the envelope in this step's log; fix the authored docs and promote the gate once clean"
+          fi
+          exit ${code:-0}
+
   # Stable, matrix-independent required check for branch protection (T005).
   # Always runs and fails if any required job failed/cancelled.
   ci-required:
