@@ -35,7 +35,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Release Please
         id: release
@@ -62,7 +62,7 @@ jobs:
       id-token: write # required for npm provenance (links the version to this run)
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node (npm registry)
         uses: actions/setup-node@v6
@@ -105,7 +105,7 @@ jobs:
       id-token: write # required for npm provenance
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node (npm registry)
         uses: actions/setup-node@v6
