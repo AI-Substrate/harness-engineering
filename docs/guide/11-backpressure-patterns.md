@@ -25,6 +25,10 @@ Rungs 3–6 are things **you author as extensions** for your repo — `arch-chec
 ## Choosing what to add next
 You do not build the whole ladder at once. The harness loop tells you where the gap is: when you call `/eng-harness-flow --hook pre-coding` after a plan, it surveys the scope against the sensors you already have and flags what is missing to prove *this* particular work. Add the rung that closes that gap, then continue.
 
+## Defending the proof — `/grill-agent-done`
+
+The survey tells you *what* is missing; it does not pin down *why* a chosen check is enough. When coverage comes back thin, `/grill-agent-done` interrogates the definition of done one claim at a time — driving the question *"what realistic wrong implementation would still pass the checks you just named?"* — until each claim is lined up against the right grade of proof (`deterministic`, `inferential`, or `human-judgement`), or knowingly handed to a named reviewer. You and the agent work through it together. It is a companion to the survey, not a stage and not a gate: it never blocks, and the verdict still comes from running the sensors.
+
 > **The principle:** turn back pressure from a human review habit into part of the repo. A check that fails on the rule is stronger than a prompt that asks the agent to remember it.
 
 ## Keep reading
