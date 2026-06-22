@@ -1,9 +1,10 @@
 # Engineering Harness Skills
 
-This directory holds the engineering-harness skills this repo publishes through [`npx skills`](https://github.com/vercel-labs/skills). It publishes **two skills**:
+This directory holds the engineering-harness skills this repo publishes through [`npx skills`](https://github.com/vercel-labs/skills). It publishes **three skills** — two that drive the harness loop, plus a standalone interrogation companion:
 
 - **`eng-harness-flow/`** — the stateless router, the single front door to the harness loop. Its **boot / backpressure / retro / adopt / add-extension** verbs are harness-blind modules under `references/stages/`, loaded one at a time by the router — never installed or invoked directly.
 - **`eng-harness-0-harnessability-assessment/`** — the standalone peer that scores a repo's harnessability (Operate-Today and Adaptability) and reports back-pressure surfaces, proof ceilings, and command tiers.
+- **`grill-agent-done/`** — a standalone interrogation companion: it defends the *definition of done* and the evidence that will prove it, one claim at a time, lining each claim against the right proof grade. The router offers it after a thin backpressure survey; it also runs on its own.
 
 ```text
 Install 2 skills -> /eng-harness-flow routes: adopt (if no harness) -> loop: boot/backpressure/observe/retro -> encode fixes/checks
@@ -36,6 +37,7 @@ Install a single skill:
 ```bash
 npx skills@latest add AI-Substrate/harness-engineering/skills -s eng-harness-flow -a claude-code -g                          # the router (front door)
 npx skills@latest add AI-Substrate/harness-engineering/skills -s eng-harness-0-harnessability-assessment -a claude-code -g   # the peer
+npx skills@latest add AI-Substrate/harness-engineering/skills -s grill-agent-done -a claude-code -g                          # the interrogation companion
 ```
 
 From this working tree while developing, or to list what the repo exposes:
@@ -55,6 +57,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 |---|---|---|
 | `eng-harness-flow` | The front door (router) | The single door to the loop. Stateless: re-derives where the work sits from deterministic repo signals + an optional caller hint — a host names a moment in its own lifecycle with one of five neutral lifecycle hooks (`--hook pre-flight\|pre-coding\|coding\|post-coding\|post-flight`, with `--event session-start\|pre-implement\|post-spec\|task-pause\|phase-end\|plan-complete` as the permanent alias) — then routes to the ONE right harness action and runs it (with explicit go-ahead). Adoption and every loop stage live inside it as modules. |
 | `eng-harness-0-harnessability-assessment` | The peer | Surveys the existing engineering environment, then writes `.harness/reports/harnessability/latest.{md,json}` scoring Operate-Today and Adaptability with an A–F matrix, command tiers, proof ceilings, back-pressure surfaces, first-session guidance, and proposal-only affordance recommendations. The router offers it during adoption (the scout rung); also runnable on its own. |
+| `grill-agent-done` | The companion | Interrogates and defends the definition of done and the evidence that proves it — one claim at a time — until each is lined up against the right proof grade (`deterministic` / `inferential` / `human-judgement`) or knowingly assigned to a named reviewer. A standalone skill, **not** a routed stage: the coach offers it after a thin backpressure survey, and it runs on its own. Never blocks; the verdict still comes from running the sensors. |
 
 ### The verbs inside the router
 
@@ -94,6 +97,7 @@ The foundation documents explain the thesis: the engineering harness is the proj
 | Back pressure is a product feature | The backpressure stage asks whether scoped work has enough deterministic proof and what sensors are missing. |
 | Retrospectives need a lifecycle | The retro stage's `--drain` / `--harvest` move entries from buffer to durable retro to prioritized improvement. |
 | Known difficulties and weak signals should be visible at boot | The harness CLI surfaces known difficulties; the boot stage reviews friction and signal readiness before work starts. |
+| The agent may report progress, but completion belongs to external evidence | `grill-agent-done` interrogates each claim of done until it is backed by a deterministic sensor — or knowingly routed to a named reviewer — never the agent's own confidence. |
 
 ## Operating rules
 

@@ -123,6 +123,8 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 | Retro harvest | clustered/stale friction across the plan; unencoded magic-wands |
 | Ambiguous | the candidate plans found (so the user can pick) |
 
+> **Backpressure → defend the proof (optional).** When the survey flags `ABSENT`/`BUILDABLE` sensors (thin coverage), offer `/grill-agent-done` before architect — a standalone peer skill (`skills/grill-agent-done/`, **not** a routed stage) that defends the definition of done one claim at a time, lining each against the right proof grade. The deep-interrogation companion the survey deliberately isn't. Never blocks; offer once, skip freely.
+
 ## 4. Tone — make it pleasant
 
 - **Warm and confirming**, never bureaucratic. "Nice — boot's green, you're ready to code" beats "S4 precondition satisfied."
