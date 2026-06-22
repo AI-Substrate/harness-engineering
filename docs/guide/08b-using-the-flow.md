@@ -86,7 +86,7 @@ flowchart TB
     class BP,BOOT,DRAIN,IMP h
 ```
 
-In plain terms: before you build, it asks *can we prove this is done?* — a **backpressure survey**. It **boots** the product before each phase to prove it still starts. And at each phase end (and at the finish) it **drains and improves** — turning the friction you hit into a fix, so the next run is easier. As you work, a lightweight `harness observe` note captures friction the moment it bites; that feeds the retro.
+In plain terms: before you build, it asks *can we prove this is done?* — a **backpressure survey**. If that comes back thin, it can offer `/grill-agent-done`: a companion you and the agent work through together to defend (or build) the definition of done one claim at a time, before code is written. It **boots** the product before each phase to prove it still starts. And at each phase end (and at the finish) it **drains and improves** — turning the friction you hit into a fix, so the next run is easier. As you work, a lightweight `harness observe` note captures friction the moment it bites; that feeds the retro.
 
 No harness installed? You get the same flow, minus these check-ins. (`/the-flow`, `/eng-harness-flow`, and `harness flow` are three different things — [08 · Fitting Your Workflow](08-fitting-your-workflow.md) keeps them straight.)
 

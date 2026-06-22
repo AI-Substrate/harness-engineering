@@ -33,7 +33,7 @@ The highest-value harness knowledge is **executable**, not written down:
 - A prompt that says *"follow our architecture"* is a start. An architecture check that **fails** when the rule is violated is much better.
 - A prompt that says *"make sure it still builds and runs"* can burn tokens. A `harness boot` extension (one your repo authors) plus a smoke check is much better.
 
-The agent can *say* it is done. The harness decides whether that claim is supported by **evidence** — compilers, type systems, schemas, linters, tests, architecture checks, boot probes, and smoke tests that can refuse weak work directly. This is back pressure, and turning it from a human review habit into part of the repo is what earns trust over time.
+The agent can *say* it is done. The harness decides whether that claim is supported by **evidence** — compilers, type systems, schemas, linters, tests, architecture checks, boot probes, and smoke tests that can refuse weak work directly. Deciding *which* evidence is enough is itself work you and the agent can do together up front — the `/grill-agent-done` companion interrogates each claim of done until it rests on a real check, a named reviewer, or explicit human judgement rather than confidence. This is back pressure, and turning it from a human review habit into part of the repo is what earns trust over time.
 
 > The companion idea — **encode the fix, not the memory** — is the rule that quietly does the most work. We come back to it in [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md).
 
