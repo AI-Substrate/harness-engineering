@@ -140,6 +140,10 @@ export const copilotAdapter: HarnessAdapter = {
         if (!line.includes('assistant_usage') && !line.includes('subagent_completed')) continue;
         const obj = parseTrailingJson(line);
         if (obj === null) continue;
+        // A single process log can interleave MULTIPLE sessions — filter each
+        // record by session_id so another session's usage/subagents can't bleed
+        // into this segment (companion F002 · AC-03 exact per-session extraction).
+        if (str(obj.session_id) !== sessionId) continue;
         if (obj.kind === 'assistant_usage') {
           usageCount += 1;
           const uncached = num(obj.input_tokens_uncached);

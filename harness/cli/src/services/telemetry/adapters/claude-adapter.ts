@@ -87,12 +87,15 @@ export const claudeAdapter: HarnessAdapter = {
   },
 
   extract(ctx) {
-    const effort = ctx.env.get('CLAUDE_EFFORT') ?? null;
     const content = resolveTranscript(ctx);
-    if (content === null) return { ...nullCaps, effort };
+    // No source → pure all-null (M6 / companion F001: effort must NOT leak when
+    // there is no windowed data, so it is read only after the source is present).
+    if (content === null) return nullCaps;
 
     const lines = nonEmptyLines(content).slice(ctx.window.from, ctx.window.to);
-    if (lines.length === 0) return { ...nullCaps, effort };
+    if (lines.length === 0) return nullCaps; // empty window → all-null
+
+    const effort = ctx.env.get('CLAUDE_EFFORT') ?? null;
 
     // Token accumulators (deduped by message.id) + per-model turns/output.
     const seenMessageIds = new Set<string>();

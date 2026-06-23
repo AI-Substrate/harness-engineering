@@ -24,7 +24,10 @@ const LOG_NAME = 'process-123-456.log';
 
 const EVENTS = readFileSync(new URL('./fixtures/copilot-events.jsonl', import.meta.url), 'utf8');
 // Fixture is named `.txt` not `.log` because the repo .gitignore excludes `*.log`.
-const PROCLOG = readFileSync(new URL('./fixtures/copilot-process-log.txt', import.meta.url), 'utf8');
+const PROCLOG = readFileSync(
+  new URL('./fixtures/copilot-process-log.txt', import.meta.url),
+  'utf8',
+);
 
 function env(): FakeEnv {
   return new FakeEnv({ COPILOT_AGENT_SESSION_ID: SESSION }, HOME);
@@ -99,6 +102,15 @@ describe('copilotAdapter.extract — token math from process-log assistant_usage
         tool_uses: null,
       },
     ]);
+  });
+
+  it('ignores assistant_usage + subagents from OTHER sessions in the same log (F002)', () => {
+    // The fixture's process log also carries a sess-OTHER-9 assistant_usage with
+    // 999999 tokens and an "intruder" subagent. The per-record session_id filter
+    // must keep totals at 255 / one subagent — never the contaminated numbers.
+    expect(caps.tokens?.total).toBe(255);
+    expect(caps.subagents).toHaveLength(1);
+    expect(caps.subagents?.[0]?.agent_name).toBe('explorer');
   });
 
   it('leaves files/compactions/thinking null (Phase 2 scope — codeChanges only in non-live shutdown)', () => {

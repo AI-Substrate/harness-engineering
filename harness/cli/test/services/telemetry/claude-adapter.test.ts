@@ -181,14 +181,16 @@ describe('claudeAdapter.extract — edge cases (M6)', () => {
     expect(caps.tools ?? {}).toEqual({});
     expect(caps.skills ?? {}).toEqual({});
     expect(caps.subagents ?? []).toEqual([]);
+    expect(caps.effort ?? null).toBeNull(); // F001: effort must NOT leak with no windowed data
   });
 
-  it('missing transcript yields all-null (no throw)', () => {
+  it('missing transcript yields all-null (no throw), incl. effort (F001)', () => {
     const caps = claudeAdapter.extract({
       ...source(new FakeFs({}), seededEnv()),
       window: wholeWindow(),
     });
     expect(caps.tokens).toBeNull();
     expect(caps.tools ?? {}).toEqual({});
+    expect(caps.effort ?? null).toBeNull();
   });
 });
