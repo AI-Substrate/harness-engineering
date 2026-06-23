@@ -28,3 +28,12 @@
 - **T004 impl** (`src/services/telemetry/sync-service.ts`, ports-only): `syncTelemetry(deps)` fail-safe wrapper + `syncUnsafe`. Enumerates session dirs (dot-free filter excludes `.cursor`/`.flushed`/`.gitignore`), reads segments past each session's `<session>.flushed` watermark, hash-objects each + builds a per-session subtree, composes the top tree, commits on the tip with ff-retry, pushes one refspec, and **only on push success** advances the watermarks (atomic temp+rename — the consume marker lives OUTSIDE the segment, AC-12). Plan links deduped into a sorted set.
 - **Decisions honoured**: consume = flushed-watermark (not delete/`.synced` — FsPort has no delete); push-fail rollback (`deleteRef` orphan / CAS-back otherwise) keeps the local ref == last-pushed state.
 - **Evidence**: 7/7 green; arch 3/3 (service is `node:*`-free); tsc clean; biome clean. (dep-cruiser is not a wired gate in this repo — the vitest `test/architecture/` suite is the enforced check; memory `harness-cli-build-layout`.)
+
+## T005 — `harness telemetry sync` verb + composition-root wiring
+**Status**: ✅ done · **AC**: AC-07, AC-14
+
+- `src/acts/telemetry.ts`: `registerTelemetryAct` — a `telemetry` command family (mirrors `registerFlowAct`) with a `sync` subcommand. Maps `syncTelemetry` outcome → Envelope (ok→0 `{synced,sessions,pushed,plans}`; failed push/ref → `formatError` exit 1 with a "buffer intact, retries next sync" next_action). JSON + human ports.
+- Wiring: `VerbActDeps` gains optional `gitWrite?: GitWritePort` (optional → no sweep of the ~10 full-deps test builders); `defaultDeps()` provides `new ExecGitWrite()`; `registerTelemetryAct(program, io, deps)` added to the composition root; act resolves `deps.gitWrite ?? new ExecGitWrite()`.
+- `test/acts/telemetry.test.ts`: 4 tests (flush→ok exit 0 with synced/pushed/plans + single refspec; failed push→error exit 1, buffer intact; empty buffer→ok no-op exit 0, zero git calls; human one-liner).
+- **Two command-list assertions updated** (`index.test.ts`, `app.test.ts` ×2) to include the new `telemetry` command between `flow` and `instructions` — expected registration-surface change, not a regression.
+- **Evidence**: full suite **1120/1120**; tsc clean; biome clean.

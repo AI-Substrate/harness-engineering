@@ -9,6 +9,7 @@ import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerSkillsAct } from './acts/skills.js';
+import { registerTelemetryAct } from './acts/telemetry.js';
 import { registerUpdateAct } from './acts/update.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
@@ -18,6 +19,7 @@ import { NodeBackground } from './adapters/exec/node-background.js';
 import { NodeExec } from './adapters/exec/node-exec.js';
 import { NodeFs } from './adapters/fs/node-fs.js';
 import { ExecGit } from './adapters/git/exec-git.js';
+import { ExecGitWrite } from './adapters/git/exec-git-write.js';
 import { JitiLoader } from './adapters/loader/jiti-loader.js';
 import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
 import { NodeProcess } from './adapters/process/node-process.js';
@@ -248,6 +250,7 @@ export function buildProgram(
   registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
+  registerTelemetryAct(program, io, deps);
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
@@ -287,6 +290,7 @@ function defaultDeps(): VerbActDeps {
     background: new NodeBackground(),
     env: new NodeEnv(),
     git: new ExecGit(),
+    gitWrite: new ExecGitWrite(),
     clock: new SystemClock(),
     proc: new NodeProcess(),
   };

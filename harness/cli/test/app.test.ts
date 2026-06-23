@@ -138,6 +138,7 @@ describe('buildProgram — composition root wiring', () => {
       'record',
       'observe',
       'flow',
+      'telemetry',
       'instructions',
       'hello',
       'build',
@@ -162,6 +163,7 @@ describe('buildProgram — composition root wiring', () => {
       'record',
       'observe',
       'flow',
+      'telemetry',
       'instructions',
     ]);
   });
