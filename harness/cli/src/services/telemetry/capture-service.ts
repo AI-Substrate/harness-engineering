@@ -96,14 +96,34 @@ function nextSeq(fs: FsPort, sessionDir: string): number {
   return max + 1;
 }
 
+/**
+ * Derive the plan id from a cwd under `docs/plans/<id>/` (the `<ordinal>-<slug>`
+ * dir name), or null (plan 034 Phase 4, T006 — closes AC-08's "run inside
+ * `docs/plans/<id>/`" clause; capture otherwise only saw `HARNESS_PLAN_ID`). The
+ * regex requires the literal `docs/plans/` segment, so `docs/plansfoo/…` never
+ * false-matches; it works from any depth below the plan dir.
+ */
+export function planIdFromCwd(cwd: string): string | null {
+  const m = /(?:^|\/)docs\/plans\/([^/]+)/.exec(toPosix(cwd));
+  return m ? (m[1] ?? null) : null;
+}
+
+/** Plan link: explicit `HARNESS_PLAN_ID` wins; else derive from the cwd (T006). */
+function resolvePlanId(env: EnvPort, cwd: string): string | null {
+  const explicit = env.get('HARNESS_PLAN_ID');
+  if (explicit !== undefined && explicit.length > 0) return explicit;
+  return planIdFromCwd(cwd);
+}
+
 /** Merge detection context + adapter capabilities into a counts-only segment input. */
 function buildInput(
   deps: CaptureDeps,
   detected: DetectedHarness,
   window: SegmentWindow,
   caps: HarnessCapabilities,
+  cwd: string,
 ): SegmentInput {
-  const planId = deps.env.get('HARNESS_PLAN_ID');
+  const planId = resolvePlanId(deps.env, cwd);
   return {
     command: deps.command,
     harness: detected.harness,
@@ -119,7 +139,7 @@ function buildInput(
     tools: caps.tools ?? {},
     subagents: caps.subagents ?? [],
     files: caps.files ?? { written: [], edited: [] },
-    plans_touched: planId !== undefined && planId.length > 0 ? [planId] : [],
+    plans_touched: planId !== null ? [planId] : [],
     events: {
       compactions: caps.compactions ?? [],
       api_errors: caps.api_errors ?? 0,
@@ -177,7 +197,7 @@ function captureUnsafe(deps: CaptureDeps): void {
 
   const ctx: HarnessContext = { ...source, window };
   const caps = adapter.extract(ctx);
-  const segment: Segment = serializeSegment(buildInput(deps, detected, window, caps), cwd);
+  const segment: Segment = serializeSegment(buildInput(deps, detected, window, caps, cwd), cwd);
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).

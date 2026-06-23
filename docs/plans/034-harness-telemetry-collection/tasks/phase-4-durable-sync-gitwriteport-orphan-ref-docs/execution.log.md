@@ -37,3 +37,11 @@
 - `test/acts/telemetry.test.ts`: 4 tests (flush→ok exit 0 with synced/pushed/plans + single refspec; failed push→error exit 1, buffer intact; empty buffer→ok no-op exit 0, zero git calls; human one-liner).
 - **Two command-list assertions updated** (`index.test.ts`, `app.test.ts` ×2) to include the new `telemetry` command between `flow` and `instructions` — expected registration-surface change, not a regression.
 - **Evidence**: full suite **1120/1120**; tsc clean; biome clean.
+
+## T006 — cwd-based plan-id detection (closes live-smoke finding #2 → AC-08)
+**Status**: ✅ done · **AC**: AC-08
+
+- `capture-service.ts`: exported pure `planIdFromCwd(cwd)` (regex `(?:^|/)docs/plans/([^/]+)`, posix-normalized — works at any depth, never false-matches `docs/plansfoo/`) + `resolvePlanId(env,cwd)` (explicit `HARNESS_PLAN_ID` wins, else cwd). `buildInput` now takes `cwd` and uses `resolvePlanId`; `plans_touched` populated from either source. **No schema/adapter change** (AC-12) — only the plan-id *resolution* inside the existing capture path.
+- `test/services/telemetry/plan-id-cwd.test.ts`: 6 tests — `planIdFromCwd` (depth, Windows-shaped, the `docs/plansfoo` non-match, the bare `docs/plans` null) + capture-level wiring (cwd inside `docs/plans/034-x/…` → `plans_touched:["034-x"]`; env override; neither → `[]`).
+- Closes the Phase-3 live-smoke gap where `plans_touched` was `[]` despite working inside the plan dir.
+- **Evidence**: 6/6 new + capture-service unchanged; full suite **1126/1126**; tsc + biome clean; service stays `node:*`-free.
