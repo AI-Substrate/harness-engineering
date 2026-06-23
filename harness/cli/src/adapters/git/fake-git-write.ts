@@ -1,8 +1,4 @@
-import {
-  type GitWritePort,
-  TELEMETRY_AUTHOR,
-  type TreeEntry,
-} from './git-write-port.js';
+import { type GitWritePort, TELEMETRY_AUTHOR, type TreeEntry } from './git-write-port.js';
 
 /**
  * Deterministic git-write plumbing for tests (fakes over mocks — assert on
