@@ -1,4 +1,10 @@
-import { isWithin, posixNormalize, posixRelative, toPosix } from '../shared/posix-path.js';
+import {
+  isWithin,
+  posixJoin,
+  posixNormalize,
+  posixRelative,
+  toPosix,
+} from '../shared/posix-path.js';
 
 /**
  * The `segment` — the normalized, **counts-only** per-session telemetry record
@@ -151,22 +157,23 @@ const ABSOLUTE_LOGICAL = /^([A-Za-z]:)?\//;
 
 /**
  * Reduce a path to a privacy-safe, repo-relative form:
- * - inside the repo → relative to `repoRoot` (e.g. `src/x.ts`);
- * - absolute but OUTSIDE the repo → basename only (the directory, incl. any
- *   `/Users/…`, is dropped — never leaked);
- * - already relative → returned as-is.
+ * - inside the repo (absolute OR relative) → relative to `repoRoot` (e.g. `src/x.ts`);
+ * - OUTSIDE the repo (absolute, OR a `..`-climbing relative path) → basename only
+ *   — the directory (incl. any `/Users/…` or `../…`) is dropped, never leaked.
+ *
+ * A relative input is resolved against `repoRoot` BEFORE the containment check so
+ * a `../outside/secret.txt` traversal can never pass through unchanged
+ * (companion F001 — AC-04).
  */
 function relativizePath(raw: string, repoRoot: string): string {
-  const p = posixNormalize(toPosix(raw));
   const root = posixNormalize(toPosix(repoRoot));
-  if (isWithin(root, p)) {
-    const rel = posixRelative(root, p);
+  const p = toPosix(raw);
+  const abs = ABSOLUTE_LOGICAL.test(p) ? posixNormalize(p) : posixNormalize(posixJoin(root, p));
+  if (isWithin(root, abs)) {
+    const rel = posixRelative(root, abs);
     return rel === '' ? '.' : rel;
   }
-  if (ABSOLUTE_LOGICAL.test(p)) {
-    return p.split('/').pop() ?? '';
-  }
-  return p;
+  return abs.split('/').pop() ?? '';
 }
 
 function dedupe(values: readonly string[]): string[] {

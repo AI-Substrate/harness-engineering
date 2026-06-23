@@ -106,6 +106,27 @@ describe('T001 — PRIVACY: planted-secret negative control (AC-04)', () => {
     expect(seg.files.edited).toContain('already/relative/x.ts');
   });
 
+  it('reduces a ../ traversal that climbs outside the repo to a basename (F001)', () => {
+    const input: SegmentInput = {
+      ...baseInput(),
+      files: {
+        written: ['../../Users/jordan/secret.txt', '../sibling-repo/x.ts'],
+        edited: ['src/inside.ts'],
+      },
+    };
+
+    const seg = serializeSegment(input, REPO);
+    const json = JSON.stringify(seg);
+
+    // no traversal segment, no absolute leak survives
+    expect(json).not.toContain('..');
+    expect(json).not.toContain('/Users/');
+    expect(seg.files.written).toContain('secret.txt');
+    expect(seg.files.written).toContain('x.ts');
+    // an in-repo relative path is still preserved
+    expect(seg.files.edited).toContain('src/inside.ts');
+  });
+
   it('preserves counts and identifiers verbatim (the signal we DO keep)', () => {
     const input: SegmentInput = {
       ...baseInput(),
