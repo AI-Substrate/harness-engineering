@@ -39,6 +39,17 @@
 ## Phase 3 — COMPLETE
 - **All tasks T001–T005 done**, every commit companion-reviewed. The capture-service is now **ambient**: a thin `main()` preamble fires `captureTelemetry` once per real command, help/version excluded, fail-safe, zero output/exit drift. Tests: **1095/1095 green** (+~25 Phase-3 tests across app + capture-perf). Gates: `no-direct-node-io`/`no-direct-exit` + dep-cruiser (104 modules) + `tsc` + biome all clean. `capture-service.ts` + segment schema + adapters **untouched** (AC-12 honoured).
 
+## Companion findings — reconciliation (code-review-companion, every commit reviewed)
+**Run**: `2026-06-23T09-34-42-872Z-8632` · 4 reviewed · findings surfaced via `minih companion findings` (the companion reviewed but didn't push to the outside inbox — read regardless of lane). All **ADDRESSED INLINE** in fix commit.
+
+| ID | Sev | File | Issue | Resolution | Verify |
+|----|-----|------|-------|------------|--------|
+| F1 | MEDIUM | app.test.ts | T003 contract names a "deps-build-throw variant" but no test fails if construction moves OUTSIDE the swallowing guard | Added a test: a `deps.git` getter that throws on its first read (the preamble's CaptureDeps literal); asserts output/exit identical to baseline + that the command still read git after (proves the guard wraps construction) | new fix commit |
+| F2 | MEDIUM | app.test.ts | `runMain` captured only the injected writers; commander's help/error output writes to the REAL `process.stdout/stderr`, so the `flow`/`record` zero-drift claim wasn't measuring all output | `runMain` now also spies `process.stdout/stderr.write` and folds those bytes into the comparison — on/off still byte-identical (stronger proof) | new fix commit |
+| F3 | MEDIUM | tasks.md | T005 row said "`git status --porcelain` unchanged" but the test asserts FakeFs writes-under-temp — a contract/impl wording mismatch | Reworded the AC line + T005 row + back-pressure row: it is a **path-level FakeFs proof**; the real porcelain proof stays at Phase-1 1.7 / Phase-4 4.2 | doc fix |
+
+**Companion farewell magicWand (follow-up candidate, surfaced not auto-filed)**: *"auto-derive more of the farewell retrospective directly from the coordination ledger"* — a minih self-improvement, not a plan-034 item.
+
 ### Deferred & Noteworthy (this phase)
 | Tag | Item | Why it's fine for now |
 |-----|------|----------------------|

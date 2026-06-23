@@ -220,6 +220,12 @@ describe('main — telemetry capture preamble (plan 034 Phase 3)', () => {
    * Drive main() with a recording/throwing capture seam, capturing stdout/stderr/
    * exit-code. process.exit is spied to throw `exit:N` (the house pattern); the
    * `exit:` throw is swallowed so the test can assert on what was recorded.
+   *
+   * Captures BOTH the injected `writers` (the envelope path) AND the real
+   * `process.stdout/stderr.write` (commander-owned help/error output) — otherwise
+   * a zero-drift comparison on `flow`/`record`/unknown commands, which print via
+   * commander straight to the process streams, would miss most of the output
+   * (companion finding F2).
    */
   async function runMain(
     argv: string[],
@@ -237,6 +243,14 @@ describe('main — telemetry capture preamble (plan 034 Phase 3)', () => {
         err += t;
       },
     };
+    vi.spyOn(process.stdout, 'write').mockImplementation(((chunk: unknown) => {
+      out += String(chunk);
+      return true;
+    }) as never);
+    vi.spyOn(process.stderr, 'write').mockImplementation(((chunk: unknown) => {
+      err += String(chunk);
+      return true;
+    }) as never);
     vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
       code = c ?? 0;
       throw new Error(`exit:${code}`);
@@ -355,6 +369,26 @@ describe('main — telemetry capture preamble (plan 034 Phase 3)', () => {
     const thrown = await runMain(['node', 'harness', 'doctor'], () => {
       throw 'string-boom'; // deliberately a non-Error to prove the catch-all
     });
+    expect(maskTs(thrown)).toEqual(maskTs(baseline));
+  });
+
+  it('a throw while BUILDING CaptureDeps is also swallowed — the guard covers construction, not just the call (F1)', async () => {
+    const baseline = await runMain(['node', 'harness', 'doctor'], () => {});
+    // A deps whose `git` getter throws on its FIRST read — that first read is the
+    // preamble evaluating the CaptureDeps literal. Subsequent reads (the command)
+    // get a real fake. If a future edit moved deps construction OUTSIDE the
+    // swallowing try/catch, this first throw would escape and perturb the host.
+    const realGit = new FakeGit();
+    const throwingDeps = deps({ env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1' }) });
+    let gitReads = 0;
+    Object.defineProperty(throwingDeps, 'git', {
+      get() {
+        if (gitReads++ === 0) throw new Error('deps-build boom');
+        return realGit;
+      },
+    });
+    const thrown = await runMain(['node', 'harness', 'doctor'], () => {}, { deps: throwingDeps });
+    expect(gitReads).toBeGreaterThan(1); // preamble threw on read #1, command read again
     expect(maskTs(thrown)).toEqual(maskTs(baseline));
   });
 
