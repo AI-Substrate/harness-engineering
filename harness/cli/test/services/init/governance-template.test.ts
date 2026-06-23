@@ -26,6 +26,7 @@ const SRC_PATH = fileURLToPath(
 /** Ordered `## ` section headings — the canonical governance-doc contract (governance-doc.md:24-35). */
 const CANONICAL_SECTIONS = [
   'Boot command',
+  'Checks command',
   'Health check',
   'Interact method',
   'Observe method',
@@ -83,6 +84,7 @@ describe('buildGovernanceSkeleton', () => {
     const md = buildGovernanceSkeleton();
     for (const section of [
       'Boot command',
+      'Checks command',
       'Health check',
       'Interact method',
       'Observe method',
@@ -111,7 +113,13 @@ describe('buildGovernanceSkeleton', () => {
 
       ## Boot command
       <!-- TODO (eng-harness-0-adopt / \`harness new boot --wrap "<cmd>"\`):
-           the exact command that boots the system to a healthy, observable state (<60s target). -->
+           the exact command that boots the system to a healthy, observable state (<60s target).
+           Composes \`harness checks\` (below) once services are ready. -->
+
+      ## Checks command
+      <!-- TODO (eng-harness-0-adopt / \`harness new checks --wrap "<aggregate lint+test+typecheck recipe>"\`):
+           the mandated quality gate (lint, unit tests, typecheck…). Agents run \`harness checks\` before
+           work is "done"; teams gate commits/push on it; \`harness boot\` composes it. Extend as the team grows. -->
 
       ## Health check
       <!-- TODO: the command/endpoint that proves the system is up (read by boot Stage 1). -->

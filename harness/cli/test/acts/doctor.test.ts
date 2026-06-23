@@ -48,6 +48,7 @@ describe('registerDoctorAct', () => {
       'node-runtime',
       'cli-build',
       'extensions',
+      'quality-gate',
       'instructions',
       'record-types',
     ]);

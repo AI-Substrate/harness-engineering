@@ -257,6 +257,67 @@ function checkExtensions(registry: VerbRegistry, conventions: ConventionComplain
 }
 
 /**
+ * The mandated quality-gate nucleus (`boot` + `checks`). This row SHIPS in the core
+ * (compiled into `dist/`), so every machine is nudged toward the gate regardless of
+ * which extensions a repo authored. The check is a declarative verb-name lookup —
+ * `doctor` NEVER invokes a handler (P7) — so it is independent of any specific
+ * `boot`/`checks` implementation (a consumer's home-grown boot still satisfies it).
+ *
+ * `checks` is the mandated lint/test/typecheck gate an agent runs before work is
+ * "done" (teams gate commits/push on it); `boot` readies the system and composes it.
+ * A repo that has begun authoring extensions but lacks either is reported `degraded`
+ * (advisory, exit 0 — the harness never gates) with the exact `harness new …` fix.
+ * A pristine repo with NO extensions yet stays ok: the gate is an adoption
+ * deliverable, and the `extensions` layer already guides bootstrap — doctor doesn't
+ * pile a second degrade onto a freshly-installed clone.
+ */
+const QUALITY_GATE_VERBS = ['boot', 'checks'] as const;
+
+function checkQualityGate(registry: VerbRegistry): LayerReport {
+  const verbNames = new Set(
+    registry.records
+      .filter((r) => r.status === 'loaded')
+      .flatMap((r) => r.verbs.map((v) => v.name)),
+  );
+  const missing = QUALITY_GATE_VERBS.filter((v) => !verbNames.has(v));
+
+  if (registry.records.length === 0) {
+    // Pristine clone — the gate is authored during adoption; bootstrap guidance
+    // already lives in the extensions layer, so stay quiet here (don't false-degrade).
+    return {
+      name: 'quality-gate',
+      ok: true,
+      detail: 'no verbs yet — `boot` + `checks` are authored during adoption',
+    };
+  }
+  if (missing.length === 0) {
+    return { name: 'quality-gate', ok: true, detail: '`boot` + `checks` verbs present' };
+  }
+
+  const fixes: string[] = [];
+  if (missing.includes('checks')) {
+    fixes.push(
+      'author the mandated quality gate `harness new checks --wrap "<lint+test+typecheck>"` ' +
+        '(agents run it before work is done; teams gate commits/push on it)',
+    );
+  }
+  if (missing.includes('boot')) {
+    fixes.push(
+      'author a boot with `harness new boot` (readies the system, then composes `harness checks`)',
+    );
+  }
+  const have = QUALITY_GATE_VERBS.filter((v) => verbNames.has(v));
+  return {
+    name: 'quality-gate',
+    ok: false,
+    detail:
+      `missing ${missing.join(' + ')} verb${missing.length > 1 ? 's' : ''}` +
+      (have.length > 0 ? ` (have ${have.join(', ')})` : ''),
+    next_action: `${fixes.join('; ')}.`,
+  };
+}
+
+/**
  * The core agent briefing ships baked into the CLI, so this row is always
  * present and always ok (plan 014 D2) — it exists to make the briefing channel
  * discoverable from doctor output.
@@ -304,6 +365,7 @@ export function buildDoctorReport(
     checkNodeRuntime(deps.proc),
     checkCliBuild(deps.fs),
     checkExtensions(registry, conventions),
+    checkQualityGate(registry),
     checkCoreInstructions(),
     checkRecordTypes(recordTypes),
   ];
