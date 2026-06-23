@@ -19,7 +19,7 @@ import {
 import type { CliIo, Writers } from '../src/output/output-port.js';
 import type { HarnessVerb } from '../src/services/extensions/contract.js';
 import { coreTelemetryAdapters } from '../src/services/telemetry/adapters/index.js';
-import type { CaptureDeps } from '../src/services/telemetry/capture-service.js';
+import { type CaptureDeps, captureTelemetry } from '../src/services/telemetry/capture-service.js';
 
 const io: CliIo = { mode: 'json', writers: { out: () => {}, err: () => {} } };
 
@@ -356,5 +356,25 @@ describe('main — telemetry capture preamble (plan 034 Phase 3)', () => {
       throw 'string-boom'; // deliberately a non-Error to prove the catch-all
     });
     expect(maskTs(thrown)).toEqual(maskTs(baseline));
+  });
+
+  // ---- T005: zero output/exit drift, REAL capture path on vs off (AC-01) ----
+
+  it.each([
+    'doctor',
+    'flow',
+    'record',
+  ])('real telemetry on vs off (kill-switch) leaves %s output+exit identical', async (cmd) => {
+    const on = await runMain(['node', 'harness', cmd], captureTelemetry, {
+      deps: deps({ env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 's1' }, '/home/u') }),
+    });
+    const off = await runMain(['node', 'harness', cmd], captureTelemetry, {
+      deps: deps({
+        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 's1', HARNESS_NO_TELEMETRY: '1' }, '/home/u'),
+      }),
+    });
+    // Real captureTelemetry runs (and writes a buffer) when on, short-circuits
+    // when off — the host command's stdout/stderr/exit must not budge either way.
+    expect(maskTs(on)).toEqual(maskTs(off));
   });
 });

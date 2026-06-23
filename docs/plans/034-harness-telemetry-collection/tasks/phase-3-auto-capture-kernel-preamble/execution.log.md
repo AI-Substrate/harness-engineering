@@ -23,3 +23,27 @@
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
 | 2026-06-23 | T003 | gotcha | The envelope `timestamp` is a live `SystemClock` value (doctor/orientation use `new SystemClock()`, not `deps.clock`), so two runs differ by ms independent of telemetry — a raw byte-compare fails spuriously. | `maskTs()` masks `"timestamp":"…"` before the AC-09 comparison, isolating telemetry's effect (the real claim) from inherent timestamp non-determinism. | T003 |
+
+## T005 — zero output/exit drift + structural perf sensor
+**Status**: ✅ done · **AC**: AC-01, AC-06 (guard), M-K6
+
+- **Zero-drift (`app.test.ts`)**: `it.each(['doctor','flow','record'])` runs `main()` with the **real** `captureTelemetry` (a session-bearing `FakeEnv`) vs the same with `HARNESS_NO_TELEMETRY=1`; asserts `maskTs(on) === maskTs(off)` — telemetry on/off leaves stdout+stderr+exit identical.
+- **Structural perf (`test/services/telemetry/capture-perf.test.ts`)**: (1) `vi.spyOn(fs,'readText')` → the transcript path is read **exactly 2×** per capture (M-K6.1 bounded read-count, the accepted M1 debt); (2) cursor-incremental — run 1 (cursor null → window `[0..8)`) yields tokens + advances the cursor to `8`, run 2 (cursor at `8`) yields **null** tokens (M-K6.2, no history re-count); (3) AC-06 PR-invisibility — every write lands under the self-ignoring `.harness/temp/` tree.
+- **Evidence**: full suite **1095/1095**; `tsc` clean; biome clean; dep-cruiser clean (104 modules).
+
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-23 | T005 | gotcha | `FakeFs.readdir` doesn't list files written via `writeText`/`rename`, so `nextSeq` stays `1` and a 2nd capture overwrites `1.json` (real fs would increment). | Read the latest segment via the **rename history** (`latestSegment`) + assert the cursor watermark directly (`readCursor`) — quirk-independent. Not a product bug (fake limitation). | T005 |
+| 2026-06-23 | T005 | decision | AC-06 root: `ensureTemp` writes `.harness/temp/.gitignore` (the parent temp dir), not under `telemetry/`. | Asserted writes land under `.harness/temp/` (the self-ignoring tree), not the narrower `telemetry/` — both buffer + `.gitignore` are PR-invisible there. | T005 |
+
+## Phase 3 — COMPLETE
+- **All tasks T001–T005 done**, every commit companion-reviewed. The capture-service is now **ambient**: a thin `main()` preamble fires `captureTelemetry` once per real command, help/version excluded, fail-safe, zero output/exit drift. Tests: **1095/1095 green** (+~25 Phase-3 tests across app + capture-perf). Gates: `no-direct-node-io`/`no-direct-exit` + dep-cruiser (104 modules) + `tsc` + biome all clean. `capture-service.ts` + segment schema + adapters **untouched** (AC-12 honoured).
+
+### Deferred & Noteworthy (this phase)
+| Tag | Item | Why it's fine for now |
+|-----|------|----------------------|
+| Noteworthy | Perf guarantee is **bounded read-count + windowed parse**, NOT bounded bytes — each capture reads+splits the full transcript twice (FsPort has no range read, M1). | Honest reshape of plan 3.4 (validation M-K6); plan §3.4 + coverage line corrected. The structural sensor still rejects an O(history) re-scan. |
+| Noteworthy | AC-09 / zero-drift assert **stderr** too (beyond the plan's literal stdout+exit). | The banner decorator writes to stderr — the likeliest drift channel; deliberate strengthening (recorded in Discoveries). |
+| Noteworthy | Unknown commands (`harness bogus` → E108) **do** capture (label = raw token); display-only excluded. | The trigger is the invocation, not successful dispatch — intended (M-K3), pinned by a test. |
+| Noteworthy | AC-06 porcelain proof at the unit layer = "all writes under `.harness/temp/`" (FakeFs). | The real `git status --porcelain` proof lives at Phase-1 task 1.7; Phase 3 adds the structural equivalent so ambient (100%-frequency) capture can't regress PR-invisibility. |
+

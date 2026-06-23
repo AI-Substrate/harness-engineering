@@ -1,0 +1,8 @@
+# Original ask — harness-telemetry-collection
+**Captured**: 2026-06-23  ·  **By**: /the-flow
+
+> we are working on telemetry. Copilot cli supports ripping out telemetry via otel, we can get skills usage, token counts etc etc. but the problem is that we need to be able to get token counts, skills usage etc for claude code, cursor, copilot cli, ghcp (in vscode) etc... so we need a system of collectors, a standardising layer etc then to be able to save them to a telemetry folder in .harness. however. first however, we need to collet the telemetry each run of any harness command, this way its auto without having to run telemetry agents in teh bg, or otel collectors on engineers machines. Each cli commadn will build up more of the picture of what has been done. it will collect what has happened in the current session since last command was run.
+
+> /the-flow directive: "prepare a flow, run explore, then do the plan and validate then report ready." + "also get us on branch when ready."
+
+**Design preamble (this session) is captured in agent memory** — see `telemetry-concept-and-decisions`, `telemetry-claude-transcript-correlation`, `telemetry-copilot-cli-correlation`. Exploration probes live in `scratch/telem/` (`dump.cjs`, `since.cjs`). Key locked decisions: emit+commit sensor layer feeding eng-thrive; auto-capture on every harness command; per-session `segment` records under ISO-date hierarchy; one orphan git ref written via plumbing; commit-author identity; counts-only payload (no content); `ship`-command sync; Claude transcript + Copilot process-log token sources, no estimation.
