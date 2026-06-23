@@ -102,12 +102,14 @@ describe('FakeGitWrite — GitWritePort plumbing contract', () => {
     const engineerEmail = 'jordan@example.com'; // what a per-individual impl would leak
     g.commitTree('tree1', null, 'flush');
 
-    const author = g.commits[0].author;
-    expect(author.name).toBe('harness-telemetry');
-    expect(author.email).toBe('noreply@anthropic.com');
-    expect(author.email).not.toBe(engineerEmail);
-    // The exported constant is the single source of truth — no call site supplies an identity.
-    expect(author).toEqual(TELEMETRY_AUTHOR);
+    const { author, committer } = g.commits[0];
+    for (const identity of [author, committer]) {
+      expect(identity.name).toBe('harness-telemetry');
+      expect(identity.email).toBe('noreply@anthropic.com');
+      expect(identity.email).not.toBe(engineerEmail);
+      // The exported constant is the single source of truth — no call site supplies an identity.
+      expect(identity).toEqual(TELEMETRY_AUTHOR);
+    }
     expect(TELEMETRY_AUTHOR.email).toBe('noreply@anthropic.com');
   });
 });

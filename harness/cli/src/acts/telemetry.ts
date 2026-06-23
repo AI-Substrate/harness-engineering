@@ -2,7 +2,6 @@ import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
-import { ExecGitWrite } from '../adapters/git/exec-git-write.js';
 import type { GitWritePort } from '../adapters/git/git-write-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
 import { formatError, formatOk } from '../output/envelope.js';
@@ -17,8 +16,8 @@ export interface TelemetryActDeps {
   proc: ProcessPort;
   clock: Clock;
   env: EnvPort;
-  /** The git WRITE plumbing (orphan-ref flush). Optional on VerbActDeps; defaults to ExecGitWrite. */
-  gitWrite?: GitWritePort;
+  /** The git WRITE plumbing (orphan-ref flush) — injected by the composition root (never built here). */
+  gitWrite: GitWritePort;
 }
 
 /**
@@ -46,7 +45,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         fs: deps.fs,
         env: deps.env,
         proc: deps.proc,
-        git: deps.gitWrite ?? new ExecGitWrite(),
+        git: deps.gitWrite,
       });
 
       if (!result.ok) {

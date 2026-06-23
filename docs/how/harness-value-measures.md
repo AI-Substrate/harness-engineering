@@ -309,18 +309,31 @@ contents, no free-form tool-arg strings.
   "schema_version": "1.0",
   "command": "flow",
   "harness": "claude-code",
+  "harness_session_id": "<opaque id>",
+  "timecode": "2026-06-23T11:00:00Z",
   "window": { "since": "last-command", "from": 8, "to": 14 },
   "branch": "034-harness-telemetry-collection",
-  "tokens": { "input": 1200, "output": 340, "cache_read": 800, "grand_total": 2340, /* … */ },
+  "branch_changed": false,
+  "tokens": { "input": 1200, "output": 340, "cache_create": 0, "cache_read": 800,
+              "total": 1540, "subagent_tokens": 0, "grand_total": 2340 },
   "models": { "claude-opus-4-8": { "turns": 6, "output_tokens": 340 } },
+  "effort": "high",
   "skills": { "the-flow": 1 },
   "tools": { "Edit": 3, "Bash": 2 },
+  "subagents": [],
   "files": { "written": ["harness/cli/src/services/telemetry/sync-service.ts"], "edited": [] },
   "plans_touched": ["034-harness-telemetry-collection"],
+  "events": { "compactions": [], "api_errors": 0, "local_commands": 0 },
   "thinking": { "blocks": 4 }
-  // …all other capability fields nullable; `null` when the harness can't supply them
 }
 ```
+
+Every top-level key is always present (a stable shape for the scraper); only
+*values* reflect availability — nullable scalars (`tokens`, `effort`, `thinking`,
+`branch`, per-subagent values) go `null` when unavailable, while collection fields
+(`models`/`skills`/`tools`/`subagents`/`files`/`plans_touched`/`events`) default
+to empty. The full field set + types are the segment's plan and
+`segment.schema.json`.
 
 Read at the **repo** level this segment says "in this window, on plan 034, ~2.3k
 tokens of opus work touched the sync-service via 3 edits + 2 bash calls." Joined

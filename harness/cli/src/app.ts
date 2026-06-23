@@ -250,7 +250,7 @@ export function buildProgram(
   registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
-  registerTelemetryAct(program, io, deps);
+  registerTelemetryAct(program, io, { ...deps, gitWrite: deps.gitWrite ?? new ExecGitWrite() });
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);

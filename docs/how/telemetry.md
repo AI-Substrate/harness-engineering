@@ -50,8 +50,20 @@ identity, repo-relative file paths, plan links, compaction/api-error/local-comma
 event counts, branch + timecode, and the capture window.
 
 It **never** carries content: no prompt or message text, no file contents, no
-free-form tool-argument strings (those can leak secrets). An unimplemented
-capability serializes as `null` — never estimated, never omitted.
+free-form tool-argument strings (those can leak secrets). Absent data is
+represented honestly, never estimated and never omitted — but the shape differs
+by field kind:
+
+- **Nullable scalars** serialize `null` when the harness can't supply them:
+  `tokens`, `effort`, `thinking`, `branch`, and the per-subagent values
+  (`subagents[].tokens`, `.tool_uses`, etc.).
+- **Collection fields are always present** with an empty default, never `null`:
+  `models` `{}`, `skills` `{}`, `tools` `{}`, `subagents` `[]`, `files`
+  `{written:[],edited:[]}`, `plans_touched` `[]`, and `events`
+  `{compactions:[],api_errors:0,local_commands:0}`.
+
+Either way the field is present (a stable shape for the scraper); only its value
+reflects availability.
 
 ### Path semantics
 

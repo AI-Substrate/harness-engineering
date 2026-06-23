@@ -16,6 +16,7 @@ export class FakeGitWrite implements GitWritePort {
     parent: string | null;
     message: string;
     author: typeof TELEMETRY_AUTHOR;
+    committer: typeof TELEMETRY_AUTHOR;
   }[] = [];
   readonly trees: TreeEntry[][] = [];
   readonly blobs: string[] = [];
@@ -54,7 +55,15 @@ export class FakeGitWrite implements GitWritePort {
 
   commitTree(tree: string, parent: string | null, message: string): string {
     this.calls.push('commitTree');
-    this.commits.push({ tree, parent, message, author: TELEMETRY_AUTHOR });
+    // §T1: author AND committer are the non-individual identity (the real adapter forces
+    // both via GIT_AUTHOR_*/GIT_COMMITTER_* env) — record both so the gate is fully testable.
+    this.commits.push({
+      tree,
+      parent,
+      message,
+      author: TELEMETRY_AUTHOR,
+      committer: TELEMETRY_AUTHOR,
+    });
     return `commit${++this.commitN}`;
   }
 
