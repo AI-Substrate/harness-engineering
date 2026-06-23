@@ -2,7 +2,7 @@
 **Mode**: Full
 **Plan Version**: 1.0.0
 **Created**: 2026-06-23
-**Status**: READY — *one governance gate (§T1) requires user ratification before Phase 4; Phases 1–3 are unblocked*
+**Status**: READY — *§T1 governance gate ✅ RATIFIED 2026-06-23 (non-individual commit author); all phases unblocked*
 **Spec source**: unified (this file)
 
 ## Business Specification
@@ -120,7 +120,7 @@ The load-bearing cross-tool/cross-repo contract — enumerated here so Phase 1 a
 | Capture failure breaks a host command | Fail-safe wrapper; AC-09 test; never touch exit code |
 
 ### Open Questions
-- **§T1 (attribution governance) — ⚠️ USER RATIFICATION REQUIRED (blocks Phase 4).** Grilling landed on commit-author = engineer identity + per-user reports, but research surfaced that Constitution P12 + `harness-value-measures.md` mandate **team/repo-only, never individual** (token count is explicitly on the do-not-use-for-individuals list). Storing the engineer's `git config user.email` as the commit author durably on every telemetry commit is a latent surveillance vector even if never *reported* — a constitutional contradiction. **This plan now defaults to the doctrine-safe resolution** (AC-07/11/13): commit author = a non-individual `harness-telemetry` identity; no per-individual identity stored; the optional `agent` field stays nullable per house pattern; per-user attribution is **out of scope** and would require a separate, governance-gated decision. This reverses the earlier grilled decision, so it needs the user's sign-off before Phase 4's durable writes land. *(Governance gate, not a post-implementation workshop.)*
+- **§T1 (attribution governance) — ✅ RATIFIED by user 2026-06-23 (Phase 4 unblocked).** The doctrine-safe default below is now the sanctioned decision (Constitution P12): commit author = non-individual `harness-telemetry`, no per-individual identity stored, optional `agent` nullable, per-user attribution out of scope. Grilling landed on commit-author = engineer identity + per-user reports, but research surfaced that Constitution P12 + `harness-value-measures.md` mandate **team/repo-only, never individual** (token count is explicitly on the do-not-use-for-individuals list). Storing the engineer's `git config user.email` as the commit author durably on every telemetry commit is a latent surveillance vector even if never *reported* — a constitutional contradiction. **This plan now defaults to the doctrine-safe resolution** (AC-07/11/13): commit author = a non-individual `harness-telemetry` identity; no per-individual identity stored; the optional `agent` field stays nullable per house pattern; per-user attribution is **out of scope** and would require a separate, governance-gated decision. This reverses the earlier grilled decision, so it needs the user's sign-off before Phase 4's durable writes land. *(Governance gate, not a post-implementation workshop.)*
 - **§T3 (storage shape) — SETTLED.** Adopt **temp-buffer-then-flush-at-sync**: the hot path writes a gitignored `.harness/temp/telemetry/` buffer (no git on the hot path); the sync step flushes to the orphan ref. Direct orphan-ref-per-command was rejected (hot-path git cost + fragility). The remaining workshop item is **only the orphan-ref internals** (ref layout, commit structure, ff-retry, scraper fetch contract) — not the temp-vs-direct decision.
 - **Core `ship` vs the-flow stage-8 ship** — the user wants a first-class extensible core `ship` command; the-flow already owns a `ship` *stage*. This plan delivers the **telemetry-sync capability** as a concrete `harness telemetry sync` verb (a `telemetry` core command family, mirroring `flow`); a future core `ship` command may invoke it. The broader `ship` design is out of scope here. *(Settled enough to implement; ship-command design is a separate concern.)*
 - **Session boundary across long Claude sessions vs per-`-p` Copilot sessions** — cursor/watermark handles Claude; Copilot is naturally per-invocation. Confirmed approach; flagged for adapter tests.
@@ -261,7 +261,7 @@ Reuse the record/provenance substrate and hexagonal ports to add a `telemetry` s
 **Depends on**: Phase 1
 **Key risks**: plumbing portability — fully fake-tested; confined to this path.
 
-> **⚠️ §T1 governance gate**: Phase 4 (durable writes with identity) must not start until the user ratifies the §T1 default (non-individual commit author). Phases 1–3 are unblocked.
+> **✅ §T1 governance gate — RATIFIED 2026-06-23**: the user ratified the non-individual commit-author default (`harness-telemetry`; no per-individual identity; `agent` nullable; per-user attribution out of scope). Phase 4 is unblocked.
 
 | # | Task | Domain | Success Criteria | Notes |
 |---|------|--------|-----------------|-------|
