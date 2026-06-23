@@ -9,10 +9,12 @@ import { FakeModuleLoader } from '../src/adapters/loader/fake-loader.js';
 import { FakeProcess } from '../src/adapters/process/fake-process.js';
 import {
   buildProgram,
+  deriveCommand,
   isExtensionsDisabled,
   loadRegistry,
   type MainOverrides,
   main,
+  shouldCaptureForArgv,
 } from '../src/app.js';
 import type { CliIo, Writers } from '../src/output/output-port.js';
 import type { HarnessVerb } from '../src/services/extensions/contract.js';
@@ -42,6 +44,32 @@ describe('isExtensionsDisabled', () => {
     expect(isExtensionsDisabled(['node', 'h', '--no-extensions', 'help'], {})).toBe(true);
     expect(isExtensionsDisabled(['node', 'h', 'help'], { HARNESS_NO_EXTENSIONS: '1' })).toBe(true);
     expect(isExtensionsDisabled(['node', 'h', 'help'], {})).toBe(false);
+  });
+});
+
+describe('deriveCommand (telemetry label — plan 034 Phase 3)', () => {
+  it('returns the first non-flag token after binary+script, else "harness"', () => {
+    expect(deriveCommand(['node', 'harness', 'doctor'])).toBe('doctor');
+    expect(deriveCommand(['node', 'harness', 'flow', 'nav'])).toBe('flow'); // top-level only
+    expect(deriveCommand(['node', 'harness'])).toBe('harness'); // bare
+    expect(deriveCommand(['node', 'harness', '--json', 'record'])).toBe('record'); // skips boolean global
+    expect(deriveCommand(['node', 'harness', '--no-extensions', '--json'])).toBe('harness'); // all flags
+  });
+});
+
+describe('shouldCaptureForArgv (display-only exclusion — plan 034 Phase 3)', () => {
+  it('excludes help/version flags and the help subcommand, captures everything else', () => {
+    // display-only → excluded
+    expect(shouldCaptureForArgv(['node', 'harness', '--help'])).toBe(false);
+    expect(shouldCaptureForArgv(['node', 'harness', '-h'])).toBe(false);
+    expect(shouldCaptureForArgv(['node', 'harness', '--version'])).toBe(false);
+    expect(shouldCaptureForArgv(['node', 'harness', '-v'])).toBe(false);
+    expect(shouldCaptureForArgv(['node', 'harness', 'help'])).toBe(false);
+    expect(shouldCaptureForArgv(['node', 'harness', 'doctor', '--help'])).toBe(false); // -h anywhere
+    // real commands → captured (incl. bare and an unknown verb)
+    expect(shouldCaptureForArgv(['node', 'harness', 'doctor'])).toBe(true);
+    expect(shouldCaptureForArgv(['node', 'harness'])).toBe(true);
+    expect(shouldCaptureForArgv(['node', 'harness', 'bogus'])).toBe(true); // unknown captures by design
   });
 });
 

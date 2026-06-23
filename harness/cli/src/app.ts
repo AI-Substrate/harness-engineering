@@ -44,6 +44,7 @@ import {
   coreRecordTypes,
   type ExtensionRecordType,
 } from './services/record/registry.js';
+import type { CaptureDeps } from './services/telemetry/capture-service.js';
 import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
@@ -60,6 +61,50 @@ export function jsonFlag(argv: string[]): boolean | undefined {
     return true;
   }
   return undefined;
+}
+
+/**
+ * The telemetry command label (plan 034 Phase 3): the first non-flag token after
+ * the binary+script (index ≥ 2), else `harness` (bare invocation). Top-level
+ * command only (`flow nav …` → `flow`), matching the segment's single-token
+ * `command` contract. Pure argv scan, no I/O.
+ *
+ * Safe because every global flag is boolean (`--json`/`--no-json`/`--no-extensions`/
+ * `-v`/`-h` — none consume a following value); a value-taking global would break
+ * this heuristic (revisit if one is ever added).
+ */
+export function deriveCommand(argv: string[]): string {
+  for (let i = 2; i < argv.length; i++) {
+    const tok = argv[i];
+    if (tok !== undefined && !tok.startsWith('-')) {
+      return tok;
+    }
+  }
+  return 'harness';
+}
+
+/**
+ * Whether the kernel preamble should fire telemetry capture for this argv
+ * (plan 034 Phase 3). Display-only invocations are excluded: `-h`/`--help`/
+ * `-v`/`--version`, or the `help` subcommand.
+ *
+ * This is an argv-SHAPE scan, NOT a semantic "is this display-only?" check
+ * (mirrors {@link jsonFlag} / {@link isExtensionsDisabled}). The only display-only
+ * surfaces today are help/version; ANY new display-only verb must be added here.
+ * A `-h`/`-v` placed anywhere excludes — the same flat-`includes` caveat the
+ * safe-mode scan documents above; accepted (revisit if a verb needs its own
+ * `-h`/`-v`).
+ */
+export function shouldCaptureForArgv(argv: string[]): boolean {
+  if (
+    argv.includes('-h') ||
+    argv.includes('--help') ||
+    argv.includes('-v') ||
+    argv.includes('--version')
+  ) {
+    return false;
+  }
+  return deriveCommand(argv) !== 'help';
 }
 
 /**
@@ -222,6 +267,12 @@ export interface MainOverrides {
   isTty: boolean;
   writers: Writers;
   version: string;
+  /**
+   * Telemetry capture seam (plan 034 Phase 3). Defaults to the real
+   * `captureTelemetry`; tests inject a recording or throwing fake to assert
+   * "invoked once / with command X" and AC-09 fail-safety without `vi.mock`.
+   */
+  capture: (deps: CaptureDeps) => void;
 }
 
 function defaultDeps(): VerbActDeps {
