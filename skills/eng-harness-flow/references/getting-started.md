@@ -90,7 +90,7 @@ Each loop stage below carries the **lifecycle hook** a host flow names to reach 
 | **Boot** · `--hook pre-flight` | `boot` verb (`--validate`) | **You** (or the router) at session start | Re-runs the boot that adoption built — proves the system is healthy *before* any code is written. Reports `UNAVAILABLE` (not an error) when no governance doc exists → routes back to adoption. |
 | **Backpressure Check** · `--hook pre-coding` | `backpressure` verb | **You**, recommended, post-spec | After scoped work is defined, before you architect/build it. Surveys whether the work is *provable by deterministic sensors* (build/type/test/lint/smoke/boot/architecture/schema) vs inference; writes `backpressure-coverage.md`; can offer ready-to-paste "done when `<sensor>` is green" lines to encode into your acceptance criteria (or flag where backpressure looks too thin); may recommend an optional "Phase 0: Establish Backpressure". Advisory — the sensors prove, never the LLM. Never blocks. |
 | **Observe** · `--hook coding` | `harness observe "<what>" --kind <kind>` | **You/your agent, the moment friction happens** | A CLI verb, not a verb module — one silent call per noticing (confusing failure, retry, backtrack, slow command, "if only there were…"). Lands in the gitignored buffer `.harness/temp/`. Capture judgment lives in the `retro` verb § in-flight capture. |
-| **Retro (drain)** · `--hook post-coding` | `retro` verb `--drain` | **You** at phase/session end, buffer non-empty | The one normal user-facing retro prompt: triage `[s/t/p/e/d/a]`, materialize kept entries into a committed record via `harness record retro`, then clear the buffer. |
+| **Retro (drain)** · `--hook post-coding` | `retro` verb `--drain` | **You** at phase/session end, buffer non-empty | The one normal user-facing retro prompt: a plain-language ask to save the session's notes (keep all · pick · skip — or take them further into tasks · a plan · diffs), then materialize kept entries into a committed record via `harness record retro` and clear the buffer. |
 | **Retro (harvest)** · `--hook post-flight` | `retro` verb `--harvest` | **You**, at plan completion / periodically | Read-only curation across `.harness/records/retro/**` — what recurs, what's stale, what to encode next. Recurrence is framed as token cost. Drain first if the buffer is non-empty. |
 | **Improve** | retro `[e]ncode` / `add-extension` verb | **You**, when a retro names a fix | The beat where the loop compounds: ship the fix as a command, sensor, fixture, or doc — then a `harness-change` record is written. Most loop runs encode nothing, and that's fine. |
 
@@ -182,7 +182,7 @@ flowchart LR
       wrong dir" --kind difficulty --severity degrading     ← the moment it happens
 
 6.  retro verb --drain               (session end)
-    → [s/t/p/e/d/a] triage → harness record retro → committed record in
+    → plain save prompt (keep all · pick · skip) → harness record retro → committed record in
       .harness/records/retro/ → buffer cleared.
 
 7.  retro verb --harvest             (later, across sessions)
@@ -205,7 +205,7 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 | `boot` verb | Re-run the boot adoption built; readiness verdict + maturity read | terminal report (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
 | `backpressure` verb | Deterministic-sensor coverage survey for scoped work | `docs/plans/<ordinal>-<slug>/backpressure-coverage.md` |
 | `harness observe "<what>" --kind <kind>` | Capture one friction entry (CLI verb, not a verb module) | one buffer entry in gitignored `.harness/temp/` |
-| `retro` verb `--drain` | Soft-prompt triage of the buffer (`[s/t/p/e/d/a]`) | committed record via `harness record retro` |
+| `retro` verb `--drain` | Plain-language save prompt for the session's notes (keep all · pick · skip) | committed record via `harness record retro` |
 | `retro` verb `--harvest` | Curated cross-plan friction view (read-only) | terminal print (`--json` for tooling) |
 | `harness doctor --json` | What's configured + which extensions loaded/failed | JSON envelope, every complaint has a `next_action` |
 | `harness instructions [verb]` | The agent briefing — AGENTS START HERE | terminal print |
