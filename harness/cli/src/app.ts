@@ -44,7 +44,8 @@ import {
   coreRecordTypes,
   type ExtensionRecordType,
 } from './services/record/registry.js';
-import type { CaptureDeps } from './services/telemetry/capture-service.js';
+import { coreTelemetryAdapters } from './services/telemetry/adapters/index.js';
+import { type CaptureDeps, captureTelemetry } from './services/telemetry/capture-service.js';
 import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
@@ -340,6 +341,29 @@ export async function main(
   if (check.status === 'error') {
     exitWithEnvelope(check, port);
     return;
+  }
+
+  // Auto-capture preamble (plan 034 Phase 3): record one counts-only telemetry
+  // segment for this command via the telemetry service — best-effort, before the
+  // command runs. Display-only argv (help/version) is excluded. The whole
+  // preamble is wrapped so telemetry can NEVER change the host command's output
+  // or exit code (AC-09) — defense in depth over captureTelemetry's own internal
+  // fail-safe. `env` is the EnvPort (`deps.env`), the ONLY env that carries the
+  // harness session id + HARNESS_PLAN_ID — not the local `NodeJS.ProcessEnv`.
+  if (shouldCaptureForArgv(argv)) {
+    try {
+      (overrides.capture ?? captureTelemetry)({
+        fs: deps.fs,
+        env: deps.env,
+        clock: deps.clock,
+        proc: deps.proc,
+        git: deps.git,
+        command: deriveCommand(argv),
+        adapters: coreTelemetryAdapters,
+      });
+    } catch {
+      // swallow — telemetry is invisible to the host command (AC-09)
+    }
   }
 
   try {
