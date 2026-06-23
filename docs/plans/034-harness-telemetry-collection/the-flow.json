@@ -1,0 +1,534 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "harness-telemetry-collection",
+  "created_at": "2026-06-23T04:58:18.020Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.5.0",
+    "branch": "034-harness-telemetry-collection",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-23T04:58:18.020Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T04:58:18.033Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "harness-telemetry-collection"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T04:58:18.147Z",
+      "details": {
+        "node": "ship",
+        "type": "ship"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T04:58:18.235Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T04:58:18.325Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T04:58:18.424Z",
+      "details": {
+        "from": "",
+        "to": "research"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:11:00.909Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:11:00.995Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:11:01.083Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:25.642Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:25.724Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:25.897Z",
+      "details": {
+        "node": "phase-1",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:25.897Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:25.984Z",
+      "details": {
+        "node": "phase-2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:25.984Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:26.071Z",
+      "details": {
+        "node": "phase-3",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:26.071Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:26.159Z",
+      "details": {
+        "node": "phase-4",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:26.159Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:26.250Z",
+      "details": {
+        "from": "plan",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T05:45:35.647Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-008",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:14:33.243Z",
+      "details": {
+        "node": "backpressure",
+        "type": "backpressure"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:14:33.653Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:15:08.374Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:43:29.281Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:56:39.051Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:56:47.945Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T06:56:48.038Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:06:00.509Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:06:00.609Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:16:00.174Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:43:40.703Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:43:40.787Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:43:40.959Z",
+      "details": {
+        "from": "phase-1",
+        "to": "phase-2"
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T07:44:04.539Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-23T04:58:18.147Z",
+      "modified_at": "2026-06-23T04:58:18.147Z",
+      "zone": "postflight"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "next": [
+        "phase-1"
+      ],
+      "created_at": "2026-06-23T04:58:18.235Z",
+      "modified_at": "2026-06-23T06:43:29.281Z",
+      "ran_at": "2026-06-23T05:45:25.642Z",
+      "note": "Full plan, Status READY (Phases 1-3 ready; Phase 4 gated on §T1 ratification). validate-v2: 4 agents, VALIDATED WITH FIXES — schema enumerated, §T1 defaulted doctrine-safe, kill-switch named, concurrency+auth+perf tasks added.",
+      "comments": [
+        {
+          "at": "2026-06-23T05:45:35.647Z",
+          "text": "validate-v2 (4 agents) VALIDATED WITH FIXES: CRITICAL §T1 per-individual commit-author vs anti-surveillance doctrine -> defaulted non-individual author + gated before Phase 4; HIGH schema-shape/kill-switch-name/concurrency/push-auth fixed; sync verb named.",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-06-23T06:43:29.281Z",
+          "text": "Done Contract folded into plan (grill-agent-done): planted-secret control (task 1.1), dup-message.id token control (2.2), structural perf sensor replaces flaky <10ms (3.4). Privacy scope decided: branch names kept verbatim. One open gap = §T1 author ratification, gates Phase 4.",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-23T04:58:18.325Z",
+      "modified_at": "2026-06-23T05:11:00.995Z",
+      "ran_at": "2026-06-23T05:11:00.909Z",
+      "note": "6 research subagents + scratch/telem probes. Repo already has record system + 8-key provenance + value-measures eng-thrive contract. 3 tensions: individual-vs-team attribution (conflicts with house doctrine), auto-capture needs core kernel hook (not extension), orphan-ref-vs-temp-flush storage."
+    },
+    {
+      "id": "phase-1",
+      "type": "phase",
+      "label": "P1 Segment substrate & capture core",
+      "status": "done",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-06-23T05:45:25.897Z",
+      "modified_at": "2026-06-23T07:44:04.539Z",
+      "note": "T001-T009 done; companion-reviewed (0 open, F001 fixed+verified); 1038/1038 green; commits 5f02cbf..56a1033",
+      "comments": [
+        {
+          "at": "2026-06-23T07:06:00.509Z",
+          "text": "validate-v2 (4 lenses): ALIGNED on coverage; 3 HIGH fixes applied to dossier — (1) adapter seam built in Phase 1 [F1] so Phase 2 plugs in w/o rewriting capture-service (new T004); (2) cursor-safety test redefined for the synchronous FsPort [C2] (T007); (3) atomic precedent corrected observe->flow-service [Source-Truth]. Plus buffer format/entry pinned, schema key-set equality, edge no-ops, serializer-vs-adapter privacy split. Plan reconciled (1.1/2.1/2.2/KF-05/Done Contract). Dossier T001-T009.",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-06-23T07:44:04.539Z",
+          "text": "code-review-companion APPROVE across all commits; 1 MEDIUM (F001 path-traversal) fixed in 56a1033 and verified; 1038/1038 tests green",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-06-23T07:43:40.703Z"
+    },
+    {
+      "id": "phase-2",
+      "type": "phase",
+      "label": "P2 Per-harness adapters",
+      "status": "known",
+      "next": [
+        "phase-3"
+      ],
+      "created_at": "2026-06-23T05:45:25.984Z",
+      "modified_at": "2026-06-23T05:45:26.071Z"
+    },
+    {
+      "id": "phase-3",
+      "type": "phase",
+      "label": "P3 Auto-capture kernel preamble",
+      "status": "known",
+      "next": [
+        "phase-4"
+      ],
+      "created_at": "2026-06-23T05:45:26.071Z",
+      "modified_at": "2026-06-23T05:45:26.159Z"
+    },
+    {
+      "id": "phase-4",
+      "type": "phase",
+      "label": "P4 Durable sync (gated §T1)",
+      "status": "known",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-23T05:45:26.159Z",
+      "modified_at": "2026-06-23T05:45:26.159Z"
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure survey",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-23T06:14:33.243Z",
+      "modified_at": "2026-06-23T06:15:08.374Z",
+      "command": "/eng-harness-flow --hook pre-coding",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-06-23T06:14:33.653Z",
+          "text": "Backpressure survey ran against the plan. No blockers; plan is well-instrumented (CLI hexagonal arch tests already cover the ports-only invariant). Advisory: pull the 2 reshapes into Phase 1/3. Re-plan not required.",
+          "kind": "validation"
+        }
+      ],
+      "note": "Certainty: Partial. Architecture invariants already EXISTS (no-direct-node-io + dep-cruiser); behaviour ACs BUILDABLE and front-loaded as TDD tasks. Two advisory reshapes: structural perf sensor (replace flaky <10ms wall-clock) + PII fixture-guard. Artifact: backpressure-coverage.md"
+    }
+  ],
+  "nav": {
+    "now": "phase-2",
+    "next": "phase-2",
+    "intent": "Harness telemetry collection — per-command sensor emitting normalized per-session segments (tokens/skills/tools/subagents/files/plan-links) committed to an orphan git ref for eng-thrive; Claude + Copilot adapters, Cursor later",
+    "bag": {
+      "mode": "Full",
+      "status": "active"
+    }
+  }
+}
