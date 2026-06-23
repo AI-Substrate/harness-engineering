@@ -111,13 +111,24 @@ them and they stop getting missed). Standalone, it authors its own loop instead
 | `chore.importance` | `recommended` — **except** `pre-flight`/boot = `strongly-recommended` |
 | `command` | `run /eng-harness-flow --hook <hook>` for `<hook> ∈ {pre-flight, pre-coding, post-coding, post-flight}` |
 | `status` | `todo` → `done`\|`skipped` over its lifecycle |
+| `anchor` (`branch_of`) | the spine node the hook belongs to — **always set**, so the chore is a connected excursion (never an orphan); per the **hook → anchor map** below |
+
+**Hook → anchor map (total; deterministic fallback by spine order research < plan < phase(s) < review < ship).** The anchor is **always an existing spine node** at injection time — walk the fallback list and take the first node that exists, so an orphan (`anchor:null`, floating off the rail with no edge) is impossible:
+
+| Hook | Preferred anchor | Fallback if absent |
+|---|---|---|
+| `pre-flight` | first `phase` node | → `plan` → `research` |
+| `pre-coding` | `plan` | → first `phase` → `research` |
+| `post-coding` | last `phase` node | → `plan` |
+| `post-flight` | `ship` | → `review` → last `phase` → `plan` |
 
 **Dedup key = the `--hook <X>` token inside `command`.** Exactly one chore per hook
-per the-flow plan. Injection is therefore **idempotent** — re-running it produces a
-**byte-identical** node set: `insert-node`/`add-node` de-dup on the hook token (no new
-node), and `set-node` (the found-node re-flag path below) is a **no-op when every
-requested field already matches** — it does not restamp `modified_at` or emit an event
-(plan 032 FT-001). Re-flagging an already-correct chore changes nothing on disk.
+per the-flow plan. Injection is therefore **idempotent** — the scan (step 1 below)
+finds any existing node carrying the `--hook <X>` token and re-uses it, so re-running
+produces a **byte-identical** node set: no second node is inserted, and `set-node` (the
+found-node re-flag path below) is a **no-op when every requested field already matches**
+— it does not restamp `modified_at` or emit an event (plan 032 FT-001). Re-flagging an
+already-correct chore changes nothing on disk.
 
 **Reconciliation with the-flow's seam emission (R-1).** the-flow may already emit a
 seam node (`harness-boot` / `backpressure` / `harness-retro`) carrying that hook's
@@ -128,9 +139,22 @@ the chore flag:
 2. **Found** → flag it in place: `harness flow set-node --node <that-node> --chore-kind
    command --importance <i> --command "run /eng-harness-flow --hook <X>"` (does **not**
    duplicate; the seam node keeps its type + violet render, gains a chore pip).
-3. **Not found** → add one: `harness flow add-node --id ehf-<hook> --type chore
-   --label "<Hook> hook" --chore-kind command --importance <i> --command "run
-   /eng-harness-flow --hook <X>" --zone <band>` (or `insert-node --after <anchor>`).
+3. **Not found** → add an **anchored** chore — never a bare `add-node` (that leaves it
+   an orphan: `anchor:null`, no edge, floating off the rail, with no deterministic point
+   to run it). Use `insert-node --branch-of <anchor>`, where `<anchor>` is the hook's
+   node from the **hook → anchor map** above:
+
+   ```
+   harness flow insert-node --path <the-flow.json> --id ehf-<hook> --type chore \
+     --label "<Hook> hook" --branch-of <anchor> \
+     --chore-kind command --importance <i> --command "run /eng-harness-flow --hook <X>"
+   ```
+
+   `--branch-of` sets the chore's `branch_of`, so `harness flow chores` reports a
+   **non-null `anchor`** and the renderer draws a **connected dotted excursion** (not a
+   floating box). The driver — or the-flow's own per-turn cadence — can then read
+   `harness flow chores --at <anchor>` (or `harness flow nav show` → `due_chores`) to see
+   which hook is **due at the current node**: anchored chores are checks, not decorations.
 
 `coding`/observe stays **silent** (no chore); `improve` follows a retro (no chore) —
 only the **four fire hooks** become chores.

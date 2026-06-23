@@ -406,17 +406,25 @@ export function registerFlowAct(
     .description('List the flow’s chore nodes (status · importance · kind · anchor · ref)')
     .option('--path <path>', 'flow file path')
     .option('--slug <slug>', 'flow slug')
+    .option(
+      '--at <node>',
+      'only chores anchored at this node (the position-aware "due at <node>" read)',
+    )
     .option('--list', 'list chores (the default action)')
-    .action((opts: { path?: string; slug?: string; list?: boolean }) => {
+    .action((opts: { path?: string; slug?: string; at?: string; list?: boolean }) => {
       const resolved = resolveFlowPath(opts, repoRoot());
       if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
       const read = readFlowDoc(resolved.path, svc);
       if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
-      const chores = listChores(read.doc);
+      const chores = listChores(read.doc, opts.at);
       if (io.mode === 'json') {
         return emit(
           io,
-          formatOk('flow', { path: resolved.path, chores, count: chores.length }, deps.clock),
+          formatOk(
+            'flow',
+            { path: resolved.path, at: opts.at ?? null, chores, count: chores.length },
+            deps.clock,
+          ),
         );
       }
       return emitRawAndExit(`${renderChoresTable(chores)}\n`, io.writers, 0);

@@ -7,8 +7,10 @@ import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import type { FlowDoc, FlowNode } from '../../../src/services/flow/flow-events.js';
 import {
   addNode,
+  dueChores,
   insertNode,
   listChores,
+  navShow,
   setStatus,
 } from '../../../src/services/flow/flow-mutations.js';
 import {
@@ -452,5 +454,206 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
     expect(renderFlow(r.doc)).toMatch(/c1\["Validate[^\]]*"\]:::chore/);
     const chores = listChores(r.doc);
     expect(chores[0]).toMatchObject({ id: 'c1', kind: 'command', anchor: 'boot', runnable: true });
+  });
+});
+
+describe('T013 — position-aware chore reads (`chores --at` + `nav show` due_chores)', () => {
+  const clk = { clock: new FakeClock('2026-06-18T00:00:00.000Z') };
+
+  /** plan(now) → ship, with two chores anchored at plan (one todo, one done) and one at ship. */
+  function anchoredDoc(): FlowDoc {
+    return loopDoc({
+      nodes: [
+        { id: 'plan', type: 'boot', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'improve', label: 'Ship', status: 'assumed', next: [] },
+        {
+          id: 'c_due',
+          type: 'boot',
+          label: 'Pre-coding',
+          status: 'todo',
+          next: ['plan'],
+          branch_of: 'plan',
+          chore: { kind: 'command', importance: 'recommended' },
+          command: 'run /eng-harness-flow --hook pre-coding',
+        },
+        {
+          id: 'c_done',
+          type: 'boot',
+          label: 'Pre-flight',
+          status: 'done',
+          next: ['plan'],
+          branch_of: 'plan',
+          chore: { kind: 'command', importance: 'strongly-recommended' },
+        },
+        {
+          id: 'c_ship',
+          type: 'improve',
+          label: 'Post-flight',
+          status: 'todo',
+          next: ['ship'],
+          branch_of: 'ship',
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ],
+      nav: { now: 'plan', next: 'ship' },
+    }) as unknown as FlowDoc;
+  }
+
+  it('listChores --at filters to chores anchored at that node', () => {
+    const doc = anchoredDoc();
+    expect(listChores(doc, 'plan').map((c) => c.id)).toEqual(['c_due', 'c_done']);
+    expect(listChores(doc, 'ship').map((c) => c.id)).toEqual(['c_ship']);
+  });
+
+  it('listChores --at an unknown node → empty (no error)', () => {
+    expect(listChores(anchoredDoc(), 'nope')).toEqual([]);
+  });
+
+  it('listChores with no filter still returns every chore (back-compat)', () => {
+    expect(listChores(anchoredDoc())).toHaveLength(3);
+  });
+
+  it('dueChores → chores anchored at nav.now that are still outstanding', () => {
+    // c_done excluded (done); c_ship excluded (anchored at ship, not the current node)
+    expect(dueChores(anchoredDoc()).map((c) => c.id)).toEqual(['c_due']);
+  });
+
+  it('dueChores carries the full ChoreRow shape', () => {
+    expect(dueChores(anchoredDoc())[0]).toEqual({
+      id: 'c_due',
+      label: 'Pre-coding',
+      status: 'todo',
+      kind: 'command',
+      importance: 'recommended',
+      command: 'run /eng-harness-flow --hook pre-coding',
+      anchor: 'plan',
+      runnable: true,
+    });
+  });
+
+  it('a chore at nav.now ticked to done drops out of due', () => {
+    const ticked = setStatus(anchoredDoc(), 'c_due', 'done', clk);
+    expect(ticked.ok).toBe(true);
+    if (!ticked.ok) return;
+    expect(dueChores(ticked.doc)).toEqual([]);
+  });
+
+  it('nav show carries due_chores (mirrors dueChores)', () => {
+    const doc = anchoredDoc();
+    expect(navShow(doc).due_chores).toEqual(dueChores(doc));
+  });
+
+  it('no nav / no position → due_chores is [] (graceful)', () => {
+    const doc = loopDoc({
+      nodes: [
+        { id: 'boot', type: 'boot', label: 'Boot', status: 'done', next: [] },
+        {
+          id: 'c1',
+          type: 'boot',
+          label: 'X',
+          status: 'todo',
+          next: [],
+          branch_of: 'boot',
+          chore: { kind: 'skill', importance: 'optional' },
+        },
+      ],
+    }) as unknown as FlowDoc;
+    expect(dueChores(doc)).toEqual([]);
+    expect(navShow(doc).due_chores).toEqual([]);
+  });
+});
+
+describe('T014 — anchored loop-chore injection (the AC-07 recipe never orphans)', () => {
+  const clk = { clock: new FakeClock('2026-06-18T00:00:00.000Z') };
+  const FIRE_HOOKS = ['pre-flight', 'pre-coding', 'post-coding', 'post-flight'] as const;
+
+  /** A bare flight-plan-shaped spine: research → plan → ship (no phase nodes). */
+  function spineDoc(): FlowDoc {
+    return loopDoc({
+      nodes: [
+        { id: 'research', type: 'boot', label: 'Research', status: 'done', next: ['plan'] },
+        { id: 'plan', type: 'backpressure', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'improve', label: 'Ship', status: 'assumed', next: [] },
+      ],
+      nav: { now: 'plan', next: 'ship' },
+    }) as unknown as FlowDoc;
+  }
+
+  // hook → anchor map (total; deterministic fallback). Mirrors
+  // skills/eng-harness-flow/references/flight-plan-ops.md § hook → anchor map.
+  function anchorFor(hook: string, doc: FlowDoc): string {
+    const ids = new Set(doc.nodes.map((n) => n.id));
+    const phases = doc.nodes.filter((n) => n.type === 'phase').map((n) => n.id);
+    const pick = (...cands: (string | undefined)[]) =>
+      cands.find((c) => c !== undefined && ids.has(c)) as string;
+    switch (hook) {
+      case 'pre-flight':
+        return pick(phases[0], 'plan', 'research');
+      case 'pre-coding':
+        return pick('plan', phases[0], 'research');
+      case 'post-coding':
+        return pick(phases[phases.length - 1], 'plan');
+      case 'post-flight':
+        return pick('ship', 'review', phases[phases.length - 1], 'plan');
+      default:
+        throw new Error(`unknown hook ${hook}`);
+    }
+  }
+
+  /** Inject the four fire hooks as ANCHORED chores, deduped on the --hook token (the recipe). */
+  function inject(doc: FlowDoc): FlowDoc {
+    let cur = doc;
+    for (const hook of FIRE_HOOKS) {
+      const token = `--hook ${hook}`;
+      // recipe step 1 — dedup: skip if a node already carries this hook token
+      if (cur.nodes.some((n) => typeof n.command === 'string' && n.command.includes(token)))
+        continue;
+      const r = insertNode(
+        cur,
+        {
+          id: `ehf-${hook}`,
+          type: 'improve',
+          label: `${hook} hook`,
+          status: 'todo',
+          chore: {
+            kind: 'command',
+            importance: hook === 'pre-flight' ? 'strongly-recommended' : 'recommended',
+          },
+          command: `run /eng-harness-flow ${token}`,
+        },
+        { branchOf: anchorFor(hook, cur) },
+        clk,
+      );
+      if (!r.ok) throw new Error(`inject ${hook} failed: ${r.message}`);
+      cur = r.doc;
+    }
+    return cur;
+  }
+
+  it('every injected chore has a non-null anchor (no orphans) per the map', () => {
+    const chores = listChores(inject(spineDoc()));
+    expect(chores).toHaveLength(4);
+    for (const c of chores) expect(c.anchor).not.toBeNull();
+    const at = Object.fromEntries(chores.map((c) => [c.id, c.anchor]));
+    // no phase nodes → pre-flight/pre-coding/post-coding fall back to plan; post-flight → ship
+    expect(at['ehf-pre-flight']).toBe('plan');
+    expect(at['ehf-pre-coding']).toBe('plan');
+    expect(at['ehf-post-coding']).toBe('plan');
+    expect(at['ehf-post-flight']).toBe('ship');
+  });
+
+  it('the render draws a connected dotted excursion for each chore (no floating box)', () => {
+    const md = renderFlow(inject(spineDoc()));
+    expect(md).toContain('ehf_pre_flight -.-> plan');
+    expect(md).toContain('ehf_pre_coding -.-> plan');
+    expect(md).toContain('ehf_post_coding -.-> plan');
+    expect(md).toContain('ehf_post_flight -.-> ship');
+  });
+
+  it('re-injection is idempotent (dedup on the --hook token → no new nodes)', () => {
+    const once = inject(spineDoc());
+    const twice = inject(once);
+    expect(twice.nodes.length).toBe(once.nodes.length);
+    expect(JSON.stringify(twice.nodes)).toBe(JSON.stringify(once.nodes));
   });
 });
