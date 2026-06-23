@@ -403,3 +403,13 @@
 - **magicWand** (target: coordination): Add a coordination drain helper that automatically includes prior finding ids, severities, ackOf task ids, and summary verdicts in the final drain prompt so the companion can reconcile the run without relying on memory.
 - difficulties:
   - [annoying] test: The root npm test script cd's into harness/cli, so passing a root-relative vitest filter found no tests but still exited 0. (workaround: Reran the focused suite with the harness/cli-relative filter path.)
+
+## 2026-06-23T11:18:20.857Z — code-review-companion / 2026-06-23T10-51-46-373Z-14ff
+
+- runId: 2026-06-23T10-51-46-373Z-14ff
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-23T10-51-46-373Z-14ff
+- summary: Reviewed the Phase 4 durable telemetry sync sequence across eight task messages: GitWritePort/FakeGitWrite, ExecGitWrite, sync-service, telemetry sync act wiring, cwd plan detection, docs/value-measures, final drain, and a formatting-only follow-up. I sent three findings: one HIGH governance-test gap around committer identity in FakeGitWrite, one MEDIUM DI boundary issue in the telemetry act fallback, and one MEDIUM documentation contract drift against the implemented segment schema.
+- **magicWand** (target: minih): Expose the resolved project root in a validated coordination state field and fail fast when MINIH_PROJECT_ROOT points at the run directory, because companion prompts explicitly depend on starting from the project root.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the code-review-companion run folder, so the orient default initially could not see docs/plans from that cwd. (workaround: Used the repository root provided in the environment context for subsequent git, docs, and test commands.)
+  - [annoying] test: Running npm test from harness/cli failed because package.json lives at the repository root while the npm test script cd’s into harness/cli internally. (workaround: Ran targeted tests from the repository root with npx vitest and the relevant test paths.)
