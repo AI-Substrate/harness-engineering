@@ -155,6 +155,8 @@ export interface NavShow {
   nav: Nav | null;
   predecessors: NavNeighbour[];
   successors: NavNeighbour[];
+  /** Chores anchored at `nav.now` still outstanding (status ∉ {done, skipped}) — the "due here" read. */
+  due_chores: ChoreRow[];
 }
 
 /**
@@ -171,6 +173,7 @@ export function navShow(doc: FlowDoc): NavShow {
     nav,
     predecessors: has ? predecessorsOf(nodes, now).map(trimNeighbour) : [],
     successors: has ? successorsOf(nodes, now).map(trimNeighbour) : [],
+    due_chores: dueChores(doc),
   };
 }
 
@@ -201,8 +204,10 @@ export interface ChoreRow {
  * (a READ: no clone, no event). Each row carries the chore's kind/importance, its
  * status, the node's `command` ref, an `anchor` (its `branch_of` or first
  * predecessor — "where does this upkeep sit?"), and whether an agent can run it.
+ * When `at` is given, only chores anchored at that node id are returned (the
+ * position-aware "what's due at <node>?" read; `flow chores --at`).
  */
-export function listChores(doc: FlowDoc): ChoreRow[] {
+export function listChores(doc: FlowDoc, at?: string): ChoreRow[] {
   const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
   const rows: ChoreRow[] = [];
   for (const n of nodes) {
@@ -222,7 +227,20 @@ export function listChores(doc: FlowDoc): ChoreRow[] {
       runnable: AGENT_RUNNABLE_KINDS.has(n.chore.kind),
     });
   }
-  return rows;
+  return at === undefined ? rows : rows.filter((r) => r.anchor === at);
+}
+
+/**
+ * The "due here" read: chores anchored at the current `nav.now` whose status is
+ * still outstanding (`∉ {done, skipped}`). Empty when there is no position or no
+ * such chore. Surfaced in `nav show` (`due_chores`) so a driver can deterministically
+ * see which upkeep belongs to the node it is on — anchored chores become checks, not
+ * floating decorations.
+ */
+export function dueChores(doc: FlowDoc): ChoreRow[] {
+  const now = doc.nav?.now;
+  if (typeof now !== 'string' || now.length === 0) return [];
+  return listChores(doc, now).filter((c) => c.status !== 'done' && c.status !== 'skipped');
 }
 
 // ---------------------------------------------------------------------------

@@ -66,13 +66,19 @@ missed**. Exact shape (full detail in [`flight-plan-ops.md`](./flight-plan-ops.m
 - `chore.kind = command`, `command = run /eng-harness-flow --hook <hook>` for
   `<hook> ∈ {pre-flight, pre-coding, post-coding, post-flight}`, status `todo`.
 - `importance = recommended`, except `pre-flight`/boot = `strongly-recommended`.
+- **Anchored, never orphaned.** Each chore is `branch_of` its spine node (the
+  **hook → anchor map** in [`flight-plan-ops.md`](./flight-plan-ops.md)), so it renders as a
+  connected dotted excursion and `harness flow chores --at <node>` / `nav show`
+  (`due_chores`) can surface it as **due at that node** — never a bare `add-node` orphan
+  (`anchor:null`, floating off the rail with no run point).
 - **Dedup key = the `--hook <X>` token** — exactly one chore per hook; re-running the
   injection is **idempotent** (byte-identical node set).
 - **R-1 (single owner).** `eng-harness-flow` owns the chore flag. If a the-flow seam
   node (`harness-boot`/`backpressure`/`harness-retro`) already carries that hook's
   command, **flag it in place** (`set-node --chore-kind command --importance …`) rather
-  than adding a duplicate; else `add-node`/`insert-node` a fresh chore. (the-flow's
-  `harness-seams.md` records this ownership so emission + injection don't double-fire.)
+  than adding a duplicate; else `insert-node --branch-of <anchor>` a fresh **anchored**
+  chore. (the-flow's `harness-seams.md` records this ownership so emission + injection
+  don't double-fire.)
 - `coding`/observe stays silent (no chore); `improve` follows a retro (no chore).
 - **No `.harness/loop.flow.json` is authored while the-flow is active.**
 

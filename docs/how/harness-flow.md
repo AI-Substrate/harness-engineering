@@ -96,7 +96,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 | `new <type>` | Scaffold a custom flow-type **schema overlay** into `.harness/schemas/flows/<type>.schema.json`. |
 | `show` | Read a flow and print its summary envelope. |
 | `list` | Discover flows under `.harness/flows/` (or `--dir`). |
-| `nav show` | Print the position: `{ nav: {now,next,intent,bag} \| null, predecessors, successors }`. |
+| `nav show` | Print the position: `{ nav: {now,next,intent,bag} \| null, predecessors, successors, due_chores }`. `due_chores` lists the chores anchored at `nav.now` still outstanding — the "what's due here?" read. |
 | `nav set [--now <id>] [--next <id> \| --clear-next] [--intent <t>]` | Move position (`--now`, validated → `E305`, fires `cursor-moved`), set/clear the advisory next, and/or set the intent. |
 | `nav meta set <k> <v>` / `nav meta get [k]` | Shallow-merge one key into the free-form `bag` / read one key (or the whole bag). |
 | `rail [--chores show\|collapse\|hide]` | Emit the one-line rail: `[<title>] <pips>  <names>`, banded `pre ─ [ flight ] ─ post`. `--chores` controls chore-name visibility (default `collapse`). |
@@ -105,7 +105,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 | `set-node --node <id> [--label --note --user-input --artifacts --command --zone --chore-kind --importance]` | Merge fields into a node. `--command`/`--zone`/`--chore-kind`+`--importance` let you **flag an existing node as a chore** in place (e.g. turn a the-flow seam node into a chore — plan 032 R-1); cannot re-parent. |
 | `insert-node --id --type --label (--after\|--before\|--branch-of) [--zone --command --chore-kind --importance]` | Insert + splice edges deterministically; the DAG is re-checked before write. |
 | `comment --node <id> --text <t> [--source --kind --refs]` | Append a timestamped comment. |
-| `chores [--list] [--json]` | List the flow's chore nodes (status · importance · kind · anchor · ref). |
+| `chores [--at <node>] [--list] [--json]` | List the flow's chore nodes (status · importance · kind · anchor · ref). `--at <node>` filters to chores anchored at that node — the position-aware "due at `<node>`" read. |
 | `event <name> [--value --type \| --kind --description]` | Append a manual or duck-typed custom event. |
 | `render [--output --check --against]` | Render the flow to deterministic markdown (below). |
 
@@ -205,6 +205,18 @@ harness flow insert-node --slug my-flow --id validate --type tasks --label Valid
 ```bash
 harness flow chores --slug my-flow            # a table: status · importance · kind · anchor · ref
 harness flow chores --slug my-flow --json     # the same as a machine-readable envelope
+harness flow chores --slug my-flow --at plan  # only chores ANCHORED at `plan` — the "due at <node>" read
+```
+
+**"What's due *here*?"** — a chore is *anchored* to the spine node it belongs to (its
+`branch_of`, else its first predecessor). `nav show` surfaces the chores anchored at the
+current `nav.now` as a `due_chores` array, so a driver can deterministically see which
+upkeep belongs to the node it's on — an anchored chore is a check, not a floating box
+(a chore with no anchor renders disconnected and has no deterministic run point):
+
+```bash
+harness flow nav show --slug my-flow --json
+# … "due_chores": [ { id, label, status, kind, importance, command, anchor, runnable }, … ]
 ```
 
 ### Chores on the rail
