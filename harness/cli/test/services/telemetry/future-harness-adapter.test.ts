@@ -24,8 +24,16 @@ import {
  * module WITHOUT changing the segment schema or capture core. Proven three ways:
  * (1) a partial-capability future adapter serializes to a schema-shaped, all-
  * null-filled segment; (2) the null-default safety net handles any unknown
- * harness; (3) the REAL capture-service consumes an arbitrary adapter and writes
- * a valid segment buffer — no edit to capture-service.ts needed.
+ * harness; (3) the REAL capture-service consumes an arbitrary adapter (for an
+ * already-detected harness) and writes a valid segment — no edit to
+ * capture-service.ts needed.
+ *
+ * Scope note (companion F003): detecting a brand-NEW harness *id* requires
+ * extending `HARNESS_ENV_CHAIN` in capture-service — a documented capture-service
+ * concern, NOT a capability-seam change. AC-12's "no core change" guarantee is
+ * about the adapter/capability layer (proofs 1+2) + the null-default safety net;
+ * proof 3 narrowly shows the core consumes an injected adapter unmodified, with
+ * the harness still reported by detection.
  */
 
 const REPO = '/repo';
@@ -96,7 +104,7 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     expect(caps.tools).toBeNull();
   });
 
-  it('capture-service consumes an arbitrary adapter and writes a valid segment (no core change)', () => {
+  it('capture-service consumes an arbitrary adapter for an already-detected harness (no core change)', () => {
     const fs = new FakeFs({});
     const deps: CaptureDeps = {
       fs,
@@ -115,7 +123,12 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     expect(written).not.toBeNull();
     const seg = JSON.parse(written as string);
     expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+    // The injected adapter's capability flows through unchanged...
     expect(seg.tools).toEqual({ AcmeTool: 2 });
     expect(seg.tokens).toBeNull();
+    // ...but detection still reports the env-detected harness (F003): a NEW
+    // harness *id* would need a HARNESS_ENV_CHAIN extension (capture-service
+    // concern), which is out of the capability-seam AC-12 scope this proves.
+    expect(seg.harness).toBe('claude-code');
   });
 });
