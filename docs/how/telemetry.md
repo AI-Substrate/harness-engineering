@@ -1,9 +1,10 @@
 # Harness telemetry
 
 How the harness captures a **counts-only**, per-session telemetry `segment` on
-every command, buffers it out of your working tree, and flushes it to a single
-out-of-tree git ref for the eng-thrive measurement program — and the kill-switch,
-privacy guarantees, offline behaviour, and known limitations you should know.
+every command, buffers it out of your working tree, and flushes it to
+per-session, date-sharded out-of-tree git refs for the eng-thrive measurement
+program — plus how it is pushed (manually, or automatically on `checks`), how to
+disable it, the structure it takes, and the privacy / offline guarantees.
 
 > **This is the sensor, not the analyst.** Telemetry **emits + commits** faithful
 > counts. It builds no scanner, no dashboard, no correlation. Downstream
@@ -78,13 +79,19 @@ home directory or machine layout leaks). For example, a write to
 `/Users/alex/.claude/projects/abc/memory/note.md` is recorded as `note.md`,
 while a write to `harness/cli/src/app.ts` keeps its full repo-relative path.
 
-## The kill-switch
+## Disabling telemetry
 
-Set `HARNESS_NO_TELEMETRY=1` to disable capture **and** sync entirely — zero side
-effects, no buffer writes, no ref writes. Capture is on by default (unset).
+Two switches, broad and narrow. Both are environment variables (telemetry is on
+by default when unset):
+
+| Variable | Effect |
+|---|---|
+| `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes, zero side effects. The hard kill-switch. |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Auto-sync off only** — capture and **manual** `harness telemetry sync` still work, but `checks` will **not** auto-push (it falls back to a passive nudge). |
 
 ```bash
-export HARNESS_NO_TELEMETRY=1   # this shell captures nothing
+export HARNESS_NO_TELEMETRY=1            # this shell captures and pushes nothing
+export HARNESS_NO_TELEMETRY_AUTOSYNC=1   # still captures; checks won't auto-push, sync manually
 ```
 
 ## Plan links
@@ -116,6 +123,43 @@ date+session hierarchy lives in the ref name, and the date is taken from each
 segment's own capture timecode (so a session that crosses midnight splits cleanly
 into one shard per day). Each shard ref is append-only, so re-syncing the same
 session/date extends its history.
+
+### Automatic sync on `checks`
+
+You rarely need to run sync by hand. The two **well-known** commands carry
+telemetry housekeeping, surfaced as an additive `housekeeping[]` field on their
+JSON envelope (and one stderr line each in human mode) — they never change the
+command's own status or exit code:
+
+| Command | Behaviour |
+|---|---|
+| `checks` | **Auto-pushes** buffered telemetry (best-effort), unless disabled. `checks` is the wrap-up gate, so it is the natural flush point. |
+| `boot` · `doctor` | **Nudge only** — if telemetry is unpushed they warn you to run `harness telemetry sync`; they never push. |
+
+Because the capture preamble runs **before** every command's body, by the time
+`checks` reaches its auto-push the segment for that run is already buffered —
+**capture strictly precedes push**. The auto-push is the same `harness telemetry
+sync` flush, just invoked for you.
+
+It is **defensive by contract**: any failure (offline, no auth, a hung push —
+bounded by a timeout) is *reported*, never thrown, and never fails `checks`:
+
+```json
+// checks succeeded; telemetry flushed alongside it
+"housekeeping": [{ "kind": "telemetry-synced", "message": "auto-pushed 4 telemetry segment(s)",
+                   "details": { "count": 4, "sessions": 1 } }]
+
+// checks ran; the auto-push could not land — reported, checks unaffected
+"housekeeping": [{ "kind": "telemetry-autosync-failed", "message": "telemetry auto-sync failed: …",
+                   "command": "harness telemetry sync" }]
+
+// boot/doctor (or checks with autosync disabled) with a backlog
+"housekeeping": [{ "kind": "telemetry-unpushed", "message": "4 telemetry segment(s) not yet pushed",
+                   "command": "harness telemetry sync", "details": { "count": 4, "sessions": 1 } }]
+```
+
+To keep the auto-push but silence it, or to turn it off, see
+[Disabling telemetry](#disabling-telemetry).
 
 ### Team scale — many engineers, one repo
 

@@ -288,9 +288,10 @@ Alongside the `harness-bypass` / `harness-change` records above, the harness now
 emits a per-session **`segment`** on every command (plan 034) — an ambient,
 counts-only sensor that makes *how* teams build with agents measurable. Like the
 records, it is a **contract the eng-thrive measures consume**, not a computation
-this repo performs. The mechanics (capture model, kill-switch, sync, offline
-behaviour, path semantics) live in the [telemetry guide](./telemetry.md); what
-matters here is the measurement contract.
+this repo performs. The mechanics (capture model, the disable switches, sync —
+manual and auto-on-`checks` — the dated shard refs, offline behaviour, path
+semantics) live in the [telemetry guide](./telemetry.md); what matters here is the
+measurement contract.
 
 **What the measures may read.** The enumerated field set is the segment's plan
 (`docs/plans/034-harness-telemetry-collection/…` `### Segment Schema`) and the

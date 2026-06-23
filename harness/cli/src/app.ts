@@ -48,6 +48,7 @@ import {
 } from './services/record/registry.js';
 import { coreTelemetryAdapters } from './services/telemetry/adapters/index.js';
 import { type CaptureDeps, captureTelemetry } from './services/telemetry/capture-service.js';
+import { buildHousekeepingDecorator } from './services/telemetry/housekeeping.js';
 import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
@@ -226,19 +227,30 @@ export function buildProgram(
 
   const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
 
-  // Cross-cutting: register the update banner ONCE so every command's exit
-  // chokepoint surfaces a known update (JSON field + human stderr line) from a
-  // single sync cache read. No-op until the cache holds a newer version (AC9);
-  // with no resolvable home (test fakes) it never fires.
-  setBannerDecorator(
-    buildBannerDecorator({
-      fs: deps.fs,
-      env: deps.env,
-      installed: version,
-      mode: io.mode,
-      writers: io.writers,
-    }),
-  );
+  // Cross-cutting: register the exit-chokepoint decorators ONCE so every
+  // command's exit surfaces (a) a known update and (b) telemetry housekeeping for
+  // the well-known boot/checks commands. Composed into one decorator (the slot
+  // holds a single fn). Both are no-ops for ordinary commands / when nothing is
+  // pending; with no resolvable home (test fakes) the update banner never fires.
+  const banner = buildBannerDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    installed: version,
+    mode: io.mode,
+    writers: io.writers,
+  });
+  const housekeeping = buildHousekeepingDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    proc: deps.proc,
+    gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    mode: io.mode,
+    writers: io.writers,
+  });
+  setBannerDecorator((env) => {
+    banner(env);
+    housekeeping(env);
+  });
 
   registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
@@ -320,18 +332,29 @@ export async function main(
   const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
   const port = createOutputPort(io.mode, io.writers);
 
-  // Register the update banner BEFORE any exit — incl. the pre-build discovery /
-  // registry-validation error envelopes below, which exit before buildProgram
-  // (which re-registers it) runs (companion F004). Idempotent: same decorator.
-  setBannerDecorator(
-    buildBannerDecorator({
-      fs: deps.fs,
-      env: deps.env,
-      installed: version,
-      mode: io.mode,
-      writers: io.writers,
-    }),
-  );
+  // Register the exit-chokepoint decorators BEFORE any exit — incl. the pre-build
+  // discovery / registry-validation error envelopes below, which exit before
+  // buildProgram (which re-registers them) runs (companion F004). Housekeeping is
+  // a no-op here (those early exits are never boot/checks) but kept for symmetry.
+  const preBuildBanner = buildBannerDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    installed: version,
+    mode: io.mode,
+    writers: io.writers,
+  });
+  const preBuildHousekeeping = buildHousekeepingDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    proc: deps.proc,
+    gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    mode: io.mode,
+    writers: io.writers,
+  });
+  setBannerDecorator((env) => {
+    preBuildBanner(env);
+    preBuildHousekeeping(env);
+  });
 
   let registry: VerbRegistry;
   try {

@@ -44,7 +44,7 @@ Resist the urge to track everything; more than a handful of metrics dilutes focu
 - **Quality** — change-failure rate or bugs-reaching-backlog *(outcome, feeds DORA)*; encoded-mitigation rate *(compounding)*.
 - **Thriving** — a "bad developer day" pulse: build failures, lost focus, toil.[^engthrive] *(guardrail — if this slips, something is wrong even if the rest improves.)*
 
-Activity counts like tokens-per-run or skills usage are fine as **diagnostics** — they help explain *why* — but they are never what you steer by.
+Activity counts like tokens-per-run or skills usage are fine as **diagnostics** — they help explain *why* — but they are never what you steer by. These come from the harness's automatic **telemetry sensor**: a counts-only `segment` captured on every command, buffered out of your working tree, and flushed to per-session, date-sharded out-of-tree git refs — pushed automatically when you run `checks`, or by hand with `harness telemetry sync`, and disable-able per shell. It is team/repo-grained by construction (never per-person) and never touches your branch or PR. How it's collected, pushed, structured, and turned off lives in [Harness telemetry](../how/telemetry.md).
 
 The optimistic claim — *"when the harness is used, fewer bugs reach the backlog"* — is a **hypothesis, not a promise**. The measures above are exactly what let a team check it on their own data: as bypass falls and encoded-mitigation rises, you'd *expect* change-failure and backlog defects to improve in a later window. Line the series up and find out. That is what evidence looks like instead of a promise.
 
@@ -57,6 +57,7 @@ The optimistic claim — *"when the harness is used, fewer bugs reach the backlo
 
 ## Keep reading
 - The two first-class measures in detail — bypass rate, change rate, the PR denominator, DORA correlation, and the anti-gaming guardrails: [`docs/how/harness-value-measures.md`](../how/harness-value-measures.md).
+- The telemetry sensor that feeds the activity diagnostics — capture, push (manual + auto-on-`checks`), the segment structure, and how to disable it: [`docs/how/telemetry.md`](../how/telemetry.md).
 - How friction becomes an encoded fix in the first place: [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md).
 
 [^engthrive]: Houck, B., Bozarth, T., Liu, D., Carignan, D. — *EngThrive: Make It Fast and Easy to Do Great Work*, Microsoft Research, 2026. arXiv:2605.04259 · <https://www.microsoft.com/en-us/research/publication/engthrive-make-it-fast-and-easy-to-do-great-work/>. Source of the burnout/PR paradox, the ~15%-of-day-coding finding, the bad-developer-days concept, the measures-vs-metrics and activity-vs-outcomes distinctions, the Speed/Ease/Quality + Thriving model, the onboarding result, and the design-for-gaming principle.

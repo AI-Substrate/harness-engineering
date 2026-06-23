@@ -14,14 +14,24 @@ import { type GitWritePort, TELEMETRY_AUTHOR, type TreeEntry } from './git-write
  *
  * `cwd` is injectable (default `process.cwd()`) so the integration test can point
  * the adapter at a throwaway repo; the composition root uses `new ExecGitWrite()`.
+ *
+ * `timeoutMs` bounds every git invocation (default 10s) — a defensive guard so a
+ * network black-hole during a push can never hang the host command (notably the
+ * `checks` auto-sync). On timeout `spawnSync` returns a non-zero/`null` status, so
+ * the affected method throws and the fail-safe sync-service rolls back + retries
+ * next time.
  */
 export class ExecGitWrite implements GitWritePort {
-  constructor(private readonly cwd?: string) {}
+  constructor(
+    private readonly cwd?: string,
+    private readonly timeoutMs = 10_000,
+  ) {}
 
   private run(args: string[], input?: string, extraEnv?: NodeJS.ProcessEnv) {
     return spawnSync('git', args, {
       cwd: this.cwd,
       encoding: 'utf8',
+      timeout: this.timeoutMs,
       ...(input !== undefined && { input }),
       ...(extraEnv && { env: { ...process.env, ...extraEnv } }),
     });

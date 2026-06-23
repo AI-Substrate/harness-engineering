@@ -53,7 +53,7 @@
     {
       "id": "telemetry",
       "title": "Harness telemetry",
-      "summary": "Counts-only per-session `segment` capture on every command, the gitignored buffer, `harness telemetry sync` to the orphan ref, the kill-switch, and the privacy/offline guarantees.",
+      "summary": "Counts-only per-session `segment` capture on every command, the gitignored buffer, `harness telemetry sync` (and auto-sync on `checks`) to per-session dated shard refs, the disable switches, and the privacy/offline guarantees.",
       "audience": "both",
       "sourcePath": "docs/how/telemetry.md"
     }

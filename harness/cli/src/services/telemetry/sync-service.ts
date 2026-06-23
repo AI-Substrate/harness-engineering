@@ -104,6 +104,46 @@ function buildMessage(
   return `telemetry: flush ${segments} segment(s) — ${datePath}/${session}\n\n${planLine}\n`;
 }
 
+/** A read-only snapshot of what `syncTelemetry` would flush right now. */
+export interface PendingSummary {
+  /** Buffered segments past their session watermark (i.e. not yet pushed). */
+  segments: number;
+  /** Sessions contributing at least one such segment. */
+  sessions: number;
+}
+
+/**
+ * Count buffered-but-unpushed telemetry WITHOUT touching git or the buffer — the
+ * read-only probe the `boot`/`checks` housekeeping decorator uses to decide
+ * whether to nudge. Fail-safe: any error → `{ segments:0, sessions:0 }` (a probe
+ * must never disturb the host command).
+ */
+export function pendingTelemetry(deps: { fs: FsPort; proc: ProcessPort }): PendingSummary {
+  try {
+    const cwd = toPosix(deps.proc.cwd());
+    const telDir = telemetryDir(cwd);
+    const sessions = deps.fs.readdir(telDir).filter((n) => !n.includes('.'));
+    let segments = 0;
+    let withPending = 0;
+    for (const session of sessions) {
+      const already = readFlushed(deps.fs, flushedPathFor(telDir, session));
+      const count = deps.fs
+        .readdir(posixJoin(telDir, session))
+        .map((n) => /^(\d+)\.json$/.exec(n))
+        .filter((m): m is RegExpExecArray => m !== null)
+        .map((m) => Number.parseInt(m[1], 10))
+        .filter((seq) => seq > already).length;
+      if (count > 0) {
+        segments += count;
+        withPending++;
+      }
+    }
+    return { segments, sessions: withPending };
+  } catch {
+    return { segments: 0, sessions: 0 };
+  }
+}
+
 /** One shard = one (capture-date, session) group → one ref → one commit. */
 interface Shard {
   datePath: string;
