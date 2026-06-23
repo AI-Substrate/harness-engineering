@@ -23,22 +23,23 @@ export interface TelemetryActDeps {
 /**
  * Register the `telemetry` command family (plan 034 Phase 4). A CORE command
  * (reserved, like `flow`/`record`/`observe`) mirroring the `flow` family shape.
- * Its `sync` verb flushes the gitignored telemetry buffer to the orphan ref
- * `refs/harness-telemetry` via plumbing — no business logic here; `sync-service`
- * does the work, this maps the outcome onto the Envelope + exit code (ok → 0;
- * a failed push / ref-update → error exit 1, the buffer left intact for retry).
+ * Its `sync` verb flushes the gitignored telemetry buffer to per-(date,session)
+ * shard refs under `refs/harness-telemetry/` via plumbing — no business logic
+ * here; `sync-service` does the work, this maps the outcome onto the Envelope +
+ * exit code (ok → 0; a failed shard push / ref-update → error exit 1, the buffer
+ * left intact for retry).
  */
 export function registerTelemetryAct(program: Command, io: CliIo, deps: TelemetryActDeps): void {
   const telemetry = program
     .command('telemetry')
     .description(
-      'Telemetry sync — flush counts-only segments to the orphan ref refs/harness-telemetry',
+      'Telemetry sync — flush counts-only segments to per-session dated refs under refs/harness-telemetry/',
     );
 
   telemetry
     .command('sync')
     .description(
-      'Flush buffered telemetry segments to refs/harness-telemetry (single-refspec push, best-effort)',
+      'Flush buffered telemetry to refs/harness-telemetry/<date>/<session> shards (best-effort per-shard push)',
     )
     .action(() => {
       const result = syncTelemetry({
@@ -85,7 +86,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           next_action:
             result.segments === 0
               ? 'Nothing buffered to flush.'
-              : 'Segments flushed to refs/harness-telemetry; the central scraper fetches that ref.',
+              : 'Segments flushed to refs/harness-telemetry/<date>/<session>; the scraper fetches refs/harness-telemetry/* in one pass.',
         },
       );
       const port: OutputPort =

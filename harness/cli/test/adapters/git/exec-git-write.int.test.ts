@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ExecGitWrite } from '../../../src/adapters/git/exec-git-write.js';
-import { TELEMETRY_REF } from '../../../src/adapters/git/git-write-port.js';
+import { telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
+
+/** A representative shard ref — the real plumbing is ref-agnostic; this exercises a dated per-session ref. */
+const TELEMETRY_REF = telemetryRefFor('2026/03/23', 'sessA');
 
 /**
  * T002 (plan 034 Phase 4 · 4.2 · AC-06/07/13) — the REAL git plumbing against a

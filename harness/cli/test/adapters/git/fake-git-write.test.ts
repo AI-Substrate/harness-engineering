@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FakeGitWrite } from '../../../src/adapters/git/fake-git-write.js';
-import { TELEMETRY_AUTHOR, TELEMETRY_REF } from '../../../src/adapters/git/git-write-port.js';
+import { TELEMETRY_AUTHOR, telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
+
+/** A representative shard ref — the GitWritePort contract is ref-agnostic, so any concrete ref exercises it. */
+const TELEMETRY_REF = telemetryRefFor('2026/03/23', 'sessA');
 
 /**
  * T001 (plan 034 Phase 4 · 4.1 · AC-07/13) — the GitWritePort plumbing contract,

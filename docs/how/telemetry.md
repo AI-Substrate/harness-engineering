@@ -22,12 +22,15 @@ skills, tools, subagents, files, plan links, model/branch/timecode — to a
 **gitignored buffer**. Nothing is pushed on the hot path.
 
 A separate, explicit step — `harness telemetry sync` — flushes the buffered
-segments into one **orphan git ref**, `refs/harness-telemetry`, via plumbing
-(never touching your index or working tree), and pushes that single ref.
+segments into **per-(capture-date, session) shard refs** under
+`refs/harness-telemetry/`, via plumbing (never touching your index or working
+tree), and pushes each shard. Sharding the ref namespace — rather than funnelling
+a whole team into one shared ref — is what makes concurrent writers safe (see
+[Team scale](#team-scale--many-engineers-one-repo)).
 
 ```
-harness <verb>   ──preamble──▶  .harness/temp/telemetry/<session>/<seq>.json   (gitignored buffer)
-harness telemetry sync          ──plumbing──▶  refs/harness-telemetry  ──push──▶  central scraper
+harness <verb>   ──preamble──▶  .harness/temp/telemetry/<session>/<seq>.json          (gitignored buffer)
+harness telemetry sync          ──plumbing──▶  refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>  ──push──▶  central scraper
 ```
 
 Two properties make this safe to run on **every** command:
@@ -35,9 +38,11 @@ Two properties make this safe to run on **every** command:
 - **Zero host impact.** Capture is wrapped so it can never change the host
   command's stdout, stderr, or exit code. Any error inside it is swallowed.
 - **PR-invisible.** The buffer lives under `.harness/temp/`, which self-ignores
-  (a nested `.gitignore` of `*`), and the durable write is an orphan ref via
-  plumbing — so `git status --porcelain` is byte-identical across a capture and a
-  flush. Telemetry never appears in a feature branch or a PR diff.
+  (a nested `.gitignore` of `*`), and the durable write is a ref under
+  `refs/harness-telemetry/` via plumbing — so `git status --porcelain` is
+  byte-identical across a capture and a flush. PR/merge-base algorithms only walk
+  `refs/heads/*` and `refs/tags/*`, so telemetry never appears in a feature branch
+  or a PR diff.
 
 ## What a segment records (counts only)
 
@@ -102,29 +107,78 @@ from a `ship` step, or on a schedule):
 harness telemetry sync
 ```
 
-It flushes every buffered segment past each session's watermark into one commit
-on `refs/harness-telemetry` and pushes that single refspec
-(`refs/harness-telemetry:refs/harness-telemetry`) using your **ambient git
-credentials** — the CLI handles no tokens. The orphan ref accumulates an
-append-only history (one commit per flush; segments live under
-`<session>/<seq>.json` in the commit tree), so a central scraper fetches **one
-ref per repo** to collect everything.
+It flushes every buffered segment past each session's watermark into
+**per-(capture-date, session) shard refs** —
+`refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>` — one commit per shard, and
+pushes each shard's refspec using your **ambient git credentials** (the CLI
+handles no tokens). Each shard's commit tree is a flat `<seq>.json` set; the
+date+session hierarchy lives in the ref name, and the date is taken from each
+segment's own capture timecode (so a session that crosses midnight splits cleanly
+into one shard per day). Each shard ref is append-only, so re-syncing the same
+session/date extends its history.
+
+### Team scale — many engineers, one repo
+
+A single shared, mutable `refs/harness-telemetry` does **not** work for a team:
+many engineers pushing from independent clones is a distributed write-contention
+problem — every pusher after the first gets a non-fast-forward rejection, and
+their telemetry never drains. **Sharding the ref namespace by (date, session)
+solves this structurally:** no two writers ever target the same ref, so every
+push is a clean create-or-fast-forward — no fetch, no merge, no retry. This is the
+canonical git pattern for "many writers append out-of-tree metadata" (cf. Gerrit
+`refs/changes/*`, GitHub `refs/pull/*`).
+
+The shard key is the **session** (an opaque per-session id, never a person —
+[§ Attribution](#attribution--teamrepo-only)), so sharding introduces no new
+identity exposure beyond what the buffer paths already carry.
+
+**Collecting it upstream is one fetch, not many.** A globbed refspec is a single
+network round-trip — the server advertises every matching ref at once:
+
+```bash
+git fetch origin '+refs/harness-telemetry/*:refs/harness-telemetry/*'   # all sessions, one fetch
+```
+
+Ref count stays cheap (a ref is just a name + a SHA; problems only begin in the
+tens-of-thousands), and the date prefix is the **retention/prune key** — a scraper
+drops a day after ingesting it:
+
+```bash
+git push origin --delete 'refs/harness-telemetry/2026/03/23/<session>'   # prune after ingest
+```
+
+Treat the refs as an **ingestion buffer, not the system of record**: long-term
+storage lives in the downstream telemetry system; `git gc` reclaims the objects
+once a pruned ref is unreachable.
+
+**Keeping it out of day-to-day git.** The namespace is already invisible to
+branch/PR operations. To also hide it from ordinary clones/fetches, set
+server-side:
+
+```
+git config uploadpack.hideRefs refs/harness-telemetry/   # (or transfer.hideRefs / receive.hideRefs)
+```
+
+The scraper simply doesn't apply the filter.
 
 ### Offline-safe
 
-A failed push (offline, no auth, non-fast-forward) is **not** an error for the
-host and **does not lose data**: the buffer is left intact (its per-session
-`<session>.flushed` watermark is not advanced) and the local ref is rolled back,
-so the next `harness telemetry sync` retries the same segments cleanly. The
-explicit verb reports a non-zero exit so a CI/cron caller can see the push didn't
-land; the buffer is preserved either way.
+A failed shard push (offline, no auth) is **not** an error for the host and
+**does not lose data**: that shard's buffer is left intact (the per-session
+`<session>.flushed` watermark is not advanced past it) and its local ref is rolled
+back, so the next `harness telemetry sync` retries the same segments cleanly.
+Shards are pushed in capture order and the watermark advances only across the
+ones that landed, so a mid-flush failure never strands or double-flushes a
+segment. The explicit verb reports a non-zero exit so a CI/cron caller can see a
+push didn't land; the buffer is preserved either way.
 
 ## Attribution — team/repo only
 
-Telemetry is **team/repo-grained, never per-individual** (Constitution P12). The
-orphan-ref commit author **and** committer are a fixed non-individual identity
+Telemetry is **team/repo-grained, never per-individual** (Constitution P12). Every
+telemetry commit's author **and** committer are a fixed non-individual identity
 (`harness-telemetry <noreply@…>`); your `git config user.email` is never read or
-stored. The optional `agent` provenance field follows the house pattern (nullable,
+stored. The shard refs are keyed by **session** (an opaque per-session id), never
+by engineer — sharding is for write-isolation, not attribution. The optional `agent` provenance field follows the house pattern (nullable,
 `null` when unset) and is never reported per person. See
 [Harness value measures § Team-level only](./harness-value-measures.md#d-anti-goodhart-team-level-and-the-under-reporting-defense).
 

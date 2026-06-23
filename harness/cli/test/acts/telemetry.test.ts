@@ -5,9 +5,12 @@ import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeGitWrite } from '../../src/adapters/git/fake-git-write.js';
-import { TELEMETRY_REF } from '../../src/adapters/git/git-write-port.js';
+import { telemetryRefFor } from '../../src/adapters/git/git-write-port.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
+
+/** The single shard the buffered fixture flushes to (one session, one capture date). */
+const TELEMETRY_REF = telemetryRefFor('2026/06/23', 'sessA');
 
 /*
 Test Doc:
@@ -36,7 +39,11 @@ function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => str
 }
 
 function seg(plans: string[]): string {
-  return `${JSON.stringify({ command: 'flow', plans_touched: plans }, null, 2)}\n`;
+  return `${JSON.stringify(
+    { command: 'flow', timecode: '2026-06-23T11:00:00.000Z', plans_touched: plans },
+    null,
+    2,
+  )}\n`;
 }
 
 describe('registerTelemetryAct — telemetry sync', () => {

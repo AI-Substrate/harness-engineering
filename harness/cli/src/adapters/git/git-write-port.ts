@@ -3,8 +3,9 @@
  * Phase 4). Where {@link GitPort} is read-only informational facts, this writes
  * objects + refs via PLUMBING (`hash-object`/`mktree`/`commit-tree`/`update-ref`)
  * so a telemetry flush never touches the index or working tree (AC-06), and
- * pushes a single refspec best-effort (AC-14). Injected so the sync-service stays
- * unit-testable with `FakeGitWrite` and never shells out to `git`.
+ * pushes each per-(date,session) shard's refspec best-effort (AC-14). Injected so
+ * the sync-service stays unit-testable with `FakeGitWrite` and never shells out to
+ * `git`.
  *
  * §T1 (AC-07/13): the commit author AND committer are forced to the
  * NON-INDIVIDUAL {@link TELEMETRY_AUTHOR} identity inside the adapter — it is
@@ -12,8 +13,41 @@
  * `git config user.email`.
  */
 
-/** The single out-of-tree ref every repo's telemetry accumulates into (orphan history). */
-export const TELEMETRY_REF = 'refs/harness-telemetry';
+/**
+ * The out-of-tree ref NAMESPACE every repo's telemetry shards into. Telemetry is
+ * NOT one shared mutable ref — many engineers pushing to a single ref from
+ * independent clones is a distributed write-contention problem (every second
+ * pusher gets a non-fast-forward rejection). Instead each flush targets its own
+ * ref under this prefix (see {@link telemetryRefFor}), the canonical git answer
+ * for "many writers append out-of-tree metadata" (cf. Gerrit `refs/changes/*`,
+ * GitHub `refs/pull/*`).
+ */
+export const TELEMETRY_REF_PREFIX = 'refs/harness-telemetry';
+
+/**
+ * The wildcard a central scraper fetches in ONE round-trip to collect every
+ * session's telemetry — `git fetch origin '<glob>:<glob>'` is a single network
+ * operation, not one fetch per ref. Servers can also keep the namespace out of
+ * ordinary clones via `uploadpack.hideRefs=refs/harness-telemetry/`.
+ */
+export const TELEMETRY_REF_GLOB = `${TELEMETRY_REF_PREFIX}/*`;
+
+/**
+ * The ref a single flush targets:
+ * `refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>` (`datePath` = `YYYY/MM/DD`).
+ *
+ * Sharding by (capture-date, session) means no two writers ever target the same
+ * ref, so a team's concurrent pushes never contend — each push is a clean
+ * create-or-fast-forward, no fetch/merge/retry needed. The `session` is the
+ * opaque per-session id (NOT an individual identity — §T1/P12; same granularity
+ * already in the buffer paths). The date prefix doubles as the retention/prune
+ * key (a scraper can drop `refs/harness-telemetry/<YYYY>/<MM>/<DD>/*` after
+ * ingesting that day). Each ref's commit tree is a flat `<seq>.json` set — the
+ * date+session hierarchy lives in the ref name, not the tree.
+ */
+export function telemetryRefFor(datePath: string, session: string): string {
+  return `${TELEMETRY_REF_PREFIX}/${datePath}/${session}`;
+}
 
 /**
  * The non-individual commit identity (§T1, ratified 2026-06-23). The ONLY

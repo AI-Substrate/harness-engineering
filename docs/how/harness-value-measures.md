@@ -342,9 +342,10 @@ encoded-mitigation *ratio* (§a) needs — *was the friction that got encoded th
 friction where the work actually happened?* — without ever naming a person.
 
 **Team/repo only — the same governance as the rates.** The segment carries **no
-per-individual identity**. Its durable commits on `refs/harness-telemetry` are
-authored by a fixed non-individual identity (`harness-telemetry <noreply@…>`); a
-contributor's `git config user.email` is never read or stored. The optional
+per-individual identity**. Its durable commits on the `refs/harness-telemetry/*`
+shard refs are authored by a fixed non-individual identity
+(`harness-telemetry <noreply@…>`); a contributor's `git config user.email` is
+never read or stored, and the shards are keyed by session (not by engineer). The optional
 `agent` provenance field is the *same* nullable, aggregate-only key described in
 [§ Team-level only](#team-level-only--never-individual-attribution) — never a
 per-person scoreboard. Token count is on the explicit do-**not**-use-for-individuals
@@ -372,8 +373,8 @@ later.
 ## See also
 
 - [Harness telemetry](./telemetry.md) — the counts-only per-session `segment`
-  sensor: capture model, kill-switch, `harness telemetry sync`, the orphan ref,
-  and the privacy/offline guarantees.
+  sensor: capture model, kill-switch, `harness telemetry sync`, the per-session
+  dated shard refs, and the privacy/offline guarantees.
 - [Record and record types](./record-and-record-types.md) — the `harness record
   <type>` command, the two new core types' body-key contracts, and the
   provenance header section.
