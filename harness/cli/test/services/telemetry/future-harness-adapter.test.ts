@@ -1,0 +1,121 @@
+import { describe, expect, it } from 'vitest';
+import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
+import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
+import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
+import { FakeGit } from '../../../src/adapters/git/fake-git.js';
+import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
+import {
+  type HarnessAdapter,
+  nullDefaultAdapter,
+} from '../../../src/services/telemetry/adapters/harness-adapter.js';
+import {
+  type CaptureDeps,
+  captureTelemetry,
+} from '../../../src/services/telemetry/capture-service.js';
+import { sessionDirFor } from '../../../src/services/telemetry/cursor.js';
+import {
+  SEGMENT_FIELD_KEYS,
+  type SegmentInput,
+  serializeSegment,
+} from '../../../src/services/telemetry/segment.js';
+
+/**
+ * T007 (plan 2.6 · AC-12) — a NEW harness adapter registers as a capability
+ * module WITHOUT changing the segment schema or capture core. Proven three ways:
+ * (1) a partial-capability future adapter serializes to a schema-shaped, all-
+ * null-filled segment; (2) the null-default safety net handles any unknown
+ * harness; (3) the REAL capture-service consumes an arbitrary adapter and writes
+ * a valid segment buffer — no edit to capture-service.ts needed.
+ */
+
+const REPO = '/repo';
+
+/** A throwaway adapter for a harness that doesn't exist yet — implements ONE capability. */
+const futureAdapter: HarnessAdapter = {
+  harness: 'acme-harness-9000',
+  handles: (id) => id === 'acme-harness-9000',
+  extract: () => ({ tools: { AcmeTool: 2 } }), // every other capability omitted/unimplemented
+};
+
+describe('T007 — future-harness adapter (AC-12)', () => {
+  it('partial caps serialize to a schema-shaped, all-null-filled segment', () => {
+    const caps = futureAdapter.extract({
+      env: new FakeEnv({}, '/home/x'),
+      fs: new FakeFs({}),
+      repoRoot: REPO,
+      harness: 'acme-harness-9000',
+      window: { since: 'session-start', from: 0, to: 0 },
+    });
+    const input: SegmentInput = {
+      command: 'flow',
+      harness: 'acme-harness-9000',
+      harness_session_id: 'sess-acme',
+      timecode: '2026-06-23T00:00:00Z',
+      window: { since: 'session-start', from: 0, to: 0 },
+      branch: null,
+      branch_changed: false,
+      tokens: caps.tokens,
+      models: caps.models ?? {},
+      effort: caps.effort,
+      skills: caps.skills ?? {},
+      tools: caps.tools ?? {},
+      subagents: caps.subagents ?? [],
+      files: caps.files ?? { written: [], edited: [] },
+      plans_touched: [],
+      events: {
+        compactions: caps.compactions ?? [],
+        api_errors: caps.api_errors ?? 0,
+        local_commands: caps.local_commands ?? 0,
+      },
+      thinking: caps.thinking,
+    };
+    const seg = serializeSegment(input, REPO);
+
+    // schema-shaped: exactly the enumerated field set, version pinned
+    expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+    expect(seg.schema_version).toBe('1.0');
+    // the one implemented capability survives; everything unimplemented is null/empty
+    expect(seg.tools).toEqual({ AcmeTool: 2 });
+    expect(seg.tokens).toBeNull();
+    expect(seg.thinking).toBeNull();
+    expect(seg.skills).toEqual({});
+    expect(seg.subagents).toEqual([]);
+    expect(seg.files).toEqual({ written: [], edited: [] });
+  });
+
+  it('the null-default safety net handles ANY unknown harness id', () => {
+    expect(nullDefaultAdapter.handles('acme-harness-9000')).toBe(true);
+    const caps = nullDefaultAdapter.extract({
+      env: new FakeEnv({}, '/home/x'),
+      fs: new FakeFs({}),
+      repoRoot: REPO,
+      harness: 'acme-harness-9000',
+      window: { since: 'session-start', from: 0, to: 0 },
+    });
+    expect(caps.tokens).toBeNull();
+    expect(caps.tools).toBeNull();
+  });
+
+  it('capture-service consumes an arbitrary adapter and writes a valid segment (no core change)', () => {
+    const fs = new FakeFs({});
+    const deps: CaptureDeps = {
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1' }, '/home/x'),
+      clock: new FakeClock('2026-06-23T04:58:00.000Z'),
+      proc: new FakeProcess({}, REPO),
+      git: new FakeGit({ isRepo: true, branch: 'b', remoteUrl: 'github.com/x/y' }),
+      command: 'flow',
+      // A brand-new adapter, dropped into the array — capture-service is untouched.
+      adapters: [{ ...futureAdapter, handles: () => true }],
+    };
+    captureTelemetry(deps);
+
+    const entryPath = `${sessionDirFor(REPO, 'sess1')}/1.json`;
+    const written = fs.readText(entryPath);
+    expect(written).not.toBeNull();
+    const seg = JSON.parse(written as string);
+    expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+    expect(seg.tools).toEqual({ AcmeTool: 2 });
+    expect(seg.tokens).toBeNull();
+  });
+});
