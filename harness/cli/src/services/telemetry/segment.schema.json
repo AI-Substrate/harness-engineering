@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-1.0.json",
+  "title": "Harness telemetry segment (counts-only)",
+  "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "command",
+    "harness",
+    "harness_session_id",
+    "timecode",
+    "window",
+    "branch",
+    "branch_changed",
+    "tokens",
+    "models",
+    "effort",
+    "skills",
+    "tools",
+    "subagents",
+    "files",
+    "plans_touched",
+    "events",
+    "thinking"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "1.0" },
+    "command": { "type": "string" },
+    "harness": { "type": "string" },
+    "harness_session_id": { "type": "string" },
+    "timecode": { "type": "string" },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["since", "from", "to"],
+      "properties": {
+        "since": { "enum": ["session-start", "last-command"] },
+        "from": { "type": "integer" },
+        "to": { "type": "integer" }
+      }
+    },
+    "branch": { "type": ["string", "null"] },
+    "branch_changed": { "type": "boolean" },
+    "tokens": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "input",
+        "output",
+        "cache_create",
+        "cache_read",
+        "total",
+        "subagent_tokens",
+        "grand_total"
+      ],
+      "properties": {
+        "input": { "type": "integer" },
+        "output": { "type": "integer" },
+        "cache_create": { "type": "integer" },
+        "cache_read": { "type": "integer" },
+        "total": { "type": "integer" },
+        "subagent_tokens": { "type": "integer" },
+        "grand_total": { "type": "integer" }
+      }
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["turns", "output_tokens"],
+        "properties": {
+          "turns": { "type": "integer" },
+          "output_tokens": { "type": "integer" }
+        }
+      }
+    },
+    "effort": { "type": ["string", "null"] },
+    "skills": {
+      "type": "object",
+      "additionalProperties": { "type": "integer" }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": { "type": "integer" }
+    },
+    "subagents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "agent_name", "model", "status", "tokens", "tool_uses"],
+        "properties": {
+          "type": { "type": ["string", "null"] },
+          "agent_name": { "type": ["string", "null"] },
+          "model": { "type": ["string", "null"] },
+          "status": { "type": ["string", "null"] },
+          "tokens": { "type": ["integer", "null"] },
+          "tool_uses": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["written", "edited"],
+      "properties": {
+        "written": { "type": "array", "items": { "type": "string" } },
+        "edited": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "plans_touched": { "type": "array", "items": { "type": "string" } },
+    "events": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compactions", "api_errors", "local_commands"],
+      "properties": {
+        "compactions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["trigger", "pre_tokens", "post_tokens"],
+            "properties": {
+              "trigger": { "type": ["string", "null"] },
+              "pre_tokens": { "type": "integer" },
+              "post_tokens": { "type": "integer" }
+            }
+          }
+        },
+        "api_errors": { "type": "integer" },
+        "local_commands": { "type": "integer" }
+      }
+    },
+    "thinking": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["blocks"],
+      "properties": {
+        "blocks": { "type": "integer" }
+      }
+    }
+  }
+}
