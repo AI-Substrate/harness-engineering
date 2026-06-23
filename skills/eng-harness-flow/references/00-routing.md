@@ -50,7 +50,8 @@ Created with `harness flow create harness-adopt --slug <s> --title adopt`.
 
 A cycling flow, re-entered every session. Spine `boot → backpressure → observe →
 drain-gate → retro-drain → retro-harvest → improve`. `drain-gate` is a `decision`;
-`retro` is split into `retro-drain` (post-coding) + `retro-harvest` (post-flight);
+`retro` is split into `retro-drain` (post-coding) + `retro-harvest` (post-flight,
+which also flushes telemetry — § engineering dispatch);
 `improve.next:[]` — **the cycle is a nav RESET** (move `nav.now` back to
 `observe`/`boot`), so the graph stays acyclic. Rail title `[harness-loop]`. The four
 fire nodes carry `command: run /eng-harness-flow --hook <hook>`. Where it lives
@@ -139,6 +140,7 @@ Once the required adoption rungs hold, the router crosses into the loop and disp
 - **Backpressure → `/grill-agent-done` (optional peer skill).** When the `backpressure` survey returns `ABSENT`/`BUILDABLE` sensors, the coach may offer `/grill-agent-done` before architect — a standalone skill in this repo (`skills/grill-agent-done/`) that interrogates and defends the definition of done one claim at a time, lining each against the right proof grade. **Not** a routed stage: the router points at it, exactly as the survey informs but never gates. Skippable; offer once.
 - **Drain before harvest.** At phase/session/plan end, if the observe buffer is non-empty the router routes `--drain` *first* (harvest only reads `.retro.md`, so harvesting a non-drained buffer would miss the latest session). One command per call; the parent calls again for harvest.
 - **Improve is where the loop compounds.** The loop only *compounds* when a retro leads to an encoded improvement; most loop runs encode nothing and that is fine.
+- **Flush telemetry at close (post-flight).** At session/plan end — after the drain/harvest — the router runs `harness telemetry sync`: a best-effort, **no-confirm** push of the counts-only telemetry buffer to its out-of-tree shard refs (`refs/harness-telemetry/<date>/<session>` — never the working tree or a PR; fail-safe and offline-safe, so it can never disturb the host). This is the loop's **guaranteed flush point**, complementing `checks`' build-time auto-push so telemetry is never left stranded by a session that didn't run `checks`. Honour the kill-switches: **skip** entirely when `HARNESS_NO_TELEMETRY=1`, and when `HARNESS_NO_TELEMETRY_AUTOSYNC=1` treat it as a reminder (nudge) rather than a push.
 - **Ambiguous, never guessed.** With >1 candidate plan and no `--plan-dir`, the router returns `ambiguous` and **asks** — it does not guess the loop position from conversation alone.
 
 > **This repo is the worked example.** `harness-engineering` has the CLI **and** two extension packages (`.harness/extensions/validate-harness-flow/` and `.harness/extensions/validate-harnessability/` — each a folder with `extension.ts` + `instructions.md`) **and**, since plan 014, its own governance doc at `.harness/engineering-harness.md` (boot = the CLI's vitest suite via `just test`). S0–S2 hold here; use it as the reference shape when routing other repos.
