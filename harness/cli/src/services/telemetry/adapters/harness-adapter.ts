@@ -24,14 +24,18 @@ import type {
  * Ports-only (P2): an adapter reads through injected `env`/`fs`, never `node:*`.
  */
 
-/** Read-only context an adapter extracts counts from. */
-export interface HarnessContext {
+/** The window-independent source an adapter reads — used to probe the current extent. */
+export interface HarnessSource {
   env: EnvPort;
   fs: FsPort;
   /** Repo root (posix) — for path relativization. */
   repoRoot: string;
   /** The detected harness id this extraction is for. */
   harness: string;
+}
+
+/** Read-only context an adapter extracts counts from (a source + the computed window). */
+export interface HarnessContext extends HarnessSource {
   /** The "since last command" window the cursor computed. */
   window: SegmentWindow;
 }
@@ -63,6 +67,13 @@ export interface HarnessAdapter {
   readonly harness: string;
   /** Does this adapter handle the detected harness id? */
   handles(harnessId: string): boolean;
+  /**
+   * The current extent of the harness's session source (e.g. transcript byte
+   * size), used by the cursor to compute the "since last command" window.
+   * `null` when the source is missing/unreadable (→ an empty window — no data to
+   * capture this command). Optional: the null-default has no source.
+   */
+  currentPosition?(src: HarnessSource): number | null;
   /** Extract counts-only capabilities for the window; each capability `null` if unavailable. */
   extract(ctx: HarnessContext): HarnessCapabilities;
 }
