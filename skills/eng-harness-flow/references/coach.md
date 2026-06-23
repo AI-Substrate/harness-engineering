@@ -119,11 +119,13 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 | Inject | no injection point recorded yet (so the parent flow won't know where to call back) |
 | Build + run boot | `UNAVAILABLE`, a **failed/SLOW** boot, or a signal-readiness dimension reported "not declared" |
 | Backpressure | **ABSENT / BUILDABLE** sensors (the eyeball-gaps); a recommended **Phase 0** |
-| Retro drain | the `[s/t/p/e/d/a]` prompt the user just saw; N entries pending |
+| Retro drain | the save prompt the user just saw (keep all · pick · skip, or take them further); N notes pending |
 | Retro harvest | clustered/stale friction across the plan; unencoded magic-wands |
 | Ambiguous | the candidate plans found (so the user can pick) |
 
 > **Backpressure → defend the proof (optional).** When the survey flags `ABSENT`/`BUILDABLE` sensors (thin coverage), offer `/grill-agent-done` before architect — a standalone peer skill (`skills/grill-agent-done/`, **not** a routed stage) that defends the definition of done one claim at a time, lining each against the right proof grade. The deep-interrogation companion the survey deliberately isn't. Never blocks; offer once, skip freely.
+
+> **Retro drain → plain words, never codes.** When you offer the drain, describe the choice in plain language — *"I jotted a few notes on what slowed us down; want me to save them so they're not lost? You can keep all, pick which to keep, or skip."* **Never** surface the internal `[s/t/p/e/d/a]` / `[r/w/s]` letter codes in narration, and **never guess what they expand to** — they are *keep-all / pick / skip*, with *tasks / plan / diffs* to take them further (the codes are emphatically **not** "trim"/"promote"; parroting them is how the prompt became arcane). The codes are an implementation detail; the user sees plain choices and a recommended default. Harvest marks are the same: "done" / "won't-fix" / "stale", never `[r/w/s]`.
 
 ## 4. Tone — make it pleasant
 

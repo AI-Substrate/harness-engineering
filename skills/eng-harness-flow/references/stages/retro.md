@@ -17,7 +17,7 @@ This verb is the whole **friction lifecycle**: *notice → hold safely → prese
 | Surface | When | What |
 |---|---|---|
 | **In-flight capture** | during work, silent | one `harness observe` call per noticing — the CLI does the rest |
-| **`--drain`** | session end / logical pause | read pending via `harness observe --list --json`, soft prompt `[s/t/p/e/d/a]`, materialize via `harness record retro`, then `harness observe --clear` |
+| **`--drain`** | session end / logical pause | read pending via `harness observe --list --json`, present a plain-language save prompt (keep all · pick · skip — or take them further: tasks · plan · diffs), materialize kept entries via `harness record retro`, then `harness observe --clear` |
 | **`--harvest`** | long-horizon (final debrief, merge end, ad-hoc) | scan committed retros, cluster, prioritize, lifecycle ops |
 
 > **Encode, don't document.** A wiki paragraph that says "remember to do X" is worth nothing; an automated step that does X for you is worth everything. Friction observed during work becomes *executable knowledge* — a justfile recipe, a skill edit, a staged diff — not a prose note that rots. Executable knowledge > prose.
@@ -144,38 +144,43 @@ harness observe --list --json
 
 All buckets by default (`--agent <slug>` narrows). Empty `observations` → **silent, no prompt, exit.** If `malformed_skipped > 0`, say so in the prompt header — deviant text is preserved on disk, and `--clear` removes only valid entries, leaving the deviant blocks in place for manual review.
 
-### Step 2 — Present the soft prompt
+### Step 2 — Present the save prompt
 
-Single prompt at end of session. **Never asks twice.** Format:
+One prompt at end of session, in **plain language**. **Never asks twice.** Lead with what you noticed, say plainly what saving does, recommend the safe default, and keep the power-user routes one word away. **Never print the raw `[s/t/p/e/d/a]` letter codes** — they are an internal detail, and surfacing them (or guessing what they mean) is exactly the opaque UX this prompt exists to avoid. Format:
 
 ```
-💡 harness retro — 3 entries from this session:
+💡 Before we wrap up — here are 3 things I noticed this session that slowed
+   us down or could be better:
 
-  1. [difficulty/tooling] agent: grep on src/ took 47s
-     → encode as: justfile recipe wrapping ripgrep
+  1. grep on src/ took 47s               → a `just rg` recipe would fix it
+  2. searching the tree by hand, again   → a `just rg <pattern>` recipe would help
+  3. couldn't tell if the page rendered  → nothing proves it; a smoke check would
 
-  2. [magic-wand/project] agent: a `just rg <pattern>` recipe would shave 40s per search
-     → encode as: justfile recipe
+One last pass before you decide:
+  · "If you had a magic wand, what one command, flag, output field, fixture,
+     diagnostic, template, sensor, check, or workflow change would make the next
+     run easier, safer, or higher quality?"
+  · "What did you have to infer that the harness should have proved?"
+  (Thought of something new? Tell me — it joins the list.)
 
-  3. [difficulty/project-sensor] claude-code: inferred the render result; no smoke path
-     → encode as: smoke command or visual evidence capture
+Want me to save these to the project so they're not forgotten?
+  • Enter / "yes"   keep all 3                          (recommended)
+  • "pick"          choose which ones to keep
+  • "skip"          drop them, save nothing
 
-Before you choose — the two questions, one last pass:
-"If you had a magic wand, what one command, flag, output field, fixture, diagnostic, template, sensor, check, or workflow change would make the next run easier, safer, or higher quality?"
-"What did you have to infer that the harness should have proved?"
-(Anything new → capture it now with `harness observe …`; it joins this drain.)
+  Or take them further:
+  • "tasks"         draft copy-pasteable fix-tasks
+  • "plan"          draft plan specs for the bigger ones
+  • "diffs"         stage ready-to-apply patches for you to review
 
-[s]ave selected · [t]ask: emit fix-task descriptors · [p]lan: emit plan specs
-[e]ncode: stage diffs · [d]ismiss all · [a]ll-save (default — press Enter)
-
-[s/t/p/e/d/a]: ▮
+  ▮
 ```
 
-One line per entry, `[kind/target] bucket:` prefixed, with a one-line encoding hint. The **drain beat of the question pair uses the same locked wording** as the in-flight section — the seam is the last cheap moment to catch what the session never wrote down.
+Lead each entry with the plain description, then a one-line "→ what would fix it" hint — the `kind/target` taxonomy stays in the data, never on screen. The **two questions use the same locked wording** as the in-flight section (the seam is the last cheap moment to catch what the session never wrote down). The plain routes map one-to-one to the actions in Step 3: **yes / Enter** = save all · **pick** = save selected · **skip** = save nothing · **tasks** / **plan** / **diffs** = the three "take it further" routes.
 
 ### Step 3 — Route by action
 
-#### `[a]ll-save` (default)
+#### "yes" / Enter — save all (default)
 
 Wrap the pending entries in one universal retro envelope per bucket (the bucket is the envelope's `agent:`; usually there's exactly one). Never hand-compute the committed path — scaffold it:
 
@@ -209,19 +214,19 @@ If `harness record` reports `unconfigured` (no `.harness/` here), treat it as UN
 harness observe --clear
 ```
 
-#### `[s]ave` (selective)
+#### "pick" — save selected
 
-Prompt "Which entries to save? [1,2,3 or a]". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
+Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
 
-#### `[t]ask` — emit copy-pasteable fix descriptors
+#### "tasks" — emit copy-pasteable fix descriptors
 
 For each encodable entry, print a copy-pasteable **fix-task descriptor** (the entry's `description` + `target` + `suggested_encoding`) for the user to route into whatever planning/fix flow they run. Entries are ALSO saved to the record (the suggestion is captured even if the user routes none of them). Clear.
 
-#### `[p]lan` — emit copy-pasteable specs
+#### "plan" — emit copy-pasteable specs
 
 For each entry suggesting larger work, print a **one-line plan spec** (from `description` + `suggested_encoding`) for the user's planning flow. Entries also saved. Clear.
 
-#### `[e]ncode` — stage diffs (nothing auto-applies)
+#### "diffs" — stage patches (nothing auto-applies)
 
 For each entry whose encoding is a small mechanical edit:
 
@@ -251,9 +256,9 @@ Compound lifecycle:
 
 `Run:` = best-effort command(s) exercising the change (from `suggested_encoding` when it names one; `(manual review only)` if genuinely unknown). `Expected:` = observable outcomes. The footer makes "encoded" mean *the loop changed AND we can prove it*.
 
-#### `[d]ismiss all`
+#### "skip" — save nothing
 
-`harness observe --clear` without saving anything. Print one line: "✓ buffer dismissed (3 entries dropped)". Unrecoverable — use sparingly.
+`harness observe --clear` without saving anything. Print one line: "✓ skipped — 3 notes dropped, nothing saved". Unrecoverable — use sparingly.
 
 #### Harness-itself entries → offer an upstream issue
 
@@ -261,7 +266,7 @@ Some friction is with the **harness product itself** — a confusing or broken `
 
 **Detect**: any drained entry with `target: harness-itself`, or whose description/workaround clearly points at a `harness …` command, a vendored SKILL.md instruction, or the loop machinery itself.
 
-**In the harness's own repo** — origin remote contains `harness-engineering`, or `harness/cli/src/` exists locally → **no issue**; the fix is a local source edit, so route it through `[e]ncode` / `[t]ask` like any other entry.
+**In the harness's own repo** — origin remote contains `harness-engineering`, or `harness/cli/src/` exists locally → **no issue**; the fix is a local source edit, so route it through "diffs" / "tasks" like any other entry.
 
 **Otherwise (a consumer repo)** → after the chosen save action completes, ask **once** (never twice):
 
@@ -378,12 +383,15 @@ Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harn
 
 📊 Open clusters (top 10 by recurrence > severity > back-pressure leverage > age):
    1. [tooling] grep/search slowness — 4 entries across 5 sessions
-      ↻ re-paid every session since 2026-05-14 — encode it and stop paying  [r/w/s]
-   2. [proof/project-sensor] missing smoke or visual evidence — 3 entries  [r/w/s]
+      ↻ re-paid every session since 2026-05-14 — encode it and stop paying
+   2. [proof/project-sensor] missing smoke or visual evidence — 3 entries
    ...
 
-⏰ Stale (>4 weeks open): 3 entries  [r/w/s]
+⏰ Stale (>4 weeks open): 3 entries
 ✅ Recently encoded (last 7 days): 6 entries — see scratch/encode-*.diff
+
+To mark a cluster, say its number plus how it landed:
+"done" (encoded) · "won't-fix" · "stale".
 ```
 
 Nothing is written to disk by the harvest itself (workshop 006 § D4 KISS: no `_LEDGER.md`, no rollups — drift, git noise, and ceremony cost more than a <1s recompute). For raw browsing: `ls .harness/records/retro/` — the record dir IS the browse surface.
@@ -414,13 +422,13 @@ Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harve
 
 ### Step 5 — Action menu
 
-The drain's `[s/t/p/e/d/a]` actions (operating on cluster selections; save/all-save are usually no-ops here since entries are already committed), plus three **lifecycle ops** that mutate `system.compound.status` IN-PLACE in the source record (file's `schema_version`/`retro_id` untouched; last-write-wins on the rare concurrent harvest):
+The same save routes as the drain (keep all / pick / skip / tasks / plan / diffs — though saving is usually a no-op here, since these entries are already committed), plus three **lifecycle ops** to mark how a cluster landed. The ops mutate `system.compound.status` IN-PLACE in the source record (file's `schema_version`/`retro_id` untouched; last-write-wins on the rare concurrent harvest):
 
-- **`[r]esolved`** → `status: encoded`; prompt for `resolved_by:` (commit hash / PR URL / diff path)
-- **`[w]ontfix`** → `status: wontfix`
-- **`[s]tale`** → `status: stale`
+- **"done"** (it's been encoded) → `status: encoded`; prompt for `resolved_by:` (commit hash / PR URL / diff path)
+- **"won't-fix"** → `status: wontfix`
+- **"stale"** → `status: stale`
 
-A cluster whose `target` is `harness-itself` (or that clearly points at a `harness …` command / vendored skill) in a **consumer repo** can't be resolved by a local edit — recurrence here is token cost paid every session. Offer the same **upstream issue** as the drain's § Harness-itself entries (`gh issue create --repo AI-Substrate/harness-engineering …`, or the web fallback), framing the cluster `count` as the cost. Once filed, use the issue URL as `resolved_by:` and mark `[r]esolved`. In the harness's own repo, route it to a local source fix instead.
+A cluster whose `target` is `harness-itself` (or that clearly points at a `harness …` command / vendored skill) in a **consumer repo** can't be resolved by a local edit — recurrence here is token cost paid every session. Offer the same **upstream issue** as the drain's § Harness-itself entries (`gh issue create --repo AI-Substrate/harness-engineering …`, or the web fallback), framing the cluster `count` as the cost. Once filed, use the issue URL as `resolved_by:` and mark it **done**. In the harness's own repo, route it to a local source fix instead.
 
 ### Pruning (`--prune`)
 
