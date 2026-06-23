@@ -1,66 +1,204 @@
 # Metrics & Measures
 
-> **Is the harness delivering value — not just speed?** For engineering leaders and managers — and the repo owner who runs the loop — who want a tangible way to start measuring what actually matters.
+What the harness lets you measure, how the telemetry sensor behind it works, and how to choose what to steer by. For leads, managers, and the repo owner running the loop.
 
-## Speed is the easy thing to measure — rarely the thing that matters
+## The inner loop, instrumented
 
-Pick a quarter where pull requests per developer jumped 20% and the share price rose 15%. By every activity dashboard, things looked excellent — and in that same quarter 78% of developers reported burning out.[^engthrive] Three signals, one quarter, pointing in opposite directions. Any one alone tells a confident, wrong story.
+You likely already measure delivery in depth — DORA, deployment frequency, change-failure, AI-adoption. The harness adds a complementary layer alongside them: the **inner loop** — the stretch between picking up a change and proving it safe — recorded first-hand as the work happens, with **nothing extra to install on any dev's machine**. Every time someone runs a harness command, a counts-only record is collected automatically and committed to a **hidden git ref** (never a branch you'd see, never in a diff or PR). Per command it captures:
 
-It gets sharper. Only about **15% of a developer's day is spent writing new code** — nearer 25–30% once you count testing and debugging.[^engthrive] So a tool that makes *coding* faster is optimising a thin slice of the day, while most of the cost — and most of the leverage — sits everywhere else: understanding the problem, getting unstuck, proving the change is safe.
+- **token usage** and **model choice**
+- **skills** invoked, **tools** used, **bash commands** run
+- **files** and **plans** touched, plus compaction / error events
+- and two harness-health indicators: **bypass rate** (how often the paved path was skipped) and **change rate** (how often friction got encoded into a permanent fix)
 
-Here's where the harness fits — and where it doesn't. That whole landscape (planning, design, delivery, operations, the customer) is far bigger than any one tool, and most of it lives outside the harness entirely. The harness instruments just one slice: the inner loop where a change gets built, proven, and improved. But that slice is usually *dark* — and the harness already leaves a trail there: where the supported path got abandoned, where friction got fixed for good, how long each stage took. Most teams throw that trail away.
+Because the flow records each stage, you also get **time spent planning vs coding vs reviewing** — and the gaps between them.
 
-This is the trap the harness is built to help you escape. Not *"how fast did we type?"* but **what does value actually mean here, and can we begin to measure it?**
+Joined to the DORA and quality series you already keep, it lets you test questions like these directly on your own data:
 
-## Measure first, decide second
+- *Teams that spend more time planning open fewer new issues on their backlog.*
+- *Teams that use — and keep improving — the harness see token usage fall over time* (the loop getting leaner, not just busier).
+- *Teams that lean on deterministic tooling over ad-hoc agent calls ship higher quality.*
+- *A falling bypass rate tracks a falling change-failure rate.*
+- *More encoded fixes → less recurring friction → faster onboarding.*
 
-A useful distinction: a **measure** is a fact the system emits — an observation about the world. A **metric** is a measure you have *chosen*, given context, and attached a target to.[^engthrive] Promoting a measure to a metric is a statement of values, so do it deliberately. The harness's job is to **emit honest measures**; yours is to decide which few become the metrics you steer by — and to **keep the fact separate from the interpretation** while you do.
+None of these are promises — they're **hypotheses the data lets you check**. The harness doesn't replace your dashboards; it adds the inner-loop layer alongside them.
 
-The reframe, in one line: prefer **idea-to-customer over lines of code**, **outcomes over activity**, **value over motion**. Lines of code penalise elegance; velocity without quality is just churn.[^engthrive] None of these are new — DORA gave teams delivery performance, SPACE insisted productivity is multi-dimensional, and EngThrive[^engthrive] organises it as **Speed, Ease, and Quality, with Thriving as a guardrail** so gains in one don't quietly cost you another. The harness doesn't replace any of them. It **feeds** them: it leaves a trail of honest signals you can pull into whichever model your org already runs.
+## Measure vs metric
 
-## Where the harness gives you a place to start
+- **Measure** — a fact the system emits.
+- **Metric** — a measure you chose, gave context, and attached a target to. Promoting one is a values statement; do it deliberately.
+- The harness emits honest measures. You decide which few become metrics — and keep the fact separate from the interpretation.
+- Prefer **idea-to-customer over lines of code**, **outcomes over activity**, **value over motion**.
+- Feeds DORA / SPACE / EngThrive (Speed · Ease · Quality, with Thriving as a guardrail). Doesn't replace them.
 
-You don't need a telemetry platform to begin. The harness's own record system is built to emit two measures most teams have never had:
+## Two measures you get for free
 
-- **Harness bypass** — every time the supported path was *avoided*, captured with *why*. Trending down means the paved path is winning. (Low capture is itself a signal: plans closing with no retro or flow trail mean the seam isn't being used — not that nobody bypassed.)
-- **Encoded-mitigation (harness change)** — every time recurring friction became a permanent, runnable fix. This is your **compounding** signal: proof the loop is getting better, not just busier.
+- **Harness bypass** — every time the paved path was avoided, with *why*. Trending down = the paved path is winning. (Low capture is itself a signal — the seam isn't being used.)
+- **Encoded-mitigation (harness change)** — every time recurring friction became a permanent, runnable fix. The compounding signal: the loop getting better, not just busier.
+- Both are leading/diagnostic and extensible. Full contract: [harness-value-measures.md](../how/harness-value-measures.md).
 
-Both are *leading measures* — diagnostic evidence about the development loop — and both are extensible: the record system is yours to grow, so your flows can capture more over time. For the mechanics (record shapes, how a scanner joins them across repos), see the deeper notes linked below; this page is the *why*, not the schema.
+## A starter set (keep it small)
 
-A third worth collecting if you're smart about it: **time to a new developer's first meaningful contribution.** EngThrive found an AI onboarding tool cut time-to-first-PR by 65% — not by making the PR easier, but by automating environment setup and codebase orientation.[^engthrive] That is the same kind of work a clean-start harness does — so onboarding time is a fair *test* of whether the investment is paying off.
+A couple of signals per dimension, one telemetry measure balanced against one survey question. Choose measures where gaming them means doing the right thing.
 
-## Where does your time actually go?
+| Dimension | Outcome measure | Diagnostic / compounding |
+|---|---|---|
+| **Value / Speed** | idea-to-customer time | flow-stage shape |
+| **Ease** | harness bypass rate | onboarding time-to-first-contribution |
+| **Quality** | change-failure / bugs-to-backlog (feeds DORA) | encoded-mitigation rate |
+| **Thriving** *(guardrail)* | a "bad developer day" pulse: build failures, lost focus, toil | — |
 
-Because the flow records each stage as it runs, you can see **how long planning took versus coding versus review** — and the gaps between them. Read this as *insight, not a stopwatch*: the point isn't to drive any stage's duration down (that just invites gaming), it's to see the **shape** of your loop and ask better questions of it.
+Activity counts (tokens-per-run, skills usage) are **diagnostics only** — never what you steer by. They come from the telemetry sensor below.
 
-The most interesting ones are cross-dimensional: *what happens to the other measures when we spend more time planning?* Fewer bypasses? Less rework? Fewer bugs reaching the backlog? A measure earns its keep when it lets you test a hypothesis like that — not when it becomes a target of its own.
+---
 
-## A short starter set
+## How the telemetry sensor works
 
-Resist the urge to track everything; more than a handful of metrics dilutes focus.[^engthrive] Start small, even with imperfect data — a couple of signals per dimension, balancing one telemetry measure against one survey question, and **choose measures where gaming them would mean genuinely doing the right thing**.[^engthrive] A workable starting kit:
+The sensor is what produces the activity diagnostics above. It runs on **every** harness command, captures a **counts-only** record, buffers it out of your working tree, and flushes it to **out-of-tree git refs** — never touching your branch or PR.
 
-- **Value / Speed** — idea-to-customer time *(outcome)*; flow-stage shape *(diagnostic, not a target)*.
-- **Ease** — harness bypass rate *(outcome)*; onboarding time-to-first-contribution *(outcome)*.
-- **Quality** — change-failure rate or bugs-reaching-backlog *(outcome, feeds DORA)*; encoded-mitigation rate *(compounding)*.
-- **Thriving** — a "bad developer day" pulse: build failures, lost focus, toil.[^engthrive] *(guardrail — if this slips, something is wrong even if the rest improves.)*
+```mermaid
+flowchart LR
+  cmd["any harness command"] -->|"capture preamble (before the body)"| buf["gitignored buffer<br/>.harness/temp/telemetry"]
+  buf -->|"checks: auto-push"| sync["flush + push"]
+  buf -->|"manual: harness telemetry sync"| sync
+  sync -->|"git plumbing"| refs["dated per-session shard refs"]
+  refs -->|"one globbed fetch"| scr["eng-thrive scraper"]
+  warn["boot / doctor"] -. "nudge if unpushed" .-> buf
+```
 
-Activity counts like tokens-per-run or skills usage are fine as **diagnostics** — they help explain *why* — but they are never what you steer by. These come from the harness's automatic **telemetry sensor**: a counts-only `segment` captured on every command, buffered out of your working tree, and flushed to per-session, date-sharded out-of-tree git refs — pushed automatically when you run `checks`, or by hand with `harness telemetry sync`, and disable-able per shell. It is team/repo-grained by construction (never per-person) and never touches your branch or PR. How it's collected, pushed, structured, and turned off lives in [Harness telemetry](../how/telemetry.md).
+Two properties make it safe to run everywhere: **zero host impact** (capture is wrapped so it can never change a command's stdout/stderr/exit code), and **PR-invisible** (the buffer self-ignores, and the durable write is an out-of-tree ref via plumbing, so `git status --porcelain` is byte-identical across a capture and a flush).
 
-The optimistic claim — *"when the harness is used, fewer bugs reach the backlog"* — is a **hypothesis, not a promise**. The measures above are exactly what let a team check it on their own data: as bypass falls and encoded-mitigation rises, you'd *expect* change-failure and backlog defects to improve in a later window. Line the series up and find out. That is what evidence looks like instead of a promise.
+### What it collects (counts only)
+
+A normalized `segment` per session, carrying counts and identifiers — **never content** (no prompt/message text, no file contents, no free-form tool-arg strings, which could leak secrets).
+
+| Group | Fields | Notes |
+|---|---|---|
+| Context | `command`, `harness`, `harness_session_id`, `branch`, `timecode`, `window` | session id is **opaque**, not a person |
+| Volume | `tokens{…}`, `models{turns, output_tokens}` | `null` when a source is unavailable, never estimated |
+| Activity | `skills{}`, `tools{}`, `subagents[]` | histograms / counts |
+| Files & plans | `files{written, edited}`, `plans_touched[]` | repo-relative paths; a path outside the repo → **basename only** |
+| Events | `events{compactions, api_errors, local_commands}` | counts |
+| Reasoning | `effort`, `thinking{blocks}` | nullable |
+
+A representative segment:
+
+```json
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "<opaque id>",
+  "timecode": "2026-06-23T11:00:00Z",
+  "window": { "since": "last-command", "from": 8, "to": 14 },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": { "input": 120, "output": 680, "cache_create": 0,
+              "cache_read": 0, "total": 1540, "subagent_tokens": 0, "grand_total": 2340 },
+  "models": { "claude-opus-4-8": { "turns": 6, "output_tokens": 340 } },
+  "effort": "high",
+  "skills": { "the-flow": 1 },
+  "tools": { "Edit": 3, "Bash": 2 },
+  "subagents": [],
+  "files": { "written": ["harness/cli/src/services/telemetry/sync-service.ts"], "edited": [] },
+  "plans_touched": ["034-harness-telemetry-collection"],
+  "events": { "compactions": [], "api_errors": 0, "local_commands": 0 },
+  "thinking": { "blocks": 4 }
+}
+```
+
+Every top-level key is always present (a stable shape for the scraper); only *values* reflect availability. The full enumerated schema is `harness/cli/src/services/telemetry/segment.schema.json`.
+
+### The commands — capture, push, and reminders
+
+Capture is automatic; **pushing** is decoupled and happens three ways:
+
+| Command | Telemetry behaviour |
+|---|---|
+| *any* `harness <verb>` | captures one segment into the buffer (the preamble, before the body) |
+| `harness telemetry sync` | **manual flush + push** of everything buffered |
+| `harness checks` | **auto-pushes** (the capture already happened first — capture precedes push) |
+| `harness boot` · `harness doctor` | **remind only** — warn if telemetry is unpushed; never push |
+
+The reminders and the auto-push surface as an additive `housekeeping[]` field on the command's JSON envelope (and one stderr line in human mode). It **never changes the command's own status or exit code**:
+
+```jsonc
+// harness doctor / boot — a backlog is waiting
+"housekeeping": [{ "kind": "telemetry-unpushed", "message": "23 telemetry segment(s) not yet pushed",
+                   "command": "harness telemetry sync", "details": { "count": 23, "sessions": 1 } }]
+
+// harness checks — flushed alongside the gate
+"housekeeping": [{ "kind": "telemetry-synced", "message": "auto-pushed 4 telemetry segment(s)",
+                   "details": { "count": 4, "sessions": 1 } }]
+
+// harness checks — push could not land (offline/no-auth); reported, checks unaffected
+"housekeeping": [{ "kind": "telemetry-autosync-failed", "message": "telemetry auto-sync failed: …",
+                   "command": "harness telemetry sync" }]
+```
+
+A `checks` run, end to end — note capture lands **before** the push:
+
+```mermaid
+sequenceDiagram
+  participant U as you
+  participant K as harness kernel
+  participant B as buffer
+  participant G as git refs (remote)
+  U->>K: harness checks
+  K->>B: capture this run's segment (preamble)
+  K->>K: run the gate (lint, tests, types)
+  K->>B: read segments past the watermark
+  K->>G: push dated per-session shards
+  K-->>U: checks result + housekeeping: telemetry-synced
+```
+
+### Where it gets pushed
+
+Not one shared ref — that would make a team's concurrent pushes collide. Each flush targets its **own** ref, sharded by **capture-date and session**, so every push is a clean create-or-fast-forward:
+
+```
+refs/harness-telemetry/2026/03/23/<sessionA>     commit tree → 1.json  2.json
+refs/harness-telemetry/2026/03/23/<sessionB>     commit tree → 1.json
+refs/harness-telemetry/2026/03/24/<sessionA>     commit tree → 3.json   (work crossed midnight)
+```
+
+The date+session live in the ref name; each commit tree is a flat set of `<seq>.json` segments. A central scraper collects **everything in one fetch** (a globbed refspec is a single round-trip), and the date prefix doubles as the prune key:
+
+```bash
+git fetch origin '+refs/harness-telemetry/*:refs/harness-telemetry/*'    # all sessions, one fetch
+git log  --oneline refs/harness-telemetry/2026/03/23/<sessionA>          # the flush history
+git ls-tree -r     refs/harness-telemetry/2026/03/23/<sessionA>          # the <seq>.json segments
+git push origin --delete 'refs/harness-telemetry/2026/03/23/<sessionA>'  # prune after ingest
+```
+
+### How to disable it
+
+| Variable | Effect |
+|---|---|
+| `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes. |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Auto-push off only** — capture and manual `harness telemetry sync` still work; `checks` falls back to a nudge. |
+
+### Privacy
+
+Team/repo-grained **by construction** — never per-individual. Commits are authored by a fixed non-individual identity (`harness-telemetry <noreply@…>`); your `git config user.email` is never read or stored; shards are keyed by session, not engineer. Token counts and the like are aggregate diagnostics, **not** performance management.
+
+The exhaustive reference — offline behaviour, the watermark/consume mechanism, server-side ref-hiding, and the full field contract — is [Harness telemetry](../how/telemetry.md).
+
+---
 
 ## What this is not
 
-- **Not individual measurement.** These are team- and repo-level signals only — never a per-person scoreboard, ranking, or productivity league table. Trust is what keeps the data honest, and surveillance destroys it.
-- **Not a replacement** for DORA, SPACE, or EngThrive — it feeds them.
-- **Not a dashboard or scanner spec.** The harness emits durable signals into the repo; external metric-gathering tools read them. That separation is deliberate.
-- **Not the record schema.** Mechanics live in the deeper notes, not here.
+- **Not individual measurement** — team/repo signals only, never a per-person scoreboard. Surveillance destroys the trust that keeps data honest.
+- **Not a replacement** for DORA / SPACE / EngThrive — it feeds them.
+- **Not a dashboard or scanner** — the harness emits signals; external tools read them.
 
-## Keep reading
-- The two first-class measures in detail — bypass rate, change rate, the PR denominator, DORA correlation, and the anti-gaming guardrails: [`docs/how/harness-value-measures.md`](../how/harness-value-measures.md).
-- The telemetry sensor that feeds the activity diagnostics — capture, push (manual + auto-on-`checks`), the segment structure, and how to disable it: [`docs/how/telemetry.md`](../how/telemetry.md).
-- How friction becomes an encoded fix in the first place: [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md).
+## See also
 
-[^engthrive]: Houck, B., Bozarth, T., Liu, D., Carignan, D. — *EngThrive: Make It Fast and Easy to Do Great Work*, Microsoft Research, 2026. arXiv:2605.04259 · <https://www.microsoft.com/en-us/research/publication/engthrive-make-it-fast-and-easy-to-do-great-work/>. Source of the burnout/PR paradox, the ~15%-of-day-coding finding, the bad-developer-days concept, the measures-vs-metrics and activity-vs-outcomes distinctions, the Speed/Ease/Quality + Thriving model, the onboarding result, and the design-for-gaming principle.
+- [harness-value-measures.md](../how/harness-value-measures.md) — the two measures in detail: bypass rate, change rate, the PR denominator, DORA correlation, anti-gaming guardrails.
+- [telemetry.md](../how/telemetry.md) — the sensor reference: capture, push, segment contract, offline behaviour, disabling.
+- [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md) — how friction becomes an encoded fix.
+
+Source: EngThrive — Houck, Bozarth, Liu, Carignan, *Make It Fast and Easy to Do Great Work*, Microsoft Research 2026 (arXiv:2605.04259).
 
 ---
 
