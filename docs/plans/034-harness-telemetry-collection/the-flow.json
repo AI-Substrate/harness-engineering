@@ -391,6 +391,86 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:10:49.446Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-016",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:10:49.536Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-017",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:10:49.626Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:41:49.311Z",
+      "details": {
+        "node": "phase-2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-018",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:41:49.397Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:41:49.493Z",
+      "details": {
+        "from": "phase-2",
+        "to": "phase-3"
+      }
+    },
+    {
+      "id": "UPD-019",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-23T08:41:49.579Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -471,12 +551,26 @@
       "id": "phase-2",
       "type": "phase",
       "label": "P2 Per-harness adapters",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-06-23T05:45:25.984Z",
-      "modified_at": "2026-06-23T05:45:26.071Z"
+      "modified_at": "2026-06-23T08:41:49.579Z",
+      "note": "Phase 2 done: Claude + Copilot adapters + registry, TDD, companion-reviewed every commit (F001 MEDIUM + F002 HIGH + F003 MEDIUM all fixed & verified, 0 open). 1074/1074 green; AC-12 capture-core untouched.",
+      "comments": [
+        {
+          "at": "2026-06-23T08:10:49.626Z",
+          "text": "Phase 2 tasks validated: 2 corrections applied to the dossier (home-dir port, ports-only arch rule), 6 implementation mechanics pinned (whole-file slice, offset unit, path mangling, privacy assertion shape, intentionally-null caps, empty-window); forward-compat with Phase 3 registry seam confirmed.",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-06-23T08:41:49.579Z",
+          "text": "Companion code-review-companion reviewed all commits; 3 findings (incl 1 HIGH cross-session token contamination) caught + fixed inline + verified. A separate review pass is superseded.",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-06-23T08:41:49.311Z"
     },
     {
       "id": "phase-3",
@@ -523,8 +617,8 @@
     }
   ],
   "nav": {
-    "now": "phase-2",
-    "next": "phase-2",
+    "now": "phase-3",
+    "next": "phase-3",
     "intent": "Harness telemetry collection — per-command sensor emitting normalized per-session segments (tokens/skills/tools/subagents/files/plan-links) committed to an orphan git ref for eng-thrive; Claude + Copilot adapters, Cursor later",
     "bag": {
       "mode": "Full",
