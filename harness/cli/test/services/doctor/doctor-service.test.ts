@@ -428,14 +428,15 @@ describe('record-types layer', () => {
     const report = buildDoctorReport(deps(), EMPTY, recordReg);
     const layer = report.layers.find((l) => l.name === 'record-types');
     expect(layer?.ok).toBe(true);
-    // 3 core (retro + harness-bypass + harness-change) + 1 extension.
-    expect(layer?.detail).toContain('4 available');
-    expect(layer?.detail).toContain('3 core');
+    // 4 core (retro + harness-bypass + harness-change + segment) + 1 extension.
+    expect(layer?.detail).toContain('5 available');
+    expect(layer?.detail).toContain('4 core');
     expect(layer?.detail).toContain('1 extension');
     expect(report.recordTypes.map((t) => t.type)).toEqual([
       'retro',
       'harness-bypass',
       'harness-change',
+      'segment',
       'dev-survey',
     ]);
 

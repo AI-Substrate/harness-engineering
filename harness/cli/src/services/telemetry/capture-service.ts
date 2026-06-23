@@ -129,11 +129,32 @@ function buildInput(
   };
 }
 
+/** The env kill-switch (naming-consistent with `HARNESS_NO_EXTENSIONS`). */
+export const KILL_SWITCH_ENV = 'HARNESS_NO_TELEMETRY';
+
 /**
  * Capture telemetry for the current command. The named entry the kernel preamble
  * (Phase 3) calls. Synchronous, ports-only, best-effort.
+ *
+ * Fail-safe by contract: the kill-switch short-circuits to ZERO side effects
+ * (AC-05), and ANY error inside capture is swallowed (AC-09) — telemetry can
+ * never change the host command's behaviour or exit code. This last-resort
+ * catch-all is distinct from the DESIGNED edge no-ops in {@link captureUnsafe}.
  */
 export function captureTelemetry(deps: CaptureDeps): void {
+  try {
+    if (deps.env.get(KILL_SWITCH_ENV) === '1') {
+      return; // kill-switch → zero side effects (AC-05)
+    }
+    captureUnsafe(deps);
+  } catch {
+    // Fail-safe (AC-09): a corrupt source / parse error / fs failure inside
+    // capture must never surface to the host command. Swallow and move on.
+  }
+}
+
+/** The core capture path — may throw; always called through the {@link captureTelemetry} guard. */
+function captureUnsafe(deps: CaptureDeps): void {
   const detected = detectHarness(deps.env);
   if (detected === null) {
     return; // zero-harness → clean no-op (no buffer, no writes)
