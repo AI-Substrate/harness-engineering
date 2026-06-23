@@ -50,6 +50,8 @@
 
 **Companion farewell magicWand (follow-up candidate, surfaced not auto-filed)**: *"auto-derive more of the farewell retrospective directly from the coordination ledger"* — a minih self-improvement, not a plan-034 item.
 
+**Debrief deviation (logged, non-blocking)**: the companion wound down after its initial 4 reviews and did **not** re-review the fix commit `67df37d` (it stayed idle on later pings — same liveness pattern noted earlier). The 3 findings are nonetheless fully addressed and **verified by the green suite** (the F1 regression test + the F2-strengthened on/off comparison both pass; 1096/1096). `control:stop` accepted → verdict `completed`. Per the harness's never-block stance, the unverified-by-companion fix is acceptable (re-review is best-effort).
+
 ### Deferred & Noteworthy (this phase)
 | Tag | Item | Why it's fine for now |
 |-----|------|----------------------|

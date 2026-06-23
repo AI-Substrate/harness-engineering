@@ -471,6 +471,27 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-23T10:08:54.378Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-23T10:08:54.467Z",
+      "details": {
+        "from": "phase-3",
+        "to": "phase-4"
+      }
     }
   ],
   "nodes": [
@@ -576,12 +597,13 @@
       "id": "phase-3",
       "type": "phase",
       "label": "P3 Auto-capture kernel preamble",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-06-23T05:45:26.071Z",
-      "modified_at": "2026-06-23T05:45:26.159Z"
+      "modified_at": "2026-06-23T10:08:54.378Z",
+      "ran_at": "2026-06-23T10:08:54.378Z"
     },
     {
       "id": "phase-4",
@@ -617,8 +639,8 @@
     }
   ],
   "nav": {
-    "now": "phase-3",
-    "next": "phase-3",
+    "now": "phase-4",
+    "next": "phase-4",
     "intent": "Harness telemetry collection — per-command sensor emitting normalized per-session segments (tokens/skills/tools/subagents/files/plan-links) committed to an orphan git ref for eng-thrive; Claude + Copilot adapters, Cursor later",
     "bag": {
       "mode": "Full",
