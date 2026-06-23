@@ -153,6 +153,7 @@ scratch/
 
 # minih agent runtime artifacts (per-run logs/events/state)
 agents/*/runs/
+.minih/
 
 # Harness scratch buffer — crash-resilient agent working notes (.harness/ itself is committed;
 # only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).

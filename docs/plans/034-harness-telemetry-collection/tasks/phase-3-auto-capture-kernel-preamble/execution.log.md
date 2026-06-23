@@ -52,6 +52,16 @@
 
 **Debrief deviation (logged, non-blocking)**: the companion wound down after its initial 4 reviews and did **not** re-review the fix commit `67df37d` (it stayed idle on later pings — same liveness pattern noted earlier). The 3 findings are nonetheless fully addressed and **verified by the green suite** (the F1 regression test + the F2-strengthened on/off comparison both pass; 1096/1096). `control:stop` accepted → verdict `completed`. Per the harness's never-block stance, the unverified-by-companion fix is acceptable (re-review is best-effort).
 
+## Live smoke test (real session capture — feeds Phase 4)
+After Phase 3 committed, `just build` re-linked the global `harness` (it runs the compiled `dist/`, stale until the build) and `harness doctor` captured a **real** segment of this session into `.harness/temp/telemetry/<session>/` (gitignored). **Confirmed live, beyond the unit tests**: real tokens (grand_total ~99.5M, 4 buckets), models (claude-opus-4-8 476 turns), tools histogram, skills, thinking (333), branch, repo-relative files; **privacy held** (no message text / abs paths / secrets); **append-only + cursor-incremental** (3 cmds → 1/2/3.json); **git-invisible** (`git status` clean).
+
+**Real-data findings to carry into Phase 4 (not present in the fixtures):**
+1. **`subagents[].tokens` all `null` in practice** — the inline Agent-tool_result `<usage>` correlation the Phase-2 *fixture* proved did NOT populate on the real transcript (23 subagents, type only). Phase 4 / follow-up: inspect the live `<usage>` shape; subagent cost attribution likely needs rework vs real data.
+2. **`plans_touched: []`** despite working inside `docs/plans/034/` — needs `HARNESS_PLAN_ID` or cwd inside the plan dir (cwd was repo root). This **is** Phase 4 task 4.3 (AC-08); consider also deriving plan id from the active the-flow context.
+3. **Out-of-repo writes lose path fidelity** — `~/.claude/.../*.md` serialized as bare basenames (no leak; lossy). Phase-4 `docs/how/telemetry.md` should state path semantics for non-repo writes. Minor: a stray `<synthetic>` model (1 turn/0 output) + duplicate `files.written` entries.
+
+*(Also captured in memory `telemetry-phase3-live-smoke-findings` so it survives compaction.)*
+
 ### Deferred & Noteworthy (this phase)
 | Tag | Item | Why it's fine for now |
 |-----|------|----------------------|
