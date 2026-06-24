@@ -106,3 +106,25 @@ Companion (run `…4d43`) reviewed `610b872` → **no findings** (clean).
 |---|------|------|-----|
 | D-509 | decision | Cursor timeline is **bubble-anchored** (transcript↔bubble correlation by conversation order). All Cursor events carry `t_precision: "anchored"`; tokens stay null. Headless sessions (no bubbles) → `event_stream: null`. | Noteworthy |
 | D-510 | gotcha | Cursor turn `dur_s` is `0` (bubbles give a start instant, not a span); the rollup's activity uses inter-event gaps, so working_ratio is still correct. | — |
+
+---
+
+## Commit 6 — T5.6: flow-stage events from `the-flow.json` nav
+
+**What landed**
+- `src/services/telemetry/flow-nav.ts` (new) — pure `flowEventFromFlightPlan(parsed, t)`: `flow`=`provenance.agent`, `stage`=`nav.now`, `status`=the `nav.now` node's lifecycle narrowed to `done|blocked|in_progress`; `t_precision:"anchored"`; `from` omitted; defensive → `null` on any unrecognised shape. No `node:*` (hexagonal-clean).
+- `src/services/telemetry/capture-service.ts` (mod) — `withFlowEvent` reads the linked plan's `docs/plans/<id>/the-flow.json` via `FsPort`, builds the command-level flow event anchored to the window's first event, and **prepends** it so `computeRollup` attributes the window's gap-time to the current stage (`flow_stage_time_s`). Best-effort: no plan / no flight plan / malformed JSON / empty stream → stream unchanged.
+- Tests: `flow-events.test.ts` (new) — the pure derivation (status mapping, harness-loop agent, null cases, no `from`) + the capture injection (prepend + stage attribution, no-plan, empty-stream, malformed-plan-never-breaks-capture).
+
+**Evidence**: telemetry suite → 188 passed; full suite → **1241 passed**; `harness arch-check` → still only the 1 pre-existing P4 warn (`flow-nav.ts` added **0** shape violations).
+
+**Decisions**
+- Flow event is read from `the-flow.json` nav at capture, **never from command args** (AC-18 / §4.4) — a `harness flow nav <target>` drops the target as a param, so args are unreliable; the nav is the source of truth.
+- One flow event per command window (a window sits at one stage), anchored to the window start. `from` is omitted — a single capture observes the current position, not the transition that reached it.
+- Flow event injection lives in **capture-service**, not the adapters: the flight plan is the same regardless of harness, so all three adapters get stage attribution for free.
+
+### Discoveries & Learnings
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-511 | decision | Skill-status is **already wired** (`buildEventStream` → `inferSkillStatuses` in all 3 adapters). `lastSkillActive` stays an honest **false**: no adapter has a positive "skill still open at segment end" signal within a bounded per-command window, so a trailing skill serialises `completed` (we never fabricate `active`). The helper supports `active` for a future open-without-close signal. | Noteworthy |
+| D-512 | decision | `flow.status` maps the `nav.now` **node's** lifecycle (`done|blocked` pass through; everything else → `in_progress`) rather than `nav.bag.status` — the node status is the per-stage truth; the bag is session-global. | — |

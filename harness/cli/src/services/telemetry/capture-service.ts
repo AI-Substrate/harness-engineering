@@ -14,6 +14,8 @@ import {
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
 import { cursorPathFor, readCursor, sessionDirFor, writeCursor } from './cursor.js';
+import type { Event } from './events.js';
+import { flowEventFromFlightPlan } from './flow-nav.js';
 import {
   type Segment,
   type SegmentInput,
@@ -123,6 +125,33 @@ function resolvePlanId(env: EnvPort, cwd: string): string | null {
   return planIdFromCwd(cwd);
 }
 
+/**
+ * Prepend the command-level `flow` event — read from the linked plan's
+ * `the-flow.json` `nav` (AC-18, detail doc §4.4) — to the adapter's event stream,
+ * anchored to the window start so {@link computeRollup} attributes the window's
+ * gap-time to the current flight-plan stage (`flow_stage_time_s`). Best-effort:
+ * no plan link, no flight plan, an unparseable plan, or an empty stream → the
+ * stream is returned unchanged (no fabricated stage, nothing to attribute).
+ */
+function withFlowEvent(
+  deps: CaptureDeps,
+  cwd: string,
+  planId: string | null,
+  stream: readonly Event[],
+): Event[] {
+  if (planId === null || stream.length === 0) return [...stream];
+  const text = deps.fs.readText(posixJoin(cwd, 'docs', 'plans', planId, 'the-flow.json'));
+  if (text === null) return [...stream];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return [...stream]; // a malformed flight plan never breaks capture
+  }
+  const flow = flowEventFromFlightPlan(parsed, stream[0].t);
+  return flow === null ? [...stream] : [flow, ...stream];
+}
+
 /** Merge detection context + adapter capabilities into a counts-only segment input. */
 function buildInput(
   deps: CaptureDeps,
@@ -157,7 +186,7 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
-    event_stream: caps.event_stream ?? [],
+    event_stream: withFlowEvent(deps, cwd, planId, caps.event_stream ?? []),
   };
 }
 
