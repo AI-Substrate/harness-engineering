@@ -168,3 +168,20 @@ magicWand `MINIH_PROJECT_ROOT` (target minih) — **ignored** (known planned min
 |---|------|------|-----|
 | D-513 | decision | Outcome events come from the harness command **result envelope** (Claude tool_result) — verb is read from `envelope.command`, so no Bash↔result pairing is needed. Only emitted when the command ran with parseable JSON output. | Noteworthy |
 | D-514 | difficulty | Copilot `execution_complete` carries `success` but **no output/envelope** → `command_exit` only; Cursor carries no tool results at all → both deferred. The detail-doc §2 "same" for checks/command_exit is the *intent*; the *fixtures* show the real per-harness ceiling. | Noteworthy |
+
+---
+
+## Commit 9 — companion findings on 5.6 (F001 path bug + F002 doc drift)
+
+Companion (run `…0903`, structured findings via inside-lane) reviewed 5.6 (`5245dfe`) → **APPROVE_WITH_NOTES**, 2 MEDIUM (and **APPROVE/0** on the MEDIUM-fix `aa1eb31`).
+
+| Sev | Finding | Disposition |
+|---|---|---|
+| **MEDIUM (F001)** | `withFlowEvent` joined `cwd + docs/plans/<id>`, but `planIdFromCwd` supports running from any depth under `docs/plans/<id>/` — a deep cwd (e.g. `…/tasks`) built `…/tasks/docs/plans/<id>/the-flow.json` → flow event silently dropped, `flow_stage_time_s` empty (AC-18 miss). | **Fixed** — new `flightPlanPath(cwd, planId)`: when cwd sits at/under the plan dir, take the prefix up to `docs/plans/<id>`; else hang it off cwd (repo-root + env plan-id case). Regression added (cwd `…/docs/plans/<id>/tasks`, plan at the root → flow event resolved). |
+| MEDIUM (F002) | Detail doc still listed `flow.from` as a transition source + §4.4 said read `from` from nav, but the impl intentionally omits `from` for command-level events → ambiguous consumer contract. | **Fixed** — `event-schema-v2-detail.md` field table + §4.4: `from` marked **reserved**, command-level capture omits it (one event/window, current position not transition); readers must treat it optional. (Pre-empts the 5.9 reconciliation for this field.) |
+
+**Evidence**: full suite → **1259 passed**; arch-check → 1 pre-existing P4 warn only.
+
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-515 | gotcha | Capture writes its buffer under `proc.cwd()` — a deep cwd changes BOTH the flight-plan lookup (F001) and the telemetry buffer location. Path resolution must derive the plan dir from the cwd prefix, not assume cwd==repo-root. | Noteworthy |

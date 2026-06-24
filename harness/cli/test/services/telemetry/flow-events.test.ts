@@ -157,4 +157,28 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
     expect(seg).not.toBeNull();
     expect(seg?.event_stream.some((e) => e.kind === 'flow')).toBe(false);
   });
+
+  it('resolves the flight plan when cwd is DEEP under docs/plans/<id> (companion F001)', () => {
+    // cwd at `/repo/docs/plans/034-x/tasks`; the flight plan lives at the plan root.
+    const deepCwd = `${REPO}/docs/plans/${PLAN}/tasks`;
+    const fs = new FakeFs({ [FLIGHT]: flightPlan('phase-5', 'in_progress') });
+    const d: CaptureDeps = {
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1' }), // no HARNESS_PLAN_ID → derived from cwd
+      clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+      proc: new FakeProcess({}, deepCwd),
+      git: new FakeGit({ isRepo: true, branch: PLAN, remoteUrl: 'github.com/x/y' }),
+      command: 'flow',
+      adapters: [streamAdapter('claude-code', TWO_EVENTS)],
+    };
+    captureTelemetry(d);
+
+    // the buffer is written under the (deep) cwd, not the repo root
+    const raw = fs.readText(`${deepCwd}/.harness/temp/telemetry/sess1/1.json`);
+    expect(raw).not.toBeNull();
+    const seg = JSON.parse(raw as string) as Segment;
+    const flow = seg.event_stream.find((e) => e.kind === 'flow') as (Event & { stage: string }) | undefined;
+    expect(flow?.stage).toBe('phase-5'); // resolved despite the deep cwd
+    expect(seg.rollup?.flow_stage_time_s).toEqual({ 'phase-5': 60 });
+  });
 });

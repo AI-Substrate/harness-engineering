@@ -126,6 +126,22 @@ function resolvePlanId(env: EnvPort, cwd: string): string | null {
 }
 
 /**
+ * Resolve the linked plan's `the-flow.json` path. `planIdFromCwd` supports running
+ * from ANY depth under `docs/plans/<id>/` (e.g. `…/tasks`), so naively joining
+ * `cwd + docs/plans/<id>` would double the segment and silently miss the flight
+ * plan (companion F001). When `cwd` already sits at/under the plan dir, take the
+ * prefix up to `docs/plans/<id>`; otherwise (`cwd` is the repo root, plan id from
+ * `HARNESS_PLAN_ID`) the plan dir hangs off `cwd`.
+ */
+function flightPlanPath(cwd: string, planId: string): string {
+  const c = toPosix(cwd);
+  const marker = `/docs/plans/${planId}`;
+  const idx = c.indexOf(marker);
+  if (idx !== -1) return `${c.slice(0, idx + marker.length)}/the-flow.json`;
+  return posixJoin(c, 'docs', 'plans', planId, 'the-flow.json');
+}
+
+/**
  * Prepend the command-level `flow` event — read from the linked plan's
  * `the-flow.json` `nav` (AC-18, detail doc §4.4) — to the adapter's event stream,
  * anchored to the window start so {@link computeRollup} attributes the window's
@@ -140,7 +156,7 @@ function withFlowEvent(
   stream: readonly Event[],
 ): Event[] {
   if (planId === null || stream.length === 0) return [...stream];
-  const text = deps.fs.readText(posixJoin(cwd, 'docs', 'plans', planId, 'the-flow.json'));
+  const text = deps.fs.readText(flightPlanPath(cwd, planId));
   if (text === null) return [...stream];
   let parsed: unknown;
   try {

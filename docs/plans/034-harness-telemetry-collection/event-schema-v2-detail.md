@@ -55,10 +55,10 @@ interface EventBase { t: Iso; kind: string; }
 | **skill** | `name` | string | ✅ | skill slug (e.g. `the-flow`) |
 | | `status` | enum | ✅ | `completed \| abandoned \| superseded \| active` (§4.3) |
 | | `dur_s` | int | ⬚ | span when both ends observable |
-| **flow** | `flow` | string | ✅ | `the-flow \| harness-loop` |
-| | `stage` | string | ✅ | flight-plan stage (e.g. `implement`) |
-| | `from` | string | ⬚ | previous stage (transition source) |
-| | `status` | string | ✅ | `in_progress \| done \| blocked` (from `the-flow.json`) |
+| **flow** | `flow` | string | ✅ | `the-flow \| harness-loop` (the plan's `provenance.agent`) |
+| | `stage` | string | ✅ | flight-plan stage = `nav.now` (e.g. `phase-5`) |
+| | `from` | string | ⬚ | **reserved** — previous stage (transition source); command-level capture OMITS it (a single window observes the current position, not the transition that reached it) |
+| | `status` | string | ✅ | `in_progress \| done \| blocked` — the `nav.now` node's lifecycle, narrowed (any other status ⇒ `in_progress`) |
 | **harness** | `verb` | string | ✅ | harness sub-command, sans-params (e.g. `checks`) |
 | **checks** | `status` | enum | ✅ | `ok \| degraded \| error` |
 | | `gates` | `Record<string,string>` | ⬚ | per-gate verdicts (names only) |
@@ -162,9 +162,15 @@ confidence float (that is Measuring-HVE's harness plane, not ours).
 
 ### 4.4 Flow-stage time
 On each `flow` event, attribute subsequent gap-time to `stage` until the next
-`flow` event. Read `stage`/`from`/`status` from `the-flow.json` `nav` at capture
-(not from command args), so stage timing is exact even when `harness flow nav`
-carried the target as a dropped param.
+`flow` event. Read `stage` (`nav.now`) + `status` (the `nav.now` node's lifecycle)
+from `the-flow.json` `nav` at capture (not from command args), so stage timing is
+exact even when `harness flow nav` carried the target as a dropped param.
+
+**Command-level capture emits ONE `flow` event per window** (a window sits at one
+stage), anchored to the window start, and **omits `from`** — a single capture
+observes the current position, not the transition that reached it. `from` stays
+reserved for a future explicit transition event; downstream readers must treat it
+as optional and never require it.
 
 ---
 
