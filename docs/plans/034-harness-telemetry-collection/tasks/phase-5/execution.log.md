@@ -240,3 +240,20 @@ Companion (run `…0903`) reviewed 5.7–5.9 → **1 HIGH + 4 MEDIUM**, all legi
 |---|------|------|-----|
 | D-519 | gotcha | `vitest` (esbuild) does NOT type-check — a tsc-only error (the exhaustive-switch default) survives the test suite. `just build` is the real type gate; run it before declaring a phase done. | Noteworthy |
 | D-520 | decision | Outcome events MUST be tool-result-provenance-gated (Claude: Bash-harness id; Copilot: single-subcommand) — an envelope shape alone is not proof a harness command produced it (AC-19 boundary). | Noteworthy |
+
+---
+
+## Commit 13 — companion F008 (Copilot lone-command gate) + two-reviewer reconciliation
+
+**F008 (MEDIUM, minih companion drain)** — the F004 fix gated Copilot `command_exit` on *harness*-subcommand count == 1, but a harness verb **mixed with a non-harness command** (`npm test && harness checks`) has `subs.length == 1` yet shares ONE `success` for the whole shell execution — which may reflect the *other* command (`&&` short-circuit). **Fixed**: emit only when the execution is a **lone command** — `commandSignatures(cmd).length === 1 && subs.length === 1`. Regression: `npm test && harness checks` → 0 `command_exit` (the `harness` event still fires — the verb DID run). F004's `harness checks && harness boot` case stays covered (2 sigs → 0).
+
+**Two-reviewer reconciliation.**
+- **Peer pi (`pij-1iax3c4`, the-flow stage-7 review)** → **APPROVE**: AC-15…AC-19 + per-harness emission satisfied *by construction*; all 210 telemetry tests green. One correction: it found **F001–F007** in the committed record and flagged "F008" in my brief as a possible mis-map of the drain count (1 HIGH + 7 MEDIUM = 8).
+- **Why both are right**: the pij peer reviewed only the *committed* artifacts, where F008 wasn't yet recorded; **F008 is a genuine edge** that lived only in the in-session minih companion's inbox (emitted after `cf8ede2`). It is now fixed + recorded here, so **F001–F008 = 8** and the count is consistent (closing the pij peer's traceability note).
+
+**Evidence**: `just build` ✓; full suite → **1265 passed**; `harness checks` hard gates ok.
+
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-521 | gotcha | Two independent reviewers disagreed only because their *evidence sets* differed (committed record vs. live companion inbox) — neither was wrong; reconcile by recording the uncommitted finding, not by dismissing it. | Noteworthy |
+| D-522 | decision | Copilot `command_exit` requires a **lone** harness command (one signature total), not just one harness verb among many — a shared `success` can't be split across `&&`/`;` (F004 + F008). | Noteworthy |

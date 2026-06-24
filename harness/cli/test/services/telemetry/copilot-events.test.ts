@@ -290,4 +290,36 @@ describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', 
     }).event_stream as Event[];
     expect(kinds(stream, 'command_exit')).toHaveLength(0); // can't attribute one success to two verbs
   });
+
+  it('F008 — a harness verb MIXED with a non-harness command emits NO command_exit', () => {
+    // `npm test && harness checks`: the single `success` reflects the whole shell
+    // execution, not `harness checks` alone — so it must not be attributed.
+    const lines = [
+      {
+        type: 'tool.execution_start',
+        timestamp: '2026-06-23T09:00:03Z',
+        data: { toolCallId: 'tc-1', toolName: 'bash', arguments: { command: 'npm test && harness checks' } },
+      },
+      {
+        type: 'tool.execution_complete',
+        timestamp: '2026-06-23T09:00:05Z',
+        data: { toolCallId: 'tc-1', toolName: 'bash', success: false },
+      },
+    ];
+    const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
+    const fs = new FakeFs({ [copilotEventsPath(HOME, 'sm')]: content }, {});
+    const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'sm' }, HOME);
+    const stream = copilotAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'copilot-cli',
+      window: { since: 'session-start', from: 0, to: 99 },
+    }).event_stream as Event[];
+    expect(kinds(stream, 'command_exit')).toHaveLength(0); // success reflects npm test too
+    // the harness event itself is still emitted (the verb DID run)
+    expect(kinds(stream, 'harness')).toContainEqual(
+      expect.objectContaining({ kind: 'harness', verb: 'checks' }),
+    );
+  });
 });
