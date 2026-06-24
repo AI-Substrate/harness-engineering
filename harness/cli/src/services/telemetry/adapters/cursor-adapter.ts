@@ -1,5 +1,8 @@
 import type { EnvPort } from '../../../adapters/env/env-port.js';
-import { partitionCommands } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
+import { buildEventStream } from '../event-builder.js';
+import type { Event } from '../events.js';
+import type { SkillOpen, ToolCall } from '../rollup.js';
 import type { SegmentModelStat } from '../segment.js';
 import type {
   HarnessAdapter,
@@ -158,10 +161,76 @@ const nullCaps: HarnessCapabilities = {
   api_errors: null,
   local_commands: null,
   thinking: null,
+  event_stream: null,
 };
 
 function nullIfEmptyMap(map: Record<string, number>): Record<string, number> | null {
   return Object.keys(map).length > 0 ? map : null;
+}
+
+/** A bubble's `createdAt` → ISO string (epoch-ms number or an ISO string), or null. */
+function bubbleTime(b: Record<string, unknown>): string | null {
+  const c = b.createdAt;
+  if (typeof c === 'number' && Number.isFinite(c)) return new Date(c).toISOString();
+  if (typeof c === 'string' && c.trim() !== '') return c;
+  return null;
+}
+
+/**
+ * The conversation's TIMED turn timeline from the IDE-store bubbles (the only
+ * timed Cursor source — the transcript carries no timestamps). Returns user-turn
+ * times and assistant-turn times (+ model), each in conversation order (sorted by
+ * `createdAt`). Empty when there's no db / no bubbles / no `createdAt`.
+ */
+function readBubbleTimeline(
+  ctx: HarnessContext,
+  convId: string,
+): { users: string[]; asst: { t: string; model?: string }[] } {
+  const empty = { users: [] as string[], asst: [] as { t: string; model?: string }[] };
+  const db = ctx.db;
+  if (db === undefined) return empty;
+  for (const dbPath of cursorStateDbPaths(ctx.env)) {
+    const rows = db.query(dbPath, 'SELECT value FROM cursorDiskKV WHERE key LIKE ?', [
+      `bubbleId:${convId}:%`,
+    ]);
+    if (rows.length === 0) continue;
+    const parsed: { ms: number; t: string; type: number; model?: string }[] = [];
+    for (const row of rows) {
+      if (typeof row.value !== 'string') continue;
+      let b: Record<string, unknown>;
+      try {
+        b = JSON.parse(row.value) as Record<string, unknown>;
+      } catch {
+        continue;
+      }
+      const t = bubbleTime(b);
+      if (t === null) continue;
+      const ms = Date.parse(t);
+      const info = (b.modelInfo ?? {}) as Record<string, unknown>;
+      const model = typeof info.modelName === 'string' ? info.modelName : undefined;
+      parsed.push({ ms: Number.isNaN(ms) ? 0 : ms, t, type: typeof b.type === 'number' ? b.type : 0, model });
+    }
+    if (parsed.length === 0) continue;
+    parsed.sort((a, b) => a.ms - b.ms);
+    return {
+      users: parsed.filter((p) => p.type === 1).map((p) => p.t),
+      asst: parsed.filter((p) => p.type === 2).map((p) => ({ t: p.t, model: p.model })),
+    };
+  }
+  return empty;
+}
+
+/** Count user/assistant turns in a set of raw transcript lines (for global turn indexing). */
+function countRole(lines: readonly string[], role: 'user' | 'assistant'): number {
+  let n = 0;
+  for (const line of lines) {
+    try {
+      if ((JSON.parse(line) as Record<string, unknown>).role === role) n += 1;
+    } catch {
+      // skip malformed
+    }
+  }
+  return n;
 }
 
 export const cursorAdapter: HarnessAdapter = {
@@ -176,8 +245,20 @@ export const cursorAdapter: HarnessAdapter = {
   extract(ctx: HarnessContext) {
     const content = readTranscript(ctx);
     if (content === null) return nullCaps;
-    const lines = nonEmptyLines(content).slice(ctx.window.from, ctx.window.to);
-    if (lines.length === 0) return nullCaps;
+    const allLines = nonEmptyLines(content);
+    const windowLines = allLines.slice(ctx.window.from, ctx.window.to);
+    if (windowLines.length === 0) return nullCaps;
+
+    const convId = ctx.env.get(CURSOR_SESSION_ENV) ?? '';
+    // The only timed Cursor source is the bubble store; the transcript is untimed.
+    // Correlate windowed transcript turns to whole-conversation bubbles by order
+    // → anchored timing (t_precision 'anchored'). tokens stay null (server-side).
+    const timeline =
+      convId.length > 0
+        ? readBubbleTimeline(ctx, convId)
+        : { users: [] as string[], asst: [] as { t: string; model?: string }[] };
+    let userIdx = countRole(allLines.slice(0, ctx.window.from), 'user');
+    let asstIdx = countRole(allLines.slice(0, ctx.window.from), 'assistant');
 
     const tools: Record<string, number> = {};
     const skills: Record<string, number> = {};
@@ -185,7 +266,13 @@ export const cursorAdapter: HarnessAdapter = {
     const userPrompts: number[] = [];
     let assistantTurns = 0;
 
-    for (const line of lines) {
+    const direct: Event[] = [];
+    const toolCalls: ToolCall[] = [];
+    const skillOpens: SkillOpen[] = [];
+    const commandObs: { cmd: string; t: string }[] = [];
+    let anyTs = false;
+
+    for (const line of windowLines) {
       let o: Record<string, unknown>;
       try {
         o = JSON.parse(line) as Record<string, unknown>;
@@ -200,25 +287,56 @@ export const cursorAdapter: HarnessAdapter = {
           .filter((b) => b.type === 'text' && typeof b.text === 'string')
           .map((b) => b.text as string)
           .join(' ');
-        if (text.trim() !== '') userPrompts.push(wordCount(text));
+        if (text.trim() !== '') {
+          const w = wordCount(text);
+          userPrompts.push(w);
+          const t = timeline.users[userIdx];
+          if (t !== undefined) {
+            direct.push({ t, t_precision: 'anchored', kind: 'prompt', words: w });
+            anyTs = true;
+          }
+        }
+        userIdx += 1;
       } else if (o.role === 'assistant') {
         assistantTurns += 1;
+        const turnAt = timeline.asst[asstIdx];
+        if (turnAt !== undefined) {
+          anyTs = true;
+          const turn: Event = { t: turnAt.t, t_precision: 'anchored', kind: 'turn', dur_s: 0 };
+          if (turnAt.model !== undefined) turn.model = turnAt.model;
+          direct.push(turn); // no token buckets → rollup.tokens stays null (never estimated)
+        }
+        const at = turnAt?.t;
         for (const b of blocks) {
           if (b.type !== 'tool_use') continue;
           const name = typeof b.name === 'string' ? b.name : 'unknown';
           tools[name] = (tools[name] ?? 0) + 1;
+          if (at !== undefined) toolCalls.push({ name, t: at });
           const input = (b.input ?? {}) as Record<string, unknown>;
           if ((name === 'Shell' || name === 'Bash') && typeof input.command === 'string') {
             rawCommands.push(input.command);
+            if (at !== undefined) commandObs.push({ cmd: input.command, t: at });
           } else if (name === 'Skill' && typeof input.skill === 'string') {
             skills[input.skill] = (skills[input.skill] ?? 0) + 1;
+            if (at !== undefined) skillOpens.push({ name: input.skill, t: at });
           }
         }
+        asstIdx += 1;
       }
     }
 
+    for (const { cmd, t } of commandObs) {
+      for (const sig of commandSignatures(cmd)) {
+        const sub = harnessSubcommand(sig);
+        if (sub !== null) direct.push({ t, t_precision: 'anchored', kind: 'harness', verb: sub });
+      }
+    }
+
+    const event_stream = anyTs
+      ? buildEventStream({ direct, toolCalls, skillOpens, lastSkillActive: false, precision: 'anchored' })
+      : null;
+
     const { bash, harness } = partitionCommands(rawCommands);
-    const convId = ctx.env.get(CURSOR_SESSION_ENV) ?? '';
     return {
       harness_session_id: null,
       tokens: null, // Cursor keeps per-request token CONSUMPTION server-side only
@@ -236,6 +354,7 @@ export const cursorAdapter: HarnessAdapter = {
       api_errors: null,
       local_commands: null,
       thinking: null,
+      event_stream,
     };
   },
 };

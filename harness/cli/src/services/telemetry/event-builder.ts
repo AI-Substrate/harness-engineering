@@ -8,7 +8,7 @@
  * place so Claude / Copilot / Cursor don't each reimplement them. Pure (no I/O).
  */
 
-import type { Event } from './events.js';
+import type { Event, TPrecision } from './events.js';
 import {
   collapseToolBursts,
   inferSkillStatuses,
@@ -26,6 +26,12 @@ export interface RawEvents {
   skillOpens?: SkillOpen[];
   /** Segment ends with the last skill still open ⇒ its status is `active` (else `completed`). */
   lastSkillActive?: boolean;
+  /**
+   * Honesty flag stamped on the generated tool/skill events — e.g. Cursor anchors
+   * untimed transcript beats to a turn bubble's `createdAt`, so it passes `anchored`.
+   * Omit for exact-timed sources (Claude/Copilot).
+   */
+  precision?: TPrecision;
 }
 
 /**
@@ -34,15 +40,20 @@ export interface RawEvents {
  */
 export function buildEventStream(raw: RawEvents): Event[] {
   const events: Event[] = [...raw.direct];
+  const p = raw.precision;
 
   for (const b of collapseToolBursts(raw.toolCalls ?? [])) {
-    events.push({ t: b.t, kind: 'tools', name: b.name, count: b.count, span_s: b.span_s });
+    const e: Event = { t: b.t, kind: 'tools', name: b.name, count: b.count, span_s: b.span_s };
+    if (p !== undefined) e.t_precision = p;
+    events.push(e);
   }
 
   const opens = raw.skillOpens ?? [];
   const statuses = inferSkillStatuses(opens, raw.lastSkillActive ?? false);
   opens.forEach((open, i) => {
-    events.push({ t: open.t, kind: 'skill', name: open.name, status: statuses[i] });
+    const e: Event = { t: open.t, kind: 'skill', name: open.name, status: statuses[i] };
+    if (p !== undefined) e.t_precision = p;
+    events.push(e);
   });
 
   return stableSortByT(events);

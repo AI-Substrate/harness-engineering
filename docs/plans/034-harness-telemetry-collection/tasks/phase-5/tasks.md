@@ -8,7 +8,7 @@ Driven directly from the plan's Phase 5 table (the `tasks` stage was skipped —
 | 5.2 | Extend `segment.ts` + `segment.schema.json` to v2.0 (`event_stream[]` + `rollup`; v1 counts kept as compat view) | [x] | (this commit) | named `event_stream` (v1 `events` key kept for compat); schema_version `2.0`; migrated 3 tests |
 | 5.3 | Gap classification + rollup engine (agent/human/idle, IDLE_CAP, working_ratio; tool-burst BURST_N) | [x] | (this commit) | `rollup.ts` pure engine; AC-17 fixture exact; bursts + skill-status helpers |
 | 5.4 | Emit `events[]` from Claude + Copilot adapters | [x] | commits 2-3 | Claude (c2a0712) + Copilot (this commit). Copilot turn tokens attributed per interaction. flow/checks/command_exit deferred to 5.6/5.7 |
-| 5.5 | Emit `events[]` from Cursor adapter via DbPort bubbles (tokens null; t_precision anchored) | [ ] | | honest ceiling; builds on shipped DbPort |
+| 5.5 | Emit `events[]` from Cursor adapter via DbPort bubbles (tokens null; t_precision anchored) | [x] | commit 5 | bubble-`createdAt`-anchored timeline; tokens null; `event_stream` null on headless (no bubbles); rollup.tools==v1 tools |
 | 5.6 | Skill-status inference + flow-stage events from `the-flow.json` nav | [ ] | | helper landed in 5.3 (`inferSkillStatuses`); wire into adapters |
 | 5.7 | Outcome events: `checks` (+gates), `command_exit` (exit code) | [ ] | | codes/verdicts only; commits excluded by design |
 | 5.8 | Session-end flush (trailing tail) or document accepting tail loss | [ ] | | detail doc §6 |

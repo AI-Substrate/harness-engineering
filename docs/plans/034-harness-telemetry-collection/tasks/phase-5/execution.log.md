@@ -90,3 +90,19 @@ Real AC-16 bug caught by the companion — the value of live review. No HIGH/CRI
 ## Commit 4 — companion HIGH + MEDIUM fixes (Copilot tool-name + doc drift)
 
 `copilot-adapter.ts` emits the tool-call event at whichever event first carries the name; `copilot-events.test.ts` gains a regression (name only on `execution_complete`); `event-schema-v2-detail.md` burst rule de-references `"mixed"`. 1226/1226 green; arch-check clean.
+
+Companion (run `…4d43`) reviewed `610b872` → **no findings** (clean).
+
+---
+
+## Commit 5 — T5.5 (Cursor): bubble-anchored event stream
+
+**What landed** — `adapters/cursor-adapter.ts` (mod): the transcript is untimed, so `readBubbleTimeline` reads the IDE-store bubbles (`createdAt` + `type` + `modelName`) and the adapter correlates windowed transcript turns to bubbles by conversation order (`countRole` for global indices). Emits prompt + turn (model, **no tokens**) timed to bubble `createdAt`; tools/skills/harness anchored to their turn — all flagged `t_precision: "anchored"`. `event-builder.ts` gained a `precision` option for the generated tool/skill events. `event_stream` is **null** when there are no timed bubbles (headless CLI session) — honest, never fabricated. `cursor-events.test.ts` (new).
+
+**Evidence**: cursor tests 18 passed; full suite → 1231 passed; arch-check → 1 pre-existing P4 warn only.
+
+### Discoveries & Learnings
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-509 | decision | Cursor timeline is **bubble-anchored** (transcript↔bubble correlation by conversation order). All Cursor events carry `t_precision: "anchored"`; tokens stay null. Headless sessions (no bubbles) → `event_stream: null`. | Noteworthy |
+| D-510 | gotcha | Cursor turn `dur_s` is `0` (bubbles give a start instant, not a span); the rollup's activity uses inter-event gaps, so working_ratio is still correct. | — |
