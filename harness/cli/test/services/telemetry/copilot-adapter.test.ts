@@ -91,9 +91,12 @@ describe('copilotAdapter.extract — token math from process-log assistant_usage
     expect(caps.models).toEqual({ 'claude-opus-4-8': { turns: 2, output_tokens: 95 } });
   });
 
-  it('reads effort from events session.model_change and tools from tool.execution_start (name only)', () => {
+  it('reads effort + tools (deduped per call) and the sans-params command/prompt signals', () => {
     expect(caps.effort).toBe('high');
-    expect(caps.tools).toEqual({ bash: 1, str_replace: 1 });
+    expect(caps.tools).toEqual({ bash: 2 });
+    expect(caps.bash_commands).toEqual(['git status']); // `git status -s` → `-s` dropped
+    expect(caps.harness_commands).toEqual(['flow nav']); // `harness flow nav --to …` → path dropped
+    expect(caps.user_prompts).toEqual([6]); // 6-word prompt; the text (incl. its secret) is never kept
   });
 
   it('extracts subagent identity from events subagent.completed; tokens null (not correlatable)', () => {
@@ -153,6 +156,9 @@ describe('copilotAdapter.extract — PRIVACY (AC-04 adapter boundary, deep-scan)
       effort: caps.effort,
       skills: caps.skills ?? {},
       tools: caps.tools ?? {},
+      bash_commands: caps.bash_commands ?? [],
+      harness_commands: caps.harness_commands ?? [],
+      user_prompts: caps.user_prompts ?? [],
       subagents: caps.subagents ?? [],
       files: caps.files ?? { written: [], edited: [] },
       plans_touched: [],
@@ -180,7 +186,10 @@ describe('copilotAdapter.extract — null-on-absence (AC-03)', () => {
     expect(caps.tokens).toBeNull();
     expect(caps.models ?? null).toBeNull();
     expect(caps.effort).toBe('high');
-    expect(caps.tools).toEqual({ bash: 1, str_replace: 1 });
+    expect(caps.tools).toEqual({ bash: 2 });
+    expect(caps.bash_commands).toEqual(['git status']);
+    expect(caps.harness_commands).toEqual(['flow nav']);
+    expect(caps.user_prompts).toEqual([6]);
     expect(caps.subagents?.[0]?.agent_name).toBe('explorer');
   });
 

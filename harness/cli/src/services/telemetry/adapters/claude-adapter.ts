@@ -1,7 +1,8 @@
+import { partitionCommands } from '../command-signature.js';
 import type {
   SegmentCompaction,
   SegmentModelStat,
-  SegmentSubagent,
+  SegmentSubagentInput,
   SegmentTokens,
 } from '../segment.js';
 import type { HarnessAdapter, HarnessCapabilities, HarnessContext } from './harness-adapter.js';
@@ -57,6 +58,32 @@ function nullIfEmptyMap(map: Record<string, number>): Record<string, number> | n
   return Object.keys(map).length > 0 ? map : null;
 }
 
+/** Word count of a text blob (whitespace-split); 0 when blank. */
+function wordCount(text: string): number {
+  const t = text.trim();
+  return t === '' ? 0 : t.split(/\s+/).length;
+}
+
+/**
+ * Word count of a user turn that is a REAL prompt (string content or text blocks),
+ * or `null` when it is a tool_result / empty (not a prompt). Counts ONLY — the
+ * prompt text itself is never retained (AC-04).
+ */
+function userPromptWords(message: Record<string, unknown>): number | null {
+  const content = message.content;
+  if (typeof content === 'string') return content.trim() === '' ? null : wordCount(content);
+  if (Array.isArray(content)) {
+    const blocks = content as Record<string, unknown>[];
+    if (blocks.some((b) => b?.type === 'tool_result')) return null; // a tool result, not a prompt
+    const text = blocks
+      .filter((b) => b?.type === 'text' && typeof b.text === 'string')
+      .map((b) => b.text as string)
+      .join(' ');
+    return text.trim() === '' ? null : wordCount(text);
+  }
+  return null;
+}
+
 const nullCaps: HarnessCapabilities = {
   harness_session_id: null,
   tokens: null,
@@ -110,13 +137,15 @@ export const claudeAdapter: HarnessAdapter = {
     const tools: Record<string, number> = {};
     const written: string[] = [];
     const edited: string[] = [];
+    const rawCommands: string[] = []; // raw Bash command lines → sans-params signatures below
+    const userPrompts: number[] = []; // word count of each real user prompt in the window
     const compactions: SegmentCompaction[] = [];
     let thinkingBlocks = 0;
 
     // Subagent correlation: Agent tool_use id → its subagent_type, joined to the
     // matching tool_result's inline <usage> block.
     const agentTypeById = new Map<string, string | null>();
-    const subagents: SegmentSubagent[] = [];
+    const subagents: SegmentSubagentInput[] = [];
 
     for (const line of lines) {
       let obj: Record<string, unknown>;
@@ -186,10 +215,14 @@ export const claudeAdapter: HarnessAdapter = {
               edited.push(tInput.file_path);
             } else if (name === 'Write' && typeof tInput.file_path === 'string') {
               written.push(tInput.file_path);
+            } else if (name === 'Bash' && typeof tInput.command === 'string') {
+              rawCommands.push(tInput.command); // sans-params signatures extracted post-loop
             }
           }
         }
       } else if (obj.type === 'user') {
+        const words = userPromptWords(message);
+        if (words !== null) userPrompts.push(words);
         for (const block of blocks) {
           if (block.type !== 'tool_result') continue;
           const refId = typeof block.tool_use_id === 'string' ? block.tool_use_id : '';
@@ -231,6 +264,8 @@ export const claudeAdapter: HarnessAdapter = {
       };
     }
 
+    const { bash, harness } = partitionCommands(rawCommands);
+
     return {
       harness_session_id: null,
       tokens,
@@ -238,6 +273,9 @@ export const claudeAdapter: HarnessAdapter = {
       effort,
       skills: nullIfEmptyMap(skills),
       tools: nullIfEmptyMap(tools),
+      bash_commands: bash.length > 0 ? bash : null,
+      harness_commands: harness.length > 0 ? harness : null,
+      user_prompts: userPrompts.length > 0 ? userPrompts : null,
       subagents: subagents.length > 0 ? subagents : null,
       files: written.length > 0 || edited.length > 0 ? { written, edited } : null,
       branch_changed: null,

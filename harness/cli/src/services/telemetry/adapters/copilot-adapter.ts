@@ -1,4 +1,5 @@
-import type { SegmentModelStat, SegmentSubagent, SegmentTokens } from '../segment.js';
+import { partitionCommands } from '../command-signature.js';
+import type { SegmentModelStat, SegmentSubagentInput, SegmentTokens } from '../segment.js';
 import type {
   HarnessAdapter,
   HarnessCapabilities,
@@ -64,6 +65,20 @@ function str(v: unknown): string | null {
 
 function asObj(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+}
+
+/** Word count of a user prompt (string or text blocks); null when empty/absent. Counts ONLY — text never retained (AC-04). */
+function promptWords(content: unknown): number | null {
+  let text = '';
+  if (typeof content === 'string') {
+    text = content;
+  } else if (Array.isArray(content)) {
+    text = content.map((b) => (typeof b === 'string' ? b : (str(asObj(b).text) ?? ''))).join(' ');
+  } else {
+    return null;
+  }
+  const t = text.trim();
+  return t === '' ? null : t.split(/\s+/).length;
 }
 
 /** Parse one JSONL line (whole-line JSON), tolerating malformed lines. */
@@ -142,7 +157,10 @@ const nullCaps: HarnessCapabilities = {
 interface EventsView {
   effort: string | null;
   tools: Record<string, number>;
-  subagents: SegmentSubagent[];
+  bash: string[];
+  harness: string[];
+  userPrompts: number[];
+  subagents: SegmentSubagentInput[];
   /** Interaction ids active in THIS window — the token-attribution key. */
   windowInteractionIds: Set<string>;
   /** Did the WHOLE file carry any interaction id? (false ⇒ no windowing info). */
@@ -155,7 +173,9 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
 
   let effort: string | null = null;
   const toolNameByCall = new Map<string, string>(); // dedupe a tool execution by its call id
-  const subagents: SegmentSubagent[] = [];
+  const rawCommandByCall = new Map<string, string>(); // dedupe a shell command by its call id
+  const userPrompts: number[] = []; // word count of each user prompt in the window
+  const subagents: SegmentSubagentInput[] = [];
   const windowInteractionIds = new Set<string>();
 
   for (const line of lines.slice(fromLine, toLine)) {
@@ -176,6 +196,12 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       if (callId !== null && toolName !== null && !toolNameByCall.has(callId)) {
         toolNameByCall.set(callId, toolName);
       }
+      // A shell tool's command line → sans-params signature (computed post-loop).
+      // Only the `command` field is read; arguments otherwise carry free text (AC-04).
+      if (callId !== null && (toolName === 'bash' || toolName === 'shell')) {
+        const cmd = str(asObj(data.arguments).command);
+        if (cmd !== null && !rawCommandByCall.has(callId)) rawCommandByCall.set(callId, cmd);
+      }
     } else if (o.type === 'subagent.completed') {
       subagents.push({
         type: null,
@@ -185,13 +211,26 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
         tokens: null, // not cleanly correlatable — never guessed
         tool_uses: null,
       });
+    } else if (o.type === 'user.message') {
+      const w = promptWords(data.content);
+      if (w !== null) userPrompts.push(w);
     }
   }
 
   const tools: Record<string, number> = {};
   for (const name of toolNameByCall.values()) tools[name] = (tools[name] ?? 0) + 1;
+  const { bash, harness } = partitionCommands([...rawCommandByCall.values()]);
 
-  return { effort, tools, subagents, windowInteractionIds, anyInteractionId };
+  return {
+    effort,
+    tools,
+    bash,
+    harness,
+    userPrompts,
+    subagents,
+    windowInteractionIds,
+    anyInteractionId,
+  };
 }
 
 export const copilotAdapter: HarnessAdapter = {
@@ -220,6 +259,9 @@ export const copilotAdapter: HarnessAdapter = {
         : {
             effort: null,
             tools: {},
+            bash: [],
+            harness: [],
+            userPrompts: [],
             subagents: [],
             windowInteractionIds: new Set(),
             anyInteractionId: false,
@@ -293,6 +335,9 @@ export const copilotAdapter: HarnessAdapter = {
       effort,
       skills: null,
       tools: Object.keys(ev.tools).length > 0 ? ev.tools : null,
+      bash_commands: ev.bash.length > 0 ? ev.bash : null,
+      harness_commands: ev.harness.length > 0 ? ev.harness : null,
+      user_prompts: ev.userPrompts.length > 0 ? ev.userPrompts : null,
       subagents: ev.subagents.length > 0 ? ev.subagents : null,
       files: null,
       branch_changed: null,

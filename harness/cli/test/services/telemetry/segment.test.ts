@@ -39,10 +39,10 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
   });
 
-  it('pins schema_version to "1.0"', () => {
+  it('pins schema_version to "1.1"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('1.0');
+    expect(seg.schema_version).toBe('1.1');
   });
 
   it('defaults unimplemented capabilities to null / empty (never absent, never estimated)', () => {
@@ -53,6 +53,9 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     expect(seg.models).toEqual({});
     expect(seg.skills).toEqual({});
     expect(seg.tools).toEqual({});
+    expect(seg.bash_commands).toEqual([]);
+    expect(seg.harness_commands).toEqual([]);
+    expect(seg.user_prompts).toEqual([]);
     expect(seg.subagents).toEqual([]);
     expect(seg.plans_touched).toEqual([]);
     expect(seg.files).toEqual({ written: [], edited: [] });
@@ -150,5 +153,58 @@ describe('T001 — PRIVACY: planted-secret negative control (AC-04)', () => {
     expect(seg.tools.Bash).toBe(4);
     // plans_touched is deduped
     expect(seg.plans_touched).toEqual(['034-harness-telemetry-collection']);
+  });
+});
+
+describe('T001 — schema 1.1 fields: command/prompt arrays + grouped subagents', () => {
+  it('keeps bash/harness command and user-prompt arrays in order (no dedupe)', () => {
+    const seg = serializeSegment(
+      {
+        ...baseInput(),
+        bash_commands: ['git status', 'git status', 'npm run'],
+        harness_commands: ['boot', 'flow nav'],
+        user_prompts: [42, 7, 15],
+      },
+      REPO,
+    );
+    expect(seg.bash_commands).toEqual(['git status', 'git status', 'npm run']);
+    expect(seg.harness_commands).toEqual(['boot', 'flow nav']);
+    expect(seg.user_prompts).toEqual([42, 7, 15]);
+  });
+
+  it('groups identical subagents into one entry with a count, omitting null fields', () => {
+    const seg = serializeSegment(
+      {
+        ...baseInput(),
+        subagents: [
+          { type: 'Explore', agent_name: null, model: null, status: null },
+          { type: 'Explore', agent_name: null, model: null, status: null },
+          { type: 'general-purpose' },
+        ],
+      },
+      REPO,
+    );
+    expect(seg.subagents).toEqual([
+      { type: 'Explore', count: 2 }, // collapsed, nulls omitted (no agent_name/model/status/tokens keys)
+      { type: 'general-purpose', count: 1 },
+    ]);
+  });
+
+  it('sums tokens/tool_uses across a group; distinct identities stay separate', () => {
+    const seg = serializeSegment(
+      {
+        ...baseInput(),
+        subagents: [
+          { type: 'reviewer', tokens: 100, tool_uses: 4 },
+          { type: 'reviewer', tokens: 50, tool_uses: 2 },
+          { type: 'reviewer', model: 'claude-opus-4-8', tokens: 10 }, // different identity (model set)
+        ],
+      },
+      REPO,
+    );
+    expect(seg.subagents).toEqual([
+      { type: 'reviewer', count: 2, tokens: 150, tool_uses: 6 },
+      { type: 'reviewer', model: 'claude-opus-4-8', count: 1, tokens: 10 },
+    ]);
   });
 });

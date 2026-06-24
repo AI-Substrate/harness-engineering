@@ -24,7 +24,7 @@ import {
  */
 
 /** The cross-tool schema version of the segment contract. Bump on a field-set change. */
-export const SEGMENT_SCHEMA_VERSION = '1.0';
+export const SEGMENT_SCHEMA_VERSION = '1.1';
 
 export interface SegmentTokens {
   input: number;
@@ -41,13 +41,30 @@ export interface SegmentModelStat {
   output_tokens: number;
 }
 
+/** A per-occurrence subagent record an adapter emits — grouped by the serializer. */
+export interface SegmentSubagentInput {
+  type?: string | null;
+  agent_name?: string | null;
+  model?: string | null;
+  status?: string | null;
+  tokens?: number | null;
+  tool_uses?: number | null;
+}
+
+/**
+ * A serialized subagent: identical occurrences collapsed to ONE entry with a
+ * `count`, null/absent identity fields OMITTED (not carried as `null`), and
+ * `tokens`/`tool_uses` summed across the group (omitted when none were known).
+ * Keeps the segment compact instead of N near-empty objects.
+ */
 export interface SegmentSubagent {
-  type: string | null;
-  agent_name: string | null;
-  model: string | null;
-  status: string | null;
-  tokens: number | null;
-  tool_uses: number | null;
+  type?: string;
+  agent_name?: string;
+  model?: string;
+  status?: string;
+  count: number;
+  tokens?: number;
+  tool_uses?: number;
 }
 
 export interface SegmentWindow {
@@ -97,6 +114,12 @@ export interface Segment {
   effort: string | null;
   skills: Record<string, number>;
   tools: Record<string, number>;
+  /** Every bash command run in the window, sans params (e.g. `git status`); harness invocations excluded — see `harness_commands`. */
+  bash_commands: string[];
+  /** Every harness sub-command run in the window, sans params (e.g. `boot`, `flow nav`). */
+  harness_commands: string[];
+  /** Word count of each user prompt in the window, in order — how much / how often the user is steering (never the text). */
+  user_prompts: number[];
   subagents: SegmentSubagent[];
   files: SegmentFiles;
   plans_touched: string[];
@@ -125,6 +148,9 @@ export const SEGMENT_FIELD_KEYS = [
   'effort',
   'skills',
   'tools',
+  'bash_commands',
+  'harness_commands',
+  'user_prompts',
   'subagents',
   'files',
   'plans_touched',
@@ -146,7 +172,10 @@ export interface SegmentInput {
   effort?: string | null;
   skills?: Record<string, number>;
   tools?: Record<string, number>;
-  subagents?: SegmentSubagent[];
+  bash_commands?: string[];
+  harness_commands?: string[];
+  user_prompts?: number[];
+  subagents?: SegmentSubagentInput[];
   files?: { written?: string[]; edited?: string[] };
   plans_touched?: string[];
   events?: Partial<SegmentEvents>;
@@ -181,6 +210,37 @@ function dedupe(values: readonly string[]): string[] {
 }
 
 /**
+ * Group per-occurrence subagent records into compact serialized entries: identical
+ * identities (type/agent_name/model/status) collapse to one `{ …, count }`, null
+ * identity fields are OMITTED (not carried as `null`), and tokens/tool_uses are
+ * summed (omitted when no occurrence reported a number). First-occurrence order
+ * is preserved.
+ */
+function groupSubagents(items: readonly SegmentSubagentInput[]): SegmentSubagent[] {
+  const groups = new Map<string, SegmentSubagent>();
+  for (const s of items) {
+    const type = s.type ?? undefined;
+    const agentName = s.agent_name ?? undefined;
+    const model = s.model ?? undefined;
+    const status = s.status ?? undefined;
+    const key = JSON.stringify([type, agentName, model, status]);
+    let g = groups.get(key);
+    if (g === undefined) {
+      g = { count: 0 };
+      if (type !== undefined) g.type = type;
+      if (agentName !== undefined) g.agent_name = agentName;
+      if (model !== undefined) g.model = model;
+      if (status !== undefined) g.status = status;
+      groups.set(key, g);
+    }
+    g.count += 1;
+    if (typeof s.tokens === 'number') g.tokens = (g.tokens ?? 0) + s.tokens;
+    if (typeof s.tool_uses === 'number') g.tool_uses = (g.tool_uses ?? 0) + s.tool_uses;
+  }
+  return [...groups.values()];
+}
+
+/**
  * Serialize a capture input into a clean counts-only {@link Segment}. ALLOWLIST
  * BY CONSTRUCTION: every field is picked explicitly — the input is never spread —
  * so a planted secret / raw content in a non-allowlisted field cannot reach the
@@ -205,14 +265,10 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     effort: input.effort ?? null,
     skills: input.skills ?? {},
     tools: input.tools ?? {},
-    subagents: (input.subagents ?? []).map((s) => ({
-      type: s.type ?? null,
-      agent_name: s.agent_name ?? null,
-      model: s.model ?? null,
-      status: s.status ?? null,
-      tokens: s.tokens ?? null,
-      tool_uses: s.tool_uses ?? null,
-    })),
+    bash_commands: [...(input.bash_commands ?? [])],
+    harness_commands: [...(input.harness_commands ?? [])],
+    user_prompts: [...(input.user_prompts ?? [])],
+    subagents: groupSubagents(input.subagents ?? []),
     files: {
       written: (input.files?.written ?? []).map((p) => relativizePath(p, repoRoot)),
       edited: (input.files?.edited ?? []).map((p) => relativizePath(p, repoRoot)),

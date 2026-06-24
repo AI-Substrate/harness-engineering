@@ -6,10 +6,7 @@ import {
   claudeAdapter,
   claudeTranscriptPath,
 } from '../../../src/services/telemetry/adapters/claude-adapter.js';
-import type {
-  HarnessContext,
-  HarnessSource,
-} from '../../../src/services/telemetry/adapters/harness-adapter.js';
+import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 
 /**
@@ -125,6 +122,21 @@ describe('claudeAdapter.extract — non-token capabilities', () => {
   });
 });
 
+describe('claudeAdapter.extract — commands + user prompts (schema 1.1)', () => {
+  const caps = claudeAdapter.extract({ ...source(seededFs(), seededEnv()), window: wholeWindow() });
+
+  it('reduces a Bash command to a sans-params signature — the secret in the flag is dropped', () => {
+    // fixture: `curl -H Authorization:Bearer-SUPER_SECRET… https://…` → just `curl`
+    expect(caps.bash_commands).toEqual(['curl']);
+    expect(caps.harness_commands ?? null).toBeNull(); // no harness invocation in the fixture
+  });
+
+  it('records each user prompt as a WORD COUNT only — never the text (which here holds a secret)', () => {
+    // the 11-word prompt is counted; the tool_result user turn is NOT a prompt
+    expect(caps.user_prompts).toEqual([11]);
+  });
+});
+
 describe('claudeAdapter.extract — PRIVACY (AC-04 adapter boundary, deep-scan via serializeSegment)', () => {
   it('no planted secret / absolute path survives into the serialized segment; files are repo-relative', () => {
     const caps = claudeAdapter.extract({
@@ -144,6 +156,9 @@ describe('claudeAdapter.extract — PRIVACY (AC-04 adapter boundary, deep-scan v
       effort: caps.effort,
       skills: caps.skills ?? {},
       tools: caps.tools ?? {},
+      bash_commands: caps.bash_commands ?? [],
+      harness_commands: caps.harness_commands ?? [],
+      user_prompts: caps.user_prompts ?? [],
       subagents: caps.subagents ?? [],
       files: caps.files ?? { written: [], edited: [] },
       plans_touched: [],
