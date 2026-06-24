@@ -60,3 +60,19 @@ No HIGH/CRITICAL. Companion run idled out (~19min) after review → reboot a fre
 | D-504 | decision | Burst rule collapses **same-name runs only** (dropped the doc's lossy `"mixed"`) so `rollup.tools == v1 tools` (AC-16). | Noteworthy |
 | D-505 | decision | Claude adapter emits events only when transcript lines carry `timestamp`; the Phase-2 fixture is timestamp-less, so a new timestamped fixture drives the test — Phase-2 untouched. | — |
 | D-506 | decision | `flow` / `checks` / `command_exit` events deferred from 5.4 to 5.6/5.7 (they come from `the-flow.json` nav + command results, not the transcript). | Deferred |
+
+Companion (run `…1dae`) reviewed `c2a0712` → **no findings** (clean).
+
+---
+
+## Commit 3 — T5.4 (Copilot): adapter event emission
+
+**What landed** — `adapters/copilot-adapter.ts` (mod): emits prompt / turn / tool-burst / model / subagent / harness events from the timestamped `events.jsonl`. Turns pair `assistant.turn_start`/`turn_end` (dur_s) with **per-interaction tokens** attributed from the process-log `assistant_usage` blocks (so Σ turn tokens == the v1 aggregate, AC-16). `copilot-events.test.ts` (new).
+
+**Evidence**: `npx vitest run test/services/telemetry` → 173 passed; full suite → 1225 passed; arch-check → 1 pre-existing P4 warn only.
+
+### Discoveries & Learnings
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-507 | decision | Copilot turn tokens attributed per `interaction_id` (process log) → the turn event of that interaction. When events carry no interaction ids (older format), per-turn tokens are omitted → rollup.tokens could under-count vs v1 (logged, edge case; fixture exercises the interaction path). | Noteworthy |
+| D-508 | decision | Copilot skill events skipped (the adapter never parsed `skill.invoked`; v1 skills already null) — consistent with current counts; revisit if skills land in copilot counts. | Deferred |

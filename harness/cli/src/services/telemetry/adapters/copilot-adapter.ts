@@ -1,4 +1,7 @@
-import { partitionCommands } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
+import { buildEventStream } from '../event-builder.js';
+import type { Event } from '../events.js';
+import type { ToolCall } from '../rollup.js';
 import type { SegmentModelStat, SegmentSubagentInput, SegmentTokens } from '../segment.js';
 import type {
   HarnessAdapter,
@@ -151,6 +154,7 @@ const nullCaps: HarnessCapabilities = {
   api_errors: null,
   local_commands: null,
   thinking: null,
+  event_stream: null,
 };
 
 /** Counts-only view of one `events.jsonl`, sliced to the command's window. */
@@ -165,6 +169,16 @@ interface EventsView {
   windowInteractionIds: Set<string>;
   /** Did the WHOLE file carry any interaction id? (false ⇒ no windowing info). */
   anyInteractionId: boolean;
+  // v2.0 timed event collectors (events.jsonl IS timestamped — unlike the Claude fixture).
+  prompts: { t: string; words: number }[];
+  toolCalls: ToolCall[];
+  subagentEvts: { t: string; name: string }[];
+  modelEvts: { t: string; model: string; effort?: string }[];
+  commandObs: { cmd: string; t: string }[];
+  /** interactionId → turn_start / turn_end timestamps (paired into turn events post-loop). */
+  turnStart: Map<string, string>;
+  turnEnd: Map<string, string>;
+  anyTs: boolean;
 }
 
 function readEvents(content: string, fromLine: number, toLine: number): EventsView {
@@ -178,16 +192,38 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   const subagents: SegmentSubagentInput[] = [];
   const windowInteractionIds = new Set<string>();
 
+  const prompts: { t: string; words: number }[] = [];
+  const toolCalls: ToolCall[] = [];
+  const subagentEvts: { t: string; name: string }[] = [];
+  const modelEvts: { t: string; model: string; effort?: string }[] = [];
+  const commandObs: { cmd: string; t: string }[] = [];
+  const turnStart = new Map<string, string>();
+  const turnEnd = new Map<string, string>();
+  let anyTs = false;
+
   for (const line of lines.slice(fromLine, toLine)) {
     const o = parseLine(line);
     if (o === null) continue;
     const data = asObj(o.data);
+    const ts = str(o.timestamp) ?? str(o.ts) ?? str(o.time);
+    if (ts !== null) anyTs = true;
 
     const iid = str(data.interactionId);
     if (iid !== null) windowInteractionIds.add(iid);
 
     if (o.type === 'session.model_change') {
       if (effort === null) effort = str(data.reasoningEffort);
+      const m = str(data.newModel);
+      if (ts !== null && m !== null) {
+        const me: { t: string; model: string; effort?: string } = { t: ts, model: m };
+        const e = str(data.reasoningEffort);
+        if (e !== null) me.effort = e;
+        modelEvts.push(me);
+      }
+    } else if (o.type === 'assistant.turn_start') {
+      if (ts !== null && iid !== null) turnStart.set(iid, ts);
+    } else if (o.type === 'assistant.turn_end') {
+      if (ts !== null && iid !== null) turnEnd.set(iid, ts);
     } else if (o.type === 'tool.execution_start' || o.type === 'tool.execution_complete') {
       // The tool name moved from execution_complete → execution_start; read it from
       // whichever event carries it, deduped per execution so we never double-count.
@@ -195,25 +231,37 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       const toolName = str(data.toolName);
       if (callId !== null && toolName !== null && !toolNameByCall.has(callId)) {
         toolNameByCall.set(callId, toolName);
+        // The tool-call event rides on execution_start (where the name + ts live).
+        if (ts !== null && o.type === 'tool.execution_start') {
+          toolCalls.push({ name: toolName, t: ts });
+        }
       }
       // A shell tool's command line → sans-params signature (computed post-loop).
       // Only the `command` field is read; arguments otherwise carry free text (AC-04).
       if (callId !== null && (toolName === 'bash' || toolName === 'shell')) {
         const cmd = str(asObj(data.arguments).command);
-        if (cmd !== null && !rawCommandByCall.has(callId)) rawCommandByCall.set(callId, cmd);
+        if (cmd !== null && !rawCommandByCall.has(callId)) {
+          rawCommandByCall.set(callId, cmd);
+          if (ts !== null) commandObs.push({ cmd, t: ts });
+        }
       }
     } else if (o.type === 'subagent.completed') {
+      const name = str(data.agentName) ?? str(data.agentDisplayName);
       subagents.push({
         type: null,
-        agent_name: str(data.agentName) ?? str(data.agentDisplayName),
+        agent_name: name,
         model: str(data.model),
         status: 'completed',
         tokens: null, // not cleanly correlatable — never guessed
         tool_uses: null,
       });
+      if (ts !== null) subagentEvts.push({ t: ts, name: name ?? 'subagent' });
     } else if (o.type === 'user.message') {
       const w = promptWords(data.content);
-      if (w !== null) userPrompts.push(w);
+      if (w !== null) {
+        userPrompts.push(w);
+        if (ts !== null) prompts.push({ t: ts, words: w });
+      }
     }
   }
 
@@ -230,6 +278,14 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     subagents,
     windowInteractionIds,
     anyInteractionId,
+    prompts,
+    toolCalls,
+    subagentEvts,
+    modelEvts,
+    commandObs,
+    turnStart,
+    turnEnd,
+    anyTs,
   };
 }
 
@@ -265,6 +321,14 @@ export const copilotAdapter: HarnessAdapter = {
             subagents: [],
             windowInteractionIds: new Set(),
             anyInteractionId: false,
+            prompts: [],
+            toolCalls: [],
+            subagentEvts: [],
+            modelEvts: [],
+            commandObs: [],
+            turnStart: new Map(),
+            turnEnd: new Map(),
+            anyTs: false,
           };
 
     // --- process log: authoritative tokens + per-model, attributed to this window ---
@@ -275,6 +339,12 @@ export const copilotAdapter: HarnessAdapter = {
     let usageCount = 0;
     let effort = ev.effort;
     const models: Record<string, SegmentModelStat> = {};
+    // Per-interaction token totals → attached to that interaction's turn event so
+    // Σ(turn tokens) == the v1 aggregate (AC-16, when interactions are present).
+    const perIid = new Map<
+      string,
+      { in: number; out: number; cache_read: number; cache_create: number }
+    >();
     const log = findProcessLog(ctx, home, sessionId);
     if (log !== null) {
       for (const obj of extractJsonObjects(log)) {
@@ -297,12 +367,21 @@ export const copilotAdapter: HarnessAdapter = {
           m.cache_read_tokens !== undefined
             ? num(m.cache_read_tokens)
             : Math.max(num(m.input_tokens) - uncached, 0);
+        const cw = num(m.cache_write_tokens);
+        const out = num(m.output_tokens) + num(m.reasoning_tokens);
         usageCount += 1;
         input += uncached;
         cacheRead += cr;
-        cacheCreate += num(m.cache_write_tokens);
-        const out = num(m.output_tokens) + num(m.reasoning_tokens);
+        cacheCreate += cw;
         output += out;
+        if (iid !== null) {
+          const e = perIid.get(iid) ?? { in: 0, out: 0, cache_read: 0, cache_create: 0 };
+          e.in += uncached;
+          e.out += out;
+          e.cache_read += cr;
+          e.cache_create += cw;
+          perIid.set(iid, e);
+        }
 
         const model = str(props.model) ?? str(obj.model) ?? 'unknown';
         const stat = models[model] ?? { turns: 0, output_tokens: 0 };
@@ -328,6 +407,49 @@ export const copilotAdapter: HarnessAdapter = {
       };
     }
 
+    // --- v2.0 event stream: turn spans (tokens attributed per interaction) + ---
+    // --- prompts / models / subagents / harness, plus tool-call bursts.       ---
+    const lastModel =
+      ev.modelEvts.length > 0
+        ? ev.modelEvts[ev.modelEvts.length - 1].model
+        : (Object.keys(models)[0] ?? undefined);
+    const turnEvents: Event[] = [];
+    for (const [iid, start] of ev.turnStart) {
+      const end = ev.turnEnd.get(iid);
+      const durS = end ? Math.max(0, Math.round((Date.parse(end) - Date.parse(start)) / 1000)) : 0;
+      const turn: Event = { t: start, kind: 'turn', dur_s: durS };
+      const tok = perIid.get(iid);
+      if (tok !== undefined) {
+        turn.in = tok.in;
+        turn.out = tok.out;
+        turn.cache_read = tok.cache_read;
+        turn.cache_create = tok.cache_create;
+      }
+      if (lastModel !== undefined) turn.model = lastModel;
+      turnEvents.push(turn);
+    }
+    const harnessEvents: Event[] = [];
+    for (const { cmd, t } of ev.commandObs) {
+      for (const sig of commandSignatures(cmd)) {
+        const sub = harnessSubcommand(sig);
+        if (sub !== null) harnessEvents.push({ t, kind: 'harness', verb: sub });
+      }
+    }
+    const direct: Event[] = [
+      ...ev.prompts.map((p): Event => ({ t: p.t, kind: 'prompt', words: p.words })),
+      ...ev.modelEvts.map((m): Event =>
+        m.effort !== undefined
+          ? { t: m.t, kind: 'model', model: m.model, effort: m.effort }
+          : { t: m.t, kind: 'model', model: m.model },
+      ),
+      ...turnEvents,
+      ...ev.subagentEvts.map((s): Event => ({ t: s.t, kind: 'subagent', name: s.name, status: 'completed' })),
+      ...harnessEvents,
+    ];
+    const event_stream = ev.anyTs
+      ? buildEventStream({ direct, toolCalls: ev.toolCalls })
+      : null;
+
     return {
       harness_session_id: null,
       tokens,
@@ -345,6 +467,7 @@ export const copilotAdapter: HarnessAdapter = {
       api_errors: null,
       local_commands: null,
       thinking: null,
+      event_stream,
     };
   },
 };
