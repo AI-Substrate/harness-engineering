@@ -157,6 +157,7 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
+    event_stream: caps.event_stream ?? [],
   };
 }
 

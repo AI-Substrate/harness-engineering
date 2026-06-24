@@ -60,25 +60,31 @@ export interface ToolBurst {
 }
 
 /**
- * Collapse consecutive tool calls whose inter-call gap is `< burstNs` into one
- * burst (§4.2). A burst of differing names becomes `name:"mixed"`; `count` =
- * calls collapsed; `span_s` = last − first; `t` = the burst's first call.
- * Input order is preserved (the caller passes calls in time order).
+ * Collapse a maximal run of consecutive calls of the SAME tool whose inter-call
+ * gap is `< burstNs` into one burst (§4.2). A name change OR a gap ≥ `burstNs`
+ * starts a new burst — so a burst is always a single tool name and the per-tool
+ * counts survive (`rollup.tools` then equals the v1 `tools` histogram — AC-16; a
+ * lossy `"mixed"` bucket would break that). `count` = calls collapsed; `span_s` =
+ * last − first; `t` = the burst's first call. Input must be in time order.
  */
 export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N_S): ToolBurst[] {
   const bursts: ToolBurst[] = [];
-  let cur: { t: string; names: Set<string>; first: number; last: number; count: number } | null =
-    null;
+  let cur: { t: string; name: string; first: number; last: number; count: number } | null = null;
   for (const call of calls) {
     const at = parseIso(call.t);
-    if (cur !== null && Number.isFinite(at) && Number.isFinite(cur.last) && at - cur.last < burstNs) {
-      cur.names.add(call.name);
+    if (
+      cur !== null &&
+      call.name === cur.name &&
+      Number.isFinite(at) &&
+      Number.isFinite(cur.last) &&
+      at - cur.last < burstNs
+    ) {
       cur.last = at;
       cur.count += 1;
       continue;
     }
     if (cur !== null) bursts.push(finishBurst(cur));
-    cur = { t: call.t, names: new Set([call.name]), first: at, last: at, count: 1 };
+    cur = { t: call.t, name: call.name, first: at, last: at, count: 1 };
   }
   if (cur !== null) bursts.push(finishBurst(cur));
   return bursts;
@@ -86,18 +92,13 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
 
 function finishBurst(b: {
   t: string;
-  names: Set<string>;
+  name: string;
   first: number;
   last: number;
   count: number;
 }): ToolBurst {
   const span = Number.isFinite(b.last) && Number.isFinite(b.first) ? Math.round(b.last - b.first) : 0;
-  return {
-    t: b.t,
-    name: b.names.size === 1 ? [...b.names][0] : 'mixed',
-    count: b.count,
-    span_s: span < 0 ? 0 : span,
-  };
+  return { t: b.t, name: b.name, count: b.count, span_s: span < 0 ? 0 : span };
 }
 
 /** A raw skill open an adapter detected, in time order. */

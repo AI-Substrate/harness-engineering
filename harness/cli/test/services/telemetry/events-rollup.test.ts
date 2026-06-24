@@ -210,12 +210,16 @@ describe('T5.3 — collapseToolBursts', () => {
     ]);
   });
 
-  it('labels a heterogeneous in-window run as mixed', () => {
+  it('splits a name change into separate bursts (no lossy "mixed" — keeps per-tool counts)', () => {
     const bursts = collapseToolBursts([
       { name: 'Read', t: '2026-06-24T09:00:00Z' },
+      { name: 'Read', t: '2026-06-24T09:00:01Z' },
       { name: 'Grep', t: '2026-06-24T09:00:02Z' },
     ]);
-    expect(bursts).toEqual([{ t: '2026-06-24T09:00:00Z', name: 'mixed', count: 2, span_s: 2 }]);
+    expect(bursts).toEqual([
+      { t: '2026-06-24T09:00:00Z', name: 'Read', count: 2, span_s: 1 },
+      { t: '2026-06-24T09:00:02Z', name: 'Grep', count: 1, span_s: 0 },
+    ]);
   });
 });
 

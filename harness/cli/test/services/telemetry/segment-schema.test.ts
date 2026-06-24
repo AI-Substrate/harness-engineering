@@ -46,6 +46,10 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(schema.properties.schema_version?.const).toBe('2.0');
     expect(SEGMENT_SCHEMA_VERSION).toBe('2.0');
   });
+
+  it('$id tracks the schema version (no stale $id drift — companion LOW finding)', () => {
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.0');
+  });
 });
 
 describe('T002 — a golden segment populates EVERY top-level field', () => {

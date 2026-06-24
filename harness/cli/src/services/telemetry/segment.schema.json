@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-1.0.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.0.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",

@@ -1,4 +1,7 @@
-import { partitionCommands } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
+import { buildEventStream } from '../event-builder.js';
+import type { Event } from '../events.js';
+import type { SkillOpen, ToolCall } from '../rollup.js';
 import type {
   SegmentCompaction,
   SegmentModelStat,
@@ -98,6 +101,7 @@ const nullCaps: HarnessCapabilities = {
   api_errors: null,
   local_commands: null,
   thinking: null,
+  event_stream: null,
 };
 
 export const claudeAdapter: HarnessAdapter = {
@@ -147,12 +151,31 @@ export const claudeAdapter: HarnessAdapter = {
     const agentTypeById = new Map<string, string | null>();
     const subagents: SegmentSubagentInput[] = [];
 
+    // v2.0 event-stream collectors — built ONLY when the transcript lines carry a
+    // `timestamp` (real transcripts do; a timestamp-less source → event_stream null).
+    const direct: Event[] = [];
+    const toolCalls: ToolCall[] = [];
+    const skillOpens: SkillOpen[] = [];
+    const commandObs: { cmd: string; t: string }[] = [];
+    let anyTs = false;
+    let prevTsMs: number | null = null;
+    let lastModel: string | null = null;
+
     for (const line of lines) {
       let obj: Record<string, unknown>;
       try {
         obj = JSON.parse(line) as Record<string, unknown>;
       } catch {
         continue; // tolerate a malformed line
+      }
+
+      const ts = typeof obj.timestamp === 'string' ? obj.timestamp : null;
+      const tsMs = ts !== null ? Date.parse(ts) : null;
+      // gap from the PREVIOUS timed line → this turn's dur_s; then advance the cursor.
+      const gapMs = tsMs !== null && prevTsMs !== null ? tsMs - prevTsMs : null;
+      if (tsMs !== null && !Number.isNaN(tsMs)) {
+        anyTs = true;
+        prevTsMs = tsMs;
       }
 
       if (obj.type === 'compaction') {
@@ -164,6 +187,7 @@ export const claudeAdapter: HarnessAdapter = {
             post_tokens: typeof meta.postTokens === 'number' ? meta.postTokens : 0,
           });
         }
+        if (ts !== null) direct.push({ t: ts, kind: 'compaction' });
         continue;
       }
 
@@ -180,18 +204,42 @@ export const claudeAdapter: HarnessAdapter = {
         if (id !== '' && usage && !seenMessageIds.has(id)) {
           seenMessageIds.add(id);
           const out = typeof usage.output_tokens === 'number' ? usage.output_tokens : 0;
-          input += typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
-          output += out;
-          cacheCreate +=
+          const inThis = typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
+          const ccThis =
             typeof usage.cache_creation_input_tokens === 'number'
               ? usage.cache_creation_input_tokens
               : 0;
-          cacheRead +=
+          const crThis =
             typeof usage.cache_read_input_tokens === 'number' ? usage.cache_read_input_tokens : 0;
+          input += inThis;
+          output += out;
+          cacheCreate += ccThis;
+          cacheRead += crThis;
           const stat = models[model] ?? { turns: 0, output_tokens: 0 };
           stat.turns += 1;
           stat.output_tokens += out;
           models[model] = stat;
+
+          // v2.0 turn event (one per deduped assistant message). dur_s ≈ wall gap
+          // from the previous timed line into this turn; a model switch emits a
+          // `model` event just before the turn.
+          if (ts !== null) {
+            if (model !== lastModel) {
+              direct.push({ t: ts, kind: 'model', model });
+              lastModel = model;
+            }
+            const durS = gapMs !== null ? Math.max(0, Math.round(gapMs / 1000)) : 0;
+            direct.push({
+              t: ts,
+              kind: 'turn',
+              dur_s: durS,
+              in: inThis,
+              out,
+              cache_read: crThis,
+              cache_create: ccThis,
+              model,
+            });
+          }
         }
 
         for (const block of blocks) {
@@ -200,9 +248,11 @@ export const claudeAdapter: HarnessAdapter = {
           } else if (block.type === 'tool_use') {
             const name = typeof block.name === 'string' ? block.name : 'unknown';
             increment(tools, name);
+            if (ts !== null) toolCalls.push({ name, t: ts });
             const tInput = (block.input as Record<string, unknown> | undefined) ?? {};
             if (name === 'Skill' && typeof tInput.skill === 'string') {
               increment(skills, tInput.skill);
+              if (ts !== null) skillOpens.push({ name: tInput.skill, t: ts });
             } else if (name === 'Agent') {
               const id = typeof block.id === 'string' ? block.id : '';
               if (id !== '') {
@@ -217,12 +267,16 @@ export const claudeAdapter: HarnessAdapter = {
               written.push(tInput.file_path);
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
               rawCommands.push(tInput.command); // sans-params signatures extracted post-loop
+              if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
             }
           }
         }
       } else if (obj.type === 'user') {
         const words = userPromptWords(message);
-        if (words !== null) userPrompts.push(words);
+        if (words !== null) {
+          userPrompts.push(words);
+          if (ts !== null) direct.push({ t: ts, kind: 'prompt', words });
+        }
         for (const block of blocks) {
           if (block.type !== 'tool_result') continue;
           const refId = typeof block.tool_use_id === 'string' ? block.tool_use_id : '';
@@ -245,9 +299,31 @@ export const claudeAdapter: HarnessAdapter = {
             tokens,
             tool_uses: toolUses,
           });
+          if (ts !== null) {
+            direct.push({
+              t: ts,
+              kind: 'subagent',
+              name: agentTypeById.get(refId) ?? 'subagent',
+              status: 'completed',
+            });
+          }
         }
       }
     }
+
+    // Harness sub-command events (timestamped Bash `harness …` lines).
+    for (const { cmd, t } of commandObs) {
+      for (const sig of commandSignatures(cmd)) {
+        const sub = harnessSubcommand(sig);
+        if (sub !== null) direct.push({ t, kind: 'harness', verb: sub });
+      }
+    }
+
+    // The window carries timestamps → assemble the ordered stream; else null (honest
+    // "untimed source" — the rollup is then null too, never estimated).
+    const event_stream = anyTs
+      ? buildEventStream({ direct, toolCalls, skillOpens, lastSkillActive: false })
+      : null;
 
     const subagentTokens = subagents.reduce((sum, s) => sum + (s.tokens ?? 0), 0);
     let tokens: SegmentTokens | null = null;
@@ -283,6 +359,7 @@ export const claudeAdapter: HarnessAdapter = {
       api_errors: null,
       local_commands: null,
       thinking: thinkingBlocks > 0 ? { blocks: thinkingBlocks } : null,
+      event_stream,
     };
   },
 };

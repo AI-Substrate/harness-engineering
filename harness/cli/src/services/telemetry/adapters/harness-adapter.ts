@@ -1,6 +1,7 @@
 import type { DbPort } from '../../../adapters/db/db-port.js';
 import type { EnvPort } from '../../../adapters/env/env-port.js';
 import type { FsPort } from '../../../adapters/fs/fs-port.js';
+import type { Event } from '../events.js';
 import type {
   SegmentCompaction,
   SegmentFiles,
@@ -69,6 +70,12 @@ export interface HarnessCapabilities {
   api_errors?: number | null;
   local_commands?: number | null;
   thinking?: SegmentThinking | null;
+  /**
+   * v2.0 — the ordered, timestamped event stream for the window (the substrate;
+   * the rollup is derived from it by the serializer). `null` when the harness's
+   * source carries no timestamps (e.g. a transcript without `timestamp` lines).
+   */
+  event_stream?: Event[] | null;
 }
 
 /** A per-harness capability module (Claude / Copilot / Cursor / …). The plug-in seam. */
@@ -115,5 +122,6 @@ export const nullDefaultAdapter: HarnessAdapter = {
     api_errors: null,
     local_commands: null,
     thinking: null,
+    event_stream: null,
   }),
 };

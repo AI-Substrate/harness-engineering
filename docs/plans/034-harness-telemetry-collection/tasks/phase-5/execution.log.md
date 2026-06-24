@@ -29,3 +29,34 @@ Mode: Full · Companion: `code-review-companion` (run `2026-06-24T06-21-00-876Z-
 | D-501 | gotcha | Companion boot died on a `\| head -5` pipe (SIGPIPE). Boot minih backgrounded with NO truncating pipe. | — |
 | D-502 | decision | v2 stream is `event_stream` (v1 `events` retained for compat) — diverges from the design-doc field name; 5.9 reconciles. | Noteworthy |
 | D-503 | difficulty | arch-check reports a **pre-existing** Phase-4 warn: `sync-service.ts` imports `git-write-port.ts` non-type-only (`services-ports-type-only`). Not Phase-5; left for a scoped follow-up. | Noteworthy |
+
+### Companion review — commit 1 (`7d33083`)
+Companion `code-review-companion` (run `…3107`) reviewed `7d33083` and returned (in its farewell summary; its structured findings tripped minih's own findings-schema, so they arrived as prose, not inbox `finding` messages):
+| Sev | Finding | Disposition |
+|---|---|---|
+| MEDIUM | v1 top-level count fields can contradict the derived `event_stream` rollup (AC-16 drift risk) | **Addressed by construction in 5.4**: adapters derive v1 counts + events from the same source; `claude-events.test.ts` asserts `rollup.tools == seg.tools` and `rollup.tokens == v1 token buckets`. Full cross-harness guarantee tracked into 5.4 (Copilot) / 5.9. |
+| LOW | v2 schema still carries the old `$id` `segment-1.0.json` | **Fixed** in commit 2 → `segment-2.0.json` + a guard test (`$id tracks the schema version`). |
+| magicWand | `MINIH_PROJECT_ROOT` not exposed to shell | **Ignored** — known planned minih fix (agent memory), not a Phase-5 finding. |
+
+No HIGH/CRITICAL. Companion run idled out (~19min) after review → reboot a fresh run for commit 2.
+
+---
+
+## Commit 2 — T5.4 (Claude): adapter event emission + companion LOW fix
+
+**What landed**
+- `src/services/telemetry/event-builder.ts` (new) — shared `buildEventStream` (direct events + collapsed tool bursts + status-inferred skills, sorted by `t`).
+- `src/services/telemetry/rollup.ts` (mod) — `collapseToolBursts` now collapses **same-name runs only** (no lossy `"mixed"`), so `rollup.tools` equals the v1 `tools` histogram (AC-16).
+- `adapters/harness-adapter.ts` + `capture-service.ts` (mod) — `event_stream` added to `HarnessCapabilities` + threaded through `buildInput`.
+- `adapters/claude-adapter.ts` (mod) — emits prompt / turn (dur+tokens+model) / tool-burst / skill (status) / subagent / compaction / harness events from a **timestamped** transcript; `null` when the source has no timestamps.
+- `segment.schema.json` (mod) — `$id` → `segment-2.0.json` (companion LOW).
+- Tests: `claude-events.test.ts` (new); `events-rollup.test.ts` burst test updated; `segment-schema.test.ts` `$id` guard added.
+
+**Evidence**: `npx vitest run test/services/telemetry` → 166 passed; full suite → 1218 passed; arch-check → still only the 1 pre-existing P4 warn (0 new).
+
+### Discoveries & Learnings
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-504 | decision | Burst rule collapses **same-name runs only** (dropped the doc's lossy `"mixed"`) so `rollup.tools == v1 tools` (AC-16). | Noteworthy |
+| D-505 | decision | Claude adapter emits events only when transcript lines carry `timestamp`; the Phase-2 fixture is timestamp-less, so a new timestamped fixture drives the test — Phase-2 untouched. | — |
+| D-506 | decision | `flow` / `checks` / `command_exit` events deferred from 5.4 to 5.6/5.7 (they come from `the-flow.json` nav + command results, not the transcript). | Deferred |
