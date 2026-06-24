@@ -65,11 +65,20 @@ by field kind:
   (`subagents[].tokens`, `.tool_uses`, etc.).
 - **Collection fields are always present** with an empty default, never `null`:
   `models` `{}`, `skills` `{}`, `tools` `{}`, `subagents` `[]`, `files`
-  `{written:[],edited:[]}`, `plans_touched` `[]`, and `events`
-  `{compactions:[],api_errors:0,local_commands:0}`.
+  `{written:[],edited:[]}`, `plans_touched` `[]`, `events`
+  `{compactions:[],api_errors:0,local_commands:0}`, and the v2.0
+  `event_stream` `[]`.
 
 Either way the field is present (a stable shape for the scraper); only its value
 reflects availability.
+
+> **Schema v2.0 — the event stream.** As of `schema_version` `2.0`, the segment
+> additionally carries an ordered **`event_stream[]`** (the timestamped substrate)
+> and a derived **`rollup`** — see [The event stream](#the-event-stream-v20). The
+> v1 count fields above are retained as a compatibility view; they are equal to the
+> rollup's derived counts. (The legacy `events` object — compactions / api-errors /
+> local-commands — is a *different*, retained field; the timestamped stream is
+> `event_stream`.)
 
 ### Path semantics
 
@@ -78,6 +87,54 @@ to its **basename only** — the directory is dropped (no information about your
 home directory or machine layout leaks). For example, a write to
 `/Users/alex/.claude/projects/abc/memory/note.md` is recorded as `note.md`,
 while a write to `harness/cli/src/app.ts` keeps its full repo-relative path.
+
+## The event stream (v2.0)
+
+v1 recorded **counts per command window**. v2 makes the atom a **timestamped
+event** and *derives* the counts from it, so a session's **shape** — order,
+time-gaps, when the agent was working vs. when you were — is reconstructable, not
+just its totals. The counts didn't go away: the rollup's tallies equal the v1
+histograms exactly (a derived view, never a second source of truth).
+
+**An event is still counts-only.** Each `event_stream[]` entry is
+`t + kind + name + numbers` — never prompt text, file contents, or tool-arg
+strings (the same privacy floor as v1, enforced by an allowlist *by construction*:
+the serializer picks each field per-kind and never spreads its input). The event
+kinds:
+
+| kind | carries | from |
+|---|---|---|
+| `prompt` | word count of a human steer | user message |
+| `turn` | `dur_s` + optional token buckets + model | one agent generation |
+| `tools` | tool name + count + span (a same-name burst) | tool calls |
+| `skill` | skill name + lifecycle status | skill/subagent opens |
+| `flow` | flight-plan `flow`/`stage`/`status` | `the-flow.json` nav (not args) |
+| `harness` | sub-command verb (sans params) | `harness …` calls |
+| `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
+| `subagent` · `compaction` · `model` · `api_error` | identity / presence / class | transcript signals |
+
+**The rollup — derived, recomputable.** `rollup` is a pure function of
+`event_stream[]` (a consumer may ignore it and recompute):
+
+- **Activity** — every inter-event gap is classified by what it *ends at*: a gap
+  before a `prompt` is **human** time (≤ 5 min) or **idle** (> 5 min, walked away);
+  every other gap is **agent** time. `working_ratio = agent / (agent + human)` —
+  idle excluded. This is the load-bearing idea: *"is the agent working?"* is a
+  **timestamp** question, not a token one.
+- **Flow-stage time** — gap-time attributed to the active flight-plan `stage`
+  (`flow_stage_time_s`), so you can see *where* a session's time went by stage.
+- **Outcomes** — the last `checks` verdict + each verb's exit code.
+- **tokens / tools / skills** — the same totals as the v1 fields (`tokens` is
+  `null` when no turn carried buckets — e.g. Cursor — never zero-filled).
+
+**Per-harness ceilings (honest).** Claude and Copilot emit an *exact*-timed
+stream (Copilot turns even carry per-interaction tokens). **Cursor** has no
+transcript timestamps, so its events are **anchored** to the IDE-store bubble
+times (`t_precision: "anchored"`) and carry **no tokens** (server-side only,
+never estimated); a headless Cursor session with no bubbles emits a `null` stream
+rather than a fabricated one. Outcome events follow each harness's result-capture
+ability: Claude has the full result envelope (`checks` + `command_exit`), Copilot
+reports only success (`command_exit`), Cursor neither.
 
 ## Disabling telemetry
 
@@ -229,10 +286,15 @@ by engineer — sharding is for write-isolation, not attribution. The optional `
 ## Best-effort, not billing-grade
 
 Capture is best-effort. The window after the *last* command of a session is a
-trailing tail that may go uncaptured until the next command (or a sync) — the
-segment emits its `window` bounds so any gap is visible, not hidden. Token sources
-are read from each harness's authoritative artifacts; when a source is absent the
-field is `null`, never estimated.
+trailing tail — captured by **session-end flush**: because the capture preamble
+runs before *every* command (including `harness telemetry sync`), wiring a host
+**SessionEnd hook to `harness telemetry sync`** records that tail segment (the
+cursor delta) and flushes it in one step — no extra command. the-flow's `ship`
+already runs `telemetry sync`, so a shipped session flushes its tail for free; a
+session that ends without the hook (or is killed) loses only its final tail, never
+an interior segment (the `window` bounds make any gap visible, not hidden). Token
+sources are read from each harness's authoritative artifacts; when a source is
+absent the field is `null`, never estimated.
 
 ### Known limitations
 

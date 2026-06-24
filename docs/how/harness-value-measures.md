@@ -300,14 +300,18 @@ team/repo grain the available fields are: token buckets + per-model turn/output
 counts; skill and tool histograms; subagent identity/lifecycle; repo-relative
 file paths; **plan links** (the join to the records above); compaction /
 api-error / local-command event counts; branch, model, effort, timecode, and the
-capture window. **No content fields ever** — no prompt/message text, no file
-contents, no free-form tool-arg strings.
+capture window. As of schema **v2.0** they also include the timestamped
+**`event_stream[]`** and its derived **`rollup`** (activity / flow-stage time /
+outcomes — see [the example](#e-the-telemetry-segment--a-counts-only-sensor-contract)
+below and the [telemetry guide](./telemetry.md#the-event-stream-v20)). **No content
+fields ever** — no prompt/message text, no file contents, no free-form tool-arg
+strings; an event is `t + kind + name + numbers`.
 
 **A hand-traced segment (counts only).**
 
 ```jsonc
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "command": "flow",
   "harness": "claude-code",
   "harness_session_id": "<opaque id>",
@@ -325,16 +329,52 @@ contents, no free-form tool-arg strings.
   "files": { "written": ["harness/cli/src/services/telemetry/sync-service.ts"], "edited": [] },
   "plans_touched": ["034-harness-telemetry-collection"],
   "events": { "compactions": [], "api_errors": 0, "local_commands": 0 },
-  "thinking": { "blocks": 4 }
+  "thinking": { "blocks": 4 },
+  // v2.0 — the timestamped substrate + its derived measures view
+  "event_stream": [
+    { "t": "2026-06-23T11:00:00Z", "kind": "flow", "flow": "the-flow", "stage": "implement", "status": "in_progress" },
+    { "t": "2026-06-23T11:00:00Z", "kind": "prompt", "words": 22 },
+    { "t": "2026-06-23T11:03:10Z", "kind": "turn", "dur_s": 190, "out": 340, "model": "claude-opus-4-8" },
+    { "t": "2026-06-23T11:03:40Z", "kind": "tools", "name": "Edit", "count": 3, "span_s": 25 },
+    { "t": "2026-06-23T11:05:00Z", "kind": "checks", "status": "ok", "gates": { "tests": "ok", "arch-check": "ok" } }
+  ],
+  "rollup": {
+    "activity": { "wall_s": 300, "agent_working_s": 190, "human_s": 110, "idle_s": 0, "working_ratio": 0.63 },
+    "flow_stage_time_s": { "implement": 300 },
+    "skills": { "the-flow": { "runs": 1, "abandoned": 0, "superseded": 0 } },
+    "tokens": { "in": 1200, "out": 340, "cache_read": 800, "cache_create": 0 },
+    "tools": { "Edit": 3, "Bash": 2 },
+    "outcomes": { "checks": "ok", "exits": { "checks": 0 } }
+  }
 }
 ```
 
 Every top-level key is always present (a stable shape for the scraper); only
 *values* reflect availability — nullable scalars (`tokens`, `effort`, `thinking`,
 `branch`, per-subagent values) go `null` when unavailable, while collection fields
-(`models`/`skills`/`tools`/`subagents`/`files`/`plans_touched`/`events`) default
-to empty. The full field set + types are the segment's plan and
-`segment.schema.json`.
+(`models`/`skills`/`tools`/`subagents`/`files`/`plans_touched`/`events`/`event_stream`)
+default to empty (and `rollup` is `null` when the stream is). The v1 count fields
+are retained as a compatibility view **equal to** the rollup's derived counts. The
+full field set + types are the segment's plan and `segment.schema.json`.
+
+**New measurement surfaces (v2.0).** Because the rollup is derived from a
+timestamped stream, the measures can read *shape*, not just totals — still at
+team/repo grain, still never per-person:
+
+- **Working ratio** (`rollup.activity.working_ratio`) — agent-working time over
+  agent + human time (idle excluded). A team-level read on *"how much of a session
+  is the agent generating vs. waiting on a human"* — a harness-leverage signal, not
+  a productivity score. The honest gap split (idle ≠ thinking) is what makes it
+  meaningful; the spike that motivated it moved a real session from 0.34 to 0.78.
+- **Flow-stage time** (`rollup.flow_stage_time_s`) — where a session's wall time
+  goes *by flight-plan stage* (research / plan / implement / review / ship). Joined
+  to the `harness-change` records by `plan_id`, it answers *"which stage actually
+  absorbs the time — and is that where the encoded friction lives?"*
+- **Outcome density** (`rollup.outcomes`) — checks verdicts + exit codes per
+  session, a leading signal for the change/bypass rates (§a) without reading a diff.
+
+These are **diagnostic context at team grain**, on the same do-not-use-for-individuals
+footing as token count — see [§ Team-level only](#team-level-only--never-individual-attribution).
 
 Read at the **repo** level this segment says "in this window, on plan 034, ~2.3k
 tokens of opus work touched the sync-service via 3 edits + 2 bash calls." Joined

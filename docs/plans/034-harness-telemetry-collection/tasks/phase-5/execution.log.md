@@ -202,3 +202,18 @@ Companion (run `…0903`, structured findings via inside-lane) reviewed 5.6 (`52
 |---|------|------|-----|
 | D-516 | decision | No new `telemetry flush` command — `telemetry sync`'s own capture preamble already records the tail before the act flushes. The only integration is the host SessionEnd hook (documented in 5.9). | Noteworthy |
 | D-517 | gotcha | FakeFs `readdir` lists dirs, not written files, so `nextSeq` can't increment in-test (tail overwrites `1.json`); the window + cursor advance are the load-bearing assertions, not the seq number. | — |
+
+---
+
+## Commit 11 — T5.9: guide + measures docs for v2 + design-doc reconciliation
+
+**What landed**
+- `docs/how/telemetry.md` — new **"The event stream (v2.0)"** section (event kinds table, the agent/human/idle activity model + `working_ratio`, flow-stage time, outcomes, per-harness ceilings incl. Cursor `anchored`/no-tokens); "what a segment records" notes `event_stream[]`/`rollup` + the `events` vs `event_stream` distinction; trailing-tail section rewritten to the resolved session-end flush (5.8).
+- `docs/how/harness-value-measures.md` — §(e) example bumped to `schema_version 2.0` with `event_stream`+`rollup`; new **measurement surfaces** (working-ratio, flow-stage time, outcome density) at team grain, on the do-not-use-for-individuals footing; "what the measures may read" now lists `event_stream`/`rollup`.
+- `event-schema-v2.md` + `event-schema-v2-detail.md` — **field-name reconciliation** (AC-10/AC-11): reconciliation note at the top of each + literal field declarations `events[]`→`event_stream` (JSON examples + the `SegmentV2` TS interface, `rollup: Rollup | null`).
+
+**Evidence**: doc-only; full suite + `harness checks` run at phase close.
+
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-518 | decision | Design docs keep prose "events" (the *concept*) but a top-of-doc note + fixed literal field names point readers to the shipped `event_stream`; `segment.schema.json`+`events.ts` are the source of truth (not the drafts). | — |

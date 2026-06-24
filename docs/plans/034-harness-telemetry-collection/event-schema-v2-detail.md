@@ -12,6 +12,12 @@ is authoritative.
 > inherited unchanged from v1: counts + names + timestamps only — never prompt
 > text, file contents, or free-form tool-arg strings.
 
+> **Implemented field name: `event_stream` (not `events`).** This reference calls
+> the stream `events` / `events[]`; the shipped segment names it **`event_stream`**
+> (the v1 `events` count object is retained, so the names can't collide). Read every
+> `events[]` below as `event_stream` (AC-10/AC-11 reconciliation, T5.9). Source of
+> truth: `segment.schema.json` + `events.ts`.
+
 ---
 
 ## 1. Types (TypeScript-shaped)
@@ -30,8 +36,8 @@ interface SegmentV2 {
   plans_touched: string[];
   models: Record<string, { turns: number; output_tokens: number }>;
   effort: string | null;
-  events: Event[];            // ordered by t; the substrate
-  rollup: Rollup;             // derived from events; emitted for convenience
+  event_stream: Event[];      // ordered by t; the substrate (shipped name; draft called it `events`)
+  rollup: Rollup | null;      // derived from event_stream; null when the stream is empty
 }
 
 type Event =
