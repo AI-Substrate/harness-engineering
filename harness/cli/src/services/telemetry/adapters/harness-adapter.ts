@@ -63,7 +63,6 @@ export interface HarnessCapabilities {
   user_prompts?: number[] | null;
   subagents?: SegmentSubagentInput[] | null;
   files?: SegmentFiles | null;
-  branch_changed?: boolean | null;
   compactions?: SegmentCompaction[] | null;
   api_errors?: number | null;
   local_commands?: number | null;
@@ -113,7 +112,6 @@ export const nullDefaultAdapter: HarnessAdapter = {
     user_prompts: null,
     subagents: null,
     files: null,
-    branch_changed: null,
     compactions: null,
     api_errors: null,
     local_commands: null,

@@ -125,7 +125,6 @@ export interface Segment {
   timecode: string;
   window: SegmentWindow;
   branch: string | null;
-  branch_changed: boolean;
   tokens: SegmentTokens | null;
   effort: string | null;
   /** v2.0 — the ordered timestamped event stream (the substrate; counts are derived). Always present. */
@@ -159,7 +158,6 @@ export const SEGMENT_FIELD_KEYS = [
   'timecode',
   'window',
   'branch',
-  'branch_changed',
   'tokens',
   'effort',
   'event_stream',
@@ -190,7 +188,6 @@ export const SEGMENT_REQUIRED_KEYS = [
   'timecode',
   'window',
   'branch',
-  'branch_changed',
   'tokens',
   'effort',
   'event_stream',
@@ -205,7 +202,6 @@ export interface SegmentInput {
   timecode: string;
   window: SegmentWindow;
   branch: string | null;
-  branch_changed: boolean;
   tokens?: SegmentTokens | null;
   models?: Record<string, SegmentModelStat>;
   effort?: string | null;
@@ -410,7 +406,6 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
       to: input.window.to,
     },
     branch: input.branch,
-    branch_changed: input.branch_changed,
     tokens: input.tokens ?? null,
     effort: input.effort ?? null,
   } as Segment;

@@ -191,14 +191,21 @@ interface BranchInfo {
 /**
  * Prepend a `branch` event when the git branch changed since the last capture of
  * this session (branch-change detection is a git fact, computed in the service —
- * NOT a per-harness transcript fact). Anchored to the window start; emitted only
- * when there's a stream to anchor to. The `branch_changed` boolean is set
- * independently (see {@link buildInput}) so a change is still flagged on an empty
- * stream.
+ * NOT a per-harness transcript fact). The event (`to`/`from`) is the SINGLE source
+ * of truth for a switch — there is no `branch_changed` boolean; a consumer derives
+ * it from `event_stream.some(e => e.kind === 'branch')`.
+ *
+ * Anchored to the window start when there's a stream; on an EMPTY window (a switch
+ * with no other activity, e.g. `git checkout x` then `harness boot`) it anchors to
+ * the window-end `timecode` and becomes the sole event — so a switch is never lost
+ * for lack of a stream to anchor to. The exact switch time is unknown (it happened
+ * between two captures), so `t_precision` is always `anchored`. A branch switch is
+ * rare, so always-emitting barely touches the empty-stream / `rollup:null` case.
  */
-function withBranchEvent(branch: BranchInfo, stream: readonly Event[]): Event[] {
-  if (!branch.changed || branch.current === null || stream.length === 0) return [...stream];
-  const e: Event = { t: stream[0].t, kind: 'branch', to: branch.current };
+function withBranchEvent(branch: BranchInfo, timecode: string, stream: readonly Event[]): Event[] {
+  if (!branch.changed || branch.current === null) return [...stream];
+  const t = stream.length > 0 ? stream[0].t : timecode;
+  const e: Event = { t, t_precision: 'anchored', kind: 'branch', to: branch.current };
   if (branch.from !== null) e.from = branch.from;
   return [e, ...stream];
 }
@@ -243,8 +250,6 @@ function buildInput(
     timecode,
     window,
     branch: branch.current,
-    // branch-change is a git fact computed here; the adapter capability stays null.
-    branch_changed: caps.branch_changed ?? branch.changed,
     tokens: caps.tokens ?? null,
     models: caps.models ?? {},
     effort: caps.effort ?? null,
@@ -264,7 +269,7 @@ function buildInput(
     // triggering harness command appends as a zero-gap marker at the window end.
     event_stream: withHarnessCommandEvent(
       deps.command,
-      withBranchEvent(branch, withFlowEvent(deps, cwd, planId, caps.event_stream ?? [])),
+      withBranchEvent(branch, timecode, withFlowEvent(deps, cwd, planId, caps.event_stream ?? [])),
     ),
   };
 }

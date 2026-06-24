@@ -13,7 +13,6 @@
     "timecode",
     "window",
     "branch",
-    "branch_changed",
     "tokens",
     "effort",
     "event_stream",
@@ -36,7 +35,6 @@
       }
     },
     "branch": { "type": ["string", "null"] },
-    "branch_changed": { "type": "boolean" },
     "tokens": {
       "type": ["object", "null"],
       "additionalProperties": false,

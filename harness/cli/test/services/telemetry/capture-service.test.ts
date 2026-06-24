@@ -250,32 +250,53 @@ describe('branch-change detection + branch event', () => {
     captureTelemetry(depsOn(fs, 'main'));
     const seg = readWrittenSegment(fs, 'sbr');
     expect(seg?.branch).toBe('main');
-    expect(seg?.branch_changed).toBe(false);
+    // no `branch_changed` boolean exists — the branch event is the single signal
+    expect((seg as unknown as Record<string, unknown>).branch_changed).toBeUndefined();
     expect(branchEvent(fs)).toBeUndefined();
     expect(fs.readText(`${TEL}/sbr.branch`)).toBe('main'); // persisted for next capture
   });
 
-  it('a branch switch → branch_changed true + a branch event (to/from) anchored to the window start', () => {
+  it('a branch switch → a branch event (to/from), anchored to the window start, is the only signal', () => {
     const fs = new FakeFs({});
     captureTelemetry(depsOn(fs, 'main')); // 1st: records `main`
     captureTelemetry(depsOn(fs, 'feature-x')); // 2nd: now on a different branch
 
     const seg = readWrittenSegment(fs, 'sbr');
     expect(seg?.branch).toBe('feature-x');
-    expect(seg?.branch_changed).toBe(true);
+    expect((seg as unknown as Record<string, unknown>).branch_changed).toBeUndefined();
     const be = branchEvent(fs);
-    expect(be).toMatchObject({ kind: 'branch', to: 'feature-x', from: 'main' });
-    expect(be?.t).toBe(STREAM[0].t); // anchored to the window start
+    expect(be).toMatchObject({ kind: 'branch', to: 'feature-x', from: 'main', t_precision: 'anchored' });
+    expect(be?.t).toBe(STREAM[0].t); // anchored to the window start (non-empty stream)
     expect(seg?.event_stream[0].kind).toBe('branch'); // prepended
   });
 
-  it('no switch (same branch) → branch_changed false, no branch event', () => {
+  it('no switch (same branch) → no branch event', () => {
     const fs = new FakeFs({});
     captureTelemetry(depsOn(fs, 'main'));
     captureTelemetry(depsOn(fs, 'main'));
-    const seg = readWrittenSegment(fs, 'sbr');
-    expect(seg?.branch_changed).toBe(false);
     expect(branchEvent(fs)).toBeUndefined();
+  });
+
+  it('a switch on an EMPTY window still emits the branch event (anchored to timecode)', () => {
+    // adapter yields NO event_stream → the switch would have nothing to anchor to;
+    // it now anchors to the window-end timecode and becomes the sole event.
+    function emptyDeps(fs: FakeFs, branch: string): CaptureDeps {
+      return {
+        fs,
+        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sbr' }),
+        clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+        proc: new FakeProcess({}, REPO),
+        git: new FakeGit({ isRepo: true, branch, remoteUrl: 'github.com/x/y' }),
+        command: 'boot',
+        adapters: [testAdapter('claude-code', 240, {})], // no event_stream
+      };
+    }
+    const fs = new FakeFs({});
+    captureTelemetry(emptyDeps(fs, 'main'));
+    captureTelemetry(emptyDeps(fs, 'feature-x'));
+    const be = branchEvent(fs);
+    expect(be).toMatchObject({ kind: 'branch', to: 'feature-x', from: 'main', t_precision: 'anchored' });
+    expect(be?.t).toBe('2026-06-24T09:02:00.000Z'); // the capture clock (no stream to anchor to)
   });
 });
 
