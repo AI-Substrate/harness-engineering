@@ -128,3 +128,19 @@ Companion (run `…4d43`) reviewed `610b872` → **no findings** (clean).
 |---|------|------|-----|
 | D-511 | decision | Skill-status is **already wired** (`buildEventStream` → `inferSkillStatuses` in all 3 adapters). `lastSkillActive` stays an honest **false**: no adapter has a positive "skill still open at segment end" signal within a bounded per-command window, so a trailing skill serialises `completed` (we never fabricate `active`). The helper supports `active` for a future open-without-close signal. | Noteworthy |
 | D-512 | decision | `flow.status` maps the `nav.now` **node's** lifecycle (`done|blocked` pass through; everything else → `in_progress`) rather than `nav.bag.status` — the node status is the per-stage truth; the bag is session-global. | — |
+
+---
+
+## Commit 7 — companion MEDIUM fix (Copilot split command/toolName)
+
+**Finding** (run `…4d43`, structured `report.json` — arrived as a validated finding this time): adjacent to the commit-4 HIGH. The HIGH fixed tool **counts** when `toolName` lands only on `execution_complete`, but shell/harness **command** capture still gated `arguments.command` on `toolName === bash|shell` in the *same* event. A format that puts `arguments.command` on `execution_start` and the moved `toolName` on `execution_complete` → `tools`/rollup fixed but `bash_commands` / `harness_commands` / the v2 `harness` event silently lost for that execution.
+
+**Fix** — `copilot-adapter.ts`: capture `arguments.command` by `toolCallId` **independently** of `toolName` (`commandByCall` map), then post-loop resolve which call ids named a `bash`/`shell` tool (via `toolNameByCall`) and emit only those into `bash`/`harness` + `commandObs`. Mirrors the HIGH's "read from whichever event carries it" pattern. `copilot-events.test.ts` gains a regression (command on `execution_start`, `toolName:'bash'` only on `execution_complete`) asserting `harness_commands == ['checks']`, the `harness` event present, and AC-15 (no `--json` param leak).
+
+**Evidence**: copilot tests 23 passed; full suite → **1244 passed**; arch-check → 1 pre-existing P4 warn only.
+
+| Sev | Finding | Disposition |
+|---|---|---|
+| MEDIUM | Copilot shell/harness command capture coupled to `toolName` in the same event as `arguments.command` → split start/complete execution drops `bash_commands`/`harness_commands`/`harness` event. | **Fixed** — decoupled command capture by call id + post-loop toolName resolution; regression added. |
+
+magicWand `MINIH_PROJECT_ROOT` (target minih) — **ignored** (known planned minih fix, agent memory).

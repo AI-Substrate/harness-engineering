@@ -154,3 +154,70 @@ describe('copilotAdapter — tool name only on execution_complete (companion HIG
     );
   });
 });
+
+describe('copilotAdapter — command on execution_start, toolName on execution_complete (companion MEDIUM)', () => {
+  // `arguments.command` lands on execution_start; the `toolName` (`bash`) lands only
+  // on execution_complete. Capturing the command must NOT be gated on the toolName
+  // being in the same event, or bash_commands / harness_commands / the `harness`
+  // event are silently lost for that split execution.
+  const lines = [
+    { type: 'user.message', timestamp: '2026-06-23T09:00:02Z', data: { interactionId: 'i1', content: 'go now' } },
+    { type: 'assistant.turn_start', timestamp: '2026-06-23T09:00:03Z', data: { interactionId: 'i1' } },
+    {
+      type: 'tool.execution_start',
+      timestamp: '2026-06-23T09:00:04Z',
+      data: { toolCallId: 'tc-1', arguments: { command: 'harness checks --json' } },
+    },
+    {
+      type: 'tool.execution_complete',
+      timestamp: '2026-06-23T09:00:05Z',
+      data: { toolCallId: 'tc-1', toolName: 'bash', interactionId: 'i1' },
+    },
+    { type: 'assistant.turn_end', timestamp: '2026-06-23T09:00:06Z', data: { interactionId: 'i1' } },
+  ];
+  const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
+
+  function caps() {
+    const fs = new FakeFs({ [copilotEventsPath(HOME, 'sy')]: content }, {});
+    const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'sy' }, HOME);
+    return copilotAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'copilot-cli',
+      window: { since: 'session-start', from: 0, to: 99 },
+    });
+  }
+
+  it('captures the harness command despite the split start/complete events', () => {
+    const c = caps();
+    expect(c.harness_commands).toEqual(['checks']); // sans-params signature
+    expect(c.tools).toEqual({ bash: 1 });
+  });
+
+  it('emits the `harness` event for the split execution', () => {
+    const stream = caps().event_stream as Event[];
+    expect(kinds(stream, 'harness')).toContainEqual(
+      expect.objectContaining({ kind: 'harness', verb: 'checks' }),
+    );
+  });
+
+  it('AC-15 — the raw command never leaks into the serialized segment', () => {
+    const c = caps();
+    const seg = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'copilot-cli',
+        harness_session_id: 'sy',
+        timecode: '2026-06-23T09:00:06Z',
+        window: { since: 'session-start', from: 0, to: 99 },
+        branch: null,
+        branch_changed: false,
+        harness_commands: c.harness_commands ?? [],
+        event_stream: (c.event_stream as Event[]) ?? [],
+      },
+      REPO,
+    );
+    expect(JSON.stringify(seg)).not.toContain('--json'); // params stripped
+  });
+});

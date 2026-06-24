@@ -187,7 +187,9 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
 
   let effort: string | null = null;
   const toolNameByCall = new Map<string, string>(); // dedupe a tool execution by its call id
-  const rawCommandByCall = new Map<string, string>(); // dedupe a shell command by its call id
+  // command line by call id, captured INDEPENDENTLY of toolName (they can land on
+  // different events) — resolved to bash/shell post-loop via toolNameByCall.
+  const commandByCall = new Map<string, { cmd: string; t: string | null }>();
   const userPrompts: number[] = []; // word count of each user prompt in the window
   const subagents: SegmentSubagentInput[] = [];
   const windowInteractionIds = new Set<string>();
@@ -196,7 +198,6 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   const toolCalls: ToolCall[] = [];
   const subagentEvts: { t: string; name: string }[] = [];
   const modelEvts: { t: string; model: string; effort?: string }[] = [];
-  const commandObs: { cmd: string; t: string }[] = [];
   const turnStart = new Map<string, string>();
   const turnEnd = new Map<string, string>();
   let anyTs = false;
@@ -237,14 +238,17 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
         // exactly even when the name is only on execution_complete (companion HIGH, AC-16).
         if (ts !== null) toolCalls.push({ name: toolName, t: ts });
       }
-      // A shell tool's command line → sans-params signature (computed post-loop).
-      // Only the `command` field is read; arguments otherwise carry free text (AC-04).
-      if (callId !== null && (toolName === 'bash' || toolName === 'shell')) {
+      // A shell tool's command line → captured by call id INDEPENDENTLY of
+      // toolName: `arguments.command` and the (moved) `toolName` can land on
+      // different events (execution_start vs _complete) across CLI versions, so
+      // gating capture on the toolName in the SAME event would silently drop
+      // bash_commands / harness_commands / `harness` events for a split execution
+      // (companion MEDIUM — adjacent to the HIGH tool-count fix). Only the
+      // `command` field is read; arguments otherwise carry free text (AC-04).
+      // Resolved to bash/shell post-loop via toolNameByCall.
+      if (callId !== null && !commandByCall.has(callId)) {
         const cmd = str(asObj(data.arguments).command);
-        if (cmd !== null && !rawCommandByCall.has(callId)) {
-          rawCommandByCall.set(callId, cmd);
-          if (ts !== null) commandObs.push({ cmd, t: ts });
-        }
+        if (cmd !== null) commandByCall.set(callId, { cmd, t: ts });
       }
     } else if (o.type === 'subagent.completed') {
       const name = str(data.agentName) ?? str(data.agentDisplayName);
@@ -268,7 +272,19 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
 
   const tools: Record<string, number> = {};
   for (const name of toolNameByCall.values()) tools[name] = (tools[name] ?? 0) + 1;
-  const { bash, harness } = partitionCommands([...rawCommandByCall.values()]);
+
+  // Resolve which captured commands belong to a shell execution — the toolName may
+  // have arrived on a different event than `arguments.command` (companion MEDIUM).
+  const rawCommands: string[] = [];
+  const commandObs: { cmd: string; t: string }[] = [];
+  for (const [callId, { cmd, t }] of commandByCall) {
+    const tn = toolNameByCall.get(callId);
+    if (tn === 'bash' || tn === 'shell') {
+      rawCommands.push(cmd);
+      if (t !== null) commandObs.push({ cmd, t });
+    }
+  }
+  const { bash, harness } = partitionCommands(rawCommands);
 
   return {
     effort,
