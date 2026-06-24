@@ -13,7 +13,15 @@ import {
   type HarnessSource,
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
-import { cursorPathFor, readCursor, sessionDirFor, writeCursor } from './cursor.js';
+import {
+  branchPathFor,
+  cursorPathFor,
+  readBranch,
+  readCursor,
+  sessionDirFor,
+  writeBranch,
+  writeCursor,
+} from './cursor.js';
 import type { Event } from './events.js';
 import { flowEventFromFlightPlan } from './flow-nav.js';
 import {
@@ -173,6 +181,28 @@ function withFlowEvent(
   return flow === null ? [...stream] : [flow, ...stream];
 }
 
+/** Branch state for a capture: the current git branch, the prior one, and whether it changed. */
+interface BranchInfo {
+  current: string | null;
+  from: string | null;
+  changed: boolean;
+}
+
+/**
+ * Prepend a `branch` event when the git branch changed since the last capture of
+ * this session (branch-change detection is a git fact, computed in the service —
+ * NOT a per-harness transcript fact). Anchored to the window start; emitted only
+ * when there's a stream to anchor to. The `branch_changed` boolean is set
+ * independently (see {@link buildInput}) so a change is still flagged on an empty
+ * stream.
+ */
+function withBranchEvent(branch: BranchInfo, stream: readonly Event[]): Event[] {
+  if (!branch.changed || branch.current === null || stream.length === 0) return [...stream];
+  const e: Event = { t: stream[0].t, kind: 'branch', to: branch.current };
+  if (branch.from !== null) e.from = branch.from;
+  return [e, ...stream];
+}
+
 /** Merge detection context + adapter capabilities into a counts-only segment input. */
 function buildInput(
   deps: CaptureDeps,
@@ -180,6 +210,7 @@ function buildInput(
   window: SegmentWindow,
   caps: HarnessCapabilities,
   cwd: string,
+  branch: BranchInfo,
 ): SegmentInput {
   const planId = resolvePlanId(deps.env, cwd);
   return {
@@ -188,8 +219,9 @@ function buildInput(
     harness_session_id: detected.sessionId,
     timecode: deps.clock.nowIso(),
     window,
-    branch: deps.git?.currentBranch() ?? null,
-    branch_changed: caps.branch_changed ?? false,
+    branch: branch.current,
+    // branch-change is a git fact computed here; the adapter capability stays null.
+    branch_changed: caps.branch_changed ?? branch.changed,
     tokens: caps.tokens ?? null,
     models: caps.models ?? {},
     effort: caps.effort ?? null,
@@ -207,7 +239,7 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
-    event_stream: withFlowEvent(deps, cwd, planId, caps.event_stream ?? []),
+    event_stream: withBranchEvent(branch, withFlowEvent(deps, cwd, planId, caps.event_stream ?? [])),
   };
 }
 
@@ -258,9 +290,23 @@ function captureUnsafe(deps: CaptureDeps): void {
   const position = adapter.currentPosition?.(source) ?? null;
   const window = computeWindow(prev, position);
 
+  // Branch-change detection: compare the live git branch to the one persisted on
+  // the prior capture of this session. First capture (no prior) → not a change.
+  const branchPath = branchPathFor(cwd, detected.sessionId);
+  const priorBranch = readBranch(deps.fs, branchPath);
+  const currentBranch = deps.git?.currentBranch() ?? null;
+  const branch: BranchInfo = {
+    current: currentBranch,
+    from: priorBranch,
+    changed: priorBranch !== null && currentBranch !== null && priorBranch !== currentBranch,
+  };
+
   const ctx: HarnessContext = { ...source, window };
   const caps = adapter.extract(ctx);
-  const segment: Segment = serializeSegment(buildInput(deps, detected, window, caps, cwd), cwd);
+  const segment: Segment = serializeSegment(
+    buildInput(deps, detected, window, caps, cwd, branch),
+    cwd,
+  );
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).
@@ -272,6 +318,8 @@ function captureUnsafe(deps: CaptureDeps): void {
   deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
   deps.fs.rename(tmp, entryPath);
 
-  // Advance the high-water mark crash-safely.
+  // Advance the high-water mark crash-safely, then remember this capture's branch
+  // so the NEXT capture can detect a switch.
   writeCursor(deps.fs, cursorPath, window.to);
+  if (currentBranch !== null) writeBranch(deps.fs, branchPath, currentBranch);
 }

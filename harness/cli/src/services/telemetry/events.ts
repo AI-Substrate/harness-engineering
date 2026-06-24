@@ -37,6 +37,7 @@ export type EventKind =
   | 'tools'
   | 'skill'
   | 'flow'
+  | 'branch'
   | 'harness'
   | 'checks'
   | 'command_exit'
@@ -52,6 +53,7 @@ export const EVENT_KINDS: readonly EventKind[] = [
   'tools',
   'skill',
   'flow',
+  'branch',
   'harness',
   'checks',
   'command_exit',
@@ -108,6 +110,13 @@ export interface FlowEvent extends EventBase {
   status: string;
 }
 
+/** A git branch switch observed between captures (`to` = the new branch; `from` = prior). */
+export interface BranchEvent extends EventBase {
+  kind: 'branch';
+  to: string;
+  from?: string;
+}
+
 /** A harness sub-command (sans-params), e.g. `checks`, `flow nav`. */
 export interface HarnessEvent extends EventBase {
   kind: 'harness';
@@ -162,6 +171,7 @@ export type Event =
   | ToolsEvent
   | SkillEvent
   | FlowEvent
+  | BranchEvent
   | HarnessEvent
   | ChecksEvent
   | CommandExitEvent

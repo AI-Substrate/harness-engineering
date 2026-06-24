@@ -313,6 +313,11 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.from === 'string') ev.from = e.from;
       return ev;
     }
+    case 'branch': {
+      const ev: Event = { ...base, kind: 'branch', to: e.to };
+      if (typeof e.from === 'string') ev.from = e.from;
+      return ev;
+    }
     case 'harness':
       return { ...base, kind: 'harness', verb: e.verb };
     case 'checks': {

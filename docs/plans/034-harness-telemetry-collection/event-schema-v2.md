@@ -58,6 +58,7 @@ A **session timeline** = concatenate every segment's `events[]` for a
 | `tools` | `name`, `count`, `span_s` | a tool burst (collapsed run) | ✅ per-turn | ✅ + exact tool `dur`/`success` | ⚠️ untimed (counts only) |
 | `skill` | `name`, `status`, `dur_s?` | a skill span; status ∈ `completed\|abandoned\|superseded\|active` | ✅ | ✅ `skill.invoked` | ⚠️ untimed |
 | `flow` | `flow`, `stage`, `status` (`from?` **reserved**) | flight-plan stage, read from `the-flow.json` nav; command-level capture omits `from` (current position, not the transition) | ✅ | ✅ | ✅ (command-level) |
+| `branch` | `to`, `from?` | a git branch switch between captures (computed in capture-service, not per-harness) | ✅ | ✅ | ✅ |
 | `harness` | `verb` | a harness sub-command (sans-params) | ✅ | ✅ | ✅ |
 | `checks` | `status`, `gates?` | quality-gate outcome (`ok\|degraded\|error`) | ✅ | ✅ | ✅ |
 | `command_exit` | `verb`, `exit`, `status` | a command's exit code / disposition | ✅ | ✅ | ✅ |

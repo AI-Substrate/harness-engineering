@@ -257,3 +257,28 @@ Companion (run `…0903`) reviewed 5.7–5.9 → **1 HIGH + 4 MEDIUM**, all legi
 |---|------|------|-----|
 | D-521 | gotcha | Two independent reviewers disagreed only because their *evidence sets* differed (committed record vs. live companion inbox) — neither was wrong; reconcile by recording the uncommitted finding, not by dismissing it. | Noteworthy |
 | D-522 | decision | Copilot `command_exit` requires a **lone** harness command (one signature total), not just one harness verb among many — a shared `success` can't be split across `&&`/`;` (F004 + F008). | Noteworthy |
+
+---
+
+## Commit 14 — real-data validation + branch_changed fix (DL-001…DL-003, branch event)
+
+**Why this commit exists**: the user pushed to validate adapters on **real harness sessions**, not just fixtures. Doing so exposed gaps fixtures hid — captured as observations (`harness observe`) for the retro, two acted on now.
+
+**Real-data runs**
+- **Claude** (this live session): real v2 segments confirmed (`schema 2.0`, populated `event_stream`+`rollup`); turns/tools/harness/model/prompt + one real `command_exit` proven on real data.
+- **Copilot** (`copilot -p … --allow-all-tools` running `harness doctor`): real `copilot-cli` v2 segment confirmed — `event_stream`, `rollup.tools == v1 tools` (AC-16), `tokens: null` honesty, `harness` event. **Exposed**: `command_exit` is dropped when a tool call's `execution_start`/`execution_complete` **straddle a capture-window boundary** (the per-window join fails; turn `dur_s:0` likewise). Logged DL-001 (design-level; not patched here).
+- **Cursor**: handed the user a paste-in prompt (runs 2–3 harness commands with busy-work between) — pending their run.
+
+**Observations captured** (`.harness/temp/agent/session-buffer.md`): DL-001 (window-straddle drops `command_exit`), INS-001 (fixtures gave false confidence — need real-session smokes), DL-002 (vitest doesn't type-check → add a `tsc` gate to `checks`), **DL-003 (branch_changed dead)** — fixed below.
+
+**branch_changed fix (DL-003) + `branch` event**
+- Real data showed one session's segments spanning `telemetry-enhancements` AND `034-…` with `branch_changed` **always false** — the field was plumbed but every adapter hardcoded `null`. Branch-change is a **git fact**, mis-delegated to adapters.
+- **Fixed in `capture-service`**: persist the last-seen branch beside the cursor (`<session>.branch` via new `branchPathFor`/`readBranch`/`writeBranch`); compute `branch_changed = prior != null && prior != current`; emit a new **`branch` event** (`to`/`from?`, anchored to the window start) on change. New event kind threaded through `events.ts` (union + `EVENT_KINDS`), `serializeEvent` (allowlist case), `segment.schema.json` (enum + `to`), and the design/guide docs.
+- **Validated on real live data**: seeded a prior-branch marker, ran `harness doctor` → `branch_changed: true` + `{kind:'branch', to:'telemetry-enhancements', from:'demo-prior-branch'}` anchored to the window start; marker self-corrected after.
+
+**Evidence**: `just build` ✓; full suite → **1268 passed** (branch-detection tests added); arch-check → 1 pre-existing P4 warn.
+
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-523 | gotcha | The windowed per-command model can't correlate a start/complete (or turn_start/turn_end) pair that **straddles a segment boundary** — derived joins (`command_exit`, turn `dur_s`) are lost, unlike raw events which survive reassembly. Real-data-only finding (DL-001). | Noteworthy |
+| D-524 | decision | Git facts (`branch_changed`) belong in `capture-service` (it has `git` + persisted prior state), NOT in per-harness adapters that can't observe them. New `branch` event is service-emitted like `flow`. | Noteworthy |

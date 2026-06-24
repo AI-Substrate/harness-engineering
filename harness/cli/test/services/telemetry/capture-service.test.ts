@@ -14,6 +14,7 @@ import {
   computeWindow,
   detectHarness,
 } from '../../../src/services/telemetry/capture-service.js';
+import type { Event } from '../../../src/services/telemetry/events.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
 
 /**
@@ -217,5 +218,63 @@ describe('T5.8 — session-end flush (the tail is captured by a follow-up captur
       from: 90,
       to: 90,
     });
+  });
+});
+
+describe('branch-change detection + branch event', () => {
+  const STREAM: Event[] = [
+    { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 3 },
+    { t: '2026-06-24T09:01:00Z', kind: 'turn', dur_s: 50 },
+  ];
+
+  function depsOn(fs: FakeFs, branch: string): CaptureDeps {
+    return {
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sbr' }),
+      clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+      proc: new FakeProcess({}, REPO),
+      git: new FakeGit({ isRepo: true, branch, remoteUrl: 'github.com/x/y' }),
+      command: 'flow',
+      adapters: [testAdapter('claude-code', 240, { event_stream: STREAM })],
+    };
+  }
+
+  function branchEvent(fs: FakeFs): (Event & { to?: string; from?: string }) | undefined {
+    return readWrittenSegment(fs, 'sbr')?.event_stream.find((e) => e.kind === 'branch') as
+      | (Event & { to?: string; from?: string })
+      | undefined;
+  }
+
+  it('records the branch; first capture is NOT a change and emits no branch event', () => {
+    const fs = new FakeFs({});
+    captureTelemetry(depsOn(fs, 'main'));
+    const seg = readWrittenSegment(fs, 'sbr');
+    expect(seg?.branch).toBe('main');
+    expect(seg?.branch_changed).toBe(false);
+    expect(branchEvent(fs)).toBeUndefined();
+    expect(fs.readText(`${TEL}/sbr.branch`)).toBe('main'); // persisted for next capture
+  });
+
+  it('a branch switch → branch_changed true + a branch event (to/from) anchored to the window start', () => {
+    const fs = new FakeFs({});
+    captureTelemetry(depsOn(fs, 'main')); // 1st: records `main`
+    captureTelemetry(depsOn(fs, 'feature-x')); // 2nd: now on a different branch
+
+    const seg = readWrittenSegment(fs, 'sbr');
+    expect(seg?.branch).toBe('feature-x');
+    expect(seg?.branch_changed).toBe(true);
+    const be = branchEvent(fs);
+    expect(be).toMatchObject({ kind: 'branch', to: 'feature-x', from: 'main' });
+    expect(be?.t).toBe(STREAM[0].t); // anchored to the window start
+    expect(seg?.event_stream[0].kind).toBe('branch'); // prepended
+  });
+
+  it('no switch (same branch) → branch_changed false, no branch event', () => {
+    const fs = new FakeFs({});
+    captureTelemetry(depsOn(fs, 'main'));
+    captureTelemetry(depsOn(fs, 'main'));
+    const seg = readWrittenSegment(fs, 'sbr');
+    expect(seg?.branch_changed).toBe(false);
+    expect(branchEvent(fs)).toBeUndefined();
   });
 });

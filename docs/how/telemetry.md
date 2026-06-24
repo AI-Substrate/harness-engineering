@@ -109,6 +109,7 @@ kinds:
 | `tools` | tool name + count + span (a same-name burst) | tool calls |
 | `skill` | skill name + lifecycle status | skill/subagent opens |
 | `flow` | flight-plan `flow`/`stage`/`status` | `the-flow.json` nav (not args) |
+| `branch` | the new branch (`to`) + prior (`from?`) | a git branch switch between captures |
 | `harness` | sub-command verb (sans params) | `harness …` calls |
 | `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
 | `subagent` · `compaction` · `model` · `api_error` | identity / presence / class | transcript signals |

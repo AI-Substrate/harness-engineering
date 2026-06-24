@@ -65,6 +65,8 @@ interface EventBase { t: Iso; kind: string; }
 | | `stage` | string | ✅ | flight-plan stage = `nav.now` (e.g. `phase-5`) |
 | | `from` | string | ⬚ | **reserved** — previous stage (transition source); command-level capture OMITS it (a single window observes the current position, not the transition that reached it) |
 | | `status` | string | ✅ | `in_progress \| done \| blocked` — the `nav.now` node's lifecycle, narrowed (any other status ⇒ `in_progress`) |
+| **branch** | `to` | string | ✅ | the new git branch (switch observed between captures) |
+| | `from` | string | ⬚ | the prior branch |
 | **harness** | `verb` | string | ✅ | harness sub-command, sans-params (e.g. `checks`) |
 | **checks** | `status` | enum | ✅ | `ok \| degraded \| error` |
 | | `gates` | `Record<string,string>` | ⬚ | per-gate verdicts (names only) |

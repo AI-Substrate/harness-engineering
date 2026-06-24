@@ -31,6 +31,26 @@ export function cursorPathFor(cwd: string, sessionId: string): string {
   return posixJoin(telemetryDir(cwd), `${sanitizeSessionId(sessionId)}.cursor`);
 }
 
+/** Path to the session's `.branch` marker (last-seen git branch — for branch-change detection). */
+export function branchPathFor(cwd: string, sessionId: string): string {
+  return posixJoin(telemetryDir(cwd), `${sanitizeSessionId(sessionId)}.branch`);
+}
+
+/** Read the last-seen branch, or `null` when missing/empty (the first capture of a session). */
+export function readBranch(fs: FsPort, path: string): string | null {
+  const raw = fs.readText(path);
+  if (raw === null) return null;
+  const trimmed = raw.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Persist the last-seen branch crash-safely (temp + rename), mirroring {@link writeCursor}. */
+export function writeBranch(fs: FsPort, path: string, branch: string): void {
+  const tmp = `${path}.tmp`;
+  fs.writeText(tmp, branch);
+  fs.rename(tmp, path);
+}
+
 /** Directory holding the session's buffered segment entries (`<seq>.json`). */
 export function sessionDirFor(cwd: string, sessionId: string): string {
   return posixJoin(telemetryDir(cwd), sanitizeSessionId(sessionId));
