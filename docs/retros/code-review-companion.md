@@ -413,3 +413,39 @@
 - difficulties:
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the code-review-companion run folder, so the orient default initially could not see docs/plans from that cwd. (workaround: Used the repository root provided in the environment context for subsequent git, docs, and test commands.)
   - [annoying] test: Running npm test from harness/cli failed because package.json lives at the repository root while the npm test script cd’s into harness/cli internally. (workaround: Ran targeted tests from the repository root with npx vitest and the relevant test paths.)
+
+## 2026-06-24T06:40:02.814Z — code-review-companion / 2026-06-24T06-21-00-876Z-3107
+
+- runId: 2026-06-24T06-21-00-876Z-3107
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-24T06-21-00-876Z-3107
+- summary: Oriented on Plan 034 Phase 5, handled the briefing, and reviewed commit 7d33083 for Phase 5 T5.1-T5.3. I sent two findings: one MEDIUM compatibility-view drift risk where v1 top-level fields can contradict the derived event_stream rollup, and one LOW schema-id drift where the v2 schema still uses the segment-1.0 $id. No HIGH or CRITICAL issues were found.
+- **magicWand** (target: coordination): Expose MINIH_PROJECT_ROOT and MINIH_OUTPUT_PATH consistently to shell tools, and add a coordination helper that returns the literal project root/output path plus validation command in one structured response.
+- difficulties:
+  - [annoying] config: The shell environment did not expose MINIH_PROJECT_ROOT even though the prompt instructed the agent to cd there first. (workaround: Used the literal repository root supplied in the environment context for all project-relative reads and git commands.)
+
+## 2026-06-24T06:58:54.931Z — code-review-companion / 2026-06-24T06-43-59-401Z-1dae
+
+- runId: 2026-06-24T06-43-59-401Z-1dae
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-24T06-43-59-401Z-1dae
+- summary: Oriented on plan 034 Phase 5 and reviewed commits c2a0712 and 5be03e5. I sent one MEDIUM contract-drift finding for stale mixed-bucket tool-burst documentation after the same-name burst rule change, and one HIGH AC-16 finding for Copilot event emission missing tools whose name is only observed on execution_complete. I exited via idle_budget after a still-needed check-in received no reply.
+- **magicWand** (target: minih): Expose MINIH_PROJECT_ROOT reliably to shell tool processes, or inject a validated project-root helper into coordinated agent prompts so the first command cannot accidentally inspect the run directory.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not available in the shell environment even though the agent prompt required cd $MINIH_PROJECT_ROOT as the first action. (workaround: Used the literal project root from the environment context for all subsequent repository commands.)
+
+## 2026-06-24T07:18:05.167Z — code-review-companion / 2026-06-24T07-01-11-461Z-4d43
+
+- runId: 2026-06-24T07-01-11-461Z-4d43
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-24T07-01-11-461Z-4d43
+- summary: Oriented on plan 034 Phase 5 and reviewed two commit-boundary requests. For 610b872, I sent one MEDIUM finding covering an adjacent Copilot format-drift edge in shell/harness command capture. For 7f68d17, I found no new Cursor adapter issues: tokens remain null, anchored timestamps are explicit, headless sessions avoid fabricated event streams, and the targeted Cursor event tests passed. The run ended by idle-budget policy after a post-task still-needed check-in received no reply.
+- **magicWand** (target: minih): Set MINIH_PROJECT_ROOT in every tool shell and start shells at that project root for coordinated agents, or expose a minih env doctor field that explains the fallback path.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not visible to the shell, so the mandated initial cd resolved to the run directory rather than the repository root. (workaround: Recovered the repository root with git rev-parse --show-toplevel and used the absolute repository path for subsequent reads and commands.)
+
+## 2026-06-24T08:01:35.554Z — code-review-companion / 2026-06-24T07-21-59-466Z-0903
+
+- runId: 2026-06-24T07-21-59-466Z-0903
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-24T07-21-59-466Z-0903
+- summary: Reviewed eight Phase 5 telemetry commits covering flow-stage events, Copilot command capture, outcome events, tail flush, documentation, a build fix, and final fix bundles. Sent eight findings total: one HIGH outcome-provenance bug in Claude, seven MEDIUM edge/contract findings, and per-task verdict summaries. The run ended via the post-task idle-budget check-in after no stop response arrived.
+- **magicWand** (target: minih): Set MINIH_PROJECT_ROOT correctly for shell tool calls in coordinated minih runs, or expose a dedicated repo-root variable that always points at the project checkout.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not usable as the repository root in shell commands; it resolved to the run directory, so the mandatory orient default could not find docs/plans via that variable. (workaround: Used the repository root from the provided environment context: /Users/jordanknight/substrate/harness-engineering.)
