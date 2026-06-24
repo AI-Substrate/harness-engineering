@@ -76,3 +76,17 @@ Companion (run `…1dae`) reviewed `c2a0712` → **no findings** (clean).
 |---|------|------|-----|
 | D-507 | decision | Copilot turn tokens attributed per `interaction_id` (process log) → the turn event of that interaction. When events carry no interaction ids (older format), per-turn tokens are omitted → rollup.tokens could under-count vs v1 (logged, edge case; fixture exercises the interaction path). | Noteworthy |
 | D-508 | decision | Copilot skill events skipped (the adapter never parsed `skill.invoked`; v1 skills already null) — consistent with current counts; revisit if skills land in copilot counts. | Deferred |
+
+### Companion review — commits c2a0712 + 5be03e5 (run `…1dae`)
+| Sev | Finding | Disposition |
+|---|---|---|
+| **HIGH** | Copilot event emission missed tools whose name appears only on `execution_complete` (not `execution_start`) → `rollup.tools` would under-count vs v1 `tools` (AC-16 drift). | **Fixed** (commit 4): emit the tool-call event at the FIRST event carrying the name (start OR complete) — matches the v1 counts path exactly. Regression test added (name only on `execution_complete`). |
+| MEDIUM | Design docs still described the lossy `"mixed"` tool-burst bucket removed by the same-name rule. | **Fixed** (commit 4): `event-schema-v2-detail.md` §4.2 + tools row updated to same-name-only + the AC-16 rationale. |
+
+Real AC-16 bug caught by the companion — the value of live review. No HIGH/CRITICAL remain.
+
+---
+
+## Commit 4 — companion HIGH + MEDIUM fixes (Copilot tool-name + doc drift)
+
+`copilot-adapter.ts` emits the tool-call event at whichever event first carries the name; `copilot-events.test.ts` gains a regression (name only on `execution_complete`); `event-schema-v2-detail.md` burst rule de-references `"mixed"`. 1226/1226 green; arch-check clean.

@@ -231,10 +231,11 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       const toolName = str(data.toolName);
       if (callId !== null && toolName !== null && !toolNameByCall.has(callId)) {
         toolNameByCall.set(callId, toolName);
-        // The tool-call event rides on execution_start (where the name + ts live).
-        if (ts !== null && o.type === 'tool.execution_start') {
-          toolCalls.push({ name: toolName, t: ts });
-        }
+        // Emit the tool-call event at the FIRST event that carries the name —
+        // whether execution_start OR execution_complete (the name moved between the
+        // two across CLI versions) — so rollup.tools matches the v1 tools histogram
+        // exactly even when the name is only on execution_complete (companion HIGH, AC-16).
+        if (ts !== null) toolCalls.push({ name: toolName, t: ts });
       }
       // A shell tool's command line → sans-params signature (computed post-loop).
       // Only the `command` field is read; arguments otherwise carry free text (AC-04).

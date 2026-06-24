@@ -121,3 +121,36 @@ describe('copilotAdapter — v2 event stream (T5.4)', () => {
     expect(json).not.toContain('raw_prompt');
   });
 });
+
+describe('copilotAdapter — tool name only on execution_complete (companion HIGH, AC-16)', () => {
+  // execution_start carries NO toolName; the name appears only on execution_complete.
+  const lines = [
+    { type: 'user.message', timestamp: '2026-06-23T09:00:02Z', data: { interactionId: 'i1', content: 'hi there now' } },
+    { type: 'assistant.turn_start', timestamp: '2026-06-23T09:00:03Z', data: { interactionId: 'i1' } },
+    { type: 'tool.execution_start', timestamp: '2026-06-23T09:00:04Z', data: { toolCallId: 'tc-1' } },
+    {
+      type: 'tool.execution_complete',
+      timestamp: '2026-06-23T09:00:05Z',
+      data: { toolCallId: 'tc-1', toolName: 'str_replace_editor', interactionId: 'i1' },
+    },
+    { type: 'assistant.turn_end', timestamp: '2026-06-23T09:00:06Z', data: { interactionId: 'i1' } },
+  ];
+  const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
+
+  it('emits the tools event so rollup.tools matches the v1 histogram', () => {
+    const fs = new FakeFs({ [copilotEventsPath(HOME, 'sx')]: content }, {});
+    const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'sx' }, HOME);
+    const caps = copilotAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'copilot-cli',
+      window: { since: 'session-start', from: 0, to: 99 },
+    });
+    expect(caps.tools).toEqual({ str_replace_editor: 1 }); // v1 counts it
+    const tools = (caps.event_stream as Event[]).filter((e) => e.kind === 'tools');
+    expect(tools).toContainEqual(
+      expect.objectContaining({ name: 'str_replace_editor', count: 1 }),
+    );
+  });
+});
