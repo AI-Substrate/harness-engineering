@@ -176,7 +176,7 @@ git push origin --delete 'refs/harness-telemetry/2026/03/23/<sessionA>'  # prune
 | Variable | Effect |
 |---|---|
 | `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes. |
-| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Auto-push off only** — capture and manual `harness telemetry sync` still work; `checks` falls back to a nudge. |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Unprompted pushes off** — capture and manual `harness telemetry sync` still work; the automatic pushes (`checks`, the harness-loop close, the-flow `ship`) are suppressed (`checks` falls back to a nudge). |
 
 ### Privacy
 

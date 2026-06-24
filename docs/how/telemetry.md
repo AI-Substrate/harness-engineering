@@ -87,11 +87,11 @@ by default when unset):
 | Variable | Effect |
 |---|---|
 | `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes, zero side effects. The hard kill-switch. |
-| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Auto-sync off only** — capture and **manual** `harness telemetry sync` still work, but `checks` will **not** auto-push (it falls back to a passive nudge). |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Unprompted pushes off** — capture and **manual** `harness telemetry sync` still work, but pushes that happen *without you asking* — the `checks` auto-push, and the flow tooling's loop-close / `ship` flushes — are suppressed (`checks` falls back to a passive nudge). |
 
 ```bash
 export HARNESS_NO_TELEMETRY=1            # this shell captures and pushes nothing
-export HARNESS_NO_TELEMETRY_AUTOSYNC=1   # still captures; checks won't auto-push, sync manually
+export HARNESS_NO_TELEMETRY_AUTOSYNC=1   # still captures; no unprompted pushes (checks/loop/ship) — sync manually
 ```
 
 ## Plan links
