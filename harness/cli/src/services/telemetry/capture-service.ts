@@ -16,14 +16,18 @@ import {
 import {
   branchPathFor,
   cursorPathFor,
+  flowCursorPathFor,
   readBranch,
   readCursor,
+  readFlowCursor,
   sessionDirFor,
   writeBranch,
   writeCursor,
+  writeFlowCursor,
 } from './cursor.js';
 import type { Event } from './events.js';
 import { flowEventFromFlightPlan } from './flow-nav.js';
+import { flowLogEvents } from './flow-log.js';
 import {
   type Segment,
   type SegmentInput,
@@ -155,30 +159,46 @@ function flightPlanPath(cwd: string, planId: string): string {
 }
 
 /**
+ * Read + parse the linked plan's `the-flow.json` ONCE (best-effort): no plan link,
+ * a missing file, or a malformed JSON → `null` (capture never breaks). The parsed
+ * object feeds BOTH the `flow` snapshot ({@link withFlowEvent}) and the `flow_log`
+ * replay projection ({@link flowLogEvents}), so the plan is read a single time.
+ */
+function readFlightPlan(fs: FsPort, cwd: string, planId: string | null): unknown | null {
+  if (planId === null) return null;
+  const text = fs.readText(flightPlanPath(cwd, planId));
+  if (text === null) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Prepend the command-level `flow` event — read from the linked plan's
  * `the-flow.json` `nav` (AC-18, detail doc §4.4) — to the adapter's event stream,
  * anchored to the window start so {@link computeRollup} attributes the window's
  * gap-time to the current flight-plan stage (`flow_stage_time_s`). Best-effort:
- * no plan link, no flight plan, an unparseable plan, or an empty stream → the
- * stream is returned unchanged (no fabricated stage, nothing to attribute).
+ * no parsed plan or an empty stream → unchanged (no fabricated stage). This is the
+ * current-stage ANCHOR; the `flow_log` projection (below) is the transition history.
  */
-function withFlowEvent(
-  deps: CaptureDeps,
-  cwd: string,
-  planId: string | null,
-  stream: readonly Event[],
-): Event[] {
-  if (planId === null || stream.length === 0) return [...stream];
-  const text = deps.fs.readText(flightPlanPath(cwd, planId));
-  if (text === null) return [...stream];
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return [...stream]; // a malformed flight plan never breaks capture
-  }
+function withFlowEvent(parsed: unknown, stream: readonly Event[]): Event[] {
+  if (parsed === null || stream.length === 0) return [...stream];
   const flow = flowEventFromFlightPlan(parsed, stream[0].t);
   return flow === null ? [...stream] : [flow, ...stream];
+}
+
+/**
+ * Append the `flow_log` replay markers AFTER the window events (including the
+ * harness tail). They carry their own real `fired_at` and are EXCLUDED from the
+ * rollup (see `computeRollup`), so their possibly-older / backfilled times never
+ * distort gap/wall/stage math; a replay consumer sorts the concatenated session
+ * timeline by `t`. Appended last so they never shift the prepended `flow`/`branch`
+ * head or the harness tail's anchor (plan 035).
+ */
+function withFlowLogEvents(flowLog: readonly Event[], stream: readonly Event[]): Event[] {
+  return flowLog.length === 0 ? [...stream] : [...stream, ...flowLog];
 }
 
 /** Branch state for a capture: the current git branch, the prior one, and whether it changed. */
@@ -240,8 +260,10 @@ function buildInput(
   caps: HarnessCapabilities,
   cwd: string,
   branch: BranchInfo,
+  planId: string | null,
+  flightPlan: unknown,
+  flowLog: readonly Event[],
 ): SegmentInput {
-  const planId = resolvePlanId(deps.env, cwd);
   const timecode = deps.clock.nowIso();
   return {
     command: deps.command,
@@ -266,10 +288,14 @@ function buildInput(
     },
     thinking: caps.thinking ?? null,
     // Compose the timeline: flow + branch prepend at the window start; the
-    // triggering harness command appends as a zero-gap marker at the window end.
-    event_stream: withHarnessCommandEvent(
-      deps.command,
-      withBranchEvent(branch, timecode, withFlowEvent(deps, cwd, planId, caps.event_stream ?? [])),
+    // triggering harness command appends as a zero-gap marker at the window end;
+    // the flow_log replay markers append last (rollup-excluded, own real `t`).
+    event_stream: withFlowLogEvents(
+      flowLog,
+      withHarnessCommandEvent(
+        deps.command,
+        withBranchEvent(branch, timecode, withFlowEvent(flightPlan, caps.event_stream ?? [])),
+      ),
     ),
   };
 }
@@ -332,10 +358,20 @@ function captureUnsafe(deps: CaptureDeps): void {
     changed: priorBranch !== null && currentBranch !== null && priorBranch !== currentBranch,
   };
 
+  // Flow replay: read the linked flight plan ONCE, then window its append-only
+  // `events[]` log by an array OFFSET kept per (session, plan) — collision-proof,
+  // unlike a `fired_at` watermark (plan 035).
+  const planId = resolvePlanId(deps.env, cwd);
+  const flightPlan = readFlightPlan(deps.fs, cwd, planId);
+  const flowCursorPath =
+    planId !== null ? flowCursorPathFor(cwd, detected.sessionId, planId) : null;
+  const priorFlowOffset = flowCursorPath !== null ? readFlowCursor(deps.fs, flowCursorPath) : 0;
+  const flowLog = flowLogEvents(flightPlan, priorFlowOffset);
+
   const ctx: HarnessContext = { ...source, window };
   const caps = adapter.extract(ctx);
   const segment: Segment = serializeSegment(
-    buildInput(deps, detected, window, caps, cwd, branch),
+    buildInput(deps, detected, window, caps, cwd, branch, planId, flightPlan, flowLog.events),
     cwd,
   );
 
@@ -350,7 +386,9 @@ function captureUnsafe(deps: CaptureDeps): void {
   deps.fs.rename(tmp, entryPath);
 
   // Advance the high-water mark crash-safely, then remember this capture's branch
-  // so the NEXT capture can detect a switch.
+  // so the NEXT capture can detect a switch, and advance the flow-log offset so
+  // each flight-plan event is surfaced exactly once.
   writeCursor(deps.fs, cursorPath, window.to);
   if (currentBranch !== null) writeBranch(deps.fs, branchPath, currentBranch);
+  if (flowCursorPath !== null) writeFlowCursor(deps.fs, flowCursorPath, flowLog.nextOffset);
 }

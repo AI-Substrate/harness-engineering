@@ -334,6 +334,18 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.from === 'string') ev.from = e.from;
       return ev;
     }
+    case 'flow_log': {
+      // ALLOWLIST: pick `op` + only the present structural fields — never spread,
+      // so a free-form `details` value (manual description / custom value / comment
+      // text) on the source event cannot reach the output (AC-03).
+      const ev: Event = { ...base, kind: 'flow_log', op: e.op };
+      if (typeof e.node === 'string') ev.node = e.node;
+      if (typeof e.from === 'string') ev.from = e.from;
+      if (typeof e.to === 'string') ev.to = e.to;
+      if (typeof e.type === 'string') ev.type = e.type;
+      if (typeof e.edge_op === 'string') ev.edge_op = e.edge_op;
+      return ev;
+    }
     case 'branch': {
       const ev: Event = { ...base, kind: 'branch', to: e.to };
       if (typeof e.from === 'string') ev.from = e.from;

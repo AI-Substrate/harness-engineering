@@ -108,11 +108,28 @@ kinds:
 | `turn` | `dur_s` + optional token buckets + model | one agent generation |
 | `tools` | tool name + count + span (a same-name burst) | tool calls |
 | `skill` | skill name + lifecycle status | skill/subagent opens |
-| `flow` | flight-plan `flow`/`stage`/`status` | `the-flow.json` nav (not args) |
+| `flow` | flight-plan `flow`/`stage`/`status` (the **current-stage anchor**) | `the-flow.json` nav (not args) |
+| `flow_log` | a flight-plan mutation: `op` + `node`/`from`/`to`/`type`/`edge_op` | `the-flow.json` `events[]` log (the **transition history**) |
 | `branch` | the new branch (`to`) + prior (`from?`) | a git branch switch between captures |
 | `harness` | sub-command verb (sans params) | `harness …` calls |
 | `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
 | `subagent` · `compaction` · `model` · `api_error` | identity / presence / class | transcript signals |
+
+**Flow replay (`flow_log`).** The `flow` event is a per-window *snapshot* of where
+the flight plan sits; `flow_log` is the **movement history** — projected from
+`the-flow.json`'s append-only `events[]` audit log, one marker per mutation
+(`cursor-moved`, `status-changed`, `node-created`/`-updated`, `created`) at its real
+`fired_at`. It carries only **shape** (ids, statuses, `from`/`to`, edge ops) — never
+a manual event's free-form `description`/`value` or comment text. Windowed by an
+append-only **array offset** kept per (session, plan), so each entry is surfaced
+exactly once (a timestamp watermark would drop the several entries one CLI call can
+stamp in the same millisecond). Joined on time with the work events, it lets a reader
+reconstruct *which stages a session moved through, what completed/changed, and when*.
+Two honest bounds: `flow_log` markers are **excluded from the rollup** (their real —
+sometimes backfilled — times must not distort gap/stage math), and the **initial**
+stage is recoverable only via the first `cursor-moved.from` (a flow that never moved,
+or was positioned by an advisory `nav --next` only, leaves no journey — read absence
+as *unknown*, not *stayed put*).
 
 **The rollup — derived, recomputable.** `rollup` is a pure function of
 `event_stream[]` (a consumer may ignore it and recompute):

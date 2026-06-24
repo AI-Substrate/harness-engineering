@@ -37,6 +37,7 @@ export type EventKind =
   | 'tools'
   | 'skill'
   | 'flow'
+  | 'flow_log'
   | 'branch'
   | 'harness'
   | 'checks'
@@ -53,6 +54,7 @@ export const EVENT_KINDS: readonly EventKind[] = [
   'tools',
   'skill',
   'flow',
+  'flow_log',
   'branch',
   'harness',
   'checks',
@@ -108,6 +110,30 @@ export interface FlowEvent extends EventBase {
   stage: string;
   from?: string;
   status: string;
+}
+
+/**
+ * A flight-plan mutation, projected from `the-flow.json`'s append-only `events[]`
+ * audit log (plan 035 — flow replay). One per built-in log entry, carrying only
+ * its STRUCTURAL shape (`op` + ids/states from the source event's `details`) at
+ * its real `fired_at`. Free-form fields (manual `description`, custom `value`,
+ * comment text) are never projected. PURE REPLAY MARKER: excluded from
+ * {@link Rollup} gap/wall/stage math (its wall-clock `t` would otherwise re-sort
+ * into the stream and mis-attribute time).
+ */
+export interface FlowLogEvent extends EventBase {
+  kind: 'flow_log';
+  /** The source built-in event kind: `cursor-moved | status-changed | node-created | node-updated | created`. */
+  op: string;
+  node?: string;
+  /** Prior stage (cursor-moved) or prior status (status-changed). */
+  from?: string;
+  /** New stage (cursor-moved) or new status (status-changed). */
+  to?: string;
+  /** Node type (node-created). */
+  type?: string;
+  /** Edge-splice op (node-updated from an insert-node), when present. */
+  edge_op?: string;
 }
 
 /** A git branch switch observed between captures (`to` = the new branch; `from` = prior). */
@@ -171,6 +197,7 @@ export type Event =
   | ToolsEvent
   | SkillEvent
   | FlowEvent
+  | FlowLogEvent
   | BranchEvent
   | HarnessEvent
   | ChecksEvent

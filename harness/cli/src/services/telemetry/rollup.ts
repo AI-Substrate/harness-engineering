@@ -133,7 +133,15 @@ export function inferSkillStatuses(
  */
 export function computeRollup(events: readonly Event[], opts: RollupOptions = {}): Rollup {
   const idleCap = opts.idleCapS ?? IDLE_CAP_S;
-  const ev = [...events].sort((a, b) => parseIso(a.t) - parseIso(b.t));
+  // `flow_log` events are PURE REPLAY MARKERS (plan 035) — they carry their own
+  // real `fired_at`, which can predate the window (backfilled flight-plan history).
+  // Excluding them from the rollup keeps gap/wall/stage math anchored to the window's
+  // work events; a single backfilled marker would otherwise re-sort to the front and
+  // fabricate a huge mis-attributed gap (and `wall_s`). They remain in `event_stream`
+  // for replay; the rollup is derived only from the timed work events.
+  const ev = [...events]
+    .filter((e) => e.kind !== 'flow_log')
+    .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
   let agent = 0;
   let human = 0;

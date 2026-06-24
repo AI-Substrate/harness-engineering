@@ -57,7 +57,8 @@ A **session timeline** = concatenate every segment's `events[]` for a
 | `turn` | `dur_s`, `in?`,`out?`,`cache_read?`,`cache_create?`, `model?` | one agent generation (the work primitive) | ✅ +all tokens | ✅ exact `dur_s`, tokens via process-log join | ✅ `dur_s` from bubbles, **no tokens** |
 | `tools` | `name`, `count`, `span_s` | a tool burst (collapsed run) | ✅ per-turn | ✅ + exact tool `dur`/`success` | ⚠️ untimed (counts only) |
 | `skill` | `name`, `status`, `dur_s?` | a skill span; status ∈ `completed\|abandoned\|superseded\|active` | ✅ | ✅ `skill.invoked` | ⚠️ untimed |
-| `flow` | `flow`, `stage`, `status` (`from?` **reserved**) | flight-plan stage, read from `the-flow.json` nav; command-level capture omits `from` (current position, not the transition) | ✅ | ✅ | ✅ (command-level) |
+| `flow` | `flow`, `stage`, `status` (`from?` **reserved**) | flight-plan stage, read from `the-flow.json` nav; command-level capture omits `from` (current position, not the transition) — the **current-stage anchor** | ✅ | ✅ | ✅ (command-level) |
+| `flow_log` | `op` + `node?`/`from?`/`to?`/`type?`/`edge_op?` | a flight-plan mutation, projected from `the-flow.json` `events[]` (the **transition history** — moves, completions, edits); shape only, never free-form; offset-windowed; rollup-excluded (plan 035) | ✅ | ✅ | ✅ |
 | `branch` | `to`, `from?` | a git branch switch between captures (computed in capture-service, not per-harness) | ✅ | ✅ | ✅ |
 | `harness` | `verb` | a harness sub-command (sans-params) | ✅ | ✅ | ✅ |
 | `checks` | `status`, `gates?` | quality-gate outcome (`ok\|degraded\|error`) | ✅ | ✅ | ✅ |

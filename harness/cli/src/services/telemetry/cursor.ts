@@ -57,6 +57,37 @@ export function sessionDirFor(cwd: string, sessionId: string): string {
 }
 
 /**
+ * Path to the `.flowcursor` for a (session, plan) pair (plan 035 — flow replay).
+ * Keyed per-PLAN (not just per-session) because the flight-plan event log is
+ * per-plan: a session touching two plans must window each plan's log independently.
+ * The value is the count of `the-flow.json` `events[]` already surfaced — an
+ * append-only ARRAY OFFSET, not a timestamp.
+ */
+export function flowCursorPathFor(cwd: string, sessionId: string, planId: string): string {
+  return posixJoin(
+    telemetryDir(cwd),
+    `${sanitizeSessionId(sessionId)}.${sanitizeSessionId(planId)}.flowcursor`,
+  );
+}
+
+/** Read the flow-log offset, or `0` when missing/corrupt (first capture ⇒ surface full history). */
+export function readFlowCursor(fs: FsPort, path: string): number {
+  const raw = fs.readText(path);
+  if (raw === null) return 0;
+  const trimmed = raw.trim();
+  if (!/^\d+$/.test(trimmed)) return 0;
+  const n = Number.parseInt(trimmed, 10);
+  return Number.isSafeInteger(n) && n >= 0 ? n : 0;
+}
+
+/** Persist the flow-log offset crash-safely (temp + rename), mirroring {@link writeCursor}. */
+export function writeFlowCursor(fs: FsPort, path: string, offset: number): void {
+  const tmp = `${path}.tmp`;
+  fs.writeText(tmp, String(offset));
+  fs.rename(tmp, path);
+}
+
+/**
  * Read the watermark, or `null` when missing OR corrupt (non-numeric / negative /
  * empty). A `null` tells the caller to reset to session-start — a corrupt cursor
  * never throws and never yields a bogus offset.
