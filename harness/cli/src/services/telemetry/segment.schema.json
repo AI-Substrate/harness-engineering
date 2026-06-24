@@ -178,6 +178,8 @@
           "flow": { "type": "string" },
           "stage": { "type": "string" },
           "op": { "type": "string" },
+          "node": { "type": "string" },
+          "type": { "type": "string" },
           "edge_op": { "type": "string" },
           "from": { "type": "string" },
           "to": { "type": "string" },

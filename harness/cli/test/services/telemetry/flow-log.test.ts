@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
@@ -14,7 +17,8 @@ import {
 } from '../../../src/services/telemetry/capture-service.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import { flowLogEvents } from '../../../src/services/telemetry/flow-log.js';
-import type { Segment } from '../../../src/services/telemetry/segment.js';
+import { computeRollup } from '../../../src/services/telemetry/rollup.js';
+import { type Segment, serializeEvent } from '../../../src/services/telemetry/segment.js';
 
 /**
  * Plan 035 — flow replay. The flight plan's append-only `events[]` audit log is
@@ -253,5 +257,87 @@ describe('capture-service — flow_log replay (AC-04/05/06/07)', () => {
     expect(flowLogIn(seg(fs))).toEqual([]);
     // offset is still written (0) — harmless; the point is no events + no throw
     expect(seg(fs)).not.toBeNull();
+  });
+
+  it('AC-04 — two plans in ONE session window independently (per-plan offset)', () => {
+    // Same session id, two different linked plans → two independent .flowcursor files.
+    const LOG_A = [{ kind: 'cursor-moved', fired_at: '2026-06-24T08:00:00Z', details: { to: 'plan' } }];
+    const LOG_B = [
+      { kind: 'node-created', fired_at: '2026-06-24T08:00:00Z', details: { node: 'x', type: 'phase' } },
+      { kind: 'status-changed', fired_at: '2026-06-24T08:01:00Z', details: { node: 'x', to: 'done' } },
+    ];
+    const fs = new FakeFs({
+      [`${REPO}/docs/plans/plan-a/the-flow.json`]: flightPlanJson(LOG_A),
+      [`${REPO}/docs/plans/plan-b/the-flow.json`]: flightPlanJson(LOG_B),
+    });
+    function capWith(planId: string): void {
+      captureTelemetry({
+        fs,
+        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: planId }),
+        clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+        proc: new FakeProcess({}, REPO),
+        git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),
+        command: 'flow',
+        adapters: [adapter(WORK)],
+      });
+    }
+    capWith('plan-a');
+    capWith('plan-b'); // overwrites 1.json; its segment carries ONLY plan-b's log
+    expect(fs.readText(`${TEL}/sess1.plan-a.flowcursor`)).toBe('1');
+    expect(fs.readText(`${TEL}/sess1.plan-b.flowcursor`)).toBe('2');
+    // the last segment (plan-b) holds plan-b's ops, never plan-a's `cursor-moved`
+    expect(flowLogIn(seg(fs)).map((e) => (e as { op: string }).op)).toEqual(['node-created', 'status-changed']);
+  });
+});
+
+// ── Schema/serializer lockstep (F001) + full rollup invariance (F002/AC-07) ──
+const SCHEMA = JSON.parse(
+  readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), '../../../src/services/telemetry/segment.schema.json'),
+    'utf8',
+  ),
+) as { properties: { event_stream: { items: { properties: Record<string, unknown> } } } };
+
+describe('flow_log — schema/serializer lockstep (F001)', () => {
+  it('every key a serialized flow_log can emit is in the schema event allowlist', () => {
+    // additionalProperties:false on event items means a key the serializer emits but
+    // the schema omits would make a VALID segment fail validation (the F001 defect).
+    const full = serializeEvent({
+      t: '2026-06-24T08:00:00Z',
+      t_precision: 'anchored',
+      kind: 'flow_log',
+      op: 'node-created',
+      node: 'phase-1',
+      from: 'a',
+      to: 'b',
+      type: 'phase',
+      edge_op: 'splice-after',
+    });
+    const allowed = SCHEMA.properties.event_stream.items.properties;
+    for (const key of Object.keys(full)) {
+      expect(allowed, `schema must allow event key "${key}"`).toHaveProperty(key);
+    }
+  });
+});
+
+describe('flow_log — full rollup invariance (AC-07)', () => {
+  it('adding flow_log leaves EVERY rollup activity field + flow_stage_time_s unchanged', () => {
+    // A timed work window with a flow snapshot (so flow_stage_time_s is non-trivial).
+    const work: Event[] = [
+      { t: '2026-06-24T09:00:00Z', kind: 'flow', flow: 'the-flow', stage: 'implement', status: 'in_progress' },
+      { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 4 },
+      { t: '2026-06-24T09:01:00Z', kind: 'turn', dur_s: 50, out: 100 },
+    ];
+    const withLog: Event[] = [
+      ...work,
+      // backfilled markers — days earlier; if they leaked into the rollup they'd
+      // wreck wall_s / idle_s / stage time.
+      { t: '2026-06-20T00:00:00Z', kind: 'flow_log', op: 'cursor-moved', from: 'plan', to: 'implement' },
+      { t: '2026-06-24T08:00:00Z', kind: 'flow_log', op: 'status-changed', node: 'plan', to: 'done' },
+    ];
+    const base = computeRollup(work);
+    const augmented = computeRollup(withLog);
+    expect(augmented.activity).toEqual(base.activity);
+    expect(augmented.flow_stage_time_s).toEqual(base.flow_stage_time_s);
   });
 });

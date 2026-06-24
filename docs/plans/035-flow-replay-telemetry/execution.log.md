@@ -24,3 +24,17 @@ Testing: lightweight unit (vitest + telemetry fakes). All tasks landed in one pa
 ### Deferred & Noteworthy
 - **Noteworthy** — node-updated projects `node`(+`edge_op`) but **not** `fields[]` (the changed field-name list), per the plan's lean choice. `fields[]` is pure shape and safe; a one-line add if replay later wants "what changed". Not a gap.
 - **Noteworthy** — `flow_log` markers are appended *after* the harness tail (not time-sorted into the window) to avoid shifting the prepended `flow`/`branch` head and the harness anchor; a replay consumer sorts the concatenated session timeline by `t`. Documented in `telemetry.md`.
+
+## Review fixes — 2026-06-25 (REQUEST_CHANGES → addressed)
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| F001 schema rejects `flow_log.node`/`type` | HIGH | **FIXED** — added `node`+`type` to `segment.schema.json` event props; new lockstep test serializes a full `flow_log` and asserts every key is schema-allowlisted (catches future serializer/schema drift). |
+| F002 AC-04/AC-07 evidence gaps | MED | **FIXED** — added a two-plan-one-session independence test (separate `.flowcursor` offsets) + a full rollup-invariance test (every `activity` field + `flow_stage_time_s` unchanged by backfilled `flow_log`). |
+| F003 G2 Constitution N/A wrong | MED | **FIXED** — `constitution.md` exists; G2 → PASS (P2 ports-only via injected FsPort, arch-check clean; counts-only privacy). |
+| F004 tests lack Test Doc blocks | MED | **DECLINED (suite-wide)** — rules.md scopes Test Doc blocks to `test/unit/`+`test/integration/` (line 86); none of the 26 `test/services/telemetry/` siblings carry them. Matching siblings; a Test-Doc rollout is a suite-wide decision, not a one-file divergence. |
+| F005 out-of-scope untracked doc | MED | **NOT OURS** — `detailed-system-overview.md`/`docs-content.ts` are a concurrent session's untracked files, never in this plan's commits; left untouched per the no-modify-concurrent-work rule. |
+| F006 duplicate cursor helpers | LOW | **DECLINED** — `readFlowCursor` returns `0`-on-corrupt vs `readCursor`'s `null`-on-corrupt (different semantics by design); a forced merge would conflate them. |
+| F007 task boxes unchecked | LOW | **FIXED** — task table marked [x]. |
+
+Re-verify: `just build` clean · full suite **1287 passed** (+3 review-fix tests).
