@@ -1,4 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
@@ -41,6 +42,8 @@ export interface CaptureDeps {
   clock: Clock;
   proc: ProcessPort;
   git?: GitPort;
+  /** Read-only SQLite access for adapters whose signal lives in a local db (Cursor). Optional. */
+  db?: DbPort;
   /** The harness command that triggered capture (the kernel preamble passes this — Phase 3). */
   command: string;
   /** Per-harness adapters; the null-default is always the final fallback (AC-12). */
@@ -192,6 +195,7 @@ function captureUnsafe(deps: CaptureDeps): void {
   const source: HarnessSource = {
     env: deps.env,
     fs: deps.fs,
+    db: deps.db,
     repoRoot: cwd,
     harness: detected.harness,
   };

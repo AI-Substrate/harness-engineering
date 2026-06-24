@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { FakeDb } from '../../../src/adapters/db/fake-db.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import {
@@ -11,10 +12,11 @@ import { type SegmentInput, serializeSegment } from '../../../src/services/telem
 
 /**
  * The Cursor (`cursor-agent`) adapter (plan 034 follow-on), proven against a
- * sanitized golden transcript in cursor's real Claude-shaped JSONL format. Cursor
- * has no token usage in the transcript (sqlite) → tokens/models null; what it does
- * give — user prompts, tools, Shell→command signatures, skills — is hand-derived.
- * Privacy deep-scan confirms no secret/path/arg survives into the segment.
+ * sanitized golden transcript in cursor's real Claude-shaped JSONL format. The
+ * transcript gives user prompts, tools, Shell→command signatures, and skills;
+ * MODEL attribution is joined from the IDE store via the DbPort (consumption
+ * `tokens` stays null — Cursor keeps it server-side). Privacy deep-scan confirms
+ * no secret/path/arg survives into the segment.
  */
 
 const REPO = '/repo';
@@ -75,6 +77,47 @@ describe('cursorAdapter.extract — transcript capabilities (hand-derived)', () 
     expect(caps.skills).toEqual({ 'the-flow': 1 });
     expect(caps.tokens).toBeNull();
     expect(caps.models ?? null).toBeNull();
+  });
+});
+
+describe('cursorAdapter.extract — model attribution from the IDE store (DbPort)', () => {
+  function bubble(modelName: string): { value: string } {
+    return { value: JSON.stringify({ modelInfo: { modelName } }) };
+  }
+  function envWithHome(): FakeEnv {
+    return new FakeEnv({ CURSOR_CONVERSATION_ID: CONV, AGENT_TRANSCRIPTS: TDIR }, '/home/u');
+  }
+  function dbSource(db: FakeDb): HarnessSource {
+    return { env: envWithHome(), fs: seededFs(), db, repoRoot: REPO, harness: 'cursor-agent' };
+  }
+
+  it('attributes the window assistant turns to the dominant conv model; output_tokens 0', () => {
+    // fixture has 3 assistant lines in [0,99) → turns 3; bubbles say composer-2.5
+    const db = new FakeDb([bubble('composer-2.5'), bubble('composer-2.5')]);
+    const caps = cursorAdapter.extract({ ...dbSource(db), window: WINDOW });
+    expect(caps.models).toEqual({ 'composer-2.5': { turns: 3, output_tokens: 0 } });
+    // the join is keyed on the conv id via a LIKE on cursorDiskKV
+    expect(db.calls[0].params).toEqual(['bubbleId:conv-1:%']);
+    expect(db.calls[0].dbPath).toContain('globalStorage/state.vscdb');
+  });
+
+  it('picks the dominant (most-used) model on a mixed conversation', () => {
+    const db = new FakeDb([bubble('gpt-x'), bubble('composer-2.5'), bubble('composer-2.5')]);
+    const caps = cursorAdapter.extract({ ...dbSource(db), window: WINDOW });
+    expect(caps.models).toEqual({ 'composer-2.5': { turns: 3, output_tokens: 0 } });
+  });
+
+  it('models null when the db has no bubbles for this conv (e.g. headless CLI session)', () => {
+    const caps = cursorAdapter.extract({ ...dbSource(new FakeDb([])), window: WINDOW });
+    expect(caps.models ?? null).toBeNull();
+  });
+
+  it('never estimates consumption — tokens stays null even with a model', () => {
+    const caps = cursorAdapter.extract({
+      ...dbSource(new FakeDb([bubble('composer-2.5')])),
+      window: WINDOW,
+    });
+    expect(caps.tokens).toBeNull();
   });
 });
 

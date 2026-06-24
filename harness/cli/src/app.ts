@@ -14,6 +14,7 @@ import { registerUpdateAct } from './acts/update.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
+import { NodeDb } from './adapters/db/node-db.js';
 import { NodeEnv } from './adapters/env/node-env.js';
 import { NodeBackground } from './adapters/exec/node-background.js';
 import { NodeExec } from './adapters/exec/node-exec.js';
@@ -385,6 +386,7 @@ export async function main(
         clock: deps.clock,
         proc: deps.proc,
         git: deps.git,
+        db: new NodeDb(),
         command: deriveCommand(argv),
         adapters: coreTelemetryAdapters,
       });

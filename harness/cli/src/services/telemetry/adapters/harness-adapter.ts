@@ -1,3 +1,4 @@
+import type { DbPort } from '../../../adapters/db/db-port.js';
 import type { EnvPort } from '../../../adapters/env/env-port.js';
 import type { FsPort } from '../../../adapters/fs/fs-port.js';
 import type {
@@ -28,6 +29,12 @@ import type {
 export interface HarnessSource {
   env: EnvPort;
   fs: FsPort;
+  /**
+   * Read-only SQLite access for harnesses whose richer signal lives in a local
+   * db (e.g. Cursor's `state.vscdb` model attribution). Optional: adapters that
+   * read only text files never touch it, and the null-default never has one.
+   */
+  db?: DbPort;
   /** Repo root (posix) — for path relativization. */
   repoRoot: string;
   /** The detected harness id this extraction is for. */
