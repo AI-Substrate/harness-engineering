@@ -282,6 +282,79 @@ suspiciously clean count as a clean bill of health.
 
 ---
 
+## (e) The telemetry `segment` — a counts-only sensor contract
+
+Alongside the `harness-bypass` / `harness-change` records above, the harness now
+emits a per-session **`segment`** on every command (plan 034) — an ambient,
+counts-only sensor that makes *how* teams build with agents measurable. Like the
+records, it is a **contract the eng-thrive measures consume**, not a computation
+this repo performs. The mechanics (capture model, the disable switches, sync —
+manual and auto-on-`checks` — the dated shard refs, offline behaviour, path
+semantics) live in the [telemetry guide](./telemetry.md); what matters here is the
+measurement contract.
+
+**What the measures may read.** The enumerated field set is the segment's plan
+(`docs/plans/034-harness-telemetry-collection/…` `### Segment Schema`) and the
+machine schema (`harness/cli/src/services/telemetry/segment.schema.json`). At
+team/repo grain the available fields are: token buckets + per-model turn/output
+counts; skill and tool histograms; subagent identity/lifecycle; repo-relative
+file paths; **plan links** (the join to the records above); compaction /
+api-error / local-command event counts; branch, model, effort, timecode, and the
+capture window. **No content fields ever** — no prompt/message text, no file
+contents, no free-form tool-arg strings.
+
+**A hand-traced segment (counts only).**
+
+```jsonc
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "<opaque id>",
+  "timecode": "2026-06-23T11:00:00Z",
+  "window": { "since": "last-command", "from": 8, "to": 14 },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": { "input": 1200, "output": 340, "cache_create": 0, "cache_read": 800,
+              "total": 1540, "subagent_tokens": 0, "grand_total": 2340 },
+  "models": { "claude-opus-4-8": { "turns": 6, "output_tokens": 340 } },
+  "effort": "high",
+  "skills": { "the-flow": 1 },
+  "tools": { "Edit": 3, "Bash": 2 },
+  "subagents": [],
+  "files": { "written": ["harness/cli/src/services/telemetry/sync-service.ts"], "edited": [] },
+  "plans_touched": ["034-harness-telemetry-collection"],
+  "events": { "compactions": [], "api_errors": 0, "local_commands": 0 },
+  "thinking": { "blocks": 4 }
+}
+```
+
+Every top-level key is always present (a stable shape for the scraper); only
+*values* reflect availability — nullable scalars (`tokens`, `effort`, `thinking`,
+`branch`, per-subagent values) go `null` when unavailable, while collection fields
+(`models`/`skills`/`tools`/`subagents`/`files`/`plans_touched`/`events`) default
+to empty. The full field set + types are the segment's plan and
+`segment.schema.json`.
+
+Read at the **repo** level this segment says "in this window, on plan 034, ~2.3k
+tokens of opus work touched the sync-service via 3 edits + 2 bash calls." Joined
+to the `harness-change` records by `plan_id`, it is exactly the volume context the
+encoded-mitigation *ratio* (§a) needs — *was the friction that got encoded the
+friction where the work actually happened?* — without ever naming a person.
+
+**Team/repo only — the same governance as the rates.** The segment carries **no
+per-individual identity**. Its durable commits on the `refs/harness-telemetry/*`
+shard refs are authored by a fixed non-individual identity
+(`harness-telemetry <noreply@…>`); a contributor's `git config user.email` is
+never read or stored, and the shards are keyed by session (not by engineer). The optional
+`agent` provenance field is the *same* nullable, aggregate-only key described in
+[§ Team-level only](#team-level-only--never-individual-attribution) — never a
+per-person scoreboard. Token count is on the explicit do-**not**-use-for-individuals
+list, and that holds for these segments exactly as it holds for the rates: they
+are aggregate diagnostic context, **not** performance management. A code-path
+audit (`no-per-individual-surface` architecture test) enforces that no CLI verb
+surfaces a per-individual identity from telemetry.
+
 ## What this does not build
 
 Out of scope for this repo, by design (these are the consumers of the contract
@@ -300,6 +373,9 @@ later.
 
 ## See also
 
+- [Harness telemetry](./telemetry.md) — the counts-only per-session `segment`
+  sensor: capture model, kill-switch, `harness telemetry sync`, the per-session
+  dated shard refs, and the privacy/offline guarantees.
 - [Record and record types](./record-and-record-types.md) — the `harness record
   <type>` command, the two new core types' body-key contracts, and the
   provenance header section.

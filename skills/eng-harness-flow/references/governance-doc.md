@@ -24,7 +24,8 @@ The doc is a thin **Boot / Interact / Observe contract** plus a signal inventory
 | Section | What it holds |
 |---|---|
 | **AGENTS START HERE breadcrumb** | the doc's opening line points agents at the CLI's self-briefing channel: `AGENTS START HERE → npx harness instructions` (then `harness instructions <verb>` per verb). The briefing system is the *live* role contract; the governance doc carries the pointer so a zero-context reader finds it in one hop (plan 014 AC-12). |
-| **Boot command** | the exact command that boots the system to a healthy, observable state (`<60s` target); the engineering-harness substrate the agent-facing loop runs on. |
+| **Boot command** | the exact command that boots the system to a healthy, observable state (`<60s` target); the engineering-harness substrate the agent-facing loop runs on. **Composes `harness checks`** once services are ready. |
+| **Checks command** | the mandated quality gate — lint, unit tests, typecheck, and similar deterministic correctness checks (`harness checks`). Agents run it before considering work *done*; teams gate commits/push on it; `boot` composes it. Extensible: gates are added here as the team grows. |
 | **Health check** | the command/endpoint that proves the system is up (read by boot's Stage 1). |
 | **Interact method** | how an agent sends input to the running system (boot's Stage 2). |
 | **Observe method** | how an agent captures evidence — logs, screenshots, traces, snapshots (boot's Stage 3). |

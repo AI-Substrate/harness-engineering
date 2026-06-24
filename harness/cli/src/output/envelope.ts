@@ -27,6 +27,25 @@ export interface UpdateAvailable {
   command: string;
 }
 
+/**
+ * An additive, NON-fatal housekeeping notice (plan 034 follow-on). Like
+ * {@link UpdateAvailable} it is set ONLY at the exit chokepoint (never by the
+ * `format*` constructors), so it never disturbs envelope snapshots and never
+ * changes the host command's status or exit code. Used by the well-known
+ * `boot`/`checks` commands to surface unpushed telemetry (and, for `checks`, the
+ * outcome of the best-effort auto-sync).
+ */
+export interface HousekeepingNotice {
+  /** Machine tag, e.g. `telemetry-unpushed` | `telemetry-synced` | `telemetry-autosync-failed`. */
+  kind: string;
+  /** Human-readable one-liner. */
+  message: string;
+  /** Optional exact command that resolves it (e.g. `harness telemetry sync`). */
+  command?: string;
+  /** Optional structured extra (e.g. `{ count, sessions }`). */
+  details?: unknown;
+}
+
 export interface Envelope {
   command: string;
   status: Status;
@@ -42,6 +61,8 @@ export interface Envelope {
   next_action?: string;
   /** Optional additive update notice (plan 019); set only at the exit chokepoint. */
   update_available?: UpdateAvailable;
+  /** Optional additive, non-fatal housekeeping notices; set only at the exit chokepoint. */
+  housekeeping?: HousekeepingNotice[];
 }
 
 /**

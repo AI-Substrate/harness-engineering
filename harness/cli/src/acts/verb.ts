@@ -5,6 +5,7 @@ import type { BackgroundProcessPort } from '../adapters/exec/background-port.js'
 import type { ExecPort } from '../adapters/exec/exec-port.js';
 import type { FileSystemWritePort, FsPort } from '../adapters/fs/fs-port.js';
 import type { GitPort } from '../adapters/git/git-port.js';
+import type { GitWritePort } from '../adapters/git/git-write-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort } from '../output/output-port.js';
@@ -23,6 +24,8 @@ export interface VerbActDeps {
   fsWrite?: FileSystemWritePort;
   /** OPTIONAL detached-spawn capability surfaced as `ctx.background` (plan 031). */
   background?: BackgroundProcessPort;
+  /** OPTIONAL git WRITE plumbing the `telemetry sync` act uses (plan 034); composition root provides ExecGitWrite. */
+  gitWrite?: GitWritePort;
 }
 
 /**

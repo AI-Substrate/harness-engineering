@@ -65,7 +65,7 @@ See [`../INSTALL.md`](../INSTALL.md) for the full per-CLI / global-vs-local matr
 
 | Verb module | Stage | Why |
 |---|---|---|
-| `adopt` | Adoption | Walks a repo with no working harness through adoption: install the CLI → (offered) the harnessability assessment → record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`, so the harness gets used and doesn't vanish on a cold agent start) → stand up a basic `boot`, built last. A lean flow that generates no files of its own. |
+| `adopt` | Adoption | Walks a repo with no working harness through adoption: install the CLI → (offered) the harnessability assessment → record the injection map (where the repo's extant dev/SDD flow calls `/eng-harness-flow`, so the harness gets used and doesn't vanish on a cold agent start) → stand up a basic `checks` quality gate (lint/test/typecheck) and a `boot` that composes it, built last. A lean flow that generates no files of its own. |
 | `add-extension` | Adoption | Guided authoring of a new `harness <verb>` command: reuses gathered intent, runs `harness new`, fills the handler, and verifies. |
 | `boot` | Boot | Reads the harness, checks safe boot/health surfaces, reviews known difficulties, reports readiness. `UNAVAILABLE` (not an error) when no harness exists → the router routes to adoption. |
 | `backpressure` | Backpressure Check | Advisory survey of whether scoped work can be *proven by deterministic sensors*; names missing sensors. Never blocks. |

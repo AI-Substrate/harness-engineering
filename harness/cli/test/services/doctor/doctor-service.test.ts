@@ -248,8 +248,15 @@ describe('doctorEnvelope', () => {
     const clock = new FakeClock('2026-06-08T07:20:00.000Z');
     const reg = registry([
       { entryPath: '/x/hello/extension.ts', status: 'loaded', verbs: [mkVerb('hello')] },
+      { entryPath: '/x/boot/extension.ts', status: 'loaded', verbs: [mkVerb('boot')] },
+      { entryPath: '/x/checks/extension.ts', status: 'loaded', verbs: [mkVerb('checks')] },
     ]);
-    const fs = new FakeFs({ ...BUILT_CLI, '/x/hello/instructions.md': '# Hello' });
+    const fs = new FakeFs({
+      ...BUILT_CLI,
+      '/x/hello/instructions.md': '# Hello',
+      '/x/boot/instructions.md': '# Boot',
+      '/x/checks/instructions.md': '# Checks',
+    });
     const env = doctorEnvelope(buildDoctorReport(deps({ clock, fs }), reg), clock);
     expect(env.status).toBe('ok');
     expect(exitCodeFor(env)).toBe(0);
@@ -280,8 +287,23 @@ describe('package-convention validation (plan 014 D2)', () => {
   it('an extension carrying instructions.md gets a clean bill — layer ok, envelope ok', () => {
     const reg = registry([
       { entryPath: `${FLOW}/extension.ts`, status: 'loaded', verbs: [mkVerb('flow')] },
+      {
+        entryPath: '/repo/.harness/extensions/boot/extension.ts',
+        status: 'loaded',
+        verbs: [mkVerb('boot')],
+      },
+      {
+        entryPath: '/repo/.harness/extensions/checks/extension.ts',
+        status: 'loaded',
+        verbs: [mkVerb('checks')],
+      },
     ]);
-    const fs = new FakeFs({ ...BUILT_CLI, [`${FLOW}/instructions.md`]: '# Flow briefing' });
+    const fs = new FakeFs({
+      ...BUILT_CLI,
+      [`${FLOW}/instructions.md`]: '# Flow briefing',
+      '/repo/.harness/extensions/boot/instructions.md': '# Boot',
+      '/repo/.harness/extensions/checks/instructions.md': '# Checks',
+    });
     const report = buildDoctorReport(deps({ fs }), reg);
     expect(report.conventions).toEqual([]);
     expect(report.layers.find((l) => l.name === 'extensions')?.ok).toBe(true);
@@ -428,14 +450,15 @@ describe('record-types layer', () => {
     const report = buildDoctorReport(deps(), EMPTY, recordReg);
     const layer = report.layers.find((l) => l.name === 'record-types');
     expect(layer?.ok).toBe(true);
-    // 3 core (retro + harness-bypass + harness-change) + 1 extension.
-    expect(layer?.detail).toContain('4 available');
-    expect(layer?.detail).toContain('3 core');
+    // 4 core (retro + harness-bypass + harness-change + segment) + 1 extension.
+    expect(layer?.detail).toContain('5 available');
+    expect(layer?.detail).toContain('4 core');
     expect(layer?.detail).toContain('1 extension');
     expect(report.recordTypes.map((t) => t.type)).toEqual([
       'retro',
       'harness-bypass',
       'harness-change',
+      'segment',
       'dev-survey',
     ]);
 
@@ -451,5 +474,67 @@ describe('record-types layer', () => {
     const report = buildDoctorReport(deps(), EMPTY);
     const layer = report.layers.find((l) => l.name === 'record-types');
     expect(layer?.detail).toContain('0 available');
+  });
+});
+
+describe('quality-gate layer (the boot + checks nucleus, ships in core)', () => {
+  /*
+  Test Doc:
+  - Why: the mandated quality gate (`checks`) and its composer (`boot`) are the harness
+    nucleus, but our own boot/checks extensions DON'T ship (only `harness/cli/dist` does).
+    So the "you have no gate" nudge must live in core doctor to fire on EVERY machine,
+    regardless of which extensions a repo authored.
+  - Contract: a declarative verb-name lookup (no handler invoked, P7) — both present => ok;
+    a repo with extensions but missing boot/checks => degraded (exit 0, advisory) with a
+    `harness new …` next_action; a pristine repo (zero extensions) stays ok (don't pile a
+    second degrade onto a fresh clone — the gate is an adoption deliverable).
+  */
+  const mkExt = (name: string): ExtensionRecord => ({
+    entryPath: `/repo/.harness/extensions/${name}/extension.ts`,
+    status: 'loaded',
+    verbs: [mkVerb(name)],
+  });
+  const withInstr = (...names: string[]): FakeFs =>
+    new FakeFs({
+      ...BUILT_CLI,
+      ...Object.fromEntries(
+        names.map((n) => [`/repo/.harness/extensions/${n}/instructions.md`, `# ${n}`]),
+      ),
+    });
+
+  it('boot + checks both present → layer ok', () => {
+    const reg = registry([mkExt('boot'), mkExt('checks')]);
+    const report = buildDoctorReport(deps({ fs: withInstr('boot', 'checks') }), reg);
+    const layer = report.layers.find((l) => l.name === 'quality-gate');
+    expect(layer?.ok).toBe(true);
+    expect(layer?.detail).toMatch(/boot.*checks.*present/);
+  });
+
+  it('checks missing (boot present) → degraded with a `harness new checks` next_action, exit 0', () => {
+    const reg = registry([mkExt('boot')]);
+    const report = buildDoctorReport(deps({ fs: withInstr('boot') }), reg);
+    const layer = report.layers.find((l) => l.name === 'quality-gate');
+    expect(layer?.ok).toBe(false);
+    expect(layer?.detail).toContain('checks');
+    expect(layer?.next_action).toContain('harness new checks');
+    const env = doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z'));
+    expect(env.status).toBe('degraded');
+    expect(exitCodeFor(env)).toBe(0);
+  });
+
+  it('both missing (repo has other extensions) → degraded naming boot + checks', () => {
+    const reg = registry([mkExt('hello')]);
+    const report = buildDoctorReport(deps({ fs: withInstr('hello') }), reg);
+    const layer = report.layers.find((l) => l.name === 'quality-gate');
+    expect(layer?.ok).toBe(false);
+    expect(layer?.next_action).toContain('harness new checks');
+    expect(layer?.next_action).toContain('harness new boot');
+  });
+
+  it('pristine repo (no extensions yet) → ok, stays quiet (the gate is an adoption deliverable)', () => {
+    const report = buildDoctorReport(deps(), EMPTY);
+    const layer = report.layers.find((l) => l.name === 'quality-gate');
+    expect(layer?.ok).toBe(true);
+    expect(doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z')).status).toBe('ok');
   });
 });

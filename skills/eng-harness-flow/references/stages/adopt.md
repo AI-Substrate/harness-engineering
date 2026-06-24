@@ -7,16 +7,16 @@
 > only through the declared **Delegates** line. Composition is the router's job.
 
 **Verb**: adopt
-**Purpose**: Guide a repo through **adopting** the engineering harness — make the CLI available (an ambient global tool, never a repo dependency), wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `boot`. A **flow that orchestrates**, not a generator: hand-held (every repo-touching step is proposed first), and safe to re-run (detects what exists, fills only the gap).
+**Purpose**: Guide a repo through **adopting** the engineering harness — make the CLI available (an ambient global tool, never a repo dependency), wrap what already exists, weave the loop into the repo's extant flow, and leave a working basic `checks` quality gate plus a `boot` that composes it. A **flow that orchestrates**, not a generator: hand-held (every repo-touching step is proposed first), and safe to re-run (detects what exists, fills only the gap).
 **Consumes**: repo signals (is the CLI available? is there a harnessability report? what is the extant dev/SDD flow?). When present, the harnessability report's recommendations + its `engineering_flows[]` inventory.
 **Flags**: none — a hand-held conversational flow.
-**Produces**: **no artifacts of its own.** It drives `harness init` (which stamps the governance skeleton), records the `## Injection map` in the governance doc, and stands up a basic `boot` extension. The only repo artifacts left behind are `.harness/` substrate and (with consent) `AGENTS.md` edits; the CLI itself is never committed.
+**Produces**: **no artifacts of its own.** It drives `harness init` (which stamps the governance skeleton), records the `## Injection map` in the governance doc, and stands up two basic extensions — a `checks` quality gate (lint / test / typecheck) and a `boot` that composes it. The only repo artifacts left behind are `.harness/` substrate and (with consent) `AGENTS.md` edits; the CLI itself is never committed.
 **Side effects**: global CLI install (only if missing); `harness init`; with per-file consent, weaves router calls into the user's flow surfaces and fills the governance doc's `## Injection map`.
-**Delegates**: `assess` — harnessability survey (sizes up the repo, emits recommendations); `add-extension` — boot authoring (scaffolds + fills the first extension). Resolved via the Registry; this verb calls them, never reimplements them.
+**Delegates**: `assess` — harnessability survey (sizes up the repo, emits recommendations); `add-extension` — extension authoring (scaffolds + fills `checks`, then `boot`). Resolved via the Registry; this verb calls them, never reimplements them.
 
 > **The agent harness drives. The engineering harness proves.**
 
-Adoption wraps what already exists (build / test / run, as-is), weaves the loop into the repo's extant dev flow, and leaves behind the one thing every engineering task starts from: a **basic `boot`**. This verb is a flow, not a generator — it **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (`harness init` stamps the governance doc), not re-generated here.
+Adoption wraps what already exists (build / test / run, as-is), weaves the loop into the repo's extant dev flow, and leaves behind the two things every engineering task starts from: a **basic `checks`** quality gate (the mandated lint/test/typecheck proof agents run before work is *done*) and a **basic `boot`** that readies the system and composes `harness checks`. This verb is a flow, not a generator — it **creates no files of its own**: the deterministic substrate (the `.harness/` nucleus, retros, known-difficulties, back-pressure surfaces) is owned by the harness CLI as real code (`harness init` stamps the governance doc), not re-generated here.
 
 ## The flow
 
@@ -29,12 +29,13 @@ flowchart TD
     C -- no --> D["2 · Delegate → assess<br/>(harnessability survey)"] --> E
     C -- yes --> E["Read assessment recommendations"]
     E --> I["3 · Record the injection map<br/>extant dev/SDD flow → /eng-harness-flow"]
-    I --> F["4 · Delegate → add-extension →<br/>basic `boot` (wrap build / run / health)"]
-    F --> V["Verify · harness doctor / harness boot / harness help"]
+    I --> K["4a · Delegate → add-extension →<br/>basic `checks` (wrap lint / test / typecheck)"]
+    K --> F["4b · Delegate → add-extension →<br/>basic `boot` (ready services + compose `harness checks`)"]
+    F --> V["Verify · harness doctor / harness checks / harness boot / harness help"]
     V --> S["5 · Offer (opt-in) · harness skills install<br/>→ install the harness skills into the user's CLI"]
 ```
 
-Four steps to a working boot, plus an opt-in fifth that offers to install the harness's own skills. Each box is a CLI call, a hand-off to a delegate, or a recorded decision. The goal is **a working boot, even if basic** — the nucleus a team self-improves from — already wired into the flow the repo actually runs.
+Four steps to a working `checks` + `boot` (step 4 stands up both), plus an opt-in fifth that offers to install the harness's own skills. Each box is a CLI call, a hand-off to a delegate, or a recorded decision. The goal is **a working `checks` gate and `boot`, even if basic** — the nucleus a team self-improves from — already wired into the flow the repo actually runs.
 
 ## When to use
 
@@ -48,6 +49,10 @@ Run this when a repo hasn't adopted a harness yet — no working `harness boot`,
 - **re-orients the agent** — a boot (like `doctor`) is orientation, not just diagnostics: it reminds the agent how this project wants to be operated and what to do next.
 
 Keep it a **basic nucleus**. Do **not** boil the ocean — a thin wrapper over the repo's existing commands is the whole job here; the harness is self-improving, so boot grows by use. (The CLI may later flag a missing `boot`, reinforcing it as the expected entry point.)
+
+## Why `checks` is the other deliverable
+
+`checks` is the **mandated quality gate** — the lint / unit-test / typecheck proof a team gates commits and pushes on, and that an agent runs *as a matter of course before it considers work done*. It is deliberately **separate from `boot`**: `checks` answers "is the code correct?" (fast, no services needed), while `boot` answers "is the system ready?" and **composes `harness checks`** as one of its readiness stages once services are up. Keeping `checks` standalone means an agent can lint/test without booting the whole stack, and the gate is **extensible** — new checks (coverage, security audit, schema validation) are added to the one `checks` extension as the team grows, and every caller picks them up for free.
 
 ---
 
@@ -149,41 +154,67 @@ An installed harness that nothing calls **disappears on the next cold agent star
 
 **Ask first, always.** The weave edits the user's own files; nothing in this step is applied without the user having seen the specific change and said yes to it. Keep descriptions of the host flow generic and public-safe (name the flow's *shape*, never private tooling identifiers the repo doesn't already commit).
 
-### Step 4 — Stand up a basic `boot`
+### Step 4 — Stand up a basic `checks`, then a `boot` that composes it
 
-Use the assessment's recommendations to pick the **cheapest, most valuable** readiness proof for this repo, then author it by **delegating to `add-extension`** (which drives `harness new` under the hood — never hand-write the file).
+Stand up **two** extensions, in order: the `checks` quality gate first, then a `boot` that composes it. Both are authored by **delegating to `add-extension`** (which drives `harness new` under the hood — never hand-write the file). Use the assessment's recommendations to pick the **cheapest, most valuable** shape for this repo.
 
-Pick the boot shape from what the repo actually has:
+#### Step 4a — Stand up `checks` (the mandated quality gate)
 
-| Repo shape | A reasonable *basic* boot wraps… |
-|------------|----------------------------------|
-| Dockerised service | `docker compose up -d` + a health poll |
-| Web app / API with a dev server | start the server + hit a health/smoke route |
-| Library / CLI (no running service) | `build` then `test`, with a printed "ready" note |
+Inventory the repo's existing correctness commands (the survey's command/CI inventory helps) and wrap them as a single `checks` verb — the gate agents run before work is *done* and teams gate commits/push on.
 
-Author it via the delegate, e.g.:
+| Repo shape | A reasonable *basic* `checks` runs… |
+|------------|-------------------------------------|
+| Has a lint + test + typecheck recipe (`just check`, `npm run check`) | wrap that one aggregate recipe |
+| Separate commands (`eslint .`, `vitest run`, `tsc --noEmit`) | scaffold without `--wrap` and call each in sequence, failing on the first red |
+| Only tests today | wrap the test command now; add lint/typecheck later as the team grows |
 
 ```bash
 # the add-extension delegate runs, under the hood, something like:
+harness new checks --wrap "<the aggregate lint+test+typecheck recipe>"
+# (`--wrap` is for a single `cmd arg arg`; for multiple gates, scaffold without --wrap
+#  and write the ctx.exec(...) calls so any red gate returns an `error` envelope.)
+```
+
+Keep it minimal but **honest**: a green `checks` must mean every wrapped gate actually passed (`error` envelope + non-zero exit on the first failure). If the repo moves existing pre-commit linters/tests into `checks`, point the old call sites at `harness checks` so there is one gate.
+
+#### Step 4b — Stand up `boot` (composing `checks`)
+
+Use the assessment's recommendations to pick the **cheapest, most valuable** readiness proof for this repo, then author it by **delegating to `add-extension`**.
+
+Pick the boot shape from what the repo actually has:
+
+| Repo shape | A reasonable *basic* boot does… |
+|------------|----------------------------------|
+| Dockerised service | `docker compose up -d` + a health poll, then `harness checks` |
+| Web app / API with a dev server | start the server + hit a health/smoke route, then `harness checks` |
+| Library / CLI (no running service) | `harness checks` (build + lint + test), with a printed "ready" note |
+
+Author it via the delegate, then fill the handler so it **readies the system and composes `harness checks`** as a stage:
+
+```bash
 harness new boot --wrap "<the readiness command for this repo>"
 ```
 
 Then **fill the handler only as much as needed** to:
 
+- ready the system (start services / build as needed), **then run `harness checks`** (e.g. `ctx.exec('harness', ['checks', '--json'])`) and fold its verdict into boot's;
 - return a clear **verdict** — ready / degraded / error (the `--json` envelope + exit code an agent can branch on); and
 - print short **orientation** — what the harness is and what to do next.
+
+> **Deterministic missing-`checks` warning.** If no `checks` extension exists yet (`.harness/extensions/checks/` is absent) when `boot` runs, boot must **degrade deterministically** — return a `degraded` envelope whose `next_action` reads roughly: *"No `checks` extension exists — create one (`harness new checks --wrap "…"`) or move existing quality checks (linters, unit tests, typecheck) into a `checks` extension so `boot` and agents can gate on it."* This makes the gap a machine-readable signal, not a silent omission. (Author `checks` first in Step 4a so a freshly-adopted repo never trips this.)
 
 Keep it minimal. Resist adding seed/reset/observe/sensors now — capture those as harness friction for later; the loop will encode them when they earn their place.
 
 #### Verify
 
 ```bash
-harness doctor      # boot now shows as a loaded extension
-harness help        # the `boot` verb appears in the command surface
-harness boot        # runs it — inspect the envelope/exit code for the verdict
+harness doctor      # checks + boot both show as loaded extensions
+harness help        # the `checks` and `boot` verbs appear in the command surface
+harness checks      # runs the gate — inspect the envelope/exit code
+harness boot        # runs it — composes checks; inspect the envelope/exit code for the verdict
 ```
 
-When `harness boot` returns a usable verdict and re-orients the agent, the nucleus is in place. Stop here — the rest compounds through normal use.
+When `harness checks` gates honestly and `harness boot` returns a usable verdict (composing checks) and re-orients the agent, the nucleus is in place. Stop here — the rest compounds through normal use.
 
 ### Step 5 — Offer to install the harness skills (opt-in)
 
@@ -213,14 +244,14 @@ More about the underlying installer: <https://github.com/vercel-labs/skills>.
 
 - It does **not** generate a governance doc, an `AGENTS.md` block, a `docs/harness/` scaffold, a placeholder CLI, or known-difficulties/retro/back-pressure files. Those are deterministic CLI concerns (`harness init` + the CLI), not this verb's output. The governance doc is therefore **stamped by `harness init`, not hand-written by this flow**: this verb runs `harness init` (which seeds the doc empty — L0, `TODO` fields) and, on an older CLI that predates it, the governance rung stays unprovisioned and downstream readers degrade to `UNAVAILABLE` rather than erroring. See [`../governance-doc.md`](../governance-doc.md) for what the doc contains and when it is written. (Step 3 is the one narrow exception: with the user's go-ahead it **updates** the `## Injection map` section of an *existing* governance doc and weaves seam calls into the user's own flow surfaces — it still never *creates* the doc.)
 - It does **not** reimplement the `assess` or `add-extension` delegates — it calls them (declared delegation, resolved via the Registry).
-- It does **not** build a comprehensive boot. Basic nucleus only.
+- It does **not** build a comprehensive boot or an exhaustive checks gate. Basic nucleus only — a `checks` that wraps today's lint/test and a `boot` that readies the system and composes it.
 
 ## Guardrails
 
 - **Orchestrate, don't generate.** Install and drive the harness; hand off judgement to the delegates.
-- **Wrap, don't rebuild.** `boot` wraps existing repo commands.
-- **Don't boil the ocean.** A working basic boot is success.
-- **Public-safe.** This verb ships in a public repo — never bake in a private repo name, path, person, or internal codeword. Describe boot shapes generically.
+- **Wrap, don't rebuild.** `checks` and `boot` wrap existing repo commands; `boot` composes `harness checks` rather than re-listing its gates.
+- **Don't boil the ocean.** A working basic `checks` gate and a `boot` that composes it is success.
+- **Public-safe.** This verb ships in a public repo — never bake in a private repo name, path, person, or internal codeword. Describe boot/checks shapes generically.
 - **Envelope-only.** Depend on `--json` envelope fields + exit codes, not scraped prose — so a future MCP server reuses the same surfaces.
 
 ## Exit

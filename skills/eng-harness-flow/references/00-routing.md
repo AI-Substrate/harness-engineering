@@ -50,7 +50,8 @@ Created with `harness flow create harness-adopt --slug <s> --title adopt`.
 
 A cycling flow, re-entered every session. Spine `boot → backpressure → observe →
 drain-gate → retro-drain → retro-harvest → improve`. `drain-gate` is a `decision`;
-`retro` is split into `retro-drain` (post-coding) + `retro-harvest` (post-flight);
+`retro` is split into `retro-drain` (post-coding) + `retro-harvest` (post-flight,
+which also flushes telemetry — § engineering dispatch);
 `improve.next:[]` — **the cycle is a nav RESET** (move `nav.now` back to
 `observe`/`boot`), so the graph stays acyclic. Rail title `[harness-loop]`. The four
 fire nodes carry `command: run /eng-harness-flow --hook <hook>`. Where it lives
@@ -113,12 +114,13 @@ This ordered gate **is the adoption graph** — its sequence is owned here, neve
 | **S1 · Scout** | a harnessability report exists | F | *skippable* | `assess` → `eng-harness-0-harnessability-assessment` (public peer) |
 | **S2 · Governance** | governance doc (BIO contract) + `docs/harness/` ledger | D · E | **required** | `harness init` (stamps the doc; seeded empty — see below) |
 | **S3 · Inject** | a recorded injection map — where the user's extant dev/SDD flow calls `eng-harness-flow` | D — governance doc `## Injection map` | *advisory* | `adopt` (Step 3 — inject) |
-| **S4 · Build + run boot (LAST)** | a **working boot command** (authored, recorded into governance, **and run once**) | C | **required** | `add-extension` (author boot, validate it boots) |
+| **S4 · Build + run boot (LAST)** | a **working boot command** (authored, recorded into governance, **and run once**) — authored alongside a `checks` quality gate it composes (S4a checks → S4b boot) | C | **required** | `add-extension` (author `checks`, then boot; validate it boots) |
 | **E1 · Re-run boot** | — (an **action**, not a presence-check) | — | — | **re-run** the boot adoption built — `boot` verb (per coding session) |
 
 - **Required rungs** (S0 install, S2 governance, S4 built boot) hard-gate the engineering zone: without governance + a working boot the loop verbs report `UNAVAILABLE`/no-op, so the router **stays on the 🧰 adoption track**. The router routes the **first** missing required rung with a one-line *why*.
 - **Skippable / advisory rungs** (S1 scout, S3 inject) are **offered, never blocking**. Because the router is stateless, a skip is *re-offered next call* unless the child artifact exists or the parent passes `--prompt-optional=false`.
 - **Inject (S3) comes before boot (S4)** so that the instant boot works, the user already knows where `eng-harness-flow` plugs into their flow and can dive straight into real work.
+- **`checks` rides along in S4, not as a separate required rung.** `add-extension` authors the mandated `checks` gate (lint/test/typecheck) just before boot, and boot **composes `harness checks`**. The gate is the engineering deliverable agents run before work is *done*; its *absence* surfaces as a deterministic `boot` warning (pointing at `harness new checks`), never as a hard gate — so a repo is never blocked on it.
 
 > **Seeded, not populated (honesty about the skeleton).** The governance doc *writer* — `harness init` — **ships** (FX001): `harness init` stamps `.harness/engineering-harness.md` at inception, but seeds it **empty** (maturity L0, every other BIO field a `TODO`). So for S2 the router routes to `harness init` to *create* the doc; because `init` seeds it empty, the doc's *presence* satisfies S2 (the router reads presence, not contents — signal D), but the engineering loop still won't run until S4 builds the boot command — a bare seeded doc is the start of adoption, not its end. For S3 (inject) the `## Injection map` is one of those `TODO` sections `init` stamps empty and S3 fills. If the installed CLI is old enough to predate `init` (or `init` was never run and the doc is absent), the router reports `UNAVAILABLE` and stays on the adoption track (nothing errors). See [`governance-doc.md`](./governance-doc.md) for what the doc contains and when it's written.
 
@@ -138,6 +140,7 @@ Once the required adoption rungs hold, the router crosses into the loop and disp
 - **Backpressure → `/grill-agent-done` (optional peer skill).** When the `backpressure` survey returns `ABSENT`/`BUILDABLE` sensors, the coach may offer `/grill-agent-done` before architect — a standalone skill in this repo (`skills/grill-agent-done/`) that interrogates and defends the definition of done one claim at a time, lining each against the right proof grade. **Not** a routed stage: the router points at it, exactly as the survey informs but never gates. Skippable; offer once.
 - **Drain before harvest.** At phase/session/plan end, if the observe buffer is non-empty the router routes `--drain` *first* (harvest only reads `.retro.md`, so harvesting a non-drained buffer would miss the latest session). One command per call; the parent calls again for harvest.
 - **Improve is where the loop compounds.** The loop only *compounds* when a retro leads to an encoded improvement; most loop runs encode nothing and that is fine.
+- **Flush telemetry at close (post-flight).** At session/plan end — after the drain/harvest — the router runs `harness telemetry sync`: a best-effort, **no-confirm** push of the counts-only telemetry buffer to its out-of-tree shard refs (`refs/harness-telemetry/<date>/<session>` — never the working tree or a PR; fail-safe and offline-safe, so it can never disturb the host). This is the loop's **guaranteed flush point**, complementing `checks`' build-time auto-push so telemetry is never left stranded by a session that didn't run `checks`. Honour the kill-switches: **skip** entirely when `HARNESS_NO_TELEMETRY=1`, and when `HARNESS_NO_TELEMETRY_AUTOSYNC=1` treat it as a reminder (nudge) rather than a push.
 - **Ambiguous, never guessed.** With >1 candidate plan and no `--plan-dir`, the router returns `ambiguous` and **asks** — it does not guess the loop position from conversation alone.
 
 > **This repo is the worked example.** `harness-engineering` has the CLI **and** two extension packages (`.harness/extensions/validate-harness-flow/` and `.harness/extensions/validate-harnessability/` — each a folder with `extension.ts` + `instructions.md`) **and**, since plan 014, its own governance doc at `.harness/engineering-harness.md` (boot = the CLI's vitest suite via `just test`). S0–S2 hold here; use it as the reference shape when routing other repos.

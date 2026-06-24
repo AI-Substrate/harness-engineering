@@ -9,6 +9,7 @@ import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerSkillsAct } from './acts/skills.js';
+import { registerTelemetryAct } from './acts/telemetry.js';
 import { registerUpdateAct } from './acts/update.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
 import type { Clock } from './adapters/clock/clock-port.js';
@@ -18,6 +19,7 @@ import { NodeBackground } from './adapters/exec/node-background.js';
 import { NodeExec } from './adapters/exec/node-exec.js';
 import { NodeFs } from './adapters/fs/node-fs.js';
 import { ExecGit } from './adapters/git/exec-git.js';
+import { ExecGitWrite } from './adapters/git/exec-git-write.js';
 import { JitiLoader } from './adapters/loader/jiti-loader.js';
 import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
 import { NodeProcess } from './adapters/process/node-process.js';
@@ -44,6 +46,9 @@ import {
   coreRecordTypes,
   type ExtensionRecordType,
 } from './services/record/registry.js';
+import { coreTelemetryAdapters } from './services/telemetry/adapters/index.js';
+import { type CaptureDeps, captureTelemetry } from './services/telemetry/capture-service.js';
+import { buildHousekeepingDecorator } from './services/telemetry/housekeeping.js';
 import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
@@ -60,6 +65,50 @@ export function jsonFlag(argv: string[]): boolean | undefined {
     return true;
   }
   return undefined;
+}
+
+/**
+ * The telemetry command label (plan 034 Phase 3): the first non-flag token after
+ * the binary+script (index ≥ 2), else `harness` (bare invocation). Top-level
+ * command only (`flow nav …` → `flow`), matching the segment's single-token
+ * `command` contract. Pure argv scan, no I/O.
+ *
+ * Safe because every global flag is boolean (`--json`/`--no-json`/`--no-extensions`/
+ * `-v`/`-h` — none consume a following value); a value-taking global would break
+ * this heuristic (revisit if one is ever added).
+ */
+export function deriveCommand(argv: string[]): string {
+  for (let i = 2; i < argv.length; i++) {
+    const tok = argv[i];
+    if (tok !== undefined && !tok.startsWith('-')) {
+      return tok;
+    }
+  }
+  return 'harness';
+}
+
+/**
+ * Whether the kernel preamble should fire telemetry capture for this argv
+ * (plan 034 Phase 3). Display-only invocations are excluded: `-h`/`--help`/
+ * `-v`/`--version`, or the `help` subcommand.
+ *
+ * This is an argv-SHAPE scan, NOT a semantic "is this display-only?" check
+ * (mirrors {@link jsonFlag} / {@link isExtensionsDisabled}). The only display-only
+ * surfaces today are help/version; ANY new display-only verb must be added here.
+ * A `-h`/`-v` placed anywhere excludes — the same flat-`includes` caveat the
+ * safe-mode scan documents above; accepted (revisit if a verb needs its own
+ * `-h`/`-v`).
+ */
+export function shouldCaptureForArgv(argv: string[]): boolean {
+  if (
+    argv.includes('-h') ||
+    argv.includes('--help') ||
+    argv.includes('-v') ||
+    argv.includes('--version')
+  ) {
+    return false;
+  }
+  return deriveCommand(argv) !== 'help';
 }
 
 /**
@@ -178,19 +227,30 @@ export function buildProgram(
 
   const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
 
-  // Cross-cutting: register the update banner ONCE so every command's exit
-  // chokepoint surfaces a known update (JSON field + human stderr line) from a
-  // single sync cache read. No-op until the cache holds a newer version (AC9);
-  // with no resolvable home (test fakes) it never fires.
-  setBannerDecorator(
-    buildBannerDecorator({
-      fs: deps.fs,
-      env: deps.env,
-      installed: version,
-      mode: io.mode,
-      writers: io.writers,
-    }),
-  );
+  // Cross-cutting: register the exit-chokepoint decorators ONCE so every
+  // command's exit surfaces (a) a known update and (b) telemetry housekeeping for
+  // the well-known boot/checks commands. Composed into one decorator (the slot
+  // holds a single fn). Both are no-ops for ordinary commands / when nothing is
+  // pending; with no resolvable home (test fakes) the update banner never fires.
+  const banner = buildBannerDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    installed: version,
+    mode: io.mode,
+    writers: io.writers,
+  });
+  const housekeeping = buildHousekeepingDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    proc: deps.proc,
+    gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    mode: io.mode,
+    writers: io.writers,
+  });
+  setBannerDecorator((env) => {
+    banner(env);
+    housekeeping(env);
+  });
 
   registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
@@ -202,6 +262,7 @@ export function buildProgram(
   registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
+  registerTelemetryAct(program, io, { ...deps, gitWrite: deps.gitWrite ?? new ExecGitWrite() });
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);
@@ -222,6 +283,12 @@ export interface MainOverrides {
   isTty: boolean;
   writers: Writers;
   version: string;
+  /**
+   * Telemetry capture seam (plan 034 Phase 3). Defaults to the real
+   * `captureTelemetry`; tests inject a recording or throwing fake to assert
+   * "invoked once / with command X" and AC-09 fail-safety without `vi.mock`.
+   */
+  capture: (deps: CaptureDeps) => void;
 }
 
 function defaultDeps(): VerbActDeps {
@@ -235,6 +302,7 @@ function defaultDeps(): VerbActDeps {
     background: new NodeBackground(),
     env: new NodeEnv(),
     git: new ExecGit(),
+    gitWrite: new ExecGitWrite(),
     clock: new SystemClock(),
     proc: new NodeProcess(),
   };
@@ -264,18 +332,29 @@ export async function main(
   const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
   const port = createOutputPort(io.mode, io.writers);
 
-  // Register the update banner BEFORE any exit — incl. the pre-build discovery /
-  // registry-validation error envelopes below, which exit before buildProgram
-  // (which re-registers it) runs (companion F004). Idempotent: same decorator.
-  setBannerDecorator(
-    buildBannerDecorator({
-      fs: deps.fs,
-      env: deps.env,
-      installed: version,
-      mode: io.mode,
-      writers: io.writers,
-    }),
-  );
+  // Register the exit-chokepoint decorators BEFORE any exit — incl. the pre-build
+  // discovery / registry-validation error envelopes below, which exit before
+  // buildProgram (which re-registers them) runs (companion F004). Housekeeping is
+  // a no-op here (those early exits are never boot/checks) but kept for symmetry.
+  const preBuildBanner = buildBannerDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    installed: version,
+    mode: io.mode,
+    writers: io.writers,
+  });
+  const preBuildHousekeeping = buildHousekeepingDecorator({
+    fs: deps.fs,
+    env: deps.env,
+    proc: deps.proc,
+    gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    mode: io.mode,
+    writers: io.writers,
+  });
+  setBannerDecorator((env) => {
+    preBuildBanner(env);
+    preBuildHousekeeping(env);
+  });
 
   let registry: VerbRegistry;
   try {
@@ -289,6 +368,29 @@ export async function main(
   if (check.status === 'error') {
     exitWithEnvelope(check, port);
     return;
+  }
+
+  // Auto-capture preamble (plan 034 Phase 3): record one counts-only telemetry
+  // segment for this command via the telemetry service — best-effort, before the
+  // command runs. Display-only argv (help/version) is excluded. The whole
+  // preamble is wrapped so telemetry can NEVER change the host command's output
+  // or exit code (AC-09) — defense in depth over captureTelemetry's own internal
+  // fail-safe. `env` is the EnvPort (`deps.env`), the ONLY env that carries the
+  // harness session id + HARNESS_PLAN_ID — not the local `NodeJS.ProcessEnv`.
+  if (shouldCaptureForArgv(argv)) {
+    try {
+      (overrides.capture ?? captureTelemetry)({
+        fs: deps.fs,
+        env: deps.env,
+        clock: deps.clock,
+        proc: deps.proc,
+        git: deps.git,
+        command: deriveCommand(argv),
+        adapters: coreTelemetryAdapters,
+      });
+    } catch {
+      // swallow — telemetry is invisible to the host command (AC-09)
+    }
   }
 
   try {

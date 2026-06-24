@@ -88,6 +88,7 @@ Optional and non-blocking — if the harness isn't configured the command exits 
 - **`--wrap` is for simple `cmd arg arg` commands** (v1). For anything with quotes, pipes, or shell operators, scaffold without `--wrap` and write the `ctx.exec(...)` calls by hand.
 - **Don't overwrite by accident**: `harness new` refuses an existing file unless `--force`.
 - **Trust model**: extensions run with full Node privileges (like an ESLint plugin). Only add extensions you'd run anyway.
+- **Composition is via `ctx.exec('harness', [...])`**: a verb can call another verb by shelling the CLI — there is no in-process verb-call API. The canonical example is the nucleus pair `checks` (the mandated lint/test/typecheck gate) and `boot`, where `boot` readies the system and then runs `harness checks` as a stage. When authoring `boot`, prefer composing `harness checks` over re-listing its gates; if `checks` is absent, have `boot` degrade with a warning that points the user at `harness new checks`.
 
 ## Exit
 

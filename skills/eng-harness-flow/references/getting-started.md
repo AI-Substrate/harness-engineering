@@ -169,10 +169,11 @@ flowchart LR
       other field a TODO). Idempotent never-clobber. The doc now exists but is empty;
       boot stays UNAVAILABLE until S4 builds the boot command. Nothing errors.
 
-4.  add-extension verb               (S4 · boot, built LAST)
-    → harness new boot --wrap "npm test"
+4.  add-extension verb               (S4 · checks + boot, built LAST)
+    → harness new checks --wrap "npm test"     ← the mandated quality gate (lint/test/typecheck)
+    → harness new boot   --wrap "npm test"     ← then a boot that composes `harness checks`
     → Verify independently — never trust your own scaffold:
-      harness doctor --json · harness instructions boot · harness boot --json
+      harness doctor --json · harness instructions boot · harness checks --json · harness boot --json
     → 🎉 boot's working — that's the harness alive. Cross the bridge.
 
 5.  Work normally, loop around you:
@@ -224,8 +225,11 @@ The loop and adoption **verbs** (`boot` / `backpressure` / `retro` / `adopt` / `
 │   ├── engineering-harness.md      ← governance doc (BIO contract) — canonical, only location
 │   │                                  (stamped by `harness init`, seeded empty; see references/governance-doc.md)
 │   ├── extensions/
+│   │   ├── checks/
+│   │   │   ├── extension.ts        ← the mandated quality gate (lint/test/typecheck)
+│   │   │   └── instructions.md     ← agent briefing (`harness instructions checks`)
 │   │   └── boot/
-│   │       ├── extension.ts        ← the verb (default-exports a HarnessVerb)
+│   │       ├── extension.ts        ← the verb (default-exports a HarnessVerb); composes `harness checks`
 │   │       └── instructions.md     ← agent briefing (`harness instructions boot`)
 │   ├── reports/
 │   │   └── harnessability/

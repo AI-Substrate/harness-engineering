@@ -2,6 +2,7 @@ import type { HarnessRecordType } from './contract.js';
 import { harnessBypassRecordType } from './core-types/harness-bypass.js';
 import { harnessChangeRecordType } from './core-types/harness-change.js';
 import { retroRecordType } from './core-types/retro.js';
+import { segmentRecordType } from './core-types/segment.js';
 
 /** Same name rule as verb names — the `<type>` arg + the records subdir name. */
 const TYPE_PATTERN = /^[a-z][a-z0-9-]*$/;
@@ -43,6 +44,7 @@ export const coreRecordTypes: HarnessRecordType[] = [
   retroRecordType,
   harnessBypassRecordType,
   harnessChangeRecordType,
+  segmentRecordType,
 ];
 
 /**

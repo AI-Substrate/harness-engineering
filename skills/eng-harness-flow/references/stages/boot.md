@@ -7,7 +7,7 @@
 
 **Verb**: boot
 **Purpose**: Validate that the engineering harness is healthy and report its maturity. `--validate` runs the live Boot → Interact → Observe health check; `--status` gives a quick read-only maturity report. Boot is **read-only** — it never writes governance or history.
-**Consumes**: `.harness/engineering-harness.md` (the canonical governance doc — the only location). Reads: boot command, health check, interaction method, observe method, current maturity snapshot, deterministic signal inventory, evidence paths, declared back-pressure gaps.
+**Consumes**: `.harness/engineering-harness.md` (the canonical governance doc — the only location). Reads: boot command, **checks command** (the mandated quality gate boot composes), health check, interaction method, observe method, current maturity snapshot, deterministic signal inventory, evidence paths, declared back-pressure gaps.
 **Flags**: `--validate` (live 3-stage check; default if the governance doc exists) · `--status` (read-only maturity report — no boots, no changes) · (no flags) auto-detect: validate if the doc exists, else report `UNAVAILABLE`.
 **Produces**: a boot verdict (`HEALTHY` / `SLOW` / `UNHEALTHY` / `UNAVAILABLE`) + a signal-readiness summary + a maturity reading. No file writes.
 **Side effects**: none — boot reads; it never creates `.harness/engineering-harness.md`, `docs/harness/`, command maps, fixtures, or CLI scripts.
@@ -109,6 +109,7 @@ Build a short signal-readiness summary from the governance doc and observed evid
 | Runtime inspectability | App/API/CLI can expose current health/state to the agent. | present / missing / not declared |
 | Smoke paths | A deterministic route, command, or scenario proves the main behavior starts. | present / missing / not declared |
 | Architecture/static checks | Dependency rules, lint, type checks, ArchUnit/Roslyn/CodeQL, or similar checks exist. | present / missing / not declared |
+| Checks gate | A mandated `harness checks` quality gate (lint/test/typecheck) exists and `boot` composes it. If the `checks` extension is **absent** (`.harness/extensions/checks/` missing), surface the deterministic warning the authored `boot`/`harness checks` emits: *"No `checks` extension exists — create one (`harness new checks --wrap "…"`) or move existing quality checks (linters, unit tests, typecheck) into a `checks` extension so `boot` and agents can gate on it."* | present / missing / not declared |
 | Security/dependency/schema checks | Dependency audit, schema validation, CodeQL, data checks, or equivalent proof exists. | present / missing / not declared |
 | Evidence paths | Screenshots, logs, traces, snapshots, artifacts, or command output locations are discoverable. | present / missing / not declared |
 | Back-pressure gaps | The doc names behaviors that still rely on inference or human eyeballing. | list / none declared |

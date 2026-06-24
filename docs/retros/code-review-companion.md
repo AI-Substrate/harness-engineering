@@ -374,3 +374,42 @@
 - **magicWand** (target: coordination): Expose a reliable coordination variable or command such as `minih project-root` that always returns the actual repository root for inside agents.
 - difficulties:
   - [degrading] config: The prompt instructed `cd $MINIH_PROJECT_ROOT`, but in this run that variable pointed at the run folder, not the git repository root, causing the first file read to miss the requested skill paths. (workaround: Changed to the explicit repository root from the environment context and repeated the scoped reads.)
+
+## 2026-06-23T07:42:22.815Z — code-review-companion / 2026-06-23T07-13-38-905Z-5a24
+
+- runId: 2026-06-23T07-13-38-905Z-5a24
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-23T07-13-38-905Z-5a24
+- summary: Reviewed Phase 1 telemetry work across segment serialization/schema, core record registration, adapter seam, capture/cursor service, cursor safety, self-ignoring buffer behavior, kill-switch/fail-safe wrapping, and the F001 fix. I raised one MEDIUM AC-04 repo-relative path finding, then verified it was resolved by commit 56a1033; the session ends with zero open HIGH/CRITICAL findings and zero open findings overall.
+- **magicWand** (target: minih): Have minih expose and validate a canonical project root for coordinated agents, and warn when a requested Vitest filter matches zero files even if the underlying command exits 0.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory instead of the repository root, making the required initial cd land outside docs/plans. (workaround: Used the known repository root from the environment context for orientation and review commands.)
+  - [annoying] test: Running npm test with repository-root-relative test paths produced 'No test files found' after the script cd'd into harness/cli, and Vitest exited 0. (workaround: Reran targeted tests with paths relative to harness/cli.)
+
+## 2026-06-23T08:40:16.441Z — code-review-companion / 2026-06-23T08-20-18-651Z-f6c5
+
+- runId: 2026-06-23T08-20-18-651Z-f6c5
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-23T08-20-18-651Z-f6c5
+- summary: Reviewed the full Phase 2 adapter sequence for plan 034. I found three issues: Claude effort leaked on no-data windows, Copilot process-log parsing was not scoped per session_id, and the future-harness AC-12 capture-path proof overclaimed. The outside actor fixed F001 and F002 in 61f51f0 and narrowed F003 in c8f180a; I verified those fixes before stopping.
+- **magicWand** (target: coordination): Add an inbox/review helper that pins a requested SHA into a temporary read-only checkout or makes file-view tools read from that SHA, preventing moving-worktree confusion during asynchronous reviews.
+- difficulties:
+  - [annoying] test: Vitest rejected the Jest-style --runInBand flag during a targeted test run. (workaround: Reran the same targeted suite without --runInBand.)
+  - [degrading] coordination: The requested Copilot SHA was amended while review was in progress, so current-worktree reads initially showed files that were not present in the requested commit object. (workaround: Switched to git show against the exact requested SHA and waited for the corrected-SHA review request.)
+
+## 2026-06-23T10:01:31.131Z — code-review-companion / 2026-06-23T09-34-42-872Z-8632
+
+- runId: 2026-06-23T09-34-42-872Z-8632
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-23T09-34-42-872Z-8632
+- summary: Reviewed Phase 3 commits 22274a5, 151ec84, and 424df21 plus the final drain request. T001 was approved with no findings; T002-T004 and T005 were approved with notes. No HIGH or CRITICAL findings were found. The implementation wiring itself followed the major hazards: EnvPort was used, the preamble is a thin one-call delegation after registry validation and before parseAsync, Phase-1/2 telemetry files stayed frozen, and the structural perf claim was reshaped honestly to bounded read-count plus cursor-incremental parsing. The remaining findings are all MEDIUM testing/evidence gaps around deps-build-throw coverage, complete stdout/stderr capture, and the overclaimed porcelain proof.
+- **magicWand** (target: coordination): Add a coordination drain helper that automatically includes prior finding ids, severities, ackOf task ids, and summary verdicts in the final drain prompt so the companion can reconcile the run without relying on memory.
+- difficulties:
+  - [annoying] test: The root npm test script cd's into harness/cli, so passing a root-relative vitest filter found no tests but still exited 0. (workaround: Reran the focused suite with the harness/cli-relative filter path.)
+
+## 2026-06-23T11:18:20.857Z — code-review-companion / 2026-06-23T10-51-46-373Z-14ff
+
+- runId: 2026-06-23T10-51-46-373Z-14ff
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-23T10-51-46-373Z-14ff
+- summary: Reviewed the Phase 4 durable telemetry sync sequence across eight task messages: GitWritePort/FakeGitWrite, ExecGitWrite, sync-service, telemetry sync act wiring, cwd plan detection, docs/value-measures, final drain, and a formatting-only follow-up. I sent three findings: one HIGH governance-test gap around committer identity in FakeGitWrite, one MEDIUM DI boundary issue in the telemetry act fallback, and one MEDIUM documentation contract drift against the implemented segment schema.
+- **magicWand** (target: minih): Expose the resolved project root in a validated coordination state field and fail fast when MINIH_PROJECT_ROOT points at the run directory, because companion prompts explicitly depend on starting from the project root.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT resolved to the code-review-companion run folder, so the orient default initially could not see docs/plans from that cwd. (workaround: Used the repository root provided in the environment context for subsequent git, docs, and test commands.)
+  - [annoying] test: Running npm test from harness/cli failed because package.json lives at the repository root while the npm test script cd’s into harness/cli internally. (workaround: Ran targeted tests from the repository root with npx vitest and the relevant test paths.)

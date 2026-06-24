@@ -1,0 +1,5 @@
+{"type":"session.start","data":{"sessionId":"sess-copilot-1"},"id":"e0","timestamp":"2026-06-23T08:00:00Z"}
+{"type":"session.model_change","data":{"newModel":"claude-opus-4-8","reasoningEffort":"high","contextTier":"default"},"id":"e1","timestamp":"2026-06-23T08:00:01Z"}
+{"type":"tool.execution_complete","data":{"toolName":"bash","arguments":{"command":"echo SUPER_SECRET_sk-copilot-LEAKED /Users/jordan/secrets/keys.env"},"model":"claude-opus-4-8","success":true},"id":"e2","timestamp":"2026-06-23T08:00:02Z"}
+{"type":"tool.execution_complete","data":{"toolName":"str_replace","arguments":{"path":"/Users/jordan/secrets/keys.env"},"model":"claude-opus-4-8","success":true},"id":"e3","timestamp":"2026-06-23T08:00:03Z"}
+{"type":"assistant.message","data":{"outputTokens":50},"id":"e4","timestamp":"2026-06-23T08:00:04Z"}
