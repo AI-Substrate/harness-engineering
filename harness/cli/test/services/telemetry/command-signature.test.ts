@@ -91,7 +91,10 @@ describe('commandSignatures — quote/heredoc/multi-line robustness (no script-b
   });
 
   it('catches a harness command hidden behind cd && (real agent pattern)', () => {
-    expect(commandSignatures('cd /Users/x/repo && harness checks')).toEqual(['cd', 'harness checks']);
+    expect(commandSignatures('cd /Users/x/repo && harness checks')).toEqual([
+      'cd',
+      'harness checks',
+    ]);
   });
 });
 

@@ -52,9 +52,14 @@ interface DetectedHarness {
   sessionId: string;
 }
 
-/** Env → harness id, INNERMOST FIRST (Copilot vars nest under leaked Claude vars). */
+/**
+ * Env → harness id, INNERMOST FIRST. Copilot vars nest under leaked Claude vars;
+ * cursor-agent embeds a Claude runtime (it may leak `CLAUDE_CODE_SESSION_ID`), so
+ * `CURSOR_CONVERSATION_ID` is matched BEFORE `CLAUDE_CODE_SESSION_ID`.
+ */
 const HARNESS_ENV_CHAIN: readonly { env: string; harness: string }[] = [
   { env: 'COPILOT_AGENT_SESSION_ID', harness: 'copilot-cli' },
+  { env: 'CURSOR_CONVERSATION_ID', harness: 'cursor-agent' },
   { env: 'CLAUDE_CODE_SESSION_ID', harness: 'claude-code' },
 ];
 

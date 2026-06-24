@@ -1,9 +1,11 @@
 import { claudeAdapter } from './claude-adapter.js';
 import { copilotAdapter } from './copilot-adapter.js';
+import { cursorAdapter } from './cursor-adapter.js';
 import type { HarnessAdapter } from './harness-adapter.js';
 
 export { claudeAdapter } from './claude-adapter.js';
 export { copilotAdapter } from './copilot-adapter.js';
+export { cursorAdapter } from './cursor-adapter.js';
 export type {
   HarnessAdapter,
   HarnessCapabilities,
@@ -21,4 +23,8 @@ export { nullDefaultAdapter } from './harness-adapter.js';
  * predicates, so order is for determinism, not correctness. Mirrors the
  * `coreRecordTypes` composition pattern (record/registry.ts).
  */
-export const coreTelemetryAdapters: HarnessAdapter[] = [claudeAdapter, copilotAdapter];
+export const coreTelemetryAdapters: HarnessAdapter[] = [
+  claudeAdapter,
+  copilotAdapter,
+  cursorAdapter,
+];

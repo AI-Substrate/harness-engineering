@@ -1,0 +1,5 @@
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>\nplease run the build and check status\n</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"on it"},{"type":"tool_use","name":"Shell","input":{"command":"git status -s && harness boot","description":"SUPER_SECRET /Users/jordan/keys.env"}}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Shell","input":{"command":"cat /Users/jordan/secret.env"}}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"the-flow"}}]}}
+{"type":"result","status":"completed"}

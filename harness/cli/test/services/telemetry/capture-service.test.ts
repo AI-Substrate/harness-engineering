@@ -78,6 +78,14 @@ describe('T005 — detectHarness (innermost wins)', () => {
     expect(detectHarness(env)).toEqual({ harness: 'claude-code', sessionId: 'cl-1' });
   });
 
+  it('Cursor beats Claude when both are set (cursor-agent embeds a Claude runtime)', () => {
+    const env = new FakeEnv({
+      CURSOR_CONVERSATION_ID: 'cur-1',
+      CLAUDE_CODE_SESSION_ID: 'cl-1',
+    });
+    expect(detectHarness(env)).toEqual({ harness: 'cursor-agent', sessionId: 'cur-1' });
+  });
+
   it('returns null when no harness env is present (zero-harness)', () => {
     expect(detectHarness(new FakeEnv({}))).toBeNull();
   });
