@@ -169,3 +169,53 @@ describe('T005 — designed edge no-ops (C3)', () => {
     expect(seg?.window).toEqual({ since: 'session-start', from: 0, to: 240 });
   });
 });
+
+describe('T5.8 — session-end flush (the tail is captured by a follow-up capture)', () => {
+  it('a second capture records the TAIL delta + advances the cursor (no new path)', () => {
+    // The SessionEnd hook runs `harness telemetry sync`; its capture preamble is
+    // just another captureTelemetry call. Model that: the source grows after the
+    // first command's capture, and a second capture records the tail window.
+    let position = 120;
+    const adapter: HarnessAdapter = {
+      harness: 'claude-code',
+      handles: (id) => id === 'claude-code',
+      currentPosition: () => position,
+      extract: () => ({ tools: { Bash: 1 } }),
+    };
+    const { d, fs } = deps({ env: { CLAUDE_CODE_SESSION_ID: 'sessTail' }, adapters: [adapter] });
+
+    captureTelemetry(d); // first command → session-start [0,120]
+    expect(readWrittenSegment(fs, 'sessTail')?.window).toEqual({
+      since: 'session-start',
+      from: 0,
+      to: 120,
+    });
+    expect(fs.readText(`${TEL}/sessTail.cursor`)).toBe('120');
+
+    // work continues; the session-end flush captures the tail [120,170].
+    position = 170;
+    captureTelemetry(d);
+    // (real FS increments <seq> via readdir; FakeFs lists dirs not files, so the
+    // tail overwrites 1.json — the WINDOW + cursor are what prove the flush.)
+    expect(readWrittenSegment(fs, 'sessTail')?.window).toEqual({
+      since: 'last-command',
+      from: 120,
+      to: 170,
+    });
+    expect(fs.readText(`${TEL}/sessTail.cursor`)).toBe('170');
+  });
+
+  it('session ends with no tail (source unchanged) → empty-window segment, safe', () => {
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessNoTail' },
+      files: { [`${TEL}/sessNoTail.cursor`]: '90' },
+      adapters: [testAdapter('claude-code', 90, {})],
+    });
+    captureTelemetry(d);
+    expect(readWrittenSegment(fs, 'sessNoTail')?.window).toEqual({
+      since: 'last-command',
+      from: 90,
+      to: 90,
+    });
+  });
+});

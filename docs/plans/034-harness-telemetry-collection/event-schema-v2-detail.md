@@ -184,19 +184,37 @@ as optional and never require it.
 
 ---
 
-## 6. Tail-flush (open design item)
+## 6. Tail-flush (RESOLVED — session-end flush via `telemetry sync`)
 
 Capture fires **on** a harness command, so work *after the last harness command of
-a session* is never flushed (no trigger). For full-session reconstruction this
-loses the most interesting tail (did it finish / ship / stall?). Two options:
+a session* would otherwise never be flushed (no trigger), losing the most
+interesting tail (did it finish / ship / stall?).
 
-- **Session-end flush** *(recommended)* — a `session-end` hook (the harnesses emit
-  shutdown/session-end events we already read) emits a final segment.
-- **Accept tail loss** — simpler; every session truncates at its last harness command.
+**Decision (plan 034 Phase 5, T5.8): session-end flush, reusing the existing
+machinery — no new capture path.** The capture preamble runs for *every*
+non-display command (`app.ts`, `shouldCaptureForArgv`), including
+`harness telemetry sync`. So wiring a harness **SessionEnd hook to
+`harness telemetry sync`** flushes the tail in one step:
 
-Segments otherwise **tile** the session — reassembly (concat by
-`harness_session_id`, sort by `t`) reproduces the identical timeline regardless of
-where the per-command boundaries fall, so variable segment size is harmless.
+1. the preamble captures the **tail segment** — the cursor delta since the last
+   command's capture (`computeWindow(prevCursor, currentPosition)`), written as the
+   next `<seq>.json`;
+2. the `sync` act then flushes the whole buffer (tail included) to
+   `refs/harness-telemetry/<date>/<session>`.
+
+This needs **no new command or capture logic** — it falls out of the tiling
+property below. The only integration point is the host-specific hook registration
+(Claude `SessionEnd`, Copilot/Cursor shutdown), documented in
+`docs/how/telemetry.md`; the-flow's `ship` verb already runs `telemetry sync`, so a
+shipped session flushes its tail for free.
+
+> A session that ends *without* a SessionEnd hook (or is killed) still loses only
+> its final tail — every segment up to the last command is intact. Tail loss is
+> bounded, never silent corruption.
+
+Segments **tile** the session — reassembly (concat by `harness_session_id`, sort by
+`t`) reproduces the identical timeline regardless of where the per-command
+boundaries fall, so variable segment size (and a final tail segment) is harmless.
 
 ---
 

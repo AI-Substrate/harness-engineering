@@ -185,3 +185,20 @@ Companion (run `…0903`, structured findings via inside-lane) reviewed 5.6 (`52
 | # | Kind | Note | Tag |
 |---|------|------|-----|
 | D-515 | gotcha | Capture writes its buffer under `proc.cwd()` — a deep cwd changes BOTH the flight-plan lookup (F001) and the telemetry buffer location. Path resolution must derive the plan dir from the cwd prefix, not assume cwd==repo-root. | Noteworthy |
+
+---
+
+## Commit 10 — T5.8: session-end flush (resolved)
+
+**Decision** — the §6 "open design item" is **resolved as session-end flush, reusing existing machinery**: the capture preamble runs for every non-display command (`app.ts` `shouldCaptureForArgv`), **including `harness telemetry sync`**. So a host **SessionEnd hook → `harness telemetry sync`** (a) captures the tail segment via the preamble (`computeWindow(prevCursor, currentPosition)` → the cursor delta) then (b) flushes the buffer to `refs/harness-telemetry/…`. No new command or capture path — it falls out of the **tiling** property (segments concat+sort to the same timeline). the-flow's `ship` already runs `telemetry sync`, so a shipped session flushes its tail for free; an un-hooked/killed session loses only its final tail (bounded, never corruption).
+
+**What landed**
+- `event-schema-v2-detail.md` §6 — rewritten from "open design item" to the resolved decision + the SessionEnd-hook integration point (detail in 5.9's `docs/how/telemetry.md`).
+- `capture-service.test.ts` — `T5.8` block: a second capture records the **tail delta** window (`last-command [120,170]`) + advances the cursor (proving the flush is just a re-invocation); plus the no-tail (unchanged source) empty-window case.
+
+**Evidence**: capture-service tests 15 passed; full suite green (run with 5.9).
+
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-516 | decision | No new `telemetry flush` command — `telemetry sync`'s own capture preamble already records the tail before the act flushes. The only integration is the host SessionEnd hook (documented in 5.9). | Noteworthy |
+| D-517 | gotcha | FakeFs `readdir` lists dirs, not written files, so `nextSeq` can't increment in-test (tail overwrites `1.json`); the window + cursor advance are the load-bearing assertions, not the seq number. | — |
