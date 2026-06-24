@@ -42,9 +42,9 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(schema.additionalProperties).toBe(false);
   });
 
-  it('pins schema_version const to "1.1"', () => {
-    expect(schema.properties.schema_version?.const).toBe('1.1');
-    expect(SEGMENT_SCHEMA_VERSION).toBe('1.1');
+  it('pins schema_version const to "2.0"', () => {
+    expect(schema.properties.schema_version?.const).toBe('2.0');
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.0');
   });
 });
 
@@ -102,12 +102,12 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
 });
 
 describe('T002 — version freeze (field-set change MUST bump schema_version)', () => {
-  it('the frozen field set is paired with schema_version 1.1', () => {
+  it('the frozen field set is paired with schema_version 2.0', () => {
     // FROZEN SNAPSHOT — if you change the segment field set, you MUST bump
     // SEGMENT_SCHEMA_VERSION and update this snapshot in the same change. This
-    // test makes a silent contract drift impossible. (1.1 added bash_commands,
-    // harness_commands, user_prompts and reshaped subagents to grouped+count.)
-    const FROZEN_V1_1_FIELDS = [
+    // test makes a silent contract drift impossible. (2.0 added event_stream +
+    // the derived rollup — the v1 count fields remain as a compatibility view.)
+    const FROZEN_V2_0_FIELDS = [
       'schema_version',
       'command',
       'harness',
@@ -129,9 +129,11 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
       'plans_touched',
       'events',
       'thinking',
+      'event_stream',
+      'rollup',
     ];
-    if (SEGMENT_SCHEMA_VERSION === '1.1') {
-      expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V1_1_FIELDS].sort());
+    if (SEGMENT_SCHEMA_VERSION === '2.0') {
+      expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_0_FIELDS].sort());
     }
   });
 });

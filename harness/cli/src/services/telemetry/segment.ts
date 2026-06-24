@@ -1,3 +1,5 @@
+import type { Event, Rollup, TPrecision } from './events.js';
+import { computeRollup } from './rollup.js';
 import {
   isWithin,
   posixJoin,
@@ -23,8 +25,12 @@ import {
  * `null` / empty (never absent, never estimated).
  */
 
-/** The cross-tool schema version of the segment contract. Bump on a field-set change. */
-export const SEGMENT_SCHEMA_VERSION = '1.1';
+/**
+ * The cross-tool schema version of the segment contract. Bump on a field-set change.
+ * v2.0 (plan 034 Phase 5): promoted to an event stream — adds `events[]` + the
+ * derived `rollup` (the v1 count fields remain as a compatibility view).
+ */
+export const SEGMENT_SCHEMA_VERSION = '2.0';
 
 export interface SegmentTokens {
   input: number;
@@ -125,6 +131,10 @@ export interface Segment {
   plans_touched: string[];
   events: SegmentEvents;
   thinking: SegmentThinking | null;
+  /** v2.0 — the ordered timestamped event stream (the substrate; counts are derived). */
+  event_stream: Event[];
+  /** v2.0 — the derived measures view; a pure function of {@link event_stream}. */
+  rollup: Rollup | null;
 }
 
 /**
@@ -156,6 +166,8 @@ export const SEGMENT_FIELD_KEYS = [
   'plans_touched',
   'events',
   'thinking',
+  'event_stream',
+  'rollup',
 ] as const;
 
 /** The loosely-typed capture input the serializer narrows into a clean {@link Segment}. */
@@ -180,6 +192,8 @@ export interface SegmentInput {
   plans_touched?: string[];
   events?: Partial<SegmentEvents>;
   thinking?: SegmentThinking | null;
+  /** v2.0 — the ordered event stream an adapter emits; serialized via the per-kind allowlist. */
+  event_stream?: readonly Event[];
 }
 
 const ABSOLUTE_LOGICAL = /^([A-Za-z]:)?\//;
@@ -240,6 +254,105 @@ function groupSubagents(items: readonly SegmentSubagentInput[]): SegmentSubagent
   return [...groups.values()];
 }
 
+const T_PRECISIONS: ReadonlySet<string> = new Set([
+  'exact',
+  'anchored',
+  'interpolated',
+  'interval',
+]);
+
+/** Carry `t` + (a valid) `t_precision` only — the shared base of every serialized event. */
+function eventBase(e: { t: string; t_precision?: string }): { t: string; t_precision?: TPrecision } {
+  const base: { t: string; t_precision?: TPrecision } = { t: e.t };
+  if (e.t_precision !== undefined && T_PRECISIONS.has(e.t_precision)) {
+    base.t_precision = e.t_precision as TPrecision;
+  }
+  return base;
+}
+
+/** Include a key only when its value is a finite number (omits `null`/`undefined`/`NaN`). */
+function num(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+/**
+ * Serialize ONE event into its allowlisted shape (AC-15). ALLOWLIST BY
+ * CONSTRUCTION: each kind picks exactly its contract fields — the input is never
+ * spread — so a planted secret / raw arg in a non-allowlisted field on any event
+ * cannot reach the output. An unrecognized kind degrades to its `{ t, kind }`
+ * skeleton rather than passing fields through.
+ */
+export function serializeEvent(e: Event): Event {
+  const base = eventBase(e);
+  switch (e.kind) {
+    case 'prompt':
+      return { ...base, kind: 'prompt', words: e.words };
+    case 'turn': {
+      const ev: Event = { ...base, kind: 'turn', dur_s: e.dur_s };
+      const i = num(e.in);
+      const o = num(e.out);
+      const cr = num(e.cache_read);
+      const cc = num(e.cache_create);
+      if (i !== undefined) ev.in = i;
+      if (o !== undefined) ev.out = o;
+      if (cr !== undefined) ev.cache_read = cr;
+      if (cc !== undefined) ev.cache_create = cc;
+      if (typeof e.model === 'string') ev.model = e.model;
+      return ev;
+    }
+    case 'tools':
+      return { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
+    case 'skill': {
+      const ev: Event = { ...base, kind: 'skill', name: e.name, status: e.status };
+      const d = num(e.dur_s);
+      if (d !== undefined) ev.dur_s = d;
+      return ev;
+    }
+    case 'flow': {
+      const ev: Event = { ...base, kind: 'flow', flow: e.flow, stage: e.stage, status: e.status };
+      if (typeof e.from === 'string') ev.from = e.from;
+      return ev;
+    }
+    case 'harness':
+      return { ...base, kind: 'harness', verb: e.verb };
+    case 'checks': {
+      const ev: Event = { ...base, kind: 'checks', status: e.status };
+      if (e.gates !== undefined) {
+        const gates: Record<string, string> = {};
+        for (const [k, v] of Object.entries(e.gates)) gates[k] = String(v);
+        ev.gates = gates;
+      }
+      return ev;
+    }
+    case 'command_exit': {
+      const ev: Event = { ...base, kind: 'command_exit', verb: e.verb, exit: e.exit };
+      if (typeof e.status === 'string') ev.status = e.status;
+      return ev;
+    }
+    case 'subagent': {
+      const ev: Event = { ...base, kind: 'subagent', name: e.name, status: e.status };
+      const d = num(e.dur_s);
+      if (d !== undefined) ev.dur_s = d;
+      return ev;
+    }
+    case 'compaction':
+      return { ...base, kind: 'compaction' };
+    case 'model': {
+      const ev: Event = { ...base, kind: 'model', model: e.model };
+      if (typeof e.effort === 'string') ev.effort = e.effort;
+      return ev;
+    }
+    case 'api_error': {
+      const ev: Event = { ...base, kind: 'api_error' };
+      if (typeof e.signature === 'string') ev.signature = e.signature;
+      return ev;
+    }
+    default:
+      // Unknown kind — never pass fields through; keep the skeleton only.
+      return { ...base, kind: (e as { kind: Event['kind'] }).kind };
+  }
+}
+
 /**
  * Serialize a capture input into a clean counts-only {@link Segment}. ALLOWLIST
  * BY CONSTRUCTION: every field is picked explicitly — the input is never spread —
@@ -247,6 +360,9 @@ function groupSubagents(items: readonly SegmentSubagentInput[]): SegmentSubagent
  * output. File paths are relativized; `plans_touched` is deduped.
  */
 export function serializeSegment(input: SegmentInput, repoRoot: string): Segment {
+  // v2.0: the event stream is the substrate; the rollup is DERIVED from the
+  // serialized events (never taken from the caller) so it can never drift (AC-16).
+  const eventStream = (input.event_stream ?? []).map(serializeEvent);
   return {
     schema_version: SEGMENT_SCHEMA_VERSION,
     command: input.command,
@@ -284,5 +400,7 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
       local_commands: input.events?.local_commands ?? 0,
     },
     thinking: input.thinking ?? null,
+    event_stream: eventStream,
+    rollup: eventStream.length > 0 ? computeRollup(eventStream) : null,
   };
 }

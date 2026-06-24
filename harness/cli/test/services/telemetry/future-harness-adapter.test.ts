@@ -81,7 +81,7 @@ describe('T007 — future-harness adapter (AC-12)', () => {
 
     // schema-shaped: exactly the enumerated field set, version pinned
     expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
-    expect(seg.schema_version).toBe('1.1');
+    expect(seg.schema_version).toBe('2.0');
     // the one implemented capability survives; everything unimplemented is null/empty
     expect(seg.tools).toEqual({ AcmeTool: 2 });
     expect(seg.tokens).toBeNull();

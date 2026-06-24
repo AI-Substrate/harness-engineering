@@ -39,10 +39,10 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
   });
 
-  it('pins schema_version to "1.1"', () => {
+  it('pins schema_version to "2.0"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('1.1');
+    expect(seg.schema_version).toBe('2.0');
   });
 
   it('defaults unimplemented capabilities to null / empty (never absent, never estimated)', () => {
@@ -60,6 +60,9 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     expect(seg.plans_touched).toEqual([]);
     expect(seg.files).toEqual({ written: [], edited: [] });
     expect(seg.events).toEqual({ compactions: [], api_errors: 0, local_commands: 0 });
+    // v2.0 — no events supplied ⇒ empty stream + null rollup (never estimated)
+    expect(seg.event_stream).toEqual([]);
+    expect(seg.rollup).toBeNull();
   });
 });
 
