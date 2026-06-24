@@ -348,8 +348,11 @@ export function serializeEvent(e: Event): Event {
       return ev;
     }
     default:
-      // Unknown kind — never pass fields through; keep the skeleton only.
-      return { ...base, kind: (e as { kind: Event['kind'] }).kind };
+      // Unknown kind — never pass fields through; keep the skeleton only. The
+      // switch above is exhaustive over the closed `Event` union, so this is a
+      // defensive floor for a future/foreign kind; cast back to `Event` since the
+      // skeleton's `kind` is the widened union, not a single literal.
+      return { ...base, kind: (e as { kind: Event['kind'] }).kind } as Event;
   }
 }
 
