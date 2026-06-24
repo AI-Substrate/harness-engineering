@@ -264,4 +264,30 @@ describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', 
       expect.objectContaining({ kind: 'command_exit', verb: 'checks', exit: 1 }),
     );
   });
+
+  it('F004 — a compound command (≥2 harness subs) emits NO command_exit (one success bool)', () => {
+    const lines = [
+      {
+        type: 'tool.execution_start',
+        timestamp: '2026-06-23T09:00:03Z',
+        data: { toolCallId: 'tc-1', toolName: 'bash', arguments: { command: 'harness checks && harness boot' } },
+      },
+      {
+        type: 'tool.execution_complete',
+        timestamp: '2026-06-23T09:00:05Z',
+        data: { toolCallId: 'tc-1', toolName: 'bash', success: false },
+      },
+    ];
+    const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
+    const fs = new FakeFs({ [copilotEventsPath(HOME, 'sc')]: content }, {});
+    const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'sc' }, HOME);
+    const stream = copilotAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'copilot-cli',
+      window: { since: 'session-start', from: 0, to: 99 },
+    }).event_stream as Event[];
+    expect(kinds(stream, 'command_exit')).toHaveLength(0); // can't attribute one success to two verbs
+  });
 });

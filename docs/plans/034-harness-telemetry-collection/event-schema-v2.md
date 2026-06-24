@@ -57,7 +57,7 @@ A **session timeline** = concatenate every segment's `events[]` for a
 | `turn` | `dur_s`, `in?`,`out?`,`cache_read?`,`cache_create?`, `model?` | one agent generation (the work primitive) | ✅ +all tokens | ✅ exact `dur_s`, tokens via process-log join | ✅ `dur_s` from bubbles, **no tokens** |
 | `tools` | `name`, `count`, `span_s` | a tool burst (collapsed run) | ✅ per-turn | ✅ + exact tool `dur`/`success` | ⚠️ untimed (counts only) |
 | `skill` | `name`, `status`, `dur_s?` | a skill span; status ∈ `completed\|abandoned\|superseded\|active` | ✅ | ✅ `skill.invoked` | ⚠️ untimed |
-| `flow` | `flow`, `stage`, `from?`, `status` | flight-plan stage transition (read from `the-flow.json`) | ✅ | ✅ | ✅ (command-level) |
+| `flow` | `flow`, `stage`, `status` (`from?` **reserved**) | flight-plan stage, read from `the-flow.json` nav; command-level capture omits `from` (current position, not the transition) | ✅ | ✅ | ✅ (command-level) |
 | `harness` | `verb` | a harness sub-command (sans-params) | ✅ | ✅ | ✅ |
 | `checks` | `status`, `gates?` | quality-gate outcome (`ok\|degraded\|error`) | ✅ | ✅ | ✅ |
 | `command_exit` | `verb`, `exit`, `status` | a command's exit code / disposition | ✅ | ✅ | ✅ |
@@ -155,7 +155,7 @@ tokens: in=42118 out=18904 cache_read=1120340 cache_create=33210
     { "t": "2026-06-24T09:00:41Z", "kind": "turn",    "dur_s": 38, "out": 8120, "cache_read": 280110, "model": "claude-opus-4-8" },
     { "t": "2026-06-24T09:00:41Z", "kind": "tools",   "name": "Read", "count": 4, "span_s": 30 },
     { "t": "2026-06-24T09:02:55Z", "kind": "prompt",  "words": 31 },
-    { "t": "2026-06-24T09:03:38Z", "kind": "flow",    "flow": "the-flow", "stage": "implement", "from": "plan", "status": "in_progress" },
+    { "t": "2026-06-24T09:03:38Z", "kind": "flow",    "flow": "the-flow", "stage": "implement", "status": "in_progress" },
     { "t": "2026-06-24T09:03:44Z", "kind": "turn",    "dur_s": 86, "out": 6240, "cache_read": 410220, "model": "claude-opus-4-8" },
     { "t": "2026-06-24T09:03:44Z", "kind": "tools",   "name": "Edit", "count": 9, "span_s": 71 },
     { "t": "2026-06-24T09:05:10Z", "kind": "skill",   "name": "validate-v2", "status": "completed", "dur_s": 42 },

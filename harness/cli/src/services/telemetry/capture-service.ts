@@ -129,16 +129,21 @@ function resolvePlanId(env: EnvPort, cwd: string): string | null {
  * Resolve the linked plan's `the-flow.json` path. `planIdFromCwd` supports running
  * from ANY depth under `docs/plans/<id>/` (e.g. `…/tasks`), so naively joining
  * `cwd + docs/plans/<id>` would double the segment and silently miss the flight
- * plan (companion F001). When `cwd` already sits at/under the plan dir, take the
- * prefix up to `docs/plans/<id>`; otherwise (`cwd` is the repo root, plan id from
- * `HARNESS_PLAN_ID`) the plan dir hangs off `cwd`.
+ * plan (companion F001). The repo root is the cwd prefix BEFORE `/docs/plans/`
+ * (when present) — so the path is built from the root + the (possibly
+ * `HARNESS_PLAN_ID`-overridden) `planId`, which also resolves an explicit plan id
+ * that differs from the cwd's own plan (companion F005).
+ *
+ * Known limit: when cwd is NOT under any `docs/plans/<id>` (e.g. `…/harness/cli`)
+ * there is no repo-root signal, so the plan dir is assumed to hang off cwd — the
+ * same cwd≈repoRoot assumption the rest of capture already makes (path
+ * relativization). Explicit-env plan links then resolve only from the repo root.
  */
 function flightPlanPath(cwd: string, planId: string): string {
   const c = toPosix(cwd);
-  const marker = `/docs/plans/${planId}`;
-  const idx = c.indexOf(marker);
-  if (idx !== -1) return `${c.slice(0, idx + marker.length)}/the-flow.json`;
-  return posixJoin(c, 'docs', 'plans', planId, 'the-flow.json');
+  const idx = c.indexOf('/docs/plans/');
+  const root = idx !== -1 ? c.slice(0, idx) : c;
+  return posixJoin(root, 'docs', 'plans', planId, 'the-flow.json');
 }
 
 /**

@@ -217,3 +217,26 @@ Companion (run `…0903`, structured findings via inside-lane) reviewed 5.6 (`52
 | # | Kind | Note | Tag |
 |---|------|------|-----|
 | D-518 | decision | Design docs keep prose "events" (the *concept*) but a top-of-doc note + fixed literal field names point readers to the shipped `event_stream`; `segment.schema.json`+`events.ts` are the source of truth (not the drafts). | — |
+
+---
+
+## Commit 12 — companion findings on 5.7/5.9 (F003 HIGH + F004–F007)
+
+Companion (run `…0903`) reviewed 5.7–5.9 → **1 HIGH + 4 MEDIUM**, all legitimate, all fixed before phase close. Build fix (`just build` tsc) folded in.
+
+| Sev | Finding | Disposition |
+|---|---|---|
+| **HIGH (F003)** | Claude parsed **every** `tool_result` for an outcome envelope → a non-Bash result that is envelope-shaped JSON (e.g. a `Read` of a fixture) fabricated `checks`/`command_exit` (AC-19 boundary breach + rollup corruption). | **Fixed** — track Bash tool_use ids whose command IS a harness sub-command (`harnessBashIds`); parse outcomes ONLY for tool_results whose `tool_use_id` matches. Regression: non-Bash envelope-shaped result → 0 outcome events. |
+| MEDIUM (F004) | Copilot emitted a `command_exit` per harness signature in a **compound** command, but has ONE `success` for the whole execution → misattribution (`checks && flow nav`). | **Fixed** — emit ONLY when exactly one harness subcommand ran. Regression: `harness checks && harness boot` → 0 command_exit. |
+| MEDIUM (F005) | `flightPlanPath` still doubled for an explicit `HARNESS_PLAN_ID` from a subdir that's a *different* plan than the cwd's. | **Fixed** — derive repo root from the cwd prefix before `/docs/plans/`, then root+planId (env-override resolves). Regression added. Known residual: cwd outside any `docs/plans/` has no repo-root signal (the existing cwd≈repoRoot limit) — documented. |
+| MEDIUM (F006) | `telemetry.md` said headless Cursor emits a `null` stream, but the contract serializes `event_stream: []` + `rollup: null`. | **Fixed** — wording corrected (`event_stream` always present, never null). |
+| MEDIUM (F007) | `event-schema-v2.md` example still emitted `flow.from` + table listed it as a transition (F002 drift alive in the sibling doc). | **Fixed** — example `from` removed + table row marks it reserved. |
+
+**Build fix** — `segment.ts` `serializeEvent` default branch cast `as Event` (tsc caught what vitest/esbuild didn't; switch is exhaustive over the closed union).
+
+**Evidence**: `just build` ✓ (+ relink); full suite → **1264 passed**; `harness checks` → hard gates (tests/skills-check/windows-check) **ok**; arch-check + markdown-lint **warn-launch** (pre-existing, my docs clean).
+
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-519 | gotcha | `vitest` (esbuild) does NOT type-check — a tsc-only error (the exhaustive-switch default) survives the test suite. `just build` is the real type gate; run it before declaring a phase done. | Noteworthy |
+| D-520 | decision | Outcome events MUST be tool-result-provenance-gated (Claude: Bash-harness id; Copilot: single-subcommand) — an envelope shape alone is not proof a harness command produced it (AC-19 boundary). | Noteworthy |

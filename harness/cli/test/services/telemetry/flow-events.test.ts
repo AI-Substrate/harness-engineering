@@ -181,4 +181,29 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
     expect(flow?.stage).toBe('phase-5'); // resolved despite the deep cwd
     expect(seg.rollup?.flow_stage_time_s).toEqual({ 'phase-5': 60 });
   });
+
+  it('explicit HARNESS_PLAN_ID overrides a different cwd-derived plan (companion F005)', () => {
+    // cwd is inside plan 034-x, but HARNESS_PLAN_ID points at a DIFFERENT plan; the
+    // flight plan must resolve from the repo root + the env plan id, not double the
+    // cwd's own plan segment.
+    const otherPlan = '035-y';
+    const otherFlight = `${REPO}/docs/plans/${otherPlan}/the-flow.json`;
+    const deepCwd = `${REPO}/docs/plans/${PLAN}/tasks`;
+    const fs = new FakeFs({ [otherFlight]: flightPlan('design', 'in_progress') });
+    const d: CaptureDeps = {
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: otherPlan }),
+      clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+      proc: new FakeProcess({}, deepCwd),
+      git: new FakeGit({ isRepo: true, branch: otherPlan, remoteUrl: 'github.com/x/y' }),
+      command: 'flow',
+      adapters: [streamAdapter('claude-code', TWO_EVENTS)],
+    };
+    captureTelemetry(d);
+
+    const raw = fs.readText(`${deepCwd}/.harness/temp/telemetry/sess1/1.json`);
+    const seg = JSON.parse(raw as string) as Segment;
+    const flow = seg.event_stream.find((e) => e.kind === 'flow') as (Event & { stage: string }) | undefined;
+    expect(flow?.stage).toBe('design'); // resolved from the env plan, not the cwd plan
+  });
 });

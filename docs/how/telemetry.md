@@ -131,8 +131,10 @@ kinds:
 stream (Copilot turns even carry per-interaction tokens). **Cursor** has no
 transcript timestamps, so its events are **anchored** to the IDE-store bubble
 times (`t_precision: "anchored"`) and carry **no tokens** (server-side only,
-never estimated); a headless Cursor session with no bubbles emits a `null` stream
-rather than a fabricated one. Outcome events follow each harness's result-capture
+never estimated); a headless Cursor session with no bubbles serializes an **empty
+`event_stream` with `rollup: null`** (the adapter has no timeline to anchor to)
+rather than a fabricated one — `event_stream` itself is always present, never
+`null`. Outcome events follow each harness's result-capture
 ability: Claude has the full result envelope (`checks` + `command_exit`), Copilot
 reports only success (`command_exit`), Cursor neither.
 

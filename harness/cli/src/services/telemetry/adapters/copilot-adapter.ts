@@ -295,13 +295,16 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     rawCommands.push(cmd);
     if (t !== null) commandObs.push({ cmd, t });
     // command_exit (AC-19) — a harness subcommand's exit from the `success` flag.
+    // Copilot has ONE success bool for the whole shell execution, so a compound
+    // command (`harness checks && harness flow nav`) can't be attributed per-verb
+    // — emit ONLY when exactly one harness subcommand ran (companion F004).
     const success = successByCall.get(callId);
     const at = completeAtByCall.get(callId) ?? t;
     if (success !== undefined && at !== null) {
-      for (const sig of commandSignatures(cmd)) {
-        const sub = harnessSubcommand(sig);
-        if (sub !== null) commandExits.push({ verb: sub, exit: success ? 0 : 1, t: at });
-      }
+      const subs = commandSignatures(cmd)
+        .map((sig) => harnessSubcommand(sig))
+        .filter((s): s is string => s !== null);
+      if (subs.length === 1) commandExits.push({ verb: subs[0], exit: success ? 0 : 1, t: at });
     }
   }
   const { bash, harness } = partitionCommands(rawCommands);

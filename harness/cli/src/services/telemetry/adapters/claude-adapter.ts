@@ -166,6 +166,12 @@ export const claudeAdapter: HarnessAdapter = {
     const agentTypeById = new Map<string, string | null>();
     const subagents: SegmentSubagentInput[] = [];
 
+    // Outcome correlation (AC-19): Bash tool_use ids whose command IS a harness
+    // sub-command — ONLY their tool_results are parsed as outcome envelopes, so a
+    // non-Bash result that happens to be envelope-shaped JSON (e.g. a `Read` of a
+    // fixture) can't fabricate `checks`/`command_exit` events (companion F003).
+    const harnessBashIds = new Set<string>();
+
     // v2.0 event-stream collectors — built ONLY when the transcript lines carry a
     // `timestamp` (real transcripts do; a timestamp-less source → event_stream null).
     const direct: Event[] = [];
@@ -283,6 +289,15 @@ export const claudeAdapter: HarnessAdapter = {
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
               rawCommands.push(tInput.command); // sans-params signatures extracted post-loop
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
+              // Mark this Bash call as a harness invocation so ONLY its result is
+              // parsed for outcome events (companion F003).
+              const id = typeof block.id === 'string' ? block.id : '';
+              if (
+                id !== '' &&
+                commandSignatures(tInput.command).some((sig) => harnessSubcommand(sig) !== null)
+              ) {
+                harnessBashIds.add(id);
+              }
             }
           }
         }
@@ -297,9 +312,10 @@ export const claudeAdapter: HarnessAdapter = {
           const refId = typeof block.tool_use_id === 'string' ? block.tool_use_id : '';
 
           // Outcome events (AC-19): a harness command's result envelope → `checks`
-          // and `command_exit`. Reads only codes/verdicts; non-envelope output
+          // and `command_exit` — ONLY for a tool_result produced by a harness Bash
+          // call (companion F003). Reads only codes/verdicts; non-envelope output
           // (rail mode, no `--json`) yields nothing.
-          if (ts !== null) {
+          if (ts !== null && harnessBashIds.has(refId)) {
             for (const e of outcomeEvents(
               toolResultText(block.content),
               ts,

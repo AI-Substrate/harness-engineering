@@ -247,6 +247,42 @@ describe('claudeAdapter — outcome events from a harness result envelope (T5.7,
     );
   });
 
+  it('F003 — a non-Bash tool_result with envelope-shaped JSON emits NO outcome events', () => {
+    const ls = [
+      {
+        type: 'assistant',
+        timestamp: '2026-06-24T10:00:00Z',
+        message: {
+          id: 'm1',
+          content: [{ type: 'tool_use', name: 'Read', id: 'r1', input: { file_path: '/repo/fixture.json' } }],
+        },
+      },
+      {
+        type: 'user',
+        timestamp: '2026-06-24T10:00:10Z',
+        message: {
+          role: 'user',
+          content: [
+            // a Read of a fixture file whose CONTENTS look like a harness envelope
+            { type: 'tool_result', tool_use_id: 'r1', content: JSON.stringify({ command: 'checks', status: 'ok' }) },
+          ],
+        },
+      },
+    ];
+    const t = `${ls.map((l) => JSON.stringify(l)).join('\n')}\n`;
+    const fs = new FakeFs({ [claudeTranscriptPath(HOME, REPO, 'sess-f003')]: t });
+    const env = new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess-f003' }, HOME);
+    const s = claudeAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'claude-code',
+      window: { since: 'session-start', from: 0, to: ls.length },
+    }).event_stream as Event[];
+    expect(kinds(s, 'checks')).toHaveLength(0);
+    expect(kinds(s, 'command_exit')).toHaveLength(0); // Read is not a harness Bash call
+  });
+
   it('rollup records the checks verdict + the per-verb exit (AC-19)', () => {
     const seg = serializeSegment(
       {
