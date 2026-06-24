@@ -10,6 +10,20 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.6.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.5.0...v0.6.0) (2026-06-24)
+
+
+### Features
+
+* **flow:** anchor injected loop-chores as deterministic checks (plan 033) ([#36](https://github.com/AI-Substrate/harness-engineering/issues/36)) ([10963e7](https://github.com/AI-Substrate/harness-engineering/commit/10963e70cdb0b224283846eeccb65f33dadec690))
+* harness telemetry collection (plan 034) + boot/checks quality-gate nucleus ([#37](https://github.com/AI-Substrate/harness-engineering/issues/37)) ([ed09d53](https://github.com/AI-Substrate/harness-engineering/commit/ed09d53ad27b374765cfc5bed2f371be2f344314))
+* **skills:** add grill-agent-done interrogation companion ([#29](https://github.com/AI-Substrate/harness-engineering/issues/29)) ([b417e67](https://github.com/AI-Substrate/harness-engineering/commit/b417e67f6e4b671896494acf29f82a2a16d71907))
+
+
+### Bug Fixes
+
+* **eng-harness-flow:** plain-language retro drain prompt (kill [s/t/p/e/d/a] jargon) ([#35](https://github.com/AI-Substrate/harness-engineering/issues/35)) ([56d91fa](https://github.com/AI-Substrate/harness-engineering/commit/56d91faf9c372cb432bb90940fda22af79d911b7))
+
 ## [0.5.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.4.0...v0.5.0) (2026-06-19)
 
 
