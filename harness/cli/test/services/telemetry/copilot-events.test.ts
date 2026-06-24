@@ -189,9 +189,9 @@ describe('copilotAdapter — command on execution_start, toolName on execution_c
     });
   }
 
-  it('captures the harness command despite the split start/complete events', () => {
+  it('captures the tool despite the split start/complete events', () => {
     const c = caps();
-    expect(c.harness_commands).toEqual(['checks']); // sans-params signature
+    // (the harness verb itself surfaces as a `harness` event — asserted in the next test)
     expect(c.tools).toEqual({ bash: 1 });
   });
 

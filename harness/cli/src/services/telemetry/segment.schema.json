@@ -15,18 +15,7 @@
     "branch",
     "branch_changed",
     "tokens",
-    "models",
     "effort",
-    "skills",
-    "tools",
-    "bash_commands",
-    "harness_commands",
-    "user_prompts",
-    "subagents",
-    "files",
-    "plans_touched",
-    "events",
-    "thinking",
     "event_stream",
     "rollup"
   ],
@@ -91,8 +80,6 @@
       "type": "object",
       "additionalProperties": { "type": "integer" }
     },
-    "bash_commands": { "type": "array", "items": { "type": "string" } },
-    "harness_commands": { "type": "array", "items": { "type": "string" } },
     "user_prompts": { "type": "array", "items": { "type": "integer" } },
     "subagents": {
       "type": "array",

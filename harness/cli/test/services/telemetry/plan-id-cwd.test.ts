@@ -80,6 +80,6 @@ describe('capture wires cwd-derived plan link into the segment (AC-08)', () => {
 
   it('records no plan link when neither the cwd nor the env supplies one', () => {
     const seg = captureInto('/repo/harness/cli', {});
-    expect(seg?.plans_touched).toEqual([]);
+    expect(seg?.plans_touched).toBeUndefined(); // empty ⇒ omitted (v2)
   });
 });

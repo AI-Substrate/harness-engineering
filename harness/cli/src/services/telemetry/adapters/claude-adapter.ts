@@ -1,4 +1,4 @@
-import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import { outcomeEvents } from '../outcome-events.js';
@@ -156,7 +156,6 @@ export const claudeAdapter: HarnessAdapter = {
     const tools: Record<string, number> = {};
     const written: string[] = [];
     const edited: string[] = [];
-    const rawCommands: string[] = []; // raw Bash command lines → sans-params signatures below
     const userPrompts: number[] = []; // word count of each real user prompt in the window
     const compactions: SegmentCompaction[] = [];
     let thinkingBlocks = 0;
@@ -287,7 +286,6 @@ export const claudeAdapter: HarnessAdapter = {
             } else if (name === 'Write' && typeof tInput.file_path === 'string') {
               written.push(tInput.file_path);
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
-              rawCommands.push(tInput.command); // sans-params signatures extracted post-loop
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
               // Mark this Bash call as a harness invocation so ONLY its result is
               // parsed for outcome events (companion F003).
@@ -385,8 +383,6 @@ export const claudeAdapter: HarnessAdapter = {
       };
     }
 
-    const { bash, harness } = partitionCommands(rawCommands);
-
     return {
       harness_session_id: null,
       tokens,
@@ -394,8 +390,6 @@ export const claudeAdapter: HarnessAdapter = {
       effort,
       skills: nullIfEmptyMap(skills),
       tools: nullIfEmptyMap(tools),
-      bash_commands: bash.length > 0 ? bash : null,
-      harness_commands: harness.length > 0 ? harness : null,
       user_prompts: userPrompts.length > 0 ? userPrompts : null,
       subagents: subagents.length > 0 ? subagents : null,
       files: written.length > 0 || edited.length > 0 ? { written, edited } : null,

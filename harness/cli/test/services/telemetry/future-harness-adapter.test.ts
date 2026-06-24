@@ -15,6 +15,7 @@ import {
 import { sessionDirFor } from '../../../src/services/telemetry/cursor.js';
 import {
   SEGMENT_FIELD_KEYS,
+  SEGMENT_REQUIRED_KEYS,
   type SegmentInput,
   serializeSegment,
 } from '../../../src/services/telemetry/segment.js';
@@ -79,16 +80,18 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     };
     const seg = serializeSegment(input, REPO);
 
-    // schema-shaped: exactly the enumerated field set, version pinned
-    expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+    // schema-shaped: every key is in the allowlist, the always-present subset is
+    // emitted, version pinned. Empty v1-compat collections are omitted (v2).
+    for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
+    for (const k of SEGMENT_REQUIRED_KEYS) expect(Object.keys(seg)).toContain(k);
     expect(seg.schema_version).toBe('2.0');
-    // the one implemented capability survives; everything unimplemented is null/empty
+    // the one implemented capability survives; everything unimplemented is null/omitted
     expect(seg.tools).toEqual({ AcmeTool: 2 });
     expect(seg.tokens).toBeNull();
-    expect(seg.thinking).toBeNull();
-    expect(seg.skills).toEqual({});
-    expect(seg.subagents).toEqual([]);
-    expect(seg.files).toEqual({ written: [], edited: [] });
+    expect(seg.thinking).toBeUndefined();
+    expect(seg.skills).toBeUndefined();
+    expect(seg.subagents).toBeUndefined();
+    expect(seg.files).toBeUndefined();
   });
 
   it('the null-default safety net handles ANY unknown harness id', () => {
@@ -122,7 +125,8 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     const written = fs.readText(entryPath);
     expect(written).not.toBeNull();
     const seg = JSON.parse(written as string);
-    expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+    for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
+    for (const k of SEGMENT_REQUIRED_KEYS) expect(Object.keys(seg)).toContain(k);
     // The injected adapter's capability flows through unchanged...
     expect(seg.tools).toEqual({ AcmeTool: 2 });
     expect(seg.tokens).toBeNull();

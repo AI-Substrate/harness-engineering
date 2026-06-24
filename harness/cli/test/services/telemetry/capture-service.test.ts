@@ -136,7 +136,7 @@ describe('T005 — captureTelemetry happy path', () => {
     const seg = readWrittenSegment(fs, 'sessN');
     expect(seg).not.toBeNull();
     expect(seg?.tokens).toBeNull();
-    expect(seg?.skills).toEqual({});
+    expect(seg?.skills).toBeUndefined(); // empty v1-compat collections are omitted (v2)
     expect(seg?.harness).toBe('claude-code');
   });
 });
@@ -276,5 +276,44 @@ describe('branch-change detection + branch event', () => {
     const seg = readWrittenSegment(fs, 'sbr');
     expect(seg?.branch_changed).toBe(false);
     expect(branchEvent(fs)).toBeUndefined();
+  });
+});
+
+describe('triggering-command harness event (timeline visibility)', () => {
+  const STREAM: Event[] = [
+    { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 3 },
+    { t: '2026-06-24T09:01:00Z', kind: 'turn', dur_s: 50 },
+  ];
+
+  function depsWith(fs: FakeFs, stream: Event[]): CaptureDeps {
+    return {
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'shc' }),
+      clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+      proc: new FakeProcess({}, REPO),
+      git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),
+      command: 'boot',
+      adapters: [testAdapter('claude-code', 240, { event_stream: stream })],
+    };
+  }
+
+  it('appends the triggering command as a zero-gap `harness` event at the window end', () => {
+    const fs = new FakeFs({});
+    captureTelemetry(depsWith(fs, STREAM));
+    const stream = readWrittenSegment(fs, 'shc')?.event_stream ?? [];
+    const last = stream[stream.length - 1];
+    expect(last).toMatchObject({ kind: 'harness', verb: 'boot', t_precision: 'anchored' });
+    // anchored to the LAST work event's t (zero gap) — never the capture clock, so
+    // the trailing span isn't mis-attributed as working time.
+    expect(last.t).toBe(STREAM[STREAM.length - 1].t);
+    expect(last.t).not.toBe('2026-06-24T09:02:00Z'); // not the timecode
+  });
+
+  it('does NOT append to an empty window (stays empty, rollup null preserved)', () => {
+    const fs = new FakeFs({});
+    captureTelemetry(depsWith(fs, []));
+    const seg = readWrittenSegment(fs, 'shc');
+    expect(seg?.event_stream).toEqual([]);
+    expect(seg?.rollup).toBeNull();
   });
 });

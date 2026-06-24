@@ -125,10 +125,11 @@ describe('claudeAdapter.extract — non-token capabilities', () => {
 describe('claudeAdapter.extract — commands + user prompts (schema 1.1)', () => {
   const caps = claudeAdapter.extract({ ...source(seededFs(), seededEnv()), window: wholeWindow() });
 
-  it('reduces a Bash command to a sans-params signature — the secret in the flag is dropped', () => {
-    // fixture: `curl -H Authorization:Bearer-SUPER_SECRET… https://…` → just `curl`
-    expect(caps.bash_commands).toEqual(['curl']);
-    expect(caps.harness_commands ?? null).toBeNull(); // no harness invocation in the fixture
+  it('keeps a Bash run as a tool-count only — the command and its secret flag never appear', () => {
+    // fixture: `curl -H Authorization:Bearer-SUPER_SECRET… https://…` → counted as a tool,
+    // args dropped entirely (bash_commands was removed from the contract — v2).
+    expect(caps.tools?.Bash).toBe(1);
+    expect(JSON.stringify(caps)).not.toContain('SUPER_SECRET');
   });
 
   it('records each user prompt as a WORD COUNT only — never the text (which here holds a secret)', () => {

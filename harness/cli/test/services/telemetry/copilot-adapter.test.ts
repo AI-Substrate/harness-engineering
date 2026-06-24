@@ -91,12 +91,12 @@ describe('copilotAdapter.extract — token math from process-log assistant_usage
     expect(caps.models).toEqual({ 'claude-opus-4-8': { turns: 2, output_tokens: 95 } });
   });
 
-  it('reads effort + tools (deduped per call) and the sans-params command/prompt signals', () => {
+  it('reads effort + tools (deduped per call) and the sans-text prompt signal', () => {
     expect(caps.effort).toBe('high');
     expect(caps.tools).toEqual({ bash: 2 });
-    expect(caps.bash_commands).toEqual(['git status']); // `git status -s` → `-s` dropped
-    expect(caps.harness_commands).toEqual(['flow nav']); // `harness flow nav --to …` → path dropped
     expect(caps.user_prompts).toEqual([6]); // 6-word prompt; the text (incl. its secret) is never kept
+    // bash/harness commands were dropped from the contract — the harness verb now
+    // surfaces only as a `harness` event (asserted via the event stream below).
   });
 
   it('extracts subagent identity from events subagent.completed; tokens null (not correlatable)', () => {
@@ -187,8 +187,6 @@ describe('copilotAdapter.extract — null-on-absence (AC-03)', () => {
     expect(caps.models ?? null).toBeNull();
     expect(caps.effort).toBe('high');
     expect(caps.tools).toEqual({ bash: 2 });
-    expect(caps.bash_commands).toEqual(['git status']);
-    expect(caps.harness_commands).toEqual(['flow nav']);
     expect(caps.user_prompts).toEqual([6]);
     expect(caps.subagents?.[0]?.agent_name).toBe('explorer');
   });

@@ -60,8 +60,6 @@ export interface HarnessCapabilities {
   effort?: string | null;
   skills?: Record<string, number> | null;
   tools?: Record<string, number> | null;
-  bash_commands?: string[] | null;
-  harness_commands?: string[] | null;
   user_prompts?: number[] | null;
   subagents?: SegmentSubagentInput[] | null;
   files?: SegmentFiles | null;
@@ -112,8 +110,6 @@ export const nullDefaultAdapter: HarnessAdapter = {
     effort: null,
     skills: null,
     tools: null,
-    bash_commands: null,
-    harness_commands: null,
     user_prompts: null,
     subagents: null,
     files: null,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   SEGMENT_FIELD_KEYS,
+  SEGMENT_REQUIRED_KEYS,
   SEGMENT_SCHEMA_VERSION,
   type SegmentInput,
   serializeSegment,
@@ -34,9 +35,19 @@ function baseInput(): SegmentInput {
 }
 
 describe('T001 — serializeSegment: key-set is the allowlist', () => {
-  it('emits exactly the enumerated field set (no more, no less)', () => {
+  it('an empty input emits exactly the always-present (required) key set', () => {
+    // v2.0: the v1-compat collections are OMITTED when empty (budget), so an
+    // all-empty input serializes only the headline + substrate fields.
     const seg = serializeSegment(baseInput(), REPO);
-    expect(Object.keys(seg).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+    expect(Object.keys(seg).sort()).toEqual([...SEGMENT_REQUIRED_KEYS].sort());
+  });
+
+  it('every emitted key is in the allowlist — a subset, never a smuggled field', () => {
+    const seg = serializeSegment(
+      { ...baseInput(), skills: { 'the-flow': 1 }, user_prompts: [3], thinking: { blocks: 2 } },
+      REPO,
+    );
+    for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
   });
 
   it('pins schema_version to "2.0"', () => {
@@ -45,24 +56,31 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     expect(seg.schema_version).toBe('2.0');
   });
 
-  it('defaults unimplemented capabilities to null / empty (never absent, never estimated)', () => {
-    const seg = serializeSegment(baseInput(), REPO);
+  it('headline capabilities stay present-but-null; empty v1-compat collections are OMITTED', () => {
+    const seg = serializeSegment(baseInput(), REPO) as Record<string, unknown>;
+    // Headline fields are always present (null when unimplemented, never estimated).
     expect(seg.tokens).toBeNull();
     expect(seg.effort).toBeNull();
-    expect(seg.thinking).toBeNull();
-    expect(seg.models).toEqual({});
-    expect(seg.skills).toEqual({});
-    expect(seg.tools).toEqual({});
-    expect(seg.bash_commands).toEqual([]);
-    expect(seg.harness_commands).toEqual([]);
-    expect(seg.user_prompts).toEqual([]);
-    expect(seg.subagents).toEqual([]);
-    expect(seg.plans_touched).toEqual([]);
-    expect(seg.files).toEqual({ written: [], edited: [] });
-    expect(seg.events).toEqual({ compactions: [], api_errors: 0, local_commands: 0 });
     // v2.0 — no events supplied ⇒ empty stream + null rollup (never estimated)
     expect(seg.event_stream).toEqual([]);
     expect(seg.rollup).toBeNull();
+    // Empty v1-compat collections are dropped entirely (not carried as {}/[]).
+    for (const k of [
+      'models',
+      'skills',
+      'tools',
+      'user_prompts',
+      'subagents',
+      'files',
+      'plans_touched',
+      'events',
+      'thinking',
+    ]) {
+      expect(Object.keys(seg)).not.toContain(k);
+    }
+    // bash_commands / harness_commands were removed from the contract entirely.
+    expect(Object.keys(seg)).not.toContain('bash_commands');
+    expect(Object.keys(seg)).not.toContain('harness_commands');
   });
 });
 
@@ -159,19 +177,9 @@ describe('T001 — PRIVACY: planted-secret negative control (AC-04)', () => {
   });
 });
 
-describe('T001 — schema 1.1 fields: command/prompt arrays + grouped subagents', () => {
-  it('keeps bash/harness command and user-prompt arrays in order (no dedupe)', () => {
-    const seg = serializeSegment(
-      {
-        ...baseInput(),
-        bash_commands: ['git status', 'git status', 'npm run'],
-        harness_commands: ['boot', 'flow nav'],
-        user_prompts: [42, 7, 15],
-      },
-      REPO,
-    );
-    expect(seg.bash_commands).toEqual(['git status', 'git status', 'npm run']);
-    expect(seg.harness_commands).toEqual(['boot', 'flow nav']);
+describe('T001 — v1-compat view: prompt array + grouped subagents', () => {
+  it('keeps the user-prompt word-count array in order (no dedupe) when populated', () => {
+    const seg = serializeSegment({ ...baseInput(), user_prompts: [42, 7, 15] }, REPO);
     expect(seg.user_prompts).toEqual([42, 7, 15]);
   });
 

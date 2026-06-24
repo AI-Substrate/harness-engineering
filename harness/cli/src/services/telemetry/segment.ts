@@ -102,7 +102,18 @@ export interface SegmentThinking {
   blocks: number;
 }
 
-/** The normalized counts-only segment. Every top-level key is in {@link SEGMENT_FIELD_KEYS}. */
+/**
+ * The normalized counts-only segment. Every key is in {@link SEGMENT_FIELD_KEYS};
+ * the always-present subset is {@link SEGMENT_REQUIRED_KEYS}.
+ *
+ * v2.0 leans on the event stream as the substrate: the **headline** fields
+ * (identity + window + tokens/effort + `event_stream`/`rollup`) are always
+ * present, while the **v1 compatibility view** (`models`/`skills`/`tools`/
+ * `subagents`/`files`/… — all DERIVABLE from `event_stream`) is OMITTED when
+ * empty to keep the record lean. `bash_commands`/`harness_commands` were dropped
+ * entirely (v2): bash runs surface as `tools` events and harness verbs as
+ * `harness` events in the timeline — the array duplicated the stream.
+ */
 export interface Segment {
   schema_version: string;
   /** The harness command that triggered capture (e.g. `flow`). */
@@ -116,33 +127,29 @@ export interface Segment {
   branch: string | null;
   branch_changed: boolean;
   tokens: SegmentTokens | null;
-  models: Record<string, SegmentModelStat>;
   effort: string | null;
-  skills: Record<string, number>;
-  tools: Record<string, number>;
-  /** Every bash command run in the window, sans params (e.g. `git status`); harness invocations excluded — see `harness_commands`. */
-  bash_commands: string[];
-  /** Every harness sub-command run in the window, sans params (e.g. `boot`, `flow nav`). */
-  harness_commands: string[];
-  /** Word count of each user prompt in the window, in order — how much / how often the user is steering (never the text). */
-  user_prompts: number[];
-  subagents: SegmentSubagent[];
-  files: SegmentFiles;
-  plans_touched: string[];
-  events: SegmentEvents;
-  thinking: SegmentThinking | null;
-  /** v2.0 — the ordered timestamped event stream (the substrate; counts are derived). */
+  /** v2.0 — the ordered timestamped event stream (the substrate; counts are derived). Always present. */
   event_stream: Event[];
-  /** v2.0 — the derived measures view; a pure function of {@link event_stream}. */
+  /** v2.0 — the derived measures view; a pure function of {@link event_stream}; null when the stream is empty. */
   rollup: Rollup | null;
+  // --- v1 compatibility view: derivable from `event_stream`, each OMITTED when empty (budget) ---
+  models?: Record<string, SegmentModelStat>;
+  skills?: Record<string, number>;
+  tools?: Record<string, number>;
+  /** Word count of each user prompt in the window, in order (never the text). */
+  user_prompts?: number[];
+  subagents?: SegmentSubagent[];
+  files?: SegmentFiles;
+  plans_touched?: string[];
+  events?: SegmentEvents;
+  thinking?: SegmentThinking | null;
 }
 
 /**
- * The canonical allowlist — the EXACT top-level field set of a {@link Segment}.
- * `segment-schema.test.ts` asserts `segment.schema.json`'s property set equals
- * this (key-set equality, not subset), and T001 asserts a serialized segment's
- * keys equal this. Adding a field here without bumping {@link SEGMENT_SCHEMA_VERSION}
- * trips the version-freeze test.
+ * The canonical allowlist — every POSSIBLE top-level key of a {@link Segment}.
+ * `segment.schema.json`'s property set is kept key-set-EQUAL to this; a serialized
+ * segment's keys are a SUBSET (the v1-compat view is omitted when empty). Adding a
+ * key here without bumping {@link SEGMENT_SCHEMA_VERSION} trips the version-freeze test.
  */
 export const SEGMENT_FIELD_KEYS = [
   'schema_version',
@@ -154,18 +161,38 @@ export const SEGMENT_FIELD_KEYS = [
   'branch',
   'branch_changed',
   'tokens',
-  'models',
   'effort',
+  'event_stream',
+  'rollup',
+  'models',
   'skills',
   'tools',
-  'bash_commands',
-  'harness_commands',
   'user_prompts',
   'subagents',
   'files',
   'plans_touched',
   'events',
   'thinking',
+] as const;
+
+/**
+ * The always-present subset of {@link SEGMENT_FIELD_KEYS} — the schema's `required`
+ * set. The headline identity/window/token fields plus the v2 `event_stream`/`rollup`
+ * substrate are always emitted; everything else (the v1-compat view) is omitted when
+ * empty, so it is optional in the schema. `segment-schema.test.ts` pins `required`
+ * to this.
+ */
+export const SEGMENT_REQUIRED_KEYS = [
+  'schema_version',
+  'command',
+  'harness',
+  'harness_session_id',
+  'timecode',
+  'window',
+  'branch',
+  'branch_changed',
+  'tokens',
+  'effort',
   'event_stream',
   'rollup',
 ] as const;
@@ -184,8 +211,6 @@ export interface SegmentInput {
   effort?: string | null;
   skills?: Record<string, number>;
   tools?: Record<string, number>;
-  bash_commands?: string[];
-  harness_commands?: string[];
   user_prompts?: number[];
   subagents?: SegmentSubagentInput[];
   files?: { written?: string[]; edited?: string[] };
@@ -371,7 +396,9 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
   // v2.0: the event stream is the substrate; the rollup is DERIVED from the
   // serialized events (never taken from the caller) so it can never drift (AC-16).
   const eventStream = (input.event_stream ?? []).map(serializeEvent);
-  return {
+
+  // Headline fields — always present (identity + window + tokens/effort).
+  const seg = {
     schema_version: SEGMENT_SCHEMA_VERSION,
     command: input.command,
     harness: input.harness,
@@ -385,30 +412,41 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     branch: input.branch,
     branch_changed: input.branch_changed,
     tokens: input.tokens ?? null,
-    models: input.models ?? {},
     effort: input.effort ?? null,
-    skills: input.skills ?? {},
-    tools: input.tools ?? {},
-    bash_commands: [...(input.bash_commands ?? [])],
-    harness_commands: [...(input.harness_commands ?? [])],
-    user_prompts: [...(input.user_prompts ?? [])],
-    subagents: groupSubagents(input.subagents ?? []),
-    files: {
-      written: (input.files?.written ?? []).map((p) => relativizePath(p, repoRoot)),
-      edited: (input.files?.edited ?? []).map((p) => relativizePath(p, repoRoot)),
-    },
-    plans_touched: dedupe(input.plans_touched ?? []),
-    events: {
-      compactions: (input.events?.compactions ?? []).map((c) => ({
-        trigger: c.trigger ?? null,
-        pre_tokens: c.pre_tokens,
-        post_tokens: c.post_tokens,
-      })),
-      api_errors: input.events?.api_errors ?? 0,
-      local_commands: input.events?.local_commands ?? 0,
-    },
-    thinking: input.thinking ?? null,
-    event_stream: eventStream,
-    rollup: eventStream.length > 0 ? computeRollup(eventStream) : null,
-  };
+  } as Segment;
+
+  // v1 compatibility view — DERIVABLE from the event stream; each key is OMITTED
+  // when empty (budget). Still an allowlist BY CONSTRUCTION: every value is picked
+  // explicitly, the input is never spread.
+  const models = input.models ?? {};
+  if (Object.keys(models).length > 0) seg.models = models;
+  const skills = input.skills ?? {};
+  if (Object.keys(skills).length > 0) seg.skills = skills;
+  const tools = input.tools ?? {};
+  if (Object.keys(tools).length > 0) seg.tools = tools;
+  const userPrompts = input.user_prompts ?? [];
+  if (userPrompts.length > 0) seg.user_prompts = [...userPrompts];
+  const subagents = groupSubagents(input.subagents ?? []);
+  if (subagents.length > 0) seg.subagents = subagents;
+  const written = (input.files?.written ?? []).map((p) => relativizePath(p, repoRoot));
+  const edited = (input.files?.edited ?? []).map((p) => relativizePath(p, repoRoot));
+  if (written.length > 0 || edited.length > 0) seg.files = { written, edited };
+  const plans = dedupe(input.plans_touched ?? []);
+  if (plans.length > 0) seg.plans_touched = plans;
+  const compactions = (input.events?.compactions ?? []).map((c) => ({
+    trigger: c.trigger ?? null,
+    pre_tokens: c.pre_tokens,
+    post_tokens: c.post_tokens,
+  }));
+  const apiErrors = input.events?.api_errors ?? 0;
+  const localCommands = input.events?.local_commands ?? 0;
+  if (compactions.length > 0 || apiErrors > 0 || localCommands > 0) {
+    seg.events = { compactions, api_errors: apiErrors, local_commands: localCommands };
+  }
+  if (input.thinking != null) seg.thinking = input.thinking;
+
+  // v2.0 substrate — always present (the event stream; the rollup it derives).
+  seg.event_stream = eventStream;
+  seg.rollup = eventStream.length > 0 ? computeRollup(eventStream) : null;
+  return seg;
 }

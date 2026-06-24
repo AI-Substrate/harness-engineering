@@ -66,11 +66,11 @@ describe('cursorAdapter.extract — transcript capabilities (hand-derived)', () 
     expect(caps.user_prompts).toEqual([7]); // "please run the build and check status"
   });
 
-  it('counts tools and splits Shell commands into bash/harness signatures (sans params)', () => {
+  it('counts Shell tools and drops all command params — the secret never appears (v2)', () => {
     expect(caps.tools).toEqual({ Shell: 2, Skill: 1 });
-    // `git status -s && harness boot` → bash `git status` + harness `boot`; `cat …secret.env` → `cat`
-    expect(caps.bash_commands).toEqual(['git status', 'cat']);
-    expect(caps.harness_commands).toEqual(['boot']);
+    // `git status -s && harness boot` + `cat …secret.env`: bash/harness arrays were removed
+    // from the contract; commands surface only as tool-counts (+ `harness` events), args dropped.
+    expect(JSON.stringify(caps)).not.toContain('SUPER_SECRET');
   });
 
   it('extracts skills from Skill tool_use; leaves tokens/models null (sqlite, not in transcript)', () => {

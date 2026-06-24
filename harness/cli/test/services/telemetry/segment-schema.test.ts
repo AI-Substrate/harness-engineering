@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   SEGMENT_FIELD_KEYS,
+  SEGMENT_REQUIRED_KEYS,
   SEGMENT_SCHEMA_VERSION,
   type SegmentInput,
   serializeSegment,
@@ -13,9 +14,12 @@ import {
  * T002 (plan 1.2 · AC-12 · C4/F3) — the `segment.schema.json` contract.
  *
  * The schema is the cross-tool / cross-repo consumer contract; the TS type +
- * allowlist are the producer side. These tests pin them KEY-SET-EQUAL (not
- * subset) so a field can never appear on one side only, and freeze the field
- * set against the schema_version so a silent contract change is impossible.
+ * allowlist are the producer side. These tests pin the schema PROPERTY set
+ * key-set-equal to SEGMENT_FIELD_KEYS (so a field can never appear on one side
+ * only) and pin the schema `required` set to SEGMENT_REQUIRED_KEYS (the
+ * always-present headline + v2 substrate fields; the v1-compat view is optional,
+ * omitted when empty). The field set is frozen against the schema_version so a
+ * silent contract change is impossible.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -34,8 +38,13 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(Object.keys(schema.properties).sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
   });
 
-  it('every field is required (no optional top-level field)', () => {
-    expect([...schema.required].sort()).toEqual([...SEGMENT_FIELD_KEYS].sort());
+  it('the required set is exactly the always-present (headline + substrate) keys', () => {
+    expect([...schema.required].sort()).toEqual([...SEGMENT_REQUIRED_KEYS].sort());
+  });
+
+  it('required is a strict subset of the allowlist (the v1-compat view is optional)', () => {
+    for (const k of SEGMENT_REQUIRED_KEYS) expect(SEGMENT_FIELD_KEYS).toContain(k);
+    expect(SEGMENT_REQUIRED_KEYS.length).toBeLessThan(SEGMENT_FIELD_KEYS.length);
   });
 
   it('forbids additional top-level properties (no smuggled fields)', () => {
@@ -85,6 +94,7 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
           tool_uses: 4,
         },
       ],
+      user_prompts: [12, 4],
       files: { written: ['/repo/a.ts'], edited: ['/repo/b.ts'] },
       plans_touched: ['034-harness-telemetry-collection'],
       events: {
@@ -93,9 +103,12 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
         local_commands: 1,
       },
       thinking: { blocks: 7 },
+      // a non-empty stream ⇒ event_stream populated + rollup derived (both present)
+      event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }],
     };
 
     const seg = serializeSegment(golden, REPO) as Record<string, unknown>;
+    // A fully-populated input emits EVERY allowlisted field (nothing omitted).
     for (const key of SEGMENT_FIELD_KEYS) {
       expect(seg[key], `field "${key}" must be present`).toBeDefined();
     }
@@ -121,20 +134,18 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
       'branch',
       'branch_changed',
       'tokens',
-      'models',
       'effort',
+      'event_stream',
+      'rollup',
+      'models',
       'skills',
       'tools',
-      'bash_commands',
-      'harness_commands',
       'user_prompts',
       'subagents',
       'files',
       'plans_touched',
       'events',
       'thinking',
-      'event_stream',
-      'rollup',
     ];
     if (SEGMENT_SCHEMA_VERSION === '2.0') {
       expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_0_FIELDS].sort());

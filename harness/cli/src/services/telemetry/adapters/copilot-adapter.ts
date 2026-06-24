@@ -1,4 +1,4 @@
-import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import type { ToolCall } from '../rollup.js';
@@ -161,8 +161,6 @@ const nullCaps: HarnessCapabilities = {
 interface EventsView {
   effort: string | null;
   tools: Record<string, number>;
-  bash: string[];
-  harness: string[];
   userPrompts: number[];
   subagents: SegmentSubagentInput[];
   /** Interaction ids active in THIS window — the token-attribution key. */
@@ -246,7 +244,7 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       // toolName: `arguments.command` and the (moved) `toolName` can land on
       // different events (execution_start vs _complete) across CLI versions, so
       // gating capture on the toolName in the SAME event would silently drop
-      // bash_commands / harness_commands / `harness` events for a split execution
+      // tool-burst and `harness` events for a split execution
       // (companion MEDIUM — adjacent to the HIGH tool-count fix). Only the
       // `command` field is read; arguments otherwise carry free text (AC-04).
       // Resolved to bash/shell post-loop via toolNameByCall.
@@ -286,13 +284,11 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
 
   // Resolve which captured commands belong to a shell execution — the toolName may
   // have arrived on a different event than `arguments.command` (companion MEDIUM).
-  const rawCommands: string[] = [];
   const commandObs: { cmd: string; t: string }[] = [];
   const commandExits: { verb: string; exit: number; t: string }[] = [];
   for (const [callId, { cmd, t }] of commandByCall) {
     const tn = toolNameByCall.get(callId);
     if (tn !== 'bash' && tn !== 'shell') continue;
-    rawCommands.push(cmd);
     if (t !== null) commandObs.push({ cmd, t });
     // command_exit (AC-19) — a harness subcommand's exit from the `success` flag.
     // Copilot has ONE success bool for the WHOLE shell execution, so it can be
@@ -310,13 +306,9 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       }
     }
   }
-  const { bash, harness } = partitionCommands(rawCommands);
-
   return {
     effort,
     tools,
-    bash,
-    harness,
     userPrompts,
     subagents,
     windowInteractionIds,
@@ -359,8 +351,6 @@ export const copilotAdapter: HarnessAdapter = {
         : {
             effort: null,
             tools: {},
-            bash: [],
-            harness: [],
             userPrompts: [],
             subagents: [],
             windowInteractionIds: new Set(),
@@ -503,8 +493,6 @@ export const copilotAdapter: HarnessAdapter = {
       effort,
       skills: null,
       tools: Object.keys(ev.tools).length > 0 ? ev.tools : null,
-      bash_commands: ev.bash.length > 0 ? ev.bash : null,
-      harness_commands: ev.harness.length > 0 ? ev.harness : null,
       user_prompts: ev.userPrompts.length > 0 ? ev.userPrompts : null,
       subagents: ev.subagents.length > 0 ? ev.subagents : null,
       files: null,

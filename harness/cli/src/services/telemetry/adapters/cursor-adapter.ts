@@ -1,5 +1,5 @@
 import type { EnvPort } from '../../../adapters/env/env-port.js';
-import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
@@ -151,8 +151,6 @@ const nullCaps: HarnessCapabilities = {
   effort: null,
   skills: null,
   tools: null,
-  bash_commands: null,
-  harness_commands: null,
   user_prompts: null,
   subagents: null,
   files: null,
@@ -262,7 +260,6 @@ export const cursorAdapter: HarnessAdapter = {
 
     const tools: Record<string, number> = {};
     const skills: Record<string, number> = {};
-    const rawCommands: string[] = [];
     const userPrompts: number[] = [];
     let assistantTurns = 0;
 
@@ -314,7 +311,6 @@ export const cursorAdapter: HarnessAdapter = {
           if (at !== undefined) toolCalls.push({ name, t: at });
           const input = (b.input ?? {}) as Record<string, unknown>;
           if ((name === 'Shell' || name === 'Bash') && typeof input.command === 'string') {
-            rawCommands.push(input.command);
             if (at !== undefined) commandObs.push({ cmd: input.command, t: at });
           } else if (name === 'Skill' && typeof input.skill === 'string') {
             skills[input.skill] = (skills[input.skill] ?? 0) + 1;
@@ -336,7 +332,6 @@ export const cursorAdapter: HarnessAdapter = {
       ? buildEventStream({ direct, toolCalls, skillOpens, lastSkillActive: false, precision: 'anchored' })
       : null;
 
-    const { bash, harness } = partitionCommands(rawCommands);
     return {
       harness_session_id: null,
       tokens: null, // Cursor keeps per-request token CONSUMPTION server-side only
@@ -344,8 +339,6 @@ export const cursorAdapter: HarnessAdapter = {
       effort: null,
       skills: nullIfEmptyMap(skills),
       tools: nullIfEmptyMap(tools),
-      bash_commands: bash.length > 0 ? bash : null,
-      harness_commands: harness.length > 0 ? harness : null,
       user_prompts: userPrompts.length > 0 ? userPrompts : null,
       subagents: null,
       files: null,

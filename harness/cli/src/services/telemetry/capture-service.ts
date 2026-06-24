@@ -203,6 +203,28 @@ function withBranchEvent(branch: BranchInfo, stream: readonly Event[]): Event[] 
   return [e, ...stream];
 }
 
+/**
+ * Append a `harness` event for the command that triggered THIS capture (e.g.
+ * `boot`, `flow`) so harness commands are visible in the reconstructed timeline.
+ *
+ * Anchored to the LAST event's timestamp — NOT the capture clock — deliberately: a
+ * pure timeline marker that adds ZERO gap, so the (possibly idle) span between the
+ * last observed work and the command firing is never mis-attributed as agent
+ * working-time or stage-time. `t_precision:'anchored'` flags the inexact stamp.
+ *
+ * Appended ONLY to a NON-empty stream — a truly-empty window stays empty (rollup
+ * null preserved), and the top-level `command` still names it. Mirrors
+ * {@link withFlowEvent}/{@link withBranchEvent}'s no-op-on-empty contract. Detected
+ * agent-run harness verbs already arrive as `harness` events from the adapters;
+ * this adds only the triggering verb (not yet in the window's transcript at capture
+ * time, so it can't duplicate one).
+ */
+function withHarnessCommandEvent(command: string, stream: readonly Event[]): Event[] {
+  if (stream.length === 0 || command === '') return [...stream];
+  const last = stream[stream.length - 1];
+  return [...stream, { t: last.t, t_precision: 'anchored', kind: 'harness', verb: command }];
+}
+
 /** Merge detection context + adapter capabilities into a counts-only segment input. */
 function buildInput(
   deps: CaptureDeps,
@@ -213,11 +235,12 @@ function buildInput(
   branch: BranchInfo,
 ): SegmentInput {
   const planId = resolvePlanId(deps.env, cwd);
+  const timecode = deps.clock.nowIso();
   return {
     command: deps.command,
     harness: detected.harness,
     harness_session_id: detected.sessionId,
-    timecode: deps.clock.nowIso(),
+    timecode,
     window,
     branch: branch.current,
     // branch-change is a git fact computed here; the adapter capability stays null.
@@ -227,8 +250,6 @@ function buildInput(
     effort: caps.effort ?? null,
     skills: caps.skills ?? {},
     tools: caps.tools ?? {},
-    bash_commands: caps.bash_commands ?? [],
-    harness_commands: caps.harness_commands ?? [],
     user_prompts: caps.user_prompts ?? [],
     subagents: caps.subagents ?? [],
     files: caps.files ?? { written: [], edited: [] },
@@ -239,7 +260,12 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
-    event_stream: withBranchEvent(branch, withFlowEvent(deps, cwd, planId, caps.event_stream ?? [])),
+    // Compose the timeline: flow + branch prepend at the window start; the
+    // triggering harness command appends as a zero-gap marker at the window end.
+    event_stream: withHarnessCommandEvent(
+      deps.command,
+      withBranchEvent(branch, withFlowEvent(deps, cwd, planId, caps.event_stream ?? [])),
+    ),
   };
 }
 
