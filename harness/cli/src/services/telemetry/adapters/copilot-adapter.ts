@@ -175,6 +175,8 @@ interface EventsView {
   subagentEvts: { t: string; name: string }[];
   modelEvts: { t: string; model: string; effort?: string }[];
   commandObs: { cmd: string; t: string }[];
+  /** harness command outcomes from the `success` flag (no envelope ⇒ no `checks`). */
+  commandExits: { verb: string; exit: number; t: string }[];
   /** interactionId → turn_start / turn_end timestamps (paired into turn events post-loop). */
   turnStart: Map<string, string>;
   turnEnd: Map<string, string>;
@@ -190,6 +192,8 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // command line by call id, captured INDEPENDENTLY of toolName (they can land on
   // different events) — resolved to bash/shell post-loop via toolNameByCall.
   const commandByCall = new Map<string, { cmd: string; t: string | null }>();
+  const successByCall = new Map<string, boolean>(); // execution_complete `success` → command_exit
+  const completeAtByCall = new Map<string, string>(); // execution_complete ts → command_exit `t`
   const userPrompts: number[] = []; // word count of each user prompt in the window
   const subagents: SegmentSubagentInput[] = [];
   const windowInteractionIds = new Set<string>();
@@ -250,6 +254,13 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
         const cmd = str(asObj(data.arguments).command);
         if (cmd !== null) commandByCall.set(callId, { cmd, t: ts });
       }
+      // The execution's outcome (AC-19): Copilot reports a `success` boolean on
+      // completion (it carries no result envelope, so `checks` isn't derivable —
+      // command_exit only). Timestamp the exit at the completion event.
+      if (o.type === 'tool.execution_complete' && callId !== null) {
+        if (typeof data.success === 'boolean') successByCall.set(callId, data.success);
+        if (ts !== null) completeAtByCall.set(callId, ts);
+      }
     } else if (o.type === 'subagent.completed') {
       const name = str(data.agentName) ?? str(data.agentDisplayName);
       subagents.push({
@@ -277,11 +288,20 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // have arrived on a different event than `arguments.command` (companion MEDIUM).
   const rawCommands: string[] = [];
   const commandObs: { cmd: string; t: string }[] = [];
+  const commandExits: { verb: string; exit: number; t: string }[] = [];
   for (const [callId, { cmd, t }] of commandByCall) {
     const tn = toolNameByCall.get(callId);
-    if (tn === 'bash' || tn === 'shell') {
-      rawCommands.push(cmd);
-      if (t !== null) commandObs.push({ cmd, t });
+    if (tn !== 'bash' && tn !== 'shell') continue;
+    rawCommands.push(cmd);
+    if (t !== null) commandObs.push({ cmd, t });
+    // command_exit (AC-19) — a harness subcommand's exit from the `success` flag.
+    const success = successByCall.get(callId);
+    const at = completeAtByCall.get(callId) ?? t;
+    if (success !== undefined && at !== null) {
+      for (const sig of commandSignatures(cmd)) {
+        const sub = harnessSubcommand(sig);
+        if (sub !== null) commandExits.push({ verb: sub, exit: success ? 0 : 1, t: at });
+      }
     }
   }
   const { bash, harness } = partitionCommands(rawCommands);
@@ -300,6 +320,7 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     subagentEvts,
     modelEvts,
     commandObs,
+    commandExits,
     turnStart,
     turnEnd,
     anyTs,
@@ -343,6 +364,7 @@ export const copilotAdapter: HarnessAdapter = {
             subagentEvts: [],
             modelEvts: [],
             commandObs: [],
+            commandExits: [],
             turnStart: new Map(),
             turnEnd: new Map(),
             anyTs: false,
@@ -462,6 +484,7 @@ export const copilotAdapter: HarnessAdapter = {
       ...turnEvents,
       ...ev.subagentEvts.map((s): Event => ({ t: s.t, kind: 'subagent', name: s.name, status: 'completed' })),
       ...harnessEvents,
+      ...ev.commandExits.map((c): Event => ({ t: c.t, kind: 'command_exit', verb: c.verb, exit: c.exit })),
     ];
     const event_stream = ev.anyTs
       ? buildEventStream({ direct, toolCalls: ev.toolCalls })

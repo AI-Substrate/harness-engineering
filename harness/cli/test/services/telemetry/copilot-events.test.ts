@@ -221,3 +221,47 @@ describe('copilotAdapter — command on execution_start, toolName on execution_c
     expect(JSON.stringify(seg)).not.toContain('--json'); // params stripped
   });
 });
+
+describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', () => {
+  // Copilot carries no result envelope (only `success`), so it yields command_exit
+  // for a harness command but NOT a checks event.
+  function streamFor(success: boolean): Event[] {
+    const lines = [
+      { type: 'user.message', timestamp: '2026-06-23T09:00:02Z', data: { interactionId: 'i1', content: 'go' } },
+      {
+        type: 'tool.execution_start',
+        timestamp: '2026-06-23T09:00:03Z',
+        data: { toolCallId: 'tc-1', toolName: 'bash', arguments: { command: 'harness checks' } },
+      },
+      {
+        type: 'tool.execution_complete',
+        timestamp: '2026-06-23T09:00:05Z',
+        data: { toolCallId: 'tc-1', toolName: 'bash', success },
+      },
+    ];
+    const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
+    const fs = new FakeFs({ [copilotEventsPath(HOME, 'sz')]: content }, {});
+    const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'sz' }, HOME);
+    return copilotAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'copilot-cli',
+      window: { since: 'session-start', from: 0, to: 99 },
+    }).event_stream as Event[];
+  }
+
+  it('success:true ⇒ command_exit exit 0, no checks event', () => {
+    const stream = streamFor(true);
+    expect(kinds(stream, 'command_exit')).toContainEqual(
+      expect.objectContaining({ kind: 'command_exit', verb: 'checks', exit: 0 }),
+    );
+    expect(kinds(stream, 'checks')).toHaveLength(0); // no envelope ⇒ no checks
+  });
+
+  it('success:false ⇒ command_exit exit 1', () => {
+    expect(kinds(streamFor(false), 'command_exit')).toContainEqual(
+      expect.objectContaining({ kind: 'command_exit', verb: 'checks', exit: 1 }),
+    );
+  });
+});

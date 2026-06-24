@@ -144,3 +144,27 @@ Companion (run `…4d43`) reviewed `610b872` → **no findings** (clean).
 | MEDIUM | Copilot shell/harness command capture coupled to `toolName` in the same event as `arguments.command` → split start/complete execution drops `bash_commands`/`harness_commands`/`harness` event. | **Fixed** — decoupled command capture by call id + post-loop toolName resolution; regression added. |
 
 magicWand `MINIH_PROJECT_ROOT` (target minih) — **ignored** (known planned minih fix, agent memory).
+
+---
+
+## Commit 8 — T5.7: outcome events (`checks` + `command_exit`)
+
+**What landed**
+- `src/services/telemetry/outcome-events.ts` (new) — pure `outcomeEvents(resultText, t, isError)`: parses a harness JSON command envelope (`{command,status,data}`) → a `command_exit` (verb + exit from the observed error flag, else derived from the verdict; carries the raw status) and, for `checks`, a `checks` event (overall verdict + `data.gates[] → {name:status}`). Codes/verdicts ONLY — the gate `note`/`summary` (free text) is dropped (AC-15); strict guard returns `[]` for non-envelope (rail / no `--json`) output. No `node:*`.
+- `adapters/claude-adapter.ts` (mod) — every `tool_result`'s content is parsed for an envelope (+`is_error`) → outcome events; `toolResultText` extracts string-or-block content.
+- `adapters/copilot-adapter.ts` (mod) — `command_exit` from the per-call `success` flag (Copilot carries **no** result envelope → no `checks`); `success`/complete-ts tracked by `toolCallId`, resolved to harness subcommands post-loop.
+- Tests: `outcome-events.test.ts` (new, 9) + claude/copilot integration (envelope→checks+command_exit; success→command_exit; AC-15 no note/summary leak).
+
+**Evidence**: telemetry suite → 204 passed; full suite → **1258 passed**; arch-check → 1 pre-existing P4 warn only (0 new).
+
+**Decisions**
+- **Each harness to its observability ceiling.** Claude has the full result envelope in `tool_result` → `checks`+`command_exit`. Copilot reports only a `success` boolean → `command_exit` only. Cursor's transcript carries **no tool results** (untimed, tool_use only) → outcome events **deferred** (honest — never fabricated).
+- `command_exit.exit`: the observed error flag wins (Claude `is_error`, Copilot `success`); else derived from the verdict (`error`/`fatal`→1, else 0). The raw `status` rides along as the disposition.
+- Envelope parsing is strict (must be a bare JSON object) so human-rail output is never mis-read; the gate `note` and `data.summary` are never copied (AC-15 by construction).
+- **Commits intentionally excluded** (AC-19) — git is queryable later; telemetry stays counts/codes only.
+
+### Discoveries & Learnings
+| # | Kind | Note | Tag |
+|---|------|------|-----|
+| D-513 | decision | Outcome events come from the harness command **result envelope** (Claude tool_result) — verb is read from `envelope.command`, so no Bash↔result pairing is needed. Only emitted when the command ran with parseable JSON output. | Noteworthy |
+| D-514 | difficulty | Copilot `execution_complete` carries `success` but **no output/envelope** → `command_exit` only; Cursor carries no tool results at all → both deferred. The detail-doc §2 "same" for checks/command_exit is the *intent*; the *fixtures* show the real per-harness ceiling. | Noteworthy |

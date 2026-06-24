@@ -1,6 +1,7 @@
 import { commandSignatures, harnessSubcommand, partitionCommands } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
+import { outcomeEvents } from '../outcome-events.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type {
   SegmentCompaction,
@@ -34,6 +35,20 @@ import type { HarnessAdapter, HarnessCapabilities, HarnessContext } from './harn
 /** The offset unit is the transcript's non-empty line count (M2 — used by both currentPosition and the slice). */
 function nonEmptyLines(content: string): string[] {
   return content.split('\n').filter((l) => l.trim() !== '');
+}
+
+/** A tool_result's text payload — a raw string, or the joined `text` of its blocks. */
+function toolResultText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((b) => {
+        const t = (b as { text?: unknown })?.text;
+        return typeof t === 'string' ? t : '';
+      })
+      .join('');
+  }
+  return '';
 }
 
 /**
@@ -280,6 +295,20 @@ export const claudeAdapter: HarnessAdapter = {
         for (const block of blocks) {
           if (block.type !== 'tool_result') continue;
           const refId = typeof block.tool_use_id === 'string' ? block.tool_use_id : '';
+
+          // Outcome events (AC-19): a harness command's result envelope → `checks`
+          // and `command_exit`. Reads only codes/verdicts; non-envelope output
+          // (rail mode, no `--json`) yields nothing.
+          if (ts !== null) {
+            for (const e of outcomeEvents(
+              toolResultText(block.content),
+              ts,
+              block.is_error === true,
+            )) {
+              direct.push(e);
+            }
+          }
+
           if (!agentTypeById.has(refId)) continue;
           const text = typeof block.content === 'string' ? block.content : '';
           const usageMatch = /<usage>([\s\S]*?)<\/usage>/.exec(text);

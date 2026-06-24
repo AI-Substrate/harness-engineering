@@ -182,3 +182,89 @@ describe('claudeAdapter — v2 event stream (T5.4)', () => {
     expect(json).not.toContain('/repo/a.ts');
   });
 });
+
+describe('claudeAdapter — outcome events from a harness result envelope (T5.7, AC-19)', () => {
+  const lines = [
+    {
+      type: 'assistant',
+      timestamp: '2026-06-24T10:00:00Z',
+      message: {
+        id: 'm1',
+        content: [{ type: 'tool_use', name: 'Bash', id: 'b1', input: { command: 'harness checks --json' } }],
+      },
+    },
+    {
+      type: 'user',
+      timestamp: '2026-06-24T10:00:20Z',
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'b1',
+            content: JSON.stringify({
+              command: 'checks',
+              status: 'degraded',
+              data: {
+                summary: 'LEAKABLE SUMMARY',
+                gates: [
+                  { name: 'tests', status: 'ok', exit: 0, note: '' },
+                  { name: 'arch-check', status: 'degraded', exit: 0, note: 'NOTE MUST NOT LEAK' },
+                ],
+              },
+            }),
+          },
+        ],
+      },
+    },
+  ];
+  const transcript = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
+
+  function caps() {
+    const fs = new FakeFs({ [claudeTranscriptPath(HOME, REPO, 'sess-outcome')]: transcript });
+    const env = new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess-outcome' }, HOME);
+    return claudeAdapter.extract({
+      env,
+      fs,
+      repoRoot: REPO,
+      harness: 'claude-code',
+      window: { since: 'session-start', from: 0, to: lines.length },
+    });
+  }
+
+  const stream = caps().event_stream as Event[];
+
+  it('emits a checks event (verdict + per-gate verdicts) and a command_exit', () => {
+    expect(kinds(stream, 'checks')).toContainEqual(
+      expect.objectContaining({
+        kind: 'checks',
+        status: 'degraded',
+        gates: { tests: 'ok', 'arch-check': 'degraded' },
+      }),
+    );
+    expect(kinds(stream, 'command_exit')).toContainEqual(
+      expect.objectContaining({ kind: 'command_exit', verb: 'checks', exit: 0, status: 'degraded' }),
+    );
+  });
+
+  it('rollup records the checks verdict + the per-verb exit (AC-19)', () => {
+    const seg = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: 'sess-outcome',
+        timecode: '2026-06-24T10:00:20Z',
+        window: { since: 'session-start', from: 0, to: lines.length },
+        branch: null,
+        branch_changed: false,
+        event_stream: stream,
+      },
+      REPO,
+    );
+    expect(seg.rollup?.outcomes).toEqual({ checks: 'degraded', exits: { checks: 0 } });
+    // AC-15 — the gate notes / summary free text never reach the segment
+    const json = JSON.stringify(seg);
+    expect(json).not.toContain('NOTE MUST NOT LEAK');
+    expect(json).not.toContain('LEAKABLE SUMMARY');
+  });
+});
