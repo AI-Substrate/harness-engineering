@@ -11,26 +11,35 @@ import type {
  * Turns a Copilot session's native artifacts into counts-only
  * {@link HarnessCapabilities}.
  *
- * Two sources (verified): the per-session `events.jsonl`
- * (`~/.copilot/session-state/<id>/events.jsonl`) carries `session.model_change`
- * (model + reasoningEffort) and `tool.execution_*` (tool names); the process log
- * (`~/.copilot/logs/process-*.log`) carries the LIVE `assistant_usage` telemetry
- * events that are the ONLY authoritative token source — `session.shutdown` is
- * NOT live (it fires only at session end) and is never read. Each Copilot
- * invocation is its own session, so the source is naturally pre-segmented per
- * command — the window is the whole file (M1); cursor slicing does not apply.
+ * Two sources (verified against live Copilot CLI, June 2026):
+ *  - the per-session `events.jsonl` (`~/.copilot/session-state/<id>/events.jsonl`)
+ *    carries `session.model_change` (model + reasoningEffort), `tool.execution_*`
+ *    (tool names), and `subagent.completed` (subagent identity);
+ *  - the process log (`~/.copilot/logs/process-*.log`) carries the authoritative
+ *    `assistant_usage` telemetry blocks (the ONLY token source) — emitted as a
+ *    multi-line pretty-printed `[Telemetry] cli.telemetry:` JSON object with tokens
+ *    under `metrics`, model under `properties`, and `session_id` at the top level.
+ *    `session.shutdown` is NOT live (fires only at session end) and is never read.
  *
- * Token mapping: `input_tokens_uncached` → `input`; `input_tokens -
- * input_tokens_uncached` → `cache_read`; `output_tokens + reasoning_tokens` →
- * `output` (reasoning folded in so `total = input+output+cache_create+cache_read`
- * stays the invariant; Copilot reports no cache-creation bucket → `cache_create`
- * is 0). Subagent tokens are NOT cleanly correlatable from the log → `null`
- * (never a guessed number). `files`/`compactions`/`thinking` are `null` this
- * phase (codeChanges live only in the non-live `session.shutdown`; tool-arg
- * parsing is avoided for AC-04).
+ * PER-COMMAND ATTRIBUTION: a single interactive Copilot session can run MANY
+ * harness commands (e.g. `harness boot` … `harness checks`), so the old "one
+ * invocation = one command, window = whole file" assumption is false. The cursor's
+ * window is a line-slice of `events.jsonl`; events-derived capabilities are read
+ * from that slice, and process-log `assistant_usage` blocks are attributed to this
+ * command only when their `interaction_id` appears in the windowed events
+ * (granularity = Copilot interaction). When events carry no interaction ids at all
+ * (older format / no events file) it falls back to whole-session token totals.
  *
- * PRIVACY (AC-04): only counts + names are read — tool `arguments` (which carry
- * free-form strings) are never copied. Ports-only (P2): `env.home()`, no `node:*`.
+ * Token mapping: `metrics.input_tokens_uncached` → `input`; `metrics.cache_read_tokens`
+ * (else `input_tokens - input_tokens_uncached`) → `cache_read`; `metrics.cache_write_tokens`
+ * → `cache_create`; `metrics.output_tokens + reasoning_tokens` → `output` (reasoning
+ * folded in so `total = input+output+cache_create+cache_read` stays the invariant).
+ * Subagent tokens are not cleanly correlatable → `null` (never guessed).
+ * `files`/`compactions`/`thinking` are `null` this phase.
+ *
+ * PRIVACY (AC-04): only counts + names + correlation ids (used internally for
+ * windowing, never emitted) are read — tool `arguments` and message text are never
+ * copied. Ports-only (P2): `env.home()`, no `node:*`.
  */
 
 export function copilotEventsPath(home: string, sessionId: string): string {
@@ -45,17 +54,6 @@ function nonEmptyLines(content: string): string[] {
   return content.split('\n').filter((l) => l.trim() !== '');
 }
 
-/** Parse the trailing JSON object on a log/event line (prefix is plain text, no braces). */
-function parseTrailingJson(line: string): Record<string, unknown> | null {
-  const start = line.indexOf('{');
-  if (start < 0) return null;
-  try {
-    return JSON.parse(line.slice(start)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
 function num(v: unknown): number {
   return typeof v === 'number' ? v : 0;
 }
@@ -64,13 +62,62 @@ function str(v: unknown): string | null {
   return typeof v === 'string' ? v : null;
 }
 
+function asObj(v: unknown): Record<string, unknown> {
+  return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+}
+
+/** Parse one JSONL line (whole-line JSON), tolerating malformed lines. */
+function parseLine(line: string): Record<string, unknown> | null {
+  try {
+    return JSON.parse(line) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract every TOP-LEVEL JSON object from a process log — the telemetry payloads
+ * are pretty-printed blocks delimited by a `{` … `}` at column 0 (nested braces are
+ * always indented), interleaved with plain `[DEBUG]` text lines. A self-contained
+ * single-line `{…}` (older format) is handled too. Malformed blocks are skipped.
+ */
+function extractJsonObjects(content: string): Record<string, unknown>[] {
+  const objs: Record<string, unknown>[] = [];
+  let buf: string[] | null = null;
+  const flush = (lines: string[]): void => {
+    try {
+      objs.push(JSON.parse(lines.join('\n')) as Record<string, unknown>);
+    } catch {
+      // not a JSON object (e.g. a pretty-printed array / log noise) — skip
+    }
+  };
+  for (const raw of content.split('\n')) {
+    if (buf === null) {
+      if (raw.startsWith('{')) {
+        buf = [raw];
+        if (raw.trimEnd().endsWith('}')) {
+          flush(buf);
+          buf = null;
+        }
+      }
+    } else {
+      buf.push(raw);
+      if (raw.startsWith('}')) {
+        flush(buf);
+        buf = null;
+      }
+    }
+  }
+  return objs;
+}
+
 /** Locate the process log whose contents reference this session id. */
 function findProcessLog(src: HarnessSource, home: string, sessionId: string): string | null {
   const dir = copilotLogsDir(home);
   for (const name of src.fs.readdir(dir)) {
     if (!name.startsWith('process-') || !name.endsWith('.log')) continue;
     const content = src.fs.readText(`${dir}/${name}`);
-    if (content !== null && content.includes(sessionId)) return content;
+    if (content?.includes(sessionId)) return content;
   }
   return null;
 }
@@ -91,6 +138,62 @@ const nullCaps: HarnessCapabilities = {
   thinking: null,
 };
 
+/** Counts-only view of one `events.jsonl`, sliced to the command's window. */
+interface EventsView {
+  effort: string | null;
+  tools: Record<string, number>;
+  subagents: SegmentSubagent[];
+  /** Interaction ids active in THIS window — the token-attribution key. */
+  windowInteractionIds: Set<string>;
+  /** Did the WHOLE file carry any interaction id? (false ⇒ no windowing info). */
+  anyInteractionId: boolean;
+}
+
+function readEvents(content: string, fromLine: number, toLine: number): EventsView {
+  const lines = nonEmptyLines(content);
+  const anyInteractionId = lines.some((l) => str(asObj(parseLine(l)?.data).interactionId) !== null);
+
+  let effort: string | null = null;
+  const toolNameByCall = new Map<string, string>(); // dedupe a tool execution by its call id
+  const subagents: SegmentSubagent[] = [];
+  const windowInteractionIds = new Set<string>();
+
+  for (const line of lines.slice(fromLine, toLine)) {
+    const o = parseLine(line);
+    if (o === null) continue;
+    const data = asObj(o.data);
+
+    const iid = str(data.interactionId);
+    if (iid !== null) windowInteractionIds.add(iid);
+
+    if (o.type === 'session.model_change') {
+      if (effort === null) effort = str(data.reasoningEffort);
+    } else if (o.type === 'tool.execution_start' || o.type === 'tool.execution_complete') {
+      // The tool name moved from execution_complete → execution_start; read it from
+      // whichever event carries it, deduped per execution so we never double-count.
+      const callId = str(data.toolCallId);
+      const toolName = str(data.toolName);
+      if (callId !== null && toolName !== null && !toolNameByCall.has(callId)) {
+        toolNameByCall.set(callId, toolName);
+      }
+    } else if (o.type === 'subagent.completed') {
+      subagents.push({
+        type: null,
+        agent_name: str(data.agentName) ?? str(data.agentDisplayName),
+        model: str(data.model),
+        status: 'completed',
+        tokens: null, // not cleanly correlatable — never guessed
+        tool_uses: null,
+      });
+    }
+  }
+
+  const tools: Record<string, number> = {};
+  for (const name of toolNameByCall.values()) tools[name] = (tools[name] ?? 0) + 1;
+
+  return { effort, tools, subagents, windowInteractionIds, anyInteractionId };
+}
+
 export const copilotAdapter: HarnessAdapter = {
   harness: 'copilot-cli',
   handles: (harnessId) => harnessId === 'copilot-cli',
@@ -109,74 +212,73 @@ export const copilotAdapter: HarnessAdapter = {
     const sessionId = ctx.env.get('COPILOT_AGENT_SESSION_ID');
     if (home === undefined || sessionId === undefined || sessionId.length === 0) return nullCaps;
 
-    // --- events.jsonl: effort + tool histogram (no token authority) ---
-    let effort: string | null = null;
-    const tools: Record<string, number> = {};
+    // --- events.jsonl (windowed): effort + tools + subagents + the attribution key ---
     const eventsContent = ctx.fs.readText(copilotEventsPath(home, sessionId));
-    if (eventsContent !== null) {
-      for (const line of nonEmptyLines(eventsContent)) {
-        const obj = parseTrailingJson(line);
-        if (obj === null) continue;
-        const data = (obj.data as Record<string, unknown> | undefined) ?? {};
-        if (obj.type === 'session.model_change' && effort === null) {
-          effort = str(data.reasoningEffort);
-        } else if (obj.type === 'tool.execution_complete') {
-          const toolName = str(data.toolName);
-          if (toolName !== null) tools[toolName] = (tools[toolName] ?? 0) + 1;
-        }
-      }
-    }
+    const ev: EventsView =
+      eventsContent !== null
+        ? readEvents(eventsContent, ctx.window.from, ctx.window.to)
+        : {
+            effort: null,
+            tools: {},
+            subagents: [],
+            windowInteractionIds: new Set(),
+            anyInteractionId: false,
+          };
 
-    // --- process log: authoritative tokens + per-model + subagents ---
+    // --- process log: authoritative tokens + per-model, attributed to this window ---
     let input = 0;
     let output = 0;
     let cacheRead = 0;
+    let cacheCreate = 0;
     let usageCount = 0;
+    let effort = ev.effort;
     const models: Record<string, SegmentModelStat> = {};
-    const subagents: SegmentSubagent[] = [];
     const log = findProcessLog(ctx, home, sessionId);
     if (log !== null) {
-      for (const line of nonEmptyLines(log)) {
-        if (!line.includes('assistant_usage') && !line.includes('subagent_completed')) continue;
-        const obj = parseTrailingJson(line);
-        if (obj === null) continue;
-        // A single process log can interleave MULTIPLE sessions — filter each
-        // record by session_id so another session's usage/subagents can't bleed
-        // into this segment (companion F002 · AC-03 exact per-session extraction).
+      for (const obj of extractJsonObjects(log)) {
+        if (obj.kind !== 'assistant_usage') continue;
+        // A process log interleaves MULTIPLE sessions — filter every record by
+        // session_id so another session's usage can't bleed in (companion F002).
         if (str(obj.session_id) !== sessionId) continue;
-        if (obj.kind === 'assistant_usage') {
-          usageCount += 1;
-          const uncached = num(obj.input_tokens_uncached);
-          const totalInput = num(obj.input_tokens);
-          const out = num(obj.output_tokens) + num(obj.reasoning_tokens);
-          input += uncached;
-          cacheRead += Math.max(totalInput - uncached, 0);
-          output += out;
-          const model = str(obj.model) ?? 'unknown';
-          const stat = models[model] ?? { turns: 0, output_tokens: 0 };
-          stat.turns += 1;
-          stat.output_tokens += out;
-          models[model] = stat;
-        } else if (obj.kind === 'subagent_completed') {
-          subagents.push({
-            type: null,
-            agent_name: str(obj.agent_name),
-            model: str(obj.model),
-            status: 'completed',
-            tokens: null, // not cleanly correlatable from the log — never guessed
-            tool_uses: null,
-          });
-        }
+
+        const props = asObj(obj.properties);
+        // Per-command attribution: when the events file gives us interaction ids,
+        // only count blocks whose interaction is in THIS command's window; when it
+        // gives none (older format / no events), fall back to whole-session totals.
+        const iid = str(props.interaction_id) ?? str(obj.interaction_id);
+        if (ev.anyInteractionId && (iid === null || !ev.windowInteractionIds.has(iid))) continue;
+
+        // Tokens live under `metrics` (new) or at the top level (older format).
+        const m = obj.metrics !== undefined ? asObj(obj.metrics) : obj;
+        const uncached = num(m.input_tokens_uncached);
+        const cr =
+          m.cache_read_tokens !== undefined
+            ? num(m.cache_read_tokens)
+            : Math.max(num(m.input_tokens) - uncached, 0);
+        usageCount += 1;
+        input += uncached;
+        cacheRead += cr;
+        cacheCreate += num(m.cache_write_tokens);
+        const out = num(m.output_tokens) + num(m.reasoning_tokens);
+        output += out;
+
+        const model = str(props.model) ?? str(obj.model) ?? 'unknown';
+        const stat = models[model] ?? { turns: 0, output_tokens: 0 };
+        stat.turns += 1;
+        stat.output_tokens += out;
+        models[model] = stat;
+
+        if (effort === null) effort = str(props.reasoning_effort);
       }
     }
 
     let tokens: SegmentTokens | null = null;
     if (usageCount > 0) {
-      const total = input + output + cacheRead;
+      const total = input + output + cacheCreate + cacheRead;
       tokens = {
         input,
         output,
-        cache_create: 0,
+        cache_create: cacheCreate,
         cache_read: cacheRead,
         total,
         subagent_tokens: 0,
@@ -190,8 +292,8 @@ export const copilotAdapter: HarnessAdapter = {
       models: Object.keys(models).length > 0 ? models : null,
       effort,
       skills: null,
-      tools: Object.keys(tools).length > 0 ? tools : null,
-      subagents: subagents.length > 0 ? subagents : null,
+      tools: Object.keys(ev.tools).length > 0 ? ev.tools : null,
+      subagents: ev.subagents.length > 0 ? ev.subagents : null,
       files: null,
       branch_changed: null,
       compactions: null,

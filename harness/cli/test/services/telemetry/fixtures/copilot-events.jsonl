@@ -1,5 +1,11 @@
-{"type":"session.start","data":{"sessionId":"sess-copilot-1"},"id":"e0","timestamp":"2026-06-23T08:00:00Z"}
-{"type":"session.model_change","data":{"newModel":"claude-opus-4-8","reasoningEffort":"high","contextTier":"default"},"id":"e1","timestamp":"2026-06-23T08:00:01Z"}
-{"type":"tool.execution_complete","data":{"toolName":"bash","arguments":{"command":"echo SUPER_SECRET_sk-copilot-LEAKED /Users/jordan/secrets/keys.env"},"model":"claude-opus-4-8","success":true},"id":"e2","timestamp":"2026-06-23T08:00:02Z"}
-{"type":"tool.execution_complete","data":{"toolName":"str_replace","arguments":{"path":"/Users/jordan/secrets/keys.env"},"model":"claude-opus-4-8","success":true},"id":"e3","timestamp":"2026-06-23T08:00:03Z"}
-{"type":"assistant.message","data":{"outputTokens":50},"id":"e4","timestamp":"2026-06-23T08:00:04Z"}
+{"type":"session.start","data":{},"id":"e0","timestamp":"2026-06-23T08:00:00Z"}
+{"type":"session.model_change","data":{"newModel":"claude-opus-4-8","previousReasoningEffort":"medium","reasoningEffort":"high"},"id":"e1","timestamp":"2026-06-23T08:00:01Z"}
+{"type":"user.message","data":{"interactionId":"int-1"},"id":"e2","timestamp":"2026-06-23T08:00:02Z"}
+{"type":"assistant.turn_start","data":{"interactionId":"int-1"},"id":"e3","timestamp":"2026-06-23T08:00:03Z"}
+{"type":"function","data":{"interactionId":"int-1","apiCallId":"call-1","model":"claude-opus-4-8","outputTokens":60},"id":"e4","timestamp":"2026-06-23T08:00:04Z"}
+{"type":"tool.execution_start","data":{"toolCallId":"tc-1","toolName":"bash","arguments":"SUPER_SECRET rm -rf /Users/jordan/secrets/keys.env"},"id":"e5","timestamp":"2026-06-23T08:00:05Z"}
+{"type":"tool.execution_complete","data":{"toolCallId":"tc-1","interactionId":"int-1","model":"claude-opus-4-8","success":true},"id":"e6","timestamp":"2026-06-23T08:00:06Z"}
+{"type":"function","data":{"interactionId":"int-1","apiCallId":"call-2","model":"claude-opus-4-8","outputTokens":35},"id":"e7","timestamp":"2026-06-23T08:00:07Z"}
+{"type":"tool.execution_start","data":{"toolCallId":"tc-2","toolName":"str_replace","arguments":"/Users/jordan/secrets/keys.env"},"id":"e8","timestamp":"2026-06-23T08:00:08Z"}
+{"type":"subagent.completed","data":{"toolCallId":"tc-3","agentName":"explorer","agentDisplayName":"Explorer","model":"gpt-5-mini"},"id":"e9","timestamp":"2026-06-23T08:00:09Z"}
+{"type":"assistant.turn_end","data":{"interactionId":"int-1"},"id":"e10","timestamp":"2026-06-23T08:00:10Z"}

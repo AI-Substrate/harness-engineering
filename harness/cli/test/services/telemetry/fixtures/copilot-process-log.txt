@@ -1,7 +1,60 @@
-2026-06-23T08:00:00Z [INFO] copilot session starting session_id=sess-copilot-1
-2026-06-23T08:00:02Z [DEBUG] Sending telemetry event {"kind":"assistant_usage","session_id":"sess-copilot-1","model":"claude-opus-4-8","input_tokens":100,"input_tokens_uncached":80,"output_tokens":50,"reasoning_tokens":10}
-2026-06-23T08:00:03Z [DEBUG] subagent lifecycle {"kind":"subagent_completed","session_id":"sess-copilot-1","agent_name":"explorer","model":"gpt-5-mini","tool_call_id":"tc1","interaction_id":"ix1"}
-2026-06-23T08:00:04Z [DEBUG] Sending telemetry event {"kind":"assistant_usage","session_id":"sess-copilot-1","model":"claude-opus-4-8","input_tokens":60,"input_tokens_uncached":40,"output_tokens":30,"reasoning_tokens":5}
-2026-06-23T08:00:05Z [DEBUG] Sending telemetry event {"kind":"session_usage_info","session_id":"sess-copilot-1","running_total":255}
-2026-06-23T08:00:06Z [DEBUG] Sending telemetry event {"kind":"assistant_usage","session_id":"sess-OTHER-9","model":"gpt-5","input_tokens":999999,"input_tokens_uncached":999999,"output_tokens":888888,"reasoning_tokens":777777}
-2026-06-23T08:00:07Z [DEBUG] subagent lifecycle {"kind":"subagent_completed","session_id":"sess-OTHER-9","agent_name":"intruder","model":"gpt-5","tool_call_id":"tcX","interaction_id":"ixX"}
+2026-06-23T08:00:00.000Z [INFO] copilot session starting session_id=sess-copilot-1
+2026-06-23T08:00:02.000Z [DEBUG] Sending telemetry event: copilot-cli/cli.telemetry (kind: assistant_usage)
+2026-06-23T08:00:02.500Z [DEBUG] [Telemetry] cli.telemetry:
+{
+  "kind": "assistant_usage",
+  "properties": {
+    "event_id": "ev-1",
+    "model": "claude-opus-4-8",
+    "reasoning_effort": "high",
+    "interaction_id": "int-1",
+    "api_call_id": "call-1",
+    "raw_prompt": "SUPER_SECRET /Users/jordan/secrets/keys.env"
+  },
+  "metrics": {
+    "input_tokens": 100,
+    "input_tokens_uncached": 80,
+    "output_tokens": 50,
+    "reasoning_tokens": 10,
+    "cache_read_tokens": 20,
+    "cache_write_tokens": 0
+  },
+  "session_id": "sess-copilot-1"
+}
+2026-06-23T08:00:04.000Z [DEBUG] [Telemetry] cli.telemetry:
+{
+  "kind": "assistant_usage",
+  "properties": {
+    "event_id": "ev-2",
+    "model": "claude-opus-4-8",
+    "interaction_id": "int-1",
+    "api_call_id": "call-2"
+  },
+  "metrics": {
+    "input_tokens": 60,
+    "input_tokens_uncached": 40,
+    "output_tokens": 30,
+    "reasoning_tokens": 5,
+    "cache_read_tokens": 20,
+    "cache_write_tokens": 5
+  },
+  "session_id": "sess-copilot-1"
+}
+2026-06-23T08:00:06.000Z [DEBUG] [Telemetry] cli.telemetry:
+{
+  "kind": "assistant_usage",
+  "properties": {
+    "event_id": "ev-other",
+    "model": "intruder-model",
+    "interaction_id": "int-1",
+    "api_call_id": "call-x",
+    "raw_prompt": "SUPER_SECRET /Users/intruder/keys.env"
+  },
+  "metrics": {
+    "input_tokens": 999999,
+    "input_tokens_uncached": 999999,
+    "output_tokens": 888888,
+    "reasoning_tokens": 777777
+  },
+  "session_id": "sess-OTHER-9"
+}
