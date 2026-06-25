@@ -85,3 +85,11 @@ Companion magicWand (coordination): "a first-class way to reassign/alias a findi
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T006 | decision | Extension `ctx.env` exposes `.get` only (no `.home()`), which the copilot-vscode adapter path helpers need. | Build a 3-line `EnvPort` shim from `ctx.env.get` + `config.homeDir` at `run()` — no node:* reach, no contract change. Confirms DL-001's "compose at the root" resolution. | extension.ts `envPortFor` |
 | 2026-06-25 | T006 | insight | The real store is the anticipated **thin** one (4 KB, 1 session, 8 turns) but fully substantive — real prompts (124/146-word turns) with responses, real ISO timestamps. | Good enough for a real golden + the SQL round-trip (T008). No synthetic padding needed. | session `7fb3a97f` |
+
+## T007 — promote the real copilot-vscode fixture + manual review ✅
+
+- Promoted `fixtures/real/copilot-vscode/2026-06-25-real/` (`raw.rows.json` 1.7 KB, `meta.json`) — re-ran capture WITHOUT `--dry-run` after the T006 manual review passed.
+- **Manual "anything bad" review** (non-skippable): leak scan **0** (`/Users/`, `C:\`, emails, `jordanknight`/`jakkaj`/`Jordan Knight`, key shapes); **no message text** (projection-stripped); only structural rows + the rebased `/home/dev/repo` cwd. `meta.json` attests `scrub_categories` incl. git-handles + person-names.
+- **Thinness documented** (per task Note / plan Risk): one session, 8 turns. Substantive enough for a real golden — turns carry real word counts (2–146) + ISO timestamps; no padding.
+- **Byte-scan** auto-globbed the new instance: `fixture-privacy-scan.test.ts` **15 passed** (incl. liveness control).
+- **Commit**: T007 (fixture data).

@@ -1,0 +1,15 @@
+{
+  "surface": "copilot-vscode",
+  "captured_utc": "2026-06-25",
+  "harness": "copilot-vscode",
+  "scrubbed": true,
+  "scrub_categories": [
+    "machine-paths",
+    "home-username",
+    "git-handles",
+    "person-names",
+    "emails",
+    "secrets"
+  ],
+  "note": "real VS Code Copilot Chat session (thin 4KB store, 8 turns) captured from this repo"
+}
