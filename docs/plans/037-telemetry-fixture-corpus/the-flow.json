@@ -268,6 +268,27 @@
           "label"
         ]
       }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-25T07:43:24.614Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-25T07:43:24.876Z",
+      "details": {
+        "from": "phase-1",
+        "to": "phase-2"
+      }
     }
   ],
   "nodes": [
@@ -317,13 +338,14 @@
       "id": "phase-1",
       "type": "phase",
       "label": "Phase 1: Foundation + claude proof",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-06-25T06:24:45.504Z",
-      "modified_at": "2026-06-25T06:29:50.667Z",
-      "note": "Tasks expanded: 9 tasks (TDD); validate-v2 VALIDATED WITH FIXES — golden-before-scan ordering bug fixed, verb pinned, T009 exit gate."
+      "modified_at": "2026-06-25T07:43:24.614Z",
+      "note": "Tasks expanded: 9 tasks (TDD); validate-v2 VALIDATED WITH FIXES — golden-before-scan ordering bug fixed, verb pinned, T009 exit gate.",
+      "ran_at": "2026-06-25T07:43:24.614Z"
     },
     {
       "id": "phase-2",
@@ -368,8 +390,8 @@
     }
   ],
   "nav": {
-    "now": "phase-1",
-    "next": "phase-2",
+    "now": "phase-2",
+    "next": "phase-3",
     "intent": "Capture real logs from all four harness surfaces on this machine, scrub machine paths/identity/secrets while keeping verbatim prompts+tool usage (with a manual 'anything bad' review), commit them as durable fixtures, and add end-to-end tests that drive each real fixture through its adapter to the serialized segment to validate the data we produce.",
     "bag": {
       "mode": "Full",

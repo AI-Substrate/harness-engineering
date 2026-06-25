@@ -93,3 +93,28 @@
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T007 | Noteworthy | A naive `[A-Za-z]:\\` Windows-path scan flags JSON-escaped YAML keys (`on:\n`, `steps:\n`) — letter+colon+`\n`. | In JSON a real backslash is byte-DOUBLED (`C:\\`) vs a single-backslash escape; matched the doubled form. Documented that plain-text Phase-2 process logs need the single-backslash variant. | AC-02 |
+
+---
+
+## ✅ PHASE 1 COMPLETE — Foundation + claude proof
+
+**All 9 tasks done (T001–T009).** The full capture→scrub→review→pin→scan pipeline is proven end-to-end on one real claude session.
+
+**Delivered:**
+- Pure `fixture-scrub.ts` service (reuses posix-path; no `node:*`) — 15/15.
+- `capture-fixtures` `.harness` extension (composition root + pure orchestration) — 8 more tests; `--help` resolves; scrub single-sourced from core.
+- One real, human-reviewed, scrubbed claude fixture (`fixtures/real/claude/2026-06-25-static-site/`) + `expected-segment.json` golden.
+- AC-01 e2e golden + hand-pinned invariants (exact-timestamped event_stream) — 3/3.
+- AC-02 byte-scan privacy guard over raw + golden with live negative control — 4/4.
+- AC-04 SQLite mechanism de-risked (Phase-1 exit gate) — 3/3.
+
+**Verification:** full telemetry suite **287/287** (AC-10 — synthetics untouched); biome clean; `just build` green.
+
+**Deferred & Noteworthy (for the go-decision):**
+- *Plan AC-01 corrected* — claude carries exact per-line timestamps; events are NOT `anchored` (that's for approximated stamps). Test + plan + tasks corrected; **adapter unchanged (it was correct)**.
+- *Capture-tool topology workshop resolved* — scrub single-source in core; extension imports it (no vendored copy of the security control).
+- *Manual review caught `jakkaj`* (git handle) the home-derived username missed → re-scrubbed via `--names`. Runbook (Phase 3) must instruct passing git handles.
+- *Phase-2 scan note* — the Windows byte-scan rule matches the JSON doubled-backslash form; plain-text Phase-2 process logs need the single-backslash variant.
+- *Companion* — first run lapsed after T005 (no findings); re-booted for T006–T009 (no findings). Live review on every commit.
+
+**Phase-1 exit gate (T009 SQLite spike): PASS** → Phase 2 unblocked.
