@@ -21,23 +21,23 @@ import {
  */
 
 const CFG: ScrubConfig = {
-  homeDir: '/Users/jordanknight',
-  repoRoot: '/Users/jordanknight/substrate/harness-engineering',
-  username: 'jordanknight',
-  names: ['Jordan Knight'],
+  homeDir: '/Users/alice',
+  repoRoot: '/Users/alice/substrate/harness-engineering',
+  username: 'alice',
+  names: ['Alice Example'],
 };
 
 describe('scrubText — machine paths', () => {
   it('rewrites a POSIX home path; no /Users/ or username survives', () => {
-    const out = scrubText('opened /Users/jordanknight/notes.txt just now', CFG);
+    const out = scrubText('opened /Users/alice/notes.txt just now', CFG);
     expect(out).not.toContain('/Users/');
-    expect(out).not.toContain('jordanknight');
+    expect(out).not.toContain('alice');
     expect(out).toContain(`${HOME_PLACEHOLDER}/notes.txt`);
   });
 
   it('rebases a repo path onto the repo placeholder (more specific than home wins)', () => {
     const out = scrubText(
-      'edited /Users/jordanknight/substrate/harness-engineering/harness/cli/x.ts',
+      'edited /Users/alice/substrate/harness-engineering/harness/cli/x.ts',
       CFG,
     );
     expect(out).toContain(`${REPO_PLACEHOLDER}/harness/cli/x.ts`);
@@ -47,27 +47,27 @@ describe('scrubText — machine paths', () => {
 
   it('rewrites a Windows home path; no C:\\ or username survives', () => {
     const cfg: ScrubConfig = {
-      homeDir: 'C:\\Users\\jordanknight',
-      repoRoot: 'C:\\Users\\jordanknight\\repo',
-      username: 'jordanknight',
+      homeDir: 'C:\\Users\\alice',
+      repoRoot: 'C:\\Users\\alice\\repo',
+      username: 'alice',
     };
-    const out = scrubText('cwd was C:\\Users\\jordanknight\\proj\\main.rs', cfg);
+    const out = scrubText('cwd was C:\\Users\\alice\\proj\\main.rs', cfg);
     expect(out).not.toContain('C:\\Users');
-    expect(out).not.toContain('jordanknight');
+    expect(out).not.toContain('alice');
   });
 
   it('neutralizes the claude project-dir mangle -Users-<user>-...', () => {
     const out = scrubText(
-      'path ~/.claude/projects/-Users-jordanknight-substrate-harness-engineering/s.jsonl',
+      'path ~/.claude/projects/-Users-alice-substrate-harness-engineering/s.jsonl',
       CFG,
     );
-    expect(out).not.toContain('jordanknight');
-    expect(out).not.toContain('-Users-jordanknight');
+    expect(out).not.toContain('alice');
+    expect(out).not.toContain('-Users-alice');
   });
 
   it('replaces a bare username token anywhere', () => {
-    const out = scrubText('user jordanknight ran it', CFG);
-    expect(out).not.toContain('jordanknight');
+    const out = scrubText('user alice ran it', CFG);
+    expect(out).not.toContain('alice');
     expect(out).toContain(USER_PLACEHOLDER);
   });
 });
@@ -84,14 +84,14 @@ describe('scrubText — secrets + identity', () => {
   });
 
   it('redacts email addresses', () => {
-    const out = scrubText('contact jakkaj@gmail.com for access', CFG);
-    expect(out).not.toContain('jakkaj@gmail.com');
-    expect(out).not.toContain('@gmail.com');
+    const out = scrubText('contact alice@example.com for access', CFG);
+    expect(out).not.toContain('alice@example.com');
+    expect(out).not.toContain('@example.com');
   });
 
   it('redacts a configured person name', () => {
-    const out = scrubText('reviewed by Jordan Knight today', CFG);
-    expect(out).not.toContain('Jordan Knight');
+    const out = scrubText('reviewed by Alice Example today', CFG);
+    expect(out).not.toContain('Alice Example');
   });
 });
 
@@ -118,14 +118,14 @@ describe('scrubText — JSONL integrity', () => {
       role: 'assistant',
       message: {
         content: [
-          { type: 'text', text: 'editing /Users/jordanknight/substrate/harness-engineering/a.ts' },
-          { type: 'tool_use', name: 'Bash', input: { command: 'ls /Users/jordanknight' } },
+          { type: 'text', text: 'editing /Users/alice/substrate/harness-engineering/a.ts' },
+          { type: 'tool_use', name: 'Bash', input: { command: 'ls /Users/alice' } },
         ],
       },
     });
     const out = scrubText(line, CFG);
     expect(() => JSON.parse(out)).not.toThrow();
     expect(out).not.toContain('/Users/');
-    expect(out).not.toContain('jordanknight');
+    expect(out).not.toContain('alice');
   });
 });

@@ -70,7 +70,9 @@ harness capture-fixtures --surface <surface> [--session <id>] [--instance <id>] 
 
 - `--surface` — `claude | copilot-cli | copilot-vscode | cursor`.
 - `--session` — **per-surface** (see the table below).
-- `--instance` — corpus dir name (default: derived from date + session).
+- `--instance` — corpus dir name (default: derived from date + session). Must be a
+  **safe slug** (start alphanumeric, then only `[A-Za-z0-9._-]`; no `/`, `\`, or `..`) —
+  a path-like value is rejected before any write so capture can't escape `scratch/`.
 - `--log` — copilot-cli only: explicit `process-*.log` path (else auto-discovered).
 - `--names` — comma-separated person names / handles to scrub beyond paths+identity.
 - `--note` — one-line provenance for `meta.json`.
@@ -113,7 +115,7 @@ replaced; **prompts and tool calls are left verbatim**. You don't run this yours
 but you must understand it so the manual review knows what *should* already be gone.
 
 > **The git-handle lesson (don't skip `--names`).** The scrub derives the username
-> from your HOME basename — but a **git handle** (e.g. `jakkaj`) is a *separate*
+> from your HOME basename — but a **git handle** (e.g. `example-handle`) is a *separate*
 > identity token that the home path never contains. A real capture leaked it through
 > `gh auth status` output and the manual review caught it. **Always pass your git
 > handle(s) via `--names`** at capture, and look for them again in review.

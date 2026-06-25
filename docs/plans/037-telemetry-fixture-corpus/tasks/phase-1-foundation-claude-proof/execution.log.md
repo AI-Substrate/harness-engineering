@@ -44,12 +44,12 @@
 
 - Implemented the claude branch of `run()`: resolve claude project dir → pick session (`--session` → `CLAUDE_CODE_SESSION_ID` → sole) → read transcript via `ctx.fs` → `scrubText` (core, single-source) → stage UNSCRUBBED original + SCRUBBED candidate + meta to gitignored `scratch/` (P12) → `--dry-run` stops at scratch; else promote SCRUBBED to the corpus dir (uncommitted; commit is the human-gated publication boundary).
 - Core scrub imported into the extension via relative path (`../../../harness/cli/src/services/telemetry/fixture-scrub.js`); jiti resolves it at load — confirmed by a live capture.
-- **Evidence**: live `harness capture-fixtures --surface claude --dry-run` → ok envelope; staged scrubbed bytes had `jordanknight`→0, `jakkaj@`→0 (down from 9543); `git status` shows `scratch/` ignored. capture-logic 11/11.
+- **Evidence**: live `harness capture-fixtures --surface claude --dry-run` → ok envelope; staged scrubbed bytes had `alice`→0, `example-handle@`→0 (down from 9543); `git status` shows `scratch/` ignored. capture-logic 11/11.
 
 ### Discoveries
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
-| 2026-06-25 | T005 | Noteworthy | **The live session is a PATHOLOGICAL fixture.** It's 41MB AND *about* scrubbing — so the scrubbed bytes still contain 73×`/Users/`, 56×`C:\`, 2×`@gmail.com` as literal DISCUSSION content (`.not.toContain('/Users/')`, `C:\Users\jane` doc examples), none of them real leaks (real identity scrubbed to 0). | Choose a different fixture. Profiled all 24 repo sessions; selected **c8bc0c68** (211KB/95 lines, "set up static html publishing", 5 human prompts, 14 tools, 38 token turns, 71 timestamps, META_lines=0). | T006 |
+| 2026-06-25 | T005 | Noteworthy | **The live session is a PATHOLOGICAL fixture.** It's 41MB AND *about* scrubbing — so the scrubbed bytes still contain 73×`/Users/`, 56×`C:\`, 2×`@example.com` as literal DISCUSSION content (`.not.toContain('/Users/')`, `C:\Users\jane` doc examples), none of them real leaks (real identity scrubbed to 0). | Choose a different fixture. Profiled all 24 repo sessions; selected **c8bc0c68** (211KB/95 lines, "set up static html publishing", 5 human prompts, 14 tools, 38 token turns, 71 timestamps, META_lines=0). | T006 |
 | 2026-06-25 | T005 | Noteworthy | A byte-scan that bans literal `/Users/`/`C:\` will (correctly) flag a session that *discusses* those tokens, even with no real leak. | Fixture selection must avoid self-referential/meta sessions; documented for the runbook (Phase 3). The scan stays strict (no weakening). | AC-02; T007 |
 
 ## T009 — SQLite mechanism spike (Phase-1 exit gate) ✅
@@ -61,15 +61,15 @@
 ## T006 — capture + manual "anything bad" review ✅
 
 - Captured real session **c8bc0c68** ("set up static HTML publishing via GitHub Pages") → `fixtures/real/claude/2026-06-25-static-site/` (raw.jsonl 207KB / 95 lines + meta.json).
-- **Manual review outcome (the non-skippable human gate)**: byte-scan clean (`/Users/`,`C:\`,`jordanknight`,`jakkaj`,`@gmail.com`,key-shapes all 0); 95/95 valid JSON. Reviewed the full human surface — 5 natural prompts (GitHub Pages setup), 10 git/gh commands against the PUBLIC repo `AI-Substrate/harness-engineering`, no tokens printed.
-- **Caught by the human review (what the mechanical scrub missed)**: `jakkaj` (the GitHub handle, surfaced in `gh auth status` output) — not covered by the home-derived `username=jordanknight`. Re-captured with `--names "jakkaj,Jordan Knight"` → 0. Lesson logged for the runbook: pass git handles via `--names`.
+- **Manual review outcome (the non-skippable human gate)**: byte-scan clean (`/Users/`,`C:\`,`alice`,`example-handle`,`@example.com`,key-shapes all 0); 95/95 valid JSON. Reviewed the full human surface — 5 natural prompts (GitHub Pages setup), 10 git/gh commands against the PUBLIC repo `AI-Substrate/harness-engineering`, no tokens printed.
+- **Caught by the human review (what the mechanical scrub missed)**: `example-handle` (the GitHub handle, surfaced in `gh auth status` output) — not covered by the home-derived `username=alice`. Re-captured with `--names "example-handle,Alice Example"` → 0. Lesson logged for the runbook: pass git handles via `--names`.
 - **Kept verbatim (confirmed acceptable)**: the 5 prompts as typed; the public project identity `AI-Substrate/harness-engineering` + `ai-substrate.github.io`.
 - **Sign-off**: user reviewed storage locations + scan, answered **Approve & commit**.
 
 ### Discoveries
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
-| 2026-06-25 | T006 | Noteworthy | The home-derived username misses other identity aliases (git handles). The MANUAL review caught `jakkaj` the automated scrub didn't. | Re-captured with `--names`. Runbook (Phase 3) must tell capturers to pass git handles. Validates WHY the manual review is non-skippable. | AC-08; runbook |
+| 2026-06-25 | T006 | Noteworthy | The home-derived username misses other identity aliases (git handles). The MANUAL review caught `example-handle` the automated scrub didn't. | Re-captured with `--names`. Runbook (Phase 3) must tell capturers to pass git handles. Validates WHY the manual review is non-skippable. | AC-08; runbook |
 | 2026-06-25 | T006 | Noteworthy | Live review companion ended (verdict `completed`) after T005; reviewed T001–T005 with no findings. | Re-booted a fresh companion for T008/T007 (non-gating). Deviation logged; phase-end debrief reads the prior farewell. | companion-mode |
 
 ## T008 — real-capture.e2e.test.ts + golden (AC-01) ✅
@@ -113,7 +113,7 @@
 **Deferred & Noteworthy (for the go-decision):**
 - *Plan AC-01 corrected* — claude carries exact per-line timestamps; events are NOT `anchored` (that's for approximated stamps). Test + plan + tasks corrected; **adapter unchanged (it was correct)**.
 - *Capture-tool topology workshop resolved* — scrub single-source in core; extension imports it (no vendored copy of the security control).
-- *Manual review caught `jakkaj`* (git handle) the home-derived username missed → re-scrubbed via `--names`. Runbook (Phase 3) must instruct passing git handles.
+- *Manual review caught `example-handle`* (git handle) the home-derived username missed → re-scrubbed via `--names`. Runbook (Phase 3) must instruct passing git handles.
 - *Phase-2 scan note* — the Windows byte-scan rule matches the JSON doubled-backslash form; plain-text Phase-2 process logs need the single-backslash variant.
 - *Companion* — first run lapsed after T005 (no findings); re-booted for T006–T009 (no findings). Live review on every commit.
 

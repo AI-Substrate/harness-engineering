@@ -33,7 +33,7 @@ entries:
         first_seen_at: "2026-06-25T08:06:12.042Z"
   - id: INS-002
     kind: insight
-    description: "Fixture selection is load-bearing: a self-referential/meta session trips the strict byte-scan with zero real leaks, and the home-derived username misses git handles (manual review caught 'jakkaj'). Phase-2 copilot-cli + cursor captures must pick substantive non-meta convos and pass --names."
+    description: "Fixture selection is load-bearing: a self-referential/meta session trips the strict byte-scan with zero real leaks, and the home-derived username misses git handles (manual review caught 'example-handle'). Phase-2 copilot-cli + cursor captures must pick substantive non-meta convos and pass --names."
     target: tooling
     severity: annoying
     workaround: "Profile candidate sessions; pass git handles + display names via --names at capture."

@@ -39,7 +39,7 @@
 
 **C. Gotchas & debt (carry forward)**
 - **Fixture selection is load-bearing**: a self-referential/meta session (one that *discusses* `/Users/`, `C:\`) trips the strict byte-scan even with zero real leaks. Pick a substantive, non-meta conversation for each surface.
-- **Manual review is non-skippable and catches what the scrub can't**: the home-derived username misses git handles (`jakkaj` survived until re-captured with `--names`). Pass git handles + display names via `--names` at capture.
+- **Manual review is non-skippable and catches what the scrub can't**: the home-derived username misses git handles (`example-handle` survived until re-captured with `--names`). Pass git handles + display names via `--names` at capture.
 - **Identity scan durability**: generic markers are CI-durable; capture-time identity tokens are scanned via runtime env **and** the never-committed `HARNESS_FIXTURE_SCRUB_TOKENS` denylist + `meta.json` `scrub_categories` attestation.
 - claude carried **exact** per-line timestamps (`event_stream` exact, no `t_precision`). **Cursor's transcript is untimed → expect `t_precision: 'anchored'`** on cursor events; assert that, not "exact".
 

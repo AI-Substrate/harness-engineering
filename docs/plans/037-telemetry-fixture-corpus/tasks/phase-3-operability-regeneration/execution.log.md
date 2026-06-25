@@ -47,7 +47,7 @@ Capture → scrub → gitignored `scratch/` → **non-skippable manual "anything
 - The `harness capture-fixtures` verb surface + the **per-surface `--session` table** (claude optional · copilot-cli/cursor required · copilot-vscode cwd-resolved).
 - **Cursor's on-disk path** `~/.cursor/projects/<mangle>/agent-transcripts/<conv>/<conv>.jsonl` + the mangle rule + transcript-verbatim vs bubble-projected asymmetry (AC-05).
 - The **two-guard model** (scrub + auto-globbing byte-scan) and what each protects.
-- The **git-handle lesson** (`--names`) called out as its own warning — the home-derived username misses git handles (the real `jakkaj` leak).
+- The **git-handle lesson** (`--names`) called out as its own warning — the home-derived username misses git handles (the real `example-handle` leak).
 - The manual-review checklist (leak scan targets + content sanity incl. the self-referential-session trap), marked non-skippable in a top banner.
 - A regen section pointing at `gen`/`check:telemetry-fixtures`.
 
@@ -111,3 +111,22 @@ Reviewed every commit (verdicts via the run's `inbox/inside/messages.ndjson` —
 | F003 | MED | Deviation Ledger mitigation said review happens "before promotion" — same control-shape overstatement as F001 | Changed to "review of the **promoted corpus bytes** before `git add`/commit/publication" |
 
 **Decision the companion was asked to scrutinise (T001 orchestrate-vs-dist-import)**: accepted — T001 + T002 both APPROVE, no pushback on the orchestration shape. **No code changes** were needed — the extension already behaves correctly (and prints the correct `next_action`); only the docs/governance had drifted from it (Phase 3 stays operability-only).
+
+---
+
+## Full-plan review-fix cycle (the-flow `7 review`, entire plan → REQUEST_CHANGES)
+
+A whole-plan review (Phase 1+2+3) returned **REQUEST_CHANGES** with 3 HIGH, 3 MED, 2 LOW. All eight were verified against source before acting. Resolutions:
+
+| ID | Sev | Verdict | Resolution |
+|----|-----|---------|------------|
+| **F001** | HIGH | Real — `--instance` flowed into `stageDir`/`corpusDir` write paths with no validation; `../`/`/`/`\` could write **unscrubbed** `raw.unscrubbed.*` outside the gitignored `scratch/` root | Added `isSafeInstanceId` (basename slug `^[A-Za-z0-9][A-Za-z0-9._-]*$`, no `..`) in `capture-logic.ts`; `extension.ts` rejects a bad `--instance` with `E_INSTANCE` **before any write**. 4 new unit tests (accept default/slug; reject empty/sep/`..`/leading-dot). |
+| **F002** | HIGH | Real — real identity (`<handle>`/`<name>`/`<email>`/`/Users/<user>`) was committed in tracked tests/docs/logs **outside** the `fixtures/real` byte-scan boundary | Sanitized all 10 plan-037-introduced artifacts to synthetic placeholders (`alice` / `Alice Example` / `alice@example.com` / `example-handle` / `/Users/alice`), lesson preserved. Tests stay green (input + assertion moved together). **Scoping note:** the same tokens exist in ~30 pre-existing non-037 files (plans 002–035, `.minih.json`, guides) — a repo-wide pre-existing condition, **out of scope** for this plan (fixing it would rewrite other plans' frozen review records); flagged for a separate sweep. |
+| **F003** | HIGH | Real — absolute local `runDir` home paths in `docs/retros/code-review-companion.md` | **NOT plan-037's to fix.** That file is a **concurrent session's uncommitted change** (` M` in the shared tree); per the no-concurrent-edit rule it is untouched and **excluded from plan-037 commits**. The owning session must sanitize it before *it* commits. Surfaced to the user. |
+| **F004** | MED | Real — copilot-cli capture promoted with only `raw.events.jsonl` when no `assistant_usage` records were found, silently missing AC-03 token correlation | `resolveCopilotCli` now returns `ctx.unconfigured(...)` (next_action: pass `--log` / choose a session with usage) when the filtered process log is empty. |
+| **F005** | MED | Real — the drift guard delegated to two suites that hardcode the current instances, so a future `fixtures/real/<surface>/<instance>/` could be committed uncovered | `telemetry-fixtures.mjs` now **enumerates every committed instance** and fails if any lacks both a golden and a suite reference. Proven: clean (4/4 covered) → orphan instance → exit 1 → restored clean. |
+| **F006** | MED | Real (known) — AC-07 / task 3.1 still said "import the built `dist/` modules"; the impl orchestrates the golden suites | Aligned AC-07 + task 3.1 plan text to bless suite orchestration (single source of truth; supersedes the literal `dist/`-import wording) + note the instance enumeration. |
+| **F007** | LOW | Real, already logged as **DL-001** (dogfood `_tooling`→telemetry imports) | Deferred — documented deviation; reclassification/contract is a larger architectural call, not a publication-safety blocker. |
+| **F008** | LOW | Real, pre-existing mixed-suite condition (not all promoted tests carry the exact §6.3 Test Doc fields) | Deferred — not introduced by plan 037; regularize-or-amend is its own doctrine task. |
+
+**Proof**: 71/71 affected vitest tests pass (new F001 tests + sanitized F002 tests); `check:telemetry-fixtures` clean with instance enumeration; biome clean on all 037 files; `capture-logic.ts`/`extension.ts` typecheck clean. Also committed: biome line-wrap formatting of five Phase-1/2 telemetry suites (latent format drift; tokens unchanged). **F003 will keep surfacing on re-review until the concurrent session sanitizes its own file** — it is not a plan-037 defect.

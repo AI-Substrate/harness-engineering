@@ -20,7 +20,7 @@ The critic returned six speculative items then self-closed with `no_material_fin
 | F1 `telemetry-fixtures.mjs` read-as-existing | DROPPED | Pre-Impl Check marks it **create**; confused with the read-only ref `flow-fixtures.mjs` (which does exist) |
 | F2/F3 package.json/CI targets claimed pre-existing | DROPPED | Marked **modify (add)** / mirror; dossier never claims the targets exist |
 | F4 T001 fork ⇒ AC-07 Done-When unverifiable | DROPPED | Done-When (`--check` clean / non-zero on drift) is **shape-independent**; a recommended fork is correct tasks practice |
-| F5 `--names` git-handle lesson absent from plan | DROPPED | Prior Phase Context is sourced from **execution logs by design**; the jakkaj-leak lesson is real (Phase 1 Discovery T006) |
+| F5 `--names` git-handle lesson absent from plan | DROPPED | Prior Phase Context is sourced from **execution logs by design**; the example-handle-leak lesson is real (Phase 1 Discovery T006) |
 | F6 T003 cursor dependency ungated | DROPPED | **Phase 2 done**; `fixtures/real/cursor/2026-06-25-checks-walkthrough/` committed — dependency satisfied |
 
 **Lens applied**: Operations (scripts/CI/wiring) + Readiness. No security/data/migration trigger beyond the already-settled privacy guards (frozen from Phases 1–2).
