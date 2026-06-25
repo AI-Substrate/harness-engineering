@@ -64,10 +64,10 @@ const SECRET_PATTERNS: RegExp[] = [
   /github_pat_[A-Za-z0-9_]{20,}/g,
   /AKIA[0-9A-Z]{16}/g, // aws access key id
   /xox[baprs]-[A-Za-z0-9-]{10,}/g, // slack
-  /Bearer\s+[\w.\-]{16,}/g, // bearer header token
+  /Bearer\s+[\w.-]{16,}/g, // bearer header token
 ];
 
-const EMAIL_RE = /[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/g;
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 // Defense-in-depth catch-alls for ANY home-shaped path (not just the configured one),
 // so an unexpected path in a real transcript can never ride into the committed bytes.

@@ -82,3 +82,14 @@
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T008 | Noteworthy | **Plan AC-01 mis-derived the invariant.** It expected `t_precision==='anchored'`, but the claude transcript carries REAL per-line timestamps → events are EXACT (no t_precision tag). `anchored` is for APPROXIMATED stamps (cursor untimed transcript, synthetic branch/harness events). | Corrected the invariant to "event_stream present + exact ISO timestamps" in the test, plan AC-01, and tasks T008. No adapter change (adapter is correct). | AC-01; segment.ts:278; capture-service.ts:246 |
+
+## T007 — fixture-privacy-scan.test.ts (byte-scan, AC-02) ✅
+
+- Byte-scans the committed bytes of **every** `raw.*` + `expected-segment.json` under `fixtures/real/` for: `/Users/`, JSON-doubled Windows paths, emails, secret shapes (sk-/gh*_/AKIA/Bearer), and **runtime-derived** identity tokens (`USER`/`HOME` basename — scanned, never committed).
+- Negative control: a FAKE known-bad string in TEST CODE (`/Users/alice`, `C:\\Windows`, `sk-…`, `bob@example.com`) asserted FLAGGED — the absence assertions can't pass vacuously. No banned token committed to the corpus (validator Finding 2).
+- **Evidence**: `vitest run fixture-privacy-scan.test.ts` → 4 passed. Full telemetry suite 287/287 (AC-10 — synthetics untouched). biome clean.
+
+### Discoveries
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T007 | Noteworthy | A naive `[A-Za-z]:\\` Windows-path scan flags JSON-escaped YAML keys (`on:\n`, `steps:\n`) — letter+colon+`\n`. | In JSON a real backslash is byte-DOUBLED (`C:\\`) vs a single-backslash escape; matched the doubled form. Documented that plain-text Phase-2 process logs need the single-backslash variant. | AC-02 |
