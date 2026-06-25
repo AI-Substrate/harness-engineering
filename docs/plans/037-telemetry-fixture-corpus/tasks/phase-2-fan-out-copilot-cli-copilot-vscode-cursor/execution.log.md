@@ -125,3 +125,10 @@ The copilot-vscode SQLite surface is done end-to-end: pure projection (privacy b
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T009 | decision | The cursor transcript is kept VERBATIM (prompts/tool-args scrubbed only) but the `cursorDiskKV` bubble is PROJECTED to model/timing — asymmetric handling of the two sources. | Right per source role: the adapter READS transcript prose (word counts/tool names) so it's the corpus payload (like claude); it reads only model/timing from bubbles, whose raw form embeds diffs/file-contents/prose → must project. | extension.ts `resolveCursor` |
 | 2026-06-25 | T009 | insight | The captured session's MODEL (`composer-2.5`) lives on the type-1 (user) bubbles; type-2 (assistant) bubbles have `modelName:null`. | The adapter's `modelHistogram` counts modelName across ALL bubble types → still surfaces `composer-2.5` as dominant for the model attribution. T011 asserts this join. | cursor bubbles 01aa25af |
+
+## T010 — promote the real cursor fixture + manual review ✅
+
+- Promoted `fixtures/real/cursor/2026-06-25-checks-walkthrough/` (`raw.jsonl` 10 KB verbatim transcript, `raw.rows.json` 4.5 KB 24 projected bubbles, `meta.json`). Substantive convo (not a stub): 5 user prompts, ~13 assistant turns, real harness-command tool calls, model `composer-2.5`, real bubble timestamps.
+- **Manual "anything bad" review** (non-skippable): transcript leak scan **0** (`/Users/`, identity, emails, key shapes); all machine paths rebased to `/home/dev/repo`; content innocuous (boot/checks/doctor + a count-to-10). Bubbles carry only type/createdAt/modelName — no diffs/prose.
+- **Byte-scan** auto-globbed the instance: `fixture-privacy-scan.test.ts` **19 passed** — and the boundary-scan correctly did NOT flag the transcript's `stop:\n` (the F001 fix paying off on real data).
+- **Commit**: T010 (fixture data).

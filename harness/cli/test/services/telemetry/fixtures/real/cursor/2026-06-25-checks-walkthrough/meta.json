@@ -1,0 +1,15 @@
+{
+  "surface": "cursor",
+  "captured_utc": "2026-06-25",
+  "harness": "cursor-agent",
+  "scrubbed": true,
+  "scrub_categories": [
+    "machine-paths",
+    "home-username",
+    "git-handles",
+    "person-names",
+    "emails",
+    "secrets"
+  ],
+  "note": "real cursor-agent session (composer-2.5): harness boot/checks/doctor walkthrough; transcript verbatim, cursorDiskKV bubbles projected to model/timing"
+}
