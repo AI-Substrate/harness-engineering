@@ -205,6 +205,20 @@ describe('projectCopilotVscodeRows', () => {
     expect(out.turns[2]?.timestamp).toBeNull();
   });
 
+  it('mirrors SQLite trim (space-only), NOT JS trim, on whitespace-only values (companion F002)', () => {
+    // SQLite `trim()` strips only ASCII space, so a tab/newline-only message is
+    // NOT empty: TURNS_SQL returns words=1 / has_response=1. JS `.trim()` would
+    // wrongly give 0 — which would desync T008's real-SQL round-trip.
+    const out = projectCopilotVscodeRows(rawSessions, [
+      { session_id: 's', turn_index: 0, user_message: '\t', assistant_response: '\n', timestamp: 1 },
+      { session_id: 's', turn_index: 1, user_message: ' ', assistant_response: ' ', timestamp: 2 },
+    ]);
+    // '\t' is not a space → not trimmed → length 1 → words 1; '\n' response → has_response 1.
+    expect(out.turns[0]).toMatchObject({ words: 1, has_response: 1 });
+    // a single real space DOES trim to empty → words 0 / has_response 0.
+    expect(out.turns[1]).toMatchObject({ words: 0, has_response: 0 });
+  });
+
   it('projects sessions to exactly {id, cwd, updated_at} — no stray columns', () => {
     const out = projectCopilotVscodeRows(rawSessions, rawTurns);
     expect(out.sessions).toEqual([{ id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 }]);

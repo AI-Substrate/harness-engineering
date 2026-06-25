@@ -71,7 +71,8 @@ const captureFixtures: HarnessVerb = {
     {
       flags: '--session <id>',
       description:
-        'explicit session id (claude: default = sole session for this repo; copilot-cli: required)',
+        'session/conversation id — claude: optional (defaults to the sole session for this repo); ' +
+        'copilot-cli: required; cursor: required (the conversation id); copilot-vscode: optional override (else resolved by cwd)',
     },
     {
       flags: '--log <path>',
@@ -287,22 +288,36 @@ function resolveCursor(ctx: Ctx, config: ScrubCfg): Resolved {
       ),
     };
   }
-  const files: CapturedRaw[] = [{ rawName: 'raw.jsonl', raw: transcript }];
-
   // Bubbles (model/timing only) — first state.vscdb path with rows for this conv wins.
+  // The cursor surface REQUIRES both sources (AC-05: the transcript↔bubble model/timing
+  // join). A wrong --session, a missing/locked state.vscdb, or a headless/no-bubble
+  // conversation yields no rows — that must be a hard `unconfigured`, NOT a silent
+  // transcript-only capture that can't satisfy the contract (companion F003).
   const db = new NodeDb();
   const env = envPortFor(ctx, config);
+  let bubbleRows: CapturedRaw | null = null;
   for (const dbPath of cursorStateDbPaths(env)) {
     const rows = db.query(dbPath, 'SELECT key, value FROM cursorDiskKV WHERE key LIKE ?', [
       `bubbleId:${conv}:%`,
     ]);
     if (rows.length === 0) continue;
     const projected = projectCursorBubbleRows(rows);
-    files.push({ rawName: 'raw.rows.json', raw: `${JSON.stringify(projected, null, 2)}\n` });
+    if (projected.length === 0) continue;
+    bubbleRows = { rawName: 'raw.rows.json', raw: `${JSON.stringify(projected, null, 2)}\n` };
     break;
   }
+  if (bubbleRows === null) {
+    return {
+      result: ctx.unconfigured(
+        `No cursorDiskKV bubbles for conversation ${conv} under ` +
+          `${cursorStateDbPaths(env).join(' | ')}. The cursor surface needs the transcript ` +
+          `AND model/timing bubbles (AC-05); pass a --session whose conversation has bubbles ` +
+          `(a substantive run in this repo), not a headless/empty one.`,
+      ),
+    };
+  }
 
-  return { files, harnessId: 'cursor-agent' };
+  return { files: [{ rawName: 'raw.jsonl', raw: transcript }, bubbleRows], harnessId: 'cursor-agent' };
 }
 
 function resolveClaude(ctx: Ctx, config: ScrubCfg): Resolved {

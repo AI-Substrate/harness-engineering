@@ -55,17 +55,29 @@ export function filterCopilotProcessLog(logContent: string, sessionId: string): 
 }
 
 /**
+ * Trim the way SQLite's `trim(x)` does — strip ONLY the ASCII space (0x20), NOT
+ * tabs/newlines/Unicode whitespace (which JS `String.prototype.trim` also strips).
+ * The adapter's `TURNS_SQL` uses bare `trim(...)`, so mirroring it space-only keeps
+ * `words`/`has_response` bit-for-bit with the SQL on whitespace edge cases like a
+ * `'\t'`-only message (companion F002) — the contract T008's round-trip relies on.
+ */
+function sqliteTrim(s: string): string {
+  return s.replace(/^ +| +$/g, '');
+}
+
+/**
  * Count words the way the copilot-vscode adapter's `TURNS_SQL` does:
  * `length(trim) - length(replace(trim, ' ', '')) + 1` for a non-empty trimmed
  * string — i.e. (number of single-space chars) + 1 — and `0` when the trimmed
  * string is empty. This is deliberately NOT a smart word count: runs of spaces
- * each count, exactly as SQLite computes them. Mirroring the SQL bit-for-bit is
- * what lets T008 reconstruct a writable sqlite from the projected rows and read
- * it back through the adapter's real SQL to identical numbers.
+ * each count, exactly as SQLite computes them, and the trim is SQLite's space-only
+ * {@link sqliteTrim} (NOT JS `trim`). Mirroring the SQL bit-for-bit is what lets
+ * T008 reconstruct a writable sqlite from the projected rows and read it back
+ * through the adapter's real SQL to identical numbers.
  */
 function sqlWordCount(raw: unknown): number {
   if (typeof raw !== 'string') return 0;
-  const trimmed = raw.trim();
+  const trimmed = sqliteTrim(raw);
   if (trimmed === '') return 0;
   return trimmed.length - trimmed.replaceAll(' ', '').length + 1;
 }
@@ -116,7 +128,9 @@ export function projectCopilotVscodeRows(
   }));
   const turns = rawTurns.map((t) => {
     const resp = t.assistant_response;
-    const hasResponse = typeof resp === 'string' && resp.trim() !== '' ? 1 : 0;
+    // Mirror TURNS_SQL's `assistant_response IS NULL OR trim(...) = ''` — SQLite
+    // trim is space-only (sqliteTrim), so a `'\t'`-only response is has_response 1.
+    const hasResponse = typeof resp === 'string' && sqliteTrim(resp) !== '' ? 1 : 0;
     return {
       session_id: t.session_id,
       turn_index: t.turn_index,

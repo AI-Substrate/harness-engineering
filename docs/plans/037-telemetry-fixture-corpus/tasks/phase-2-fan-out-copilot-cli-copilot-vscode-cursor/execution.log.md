@@ -155,3 +155,16 @@ The cursor surface closes Phase 2: pure bubble projection (privacy boundary) →
 - **AC-10**: 3 synthetic fixtures + tests untouched. ✅
 
 Full telemetry + extension suite **333 passed (34 files)**. Adapters unchanged (no real capture surfaced an extraction bug → no Deferred items). DL-001 (extension has no db port) resolved uniformly: compose core `NodeDb` at `run()` for both SQLite surfaces.
+
+## Companion debrief — run `2026-06-25T09-59-44-860Z-0b88` (Power On Mode)
+
+The companion reviewed every commit (`git show` ×each confirmed in `events.ndjson`) but inbox delivery to `minih inbox list` flaked again — findings recovered from `runs/…-0b88/inbox/inside/messages.ndjson` (22 msgs). Verdict at drain: REQUEST_CHANGES. Reconciliation:
+
+| # | Sev | Finding | Verified? | Disposition |
+|---|-----|---------|-----------|-------------|
+| F001 | HIGH | T005 word-count fixture off by one (`please…tests` is 8 words, asserted 7). | ✅ real | **Already fixed** in T006 (caught independently; expectation → 8). No action. |
+| F002 | HIGH | `sqlWordCount`/`has_response` used JS `trim()`; SQLite `trim()` strips ONLY spaces, so a `'\t'`-only message drifts (JS→0, SQL→1), breaking T008's bit-for-bit round-trip on whitespace edge cases. | ✅ real | **Fixed**: added `sqliteTrim` (space-only) used by both; +lock-in test (`'\t'`→words 1/has_response 1; `' '`→0/0). |
+| F003 | HIGH | `resolveCursor` returned a successful capture with NO bubble rows → silently wrote only `raw.jsonl`; a wrong `--session`/headless convo looks captured but can't satisfy AC-05. | ✅ real | **Fixed**: no bubbles (or empty projection) → `ctx.unconfigured(...)` naming the candidate paths + conv. Verified: conv `1104161a` (transcript, no bubbles) now hard-fails; real conv still captures both. |
+| F004 | MED | `--session` help said only copilot-cli required; cursor now requires it too (contract drift). | ✅ real | **Fixed**: description now covers all four surfaces' `--session` semantics. |
+
+**MagicWand** (companion): a companion-side `unresolved`/`superseded finding` primitive so drain summaries derive from inbox state without manually tracking which earlier findings later commits fixed. Backlog candidate (echoes the prior run's coordination magicWand — strong signal). All findings fixed; **334 passed (34 files)**; goldens unchanged (real fixtures carry no whitespace-only turns). Fix commit follows.
