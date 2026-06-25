@@ -7,10 +7,12 @@
  * the sync-service stays unit-testable with `FakeGitWrite` and never shells out to
  * `git`.
  *
- * §T1 (AC-07/13): the commit author AND committer are forced to the
- * NON-INDIVIDUAL {@link TELEMETRY_AUTHOR} identity inside the adapter — it is
- * never a `commitTree` parameter, so no call site can substitute an engineer's
- * `git config user.email`.
+ * ATTRIBUTION (2026-06-25 decision — reverses the former §T1 non-individual
+ * forcing): a telemetry commit's author + committer are the **contributor's own
+ * configured git identity**, so each `refs/harness-telemetry/*` shard is traceable
+ * to who pushed it. {@link TELEMETRY_FALLBACK_AUTHOR} is used ONLY when the repo
+ * has no configured `user.name`/`user.email`, so the commit never fails in an
+ * unconfigured environment.
  */
 
 /**
@@ -39,8 +41,9 @@ export const TELEMETRY_REF_GLOB = `${TELEMETRY_REF_PREFIX}/*`;
  * Sharding by (capture-date, session) means no two writers ever target the same
  * ref, so a team's concurrent pushes never contend — each push is a clean
  * create-or-fast-forward, no fetch/merge/retry needed. The `session` is the
- * opaque per-session id (NOT an individual identity — §T1/P12; same granularity
- * already in the buffer paths). The date prefix doubles as the retention/prune
+ * opaque per-session id (the same granularity already in the buffer paths; the
+ * pushing engineer's identity is on the commit, not in the ref name). The date
+ * prefix doubles as the retention/prune
  * key (a scraper can drop `refs/harness-telemetry/<YYYY>/<MM>/<DD>/*` after
  * ingesting that day). Each ref's commit tree is a flat `<seq>.json` set — the
  * date+session hierarchy lives in the ref name, not the tree.
@@ -49,17 +52,23 @@ export function telemetryRefFor(datePath: string, session: string): string {
   return `${TELEMETRY_REF_PREFIX}/${datePath}/${session}`;
 }
 
+/** A git commit identity (author / committer). */
+export interface GitIdentity {
+  name: string;
+  email: string;
+}
+
 /**
- * The non-individual commit identity (§T1, ratified 2026-06-23). The ONLY
- * identity any telemetry commit ever carries — author and committer both. Not a
- * parameter anywhere; storing an engineer's email durably is the surveillance
- * vector P12 forbids, so the email is a constant `noreply@…`, never read from git
- * config.
+ * The FALLBACK commit identity — used ONLY when the repo has no configured git
+ * `user.name`/`user.email`. Normally a telemetry commit carries the contributor's
+ * own configured identity (the 2026-06-25 attribution decision — telemetry refs
+ * are traceable to who pushed them); this generic identity is the safety net so an
+ * unconfigured environment never fails the commit.
  */
-export const TELEMETRY_AUTHOR = {
+export const TELEMETRY_FALLBACK_AUTHOR: GitIdentity = {
   name: 'harness-telemetry',
   email: 'noreply@anthropic.com',
-} as const;
+};
 
 /** A single `git mktree` entry (`<mode> SP <type> SP <sha> TAB <name>`). */
 export interface TreeEntry {
@@ -79,9 +88,10 @@ export interface GitWritePort {
   /** The current sha a ref points at, or null when the ref does not exist. */
   refTip(ref: string): string | null;
   /**
-   * `commit-tree` with the {@link TELEMETRY_AUTHOR} identity FORCED for author +
-   * committer; `parent` null = an orphan root (first ever telemetry commit).
-   * Returns the commit sha.
+   * `commit-tree` using the **contributor's configured git identity** for author +
+   * committer (attributable); falls back to {@link TELEMETRY_FALLBACK_AUTHOR} only
+   * when no `user.name`/`user.email` is configured. `parent` null = an orphan root
+   * (first ever telemetry commit). Returns the commit sha.
    */
   commitTree(tree: string, parent: string | null, message: string): string;
   /**

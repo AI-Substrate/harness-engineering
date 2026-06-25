@@ -10,11 +10,12 @@ import { telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
 const TELEMETRY_REF = telemetryRefFor('2026/03/23', 'sessA');
 
 /**
- * T002 (plan 034 Phase 4 · 4.2 · AC-06/07/13) — the REAL git plumbing against a
+ * T002 (plan 034 Phase 4 · 4.2 · AC-06/07) — the REAL git plumbing against a
  * throwaway repo. Proves the two claims a fake cannot: (1) the orphan-ref write
  * leaves `git status --porcelain` byte-identical (no index/worktree touch, AC-06),
- * and (2) the commit author AND committer are the non-individual identity, ≠ the
- * repo's configured `git config user.email` (§T1 constitutional gate, AC-07/13).
+ * and (2) the commit author AND committer are the **contributor's configured git
+ * identity** (the 2026-06-25 attribution decision — telemetry refs are traceable
+ * to who pushed them), with the generic fallback only when none is configured.
  */
 
 const ENGINEER_EMAIL = 'engineer@example.com';
@@ -61,19 +62,18 @@ describe('ExecGitWrite — real orphan-ref plumbing', () => {
     expect(g('status', '--porcelain')).toBe(porcelainBefore);
   });
 
-  it('forces a NON-INDIVIDUAL author AND committer, never the configured user.email (§T1, AC-07/13)', () => {
-    expect(g('config', 'user.email')).toBe(ENGINEER_EMAIL); // the repo identity we must NOT use
+  it('attributes the commit to the configured contributor identity (author AND committer, AC-07)', () => {
+    expect(g('config', 'user.email')).toBe(ENGINEER_EMAIL);
     const commit = g('rev-parse', TELEMETRY_REF);
 
     const authorEmail = g('show', '-s', '--format=%ae', commit);
     const committerEmail = g('show', '-s', '--format=%ce', commit);
     const authorName = g('show', '-s', '--format=%an', commit);
 
-    expect(authorEmail).toBe('noreply@anthropic.com');
-    expect(committerEmail).toBe('noreply@anthropic.com');
-    expect(authorName).toBe('harness-telemetry');
-    expect(authorEmail).not.toBe(ENGINEER_EMAIL);
-    expect(committerEmail).not.toBe(ENGINEER_EMAIL);
+    // Attributable: the contributor's own git identity is on the telemetry commit.
+    expect(authorEmail).toBe(ENGINEER_EMAIL);
+    expect(committerEmail).toBe(ENGINEER_EMAIL);
+    expect(authorName).toBe('Engineer Individual');
   });
 
   it('updateRef is real compare-and-set: a stale oldSha is rejected', () => {

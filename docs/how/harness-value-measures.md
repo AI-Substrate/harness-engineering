@@ -382,18 +382,18 @@ to the `harness-change` records by `plan_id`, it is exactly the volume context t
 encoded-mitigation *ratio* (§a) needs — *was the friction that got encoded the
 friction where the work actually happened?* — without ever naming a person.
 
-**Team/repo only — the same governance as the rates.** The segment carries **no
-per-individual identity**. Its durable commits on the `refs/harness-telemetry/*`
-shard refs are authored by a fixed non-individual identity
-(`harness-telemetry <noreply@…>`); a contributor's `git config user.email` is
-never read or stored, and the shards are keyed by session (not by engineer). The optional
-`agent` provenance field is the *same* nullable, aggregate-only key described in
-[§ Team-level only](#team-level-only--never-individual-attribution) — never a
-per-person scoreboard. Token count is on the explicit do-**not**-use-for-individuals
-list, and that holds for these segments exactly as it holds for the rates: they
-are aggregate diagnostic context, **not** performance management. A code-path
-audit (`no-per-individual-surface` architecture test) enforces that no CLI verb
-surfaces a per-individual identity from telemetry.
+**Attributable commit, team-grain use — the same governance as the rates.** As of
+the 2026-06-25 decision, a segment's durable commit on the
+`refs/harness-telemetry/*` shard refs is authored by the **contributor's own
+configured git identity** (a generic `harness-telemetry <noreply@…>` is used only
+as a fallback when no identity is configured), so a push is **traceable to who
+made it** — the same attribution any git commit carries. Attribution makes
+telemetry *traceable*; it does **not** make it a per-person scoreboard. The counts
+(token count among them) stay on the explicit do-**not**-use-for-individuals list:
+they are aggregate diagnostic context at team/repo grain, **not** performance
+management. The optional `agent` provenance field is the *same* nullable,
+aggregate-only key described in
+[§ Team-level only](#team-level-only--never-individual-attribution).
 
 ## What this does not build
 

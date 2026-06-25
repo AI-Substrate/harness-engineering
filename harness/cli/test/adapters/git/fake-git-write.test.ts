@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FakeGitWrite } from '../../../src/adapters/git/fake-git-write.js';
-import { TELEMETRY_AUTHOR, telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
+import { telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
 
 /** A representative shard ref — the GitWritePort contract is ref-agnostic, so any concrete ref exercises it. */
 const TELEMETRY_REF = telemetryRefFor('2026/03/23', 'sessA');
@@ -100,19 +100,21 @@ describe('FakeGitWrite — GitWritePort plumbing contract', () => {
     expect(g.pushed).toEqual([]); // nothing recorded as pushed
   });
 
-  it('§T1: every commit author AND committer is the non-individual identity, never a parameter', () => {
-    const g = new FakeGitWrite();
-    const engineerEmail = 'jordan@example.com'; // what a per-individual impl would leak
+  it('attribution: every commit author AND committer is the contributor identity', () => {
+    const engineer = { name: 'Jordan Knight', email: 'jordan@example.com' };
+    const g = new FakeGitWrite({}, engineer);
     g.commitTree('tree1', null, 'flush');
 
     const { author, committer } = g.commits[0];
     for (const identity of [author, committer]) {
-      expect(identity.name).toBe('harness-telemetry');
-      expect(identity.email).toBe('noreply@anthropic.com');
-      expect(identity.email).not.toBe(engineerEmail);
-      // The exported constant is the single source of truth — no call site supplies an identity.
-      expect(identity).toEqual(TELEMETRY_AUTHOR);
+      expect(identity).toEqual(engineer); // attributable to who pushed it
     }
-    expect(TELEMETRY_AUTHOR.email).toBe('noreply@anthropic.com');
+  });
+
+  it('attribution: defaults to a representative engineer identity when none is given', () => {
+    const g = new FakeGitWrite();
+    g.commitTree('tree1', null, 'flush');
+    expect(g.commits[0].author.email).toBe('engineer@example.com');
+    expect(g.commits[0].committer.email).toBe('engineer@example.com');
   });
 });

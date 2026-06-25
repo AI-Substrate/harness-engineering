@@ -1,4 +1,4 @@
-import { type GitWritePort, TELEMETRY_AUTHOR, type TreeEntry } from './git-write-port.js';
+import type { GitIdentity, GitWritePort, TreeEntry } from './git-write-port.js';
 
 /**
  * Deterministic git-write plumbing for tests (fakes over mocks — assert on
@@ -6,8 +6,9 @@ import { type GitWritePort, TELEMETRY_AUTHOR, type TreeEntry } from './git-write
  * an in-memory ref map with real compare-and-set semantics so a service test can
  * exercise the ff-retry, the orphan rollback, and the offline push-failure path.
  *
- * §T1: `commitTree` records {@link TELEMETRY_AUTHOR} for every commit — the
- * identity is never an argument, mirroring the real adapter.
+ * ATTRIBUTION: `commitTree` records the **contributor's identity** (the
+ * constructor's `identity`, default a representative engineer) — mirroring the
+ * real adapter, which lets git use the configured `user.name`/`user.email`.
  */
 export class FakeGitWrite implements GitWritePort {
   readonly calls: string[] = [];
@@ -15,8 +16,8 @@ export class FakeGitWrite implements GitWritePort {
     tree: string;
     parent: string | null;
     message: string;
-    author: typeof TELEMETRY_AUTHOR;
-    committer: typeof TELEMETRY_AUTHOR;
+    author: GitIdentity;
+    committer: GitIdentity;
   }[] = [];
   readonly trees: TreeEntry[][] = [];
   readonly blobs: string[] = [];
@@ -32,7 +33,11 @@ export class FakeGitWrite implements GitWritePort {
   private staleConsumed = false;
   private readonly refs = new Map<string, string>();
 
-  constructor(seedRefs: Record<string, string> = {}) {
+  constructor(
+    seedRefs: Record<string, string> = {},
+    /** The contributor identity each recorded commit carries (attributable). */
+    private readonly identity: GitIdentity = { name: 'Engineer', email: 'engineer@example.com' },
+  ) {
     for (const [ref, sha] of Object.entries(seedRefs)) this.refs.set(ref, sha);
   }
 
@@ -55,14 +60,14 @@ export class FakeGitWrite implements GitWritePort {
 
   commitTree(tree: string, parent: string | null, message: string): string {
     this.calls.push('commitTree');
-    // §T1: author AND committer are the non-individual identity (the real adapter forces
-    // both via GIT_AUTHOR_*/GIT_COMMITTER_* env) — record both so the gate is fully testable.
+    // Attribution: author AND committer are the contributor's identity (the real
+    // adapter lets git use the configured user.name/user.email) — record both.
     this.commits.push({
       tree,
       parent,
       message,
-      author: TELEMETRY_AUTHOR,
-      committer: TELEMETRY_AUTHOR,
+      author: this.identity,
+      committer: this.identity,
     });
     return `commit${++this.commitN}`;
   }
