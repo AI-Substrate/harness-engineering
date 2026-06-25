@@ -29,13 +29,17 @@
  *             scrub normalizes every machine path/identity token), so the check is
  *             deterministic across machines.
  *
+ * Both modes first ENUMERATE every committed `fixtures/real/<surface>/<instance>/`
+ * and fail if any instance lacks a golden + a suite reference (review F005) — so the
+ * living corpus can't grow a fixture dir that no drift assertion ever touches.
+ *
  * Runs the repo-hoisted vitest entry directly via `node` (no `.bin` shim — matches
  * `flow-fixtures.mjs`, deterministic across npm majors and cross-platform), with
  * cwd = `harness/cli` so `vitest.config.ts` resolves. No prior `npm run build` is
  * needed: the suites import from `src/` through vitest's TS pipeline.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -50,6 +54,8 @@ const SUITES = [
   'test/services/telemetry/copilot-vscode-sqlite.int.test.ts',
 ];
 
+const realRoot = join(cliDir, 'test/services/telemetry/fixtures/real');
+
 if (!existsSync(vitestEntry)) {
   console.error(`telemetry-fixtures: vitest entry not found at ${vitestEntry} — run \`npm install\` first.`);
   process.exit(1);
@@ -59,6 +65,57 @@ for (const suite of SUITES) {
     console.error(`telemetry-fixtures: golden suite missing: ${suite}`);
     process.exit(1);
   }
+}
+
+/** Every committed `fixtures/real/<surface>/<instance>/` dir. */
+function listInstances() {
+  const out = [];
+  let surfaces = [];
+  try {
+    surfaces = readdirSync(realRoot, { withFileTypes: true });
+  } catch {
+    return out; // no corpus yet → nothing to enumerate
+  }
+  for (const s of surfaces) {
+    if (!s.isDirectory()) continue;
+    let instances = [];
+    try {
+      instances = readdirSync(join(realRoot, s.name), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const i of instances) if (i.isDirectory()) out.push({ surface: s.name, instance: i.name });
+  }
+  return out;
+}
+
+// FUTURE-PROOF the living corpus (review F005): the corpus grows by ADDING instance
+// dirs alongside existing ones, but the guard's drift assertions only fire for
+// instances a suite actually loads. So before delegating, assert every committed
+// instance is BOTH golden-bearing AND referenced by a suite — otherwise a new
+// fixture dir could be committed and `check:telemetry-fixtures` would pass blind.
+const suiteText = SUITES.map((s) => {
+  try {
+    return readFileSync(join(cliDir, s), 'utf8');
+  } catch {
+    return '';
+  }
+}).join('\n');
+const uncovered = listInstances().filter(({ surface, instance }) => {
+  const goldenPresent = existsSync(join(realRoot, surface, instance, 'expected-segment.json'));
+  const referenced = suiteText.includes(`${surface}/${instance}`) || suiteText.includes(instance);
+  return !goldenPresent || !referenced;
+});
+if (uncovered.length > 0) {
+  console.error(
+    'telemetry-fixtures: these committed real fixture instances have NO drift-guard coverage:',
+  );
+  for (const u of uncovered) console.error(`  - ${u.surface}/${u.instance}`);
+  console.error(
+    'Each instance needs an `expected-segment.json` AND a golden-suite case that loads it ' +
+      '(regenerate via `npm run gen:telemetry-fixtures`), or remove the orphan dir.',
+  );
+  process.exit(1);
 }
 
 const env = { ...process.env };
@@ -80,4 +137,7 @@ try {
   process.exit(1);
 }
 
-console.error(`telemetry-fixtures: ${check ? 'checked' : 'regenerated'} ${SUITES.length} golden suite(s).`);
+console.error(
+  `telemetry-fixtures: ${check ? 'checked' : 'regenerated'} ${SUITES.length} golden suite(s); ` +
+    `${listInstances().length} committed instance(s) all covered.`,
+);
