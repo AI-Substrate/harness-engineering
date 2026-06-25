@@ -138,6 +138,29 @@ export function pickCopilotCliSession(
   return explicit ?? current ?? null;
 }
 
+/**
+ * Cursor's `projects/` dir mangle: strip leading slash(es), `/` → `-` (the observed
+ * scheme — `/Users/x/repo` → `Users-x-repo`). Unlike claude's mangle this keeps
+ * dots/other chars, matching the on-disk `~/.cursor/projects/<mangled>/` layout.
+ */
+export function cursorMangle(absPath: string): string {
+  return absPath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\//g, '-');
+}
+
+/**
+ * Where cursor stores this repo's agent transcripts on disk. Capture reads this
+ * directly (Finding 04): `AGENT_TRANSCRIPTS` only gates the runtime auto-detect, so
+ * a capture from outside a live cursor shell derives the dir from home + cwd.
+ */
+export function cursorTranscriptsDir(homeDir: string, repoRoot: string): string {
+  return `${homeDir}/.cursor/projects/${cursorMangle(repoRoot)}/agent-transcripts`;
+}
+
+/** The conversation's transcript file: `<transcriptsDir>/<conv>/<conv>.jsonl`. */
+export function cursorTranscriptFile(transcriptsDir: string, convId: string): string {
+  return `${transcriptsDir}/${convId}/${convId}.jsonl`;
+}
+
 export interface CaptureConfig {
   homeDir: string;
   repoRoot: string;

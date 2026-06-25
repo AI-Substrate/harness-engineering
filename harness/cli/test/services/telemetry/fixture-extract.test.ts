@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   filterCopilotProcessLog,
   projectCopilotVscodeRows,
+  projectCursorBubbleRows,
   redactCopilotSystemMessage,
 } from '../../../src/services/telemetry/fixture-extract.js';
 
@@ -210,5 +211,81 @@ describe('projectCopilotVscodeRows', () => {
     // the cwd path stays raw here — scrubText rebases it at the extension boundary,
     // NOT this pure projection (single-source scrub, no double-scrubbing).
     expect(Object.keys(out.sessions[0] ?? {}).sort()).toEqual(['cwd', 'id', 'updated_at']);
+  });
+});
+
+/**
+ * T009 (plan 2.5 · AC-05 · Finding 04) — the cursor `cursorDiskKV` bubble projection.
+ *
+ * A Cursor IDE-store bubble is enormous: alongside the only fields the runtime
+ * adapter reads (`type`, `createdAt`, `modelInfo.modelName` — for the model/timing
+ * join) it embeds `gitDiffs`, `consoleLogs`, attached file contents, full message
+ * `text`/`richText`, tool args, and more. Committing a raw bubble would republish
+ * all of that. `projectCursorBubbleRows` is the cursor PRIVACY BOUNDARY: it keeps
+ * each row's `key` + a `value` re-serialized to ONLY `{type, createdAt, modelInfo?}`
+ * — exactly what `cursorAdapter`'s `modelHistogram` / `readBubbleTimeline` consume.
+ */
+describe('projectCursorBubbleRows', () => {
+  const SECRET_TEXT = 'my secret prompt about an unreleased product';
+  const rawRows = [
+    {
+      key: 'bubbleId:conv-1:bub-a',
+      value: JSON.stringify({
+        type: 1,
+        createdAt: '2026-06-24T03:53:10.782Z',
+        modelInfo: { modelName: 'composer-2.5', apiKey: 'sk-should-not-survive' },
+        text: SECRET_TEXT,
+        gitDiffs: ['--- a/secret.ts\n+++ b/secret.ts'],
+        consoleLogs: ['leaked log line'],
+        richText: { root: { children: [{ text: SECRET_TEXT }] } },
+      }),
+    },
+    {
+      key: 'bubbleId:conv-1:bub-b',
+      value: JSON.stringify({
+        type: 2,
+        createdAt: '2026-06-24T03:53:15.666Z',
+        modelInfo: {}, // assistant bubble with no modelName
+        text: 'assistant reply body that must be dropped',
+      }),
+    },
+    { key: 'bubbleId:conv-1:bub-c', value: 'not json — debug noise' },
+    { key: 'bubbleId:conv-1:bub-d', value: 42 }, // non-string value
+  ];
+
+  it('drops every field except type/createdAt/modelInfo.modelName', () => {
+    const out = projectCursorBubbleRows(rawRows);
+    const serialized = JSON.stringify(out);
+    expect(serialized).not.toContain(SECRET_TEXT);
+    expect(serialized).not.toContain('gitDiffs');
+    expect(serialized).not.toContain('consoleLogs');
+    expect(serialized).not.toContain('richText');
+    expect(serialized).not.toContain('sk-should-not-survive'); // apiKey beside modelName is gone
+    expect(serialized).not.toContain('assistant reply body');
+  });
+
+  it('keeps the model/timing fields the adapter joins on', () => {
+    const out = projectCursorBubbleRows(rawRows);
+    const a = JSON.parse(out[0]?.value as string);
+    expect(a).toEqual({
+      type: 1,
+      createdAt: '2026-06-24T03:53:10.782Z',
+      modelInfo: { modelName: 'composer-2.5' },
+    });
+    expect(out[0]?.key).toBe('bubbleId:conv-1:bub-a'); // key preserved (random ids, not identity)
+  });
+
+  it('omits modelInfo when the bubble has no modelName', () => {
+    const out = projectCursorBubbleRows(rawRows);
+    const b = JSON.parse(out[1]?.value as string);
+    expect(b).toEqual({ type: 2, createdAt: '2026-06-24T03:53:15.666Z' });
+    expect(b).not.toHaveProperty('modelInfo');
+  });
+
+  it('skips non-string / non-JSON values (no throw)', () => {
+    const out = projectCursorBubbleRows(rawRows);
+    // bub-c (noise) and bub-d (number) are dropped; only the two real bubbles survive.
+    expect(out).toHaveLength(2);
+    expect(out.every((r) => typeof r.value === 'string')).toBe(true);
   });
 });

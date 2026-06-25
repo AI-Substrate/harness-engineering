@@ -9,10 +9,12 @@ import {
   copilotVscodeStoreDbPaths,
   resolveCopilotVscodeSessionId,
 } from '../../../harness/cli/src/services/telemetry/adapters/copilot-vscode-adapter.js';
+import { cursorStateDbPaths } from '../../../harness/cli/src/services/telemetry/adapters/cursor-adapter.js';
 // Single-source the privacy-critical scrub + projections from core telemetry (not vendored).
 import {
   filterCopilotProcessLog,
   projectCopilotVscodeRows,
+  projectCursorBubbleRows,
   redactCopilotSystemMessage,
 } from '../../../harness/cli/src/services/telemetry/fixture-extract.js';
 import { scrubText } from '../../../harness/cli/src/services/telemetry/fixture-scrub.js';
@@ -21,6 +23,8 @@ import {
   claudeProjectDir,
   copilotCliEventsPath,
   copilotCliLogsDir,
+  cursorTranscriptFile,
+  cursorTranscriptsDir,
   defaultInstanceId,
   deriveCaptureConfig,
   instanceDir,
@@ -50,14 +54,14 @@ import {
 const captureFixtures: HarnessVerb = {
   name: 'capture-fixtures',
   summary:
-    'Capture real harness session logs into the scrubbed telemetry fixture corpus (claude, copilot-cli, copilot-vscode wired; cursor pending).',
+    'Capture real harness session logs into the scrubbed telemetry fixture corpus (claude, copilot-cli, copilot-vscode, cursor).',
   description:
     'Reads a real session from a local harness surface, stages it to a gitignored ' +
     'scratch/ dir, scrubs machine paths / identity / secrets (keeping prompts and ' +
     'tool calls verbatim), and — after a manual review — promotes it to ' +
-    'fixtures/real/<surface>/<instance>/. Surfaces: ' +
+    'fixtures/real/<surface>/<instance>/. All four surfaces are wired: ' +
     SURFACES.join(', ') +
-    ". Wired: 'claude', 'copilot-cli', 'copilot-vscode'. Pending: 'cursor'.",
+    '.',
   options: [
     { flags: '--surface <surface>', description: `one of: ${SURFACES.join(' | ')}` },
     {
@@ -183,10 +187,9 @@ function resolveSources(ctx: Ctx, surface: string, config: ScrubCfg): Resolved {
   if (surface === 'claude') return resolveClaude(ctx, config);
   if (surface === 'copilot-cli') return resolveCopilotCli(ctx, config);
   if (surface === 'copilot-vscode') return resolveCopilotVscode(ctx, config);
+  if (surface === 'cursor') return resolveCursor(ctx, config);
   return {
-    result: ctx.unconfigured(
-      `'${surface}' capture lands later in Phase 2 (SQLite surface); not wired yet.`,
-    ),
+    result: ctx.unconfigured(`'${surface}' is not a capturable surface.`),
   };
 }
 
@@ -247,6 +250,59 @@ function resolveCopilotVscode(ctx: Ctx, config: ScrubCfg): Resolved {
         `${copilotVscodeStoreDbPaths(env).join(' | ')} held it. Check the session id.`,
     ),
   };
+}
+
+/**
+ * cursor capture (T009/AC-05). TWO sources: the on-disk Claude-shaped transcript
+ * (kept VERBATIM — prompts/tool-calls are the corpus's point, only paths/identity
+ * scrubbed, like claude) and the IDE-store `cursorDiskKV` bubbles (read via a core
+ * {@link NodeDb}; DL-001). The bubbles are projected through
+ * {@link projectCursorBubbleRows} to ONLY `type`/`createdAt`/`modelInfo.modelName`
+ * — the model/timing the adapter joins on — dropping the embedded diffs, console
+ * logs, file contents, and message text. Requires `--session <conv>` (a repo has
+ * many cursor conversations and `ctx.fs` exposes no mtime). The transcript path is
+ * derived from home+cwd directly (Finding 04: `AGENT_TRANSCRIPTS` only gates the
+ * runtime auto-detect, not capture).
+ */
+function resolveCursor(ctx: Ctx, config: ScrubCfg): Resolved {
+  const conv = ctx.options.session as string | undefined;
+  if (conv === undefined || conv.length === 0) {
+    return {
+      result: ctx.unconfigured(
+        'cursor has many conversations and ctx.fs exposes no mtime; pass --session <conversation-id> explicitly.',
+      ),
+    };
+  }
+
+  // Transcript (verbatim) — derived from home + cwd, NOT $AGENT_TRANSCRIPTS.
+  const transcriptPath = cursorTranscriptFile(
+    cursorTranscriptsDir(config.homeDir, config.repoRoot),
+    conv,
+  );
+  const transcript = ctx.fs.readText(transcriptPath);
+  if (transcript === null) {
+    return {
+      result: ctx.unconfigured(
+        `No cursor transcript at ${transcriptPath}. Check --session <conversation-id> (and that it ran in this repo).`,
+      ),
+    };
+  }
+  const files: CapturedRaw[] = [{ rawName: 'raw.jsonl', raw: transcript }];
+
+  // Bubbles (model/timing only) — first state.vscdb path with rows for this conv wins.
+  const db = new NodeDb();
+  const env = envPortFor(ctx, config);
+  for (const dbPath of cursorStateDbPaths(env)) {
+    const rows = db.query(dbPath, 'SELECT key, value FROM cursorDiskKV WHERE key LIKE ?', [
+      `bubbleId:${conv}:%`,
+    ]);
+    if (rows.length === 0) continue;
+    const projected = projectCursorBubbleRows(rows);
+    files.push({ rawName: 'raw.rows.json', raw: `${JSON.stringify(projected, null, 2)}\n` });
+    break;
+  }
+
+  return { files, harnessId: 'cursor-agent' };
 }
 
 function resolveClaude(ctx: Ctx, config: ScrubCfg): Resolved {

@@ -128,6 +128,47 @@ export function projectCopilotVscodeRows(
   return { sessions, turns };
 }
 
+/** One cursor `cursorDiskKV` row, projected to the model/timing-only `value`. */
+export interface CursorBubbleRow {
+  key: unknown;
+  value: string;
+}
+
+/**
+ * Project Cursor IDE-store `cursorDiskKV` bubble rows to a privacy-safe fixture
+ * shape — the cursor analogue of {@link projectCopilotVscodeRows}. A raw bubble
+ * embeds full message `text`/`richText`, `gitDiffs`, `consoleLogs`, attached file
+ * contents, tool args, and more; the runtime `cursorAdapter` reads ONLY `type`,
+ * `createdAt`, and `modelInfo.modelName` (for the model/timing join). This re-
+ * serializes each row's `value` to JUST those fields (dropping `modelInfo` entirely
+ * when there's no model name), so the committed `raw.rows.json` carries no prose,
+ * diffs, or secrets. Non-string / non-JSON values are skipped (never thrown on),
+ * mirroring how the adapter ignores them.
+ */
+export function projectCursorBubbleRows(
+  rawRows: ReadonlyArray<Record<string, unknown>>,
+): CursorBubbleRow[] {
+  const out: CursorBubbleRow[] = [];
+  for (const row of rawRows) {
+    if (typeof row.value !== 'string') continue;
+    let bubble: Record<string, unknown>;
+    try {
+      bubble = JSON.parse(row.value) as Record<string, unknown>;
+    } catch {
+      continue; // debug noise / non-JSON — skip, as the adapter does
+    }
+    const safe: { type?: number; createdAt?: unknown; modelInfo?: { modelName: string } } = {};
+    if (typeof bubble.type === 'number') safe.type = bubble.type;
+    if (bubble.createdAt !== undefined && bubble.createdAt !== null) safe.createdAt = bubble.createdAt;
+    const info = (bubble.modelInfo ?? {}) as Record<string, unknown>;
+    if (typeof info.modelName === 'string' && info.modelName.length > 0) {
+      safe.modelInfo = { modelName: info.modelName };
+    }
+    out.push({ key: row.key, value: JSON.stringify(safe) });
+  }
+  return out;
+}
+
 /** The placeholder swapped in for a redacted system-prompt body. */
 export const SYSTEM_PROMPT_PLACEHOLDER = '<redacted: vendor system prompt>';
 

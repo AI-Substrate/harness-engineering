@@ -7,6 +7,9 @@ import {
   claudeSources,
   copilotCliEventsPath,
   copilotCliLogsDir,
+  cursorMangle,
+  cursorTranscriptFile,
+  cursorTranscriptsDir,
   defaultInstanceId,
   deriveCaptureConfig,
   instanceDir,
@@ -128,5 +131,17 @@ describe('capture-logic — per-surface sources', () => {
     expect(pickCopilotCliSession('explicit', 'env')).toBe('explicit');
     expect(pickCopilotCliSession(undefined, 'env')).toBe('env');
     expect(pickCopilotCliSession(undefined, undefined)).toBeNull();
+  });
+
+  it('cursor mangle strips the leading slash and maps / → - (the on-disk scheme)', () => {
+    expect(cursorMangle('/Users/jordanknight/substrate/harness-engineering')).toBe(
+      'Users-jordanknight-substrate-harness-engineering',
+    );
+  });
+
+  it('cursor transcript path: <home>/.cursor/projects/<mangled>/agent-transcripts/<conv>/<conv>.jsonl', () => {
+    const dir = cursorTranscriptsDir('/Users/jane', '/Users/jane/proj');
+    expect(dir).toBe('/Users/jane/.cursor/projects/Users-jane-proj/agent-transcripts');
+    expect(cursorTranscriptFile(dir, 'conv-1')).toBe(`${dir}/conv-1/conv-1.jsonl`);
   });
 });
