@@ -64,3 +64,34 @@ Replaced the Phase-1 "runbook lands in Phase 3" stub tail with: a sharpened **tw
 **Done-When — proven**: present + expanded; both relative links (`../../../docs/how/telemetry-fixtures.md`, `../../../docs/project-rules/rules.md`) resolve from the extension dir.
 
 **Files**: `.harness/extensions/telemetry-fixtures/instructions.md`.
+
+---
+
+## T005 — Deviation Ledger row in `rules.md` § 9 (AC-09)
+
+Appended a second row to the § 9 table: principle violated = sanitized-tracked-docs / no-private-content-in-git (§ 8 SHOULD; Constitution P12); why = adapters need real session bytes; alternative rejected = synthetic-only; mitigation = the three layered controls (scrub + CI byte-scan + non-skippable manual review, gitignored `scratch/` first) with a link to the runbook. `rules.md` is hand-edited (no generator) — appended, not regenerated.
+
+**Done-When — proven**: row present in the § 9 table; the `../how/telemetry-fixtures.md` link resolves; G2 (Constitution gate) satisfied — the plan's knowing P12 deviation now has its ledger entry.
+
+**Files**: `docs/project-rules/rules.md`.
+
+---
+
+## T006 — confirm `.gitignore` covers `scratch/` (Finding 02)
+
+Verified `git check-ignore -v scratch/telemetry-fixtures/claude/2026-06-25-x/raw.jsonl` → matched by `.gitignore:148:scratch/`. Extended the existing comment to explicitly name the telemetry-fixture capture staging + link the runbook (the plan's "add a one-line comment if absent").
+
+**Done-When — proven**: `git check-ignore` confirms the capture staging path is ignored.
+
+**Files**: `.gitignore`.
+
+---
+
+## Phase 3 complete — summary
+
+All six tasks `[x]`. AC coverage: **AC-07** (T001 `--check` drift guard + T002 npm/CI/just wiring — proven: clean check, drift→exit 1, deterministic regen) · **AC-08/AC-05** (T003 runbook, non-skippable manual review + cursor path) · **AC-06** (T004 instructions.md) · **AC-09** (T005 Deviation Ledger row). No new fixtures, no adapter/serializer changes (Non-Goals held). The corpus is now regenerable, documented, and governance-clean.
+
+**Deferred & Noteworthy**:
+- *Noteworthy* — T001 deviates from plan 3.1's literal "import the `dist/` modules" wording: the script orchestrates the golden suites instead (single source of truth for segment construction; avoids the AC-07 drift hazard). Flagged to the companion; rationale in the T001 entry.
+- *Noteworthy* — the dedicated `check:telemetry-fixtures` CI step partially overlaps the full coverage run; kept as an explicit, named, fast drift gate with a clear remediation message.
+- No skipped/blocked tasks, no unmet ACs, no new `TODO`/`FIXME`/`HACK`.

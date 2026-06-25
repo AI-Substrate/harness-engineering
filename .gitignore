@@ -144,7 +144,10 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# Private research workspace; never commit raw sources or notes
+# Private research workspace; never commit raw sources or notes.
+# Also the telemetry-fixture capture staging (`scratch/telemetry-fixtures/`):
+# unscrubbed/under-review captures live here until they pass manual review and are
+# promoted to the corpus — see docs/how/telemetry-fixtures.md (plan 037).
 scratch/
 
 # Local agent tool state (activity logs, etc.)
