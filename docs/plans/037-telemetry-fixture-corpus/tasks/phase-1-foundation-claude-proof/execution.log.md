@@ -27,3 +27,15 @@
 - Defense-in-depth: the GENERIC_HOME catch-all neutralizes ANY home-shaped path, not just the configured one (a real transcript can hold unexpected paths) — strengthens the sole-guard (F01).
 - Secret sweep is targeted (prefix + Bearer), deliberately NOT a blunt high-entropy sweep, to avoid eating verbatim command content.
 - **Evidence**: `vitest run fixture-scrub.test.ts` → 15 passed (15). `grep node: fixture-scrub.ts` → only the comment.
+
+## T004 — capture-fixtures extension skeleton ✅
+
+- `.harness/extensions/telemetry-fixtures/`: `extension.ts` (verb shell / composition root), `capture-logic.ts` (pure orchestration), `capture-logic.test.ts` (8/8), `instructions.md` (stub; full runbook = Phase 3).
+- Verb `capture-fixtures` — name confirmed NOT in the reserved set (help/doctor/new/docs/skills/record/instructions/observe/init/flow). Options: `--surface/--instance/--session/--names/--dry-run`.
+- **Topology decision (resolves the flagged Workshop Opportunity)**: the privacy-critical SCRUB stays single-source in core telemetry (`fixture-scrub.ts`, imported by the shell in T005); only extension-specific path/config orchestration is vendored locally + tested locally (arch-check style). One source of truth for the security control. `ctx.fs/fsWrite/env` ARE the injected Node ports — no `node:*` in the extension.
+- **Evidence**: `vitest capture-logic.test.ts` → 8/8; `harness capture-fixtures --help` resolves; `grep node: .harness/extensions/telemetry-fixtures` → clean.
+
+### Discoveries
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T004 | Noteworthy | Capture-tool topology (the plan's flagged Workshop Opportunity) | Resolved: scrub single-source in core; extension imports it; only orchestration is local. No vendored copy of the security control. | AC-06; plan § Workshop Opportunities |
