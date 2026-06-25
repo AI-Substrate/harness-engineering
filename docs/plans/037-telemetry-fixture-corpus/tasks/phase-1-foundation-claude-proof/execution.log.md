@@ -71,3 +71,14 @@
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T006 | Noteworthy | The home-derived username misses other identity aliases (git handles). The MANUAL review caught `jakkaj` the automated scrub didn't. | Re-captured with `--names`. Runbook (Phase 3) must tell capturers to pass git handles. Validates WHY the manual review is non-skippable. | AC-08; runbook |
 | 2026-06-25 | T006 | Noteworthy | Live review companion ended (verdict `completed`) after T005; reviewed T001–T005 with no findings. | Re-booted a fresh companion for T008/T007 (non-gating). Deviation logged; phase-end debrief reads the prior farewell. | companion-mode |
+
+## T008 — real-capture.e2e.test.ts + golden (AC-01) ✅
+
+- `real-capture.e2e.test.ts` drives the fixture through `claudeAdapter.extract` → `serializeSegment`; committed `expected-segment.json` golden (4.6KB, 30 events). Regen: `REGEN_GOLDEN=1 vitest run real-capture.e2e`.
+- Hand-pinned invariants (verified vs the real session): `tokens.grand_total=1_019_867`, `total=1_019_867`, `subagent_tokens=0`; `user_prompts=[33,3,21,7,37,24,3]` (7 prompts); `event_stream.length=30`; rollup non-null.
+- **Evidence**: `vitest run real-capture.e2e.test.ts` → 3 passed. The fixture IS consumed by a test and it passes.
+
+### Discoveries
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T008 | Noteworthy | **Plan AC-01 mis-derived the invariant.** It expected `t_precision==='anchored'`, but the claude transcript carries REAL per-line timestamps → events are EXACT (no t_precision tag). `anchored` is for APPROXIMATED stamps (cursor untimed transcript, synthetic branch/harness events). | Corrected the invariant to "event_stream present + exact ISO timestamps" in the test, plan AC-01, and tasks T008. No adapter change (adapter is correct). | AC-01; segment.ts:278; capture-service.ts:246 |
