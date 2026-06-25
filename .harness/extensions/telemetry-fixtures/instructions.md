@@ -28,8 +28,27 @@ harness capture-fixtures --surface claude [--session <id>] [--instance <id>] [--
    these land in a public repo, permanently in git history.
 4. Only then is the instance promoted to the corpus and committed.
 
-> The committed raw fixture has **only the scrub** as its guard. The
-> `fixture-privacy-scan` test byte-scans every committed `raw.*` + `expected-segment.json`.
+> The committed raw fixture has **two** guards: the **scrub** (at capture) and the
+> `fixture-privacy-scan` byte-scan (auto-globs every committed `raw.*` +
+> `expected-segment.json` + `invariants.json` and asserts no path/identity/secret
+> survives). Neither replaces the manual review — the scrub can miss a token no regex
+> anticipated (e.g. a git handle that isn't in your home path; pass it via `--names`).
 
-The full capture → scrub → review → promote runbook lands in Phase 3
-(`docs/how/telemetry-fixtures.md`).
+## Goldens are derived — never hand-edited
+
+Each instance's `expected-segment.json` (+ `invariants.json` where present) is
+regenerated from the adapters over the committed `raw.*`:
+
+```bash
+npm run gen:telemetry-fixtures      # rewrite the goldens
+npm run check:telemetry-fixtures    # drift guard — fails non-zero if a golden is stale (CI-gated)
+```
+
+## Full runbook + governance
+
+- **Capture → scrub → review → promote runbook**: [`docs/how/telemetry-fixtures.md`](../../../docs/how/telemetry-fixtures.md)
+  — the per-surface capture steps, the cursor on-disk path, and the non-skippable
+  manual-review checklist.
+- **Why committing scrubbed session content is allowed**: the Deviation Ledger entry
+  in [`docs/project-rules/rules.md`](../../../docs/project-rules/rules.md) § 9
+  (controls = scrub + raw-scan + manual review).

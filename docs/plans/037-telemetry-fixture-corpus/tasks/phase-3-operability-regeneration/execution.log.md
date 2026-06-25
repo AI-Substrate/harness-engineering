@@ -54,3 +54,13 @@ Capture → scrub → gitignored `scratch/` → **non-skippable manual "anything
 **Done-When — proven**: runbook present; manual review explicit + flagged non-skippable; cursor path documented; cross-refs (`README.md`, `instructions.md`, `rules.md` §9) resolve; `markdown-lint` shows **no findings** against the new doc (all 11 repo findings are pre-existing in other files; 24/24 mermaid fences parse incl. the new flow fence).
 
 **Files**: `docs/how/telemetry-fixtures.md` (new).
+
+---
+
+## T004 — expand extension `instructions.md` (AC-06)
+
+Replaced the Phase-1 "runbook lands in Phase 3" stub tail with: a sharpened **two-guard** note (scrub + byte-scan, plus the git-handle caveat), a **"goldens are derived"** section pointing at `gen`/`check:telemetry-fixtures`, and a **"Full runbook + governance"** section linking the new runbook and the `rules.md` § 9 Deviation Ledger.
+
+**Done-When — proven**: present + expanded; both relative links (`../../../docs/how/telemetry-fixtures.md`, `../../../docs/project-rules/rules.md`) resolve from the extension dir.
+
+**Files**: `.harness/extensions/telemetry-fixtures/instructions.md`.
