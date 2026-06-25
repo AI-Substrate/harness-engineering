@@ -57,15 +57,27 @@ function replaceAll(text: string, needle: string, replacement: string): string {
   return text.replace(new RegExp(escapeRegExp(needle), 'g'), replacement);
 }
 
-/** Secret-shaped tokens — targeted (prefix + Bearer), never a blunt high-entropy sweep that would eat verbatim content. */
-const SECRET_PATTERNS: RegExp[] = [
-  /sk-[A-Za-z0-9-]{20,}/g, // anthropic / openai
-  /gh[posru]_[A-Za-z0-9]{20,}/g, // github PAT family
-  /github_pat_[A-Za-z0-9_]{20,}/g,
-  /AKIA[0-9A-Z]{16}/g, // aws access key id
-  /xox[baprs]-[A-Za-z0-9-]{10,}/g, // slack
-  /Bearer\s+[\w.-]{16,}/g, // bearer header token
+export interface SecretDetector {
+  label: string;
+  re: RegExp;
+}
+
+/**
+ * Secret-shaped token detectors (source regexes, non-global) — targeted (prefix
+ * + Bearer), never a blunt high-entropy sweep that would eat verbatim content.
+ * EXPORTED so the fixture privacy byte-scan reuses the SAME list: the scrub and
+ * its committed-fixture guard can never drift apart (companion F003).
+ */
+export const SECRET_DETECTORS: readonly SecretDetector[] = [
+  { label: 'anthropic-key', re: /sk-[A-Za-z0-9-]{20,}/ }, // anthropic / openai
+  { label: 'github-pat', re: /gh[posru]_[A-Za-z0-9]{20,}/ }, // github PAT family
+  { label: 'github-fine-pat', re: /github_pat_[A-Za-z0-9_]{20,}/ },
+  { label: 'aws-key', re: /AKIA[0-9A-Z]{16}/ }, // aws access key id
+  { label: 'slack-token', re: /xox[baprs]-[A-Za-z0-9-]{10,}/ }, // slack
+  { label: 'bearer', re: /Bearer\s+[\w.-]{16,}/ }, // bearer header token
 ];
+
+const SECRET_PATTERNS: RegExp[] = SECRET_DETECTORS.map((d) => new RegExp(d.re.source, 'g'));
 
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 

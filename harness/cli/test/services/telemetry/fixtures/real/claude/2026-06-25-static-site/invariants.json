@@ -1,0 +1,18 @@
+{
+  "token_grand_total": 1019867,
+  "token_total": 1019867,
+  "subagent_tokens": 0,
+  "user_prompts": [
+    33,
+    3,
+    21,
+    7,
+    37,
+    24,
+    3
+  ],
+  "prompt_count": 7,
+  "event_count": 30,
+  "event_stream_present": true,
+  "timestamps": "exact"
+}

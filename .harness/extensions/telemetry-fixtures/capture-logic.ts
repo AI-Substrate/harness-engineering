@@ -53,17 +53,36 @@ export function defaultInstanceId(nowIso: string): string {
   return `${nowIso.slice(0, 10)}-real`;
 }
 
+/** The categories the scrub neutralizes — a NON-SENSITIVE attestation (no tokens), so a
+ * committed fixture records which private-data classes were removed (companion F004). */
+export const SCRUB_CATEGORIES = [
+  'machine-paths',
+  'home-username',
+  'git-handles',
+  'person-names',
+  'emails',
+  'secrets',
+] as const;
+
 export interface CaptureMeta {
   surface: Surface;
   captured_utc: string;
   harness: string;
   scrubbed: boolean;
+  scrub_categories: readonly string[];
   note: string;
 }
 
 /** Capture provenance written beside the scrubbed raw fixture (no session id — not identifying, but kept out anyway). */
 export function buildMeta(surface: Surface, nowIso: string, harness: string, note: string): CaptureMeta {
-  return { surface, captured_utc: nowIso.slice(0, 10), harness, scrubbed: true, note };
+  return {
+    surface,
+    captured_utc: nowIso.slice(0, 10),
+    harness,
+    scrubbed: true,
+    scrub_categories: [...SCRUB_CATEGORIES],
+    note,
+  };
 }
 
 /** Pick the `.jsonl` session files in a claude project dir (filenames only, no path). */

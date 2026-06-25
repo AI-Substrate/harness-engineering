@@ -7,7 +7,7 @@
 ## Proof (lead-read)
 - Referenced existing files all present: `posix-path.ts`, `segment.ts`, `claude-adapter.ts`, `node-db.ts`.
 - `arch-check/` template = `extension.ts` + `mapping.ts` + `mapping.test.ts` + `instructions.md` + `fixtures/` (the split-logic pattern T004 copies).
-- `t_precision` confirmed a real serialized-event field (`segment.ts:285`) → T008 invariant valid.
+- `t_precision` is a real serialized-event field (`segment.ts:285`) but claude emits EXACT per-line timestamps (no `t_precision`); `anchored` is for approximated stamps. T008 invariant corrected accordingly (exact, not anchored).
 - Reserved-verb mechanism confirmed (`registry.ts`) → T004 name check is real.
 
 ## Findings (all repaired)

@@ -118,3 +118,20 @@
 - *Companion* — first run lapsed after T005 (no findings); re-booted for T006–T009 (no findings). Live review on every commit.
 
 **Phase-1 exit gate (T009 SQLite spike): PASS** → Phase 2 unblocked.
+
+---
+
+## Companion findings reconciliation (run 2026-06-25T07-33-34Z-4cb5)
+
+The re-booted companion's farewell carried 4 findings (its structured `finding` posts failed schema validation — missing `id` — so they surfaced only in the farewell envelope, recovered from the run transcript). All verified against source and **addressed** in commit `fix(037 telemetry): address companion findings`:
+
+| # | Sev | Finding | Verified? | Fix |
+|---|-----|---------|-----------|-----|
+| F001 | MED | `anchored` invariant still documented outside the corrected test (README:39 meta example, plan:177/189, validation sidecar, test docstring) — split public contract | ✅ real | Swept all stale `anchored` → "exact ISO timestamps" in README, plan, sidecar, e2e docstring. |
+| F002 | MED | Committed `meta.json` omits the hand-pinned invariants the T001 convention promises; test duplicates them as `HAND` constants | ✅ real | Added a committed, human-reviewed **`invariants.json`** per instance (REGEN mints it); the e2e reads it (removed `HAND`). README convention updated (meta=provenance, invariants.json=source of truth). |
+| F003 | HIGH | The sole byte-scan is narrower than the scrub: only JSON-doubled Windows paths (misses plain-text `raw.process.log` for AC-03), and omits `github_pat_`/slack secret families | ✅ real | Scan is now artifact-kind-aware (JSON doubled vs plain-text single backslash); **reuses `SECRET_DETECTORS` exported from `fixture-scrub`** (one source of truth — cannot drift); liveness asserts EVERY label; added a plain-text-Windows test. |
+| F004 | HIGH | Runtime identity scan (USER/HOME) isn't durable — CI/another reviewer has a different USER, so a capture-time username/name could survive | ✅ real | Honest durability contract documented: generic markers durable on CI; identity scanned via runtime **and** an explicit never-committed `HARNESS_FIXTURE_SCRUB_TOKENS` denylist; plus a non-sensitive `scrub_categories` attestation in `meta.json`. |
+
+**Companion magicWand** (filed as a follow-up candidate): "a companion-mode helper that prints all unacknowledged review requests + prior findings + ackOf as a compact ledger before farewell." → backlog (would have surfaced these 4 findings to me without transcript archaeology).
+
+**Result:** all 4 addressed; full telemetry suite **290/290**, build + biome clean.

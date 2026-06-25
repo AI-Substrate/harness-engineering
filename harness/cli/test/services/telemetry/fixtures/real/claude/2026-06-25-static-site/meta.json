@@ -3,5 +3,13 @@
   "captured_utc": "2026-06-25",
   "harness": "claude-code",
   "scrubbed": true,
+  "scrub_categories": [
+    "machine-paths",
+    "home-username",
+    "git-handles",
+    "person-names",
+    "emails",
+    "secrets"
+  ],
   "note": "real claude session: setting up static HTML publishing for a personal site"
 }

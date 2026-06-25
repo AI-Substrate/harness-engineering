@@ -82,13 +82,14 @@ describe('capture-logic — instance + meta', () => {
     expect(defaultInstanceId('2026-06-25T07:00:00Z')).toBe('2026-06-25-real');
   });
 
-  it('builds capture provenance with day-granular date, no session id', () => {
+  it('builds capture provenance with day-granular date, no session id, scrub attestation', () => {
     const meta = buildMeta('claude', '2026-06-25T07:00:00Z', 'claude-code', 'a real session');
     expect(meta).toEqual({
       surface: 'claude',
       captured_utc: '2026-06-25',
       harness: 'claude-code',
       scrubbed: true,
+      scrub_categories: ['machine-paths', 'home-username', 'git-handles', 'person-names', 'emails', 'secrets'],
       note: 'a real session',
     });
   });

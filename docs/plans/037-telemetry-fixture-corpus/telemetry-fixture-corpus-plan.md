@@ -174,7 +174,7 @@ Stand up a real-log fixture corpus and golden+invariant E2E tests for the teleme
 - `fixtures/real/` library layout + per-instance `expected-segment.json` golden + invariants convention.
 - Pure `fixture-scrub.ts` service (paths/identity/secrets; reuses `shared/posix-path.ts`), TDD-tested.
 - `.harness/extensions/telemetry-fixtures/` extension `run()` composition root (injects Ports), capturing **claude** into gitignored `scratch/` then promoting on scrub-pass.
-- One real scrubbed claude fixture; the AC-02 raw byte-scan test (+ planted negative control); the AC-01 adapter→segment golden + invariants (incl. `event_stream` anchored).
+- One real scrubbed claude fixture; the AC-02 raw byte-scan test (+ planted negative control); the AC-01 adapter→segment golden + invariants (incl. exact-timestamped `event_stream`).
 **Depends on**: None
 **Key risks**: Getting the scrub complete enough that the byte-scan passes on a real transcript (mangle + identity tokens).
 
@@ -186,7 +186,7 @@ Stand up a real-log fixture corpus and golden+invariant E2E tests for the teleme
 | 1.4 | `.harness/extensions/telemetry-fixtures/extension.ts` — verb `run()` injecting `NodeFs`/`NodeEnv`/`NodeDb`; captures claude transcript → `scratch/` → scrub → promote to `fixtures/real/claude/`; returns canonical Envelope | _tooling | `harness <verb>` produces a scrubbed claude fixture; `scratch/` gitignored | AC-06; Findings 02/03 |
 | 1.5 | Capture + scrub one real claude session; manual "anything bad" review | telemetry | Fixture committed; reviewer confirms clean | AC-08 manual step (runbook lands Phase 3) |
 | 1.6 | **`fixture-privacy-scan.test.ts`** — scan committed BYTES of **both** the raw fixtures **and** the `expected-segment.json` goldens for `/Users/`, `C:\`, username, api-key shapes, names; assert absent. Prove scanner liveness with a known-bad string **in test code** asserted *flagged* — never a banned token committed to the corpus | telemetry | Real artifacts scan clean; the in-test known-bad string is flagged | AC-02; Finding 01 |
-| 1.7 | **`real-capture.e2e.test.ts`** (claude) — drive fixture through `claudeAdapter` → `serializeSegment`; assert `expected-segment.json` golden + invariants (token `grand_total`, prompt count, `event_stream` present + `anchored`) | telemetry | Test green; golden committed | AC-01; Finding 06 |
+| 1.7 | **`real-capture.e2e.test.ts`** (claude) — drive fixture through `claudeAdapter` → `serializeSegment`; assert `expected-segment.json` golden + invariants (token `grand_total`, prompt count, `event_stream` present + exact timestamps) | telemetry | Test green; golden committed | AC-01; Finding 06 |
 | 1.8 | **SQLite mechanism spike** — minimal `node:sqlite` `DatabaseSync` (writable) build → read back through the read-only `NodeDb` adapter; retire the Phase-2 AC-04 mechanism risk before fixture work depends on it | telemetry | A throwaway db is built, seeded, and read via `NodeDb` in one test | De-risks AC-04 early (validator Finding 4) |
 
 #### Phase 2: Fan out — copilot-cli + copilot-vscode + cursor

@@ -13,11 +13,17 @@ import { type SegmentInput, serializeSegment } from '../../../src/services/telem
 /**
  * T008 (plan 1.7 · AC-01) — drive the REAL scrubbed claude fixture through
  * `claudeAdapter.extract` → `serializeSegment` and pin a committed golden +
- * HAND-VERIFIED invariants. This exercises the timestamped `event_stream` /
- * `anchored` path that the synthetic (timestamp-less) fixtures never hit.
+ * committed `invariants.json`. This exercises the timestamped (EXACT) `event_stream`
+ * path that the synthetic (timestamp-less) fixtures never hit. (Claude carries real
+ * per-line timestamps → exact events, NOT `t_precision==='anchored'`; `anchored` is
+ * for approximated stamps — cursor/flow. Corrects plan AC-01's original wording.)
  *
- * Regenerate the golden with: `REGEN_GOLDEN=1 vitest run real-capture.e2e`.
- * Produces the `expected-segment.json` that the T007 byte-scan also covers.
+ * The per-instance `invariants.json` is the SELF-DESCRIBING source of truth
+ * (companion F002): REGEN mints it from the segment, a human reviews it, the test
+ * asserts the live segment matches it — no values duplicated as test constants.
+ *
+ * Regenerate with: `REGEN_GOLDEN=1 vitest run real-capture.e2e` (writes both the
+ * golden and invariants.json that the T007 byte-scan also covers).
  */
 
 const REPO = '/home/dev/repo'; // matches the scrubbed fixture's rebased paths
@@ -29,6 +35,9 @@ const FIXTURE = fileURLToPath(
 );
 const GOLDEN = fileURLToPath(
   new URL('./fixtures/real/claude/2026-06-25-static-site/expected-segment.json', import.meta.url),
+);
+const INVARIANTS = fileURLToPath(
+  new URL('./fixtures/real/claude/2026-06-25-static-site/invariants.json', import.meta.url),
 );
 const TRANSCRIPT = readFileSync(FIXTURE, 'utf8');
 const LINE_COUNT = TRANSCRIPT.split('\n').filter((l) => l.trim().length > 0).length;
@@ -70,11 +79,26 @@ function segment() {
   return serializeSegment(input, REPO);
 }
 
+/** The self-describing invariants block — minted from the segment, human-reviewed, committed. */
+function invariantsOf(seg: ReturnType<typeof segment>) {
+  return {
+    token_grand_total: seg.tokens?.grand_total ?? null,
+    token_total: seg.tokens?.total ?? null,
+    subagent_tokens: seg.tokens?.subagent_tokens ?? null,
+    user_prompts: seg.user_prompts ?? [],
+    prompt_count: (seg.user_prompts ?? []).length,
+    event_count: seg.event_stream.length,
+    event_stream_present: seg.event_stream.length > 0,
+    timestamps: 'exact', // claude carries real per-line timestamps (no t_precision)
+  };
+}
+
 describe('real claude fixture → segment (AC-01)', () => {
   const seg = segment();
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
+    writeFileSync(INVARIANTS, `${JSON.stringify(invariantsOf(seg), null, 2)}\n`);
   }
 
   it('matches the committed golden segment', () => {
@@ -82,33 +106,21 @@ describe('real claude fixture → segment (AC-01)', () => {
     expect(seg).toEqual(expected);
   });
 
+  it('matches the committed (human-reviewed) invariants.json', () => {
+    const pinned = JSON.parse(readFileSync(INVARIANTS, 'utf8'));
+    expect(invariantsOf(seg)).toEqual(pinned);
+  });
+
   it('has a non-empty, EXACT-timestamped event_stream (the path synthetics never exercise)', () => {
     // The real claude transcript carries per-line timestamps, so the adapter emits
     // a populated event_stream (synthetic fixtures are timestamp-less → null stream).
-    expect(seg.event_stream.length).toBe(HAND.eventCount);
+    expect(seg.event_stream.length).toBeGreaterThan(0);
     // Every event has a real ISO `t`; claude timestamps are EXACT, so NO event is
     // tagged `anchored` (`anchored` is for approximated stamps — cursor/synthetic).
-    // (Corrects plan AC-01's `t_precision==='anchored'` assumption — see execution log.)
     for (const e of seg.event_stream) {
       expect(Number.isNaN(Date.parse(e.t))).toBe(false);
       expect(e.t_precision).toBeUndefined();
     }
     expect(seg.rollup).not.toBeNull();
   });
-
-  it('pins hand-verified token + prompt invariants', () => {
-    expect(seg.user_prompts).toEqual(HAND.userPrompts);
-    expect(seg.tokens?.grand_total).toBe(HAND.grandTotal);
-    expect(seg.tokens?.total).toBe(HAND.total);
-    expect(seg.tokens?.subagent_tokens).toBe(0); // no subagents in this session
-  });
 });
-
-// Hand-pinned invariant values — minted by the REGEN run, then VERIFIED by eye
-// against the real session (see execution log T008).
-const HAND = {
-  userPrompts: [33, 3, 21, 7, 37, 24, 3], // 7 user-prompt events, word counts
-  grandTotal: 1_019_867,
-  total: 1_019_867,
-  eventCount: 30,
-};

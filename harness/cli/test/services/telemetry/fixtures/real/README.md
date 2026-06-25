@@ -17,13 +17,15 @@ fixtures/real/<surface>/<instance>/
                          #   copilot-vscode→ raw.rows.json   (extracted rows, no message text)
                          #   cursor        → raw.jsonl + raw.rows.json
   expected-segment.json  # the committed GOLDEN: adapter.extract → serializeSegment output
-  meta.json             # capture provenance + hand-pinned invariants (see below)
+  invariants.json        # the hand-pinned, human-reviewed invariants (the per-instance
+                         #   source of truth — real-capture.e2e.test.ts asserts against it)
+  meta.json             # capture provenance + scrub attestation (no invariants)
 ```
 
 One `<instance>` = one captured session. Add more instances **alongside** (capture is
 additive); scenarios/tests choose which instance to drive.
 
-### `meta.json`
+### `meta.json` (provenance)
 
 ```jsonc
 {
@@ -31,14 +33,28 @@ additive); scenarios/tests choose which instance to drive.
   "captured_utc": "2026-06-25",   // capture date (day granularity)
   "harness": "claude-code",        // adapter harness id
   "scrubbed": true,                // scrub applied + manual "anything bad" review passed
-  "note": "<one line: what this session was>",
-  "invariants": {                  // hand-pinned, asserted by real-capture.e2e.test.ts
-    "token_grand_total": 0,
-    "prompt_count": 0,
-    "event_stream_present": true,  // real captures are TIMESTAMPED → exercises the
-    "t_precision": "anchored"      //   anchored event_stream path synthetics never hit
-  }
+  "scrub_categories": [ … ],       // NON-SENSITIVE attestation of what was scrubbed (no tokens)
+  "note": "<one line: what this session was>"
 }
+```
+
+### `invariants.json` (the hand-pinned source of truth)
+
+Minted from the segment by `REGEN_GOLDEN=1`, then **human-reviewed** and committed; the
+E2E asserts the live segment matches it (no values duplicated as test constants):
+
+```jsonc
+{
+  "token_grand_total": 1019867,
+  "token_total": 1019867,
+  "subagent_tokens": 0,
+  "user_prompts": [ … ],
+  "prompt_count": 7,
+  "event_count": 30,
+  "event_stream_present": true,   // real captures are TIMESTAMPED → exercises the
+  "timestamps": "exact"           //   event_stream path synthetics never hit. Claude
+}                                  //   stamps are EXACT (no t_precision); `anchored` is
+                                   //   only for APPROXIMATED stamps (cursor/flow).
 ```
 
 ## The two privacy guards
@@ -46,8 +62,12 @@ additive); scenarios/tests choose which instance to drive.
 1. **Serializer allowlist** (`serializeSegment`) protects the *output* golden — it never
    spreads input, so a planted secret can't reach the segment.
 2. **Raw-fixture byte-scan** (`fixture-privacy-scan.test.ts`) is the *only* guard on the
-   committed `raw.*` input — it scans the committed BYTES of both the raw fixture and the
-   golden for `/Users/`, `C:\`, usernames, api-key shapes, and configured names.
+   committed `raw.*` input — it scans the committed BYTES of every instance artifact
+   (raw, golden, invariants, meta) for `/Users/`, Windows paths (JSON-doubled *and*
+   plain-text variants), emails, api-key shapes (shared with `fixture-scrub`), and identity
+   tokens. Generic markers are durable on CI; capture-time identity tokens are scanned via
+   the runtime env or an explicit `HARNESS_FIXTURE_SCRUB_TOKENS` denylist (never committed)
+   plus the manual review.
 
 A captured fixture is only committed after the **manual "anything bad" review** (these land
 in a public repo, permanently in git history). The capture tool stages to a gitignored
