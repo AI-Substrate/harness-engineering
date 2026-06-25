@@ -38,3 +38,19 @@ $ node scripts/telemetry-fixtures.mjs           →  exit 0, git status fixtures
 **Done-When — proven**: `package.json` valid JSON; `npm run check:telemetry-fixtures` → exit 0 (`checked 2 golden suite(s)`); `just --list` shows both recipes; CI step present (`ci.yml:87`). Mirrors the `check:flows` shape.
 
 **Files**: `package.json`, `.github/workflows/ci.yml`, `justfile`.
+
+---
+
+## T003 — `docs/how/telemetry-fixtures.md` runbook (AC-08/AC-05)
+
+Capture → scrub → gitignored `scratch/` → **non-skippable manual "anything bad" review** → promote → commit, for all four surfaces. Written in the `docs/how/` house style (standalone, the "where docs live" note). Covers:
+- The `harness capture-fixtures` verb surface + the **per-surface `--session` table** (claude optional · copilot-cli/cursor required · copilot-vscode cwd-resolved).
+- **Cursor's on-disk path** `~/.cursor/projects/<mangle>/agent-transcripts/<conv>/<conv>.jsonl` + the mangle rule + transcript-verbatim vs bubble-projected asymmetry (AC-05).
+- The **two-guard model** (scrub + auto-globbing byte-scan) and what each protects.
+- The **git-handle lesson** (`--names`) called out as its own warning — the home-derived username misses git handles (the real `jakkaj` leak).
+- The manual-review checklist (leak scan targets + content sanity incl. the self-referential-session trap), marked non-skippable in a top banner.
+- A regen section pointing at `gen`/`check:telemetry-fixtures`.
+
+**Done-When — proven**: runbook present; manual review explicit + flagged non-skippable; cursor path documented; cross-refs (`README.md`, `instructions.md`, `rules.md` §9) resolve; `markdown-lint` shows **no findings** against the new doc (all 11 repo findings are pre-existing in other files; 24/24 mermaid fences parse incl. the new flow fence).
+
+**Files**: `docs/how/telemetry-fixtures.md` (new).
