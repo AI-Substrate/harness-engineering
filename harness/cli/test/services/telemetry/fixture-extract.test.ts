@@ -99,7 +99,11 @@ describe('redactCopilotSystemMessage', () => {
       timestamp: 't1',
       parentId: 'a',
     }),
-    JSON.stringify({ type: 'user.message', data: { role: 'user', content: 'run harness doctor' }, id: 'c' }),
+    JSON.stringify({
+      type: 'user.message',
+      data: { role: 'user', content: 'run harness doctor' },
+      id: 'c',
+    }),
   ].join('\n');
 
   it('replaces system.message content with a placeholder, keeps the envelope', () => {
@@ -144,9 +148,7 @@ describe('projectCopilotVscodeRows', () => {
   // projection must compute counts from this text then DISCARD it.
   const SECRET_USER = 'please refactor the auth module and add tests'; // 8 words (7 spaces + 1)
   const SECRET_ASSISTANT = 'Here is the refactor you asked for.';
-  const rawSessions = [
-    { id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 },
-  ];
+  const rawSessions = [{ id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 }];
   const rawTurns = [
     {
       session_id: 'sess-1',
@@ -210,7 +212,13 @@ describe('projectCopilotVscodeRows', () => {
     // NOT empty: TURNS_SQL returns words=1 / has_response=1. JS `.trim()` would
     // wrongly give 0 — which would desync T008's real-SQL round-trip.
     const out = projectCopilotVscodeRows(rawSessions, [
-      { session_id: 's', turn_index: 0, user_message: '\t', assistant_response: '\n', timestamp: 1 },
+      {
+        session_id: 's',
+        turn_index: 0,
+        user_message: '\t',
+        assistant_response: '\n',
+        timestamp: 1,
+      },
       { session_id: 's', turn_index: 1, user_message: ' ', assistant_response: ' ', timestamp: 2 },
     ]);
     // '\t' is not a space → not trimmed → length 1 → words 1; '\n' response → has_response 1.
@@ -221,7 +229,9 @@ describe('projectCopilotVscodeRows', () => {
 
   it('projects sessions to exactly {id, cwd, updated_at} — no stray columns', () => {
     const out = projectCopilotVscodeRows(rawSessions, rawTurns);
-    expect(out.sessions).toEqual([{ id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 }]);
+    expect(out.sessions).toEqual([
+      { id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 },
+    ]);
     // the cwd path stays raw here — scrubText rebases it at the extension boundary,
     // NOT this pure projection (single-source scrub, no double-scrubbing).
     expect(Object.keys(out.sessions[0] ?? {}).sort()).toEqual(['cwd', 'id', 'updated_at']);

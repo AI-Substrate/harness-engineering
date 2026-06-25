@@ -75,7 +75,9 @@ function seedStore(env: FakeEnv): string {
   if (dbPath === undefined) throw new Error('no candidate store path');
   mkdirSync(dirname(dbPath), { recursive: true });
   const { DatabaseSync } = require('node:sqlite') as {
-    DatabaseSync: new (p: string) => {
+    DatabaseSync: new (
+      p: string,
+    ) => {
       exec(s: string): void;
       prepare(s: string): { run(...a: unknown[]): void };
       close(): void;

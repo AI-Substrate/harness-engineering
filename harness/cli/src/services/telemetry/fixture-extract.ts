@@ -173,7 +173,8 @@ export function projectCursorBubbleRows(
     }
     const safe: { type?: number; createdAt?: unknown; modelInfo?: { modelName: string } } = {};
     if (typeof bubble.type === 'number') safe.type = bubble.type;
-    if (bubble.createdAt !== undefined && bubble.createdAt !== null) safe.createdAt = bubble.createdAt;
+    if (bubble.createdAt !== undefined && bubble.createdAt !== null)
+      safe.createdAt = bubble.createdAt;
     const info = (bubble.modelInfo ?? {}) as Record<string, unknown>;
     if (typeof info.modelName === 'string' && info.modelName.length > 0) {
       safe.modelInfo = { modelName: info.modelName };

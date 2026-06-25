@@ -150,7 +150,12 @@ describe('fixture privacy byte-scan (AC-02)', () => {
   it('win-drive is SOUND: real non-Users JSON drive paths flag, YAML-key escapes do not (companion F001)', () => {
     // Real JSON-doubled drive paths whose first component starts with an "escape"
     // letter (n/r/t/b/f/u/v) MUST flag — the earlier escape-letter exclusion missed them.
-    for (const p of ['"C:\\\\tmp\\\\x"', '"C:\\\\repo\\\\y"', '"C:\\\\newfolder\\\\z"', '"D:\\\\Projects"']) {
+    for (const p of [
+      '"C:\\\\tmp\\\\x"',
+      '"C:\\\\repo\\\\y"',
+      '"C:\\\\newfolder\\\\z"',
+      '"D:\\\\Projects"',
+    ]) {
       expect(scanForLeaks(p, bannedFor('json'), [])).toContain('win-drive');
     }
     // ...while YAML-key-then-escaped-newline (the tail of a word + `:` + `\\n`) does NOT.

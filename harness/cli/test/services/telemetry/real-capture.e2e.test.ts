@@ -171,7 +171,13 @@ function copilotSegment() {
     { [copilotLogsDir(HOME)]: ['process-test.log'] }, // so readdir() surfaces the log file
   );
   const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: CO_SID }, HOME);
-  const caps = copilotAdapter.extract({ env, fs, repoRoot: REPO, harness: 'copilot-cli', window: coWindow });
+  const caps = copilotAdapter.extract({
+    env,
+    fs,
+    repoRoot: REPO,
+    harness: 'copilot-cli',
+    window: coWindow,
+  });
   const input: SegmentInput = {
     command: 'flow',
     harness: 'copilot-cli',
