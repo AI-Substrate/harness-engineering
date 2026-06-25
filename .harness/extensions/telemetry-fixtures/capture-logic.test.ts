@@ -14,6 +14,7 @@ import {
   deriveCaptureConfig,
   instanceDir,
   isCopilotProcessLog,
+  isSafeInstanceId,
   isSurface,
   pickCopilotCliSession,
   rawFilename,
@@ -107,6 +108,35 @@ describe('capture-logic — instance + meta', () => {
   });
 });
 
+describe('capture-logic — isSafeInstanceId (write-path confinement, review F001)', () => {
+  it('accepts the date-derived default and ordinary slugs', () => {
+    expect(isSafeInstanceId(defaultInstanceId('2026-06-26T07:00:00Z'))).toBe(true);
+    expect(isSafeInstanceId('2026-06-26-real')).toBe(true);
+    expect(isSafeInstanceId('claude_v2.1-checks')).toBe(true);
+    expect(isSafeInstanceId('a')).toBe(true);
+  });
+
+  it('rejects empty / undefined', () => {
+    expect(isSafeInstanceId('')).toBe(false);
+    expect(isSafeInstanceId(undefined)).toBe(false);
+  });
+
+  it('rejects path separators and parent-dir traversal (the escape vectors)', () => {
+    expect(isSafeInstanceId('../escape')).toBe(false);
+    expect(isSafeInstanceId('a/b')).toBe(false);
+    expect(isSafeInstanceId('a\\b')).toBe(false);
+    expect(isSafeInstanceId('..')).toBe(false);
+    expect(isSafeInstanceId('a..b')).toBe(false);
+    expect(isSafeInstanceId('/abs')).toBe(false);
+    expect(isSafeInstanceId('foo/../bar')).toBe(false);
+  });
+
+  it('rejects a leading dot (e.g. would write into a dotfile/dir)', () => {
+    expect(isSafeInstanceId('.hidden')).toBe(false);
+    expect(isSafeInstanceId('.')).toBe(false);
+  });
+});
+
 describe('capture-logic — per-surface sources', () => {
   it('claude has one transcript source', () => {
     expect(claudeSources('/h/.claude/projects/-repo', 'abc.jsonl')).toEqual([
@@ -134,8 +164,8 @@ describe('capture-logic — per-surface sources', () => {
   });
 
   it('cursor mangle strips the leading slash and maps / → - (the on-disk scheme)', () => {
-    expect(cursorMangle('/Users/jordanknight/substrate/harness-engineering')).toBe(
-      'Users-jordanknight-substrate-harness-engineering',
+    expect(cursorMangle('/Users/alice/substrate/harness-engineering')).toBe(
+      'Users-alice-substrate-harness-engineering',
     );
   });
 

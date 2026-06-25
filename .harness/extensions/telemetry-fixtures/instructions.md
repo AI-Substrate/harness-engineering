@@ -18,7 +18,9 @@ harness capture-fixtures --surface <surface> [--session <id>] [--instance <id>] 
 - `--session` — **per-surface**: `claude` optional (defaults to the sole session for this
   repo); `copilot-cli` **required**; `cursor` **required** (the conversation id);
   `copilot-vscode` optional override (else resolved by cwd).
-- `--instance` — corpus dir name; default = derived from date + session.
+- `--instance` — corpus dir name; default = derived from date + session. Must be a
+  **safe basename slug** — start alphanumeric, then only `[A-Za-z0-9._-]`, no path
+  separators or `..` (rejected before any write, so it can't escape the scratch/corpus roots).
 - `--log` — `copilot-cli` only: explicit `process-*.log` path (else auto-discovered).
 - `--names` — comma-separated person names / git handles to scrub (beyond paths/identity/secrets).
 - `--note` — one-line provenance note for `meta.json`.

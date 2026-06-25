@@ -29,6 +29,7 @@ import {
   deriveCaptureConfig,
   instanceDir,
   isCopilotProcessLog,
+  isSafeInstanceId,
   isSurface,
   pickCopilotCliSession,
   scratchRoot,
@@ -126,6 +127,18 @@ const captureFixtures: HarnessVerb = {
     }));
 
     const instance = (ctx.options.instance as string | undefined) ?? defaultInstanceId(ctx.clock.nowIso());
+    // CONFINE the instance id to a basename slug BEFORE it touches any write path
+    // (review F001): an unvalidated value with `/`, `\`, or `..` would let an
+    // unscrubbed raw capture escape the gitignored scratch/ (and corpus) roots.
+    if (!isSafeInstanceId(instance)) {
+      return ctx.error(
+        'E_INSTANCE',
+        `--instance must be a safe slug: start alphanumeric, then only [A-Za-z0-9._-] (no path separators or '..').`,
+        {
+          next_action: `Re-run with e.g. \`--instance 2026-06-26-real\`, or omit --instance to use the date-derived default.`,
+        },
+      );
+    }
     const note =
       (ctx.options.note as string | undefined) ?? `real ${surface} session captured from this machine`;
     const meta = buildMeta(surface, ctx.clock.nowIso(), harnessId, note);
@@ -394,10 +407,22 @@ function resolveCopilotCli(ctx: Ctx, config: ScrubCfg): Resolved {
       }
     }
   }
-  if (logRaw !== null) {
-    const filtered = filterCopilotProcessLog(logRaw, sid);
-    if (filtered.length > 0) files.push({ rawName: 'raw.process.log', raw: filtered });
+  // The process log's `assistant_usage` records are REQUIRED — they carry the token
+  // counts AC-03 correlates against. A copilot-cli capture with only events.jsonl
+  // can't satisfy that contract, so a missing/empty process log is a hard
+  // `unconfigured`, never a silent token-less promotion (review F004).
+  const filtered = logRaw !== null ? filterCopilotProcessLog(logRaw, sid) : '';
+  if (filtered.length === 0) {
+    return {
+      result: ctx.unconfigured(
+        `No copilot-cli assistant_usage records found for session ${sid} ` +
+          `(its process-*.log was not located, or held no matching usage records). A copilot-cli ` +
+          `fixture needs the process log for AC-03 token correlation — pass --log <process-*.log> for ` +
+          `this session, or choose a session that has token-usage data.`,
+      ),
+    };
   }
+  files.push({ rawName: 'raw.process.log', raw: filtered });
 
   return { files, harnessId: 'copilot-cli' };
 }

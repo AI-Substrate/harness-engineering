@@ -53,6 +53,18 @@ export function defaultInstanceId(nowIso: string): string {
   return `${nowIso.slice(0, 10)}-real`;
 }
 
+/**
+ * A SAFE instance id: a single basename slug, nothing else (review F001). It must
+ * start with an alphanumeric and contain only `[A-Za-z0-9._-]` — which already
+ * forbids the empty string, leading dots, and the path separators `/` and `\` — and
+ * we additionally reject any `..` so a `--instance` value can never traverse out of
+ * the gitignored `scratch/` staging or the corpus root and write (unscrubbed) bytes
+ * to an arbitrary repo path. The date-derived {@link defaultInstanceId} always passes.
+ */
+export function isSafeInstanceId(id: string | undefined): id is string {
+  return typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(id) && !id.includes('..');
+}
+
 /** The categories the scrub neutralizes — a NON-SENSITIVE attestation (no tokens), so a
  * committed fixture records which private-data classes were removed (companion F004). */
 export const SCRUB_CATEGORIES = [
