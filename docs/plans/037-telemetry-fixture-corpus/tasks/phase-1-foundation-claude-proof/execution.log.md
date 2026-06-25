@@ -39,3 +39,15 @@
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T004 | Noteworthy | Capture-tool topology (the plan's flagged Workshop Opportunity) | Resolved: scrub single-source in core; extension imports it; only orchestration is local. No vendored copy of the security control. | AC-06; plan § Workshop Opportunities |
+
+## T005 — claude capture path ✅
+
+- Implemented the claude branch of `run()`: resolve claude project dir → pick session (`--session` → `CLAUDE_CODE_SESSION_ID` → sole) → read transcript via `ctx.fs` → `scrubText` (core, single-source) → stage UNSCRUBBED original + SCRUBBED candidate + meta to gitignored `scratch/` (P12) → `--dry-run` stops at scratch; else promote SCRUBBED to the corpus dir (uncommitted; commit is the human-gated publication boundary).
+- Core scrub imported into the extension via relative path (`../../../harness/cli/src/services/telemetry/fixture-scrub.js`); jiti resolves it at load — confirmed by a live capture.
+- **Evidence**: live `harness capture-fixtures --surface claude --dry-run` → ok envelope; staged scrubbed bytes had `jordanknight`→0, `jakkaj@`→0 (down from 9543); `git status` shows `scratch/` ignored. capture-logic 11/11.
+
+### Discoveries
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T005 | Noteworthy | **The live session is a PATHOLOGICAL fixture.** It's 41MB AND *about* scrubbing — so the scrubbed bytes still contain 73×`/Users/`, 56×`C:\`, 2×`@gmail.com` as literal DISCUSSION content (`.not.toContain('/Users/')`, `C:\Users\jane` doc examples), none of them real leaks (real identity scrubbed to 0). | Choose a different fixture. Profiled all 24 repo sessions; selected **c8bc0c68** (211KB/95 lines, "set up static html publishing", 5 human prompts, 14 tools, 38 token turns, 71 timestamps, META_lines=0). | T006 |
+| 2026-06-25 | T005 | Noteworthy | A byte-scan that bans literal `/Users/`/`C:\` will (correctly) flag a session that *discusses* those tokens, even with no real leak. | Fixture selection must avoid self-referential/meta sessions; documented for the runbook (Phase 3). The scan stays strict (no weakening). | AC-02; T007 |

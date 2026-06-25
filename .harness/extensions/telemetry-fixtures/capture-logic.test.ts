@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildMeta,
   type CaptureConfig,
   claudeMangle,
   claudeProjectDir,
+  defaultInstanceId,
   deriveCaptureConfig,
   instanceDir,
   isSurface,
   rawFilename,
   scratchRoot,
+  sessionFiles,
 } from './capture-logic.js';
 
 /** T004 (plan 1.4 · AC-06) — pure orchestration helpers for the capture extension. */
@@ -71,5 +74,26 @@ describe('capture-logic — config derivation', () => {
 
   it('returns null when home is unknown (cannot safely scrub)', () => {
     expect(deriveCaptureConfig({ home: undefined, cwd: '/repo' })).toBeNull();
+  });
+});
+
+describe('capture-logic — instance + meta', () => {
+  it('derives a date-stamped default instance id', () => {
+    expect(defaultInstanceId('2026-06-25T07:00:00Z')).toBe('2026-06-25-real');
+  });
+
+  it('builds capture provenance with day-granular date, no session id', () => {
+    const meta = buildMeta('claude', '2026-06-25T07:00:00Z', 'claude-code', 'a real session');
+    expect(meta).toEqual({
+      surface: 'claude',
+      captured_utc: '2026-06-25',
+      harness: 'claude-code',
+      scrubbed: true,
+      note: 'a real session',
+    });
+  });
+
+  it('selects + sorts .jsonl session files only', () => {
+    expect(sessionFiles(['b.jsonl', 'notes.md', 'a.jsonl', 'x.txt'])).toEqual(['a.jsonl', 'b.jsonl']);
   });
 });

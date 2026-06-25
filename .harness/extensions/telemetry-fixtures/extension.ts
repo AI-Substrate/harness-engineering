@@ -1,5 +1,18 @@
 import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
-import { deriveCaptureConfig, isSurface, SURFACES } from './capture-logic.js';
+// Single-source the privacy-critical scrub from core telemetry (not vendored).
+import { scrubText } from '../../../harness/cli/src/services/telemetry/fixture-scrub.js';
+import {
+  buildMeta,
+  claudeProjectDir,
+  defaultInstanceId,
+  deriveCaptureConfig,
+  instanceDir,
+  isSurface,
+  rawFilename,
+  scratchRoot,
+  sessionFiles,
+  SURFACES,
+} from './capture-logic.js';
 
 /**
  * `harness capture-fixtures` — capture real harness session logs into the
@@ -38,6 +51,7 @@ const captureFixtures: HarnessVerb = {
       description: 'explicit claude session id (default: the most recent session for this repo)',
     },
     { flags: '--names <csv>', description: 'comma-separated person names to scrub' },
+    { flags: '--note <text>', description: 'one-line provenance note for meta.json' },
     {
       flags: '--dry-run',
       description: 'capture + scrub into scratch/ only; do NOT promote to the corpus',
@@ -74,8 +88,79 @@ const captureFixtures: HarnessVerb = {
       );
     }
 
-    // claude capture path — implemented in T005.
-    return ctx.unconfigured("claude capture path lands in T005 (skeleton only at T004).");
+    // ── claude capture path (T005) ────────────────────────────────────────────
+    const fsw = ctx.fsWrite;
+    const projectDir = claudeProjectDir(config.homeDir, config.repoRoot);
+    if (!ctx.fs.exists(projectDir)) {
+      return ctx.unconfigured(
+        `No claude sessions found for this repo at ${projectDir}. Run a claude session in this repo first.`,
+      );
+    }
+
+    // Session selection: explicit --session → current CLAUDE_CODE_SESSION_ID → sole session.
+    const explicit = ctx.options.session as string | undefined;
+    const current = ctx.env.get('CLAUDE_CODE_SESSION_ID');
+    const sessions = sessionFiles(ctx.fs.readdir(projectDir));
+    let sessionFile: string | null = null;
+    if (explicit && sessions.includes(`${explicit}.jsonl`)) sessionFile = `${explicit}.jsonl`;
+    else if (current && sessions.includes(`${current}.jsonl`)) sessionFile = `${current}.jsonl`;
+    else if (sessions.length === 1) sessionFile = sessions[0] ?? null;
+    if (!sessionFile) {
+      return ctx.unconfigured(
+        `Could not pick a claude session (${sessions.length} found). Pass --session <id> explicitly.`,
+      );
+    }
+
+    const sourcePath = `${projectDir}/${sessionFile}`;
+    const raw = ctx.fs.readText(sourcePath);
+    if (raw == null) {
+      return ctx.error('E_READ', `Could not read the session transcript at ${sourcePath}.`, {
+        next_action: 'Confirm the file exists and is readable, then re-run.',
+      });
+    }
+
+    // SCRUB before anything is written anywhere outside the gitignored raw stage.
+    const scrubbed = scrubText(raw, config);
+    const instance = (ctx.options.instance as string | undefined) ?? defaultInstanceId(ctx.clock.nowIso());
+    const note =
+      (ctx.options.note as string | undefined) ?? `real ${surface} session captured from this machine`;
+    const meta = buildMeta(surface, ctx.clock.nowIso(), 'claude-code', note);
+    const rawName = rawFilename(surface);
+
+    // Stage: the UNSCRUBBED original lives ONLY in gitignored scratch/ (P12); the
+    // scrubbed candidate sits beside it for review/diff.
+    const stageDir = `${scratchRoot(config.repoRoot)}/${surface}/${instance}`;
+    fsw.mkdirp(stageDir);
+    fsw.writeText(`${stageDir}/raw.unscrubbed.${rawName.split('.').slice(1).join('.')}`, raw);
+    fsw.writeText(`${stageDir}/${rawName}`, scrubbed);
+    fsw.writeText(`${stageDir}/meta.json`, `${JSON.stringify(meta, null, 2)}\n`);
+
+    const dryRun = ctx.options.dryRun === true;
+    if (dryRun) {
+      return ctx.ok(
+        { surface, instance, staged: stageDir, promoted: false },
+        {
+          next_action:
+            `Review ${stageDir}/${rawName} for anything sensitive, then re-run WITHOUT --dry-run to promote.`,
+        },
+      );
+    }
+
+    // Promote the SCRUBBED candidate + meta to the corpus (uncommitted — the human
+    // review + git commit in T006 is the real publication gate).
+    const corpusDir = instanceDir(config.repoRoot, surface, instance);
+    fsw.mkdirp(corpusDir);
+    fsw.writeText(`${corpusDir}/${rawName}`, scrubbed);
+    fsw.writeText(`${corpusDir}/meta.json`, `${JSON.stringify(meta, null, 2)}\n`);
+
+    return ctx.ok(
+      { surface, instance, corpusDir, rawFile: `${corpusDir}/${rawName}`, promoted: true },
+      {
+        next_action:
+          `MANUAL REVIEW REQUIRED before commit: read ${corpusDir}/${rawName} end-to-end for anything ` +
+          `sensitive (it lands in a public repo, permanently). Only then \`git add\` + commit it.`,
+      },
+    );
   },
 };
 

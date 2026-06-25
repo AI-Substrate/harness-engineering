@@ -48,6 +48,29 @@ export function instanceDir(repoRoot: string, surface: Surface, instance: string
   return `${repoRoot}/harness/cli/test/services/telemetry/fixtures/real/${surface}/${instance}`;
 }
 
+/** Default corpus instance id from an ISO timestamp: `YYYY-MM-DD-real`. */
+export function defaultInstanceId(nowIso: string): string {
+  return `${nowIso.slice(0, 10)}-real`;
+}
+
+export interface CaptureMeta {
+  surface: Surface;
+  captured_utc: string;
+  harness: string;
+  scrubbed: boolean;
+  note: string;
+}
+
+/** Capture provenance written beside the scrubbed raw fixture (no session id — not identifying, but kept out anyway). */
+export function buildMeta(surface: Surface, nowIso: string, harness: string, note: string): CaptureMeta {
+  return { surface, captured_utc: nowIso.slice(0, 10), harness, scrubbed: true, note };
+}
+
+/** Pick the `.jsonl` session files in a claude project dir (filenames only, no path). */
+export function sessionFiles(entries: string[]): string[] {
+  return entries.filter((e) => e.endsWith('.jsonl')).sort();
+}
+
 export interface CaptureConfig {
   homeDir: string;
   repoRoot: string;
