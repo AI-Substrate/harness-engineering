@@ -117,6 +117,21 @@ describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/A
     });
   });
 
+  it('AC-20 precedence — both COPILOT_AGENT_SESSION_ID and AI_AGENT set → copilot-cli wins', () => {
+    // A copilot-CLI session running under a VS Code shell that also leaked the
+    // vscode AI_AGENT marker: the CLI is the INNERMOST harness and carries a real
+    // session id, so the env chain is consulted (and wins) before the AI_AGENT
+    // branch. Pins the documented precedence against a future reorder.
+    expect(
+      detectHarness(
+        new FakeEnv({
+          COPILOT_AGENT_SESSION_ID: 'cop-7',
+          AI_AGENT: 'github_copilot_vscode_agent',
+        }),
+      ),
+    ).toEqual({ harness: 'copilot-cli', sessionId: 'cop-7' });
+  });
+
   /** copilot-vscode deps: env carries the AI_AGENT marker + a home; the store is a query-aware FakeDb. */
   function vscodeDeps(resolve: (sql: string) => DbRow[]): { d: CaptureDeps; fs: FakeFs } {
     const fs = new FakeFs({});

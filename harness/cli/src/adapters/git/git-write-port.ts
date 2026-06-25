@@ -67,7 +67,7 @@ export interface GitIdentity {
  */
 export const TELEMETRY_FALLBACK_AUTHOR: GitIdentity = {
   name: 'harness-telemetry',
-  email: 'noreply@anthropic.com',
+  email: 'noreply@harness-engineering-fake.com',
 };
 
 /** A single `git mktree` entry (`<mode> SP <type> SP <sha> TAB <name>`). */

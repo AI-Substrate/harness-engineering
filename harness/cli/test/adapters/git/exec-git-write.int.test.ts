@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ExecGitWrite } from '../../../src/adapters/git/exec-git-write.js';
-import { telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
+import {
+  TELEMETRY_FALLBACK_AUTHOR,
+  telemetryRefFor,
+} from '../../../src/adapters/git/git-write-port.js';
 
 /** A representative shard ref — the real plumbing is ref-agnostic; this exercises a dated per-session ref. */
 const TELEMETRY_REF = telemetryRefFor('2026/03/23', 'sessA');
@@ -102,5 +105,45 @@ describe('ExecGitWrite — real orphan-ref plumbing', () => {
 
   it('push throws on failure (no origin remote) — the offline-safe path the service catches', () => {
     expect(() => git.push(`${TELEMETRY_REF}:${TELEMETRY_REF}`)).toThrow();
+  });
+
+  /**
+   * AC-13 / A4 fallback branch — the OTHER half of attribution: when the repo has
+   * NO configured `user.name`/`user.email`, `commitTree` injects the generic
+   * `TELEMETRY_FALLBACK_AUTHOR` so an unconfigured environment (a fresh CI runner)
+   * never fails the commit. Isolated in a throwaway repo with global+system config
+   * pointed at /dev/null, so the dev box's own git identity can't satisfy the
+   * `git config user.*` probe and the fallback path is exercised for real.
+   */
+  it('falls back to the generic identity when git has no configured user (AC-13)', () => {
+    const noIdRepo = mkdtempSync(join(tmpdir(), 'telem-gitwrite-noid-'));
+    const savedGlobal = process.env.GIT_CONFIG_GLOBAL;
+    const savedSystem = process.env.GIT_CONFIG_SYSTEM;
+    try {
+      // Disable global+system config for every git child in this test → the repo
+      // genuinely has no identity, so fallbackIdentityEnv() injects the fallback.
+      process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+      process.env.GIT_CONFIG_SYSTEM = '/dev/null';
+      const ng = (...args: string[]): string =>
+        execFileSync('git', args, { cwd: noIdRepo, encoding: 'utf8' }).trim();
+      ng('init', '-q');
+      ng('config', 'commit.gpgsign', 'false'); // local config only; identity stays unset
+
+      const gitNoId = new ExecGitWrite(noIdRepo);
+      const blob = gitNoId.hashObject('{"command":"doctor"}\n');
+      const tree = gitNoId.mktree([{ mode: '100644', type: 'blob', sha: blob, name: '1.json' }]);
+      const commit = gitNoId.commitTree(tree, null, 'telemetry: flush (no configured identity)');
+
+      // Author AND committer are the generic fallback — never a dev-box identity.
+      expect(ng('show', '-s', '--format=%ae', commit)).toBe(TELEMETRY_FALLBACK_AUTHOR.email);
+      expect(ng('show', '-s', '--format=%ce', commit)).toBe(TELEMETRY_FALLBACK_AUTHOR.email);
+      expect(ng('show', '-s', '--format=%an', commit)).toBe(TELEMETRY_FALLBACK_AUTHOR.name);
+    } finally {
+      if (savedGlobal === undefined) delete process.env.GIT_CONFIG_GLOBAL;
+      else process.env.GIT_CONFIG_GLOBAL = savedGlobal;
+      if (savedSystem === undefined) delete process.env.GIT_CONFIG_SYSTEM;
+      else process.env.GIT_CONFIG_SYSTEM = savedSystem;
+      rmSync(noIdRepo, { recursive: true, force: true });
+    }
   });
 });

@@ -367,6 +367,10 @@ function captureUnsafe(deps: CaptureDeps): void {
     db: deps.db,
     repoRoot: cwd,
     harness: detected.harness,
+    // Thread the ONCE-resolved session id (for copilot-vscode it was just resolved
+    // from the store above; for env-keyed harnesses it's the env value) so adapters
+    // read it instead of re-querying a mutable source — single source of truth.
+    sessionId: detected.sessionId,
   };
   const adapter: HarnessAdapter =
     (deps.adapters ?? []).find((a) => a.handles(detected.harness)) ?? nullDefaultAdapter;

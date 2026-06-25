@@ -20,9 +20,11 @@ import type { HarnessAdapter, HarnessContext, HarnessSource } from './harness-ad
  * but NO session-id env var (unlike `COPILOT_AGENT_SESSION_ID` / Cursor's
  * `CURSOR_CONVERSATION_ID`). The active session is resolved from the store BY CWD
  * (latest `updated_at`) — see {@link resolveCopilotVscodeSessionId}, which the
- * capture service calls at detection time (to name the buffer) and which this
- * adapter calls again to read the session's turns (mirroring how the Cursor
- * adapter independently re-reads its env session id).
+ * capture service calls ONCE at detection time (to name the buffer) and then
+ * threads onto {@link HarnessSource.sessionId}. This adapter reads that threaded
+ * id rather than re-querying the mutable cwd→session mapping, so every read in a
+ * single capture keys off the SAME session — no cross-session drift when two VS
+ * Code windows share a repo.
  *
  * PRIVACY (AC-23): the word count + a presence flag are computed AT THE SQL
  * BOUNDARY ({@link TURNS_SQL}) — `user_message` / `assistant_response` appear only
@@ -139,9 +141,16 @@ function readTurns(ctx: HarnessSource, sessionId: string): TurnRow[] {
   return [];
 }
 
-/** Resolve this session's id (db-derived, by cwd) — the adapter's own lookup, like Cursor's env read. */
+/**
+ * This capture's session id — read from the threaded {@link HarnessSource.sessionId}
+ * (resolved ONCE by the capture core via {@link resolveCopilotVscodeSessionId}). The
+ * adapter never re-queries the mutable cwd→latest-session mapping, so `currentPosition`
+ * and `extract` always agree on the session (the buffer keyed on S is windowed from
+ * turn-count(S) and carries events from S — never a cross-session mix). `null` when
+ * the core threaded no id (→ an empty window / null caps).
+ */
 function sessionIdFor(src: HarnessSource): string | null {
-  return src.db === undefined ? null : resolveCopilotVscodeSessionId(src.db, src.env, src.repoRoot);
+  return src.sessionId !== undefined && src.sessionId.length > 0 ? src.sessionId : null;
 }
 
 export const copilotVscodeAdapter: HarnessAdapter = {

@@ -391,7 +391,9 @@ made it** — the same attribution any git commit carries. Attribution makes
 telemetry *traceable*; it does **not** make it a per-person scoreboard. The counts
 (token count among them) stay on the explicit do-**not**-use-for-individuals list:
 they are aggregate diagnostic context at team/repo grain, **not** performance
-management. The optional `agent` provenance field is the *same* nullable,
+management. Individual-grain reads exist only to *help* that engineer — diagnose
+their own flow, support onboarding — never to rate or rank them. The optional
+`agent` provenance field is the *same* nullable,
 aggregate-only key described in
 [§ Team-level only](#team-level-only--never-individual-attribution).
 

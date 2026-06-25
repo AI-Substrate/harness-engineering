@@ -65,6 +65,9 @@ function ctx(over: Partial<HarnessContext> = {}): HarnessContext {
     db: db(),
     repoRoot: REPO,
     harness: 'copilot-vscode',
+    // The capture core resolves the session id ONCE and threads it here (F003); the
+    // adapter reads this, never re-querying the mutable cwd→session mapping.
+    sessionId: SESSION,
     window: { since: 'session-start', from: 0, to: 99 },
     ...over,
   };
@@ -125,6 +128,36 @@ describe('copilotVscodeAdapter — turn-anchored stream from session-store.db (P
     expect(json).not.toContain('/Users/x');
   });
 
+  it('AC-22 — derives rollup.activity.working_ratio from the turn-gap timeline', () => {
+    // tokens are null for this surface, so the DERIVED working_ratio is the one real
+    // signal copilot-vscode contributes — assert it's computed from the T0→T1 span.
+    const seg = serializeSegment(
+      {
+        command: 'doctor',
+        harness: 'copilot-vscode',
+        harness_session_id: SESSION,
+        timecode: '2026-06-25T09:01:00Z',
+        window: { since: 'session-start', from: 0, to: 99 },
+        branch: null,
+        branch_changed: false,
+        tokens: null,
+        event_stream: stream,
+      },
+      REPO,
+    );
+    // The honest ceiling, made explicit: Copilot `turn` events carry `dur_s:0`
+    // (durations live server-side), so there is zero agent-working signal — the
+    // whole T0→T1 span is human time and the derived ratio is 0. Pinning the exact
+    // values guards the gap→activity derivation, not just its presence.
+    expect(seg.rollup?.activity).toEqual({
+      wall_s: 45, // T0 → T1 span
+      agent_working_s: 0, // no turn durations → no agent-working time
+      human_s: 45,
+      idle_s: 0,
+      working_ratio: 0,
+    });
+  });
+
   it('windows by turn_index — a prior window only sees the new turns', () => {
     const caps2 = copilotVscodeAdapter.extract(
       ctx({ window: { since: 'last-command', from: 1, to: 2 } }),
@@ -140,11 +173,14 @@ describe('copilotVscodeAdapter — turn-anchored stream from session-store.db (P
     expect(caps3.user_prompts ?? null).toBeNull();
   });
 
-  it('issues TWO distinct reads — sessions then turns (query-aware store)', () => {
+  it('reads ONLY turns — the session id is threaded, never re-resolved by the adapter (F003)', () => {
     const f = db();
     copilotVscodeAdapter.extract(ctx({ db: f }));
-    expect(f.calls.some((c) => c.sql.includes('FROM sessions'))).toBe(true);
+    // Resolution moved to the capture core (threaded via HarnessSource.sessionId), so
+    // the adapter must NOT re-query the mutable sessions mapping — that re-query was the
+    // cross-session-drift bug under concurrent same-repo VS Code windows.
     expect(f.calls.some((c) => c.sql.includes('FROM turns'))).toBe(true);
+    expect(f.calls.some((c) => c.sql.includes('FROM sessions'))).toBe(false);
   });
 
   it('AC-23 read-side — word count + presence are computed IN SQL; no raw text column is returned', () => {

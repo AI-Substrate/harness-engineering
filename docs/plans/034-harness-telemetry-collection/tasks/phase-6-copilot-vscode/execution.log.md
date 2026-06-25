@@ -23,7 +23,7 @@ Reworked to the **Cursor-pattern DbPort** design (tokens-null honest ceiling) af
 - **Privacy (AC-23).** `readTurns` reads `user_message`/`assistant_response` only to compute a word-count / presence and discards the text; a planted-secret + abs-path control proves neither reaches the serialized segment.
 
 ## AC status
-AC-20 ✅ (AI_AGENT detection + `TERM_PROGRAM` negative control) · AC-21 ✅ (cwd resolution; no-match → clean no-op) · AC-22 ✅ (turn-anchored timeline; tokens/models null) · AC-23 ✅ (planted-secret control; counts+timestamps only) · AC-revert ✅ (schema back to 2.0; v1 fields gone).
+AC-20 ✅ (AI_AGENT detection + `TERM_PROGRAM` negative control) · AC-21 ✅ (cwd resolution; no-match → clean no-op) · AC-22 ✅ (turn-anchored timeline; tokens/models null) · AC-23 ✅ (planted-secret control; counts+timestamps only) · AC-revert ✅ (`segment-schema.test.ts` pins `schema_version` 2.0 + the frozen field set — shutdown/scope/premium_requests/code_changes v1 fields gone).
 
 ## Companion debrief (`code-review-companion`, run `2026-06-25T02-31-32-691Z-ddc2`)
 
