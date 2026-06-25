@@ -145,16 +145,32 @@ as *unknown*, not *stayed put*).
 - **tokens / tools / skills** — the same totals as the v1 fields (`tokens` is
   `null` when no turn carried buckets — e.g. Cursor — never zero-filled).
 
-**Per-harness ceilings (honest).** Claude and Copilot emit an *exact*-timed
-stream (Copilot turns even carry per-interaction tokens). **Cursor** has no
-transcript timestamps, so its events are **anchored** to the IDE-store bubble
-times (`t_precision: "anchored"`) and carry **no tokens** (server-side only,
-never estimated); a headless Cursor session with no bubbles serializes an **empty
-`event_stream` with `rollup: null`** (the adapter has no timeline to anchor to)
-rather than a fabricated one — `event_stream` itself is always present, never
-`null`. Outcome events follow each harness's result-capture
-ability: Claude has the full result envelope (`checks` + `command_exit`), Copilot
-reports only success (`command_exit`), Cursor neither.
+**Per-harness ceilings (honest).** Claude and **Copilot CLI** (`copilot-cli`)
+emit an *exact*-timed stream (Copilot CLI turns even carry per-interaction
+tokens). The next two surfaces hit a **tokens-`null` ceiling** — they keep usage
+server-side, so the adapter reports the timeline and **never estimates tokens**:
+
+- **Cursor** (`cursor-agent`) has no transcript timestamps, so its events are
+  **anchored** to the IDE-store bubble times (`t_precision: "anchored"`); a
+  headless Cursor session with no bubbles serializes an **empty `event_stream`
+  with `rollup: null`** rather than a fabricated one.
+- **Copilot Chat in VS Code** (`copilot-vscode`) is a **distinct surface from
+  `copilot-cli`** — the VS Code extension keeps its own SQLite store
+  (`…/globalStorage/github.copilot-chat/session-store.db`, `sessions` + `turns`),
+  not the CLI's `~/.copilot` JSONL. It is detected by `AI_AGENT=
+  github_copilot_vscode_agent` (no session-id env var exists, so the active
+  session is resolved from the store **by cwd**, latest `updated_at`), and its
+  events are **anchored** to `turns.timestamp`. The store has **no token
+  columns** (`tokens`/`models` are `null`); for privacy the word-count + a
+  presence flag are computed **at the SQL boundary** (`user_message` /
+  `assistant_response` appear only inside `length()`/`CASE`), so the message
+  **text never enters the telemetry process** — only `turn_index`, `words`,
+  `has_response`, `timestamp` cross the read-only `DbPort`.
+
+`event_stream` itself is always present, never `null`. Outcome events follow each
+harness's result-capture ability: Claude has the full result envelope (`checks` +
+`command_exit`), Copilot CLI reports only success (`command_exit`), Cursor and
+Copilot-VS-Code neither.
 
 ## Disabling telemetry
 
@@ -249,9 +265,10 @@ push is a clean create-or-fast-forward — no fetch, no merge, no retry. This is
 canonical git pattern for "many writers append out-of-tree metadata" (cf. Gerrit
 `refs/changes/*`, GitHub `refs/pull/*`).
 
-The shard key is the **session** (an opaque per-session id, never a person —
-[§ Attribution](#attribution--teamrepo-only)), so sharding introduces no new
-identity exposure beyond what the buffer paths already carry.
+The shard key is the **session** (an opaque per-session id — the contributor
+identity rides on the commit, not the ref name; [§ Attribution](#attribution--contributor-commit-team-grain-use)),
+so sharding introduces no new identity exposure beyond what the commit already
+carries.
 
 **Collecting it upstream is one fetch, not many.** A globbed refspec is a single
 network round-trip — the server advertises every matching ref at once:
@@ -293,15 +310,24 @@ ones that landed, so a mid-flush failure never strands or double-flushes a
 segment. The explicit verb reports a non-zero exit so a CI/cron caller can see a
 push didn't land; the buffer is preserved either way.
 
-## Attribution — team/repo only
+## Attribution — contributor commit, team-grain use
 
-Telemetry is **team/repo-grained, never per-individual** (Constitution P12). Every
-telemetry commit's author **and** committer are a fixed non-individual identity
-(`harness-telemetry <noreply@…>`); your `git config user.email` is never read or
-stored. The shard refs are keyed by **session** (an opaque per-session id), never
-by engineer — sharding is for write-isolation, not attribution. The optional `agent` provenance field follows the house pattern (nullable,
-`null` when unset) and is never reported per person. See
-[Harness value measures § Team-level only](./harness-value-measures.md#d-anti-goodhart-team-level-and-the-under-reporting-defense).
+Every telemetry commit's author **and** committer are the **contributor's own
+configured git identity** (the 2026-06-25 decision), so each
+`refs/harness-telemetry/*` shard is traceable to **who pushed it** — the same
+attribution `git log` gives any commit. The generic `harness-telemetry
+<noreply@…>` identity is used **only** as a fallback when the repo has no
+configured `user.name`/`user.email`, so an unconfigured environment never fails
+the commit. Shard refs are keyed by **session** (an opaque per-session id), not by
+engineer — sharding is for write-isolation; the contributor identity lives on the
+commit.
+
+**Usage norm (P12):** attribution makes a push *traceable*, but the counts remain
+intended for **team/repo-grain** measurement — not a per-person productivity
+scoreboard (see the do-not-use-for-individuals list in
+[Harness value measures § Team-level only](./harness-value-measures.md#team-level-only--never-individual-attribution)).
+The optional `agent` provenance field follows the house pattern (nullable, `null`
+when unset).
 
 ## Best-effort, not billing-grade
 

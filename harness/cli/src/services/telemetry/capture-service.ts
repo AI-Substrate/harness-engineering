@@ -7,6 +7,11 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp } from '../shared/temp.js';
 import {
+  COPILOT_VSCODE_AI_AGENT,
+  COPILOT_VSCODE_HARNESS,
+  resolveCopilotVscodeSessionId,
+} from './adapters/copilot-vscode-adapter.js';
+import {
   type HarnessAdapter,
   type HarnessCapabilities,
   type HarnessContext,
@@ -80,13 +85,26 @@ const HARNESS_ENV_CHAIN: readonly { env: string; harness: string }[] = [
   { env: 'CLAUDE_CODE_SESSION_ID', harness: 'claude-code' },
 ];
 
-/** Detect the innermost active harness from env, or `null` (zero-harness → no-op). */
+/**
+ * Detect the innermost active harness from env, or `null` (zero-harness → no-op).
+ *
+ * The env chain covers harnesses that publish a session-id env var. VS Code
+ * Copilot **Chat** is the exception: it sets `AI_AGENT=github_copilot_vscode_agent`
+ * but NO session-id var, so it's recognized here with an EMPTY `sessionId` — a
+ * "resolve me from the store by cwd" marker that {@link captureUnsafe} fills via
+ * {@link resolveCopilotVscodeSessionId} (it needs cwd + the db, neither available
+ * to this pure env-only function). `TERM_PROGRAM=vscode` is deliberately NOT
+ * consulted — a `copilot-cli` run inside VS Code's terminal must not false-match.
+ */
 export function detectHarness(env: EnvPort): DetectedHarness | null {
   for (const { env: key, harness } of HARNESS_ENV_CHAIN) {
     const sessionId = env.get(key);
     if (sessionId !== undefined && sessionId.length > 0) {
       return { harness, sessionId };
     }
+  }
+  if (env.get('AI_AGENT') === COPILOT_VSCODE_AI_AGENT) {
+    return { harness: COPILOT_VSCODE_HARNESS, sessionId: '' }; // db-resolved by cwd in captureUnsafe
   }
   return null;
 }
@@ -325,18 +343,34 @@ export function captureTelemetry(deps: CaptureDeps): void {
 
 /** The core capture path — may throw; always called through the {@link captureTelemetry} guard. */
 function captureUnsafe(deps: CaptureDeps): void {
-  const detected = detectHarness(deps.env);
+  let detected = detectHarness(deps.env);
   if (detected === null) {
     return; // zero-harness → clean no-op (no buffer, no writes)
   }
 
   const cwd = toPosix(deps.proc.cwd());
+
+  // VS Code Copilot Chat carries no session-id env var (detection left it ''); the
+  // active session is resolved from the store BY CWD (latest `updated_at`). This is
+  // the ONE detection-time db read — done here, before the cursor/branch/buffer
+  // paths consume `detected.sessionId`. No match → clean no-op (AC-21), never a
+  // forced segment. Best-effort: a missing db / no `deps.db` resolves to null.
+  if (detected.harness === COPILOT_VSCODE_HARNESS && detected.sessionId === '') {
+    const sessionId =
+      deps.db !== undefined ? resolveCopilotVscodeSessionId(deps.db, deps.env, cwd) : null;
+    if (sessionId === null) return;
+    detected = { harness: detected.harness, sessionId };
+  }
   const source: HarnessSource = {
     env: deps.env,
     fs: deps.fs,
     db: deps.db,
     repoRoot: cwd,
     harness: detected.harness,
+    // Thread the ONCE-resolved session id (for copilot-vscode it was just resolved
+    // from the store above; for env-keyed harnesses it's the env value) so adapters
+    // read it instead of re-querying a mutable source — single source of truth.
+    sessionId: detected.sessionId,
   };
   const adapter: HarnessAdapter =
     (deps.adapters ?? []).find((a) => a.handles(detected.harness)) ?? nullDefaultAdapter;

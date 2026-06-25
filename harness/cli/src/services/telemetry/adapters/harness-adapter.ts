@@ -40,6 +40,16 @@ export interface HarnessSource {
   repoRoot: string;
   /** The detected harness id this extraction is for. */
   harness: string;
+  /**
+   * The resolved session id for THIS capture, threaded by the capture core so an
+   * adapter never re-derives it from a mutable source. For env-keyed harnesses
+   * it's the session-id env var; for VS Code Copilot Chat it's the ONCE-resolved
+   * cwd→latest-session lookup. Threading it (rather than re-querying per read)
+   * keeps every read in a single capture keyed to the SAME session — no drift
+   * under concurrent same-repo windows. Optional only so direct `HarnessSource`
+   * literals (tests) need not supply it; the capture core always sets it.
+   */
+  sessionId?: string;
 }
 
 /** Read-only context an adapter extracts counts from (a source + the computed window). */

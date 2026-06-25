@@ -1,10 +1,12 @@
 import { claudeAdapter } from './claude-adapter.js';
 import { copilotAdapter } from './copilot-adapter.js';
+import { copilotVscodeAdapter } from './copilot-vscode-adapter.js';
 import { cursorAdapter } from './cursor-adapter.js';
 import type { HarnessAdapter } from './harness-adapter.js';
 
 export { claudeAdapter } from './claude-adapter.js';
 export { copilotAdapter } from './copilot-adapter.js';
+export { copilotVscodeAdapter } from './copilot-vscode-adapter.js';
 export { cursorAdapter } from './cursor-adapter.js';
 export type {
   HarnessAdapter,
@@ -26,5 +28,6 @@ export { nullDefaultAdapter } from './harness-adapter.js';
 export const coreTelemetryAdapters: HarnessAdapter[] = [
   claudeAdapter,
   copilotAdapter,
+  copilotVscodeAdapter,
   cursorAdapter,
 ];

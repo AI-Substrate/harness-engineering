@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
+import type { DbRow } from '../../../src/adapters/db/db-port.js';
+import { FakeDb } from '../../../src/adapters/db/fake-db.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
+import { copilotVscodeAdapter } from '../../../src/services/telemetry/adapters/copilot-vscode-adapter.js';
 import type {
   HarnessAdapter,
   HarnessCapabilities,
@@ -89,6 +92,93 @@ describe('T005 — detectHarness (innermost wins)', () => {
 
   it('returns null when no harness env is present (zero-harness)', () => {
     expect(detectHarness(new FakeEnv({}))).toBeNull();
+  });
+});
+
+describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/AC-21)', () => {
+  const VSCODE_ENV = { AI_AGENT: 'github_copilot_vscode_agent' };
+
+  it('AC-20 — the AI_AGENT marker detects copilot-vscode with an empty (db-resolved) session id', () => {
+    expect(detectHarness(new FakeEnv(VSCODE_ENV))).toEqual({
+      harness: 'copilot-vscode',
+      sessionId: '',
+    });
+  });
+
+  it('AC-20 negative control — TERM_PROGRAM=vscode alone does NOT trigger copilot-vscode', () => {
+    // a copilot-cli run inside VS Code's integrated terminal must not false-match
+    expect(detectHarness(new FakeEnv({ TERM_PROGRAM: 'vscode' }))).toBeNull();
+  });
+
+  it('AC-20 — copilot-cli (its own session-id var) is unaffected by the AI_AGENT path', () => {
+    expect(detectHarness(new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'cop-9' }))).toEqual({
+      harness: 'copilot-cli',
+      sessionId: 'cop-9',
+    });
+  });
+
+  it('AC-20 precedence — both COPILOT_AGENT_SESSION_ID and AI_AGENT set → copilot-cli wins', () => {
+    // A copilot-CLI session running under a VS Code shell that also leaked the
+    // vscode AI_AGENT marker: the CLI is the INNERMOST harness and carries a real
+    // session id, so the env chain is consulted (and wins) before the AI_AGENT
+    // branch. Pins the documented precedence against a future reorder.
+    expect(
+      detectHarness(
+        new FakeEnv({
+          COPILOT_AGENT_SESSION_ID: 'cop-7',
+          AI_AGENT: 'github_copilot_vscode_agent',
+        }),
+      ),
+    ).toEqual({ harness: 'copilot-cli', sessionId: 'cop-7' });
+  });
+
+  /** copilot-vscode deps: env carries the AI_AGENT marker + a home; the store is a query-aware FakeDb. */
+  function vscodeDeps(resolve: (sql: string) => DbRow[]): { d: CaptureDeps; fs: FakeFs } {
+    const fs = new FakeFs({});
+    const d: CaptureDeps = {
+      fs,
+      env: new FakeEnv(VSCODE_ENV, '/home/u'),
+      clock: new FakeClock('2026-06-25T02:00:00.000Z'),
+      proc: new FakeProcess({}, REPO),
+      git: new FakeGit({
+        isRepo: true,
+        branch: '036-copilot-vscode-telemetry',
+        remoteUrl: 'github.com/x/y',
+      }),
+      command: 'doctor',
+      db: new FakeDb(resolve),
+      adapters: [copilotVscodeAdapter],
+    };
+    return { d, fs };
+  }
+
+  it('AC-21 — resolves the session id from session-store.db by cwd, then writes the segment under it', () => {
+    const { d, fs } = vscodeDeps((sql) =>
+      sql.includes('FROM sessions') ? [{ id: 'vsc-cwd-1' }] : [],
+    );
+    captureTelemetry(d);
+
+    const seg = readWrittenSegment(fs, 'vsc-cwd-1');
+    expect(seg).not.toBeNull();
+    expect(seg?.harness).toBe('copilot-vscode');
+    expect(seg?.harness_session_id).toBe('vsc-cwd-1');
+    // the sessions read is parameterized by cwd and takes the latest updated_at
+    const sessQuery = (d.db as FakeDb).calls.find((c) => c.sql.includes('FROM sessions'));
+    expect(sessQuery?.params).toEqual([REPO]);
+    expect(sessQuery?.sql).toContain('ORDER BY updated_at DESC');
+  });
+
+  it('AC-21 — no matching session row → clean no-op (no forced segment)', () => {
+    const { d, fs } = vscodeDeps(() => []); // store has no row for this cwd
+    captureTelemetry(d);
+    expect(fs.writes.filter((p) => p.includes('/telemetry/'))).toEqual([]);
+  });
+
+  it('AC-21 — no db wired → clean no-op (best-effort resolution, never forced)', () => {
+    const { d, fs } = vscodeDeps((sql) => (sql.includes('FROM sessions') ? [{ id: 'x' }] : []));
+    d.db = undefined;
+    captureTelemetry(d);
+    expect(fs.writes.filter((p) => p.includes('/telemetry/'))).toEqual([]);
   });
 });
 

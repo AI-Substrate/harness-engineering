@@ -1,7 +1,7 @@
 # Harness Engineering Rules
 
-**Version**: 1.0.0
-**Last Updated**: 2026-06-08
+**Version**: 1.1.0
+**Last Updated**: 2026-06-25
 **Constitution Reference**: [constitution.md](./constitution.md)
 
 Normative MUST/SHOULD statements. These operationalize the Constitution; on conflict the Constitution wins.
@@ -113,6 +113,7 @@ test('given_unconfigured_verb_when_run_then_status_unconfigured_exit_2', () => {
 
 | Principle Violated | Why Needed | Simpler Alternative Rejected | Risk Mitigation |
 |--------------------|------------|------------------------------|-----------------|
+| Telemetry attribution doctrine (`value-measures` § Team-level only — prior forced non-individual commit author) | Telemetry refs must be traceable to who pushed, so flows can be diagnosed and onboarding supported (Amendment A4, plan 034, 2026-06-25) | Keep the fixed `harness-telemetry` non-individual author | Storage is attributable; usage stays diagnostic/team-grain — individual reads only to help that engineer, never to rate or rank |
 
 - **MUST** pass the Constitution gate in `/plan-3` (no unresolved violations without a ledger entry).
 
