@@ -4,10 +4,15 @@ import {
   type CaptureConfig,
   claudeMangle,
   claudeProjectDir,
+  claudeSources,
+  copilotCliEventsPath,
+  copilotCliLogsDir,
   defaultInstanceId,
   deriveCaptureConfig,
   instanceDir,
+  isCopilotProcessLog,
   isSurface,
+  pickCopilotCliSession,
   rawFilename,
   scratchRoot,
   sessionFiles,
@@ -96,5 +101,32 @@ describe('capture-logic — instance + meta', () => {
 
   it('selects + sorts .jsonl session files only', () => {
     expect(sessionFiles(['b.jsonl', 'notes.md', 'a.jsonl', 'x.txt'])).toEqual(['a.jsonl', 'b.jsonl']);
+  });
+});
+
+describe('capture-logic — per-surface sources', () => {
+  it('claude has one transcript source', () => {
+    expect(claudeSources('/h/.claude/projects/-repo', 'abc.jsonl')).toEqual([
+      { rawName: 'raw.jsonl', sourcePath: '/h/.claude/projects/-repo/abc.jsonl' },
+    ]);
+  });
+
+  it('copilot-cli events path is per-session under session-state/', () => {
+    expect(copilotCliEventsPath('/Users/jane', 'sid-123')).toBe(
+      '/Users/jane/.copilot/session-state/sid-123/events.jsonl',
+    );
+    expect(copilotCliLogsDir('/Users/jane')).toBe('/Users/jane/.copilot/logs');
+  });
+
+  it('recognises process-*.log debug logs (not <uuid>.log or copilot.log)', () => {
+    expect(isCopilotProcessLog('process-1782271727952-53764.log')).toBe(true);
+    expect(isCopilotProcessLog('b67cd3ce-e0ee-4048-831e-7f4591f20a60.log')).toBe(false);
+    expect(isCopilotProcessLog('copilot.log')).toBe(false);
+  });
+
+  it('copilot-cli session selection: explicit beats env, env beats nothing', () => {
+    expect(pickCopilotCliSession('explicit', 'env')).toBe('explicit');
+    expect(pickCopilotCliSession(undefined, 'env')).toBe('env');
+    expect(pickCopilotCliSession(undefined, undefined)).toBeNull();
   });
 });

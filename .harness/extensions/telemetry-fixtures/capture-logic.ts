@@ -90,6 +90,54 @@ export function sessionFiles(entries: string[]): string[] {
   return entries.filter((e) => e.endsWith('.jsonl')).sort();
 }
 
+/** One source file to capture: where to read it from, and the `raw.*` name to stage it as. */
+export interface SourceFile {
+  rawName: string;
+  sourcePath: string;
+}
+
+/** The single claude transcript source. */
+export function claudeSources(projectDir: string, sessionFile: string): SourceFile[] {
+  return [{ rawName: 'raw.jsonl', sourcePath: `${projectDir}/${sessionFile}` }];
+}
+
+/**
+ * The per-session copilot-cli events file (verbatim — this dir is one session only).
+ * Mirrors `copilotEventsPath` in the runtime adapter; kept here as a pure join so
+ * capture-logic stays core-free.
+ */
+export function copilotCliEventsPath(home: string, sessionId: string): string {
+  return `${home}/.copilot/session-state/${sessionId}/events.jsonl`;
+}
+
+/**
+ * The copilot-cli logs dir. The process log is NOT named by session id — it is a
+ * per-process `process-*.log` that interleaves many sessions, found by scanning for
+ * the one whose content includes the session id (I/O, done at the run() root). The
+ * captured fixture keeps only that session's `assistant_usage` records
+ * (`filterCopilotProcessLog`), never the raw multi-hundred-MB debug log.
+ */
+export function copilotCliLogsDir(home: string): string {
+  return `${home}/.copilot/logs`;
+}
+
+/** True for a copilot-cli `process-*.log` debug-log filename. */
+export function isCopilotProcessLog(name: string): boolean {
+  return name.startsWith('process-') && name.endsWith('.log');
+}
+
+/**
+ * copilot-cli has thousands of sessions and `ctx.fs` exposes no mtime, so capture
+ * cannot auto-pick "most recent". Selection is explicit `--session`, else the live
+ * `COPILOT_AGENT_SESSION_ID`; `null` (→ ask for `--session`) when neither is set.
+ */
+export function pickCopilotCliSession(
+  explicit: string | undefined,
+  current: string | undefined,
+): string | null {
+  return explicit ?? current ?? null;
+}
+
 export interface CaptureConfig {
   homeDir: string;
   repoRoot: string;

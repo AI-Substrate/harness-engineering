@@ -1,14 +1,21 @@
 import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
-// Single-source the privacy-critical scrub from core telemetry (not vendored).
+// Single-source the privacy-critical scrub + projections from core telemetry (not vendored).
+import {
+  filterCopilotProcessLog,
+  redactCopilotSystemMessage,
+} from '../../../harness/cli/src/services/telemetry/fixture-extract.js';
 import { scrubText } from '../../../harness/cli/src/services/telemetry/fixture-scrub.js';
 import {
   buildMeta,
   claudeProjectDir,
+  copilotCliEventsPath,
+  copilotCliLogsDir,
   defaultInstanceId,
   deriveCaptureConfig,
   instanceDir,
+  isCopilotProcessLog,
   isSurface,
-  rawFilename,
+  pickCopilotCliSession,
   scratchRoot,
   sessionFiles,
   SURFACES,
@@ -48,7 +55,14 @@ const captureFixtures: HarnessVerb = {
     },
     {
       flags: '--session <id>',
-      description: 'explicit claude session id (default: the most recent session for this repo)',
+      description:
+        'explicit session id (claude: default = sole session for this repo; copilot-cli: required)',
+    },
+    {
+      flags: '--log <path>',
+      description:
+        'copilot-cli only: the process-*.log to read (skips the dir scan; only this session’s ' +
+        'assistant_usage records are kept)',
     },
     { flags: '--names <csv>', description: 'comma-separated person names to scrub' },
     { flags: '--note <text>', description: 'one-line provenance note for meta.json' },
@@ -82,86 +96,168 @@ const captureFixtures: HarnessVerb = {
       );
     }
 
-    if (surface !== 'claude') {
-      return ctx.unconfigured(
-        `'${surface}' capture lands in Phase 2; only 'claude' is implemented in Phase 1.`,
-      );
-    }
+    // ── Resolve the per-surface raw captures (already read; + provenance id) ──
+    const resolved = resolveSources(ctx, surface, config);
+    if ('result' in resolved) return resolved.result;
+    const { files, harnessId } = resolved;
 
-    // ── claude capture path (T005) ────────────────────────────────────────────
+    // SCRUB every capture before anything is written outside gitignored scratch/.
     const fsw = ctx.fsWrite;
-    const projectDir = claudeProjectDir(config.homeDir, config.repoRoot);
-    if (!ctx.fs.exists(projectDir)) {
-      return ctx.unconfigured(
-        `No claude sessions found for this repo at ${projectDir}. Run a claude session in this repo first.`,
-      );
-    }
+    const captured = files.map((f) => ({
+      rawName: f.rawName,
+      raw: f.raw,
+      scrubbed: scrubText(f.raw, config),
+    }));
 
-    // Session selection: explicit --session → current CLAUDE_CODE_SESSION_ID → sole session.
-    const explicit = ctx.options.session as string | undefined;
-    const current = ctx.env.get('CLAUDE_CODE_SESSION_ID');
-    const sessions = sessionFiles(ctx.fs.readdir(projectDir));
-    let sessionFile: string | null = null;
-    if (explicit && sessions.includes(`${explicit}.jsonl`)) sessionFile = `${explicit}.jsonl`;
-    else if (current && sessions.includes(`${current}.jsonl`)) sessionFile = `${current}.jsonl`;
-    else if (sessions.length === 1) sessionFile = sessions[0] ?? null;
-    if (!sessionFile) {
-      return ctx.unconfigured(
-        `Could not pick a claude session (${sessions.length} found). Pass --session <id> explicitly.`,
-      );
-    }
-
-    const sourcePath = `${projectDir}/${sessionFile}`;
-    const raw = ctx.fs.readText(sourcePath);
-    if (raw == null) {
-      return ctx.error('E_READ', `Could not read the session transcript at ${sourcePath}.`, {
-        next_action: 'Confirm the file exists and is readable, then re-run.',
-      });
-    }
-
-    // SCRUB before anything is written anywhere outside the gitignored raw stage.
-    const scrubbed = scrubText(raw, config);
     const instance = (ctx.options.instance as string | undefined) ?? defaultInstanceId(ctx.clock.nowIso());
     const note =
       (ctx.options.note as string | undefined) ?? `real ${surface} session captured from this machine`;
-    const meta = buildMeta(surface, ctx.clock.nowIso(), 'claude-code', note);
-    const rawName = rawFilename(surface);
+    const meta = buildMeta(surface, ctx.clock.nowIso(), harnessId, note);
 
-    // Stage: the UNSCRUBBED original lives ONLY in gitignored scratch/ (P12); the
-    // scrubbed candidate sits beside it for review/diff.
+    // Stage: the UNSCRUBBED originals live ONLY in gitignored scratch/ (P12); the
+    // scrubbed candidates sit beside them for review/diff.
     const stageDir = `${scratchRoot(config.repoRoot)}/${surface}/${instance}`;
     fsw.mkdirp(stageDir);
-    fsw.writeText(`${stageDir}/raw.unscrubbed.${rawName.split('.').slice(1).join('.')}`, raw);
-    fsw.writeText(`${stageDir}/${rawName}`, scrubbed);
+    for (const f of captured) {
+      fsw.writeText(`${stageDir}/raw.unscrubbed.${f.rawName.split('.').slice(1).join('.')}`, f.raw);
+      fsw.writeText(`${stageDir}/${f.rawName}`, f.scrubbed);
+    }
     fsw.writeText(`${stageDir}/meta.json`, `${JSON.stringify(meta, null, 2)}\n`);
 
-    const dryRun = ctx.options.dryRun === true;
-    if (dryRun) {
+    if (ctx.options.dryRun === true) {
       return ctx.ok(
-        { surface, instance, staged: stageDir, promoted: false },
+        { surface, instance, staged: stageDir, files: captured.map((f) => f.rawName), promoted: false },
         {
-          next_action:
-            `Review ${stageDir}/${rawName} for anything sensitive, then re-run WITHOUT --dry-run to promote.`,
+          next_action: `Review ${stageDir}/ for anything sensitive, then re-run WITHOUT --dry-run to promote.`,
         },
       );
     }
 
-    // Promote the SCRUBBED candidate + meta to the corpus (uncommitted — the human
-    // review + git commit in T006 is the real publication gate).
+    // Promote the SCRUBBED candidates + meta to the corpus (uncommitted — the human
+    // review + git commit is the real publication gate).
     const corpusDir = instanceDir(config.repoRoot, surface, instance);
     fsw.mkdirp(corpusDir);
-    fsw.writeText(`${corpusDir}/${rawName}`, scrubbed);
+    for (const f of captured) fsw.writeText(`${corpusDir}/${f.rawName}`, f.scrubbed);
     fsw.writeText(`${corpusDir}/meta.json`, `${JSON.stringify(meta, null, 2)}\n`);
 
     return ctx.ok(
-      { surface, instance, corpusDir, rawFile: `${corpusDir}/${rawName}`, promoted: true },
+      { surface, instance, corpusDir, files: captured.map((f) => f.rawName), promoted: true },
       {
         next_action:
-          `MANUAL REVIEW REQUIRED before commit: read ${corpusDir}/${rawName} end-to-end for anything ` +
+          `MANUAL REVIEW REQUIRED before commit: read ${corpusDir}/ end-to-end for anything ` +
           `sensitive (it lands in a public repo, permanently). Only then \`git add\` + commit it.`,
       },
     );
   },
 };
+
+type Ctx = Parameters<NonNullable<HarnessVerb['run']>>[0];
+type ScrubCfg = NonNullable<ReturnType<typeof deriveCaptureConfig>>;
+/** One already-read raw capture: the corpus filename + its (pre-transform) bytes. */
+interface CapturedRaw {
+  rawName: string;
+  raw: string;
+}
+type Resolved = { files: CapturedRaw[]; harnessId: string } | { result: ReturnType<Ctx['ok']> };
+
+/**
+ * Read the raw captures for a surface (+ the provenance harness id), or return an
+ * early `VerbResult` when the data isn't present / a surface isn't wired yet. Reads
+ * happen here (not in run()) because some captures are TRANSFORMS, not file copies:
+ * the copilot-cli process log is filtered to only this session's `assistant_usage`
+ * records (never the raw multi-hundred-MB debug log). claude + copilot-cli are wired
+ * here; copilot-vscode + cursor (SQLite) land in T006/T009.
+ */
+function resolveSources(ctx: Ctx, surface: string, config: ScrubCfg): Resolved {
+  if (surface === 'claude') return resolveClaude(ctx, config);
+  if (surface === 'copilot-cli') return resolveCopilotCli(ctx, config);
+  return {
+    result: ctx.unconfigured(
+      `'${surface}' capture lands later in Phase 2 (SQLite surfaces); not wired yet.`,
+    ),
+  };
+}
+
+function resolveClaude(ctx: Ctx, config: ScrubCfg): Resolved {
+  const projectDir = claudeProjectDir(config.homeDir, config.repoRoot);
+  if (!ctx.fs.exists(projectDir)) {
+    return {
+      result: ctx.unconfigured(
+        `No claude sessions found for this repo at ${projectDir}. Run a claude session in this repo first.`,
+      ),
+    };
+  }
+  const explicit = ctx.options.session as string | undefined;
+  const current = ctx.env.get('CLAUDE_CODE_SESSION_ID');
+  const sessions = sessionFiles(ctx.fs.readdir(projectDir));
+  let sessionFile: string | null = null;
+  if (explicit && sessions.includes(`${explicit}.jsonl`)) sessionFile = `${explicit}.jsonl`;
+  else if (current && sessions.includes(`${current}.jsonl`)) sessionFile = `${current}.jsonl`;
+  else if (sessions.length === 1) sessionFile = sessions[0] ?? null;
+  if (!sessionFile) {
+    return {
+      result: ctx.unconfigured(
+        `Could not pick a claude session (${sessions.length} found). Pass --session <id> explicitly.`,
+      ),
+    };
+  }
+  const raw = ctx.fs.readText(`${projectDir}/${sessionFile}`);
+  if (raw == null) {
+    return { result: ctx.unconfigured(`Could not read ${projectDir}/${sessionFile}.`) };
+  }
+  return { files: [{ rawName: 'raw.jsonl', raw }], harnessId: 'claude-code' };
+}
+
+function resolveCopilotCli(ctx: Ctx, config: ScrubCfg): Resolved {
+  const sid = pickCopilotCliSession(
+    ctx.options.session as string | undefined,
+    ctx.env.get('COPILOT_AGENT_SESSION_ID'),
+  );
+  if (!sid) {
+    return {
+      result: ctx.unconfigured(
+        'copilot-cli has many sessions and ctx.fs exposes no mtime; pass --session <id> explicitly.',
+      ),
+    };
+  }
+
+  // events.jsonl — per-session. User prompts + tool usage stay verbatim; only the
+  // vendor's ~33KB system.message body is redacted (the adapter never reads it, so
+  // the segment is unchanged — this just shrinks the fixture and avoids republishing
+  // a proprietary system prompt).
+  const eventsPath = copilotCliEventsPath(config.homeDir, sid);
+  const events = ctx.fs.readText(eventsPath);
+  if (events == null) {
+    return { result: ctx.unconfigured(`No copilot-cli events at ${eventsPath}. Check --session.`) };
+  }
+  const files: CapturedRaw[] = [
+    { rawName: 'raw.events.jsonl', raw: redactCopilotSystemMessage(events) },
+  ];
+
+  // process log — find the process-*.log holding this session (or take --log), then
+  // FILTER to only its assistant_usage records (never the raw interleaved debug log).
+  const explicitLog = ctx.options.log as string | undefined;
+  let logRaw: string | null = null;
+  if (explicitLog) {
+    logRaw = ctx.fs.readText(explicitLog);
+    if (logRaw == null) return { result: ctx.unconfigured(`Could not read --log ${explicitLog}.`) };
+  } else {
+    const logsDir = copilotCliLogsDir(config.homeDir);
+    for (const name of ctx.fs.readdir(logsDir)) {
+      if (!isCopilotProcessLog(name)) continue;
+      const c = ctx.fs.readText(`${logsDir}/${name}`);
+      if (c?.includes(sid)) {
+        logRaw = c;
+        break;
+      }
+    }
+  }
+  if (logRaw !== null) {
+    const filtered = filterCopilotProcessLog(logRaw, sid);
+    if (filtered.length > 0) files.push({ rawName: 'raw.process.log', raw: filtered });
+  }
+
+  return { files, harnessId: 'copilot-cli' };
+}
 
 export default captureFixtures;
