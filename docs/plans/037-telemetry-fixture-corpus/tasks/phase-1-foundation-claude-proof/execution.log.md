@@ -19,3 +19,11 @@
 - Cases: POSIX home path, repo-root rebase (more-specific-wins), Windows `C:\Users\`, the claude `-Users-<user>-` mangle, bare username, secret shapes (sk-/ghp_/AKIA/Bearer), email, configured name → all scrubbed; **verbatim preservation** of prose/commands/flags; JSONL stays valid JSON post-scrub.
 - Config is explicit (P3 — no process.env/platform probing).
 - **Evidence**: `vitest run fixture-scrub.test.ts` → 1 failed (module not found) = expected RED.
+
+## T003 — fixture-scrub.ts (impl, GREEN) ✅
+
+- Implemented `src/services/telemetry/fixture-scrub.ts` — pure; imports only `../shared/posix-path` (`toPosix`). No `node:*`, no `process` probing.
+- Order: repoRoot (most specific) → homeDir → generic `/Users//home//C:\Users` catch-all → secrets (sk-/gh[posru]_/github_pat_/AKIA/xox/Bearer) → emails → configured names → bare username.
+- Defense-in-depth: the GENERIC_HOME catch-all neutralizes ANY home-shaped path, not just the configured one (a real transcript can hold unexpected paths) — strengthens the sole-guard (F01).
+- Secret sweep is targeted (prefix + Bearer), deliberately NOT a blunt high-entropy sweep, to avoid eating verbatim command content.
+- **Evidence**: `vitest run fixture-scrub.test.ts` → 15 passed (15). `grep node: fixture-scrub.ts` → only the comment.
