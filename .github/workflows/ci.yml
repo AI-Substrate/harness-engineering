@@ -83,6 +83,9 @@ jobs:
       - name: Flows drift guard (bundled schemas + golden renders match the CLI)
         run: npm run check:flows
 
+      - name: Telemetry fixtures drift guard (real-fixture goldens match the adapters)
+        run: npm run check:telemetry-fixtures
+
       - name: Typecheck (tsc --noEmit)
         run: npx tsc --noEmit -p harness/cli/tsconfig.json
 

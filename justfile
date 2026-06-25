@@ -170,6 +170,14 @@ format:
 test:
     cd harness/cli && npx vitest run --coverage
 
+# Regenerate the real telemetry-fixture goldens from the adapters (plan 037).
+gen-telemetry-fixtures:
+    npm run gen:telemetry-fixtures
+
+# Drift guard: assert the committed telemetry goldens still match the adapters.
+check-telemetry-fixtures:
+    npm run check:telemetry-fixtures
+
 # Lint authored markdown: markdownlint + in-repo links/anchors + mermaid syntax.
 # Warn-launch: findings report as `degraded`/exit 0 (visible, non-blocking), so
 # this never breaks the loop until authored docs are clean and the gate is promoted.

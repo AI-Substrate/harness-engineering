@@ -26,3 +26,15 @@ $ node scripts/telemetry-fixtures.mjs           →  exit 0, git status fixtures
 ```
 
 **Files**: `scripts/telemetry-fixtures.mjs` (new).
+
+---
+
+## T002 — `just`/npm/CI wiring (AC-07)
+
+- `package.json`: added `gen:telemetry-fixtures` (`node scripts/telemetry-fixtures.mjs`) next to `gen:flow-fixtures`, and `check:telemetry-fixtures` (`… --check`) next to `check:flows`.
+- `.github/workflows/ci.yml`: added a **"Telemetry fixtures drift guard"** step running `npm run check:telemetry-fixtures`, immediately after the flows drift guard (after the build step). Named, fast (~160ms), with a clear "re-run gen" remediation message on drift — a deliberate explicit gate even though the goldens also run in the full coverage step.
+- `justfile`: thin `gen-telemetry-fixtures` + `check-telemetry-fixtures` passthroughs to the npm scripts (matching the repo's recipe-comment style).
+
+**Done-When — proven**: `package.json` valid JSON; `npm run check:telemetry-fixtures` → exit 0 (`checked 2 golden suite(s)`); `just --list` shows both recipes; CI step present (`ci.yml:87`). Mirrors the `check:flows` shape.
+
+**Files**: `package.json`, `.github/workflows/ci.yml`, `justfile`.
