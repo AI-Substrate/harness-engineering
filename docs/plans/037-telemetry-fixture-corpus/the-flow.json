@@ -381,6 +381,97 @@
         "from": "phase-2",
         "to": "phase-3"
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-25T10:46:59.505Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-016",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T10:46:59.837Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-017",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T10:47:00.181Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-25T10:47:00.503Z",
+      "details": {
+        "from": "phase-3",
+        "to": "phase-3"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-25T11:11:42.892Z",
+      "details": {
+        "node": "phase-3",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-018",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T11:11:43.206Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-019",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T11:11:43.520Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-25T11:11:43.846Z",
+      "details": {
+        "from": "phase-3",
+        "to": "review"
+      }
     }
   ],
   "nodes": [
@@ -484,12 +575,31 @@
       "id": "phase-3",
       "type": "phase",
       "label": "Phase 3: Operability + regeneration",
-      "status": "known",
+      "status": "done",
       "next": [
         "review"
       ],
       "created_at": "2026-06-25T06:24:45.988Z",
-      "modified_at": "2026-06-25T06:24:46.285Z"
+      "modified_at": "2026-06-25T11:11:43.520Z",
+      "note": "All 6 tasks done (T001–T006). AC-07/08/09/06 met. Companion reviewed all 6 commits → 3 findings (1 HIGH/2 MED, single root cause: docs vs re-capture-on-promote model), all fixed in fe2312b + companion-verified APPROVE. Docs-only; no code/adapter changes (Non-Goals held).",
+      "artifacts": [
+        "docs/plans/037-telemetry-fixture-corpus/tasks/phase-3-operability-regeneration/tasks.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-25T10:47:00.181Z",
+          "text": "validate-v2 ✅ VALIDATED — task↔plan 1:1, AC-07/08/09/06 covered, all cited repo paths verified; critic's 6 speculative findings all disproven (misreads of create-vs-modify; Phase 2 cursor fixture already committed). Sidecar: validations/phase-3-tasks-validation.md",
+          "source": "agent",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-06-25T11:11:43.520Z",
+          "text": "Companion run …-aa6f: 6 commits reviewed, F001 HIGH (runbook promote-vs-review gap) + F002/F003 MED, all fixed in fe2312b, re-verified APPROVE, 0 unresolved. Commits: f080de3 22634cf 110a4c4 592048d c74c337 fe2312b.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-06-25T11:11:42.892Z"
     },
     {
       "id": "review",
@@ -504,8 +614,8 @@
     }
   ],
   "nav": {
-    "now": "phase-3",
-    "next": "phase-3",
+    "now": "review",
+    "next": "review",
     "intent": "Capture real logs from all four harness surfaces on this machine, scrub machine paths/identity/secrets while keeping verbatim prompts+tool usage (with a manual 'anything bad' review), commit them as durable fixtures, and add end-to-end tests that drive each real fixture through its adapter to the serialized segment to validate the data we produce.",
     "bag": {
       "mode": "Full",
