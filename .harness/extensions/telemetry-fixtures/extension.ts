@@ -39,14 +39,14 @@ import {
 const captureFixtures: HarnessVerb = {
   name: 'capture-fixtures',
   summary:
-    'Capture real harness session logs into the scrubbed telemetry fixture corpus (claude; more surfaces in Phase 2).',
+    'Capture real harness session logs into the scrubbed telemetry fixture corpus (claude, copilot-cli wired; copilot-vscode/cursor pending).',
   description:
     'Reads a real session from a local harness surface, stages it to a gitignored ' +
     'scratch/ dir, scrubs machine paths / identity / secrets (keeping prompts and ' +
     'tool calls verbatim), and — after a manual review — promotes it to ' +
     'fixtures/real/<surface>/<instance>/. Surfaces: ' +
     SURFACES.join(', ') +
-    ". Only 'claude' is implemented in Phase 1.",
+    ". Wired: 'claude', 'copilot-cli'. Pending (SQLite surfaces): 'copilot-vscode', 'cursor'.",
   options: [
     { flags: '--surface <surface>', description: `one of: ${SURFACES.join(' | ')}` },
     {

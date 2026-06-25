@@ -47,3 +47,14 @@
 | 2026-06-25 | T003 | gotcha | `FakeFs.readdir` reads a separate `dirs` map, not seeded `files` → `findProcessLog` found nothing → token correlation produced null. | Pass the `dirs` arg `{ [logsDir]: ['process-test.log'] }`. | fake-fs.ts |
 | 2026-06-25 | T004 | Noteworthy | JSON `win-drive` byte-scan false-positives on doubly-nested JSON escape seqs (`key:\\n`) — extends Phase-1's T007 finding to nested JSON. | Exclude JSON escape letters after `:\\`; `win-home` keeps the identity case; liveness control preserved. | fixture-privacy-scan.test.ts |
 | 2026-06-25 | T003 | insight | Real token correlation = `input 4 / output 539 / cache_create 45885 / cache_read 40183` (total 86611) from the live session — a real cross-check the stored telemetry segment couldn't give (it was windowed to `doctor` → tokens null). | AC-03 satisfied with real data. | invariants.json |
+
+## Companion findings reconciliation (run `2026-06-25T09-03-38-253Z-12bf`)
+
+First companion (run `…-d7ea`) idled out before any ping (deep T001 investigation + user back-and-forth exceeded its ~31min budget) → **no review**, re-booted. The second companion reviewed `2ac6b5f` + `ec6daa2` and filed findings (recovered from `agents/code-review-companion/runs/…-12bf/output/report.json`; inbox delivery flaked again):
+
+| # | Sev | Finding | Verified? | Fix |
+|---|-----|---------|-----------|-----|
+| F001 | HIGH | My T004 win-drive narrowing (`(?![\\nrtbfuv"/])`) created a **false NEGATIVE**: real JSON drive paths starting with an escape letter (`"C:\\repo\\x"`, `"C:\\tmp"`, `"C:\\newfolder"`) slip the scan — and the repo path itself starts with `r`. AC-02 could pass with a real non-Users Windows path. | ✅ real | Replaced with a **boundary-sensitive** detector `(?<![A-Za-z])[A-Za-z]:\\\\` — a drive letter is a single letter at a word boundary, vs `system:\\n` (letter is the tail of a word). Added liveness cases: `C:\\tmp`/`C:\\repo`/`C:\\newfolder` flag; `on:\\n`/`system:\\n`/`entries:\\n` don't. (Applied to plain-text variant too.) |
+| F002 | MED | Extension `summary`/`description` still said "claude; … Only 'claude' is implemented in Phase 1" after copilot-cli landed — contract drift. | ✅ real | Updated to "claude, copilot-cli wired; copilot-vscode/cursor pending". |
+
+Companion magicWand (coordination): "a first-class way to reassign/alias a finding from an earlier briefing to a later task without re-sending" — backlog candidate. Both findings fixed; privacy scan 13/13 (incl. new soundness control), telemetry+extension 306/306.

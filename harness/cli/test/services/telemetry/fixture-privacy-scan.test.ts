@@ -53,18 +53,19 @@ const GENERIC: Banned[] = [
 
 /** Windows-path markers depend on the artifact's backslash encoding. */
 function windowsBanned(kind: Kind): Banned[] {
+  // A Windows drive is a SINGLE letter at a word boundary (`"C:\…`), so a lookbehind
+  // distinguishes it from `system:\n` / `on:\n` — a YAML key + escaped newline, where
+  // the letter before `:` is the TAIL OF A WORD (companion F001). This is sound where
+  // excluding escape letters was NOT: `C:\repo`, `C:\tmp`, `C:\newfolder` all start
+  // with an "escape" letter yet are real paths and MUST flag.
   return kind === 'json'
     ? [
         { label: 'win-home', re: /[A-Za-z]:\\\\Users\\\\/ }, // JSON-doubled `C:\\Users\\`
-        // A real JSON-doubled drive path (`C:\\Users`) is `:` + `\\` + a filename char.
-        // `:\\n` / `:\\t` / `:\\"` etc. are JSON ESCAPE sequences (a YAML `key:\n` value
-        // embedded — even doubly-nested — in JSON), NOT drive paths, so exclude the
-        // escape letters. win-home above still catches the identity-bearing case.
-        { label: 'win-drive', re: /[A-Za-z]:\\\\(?![\\nrtbfuv"/])/ },
+        { label: 'win-drive', re: /(?<![A-Za-z])[A-Za-z]:\\\\/ }, // boundary + drive + JSON-doubled `\\`
       ]
     : [
         { label: 'win-home', re: /[A-Za-z]:\\Users\\/ }, // plain-text `C:\Users\`
-        { label: 'win-drive', re: /[A-Za-z]:\\[A-Za-z0-9_.$~\\/-]/ }, // drive + path char (not a stray `\n`)
+        { label: 'win-drive', re: /(?<![A-Za-z])[A-Za-z]:\\[A-Za-z0-9_.$~\\/-]/ }, // boundary + drive + path char
       ];
 }
 
@@ -144,5 +145,19 @@ describe('fixture privacy byte-scan (AC-02)', () => {
     // ...but a JSON-escaped YAML key (letter:colon + \n) must NOT false-positive in JSON.
     const jsonHits = scanForLeaks('"on:\\n  push:"', bannedFor('json'), []);
     expect(jsonHits).toEqual([]);
+  });
+
+  it('win-drive is SOUND: real non-Users JSON drive paths flag, YAML-key escapes do not (companion F001)', () => {
+    // Real JSON-doubled drive paths whose first component starts with an "escape"
+    // letter (n/r/t/b/f/u/v) MUST flag — the earlier escape-letter exclusion missed them.
+    for (const p of ['"C:\\\\tmp\\\\x"', '"C:\\\\repo\\\\y"', '"C:\\\\newfolder\\\\z"', '"D:\\\\Projects"']) {
+      expect(scanForLeaks(p, bannedFor('json'), [])).toContain('win-drive');
+    }
+    // ...while YAML-key-then-escaped-newline (the tail of a word + `:` + `\\n`) does NOT.
+    for (const ok of ['"on:\\n  push:"', '"system:\\n  compound:"', '"entries:\\n  - id"']) {
+      expect(scanForLeaks(ok, bannedFor('json'), [])).toEqual([]);
+    }
+    // plain-text drive path with an escape-letter initial also flags.
+    expect(scanForLeaks('cwd C:\\temp\\repo', bannedFor('text'), [])).toContain('win-drive');
   });
 });
