@@ -57,3 +57,17 @@
 - `sqlite-spike.test.ts`: build a throwaway `node:sqlite` db WRITABLE, seed the copilot-vscode `sessions`/`turns` shape, read back through the read-only `NodeDb` running the actual privacy-projecting SQL.
 - Proves both halves of AC-04's risk: (a) writable-build → read-only-read round-trip; (b) the privacy boundary — word count + presence flag computed in SQLite, raw message text NEVER selected (asserted absent from the result set).
 - **Evidence**: `vitest run sqlite-spike.test.ts` → 3 passed. Phase-2 AC-04 mechanism de-risked before fixture work depends on it. **Phase-1 exit gate: PASS.**
+
+## T006 — capture + manual "anything bad" review ✅
+
+- Captured real session **c8bc0c68** ("set up static HTML publishing via GitHub Pages") → `fixtures/real/claude/2026-06-25-static-site/` (raw.jsonl 207KB / 95 lines + meta.json).
+- **Manual review outcome (the non-skippable human gate)**: byte-scan clean (`/Users/`,`C:\`,`jordanknight`,`jakkaj`,`@gmail.com`,key-shapes all 0); 95/95 valid JSON. Reviewed the full human surface — 5 natural prompts (GitHub Pages setup), 10 git/gh commands against the PUBLIC repo `AI-Substrate/harness-engineering`, no tokens printed.
+- **Caught by the human review (what the mechanical scrub missed)**: `jakkaj` (the GitHub handle, surfaced in `gh auth status` output) — not covered by the home-derived `username=jordanknight`. Re-captured with `--names "jakkaj,Jordan Knight"` → 0. Lesson logged for the runbook: pass git handles via `--names`.
+- **Kept verbatim (confirmed acceptable)**: the 5 prompts as typed; the public project identity `AI-Substrate/harness-engineering` + `ai-substrate.github.io`.
+- **Sign-off**: user reviewed storage locations + scan, answered **Approve & commit**.
+
+### Discoveries
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T006 | Noteworthy | The home-derived username misses other identity aliases (git handles). The MANUAL review caught `jakkaj` the automated scrub didn't. | Re-captured with `--names`. Runbook (Phase 3) must tell capturers to pass git handles. Validates WHY the manual review is non-skippable. | AC-08; runbook |
+| 2026-06-25 | T006 | Noteworthy | Live review companion ended (verdict `completed`) after T005; reviewed T001–T005 with no findings. | Re-booted a fresh companion for T008/T007 (non-gating). Deviation logged; phase-end debrief reads the prior farewell. | companion-mode |
