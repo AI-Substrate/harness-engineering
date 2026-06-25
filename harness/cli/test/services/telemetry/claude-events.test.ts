@@ -72,7 +72,9 @@ const LINES = [
       id: 'msg-3',
       model: 'claude-opus-4-8',
       usage: { input_tokens: 5, output_tokens: 10 },
-      content: [{ type: 'tool_use', name: 'Agent', id: 'agent-1', input: { subagent_type: 'Explore' } }],
+      content: [
+        { type: 'tool_use', name: 'Agent', id: 'agent-1', input: { subagent_type: 'Explore' } },
+      ],
     },
   },
   {
@@ -129,7 +131,14 @@ describe('claudeAdapter — v2 event stream (T5.4)', () => {
   it('emits turns with dur_s + tokens + model', () => {
     const turns = kinds(stream, 'turn');
     expect(turns).toHaveLength(3);
-    expect(turns[0]).toMatchObject({ dur_s: 30, out: 100, in: 50, cache_read: 200, cache_create: 10, model: 'claude-opus-4-8' });
+    expect(turns[0]).toMatchObject({
+      dur_s: 30,
+      out: 100,
+      in: 50,
+      cache_read: 200,
+      cache_create: 10,
+      model: 'claude-opus-4-8',
+    });
   });
 
   it('collapses same-name tool runs into per-tool bursts', () => {
@@ -190,7 +199,9 @@ describe('claudeAdapter — outcome events from a harness result envelope (T5.7,
       timestamp: '2026-06-24T10:00:00Z',
       message: {
         id: 'm1',
-        content: [{ type: 'tool_use', name: 'Bash', id: 'b1', input: { command: 'harness checks --json' } }],
+        content: [
+          { type: 'tool_use', name: 'Bash', id: 'b1', input: { command: 'harness checks --json' } },
+        ],
       },
     },
     {
@@ -243,7 +254,12 @@ describe('claudeAdapter — outcome events from a harness result envelope (T5.7,
       }),
     );
     expect(kinds(stream, 'command_exit')).toContainEqual(
-      expect.objectContaining({ kind: 'command_exit', verb: 'checks', exit: 0, status: 'degraded' }),
+      expect.objectContaining({
+        kind: 'command_exit',
+        verb: 'checks',
+        exit: 0,
+        status: 'degraded',
+      }),
     );
   });
 
@@ -254,7 +270,14 @@ describe('claudeAdapter — outcome events from a harness result envelope (T5.7,
         timestamp: '2026-06-24T10:00:00Z',
         message: {
           id: 'm1',
-          content: [{ type: 'tool_use', name: 'Read', id: 'r1', input: { file_path: '/repo/fixture.json' } }],
+          content: [
+            {
+              type: 'tool_use',
+              name: 'Read',
+              id: 'r1',
+              input: { file_path: '/repo/fixture.json' },
+            },
+          ],
         },
       },
       {
@@ -264,7 +287,11 @@ describe('claudeAdapter — outcome events from a harness result envelope (T5.7,
           role: 'user',
           content: [
             // a Read of a fixture file whose CONTENTS look like a harness envelope
-            { type: 'tool_result', tool_use_id: 'r1', content: JSON.stringify({ command: 'checks', status: 'ok' }) },
+            {
+              type: 'tool_result',
+              tool_use_id: 'r1',
+              content: JSON.stringify({ command: 'checks', status: 'ok' }),
+            },
           ],
         },
       },

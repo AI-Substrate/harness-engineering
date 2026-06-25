@@ -84,9 +84,21 @@ describe('flowLogEvents — projection (AC-01/02)', () => {
 
   it('projects node-created (type) and node-updated (edge_op when present)', () => {
     const log = [
-      { kind: 'node-created', fired_at: '2026-06-24T08:00:00Z', details: { node: 'phase-1', type: 'phase' } },
-      { kind: 'node-updated', fired_at: '2026-06-24T08:01:00Z', details: { node: 'plan', fields: ['comments'] } },
-      { kind: 'node-updated', fired_at: '2026-06-24T08:02:00Z', details: { node: 'plan', edge_op: 'splice-after' } },
+      {
+        kind: 'node-created',
+        fired_at: '2026-06-24T08:00:00Z',
+        details: { node: 'phase-1', type: 'phase' },
+      },
+      {
+        kind: 'node-updated',
+        fired_at: '2026-06-24T08:01:00Z',
+        details: { node: 'plan', fields: ['comments'] },
+      },
+      {
+        kind: 'node-updated',
+        fired_at: '2026-06-24T08:02:00Z',
+        details: { node: 'plan', edge_op: 'splice-after' },
+      },
     ];
     const { events } = flowLogEvents(parse(log), 0);
     expect(events[0]).toMatchObject({ op: 'node-created', node: 'phase-1', type: 'phase' });
@@ -142,7 +154,11 @@ describe('flowLogEvents — privacy (AC-03) + defensiveness (AC-06)', () => {
 
   it('a planted secret in details (a non-allowlisted key) is dropped', () => {
     const log = [
-      { kind: 'cursor-moved', fired_at: '2026-06-24T08:00:00Z', details: { from: 'a', to: 'b', secret: 'LEAK' } },
+      {
+        kind: 'cursor-moved',
+        fired_at: '2026-06-24T08:00:00Z',
+        details: { from: 'a', to: 'b', secret: 'LEAK' },
+      },
     ];
     expect(JSON.stringify(flowLogEvents(parse(log), 0).events)).not.toContain('LEAK');
   });
@@ -181,7 +197,12 @@ function flightPlanJson(events: unknown[]): string {
 
 function adapter(stream: Event[]): HarnessAdapter {
   const caps: HarnessCapabilities = { event_stream: stream };
-  return { harness: 'claude-code', handles: (id) => id === 'claude-code', currentPosition: () => 240, extract: () => caps };
+  return {
+    harness: 'claude-code',
+    handles: (id) => id === 'claude-code',
+    currentPosition: () => 240,
+    extract: () => caps,
+  };
 }
 
 function deps(files: Record<string, string>, stream: Event[]): { d: CaptureDeps; fs: FakeFs } {
@@ -261,10 +282,20 @@ describe('capture-service — flow_log replay (AC-04/05/06/07)', () => {
 
   it('AC-04 — two plans in ONE session window independently (per-plan offset)', () => {
     // Same session id, two different linked plans → two independent .flowcursor files.
-    const LOG_A = [{ kind: 'cursor-moved', fired_at: '2026-06-24T08:00:00Z', details: { to: 'plan' } }];
+    const LOG_A = [
+      { kind: 'cursor-moved', fired_at: '2026-06-24T08:00:00Z', details: { to: 'plan' } },
+    ];
     const LOG_B = [
-      { kind: 'node-created', fired_at: '2026-06-24T08:00:00Z', details: { node: 'x', type: 'phase' } },
-      { kind: 'status-changed', fired_at: '2026-06-24T08:01:00Z', details: { node: 'x', to: 'done' } },
+      {
+        kind: 'node-created',
+        fired_at: '2026-06-24T08:00:00Z',
+        details: { node: 'x', type: 'phase' },
+      },
+      {
+        kind: 'status-changed',
+        fired_at: '2026-06-24T08:01:00Z',
+        details: { node: 'x', to: 'done' },
+      },
     ];
     const fs = new FakeFs({
       [`${REPO}/docs/plans/plan-a/the-flow.json`]: flightPlanJson(LOG_A),
@@ -286,14 +317,20 @@ describe('capture-service — flow_log replay (AC-04/05/06/07)', () => {
     expect(fs.readText(`${TEL}/sess1.plan-a.flowcursor`)).toBe('1');
     expect(fs.readText(`${TEL}/sess1.plan-b.flowcursor`)).toBe('2');
     // the last segment (plan-b) holds plan-b's ops, never plan-a's `cursor-moved`
-    expect(flowLogIn(seg(fs)).map((e) => (e as { op: string }).op)).toEqual(['node-created', 'status-changed']);
+    expect(flowLogIn(seg(fs)).map((e) => (e as { op: string }).op)).toEqual([
+      'node-created',
+      'status-changed',
+    ]);
   });
 });
 
 // ── Schema/serializer lockstep (F001) + full rollup invariance (F002/AC-07) ──
 const SCHEMA = JSON.parse(
   readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '../../../src/services/telemetry/segment.schema.json'),
+    join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../src/services/telemetry/segment.schema.json',
+    ),
     'utf8',
   ),
 ) as { properties: { event_stream: { items: { properties: Record<string, unknown> } } } };
@@ -324,7 +361,13 @@ describe('flow_log — full rollup invariance (AC-07)', () => {
   it('adding flow_log leaves EVERY rollup activity field + flow_stage_time_s unchanged', () => {
     // A timed work window with a flow snapshot (so flow_stage_time_s is non-trivial).
     const work: Event[] = [
-      { t: '2026-06-24T09:00:00Z', kind: 'flow', flow: 'the-flow', stage: 'implement', status: 'in_progress' },
+      {
+        t: '2026-06-24T09:00:00Z',
+        kind: 'flow',
+        flow: 'the-flow',
+        stage: 'implement',
+        status: 'in_progress',
+      },
       { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 4 },
       { t: '2026-06-24T09:01:00Z', kind: 'turn', dur_s: 50, out: 100 },
     ];
@@ -332,8 +375,20 @@ describe('flow_log — full rollup invariance (AC-07)', () => {
       ...work,
       // backfilled markers — days earlier; if they leaked into the rollup they'd
       // wreck wall_s / idle_s / stage time.
-      { t: '2026-06-20T00:00:00Z', kind: 'flow_log', op: 'cursor-moved', from: 'plan', to: 'implement' },
-      { t: '2026-06-24T08:00:00Z', kind: 'flow_log', op: 'status-changed', node: 'plan', to: 'done' },
+      {
+        t: '2026-06-20T00:00:00Z',
+        kind: 'flow_log',
+        op: 'cursor-moved',
+        from: 'plan',
+        to: 'implement',
+      },
+      {
+        t: '2026-06-24T08:00:00Z',
+        kind: 'flow_log',
+        op: 'status-changed',
+        node: 'plan',
+        to: 'done',
+      },
     ];
     const base = computeRollup(work);
     const augmented = computeRollup(withLog);

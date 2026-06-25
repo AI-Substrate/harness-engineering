@@ -8,7 +8,10 @@ import type {
   HarnessAdapter,
   HarnessCapabilities,
 } from '../../../src/services/telemetry/adapters/harness-adapter.js';
-import { type CaptureDeps, captureTelemetry } from '../../../src/services/telemetry/capture-service.js';
+import {
+  type CaptureDeps,
+  captureTelemetry,
+} from '../../../src/services/telemetry/capture-service.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import { flowEventFromFlightPlan } from '../../../src/services/telemetry/flow-nav.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
@@ -46,7 +49,10 @@ function streamAdapter(harness: string, stream: Event[]): HarnessAdapter {
   };
 }
 
-function deps(files: Record<string, string>, adapters: HarnessAdapter[]): { d: CaptureDeps; fs: FakeFs } {
+function deps(
+  files: Record<string, string>,
+  adapters: HarnessAdapter[],
+): { d: CaptureDeps; fs: FakeFs } {
   const fs = new FakeFs(files);
   const d: CaptureDeps = {
     fs,
@@ -84,8 +90,12 @@ describe('flowEventFromFlightPlan — pure derivation (T5.6)', () => {
   });
 
   it('maps node status done/blocked through; any other status ⇒ in_progress', () => {
-    expect(flowEventFromFlightPlan(JSON.parse(flightPlan('ship', 'done')), T0)?.status).toBe('done');
-    expect(flowEventFromFlightPlan(JSON.parse(flightPlan('x', 'blocked')), T0)?.status).toBe('blocked');
+    expect(flowEventFromFlightPlan(JSON.parse(flightPlan('ship', 'done')), T0)?.status).toBe(
+      'done',
+    );
+    expect(flowEventFromFlightPlan(JSON.parse(flightPlan('x', 'blocked')), T0)?.status).toBe(
+      'blocked',
+    );
     // `assumed` is not a flow-vocabulary value → narrowed to in_progress
     expect(flowEventFromFlightPlan(JSON.parse(flightPlan('x', 'assumed')), T0)?.status).toBe(
       'in_progress',
@@ -93,9 +103,10 @@ describe('flowEventFromFlightPlan — pure derivation (T5.6)', () => {
   });
 
   it('uses the harness-loop agent name verbatim as `flow`', () => {
-    expect(flowEventFromFlightPlan(JSON.parse(flightPlan('boot', 'in_progress', 'harness-loop')), T0)?.flow).toBe(
-      'harness-loop',
-    );
+    expect(
+      flowEventFromFlightPlan(JSON.parse(flightPlan('boot', 'in_progress', 'harness-loop')), T0)
+        ?.flow,
+    ).toBe('harness-loop');
   });
 
   it('returns null for a plan with no nav.now or no agent (nothing honest to emit)', () => {
@@ -123,7 +134,12 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
     const flow = seg?.event_stream.find((e) => e.kind === 'flow') as
       | (Event & { stage: string; status: string })
       | undefined;
-    expect(flow).toMatchObject({ kind: 'flow', flow: 'the-flow', stage: 'phase-5', status: 'in_progress' });
+    expect(flow).toMatchObject({
+      kind: 'flow',
+      flow: 'the-flow',
+      stage: 'phase-5',
+      status: 'in_progress',
+    });
     // anchored to the window start so the 60s agent gap belongs to the stage
     expect(seg?.event_stream[0].kind).toBe('flow');
     expect(seg?.rollup?.flow_stage_time_s).toEqual({ 'phase-5': 60 });
@@ -177,7 +193,9 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
     const raw = fs.readText(`${deepCwd}/.harness/temp/telemetry/sess1/1.json`);
     expect(raw).not.toBeNull();
     const seg = JSON.parse(raw as string) as Segment;
-    const flow = seg.event_stream.find((e) => e.kind === 'flow') as (Event & { stage: string }) | undefined;
+    const flow = seg.event_stream.find((e) => e.kind === 'flow') as
+      | (Event & { stage: string })
+      | undefined;
     expect(flow?.stage).toBe('phase-5'); // resolved despite the deep cwd
     expect(seg.rollup?.flow_stage_time_s).toEqual({ 'phase-5': 60 });
   });
@@ -203,7 +221,9 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
 
     const raw = fs.readText(`${deepCwd}/.harness/temp/telemetry/sess1/1.json`);
     const seg = JSON.parse(raw as string) as Segment;
-    const flow = seg.event_stream.find((e) => e.kind === 'flow') as (Event & { stage: string }) | undefined;
+    const flow = seg.event_stream.find((e) => e.kind === 'flow') as
+      | (Event & { stage: string })
+      | undefined;
     expect(flow?.stage).toBe('design'); // resolved from the env plan, not the cwd plan
   });
 });

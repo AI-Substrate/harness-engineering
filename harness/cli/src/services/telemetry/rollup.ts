@@ -97,7 +97,8 @@ function finishBurst(b: {
   last: number;
   count: number;
 }): ToolBurst {
-  const span = Number.isFinite(b.last) && Number.isFinite(b.first) ? Math.round(b.last - b.first) : 0;
+  const span =
+    Number.isFinite(b.last) && Number.isFinite(b.first) ? Math.round(b.last - b.first) : 0;
   return { t: b.t, name: b.name, count: b.count, span_s: span < 0 ? 0 : span };
 }
 
@@ -165,8 +166,7 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
     if (e.kind === 'flow') stage = e.stage;
   }
 
-  const wall =
-    ev.length > 1 ? parseIso(ev[ev.length - 1].t) - parseIso(ev[0].t) : 0;
+  const wall = ev.length > 1 ? parseIso(ev[ev.length - 1].t) - parseIso(ev[0].t) : 0;
   const active = agent + human;
 
   // tokens — summed across turns; null when no turn carried any bucket.
@@ -198,7 +198,8 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
     } else if (e.kind === 'tools') {
       tools[e.name] = (tools[e.name] ?? 0) + e.count;
     } else if (e.kind === 'skill') {
-      const s = (skills[e.name] ??= { runs: 0, abandoned: 0, superseded: 0 });
+      skills[e.name] ??= { runs: 0, abandoned: 0, superseded: 0 };
+      const s = skills[e.name];
       s.runs += 1;
       if (e.status === 'abandoned') s.abandoned += 1;
       else if (e.status === 'superseded') s.superseded += 1;

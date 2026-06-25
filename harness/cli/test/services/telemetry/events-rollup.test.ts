@@ -4,16 +4,16 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import {
-  type SegmentInput,
-  serializeEvent,
-  serializeSegment,
-} from '../../../src/services/telemetry/segment.js';
-import {
   classifyGap,
   collapseToolBursts,
   computeRollup,
   inferSkillStatuses,
 } from '../../../src/services/telemetry/rollup.js';
+import {
+  type SegmentInput,
+  serializeEvent,
+  serializeSegment,
+} from '../../../src/services/telemetry/segment.js';
 
 /**
  * Phase 5 · T5.1 + T5.3 — the v2 event substrate + rollup engine.
@@ -136,9 +136,9 @@ describe('T5.3 — computeRollup activity (AC-17)', () => {
     expect(r.activity.human_s).toBe(50);
     expect(r.activity.idle_s).toBe(600);
     expect(r.activity.wall_s).toBe(690);
-    expect(
-      r.activity.agent_working_s + r.activity.human_s + r.activity.idle_s,
-    ).toBe(r.activity.wall_s);
+    expect(r.activity.agent_working_s + r.activity.human_s + r.activity.idle_s).toBe(
+      r.activity.wall_s,
+    );
   });
 
   it('working_ratio excludes idle', () => {
@@ -171,7 +171,14 @@ describe('T5.3 — computeRollup tokens / tools / flow-stage / outcomes', () => 
     const r = computeRollup([
       { t: '2026-06-24T09:00:00Z', kind: 'flow', flow: 'the-flow', stage: 'plan', status: 'x' },
       { t: '2026-06-24T09:00:40Z', kind: 'tools', name: 'Read', count: 4, span_s: 30 },
-      { t: '2026-06-24T09:02:00Z', kind: 'flow', flow: 'the-flow', stage: 'implement', status: 'x', from: 'plan' },
+      {
+        t: '2026-06-24T09:02:00Z',
+        kind: 'flow',
+        flow: 'the-flow',
+        stage: 'implement',
+        status: 'x',
+        from: 'plan',
+      },
       { t: '2026-06-24T09:03:00Z', kind: 'tools', name: 'Edit', count: 9, span_s: 50 },
       { t: '2026-06-24T09:03:10Z', kind: 'checks', status: 'degraded' },
       { t: '2026-06-24T09:03:10Z', kind: 'command_exit', verb: 'checks', exit: 1 },
@@ -244,8 +251,21 @@ describe('T5.6 groundwork — inferSkillStatuses (AC-18)', () => {
 describe('T5.1/T5.2 — segment v2.0: derived rollup + schema shape (AC-16)', () => {
   const event_stream: Event[] = [
     { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 12 },
-    { t: '2026-06-24T09:00:03Z', kind: 'flow', flow: 'the-flow', stage: 'implement', status: 'in_progress' },
-    { t: '2026-06-24T09:00:41Z', kind: 'turn', dur_s: 38, out: 8120, cache_read: 280110, model: 'claude-opus-4-8' },
+    {
+      t: '2026-06-24T09:00:03Z',
+      kind: 'flow',
+      flow: 'the-flow',
+      stage: 'implement',
+      status: 'in_progress',
+    },
+    {
+      t: '2026-06-24T09:00:41Z',
+      kind: 'turn',
+      dur_s: 38,
+      out: 8120,
+      cache_read: 280110,
+      model: 'claude-opus-4-8',
+    },
     { t: '2026-06-24T09:00:41Z', kind: 'tools', name: 'Edit', count: 9, span_s: 30 },
   ];
 

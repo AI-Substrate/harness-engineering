@@ -66,7 +66,11 @@ describe('outcomeEvents — exit derivation', () => {
   });
 
   it('observed isError flag wins even when the verdict parses ok', () => {
-    const ce = outcomeEvents(JSON.stringify({ command: 'boot', status: 'ok' }), T, true)[0] as Event & {
+    const ce = outcomeEvents(
+      JSON.stringify({ command: 'boot', status: 'ok' }),
+      T,
+      true,
+    )[0] as Event & {
       verb: string;
       exit: number;
     };

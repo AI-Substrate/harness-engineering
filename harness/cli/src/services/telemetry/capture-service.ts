@@ -26,8 +26,8 @@ import {
   writeFlowCursor,
 } from './cursor.js';
 import type { Event } from './events.js';
-import { flowEventFromFlightPlan } from './flow-nav.js';
 import { flowLogEvents } from './flow-log.js';
+import { flowEventFromFlightPlan } from './flow-nav.js';
 import {
   type Segment,
   type SegmentInput,
@@ -258,7 +258,6 @@ function buildInput(
   detected: DetectedHarness,
   window: SegmentWindow,
   caps: HarnessCapabilities,
-  cwd: string,
   branch: BranchInfo,
   planId: string | null,
   flightPlan: unknown,
@@ -371,7 +370,7 @@ function captureUnsafe(deps: CaptureDeps): void {
   const ctx: HarnessContext = { ...source, window };
   const caps = adapter.extract(ctx);
   const segment: Segment = serializeSegment(
-    buildInput(deps, detected, window, caps, cwd, branch, planId, flightPlan, flowLog.events),
+    buildInput(deps, detected, window, caps, branch, planId, flightPlan, flowLog.events),
     cwd,
   );
 

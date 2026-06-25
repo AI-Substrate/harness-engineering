@@ -265,7 +265,12 @@ describe('branch-change detection + branch event', () => {
     expect(seg?.branch).toBe('feature-x');
     expect((seg as unknown as Record<string, unknown>).branch_changed).toBeUndefined();
     const be = branchEvent(fs);
-    expect(be).toMatchObject({ kind: 'branch', to: 'feature-x', from: 'main', t_precision: 'anchored' });
+    expect(be).toMatchObject({
+      kind: 'branch',
+      to: 'feature-x',
+      from: 'main',
+      t_precision: 'anchored',
+    });
     expect(be?.t).toBe(STREAM[0].t); // anchored to the window start (non-empty stream)
     expect(seg?.event_stream[0].kind).toBe('branch'); // prepended
   });
@@ -295,7 +300,12 @@ describe('branch-change detection + branch event', () => {
     captureTelemetry(emptyDeps(fs, 'main'));
     captureTelemetry(emptyDeps(fs, 'feature-x'));
     const be = branchEvent(fs);
-    expect(be).toMatchObject({ kind: 'branch', to: 'feature-x', from: 'main', t_precision: 'anchored' });
+    expect(be).toMatchObject({
+      kind: 'branch',
+      to: 'feature-x',
+      from: 'main',
+      t_precision: 'anchored',
+    });
     expect(be?.t).toBe('2026-06-24T09:02:00.000Z'); // the capture clock (no stream to anchor to)
   });
 });

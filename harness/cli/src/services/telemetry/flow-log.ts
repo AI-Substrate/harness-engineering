@@ -33,7 +33,9 @@ export function flowLogEvents(parsed: unknown, fromOffset: number): FlowLogResul
   if (!Array.isArray(log)) return { events: [], nextOffset: fromOffset };
 
   const start =
-    Number.isFinite(fromOffset) && fromOffset > 0 ? Math.min(Math.floor(fromOffset), log.length) : 0;
+    Number.isFinite(fromOffset) && fromOffset > 0
+      ? Math.min(Math.floor(fromOffset), log.length)
+      : 0;
 
   const events: Event[] = [];
   for (let i = start; i < log.length; i++) {

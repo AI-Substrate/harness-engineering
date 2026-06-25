@@ -24,7 +24,10 @@ const HOME = '/home/u';
 const SESSION = 'sess-copilot-1';
 const LOG_NAME = 'process-123-456.log';
 const EVENTS = readFileSync(new URL('./fixtures/copilot-events.jsonl', import.meta.url), 'utf8');
-const PROCLOG = readFileSync(new URL('./fixtures/copilot-process-log.txt', import.meta.url), 'utf8');
+const PROCLOG = readFileSync(
+  new URL('./fixtures/copilot-process-log.txt', import.meta.url),
+  'utf8',
+);
 
 function ctx(): HarnessContext {
   const fs = new FakeFs(
@@ -125,15 +128,31 @@ describe('copilotAdapter — v2 event stream (T5.4)', () => {
 describe('copilotAdapter — tool name only on execution_complete (companion HIGH, AC-16)', () => {
   // execution_start carries NO toolName; the name appears only on execution_complete.
   const lines = [
-    { type: 'user.message', timestamp: '2026-06-23T09:00:02Z', data: { interactionId: 'i1', content: 'hi there now' } },
-    { type: 'assistant.turn_start', timestamp: '2026-06-23T09:00:03Z', data: { interactionId: 'i1' } },
-    { type: 'tool.execution_start', timestamp: '2026-06-23T09:00:04Z', data: { toolCallId: 'tc-1' } },
+    {
+      type: 'user.message',
+      timestamp: '2026-06-23T09:00:02Z',
+      data: { interactionId: 'i1', content: 'hi there now' },
+    },
+    {
+      type: 'assistant.turn_start',
+      timestamp: '2026-06-23T09:00:03Z',
+      data: { interactionId: 'i1' },
+    },
+    {
+      type: 'tool.execution_start',
+      timestamp: '2026-06-23T09:00:04Z',
+      data: { toolCallId: 'tc-1' },
+    },
     {
       type: 'tool.execution_complete',
       timestamp: '2026-06-23T09:00:05Z',
       data: { toolCallId: 'tc-1', toolName: 'str_replace_editor', interactionId: 'i1' },
     },
-    { type: 'assistant.turn_end', timestamp: '2026-06-23T09:00:06Z', data: { interactionId: 'i1' } },
+    {
+      type: 'assistant.turn_end',
+      timestamp: '2026-06-23T09:00:06Z',
+      data: { interactionId: 'i1' },
+    },
   ];
   const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
 
@@ -149,9 +168,7 @@ describe('copilotAdapter — tool name only on execution_complete (companion HIG
     });
     expect(caps.tools).toEqual({ str_replace_editor: 1 }); // v1 counts it
     const tools = (caps.event_stream as Event[]).filter((e) => e.kind === 'tools');
-    expect(tools).toContainEqual(
-      expect.objectContaining({ name: 'str_replace_editor', count: 1 }),
-    );
+    expect(tools).toContainEqual(expect.objectContaining({ name: 'str_replace_editor', count: 1 }));
   });
 });
 
@@ -161,8 +178,16 @@ describe('copilotAdapter — command on execution_start, toolName on execution_c
   // being in the same event, or bash_commands / harness_commands / the `harness`
   // event are silently lost for that split execution.
   const lines = [
-    { type: 'user.message', timestamp: '2026-06-23T09:00:02Z', data: { interactionId: 'i1', content: 'go now' } },
-    { type: 'assistant.turn_start', timestamp: '2026-06-23T09:00:03Z', data: { interactionId: 'i1' } },
+    {
+      type: 'user.message',
+      timestamp: '2026-06-23T09:00:02Z',
+      data: { interactionId: 'i1', content: 'go now' },
+    },
+    {
+      type: 'assistant.turn_start',
+      timestamp: '2026-06-23T09:00:03Z',
+      data: { interactionId: 'i1' },
+    },
     {
       type: 'tool.execution_start',
       timestamp: '2026-06-23T09:00:04Z',
@@ -173,7 +198,11 @@ describe('copilotAdapter — command on execution_start, toolName on execution_c
       timestamp: '2026-06-23T09:00:05Z',
       data: { toolCallId: 'tc-1', toolName: 'bash', interactionId: 'i1' },
     },
-    { type: 'assistant.turn_end', timestamp: '2026-06-23T09:00:06Z', data: { interactionId: 'i1' } },
+    {
+      type: 'assistant.turn_end',
+      timestamp: '2026-06-23T09:00:06Z',
+      data: { interactionId: 'i1' },
+    },
   ];
   const content = `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`;
 
@@ -227,7 +256,11 @@ describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', 
   // for a harness command but NOT a checks event.
   function streamFor(success: boolean): Event[] {
     const lines = [
-      { type: 'user.message', timestamp: '2026-06-23T09:00:02Z', data: { interactionId: 'i1', content: 'go' } },
+      {
+        type: 'user.message',
+        timestamp: '2026-06-23T09:00:02Z',
+        data: { interactionId: 'i1', content: 'go' },
+      },
       {
         type: 'tool.execution_start',
         timestamp: '2026-06-23T09:00:03Z',
@@ -270,7 +303,11 @@ describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', 
       {
         type: 'tool.execution_start',
         timestamp: '2026-06-23T09:00:03Z',
-        data: { toolCallId: 'tc-1', toolName: 'bash', arguments: { command: 'harness checks && harness boot' } },
+        data: {
+          toolCallId: 'tc-1',
+          toolName: 'bash',
+          arguments: { command: 'harness checks && harness boot' },
+        },
       },
       {
         type: 'tool.execution_complete',
@@ -298,7 +335,11 @@ describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', 
       {
         type: 'tool.execution_start',
         timestamp: '2026-06-23T09:00:03Z',
-        data: { toolCallId: 'tc-1', toolName: 'bash', arguments: { command: 'npm test && harness checks' } },
+        data: {
+          toolCallId: 'tc-1',
+          toolName: 'bash',
+          arguments: { command: 'npm test && harness checks' },
+        },
       },
       {
         type: 'tool.execution_complete',

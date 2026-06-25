@@ -1,5 +1,3 @@
-import type { Event, Rollup, TPrecision } from './events.js';
-import { computeRollup } from './rollup.js';
 import {
   isWithin,
   posixJoin,
@@ -7,6 +5,8 @@ import {
   posixRelative,
   toPosix,
 } from '../shared/posix-path.js';
+import type { Event, Rollup, TPrecision } from './events.js';
+import { computeRollup } from './rollup.js';
 
 /**
  * The `segment` — the normalized, **counts-only** per-session telemetry record
@@ -283,7 +283,10 @@ const T_PRECISIONS: ReadonlySet<string> = new Set([
 ]);
 
 /** Carry `t` + (a valid) `t_precision` only — the shared base of every serialized event. */
-function eventBase(e: { t: string; t_precision?: string }): { t: string; t_precision?: TPrecision } {
+function eventBase(e: { t: string; t_precision?: string }): {
+  t: string;
+  t_precision?: TPrecision;
+} {
   const base: { t: string; t_precision?: TPrecision } = { t: e.t };
   if (e.t_precision !== undefined && T_PRECISIONS.has(e.t_precision)) {
     base.t_precision = e.t_precision as TPrecision;

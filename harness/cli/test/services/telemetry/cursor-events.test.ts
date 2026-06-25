@@ -26,12 +26,21 @@ const T0 = Date.UTC(2026, 5, 24, 9, 0, 0); // user bubble
 const T1 = T0 + 30_000; // assistant bubble, +30s
 
 const LINES = [
-  { role: 'user', message: { content: [{ type: 'text', text: '<user_query>please build it all now</user_query>' }] } },
+  {
+    role: 'user',
+    message: {
+      content: [{ type: 'text', text: '<user_query>please build it all now</user_query>' }],
+    },
+  },
   {
     role: 'assistant',
     message: {
       content: [
-        { type: 'tool_use', name: 'Shell', input: { command: 'harness boot && cat /Users/x/secret.env' } },
+        {
+          type: 'tool_use',
+          name: 'Shell',
+          input: { command: 'harness boot && cat /Users/x/secret.env' },
+        },
         { type: 'tool_use', name: 'Skill', input: { skill: 'the-flow' } },
       ],
     },

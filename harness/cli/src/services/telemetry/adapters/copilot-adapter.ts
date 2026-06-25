@@ -471,19 +471,22 @@ export const copilotAdapter: HarnessAdapter = {
     }
     const direct: Event[] = [
       ...ev.prompts.map((p): Event => ({ t: p.t, kind: 'prompt', words: p.words })),
-      ...ev.modelEvts.map((m): Event =>
-        m.effort !== undefined
-          ? { t: m.t, kind: 'model', model: m.model, effort: m.effort }
-          : { t: m.t, kind: 'model', model: m.model },
+      ...ev.modelEvts.map(
+        (m): Event =>
+          m.effort !== undefined
+            ? { t: m.t, kind: 'model', model: m.model, effort: m.effort }
+            : { t: m.t, kind: 'model', model: m.model },
       ),
       ...turnEvents,
-      ...ev.subagentEvts.map((s): Event => ({ t: s.t, kind: 'subagent', name: s.name, status: 'completed' })),
+      ...ev.subagentEvts.map(
+        (s): Event => ({ t: s.t, kind: 'subagent', name: s.name, status: 'completed' }),
+      ),
       ...harnessEvents,
-      ...ev.commandExits.map((c): Event => ({ t: c.t, kind: 'command_exit', verb: c.verb, exit: c.exit })),
+      ...ev.commandExits.map(
+        (c): Event => ({ t: c.t, kind: 'command_exit', verb: c.verb, exit: c.exit }),
+      ),
     ];
-    const event_stream = ev.anyTs
-      ? buildEventStream({ direct, toolCalls: ev.toolCalls })
-      : null;
+    const event_stream = ev.anyTs ? buildEventStream({ direct, toolCalls: ev.toolCalls }) : null;
 
     return {
       harness_session_id: null,

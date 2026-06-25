@@ -205,7 +205,12 @@ function readBubbleTimeline(
       const ms = Date.parse(t);
       const info = (b.modelInfo ?? {}) as Record<string, unknown>;
       const model = typeof info.modelName === 'string' ? info.modelName : undefined;
-      parsed.push({ ms: Number.isNaN(ms) ? 0 : ms, t, type: typeof b.type === 'number' ? b.type : 0, model });
+      parsed.push({
+        ms: Number.isNaN(ms) ? 0 : ms,
+        t,
+        type: typeof b.type === 'number' ? b.type : 0,
+        model,
+      });
     }
     if (parsed.length === 0) continue;
     parsed.sort((a, b) => a.ms - b.ms);
@@ -328,7 +333,13 @@ export const cursorAdapter: HarnessAdapter = {
     }
 
     const event_stream = anyTs
-      ? buildEventStream({ direct, toolCalls, skillOpens, lastSkillActive: false, precision: 'anchored' })
+      ? buildEventStream({
+          direct,
+          toolCalls,
+          skillOpens,
+          lastSkillActive: false,
+          precision: 'anchored',
+        })
       : null;
 
     return {
