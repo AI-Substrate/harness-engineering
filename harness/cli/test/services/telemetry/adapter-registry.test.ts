@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   claudeAdapter,
   copilotAdapter,
+  copilotVscodeAdapter,
   coreTelemetryAdapters,
   cursorAdapter,
   nullDefaultAdapter,
@@ -16,7 +17,12 @@ import type { CaptureDeps } from '../../../src/services/telemetry/capture-servic
 
 describe('T008 — coreTelemetryAdapters registry', () => {
   it('lists the real adapters in a stable order', () => {
-    expect(coreTelemetryAdapters).toEqual([claudeAdapter, copilotAdapter, cursorAdapter]);
+    expect(coreTelemetryAdapters).toEqual([
+      claudeAdapter,
+      copilotAdapter,
+      copilotVscodeAdapter,
+      cursorAdapter,
+    ]);
   });
 
   it('each adapter handles only its own harness id (disjoint predicates)', () => {
@@ -26,6 +32,8 @@ describe('T008 — coreTelemetryAdapters registry', () => {
     expect(copilotAdapter.handles('claude-code')).toBe(false);
     expect(cursorAdapter.handles('cursor-agent')).toBe(true);
     expect(cursorAdapter.handles('claude-code')).toBe(false);
+    expect(copilotVscodeAdapter.handles('copilot-vscode')).toBe(true);
+    expect(copilotVscodeAdapter.handles('copilot-cli')).toBe(false);
   });
 
   it('excludes the null-default (capture-service supplies it as the fallback)', () => {
