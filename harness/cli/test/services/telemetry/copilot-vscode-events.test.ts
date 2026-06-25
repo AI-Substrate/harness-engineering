@@ -28,18 +28,26 @@ const SECRET = 'sk-PLANTED-SECRET-7777';
 const SECRET_PATH = '/Users/x/secret.env';
 
 const SESSIONS: DbRow[] = [{ id: SESSION, cwd: REPO, branch: '036-x', updated_at: 2 }];
+// The adapter's SQL projects `words` + `has_response` server-side; these fixture
+// rows mimic that projection. The raw `user_message`/`assistant_response` columns
+// carry PLANTED SECRETS that the adapter must NEVER consume (it reads only the
+// projected `words`/`has_response`) — the read-side privacy proof (AC-23).
 const TURNS: DbRow[] = [
   {
     turn_index: 0,
-    user_message: `please build the adapter ${SECRET}`, // 5 words
-    assistant_response: `done — wrote ${SECRET_PATH}`,
+    words: 5,
+    has_response: 1,
     timestamp: T0,
+    user_message: `please build the adapter ${SECRET}`,
+    assistant_response: `done — wrote ${SECRET_PATH}`,
   },
   {
     turn_index: 1,
-    user_message: 'now add the tests', // 4 words
-    assistant_response: 'added',
+    words: 4,
+    has_response: 1,
     timestamp: T1,
+    user_message: `now add the tests ${SECRET}`,
+    assistant_response: SECRET_PATH,
   },
 ];
 
@@ -137,5 +145,20 @@ describe('copilotVscodeAdapter — turn-anchored stream from session-store.db (P
     copilotVscodeAdapter.extract(ctx({ db: f }));
     expect(f.calls.some((c) => c.sql.includes('FROM sessions'))).toBe(true);
     expect(f.calls.some((c) => c.sql.includes('FROM turns'))).toBe(true);
+  });
+
+  it('AC-23 read-side — word count + presence are computed IN SQL; no raw text column is returned', () => {
+    const f = db();
+    copilotVscodeAdapter.extract(ctx({ db: f }));
+    const turnsSql = f.calls.find((c) => c.sql.includes('FROM turns'))?.sql ?? '';
+    // computed server-side → the message TEXT never crosses the DbPort
+    expect(turnsSql).toContain('AS words');
+    expect(turnsSql).toContain('AS has_response');
+    // the SELECT list returns only structural columns: the raw text columns appear
+    // ONLY inside length()/CASE, never as a bare projected column
+    const selectList = turnsSql.slice(turnsSql.indexOf('SELECT'), turnsSql.indexOf('FROM'));
+    expect(selectList).toContain('length(');
+    expect(selectList).not.toMatch(/(?:SELECT|,)\s*user_message\s*(?:,|$)/);
+    expect(selectList).not.toMatch(/(?:SELECT|,)\s*assistant_response\s*(?:,|$)/);
   });
 });

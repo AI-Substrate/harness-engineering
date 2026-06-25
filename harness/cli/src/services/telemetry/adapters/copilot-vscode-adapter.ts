@@ -24,9 +24,11 @@ import type { HarnessAdapter, HarnessContext, HarnessSource } from './harness-ad
  * adapter calls again to read the session's turns (mirroring how the Cursor
  * adapter independently re-reads its env session id).
  *
- * PRIVACY (AC-23): only `turns.timestamp` and the WORD COUNT of `user_message`
- * are read — the message TEXT (`user_message` / `assistant_response`) is never
- * read into the segment. `assistant_response` is consulted for PRESENCE only.
+ * PRIVACY (AC-23): the word count + a presence flag are computed AT THE SQL
+ * BOUNDARY ({@link TURNS_SQL}) — `user_message` / `assistant_response` appear only
+ * inside `length()`/`CASE`, so the message TEXT is never returned to this process,
+ * let alone serialized. Only `turn_index`, `words`, `has_response`, `timestamp`
+ * cross the DbPort.
  *
  * Ports-only (P2): reads injected env/db only — no `node:*`.
  */
@@ -80,7 +82,7 @@ export function resolveCopilotVscodeSessionId(
   return null;
 }
 
-/** One stored turn — counts + timestamp only (the text fields are read for length, never kept). */
+/** One stored turn, AS PROJECTED BY SQL — structural columns only, never raw text. */
 interface TurnRow {
   turn_index: number;
   words: number;
@@ -95,33 +97,42 @@ function turnTime(raw: unknown): string | null {
   return null;
 }
 
-/** Word count of a prompt — never the text itself (AC-23). */
-function wordCount(text: unknown): number {
-  if (typeof text !== 'string') return 0;
-  const t = text.trim();
-  return t === '' ? 0 : t.split(/\s+/).length;
-}
+/**
+ * The `turns` projection — the AC-23 PRIVACY BOUNDARY. The raw message columns
+ * (`user_message` / `assistant_response`) appear ONLY inside `length()` / `CASE`,
+ * so SQLite computes a word count + a presence flag server-side and the SELECT
+ * RETURNS only structural columns (`turn_index`, `words`, `has_response`,
+ * `timestamp`). The message TEXT therefore never enters the telemetry process —
+ * a strictly stronger guarantee than "read into memory then dropped before
+ * serialization". `words` is an approximate, space-delimited count: exactness is
+ * irrelevant for a coarse measure, and computing it in SQL is precisely what
+ * keeps the text out of the process.
+ */
+const TURNS_SQL = [
+  'SELECT turn_index,',
+  "  CASE WHEN user_message IS NULL OR trim(user_message) = '' THEN 0",
+  "       ELSE length(trim(user_message)) - length(replace(trim(user_message), ' ', '')) + 1 END AS words,",
+  "  CASE WHEN assistant_response IS NULL OR trim(assistant_response) = '' THEN 0 ELSE 1 END AS has_response,",
+  '  timestamp',
+  'FROM turns WHERE session_id = ? ORDER BY turn_index ASC',
+].join(' ');
 
 /**
- * Read the session's turns from the store, ordered by `turn_index`, projecting
- * ONLY counts + timestamps (the message TEXT is consulted for word count /
- * presence and immediately discarded — AC-23). Empty when there's no db, no
- * candidate path with the session, or no turns.
+ * Read the session's turns from the store, ordered by `turn_index`. The SQL
+ * ({@link TURNS_SQL}) projects ONLY counts + a presence flag + timestamp — the
+ * message TEXT is never returned to this process (AC-23). Empty when there's no
+ * db, no candidate path with the session, or no turns.
  */
 function readTurns(ctx: HarnessSource, sessionId: string): TurnRow[] {
   const db = ctx.db;
   if (db === undefined || sessionId.length === 0) return [];
   for (const dbPath of copilotVscodeStoreDbPaths(ctx.env)) {
-    const rows = db.query(
-      dbPath,
-      'SELECT turn_index, user_message, assistant_response, timestamp FROM turns WHERE session_id = ? ORDER BY turn_index ASC',
-      [sessionId],
-    );
+    const rows = db.query(dbPath, TURNS_SQL, [sessionId]);
     if (rows.length === 0) continue;
     return rows.map((r) => ({
       turn_index: typeof r.turn_index === 'number' ? r.turn_index : 0,
-      words: wordCount(r.user_message),
-      hasResponse: typeof r.assistant_response === 'string' && r.assistant_response.trim() !== '',
+      words: typeof r.words === 'number' ? r.words : 0,
+      hasResponse: r.has_response === 1 || r.has_response === true,
       t: turnTime(r.timestamp),
     }));
   }

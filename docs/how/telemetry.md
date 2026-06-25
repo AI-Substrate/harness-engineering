@@ -161,8 +161,11 @@ server-side, so the adapter reports the timeline and **never estimates tokens**:
   github_copilot_vscode_agent` (no session-id env var exists, so the active
   session is resolved from the store **by cwd**, latest `updated_at`), and its
   events are **anchored** to `turns.timestamp`. The store has **no token
-  columns** (`tokens`/`models` are `null`); for privacy only each turn's
-  **word-count + timestamp** are read — never the message text.
+  columns** (`tokens`/`models` are `null`); for privacy the word-count + a
+  presence flag are computed **at the SQL boundary** (`user_message` /
+  `assistant_response` appear only inside `length()`/`CASE`), so the message
+  **text never enters the telemetry process** — only `turn_index`, `words`,
+  `has_response`, `timestamp` cross the read-only `DbPort`.
 
 `event_stream` itself is always present, never `null`. Outcome events follow each
 harness's result-capture ability: Claude has the full result envelope (`checks` +
