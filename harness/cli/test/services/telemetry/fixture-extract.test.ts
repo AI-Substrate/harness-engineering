@@ -141,7 +141,7 @@ describe('redactCopilotSystemMessage', () => {
 describe('projectCopilotVscodeRows', () => {
   // Raw rows AS THE STORE HOLDS THEM — with the real message text present. The
   // projection must compute counts from this text then DISCARD it.
-  const SECRET_USER = 'please refactor the auth module and add tests'; // 7 words
+  const SECRET_USER = 'please refactor the auth module and add tests'; // 8 words (7 spaces + 1)
   const SECRET_ASSISTANT = 'Here is the refactor you asked for.';
   const rawSessions = [
     { id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 },
@@ -184,7 +184,7 @@ describe('projectCopilotVscodeRows', () => {
 
   it('word count mirrors the adapter TURNS_SQL formula (spaces+1; runs of spaces counted)', () => {
     const out = projectCopilotVscodeRows(rawSessions, rawTurns);
-    expect(out.turns[0]?.words).toBe(7); // "please refactor the auth module and add tests"
+    expect(out.turns[0]?.words).toBe(8); // "please refactor the auth module and add tests" — 7 spaces + 1
     expect(out.turns[1]?.words).toBe(0); // whitespace-only trims to empty
     expect(out.turns[2]?.words).toBe(3); // "one  two" → two single-spaces + 1 (NOT 2)
   });

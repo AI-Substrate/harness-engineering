@@ -54,6 +54,80 @@ export function filterCopilotProcessLog(logContent: string, sessionId: string): 
   return kept.length > 0 ? `${kept.join('\n')}\n` : '';
 }
 
+/**
+ * Count words the way the copilot-vscode adapter's `TURNS_SQL` does:
+ * `length(trim) - length(replace(trim, ' ', '')) + 1` for a non-empty trimmed
+ * string — i.e. (number of single-space chars) + 1 — and `0` when the trimmed
+ * string is empty. This is deliberately NOT a smart word count: runs of spaces
+ * each count, exactly as SQLite computes them. Mirroring the SQL bit-for-bit is
+ * what lets T008 reconstruct a writable sqlite from the projected rows and read
+ * it back through the adapter's real SQL to identical numbers.
+ */
+function sqlWordCount(raw: unknown): number {
+  if (typeof raw !== 'string') return 0;
+  const trimmed = raw.trim();
+  if (trimmed === '') return 0;
+  return trimmed.length - trimmed.replaceAll(' ', '').length + 1;
+}
+
+/** One copilot-vscode session row, projected to the structural columns only. */
+interface ExtractedSessionRow {
+  id: unknown;
+  cwd: unknown;
+  updated_at: unknown;
+}
+
+/** One copilot-vscode turn row, projected past the AC-23 privacy boundary. */
+interface ExtractedTurnRow {
+  session_id: unknown;
+  turn_index: unknown;
+  words: number;
+  has_response: 0 | 1;
+  timestamp: unknown;
+}
+
+/** The privacy-safe copilot-vscode fixture shape — no message text anywhere. */
+export interface ExtractedCopilotVscodeRows {
+  sessions: ExtractedSessionRow[];
+  turns: ExtractedTurnRow[];
+}
+
+/**
+ * Project the raw copilot-vscode `sessions` + `turns` rows (as read from the live
+ * store) into a privacy-safe fixture shape that carries NO message text — the
+ * copilot-vscode analogue of the AC-23 boundary the adapter enforces in SQL.
+ *
+ * The raw `turns` rows still hold `user_message` / `assistant_response`; this
+ * computes `words` ({@link sqlWordCount}, mirroring `TURNS_SQL`) + a `has_response`
+ * presence flag from them and then DROPS the text entirely. The structural columns
+ * the runtime adapter consumes (`turn_index`, `words`, `has_response`, `timestamp`)
+ * survive; the bodies do not. The `cwd` stays raw here — `scrubText` rebases machine
+ * paths at the extension boundary (single-source scrub; this pure projection never
+ * double-scrubs).
+ */
+export function projectCopilotVscodeRows(
+  rawSessions: ReadonlyArray<Record<string, unknown>>,
+  rawTurns: ReadonlyArray<Record<string, unknown>>,
+): ExtractedCopilotVscodeRows {
+  const sessions = rawSessions.map((s) => ({
+    id: s.id,
+    cwd: s.cwd,
+    updated_at: s.updated_at,
+  }));
+  const turns = rawTurns.map((t) => {
+    const resp = t.assistant_response;
+    const hasResponse = typeof resp === 'string' && resp.trim() !== '' ? 1 : 0;
+    return {
+      session_id: t.session_id,
+      turn_index: t.turn_index,
+      words: sqlWordCount(t.user_message),
+      has_response: hasResponse as 0 | 1,
+      timestamp: t.timestamp ?? null,
+    };
+  });
+  return { sessions, turns };
+}
+
 /** The placeholder swapped in for a redacted system-prompt body. */
 export const SYSTEM_PROMPT_PLACEHOLDER = '<redacted: vendor system prompt>';
 

@@ -70,4 +70,18 @@ Companion magicWand (coordination): "a first-class way to reassign/alias a findi
   - cwd path stays **raw** in this pure projection — `scrubText` rebases it at the extension boundary (single-source scrub, no double-scrub).
   - serialized-bytes assertion: neither the user body, the assistant body, nor a fragment (`refactor`) survives.
 - **Evidence (RED)**: `vitest run fixture-extract.test.ts` → **5 failed | 6 passed** — all 5 new fail with `projectCopilotVscodeRows is not a function`; the 6 copilot-cli projections still green.
-- **Commit**: T005 (test-first).
+- **Commit**: `750c2c9` (test-first).
+
+## T006 — `projectCopilotVscodeRows` impl + copilot-vscode capture branch (GREEN) ✅
+
+- **`fixture-extract.ts`** (+`projectCopilotVscodeRows`, `+sqlWordCount`) — pure projection: raw `sessions`+`turns` → `{sessions:[{id,cwd,updated_at}], turns:[{session_id,turn_index,words,has_response,timestamp}]}`. `sqlWordCount` mirrors `TURNS_SQL` (`trimmed.length - trimmed.replaceAll(' ','').length + 1`; 0 for empty). No `node:*`.
+- **`extension.ts`** — added `resolveCopilotVscode`: composes a core **`NodeDb`** at `run()` (DL-001 — `node:sqlite` stays sealed in NodeDb; the extension source still imports no `node:*`), bridges `ctx.env`(`.get` only)+`config.homeDir` into a tiny **`EnvPort`** shim for the adapter path helpers, resolves the session by `--session` or `resolveCopilotVscodeSessionId(db,env,cwd)`, reads raw `sessions`+`turns`, projects (drops bodies), promotes `raw.rows.json`. Summary/description updated (copilot-vscode now wired — pre-empting F002 drift).
+- **Test fix**: the T005 expected word count for the 8-word sample was off-by-one (`7`→`8`, 7 spaces + 1) — my fixture comment was wrong, the SQL-mirror is right. 11/11 green.
+- **Live mechanism proven** (feeds T007): `harness capture-fixtures --surface copilot-vscode --names "jakkaj,Jordan Knight,jordanknight" --dry-run` against the **real** 4 KB store → staged `raw.rows.json` for session `7fb3a97f` (8 turns). **Manual review**: unscrubbed→scrubbed diff = the cwd path ONLY (`/Users/jordanknight/...` → `/home/dev/repo`); scrubbed file leak-scan **0**; **no message columns/prose** — bodies fully stripped by the projection (text never reaches a written file). All 8 turns timestamped → `event_stream` will populate, `t_precision:'anchored'`.
+- **Evidence**: full telemetry suite **296 passed (32 files)**; `just build` typechecks the NodeDb/EnvPort composition clean.
+- **Commit**: T006 (mechanism — no fixture committed yet; that's T007).
+
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T006 | decision | Extension `ctx.env` exposes `.get` only (no `.home()`), which the copilot-vscode adapter path helpers need. | Build a 3-line `EnvPort` shim from `ctx.env.get` + `config.homeDir` at `run()` — no node:* reach, no contract change. Confirms DL-001's "compose at the root" resolution. | extension.ts `envPortFor` |
+| 2026-06-25 | T006 | insight | The real store is the anticipated **thin** one (4 KB, 1 session, 8 turns) but fully substantive — real prompts (124/146-word turns) with responses, real ISO timestamps. | Good enough for a real golden + the SQL round-trip (T008). No synthetic padding needed. | session `7fb3a97f` |
