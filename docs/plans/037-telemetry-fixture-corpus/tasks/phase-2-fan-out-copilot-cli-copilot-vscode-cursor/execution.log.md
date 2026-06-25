@@ -92,4 +92,22 @@ Companion magicWand (coordination): "a first-class way to reassign/alias a findi
 - **Manual "anything bad" review** (non-skippable): leak scan **0** (`/Users/`, `C:\`, emails, `jordanknight`/`jakkaj`/`Jordan Knight`, key shapes); **no message text** (projection-stripped); only structural rows + the rebased `/home/dev/repo` cwd. `meta.json` attests `scrub_categories` incl. git-handles + person-names.
 - **Thinness documented** (per task Note / plan Risk): one session, 8 turns. Substantive enough for a real golden — turns carry real word counts (2–146) + ISO timestamps; no padding.
 - **Byte-scan** auto-globbed the new instance: `fixture-privacy-scan.test.ts` **15 passed** (incl. liveness control).
-- **Commit**: T007 (fixture data).
+- **Commit**: `b54814d` (fixture data).
+
+## T008 — copilot-vscode SQL round-trip int-test + golden (AC-04) ✅
+
+- **`copilot-vscode-sqlite.int.test.ts`** (NEW, 4 tests) — reconstructs a throwaway **writable** `node:sqlite` store from `raw.rows.json` at the exact path `copilotVscodeStoreDbPaths(env)[0]` resolves, then reads it back through the **real read-only `NodeDb`** via the adapter's **actual SQL** (`resolveCopilotVscodeSessionId` cwd→session + `TURNS_SQL`) → `serializeSegment` → committed golden.
+- **The round-trip is non-tautological**: a turn with `words:N` is synthesised as N space-joined tokens (N−1 spaces); the adapter's `TURNS_SQL` (`spaces+1`) recovers N. Capture-side `projectCopilotVscodeRows` and runtime `TURNS_SQL` share the formula, so `seg.user_prompts === fixture.words` ([124,4,12,71,4,2,3,146]) is a real cross-check — drift on either side breaks the deep-equal.
+- **Golden** (`expected-segment.json`, 2.7 KB, human-reviewed): `tokens:null` (honest ceiling — VS Code Copilot keeps usage server-side), `models:null`, 16 events (8 prompt + 8 turn), **every event `t_precision:'anchored'`** (untimed-precision store), rollup present. Leak scan 0.
+- **Evidence**: `REGEN_GOLDEN=1` mint → re-run clean **4 passed**; full telemetry suite **303 passed (33 files)** incl. the byte-scan auto-globbing the new golden.
+- **Commit**: T008 (round-trip + golden).
+
+---
+
+### copilot-vscode surface COMPLETE (T005–T008)
+
+The copilot-vscode SQLite surface is done end-to-end: pure projection (privacy boundary) → capture branch (NodeDb at run(), DL-001) → real reviewed fixture (thin but substantive) → real-SQL round-trip golden. tokens null + `anchored` timeline are the honest ceiling, asserted. **Next: cursor (T009–T011).**
+
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T008 | insight | `copilotVscodeStoreDbPaths` pushes the macOS slot (`Library/Application Support/…`) at index 0 whenever HOME is set, REGARDLESS of platform (no OS detection). | The int-test seeds `paths[0]` and the adapter reads `paths[0]` → platform-independent round-trip (green on macOS + Linux CI without per-OS branching). | copilot-vscode-adapter.ts:47 |
