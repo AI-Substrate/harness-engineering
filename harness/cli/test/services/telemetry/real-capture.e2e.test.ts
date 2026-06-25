@@ -7,6 +7,11 @@ import {
   claudeAdapter,
   claudeTranscriptPath,
 } from '../../../src/services/telemetry/adapters/claude-adapter.js';
+import {
+  copilotAdapter,
+  copilotEventsPath,
+  copilotLogsDir,
+} from '../../../src/services/telemetry/adapters/copilot-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 
@@ -122,5 +127,105 @@ describe('real claude fixture → segment (AC-01)', () => {
       expect(e.t_precision).toBeUndefined();
     }
     expect(seg.rollup).not.toBeNull();
+  });
+});
+
+// ── copilot-cli (T003 · plan 2.2 · AC-03) ───────────────────────────────────
+// Drives the REAL scrubbed copilot-cli fixture (events.jsonl + the filtered
+// process log) through `copilotAdapter` over a FULL-SESSION window, so the
+// process-log `assistant_usage` token blocks correlate (the stored telemetry
+// segment was windowed to the `doctor` command → tokens:null; full-session here
+// → real token correlation, the heart of AC-03).
+const CO_DIR = 'copilot-cli/2026-06-24-checks-run';
+const CO_SID = 'b67cd3ce-e0ee-4048-831e-7f4591f20a60';
+const CO_EVENTS = readFileSync(
+  fileURLToPath(new URL(`./fixtures/real/${CO_DIR}/raw.events.jsonl`, import.meta.url)),
+  'utf8',
+);
+const CO_LOG = readFileSync(
+  fileURLToPath(new URL(`./fixtures/real/${CO_DIR}/raw.process.log`, import.meta.url)),
+  'utf8',
+);
+const CO_GOLDEN = fileURLToPath(
+  new URL(`./fixtures/real/${CO_DIR}/expected-segment.json`, import.meta.url),
+);
+const CO_INVARIANTS = fileURLToPath(
+  new URL(`./fixtures/real/${CO_DIR}/invariants.json`, import.meta.url),
+);
+const CO_LINES = CO_EVENTS.split('\n').filter((l) => l.trim().length > 0).length;
+const coWindow = { since: 'session-start', from: 0, to: CO_LINES } as const;
+
+function copilotSegment() {
+  const fs = new FakeFs(
+    {
+      [copilotEventsPath(HOME, CO_SID)]: CO_EVENTS,
+      [`${copilotLogsDir(HOME)}/process-test.log`]: CO_LOG, // findProcessLog scans process-*.log
+    },
+    { [copilotLogsDir(HOME)]: ['process-test.log'] }, // so readdir() surfaces the log file
+  );
+  const env = new FakeEnv({ COPILOT_AGENT_SESSION_ID: CO_SID }, HOME);
+  const caps = copilotAdapter.extract({ env, fs, repoRoot: REPO, harness: 'copilot-cli', window: coWindow });
+  const input: SegmentInput = {
+    command: 'flow',
+    harness: 'copilot-cli',
+    harness_session_id: CO_SID,
+    timecode: '2026-06-25T00:00:00Z',
+    window: coWindow,
+    branch: null,
+    tokens: caps.tokens,
+    models: caps.models ?? {},
+    effort: caps.effort,
+    skills: caps.skills ?? {},
+    tools: caps.tools ?? {},
+    user_prompts: caps.user_prompts ?? [],
+    subagents: caps.subagents ?? [],
+    files: caps.files ?? { written: [], edited: [] },
+    plans_touched: [],
+    events: {
+      compactions: caps.compactions ?? [],
+      api_errors: caps.api_errors ?? 0,
+      local_commands: caps.local_commands ?? 0,
+    },
+    thinking: caps.thinking,
+    event_stream: caps.event_stream ?? undefined,
+  };
+  return serializeSegment(input, REPO);
+}
+
+function coInvariantsOf(seg: ReturnType<typeof copilotSegment>) {
+  return {
+    token_grand_total: seg.tokens?.grand_total ?? null,
+    token_total: seg.tokens?.total ?? null,
+    token_output: seg.tokens?.output ?? null,
+    models: Object.keys(seg.models ?? {}).sort(),
+    user_prompts: seg.user_prompts ?? [],
+    tools: seg.tools ?? {},
+    event_count: seg.event_stream.length,
+    event_stream_present: seg.event_stream.length > 0,
+  };
+}
+
+describe('real copilot-cli fixture → segment (AC-03)', () => {
+  const seg = copilotSegment();
+
+  if (process.env.REGEN_GOLDEN) {
+    writeFileSync(CO_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
+    writeFileSync(CO_INVARIANTS, `${JSON.stringify(coInvariantsOf(seg), null, 2)}\n`);
+  }
+
+  it('matches the committed golden segment', () => {
+    expect(seg).toEqual(JSON.parse(readFileSync(CO_GOLDEN, 'utf8')));
+  });
+
+  it('matches the committed (human-reviewed) invariants.json', () => {
+    expect(coInvariantsOf(seg)).toEqual(JSON.parse(readFileSync(CO_INVARIANTS, 'utf8')));
+  });
+
+  it('correlates process-log tokens (AC-03): non-null tokens summed from assistant_usage', () => {
+    // The filtered process log holds this session's assistant_usage blocks; over a
+    // full-session window they correlate to non-null token totals.
+    expect(seg.tokens).not.toBeNull();
+    expect(seg.tokens?.grand_total ?? 0).toBeGreaterThan(0);
+    expect(seg.event_stream.length).toBeGreaterThan(0);
   });
 });

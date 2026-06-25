@@ -1,0 +1,16 @@
+{
+  "token_grand_total": 86611,
+  "token_total": 86611,
+  "token_output": 539,
+  "models": [
+    "claude-opus-4.8"
+  ],
+  "user_prompts": [
+    27
+  ],
+  "tools": {
+    "bash": 1
+  },
+  "event_count": 6,
+  "event_stream_present": true
+}

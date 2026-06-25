@@ -56,7 +56,11 @@ function windowsBanned(kind: Kind): Banned[] {
   return kind === 'json'
     ? [
         { label: 'win-home', re: /[A-Za-z]:\\\\Users\\\\/ }, // JSON-doubled `C:\\Users\\`
-        { label: 'win-drive', re: /[A-Za-z]:\\\\/ },
+        // A real JSON-doubled drive path (`C:\\Users`) is `:` + `\\` + a filename char.
+        // `:\\n` / `:\\t` / `:\\"` etc. are JSON ESCAPE sequences (a YAML `key:\n` value
+        // embedded — even doubly-nested — in JSON), NOT drive paths, so exclude the
+        // escape letters. win-home above still catches the identity-bearing case.
+        { label: 'win-drive', re: /[A-Za-z]:\\\\(?![\\nrtbfuv"/])/ },
       ]
     : [
         { label: 'win-home', re: /[A-Za-z]:\\Users\\/ }, // plain-text `C:\Users\`

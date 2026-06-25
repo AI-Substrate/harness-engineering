@@ -1,6 +1,8 @@
 # Logs
 logs
 *.log
+# …but committed telemetry test fixtures keep their (scrubbed) process logs (plan 037).
+!harness/cli/test/services/telemetry/fixtures/**/raw.process.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

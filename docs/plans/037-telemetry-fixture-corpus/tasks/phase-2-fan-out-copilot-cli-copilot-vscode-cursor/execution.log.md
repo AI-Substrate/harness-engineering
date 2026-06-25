@@ -23,3 +23,27 @@
 - **TDD**: `fixture-extract.test.ts` (6) + `capture-logic.test.ts` (now 17) written/updated and green.
 - **Manual "anything bad" review** (non-skippable): dry-run staged to `scratch/`; user prompt = innocuous harness-test prompt; assistant reply innocuous; **leak scan 0** for `/Users/`, `C:\`, emails, `jordanknight`/`jakkaj`/`Jordan Knight`, api-key shapes, on both `raw.events.jsonl` and `raw.process.log`. Scrub rebased all paths to `/home/dev[/repo]`.
 - **Evidence**: `vitest` telemetry+extension suites → **46 passed (5 files)** incl. the untouched claude e2e + privacy scan (AC-10 honoured). `harness capture-fixtures --surface copilot-cli --session b67cd3ce --log … --dry-run` → ok, staged both files; redaction confirmed (0 vendor-prompt body, 1 placeholder, user prompt verbatim ×4).
+- **Commit**: `2ac6b5f` (mechanism).
+
+## T002 — capture + manual review one real copilot-cli session ✅
+
+- Promoted `fixtures/real/copilot-cli/2026-06-24-checks-run/` (`raw.events.jsonl` 66KB, `raw.process.log` 12KB, `meta.json`) — re-running the capture WITHOUT `--dry-run` after the manual review passed (user-approved redaction).
+- **Manual "anything bad" review**: leak scan 0 across both raw files (`/Users/`, `C:\`, emails, `jordanknight`/`jakkaj`/`Jordan Knight`, api-key shapes); user prompt + assistant reply innocuous; vendor system prompt redacted.
+
+## T003 — copilot-cli e2e golden + invariants (AC-03) ✅
+
+- Extended `real-capture.e2e.test.ts` with a copilot-cli block: `FakeFs` events + a `process-*.log` (with the `dirs` map seeded so `findProcessLog`'s `readdir` surfaces it), full-session window → `copilotAdapter.extract` → `serializeSegment` → committed `expected-segment.json` + `invariants.json` (`REGEN_GOLDEN=1`, human-reviewed).
+- **Token correlation proven (AC-03)**: `tokens = {input:4, output:539, cache_create:45885, cache_read:40183, total:86611, grand_total:86611}`, model `claude-opus-4.8` — summed from the 2 filtered `assistant_usage` blocks (interaction `7a9a4042`, which matches the events' `interactionId`). The stored telemetry segment had `tokens:null` (windowed to `doctor`); full-session window correlates.
+- **Gotcha**: `FakeFs.readdir` reads a separate `dirs` map (not the seeded `files`); seeding only `files` made `findProcessLog` return null → null tokens. Fixed by passing the `dirs` arg.
+
+## T004 — byte-scan covers the new copilot-cli files (AC-02) ✅
+
+- The scan auto-globbed the new instance (raw.events.jsonl, raw.process.log, expected-segment.json, invariants.json, meta.json).
+- **Scanner false-positive fixed** (Discoveries below): JSON `win-drive` flagged `system:\\n`/`entries:\\n` — a YAML key + a *doubly-JSON-escaped* newline (the harness retro template embedded in the `doctor --json` tool output), NOT a Windows path. Narrowed the JSON `win-drive` regex to exclude JSON escape sequences (`\\n\\t\\r\\"\\/…`); `win-home` still catches the identity-bearing `C:\\Users\\` case, and the liveness control still flags a real `C:\Users\carol`.
+- **Evidence**: full telemetry + extension suite **305 passed (33 files)**; privacy scan 12/12 incl. liveness.
+
+| Date | Task | Type | Discovery | Resolution | References |
+|------|------|------|-----------|------------|------------|
+| 2026-06-25 | T003 | gotcha | `FakeFs.readdir` reads a separate `dirs` map, not seeded `files` → `findProcessLog` found nothing → token correlation produced null. | Pass the `dirs` arg `{ [logsDir]: ['process-test.log'] }`. | fake-fs.ts |
+| 2026-06-25 | T004 | Noteworthy | JSON `win-drive` byte-scan false-positives on doubly-nested JSON escape seqs (`key:\\n`) — extends Phase-1's T007 finding to nested JSON. | Exclude JSON escape letters after `:\\`; `win-home` keeps the identity case; liveness control preserved. | fixture-privacy-scan.test.ts |
+| 2026-06-25 | T003 | insight | Real token correlation = `input 4 / output 539 / cache_create 45885 / cache_read 40183` (total 86611) from the live session — a real cross-check the stored telemetry segment couldn't give (it was windowed to `doctor` → tokens null). | AC-03 satisfied with real data. | invariants.json |
