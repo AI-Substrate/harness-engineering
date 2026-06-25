@@ -208,6 +208,7 @@ Reuse the record/provenance substrate and hexagonal ports to add a `telemetry` s
 | 3 | Auto-capture kernel preamble | cli-kernel | Trigger capture on every command, fail-safe, zero output/exit impact | Phases 1–2 |
 | 4 | Durable sync: GitWritePort + sharded refs + docs | git / sync / docs/measures | Flush buffer → `refs/harness-telemetry/<date>/<session>` shards via plumbing (Amendment A1); guide + measures contract | Phase 1 |
 | 5 | Event-stream v2: timeline + agent-work detection (Amendment A2) | telemetry / docs | Promote counts→**timestamped event stream** (turns, tools-bursts, skills, flow-stages, outcomes) so a session timeline + agent/human/idle time is reconstructable; cursor model already shipped | Phases 1–4 |
+| 6 | Copilot-VS-Code telemetry surface (Amendment A3 — reworked) | telemetry / docs | Capture VS Code Copilot **Chat** (`copilot-vscode`) via a Cursor-pattern read-only `DbPort` read of the extension's `session-store.db` (SQLite); turn-anchored timeline + branch, **tokens `null` honest ceiling** (no local token data); session resolved by cwd (no env id). Reverts the v1 wrong-store shutdown/scope/cost machinery | Phases 1–5 |
 
 #### Phase 1: Segment substrate & capture core
 **Objective**: Establish the normalized counts-only segment and a pure capture service that buffers "since last command" to gitignored temp.
@@ -303,6 +304,41 @@ Reuse the record/provenance substrate and hexagonal ports to add a `telemetry` s
 - **AC-18** — skill spans carry an inferred `status`; flow-stage time is attributed from `the-flow.json` nav.
 - **AC-19** — `checks`/`command_exit` outcome events captured (codes/verdicts only); commits excluded by design.
 
+#### Phase 6: Copilot-VS-Code telemetry surface (Amendment A3 — reworked)
+
+> **Design correction (2026-06-25).** The first A3 attempt assumed VS Code Copilot
+> shared the CLI's `~/.copilot/session-state` store and built a `session.shutdown`
+> **token fallback** + `scope`/cost/`codeChanges` + schema 2.1. That was **wrong on
+> two counts**: (1) `~/.copilot` is the **CLI's** store (`client_name: github/cli`),
+> not the VS Code *extension's*; (2) `session.shutdown` fires at session END, **after**
+> our command runs, so a live capture can never read it. The extension's real store is
+> a **SQLite db** with **no token columns**. This phase is reworked to model the shipped
+> **Cursor adapter** (read-only `DbPort`, **tokens `null` honest ceiling**); the v1
+> shutdown/scope/cost machinery is **reverted**.
+
+**Objective**: Make GitHub Copilot **Chat in VS Code** a captured surface (`harness: "copilot-vscode"`), modeled on the shipped Cursor adapter: read the extension's own SQLite store via the read-only `DbPort` and emit a **turn-anchored timeline** + branch, with **`tokens: null`** — VS Code Copilot Chat does not record token usage locally (the documented honest ceiling, exactly as Cursor).
+**Domain**: telemetry / docs
+**Delivers**: a `copilot-vscode` capability adapter (a peer of `cursor-adapter.ts`) reading `session-store.db` via `DbPort`; detection via `AI_AGENT` + **cwd-based session resolution** (no session-id env var exists); a turn-anchored `event_stream` (prompt/turn events, model/effort/tokens null); a `FakeDb` golden fixture; guide update; **revert** of the v1 shutdown/scope/cost/schema-2.1 changes.
+**Depends on**: Phases 1–5 (the `HarnessAdapter` seam, the read-only `DbPort` from the Cursor work, segment v2 `event_stream`/`rollup`). **Additive**; capture core, windowing, buffer, sync, kill-switch unchanged. Segment schema returns to **2.0** (no new fields).
+**Store (verified live, 2026-06-25)**: `~/Library/Application Support/Code/User/globalStorage/github.copilot-chat/session-store.db` (SQLite) — `sessions(id, cwd, repository, branch, agent_name, updated_at)` + `turns(session_id, turn_index, user_message, assistant_response, timestamp)`. **No token columns.** Confirmed: session `7fb3a97f…`, cwd-matched this repo, branch `036-copilot-vscode-telemetry`, 7 timestamped turns. No documented env var carries the session id (Perplexity-confirmed); `COPILOT_AGENT_SESSION_ID` is **unset** for the extension — the active session is resolved from the db by **cwd** (latest `updated_at`).
+**Key risks**: **session ambiguity** (two VS Code windows, same cwd → pick latest `updated_at`; the db is small, ~1 row/repo); **privacy** — `turns` rows carry message **TEXT** (`user_message`/`assistant_response`); the adapter reads only their **length → word count** + `timestamp`, **never the text** (AC-23); **db-locked/WAL** — open read-only, tolerate a busy db (null-on-failure, never block).
+
+| # | Task | Domain | Success Criteria | Notes |
+|---|------|--------|-----------------|-------|
+| 6.1 | **Revert the v1 (wrong-store) A3 machinery** | telemetry / docs | Remove the `session.shutdown` fallback, `tokens.scope`, `premium_requests`, `code_changes`, and the 2.0→**2.1** schema bump from `segment.ts`/`segment.schema.json`/`copilot-adapter.ts`/`harness-adapter.ts` + their tests; **also revert the v1 doc edits** in `docs/how/telemetry.md` **and `docs/how/harness-value-measures.md`** (the token-`scope` dedup clause — now meaningless without `scope`) and `just build` to re-embed (`gen:docs`); reset the stale v1 `execution.log.md`; suite green at `schema_version` **2.0** again | clean slate; the v1 diff is uncommitted on this branch |
+| 6.2 | Write tests for **detection + db-based session resolution** | telemetry | `AI_AGENT === "github_copilot_vscode_agent"` → harness `"copilot-vscode"`; the session id is resolved from `session-store.db` by **cwd** (latest `updated_at`); `TERM_PROGRAM=vscode` alone does **not** trigger it (negative control); no matching session → clean no-op (null) | TDD-first; AC-20, AC-21 |
+| 6.3 | Implement detection + the cwd resolver | telemetry / cli-kernel | `detectHarness` recognizes `copilot-vscode` via `AI_AGENT`; the session id is then resolved by a **new detection-time `DbPort` read** of `session-store.db` (latest `updated_at` for cwd), run **in/after `detectHarness` but BEFORE the cursor/branch/buffer paths** (`capture-service.ts:359/366/395` consume `detected.sessionId`); `deps.db` is the source (already wired). **NB this is genuinely new** — Cursor's id is env-given, so its `DbPort` read is in the adapter, not detection | AC-20/AC-21; the one capture-core touch, kept isolated |
+| 6.4 | Write tests for the **`copilot-vscode` adapter** against a `FakeDb` fixture, incl. a privacy control | telemetry | From a `sessions`+`turns` fixture: a turn-anchored `event_stream` (prompt word-counts + turn events at `turns.timestamp`, `t_precision:"anchored"`), `branch` event, `tokens: null`, `models: null`; **a planted secret in `user_message`/`assistant_response` never serializes** (only length→word-count + timestamp are read). **Test seam**: today's `FakeDb` returns the *same* rows for *every* query, but this adapter issues **two** queries (`sessions`, then `turns`) — extend `FakeDb` to be **query-aware** (rows keyed by SQL/table) so the two reads can be distinguished | TDD; AC-22, AC-23; models Cursor's `cursor-events.test.ts` |
+| 6.5 | Implement the `copilot-vscode` adapter (peer of `cursor-adapter.ts`) | telemetry | `DbPort` query of `sessions`+`turns`; **`currentPosition` = the session's turn count (`max(turn_index)+1`)** so the since-last cursor windowing has an extent (Cursor uses transcript line count); emit `prompt`/`turn` events anchored to `turns.timestamp`; `tokens`/`models`/`effort` **null** (honest ceiling); `event_stream` empty + `rollup: null` when no turns; working-ratio derived from turn gaps (`dur_s` 0, like Cursor) | AC-22; reuses the shipped `DbPort`; no token estimation ever |
+| 6.6 | Update `docs/how/telemetry.md` | docs/measures | Documents `copilot-vscode` as a **distinct surface** from `copilot-cli`, its SQLite store, and the **tokens-null timeline-only ceiling** (listed alongside Cursor's); removes the v1 `scope`/cost wording | AC-10/AC-11 |
+
+**Phase 6 acceptance (local to this phase)**
+- **AC-20** — `AI_AGENT=github_copilot_vscode_agent` serializes `harness:"copilot-vscode"`; `TERM_PROGRAM=vscode` alone does not (negative control); `copilot-cli` (CLI store) is unaffected.
+- **AC-21** — the session id is resolved from `session-store.db` by **cwd** (latest `updated_at`) with **no** session-id env var; no matching session → clean no-op (no segment forced).
+- **AC-22** — a `copilot-vscode` segment carries a **turn-anchored** `event_stream` (prompt word-counts + turn timestamps + branch) and a derived working-ratio; **`tokens`/`models` are `null`, never estimated** (the honest ceiling, as Cursor).
+- **AC-23** — the adapter reads only **counts + timestamps** from `turns`; the message **TEXT** (`user_message`/`assistant_response`) is never read or serialized — a planted-secret control fails if any content leaks.
+- **AC (revert)** — the v1 shutdown/`scope`/`premium_requests`/`code_changes` fields and the 2.1 bump are gone; `schema_version` is back to **2.0** and the freeze test pins it.
+
 ### Acceptance Coverage Map
 | AC | Covered by | Verified in |
 |----|-----------|-------------|
@@ -320,6 +356,10 @@ Reuse the record/provenance substrate and hexagonal ports to add a `telemetry` s
 | AC-12 | 1.2, 2.1, 2.6 | stub future-harness adapter |
 | AC-13 | 4.2 | non-individual commit author + no per-individual field |
 | AC-14 | 4.3, 4.4 | offline-safe / failed-push leaves buffer |
+| AC-20 | 6.2, 6.3 | `AI_AGENT` detection + `TERM_PROGRAM`-alone negative control |
+| AC-21 | 6.2, 6.3 | cwd-based session resolution from `session-store.db` (no env id) |
+| AC-22 | 6.4, 6.5 | turn-anchored timeline + branch; tokens/models `null` (honest ceiling) |
+| AC-23 | 6.4 | privacy control — only counts/timestamps read from `turns`, never message text |
 
 ### Done Contract (grill-agent-done, 2026-06-23)
 Each material claim lined against the strongest proof grade it admits, with the negative control that keeps the sensor honest. Companion to `backpressure-coverage.md` (which inventoried sensor *existence*); this records what wrong-but-green implementation each sensor must reject. **Privacy scope (decided):** AC-04 must catch secrets-in-args, message/file content, and absolute paths; branch names / skill·tool·model names / plan ids / repo name are kept **verbatim** (already exposed on push/PR; hashing would break eng-thrive correlation); per-individual attribution is the separate §T1 gate.

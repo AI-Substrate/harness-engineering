@@ -145,16 +145,29 @@ as *unknown*, not *stayed put*).
 - **tokens / tools / skills** — the same totals as the v1 fields (`tokens` is
   `null` when no turn carried buckets — e.g. Cursor — never zero-filled).
 
-**Per-harness ceilings (honest).** Claude and Copilot emit an *exact*-timed
-stream (Copilot turns even carry per-interaction tokens). **Cursor** has no
-transcript timestamps, so its events are **anchored** to the IDE-store bubble
-times (`t_precision: "anchored"`) and carry **no tokens** (server-side only,
-never estimated); a headless Cursor session with no bubbles serializes an **empty
-`event_stream` with `rollup: null`** (the adapter has no timeline to anchor to)
-rather than a fabricated one — `event_stream` itself is always present, never
-`null`. Outcome events follow each harness's result-capture
-ability: Claude has the full result envelope (`checks` + `command_exit`), Copilot
-reports only success (`command_exit`), Cursor neither.
+**Per-harness ceilings (honest).** Claude and **Copilot CLI** (`copilot-cli`)
+emit an *exact*-timed stream (Copilot CLI turns even carry per-interaction
+tokens). The next two surfaces hit a **tokens-`null` ceiling** — they keep usage
+server-side, so the adapter reports the timeline and **never estimates tokens**:
+
+- **Cursor** (`cursor-agent`) has no transcript timestamps, so its events are
+  **anchored** to the IDE-store bubble times (`t_precision: "anchored"`); a
+  headless Cursor session with no bubbles serializes an **empty `event_stream`
+  with `rollup: null`** rather than a fabricated one.
+- **Copilot Chat in VS Code** (`copilot-vscode`) is a **distinct surface from
+  `copilot-cli`** — the VS Code extension keeps its own SQLite store
+  (`…/globalStorage/github.copilot-chat/session-store.db`, `sessions` + `turns`),
+  not the CLI's `~/.copilot` JSONL. It is detected by `AI_AGENT=
+  github_copilot_vscode_agent` (no session-id env var exists, so the active
+  session is resolved from the store **by cwd**, latest `updated_at`), and its
+  events are **anchored** to `turns.timestamp`. The store has **no token
+  columns** (`tokens`/`models` are `null`); for privacy only each turn's
+  **word-count + timestamp** are read — never the message text.
+
+`event_stream` itself is always present, never `null`. Outcome events follow each
+harness's result-capture ability: Claude has the full result envelope (`checks` +
+`command_exit`), Copilot CLI reports only success (`command_exit`), Cursor and
+Copilot-VS-Code neither.
 
 ## Disabling telemetry
 
