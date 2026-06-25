@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterCopilotProcessLog,
+  projectCopilotVscodeRows,
   redactCopilotSystemMessage,
 } from '../../../src/services/telemetry/fixture-extract.js';
 
@@ -117,5 +118,97 @@ describe('redactCopilotSystemMessage', () => {
     expect(out).toContain('"type":"session.start"');
     // every line stays valid JSON
     for (const l of out.split('\n')) expect(() => JSON.parse(l)).not.toThrow();
+  });
+});
+
+/**
+ * T005 (plan 2.3 · AC-04 · Finding 05) — the copilot-vscode row projection.
+ *
+ * `projectCopilotVscodeRows` is the PRIVACY BOUNDARY for the copilot-vscode
+ * fixture: it takes the raw `sessions` + `turns` rows as read from the live store
+ * and emits an extracted-rows shape that carries NO message text — only the
+ * structural columns the runtime adapter's SQL projects (`turn_index`, `words`,
+ * `has_response`, `timestamp`). The committed `raw.rows.json` lands in a PUBLIC,
+ * permanent repo, so the user/assistant message bodies must never reach it.
+ *
+ * The word count MUST mirror the adapter's `TURNS_SQL` formula EXACTLY —
+ * `length(trim) - length(replace(trim, ' ', '')) + 1` for a non-empty trimmed
+ * message (i.e. count of single-space chars + 1), `0` otherwise — so that T008's
+ * round-trip (reconstruct a writable sqlite from the projected rows, read it back
+ * through the adapter's real SQL) reproduces byte-identical numbers. A "smarter"
+ * word count that collapses runs of spaces would desync the round-trip.
+ */
+describe('projectCopilotVscodeRows', () => {
+  // Raw rows AS THE STORE HOLDS THEM — with the real message text present. The
+  // projection must compute counts from this text then DISCARD it.
+  const SECRET_USER = 'please refactor the auth module and add tests'; // 7 words
+  const SECRET_ASSISTANT = 'Here is the refactor you asked for.';
+  const rawSessions = [
+    { id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 },
+  ];
+  const rawTurns = [
+    {
+      session_id: 'sess-1',
+      turn_index: 0,
+      user_message: SECRET_USER,
+      assistant_response: SECRET_ASSISTANT,
+      timestamp: 1750000001000,
+    },
+    {
+      session_id: 'sess-1',
+      turn_index: 1,
+      user_message: '   ', // whitespace-only → 0 words
+      assistant_response: null, // no response → has_response 0
+      timestamp: 1750000002000,
+    },
+    {
+      session_id: 'sess-1',
+      turn_index: 2,
+      user_message: 'one  two', // TWO spaces between → SQL counts each → 3 (not 2)
+      assistant_response: '',
+      timestamp: null,
+    },
+  ];
+
+  it('drops the message text — no user/assistant body survives the projection', () => {
+    const out = projectCopilotVscodeRows(rawSessions, rawTurns);
+    const serialized = JSON.stringify(out);
+    expect(serialized).not.toContain(SECRET_USER);
+    expect(serialized).not.toContain(SECRET_ASSISTANT);
+    expect(serialized).not.toContain('refactor'); // no fragment of the body either
+    for (const t of out.turns) {
+      expect(t).not.toHaveProperty('user_message');
+      expect(t).not.toHaveProperty('assistant_response');
+    }
+  });
+
+  it('word count mirrors the adapter TURNS_SQL formula (spaces+1; runs of spaces counted)', () => {
+    const out = projectCopilotVscodeRows(rawSessions, rawTurns);
+    expect(out.turns[0]?.words).toBe(7); // "please refactor the auth module and add tests"
+    expect(out.turns[1]?.words).toBe(0); // whitespace-only trims to empty
+    expect(out.turns[2]?.words).toBe(3); // "one  two" → two single-spaces + 1 (NOT 2)
+  });
+
+  it('has_response is 1 only when the assistant_response is non-empty', () => {
+    const out = projectCopilotVscodeRows(rawSessions, rawTurns);
+    expect(out.turns[0]?.has_response).toBe(1);
+    expect(out.turns[1]?.has_response).toBe(0); // null
+    expect(out.turns[2]?.has_response).toBe(0); // empty string
+  });
+
+  it('passes through the structural columns + preserves turn order', () => {
+    const out = projectCopilotVscodeRows(rawSessions, rawTurns);
+    expect(out.turns.map((t) => t.turn_index)).toEqual([0, 1, 2]);
+    expect(out.turns[0]?.session_id).toBe('sess-1');
+    expect(out.turns[0]?.timestamp).toBe(1750000001000);
+    expect(out.turns[2]?.timestamp).toBeNull();
+  });
+
+  it('projects sessions to exactly {id, cwd, updated_at} — no stray columns', () => {
+    const out = projectCopilotVscodeRows(rawSessions, rawTurns);
+    expect(out.sessions).toEqual([{ id: 'sess-1', cwd: '/Users/dev/repo', updated_at: 1750000000000 }]);
+    // the cwd path stays raw here — scrubText rebases it at the extension boundary,
+    // NOT this pure projection (single-source scrub, no double-scrubbing).
+    expect(Object.keys(out.sessions[0] ?? {}).sort()).toEqual(['cwd', 'id', 'updated_at']);
   });
 });

@@ -58,3 +58,16 @@ First companion (run `…-d7ea`) idled out before any ping (deep T001 investigat
 | F002 | MED | Extension `summary`/`description` still said "claude; … Only 'claude' is implemented in Phase 1" after copilot-cli landed — contract drift. | ✅ real | Updated to "claude, copilot-cli wired; copilot-vscode/cursor pending". |
 
 Companion magicWand (coordination): "a first-class way to reassign/alias a finding from an earlier briefing to a later task without re-sending" — backlog candidate. Both findings fixed; privacy scan 13/13 (incl. new soundness control), telemetry+extension 306/306.
+
+---
+
+## T005 — copilot-vscode row-projection test (RED) ✅
+
+- **`fixture-extract.test.ts`** (+5 tests) — `describe('projectCopilotVscodeRows')` pins the copilot-vscode **privacy boundary**: raw `sessions`+`turns` rows (with real message text) → extracted-rows shape carrying **no** `user_message`/`assistant_response`, only `turn_index`/`words`/`has_response`/`timestamp` (sessions → `{id,cwd,updated_at}`).
+- **Contract pinned by the test** (so T006 has no wiggle room):
+  - word count **mirrors the adapter's `TURNS_SQL` exactly** — `"one  two"` (two spaces) → **3**, not 2; whitespace-only → 0. A smarter collapse-runs count would desync T008's real-SQL round-trip.
+  - `has_response` = 1 only when `assistant_response` is non-empty (null + `''` → 0).
+  - cwd path stays **raw** in this pure projection — `scrubText` rebases it at the extension boundary (single-source scrub, no double-scrub).
+  - serialized-bytes assertion: neither the user body, the assistant body, nor a fragment (`refactor`) survives.
+- **Evidence (RED)**: `vitest run fixture-extract.test.ts` → **5 failed | 6 passed** — all 5 new fail with `projectCopilotVscodeRows is not a function`; the 6 copilot-cli projections still green.
+- **Commit**: T005 (test-first).
