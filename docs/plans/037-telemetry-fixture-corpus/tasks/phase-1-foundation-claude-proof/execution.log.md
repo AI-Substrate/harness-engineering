@@ -51,3 +51,9 @@
 |------|------|------|-----------|------------|------------|
 | 2026-06-25 | T005 | Noteworthy | **The live session is a PATHOLOGICAL fixture.** It's 41MB AND *about* scrubbing — so the scrubbed bytes still contain 73×`/Users/`, 56×`C:\`, 2×`@gmail.com` as literal DISCUSSION content (`.not.toContain('/Users/')`, `C:\Users\jane` doc examples), none of them real leaks (real identity scrubbed to 0). | Choose a different fixture. Profiled all 24 repo sessions; selected **c8bc0c68** (211KB/95 lines, "set up static html publishing", 5 human prompts, 14 tools, 38 token turns, 71 timestamps, META_lines=0). | T006 |
 | 2026-06-25 | T005 | Noteworthy | A byte-scan that bans literal `/Users/`/`C:\` will (correctly) flag a session that *discusses* those tokens, even with no real leak. | Fixture selection must avoid self-referential/meta sessions; documented for the runbook (Phase 3). The scan stays strict (no weakening). | AC-02; T007 |
+
+## T009 — SQLite mechanism spike (Phase-1 exit gate) ✅
+
+- `sqlite-spike.test.ts`: build a throwaway `node:sqlite` db WRITABLE, seed the copilot-vscode `sessions`/`turns` shape, read back through the read-only `NodeDb` running the actual privacy-projecting SQL.
+- Proves both halves of AC-04's risk: (a) writable-build → read-only-read round-trip; (b) the privacy boundary — word count + presence flag computed in SQLite, raw message text NEVER selected (asserted absent from the result set).
+- **Evidence**: `vitest run sqlite-spike.test.ts` → 3 passed. Phase-2 AC-04 mechanism de-risked before fixture work depends on it. **Phase-1 exit gate: PASS.**
