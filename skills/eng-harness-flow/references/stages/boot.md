@@ -32,15 +32,15 @@ $ARGUMENTS
 # (no flags)   Auto-detect: VALIDATE if governance doc exists, else report UNAVAILABLE
 ```
 
-### Step 0: Self-brief from the harness CLI (agent instructions)
+### Step 0: Self-brief from the harness CLI (agent instructions) — REQUIRED when a CLI is present
 
-If the repo has the harness CLI installed, brief yourself BEFORE validating:
+If the repo has the harness CLI installed, you **must** brief yourself BEFORE validating — and before leaning on the repo for any real codebase work. Discovery is the whole point: the harness exists so you use the commands it already exposes instead of re-deriving them by hand.
 
 ```
 npx harness instructions --json
 ```
 
-Read the core agent briefing it returns (envelope contract, role split, discovery loop), then for every harness verb you expect to use this session, read its briefing too: `npx harness instructions <verb>`. The `verbs_with_instructions[]` field tells you which briefings exist. If the repo has no harness CLI, skip this step silently — it is an enrichment, not a gate.
+Read the core agent briefing it returns (envelope contract, role split, discovery loop), then for every harness verb you expect to use this session, read its briefing too: `npx harness instructions <verb>`. The `verbs_with_instructions[]` field tells you which briefings exist. Skip this step **only** when the repo genuinely has no harness CLI — then skip silently. When a CLI *is* present, skipping discovery is a defect, not an optimisation: it is precisely how a built harness goes unused.
 
 ### Step 0b: Read the governance doc (canonical path)
 

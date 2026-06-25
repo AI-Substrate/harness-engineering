@@ -1,0 +1,92 @@
+/**
+ * Outcome-event derivation (plan 034 Phase 5, T5.6/T5.7 — AC-19, source matrix §2).
+ *
+ * When a harness sub-command runs, its captured RESULT (the JSON command envelope
+ * a harness verb prints — `{ command, status, data }`) yields two outcome events:
+ *   • `command_exit` — the verb + a process exit (the observed error flag, else
+ *     derived from the verdict) + the normalized status.
+ *   • `checks` — for `harness checks`: the overall verdict + per-gate verdicts.
+ *
+ * CODES / VERDICTS ONLY (AC-15): the gate `note` (free text) and every other
+ * envelope field are dropped — the envelope is never spread. Commits are
+ * intentionally NOT events (git is queryable later — AC-19). Pure (no I/O); the
+ * adapter supplies the result text + timestamp it observed.
+ */
+
+import type { ChecksStatus, Event } from './events.js';
+
+interface RawEnvelope {
+  command?: unknown;
+  status?: unknown;
+  data?: unknown;
+}
+
+/** Narrow a raw envelope `status` to the coarse checks verdict, or `null`. */
+function normalizeChecksStatus(raw: unknown): ChecksStatus | null {
+  if (raw === 'ok') return 'ok';
+  if (raw === 'degraded') return 'degraded';
+  if (raw === 'error' || raw === 'fatal') return 'error';
+  return null;
+}
+
+/** A harness JSON envelope, or `null` when the text is not one (e.g. the human rail). */
+function parseEnvelope(text: string): RawEnvelope | null {
+  const trimmed = text.trim();
+  // Must be a bare JSON object — a strict guard so free-form output (rail mode,
+  // a command run without `--json`) is never mis-read as an envelope.
+  if (trimmed.length === 0 || trimmed[0] !== '{') return null;
+  try {
+    const v: unknown = JSON.parse(trimmed);
+    return v !== null && typeof v === 'object' ? (v as RawEnvelope) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** `data.gates[] → { name: status }` (names + verdicts only; `note` dropped). */
+function gateVerdicts(data: unknown): Record<string, string> | null {
+  const gates = (data as { gates?: unknown } | null | undefined)?.gates;
+  if (!Array.isArray(gates)) return null;
+  const out: Record<string, string> = {};
+  for (const g of gates) {
+    const name = (g as { name?: unknown })?.name;
+    const status = (g as { status?: unknown })?.status;
+    if (typeof name === 'string' && typeof status === 'string') out[name] = status;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/**
+ * Derive the outcome events for one captured harness command result. Returns `[]`
+ * when `resultText` is not a harness envelope (the command ran without `--json`,
+ * or the text is human rail) — honest, never fabricated.
+ *
+ * @param resultText the command's captured stdout (the JSON envelope, ideally)
+ * @param t          the event timestamp the adapter observed for the result
+ * @param isError    the harness's observed error flag (Claude tool_result `is_error`)
+ */
+export function outcomeEvents(resultText: string, t: string, isError = false): Event[] {
+  const env = parseEnvelope(resultText);
+  if (env === null) return [];
+  const verb = typeof env.command === 'string' && env.command.length > 0 ? env.command : null;
+  if (verb === null) return [];
+
+  const status = normalizeChecksStatus(env.status);
+  const events: Event[] = [];
+
+  // command_exit — the observed error flag wins; else derive from the verdict
+  // (a harness verb exits non-zero only on `error`/`fatal`).
+  const exit = isError || status === 'error' ? 1 : 0;
+  const ce: Event = { t, kind: 'command_exit', verb, exit };
+  if (typeof env.status === 'string') ce.status = env.status;
+  events.push(ce);
+
+  // checks — overall verdict + per-gate verdicts (names/statuses only).
+  if (verb === 'checks' && status !== null) {
+    const ck: Event = { t, kind: 'checks', status };
+    const gates = gateVerdicts(env.data);
+    if (gates !== null) ck.gates = gates;
+    events.push(ck);
+  }
+  return events;
+}

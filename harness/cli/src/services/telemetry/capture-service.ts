@@ -1,4 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
@@ -12,7 +13,21 @@ import {
   type HarnessSource,
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
-import { cursorPathFor, readCursor, sessionDirFor, writeCursor } from './cursor.js';
+import {
+  branchPathFor,
+  cursorPathFor,
+  flowCursorPathFor,
+  readBranch,
+  readCursor,
+  readFlowCursor,
+  sessionDirFor,
+  writeBranch,
+  writeCursor,
+  writeFlowCursor,
+} from './cursor.js';
+import type { Event } from './events.js';
+import { flowLogEvents } from './flow-log.js';
+import { flowEventFromFlightPlan } from './flow-nav.js';
 import {
   type Segment,
   type SegmentInput,
@@ -41,6 +56,8 @@ export interface CaptureDeps {
   clock: Clock;
   proc: ProcessPort;
   git?: GitPort;
+  /** Read-only SQLite access for adapters whose signal lives in a local db (Cursor). Optional. */
+  db?: DbPort;
   /** The harness command that triggered capture (the kernel preamble passes this — Phase 3). */
   command: string;
   /** Per-harness adapters; the null-default is always the final fallback (AC-12). */
@@ -52,9 +69,14 @@ interface DetectedHarness {
   sessionId: string;
 }
 
-/** Env → harness id, INNERMOST FIRST (Copilot vars nest under leaked Claude vars). */
+/**
+ * Env → harness id, INNERMOST FIRST. Copilot vars nest under leaked Claude vars;
+ * cursor-agent embeds a Claude runtime (it may leak `CLAUDE_CODE_SESSION_ID`), so
+ * `CURSOR_CONVERSATION_ID` is matched BEFORE `CLAUDE_CODE_SESSION_ID`.
+ */
 const HARNESS_ENV_CHAIN: readonly { env: string; harness: string }[] = [
   { env: 'COPILOT_AGENT_SESSION_ID', harness: 'copilot-cli' },
+  { env: 'CURSOR_CONVERSATION_ID', harness: 'cursor-agent' },
   { env: 'CLAUDE_CODE_SESSION_ID', harness: 'claude-code' },
 ];
 
@@ -115,28 +137,146 @@ function resolvePlanId(env: EnvPort, cwd: string): string | null {
   return planIdFromCwd(cwd);
 }
 
+/**
+ * Resolve the linked plan's `the-flow.json` path. `planIdFromCwd` supports running
+ * from ANY depth under `docs/plans/<id>/` (e.g. `…/tasks`), so naively joining
+ * `cwd + docs/plans/<id>` would double the segment and silently miss the flight
+ * plan (companion F001). The repo root is the cwd prefix BEFORE `/docs/plans/`
+ * (when present) — so the path is built from the root + the (possibly
+ * `HARNESS_PLAN_ID`-overridden) `planId`, which also resolves an explicit plan id
+ * that differs from the cwd's own plan (companion F005).
+ *
+ * Known limit: when cwd is NOT under any `docs/plans/<id>` (e.g. `…/harness/cli`)
+ * there is no repo-root signal, so the plan dir is assumed to hang off cwd — the
+ * same cwd≈repoRoot assumption the rest of capture already makes (path
+ * relativization). Explicit-env plan links then resolve only from the repo root.
+ */
+function flightPlanPath(cwd: string, planId: string): string {
+  const c = toPosix(cwd);
+  const idx = c.indexOf('/docs/plans/');
+  const root = idx !== -1 ? c.slice(0, idx) : c;
+  return posixJoin(root, 'docs', 'plans', planId, 'the-flow.json');
+}
+
+/**
+ * Read + parse the linked plan's `the-flow.json` ONCE (best-effort): no plan link,
+ * a missing file, or a malformed JSON → `null` (capture never breaks). The parsed
+ * object feeds BOTH the `flow` snapshot ({@link withFlowEvent}) and the `flow_log`
+ * replay projection ({@link flowLogEvents}), so the plan is read a single time.
+ */
+function readFlightPlan(fs: FsPort, cwd: string, planId: string | null): unknown | null {
+  if (planId === null) return null;
+  const text = fs.readText(flightPlanPath(cwd, planId));
+  if (text === null) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Prepend the command-level `flow` event — read from the linked plan's
+ * `the-flow.json` `nav` (AC-18, detail doc §4.4) — to the adapter's event stream,
+ * anchored to the window start so {@link computeRollup} attributes the window's
+ * gap-time to the current flight-plan stage (`flow_stage_time_s`). Best-effort:
+ * no parsed plan or an empty stream → unchanged (no fabricated stage). This is the
+ * current-stage ANCHOR; the `flow_log` projection (below) is the transition history.
+ */
+function withFlowEvent(parsed: unknown, stream: readonly Event[]): Event[] {
+  if (parsed === null || stream.length === 0) return [...stream];
+  const flow = flowEventFromFlightPlan(parsed, stream[0].t);
+  return flow === null ? [...stream] : [flow, ...stream];
+}
+
+/**
+ * Append the `flow_log` replay markers AFTER the window events (including the
+ * harness tail). They carry their own real `fired_at` and are EXCLUDED from the
+ * rollup (see `computeRollup`), so their possibly-older / backfilled times never
+ * distort gap/wall/stage math; a replay consumer sorts the concatenated session
+ * timeline by `t`. Appended last so they never shift the prepended `flow`/`branch`
+ * head or the harness tail's anchor (plan 035).
+ */
+function withFlowLogEvents(flowLog: readonly Event[], stream: readonly Event[]): Event[] {
+  return flowLog.length === 0 ? [...stream] : [...stream, ...flowLog];
+}
+
+/** Branch state for a capture: the current git branch, the prior one, and whether it changed. */
+interface BranchInfo {
+  current: string | null;
+  from: string | null;
+  changed: boolean;
+}
+
+/**
+ * Prepend a `branch` event when the git branch changed since the last capture of
+ * this session (branch-change detection is a git fact, computed in the service —
+ * NOT a per-harness transcript fact). The event (`to`/`from`) is the SINGLE source
+ * of truth for a switch — there is no `branch_changed` boolean; a consumer derives
+ * it from `event_stream.some(e => e.kind === 'branch')`.
+ *
+ * Anchored to the window start when there's a stream; on an EMPTY window (a switch
+ * with no other activity, e.g. `git checkout x` then `harness boot`) it anchors to
+ * the window-end `timecode` and becomes the sole event — so a switch is never lost
+ * for lack of a stream to anchor to. The exact switch time is unknown (it happened
+ * between two captures), so `t_precision` is always `anchored`. A branch switch is
+ * rare, so always-emitting barely touches the empty-stream / `rollup:null` case.
+ */
+function withBranchEvent(branch: BranchInfo, timecode: string, stream: readonly Event[]): Event[] {
+  if (!branch.changed || branch.current === null) return [...stream];
+  const t = stream.length > 0 ? stream[0].t : timecode;
+  const e: Event = { t, t_precision: 'anchored', kind: 'branch', to: branch.current };
+  if (branch.from !== null) e.from = branch.from;
+  return [e, ...stream];
+}
+
+/**
+ * Append a `harness` event for the command that triggered THIS capture (e.g.
+ * `boot`, `flow`) so harness commands are visible in the reconstructed timeline.
+ *
+ * Anchored to the LAST event's timestamp — NOT the capture clock — deliberately: a
+ * pure timeline marker that adds ZERO gap, so the (possibly idle) span between the
+ * last observed work and the command firing is never mis-attributed as agent
+ * working-time or stage-time. `t_precision:'anchored'` flags the inexact stamp.
+ *
+ * Appended ONLY to a NON-empty stream — a truly-empty window stays empty (rollup
+ * null preserved), and the top-level `command` still names it. Mirrors
+ * {@link withFlowEvent}/{@link withBranchEvent}'s no-op-on-empty contract. Detected
+ * agent-run harness verbs already arrive as `harness` events from the adapters;
+ * this adds only the triggering verb (not yet in the window's transcript at capture
+ * time, so it can't duplicate one).
+ */
+function withHarnessCommandEvent(command: string, stream: readonly Event[]): Event[] {
+  if (stream.length === 0 || command === '') return [...stream];
+  const last = stream[stream.length - 1];
+  return [...stream, { t: last.t, t_precision: 'anchored', kind: 'harness', verb: command }];
+}
+
 /** Merge detection context + adapter capabilities into a counts-only segment input. */
 function buildInput(
   deps: CaptureDeps,
   detected: DetectedHarness,
   window: SegmentWindow,
   caps: HarnessCapabilities,
-  cwd: string,
+  branch: BranchInfo,
+  planId: string | null,
+  flightPlan: unknown,
+  flowLog: readonly Event[],
 ): SegmentInput {
-  const planId = resolvePlanId(deps.env, cwd);
+  const timecode = deps.clock.nowIso();
   return {
     command: deps.command,
     harness: detected.harness,
     harness_session_id: detected.sessionId,
-    timecode: deps.clock.nowIso(),
+    timecode,
     window,
-    branch: deps.git?.currentBranch() ?? null,
-    branch_changed: caps.branch_changed ?? false,
+    branch: branch.current,
     tokens: caps.tokens ?? null,
     models: caps.models ?? {},
     effort: caps.effort ?? null,
     skills: caps.skills ?? {},
     tools: caps.tools ?? {},
+    user_prompts: caps.user_prompts ?? [],
     subagents: caps.subagents ?? [],
     files: caps.files ?? { written: [], edited: [] },
     plans_touched: planId !== null ? [planId] : [],
@@ -146,6 +286,16 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
+    // Compose the timeline: flow + branch prepend at the window start; the
+    // triggering harness command appends as a zero-gap marker at the window end;
+    // the flow_log replay markers append last (rollup-excluded, own real `t`).
+    event_stream: withFlowLogEvents(
+      flowLog,
+      withHarnessCommandEvent(
+        deps.command,
+        withBranchEvent(branch, timecode, withFlowEvent(flightPlan, caps.event_stream ?? [])),
+      ),
+    ),
   };
 }
 
@@ -184,6 +334,7 @@ function captureUnsafe(deps: CaptureDeps): void {
   const source: HarnessSource = {
     env: deps.env,
     fs: deps.fs,
+    db: deps.db,
     repoRoot: cwd,
     harness: detected.harness,
   };
@@ -195,9 +346,33 @@ function captureUnsafe(deps: CaptureDeps): void {
   const position = adapter.currentPosition?.(source) ?? null;
   const window = computeWindow(prev, position);
 
+  // Branch-change detection: compare the live git branch to the one persisted on
+  // the prior capture of this session. First capture (no prior) → not a change.
+  const branchPath = branchPathFor(cwd, detected.sessionId);
+  const priorBranch = readBranch(deps.fs, branchPath);
+  const currentBranch = deps.git?.currentBranch() ?? null;
+  const branch: BranchInfo = {
+    current: currentBranch,
+    from: priorBranch,
+    changed: priorBranch !== null && currentBranch !== null && priorBranch !== currentBranch,
+  };
+
+  // Flow replay: read the linked flight plan ONCE, then window its append-only
+  // `events[]` log by an array OFFSET kept per (session, plan) — collision-proof,
+  // unlike a `fired_at` watermark (plan 035).
+  const planId = resolvePlanId(deps.env, cwd);
+  const flightPlan = readFlightPlan(deps.fs, cwd, planId);
+  const flowCursorPath =
+    planId !== null ? flowCursorPathFor(cwd, detected.sessionId, planId) : null;
+  const priorFlowOffset = flowCursorPath !== null ? readFlowCursor(deps.fs, flowCursorPath) : 0;
+  const flowLog = flowLogEvents(flightPlan, priorFlowOffset);
+
   const ctx: HarnessContext = { ...source, window };
   const caps = adapter.extract(ctx);
-  const segment: Segment = serializeSegment(buildInput(deps, detected, window, caps, cwd), cwd);
+  const segment: Segment = serializeSegment(
+    buildInput(deps, detected, window, caps, branch, planId, flightPlan, flowLog.events),
+    cwd,
+  );
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).
@@ -209,6 +384,10 @@ function captureUnsafe(deps: CaptureDeps): void {
   deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
   deps.fs.rename(tmp, entryPath);
 
-  // Advance the high-water mark crash-safely.
+  // Advance the high-water mark crash-safely, then remember this capture's branch
+  // so the NEXT capture can detect a switch, and advance the flow-log offset so
+  // each flight-plan event is surfaced exactly once.
   writeCursor(deps.fs, cursorPath, window.to);
+  if (currentBranch !== null) writeBranch(deps.fs, branchPath, currentBranch);
+  if (flowCursorPath !== null) writeFlowCursor(deps.fs, flowCursorPath, flowLog.nextOffset);
 }

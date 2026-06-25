@@ -1,10 +1,12 @@
+import type { DbPort } from '../../../adapters/db/db-port.js';
 import type { EnvPort } from '../../../adapters/env/env-port.js';
 import type { FsPort } from '../../../adapters/fs/fs-port.js';
+import type { Event } from '../events.js';
 import type {
   SegmentCompaction,
   SegmentFiles,
   SegmentModelStat,
-  SegmentSubagent,
+  SegmentSubagentInput,
   SegmentThinking,
   SegmentTokens,
   SegmentWindow,
@@ -28,6 +30,12 @@ import type {
 export interface HarnessSource {
   env: EnvPort;
   fs: FsPort;
+  /**
+   * Read-only SQLite access for harnesses whose richer signal lives in a local
+   * db (e.g. Cursor's `state.vscdb` model attribution). Optional: adapters that
+   * read only text files never touch it, and the null-default never has one.
+   */
+  db?: DbPort;
   /** Repo root (posix) — for path relativization. */
   repoRoot: string;
   /** The detected harness id this extraction is for. */
@@ -52,13 +60,19 @@ export interface HarnessCapabilities {
   effort?: string | null;
   skills?: Record<string, number> | null;
   tools?: Record<string, number> | null;
-  subagents?: SegmentSubagent[] | null;
+  user_prompts?: number[] | null;
+  subagents?: SegmentSubagentInput[] | null;
   files?: SegmentFiles | null;
-  branch_changed?: boolean | null;
   compactions?: SegmentCompaction[] | null;
   api_errors?: number | null;
   local_commands?: number | null;
   thinking?: SegmentThinking | null;
+  /**
+   * v2.0 — the ordered, timestamped event stream for the window (the substrate;
+   * the rollup is derived from it by the serializer). `null` when the harness's
+   * source carries no timestamps (e.g. a transcript without `timestamp` lines).
+   */
+  event_stream?: Event[] | null;
 }
 
 /** A per-harness capability module (Claude / Copilot / Cursor / …). The plug-in seam. */
@@ -95,12 +109,13 @@ export const nullDefaultAdapter: HarnessAdapter = {
     effort: null,
     skills: null,
     tools: null,
+    user_prompts: null,
     subagents: null,
     files: null,
-    branch_changed: null,
     compactions: null,
     api_errors: null,
     local_commands: null,
     thinking: null,
+    event_stream: null,
   }),
 };

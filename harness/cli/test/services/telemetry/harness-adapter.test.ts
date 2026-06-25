@@ -8,6 +8,7 @@ import {
 } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import {
   SEGMENT_FIELD_KEYS,
+  SEGMENT_REQUIRED_KEYS,
   type SegmentInput,
   serializeSegment,
 } from '../../../src/services/telemetry/segment.js';
@@ -82,16 +83,18 @@ describe('T004 — a future harness with only the null-default still yields a va
       unknown
     >;
 
-    // every schema field present (no schema change to add a harness)
-    for (const key of SEGMENT_FIELD_KEYS) {
-      expect(seg[key], `field "${key}" present`).toBeDefined();
+    // every always-present field emitted, every emitted key allowlisted (no schema
+    // change to add a harness); empty v1-compat collections are omitted (v2)
+    for (const key of SEGMENT_REQUIRED_KEYS) {
+      expect(seg[key], `required field "${key}" present`).toBeDefined();
     }
+    for (const key of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(key);
     // capabilities defaulted, never estimated
     expect(seg.tokens).toBeNull();
     expect(seg.effort).toBeNull();
-    expect(seg.thinking).toBeNull();
-    expect(seg.skills).toEqual({});
-    expect(seg.subagents).toEqual([]);
+    expect(seg.thinking).toBeUndefined();
+    expect(seg.skills).toBeUndefined();
+    expect(seg.subagents).toBeUndefined();
     expect(seg.harness).toBe('future-harness');
   });
 });

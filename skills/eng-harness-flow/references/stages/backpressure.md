@@ -16,6 +16,8 @@
 
 This verb is **best-effort and advisory**. It exists to *inform a conversation*, not to police one.
 
+"Advisory" describes this survey's **authority over the plan** — it never gates, blocks, or flips a plan to DRAFT. It is **not** the agent's licence to skip the survey before building: the agent runs it as part of "prove before you build," and the *user* may wave it past. Running it and being overruled is the contract; silently not running it is the failure mode.
+
 - It **NEVER blocks** anything and **NEVER flips a plan to DRAFT**.
 - The certainty rating is **qualitative** (Strong / Partial / Weak). It emits **no numeric score, percentage, floor, or SLA**.
 - It produces **one artifact** (`backpressure-coverage.md`) and **no persisted index / rollup / ledger** files. Cross-cutting views are recomputed at read time, never stored.

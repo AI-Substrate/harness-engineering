@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-1.0.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.0.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -13,20 +13,13 @@
     "timecode",
     "window",
     "branch",
-    "branch_changed",
     "tokens",
-    "models",
     "effort",
-    "skills",
-    "tools",
-    "subagents",
-    "files",
-    "plans_touched",
-    "events",
-    "thinking"
+    "event_stream",
+    "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "1.0" },
+    "schema_version": { "type": "string", "const": "2.0" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
     "harness_session_id": { "type": "string" },
@@ -42,7 +35,6 @@
       }
     },
     "branch": { "type": ["string", "null"] },
-    "branch_changed": { "type": "boolean" },
     "tokens": {
       "type": ["object", "null"],
       "additionalProperties": false,
@@ -86,19 +78,21 @@
       "type": "object",
       "additionalProperties": { "type": "integer" }
     },
+    "user_prompts": { "type": "array", "items": { "type": "integer" } },
     "subagents": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["type", "agent_name", "model", "status", "tokens", "tool_uses"],
+        "required": ["count"],
         "properties": {
-          "type": { "type": ["string", "null"] },
-          "agent_name": { "type": ["string", "null"] },
-          "model": { "type": ["string", "null"] },
-          "status": { "type": ["string", "null"] },
-          "tokens": { "type": ["integer", "null"] },
-          "tool_uses": { "type": ["integer", "null"] }
+          "type": { "type": "string" },
+          "agent_name": { "type": "string" },
+          "model": { "type": "string" },
+          "status": { "type": "string" },
+          "count": { "type": "integer" },
+          "tokens": { "type": "integer" },
+          "tool_uses": { "type": "integer" }
         }
       }
     },
@@ -140,6 +134,114 @@
       "required": ["blocks"],
       "properties": {
         "blocks": { "type": "integer" }
+      }
+    },
+    "event_stream": {
+      "type": "array",
+      "description": "v2.0 ordered timestamped event stream. additionalProperties:false over the union of all per-kind fields is a second line of defense behind serializeEvent's allowlist-by-construction.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["t", "kind"],
+        "properties": {
+          "t": { "type": "string" },
+          "t_precision": { "enum": ["exact", "anchored", "interpolated", "interval"] },
+          "kind": {
+            "enum": [
+              "prompt",
+              "turn",
+              "tools",
+              "skill",
+              "flow",
+              "flow_log",
+              "branch",
+              "harness",
+              "checks",
+              "command_exit",
+              "subagent",
+              "compaction",
+              "model",
+              "api_error"
+            ]
+          },
+          "words": { "type": "integer" },
+          "dur_s": { "type": "integer" },
+          "in": { "type": "integer" },
+          "out": { "type": "integer" },
+          "cache_read": { "type": "integer" },
+          "cache_create": { "type": "integer" },
+          "model": { "type": "string" },
+          "name": { "type": "string" },
+          "count": { "type": "integer" },
+          "span_s": { "type": "integer" },
+          "status": { "type": "string" },
+          "flow": { "type": "string" },
+          "stage": { "type": "string" },
+          "op": { "type": "string" },
+          "node": { "type": "string" },
+          "type": { "type": "string" },
+          "edge_op": { "type": "string" },
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "verb": { "type": "string" },
+          "exit": { "type": "integer" },
+          "gates": { "type": "object", "additionalProperties": { "type": "string" } },
+          "signature": { "type": "string" }
+        }
+      }
+    },
+    "rollup": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["activity", "flow_stage_time_s", "skills", "tokens", "tools", "outcomes"],
+      "properties": {
+        "activity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["wall_s", "agent_working_s", "human_s", "idle_s", "working_ratio"],
+          "properties": {
+            "wall_s": { "type": "integer" },
+            "agent_working_s": { "type": "integer" },
+            "human_s": { "type": "integer" },
+            "idle_s": { "type": "integer" },
+            "working_ratio": { "type": "number" }
+          }
+        },
+        "flow_stage_time_s": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "skills": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["runs", "abandoned", "superseded"],
+            "properties": {
+              "runs": { "type": "integer" },
+              "abandoned": { "type": "integer" },
+              "superseded": { "type": "integer" }
+            }
+          }
+        },
+        "tokens": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["in", "out", "cache_read", "cache_create"],
+          "properties": {
+            "in": { "type": "integer" },
+            "out": { "type": "integer" },
+            "cache_read": { "type": "integer" },
+            "cache_create": { "type": "integer" }
+          }
+        },
+        "tools": { "type": "object", "additionalProperties": { "type": "integer" } },
+        "outcomes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["exits"],
+          "properties": {
+            "checks": { "type": "string" },
+            "exits": { "type": "object", "additionalProperties": { "type": "integer" } }
+          }
+        }
       }
     }
   }

@@ -207,6 +207,7 @@ Reuse the record/provenance substrate and hexagonal ports to add a `telemetry` s
 | 2 | Per-harness capability adapters | telemetry | Claude + Copilot adapters behind one capability interface (Cursor slot null) | Phase 1 |
 | 3 | Auto-capture kernel preamble | cli-kernel | Trigger capture on every command, fail-safe, zero output/exit impact | Phases 1–2 |
 | 4 | Durable sync: GitWritePort + sharded refs + docs | git / sync / docs/measures | Flush buffer → `refs/harness-telemetry/<date>/<session>` shards via plumbing (Amendment A1); guide + measures contract | Phase 1 |
+| 5 | Event-stream v2: timeline + agent-work detection (Amendment A2) | telemetry / docs | Promote counts→**timestamped event stream** (turns, tools-bursts, skills, flow-stages, outcomes) so a session timeline + agent/human/idle time is reconstructable; cursor model already shipped | Phases 1–4 |
 
 #### Phase 1: Segment substrate & capture core
 **Objective**: Establish the normalized counts-only segment and a pure capture service that buffers "since last command" to gitignored temp.
@@ -273,6 +274,34 @@ Reuse the record/provenance substrate and hexagonal ports to add a `telemetry` s
 | 4.4 | Implement sync-service + core `harness telemetry sync` verb + best-effort per-shard push (ambient git auth) | sync | Pushes only `refs/harness-telemetry/*` shards; failed push doesn't error host; no `refs/heads/*` touched | AC-07, AC-14; verb named; Amendment A1 |
 | 4.5 | Write `docs/how/telemetry.md` (the guide) | docs/measures | Covers capture model, enumerated segment schema, `HARNESS_NO_TELEMETRY`, sync, offline behavior, trailing-tail caveat | AC-10 |
 | 4.6 | Extend `docs/how/harness-value-measures.md` with the segment **contract** (which fields are available to the measures) at team/repo grain — **contract doc only, no measure computation** | docs/measures | Hand-traced segment example; states team/repo-only; commit-author/`agent` never surfaced per-individual | AC-10, AC-11; scope-clarified by validation |
+
+#### Phase 5: Event-stream v2 — timeline + agent-work detection (Amendment A2)
+**Objective**: Promote the counts-only segment to a **timestamped event stream** so a session's *shape* (order, time-gaps, when the agent was working) is reconstructable per-session and aggregatable across a team — without changing the privacy stance (counts + names + timestamps only).
+**Domain**: telemetry / docs
+**Delivers**: `events[]` + derived `rollup{}` on the segment (schema v2.0); per-harness event emission in the existing adapters; gap classification (agent/human/idle); flow-stage + skill-span + outcome events; updated guide + measures contract; the two design docs.
+**Depends on**: Phases 1–4 (segment, adapters, capture core, sync) — additive; capture core/windowing/buffer/sync/kill-switch unchanged.
+**Design docs**: [`event-schema-v2.md`](./event-schema-v2.md) (contract) · [`event-schema-v2-detail.md`](./event-schema-v2-detail.md) (field-by-field, source matrix, algorithms). Proven by the spike in `scratch/telem/poc/` (real Claude/Copilot/Cursor timelines).
+**Already landed (pre-amendment)**: cursor **model attribution** via a read-only `DbPort` (`node:sqlite`) joining the IDE store on `CURSOR_CONVERSATION_ID` — the seam Phase 5 builds on.
+**Key risks**: scope creep into per-action fidelity — stay at "shape" grain (tool *bursts*, not every call); cursor tool/skill beats are untimed (transcript has no timestamps) — honest ceiling, not a bug.
+
+| # | Task | Domain | Success Criteria | Notes |
+|---|------|--------|-----------------|-------|
+| 5.1 | Write tests for the v2 event types + `rollup` derivation (incl. counts-only privacy control on `events[]`) | telemetry | Schema validates a golden event stream; planted secret/abs-path in any event field never serializes; rollup is a pure function of `events[]` | TDD-first; AC-04 carried to events; AC-15 |
+| 5.2 | Extend `segment.ts` + `segment.schema.json` to v2.0: add `events[]` + `rollup{}`; keep v1 counts as a derived compat view | telemetry | Golden v2 segment validates; v1 fields equal the rollup; schema_version `2.0` | AC-16; migration §8 of detail doc |
+| 5.3 | Gap classification + rollup engine (agent/human/**idle**, `IDLE_CAP`, working_ratio; tool-burst rule `BURST_N`) | telemetry | agent/human/idle sum to wall; idle = gap-before-prompt > cap; ratio excludes idle; matches POC numbers on a fixture | AC-17; spike-proven; knobs configurable |
+| 5.4 | Emit `events[]` from the Claude + Copilot adapters (turns w/ dur+tokens, tools-bursts, skills w/ status, harness/flow/outcomes) | telemetry | Adapters produce ordered events from golden fixtures; copilot token join preserved | AC-16; against existing `HarnessAdapter` |
+| 5.5 | Emit `events[]` from the Cursor adapter via the `DbPort` bubbles (prompts, turns w/ dur, model; tokens null; tool/skill untimed in rollup) | telemetry | Cursor turn-grained timeline + working ratio from bubble `createdAt`; tokens null, never estimated | builds on shipped DbPort; honest ceiling |
+| 5.6 | Skill-status inference (completed/abandoned/superseded/active) + flow-stage events read from `the-flow.json` nav | telemetry | Restart→abandoned, different-skill→superseded, session-end→active; flow-stage time attributed from nav, not args | AC-18; observable transitions only, no scoring |
+| 5.7 | **Outcome events**: `checks` (ok/degraded/error + gates), `command_exit` (exit code) | telemetry | Captured for harness commands; codes only, no message bodies | AC-19; commits intentionally **excluded** (git is queryable later) |
+| 5.8 | **Session-end flush** so the trailing post-last-command tail isn't lost (or document accepting tail loss) | telemetry / cli-kernel | A session-end hook flushes a final segment; reassembly tiles the full session | detail doc §6; resolves the tail gap |
+| 5.9 | Update the guide `docs/how/telemetry.md` for v2 (event stream, working_ratio, idle, per-harness ceilings) + extend `docs/how/harness-value-measures.md` with the timeline/working-time measures (team/repo grain) | docs/measures | Guide covers events + rollup + reassembly; measures doc adds working-time/flow-stage measures, still team/repo-only | AC-10/AC-11 carried forward; **"update docs/guide" per amendment** |
+
+**Phase 5 acceptance (local to this phase)**
+- **AC-15** — every field in `events[]` is counts/names/timestamps only; a planted-secret control fails if any free-form content reaches an event.
+- **AC-16** — segment v2.0 carries `events[]` + `rollup{}`; v1 count fields equal the rollup (no drift).
+- **AC-17** — gap classification yields agent/human/**idle** summing to wall-clock; `working_ratio` excludes idle; matches the POC fixture numbers.
+- **AC-18** — skill spans carry an inferred `status`; flow-stage time is attributed from `the-flow.json` nav.
+- **AC-19** — `checks`/`command_exit` outcome events captured (codes/verdicts only); commits excluded by design.
 
 ### Acceptance Coverage Map
 | AC | Covered by | Verified in |

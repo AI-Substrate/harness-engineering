@@ -11,10 +11,13 @@ import type { HarnessSource } from '../../../src/services/telemetry/adapters/har
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 
 /**
- * T005 (plan 2.4 · AC-03, AC-04) — the Copilot process-log adapter, proven
- * against sanitized golden fixtures. Tokens come from the process-log
- * `assistant_usage` events ONLY (never `session.shutdown` — not live). Expected
- * totals are HAND-DERIVED. Privacy control deep-scans the serialized segment.
+ * T005 (plan 2.4 · AC-03, AC-04) — the Copilot adapter, proven against sanitized
+ * golden fixtures in the LIVE Copilot CLI format (June 2026): tokens from the
+ * process-log multi-line `[Telemetry] cli.telemetry:` `assistant_usage` blocks
+ * (metrics nested, model under properties, session_id top-level); effort/tools/
+ * subagents from `events.jsonl`. Per-command attribution: process-log blocks count
+ * only when their `interaction_id` is in the windowed events. Expected totals are
+ * HAND-DERIVED. Privacy control deep-scans the serialized segment.
  */
 
 const REPO = '/repo';
@@ -49,7 +52,8 @@ function source(fs: FakeFs): HarnessSource {
   return { env: env(), fs, repoRoot: REPO, harness: 'copilot-cli' };
 }
 
-const WINDOW = { since: 'session-start' as const, from: 0, to: 5 };
+/** A window spanning the whole 11-line events fixture (the interactive single-command case). */
+const WINDOW = { since: 'session-start' as const, from: 0, to: 99 };
 
 describe('copilotAdapter — identity + paths', () => {
   it('handles only the copilot-cli harness id', () => {
@@ -69,29 +73,33 @@ describe('copilotAdapter — identity + paths', () => {
 describe('copilotAdapter.extract — token math from process-log assistant_usage (AC-03, hand-derived)', () => {
   const caps = copilotAdapter.extract({ ...source(fullFs()), window: WINDOW });
 
-  it('sums assistant_usage (uncached→input, cached→cache_read, reasoning folded into output); never session.shutdown', () => {
-    // ev1: uncached 80 / cached 100-80=20 / out 50+10=60 ; ev2: 40 / 20 / 30+5=35
+  it('sums metrics across blocks (uncached→input, cache_read/write explicit, reasoning folded into output)', () => {
+    // block1: in 80 / cache_read 20 / cache_write 0 / out 50+10=60
+    // block2: in 40 / cache_read 20 / cache_write 5 / out 30+5=35
     expect(caps.tokens).toEqual({
       input: 120,
       output: 95,
-      cache_create: 0,
+      cache_create: 5,
       cache_read: 40,
-      total: 255,
+      total: 260,
       subagent_tokens: 0,
-      grand_total: 255,
+      grand_total: 260,
     });
   });
 
-  it('derives per-model turns/output from assistant_usage', () => {
+  it('derives per-model turns/output from assistant_usage (model under properties)', () => {
     expect(caps.models).toEqual({ 'claude-opus-4-8': { turns: 2, output_tokens: 95 } });
   });
 
-  it('reads effort from session.model_change and tools from tool.execution (name only)', () => {
+  it('reads effort + tools (deduped per call) and the sans-text prompt signal', () => {
     expect(caps.effort).toBe('high');
-    expect(caps.tools).toEqual({ bash: 1, str_replace: 1 });
+    expect(caps.tools).toEqual({ bash: 2 });
+    expect(caps.user_prompts).toEqual([6]); // 6-word prompt; the text (incl. its secret) is never kept
+    // bash/harness commands were dropped from the contract — the harness verb now
+    // surfaces only as a `harness` event (asserted via the event stream below).
   });
 
-  it('extracts subagent identity from the process log; tokens null (not correlatable)', () => {
+  it('extracts subagent identity from events subagent.completed; tokens null (not correlatable)', () => {
     expect(caps.subagents).toEqual([
       {
         type: null,
@@ -104,19 +112,31 @@ describe('copilotAdapter.extract — token math from process-log assistant_usage
     ]);
   });
 
-  it('ignores assistant_usage + subagents from OTHER sessions in the same log (F002)', () => {
-    // The fixture's process log also carries a sess-OTHER-9 assistant_usage with
-    // 999999 tokens and an "intruder" subagent. The per-record session_id filter
-    // must keep totals at 255 / one subagent — never the contaminated numbers.
-    expect(caps.tokens?.total).toBe(255);
-    expect(caps.subagents).toHaveLength(1);
-    expect(caps.subagents?.[0]?.agent_name).toBe('explorer');
+  it('ignores assistant_usage from OTHER sessions in the same log even on a matching interaction (F002)', () => {
+    // The fixture's process log carries a sess-OTHER-9 assistant_usage with 999999
+    // tokens AND interaction_id int-1 (same as ours). The session_id gate must keep
+    // totals at 260 — the hard filter is session_id, not interaction_id.
+    expect(caps.tokens?.total).toBe(260);
   });
 
-  it('leaves files/compactions/thinking null (Phase 2 scope — codeChanges only in non-live shutdown)', () => {
+  it('leaves files/compactions/thinking null (Phase 2 scope)', () => {
     expect(caps.files ?? null).toBeNull();
     expect(caps.compactions ?? null).toBeNull();
     expect(caps.thinking ?? null).toBeNull();
+  });
+});
+
+describe('copilotAdapter.extract — per-command window attribution', () => {
+  it('attributes process-log tokens only when the interaction is in the window slice', () => {
+    // A window over just the first event line (session.start) — no interaction, no
+    // model_change, no tools: a harness command that bracketed no Copilot LLM work.
+    const narrow = copilotAdapter.extract({
+      ...source(fullFs()),
+      window: { since: 'last-command', from: 0, to: 1 },
+    });
+    expect(narrow.tokens).toBeNull(); // no in-window interaction → nothing attributed
+    expect(narrow.effort).toBeNull(); // session.model_change is outside [0,1)
+    expect(narrow.tools ?? null).toBeNull();
   });
 });
 
@@ -136,6 +156,9 @@ describe('copilotAdapter.extract — PRIVACY (AC-04 adapter boundary, deep-scan)
       effort: caps.effort,
       skills: caps.skills ?? {},
       tools: caps.tools ?? {},
+      bash_commands: caps.bash_commands ?? [],
+      harness_commands: caps.harness_commands ?? [],
+      user_prompts: caps.user_prompts ?? [],
       subagents: caps.subagents ?? [],
       files: caps.files ?? { written: [], edited: [] },
       plans_touched: [],
@@ -154,7 +177,7 @@ describe('copilotAdapter.extract — PRIVACY (AC-04 adapter boundary, deep-scan)
 });
 
 describe('copilotAdapter.extract — null-on-absence (AC-03)', () => {
-  it('missing process log → tokens/models null, but events-derived effort/tools survive', () => {
+  it('missing process log → tokens/models null, but events-derived effort/tools/subagents survive', () => {
     const fs = new FakeFs(
       { [copilotEventsPath(HOME, SESSION)]: EVENTS },
       { [copilotLogsDir(HOME)]: [] },
@@ -162,9 +185,10 @@ describe('copilotAdapter.extract — null-on-absence (AC-03)', () => {
     const caps = copilotAdapter.extract({ ...source(fs), window: WINDOW });
     expect(caps.tokens).toBeNull();
     expect(caps.models ?? null).toBeNull();
-    expect(caps.subagents ?? null).toBeNull();
     expect(caps.effort).toBe('high');
-    expect(caps.tools).toEqual({ bash: 1, str_replace: 1 });
+    expect(caps.tools).toEqual({ bash: 2 });
+    expect(caps.user_prompts).toEqual([6]);
+    expect(caps.subagents?.[0]?.agent_name).toBe('explorer');
   });
 
   it('missing everything → all-null (no throw)', () => {
@@ -175,7 +199,7 @@ describe('copilotAdapter.extract — null-on-absence (AC-03)', () => {
   });
 
   it('currentPosition returns the events line count, null when absent', () => {
-    expect(copilotAdapter.currentPosition?.(source(fullFs()))).toBe(5);
+    expect(copilotAdapter.currentPosition?.(source(fullFs()))).toBe(11);
     expect(copilotAdapter.currentPosition?.(source(new FakeFs({})))).toBeNull();
   });
 });

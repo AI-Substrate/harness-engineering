@@ -1,7 +1,12 @@
+import { commandSignatures, harnessSubcommand } from '../command-signature.js';
+import { buildEventStream } from '../event-builder.js';
+import type { Event } from '../events.js';
+import { outcomeEvents } from '../outcome-events.js';
+import type { SkillOpen, ToolCall } from '../rollup.js';
 import type {
   SegmentCompaction,
   SegmentModelStat,
-  SegmentSubagent,
+  SegmentSubagentInput,
   SegmentTokens,
 } from '../segment.js';
 import type { HarnessAdapter, HarnessCapabilities, HarnessContext } from './harness-adapter.js';
@@ -32,6 +37,20 @@ function nonEmptyLines(content: string): string[] {
   return content.split('\n').filter((l) => l.trim() !== '');
 }
 
+/** A tool_result's text payload — a raw string, or the joined `text` of its blocks. */
+function toolResultText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((b) => {
+        const t = (b as { text?: unknown })?.text;
+        return typeof t === 'string' ? t : '';
+      })
+      .join('');
+  }
+  return '';
+}
+
 /**
  * `~/.claude/projects/<mangled repoRoot>/<sessionId>.jsonl` — the project-dir
  * mangle replaces every non-alphanumeric char with `-`, preserving the leading
@@ -57,6 +76,32 @@ function nullIfEmptyMap(map: Record<string, number>): Record<string, number> | n
   return Object.keys(map).length > 0 ? map : null;
 }
 
+/** Word count of a text blob (whitespace-split); 0 when blank. */
+function wordCount(text: string): number {
+  const t = text.trim();
+  return t === '' ? 0 : t.split(/\s+/).length;
+}
+
+/**
+ * Word count of a user turn that is a REAL prompt (string content or text blocks),
+ * or `null` when it is a tool_result / empty (not a prompt). Counts ONLY — the
+ * prompt text itself is never retained (AC-04).
+ */
+function userPromptWords(message: Record<string, unknown>): number | null {
+  const content = message.content;
+  if (typeof content === 'string') return content.trim() === '' ? null : wordCount(content);
+  if (Array.isArray(content)) {
+    const blocks = content as Record<string, unknown>[];
+    if (blocks.some((b) => b?.type === 'tool_result')) return null; // a tool result, not a prompt
+    const text = blocks
+      .filter((b) => b?.type === 'text' && typeof b.text === 'string')
+      .map((b) => b.text as string)
+      .join(' ');
+    return text.trim() === '' ? null : wordCount(text);
+  }
+  return null;
+}
+
 const nullCaps: HarnessCapabilities = {
   harness_session_id: null,
   tokens: null,
@@ -66,11 +111,11 @@ const nullCaps: HarnessCapabilities = {
   tools: null,
   subagents: null,
   files: null,
-  branch_changed: null,
   compactions: null,
   api_errors: null,
   local_commands: null,
   thinking: null,
+  event_stream: null,
 };
 
 export const claudeAdapter: HarnessAdapter = {
@@ -110,13 +155,30 @@ export const claudeAdapter: HarnessAdapter = {
     const tools: Record<string, number> = {};
     const written: string[] = [];
     const edited: string[] = [];
+    const userPrompts: number[] = []; // word count of each real user prompt in the window
     const compactions: SegmentCompaction[] = [];
     let thinkingBlocks = 0;
 
     // Subagent correlation: Agent tool_use id → its subagent_type, joined to the
     // matching tool_result's inline <usage> block.
     const agentTypeById = new Map<string, string | null>();
-    const subagents: SegmentSubagent[] = [];
+    const subagents: SegmentSubagentInput[] = [];
+
+    // Outcome correlation (AC-19): Bash tool_use ids whose command IS a harness
+    // sub-command — ONLY their tool_results are parsed as outcome envelopes, so a
+    // non-Bash result that happens to be envelope-shaped JSON (e.g. a `Read` of a
+    // fixture) can't fabricate `checks`/`command_exit` events (companion F003).
+    const harnessBashIds = new Set<string>();
+
+    // v2.0 event-stream collectors — built ONLY when the transcript lines carry a
+    // `timestamp` (real transcripts do; a timestamp-less source → event_stream null).
+    const direct: Event[] = [];
+    const toolCalls: ToolCall[] = [];
+    const skillOpens: SkillOpen[] = [];
+    const commandObs: { cmd: string; t: string }[] = [];
+    let anyTs = false;
+    let prevTsMs: number | null = null;
+    let lastModel: string | null = null;
 
     for (const line of lines) {
       let obj: Record<string, unknown>;
@@ -124,6 +186,15 @@ export const claudeAdapter: HarnessAdapter = {
         obj = JSON.parse(line) as Record<string, unknown>;
       } catch {
         continue; // tolerate a malformed line
+      }
+
+      const ts = typeof obj.timestamp === 'string' ? obj.timestamp : null;
+      const tsMs = ts !== null ? Date.parse(ts) : null;
+      // gap from the PREVIOUS timed line → this turn's dur_s; then advance the cursor.
+      const gapMs = tsMs !== null && prevTsMs !== null ? tsMs - prevTsMs : null;
+      if (tsMs !== null && !Number.isNaN(tsMs)) {
+        anyTs = true;
+        prevTsMs = tsMs;
       }
 
       if (obj.type === 'compaction') {
@@ -135,6 +206,7 @@ export const claudeAdapter: HarnessAdapter = {
             post_tokens: typeof meta.postTokens === 'number' ? meta.postTokens : 0,
           });
         }
+        if (ts !== null) direct.push({ t: ts, kind: 'compaction' });
         continue;
       }
 
@@ -151,18 +223,42 @@ export const claudeAdapter: HarnessAdapter = {
         if (id !== '' && usage && !seenMessageIds.has(id)) {
           seenMessageIds.add(id);
           const out = typeof usage.output_tokens === 'number' ? usage.output_tokens : 0;
-          input += typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
-          output += out;
-          cacheCreate +=
+          const inThis = typeof usage.input_tokens === 'number' ? usage.input_tokens : 0;
+          const ccThis =
             typeof usage.cache_creation_input_tokens === 'number'
               ? usage.cache_creation_input_tokens
               : 0;
-          cacheRead +=
+          const crThis =
             typeof usage.cache_read_input_tokens === 'number' ? usage.cache_read_input_tokens : 0;
+          input += inThis;
+          output += out;
+          cacheCreate += ccThis;
+          cacheRead += crThis;
           const stat = models[model] ?? { turns: 0, output_tokens: 0 };
           stat.turns += 1;
           stat.output_tokens += out;
           models[model] = stat;
+
+          // v2.0 turn event (one per deduped assistant message). dur_s ≈ wall gap
+          // from the previous timed line into this turn; a model switch emits a
+          // `model` event just before the turn.
+          if (ts !== null) {
+            if (model !== lastModel) {
+              direct.push({ t: ts, kind: 'model', model });
+              lastModel = model;
+            }
+            const durS = gapMs !== null ? Math.max(0, Math.round(gapMs / 1000)) : 0;
+            direct.push({
+              t: ts,
+              kind: 'turn',
+              dur_s: durS,
+              in: inThis,
+              out,
+              cache_read: crThis,
+              cache_create: ccThis,
+              model,
+            });
+          }
         }
 
         for (const block of blocks) {
@@ -171,9 +267,11 @@ export const claudeAdapter: HarnessAdapter = {
           } else if (block.type === 'tool_use') {
             const name = typeof block.name === 'string' ? block.name : 'unknown';
             increment(tools, name);
+            if (ts !== null) toolCalls.push({ name, t: ts });
             const tInput = (block.input as Record<string, unknown> | undefined) ?? {};
             if (name === 'Skill' && typeof tInput.skill === 'string') {
               increment(skills, tInput.skill);
+              if (ts !== null) skillOpens.push({ name: tInput.skill, t: ts });
             } else if (name === 'Agent') {
               const id = typeof block.id === 'string' ? block.id : '';
               if (id !== '') {
@@ -186,13 +284,44 @@ export const claudeAdapter: HarnessAdapter = {
               edited.push(tInput.file_path);
             } else if (name === 'Write' && typeof tInput.file_path === 'string') {
               written.push(tInput.file_path);
+            } else if (name === 'Bash' && typeof tInput.command === 'string') {
+              if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
+              // Mark this Bash call as a harness invocation so ONLY its result is
+              // parsed for outcome events (companion F003).
+              const id = typeof block.id === 'string' ? block.id : '';
+              if (
+                id !== '' &&
+                commandSignatures(tInput.command).some((sig) => harnessSubcommand(sig) !== null)
+              ) {
+                harnessBashIds.add(id);
+              }
             }
           }
         }
       } else if (obj.type === 'user') {
+        const words = userPromptWords(message);
+        if (words !== null) {
+          userPrompts.push(words);
+          if (ts !== null) direct.push({ t: ts, kind: 'prompt', words });
+        }
         for (const block of blocks) {
           if (block.type !== 'tool_result') continue;
           const refId = typeof block.tool_use_id === 'string' ? block.tool_use_id : '';
+
+          // Outcome events (AC-19): a harness command's result envelope → `checks`
+          // and `command_exit` — ONLY for a tool_result produced by a harness Bash
+          // call (companion F003). Reads only codes/verdicts; non-envelope output
+          // (rail mode, no `--json`) yields nothing.
+          if (ts !== null && harnessBashIds.has(refId)) {
+            for (const e of outcomeEvents(
+              toolResultText(block.content),
+              ts,
+              block.is_error === true,
+            )) {
+              direct.push(e);
+            }
+          }
+
           if (!agentTypeById.has(refId)) continue;
           const text = typeof block.content === 'string' ? block.content : '';
           const usageMatch = /<usage>([\s\S]*?)<\/usage>/.exec(text);
@@ -212,9 +341,31 @@ export const claudeAdapter: HarnessAdapter = {
             tokens,
             tool_uses: toolUses,
           });
+          if (ts !== null) {
+            direct.push({
+              t: ts,
+              kind: 'subagent',
+              name: agentTypeById.get(refId) ?? 'subagent',
+              status: 'completed',
+            });
+          }
         }
       }
     }
+
+    // Harness sub-command events (timestamped Bash `harness …` lines).
+    for (const { cmd, t } of commandObs) {
+      for (const sig of commandSignatures(cmd)) {
+        const sub = harnessSubcommand(sig);
+        if (sub !== null) direct.push({ t, kind: 'harness', verb: sub });
+      }
+    }
+
+    // The window carries timestamps → assemble the ordered stream; else null (honest
+    // "untimed source" — the rollup is then null too, never estimated).
+    const event_stream = anyTs
+      ? buildEventStream({ direct, toolCalls, skillOpens, lastSkillActive: false })
+      : null;
 
     const subagentTokens = subagents.reduce((sum, s) => sum + (s.tokens ?? 0), 0);
     let tokens: SegmentTokens | null = null;
@@ -238,13 +389,14 @@ export const claudeAdapter: HarnessAdapter = {
       effort,
       skills: nullIfEmptyMap(skills),
       tools: nullIfEmptyMap(tools),
+      user_prompts: userPrompts.length > 0 ? userPrompts : null,
       subagents: subagents.length > 0 ? subagents : null,
       files: written.length > 0 || edited.length > 0 ? { written, edited } : null,
-      branch_changed: null,
       compactions: compactions.length > 0 ? compactions : null,
       api_errors: null,
       local_commands: null,
       thinking: thinkingBlocks > 0 ? { blocks: thinkingBlocks } : null,
+      event_stream,
     };
   },
 };

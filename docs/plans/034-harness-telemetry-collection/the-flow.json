@@ -560,6 +560,131 @@
         "from": "phase-4",
         "to": "ship"
       }
+    },
+    {
+      "id": "NOD-009",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-24T05:54:32.705Z",
+      "details": {
+        "node": "phase-5",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-023",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-24T05:54:32.705Z",
+      "details": {
+        "node": "phase-4",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "UPD-024",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-24T05:54:32.875Z",
+      "details": {
+        "node": "phase-5",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-009",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-24T05:54:33.051Z",
+      "details": {
+        "from": "ship",
+        "to": "phase-5"
+      }
+    },
+    {
+      "id": "NOD-010",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-24T06:15:25.303Z",
+      "details": {
+        "node": "harness-boot-p5",
+        "type": "harness-boot"
+      }
+    },
+    {
+      "id": "UPD-025",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-24T06:15:25.474Z",
+      "details": {
+        "node": "harness-boot-p5",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-24T06:15:25.639Z",
+      "details": {
+        "node": "phase-5",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-026",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-24T06:30:35.543Z",
+      "details": {
+        "node": "phase-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-027",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-24T06:49:47.047Z",
+      "details": {
+        "node": "phase-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-028",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-24T07:08:30.205Z",
+      "details": {
+        "node": "phase-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-012",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-24T07:51:18.993Z",
+      "details": {
+        "node": "phase-5",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -679,10 +804,10 @@
       "label": "P4 Durable sync (§T1 ratified)",
       "status": "done",
       "next": [
-        "ship"
+        "phase-5"
       ],
       "created_at": "2026-06-23T05:45:26.159Z",
-      "modified_at": "2026-06-23T11:20:31.421Z",
+      "modified_at": "2026-06-24T05:54:32.705Z",
       "note": "Phase 4 COMPLETE (T001-T008): GitWritePort+ExecGitWrite/FakeGitWrite, sync-service, telemetry sync verb, cwd plan-id, docs. Companion F1/F2/F3 addressed (a5688e1). 1130/1130 green.",
       "ran_at": "2026-06-23T11:20:31.284Z"
     },
@@ -706,10 +831,53 @@
         }
       ],
       "note": "Certainty: Partial. Architecture invariants already EXISTS (no-direct-node-io + dep-cruiser); behaviour ACs BUILDABLE and front-loaded as TDD tasks. Two advisory reshapes: structural perf sensor (replace flaky <10ms wall-clock) + PII fixture-guard. Artifact: backpressure-coverage.md"
+    },
+    {
+      "id": "phase-5",
+      "type": "phase",
+      "label": "P5 Event-stream v2 (Amendment A2)",
+      "status": "done",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-24T05:54:32.705Z",
+      "modified_at": "2026-06-24T07:51:18.993Z",
+      "note": "Promote counts→timestamped event stream; timeline + agent/human/idle work detection; docs a+b. Spike-proven (scratch/telem/poc).",
+      "comments": [
+        {
+          "at": "2026-06-24T06:30:35.543Z",
+          "text": "T5.1-5.3 landed (commit 7d33083): event substrate (events.ts) + pure rollup engine (rollup.ts) + segment v2.0 (event_stream + derived rollup, serializeEvent allowlist). 1210/1210 green; arch-check clean for new code (1 pre-existing P4 warn). Companion reviewing. Remaining: 5.4-5.9 (adapter emission, skill/flow/outcomes, session-end flush, docs).",
+          "kind": "note"
+        },
+        {
+          "at": "2026-06-24T06:49:47.047Z",
+          "text": "T5.4 done (commits c2a0712 Claude, 5be03e5 Copilot): both adapters emit event_stream via shared event-builder; rollup.tools==v1 tools, rollup.tokens==v1 buckets (AC-16); privacy held (AC-15). Companion clean on c2a0712; 2 findings on substrate addressed. 1225/1225 green. Remaining: 5.5 Cursor, 5.6 skill/flow, 5.7 outcomes, 5.8 flush, 5.9 docs.",
+          "kind": "note"
+        },
+        {
+          "at": "2026-06-24T07:08:30.205Z",
+          "text": "T5.5 done (7f68d17): Cursor bubble-anchored event stream. All 3 adapters (Claude/Copilot/Cursor) now emit event_stream. 5 commits this session (7d33083 substrate, c2a0712 claude, 5be03e5 copilot, 610b872 companion-HIGH-fix, 7f68d17 cursor). 1231/1231 green; arch-check clean. Companion caught a real AC-16 drift bug (copilot tool-name) — fixed. Remaining: 5.6 skill/flow-stage, 5.7 outcomes, 5.8 flush, 5.9 docs.",
+          "kind": "note"
+        }
+      ],
+      "ran_at": "2026-06-24T07:51:18.993Z"
+    },
+    {
+      "id": "harness-boot-p5",
+      "type": "harness-boot",
+      "label": "Boot (Phase 5)",
+      "status": "done",
+      "next": [
+        "phase-5"
+      ],
+      "created_at": "2026-06-24T06:15:25.303Z",
+      "modified_at": "2026-06-24T06:15:25.474Z",
+      "branch_of": "phase-5",
+      "note": "pre-flight boot: HEALTHY to build (cli-build ok, 8 extensions, quality-gate present, Node 24.7). Degraded layer: biome missing (format/md-lint gate only, non-blocking). 17 telemetry segments unpushed — flush at ship."
     }
   ],
   "nav": {
-    "now": "ship",
+    "now": "phase-5",
     "next": "ship",
     "intent": "Harness telemetry collection — per-command sensor emitting normalized per-session segments (tokens/skills/tools/subagents/files/plan-links) committed to an orphan git ref for eng-thrive; Claude + Copilot adapters, Cursor later",
     "bag": {

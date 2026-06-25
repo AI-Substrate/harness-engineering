@@ -114,6 +114,7 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 | Stage | Scan for / flag (quote any hits) |
 |---|---|
 | Install / `doctor` | degraded or failed `doctor` reasons (read the JSON envelope, not prose) |
+| Unused harness | harness CLI present (signal A) but **no boot this session** / no `harness instructions` self-brief yet — flag it: "harness is installed but we haven't booted or briefed from it yet; that's how it goes unused." |
 | Scout (harnessability) | Critical/High gaps — low proof ceiling, missing back-pressure surfaces, external-dependency exposure |
 | Governance | doc absent, or stamped-but-empty (no boot command yet) — boot reports `UNAVAILABLE` until `harness init` runs and S4 builds boot |
 | Inject | no injection point recorded yet (so the parent flow won't know where to call back) |
@@ -132,4 +133,4 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 - **Warm and confirming**, never bureaucratic. "Nice — boot's green, you're ready to code" beats "S4 precondition satisfied."
 - **One decision per turn.** Never dump the whole tree; surface the single next move + a couple of alternates.
 - **Celebrate the bridge.** When adoption finishes and boot first runs, say so — "🎉 boot's working — that's the harness alive; let's try it on real work." (the "shiny new harness" moment).
-- **Never nag.** A skipped optional is offered at most once per call and waved past freely; flags are "just making sure you saw," never blockers.
+- **Never nag — but always offer, out loud.** Offer a skipped optional at most once per call; the user may wave it past freely. "Never nag" governs *tone and repetition*, not whether you surface it at all — silently dropping the boot, the survey, or the end-of-plan encode offer is the failure the loop exists to prevent, not politeness. Flags stay "just making sure you saw," never blockers.

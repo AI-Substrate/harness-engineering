@@ -92,7 +92,7 @@ Each loop stage below carries the **lifecycle hook** a host flow names to reach 
 | **Observe** · `--hook coding` | `harness observe "<what>" --kind <kind>` | **You/your agent, the moment friction happens** | A CLI verb, not a verb module — one silent call per noticing (confusing failure, retry, backtrack, slow command, "if only there were…"). Lands in the gitignored buffer `.harness/temp/`. Capture judgment lives in the `retro` verb § in-flight capture. |
 | **Retro (drain)** · `--hook post-coding` | `retro` verb `--drain` | **You** at phase/session end, buffer non-empty | The one normal user-facing retro prompt: a plain-language ask to save the session's notes (keep all · pick · skip — or take them further into tasks · a plan · diffs), then materialize kept entries into a committed record via `harness record retro` and clear the buffer. |
 | **Retro (harvest)** · `--hook post-flight` | `retro` verb `--harvest` | **You**, at plan completion / periodically | Read-only curation across `.harness/records/retro/**` — what recurs, what's stale, what to encode next. Recurrence is framed as token cost. Drain first if the buffer is non-empty. |
-| **Improve** | retro `[e]ncode` / `add-extension` verb | **You**, when a retro names a fix | The beat where the loop compounds: ship the fix as a command, sensor, fixture, or doc — then a `harness-change` record is written. Most loop runs encode nothing, and that's fine. |
+| **Improve** | retro `[e]ncode` / `add-extension` verb | **You**, when a retro names a fix | The beat where the loop compounds: ship the fix as a command, sensor, fixture, or doc — then a `harness-change` record is written. A single coding session may legitimately encode nothing — but **at plan completion the agent must surface the top friction candidate out loud and make the encode offer explicit**. The user may decline; ending a plan silently with un-harvested friction is the exact failure this beat exists to prevent. |
 
 **Opt-out is conversational.** There is no `.disabled` sentinel for the loop — if you don't want it, say so and the agent stops routing into it. Nothing gates, scores, or blocks.
 
@@ -267,7 +267,7 @@ A host running its own flow doesn't make the router guess where it is — it **n
 | `pre-coding` | spec written, before you build | **fire** | `backpressure` verb | `backpressure-coverage.md` |
 | `coding` | mid-build, the moment friction bites | **silent** | `harness observe "<what>" --kind <kind>` | one entry in the gitignored buffer (`.harness/temp/`) |
 | `post-coding` | phase / session end | **fire** | `retro` verb `--drain` | buffer drained → committed retro record |
-| `post-flight` | plan / journey end | **fire** | `retro` verb `--harvest` | terminal close-out: curated cross-plan view → present + encode improvements |
+| `post-flight` | plan / journey end | **fire** | `retro` verb `--harvest` | terminal close-out: curated cross-plan view → **surface the top candidate out loud and offer the encode (never skip the offer; the user may decline)** |
 
 Optional pins narrow a hook to the right target: `pre-flight` takes `[--phase <id>] [--plan-dir <p>]`; `pre-coding` takes `--spec <path>`; `post-coding` takes `--plan-dir <path>`.
 
