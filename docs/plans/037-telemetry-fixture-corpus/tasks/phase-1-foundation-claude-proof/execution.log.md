@@ -12,3 +12,10 @@
 - Scaffolded `fixtures/real/claude/` (`.gitkeep`); additive — existing synthetic fixtures untouched (AC-10).
 - **Evidence**: `ls fixtures/real/` → `README.md`, `claude/`.
 
+
+## T002 — fixture-scrub.test.ts (test-first, RED) ✅
+
+- Wrote `test/services/telemetry/fixture-scrub.test.ts` defining the scrub contract: `scrubText(text, cfg)` + exported placeholders (`HOME_PLACEHOLDER`/`REPO_PLACEHOLDER`/`USER_PLACEHOLDER`) + `ScrubConfig {homeDir, repoRoot, username, names?}`.
+- Cases: POSIX home path, repo-root rebase (more-specific-wins), Windows `C:\Users\`, the claude `-Users-<user>-` mangle, bare username, secret shapes (sk-/ghp_/AKIA/Bearer), email, configured name → all scrubbed; **verbatim preservation** of prose/commands/flags; JSONL stays valid JSON post-scrub.
+- Config is explicit (P3 — no process.env/platform probing).
+- **Evidence**: `vitest run fixture-scrub.test.ts` → 1 failed (module not found) = expected RED.
