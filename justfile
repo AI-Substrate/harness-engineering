@@ -196,6 +196,19 @@ windows-check:
 # fix -> format -> test -> lint-md -> windows-check (the engineering loop).
 fft: fix format test lint-md windows-check
 
+# The mandated composite quality gate — the SAME command CI and the pre-push hook run.
+# Builds the core first (the bin + drift guards need dist/), then runs `harness checks`
+# (tests+coverage, biome, typecheck, docs/flows/telemetry drift, arch/skills/markdown/windows).
+checks:
+    npm run build
+    node harness/cli/bin/harness.js checks
+
+# Enable the tracked pre-push gate for this clone (sets core.hooksPath -> .githooks).
+# `.git/hooks` is not tracked, so each clone opts in once. Skip a push with --no-verify.
+install-hooks:
+    git config core.hooksPath .githooks
+    @echo "✓ pre-push hook enabled (core.hooksPath=.githooks). It runs 'harness checks' before every push; bypass with 'git push --no-verify'."
+
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":
     @bash scripts/new-test-repo.sh "{{dest}}"

@@ -71,26 +71,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint (Biome)
-        run: npx biome check harness/cli
-
-      - name: Build (tsc emit)
+      - name: Build (tsc emit + generators) — prerequisite for the gate
         run: npm run build
 
-      - name: Docs drift guard (generated bundle matches the .md sources)
-        run: npm run check:docs
-
-      - name: Flows drift guard (bundled schemas + golden renders match the CLI)
-        run: npm run check:flows
-
-      - name: Telemetry fixtures drift guard (real-fixture goldens match the adapters)
-        run: npm run check:telemetry-fixtures
-
-      - name: Typecheck (tsc --noEmit)
-        run: npx tsc --noEmit -p harness/cli/tsconfig.json
-
-      - name: Test with coverage
-        run: cd harness/cli && npx vitest run --coverage
+      # The ONE quality gate: the SAME composite `harness checks` devs run locally and
+      # the .githooks/pre-push hook enforces, so CI and local can't drift. It runs
+      # tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and
+      # arch/skills/markdown/windows-check, aggregated into one honest envelope. Invoke
+      # the bin via node directly (plan 017: `npx harness` resolves the root bin
+      # nondeterministically across npm majors). Warn-launch: degraded (warn-only
+      # findings) exits 0 and surfaces a ::warning::; a hard-gate error exits 1 and
+      # fails the step. For a failing gate's detail, reproduce locally with `harness checks`.
+      - name: Quality gate (harness checks)
+        run: |
+          set +e
+          out=$(node harness/cli/bin/harness.js checks --json); code=$?
+          echo "$out" | jq . || echo "$out"
+          status=$(echo "$out" | jq -r .status 2>/dev/null)
+          if [ "$status" = "degraded" ]; then
+            echo "::warning title=checks::$(echo "$out" | jq -r '.data.summary' 2>/dev/null) — warn-launch findings (non-blocking); see the envelope above, or run \`harness checks\` locally for detail"
+          fi
+          exit ${code:-0}
 
       - name: Upload coverage (lcov)
         if: always()
@@ -102,77 +103,6 @@ jobs:
 
       - name: Audit (advisory)
         run: npm audit --audit-level=high || true
-
-      # Architecture conformance through the VERB (never raw depcruise) so the
-      # envelope mapping is continuously proven on the same code path devs use
-      # (plan 016, AC-9). Warn-launch: degraded (warn-only violations) exits 0
-      # and surfaces as a ::warning:: annotation; crash (exit 1) or missing
-      # tool/config (exit 2) still fail the step.
-      - name: Architecture conformance (harness arch-check)
-        run: |
-          # Invoke the bin via node directly (plan 017): `npx --no-install harness`
-          # resolves the root package's own bin nondeterministically across npm
-          # majors (npm 10 green / npm 11.13 "Permission denied" on identical
-          # trees). node + the committed wrapper is the same verb code path
-          # with zero install-time-chmod dependence.
-          out=$(node harness/cli/bin/harness.js arch-check --json) || code=$?
-          echo "$out"
-          status=$(echo "$out" | jq -r .status)
-          if [ "$status" = "degraded" ]; then
-            count=$(echo "$out" | jq '.data.violations | length')
-            echo "::warning title=arch-check::${count} architecture violation(s) at warn severity — see the envelope in this step's log; promote severities in .dependency-cruiser.cjs once they should block"
-          fi
-          exit ${code:-0}
-
-      # Skill loadability through the VERB: every SKILL.md must satisfy the
-      # Agent Skills spec limits (name ≤64/charset/dir-match/unique,
-      # description ≤1024) or host CLIs silently skip it — measured in the
-      # field 2026-06-11 (Copilot CLI dropped eng-harness-flow at 1379 chars).
-      # Spec violations exit 1 and fail the step; the >900-char headroom band
-      # is degraded/exit 0 and surfaces as a ::warning:: annotation.
-      - name: Skill loadability (harness skills-check)
-        run: |
-          out=$(node harness/cli/bin/harness.js skills-check --json) || code=$?
-          echo "$out"
-          status=$(echo "$out" | jq -r .status)
-          if [ "$status" = "degraded" ]; then
-            count=$(echo "$out" | jq '.data.warnings')
-            echo "::warning title=skills-check::${count} skill description(s) inside the 900–1024 char headroom band — trim before they drift over the spec limit and hosts silently drop them"
-          fi
-          exit ${code:-0}
-
-      # Markdown conformance through the VERB: lint authored markdown + validate
-      # in-repo links/anchors + syntax-check mermaid fences (headless, no Chromium).
-      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
-      # annotation; a missing tool/config (exit 2) or crash (exit 1) fails the step.
-      - name: Markdown conformance (harness markdown-lint)
-        run: |
-          out=$(node harness/cli/bin/harness.js markdown-lint --json) || code=$?
-          echo "$out"
-          status=$(echo "$out" | jq -r .status)
-          if [ "$status" = "degraded" ]; then
-            count=$(echo "$out" | jq '.data.totals.findings')
-            echo "::warning title=markdown-lint::${count} markdown finding(s) at warn severity — see the envelope in this step's log; fix the authored docs and promote the gate once clean"
-          fi
-          exit ${code:-0}
-
-      # Windows-compat conformance through the VERB: statically flag the
-      # cross-platform anti-patterns the extension verbs must avoid (POSIX
-      # shell-outs, /tmp, node:* in a verb, bare-.cmd launch, clone without
-      # core.longpaths, …) — by-construction proof with NO Windows runner
-      # (plan 031, continuing plan 017's posture for the core's windows-command.ts).
-      # Warn-launch: findings exit 0 (degraded) and surface as a ::warning::
-      # annotation; not a git tree (exit 2) or crash (exit 1) fails the step.
-      - name: Windows-compat conformance (harness windows-check)
-        run: |
-          out=$(node harness/cli/bin/harness.js windows-check --json) || code=$?
-          echo "$out"
-          status=$(echo "$out" | jq -r .status)
-          if [ "$status" = "degraded" ]; then
-            count=$(echo "$out" | jq '.data.findingCount')
-            echo "::warning title=windows-check::${count} Windows-compat finding(s) at warn severity — see the envelope in this step's log; fix per each finding's message or suppress a deliberate line with // win-ok: <reason>"
-          fi
-          exit ${code:-0}
 
   # Stable, matrix-independent required check for branch protection (T005).
   # Always runs and fails if any required job failed/cancelled.
