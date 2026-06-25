@@ -1,0 +1,21 @@
+{
+  "tokens": null,
+  "models": [
+    "composer-2.5"
+  ],
+  "user_prompts": [
+    6,
+    19,
+    8,
+    25,
+    68
+  ],
+  "tools": {
+    "Shell": 8,
+    "Glob": 1,
+    "Read": 1
+  },
+  "event_count": 25,
+  "event_stream_present": true,
+  "timestamps": "anchored"
+}

@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { FakeDb } from '../../../src/adapters/db/fake-db.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import {
@@ -12,6 +13,12 @@ import {
   copilotEventsPath,
   copilotLogsDir,
 } from '../../../src/services/telemetry/adapters/copilot-adapter.js';
+import {
+  CURSOR_SESSION_ENV,
+  CURSOR_TRANSCRIPTS_ENV,
+  cursorAdapter,
+  cursorTranscriptPath,
+} from '../../../src/services/telemetry/adapters/cursor-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 
@@ -227,5 +234,123 @@ describe('real copilot-cli fixture → segment (AC-03)', () => {
     expect(seg.tokens).not.toBeNull();
     expect(seg.tokens?.grand_total ?? 0).toBeGreaterThan(0);
     expect(seg.event_stream.length).toBeGreaterThan(0);
+  });
+});
+
+// ── cursor (T011 · plan 2.5 · AC-05/AC-10) ───────────────────────────────────
+// Drives the REAL scrubbed cursor fixture through `cursorAdapter`: the verbatim
+// transcript (FakeFs) + the projected `cursorDiskKV` bubbles (FakeDb) → the
+// transcript↔bubble MODEL/TIMING join. Cursor's transcript is untimed, so every
+// event is `t_precision:'anchored'` (NOT exact like claude); tokens stay null
+// (Cursor keeps consumption server-side). The model (`composer-2.5`) comes only
+// from the bubbles — the join is the heart of AC-05.
+const CUR_DIR = 'cursor/2026-06-25-checks-walkthrough';
+const CUR_CONV = '01aa25af-f038-4c50-b3ce-f23108ed50b7';
+const CUR_TRANSCRIPT = readFileSync(
+  fileURLToPath(new URL(`./fixtures/real/${CUR_DIR}/raw.jsonl`, import.meta.url)),
+  'utf8',
+);
+// The projected bubble rows ({key, value}) — FakeDb returns them for the adapter's
+// `SELECT value FROM cursorDiskKV WHERE key LIKE ?` (fixed mode: same rows per query).
+const CUR_BUBBLES = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL(`./fixtures/real/${CUR_DIR}/raw.rows.json`, import.meta.url)),
+    'utf8',
+  ),
+) as { key: string; value: string }[];
+const CUR_GOLDEN = fileURLToPath(
+  new URL(`./fixtures/real/${CUR_DIR}/expected-segment.json`, import.meta.url),
+);
+const CUR_INVARIANTS = fileURLToPath(
+  new URL(`./fixtures/real/${CUR_DIR}/invariants.json`, import.meta.url),
+);
+const CUR_TRANSCRIPTS_DIR = `${HOME}/.cursor/projects/repo/agent-transcripts`;
+const CUR_LINES = CUR_TRANSCRIPT.split('\n').filter((l) => l.trim().length > 0).length;
+const curWindow = { since: 'session-start', from: 0, to: CUR_LINES } as const;
+
+function cursorSegment() {
+  const fs = new FakeFs({
+    [cursorTranscriptPath(CUR_TRANSCRIPTS_DIR, CUR_CONV)]: CUR_TRANSCRIPT,
+  });
+  const env = new FakeEnv(
+    { [CURSOR_SESSION_ENV]: CUR_CONV, [CURSOR_TRANSCRIPTS_ENV]: CUR_TRANSCRIPTS_DIR },
+    HOME,
+  );
+  const db = new FakeDb(CUR_BUBBLES); // every cursorDiskKV query → all bubble rows
+  const caps = cursorAdapter.extract({
+    env,
+    fs,
+    db,
+    repoRoot: REPO,
+    harness: 'cursor-agent',
+    window: curWindow,
+  });
+  const input: SegmentInput = {
+    command: 'flow',
+    harness: 'cursor-agent',
+    harness_session_id: CUR_CONV,
+    timecode: '2026-06-25T00:00:00Z',
+    window: curWindow,
+    branch: null,
+    tokens: caps.tokens,
+    models: caps.models ?? {},
+    effort: caps.effort,
+    skills: caps.skills ?? {},
+    tools: caps.tools ?? {},
+    user_prompts: caps.user_prompts ?? [],
+    subagents: caps.subagents ?? [],
+    files: caps.files ?? { written: [], edited: [] },
+    plans_touched: [],
+    events: {
+      compactions: caps.compactions ?? [],
+      api_errors: caps.api_errors ?? 0,
+      local_commands: caps.local_commands ?? 0,
+    },
+    thinking: caps.thinking,
+    event_stream: caps.event_stream ?? undefined,
+  };
+  return serializeSegment(input, REPO);
+}
+
+function curInvariantsOf(seg: ReturnType<typeof cursorSegment>) {
+  return {
+    tokens: seg.tokens, // null — Cursor keeps consumption server-side
+    models: Object.keys(seg.models ?? {}).sort(),
+    user_prompts: seg.user_prompts ?? [],
+    tools: seg.tools ?? {},
+    event_count: seg.event_stream.length,
+    event_stream_present: seg.event_stream.length > 0,
+    timestamps: 'anchored', // untimed transcript → bubble-anchored, NOT exact
+  };
+}
+
+describe('real cursor fixture → segment via transcript↔bubble join (AC-05)', () => {
+  const seg = cursorSegment();
+
+  if (process.env.REGEN_GOLDEN) {
+    writeFileSync(CUR_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
+    writeFileSync(CUR_INVARIANTS, `${JSON.stringify(curInvariantsOf(seg), null, 2)}\n`);
+  }
+
+  it('matches the committed golden segment', () => {
+    expect(seg).toEqual(JSON.parse(readFileSync(CUR_GOLDEN, 'utf8')));
+  });
+
+  it('matches the committed (human-reviewed) invariants.json', () => {
+    expect(curInvariantsOf(seg)).toEqual(JSON.parse(readFileSync(CUR_INVARIANTS, 'utf8')));
+  });
+
+  it('joins the bubble model onto the transcript turns (AC-05) — composer-2.5, tokens null', () => {
+    // The model exists ONLY in the bubbles; a transcript-only read would miss it.
+    expect(Object.keys(seg.models ?? {})).toContain('composer-2.5');
+    expect(seg.tokens).toBeNull(); // never estimated
+  });
+
+  it('emits an ANCHORED timeline (untimed transcript + bubble timing), never exact', () => {
+    expect(seg.event_stream.length).toBeGreaterThan(0);
+    for (const e of seg.event_stream) {
+      expect(e.t_precision).toBe('anchored');
+      expect(Number.isNaN(Date.parse(e.t))).toBe(false);
+    }
   });
 });

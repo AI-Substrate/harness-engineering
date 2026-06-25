@@ -131,4 +131,27 @@ The copilot-vscode SQLite surface is done end-to-end: pure projection (privacy b
 - Promoted `fixtures/real/cursor/2026-06-25-checks-walkthrough/` (`raw.jsonl` 10 KB verbatim transcript, `raw.rows.json` 4.5 KB 24 projected bubbles, `meta.json`). Substantive convo (not a stub): 5 user prompts, ~13 assistant turns, real harness-command tool calls, model `composer-2.5`, real bubble timestamps.
 - **Manual "anything bad" review** (non-skippable): transcript leak scan **0** (`/Users/`, identity, emails, key shapes); all machine paths rebased to `/home/dev/repo`; content innocuous (boot/checks/doctor + a count-to-10). Bubbles carry only type/createdAt/modelName — no diffs/prose.
 - **Byte-scan** auto-globbed the instance: `fixture-privacy-scan.test.ts` **19 passed** — and the boundary-scan correctly did NOT flag the transcript's `stop:\n` (the F001 fix paying off on real data).
-- **Commit**: T010 (fixture data).
+- **Commit**: `2aea99b` (fixture data).
+
+## T011 — cursor e2e golden+invariants: the transcript↔bubble join (AC-05/AC-10) ✅
+
+- **`real-capture.e2e.test.ts`** (+cursor block, 4 tests) — transcript via `FakeFs` + projected bubbles via `FakeDb` → `cursorAdapter.extract` → `serializeSegment` → committed golden + invariants. `REGEN_GOLDEN=1` mints both; human-reviewed.
+- **The model/timing JOIN proven (AC-05)**: `models = {composer-2.5: {turns:13, output_tokens:0}}` — the model exists ONLY in the bubbles, the 13 turns come from the transcript; a transcript-only read would miss the model. `user_prompts [6,19,8,25,68]` + `tools {Shell:8,Glob:1,Read:1}` from the transcript; 25 events, **every one `t_precision:'anchored'`** (untimed transcript anchored to bubble `createdAt`), `tokens:null`. Asserted explicitly, not just golden-matched.
+- **AC-10**: synthetic `cursor-transcript.jsonl` + its test confirmed untouched (not in the diff). `FakeDb` fixed-mode returns all bubble rows for the adapter's repeated `cursorDiskKV` SELECT.
+- **Evidence**: `REGEN` → clean re-run **10 passed** (e2e: 3 claude + 3 copilot-cli + 4 cursor); full telemetry+extension suite **333 passed (34 files)**; byte-scan covers the new golden+invariants. Leak scan 0.
+- **Commit**: T011 (e2e + golden + invariants).
+
+---
+
+### cursor surface COMPLETE (T009–T011) · PHASE 2 COMPLETE (T001–T011)
+
+The cursor surface closes Phase 2: pure bubble projection (privacy boundary) → dual-source capture (verbatim transcript + projected bubbles, NodeDb at run()) → real reviewed fixture (substantive composer-2.5 walkthrough) → e2e golden proving the transcript↔bubble model/timing join with an `anchored` timeline.
+
+**Phase 2 scorecard** — all three fan-out surfaces landed against REAL logs:
+- **copilot-cli** (AC-03): events + filtered process-log, token correlation 86611. ✅
+- **copilot-vscode** (AC-04): row projection + real-SQL round-trip golden, tokens null. ✅
+- **cursor** (AC-05): transcript + bubble model/timing join, `anchored`, tokens null. ✅
+- **AC-02**: every new `raw.*`/golden byte covered by the auto-globbing byte-scan (incl. plain-text + F001 boundary soundness). ✅
+- **AC-10**: 3 synthetic fixtures + tests untouched. ✅
+
+Full telemetry + extension suite **333 passed (34 files)**. Adapters unchanged (no real capture surfaced an extraction bug → no Deferred items). DL-001 (extension has no db port) resolved uniformly: compose core `NodeDb` at `run()` for both SQLite surfaces.

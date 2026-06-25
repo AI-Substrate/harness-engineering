@@ -1,0 +1,219 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "cursor-agent",
+  "harness_session_id": "01aa25af-f038-4c50-b3ce-f23108ed50b7",
+  "timecode": "2026-06-25T00:00:00Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 23
+  },
+  "branch": null,
+  "tokens": null,
+  "effort": null,
+  "models": {
+    "composer-2.5": {
+      "turns": 13,
+      "output_tokens": 0
+    }
+  },
+  "tools": {
+    "Shell": 8,
+    "Glob": 1,
+    "Read": 1
+  },
+  "user_prompts": [
+    6,
+    19,
+    8,
+    25,
+    68
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-24T03:53:10.782Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 6
+    },
+    {
+      "t": "2026-06-24T03:53:15.666Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:53:49.901Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 19
+    },
+    {
+      "t": "2026-06-24T03:53:55.558Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:53:55.558Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 2,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-24T03:53:56.921Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:53:57.630Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:54:32.203Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:54:32.203Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 2,
+      "span_s": 14
+    },
+    {
+      "t": "2026-06-24T03:54:34.960Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:54:46.286Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:58:14.262Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 8
+    },
+    {
+      "t": "2026-06-24T03:58:18.352Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:58:18.352Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T03:58:28.409Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:18.551Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 25
+    },
+    {
+      "t": "2026-06-24T04:14:21.937Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:21.937Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:21.937Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Glob",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:22.018Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:22.018Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:22.018Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 2,
+      "span_s": 13
+    },
+    {
+      "t": "2026-06-24T04:14:34.733Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T04:14:50.943Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T21:45:10.184Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 68
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 64319,
+      "agent_working_s": 108,
+      "human_s": 242,
+      "idle_s": 63969,
+      "working_ratio": 0.31
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {
+      "Shell": 8,
+      "Glob": 1,
+      "Read": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}
