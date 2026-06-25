@@ -44,6 +44,24 @@ New to the harness? Start with the **[adopter's guide](docs/guide/)** — a read
 
 Everything below explains *why* the harness exists and how it fits together. To just use it, the two links above are enough.
 
+## A little anecdote
+
+Imagine you are new to the team. The codebase is new to you. You've been pouring over documentation. Your agent has never seen the codebase before now (as is the way every time!). You pick up a ticket, you and your agent do the work. You review it, tests pass etc. You've used the correct documentation and tooling to do the work to the best of your knowledge
+
+You pop up a PR and request a review from your colleague. They immediately spot that there are issues in the implementation. Perhaps its a slight architecture issue, or a class that should not reference another class - things that you'd know if you'd been on the codebase a bit longer perhaps, and because of this PR, you'd not make the same mistake again. 
+
+So you go and fix it with your agent, resubmit the PR and off to the races. This knowledge is tribal and its lost to the next agent and next new person (unless they read all PRs!).
+
+What an engineering harness will promote is the encoding of this knowledge. How could you create a check that you run before commit that finds this kind of thing. 
+
+You should have some kind of architecture check baked in to your environment. It checks all the things. 
+
+Let's say you and your team have added a new check (the harness convention is a single extension called "checks" - this composite command can run all your checks before checkin!). You pop your PR up after running the shiny architecture check. And you get knocked back! It's a new thing the check missed! This is where having an engineering harness as a first class concept *really* shines. There is no question what to do next. You don't just go and fix the issue directly.  
+
+You fix the check. 
+
+Then you re-run the check - the agent sees the issue and fixes it. This PR comment, the knowledge that the more experienced person had is now *encoded* in to the system for everyone else. No need to load extensive architecture documents in to context. No need for human to back read every PR ever. It just works. 
+
 ## Why it exists
 
 Out of all the problems with agent-driven development, two matter most:
