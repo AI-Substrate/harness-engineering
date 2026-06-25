@@ -95,3 +95,19 @@ All six tasks `[x]`. AC coverage: **AC-07** (T001 `--check` drift guard + T002 n
 - *Noteworthy* — T001 deviates from plan 3.1's literal "import the `dist/` modules" wording: the script orchestrates the golden suites instead (single source of truth for segment construction; avoids the AC-07 drift hazard). Flagged to the companion; rationale in the T001 entry.
 - *Noteworthy* — the dedicated `check:telemetry-fixtures` CI step partially overlaps the full coverage run; kept as an explicit, named, fast drift gate with a clear remediation message.
 - No skipped/blocked tasks, no unmet ACs, no new `TODO`/`FIXME`/`HACK`.
+
+---
+
+## Companion reconciliation (run `…-aa6f`)
+
+Reviewed every commit (verdicts via the run's `inbox/inside/messages.ndjson` — `minih status` `lastAckOf` flaked to null again, the recurring inbox-list delivery gap; the findings WERE delivered). T001 APPROVE · T002 APPROVE · T003 **REQUEST_CHANGES (F001 HIGH)** · T004 APPROVE_WITH_NOTES (F002 MED) · T005-T006 APPROVE_WITH_NOTES (F003 MED).
+
+**All 3 findings real, one root cause, all fixed in the follow-up commit:**
+
+| ID | Sev | Issue | Fix |
+|----|-----|-------|-----|
+| F001 | HIGH | Runbook said "re-run without `--dry-run` to promote the **reviewed** scratch instance", but the extension's non-dry-run path **re-resolves live sources + re-scrubs** into `corpusDir/` (a fresh capture, not a copy of scratch) — so the reviewed bytes can differ from the committed bytes for appendable logs, weakening the privacy gate | Restructured the runbook: scratch review is the **early** pass (step 3); promote re-captures (step 4); the **binding** non-skippable review is on the promoted `corpusDir/` bytes before `git add` (step 5). Matches `extension.ts:159-164`'s own `next_action`. Diagram + banner updated |
+| F002 | MED | `instructions.md` **Usage block** still Phase-1/claude-only ("only claude", "most recent session"), omitted `--log`/`--note` | Rewrote Usage to all four surfaces + per-surface `--session` semantics + `--log`/`--note`; carried the corpus-bytes-review correction into the privacy-discipline list |
+| F003 | MED | Deviation Ledger mitigation said review happens "before promotion" — same control-shape overstatement as F001 | Changed to "review of the **promoted corpus bytes** before `git add`/commit/publication" |
+
+**Decision the companion was asked to scrutinise (T001 orchestrate-vs-dist-import)**: accepted — T001 + T002 both APPROVE, no pushback on the orchestration shape. **No code changes** were needed — the extension already behaves correctly (and prints the correct `next_action`); only the docs/governance had drifted from it (Phase 3 stays operability-only).

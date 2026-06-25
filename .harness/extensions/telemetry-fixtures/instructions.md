@@ -10,23 +10,32 @@ telemetry adapters are tested against real data instead of synthetic guesses.
 ## Usage
 
 ```bash
-harness capture-fixtures --surface claude [--session <id>] [--instance <id>] [--names "A B,C D"] [--dry-run]
+harness capture-fixtures --surface <surface> [--session <id>] [--instance <id>] \
+  [--log <path>] [--names "Person Name,git-handle"] [--note "<provenance>"] [--dry-run]
 ```
 
-- `--surface` — `claude | copilot-cli | copilot-vscode | cursor` (only `claude` in Phase 1).
-- `--session` — explicit claude session id; default = the most recent session for this repo.
+- `--surface` — `claude | copilot-cli | copilot-vscode | cursor`.
+- `--session` — **per-surface**: `claude` optional (defaults to the sole session for this
+  repo); `copilot-cli` **required**; `cursor` **required** (the conversation id);
+  `copilot-vscode` optional override (else resolved by cwd).
 - `--instance` — corpus dir name; default = derived from date + session.
-- `--names` — comma-separated person names to scrub (beyond paths/identity/secrets).
-- `--dry-run` — capture + scrub into `scratch/` only; do **not** promote.
+- `--log` — `copilot-cli` only: explicit `process-*.log` path (else auto-discovered).
+- `--names` — comma-separated person names / git handles to scrub (beyond paths/identity/secrets).
+- `--note` — one-line provenance note for `meta.json`.
+- `--dry-run` — capture + scrub into `scratch/` only; do **not** promote to the corpus.
 
 ## The privacy discipline (non-negotiable)
 
-1. Capture stages to a **gitignored `scratch/`** first (Constitution P12).
+1. Capture stages to a **gitignored `scratch/`** first (Constitution P12) — the
+   unscrubbed originals + scrubbed candidates sit there for an early review/diff.
 2. The pure `fixture-scrub` service strips machine paths / identity / secrets while
    keeping prompts + tool calls **verbatim**.
-3. A **manual "anything bad" review** of the scrubbed bytes is required before promotion —
-   these land in a public repo, permanently in git history.
-4. Only then is the instance promoted to the corpus and committed.
+3. Promotion (a run **without** `--dry-run`) **re-resolves the live sources and writes
+   freshly scrubbed bytes** to the corpus dir — it does **not** copy the scratch
+   candidate. So the binding **manual "anything bad" review must be on the promoted
+   `corpusDir/` bytes** (the exact bytes git will track), end-to-end, before `git add` —
+   they land in a public repo, permanently in git history.
+4. Only after that review do you `git add` + commit the instance.
 
 > The committed raw fixture has **two** guards: the **scrub** (at capture) and the
 > `fixture-privacy-scan` byte-scan (auto-globs every committed `raw.*` +

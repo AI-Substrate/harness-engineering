@@ -9,8 +9,9 @@ guesses (plan 037).
 
 > ⚠️ **These fixtures land in a public repo, permanently in git history.** The
 > capture path is built around one non-negotiable gate: a **manual "anything bad"
-> review** of the scrubbed bytes before promotion (step 3). It is **never skippable**
-> — no automation replaces a human reading the bytes.
+> review of the promoted `corpusDir/` bytes — the exact bytes git will track —
+> before `git add`/commit** (step 5). It is **never skippable**; no automation
+> replaces a human reading the bytes.
 
 ---
 
@@ -24,9 +25,16 @@ published CLI), which stages to a **gitignored `scratch/`** first, so nothing
 reaches the corpus until a human has reviewed it.
 
 ```
-capture ──▶ scrub ──▶ scratch/ (gitignored) ──▶ MANUAL REVIEW ──▶ promote ──▶ commit
-                                                   (non-skippable)
+capture --dry-run ──▶ scratch/ (gitignored)      promote (re-capture          MANUAL REVIEW
+   scrub             ──▶ early review/diff   ──▶  + re-scrub → corpusDir/) ──▶ corpusDir/ bytes ──▶ commit
+                                                                                (non-skippable)
 ```
+
+> **Promotion re-captures — it does not copy the reviewed scratch bytes.** A run
+> *without* `--dry-run` re-resolves the live sources and writes **freshly scrubbed**
+> bytes to `corpusDir/`. For appendable logs / still-live sessions those bytes can
+> differ from what you saw in `scratch/`. That is why the **binding** review (step 5)
+> is on the promoted `corpusDir/` files, not on the scratch candidate.
 
 Fixtures land under:
 
@@ -112,12 +120,41 @@ but you must understand it so the manual review knows what *should* already be g
 
 ---
 
-## Step 3 — Manual "anything bad" review (NON-SKIPPABLE)
+## Step 3 — Early review in `scratch/` (recommended first pass)
 
-Before promotion, open the scrubbed files in `scratch/` and read them. This gate is
-mandatory — the corpus is public and permanent.
+Open the scrubbed files in `scratch/` and read them — this is your cheap early check
+to catch leaks and tune `--names` **before** you promote. It is *not* the binding gate
+(promotion re-captures — step 5 is the gate), but it's where you'd notice you picked
+the wrong session or missed a handle. Use the **leak scan + content sanity** checklist
+in step 5 against the scratch bytes here too. If anything is wrong, **don't promote** —
+re-capture with a better `--names` set or a different session.
 
-**Leak scan** (search the raw bytes for each — there must be **zero** hits):
+The `scratch/` dir also holds the **unscrubbed originals** (`raw.unscrubbed.*`) beside
+the scrubbed candidates, so you can `diff` them to confirm the scrub did its job.
+
+---
+
+## Step 4 — Promote (re-capture into the corpus)
+
+Re-run the same `capture-fixtures` command **without `--dry-run`**. This **re-resolves
+the live sources and writes freshly scrubbed bytes** to the corpus dir — it is a fresh
+capture, **not** a copy of the scratch candidate:
+
+```
+harness/cli/test/services/telemetry/fixtures/real/<surface>/<instance>/
+```
+
+The promoted files are **uncommitted** — nothing is public until you `git add`/commit
+(and push). The review that protects the public repo is the next step, on these bytes.
+
+---
+
+## Step 5 — Binding "anything bad" review on `corpusDir/` (NON-SKIPPABLE)
+
+Open the **promoted** files (the exact bytes git will track) and read them end-to-end.
+This is the mandatory gate — the corpus is public and permanent.
+
+**Leak scan** (search each promoted `raw.*` — there must be **zero** hits):
 - `/Users/`, `/home/`, `C:\` (any machine path)
 - your username, your **git handle(s)**, your real name
 - email addresses
@@ -132,15 +169,7 @@ mandatory — the corpus is public and permanent.
 - the vendor system prompt (copilot-cli) is redacted to a placeholder; **user content
   stays verbatim** (that's intended — confirm the redaction is only the vendor prompt).
 
-If anything is wrong: **do not promote.** Re-capture with a better `--names` set or a
-different session.
-
----
-
-## Step 4 — Promote + commit
-
-Re-run the same `capture-fixtures` command **without `--dry-run`** to promote the
-reviewed instance from `scratch/` into the corpus, then:
+Only once the promoted bytes are clean, run the guards and commit:
 
 ```bash
 npm run check:telemetry-fixtures     # the goldens match the adapters (drift guard)
@@ -149,8 +178,10 @@ git add harness/cli/test/services/telemetry/fixtures/real/<surface>/<instance>/
 git commit -m "test(telemetry): add real <surface> fixture (<instance>)"
 ```
 
-If you changed an adapter and the goldens legitimately moved, regenerate them with
-`npm run gen:telemetry-fixtures` and re-review the diff before committing.
+If anything is wrong: **do not commit.** Delete the promoted `corpusDir/`, re-capture
+with a better `--names` set or a different session. If you changed an adapter and the
+goldens legitimately moved, regenerate them with `npm run gen:telemetry-fixtures` and
+re-review the diff before committing.
 
 ---
 
