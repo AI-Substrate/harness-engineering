@@ -289,6 +289,53 @@
         "from": "phase-1",
         "to": "phase-2"
       }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-25T08:06:42.766Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T08:06:43.040Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T08:06:43.303Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-25T08:09:21.997Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -351,20 +398,31 @@
       "id": "phase-2",
       "type": "phase",
       "label": "Phase 2: Fan out — copilot-cli + vscode + cursor",
-      "status": "known",
+      "status": "in_progress",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-06-25T06:24:45.737Z",
-      "modified_at": "2026-06-25T06:41:49.230Z",
+      "modified_at": "2026-06-25T08:09:21.997Z",
       "comments": [
         {
           "at": "2026-06-25T06:41:32.658Z",
           "text": "Scope correction (2026-06-25): cursor IS capturable here — agent transcripts persist at ~/.cursor/projects/<cwd>/agent-transcripts/<conv>/<conv>.jsonl (+ state.vscdb). AGENT_TRANSCRIPTS only gates the runtime adapter auto-detect, not capture. Cursor moved from documented-gap to a real Phase-2 surface (AC-05, task 2.5).",
           "source": "agent",
           "kind": "decision"
+        },
+        {
+          "at": "2026-06-25T08:06:43.303Z",
+          "text": "Prepared via /the-flow 5 tasks; observations INS-001/GFT-001/INS-002 logged to harness buffer. Next: validate-v2 the dossier, then implement.",
+          "kind": "note"
+        },
+        {
+          "at": "2026-06-25T08:09:21.997Z",
+          "text": "validate-v2 VALIDATED — no material issues (lead deterministic proof + 1 critic, no_material_findings). Cursor t_precision:'anchored' and copilot-cli token correlation both confirmed in adapter source. Sidecar: validations/phase-2-tasks-validation.md",
+          "kind": "validation"
         }
-      ]
+      ],
+      "note": "Tasks dossier generated — 11 tasks (T001-T011) across copilot-cli (AC-03), copilot-vscode throwaway-sqlite (AC-04), cursor transcript+cursorDiskKV join (AC-05). Reuses Phase-1 scrub/extension/e2e/byte-scan patterns."
     },
     {
       "id": "phase-3",
