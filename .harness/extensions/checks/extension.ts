@@ -61,6 +61,18 @@ async function runCmdGate(
   return { name, status: 'error', exit: r.code, note: tail ? `${opts.failNote} — ${tail}` : opts.failNote };
 }
 
+/** Pull the failure-relevant lines out of a vitest run (skip the coverage table / noise),
+ * so a CI failure carries WHY in its envelope note (the composite captures sub-stdout). */
+function vitestFailSummary(stdout: string, stderr: string): string {
+  const lines = `${stdout}\n${stderr}`.split('\n');
+  const hits = lines.filter((l) =>
+    /\bFAIL\b|❯|AssertionError|\bError:|Expected|Received|Unhandled|\bTests\b.*\bfailed\b|\bTest Files\b.*\bfailed\b/.test(
+      l,
+    ),
+  );
+  return (hits.length > 0 ? hits.slice(0, 30) : lines.slice(-20)).join('\n').slice(0, 4000);
+}
+
 /** Run one harness sub-verb via the repo bin and read its envelope status. */
 async function runVerbGate(
   ctx: Parameters<HarnessVerb['run']>[0],
@@ -112,7 +124,9 @@ const checks: HarnessVerb = {
         name: 'tests',
         status: test.ok ? 'ok' : 'error',
         exit: test.code,
-        note: test.ok ? '' : 'The vitest suite failed \u2014 run `just test` to see the full report.',
+        note: test.ok
+          ? ''
+          : `The vitest suite failed \u2014 reproduce with \`just test\`.\n${vitestFailSummary(test.stdout, test.stderr)}`,
       });
 
       // Hard gates \u2014 lint / typecheck / drift guards (read src; mirror CI's static gates).
