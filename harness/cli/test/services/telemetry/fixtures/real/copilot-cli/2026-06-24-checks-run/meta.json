@@ -1,0 +1,15 @@
+{
+  "surface": "copilot-cli",
+  "captured_utc": "2026-06-25",
+  "harness": "copilot-cli",
+  "scrubbed": true,
+  "scrub_categories": [
+    "machine-paths",
+    "home-username",
+    "git-handles",
+    "person-names",
+    "emails",
+    "secrets"
+  ],
+  "note": "copilot-cli 'harness doctor' session; reused from refs/harness-telemetry 2026-06-24; vendor system prompt redacted"
+}

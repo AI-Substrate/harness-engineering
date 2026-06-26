@@ -1,0 +1,100 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "copilot-cli",
+  "harness_session_id": "b67cd3ce-e0ee-4048-831e-7f4591f20a60",
+  "timecode": "2026-06-25T00:00:00Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 15
+  },
+  "branch": null,
+  "tokens": {
+    "input": 4,
+    "output": 539,
+    "cache_create": 45885,
+    "cache_read": 40183,
+    "total": 86611,
+    "subagent_tokens": 0,
+    "grand_total": 86611
+  },
+  "effort": "max",
+  "models": {
+    "claude-opus-4.8": {
+      "turns": 2,
+      "output_tokens": 539
+    }
+  },
+  "tools": {
+    "bash": 1
+  },
+  "user_prompts": [
+    27
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-24T09:29:13.394Z",
+      "kind": "model",
+      "model": "claude-opus-4.8"
+    },
+    {
+      "t": "2026-06-24T09:29:14.592Z",
+      "kind": "prompt",
+      "words": 27
+    },
+    {
+      "t": "2026-06-24T09:29:20.513Z",
+      "kind": "harness",
+      "verb": "doctor"
+    },
+    {
+      "t": "2026-06-24T09:29:20.513Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T09:29:21.862Z",
+      "kind": "command_exit",
+      "verb": "doctor",
+      "exit": 0
+    },
+    {
+      "t": "2026-06-24T09:29:21.882Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 4,
+      "out": 539,
+      "cache_read": 40183,
+      "cache_create": 45885,
+      "model": "claude-opus-4.8"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 8,
+      "agent_working_s": 7,
+      "human_s": 1,
+      "idle_s": 0,
+      "working_ratio": 0.86
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 539,
+      "cache_read": 40183,
+      "cache_create": 45885
+    },
+    "tools": {
+      "bash": 1
+    },
+    "outcomes": {
+      "exits": {
+        "doctor": 0
+      }
+    }
+  }
+}

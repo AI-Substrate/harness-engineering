@@ -1,0 +1,67 @@
+{
+  "sessions": [
+    {
+      "id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "cwd": "/home/dev/repo",
+      "updated_at": "2026-06-25T02:52:08.381Z"
+    }
+  ],
+  "turns": [
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 0,
+      "words": 124,
+      "has_response": 1,
+      "timestamp": "2026-06-25T00:25:09.904Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 1,
+      "words": 4,
+      "has_response": 1,
+      "timestamp": "2026-06-25T00:25:30.905Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 2,
+      "words": 12,
+      "has_response": 1,
+      "timestamp": "2026-06-25T00:51:59.484Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 3,
+      "words": 71,
+      "has_response": 1,
+      "timestamp": "2026-06-25T01:26:12.982Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 4,
+      "words": 4,
+      "has_response": 1,
+      "timestamp": "2026-06-25T01:33:55.629Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 5,
+      "words": 2,
+      "has_response": 1,
+      "timestamp": "2026-06-25T01:38:02.076Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 6,
+      "words": 3,
+      "has_response": 1,
+      "timestamp": "2026-06-25T01:48:25.148Z"
+    },
+    {
+      "session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+      "turn_index": 7,
+      "words": 146,
+      "has_response": 1,
+      "timestamp": "2026-06-25T02:52:08.382Z"
+    }
+  ]
+}
