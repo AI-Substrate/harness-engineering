@@ -82,9 +82,27 @@ const ALL_LABELS = [...new Set([...GENERIC.map((b) => b.label), 'win-home', 'win
 // the committer's real username, without false-positives off the author's machine — the
 // portability bug that turned this suite red on CI but green locally.
 const GENERIC_RUNTIME_USERS = new Set([
-  'root', 'runner', 'runneradmin', 'admin', 'administrator', 'user', 'users', 'ubuntu',
-  'debian', 'dev', 'node', 'build', 'builder', 'ci', 'vagrant', 'vsts', 'jenkins',
-  'circleci', 'github', 'githubactions', 'codespace',
+  'root',
+  'runner',
+  'runneradmin',
+  'admin',
+  'administrator',
+  'user',
+  'users',
+  'ubuntu',
+  'debian',
+  'dev',
+  'node',
+  'build',
+  'builder',
+  'ci',
+  'vagrant',
+  'vsts',
+  'jenkins',
+  'circleci',
+  'github',
+  'githubactions',
+  'codespace',
 ]);
 
 /** Identity tokens: runtime best-effort (the committer's real personal username only) +
