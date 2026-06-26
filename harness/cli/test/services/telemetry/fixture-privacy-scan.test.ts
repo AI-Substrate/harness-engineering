@@ -75,13 +75,28 @@ function bannedFor(kind: Kind): Banned[] {
 
 const ALL_LABELS = [...new Set([...GENERIC.map((b) => b.label), 'win-home', 'win-drive'])];
 
-/** Identity tokens: runtime best-effort + an explicit, never-committed denylist env (F004). */
+// Generic system / CI / container usernames are never a person's identity, yet they
+// collide as substrings with ordinary words in legitimately-scrubbed fixtures (GitHub
+// Actions runs as `runner`, Docker as `root`, both appear many times in real session
+// prose). Excluding them keeps the runtime-identity scan a best-effort LOCAL guard for
+// the committer's real username, without false-positives off the author's machine — the
+// portability bug that turned this suite red on CI but green locally.
+const GENERIC_RUNTIME_USERS = new Set([
+  'root', 'runner', 'runneradmin', 'admin', 'administrator', 'user', 'users', 'ubuntu',
+  'debian', 'dev', 'node', 'build', 'builder', 'ci', 'vagrant', 'vsts', 'jenkins',
+  'circleci', 'github', 'githubactions', 'codespace',
+]);
+
+/** Identity tokens: runtime best-effort (the committer's real personal username only) +
+ * an explicit, never-committed denylist env (F004). Generic CI/system users are excluded. */
 function identityTokens(): string[] {
   const home = process.env.HOME ?? '';
   const homeBase = home.replace(/\\/g, '/').split('/').filter(Boolean).pop() ?? '';
   const user = process.env.USER ?? process.env.USERNAME ?? '';
+  const runtime = [user, homeBase].filter((t) => !GENERIC_RUNTIME_USERS.has(t.toLowerCase()));
+  // The explicit denylist is intentional (a real name passed at commit time) — keep as-is.
   const denylist = (process.env.HARNESS_FIXTURE_SCRUB_TOKENS ?? '').split(',').map((s) => s.trim());
-  return [...new Set([user, homeBase, ...denylist])].filter((t) => t.length >= 3 && t !== 'dev');
+  return [...new Set([...runtime, ...denylist])].filter((t) => t.length >= 3);
 }
 
 function scanForLeaks(text: string, banned: Banned[], identity: string[]): string[] {
