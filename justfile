@@ -135,7 +135,8 @@ compact target="harness-foundations":
 # built instead of rebuilding.
 #
 # Build the CLI (docs + tsc) and (re)link `harness` globally to this working tree.
-build:
+# Depends on install-hooks so a normal build also enables the pre-push gate (once).
+build: install-hooks
     npm run build
     npm link --ignore-scripts
     @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
@@ -145,7 +146,8 @@ build:
 # at $(npm prefix -g)/bin, pointing at harness/cli/bin/harness.js. The link is
 # LIVE: re-run this (or `just build`) after changes to refresh the dist it serves.
 # Undo with `just uninstall-cli`.
-install-cli:
+# Depends on install-hooks so installing the CLI also enables the pre-push gate (once).
+install-cli: install-hooks
     npm run build
     npm link --ignore-scripts
     @command -v harness >/dev/null 2>&1 \
@@ -204,10 +206,18 @@ checks:
     node harness/cli/bin/harness.js checks
 
 # Enable the tracked pre-push gate for this clone (sets core.hooksPath -> .githooks).
-# `.git/hooks` is not tracked, so each clone opts in once. Skip a push with --no-verify.
+# `.git/hooks` is not tracked, so activation is per-clone — but `just build` /
+# `just install-cli` depend on this, so a normal setup turns it on. Idempotent + quiet
+# once enabled; no-ops outside a git checkout. Skip a single push with --no-verify.
 install-hooks:
-    git config core.hooksPath .githooks
-    @echo "✓ pre-push hook enabled (core.hooksPath=.githooks). It runs 'harness checks' before every push; bypass with 'git push --no-verify'."
+    @if ! git rev-parse --git-dir >/dev/null 2>&1; then \
+        echo "… not a git checkout — skipping pre-push hook install"; \
+    elif [ "$(git config --get core.hooksPath || true)" = ".githooks" ]; then \
+        true; \
+    else \
+        git config core.hooksPath .githooks && \
+        echo "✓ pre-push hook enabled (core.hooksPath=.githooks) — runs 'harness checks' before each push; bypass with 'git push --no-verify'."; \
+    fi
 
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":
