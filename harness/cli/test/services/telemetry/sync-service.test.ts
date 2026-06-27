@@ -158,6 +158,52 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1');
   });
 
+  it('publishes the OTLP .jsonl spool companions in the shard tree, not the segment json (T011)', () => {
+    const { deps, git } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-x']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[2]}\n',
+      },
+      {
+        [TEL]: ['sessA'],
+        [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'],
+      },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+    expect(r.segments).toBe(1); // one segment flushed (seq count), two signal blobs
+    // the shard tree holds the OTLP signal files — the segment buffer json stays LOCAL
+    const names = git.trees
+      .flat()
+      .map((e) => e.name)
+      .sort();
+    expect(names).toEqual(['1.logs.jsonl', '1.metrics.jsonl']);
+    // the published blob bytes are the spool's, not the segment's
+    expect(git.blobs).toContain('{"resourceLogs":[1]}\n');
+    expect(git.blobs).toContain('{"resourceMetrics":[2]}\n');
+    expect(git.blobs).not.toContain(seg(['038-x']));
+    // plan link + date still derived from the local buffer segment
+    expect(r.plans).toEqual(['038-x']);
+    expect(git.pushed).toEqual([refspec('2026/03/23', 'sessA')]);
+    // single-writer-per-ref preserved: orphan create, no fetch-to-write
+    expect(git.commits.every((c) => c.parent === null)).toBe(true);
+  });
+
+  it('falls back to the segment json when the .jsonl spool is absent (AC-14: never drop a buffered segment)', () => {
+    const { deps, git } = makeDeps(
+      { [`${TEL}/sessA/1.json`]: seg(['038-y']) },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json'] },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+    expect(r.segments).toBe(1);
+    // no spool companions → the segment json still flushes, so nothing is lost
+    expect(git.trees.flat().map((e) => e.name)).toEqual(['1.json']);
+  });
+
   it('is a clean no-op when there is no buffer (no telemetry dir, nothing to flush)', () => {
     const { deps, git } = makeDeps({}, {});
     const r = syncTelemetry(deps);

@@ -27,8 +27,11 @@ import type { Segment } from './segment.js';
  * fetch, no merge, no retry across writers. A central scraper still collects
  * everything in ONE globbed fetch (`refs/harness-telemetry/*`); the date prefix
  * is the prune key. (Canonical git pattern: Gerrit `refs/changes/*`, GitHub
- * `refs/pull/*`.) Each shard's commit tree is flat `<seq>.json` — the date+session
- * hierarchy is in the ref name.
+ * `refs/pull/*`.) Each shard's commit tree is flat OTLP signal files —
+ * `<seq>.logs.jsonl` + `<seq>.metrics.jsonl` (the T010 spool; T011 publishes
+ * these, not the segment buffer json) — the date+session hierarchy is in the ref
+ * name. The local `<seq>.json` buffer stays the watermark key + reconstruction
+ * oracle; it falls back into the tree only when its spool companions are absent.
  *
  * Offline-safe (AC-14): a failed shard push rolls that shard's local ref back and
  * leaves the buffer + watermark untouched, so the next sync retries it. The
@@ -223,12 +226,27 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
         shard = { datePath, session, blobs: [], maxSeq: already, segments: 0, plans: new Set() };
         shardByDate.set(datePath, shard);
       }
-      shard.blobs.push({
-        mode: '100644',
-        type: 'blob',
-        sha: deps.git.hashObject(content),
-        name: s.name,
-      });
+      // T011: publish the OTLP signal spool (T010) — `<seq>.logs.jsonl` +
+      // `<seq>.metrics.jsonl` — as the shard's tree, NOT the segment buffer json.
+      // The buffer json stays LOCAL: it remains the watermark key, the datePath +
+      // plans source above, and the reconstruction oracle. Fall back to the json
+      // only when the spool is absent (a pre-spool / crash-interrupted buffer
+      // entry), so AC-14 never drops a buffered segment.
+      const base = s.name.slice(0, -'.json'.length);
+      const signals: { name: string; content: string }[] = [];
+      for (const suffix of ['logs', 'metrics'] as const) {
+        const sig = deps.fs.readText(posixJoin(sessionDir, `${base}.${suffix}.jsonl`));
+        if (sig !== null) signals.push({ name: `${base}.${suffix}.jsonl`, content: sig });
+      }
+      const toPublish = signals.length > 0 ? signals : [{ name: s.name, content }];
+      for (const blob of toPublish) {
+        shard.blobs.push({
+          mode: '100644',
+          type: 'blob',
+          sha: deps.git.hashObject(blob.content),
+          name: blob.name,
+        });
+      }
       shard.maxSeq = Math.max(shard.maxSeq, s.seq);
       shard.segments++;
       for (const p of segPlans) shard.plans.add(p);

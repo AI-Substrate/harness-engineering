@@ -19,7 +19,7 @@
 | T008 | rollup → OTLP Metrics | [x] |
 | T009 | gen_ai.* mapping module | [x] |
 | T010 | Wire OTLP write at capture seam (spool) | [x] |
-| T011 | Publish OTLP .jsonl over git-refs | [ ] |
+| T011 | Publish OTLP .jsonl over git-refs | [x] |
 | T012 | Harden keep (H4/H5) | [ ] |
 | T013 | Update eng-thrive scraper (lockstep) | [ ] |
 | T014 | Retarget rewritten tests | [ ] |
@@ -102,3 +102,18 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 - **T004** (extended `fixture-privacy-scan.test.ts`): scans the OTLP logs+metrics serialized bytes of all 4 real fixtures (reusing the existing banned-pattern + `SECRET_DETECTORS` machinery) → no leak; scanner proven LIVE on a planted `/Users/` attribute. AC-04.
 
 **Evidence**: 36 passed across both files.
+
+### T011 — Publish OTLP `.jsonl` over keep-and-harden git-refs ✅
+
+**What** (`sync-service.ts`): the per-(date,session) shard's commit tree now holds the T010 OTLP spool — `<seq>.logs.jsonl` + `<seq>.metrics.jsonl` — instead of the segment buffer `<seq>.json`. The buffer `.json` stays purely LOCAL: still the watermark key, still the `datePath` + `plans_touched` source for the commit message, still the reconstruction oracle. The shard/watermark/offline-safety machinery (single-writer-per-ref, ff-retry, rollback-on-push-fail) is **untouched** — only the tree's blob set changed, so **no fetch-to-write** was introduced.
+
+- RED first: extended `sync-service.test.ts` — a buffer with `.logs.jsonl`/`.metrics.jsonl` companions must publish *those* blob names (not `1.json`) and the spool's bytes; plus an offline-safety fallback case.
+- The published blobs are the spool bytes; `r.segments` still counts seqs (one segment = two signal blobs), so reporting/watermark semantics are unchanged.
+
+**Evidence**: `vitest run sync-service.test.ts` → **10 passed** (2 new); full telemetry+conformance suite **371 passed**; `tsc --noEmit` clean.
+
+**Acceptance**: AC-06 (one `.jsonl` per signal reaches the durable store), AC-07 (single-writer-per-ref preserved; no fetch-to-write).
+
+| # | Task | Tag | Note |
+|---|------|-----|------|
+| D10 | T011 | Noteworthy | **Spool-absent fallback**: if a `<seq>.json` buffer entry has no `.jsonl` companions (a pre-T010 entry, or a capture that crashed between the buffer write and the spool write), the shard falls back to publishing the segment `.json` rather than dropping the segment. Preserves AC-14 (never lose a buffered segment) at the cost of a non-OTLP blob in that degenerate case. Lets the existing shard/offline-safety tests stay green unchanged; T015 adds `.jsonl` companions to the touched-storage tests. |
