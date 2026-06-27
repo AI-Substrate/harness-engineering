@@ -723,6 +723,39 @@
         "from": "implement",
         "to": "review"
       }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T08:09:20.087Z",
+      "details": {
+        "node": "review",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-016",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T08:09:20.172Z",
+      "details": {
+        "node": "review",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T08:09:20.251Z",
+      "details": {
+        "from": "review",
+        "to": "ship"
+      }
     }
   ],
   "nodes": [
@@ -846,12 +879,19 @@
       "id": "review",
       "type": "review",
       "label": "Review (stage 7)",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "ship"
       ],
       "created_at": "2026-06-27T04:21:49.979Z",
-      "modified_at": "2026-06-27T04:21:49.979Z"
+      "modified_at": "2026-06-27T08:09:20.172Z",
+      "comments": [
+        {
+          "at": "2026-06-27T08:09:20.087Z",
+          "text": "Review complete: minih companion per-commit + control:stop drain (runs 4ac5/ab81/c7ce/0d3a, all findings fixed) AND a GPT-5.5 cross-model pass via flow-pair. Cross-model caught F1 (HIGH watermark data-loss on interleaved date buckets) that minih missed; fixed via contiguous-prefix advance (c967f41). F1 re-review verdict: APPROVE — closed, no new issue in the prefix logic. Full suite 1477 green, tsc/biome/fixture-drift clean."
+        }
+      ],
+      "ran_at": "2026-06-27T08:09:20.172Z"
     },
     {
       "id": "T001",
@@ -1130,8 +1170,8 @@
     }
   ],
   "nav": {
-    "now": "review",
-    "next": "ship",
+    "now": "ship",
+    "next": null,
     "intent": "Standardise harness telemetry to the OTEL/OTLP standard for upstream ingestion; keep storing locally. Segments may be reshaped OTEL-native — no back-compat required (not shipped yet).",
     "bag": {
       "mode": "simple",

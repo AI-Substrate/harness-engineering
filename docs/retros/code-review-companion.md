@@ -514,3 +514,39 @@
 - **magicWand** (target: minih): Set MINIH_PROJECT_ROOT to the repository root for coordinated agents, or expose separate MINIH_REPO_ROOT and MINIH_RUN_ROOT variables so prompts do not need to recover from an ambiguous project-root value.
 - difficulties:
   - [degrading] config: MINIH_PROJECT_ROOT resolved to the run directory even though the agent prompt said to cd there as the project root. (workaround: Used git rev-parse --show-toplevel and absolute repository paths for all project reads.)
+
+## 2026-06-27T03:16:27.346Z — code-review-companion / 2026-06-27T02-57-28-043Z-4ac5
+
+- runId: 2026-06-27T02-57-28-043Z-4ac5
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-27T02-57-28-043Z-4ac5
+- summary: Oriented on plan 038, acknowledged the implementation briefing, reviewed the T001 commit 75992b1, and sent one MEDIUM finding plus a summary. The review found no runtime OTEL dependency leak and accepted the protobuf path/import and fromObject-gap documentation, but flagged that collectorCheck never actually invokes the collector leg despite T001 claiming all three conformance legs are invocable.
+- **magicWand** (target: coordination): Add a minih companion helper command that writes and validates the farewell envelope from recorded inbox/state counts, so long-running agents do not have to hand-maintain message counters and report paths.
+- difficulties:
+  - [annoying] coordination: The required farewell schema and the minimum required output format overlap but are not identical, so the report had to include both the session/findings envelope and workedWell/confusing/difficulties fields to be safe. (workaround: Wrote a superset JSON object containing both sets of fields before running minih check.)
+
+## 2026-06-27T03:34:28.157Z — code-review-companion / 2026-06-27T03-20-53-066Z-ab81
+
+- runId: 2026-06-27T03-20-53-066Z-ab81
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-27T03-20-53-066Z-ab81
+- summary: Oriented on plan 038 and reviewed the cumulative T001-T009 branch diff focused on OTLP privacy, encode/decode symmetry, conformance, and metrics temporality. I sent two MEDIUM findings: metrics intervals include flow_log replay markers despite rollup excluding them, and the reconstruction proof does not exercise all 14 event kinds. No HIGH or CRITICAL issues were found.
+- **magicWand** (target: minih): Expose the resolved project root as a guaranteed coordination field and shell environment variable, and have minih check warn when it is missing before the agent starts work.
+- difficulties:
+  - [degrading] config: MINIH_PROJECT_ROOT was not visible to shell commands at boot, despite the companion prompt requiring the first action to cd into it. (workaround: Used the repository root from the environment context as the working directory for git, plan, and test commands.)
+
+## 2026-06-27T04:47:45.929Z — code-review-companion / 2026-06-27T04-33-45-704Z-c7ce
+
+- runId: 2026-06-27T04-33-45-704Z-c7ce
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-27T04-33-45-704Z-c7ce
+- summary: Oriented on plan 038 and reviewed T011 commit ab03aa0 for OTLP .jsonl git-ref publishing. I sent one MEDIUM finding: partial spool companions are treated as complete, so a logs-only or metrics-only crash state can be published and watermarked, losing the missing signal. No HIGH or CRITICAL findings were found; the no-fetch-to-write shard model and push-failure rollback path appeared preserved.
+- **magicWand** (target: coordination): Add a minih command such as `minih companion draft-report --run <id>` that converts the coordination ledger into a schema-valid report.json skeleton including ackOf, message counts, and findings IDs.
+- difficulties:
+  - [annoying] coordination: The output instructions present two overlapping JSON contracts: an agent-specific farewell envelope with session/findings fields and a required-output minimum with workedWell/confusing/magicWand/difficulties. It was not obvious which fields validation would require. (workaround: Wrote a superset report containing the session/findings envelope and the required retrospective fields.)
+
+## 2026-06-27T06:16:15.479Z — code-review-companion / 2026-06-27T05-45-55-666Z-0d3a
+
+- runId: 2026-06-27T05-45-55-666Z-0d3a
+- runDir: /Users/jordanknight/substrate/harness-engineering/agents/code-review-companion/runs/2026-06-27T05-45-55-666Z-0d3a
+- summary: Oriented on plan 038 and reviewed four task pings: T012+T014, T015, T005, and the final T016/docs drain. T015 and T005 were approved for their scopes, but the phase drain remains REQUEST_CHANGES because the T012 H5 local-ref idempotency path can consume unpushed telemetry after a crash-before-push, the H4 lossy-id hash guarantee is overclaimed, and T016 documents those unresolved guarantees as if they were true.
+- **magicWand** (target: coordination): Add `minih companion draft-report --run <id>` that emits a schema-valid JSON skeleton populated with session timestamps, message counts, ackOf mappings, findings sent, and current unresolved requests.
+- difficulties:
+  - [annoying] coordination: The final JSON report had to be assembled manually from inbox activity, including counts and prior finding ids, rather than from a structured coordination ledger. (workaround: Tracked counts and finding ids in-session and mirrored the already-sent inbox findings into the report envelope.)
