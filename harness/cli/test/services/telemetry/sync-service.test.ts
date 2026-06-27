@@ -275,6 +275,37 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(git.trees.flat().map((e) => e.name)).toEqual(['1.json']);
   });
 
+  it('does NOT skip an un-flushed lower seq when an interleaved date bucket fails (F1 — contiguous-prefix watermark)', () => {
+    const git = new FakeGitWrite();
+    // The dated shard's push fails; the UNDATED (corrupt-timecode) shard's succeeds.
+    git.failPushMatching = (r) => r.includes('2026/03/23');
+    const { deps, fs } = makeDeps(
+      {
+        // seq1 + seq3 are the SAME date; seq2 has a corrupt timecode → UNDATED bucket.
+        // So the date buckets INTERLEAVE: dated={1,3} (maxSeq 3), undated={2} (maxSeq 2).
+        [`${TEL}/sessA/1.json`]: seg(['x'], { timecode: '2026-03-23T10:00:00.000Z' }),
+        [`${TEL}/sessA/2.json`]: '{ corrupt not json',
+        [`${TEL}/sessA/3.json`]: seg(['x'], { timecode: '2026-03-23T10:05:00.000Z' }),
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '2.json', '3.json'] },
+      { git },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(false); // the dated shard (seq1+seq3) failed to push
+    // The undated shard (seq2, maxSeq 2) pushed first and succeeded — but seq1 (LOWER,
+    // stranded in the failed dated shard) is un-flushed, so the watermark must NOT
+    // advance past it. Pre-fix it leapt to 2 and skipped seq1 forever.
+    expect(fs.exists(`${TEL}/sessA.flushed`)).toBe(false); // never advanced past seq1
+    expect(git.pushed).toEqual([refspec('0000/00/00', 'sessA')]); // only the undated shard landed
+
+    // Recovery: once the dated push works, the SAME seq1+seq3 flush — nothing was lost.
+    git.failPushMatching = null;
+    const r2 = syncTelemetry(deps);
+    expect(r2.ok).toBe(true);
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('3'); // all three now consumed
+  });
+
   it('is a clean no-op when there is no buffer (no telemetry dir, nothing to flush)', () => {
     const { deps, git } = makeDeps({}, {});
     const r = syncTelemetry(deps);

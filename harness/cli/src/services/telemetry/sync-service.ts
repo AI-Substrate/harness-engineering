@@ -152,6 +152,8 @@ interface Shard {
   datePath: string;
   session: string;
   blobs: TreeEntry[];
+  /** The buffer seqs this shard carries (NOT necessarily contiguous — date buckets can interleave). */
+  seqs: number[];
   maxSeq: number;
   segments: number;
   plans: Set<string>;
@@ -211,9 +213,15 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
     // (date, session). Time advances with seq, so date buckets are contiguous
     // ascending seq ranges.
     const shardByDate = new Map<string, Shard>();
+    // Seqs with no readable buffer file — nothing to flush, but they must NOT block
+    // the watermark's contiguous advance (treated as vacuously done).
+    const vacuousSeqs = new Set<number>();
     for (const s of pending) {
       const content = deps.fs.readText(posixJoin(sessionDir, s.name));
-      if (content === null) continue;
+      if (content === null) {
+        vacuousSeqs.add(s.seq);
+        continue;
+      }
       let datePath = UNDATED;
       let segPlans: string[] = [];
       try {
@@ -225,7 +233,15 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
       }
       let shard = shardByDate.get(datePath);
       if (!shard) {
-        shard = { datePath, session, blobs: [], maxSeq: already, segments: 0, plans: new Set() };
+        shard = {
+          datePath,
+          session,
+          blobs: [],
+          seqs: [],
+          maxSeq: already,
+          segments: 0,
+          plans: new Set(),
+        };
         shardByDate.set(datePath, shard);
       }
       // T011: publish the OTLP signal spool (T010) — `<seq>.logs.jsonl` +
@@ -257,18 +273,17 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
           name: blob.name,
         });
       }
+      shard.seqs.push(s.seq);
       shard.maxSeq = Math.max(shard.maxSeq, s.seq);
       shard.segments++;
       for (const p of segPlans) shard.plans.add(p);
     }
 
-    // Push shards in ascending seq order; advance the single per-session watermark
-    // to the last CONSECUTIVELY-successful shard's maxSeq, stopping at the first
-    // failure (its segments + all later ones stay buffered for the next sync, AC-14).
+    // Push shards in ascending seq order, collecting the seqs that durably flushed.
     const shards = [...shardByDate.values()]
       .filter((s) => s.blobs.length > 0)
       .sort((a, b) => a.maxSeq - b.maxSeq);
-    let advancedTo = already;
+    const flushedSeqs = new Set<number>(vacuousSeqs); // null-content seqs don't block
     for (const shard of shards) {
       const outcome = flushShard(deps, shard);
       if (!outcome.ok) {
@@ -285,7 +300,18 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
         flushedSessions.add(session);
         for (const p of shard.plans) planSet.add(p);
       }
-      advancedTo = shard.maxSeq;
+      for (const sq of shard.seqs) flushedSeqs.add(sq);
+    }
+    // Advance the single watermark ONLY through the contiguous run of flushed seqs
+    // from `already` — never past an un-flushed lower seq. Date buckets can
+    // INTERLEAVE (a corrupt `UNDATED` timecode or clock skew breaks the
+    // "contiguous seq range per date" assumption), so a higher-maxSeq shard
+    // succeeding must not leap the watermark over a lower seq stranded in a failed
+    // shard — that would skip it forever on the next sync (review F1, run pij-13zx0sn).
+    let advancedTo = already;
+    for (const s of pending) {
+      if (!flushedSeqs.has(s.seq)) break;
+      advancedTo = s.seq;
     }
     if (advancedTo > already) writeFlushed(deps.fs, flushedPath, advancedTo);
   }

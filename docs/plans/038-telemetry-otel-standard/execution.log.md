@@ -198,3 +198,15 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 ## Phase complete — 038 telemetry-otel-standard
 
 **15/16 tasks done, T013 deferred** (eng-thrive scraper out-of-repo; contract documented in T016). Commits on `feat/038-telemetry-otel-standard`: T011 `ab03aa0`, T012 `3a36cf3`, fix `4e97524`, T013-defer `0224c20`, T014 `05995ee`, T015 `d1c6023`, T005 `9cc6f8a`, T016 (this). Full CLI suite green; tsc + biome clean throughout. Companion (`code-review-companion`) caught one real data-loss bug (partial spool, run c7ce) now fixed + regression-tested.
+
+## Cross-model review (flow-pair · GPT-5.5 via pij, run pij-13zx0sn)
+
+A second, independent cross-model reviewer (copilot GPT-5.5, driven through the pij control plane + `/the-flow 7` after `/frugal`) reviewed the whole 038 diff. Verdict: REQUEST_CHANGES, 3 findings — adjudicated (lead proves):
+
+| # | sev | finding | disposition |
+|---|---|---|---|
+| F1 | HIGH | **watermark skips an un-flushed lower seq on interleaved date buckets** — `advancedTo = shard.maxSeq` assumes contiguous per-shard seq ranges, but a corrupt-timecode (`UNDATED`) or clock-skewed segment interleaves buckets; a successful higher-maxSeq shard then advances the watermark past a lower seq stranded in a failed shard → skipped forever | **FIXED** — track each shard's seqs; advance the watermark only through the CONTIGUOUS flushed prefix from `already` (null-content seqs are vacuously-done so they don't block). +regression test (interleaved UNDATED bucket, selective push-fail). **A real bug minih did NOT catch** — pre-existing from plan 034, surfaced by the cross-model second opinion. |
+| F2 | MEDIUM | sanitizeSessionId still non-injective (a clean id could equal another's `<cleaned>-<hash>` form) | **ALREADY ADDRESSED** — same point as minih H4 (run 0d3a); the wording is now "negligibly unlikely" not "never", the digest is ~64-bit, and the non-injectivity is an accepted design property (harness session ids are UUIDs that don't take the `<base>-<64bit>` shape). No new change. |
+| F3 | MEDIUM | metrics drop `outcomes.checks`; exits use an `exit_code` gauge vs the plan's command-exits | **DEFENDED (no change)** — checks status IS preserved in the OTLP **Logs** (`harness.checks.status`/`gates`, `logs.ts:116-120`, reconstructed 236-242), which are the reconstruction substrate; it is deliberately not a numeric metric (categorical, not a measure — D9). Exits ARE faithfully serialized as a gauge (last code per verb = `rollup.outcomes.exits`). A metrics-only consumer reading categorical status was never the contract. |
+
+**Value of the second reviewer**: F1 is a genuine data-loss bug that the (also-valuable) minih companion missed — the independent cross-model lens earned its keep. F2/F3 were a re-flag of an already-fixed item and a documented design decision, correctly dispositioned without thrash.

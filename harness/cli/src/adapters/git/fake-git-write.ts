@@ -35,6 +35,8 @@ export class FakeGitWrite implements GitWritePort {
 
   /** Set true to make `push` throw (models offline / auth failure / non-ff). */
   failPush = false;
+  /** Fail `push` only for refspecs matching this predicate (models a per-ref failure). */
+  failPushMatching: ((refspec: string) => boolean) | null = null;
   /** Set true to make the FIRST `updateRef` lose a race (a concurrent writer moves the tip). */
   staleOnce = false;
 
@@ -114,7 +116,9 @@ export class FakeGitWrite implements GitWritePort {
 
   push(refspec: string): void {
     this.calls.push('push');
-    if (this.failPush) throw new Error('FakeGitWrite.push: simulated push failure');
+    if (this.failPush || this.failPushMatching?.(refspec)) {
+      throw new Error('FakeGitWrite.push: simulated push failure');
+    }
     this.pushed.push(refspec);
   }
 
