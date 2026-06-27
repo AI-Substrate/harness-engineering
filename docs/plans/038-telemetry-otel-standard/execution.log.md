@@ -18,7 +18,7 @@
 | T007 | event_stream → OTLP Logs | [x] |
 | T008 | rollup → OTLP Metrics | [x] |
 | T009 | gen_ai.* mapping module | [x] |
-| T010 | Wire OTLP write at capture seam (spool) | [ ] |
+| T010 | Wire OTLP write at capture seam (spool) | [x] |
 | T011 | Publish OTLP .jsonl over git-refs | [ ] |
 | T012 | Harden keep (H4/H5) | [ ] |
 | T013 | Update eng-thrive scraper (lockstep) | [ ] |

@@ -33,6 +33,8 @@ import {
 import type { Event } from './events.js';
 import { flowLogEvents } from './flow-log.js';
 import { flowEventFromFlightPlan } from './flow-nav.js';
+import { segmentToOtlpLogs } from './otlp/logs.js';
+import { rollupToOtlpMetrics } from './otlp/metrics.js';
 import {
   type Segment,
   type SegmentInput,
@@ -121,6 +123,13 @@ export function computeWindow(prev: number | null, current: number | null): Segm
     return { since: 'session-start', from: 0, to: Math.max(to, 0) };
   }
   return { since: 'last-command', from: prev, to };
+}
+
+/** Write `obj` as a single OTLP/JSON-Lines record (one object + `\n`), atomically. */
+function writeJsonLine(fs: FsPort, path: string, obj: unknown): void {
+  const tmp = `${path}.tmp`;
+  fs.writeText(tmp, `${JSON.stringify(obj)}\n`);
+  fs.rename(tmp, path);
 }
 
 /** Next `<seq>.json` index in the session dir (max existing + 1; 1-based). */
@@ -413,10 +422,25 @@ function captureUnsafe(deps: CaptureDeps): void {
   ensureTemp({ fs: deps.fs, proc: deps.proc });
   const sessionDir = sessionDirFor(cwd, detected.sessionId);
   deps.fs.mkdirp(sessionDir);
-  const entryPath = posixJoin(sessionDir, `${nextSeq(deps.fs, sessionDir)}.json`);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
   const tmp = `${entryPath}.tmp`;
   deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
   deps.fs.rename(tmp, entryPath);
+
+  // Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): emit the SAME
+  // serialized segment as OTLP/JSON Lines beside the buffer entry — one `LogsData`
+  // line + one `MetricsData` line per capture (the fileexporter idiom; one file
+  // per signal, research A1). Written from the serialized segment only, so the
+  // counts-only allowlist is inherited; atomic temp+rename. The transport (sync)
+  // ships these — the serializer carries no transport knowledge. (Segment JSON is
+  // kept until the sync publisher + scraper migrate to `.jsonl` in T011/T013.)
+  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
+  writeJsonLine(
+    deps.fs,
+    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
+    rollupToOtlpMetrics(segment),
+  );
 
   // Advance the high-water mark crash-safely, then remember this capture's branch
   // so the NEXT capture can detect a switch, and advance the flow-log offset so
