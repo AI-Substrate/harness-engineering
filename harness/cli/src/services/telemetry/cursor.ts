@@ -18,18 +18,22 @@ export function telemetryDir(cwd: string): string {
 }
 
 /**
- * A short, stable, deterministic suffix derived from the raw id (FNV-1a → base36).
- * NOT cryptographic — its only job is to keep distinct raw ids distinct after a
- * lossy sanitize, so the per-(date,session) ref can never collide. Pure (P2: no
- * `node:crypto`).
+ * A short, stable, deterministic suffix derived from the raw id — two independent
+ * 32-bit hash passes (distinct bases + multipliers) concatenated into a ~64-bit
+ * digest, so distinct lossy ids collide only with NEGLIGIBLE probability (not an
+ * absolute guarantee — it is a hash, not a perfect injection). NOT cryptographic;
+ * its only job is collision-resistance for the per-(date,session) ref. Pure (P2:
+ * no `node:crypto`).
  */
 function shortHash(s: string): string {
-  let h = 0x811c9dc5;
+  let h1 = 0x811c9dc5; // FNV-1a basis
+  let h2 = 0xc2b2ae35; // a different basis → an independent second word
   for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193); // FNV prime
+    h2 = Math.imul(h2 ^ c, 0x85ebca77); // a different odd multiplier (decorrelates the words)
   }
-  return (h >>> 0).toString(36);
+  return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
 }
 
 /**
@@ -38,10 +42,11 @@ function shortHash(s: string): string {
  *
  * H4 (plan 038, telemetry-otel): the session id is also the per-(date,session)
  * REF segment, and two writers colliding on a segment → a non-fast-forward push →
- * lost telemetry. A lossy collapse breaks global uniqueness (`a/b` and `a-b` both
- * → `a-b`; every all-symbol id → the same fallback). So whenever cleaning changed
- * the string, append a stable hash of the RAW id to restore high entropy. A clean
- * id (alnum/`_`/`-` only — the UUID-like norm) passes through untouched.
+ * lost telemetry. A lossy collapse breaks uniqueness (`a/b` and `a-b` both → `a-b`;
+ * every all-symbol id → the same fallback). So whenever cleaning changed the
+ * string, append a wide deterministic digest of the RAW id — collisions then become
+ * NEGLIGIBLY unlikely (a hash, not a perfect guarantee). A clean id (alnum/`_`/`-`
+ * only — the UUID-like norm) passes through untouched.
  */
 export function sanitizeSessionId(raw: string): string {
   const cleaned = raw.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');

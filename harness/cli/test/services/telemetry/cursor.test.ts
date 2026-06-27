@@ -55,19 +55,27 @@ describe('sanitizeSessionId — H4 collision-resistance (plan 038, telemetry-ote
     expect(sanitizeSessionId('static_site')).toBe('static_site');
   });
 
-  it('keeps ids that sanitize-collapse to the same base globally distinct (no ref collision → no NFF)', () => {
-    // Both would clean to a "user-host-a-b"-ish base; the lossy one gets a stable
-    // hash suffix so the per-(date,session) ref can never collide across writers.
+  it('disambiguates ids that sanitize-collapse to the same base (a wide digest suffix → collision-resistant ref)', () => {
+    // Both would clean to a "user-host-a-b"-ish base; the lossy one gets a wide
+    // deterministic digest suffix so the per-(date,session) refs stay distinct.
     const lossy = sanitizeSessionId('user@host:/a/b');
     const clean = sanitizeSessionId('user-host-a-b');
     expect(lossy).not.toBe(clean);
     expect(sanitizeSessionId('a/b')).not.toBe(sanitizeSessionId('a-b'));
   });
 
-  it('never yields an empty or colliding segment for a degenerate all-symbol id', () => {
+  it('never yields an empty segment, and degenerate all-symbol ids stay distinct', () => {
     expect(sanitizeSessionId('///')).not.toBe('');
     expect(sanitizeSessionId('@@@')).not.toBe('');
     expect(sanitizeSessionId('@@@')).not.toBe(sanitizeSessionId('###'));
+  });
+
+  it('carries a wide (~64-bit) digest suffix for a lossy id — not a single 32-bit word', () => {
+    // The companion MEDIUM: a 32-bit digest was too narrow a collision budget for
+    // the "negligible collision" claim. The suffix is now two concatenated base36
+    // words → materially wider than one uint32.
+    const suffix = sanitizeSessionId('@@@').replace(/^sess-/, '');
+    expect(suffix.length).toBeGreaterThanOrEqual(10);
   });
 
   it('is deterministic — the same raw id always maps to the same segment (stable ref name)', () => {

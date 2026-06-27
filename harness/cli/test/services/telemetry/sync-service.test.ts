@@ -191,7 +191,7 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(git.commits.every((c) => c.parent === null)).toBe(true);
   });
 
-  it('a re-flush of an already-published shard is an idempotent no-op (H5 — check-exists, no NFF, no duplicate)', () => {
+  it('a re-flush of an already-published shard skips the duplicate commit but STILL re-pushes (H5 — crash-before-push safety, no NFF)', () => {
     const { deps, fs, git } = makeDeps(
       {
         [`${TEL}/sessA/1.json`]: seg(['038-x']),
@@ -207,17 +207,42 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(git.commits).toHaveLength(1);
     expect(git.pushed).toHaveLength(1);
 
-    // A watermark lost after a successful push (crash between push + writeFlushed):
-    // reset it so the SAME seqs re-flush against the now-existing ref.
+    // Watermark lost (a crash before writeFlushed) → reset so the SAME seqs re-flush
+    // against the now-existing local ref.
     fs.writeText(`${TEL}/sessA.flushed`, '0');
 
     const r2 = syncTelemetry(deps);
     expect(r2.ok).toBe(true);
-    expect(r2.pushed).toBe(false); // already durable — nothing newly pushed
-    expect(r2.segments).toBe(0);
-    expect(git.commits).toHaveLength(1); // no duplicate commit
-    expect(git.pushed).toHaveLength(1); // no duplicate push (no NFF)
-    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1'); // watermark re-advanced (consumed)
+    expect(r2.segments).toBe(0); // no NEW content flushed
+    expect(git.commits).toHaveLength(1); // de-duped: NO duplicate commit
+    // …but the ref IS re-pushed — a local ref-tree match cannot prove the remote got
+    // it (a crash between updateRef and push leaves the local ref ahead), so the buffer
+    // must never be consumed without re-delivering. Re-push is idempotent on the remote.
+    expect(git.pushed).toHaveLength(2);
+    expect(git.pushed[1]).toBe(refspec('2026/03/23', 'sessA'));
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1'); // watermark advances only after the re-push
+  });
+
+  it('the idempotent re-push path surfaces a push failure (does NOT consume the buffer) — crash-before-push never silently loses telemetry', () => {
+    const git = new FakeGitWrite();
+    const { deps, fs } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-x']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[2]}\n',
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'] },
+      { git },
+    );
+
+    expect(syncTelemetry(deps).ok).toBe(true); // first flush lands the local ref
+    fs.writeText(`${TEL}/sessA.flushed`, '0'); // lost watermark → re-flush hits the idempotent path
+    git.failPush = true; // the re-push (the delivery the remote actually needs) fails
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(false); // surfaced, not swallowed
+    // the buffer is NOT consumed past the failed re-push → next sync retries delivery
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('0');
   });
 
   it('falls back to the segment json when the spool is PARTIAL — logs without metrics (companion c7ce: never publish-and-consume a half-signal)', () => {

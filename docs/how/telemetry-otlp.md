@@ -105,12 +105,16 @@ refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>
   leaves the buffer + watermark intact, so the next sync retries it. A buffered
   segment is never lost.
 - **Idempotent re-push.** If a shard ref already holds the exact tree (a re-sync
-  after a lost watermark), the push is a no-op — no duplicate commit, no
-  non-fast-forward. The existence check is a **local** ref-tree peel, never a remote
-  fetch.
+  after a lost watermark), the **duplicate commit is skipped but the ref is still
+  re-pushed** — idempotent on the remote (a no-op when current, a fast-forward when a
+  prior push was interrupted). A local ref-tree match alone does **not** prove the
+  remote received it (a crash between the local ref update and the push leaves the
+  local ref ahead), so the buffer is never consumed without re-delivering. The
+  existence check is a **local** ref-tree peel, never a remote fetch.
 - **Session-id entropy.** The session id is the ref segment; a lossy sanitize gets a
-  stable hash suffix so distinct ids can never collide on a ref (a collision would
-  be a non-fast-forward = lost telemetry).
+  wide deterministic digest suffix so distinct ids collide only with **negligible**
+  probability (a collision would be a non-fast-forward = lost telemetry). A clean
+  UUID-like id passes through unchanged.
 - **Partial / legacy fallback.** If a `<seq>` has no OTLP pair (a pre-spool buffer
   entry, or a crash *between* the two atomic spool writes), that shard publishes the
   full segment `<seq>.json` instead — the reconstruction oracle, so nothing is ever

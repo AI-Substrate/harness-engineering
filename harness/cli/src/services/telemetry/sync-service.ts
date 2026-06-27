@@ -322,11 +322,22 @@ function flushShard(deps: SyncDeps, shard: Shard): ShardOutcome {
 
   // The tree is content-addressed, so build it once. H5 (idempotent re-push): if
   // the ref ALREADY holds this exact tree (a prior flush whose watermark was lost,
-  // or a stale-buffer re-run), the shard is already durable — skip the commit +
-  // push entirely. A LOCAL ref peel, never a remote fetch, so single-writer-per-ref
-  // holds and a re-push can never become a non-fast-forward loss.
+  // or a stale-buffer re-run), skip building a DUPLICATE commit — but still push
+  // `ref:ref`. A local ref-tree match does NOT prove the remote received it: a crash
+  // between `updateRef` (local) and `push` leaves the local ref ahead of the remote,
+  // and silently consuming the buffer here would lose that telemetry (companion HIGH,
+  // run 0d3a). The re-push is idempotent — a no-op when the remote is already current,
+  // a fast-forward when it is behind — never a duplicate commit, never an NFF. On
+  // failure the pre-existing local ref is left intact (no rollback) for the next retry.
   const tree = deps.git.mktree(shard.blobs);
-  if (deps.git.refTree(ref) === tree) return { ok: true, pushed: false };
+  if (deps.git.refTree(ref) === tree) {
+    try {
+      deps.git.push(`${ref}:${ref}`);
+    } catch (err) {
+      return { ok: false, pushed: false, message: `re-push failed: ${errMsg(err)}` };
+    }
+    return { ok: true, pushed: false };
+  }
 
   let parent: string | null = null;
   let commit: string | null = null;
