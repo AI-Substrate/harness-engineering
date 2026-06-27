@@ -47,9 +47,11 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 
 | ackOf (review-request) | severity | finding | disposition |
 |---|---|---|---|
-| _(none yet)_ | | | |
+| T001 (run …4ac5) | MEDIUM | `collectorCheck()` skips even when `otelcol-contrib` present → "3 legs invocable" overstated | ACCEPT — known/documented; collector leg is a deferred placeholder. Soften the T001 claim wording. |
+| T001-T009 (run …ab81) | MEDIUM | **metrics `bounds()` includes `flow_log` markers the rollup excludes** → session start/end can be skewed by a backfilled marker | **FIXED** — exclude `flow_log` in `bounds()` to mirror `computeRollup`. Real bug. |
+| T001-T009 (run …ab81) | MEDIUM | reconstruction tests don't exercise all 14 event kinds (only those in fixtures) | **FIXED** — add an all-14-kinds synthetic round-trip test. Real coverage gap. |
 
-**Companion deviation (FINAL)**: two boot attempts (`…4ac5`, `…ab81`) both went `active` then reached `completed` early — `minih` 0.2.3's companion does NOT hold Power-On-Mode in this environment, so per-commit pings (T001 → T008) went unacknowledged; **no findings received from any run**. Per the implement verb's "boot fails twice → no-companion fallback", we proceed companion-less. **Recovery: a post-hoc `7 review` pass at phase end is REQUIRED and non-redundant** (no live review occurred). Self-review rigor applied inline meanwhile.
+**Companion deviation (CORRECTED)**: the companion DID work — it reviewed T001 (run `…4ac5`) and the T001–T009 diff (run `…ab81`), sending **3 MEDIUM findings** (above). It was NOT a crash. Two compounding reasons I initially logged "no findings": (1) **`idle_budget` exit by design** — the companion stands down after ~8–18 min idle; my commit cadence outran it, so each run farewelled before the next ping; (2) **my polling timing** — I skimmed the inbox immediately after fire-and-forget pings, before the async review landed minutes later, and never re-skimmed. Separately, BOTH runs ended `result: degraded` / `validated:false` on a **minih schema bug** (`report.json` `findings[]` need `id`, guided format emits `file`) — drafted as a minih GitHub issue (`scratchpad/minih-issue-companion.md`). The 2 code findings are now in the table above and will be fixed; the collector-claim note is accepted/documented.
 
 ---
 

@@ -33,6 +33,11 @@ function bounds(events: readonly Event[]): { startNs: string; endNs: string } {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (const e of events) {
+    // EXCLUDE flow_log — like computeRollup. flow_log markers carry their own
+    // `fired_at`, which can predate the window (backfilled flight-plan history);
+    // including them here would skew the metric session start/end the same way it
+    // would skew the rollup's wall/gap math (review finding F001, run …ab81).
+    if (e.kind === 'flow_log') continue;
     const s = parseIso(e.t);
     if (Number.isFinite(s)) {
       if (s < min) min = s;
