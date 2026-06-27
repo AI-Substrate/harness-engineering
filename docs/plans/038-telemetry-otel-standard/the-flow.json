@@ -1,0 +1,373 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "telemetry-otel-standard",
+  "created_at": "2026-06-26T02:30:55.702Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.6.0",
+    "branch": "main",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-26T02:30:55.702Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:55.710Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "telemetry-otel-standard"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.023Z",
+      "details": {
+        "node": "ship",
+        "type": "ship"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.330Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.637Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.939Z",
+      "details": {
+        "from": "",
+        "to": "research"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:45:50.063Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:45:50.362Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:45:50.672Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T00:47:54.760Z",
+      "details": {
+        "node": "otel-deep-research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T00:47:55.115Z",
+      "details": {
+        "node": "otel-deep-research",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T00:47:55.430Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T01:56:16.336Z",
+      "details": {
+        "node": "ws-otlp-shape",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T01:56:16.656Z",
+      "details": {
+        "node": "ws-otlp-shape",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:08:08.334Z",
+      "details": {
+        "node": "otel-deep-research",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:19:59.555Z",
+      "details": {
+        "node": "ws-storage-transport",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:20:00.063Z",
+      "details": {
+        "node": "ws-storage-transport",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.015Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.327Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.635Z",
+      "details": {
+        "node": "implement",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.635Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.994Z",
+      "details": {
+        "from": "plan",
+        "to": "plan"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-26T02:30:56.023Z",
+      "modified_at": "2026-06-26T02:30:56.023Z",
+      "zone": "postflight"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-26T02:30:56.330Z",
+      "modified_at": "2026-06-27T02:48:26.635Z",
+      "comments": [
+        {
+          "at": "2026-06-27T00:47:55.430Z",
+          "text": "Two pre-plan workshops queued: WS-A OTLP emit & shape; WS-B telemetry storage & transport (git-refs review elevated this to a real decision).",
+          "kind": "note"
+        }
+      ],
+      "ran_at": "2026-06-27T02:48:26.015Z",
+      "note": "Simple-mode unified plan written + VALIDATED WITH FIXES (3 WS-A-pinned repairs: 3-way conformance, per-kind severity sensored, 2 goldens re-added). 16 ordered tasks, sensors-first. Status: READY."
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-26T02:30:56.636Z",
+      "modified_at": "2026-06-26T02:45:50.362Z",
+      "ran_at": "2026-06-26T02:45:50.063Z",
+      "note": "Deep dossier: serializeSegment is the single OTLP seam; event_stream→OTLP Logs, rollup→Metrics; fileexporter=JSONL; OTLP envelope stable but gen_ai.* experimental; no-back-compat confirmed (eng-thrive consumer is internal); 3 privacy invariants must survive.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/research-dossier.md"
+      ]
+    },
+    {
+      "id": "otel-deep-research",
+      "type": "research",
+      "label": "Deep research: local-OTEL + git-refs",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-27T00:47:54.760Z",
+      "modified_at": "2026-06-27T02:08:08.334Z",
+      "branch_of": "plan",
+      "note": "Perplexity x2: (A) OTLP-as-files is a staging format not archival — pin schema_url, one-file-per-signal, cumulative-per-session, collector-as-checker guards silent drops; (B) git-refs is the 'too many refs' anti-pattern — keep-and-harden at low volume or migrate to git-notes/object-storage. Feeds 2 workshops.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/research-storage-and-transport.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-27T02:08:08.334Z",
+          "text": "Pass 2 (transport): git-notes REJECTED as migration target — single notes-ref reintroduces NFF write-contention + orphan-commit object bloat (lateral-to-worse vs embarrassingly-parallel one-ref-per-session). No real tool uses git transport; end-state is store-and-forward (spool→uploader→OTEL Collector / object-storage). Live fork = keep-and-harden-now vs leave-git, with a graduation tripwire.",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "ws-otlp-shape",
+      "type": "workshop",
+      "label": "WS-A: OTLP emit & shape",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-27T01:56:16.336Z",
+      "modified_at": "2026-06-27T01:56:16.656Z",
+      "branch_of": "plan",
+      "note": "Decisions: Q1 OTEL-native/supplant (keep typed internal pipeline) + reconstruction invariant; two-layer field-naming (conform envelope, own harness.* + schema_url); Q2 logs+metrics; Q3 hand-roll+3-way conformance. Full event→OTLP map, rollup→metrics map, 33-file test index, Phase-0 backpressure sensors on 037 fixtures. Contract Ready.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/workshops/001-otlp-emit-and-shape.md"
+      ]
+    },
+    {
+      "id": "ws-storage-transport",
+      "type": "workshop",
+      "label": "WS-B: storage & transport",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-27T02:19:59.555Z",
+      "modified_at": "2026-06-27T02:20:00.063Z",
+      "branch_of": "plan",
+      "note": "Decision: keep-and-harden git-refs now (single-writer-per-ref = no fetch to write, zero contention); git-notes rejected; publish OTLP .jsonl; transport-agnostic emit (S4) so keep→leave is a swap. Hardening H1-H8 (dedicated repo + protocol-v2/hidden-refs + retention + session-id entropy + dedupe). Graduation = store-and-forward, ref-count tripwire. Preferred Direction.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/workshops/002-storage-and-transport.md"
+      ]
+    },
+    {
+      "id": "implement",
+      "type": "phase",
+      "label": "Implement: OTLP supplant (16 tasks, sensors-first)",
+      "status": "assumed",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-27T02:48:26.635Z",
+      "modified_at": "2026-06-27T02:48:26.635Z"
+    }
+  ],
+  "nav": {
+    "now": "plan",
+    "next": "implement",
+    "intent": "Standardise harness telemetry to the OTEL/OTLP standard for upstream ingestion; keep storing locally. Segments may be reshaped OTEL-native — no back-compat required (not shipped yet).",
+    "bag": {
+      "mode": "unknown",
+      "status": "active"
+    }
+  }
+}
