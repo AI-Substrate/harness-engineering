@@ -1,4 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
+import {
+  RES_BRANCH,
+  RES_COMMAND,
+  RES_HARNESS,
+  RES_SCHEMA_VERSION,
+  RES_SERVICE,
+  RES_SESSION,
+} from '../../../src/services/telemetry/otlp/semconv.js';
+import { attrMap } from '../../../src/services/telemetry/otlp/types.js';
 import {
   SEGMENT_FIELD_KEYS,
   SEGMENT_REQUIRED_KEYS,
@@ -217,5 +227,39 @@ describe('T001 — v1-compat view: prompt array + grouped subagents', () => {
       { type: 'reviewer', count: 2, tokens: 150, tool_uses: 6 },
       { type: 'reviewer', model: 'claude-opus-4-8', count: 1, tokens: 10 },
     ]);
+  });
+});
+
+describe('T014 — the segment → OTLP resource mapping uses the frozen harness.* contract', () => {
+  it('emits exactly the frozen resource attribute set (identity written once, harness.* names)', () => {
+    // A populated, branch-bearing segment → OTLP Logs; the ResourceLogs resource
+    // must carry precisely the six frozen resource attributes, no more, no less.
+    const seg = serializeSegment(
+      { ...baseInput(), event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }] },
+      REPO,
+    );
+    const logs = segmentToOtlpLogs(seg);
+    const keys = new Set(attrMap(logs.resourceLogs[0].resource.attributes).keys());
+    expect(keys).toEqual(
+      new Set([RES_SERVICE, RES_SESSION, RES_HARNESS, RES_COMMAND, RES_SCHEMA_VERSION, RES_BRANCH]),
+    );
+  });
+
+  it('omits harness.branch when the segment has no branch (no empty/identifying attr)', () => {
+    const seg = serializeSegment(
+      {
+        ...baseInput(),
+        branch: null,
+        event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }],
+      },
+      REPO,
+    );
+    const keys = new Set(
+      attrMap(segmentToOtlpLogs(seg).resourceLogs[0].resource.attributes).keys(),
+    );
+    expect(keys.has(RES_BRANCH)).toBe(false);
+    expect(keys).toEqual(
+      new Set([RES_SERVICE, RES_SESSION, RES_HARNESS, RES_COMMAND, RES_SCHEMA_VERSION]),
+    );
   });
 });

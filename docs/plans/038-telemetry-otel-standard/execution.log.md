@@ -22,7 +22,7 @@
 | T011 | Publish OTLP .jsonl over git-refs | [x] |
 | T012 | Harden keep (H4/H5) | [x] |
 | T013 | Update eng-thrive scraper (lockstep) | [—] deferred → eng-thrive repo; contract folded into T016 |
-| T014 | Retarget rewritten tests | [ ] |
+| T014 | Retarget rewritten tests | [x] |
 | T015 | Touched-storage tests hold .jsonl | [ ] |
 | T016 | Operator doc (docs/how/) | [ ] |
 
@@ -40,6 +40,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 | D6 | T002 | Noteworthy | `t → timeUnixNano (ns) → t` loses the exact source ISO string (format/precision). Carry the verbatim `t` under `harness.event.t` (reconstruction) + set `timeUnixNano` for OTLP interop (gaps/honesty). Two-layer rule in action. |
 | D7 | T002/T007 | Noteworthy | Landed T002+T006+T007+T009 as ONE green slice (test authored first, serializer made it pass) rather than a separate RED commit — keeps the branch suite green for CI. Sensors-first discipline preserved in authoring order. |
 | D8 | T006 | Noteworthy | `schema_url` pinned → `…/schemas/telemetry/v0.1.0`; `OTLP_SCOPE_VERSION` asserted in lockstep with `SEGMENT_SCHEMA_VERSION` (2.0). The `segment.schema.json` reshape + freeze test fold into T014. |
+| D14 | T014 | Noteworthy | **`segment.schema.json` is NOT reshaped/dropped** — the WS-A decision keeps the typed internal event/rollup model (row 140: ~18 green-by-design tests), so the segment record + its freeze test stay valid as the *internal-model* contract. T014's "successor to segment.schema.json" is the NEW `otlp/harness-otlp.schema.json` — the frozen `harness.*` attribute vocabulary that is the *on-disk consumer* contract (what the eng-thrive scraper reads). Two contracts now: internal Segment shape (`segment.schema.json`) + OTLP attribute vocabulary (`harness-otlp.schema.json`). |
+| D15 | T014 | Noteworthy | **`segment-record.test.ts` is orthogonal to OTLP** — it pins the record-framework `segment` TYPE (template / provenance splice / registry membership), not the telemetry serializer. The WS-A "Rewritten" row over-scoped it; forcing an OTLP assertion in would be fabrication. Left it as-is (verified green); the OTLP retarget landed in `segment.test.ts` + `events-rollup.test.ts` + the new freeze test instead. |
 
 Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make differently).
 
@@ -133,3 +135,16 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 | D11 | T012 | Noteworthy | **H4 found a live collision bug**: `sanitizeSessionId` mapped *every* degenerate/all-symbol id to the same `'unknown'` segment → distinct writers would collide on one ref → NFF → lost telemetry (the exact H4 risk). Hardened: a lossy sanitize now appends a stable FNV-1a hash of the raw id; clean UUID-like ids (the norm) pass through untouched, so no existing test moved. |
 | D12 | T012 | Noteworthy | **H5 needed a content-addressed fake**: real `git mktree` is content-addressed (same blobs → same tree sha), but `FakeGitWrite` returned a fresh counter sha per call, so it couldn't model the idempotency probe. Made the fake's `hashObject`/`mktree` content-addressed (FNV-1a) + added `refTree` (commit→tree map). No test asserted the old `blob<N>`/`tree<N>` sha strings, so the change was invisible to the suite. |
 | D10 | T011 | Noteworthy | **Spool-absent fallback**: if a `<seq>.json` buffer entry has no `.jsonl` companions (a pre-T010 entry, or a capture that crashed between the buffer write and the spool write), the shard falls back to publishing the segment `.json` rather than dropping the segment. Preserves AC-14 (never lose a buffered segment) at the cost of a non-OTLP blob in that degenerate case. Lets the existing shard/offline-safety tests stay green unchanged; T015 adds `.jsonl` companions to the touched-storage tests. |
+
+### T014 — Retarget the freeze test + the OTLP output assertions ✅
+
+**What** (the T006-deferred consumer-schema successor + the "Rewritten" row):
+- **New frozen contract** `otlp/harness-otlp.schema.json` — the `harness.*` OTLP attribute vocabulary (resource + harness.* + adopted `gen_ai.*`), the on-disk *consumer* contract successor to `segment.schema.json` (which stays as the *internal-model* contract — D14).
+- **New freeze test** `otlp/harness-otlp-schema.test.ts` — pins the contract file key-set-EQUAL to `semconv.ts` (`A` / `RES_*` / `GENAI_*`) + `schema_url` + scope-version lockstep. A semconv rename without a contract bump now trips a test (the "swap a name touches one file" guard, enforced).
+- **`segment.test.ts`** — new block: the segment→OTLP **resource** mapping emits exactly the six frozen resource attributes (and omits `harness.branch` when branchless).
+- **`events-rollup.test.ts`** — new block: every rollup→OTLP **metric datapoint attribute** key is a frozen `harness.*`/`gen_ai.*` name (no smuggled discriminator).
+- **`segment-record.test.ts`** — left as-is (D15: record-framework, orthogonal to OTLP; verified green).
+
+**Evidence**: the 5 files (incl. the new freeze test) → **48 passed**; full telemetry+conformance+git+record run **448 passed**; `tsc` clean; biome clean.
+
+**Acceptance**: AC-05 (freeze pins `harness.*` + `schema_url`; the OTLP output is asserted against the frozen contract), AC-08 (only the frozen vocabulary leaves the serializer).

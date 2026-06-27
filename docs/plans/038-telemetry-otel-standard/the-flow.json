@@ -612,6 +612,36 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:50:09.799Z",
+      "details": {
+        "node": "T014",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:53:55.173Z",
+      "details": {
+        "node": "T014",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -965,18 +995,19 @@
       "id": "T014",
       "type": "chore",
       "label": "T014 · Retarget rewritten tests",
-      "status": "todo",
+      "status": "done",
       "next": [
         "implement"
       ],
       "created_at": "2026-06-27T04:21:55.726Z",
-      "modified_at": "2026-06-27T04:21:55.726Z",
+      "modified_at": "2026-06-27T05:53:55.173Z",
       "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T014",
       "chore": {
         "kind": "manual",
         "importance": "strongly-recommended"
       },
-      "branch_of": "implement"
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T05:53:55.173Z"
     },
     {
       "id": "T015",
