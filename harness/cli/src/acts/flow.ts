@@ -619,7 +619,8 @@ export function registerFlowAct(
     .option('--path <path>', 'flow file path')
     .option('--slug <slug>', 'flow slug')
     .requiredOption('--node <id>', 'node id')
-    .requiredOption('--text <text>', 'comment text')
+    .option('--text <text>', 'comment text')
+    .option('--message <text>', 'alias for --text')
     .option('--source <source>', 'user | agent | system')
     .option('--kind <kind>', 'note | decision | warning | validation | …')
     .option('--refs <refs>', 'comma-separated commit/artifact refs')
@@ -628,16 +629,33 @@ export function registerFlowAct(
         path?: string;
         slug?: string;
         node: string;
-        text: string;
+        text?: string;
+        message?: string;
         source?: string;
         kind?: string;
         refs?: string;
       }) => {
+        const text = opts.text ?? opts.message;
+        if (text === undefined) {
+          return emit(
+            io,
+            failureEnvelope(
+              {
+                ok: false,
+                status: 'error',
+                code: ErrorCodes.INVALID_ARGS,
+                message: 'comment needs --text (alias: --message) "<comment text>".',
+                next_action: 'Pass --text "<comment text>" (or its alias --message).',
+              },
+              deps.clock,
+            ),
+          );
+        }
         runMutation(io, deps, opts, (doc) =>
           addComment(
             doc,
             opts.node,
-            opts.text,
+            text,
             { clock: deps.clock },
             {
               source: opts.source,

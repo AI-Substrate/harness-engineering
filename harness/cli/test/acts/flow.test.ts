@@ -245,6 +245,46 @@ describe('harness flow act — create + mutate + the post-mutation validation ga
     expect(bad.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
     expect(fs.readText('/repo/.harness/flows/demo.json')).toBe(before);
   });
+
+  it('comment accepts --message as an alias for --text (the text actually lands)', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+
+    const viaAlias = await runFlow(deps, [
+      'flow',
+      'comment',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--message',
+      'landed-via-alias',
+    ]);
+    expect(viaAlias.code).toBe(0);
+    expect(viaAlias.env.status).toBe('ok');
+
+    // non-vacuous: the aliased value must reach the persisted comment, not just parse
+    const doc = JSON.parse(fs.readText('/repo/.harness/flows/demo.json')) as {
+      nodes: { id: string; comments?: { text: string }[] }[];
+    };
+    const boot = doc.nodes.find((n) => n.id === 'boot');
+    expect(boot?.comments?.some((c) => c.text === 'landed-via-alias')).toBe(true);
+  });
+
+  it('comment with neither --text nor --message → E108 naming the alias (not the bare commander error)', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+
+    const missing = await runFlow(deps, ['flow', 'comment', '--slug', 'demo', '--node', 'boot']);
+    expect(missing.code).toBe(1);
+    expect(missing.env.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+    // the contextual message must connect the user to the alias
+    expect(missing.env.error?.message).toContain('--message');
+  });
 });
 
 describe('harness flow nav — show / set / meta act envelopes (T005/T006)', () => {
