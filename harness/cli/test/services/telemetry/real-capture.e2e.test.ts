@@ -21,6 +21,7 @@ import {
 } from '../../../src/services/telemetry/adapters/cursor-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
+import { registerOtlpGoldens } from './otlp-golden.js';
 
 /**
  * T008 (plan 1.7 · AC-01) — drive the REAL scrubbed claude fixture through
@@ -107,6 +108,7 @@ function invariantsOf(seg: ReturnType<typeof segment>) {
 
 describe('real claude fixture → segment (AC-01)', () => {
   const seg = segment();
+  registerOtlpGoldens(seg, GOLDEN); // T005 — mint/assert the OTLP goldens beside the segment
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
@@ -220,6 +222,7 @@ function coInvariantsOf(seg: ReturnType<typeof copilotSegment>) {
 
 describe('real copilot-cli fixture → segment (AC-03)', () => {
   const seg = copilotSegment();
+  registerOtlpGoldens(seg, CO_GOLDEN); // T005
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(CO_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
@@ -332,6 +335,7 @@ function curInvariantsOf(seg: ReturnType<typeof cursorSegment>) {
 
 describe('real cursor fixture → segment via transcript↔bubble join (AC-05)', () => {
   const seg = cursorSegment();
+  registerOtlpGoldens(seg, CUR_GOLDEN); // T005
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(CUR_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);

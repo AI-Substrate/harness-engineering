@@ -13,7 +13,7 @@
 | T002 | Reconstruction round-trip sensor | [x] |
 | T003 | OTLP conformance sensor (severity + no-drop + known-key) | [x] |
 | T004 | Privacy byte-scan over OTLP bytes | [x] |
-| T005 | Golden drift sensor + minting | [ ] |
+| T005 | Golden drift sensor + minting | [x] |
 | T006 | harness.* OTLP schema + schema_url + version assertion | [x] |
 | T007 | event_stream → OTLP Logs | [x] |
 | T008 | rollup → OTLP Metrics | [x] |
@@ -161,3 +161,15 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 **Evidence**: the 7 touched-storage files → **56 passed**; FULL CLI suite **1469 passed** (130 files) — the ~18 green-by-design tests untouched + green; biome clean.
 
 **Acceptance**: WS-A test surface — buffer/refs tests assert `.jsonl`; green-by-design set unchanged.
+
+### T005 — Golden drift sensor + OTLP minting ✅
+
+**What**: per-instance OTLP goldens over the plan-037 real corpus, riding the existing `expected-segment.json` mint/check harness so there's no second copy of the builders to drift.
+- **`otlp-golden.ts`** (new helper) — `registerOtlpGoldens(seg, goldenSegmentPath)`: derives `expected-otlp-logs.jsonl` (`segmentToOtlpLogs`) + `expected-otlp-metrics.jsonl` (`rollupToOtlpMetrics`) beside the segment golden; under `REGEN_GOLDEN` (re)writes them, otherwise deep-equals the committed golden AND asserts conformance.
+- **Retargeted** `real-capture.e2e.test.ts` (claude · copilot-cli · cursor) + `copilot-vscode-sqlite.int.test.ts` (copilot-vscode) — one `registerOtlpGoldens` call per instance.
+- **8 goldens minted** (2 × 4 instances), tracked (confirmed not caught by the bare `logs` gitignore rule).
+- **`scripts/telemetry-fixtures.mjs`** — the F005 coverage guard now requires the OTLP pair too, so a new fixture dir can't be added without OTLP drift coverage. `--check` (the CI guard) re-derives + asserts.
+
+**Evidence**: `REGEN_GOLDEN=1` mint → 8 files; plain run (drift assert) **18 passed**; `node scripts/telemetry-fixtures.mjs --check` → "4 instance(s) all covered"; telemetry+conformance **390 passed**; tsc + biome clean.
+
+**Acceptance**: AC-09 (`--check` matches goldens; drift fails CI) — now over the OTLP output on the REAL corpus, not just the segment.

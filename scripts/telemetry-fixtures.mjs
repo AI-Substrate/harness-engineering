@@ -4,9 +4,11 @@
  *
  * The committed goldens under
  * `harness/cli/test/services/telemetry/fixtures/real/<surface>/<instance>/`
- * (`expected-segment.json` + `invariants.json`) are DERIVED artifacts — never
- * hand-edited. Each is produced by driving the real, scrubbed `raw.*` bytes through
- * that surface's telemetry adapter → `serializeSegment`. That construction — the
+ * (`expected-segment.json` + `invariants.json` + the T005 OTLP pair
+ * `expected-otlp-logs.jsonl` / `expected-otlp-metrics.jsonl`) are DERIVED artifacts —
+ * never hand-edited. Each is produced by driving the real, scrubbed `raw.*` bytes through
+ * that surface's telemetry adapter → `serializeSegment` (→ `segmentToOtlpLogs` /
+ * `rollupToOtlpMetrics` for the OTLP pair). That construction — the
  * FakeFs/FakeEnv/FakeDb wiring, and the throwaway `node:sqlite` rebuild that proves
  * the copilot-vscode SQL round-trip — lives ONCE, in the golden suites:
  *
@@ -102,7 +104,13 @@ const suiteText = SUITES.map((s) => {
   }
 }).join('\n');
 const uncovered = listInstances().filter(({ surface, instance }) => {
-  const goldenPresent = existsSync(join(realRoot, surface, instance, 'expected-segment.json'));
+  const dir = join(realRoot, surface, instance);
+  // Every instance owns a segment golden AND its derived OTLP goldens (T005):
+  // the same drift guard now covers the OTLP serializer over the real corpus.
+  const goldenPresent =
+    existsSync(join(dir, 'expected-segment.json')) &&
+    existsSync(join(dir, 'expected-otlp-logs.jsonl')) &&
+    existsSync(join(dir, 'expected-otlp-metrics.jsonl'));
   const referenced = suiteText.includes(`${surface}/${instance}`) || suiteText.includes(instance);
   return !goldenPresent || !referenced;
 });
@@ -112,7 +120,8 @@ if (uncovered.length > 0) {
   );
   for (const u of uncovered) console.error(`  - ${u.surface}/${u.instance}`);
   console.error(
-    'Each instance needs an `expected-segment.json` AND a golden-suite case that loads it ' +
+    'Each instance needs `expected-segment.json` + `expected-otlp-logs.jsonl` + ' +
+      '`expected-otlp-metrics.jsonl` AND a golden-suite case that loads it ' +
       '(regenerate via `npm run gen:telemetry-fixtures`), or remove the orphan dir.',
   );
   process.exit(1);

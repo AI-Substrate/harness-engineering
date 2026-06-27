@@ -13,6 +13,7 @@ import {
 } from '../../../src/services/telemetry/adapters/copilot-vscode-adapter.js';
 import type { HarnessContext } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
+import { registerOtlpGoldens } from './otlp-golden.js';
 
 /**
  * T008 (plan 2.4 · AC-04 · Finding 05) — the copilot-vscode SQL ROUND-TRIP.
@@ -146,6 +147,7 @@ function buildSegment() {
 
 describe('real copilot-vscode fixture → segment via SQL round-trip (AC-04)', () => {
   const { seg, sessionId } = buildSegment();
+  registerOtlpGoldens(seg, GOLDEN); // T005 — mint/assert the OTLP goldens beside the segment
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
