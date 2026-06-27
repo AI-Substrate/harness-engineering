@@ -24,7 +24,7 @@
 | T013 | Update eng-thrive scraper (lockstep) | [—] deferred → eng-thrive repo; contract folded into T016 |
 | T014 | Retarget rewritten tests | [x] |
 | T015 | Touched-storage tests hold .jsonl | [x] |
-| T016 | Operator doc (docs/how/) | [ ] |
+| T016 | Operator doc (docs/how/) | [x] |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 
@@ -173,3 +173,23 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 **Evidence**: `REGEN_GOLDEN=1` mint → 8 files; plain run (drift assert) **18 passed**; `node scripts/telemetry-fixtures.mjs --check` → "4 instance(s) all covered"; telemetry+conformance **390 passed**; tsc + biome clean.
 
 **Acceptance**: AC-09 (`--check` matches goldens; drift fails CI) — now over the OTLP output on the REAL corpus, not just the segment.
+
+### T016 — Operator doc ✅
+
+**What**: `docs/how/telemetry-otlp.md` (new) — the OTLP/OTEL stored shape, operator-facing:
+- on-disk layout (one file per signal: `<seq>.logs.jsonl` + `<seq>.metrics.jsonl` beside the buffer), the 1:1 signal map, `rollup:null` ⇒ no datapoints, cumulative-per-session temporality;
+- the `schema_url` pin + two-layer field-naming rule + the frozen `harness-otlp.schema.json` contract + the reconstruction invariant;
+- the keep-and-harden git-refs contract (single-writer-per-ref, offline-safe, idempotent re-push, session-id entropy, partial/legacy fallback);
+- **the eng-thrive scraper ref-tree READ contract** (folded from the deferred T013) — glob-fetch, flat-tree parse, reconstruct from `harness.*`, dedupe on `session_id`;
+- the graduation tripwire (ref-count → store-and-forward) + the staged H1 / deferred shipper (Q-B1/Q-B2).
+- Cross-linked from `docs/how/telemetry.md`.
+
+**Evidence**: all factual claims verified against source (`HARNESS_SCHEMA_URL`, `SCOPE_NAME=harness.telemetry`, `OTLP_SCOPE_VERSION=2.0`, `npm run check:telemetry-fixtures`, `HARNESS_NO_TELEMETRY`). Internal doc links resolve.
+
+**Acceptance**: DOCS — layout, schema pinning, transport contract, tripwire, staged H1/deferred shipper, AND the scraper read contract (ties off Q-B1/Q-B2 + T013).
+
+---
+
+## Phase complete — 038 telemetry-otel-standard
+
+**15/16 tasks done, T013 deferred** (eng-thrive scraper out-of-repo; contract documented in T016). Commits on `feat/038-telemetry-otel-standard`: T011 `ab03aa0`, T012 `3a36cf3`, fix `4e97524`, T013-defer `0224c20`, T014 `05995ee`, T015 `d1c6023`, T005 `9cc6f8a`, T016 (this). Full CLI suite green; tsc + biome clean throughout. Companion (`code-review-companion`) caught one real data-loss bug (partial spool, run c7ce) now fixed + regression-tested.

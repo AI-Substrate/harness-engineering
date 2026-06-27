@@ -672,6 +672,57 @@
           "importance": "strongly-recommended"
         }
       }
+    },
+    {
+      "id": "STA-013",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:04:53.474Z",
+      "details": {
+        "node": "T016",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-014",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:07:18.376Z",
+      "details": {
+        "node": "T016",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-015",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:07:18.698Z",
+      "details": {
+        "node": "implement",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:07:19.015Z",
+      "details": {
+        "from": "implement",
+        "to": "review"
+      }
     }
   ],
   "nodes": [
@@ -780,15 +831,16 @@
       "id": "implement",
       "type": "phase",
       "label": "Implement: OTLP supplant (16 tasks, sensors-first)",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "review"
       ],
       "created_at": "2026-06-27T02:48:26.635Z",
-      "modified_at": "2026-06-27T04:22:18.382Z",
+      "modified_at": "2026-06-27T06:07:18.698Z",
       "artifacts": [
         "docs/plans/038-telemetry-otel-standard/execution.log.md"
-      ]
+      ],
+      "ran_at": "2026-06-27T06:07:18.698Z"
     },
     {
       "id": "review",
@@ -1062,23 +1114,24 @@
       "id": "T016",
       "type": "chore",
       "label": "T016 · Operator doc (docs/how/)",
-      "status": "todo",
+      "status": "done",
       "next": [
         "implement"
       ],
       "created_at": "2026-06-27T04:21:56.397Z",
-      "modified_at": "2026-06-27T04:21:56.397Z",
+      "modified_at": "2026-06-27T06:07:18.375Z",
       "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T016",
       "chore": {
         "kind": "manual",
         "importance": "strongly-recommended"
       },
-      "branch_of": "implement"
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T06:07:18.375Z"
     }
   ],
   "nav": {
-    "now": "implement",
-    "next": "review",
+    "now": "review",
+    "next": "ship",
     "intent": "Standardise harness telemetry to the OTEL/OTLP standard for upstream ingestion; keep storing locally. Segments may be reshaped OTEL-native — no back-compat required (not shipped yet).",
     "bag": {
       "mode": "simple",

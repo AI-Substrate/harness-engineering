@@ -11,6 +11,12 @@ disable it, the structure it takes, and the privacy / offline guarantees.
 > eng-thrive tooling reads the committed ref and engineers the measures — see
 > [Harness value measures](./harness-value-measures.md).
 
+> **Stored shape is OTEL/OTLP.** The segment is re-serialized as OTLP Logs +
+> Metrics (one file per signal) and published in that form — collector-ingestible
+> with zero translation. The on-disk layout, the `schema_url` policy, the
+> keep-and-harden ref contract, and the downstream read contract live in
+> [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md).
+
 ---
 
 ## The model in one minute
