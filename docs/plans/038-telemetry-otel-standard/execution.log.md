@@ -23,7 +23,7 @@
 | T012 | Harden keep (H4/H5) | [x] |
 | T013 | Update eng-thrive scraper (lockstep) | [—] deferred → eng-thrive repo; contract folded into T016 |
 | T014 | Retarget rewritten tests | [x] |
-| T015 | Touched-storage tests hold .jsonl | [ ] |
+| T015 | Touched-storage tests hold .jsonl | [x] |
 | T016 | Operator doc (docs/how/) | [ ] |
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
@@ -148,3 +148,16 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 **Evidence**: the 5 files (incl. the new freeze test) → **48 passed**; full telemetry+conformance+git+record run **448 passed**; `tsc` clean; biome clean.
 
 **Acceptance**: AC-05 (freeze pins `harness.*` + `schema_url`; the OTLP output is asserted against the frozen contract), AC-08 (only the frozen vocabulary leaves the serializer).
+
+### T015 — Touched-storage tests hold `.jsonl` ✅
+
+**What**: added targeted `.jsonl` assertions where the spool actually matters, rather than mechanically touching all seven files:
+- **`capture-service.test.ts`** — the happy-path capture now asserts the OTLP spool PAIR is written beside the buffer (`1.logs.jsonl` → `resourceLogs`, `1.metrics.jsonl` → `resourceMetrics`).
+- **`killswitch-failsafe.test.ts`** — the default-capture test asserts the spool pair is part of captured output (so the kill-switch `writes === []` test also proves the spool is suppressed in lockstep).
+- **`gitignore.test.ts`** — the OTLP spool, in the same self-ignored buffer dir, is `git check-ignore`-confirmed never committable (privacy parity with the buffer).
+- **`pending-telemetry.test.ts`** — a new test pins that the spool `.jsonl` companions do NOT inflate the unpushed-segment count (the probe keys off `<seq>.json`).
+- **`housekeeping.test.ts` / `capture-perf.test.ts` / `acts/telemetry.test.ts`** — verified green UNCHANGED (their concerns — sync nudge / capture latency / the CLI act — are spool-agnostic; the publishing assertions live in `sync-service.test.ts`).
+
+**Evidence**: the 7 touched-storage files → **56 passed**; FULL CLI suite **1469 passed** (130 files) — the ~18 green-by-design tests untouched + green; biome clean.
+
+**Acceptance**: WS-A test surface — buffer/refs tests assert `.jsonl`; green-by-design set unchanged.

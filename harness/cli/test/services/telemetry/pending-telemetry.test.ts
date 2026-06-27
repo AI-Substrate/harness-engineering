@@ -52,6 +52,20 @@ describe('pendingTelemetry — read-only unpushed-buffer probe', () => {
     expect(r).toEqual({ segments: 0, sessions: 0 });
   });
 
+  it('the OTLP spool .jsonl files do NOT inflate the segment count (T015 — count keys off the buffer)', () => {
+    // One buffered segment whose T010 spool pair sits beside it; the probe counts
+    // `<seq>.json` only, so the .jsonl companions must not be double-counted.
+    const r = probe(
+      {
+        [`${TEL}/sessA/1.json`]: seg(),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[]}\n',
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'] },
+    );
+    expect(r).toEqual({ segments: 1, sessions: 1 });
+  });
+
   it('is fail-safe — a throwing fs yields zero, never throws', () => {
     const throwingFs = {
       readdir: () => {

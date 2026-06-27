@@ -642,6 +642,21 @@
           "importance": "strongly-recommended"
         }
       }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:58:36.272Z",
+      "details": {
+        "node": "T015",
+        "from": "todo",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -1013,18 +1028,19 @@
       "id": "T015",
       "type": "chore",
       "label": "T015 · Touched-storage tests hold .jsonl",
-      "status": "todo",
+      "status": "done",
       "next": [
         "implement"
       ],
       "created_at": "2026-06-27T04:21:56.081Z",
-      "modified_at": "2026-06-27T04:21:56.081Z",
+      "modified_at": "2026-06-27T05:58:36.272Z",
       "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T015",
       "chore": {
         "kind": "manual",
         "importance": "strongly-recommended"
       },
-      "branch_of": "implement"
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T05:58:36.272Z"
     },
     {
       "id": "T016",

@@ -47,13 +47,19 @@ describe('T008 — buffer dir self-ignores via ensureTemp (independent of repo-r
     const proc = { cwd: () => repo } as ProcessPort;
     ensureTemp({ fs: new NodeFs(), proc });
 
-    // Write a buffer entry exactly where capture-service would.
+    // Write a buffer entry + its OTLP spool pair exactly where capture-service would.
     const bufDir = join(repo, '.harness', 'temp', 'telemetry', 'sess1');
     mkdirSync(bufDir, { recursive: true });
     writeFileSync(join(bufDir, '1.json'), '{}\n');
+    writeFileSync(join(bufDir, '1.logs.jsonl'), '{"resourceLogs":[]}\n');
+    writeFileSync(join(bufDir, '1.metrics.jsonl'), '{"resourceMetrics":[]}\n');
 
     expect(gitIgnored('.harness/temp/telemetry/sess1/1.json')).toBe(true);
     expect(gitIgnored('.harness/temp/telemetry/sess1.cursor')).toBe(true);
+    // T015: the OTLP spool (T010) lives in the same self-ignored dir → never
+    // committed to a work tree (the OTLP bytes are as sensitive as the buffer).
+    expect(gitIgnored('.harness/temp/telemetry/sess1/1.logs.jsonl')).toBe(true);
+    expect(gitIgnored('.harness/temp/telemetry/sess1/1.metrics.jsonl')).toBe(true);
   });
 
   it("control: a file OUTSIDE .harness/temp is NOT ignored (the rule isn't over-broad)", () => {

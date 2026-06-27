@@ -218,6 +218,15 @@ describe('T005 — captureTelemetry happy path', () => {
     expect(seg?.command).toBe('flow');
     // cursor advanced to the new high-water mark
     expect(fs.readText(`${TEL}/sess1.cursor`)).toBe('240');
+
+    // T015: the OTLP spool PAIR (T010) is written beside the buffer segment —
+    // both valid OTLP/JSON, one signal per file.
+    const logs = fs.readText(`${TEL}/sess1/1.logs.jsonl`);
+    const metrics = fs.readText(`${TEL}/sess1/1.metrics.jsonl`);
+    expect(logs).not.toBeNull();
+    expect(metrics).not.toBeNull();
+    expect(JSON.parse(logs as string)).toHaveProperty('resourceLogs');
+    expect(JSON.parse(metrics as string)).toHaveProperty('resourceMetrics');
   });
 
   it('with no real adapter, the null-default writes a schema-valid all-null segment', () => {
