@@ -220,6 +220,23 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1'); // watermark re-advanced (consumed)
   });
 
+  it('falls back to the segment json when the spool is PARTIAL — logs without metrics (companion c7ce: never publish-and-consume a half-signal)', () => {
+    const { deps, git } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-z']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n', // metrics absent (crash between writes)
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl'] },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+    expect(r.segments).toBe(1);
+    // an incomplete pair must NOT be published — fall back to the full segment json
+    expect(git.trees.flat().map((e) => e.name)).toEqual(['1.json']);
+    expect(git.blobs).not.toContain('{"resourceLogs":[1]}\n');
+  });
+
   it('falls back to the segment json when the .jsonl spool is absent (AC-14: never drop a buffered segment)', () => {
     const { deps, git } = makeDeps(
       { [`${TEL}/sessA/1.json`]: seg(['038-y']) },

@@ -231,16 +231,24 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
       // T011: publish the OTLP signal spool (T010) — `<seq>.logs.jsonl` +
       // `<seq>.metrics.jsonl` — as the shard's tree, NOT the segment buffer json.
       // The buffer json stays LOCAL: it remains the watermark key, the datePath +
-      // plans source above, and the reconstruction oracle. Fall back to the json
-      // only when the spool is absent (a pre-spool / crash-interrupted buffer
-      // entry), so AC-14 never drops a buffered segment.
+      // plans source above, and the reconstruction oracle.
+      //
+      // Publish the pair ONLY when BOTH signals are present. A PARTIAL spool — a
+      // crash between T010's two atomic writes leaves logs-but-no-metrics (or vice
+      // versa) — must NOT be published-and-consumed, or the missing signal is lost
+      // forever (companion MEDIUM, run c7ce). The segment json is the full
+      // reconstruction oracle, so fall back to it whenever the pair is incomplete
+      // OR absent — nothing is ever dropped (AC-14).
       const base = s.name.slice(0, -'.json'.length);
-      const signals: { name: string; content: string }[] = [];
-      for (const suffix of ['logs', 'metrics'] as const) {
-        const sig = deps.fs.readText(posixJoin(sessionDir, `${base}.${suffix}.jsonl`));
-        if (sig !== null) signals.push({ name: `${base}.${suffix}.jsonl`, content: sig });
-      }
-      const toPublish = signals.length > 0 ? signals : [{ name: s.name, content }];
+      const logsJsonl = deps.fs.readText(posixJoin(sessionDir, `${base}.logs.jsonl`));
+      const metricsJsonl = deps.fs.readText(posixJoin(sessionDir, `${base}.metrics.jsonl`));
+      const toPublish =
+        logsJsonl !== null && metricsJsonl !== null
+          ? [
+              { name: `${base}.logs.jsonl`, content: logsJsonl },
+              { name: `${base}.metrics.jsonl`, content: metricsJsonl },
+            ]
+          : [{ name: s.name, content }];
       for (const blob of toPublish) {
         shard.blobs.push({
           mode: '100644',
