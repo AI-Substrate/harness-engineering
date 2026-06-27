@@ -21,7 +21,7 @@
 | T010 | Wire OTLP write at capture seam (spool) | [x] |
 | T011 | Publish OTLP .jsonl over git-refs | [x] |
 | T012 | Harden keep (H4/H5) | [x] |
-| T013 | Update eng-thrive scraper (lockstep) | [ ] |
+| T013 | Update eng-thrive scraper (lockstep) | [—] deferred → eng-thrive repo; contract folded into T016 |
 | T014 | Retarget rewritten tests | [ ] |
 | T015 | Touched-storage tests hold .jsonl | [ ] |
 | T016 | Operator doc (docs/how/) | [ ] |
@@ -129,6 +129,7 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 
 | # | Task | Tag | Note |
 |---|------|-----|------|
+| D13 | T013 | Deferred | **eng-thrive scraper is out-of-repo** — no scraper source exists in harness-engineering (only conceptual docs + a paper). T013 can't be coded here. User decision: defer to eng-thrive's own repo/plan; fold the OTLP ref-tree READ contract into T016 so the downstream change has an authoritative spec. AC-05's scraper leg is satisfied by the documented contract, not in-repo code. |
 | D11 | T012 | Noteworthy | **H4 found a live collision bug**: `sanitizeSessionId` mapped *every* degenerate/all-symbol id to the same `'unknown'` segment → distinct writers would collide on one ref → NFF → lost telemetry (the exact H4 risk). Hardened: a lossy sanitize now appends a stable FNV-1a hash of the raw id; clean UUID-like ids (the norm) pass through untouched, so no existing test moved. |
 | D12 | T012 | Noteworthy | **H5 needed a content-addressed fake**: real `git mktree` is content-addressed (same blobs → same tree sha), but `FakeGitWrite` returned a fresh counter sha per call, so it couldn't model the idempotency probe. Made the fake's `hashObject`/`mktree` content-addressed (FNV-1a) + added `refTree` (commit→tree map). No test asserted the old `blob<N>`/`tree<N>` sha strings, so the change was invisible to the suite. |
 | D10 | T011 | Noteworthy | **Spool-absent fallback**: if a `<seq>.json` buffer entry has no `.jsonl` companions (a pre-T010 entry, or a capture that crashed between the buffer write and the spool write), the shard falls back to publishing the segment `.json` rather than dropping the segment. Preserves AC-14 (never lose a buffered segment) at the cost of a non-OTLP blob in that degenerate case. Lets the existing shard/offline-safety tests stay green unchanged; T015 adds `.jsonl` companions to the touched-storage tests. |
