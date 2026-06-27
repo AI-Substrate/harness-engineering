@@ -11,8 +11,8 @@
 |----|------|--------|
 | T001 | 3-way conformance harness + devDep choice | [x] |
 | T002 | Reconstruction round-trip sensor | [x] |
-| T003 | OTLP conformance sensor (RED, severity-asserting) | [ ] |
-| T004 | Privacy byte-scan over OTLP bytes | [ ] |
+| T003 | OTLP conformance sensor (severity + no-drop + known-key) | [x] |
+| T004 | Privacy byte-scan over OTLP bytes | [x] |
 | T005 | Golden drift sensor + minting | [ ] |
 | T006 | harness.* OTLP schema + schema_url + version assertion | [x] |
 | T007 | event_stream → OTLP Logs | [x] |
@@ -49,7 +49,7 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 |---|---|---|---|
 | _(none yet)_ | | | |
 
-**Companion deviation (logged)**: run `2026-06-27T02-57-28-043Z-4ac5` went `active` at boot but reached verdict `completed` early (did not hold Power-On-Mode). Pings for T001 + the T002/T006/T007/T009 slice landed in its inbox unacknowledged — **no findings received**. Re-boot attempted; if it won't hold, the recovery is a post-hoc `7 review` pass at phase end (NOT redundant, since no live review occurred). Implementation continues either way.
+**Companion deviation (FINAL)**: two boot attempts (`…4ac5`, `…ab81`) both went `active` then reached `completed` early — `minih` 0.2.3's companion does NOT hold Power-On-Mode in this environment, so per-commit pings (T001 → T008) went unacknowledged; **no findings received from any run**. Per the implement verb's "boot fails twice → no-companion fallback", we proceed companion-less. **Recovery: a post-hoc `7 review` pass at phase end is REQUIRED and non-redundant** (no live review occurred). Self-review rigor applied inline meanwhile.
 
 ---
 
@@ -93,3 +93,10 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 | # | Task | Tag | Note |
 |---|------|-----|------|
 | D9 | T008 | Noteworthy | `outcomes.checks` is a categorical status (ok/degraded/error), NOT a count — it stays in the logs (a `checks` event) and is intentionally NOT emitted as a numeric metric. Command exits become a **gauge** `exit_code` (last-seen code), not a monotonic sum. Slight, honest refinement of WS-A's "outcomes → harness.command.exits" row. |
+
+### T003 + T004 — sensor hardening (conformance + privacy) ✅
+
+- **T003** (`otlp/conformance-sensor.test.ts`): closes D3 — every emitted top-level attribute key ∈ the known `harness.*`/`gen_ai.*` allowlist (catches the typo that `fromObject` would silently drop); logRecords count == event_stream length (no silent drop); per-kind `severityNumber` asserted for checks(ok/degraded/error)/command_exit(0/≠0)/api_error — the path AC-01's deep-equal can't see. 9 green.
+- **T004** (extended `fixture-privacy-scan.test.ts`): scans the OTLP logs+metrics serialized bytes of all 4 real fixtures (reusing the existing banned-pattern + `SECRET_DETECTORS` machinery) → no leak; scanner proven LIVE on a planted `/Users/` attribute. AC-04.
+
+**Evidence**: 36 passed across both files.

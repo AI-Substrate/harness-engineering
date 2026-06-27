@@ -2,6 +2,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { SECRET_DETECTORS } from '../../../src/services/telemetry/fixture-scrub.js';
+import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
+import { rollupToOtlpMetrics } from '../../../src/services/telemetry/otlp/metrics.js';
+import type { Segment } from '../../../src/services/telemetry/segment.js';
 
 /**
  * T007 (plan 1.6 · AC-02) — the byte-scan privacy guard.
@@ -197,5 +200,51 @@ describe('fixture privacy byte-scan (AC-02)', () => {
     }
     // plain-text drive path with an escape-letter initial also flags.
     expect(scanForLeaks('cwd C:\\temp\\repo', bannedFor('text'), [])).toContain('win-drive');
+  });
+});
+
+/**
+ * Plan 038 · T004 · AC-04 — extend the byte-scan to the NEW OTLP serialization
+ * path. The OTLP logs/metrics are emitted from the already-serialized (counts-
+ * only) Segment, so structurally no content can reach them — this proves it on
+ * the real fixtures' bytes, and proves the scanner is LIVE on OTLP-shaped JSON.
+ */
+describe('OTLP output byte-scan (T004)', () => {
+  const goldens = committedArtifacts().filter((p) => p.endsWith('expected-segment.json'));
+  const identity = identityTokens();
+
+  it('finds the goldens to OTLP-scan', () => {
+    expect(goldens.length).toBeGreaterThan(0);
+  });
+
+  it.each(
+    goldens.map((p) => [p.replace(FIXTURES_ROOT, 'fixtures/real'), p] as const),
+  )('no leak in OTLP logs+metrics serialized from %s', (_label, path) => {
+    const seg = JSON.parse(readFileSync(path, 'utf8')) as Segment;
+    const bytes = `${JSON.stringify(segmentToOtlpLogs(seg))}\n${JSON.stringify(
+      rollupToOtlpMetrics(seg),
+    )}`;
+    expect(scanForLeaks(bytes, bannedFor('json'), identity)).toEqual([]);
+  });
+
+  it('the OTLP scan is LIVE — a planted /Users path in an attribute flags', () => {
+    const leaky = JSON.stringify({
+      resourceLogs: [
+        {
+          scopeLogs: [
+            {
+              logRecords: [
+                {
+                  attributes: [
+                    { key: 'harness.event.t', value: { stringValue: '/Users/alice/x' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(scanForLeaks(leaky, bannedFor('json'), ['alice'])).toContain('macos-home');
   });
 });
