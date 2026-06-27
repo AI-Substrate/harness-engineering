@@ -10,14 +10,14 @@
 | ID | Task | Status |
 |----|------|--------|
 | T001 | 3-way conformance harness + devDep choice | [x] |
-| T002 | Reconstruction round-trip sensor (RED) | [ ] |
+| T002 | Reconstruction round-trip sensor | [x] |
 | T003 | OTLP conformance sensor (RED, severity-asserting) | [ ] |
 | T004 | Privacy byte-scan over OTLP bytes | [ ] |
 | T005 | Golden drift sensor + minting | [ ] |
-| T006 | harness.* OTLP schema + schema_url + version assertion | [ ] |
-| T007 | event_stream → OTLP Logs | [ ] |
+| T006 | harness.* OTLP schema + schema_url + version assertion | [x] |
+| T007 | event_stream → OTLP Logs | [x] |
 | T008 | rollup → OTLP Metrics | [ ] |
-| T009 | gen_ai.* mapping module | [ ] |
+| T009 | gen_ai.* mapping module | [x] |
 | T010 | Wire OTLP write at capture seam (spool) | [ ] |
 | T011 | Publish OTLP .jsonl over git-refs | [ ] |
 | T012 | Harden keep (H4/H5) | [ ] |
@@ -36,6 +36,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked
 | D2 | T001 | Noteworthy | protobufjs `Type.verify` is the WRONG oracle — it predates proto3-JSON and rejects OTLP's string-encoded int64 (`timeUnixNano:"..."`), failing the official metrics example. Correct oracle = `fromObject → encode → decode` (what `otlpjsonfilereceiver` does). Caught by running the harness against the real example before trusting it. |
 | D3 | T001 | Deferred | `fromObject` is lenient on a non-object singular-message field (coerces to empty) + ignores unknown keys → a garbage scalar can slip the round-trip. T003 hardens with explicit known-key + lines-read==objects-emitted assertions. |
 | D4 | T001 | Noteworthy | collector-as-checker (leg 3) logged-skips — `otelcol-contrib` absent on this machine; never gates. Live wiring deferred to T003. |
+| D5 | T007 | Noteworthy | OTLP 1.3.2 `LogRecord` has **no `event_name`** field (added in a later OTLP) → reconstruct `kind` from the `harness.event.kind` attribute, not `eventName`. Keeps us inside the schema we actually validate against. |
+| D6 | T002 | Noteworthy | `t → timeUnixNano (ns) → t` loses the exact source ISO string (format/precision). Carry the verbatim `t` under `harness.event.t` (reconstruction) + set `timeUnixNano` for OTLP interop (gaps/honesty). Two-layer rule in action. |
+| D7 | T002/T007 | Noteworthy | Landed T002+T006+T007+T009 as ONE green slice (test authored first, serializer made it pass) rather than a separate RED commit — keeps the branch suite green for CI. Sensors-first discipline preserved in authoring order. |
+| D8 | T006 | Noteworthy | `schema_url` pinned → `…/schemas/telemetry/v0.1.0`; `OTLP_SCOPE_VERSION` asserted in lockstep with `SEGMENT_SCHEMA_VERSION` (2.0). The `segment.schema.json` reshape + freeze test fold into T014. |
 
 Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make differently).
 
@@ -61,3 +65,17 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 **Evidence**: `npx vitest run test/conformance/otlp-conformance.test.ts` → **6 passed**. The official metrics example initially FAILED under `verify` (string int64) — corrected the oracle to `fromObject`-based round-trip (D2).
 
 **Acceptance**: AC-02 (the oracle the conformance sensor uses) — harness invocable, all 3 legs present, devDep recorded.
+
+### T002 + T006 + T007 + T009 — OTLP Logs serializer + reconstruction invariant ✅
+
+**What** (one coherent slice — `harness/cli/src/services/telemetry/otlp/`):
+- `semconv.ts` (T009): the single attribute-mapping module. Adopts stable `gen_ai.usage.input_tokens`/`output_tokens` + `gen_ai.request.model`; everything reconstruction-critical (incl. cache buckets) under `harness.*`. Swapping a semconv name touches only this file.
+- `types.ts` (T006): hand-rolled OTLP logs+metrics envelope types + AnyValue helpers; pins `HARNESS_SCHEMA_URL` (`…/telemetry/v0.1.0`) + `OTLP_SCOPE_VERSION`.
+- `logs.ts` (T007): `segmentToOtlpLogs` (one ResourceLogs/session, one logRecord/event, from the serialized segment only — privacy inherited) + `otlpLogsToEvents` (the exact inverse). Per-kind severity (checks→WARN/ERROR, command_exit non-zero→ERROR, api_error→ERROR).
+- `test/services/telemetry/otlp/reconstruction.test.ts` (T002): drives all 4 golden `expected-segment.json` → OTLP → reconstruct → deep-equal `event_stream`; `computeRollup(recon)` deep-equal `rollup`; emitted logs pass conformance. + schema_url/version-lockstep assertions (T006).
+
+**Evidence**: `vitest run reconstruction.test.ts otlp-conformance.test.ts` → **20 passed**; `tsc --noEmit` clean.
+
+**Acceptance**: AC-01 (reconstruction deep-equal), AC-03 (gaps/durations/token buckets recovered via rollup), AC-08 (semconv quarantine), AC-05 partial (schema_url pin; freeze test → T014).
+
+**Key insight**: `rollup = computeRollup(event_stream)`, so a lossless logs round-trip recovers the rollup for free — reconstruction rides entirely on the event stream; metrics (T008) become an honest cross-check, not the substrate.
