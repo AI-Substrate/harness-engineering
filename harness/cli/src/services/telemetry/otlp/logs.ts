@@ -34,18 +34,8 @@ import type {
   TurnEvent,
 } from '../events.js';
 import type { Segment } from '../segment.js';
-import {
-  A,
-  GENAI_INPUT_TOKENS,
-  GENAI_MODEL,
-  GENAI_OUTPUT_TOKENS,
-  RES_BRANCH,
-  RES_COMMAND,
-  RES_HARNESS,
-  RES_SCHEMA_VERSION,
-  RES_SERVICE,
-  RES_SESSION,
-} from './semconv.js';
+import { resourceAttrs } from './resource.js';
+import { A, GENAI_INPUT_TOKENS, GENAI_MODEL, GENAI_OUTPUT_TOKENS } from './semconv.js';
 import {
   type AnyValue,
   attrMap,
@@ -296,18 +286,6 @@ function decodeEvent(rec: LogRecord): Event {
     default:
       return { ...base, kind } as Event;
   }
-}
-
-function resourceAttrs(seg: Segment): KeyValue[] {
-  const attrs: KeyValue[] = [
-    kv(RES_SERVICE, sv('harness')),
-    kv(RES_SESSION, sv(seg.harness_session_id)),
-    kv(RES_HARNESS, sv(seg.harness)),
-    kv(RES_COMMAND, sv(seg.command)),
-    kv(RES_SCHEMA_VERSION, sv(seg.schema_version)),
-  ];
-  if (seg.branch !== null) attrs.push(kv(RES_BRANCH, sv(seg.branch)));
-  return attrs;
 }
 
 /** Serialize a segment's `event_stream` to one `ResourceLogs` (OTLP Logs). */

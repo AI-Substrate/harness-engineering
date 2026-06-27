@@ -16,7 +16,7 @@
 | T005 | Golden drift sensor + minting | [ ] |
 | T006 | harness.* OTLP schema + schema_url + version assertion | [x] |
 | T007 | event_stream → OTLP Logs | [x] |
-| T008 | rollup → OTLP Metrics | [ ] |
+| T008 | rollup → OTLP Metrics | [x] |
 | T009 | gen_ai.* mapping module | [x] |
 | T010 | Wire OTLP write at capture seam (spool) | [ ] |
 | T011 | Publish OTLP .jsonl over git-refs | [ ] |
@@ -49,6 +49,8 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 |---|---|---|---|
 | _(none yet)_ | | | |
 
+**Companion deviation (logged)**: run `2026-06-27T02-57-28-043Z-4ac5` went `active` at boot but reached verdict `completed` early (did not hold Power-On-Mode). Pings for T001 + the T002/T006/T007/T009 slice landed in its inbox unacknowledged — **no findings received**. Re-boot attempted; if it won't hold, the recovery is a post-hoc `7 review` pass at phase end (NOT redundant, since no live review occurred). Implementation continues either way.
+
 ---
 
 ## Per-task entries
@@ -79,3 +81,15 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 **Acceptance**: AC-01 (reconstruction deep-equal), AC-03 (gaps/durations/token buckets recovered via rollup), AC-08 (semconv quarantine), AC-05 partial (schema_url pin; freeze test → T014).
 
 **Key insight**: `rollup = computeRollup(event_stream)`, so a lossless logs round-trip recovers the rollup for free — reconstruction rides entirely on the event stream; metrics (T008) become an honest cross-check, not the substrate.
+
+### T008 — rollup → OTLP Metrics ✅
+
+**What**: `otlp/metrics.ts` (`rollupToOtlpMetrics`) + `otlp/resource.ts` (shared resource attrs, DRY with logs). Cumulative-per-session: one datapoint per measure, `startTimeUnixNano`=session start, `timeUnixNano`=session end. Activity → `harness.session.{wall,agent_working,human,idle}_seconds` (sum) + `working_ratio` (gauge); flow stages → `harness.flow.stage_seconds`; tokens → `gen_ai.client.token.usage` (cache buckets `gen_ai.token.type=input` + `harness.token.type` discriminator); tools → `harness.tool.calls`; skills → `harness.skill.runs` (status-tagged); exits → `harness.command.exit_code` (gauge — a code, not a running count).
+
+**Evidence**: `vitest run test/services/telemetry/otlp/` → **25 passed** (conformance + value cross-check vs rollup + `rollup:null`⇒no-datapoints). tsc clean.
+
+**Acceptance**: AC-06 (metrics signal), AC-10 (cumulative temporality, null⇒none).
+
+| # | Task | Tag | Note |
+|---|------|-----|------|
+| D9 | T008 | Noteworthy | `outcomes.checks` is a categorical status (ok/degraded/error), NOT a count — it stays in the logs (a `checks` event) and is intentionally NOT emitted as a numeric metric. Command exits become a **gauge** `exit_code` (last-seen code), not a monotonic sum. Slight, honest refinement of WS-A's "outcomes → harness.command.exits" row. |
