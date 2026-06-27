@@ -18,12 +18,35 @@ export function telemetryDir(cwd: string): string {
 }
 
 /**
+ * A short, stable, deterministic suffix derived from the raw id (FNV-1a → base36).
+ * NOT cryptographic — its only job is to keep distinct raw ids distinct after a
+ * lossy sanitize, so the per-(date,session) ref can never collide. Pure (P2: no
+ * `node:crypto`).
+ */
+function shortHash(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
+/**
  * Make an opaque session id safe for a path segment — collapse anything outside
  * `[A-Za-z0-9_-]` (so `..`, `/`, etc. can never escape the telemetry dir).
+ *
+ * H4 (plan 038, telemetry-otel): the session id is also the per-(date,session)
+ * REF segment, and two writers colliding on a segment → a non-fast-forward push →
+ * lost telemetry. A lossy collapse breaks global uniqueness (`a/b` and `a-b` both
+ * → `a-b`; every all-symbol id → the same fallback). So whenever cleaning changed
+ * the string, append a stable hash of the RAW id to restore high entropy. A clean
+ * id (alnum/`_`/`-` only — the UUID-like norm) passes through untouched.
  */
 export function sanitizeSessionId(raw: string): string {
   const cleaned = raw.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
-  return cleaned.length > 0 ? cleaned : 'unknown';
+  if (cleaned === raw && cleaned.length > 0) return cleaned;
+  return `${cleaned || 'sess'}-${shortHash(raw)}`;
 }
 
 /** Path to the session's `.cursor` watermark file. */

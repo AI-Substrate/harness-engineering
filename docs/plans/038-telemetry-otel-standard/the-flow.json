@@ -555,6 +555,36 @@
           "importance": "strongly-recommended"
         }
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:38:54.439Z",
+      "details": {
+        "node": "T012",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:48:40.781Z",
+      "details": {
+        "node": "T012",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -867,18 +897,19 @@
       "id": "T012",
       "type": "chore",
       "label": "T012 · Harden keep (H4/H5)",
-      "status": "todo",
+      "status": "done",
       "next": [
         "implement"
       ],
       "created_at": "2026-06-27T04:21:54.986Z",
-      "modified_at": "2026-06-27T04:21:54.986Z",
+      "modified_at": "2026-06-27T04:48:40.781Z",
       "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T012",
       "chore": {
         "kind": "manual",
         "importance": "strongly-recommended"
       },
-      "branch_of": "implement"
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T04:48:40.781Z"
     },
     {
       "id": "T013",

@@ -20,7 +20,7 @@
 | T009 | gen_ai.* mapping module | [x] |
 | T010 | Wire OTLP write at capture seam (spool) | [x] |
 | T011 | Publish OTLP .jsonl over git-refs | [x] |
-| T012 | Harden keep (H4/H5) | [ ] |
+| T012 | Harden keep (H4/H5) | [x] |
 | T013 | Update eng-thrive scraper (lockstep) | [ ] |
 | T014 | Retarget rewritten tests | [ ] |
 | T015 | Touched-storage tests hold .jsonl | [ ] |
@@ -114,6 +114,18 @@ Tags: `Deferred` (consciously punted) · `Noteworthy` (a call a human might make
 
 **Acceptance**: AC-06 (one `.jsonl` per signal reaches the durable store), AC-07 (single-writer-per-ref preserved; no fetch-to-write).
 
+### T012 — Harden the keep (H4 session-id entropy · H5 idempotent re-push) ✅
+
+**What**:
+- **H4** (`cursor.ts`): `sanitizeSessionId` now appends a stable FNV-1a hash of the raw id whenever cleaning was lossy, so distinct raw ids can never collapse to the same ref segment (fixed a real bug — see D11). Clean alnum/`_`/`-` ids (UUID-like norm) are unchanged.
+- **H5** (`sync-service.ts` + `git-write-port.ts` + `exec-git-write.ts` + `fake-git-write.ts`): added `GitWritePort.refTree(ref)` — a LOCAL `rev-parse <ref>^{tree}` (never a remote fetch). `flushShard` builds the content-addressed tree once and, when the ref already holds that exact tree, returns an idempotent no-op (no commit, no push) — a re-flush after a lost watermark consumes the buffer without a duplicate commit or an NFF. `ShardOutcome.pushed` distinguishes a real push from the no-op so a re-run double-counts nothing.
+
+**Evidence**: RED first (re-push duplicated the commit; two H4 collisions). GREEN: `sync-service.test.ts` 11 + `cursor.test.ts` 9 + `fake-git-write.test.ts` 8 → all pass; telemetry+conformance+git+acts suite **515 passed**; `tsc` clean.
+
+**Acceptance**: AC-07 (single-writer-per-ref + entropy + idempotent retry; H1 staged per Non-Goal). No fetch-to-write introduced (the `refTree` peel is local).
+
 | # | Task | Tag | Note |
 |---|------|-----|------|
+| D11 | T012 | Noteworthy | **H4 found a live collision bug**: `sanitizeSessionId` mapped *every* degenerate/all-symbol id to the same `'unknown'` segment → distinct writers would collide on one ref → NFF → lost telemetry (the exact H4 risk). Hardened: a lossy sanitize now appends a stable FNV-1a hash of the raw id; clean UUID-like ids (the norm) pass through untouched, so no existing test moved. |
+| D12 | T012 | Noteworthy | **H5 needed a content-addressed fake**: real `git mktree` is content-addressed (same blobs → same tree sha), but `FakeGitWrite` returned a fresh counter sha per call, so it couldn't model the idempotency probe. Made the fake's `hashObject`/`mktree` content-addressed (FNV-1a) + added `refTree` (commit→tree map). No test asserted the old `blob<N>`/`tree<N>` sha strings, so the change was invisible to the suite. |
 | D10 | T011 | Noteworthy | **Spool-absent fallback**: if a `<seq>.json` buffer entry has no `.jsonl` companions (a pre-T010 entry, or a capture that crashed between the buffer write and the spool write), the shard falls back to publishing the segment `.json` rather than dropping the segment. Preserves AC-14 (never lose a buffered segment) at the cost of a non-OTLP blob in that degenerate case. Lets the existing shard/offline-safety tests stay green unchanged; T015 adds `.jsonl` companions to the touched-storage tests. |

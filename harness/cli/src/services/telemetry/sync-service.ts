@@ -159,6 +159,8 @@ interface Shard {
 
 interface ShardOutcome {
   ok: boolean;
+  /** True when this run actually pushed; false for an idempotent no-op (already published). */
+  pushed: boolean;
   message?: string;
 }
 
@@ -266,10 +268,15 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
         failMessage = outcome.message;
         break;
       }
-      pushedAny = true;
-      totalSegments += shard.segments;
-      flushedSessions.add(session);
-      for (const p of shard.plans) planSet.add(p);
+      // An idempotent no-op (the shard was already published — H5) consumes the
+      // buffer (advance the watermark) but counts as neither a push nor a fresh
+      // flush, so a re-run after a lost watermark double-counts nothing.
+      if (outcome.pushed) {
+        pushedAny = true;
+        totalSegments += shard.segments;
+        flushedSessions.add(session);
+        for (const p of shard.plans) planSet.add(p);
+      }
       advancedTo = shard.maxSeq;
     }
     if (advancedTo > already) writeFlushed(deps.fs, flushedPath, advancedTo);
@@ -305,23 +312,32 @@ function flushShard(deps: SyncDeps, shard: Shard): ShardOutcome {
     [...shard.plans].sort(),
   );
 
+  // The tree is content-addressed, so build it once. H5 (idempotent re-push): if
+  // the ref ALREADY holds this exact tree (a prior flush whose watermark was lost,
+  // or a stale-buffer re-run), the shard is already durable — skip the commit +
+  // push entirely. A LOCAL ref peel, never a remote fetch, so single-writer-per-ref
+  // holds and a re-push can never become a non-fast-forward loss.
+  const tree = deps.git.mktree(shard.blobs);
+  if (deps.git.refTree(ref) === tree) return { ok: true, pushed: false };
+
   let parent: string | null = null;
   let commit: string | null = null;
   for (let attempt = 0; attempt <= REF_UPDATE_RETRIES; attempt++) {
     parent = deps.git.refTip(ref);
-    const tree = deps.git.mktree(shard.blobs);
     commit = deps.git.commitTree(tree, parent, message);
     if (deps.git.updateRef(ref, commit, parent)) break;
     commit = null; // tip moved under us — re-read + retry
   }
-  if (commit === null) return { ok: false, message: `ref update failed after retries: ${ref}` };
+  if (commit === null) {
+    return { ok: false, pushed: false, message: `ref update failed after retries: ${ref}` };
+  }
 
   try {
     deps.git.push(`${ref}:${ref}`);
   } catch (err) {
     if (parent === null) deps.git.deleteRef(ref);
     else deps.git.updateRef(ref, parent, commit);
-    return { ok: false, message: `push failed: ${errMsg(err)}` };
+    return { ok: false, pushed: false, message: `push failed: ${errMsg(err)}` };
   }
-  return { ok: true };
+  return { ok: true, pushed: true };
 }

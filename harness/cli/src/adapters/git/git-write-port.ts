@@ -88,6 +88,13 @@ export interface GitWritePort {
   /** The current sha a ref points at, or null when the ref does not exist. */
   refTip(ref: string): string | null;
   /**
+   * The tree sha at a ref's tip (`rev-parse <ref>^{tree}`), or null when the ref
+   * does not exist. LOCAL only — reads the ref's own object, never the remote — so
+   * the single-writer-per-ref / no-fetch-to-write invariant is preserved. The
+   * idempotency probe for H5: a tree match means the shard is already published.
+   */
+  refTree(ref: string): string | null;
+  /**
    * `commit-tree` using the **contributor's configured git identity** for author +
    * committer (attributable); falls back to {@link TELEMETRY_FALLBACK_AUTHOR} only
    * when no `user.name`/`user.email` is configured. `parent` null = an orphan root

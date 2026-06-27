@@ -59,6 +59,14 @@ export class ExecGitWrite implements GitWritePort {
     return sha.length > 0 ? sha : null;
   }
 
+  refTree(ref: string): string | null {
+    // LOCAL peel of the ref's own commit to its tree — no remote contact.
+    const r = this.run(['rev-parse', '--verify', '--quiet', `${ref}^{tree}`]);
+    if (r.status !== 0) return null;
+    const sha = r.stdout.trim();
+    return sha.length > 0 ? sha : null;
+  }
+
   commitTree(tree: string, parent: string | null, message: string): string {
     const args = ['commit-tree', tree, '-m', message];
     if (parent !== null) args.push('-p', parent);

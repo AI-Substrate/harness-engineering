@@ -191,6 +191,35 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(git.commits.every((c) => c.parent === null)).toBe(true);
   });
 
+  it('a re-flush of an already-published shard is an idempotent no-op (H5 — check-exists, no NFF, no duplicate)', () => {
+    const { deps, fs, git } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-x']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[2]}\n',
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'] },
+    );
+
+    const r1 = syncTelemetry(deps);
+    expect(r1.ok).toBe(true);
+    expect(r1.pushed).toBe(true);
+    expect(git.commits).toHaveLength(1);
+    expect(git.pushed).toHaveLength(1);
+
+    // A watermark lost after a successful push (crash between push + writeFlushed):
+    // reset it so the SAME seqs re-flush against the now-existing ref.
+    fs.writeText(`${TEL}/sessA.flushed`, '0');
+
+    const r2 = syncTelemetry(deps);
+    expect(r2.ok).toBe(true);
+    expect(r2.pushed).toBe(false); // already durable — nothing newly pushed
+    expect(r2.segments).toBe(0);
+    expect(git.commits).toHaveLength(1); // no duplicate commit
+    expect(git.pushed).toHaveLength(1); // no duplicate push (no NFF)
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1'); // watermark re-advanced (consumed)
+  });
+
   it('falls back to the segment json when the .jsonl spool is absent (AC-14: never drop a buffered segment)', () => {
     const { deps, git } = makeDeps(
       { [`${TEL}/sessA/1.json`]: seg(['038-y']) },
