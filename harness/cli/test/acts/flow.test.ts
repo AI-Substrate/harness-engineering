@@ -548,6 +548,9 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     return deps;
   }
   const railOf = (env: Envelope) => (env.data as { rail: string }).rail;
+  /** The rail's name-lane body, with the 039 AC-11 `⚑ due:` cursor callout stripped — the
+   *  `--chores` mode governs the NAME LANE; the due callout is an unconditional separate surface. */
+  const bodyOf = (rail: string) => rail.split('  ⚑ due:')[0];
 
   it('rail --chores show renders the chore name; default collapse hides it behind [*]', async () => {
     const deps = await seedWithChore();
@@ -556,17 +559,21 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     expect(railOf(shown.env)).toContain('Validate');
 
     const collapsed = await runFlow(deps, ['flow', 'rail', '--slug', 'demo']); // default
-    expect(railOf(collapsed.env)).toContain('[*]');
-    expect(railOf(collapsed.env)).not.toContain('Validate');
+    expect(bodyOf(railOf(collapsed.env))).toContain('[*]');
+    expect(bodyOf(railOf(collapsed.env))).not.toContain('Validate'); // name lane collapses it
+    // 039 AC-11: a chore due at the cursor is still surfaced in the ⚑ due: callout.
+    expect(railOf(collapsed.env)).toContain('⚑ due: Validate');
   });
 
   it('rail --chores hide drops the name AND the [*] marker but keeps the square pip', async () => {
     const deps = await seedWithChore();
     const hidden = await runFlow(deps, ['flow', 'rail', '--slug', 'demo', '--chores', 'hide']);
     expect(hidden.code).toBe(0);
-    expect(railOf(hidden.env)).not.toContain('Validate');
-    expect(railOf(hidden.env)).not.toContain('[*]');
+    expect(bodyOf(railOf(hidden.env))).not.toContain('Validate'); // name lane drops it
+    expect(bodyOf(railOf(hidden.env))).not.toContain('[*]');
     expect(railOf(hidden.env)).toContain('□');
+    // 039 AC-11: the cursor's due chore still surfaces in the ⚑ due: callout.
+    expect(railOf(hidden.env)).toContain('⚑ due: Validate');
   });
 
   it('rail --chores with an invalid mode → E108', async () => {

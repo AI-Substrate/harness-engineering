@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
@@ -17,12 +18,15 @@ import {
 import {
   addComment,
   addNode,
+  applyBatch,
   type ChoreRow,
   getMeta,
   insertNode,
   listChores,
   type MutationResult,
+  mvNode,
   navShow,
+  removeNode,
   setIntent,
   setMeta,
   setNext,
@@ -612,6 +616,117 @@ export function registerFlowAct(
       },
     );
 
+  // --- apply -------------------------------------------------------------
+  // The transactional batch (plan 039): a JSON array of generic node ops from
+  // --ops <file | -> (stdin). Two-phase (materialize creates → position edges),
+  // one final DAG-check, one atomic write or none; forward refs resolve at the end;
+  // a fully-no-op batch is byte-identical. The CLI stays roster-blind — the caller
+  // computes the ops.
+  flow
+    .command('apply')
+    .description(
+      'Apply a transactional batch of node ops (--ops <file | ->): one DAG-check, one atomic write or none',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption('--ops <src>', 'a JSON array of ops from a file path, or "-" for stdin')
+    .action((opts: { path?: string; slug?: string; ops: string }) => {
+      const raw = opts.ops === '-' ? readStdin() : svc.fs.readText(toPosix(opts.ops));
+      if (raw === null) {
+        return emit(
+          io,
+          failureEnvelope(
+            {
+              ok: false,
+              status: 'error',
+              code: ErrorCodes.FLOW_NOT_FOUND,
+              message: `--ops file not found or unreadable: ${opts.ops}`,
+              next_action: 'Pass --ops <file> or --ops - to read the ops JSON from stdin.',
+            },
+            deps.clock,
+          ),
+        );
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return emit(
+          io,
+          failureEnvelope(
+            {
+              ok: false,
+              status: 'error',
+              code: ErrorCodes.INVALID_ARGS,
+              message: '--ops is not valid JSON.',
+              next_action:
+                'Pass a JSON array of ops, e.g. [{"op":"add","id":"x","type":"phase","label":"X"}].',
+            },
+            deps.clock,
+          ),
+        );
+      }
+      runMutation(io, deps, opts, (doc) => applyBatch(doc, parsed, { clock: deps.clock }));
+    });
+
+  // --- remove-node -------------------------------------------------------
+  flow
+    .command('remove-node')
+    .description(
+      'Remove a node + rewire predecessors→successors (DAG-rechecked; --force for a terminal node)',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption('--id <id>', 'node id to remove')
+    .option('--force', 'allow removing a terminal (done/skipped) node (D5)')
+    .action((opts: { path?: string; slug?: string; id: string; force?: boolean }) => {
+      runMutation(io, deps, opts, (doc) =>
+        removeNode(doc, opts.id, { force: opts.force }, { clock: deps.clock }),
+      );
+    });
+
+  // --- mv-node -----------------------------------------------------------
+  flow
+    .command('mv-node')
+    .description(
+      'Re-parent a node (--after/--before/--branch-of [+ --rejoin]); DAG-rechecked; --force for a terminal',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption('--id <id>', 'node id to move')
+    .option('--after <node>', 'move to after this node')
+    .option('--before <node>', 'move to before this node')
+    .option('--branch-of <node>', 'move to an excursion of this node')
+    .option('--rejoin <node>', 'branch rejoin target (default: the branch-of node)')
+    .option('--force', 'allow moving a terminal (done/skipped) node (D5)')
+    .action(
+      (opts: {
+        path?: string;
+        slug?: string;
+        id: string;
+        after?: string;
+        before?: string;
+        branchOf?: string;
+        rejoin?: string;
+        force?: boolean;
+      }) => {
+        runMutation(io, deps, opts, (doc) =>
+          mvNode(
+            doc,
+            opts.id,
+            {
+              after: opts.after,
+              before: opts.before,
+              branchOf: opts.branchOf,
+              rejoin: opts.rejoin,
+            },
+            { force: opts.force },
+            { clock: deps.clock },
+          ),
+        );
+      },
+    );
+
   // --- comment -----------------------------------------------------------
   flow
     .command('comment')
@@ -840,6 +955,16 @@ function needPath(): FlowFailure {
     message: 'no flow file specified.',
     next_action: 'Pass --path <file> or --slug <slug>.',
   };
+}
+
+/** Read the ops payload from stdin (`harness flow apply --ops -`). Synchronous fd-0
+ *  read; returns '' on EOF / no stdin (an empty payload then fails JSON.parse cleanly). */
+function readStdin(): string {
+  try {
+    return readFileSync(0, 'utf8');
+  } catch {
+    return '';
+  }
 }
 
 /** Split a comma list into trimmed ids (undefined → undefined). */

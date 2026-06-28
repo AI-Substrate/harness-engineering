@@ -437,6 +437,155 @@ describe('flow-renderer · effectiveZone (zone default-by-type; unknown → flig
   });
 });
 
+// ---------------------------------------------------------------------------
+// 039 T007 — renderer chore-awareness: :::chore is FLAG-driven, not TYPE-driven
+// (AC-11); a no-chore node renders byte-identically to today (AC-08); the
+// one-line rail surfaces due_chores at the cursor.
+// ---------------------------------------------------------------------------
+describe('flow-renderer · chore-awareness (AC-11, flag-driven :::chore)', () => {
+  it('a CHORE-FLAGGED harness-retro renders :::chore (flag wins over the harness type)', () => {
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] },
+        {
+          id: 'retro',
+          type: 'harness-retro',
+          label: 'Drain',
+          status: 'todo',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'skill', importance: 'recommended' },
+        },
+      ]),
+    );
+    expect(out).toMatch(/retro\["Drain[^\]]*"\]:::chore/);
+  });
+
+  it('a CHORE-FLAGGED observe renders :::chore', () => {
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'in_progress', next: [] },
+        {
+          id: 'obs',
+          type: 'observe',
+          label: 'Observe',
+          status: 'todo',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ]),
+    );
+    expect(out).toMatch(/obs\["Observe[^\]]*"\]:::chore/);
+  });
+
+  it('an UN-flagged harness-retro/harness-boot/backpressure still renders :::harness (AC-08 back-compat)', () => {
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] },
+        {
+          id: 'boot',
+          type: 'harness-boot',
+          label: 'boot',
+          status: 'done',
+          branch_of: 'p1',
+          next: ['p1'],
+        },
+        {
+          id: 'retro',
+          type: 'harness-retro',
+          label: 'retro',
+          status: 'known',
+          branch_of: 'p1',
+          next: ['p1'],
+        },
+        {
+          id: 'bp',
+          type: 'backpressure',
+          label: 'bp',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+        },
+      ]),
+    );
+    expect(out).toContain('boot["boot"]:::harness');
+    expect(out).toContain('retro["retro"]:::harness');
+    expect(out).toContain('bp["bp"]:::harness');
+  });
+
+  it('the SAME harness-retro renders byte-identically with vs without a chore flag, only the class changes', () => {
+    const node = (chore?: unknown) => ({
+      id: 'r',
+      type: 'harness-retro',
+      label: 'Retro',
+      status: 'todo',
+      branch_of: 'p1',
+      next: ['p1'],
+      ...(chore !== undefined ? { chore } : {}),
+    });
+    const plain = renderFlow(
+      doc([{ id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] }, node()]),
+    );
+    const flagged = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] },
+        node({ kind: 'skill', importance: 'recommended' }),
+      ]),
+    );
+    expect(plain).toContain('r["Retro"]:::harness'); // un-flagged → harness (today)
+    expect(flagged).toContain('r["Retro"]:::chore'); // flagged → chore (AC-11)
+  });
+
+  it('renderRailLine surfaces the chores DUE at the cursor', () => {
+    const d = doc(
+      [
+        { id: 'plan', type: 'plan', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'merge', label: 'Ship', status: 'known', next: [] },
+        {
+          id: 'bp',
+          type: 'backpressure',
+          label: 'Backpressure',
+          status: 'todo',
+          branch_of: 'plan',
+          next: ['plan'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ],
+      { nav: { now: 'plan', next: 'ship' } },
+    );
+    const line = renderRailLine(d);
+    expect(line).toContain('due:');
+    expect(line).toContain('Backpressure');
+  });
+
+  it('renderRailLine with NO due chores at the cursor is byte-identical to today (no due: segment)', () => {
+    const d = doc([{ id: 'p1', type: 'phase', label: 'Build', status: 'in_progress', next: [] }]);
+    expect(renderRailLine(d)).toBe('[test] [ ◐ ]  [ ◐ Build ]'); // unchanged
+    expect(renderRailLine(d)).not.toContain('due:');
+  });
+
+  it('a done/skipped chore at the cursor is NOT surfaced as due', () => {
+    const d = doc(
+      [
+        { id: 'plan', type: 'plan', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'merge', label: 'Ship', status: 'known', next: [] },
+        {
+          id: 'bp',
+          type: 'backpressure',
+          label: 'Backpressure',
+          status: 'done',
+          branch_of: 'plan',
+          next: ['plan'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ],
+      { nav: { now: 'plan', next: 'ship' } },
+    );
+    expect(renderRailLine(d)).not.toContain('due:');
+  });
+});
+
 describe('flow-renderer · zoned rail (bands pre ─ [ flight ] ─ post + title) — T009', () => {
   it('bands the spine with status pips + label names', () => {
     const d = doc([

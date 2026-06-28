@@ -1,10 +1,12 @@
 import type { FlowComment, FlowDoc, FlowNode } from './flow-events.js';
+import { dueChores } from './flow-mutations.js';
 
 /**
  * Deterministic flow renderer (plan 024 Phase 2; AC-06). PURE — `FlowDoc → string`:
  * no I/O, no `node:*`, no `new Date()`, no `process`. The clock/IO stay in the act;
- * this is the dependency LEAF (imports only the `flow-events` TYPES), so the graph
- * stays acyclic.
+ * it imports the `flow-events` TYPES plus the `dueChores` read from `flow-mutations`
+ * (039 AC-11 — the one-line rail surfaces what's due at the cursor); both are
+ * pure sibling modules in `services/flow`, so the graph stays acyclic.
  *
  * It supplants the old hand-cranked the-flow mermaid render (grill 8): output is
  * **best-fit, not byte-matched** to the prototype — what matters is that it is
@@ -177,14 +179,16 @@ function buildIdMap(nodes: readonly FlowNode[]): Map<string, string> {
 // Per-node render decisions.
 // ---------------------------------------------------------------------------
 
-/** The classDef a node renders with: harness > decision > chore > status-mapped > unknown.
- *  A chore wins over its status class (upkeep reads as distinct) but NOT over the
- *  harness-seam violet or the decision rhombus — those shapes stay primary; a chore on
- *  such a node still shows its chore-ness via the rail's square pip (Phase 4 / ws-004 C5). */
+/** The classDef a node renders with: decision > chore > harness > status-mapped > unknown.
+ *  Chore-class is FLAG-driven, not TYPE-driven (039 AC-11): a chore-flagged node renders
+ *  `:::chore` even when its type is a harness seam (`harness-boot`/`harness-retro`/
+ *  `backpressure`/`observe`) — in a flight-plan every harness touchpoint IS due upkeep.
+ *  An un-flagged seam node still renders `:::harness` (AC-08 back-compat). The decision
+ *  rhombus keeps its class (and shape) over a chore flag. */
 function nodeClass(node: FlowNode): string {
-  if (HARNESS_TYPES.has(node.type)) return 'harness';
   if (node.type === 'decision') return 'decision';
   if (node.chore !== undefined) return 'chore';
+  if (HARNESS_TYPES.has(node.type)) return 'harness';
   return STATUS_CLASS[node.status] ?? 'unknown';
 }
 
@@ -485,10 +489,16 @@ function railTitle(doc: FlowDoc): string {
 }
 
 /** The standalone `harness flow rail` line: `[<title>] <pips>  <names>` (AC-4). The
- *  `mode` controls chore-name visibility (default `collapse`); pips always render. */
+ *  `mode` controls chore-name visibility (default `collapse`); pips always render.
+ *  When chores are DUE at the cursor (the `dueChores` read — anchored at `nav.now`,
+ *  still outstanding) a `⚑ due: …` segment is appended so "what's due here" is visible
+ *  without opening the diagram (039 AC-11). No due chores → byte-identical to before. */
 export function renderRailLine(doc: FlowDoc, mode: ChoreRailMode = 'collapse'): string {
   const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
-  return `[${railTitle(doc)}] ${renderRailBody(nodes, mode)}`;
+  const line = `[${railTitle(doc)}] ${renderRailBody(nodes, mode)}`;
+  const due = dueChores(doc);
+  if (due.length === 0) return line;
+  return `${line}  ⚑ due: ${due.map((c) => escapeMd(c.label)).join(', ')}`;
 }
 
 /** The embedded rail line for the rendered `.md` — the shared zoned body, labelled. */
