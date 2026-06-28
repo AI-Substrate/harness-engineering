@@ -196,6 +196,38 @@ describe('flow-renderer · render rules', () => {
     expect(out).toContain('bp["bp"]:::harness');
   });
 
+  it('styles an `observe` seam violet too — colour=type, not status (plan 040 P3.1)', () => {
+    // `observe` is a harness-loop seam exactly like backpressure/boot/retro: the
+    // per-phase `coding`-hook capture. It must render `:::harness`, never fall to
+    // status-mapping (`:::assumed`). Covers both a bare seam and a chore-flagged one.
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'in_progress', next: [] },
+        {
+          id: 'obsbare',
+          type: 'observe',
+          label: 'observe',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+        },
+        {
+          id: 'obschore',
+          type: 'observe',
+          label: 'Observe',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ]),
+    );
+    // bare observe → violet despite `assumed` status (today it renders `:::assumed`).
+    expect(out).toContain('obsbare["observe"]:::harness');
+    // chore-flagged observe → still violet AND keeps its `🧰` badge.
+    expect(out).toContain('obschore["Observe 🧰"]:::harness');
+  });
+
   it('emits exactly one genesis bubble per node carrying user_input (rule 6)', () => {
     const out = renderFlow(
       doc([

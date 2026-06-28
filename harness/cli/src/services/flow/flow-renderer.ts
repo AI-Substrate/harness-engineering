@@ -30,7 +30,7 @@ import { dueChores } from './flow-mutations.js';
 // ---------------------------------------------------------------------------
 
 /** Harness-loop seam node types — always violet, regardless of status (rule 4/5). */
-const HARNESS_TYPES = new Set(['harness-boot', 'harness-retro', 'backpressure']);
+const HARNESS_TYPES = new Set(['harness-boot', 'harness-retro', 'backpressure', 'observe']);
 /** status → classDef name (rule 5); anything else → the neutral `unknown` fallback. */
 const STATUS_CLASS: Record<string, string> = {
   done: 'done',

@@ -9,7 +9,7 @@
 flowchart TD
     boot["Boot"]:::done
     backpressure["Backpressure Check"]:::harness
-    observe["Do Work + Observe"]:::wip
+    observe["Do Work + Observe"]:::harness
     drain_gate{"Buffer non-empty?"}:::decision
     retro_drain["Retro — drain buffer"]:::assumed
     retro_harvest["Retro — harvest"]:::assumed
