@@ -176,6 +176,36 @@ async function runText(deps: VerbActDeps, argv: string[]): Promise<{ out: string
   return { out, code };
 }
 
+/**
+ * Run `harness flow orient` with NO `--json` flag under an AMBIENT json-mode
+ * `CliIo` — i.e. the piped / non-TTY invocation that is the EXACT context of the
+ * original bug, where orient's default fell back to ambient `io.mode` and emitted
+ * the envelope. Unlike `runText` (which pins `io.mode: 'human'` and so cannot see
+ * that regression at all), this drives `io.mode: 'json'`. The CORRECT human path
+ * returns naturally (`emitRawAndExit` sets `process.exitCode`, never calls
+ * `process.exit`); a REGRESSED build would route through `emit` →
+ * `exitWithEnvelope` → `process.exit`, so we stub `process.exit` to a no-op — that
+ * keeps a regression from killing the runner while still letting its JSON write
+ * land in `out`, so the not-`{` assertion bites red.
+ */
+async function runRawUnderJsonIo(deps: VerbActDeps, argv: string[]): Promise<{ out: string }> {
+  let out = '';
+  const writers: Writers = {
+    out: (t) => {
+      out += t;
+    },
+    err: () => {},
+  };
+  const io: CliIo = { mode: 'json', writers }; // AMBIENT json — simulates piped / non-TTY
+  const prevExitCode = process.exitCode;
+  process.exitCode = undefined;
+  vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+  await buildProgram('0.4.0', io, deps, EMPTY).parseAsync(['node', 'harness', ...argv]);
+  vi.restoreAllMocks();
+  process.exitCode = prevExitCode;
+  return { out };
+}
+
 type OrientChore = {
   id: string;
   label: string;
@@ -248,6 +278,23 @@ describe('harness flow orient — the where-am-I / what-next read (plan 040 P2 /
     expect(r.out).toContain('■ Run the linter');
     expect(r.out).toContain('▣ Peer review');
     expect(r.out).toContain('▨ Benchmark');
+  });
+
+  it('P2-fix2 FIX A — DEFAULT (no flag) stays human EVEN under ambient io.mode=json (piped/non-TTY)', async () => {
+    // The ORIGINAL bug: with no flag, orient fell back to the ambient io.mode, so a
+    // piped / non-TTY caller (io.mode=json) got the JSON envelope — defeating D2. The
+    // prior default-human test uses `runText`, which pins io.mode=human and so cannot
+    // see that regression. Here io.mode is json and there is STILL no --json flag, so
+    // the output must remain the raw human block — never the envelope.
+    const r = await runRawUnderJsonIo(seed(), ['flow', 'orient', '--slug', 'demo']);
+    // not the JSON envelope (a regression to ambient io.mode would print one here).
+    expect(r.out.trimStart().startsWith('{')).toBe(false);
+    expect(r.out).not.toContain('"status"'); // belt-and-braces: no envelope key leaked
+    // it is the human block — rail, command, instruction TEXT verbatim, a chore pip.
+    expect(r.out).toContain('[demo-agent]');
+    expect(r.out).toContain('/plan');
+    expect(r.out).toContain('Read the brief end to end');
+    expect(r.out).toContain('■ Run the linter');
   });
 
   it('degrades gracefully — a node with no instructions/chores still prints rail + node', async () => {

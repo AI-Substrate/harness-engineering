@@ -1153,8 +1153,10 @@ interface OrientView {
  * rail line, the current node's label/command/full `instructions[]` text, and the
  * chores anchored here — `listChores` (ALL statuses, so a completed check shows
  * ticked), NOT `dueChores` (which would hide done/skipped; D6) — each tagged with
- * its status pip. A READ — never mutates. Degrades gracefully: no position / a
- * dangling `nav.now` → `node: null`, `chores: []` (the rail still renders).
+ * its status pip. A READ — never mutates. No position (empty `nav.now`) → `node:
+ * null`, `chores: []`, and the rail still renders (graceful). A SET-but-dangling
+ * `nav.now` ALSO yields `node: null` HERE, but the orient ACTION treats that as a
+ * corrupt flow and errors (E305) — it does NOT degrade to `node: null` downstream.
  */
 function orientView(doc: FlowDoc): OrientView {
   const now = doc.nav?.now;
