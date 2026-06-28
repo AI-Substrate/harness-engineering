@@ -78,9 +78,12 @@ describe('capture path — structural perf sensor (plan 034 Phase 3 · M-K6)', (
     // The watermark advanced to all 8 non-empty transcript lines (quirk-independent proof).
     expect(readCursor(fs, cursorPathFor(REPO, SESSION))).toBe(8);
 
+    const writesBefore = fs.writes.length;
     captureTelemetry(captureDeps(fs)); // run 2: cursor at 8, position 8 → empty window
-    const seg2 = latestSegment(fs);
-    expect(seg2.tokens).toBeNull(); // repeat: windowed parse yields nothing → no history re-count
+    // FIX-1: a repeat capture with no new lines re-counts nothing AND spools nothing —
+    // no new write, watermark unchanged. (Stronger than the old "tokens null" check.)
+    expect(fs.writes.length).toBe(writesBefore);
+    expect(readCursor(fs, cursorPathFor(REPO, SESSION))).toBe(8);
   });
 
   it('AC-06 PR-invisibility: every write lands under the gitignored .harness/temp tree', () => {

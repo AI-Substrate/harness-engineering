@@ -117,7 +117,9 @@ describe('T007 — future-harness adapter (AC-12)', () => {
       git: new FakeGit({ isRepo: true, branch: 'b', remoteUrl: 'github.com/x/y' }),
       command: 'flow',
       // A brand-new adapter, dropped into the array — capture-service is untouched.
-      adapters: [{ ...futureAdapter, handles: () => true }],
+      // It reports a source position (like any real adapter) so the window is non-empty
+      // and the capture has activity to spool (FIX-1 skips no-activity captures).
+      adapters: [{ ...futureAdapter, handles: () => true, currentPosition: () => 5 }],
     };
     captureTelemetry(deps);
 

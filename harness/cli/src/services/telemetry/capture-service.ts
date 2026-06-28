@@ -330,6 +330,30 @@ function buildInput(
 export const KILL_SWITCH_ENV = 'HARNESS_NO_TELEMETRY';
 
 /**
+ * Re-entrancy guard env var. The kernel sets `HARNESS_TELEMETRY_DEPTH` in the
+ * process env (app.ts) so any harness subprocess it spawns inherits it; a nested
+ * invocation (`depth > 0`) self-suppresses capture. Without this, `harness checks`
+ * — which shells out to its sub-verbs + the `flow render --check` drift gate as
+ * child `harness` processes that all inherit `CLAUDE_CODE_SESSION_ID` — would
+ * attribute ~10 segments to ONE logical run, and any self-spawned/looping child
+ * would pollute the parent session's buffer. The TOP-level invocation runs at
+ * depth 0 and is the only one that captures.
+ */
+export const CAPTURE_DEPTH_ENV = 'HARNESS_TELEMETRY_DEPTH';
+
+/**
+ * A capture carries real signal iff the transcript window advanced OR the event
+ * stream is non-empty (which includes flow-replay markers — so a transcript-empty
+ * window that surfaced flight-plan events is still kept). A no-activity capture is
+ * read-only/idempotent plumbing (`flow rail/nav/render`, an idle status poll) and
+ * is NOT spooled — otherwise the buffer fills with empty segments (the dominant
+ * failure mode: 98% of one session's 19k segments were these).
+ */
+export function hasActivity(seg: Segment): boolean {
+  return seg.window.from !== seg.window.to || seg.event_stream.length > 0;
+}
+
+/**
  * Capture telemetry for the current command. The named entry the kernel preamble
  * (Phase 3) calls. Synchronous, ports-only, best-effort.
  *
@@ -342,6 +366,12 @@ export function captureTelemetry(deps: CaptureDeps): void {
   try {
     if (deps.env.get(KILL_SWITCH_ENV) === '1') {
       return; // kill-switch → zero side effects (AC-05)
+    }
+    // Re-entrancy guard: a nested harness invocation (a sub-verb / drift-gate child
+    // spawned by `harness checks`, or any self-spawned child) inherits a non-zero
+    // depth and must NOT re-capture this session — the top-level (depth 0) already did.
+    if (Number(deps.env.get(CAPTURE_DEPTH_ENV) ?? '0') > 0) {
+      return;
     }
     captureUnsafe(deps);
   } catch {
@@ -416,6 +446,25 @@ function captureUnsafe(deps: CaptureDeps): void {
     buildInput(deps, detected, window, caps, branch, planId, flightPlan, flowLog.events),
     cwd,
   );
+
+  // No-activity guard: a read-only/idempotent plumbing call (`flow rail/nav/render`,
+  // an idle poll) yields an empty window + empty event stream — do NOT spool it.
+  // Safe to skip the cursor/flow-offset writes: an empty window has `to === from ===
+  // prev` (cursor already correct) and an empty stream consumed no flow-replay events.
+  //
+  // BUT the branch BASELINE must still be persisted when it is new or changed — else
+  // an empty first capture on `main` never records `main`, and a later `main`→`feature`
+  // switch has no baseline and is silently lost (a real change is only detectable
+  // against a persisted prior branch). Only on a baseline delta — never a redundant
+  // write on a stable-branch idle poll (keeps the no-activity path write-free).
+  if (!hasActivity(segment)) {
+    if (currentBranch !== null && currentBranch !== priorBranch) {
+      ensureTemp({ fs: deps.fs, proc: deps.proc });
+      deps.fs.mkdirp(sessionDirFor(cwd, detected.sessionId)); // creates the telemetry dir for the .branch write
+      writeBranch(deps.fs, branchPath, currentBranch);
+    }
+    return;
+  }
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).

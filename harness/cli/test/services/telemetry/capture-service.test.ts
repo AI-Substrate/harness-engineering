@@ -16,6 +16,7 @@ import {
   captureTelemetry,
   computeWindow,
   detectHarness,
+  hasActivity,
 } from '../../../src/services/telemetry/capture-service.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
@@ -154,7 +155,12 @@ describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/A
 
   it('AC-21 — resolves the session id from session-store.db by cwd, then writes the segment under it', () => {
     const { d, fs } = vscodeDeps((sql) =>
-      sql.includes('FROM sessions') ? [{ id: 'vsc-cwd-1' }] : [],
+      sql.includes('FROM sessions')
+        ? [{ id: 'vsc-cwd-1' }]
+        : // one turn → non-empty window so the capture has activity to spool (FIX-1)
+          sql.includes('FROM turns')
+          ? [{ turn_index: 0, words: 5, has_response: 1, timestamp: '2026-06-25T02:00:00Z' }]
+          : [],
     );
     captureTelemetry(d);
 
@@ -229,14 +235,23 @@ describe('T005 — captureTelemetry happy path', () => {
     expect(JSON.parse(metrics as string)).toHaveProperty('resourceMetrics');
   });
 
-  it('with no real adapter, the null-default writes a schema-valid all-null segment', () => {
-    const { d, fs } = deps({ env: { CLAUDE_CODE_SESSION_ID: 'sessN' }, adapters: [] });
+  it('no real adapter (null-default) + a branch switch (activity) → schema-valid all-null segment is written', () => {
+    // Keeps exercising the nullDefaultAdapter fallback (adapters: []). A seeded prior
+    // branch differs from FakeGit's '034-x', so the branch switch surfaces a branch
+    // event → non-empty stream → FIX-1 keeps it; the empty caps exercise the all-null
+    // serialization path (null tokens, omitted v1-compat collections).
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessN' },
+      files: { [`${TEL}/sessN.branch`]: 'prev-branch' },
+      adapters: [], // null-default fallback — the path under test
+    });
     captureTelemetry(d);
     const seg = readWrittenSegment(fs, 'sessN');
     expect(seg).not.toBeNull();
     expect(seg?.tokens).toBeNull();
     expect(seg?.skills).toBeUndefined(); // empty v1-compat collections are omitted (v2)
     expect(seg?.harness).toBe('claude-code');
+    expect(seg?.event_stream.some((e) => e.kind === 'branch')).toBe(true); // the activity that kept it
   });
 });
 
@@ -247,15 +262,16 @@ describe('T005 — designed edge no-ops (C3)', () => {
     expect(fs.writes.filter((p) => p.includes('/telemetry/'))).toEqual([]);
   });
 
-  it('missing/truncated source → empty window, segment still written (not a no-op)', () => {
+  it('missing/truncated source → empty window → NOT spooled (FIX-1 no-activity guard), cursor unchanged', () => {
     const { d, fs } = deps({
       env: { CLAUDE_CODE_SESSION_ID: 'sessE' },
       files: { [`${TEL}/sessE.cursor`]: '100' },
-      adapters: [testAdapter('claude-code', null, {})], // source unreadable → null position
+      adapters: [testAdapter('claude-code', null, {})], // source unreadable → null position → window [100,100]
     });
     captureTelemetry(d);
-    const seg = readWrittenSegment(fs, 'sessE');
-    expect(seg?.window).toEqual({ since: 'last-command', from: 100, to: 100 });
+    // FIX-1: an empty window + empty event stream is read-only plumbing — write nothing.
+    expect(readWrittenSegment(fs, 'sessE')).toBeNull();
+    expect(fs.readText(`${TEL}/sessE.cursor`)).toBe('100'); // cursor already at the watermark — safe
   });
 
   it('corrupt cursor → reset to session-start', () => {
@@ -305,18 +321,114 @@ describe('T5.8 — session-end flush (the tail is captured by a follow-up captur
     expect(fs.readText(`${TEL}/sessTail.cursor`)).toBe('170');
   });
 
-  it('session ends with no tail (source unchanged) → empty-window segment, safe', () => {
+  it('session ends with no tail (source unchanged) → nothing spooled (FIX-1), cursor safe', () => {
     const { d, fs } = deps({
       env: { CLAUDE_CODE_SESSION_ID: 'sessNoTail' },
       files: { [`${TEL}/sessNoTail.cursor`]: '90' },
-      adapters: [testAdapter('claude-code', 90, {})],
+      adapters: [testAdapter('claude-code', 90, {})], // position == cursor → empty window, no caps
     });
     captureTelemetry(d);
-    expect(readWrittenSegment(fs, 'sessNoTail')?.window).toEqual({
-      since: 'last-command',
-      from: 90,
-      to: 90,
+    // No tail = no activity = no segment; the real tail-flush (above) writes because
+    // its window genuinely advances. The cursor stays put — nothing is lost.
+    expect(readWrittenSegment(fs, 'sessNoTail')).toBeNull();
+    expect(fs.readText(`${TEL}/sessNoTail.cursor`)).toBe('90');
+  });
+});
+
+describe('FIX-1 — no-activity captures are not spooled (empty-window plumbing guard)', () => {
+  it('hasActivity: empty window + empty stream → false; advanced window OR non-empty stream → true', () => {
+    const empty = {
+      window: { since: 'last-command', from: 100, to: 100 },
+      event_stream: [] as Event[],
+    } as Segment;
+    expect(hasActivity(empty)).toBe(false);
+    // window advanced → activity
+    expect(hasActivity({ ...empty, window: { since: 'last-command', from: 100, to: 240 } })).toBe(
+      true,
+    );
+    // FLOW-REPLAY SAFETY: empty transcript window but the stream carries flight-plan
+    // events → still activity, must NOT be skipped.
+    expect(
+      hasActivity({
+        ...empty,
+        event_stream: [{ t: '2026-06-26T00:00:00Z', kind: 'flow', flow: 'x', stage: 'plan' }],
+      } as unknown as Segment),
+    ).toBe(true);
+  });
+
+  it('empty-window + empty-stream capture writes NOTHING (no .json, no OTLP pair) and leaves the cursor', () => {
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessZero' },
+      files: { [`${TEL}/sessZero.cursor`]: '100' },
+      adapters: [testAdapter('claude-code', 100, {})], // position == cursor → empty window
     });
+    captureTelemetry(d);
+    expect(readWrittenSegment(fs, 'sessZero')).toBeNull();
+    expect(fs.readText(`${TEL}/sessZero/1.logs.jsonl`)).toBeNull();
+    expect(fs.readText(`${TEL}/sessZero/1.metrics.jsonl`)).toBeNull();
+    expect(fs.writes.filter((p) => p.includes('/sessZero/'))).toEqual([]);
+    expect(fs.readText(`${TEL}/sessZero.cursor`)).toBe('100');
+  });
+
+  it('a real-activity capture (window advances) is still written — no regression', () => {
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessAct' },
+      files: { [`${TEL}/sessAct.cursor`]: '100' },
+      adapters: [testAdapter('claude-code', 240, { tools: { Bash: 2 } })],
+    });
+    captureTelemetry(d);
+    expect(readWrittenSegment(fs, 'sessAct')).not.toBeNull();
+    expect(fs.readText(`${TEL}/sessAct.cursor`)).toBe('240');
+  });
+
+  it('branch-watermark safe: an empty first capture still records the baseline so a later switch is detected', () => {
+    // Review finding (capture-service:456): skipping the empty segment must NOT skip
+    // the branch baseline, else the switch below is silently lost.
+    const fs = new FakeFs({});
+    const onBranch = (branch: string, position: number | null): CaptureDeps => ({
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sw' }),
+      clock: new FakeClock('2026-06-24T09:02:00.000Z'),
+      proc: new FakeProcess({}, REPO),
+      git: new FakeGit({ isRepo: true, branch, remoteUrl: 'github.com/x/y' }),
+      command: 'flow',
+      adapters: [testAdapter('claude-code', position, {})],
+    });
+
+    // 1) empty capture on `main` (null position → empty window) → segment SKIPPED…
+    captureTelemetry(onBranch('main', null));
+    expect(readWrittenSegment(fs, 'sw')).toBeNull();
+    // …but the branch baseline IS persisted (the fix), so the switch is detectable.
+    expect(fs.readText(`${TEL}/sw.branch`)).toBe('main');
+
+    // 2) switch to `feature` with activity → the switch surfaces a branch event.
+    captureTelemetry(onBranch('feature', 5));
+    const seg = readWrittenSegment(fs, 'sw');
+    expect(seg?.branch).toBe('feature');
+    expect(seg?.event_stream.some((e) => e.kind === 'branch')).toBe(true);
+  });
+});
+
+describe('FIX-2 — nested harness invocations self-suppress capture (re-entrancy guard)', () => {
+  it('HARNESS_TELEMETRY_DEPTH>0 → no capture even with real activity (a checks sub-verb / drift gate)', () => {
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessNest', HARNESS_TELEMETRY_DEPTH: '1' },
+      files: { [`${TEL}/sessNest.cursor`]: '100' },
+      adapters: [testAdapter('claude-code', 240, { tools: { Bash: 5 } })], // real activity…
+    });
+    captureTelemetry(d);
+    // …but the parent (depth 0) already captured this session — the child must not.
+    expect(fs.writes.filter((p) => p.includes('/telemetry/'))).toEqual([]);
+  });
+
+  it('depth unset (top-level, depth 0) → captures normally', () => {
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessTop' },
+      files: { [`${TEL}/sessTop.cursor`]: '100' },
+      adapters: [testAdapter('claude-code', 240, { tools: { Bash: 5 } })],
+    });
+    captureTelemetry(d);
+    expect(readWrittenSegment(fs, 'sessTop')).not.toBeNull();
   });
 });
 
