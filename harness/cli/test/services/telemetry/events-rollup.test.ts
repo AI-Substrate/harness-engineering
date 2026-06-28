@@ -3,6 +3,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { Event } from '../../../src/services/telemetry/events.js';
+import { rollupToOtlpMetrics } from '../../../src/services/telemetry/otlp/metrics.js';
+import { A, GENAI_TOKEN_TYPE } from '../../../src/services/telemetry/otlp/semconv.js';
+import { attrMap } from '../../../src/services/telemetry/otlp/types.js';
 import {
   classifyGap,
   collapseToolBursts,
@@ -284,5 +287,53 @@ describe('T5.1/T5.2 — segment v2.0: derived rollup + schema shape (AC-16)', ()
     expect([...SCHEMA.properties.rollup.required].sort()).toEqual(
       ['activity', 'flow_stage_time_s', 'outcomes', 'skills', 'tokens', 'tools'].sort(),
     );
+  });
+});
+
+describe('T014 — the rollup → OTLP Metrics datapoint attributes stay in the frozen harness.* contract', () => {
+  it('every metric datapoint attribute key is a frozen harness.* / gen_ai.* name (no smuggled attr)', () => {
+    // A rich stream → a fully-populated rollup → metrics whose datapoints carry
+    // discriminator attributes (tool/skill/flow-stage/token-type). Those keys must
+    // all live in the frozen vocabulary the harness-otlp.schema.json freeze pins.
+    const frozen = new Set<string>([...Object.values(A), GENAI_TOKEN_TYPE]);
+    const stream: Event[] = [
+      { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 5 },
+      {
+        t: '2026-06-24T09:00:05Z',
+        kind: 'turn',
+        dur_s: 4,
+        in: 100,
+        out: 40,
+        cache_read: 7,
+        cache_create: 3,
+        model: 'claude-opus-4-8',
+      },
+      { t: '2026-06-24T09:00:10Z', kind: 'tools', name: 'Bash', count: 2, span_s: 3 },
+      { t: '2026-06-24T09:00:14Z', kind: 'skill', name: 'the-flow', status: 'completed', dur_s: 6 },
+      {
+        t: '2026-06-24T09:00:20Z',
+        kind: 'flow',
+        flow: 'the-flow',
+        stage: 'implement',
+        status: 'done',
+        from: 'plan',
+      },
+      { t: '2026-06-24T09:00:25Z', kind: 'command_exit', verb: 'build', exit: 0, status: 'ok' },
+    ];
+    const seg = serializeSegment({ ...baseInput(), event_stream: stream }, REPO);
+    const metrics = rollupToOtlpMetrics(seg);
+
+    const attrKeys = new Set<string>();
+    for (const rm of metrics.resourceMetrics) {
+      for (const sm of rm.scopeMetrics) {
+        for (const m of sm.metrics) {
+          const dps = m.sum?.dataPoints ?? m.gauge?.dataPoints ?? [];
+          for (const dp of dps) for (const k of attrMap(dp.attributes).keys()) attrKeys.add(k);
+        }
+      }
+    }
+
+    expect(attrKeys.size).toBeGreaterThan(0); // the rich stream really did attach discriminators
+    for (const k of attrKeys) expect(frozen, `attr "${k}" must be a frozen name`).toContain(k);
   });
 });

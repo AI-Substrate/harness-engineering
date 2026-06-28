@@ -158,6 +158,154 @@ describe('syncTelemetry — flush buffered segments to dated per-session shard r
     expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1');
   });
 
+  it('publishes the OTLP .jsonl spool companions in the shard tree, not the segment json (T011)', () => {
+    const { deps, git } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-x']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[2]}\n',
+      },
+      {
+        [TEL]: ['sessA'],
+        [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'],
+      },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+    expect(r.segments).toBe(1); // one segment flushed (seq count), two signal blobs
+    // the shard tree holds the OTLP signal files — the segment buffer json stays LOCAL
+    const names = git.trees
+      .flat()
+      .map((e) => e.name)
+      .sort();
+    expect(names).toEqual(['1.logs.jsonl', '1.metrics.jsonl']);
+    // the published blob bytes are the spool's, not the segment's
+    expect(git.blobs).toContain('{"resourceLogs":[1]}\n');
+    expect(git.blobs).toContain('{"resourceMetrics":[2]}\n');
+    expect(git.blobs).not.toContain(seg(['038-x']));
+    // plan link + date still derived from the local buffer segment
+    expect(r.plans).toEqual(['038-x']);
+    expect(git.pushed).toEqual([refspec('2026/03/23', 'sessA')]);
+    // single-writer-per-ref preserved: orphan create, no fetch-to-write
+    expect(git.commits.every((c) => c.parent === null)).toBe(true);
+  });
+
+  it('a re-flush of an already-published shard skips the duplicate commit but STILL re-pushes (H5 — crash-before-push safety, no NFF)', () => {
+    const { deps, fs, git } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-x']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[2]}\n',
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'] },
+    );
+
+    const r1 = syncTelemetry(deps);
+    expect(r1.ok).toBe(true);
+    expect(r1.pushed).toBe(true);
+    expect(git.commits).toHaveLength(1);
+    expect(git.pushed).toHaveLength(1);
+
+    // Watermark lost (a crash before writeFlushed) → reset so the SAME seqs re-flush
+    // against the now-existing local ref.
+    fs.writeText(`${TEL}/sessA.flushed`, '0');
+
+    const r2 = syncTelemetry(deps);
+    expect(r2.ok).toBe(true);
+    expect(r2.segments).toBe(0); // no NEW content flushed
+    expect(git.commits).toHaveLength(1); // de-duped: NO duplicate commit
+    // …but the ref IS re-pushed — a local ref-tree match cannot prove the remote got
+    // it (a crash between updateRef and push leaves the local ref ahead), so the buffer
+    // must never be consumed without re-delivering. Re-push is idempotent on the remote.
+    expect(git.pushed).toHaveLength(2);
+    expect(git.pushed[1]).toBe(refspec('2026/03/23', 'sessA'));
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1'); // watermark advances only after the re-push
+  });
+
+  it('the idempotent re-push path surfaces a push failure (does NOT consume the buffer) — crash-before-push never silently loses telemetry', () => {
+    const git = new FakeGitWrite();
+    const { deps, fs } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-x']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n',
+        [`${TEL}/sessA/1.metrics.jsonl`]: '{"resourceMetrics":[2]}\n',
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl', '1.metrics.jsonl'] },
+      { git },
+    );
+
+    expect(syncTelemetry(deps).ok).toBe(true); // first flush lands the local ref
+    fs.writeText(`${TEL}/sessA.flushed`, '0'); // lost watermark → re-flush hits the idempotent path
+    git.failPush = true; // the re-push (the delivery the remote actually needs) fails
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(false); // surfaced, not swallowed
+    // the buffer is NOT consumed past the failed re-push → next sync retries delivery
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('0');
+  });
+
+  it('falls back to the segment json when the spool is PARTIAL — logs without metrics (companion c7ce: never publish-and-consume a half-signal)', () => {
+    const { deps, git } = makeDeps(
+      {
+        [`${TEL}/sessA/1.json`]: seg(['038-z']),
+        [`${TEL}/sessA/1.logs.jsonl`]: '{"resourceLogs":[1]}\n', // metrics absent (crash between writes)
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '1.logs.jsonl'] },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+    expect(r.segments).toBe(1);
+    // an incomplete pair must NOT be published — fall back to the full segment json
+    expect(git.trees.flat().map((e) => e.name)).toEqual(['1.json']);
+    expect(git.blobs).not.toContain('{"resourceLogs":[1]}\n');
+  });
+
+  it('falls back to the segment json when the .jsonl spool is absent (AC-14: never drop a buffered segment)', () => {
+    const { deps, git } = makeDeps(
+      { [`${TEL}/sessA/1.json`]: seg(['038-y']) },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json'] },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+    expect(r.segments).toBe(1);
+    // no spool companions → the segment json still flushes, so nothing is lost
+    expect(git.trees.flat().map((e) => e.name)).toEqual(['1.json']);
+  });
+
+  it('does NOT skip an un-flushed lower seq when an interleaved date bucket fails (F1 — contiguous-prefix watermark)', () => {
+    const git = new FakeGitWrite();
+    // The dated shard's push fails; the UNDATED (corrupt-timecode) shard's succeeds.
+    git.failPushMatching = (r) => r.includes('2026/03/23');
+    const { deps, fs } = makeDeps(
+      {
+        // seq1 + seq3 are the SAME date; seq2 has a corrupt timecode → UNDATED bucket.
+        // So the date buckets INTERLEAVE: dated={1,3} (maxSeq 3), undated={2} (maxSeq 2).
+        [`${TEL}/sessA/1.json`]: seg(['x'], { timecode: '2026-03-23T10:00:00.000Z' }),
+        [`${TEL}/sessA/2.json`]: '{ corrupt not json',
+        [`${TEL}/sessA/3.json`]: seg(['x'], { timecode: '2026-03-23T10:05:00.000Z' }),
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '2.json', '3.json'] },
+      { git },
+    );
+
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(false); // the dated shard (seq1+seq3) failed to push
+    // The undated shard (seq2, maxSeq 2) pushed first and succeeded — but seq1 (LOWER,
+    // stranded in the failed dated shard) is un-flushed, so the watermark must NOT
+    // advance past it. Pre-fix it leapt to 2 and skipped seq1 forever.
+    expect(fs.exists(`${TEL}/sessA.flushed`)).toBe(false); // never advanced past seq1
+    expect(git.pushed).toEqual([refspec('0000/00/00', 'sessA')]); // only the undated shard landed
+
+    // Recovery: once the dated push works, the SAME seq1+seq3 flush — nothing was lost.
+    git.failPushMatching = null;
+    const r2 = syncTelemetry(deps);
+    expect(r2.ok).toBe(true);
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('3'); // all three now consumed
+  });
+
   it('is a clean no-op when there is no buffer (no telemetry dir, nothing to flush)', () => {
     const { deps, git } = makeDeps({}, {});
     const r = syncTelemetry(deps);

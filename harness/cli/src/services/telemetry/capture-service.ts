@@ -33,6 +33,8 @@ import {
 import type { Event } from './events.js';
 import { flowLogEvents } from './flow-log.js';
 import { flowEventFromFlightPlan } from './flow-nav.js';
+import { segmentToOtlpLogs } from './otlp/logs.js';
+import { rollupToOtlpMetrics } from './otlp/metrics.js';
 import {
   type Segment,
   type SegmentInput,
@@ -65,6 +67,8 @@ export interface CaptureDeps {
   db?: DbPort;
   /** The harness command that triggered capture (the kernel preamble passes this — Phase 3). */
   command: string;
+  /** The producing harness CLI version (the kernel preamble passes `readVersion()`) → segment `harness_version` / OTLP `service.version`. */
+  version?: string;
   /** Per-harness adapters; the null-default is always the final fallback (AC-12). */
   adapters?: HarnessAdapter[];
 }
@@ -110,6 +114,82 @@ export function detectHarness(env: EnvPort): DetectedHarness | null {
 }
 
 /**
+ * Allowlisted env-var name globs captured into every segment (`captured_env`).
+ * A glob is an exact name or a `<prefix>*` prefix match. Code-constant BY DESIGN
+ * (not env/config-driven): widening what telemetry records is then a reviewed
+ * code change, fully auditable in git. Empty on most hosts → the field is omitted.
+ */
+export const ENV_CAPTURE_GLOBS: readonly string[] = ['PIJ_*'];
+
+/**
+ * Secret-shaped key-NAME guard, applied AFTER the globs: a name matching this is
+ * DROPPED even when a glob selected it (so `PIJ_*` never sweeps `PIJ_TOKEN`). The
+ * value then never reaches the segment, the buffer, or the pushed telemetry ref.
+ * Matched case-insensitively against the NAME only — never the value (a value is
+ * never inspected, so a non-secret-named var is captured verbatim).
+ *
+ * Tuned to genuine CREDENTIAL shapes, NOT broad substrings: a bare `SESSION` or
+ * `KEY` would eat benign correlation handles like `PIJ_SESSION_ID` /
+ * `PIJ_STATUS_KEY` (ids, not secrets). So `KEY` is denied only in a credential
+ * compound (`API_KEY`, `SECRET_KEY`, `SSH_KEY`, …) and `SESSION_TOKEN` /
+ * `SESSION_SECRET` are caught by the `TOKEN` / `SECRET` words, while `SESSION_ID`
+ * flows. The narrow code-constant allowlist is the primary gate; this is
+ * defense-in-depth for when a glob is widened.
+ */
+export const ENV_CAPTURE_DENY =
+  /(?:^|_)(?:TOKEN|TOKENS|SECRET|SECRETS|PASSWORD|PASSWD|PASSPHRASE|CREDENTIAL|CREDENTIALS|PRIVATE|BEARER|COOKIE|AUTH)(?:_|$)|APIKEY|(?:API|ACCESS|SECRET|PRIVATE|SIGNING|ENCRYPT|ENCRYPTION|SSH|GPG|PGP)[_-]?KEY/i;
+
+/**
+ * Free-form-CONTENT name guard, applied alongside the secret denylist. A var
+ * whose name marks it as carrying a prompt/task/message/description holds
+ * free-form text — NOT a count or identifier — so capturing its value would
+ * leak message content into committed/pushed telemetry (P12/AC-04). `PIJ_SPAWN_TASK`
+ * (the colleague's task prompt) is the motivating case. Names only — paired with
+ * the value-shape guard below for content that slips a benign-looking name.
+ */
+export const ENV_CAPTURE_CONTENT_DENY =
+  /(?:^|_)(?:TASK|TASKS|PROMPT|PROMPTS|MESSAGE|MESSAGES|MSG|TEXT|BODY|CONTENT|DESCRIPTION|DESC|COMMENT|COMMENTS|NOTE|NOTES|INSTRUCTION|INSTRUCTIONS|REQUEST|QUERY|INPUT|ARGS|ARGV|CMD|COMMAND)(?:_|$)/i;
+
+/**
+ * A captured value must look like an id/flag/path, never free-form content. A
+ * value that is multi-line OR longer than this is almost certainly a prompt /
+ * blob / serialized payload, so it is dropped name-agnostically — the second
+ * line of defense behind {@link ENV_CAPTURE_CONTENT_DENY} (catches a content var
+ * with a benign name, e.g. `PIJ_SPAWN_TASK` even were `TASK` not denied).
+ */
+export const ENV_VALUE_MAX_LEN = 256;
+
+function envNameMatches(name: string, glob: string): boolean {
+  return glob.endsWith('*') ? name.startsWith(glob.slice(0, -1)) : name === glob;
+}
+
+/** A value is id/flag-shaped (capturable) iff single-line and within the length cap. */
+function isIdShapedValue(v: string): boolean {
+  return v.length <= ENV_VALUE_MAX_LEN && !/[\r\n]/.test(v);
+}
+
+/**
+ * Select the allowlisted, non-secret, non-content env vars for a segment's
+ * `captured_env`. Pure over the injected env port: enumerate → keep names
+ * matching ANY glob → drop secret-shaped names → drop content-bearing names →
+ * drop free-form-shaped values (multi-line / over-long) → return a NEW object.
+ * Empty when nothing matches (the serializer then omits the field). The
+ * serializer re-sorts keys, so order here is irrelevant.
+ */
+export function selectCapturedEnv(env: EnvPort): Record<string, string> {
+  const all = env.entries();
+  const out: Record<string, string> = {};
+  for (const name of Object.keys(all)) {
+    if (!ENV_CAPTURE_GLOBS.some((g) => envNameMatches(name, g))) continue;
+    if (ENV_CAPTURE_DENY.test(name)) continue;
+    if (ENV_CAPTURE_CONTENT_DENY.test(name)) continue;
+    if (!isIdShapedValue(all[name])) continue;
+    out[name] = all[name];
+  }
+  return out;
+}
+
+/**
  * Compute the capture window from the prior watermark + the current source
  * extent. No prior cursor (or a shrunk/rotated source) → `session-start` from 0;
  * otherwise the `last-command` delta. A null current position (missing source)
@@ -121,6 +201,13 @@ export function computeWindow(prev: number | null, current: number | null): Segm
     return { since: 'session-start', from: 0, to: Math.max(to, 0) };
   }
   return { since: 'last-command', from: prev, to };
+}
+
+/** Write `obj` as a single OTLP/JSON-Lines record (one object + `\n`), atomically. */
+function writeJsonLine(fs: FsPort, path: string, obj: unknown): void {
+  const tmp = `${path}.tmp`;
+  fs.writeText(tmp, `${JSON.stringify(obj)}\n`);
+  fs.rename(tmp, path);
 }
 
 /** Next `<seq>.json` index in the session dir (max existing + 1; 1-based). */
@@ -285,6 +372,7 @@ function buildInput(
   return {
     command: deps.command,
     harness: detected.harness,
+    harness_version: deps.version ?? 'unknown',
     harness_session_id: detected.sessionId,
     timecode,
     window,
@@ -304,6 +392,9 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
+    // v2.2 — allowlisted env snapshot at THIS capture point (glob-selected +
+    // secret-denylisted). Empty on most hosts → omitted by the serializer.
+    captured_env: selectCapturedEnv(deps.env),
     // Compose the timeline: flow + branch prepend at the window start; the
     // triggering harness command appends as a zero-gap marker at the window end;
     // the flow_log replay markers append last (rollup-excluded, own real `t`).
@@ -321,6 +412,30 @@ function buildInput(
 export const KILL_SWITCH_ENV = 'HARNESS_NO_TELEMETRY';
 
 /**
+ * Re-entrancy guard env var. The kernel sets `HARNESS_TELEMETRY_DEPTH` in the
+ * process env (app.ts) so any harness subprocess it spawns inherits it; a nested
+ * invocation (`depth > 0`) self-suppresses capture. Without this, `harness checks`
+ * — which shells out to its sub-verbs + the `flow render --check` drift gate as
+ * child `harness` processes that all inherit `CLAUDE_CODE_SESSION_ID` — would
+ * attribute ~10 segments to ONE logical run, and any self-spawned/looping child
+ * would pollute the parent session's buffer. The TOP-level invocation runs at
+ * depth 0 and is the only one that captures.
+ */
+export const CAPTURE_DEPTH_ENV = 'HARNESS_TELEMETRY_DEPTH';
+
+/**
+ * A capture carries real signal iff the transcript window advanced OR the event
+ * stream is non-empty (which includes flow-replay markers — so a transcript-empty
+ * window that surfaced flight-plan events is still kept). A no-activity capture is
+ * read-only/idempotent plumbing (`flow rail/nav/render`, an idle status poll) and
+ * is NOT spooled — otherwise the buffer fills with empty segments (the dominant
+ * failure mode: 98% of one session's 19k segments were these).
+ */
+export function hasActivity(seg: Segment): boolean {
+  return seg.window.from !== seg.window.to || seg.event_stream.length > 0;
+}
+
+/**
  * Capture telemetry for the current command. The named entry the kernel preamble
  * (Phase 3) calls. Synchronous, ports-only, best-effort.
  *
@@ -333,6 +448,12 @@ export function captureTelemetry(deps: CaptureDeps): void {
   try {
     if (deps.env.get(KILL_SWITCH_ENV) === '1') {
       return; // kill-switch → zero side effects (AC-05)
+    }
+    // Re-entrancy guard: a nested harness invocation (a sub-verb / drift-gate child
+    // spawned by `harness checks`, or any self-spawned child) inherits a non-zero
+    // depth and must NOT re-capture this session — the top-level (depth 0) already did.
+    if (Number(deps.env.get(CAPTURE_DEPTH_ENV) ?? '0') > 0) {
+      return;
     }
     captureUnsafe(deps);
   } catch {
@@ -408,15 +529,49 @@ function captureUnsafe(deps: CaptureDeps): void {
     cwd,
   );
 
+  // No-activity guard: a read-only/idempotent plumbing call (`flow rail/nav/render`,
+  // an idle poll) yields an empty window + empty event stream — do NOT spool it.
+  // Safe to skip the cursor/flow-offset writes: an empty window has `to === from ===
+  // prev` (cursor already correct) and an empty stream consumed no flow-replay events.
+  //
+  // BUT the branch BASELINE must still be persisted when it is new or changed — else
+  // an empty first capture on `main` never records `main`, and a later `main`→`feature`
+  // switch has no baseline and is silently lost (a real change is only detectable
+  // against a persisted prior branch). Only on a baseline delta — never a redundant
+  // write on a stable-branch idle poll (keeps the no-activity path write-free).
+  if (!hasActivity(segment)) {
+    if (currentBranch !== null && currentBranch !== priorBranch) {
+      ensureTemp({ fs: deps.fs, proc: deps.proc });
+      deps.fs.mkdirp(sessionDirFor(cwd, detected.sessionId)); // creates the telemetry dir for the .branch write
+      writeBranch(deps.fs, branchPath, currentBranch);
+    }
+    return;
+  }
+
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).
   ensureTemp({ fs: deps.fs, proc: deps.proc });
   const sessionDir = sessionDirFor(cwd, detected.sessionId);
   deps.fs.mkdirp(sessionDir);
-  const entryPath = posixJoin(sessionDir, `${nextSeq(deps.fs, sessionDir)}.json`);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
   const tmp = `${entryPath}.tmp`;
   deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
   deps.fs.rename(tmp, entryPath);
+
+  // Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): emit the SAME
+  // serialized segment as OTLP/JSON Lines beside the buffer entry — one `LogsData`
+  // line + one `MetricsData` line per capture (the fileexporter idiom; one file
+  // per signal, research A1). Written from the serialized segment only, so the
+  // counts-only allowlist is inherited; atomic temp+rename. The transport (sync)
+  // ships these — the serializer carries no transport knowledge. (Segment JSON is
+  // kept until the sync publisher + scraper migrate to `.jsonl` in T011/T013.)
+  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
+  writeJsonLine(
+    deps.fs,
+    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
+    rollupToOtlpMetrics(segment),
+  );
 
   // Advance the high-water mark crash-safely, then remember this capture's branch
   // so the NEXT capture can detect a switch, and advance the flow-log offset so

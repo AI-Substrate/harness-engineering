@@ -538,3 +538,60 @@ describe('quality-gate layer (the boot + checks nucleus, ships in core)', () => 
     expect(doctorEnvelope(report, new FakeClock('2026-06-10T00:00:00.000Z')).status).toBe('ok');
   });
 });
+
+describe('telemetry-flush-hook check (plan 038 follow-up — the deterministic flush)', () => {
+  const TELEM_DIR = '/repo/.harness/temp/telemetry';
+  /** A tree where telemetry IS being captured (a buffer dir exists). */
+  function capturingFs(extra: Record<string, string> = {}): FakeFs {
+    const fs = new FakeFs({ ...BUILT_CLI, ...extra });
+    fs.mkdirp(TELEM_DIR);
+    return fs;
+  }
+  const hookLayer = (r: ReturnType<typeof buildDoctorReport>) =>
+    r.layers.find((l) => l.name === 'telemetry-flush-hook');
+
+  it('no telemetry captured yet → ok (the hook is only relevant once capturing)', () => {
+    const report = buildDoctorReport(deps(), EMPTY); // BUILT_CLI, no buffer
+    expect(hookLayer(report)?.ok).toBe(true);
+    expect(hookLayer(report)?.detail).toContain('no telemetry captured');
+  });
+
+  it('capturing but NO post-commit flush hook → degraded (advisory) with the just-install-hooks fix', () => {
+    const report = buildDoctorReport(deps({ fs: capturingFs() }), EMPTY);
+    const layer = hookLayer(report);
+    expect(layer?.ok).toBe(false);
+    expect(layer?.detail).toContain('NO post-commit flush hook');
+    expect(layer?.next_action).toContain('just install-hooks');
+    // Never blocks — degraded/exit 0, like every other doctor nudge.
+    const env = doctorEnvelope(report, new FakeClock('2026-06-28T00:00:00.000Z'));
+    expect(env.status).toBe('degraded');
+    expect(exitCodeFor(env)).toBe(0);
+  });
+
+  it('capturing WITH an active post-commit telemetry-sync hook (core.hooksPath=.githooks) → ok', () => {
+    const fs = capturingFs({
+      '/repo/.git/config': '[core]\n\thooksPath = .githooks\n',
+      '/repo/.githooks/post-commit': '#!/usr/bin/env bash\nnode "$bin" telemetry sync\n',
+    });
+    const report = buildDoctorReport(deps({ fs }), EMPTY);
+    expect(hookLayer(report)?.ok).toBe(true);
+    expect(hookLayer(report)?.detail).toContain('active');
+  });
+
+  it('kill-switch (HARNESS_NO_TELEMETRY=1) → ok even while capturing (no nag when telemetry is off)', () => {
+    const report = buildDoctorReport(
+      deps({ fs: capturingFs(), env: new FakeEnv({ HARNESS_NO_TELEMETRY: '1' }) }),
+      EMPTY,
+    );
+    expect(hookLayer(report)?.ok).toBe(true);
+  });
+
+  it('consumer repo (no dev marker) → degraded with the generic add-a-hook fix, not the just recipe', () => {
+    const fs = new FakeFs({}); // no harness/cli/tsconfig.json ⇒ consumer
+    fs.mkdirp(TELEM_DIR);
+    const layer = hookLayer(buildDoctorReport(deps({ fs }), EMPTY));
+    expect(layer?.ok).toBe(false);
+    expect(layer?.next_action).toContain('post-commit');
+    expect(layer?.next_action).not.toContain('just install-hooks');
+  });
+});

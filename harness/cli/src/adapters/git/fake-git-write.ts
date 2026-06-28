@@ -1,5 +1,15 @@
 import type { GitIdentity, GitWritePort, TreeEntry } from './git-write-port.js';
 
+/** Deterministic content hash (FNV-1a → base36) — gives the fake content-addressed objects. */
+function fakeHash(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(36);
+}
+
 /**
  * Deterministic git-write plumbing for tests (fakes over mocks — assert on
  * history). Records every call on `calls`; deterministic object/commit shas;
@@ -25,13 +35,16 @@ export class FakeGitWrite implements GitWritePort {
 
   /** Set true to make `push` throw (models offline / auth failure / non-ff). */
   failPush = false;
+  /** Fail `push` only for refspecs matching this predicate (models a per-ref failure). */
+  failPushMatching: ((refspec: string) => boolean) | null = null;
   /** Set true to make the FIRST `updateRef` lose a race (a concurrent writer moves the tip). */
   staleOnce = false;
 
-  private objN = 0;
   private commitN = 0;
   private staleConsumed = false;
   private readonly refs = new Map<string, string>();
+  /** commit sha → its tree sha, so {@link refTree} can peel a ref like real git. */
+  private readonly commitTrees = new Map<string, string>();
 
   constructor(
     seedRefs: Record<string, string> = {},
@@ -44,18 +57,27 @@ export class FakeGitWrite implements GitWritePort {
   hashObject(content: string): string {
     this.calls.push('hashObject');
     this.blobs.push(content);
-    return `blob${++this.objN}`;
+    // CONTENT-ADDRESSED like real git: identical bytes → identical sha (lets a
+    // re-flush of the same buffer recompute a stable tree for the H5 idempotency probe).
+    return `blob-${fakeHash(content)}`;
   }
 
   mktree(entries: TreeEntry[]): string {
     this.calls.push('mktree');
     this.trees.push(entries);
-    return `tree${++this.objN}`;
+    const serialized = entries.map((e) => `${e.mode} ${e.type} ${e.sha}\t${e.name}`).join('\n');
+    return `tree-${fakeHash(serialized)}`;
   }
 
   refTip(ref: string): string | null {
     this.calls.push('refTip');
     return this.refs.get(ref) ?? null;
+  }
+
+  refTree(ref: string): string | null {
+    this.calls.push('refTree');
+    const commit = this.refs.get(ref);
+    return commit ? (this.commitTrees.get(commit) ?? null) : null;
   }
 
   commitTree(tree: string, parent: string | null, message: string): string {
@@ -69,7 +91,9 @@ export class FakeGitWrite implements GitWritePort {
       author: this.identity,
       committer: this.identity,
     });
-    return `commit${++this.commitN}`;
+    const commit = `commit${++this.commitN}`;
+    this.commitTrees.set(commit, tree); // so refTree can peel this commit to its tree
+    return commit;
   }
 
   updateRef(ref: string, newSha: string, oldSha: string | null): boolean {
@@ -92,7 +116,9 @@ export class FakeGitWrite implements GitWritePort {
 
   push(refspec: string): void {
     this.calls.push('push');
-    if (this.failPush) throw new Error('FakeGitWrite.push: simulated push failure');
+    if (this.failPush || this.failPushMatching?.(refspec)) {
+      throw new Error('FakeGitWrite.push: simulated push failure');
+    }
     this.pushed.push(refspec);
   }
 

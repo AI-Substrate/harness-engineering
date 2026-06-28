@@ -27,8 +27,11 @@ import type { Segment } from './segment.js';
  * fetch, no merge, no retry across writers. A central scraper still collects
  * everything in ONE globbed fetch (`refs/harness-telemetry/*`); the date prefix
  * is the prune key. (Canonical git pattern: Gerrit `refs/changes/*`, GitHub
- * `refs/pull/*`.) Each shard's commit tree is flat `<seq>.json` — the date+session
- * hierarchy is in the ref name.
+ * `refs/pull/*`.) Each shard's commit tree is flat OTLP signal files —
+ * `<seq>.logs.jsonl` + `<seq>.metrics.jsonl` (the T010 spool; T011 publishes
+ * these, not the segment buffer json) — the date+session hierarchy is in the ref
+ * name. The local `<seq>.json` buffer stays the watermark key + reconstruction
+ * oracle; it falls back into the tree only when its spool companions are absent.
  *
  * Offline-safe (AC-14): a failed shard push rolls that shard's local ref back and
  * leaves the buffer + watermark untouched, so the next sync retries it. The
@@ -149,6 +152,8 @@ interface Shard {
   datePath: string;
   session: string;
   blobs: TreeEntry[];
+  /** The buffer seqs this shard carries (NOT necessarily contiguous — date buckets can interleave). */
+  seqs: number[];
   maxSeq: number;
   segments: number;
   plans: Set<string>;
@@ -156,6 +161,8 @@ interface Shard {
 
 interface ShardOutcome {
   ok: boolean;
+  /** True when this run actually pushed; false for an idempotent no-op (already published). */
+  pushed: boolean;
   message?: string;
 }
 
@@ -206,9 +213,15 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
     // (date, session). Time advances with seq, so date buckets are contiguous
     // ascending seq ranges.
     const shardByDate = new Map<string, Shard>();
+    // Seqs with no readable buffer file — nothing to flush, but they must NOT block
+    // the watermark's contiguous advance (treated as vacuously done).
+    const vacuousSeqs = new Set<number>();
     for (const s of pending) {
       const content = deps.fs.readText(posixJoin(sessionDir, s.name));
-      if (content === null) continue;
+      if (content === null) {
+        vacuousSeqs.add(s.seq);
+        continue;
+      }
       let datePath = UNDATED;
       let segPlans: string[] = [];
       try {
@@ -220,27 +233,57 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
       }
       let shard = shardByDate.get(datePath);
       if (!shard) {
-        shard = { datePath, session, blobs: [], maxSeq: already, segments: 0, plans: new Set() };
+        shard = {
+          datePath,
+          session,
+          blobs: [],
+          seqs: [],
+          maxSeq: already,
+          segments: 0,
+          plans: new Set(),
+        };
         shardByDate.set(datePath, shard);
       }
-      shard.blobs.push({
-        mode: '100644',
-        type: 'blob',
-        sha: deps.git.hashObject(content),
-        name: s.name,
-      });
+      // T011: publish the OTLP signal spool (T010) — `<seq>.logs.jsonl` +
+      // `<seq>.metrics.jsonl` — as the shard's tree, NOT the segment buffer json.
+      // The buffer json stays LOCAL: it remains the watermark key, the datePath +
+      // plans source above, and the reconstruction oracle.
+      //
+      // Publish the pair ONLY when BOTH signals are present. A PARTIAL spool — a
+      // crash between T010's two atomic writes leaves logs-but-no-metrics (or vice
+      // versa) — must NOT be published-and-consumed, or the missing signal is lost
+      // forever (companion MEDIUM, run c7ce). The segment json is the full
+      // reconstruction oracle, so fall back to it whenever the pair is incomplete
+      // OR absent — nothing is ever dropped (AC-14).
+      const base = s.name.slice(0, -'.json'.length);
+      const logsJsonl = deps.fs.readText(posixJoin(sessionDir, `${base}.logs.jsonl`));
+      const metricsJsonl = deps.fs.readText(posixJoin(sessionDir, `${base}.metrics.jsonl`));
+      const toPublish =
+        logsJsonl !== null && metricsJsonl !== null
+          ? [
+              { name: `${base}.logs.jsonl`, content: logsJsonl },
+              { name: `${base}.metrics.jsonl`, content: metricsJsonl },
+            ]
+          : [{ name: s.name, content }];
+      for (const blob of toPublish) {
+        shard.blobs.push({
+          mode: '100644',
+          type: 'blob',
+          sha: deps.git.hashObject(blob.content),
+          name: blob.name,
+        });
+      }
+      shard.seqs.push(s.seq);
       shard.maxSeq = Math.max(shard.maxSeq, s.seq);
       shard.segments++;
       for (const p of segPlans) shard.plans.add(p);
     }
 
-    // Push shards in ascending seq order; advance the single per-session watermark
-    // to the last CONSECUTIVELY-successful shard's maxSeq, stopping at the first
-    // failure (its segments + all later ones stay buffered for the next sync, AC-14).
+    // Push shards in ascending seq order, collecting the seqs that durably flushed.
     const shards = [...shardByDate.values()]
       .filter((s) => s.blobs.length > 0)
       .sort((a, b) => a.maxSeq - b.maxSeq);
-    let advancedTo = already;
+    const flushedSeqs = new Set<number>(vacuousSeqs); // null-content seqs don't block
     for (const shard of shards) {
       const outcome = flushShard(deps, shard);
       if (!outcome.ok) {
@@ -248,11 +291,27 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
         failMessage = outcome.message;
         break;
       }
-      pushedAny = true;
-      totalSegments += shard.segments;
-      flushedSessions.add(session);
-      for (const p of shard.plans) planSet.add(p);
-      advancedTo = shard.maxSeq;
+      // An idempotent no-op (the shard was already published — H5) consumes the
+      // buffer (advance the watermark) but counts as neither a push nor a fresh
+      // flush, so a re-run after a lost watermark double-counts nothing.
+      if (outcome.pushed) {
+        pushedAny = true;
+        totalSegments += shard.segments;
+        flushedSessions.add(session);
+        for (const p of shard.plans) planSet.add(p);
+      }
+      for (const sq of shard.seqs) flushedSeqs.add(sq);
+    }
+    // Advance the single watermark ONLY through the contiguous run of flushed seqs
+    // from `already` — never past an un-flushed lower seq. Date buckets can
+    // INTERLEAVE (a corrupt `UNDATED` timecode or clock skew breaks the
+    // "contiguous seq range per date" assumption), so a higher-maxSeq shard
+    // succeeding must not leap the watermark over a lower seq stranded in a failed
+    // shard — that would skip it forever on the next sync (review F1, run pij-13zx0sn).
+    let advancedTo = already;
+    for (const s of pending) {
+      if (!flushedSeqs.has(s.seq)) break;
+      advancedTo = s.seq;
     }
     if (advancedTo > already) writeFlushed(deps.fs, flushedPath, advancedTo);
   }
@@ -287,23 +346,43 @@ function flushShard(deps: SyncDeps, shard: Shard): ShardOutcome {
     [...shard.plans].sort(),
   );
 
+  // The tree is content-addressed, so build it once. H5 (idempotent re-push): if
+  // the ref ALREADY holds this exact tree (a prior flush whose watermark was lost,
+  // or a stale-buffer re-run), skip building a DUPLICATE commit — but still push
+  // `ref:ref`. A local ref-tree match does NOT prove the remote received it: a crash
+  // between `updateRef` (local) and `push` leaves the local ref ahead of the remote,
+  // and silently consuming the buffer here would lose that telemetry (companion HIGH,
+  // run 0d3a). The re-push is idempotent — a no-op when the remote is already current,
+  // a fast-forward when it is behind — never a duplicate commit, never an NFF. On
+  // failure the pre-existing local ref is left intact (no rollback) for the next retry.
+  const tree = deps.git.mktree(shard.blobs);
+  if (deps.git.refTree(ref) === tree) {
+    try {
+      deps.git.push(`${ref}:${ref}`);
+    } catch (err) {
+      return { ok: false, pushed: false, message: `re-push failed: ${errMsg(err)}` };
+    }
+    return { ok: true, pushed: false };
+  }
+
   let parent: string | null = null;
   let commit: string | null = null;
   for (let attempt = 0; attempt <= REF_UPDATE_RETRIES; attempt++) {
     parent = deps.git.refTip(ref);
-    const tree = deps.git.mktree(shard.blobs);
     commit = deps.git.commitTree(tree, parent, message);
     if (deps.git.updateRef(ref, commit, parent)) break;
     commit = null; // tip moved under us — re-read + retry
   }
-  if (commit === null) return { ok: false, message: `ref update failed after retries: ${ref}` };
+  if (commit === null) {
+    return { ok: false, pushed: false, message: `ref update failed after retries: ${ref}` };
+  }
 
   try {
     deps.git.push(`${ref}:${ref}`);
   } catch (err) {
     if (parent === null) deps.git.deleteRef(ref);
     else deps.git.updateRef(ref, parent, commit);
-    return { ok: false, message: `push failed: ${errMsg(err)}` };
+    return { ok: false, pushed: false, message: `push failed: ${errMsg(err)}` };
   }
-  return { ok: true };
+  return { ok: true, pushed: true };
 }

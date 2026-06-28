@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.0.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.2.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -9,6 +9,7 @@
     "schema_version",
     "command",
     "harness",
+    "harness_version",
     "harness_session_id",
     "timecode",
     "window",
@@ -19,9 +20,10 @@
     "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "2.0" },
+    "schema_version": { "type": "string", "const": "2.2" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
+    "harness_version": { "type": "string" },
     "harness_session_id": { "type": "string" },
     "timecode": { "type": "string" },
     "window": {
@@ -135,6 +137,11 @@
       "properties": {
         "blocks": { "type": "integer" }
       }
+    },
+    "captured_env": {
+      "type": "object",
+      "description": "v2.2 — allowlisted env-var snapshot (name → value) selected by a code-constant glob set and filtered by a secret-shaped name denylist at capture. Omitted when empty.",
+      "additionalProperties": { "type": "string" }
     },
     "event_stream": {
       "type": "array",

@@ -48,7 +48,11 @@ import {
   type ExtensionRecordType,
 } from './services/record/registry.js';
 import { coreTelemetryAdapters } from './services/telemetry/adapters/index.js';
-import { type CaptureDeps, captureTelemetry } from './services/telemetry/capture-service.js';
+import {
+  CAPTURE_DEPTH_ENV,
+  type CaptureDeps,
+  captureTelemetry,
+} from './services/telemetry/capture-service.js';
 import { buildHousekeepingDecorator } from './services/telemetry/housekeeping.js';
 import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
@@ -388,12 +392,21 @@ export async function main(
         git: deps.git,
         db: new NodeDb(),
         command: deriveCommand(argv),
+        version,
         adapters: coreTelemetryAdapters,
       });
     } catch {
       // swallow — telemetry is invisible to the host command (AC-09)
     }
   }
+
+  // Re-entrancy marker: bump the capture-depth in the REAL process env so any
+  // harness subprocess THIS command spawns (the `checks` sub-verb fan-out, the
+  // `flow render --check` drift gate, …) inherits a non-zero depth and self-
+  // suppresses capture — only this top-level invocation (depth 0, captured above)
+  // attributes a segment to the session. Uses `process.env` directly (not the
+  // EnvPort): a spawned child inherits THAT, not the injected port.
+  process.env[CAPTURE_DEPTH_ENV] = String((Number(process.env[CAPTURE_DEPTH_ENV] ?? '0') || 0) + 1);
 
   try {
     await buildProgram(version, io, deps, registry).parseAsync(argv);

@@ -56,6 +56,13 @@
       "summary": "Counts-only per-session `segment` capture on every command, the gitignored buffer, `harness telemetry sync` (and auto-sync on `checks`) to per-session dated shard refs, the disable switches, and the privacy/offline guarantees.",
       "audience": "both",
       "sourcePath": "docs/how/telemetry.md"
+    },
+    {
+      "id": "telemetry-otlp",
+      "title": "Harness telemetry — the OTLP/OTEL stored shape",
+      "summary": "How the counts-only segment is stored and published as OTEL/OTLP (one file per signal), the `schema_url` + two-layer naming policy, the keep-and-harden git-refs contract + graduation tripwire, and the downstream eng-thrive scraper read contract.",
+      "audience": "both",
+      "sourcePath": "docs/how/telemetry-otlp.md"
     }
   ]
 }

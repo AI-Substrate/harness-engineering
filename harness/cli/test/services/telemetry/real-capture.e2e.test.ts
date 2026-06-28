@@ -21,6 +21,7 @@ import {
 } from '../../../src/services/telemetry/adapters/cursor-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
+import { registerOtlpGoldens } from './otlp-golden.js';
 
 /**
  * T008 (plan 1.7 · AC-01) — drive the REAL scrubbed claude fixture through
@@ -67,6 +68,7 @@ function segment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'claude-code',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: SESSION,
     timecode: '2026-06-25T00:00:00Z',
     window,
@@ -107,6 +109,7 @@ function invariantsOf(seg: ReturnType<typeof segment>) {
 
 describe('real claude fixture → segment (AC-01)', () => {
   const seg = segment();
+  registerOtlpGoldens(seg, GOLDEN); // T005 — mint/assert the OTLP goldens beside the segment
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
@@ -181,6 +184,7 @@ function copilotSegment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'copilot-cli',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: CO_SID,
     timecode: '2026-06-25T00:00:00Z',
     window: coWindow,
@@ -220,6 +224,7 @@ function coInvariantsOf(seg: ReturnType<typeof copilotSegment>) {
 
 describe('real copilot-cli fixture → segment (AC-03)', () => {
   const seg = copilotSegment();
+  registerOtlpGoldens(seg, CO_GOLDEN); // T005
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(CO_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
@@ -294,6 +299,7 @@ function cursorSegment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'cursor-agent',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: CUR_CONV,
     timecode: '2026-06-25T00:00:00Z',
     window: curWindow,
@@ -332,6 +338,7 @@ function curInvariantsOf(seg: ReturnType<typeof cursorSegment>) {
 
 describe('real cursor fixture → segment via transcript↔bubble join (AC-05)', () => {
   const seg = cursorSegment();
+  registerOtlpGoldens(seg, CUR_GOLDEN); // T005
 
   if (process.env.REGEN_GOLDEN) {
     writeFileSync(CUR_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);

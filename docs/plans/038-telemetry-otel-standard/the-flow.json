@@ -1,0 +1,1181 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "telemetry-otel-standard",
+  "created_at": "2026-06-26T02:30:55.702Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.6.0",
+    "branch": "main",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-26T02:30:55.702Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:55.710Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "telemetry-otel-standard"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.023Z",
+      "details": {
+        "node": "ship",
+        "type": "ship"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.330Z",
+      "details": {
+        "node": "plan",
+        "type": "plan"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.637Z",
+      "details": {
+        "node": "research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:30:56.939Z",
+      "details": {
+        "from": "",
+        "to": "research"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:45:50.063Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:45:50.362Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-26T02:45:50.672Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T00:47:54.760Z",
+      "details": {
+        "node": "otel-deep-research",
+        "type": "research"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T00:47:55.115Z",
+      "details": {
+        "node": "otel-deep-research",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T00:47:55.430Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T01:56:16.336Z",
+      "details": {
+        "node": "ws-otlp-shape",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T01:56:16.656Z",
+      "details": {
+        "node": "ws-otlp-shape",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:08:08.334Z",
+      "details": {
+        "node": "otel-deep-research",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:19:59.555Z",
+      "details": {
+        "node": "ws-storage-transport",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:20:00.063Z",
+      "details": {
+        "node": "ws-storage-transport",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.015Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.327Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.635Z",
+      "details": {
+        "node": "implement",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.635Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T02:48:26.994Z",
+      "details": {
+        "from": "plan",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "NOD-008",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:49.979Z",
+      "details": {
+        "node": "review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:49.979Z",
+      "details": {
+        "node": "implement",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-009",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:50.557Z",
+      "details": {
+        "node": "T001",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-010",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:51.147Z",
+      "details": {
+        "node": "T002",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-011",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:51.483Z",
+      "details": {
+        "node": "T003",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-012",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:51.941Z",
+      "details": {
+        "node": "T004",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-013",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:52.520Z",
+      "details": {
+        "node": "T005",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-014",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:52.867Z",
+      "details": {
+        "node": "T006",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-015",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:53.204Z",
+      "details": {
+        "node": "T007",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-016",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:53.586Z",
+      "details": {
+        "node": "T008",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-017",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:53.952Z",
+      "details": {
+        "node": "T009",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-018",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:54.324Z",
+      "details": {
+        "node": "T010",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-019",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:54.647Z",
+      "details": {
+        "node": "T011",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-020",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:54.986Z",
+      "details": {
+        "node": "T012",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-021",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:55.350Z",
+      "details": {
+        "node": "T013",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-022",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:55.726Z",
+      "details": {
+        "node": "T014",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-023",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:56.081Z",
+      "details": {
+        "node": "T015",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-024",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:21:56.397Z",
+      "details": {
+        "node": "T016",
+        "type": "chore",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:22:18.057Z",
+      "details": {
+        "node": "implement",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:22:18.383Z",
+      "details": {
+        "node": "implement",
+        "fields": [
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:22:18.753Z",
+      "details": {
+        "from": "plan",
+        "to": "implement"
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:36:10.268Z",
+      "details": {
+        "node": "T011",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:38:21.631Z",
+      "details": {
+        "node": "T011",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:38:54.439Z",
+      "details": {
+        "node": "T012",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T04:48:40.781Z",
+      "details": {
+        "node": "T012",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:21:25.404Z",
+      "details": {
+        "node": "T013",
+        "from": "todo",
+        "to": "skipped",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:21:25.721Z",
+      "details": {
+        "node": "T013",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:50:09.799Z",
+      "details": {
+        "node": "T014",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:53:55.173Z",
+      "details": {
+        "node": "T014",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T05:58:36.272Z",
+      "details": {
+        "node": "T015",
+        "from": "todo",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-012",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:04:40.441Z",
+      "details": {
+        "node": "T005",
+        "from": "todo",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-013",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:04:53.474Z",
+      "details": {
+        "node": "T016",
+        "from": "todo",
+        "to": "in_progress",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-014",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:07:18.376Z",
+      "details": {
+        "node": "T016",
+        "from": "in_progress",
+        "to": "done",
+        "chore": {
+          "kind": "manual",
+          "importance": "strongly-recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-015",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:07:18.698Z",
+      "details": {
+        "node": "implement",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T06:07:19.015Z",
+      "details": {
+        "from": "implement",
+        "to": "review"
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-27T08:09:20.087Z",
+      "details": {
+        "node": "review",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-016",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-27T08:09:20.172Z",
+      "details": {
+        "node": "review",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-27T08:09:20.251Z",
+      "details": {
+        "from": "review",
+        "to": "ship"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "next": [],
+      "created_at": "2026-06-26T02:30:56.023Z",
+      "modified_at": "2026-06-26T02:30:56.023Z",
+      "zone": "postflight"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-26T02:30:56.330Z",
+      "modified_at": "2026-06-27T02:48:26.635Z",
+      "comments": [
+        {
+          "at": "2026-06-27T00:47:55.430Z",
+          "text": "Two pre-plan workshops queued: WS-A OTLP emit & shape; WS-B telemetry storage & transport (git-refs review elevated this to a real decision).",
+          "kind": "note"
+        }
+      ],
+      "ran_at": "2026-06-27T02:48:26.015Z",
+      "note": "Simple-mode unified plan written + VALIDATED WITH FIXES (3 WS-A-pinned repairs: 3-way conformance, per-kind severity sensored, 2 goldens re-added). 16 ordered tasks, sensors-first. Status: READY."
+    },
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-26T02:30:56.636Z",
+      "modified_at": "2026-06-26T02:45:50.362Z",
+      "ran_at": "2026-06-26T02:45:50.063Z",
+      "note": "Deep dossier: serializeSegment is the single OTLP seam; event_stream→OTLP Logs, rollup→Metrics; fileexporter=JSONL; OTLP envelope stable but gen_ai.* experimental; no-back-compat confirmed (eng-thrive consumer is internal); 3 privacy invariants must survive.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/research-dossier.md"
+      ]
+    },
+    {
+      "id": "otel-deep-research",
+      "type": "research",
+      "label": "Deep research: local-OTEL + git-refs",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-27T00:47:54.760Z",
+      "modified_at": "2026-06-27T02:08:08.334Z",
+      "branch_of": "plan",
+      "note": "Perplexity x2: (A) OTLP-as-files is a staging format not archival — pin schema_url, one-file-per-signal, cumulative-per-session, collector-as-checker guards silent drops; (B) git-refs is the 'too many refs' anti-pattern — keep-and-harden at low volume or migrate to git-notes/object-storage. Feeds 2 workshops.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/research-storage-and-transport.md"
+      ],
+      "comments": [
+        {
+          "at": "2026-06-27T02:08:08.334Z",
+          "text": "Pass 2 (transport): git-notes REJECTED as migration target — single notes-ref reintroduces NFF write-contention + orphan-commit object bloat (lateral-to-worse vs embarrassingly-parallel one-ref-per-session). No real tool uses git transport; end-state is store-and-forward (spool→uploader→OTEL Collector / object-storage). Live fork = keep-and-harden-now vs leave-git, with a graduation tripwire.",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "ws-otlp-shape",
+      "type": "workshop",
+      "label": "WS-A: OTLP emit & shape",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-27T01:56:16.336Z",
+      "modified_at": "2026-06-27T01:56:16.656Z",
+      "branch_of": "plan",
+      "note": "Decisions: Q1 OTEL-native/supplant (keep typed internal pipeline) + reconstruction invariant; two-layer field-naming (conform envelope, own harness.* + schema_url); Q2 logs+metrics; Q3 hand-roll+3-way conformance. Full event→OTLP map, rollup→metrics map, 33-file test index, Phase-0 backpressure sensors on 037 fixtures. Contract Ready.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/workshops/001-otlp-emit-and-shape.md"
+      ]
+    },
+    {
+      "id": "ws-storage-transport",
+      "type": "workshop",
+      "label": "WS-B: storage & transport",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-27T02:19:59.555Z",
+      "modified_at": "2026-06-27T02:20:00.063Z",
+      "branch_of": "plan",
+      "note": "Decision: keep-and-harden git-refs now (single-writer-per-ref = no fetch to write, zero contention); git-notes rejected; publish OTLP .jsonl; transport-agnostic emit (S4) so keep→leave is a swap. Hardening H1-H8 (dedicated repo + protocol-v2/hidden-refs + retention + session-id entropy + dedupe). Graduation = store-and-forward, ref-count tripwire. Preferred Direction.",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/workshops/002-storage-and-transport.md"
+      ]
+    },
+    {
+      "id": "implement",
+      "type": "phase",
+      "label": "Implement: OTLP supplant (16 tasks, sensors-first)",
+      "status": "done",
+      "next": [
+        "review"
+      ],
+      "created_at": "2026-06-27T02:48:26.635Z",
+      "modified_at": "2026-06-27T06:07:18.698Z",
+      "artifacts": [
+        "docs/plans/038-telemetry-otel-standard/execution.log.md"
+      ],
+      "ran_at": "2026-06-27T06:07:18.698Z"
+    },
+    {
+      "id": "review",
+      "type": "review",
+      "label": "Review (stage 7)",
+      "status": "done",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-27T04:21:49.979Z",
+      "modified_at": "2026-06-27T08:09:20.172Z",
+      "comments": [
+        {
+          "at": "2026-06-27T08:09:20.087Z",
+          "text": "Review complete: minih companion per-commit + control:stop drain (runs 4ac5/ab81/c7ce/0d3a, all findings fixed) AND a GPT-5.5 cross-model pass via flow-pair. Cross-model caught F1 (HIGH watermark data-loss on interleaved date buckets) that minih missed; fixed via contiguous-prefix advance (c967f41). F1 re-review verdict: APPROVE — closed, no new issue in the prefix logic. Full suite 1477 green, tsc/biome/fixture-drift clean."
+        }
+      ],
+      "ran_at": "2026-06-27T08:09:20.172Z"
+    },
+    {
+      "id": "T001",
+      "type": "chore",
+      "label": "T001 · 3-way conformance harness + devDep choice",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:50.557Z",
+      "modified_at": "2026-06-27T04:21:50.557Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T002",
+      "type": "chore",
+      "label": "T002 · Reconstruction round-trip sensor",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:51.147Z",
+      "modified_at": "2026-06-27T04:21:51.147Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T003",
+      "type": "chore",
+      "label": "T003 · OTLP conformance sensor (severity + no-drop + known-key)",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:51.483Z",
+      "modified_at": "2026-06-27T04:21:51.483Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T004",
+      "type": "chore",
+      "label": "T004 · Privacy byte-scan over OTLP bytes",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:51.941Z",
+      "modified_at": "2026-06-27T04:21:51.941Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T005",
+      "type": "chore",
+      "label": "T005 · Golden drift sensor + minting",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:52.520Z",
+      "modified_at": "2026-06-27T06:04:40.441Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T005",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T06:04:40.441Z"
+    },
+    {
+      "id": "T006",
+      "type": "chore",
+      "label": "T006 · harness.* OTLP schema + schema_url + version assertion",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:52.866Z",
+      "modified_at": "2026-06-27T04:21:52.866Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T007",
+      "type": "chore",
+      "label": "T007 · event_stream -> OTLP Logs",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:53.204Z",
+      "modified_at": "2026-06-27T04:21:53.204Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T008",
+      "type": "chore",
+      "label": "T008 · rollup -> OTLP Metrics",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:53.585Z",
+      "modified_at": "2026-06-27T04:21:53.585Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T009",
+      "type": "chore",
+      "label": "T009 · gen_ai.* mapping module",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:53.951Z",
+      "modified_at": "2026-06-27T04:21:53.951Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T010",
+      "type": "chore",
+      "label": "T010 · Wire OTLP write at capture seam (spool)",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:54.324Z",
+      "modified_at": "2026-06-27T04:21:54.324Z",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement"
+    },
+    {
+      "id": "T011",
+      "type": "chore",
+      "label": "T011 · Publish OTLP .jsonl over git-refs",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:54.647Z",
+      "modified_at": "2026-06-27T04:38:21.631Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T011",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T04:38:21.631Z"
+    },
+    {
+      "id": "T012",
+      "type": "chore",
+      "label": "T012 · Harden keep (H4/H5)",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:54.986Z",
+      "modified_at": "2026-06-27T04:48:40.781Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T012",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T04:48:40.781Z"
+    },
+    {
+      "id": "T013",
+      "type": "chore",
+      "label": "T013 · Update eng-thrive scraper (lockstep)",
+      "status": "skipped",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:55.350Z",
+      "modified_at": "2026-06-27T05:21:25.720Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T013",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "comments": [
+        {
+          "at": "2026-06-27T05:21:25.720Z",
+          "text": "Deferred: the eng-thrive scraper is a downstream consumer with no source in this repo. Its OTLP .jsonl ref-tree read contract is folded into T016 (operator doc). Scraper change lands in eng-thrive's own repo/plan."
+        }
+      ]
+    },
+    {
+      "id": "T014",
+      "type": "chore",
+      "label": "T014 · Retarget rewritten tests",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:55.726Z",
+      "modified_at": "2026-06-27T05:53:55.173Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T014",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T05:53:55.173Z"
+    },
+    {
+      "id": "T015",
+      "type": "chore",
+      "label": "T015 · Touched-storage tests hold .jsonl",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:56.081Z",
+      "modified_at": "2026-06-27T05:58:36.272Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T015",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T05:58:36.272Z"
+    },
+    {
+      "id": "T016",
+      "type": "chore",
+      "label": "T016 · Operator doc (docs/how/)",
+      "status": "done",
+      "next": [
+        "implement"
+      ],
+      "created_at": "2026-06-27T04:21:56.397Z",
+      "modified_at": "2026-06-27T06:07:18.375Z",
+      "command": "/the-flow 6 implement --plan docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md --subtask T016",
+      "chore": {
+        "kind": "manual",
+        "importance": "strongly-recommended"
+      },
+      "branch_of": "implement",
+      "ran_at": "2026-06-27T06:07:18.375Z"
+    }
+  ],
+  "nav": {
+    "now": "ship",
+    "next": null,
+    "intent": "Standardise harness telemetry to the OTEL/OTLP standard for upstream ingestion; keep storing locally. Segments may be reshaped OTEL-native — no back-compat required (not shipped yet).",
+    "bag": {
+      "mode": "simple",
+      "status": "active"
+    }
+  }
+}

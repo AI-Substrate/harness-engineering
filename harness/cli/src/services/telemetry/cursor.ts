@@ -18,12 +18,40 @@ export function telemetryDir(cwd: string): string {
 }
 
 /**
+ * A short, stable, deterministic suffix derived from the raw id — two independent
+ * 32-bit hash passes (distinct bases + multipliers) concatenated into a ~64-bit
+ * digest, so distinct lossy ids collide only with NEGLIGIBLE probability (not an
+ * absolute guarantee — it is a hash, not a perfect injection). NOT cryptographic;
+ * its only job is collision-resistance for the per-(date,session) ref. Pure (P2:
+ * no `node:crypto`).
+ */
+function shortHash(s: string): string {
+  let h1 = 0x811c9dc5; // FNV-1a basis
+  let h2 = 0xc2b2ae35; // a different basis → an independent second word
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 0x01000193); // FNV prime
+    h2 = Math.imul(h2 ^ c, 0x85ebca77); // a different odd multiplier (decorrelates the words)
+  }
+  return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
+}
+
+/**
  * Make an opaque session id safe for a path segment — collapse anything outside
  * `[A-Za-z0-9_-]` (so `..`, `/`, etc. can never escape the telemetry dir).
+ *
+ * H4 (plan 038, telemetry-otel): the session id is also the per-(date,session)
+ * REF segment, and two writers colliding on a segment → a non-fast-forward push →
+ * lost telemetry. A lossy collapse breaks uniqueness (`a/b` and `a-b` both → `a-b`;
+ * every all-symbol id → the same fallback). So whenever cleaning changed the
+ * string, append a wide deterministic digest of the RAW id — collisions then become
+ * NEGLIGIBLY unlikely (a hash, not a perfect guarantee). A clean id (alnum/`_`/`-`
+ * only — the UUID-like norm) passes through untouched.
  */
 export function sanitizeSessionId(raw: string): string {
   const cleaned = raw.replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
-  return cleaned.length > 0 ? cleaned : 'unknown';
+  if (cleaned === raw && cleaned.length > 0) return cleaned;
+  return `${cleaned || 'sess'}-${shortHash(raw)}`;
 }
 
 /** Path to the session's `.cursor` watermark file. */

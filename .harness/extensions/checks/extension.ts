@@ -3,10 +3,9 @@ import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
 /**
  * `harness checks` — the mandated quality gate for THIS repo (the harness's home).
  *
- * The single command an agent runs before considering work "done", and the gate a
- * team gates commits/push on — and the SAME command CI runs (the `.githooks/pre-push`
- * hook and the CI `build-test` job both call `harness checks`, so local and CI can't
- * drift). It COMPOSES the repo's existing deterministic checks (rather than
+ * The single command an agent runs before considering work "done", and the SAME
+ * command CI runs (the CI `build-test` job calls `harness checks`, so local and CI
+ * can't drift). It COMPOSES the repo's existing deterministic checks (rather than
  * re-implementing them) into one honest envelope, so the gate has one definition that
  * grows as the team adds checks:
  *
@@ -26,8 +25,8 @@ import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
  * posture — visible, non-blocking); all clean => ok/exit 0.
  *
  * PREREQUISITE: the caller must have built the core (`npm run build`) so `bin/harness.js`
- * (which runs from `dist/`) and the drift guards resolve — CI and the pre-push hook both
- * build first. The gate verbs themselves load fresh from `.harness/extensions/` src.
+ * (which runs from `dist/`) and the drift guards resolve — CI builds first. The gate
+ * verbs themselves load fresh from `.harness/extensions/` src.
  *
  * Guardrails (cf. arch-check): no `node:*` imports; all I/O via `ctx.exec`/`ctx.fs`;
  * never throws; every non-ok result carries a `next_action`. It does not auto-fix
@@ -97,14 +96,14 @@ async function runVerbGate(
 const checks: HarnessVerb = {
   name: 'checks',
   summary:
-    'The mandated quality gate (the SAME command CI + the pre-push hook run): composes vitest+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check into one honest envelope. Run it before work is "done".',
+    'The mandated quality gate (the SAME command CI runs): composes vitest+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check into one honest envelope. Run it before work is "done".',
   description:
     'Runs the repo\u2019s deterministic checks and aggregates: tests (`vitest run --coverage`), biome, typecheck, ' +
     'check:docs, check:flows, check:telemetry-fixtures, and skills-check are hard gates (error => exit 1); ' +
     'arch-check, markdown-lint, windows-check are warn-launch (findings => degraded/exit 0). Any hard-gate error => ' +
     'checks error/exit 1; otherwise any degraded/unconfigured gate => checks degraded/exit 0; all clean => ok/exit 0. ' +
-    'PREREQUISITE: `npm run build` first (the bin + drift guards need `dist/`). `harness boot` composes this; CI and ' +
-    '`.githooks/pre-push` both call it. Extend the gate by adding a line here as the team grows. See `harness instructions checks`.',
+    'PREREQUISITE: `npm run build` first (the bin + drift guards need `dist/`). `harness boot` composes this; CI ' +
+    'calls it. Extend the gate by adding a line here as the team grows. See `harness instructions checks`.',
   async run(ctx) {
     try {
       if (!ctx.fs.exists(`${ctx.cwd}/${CLI_DIR}/vitest.config.ts`)) {

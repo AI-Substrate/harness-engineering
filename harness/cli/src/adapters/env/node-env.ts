@@ -7,6 +7,14 @@ export class NodeEnv implements EnvPort {
     return process.env[name];
   }
 
+  entries(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(process.env)) {
+      if (typeof v === 'string') out[k] = v;
+    }
+    return out;
+  }
+
   home(): string | undefined {
     // Prefer the explicit env vars ($HOME on POSIX, %USERPROFILE% on Windows),
     // then fall back to os.homedir(). `||` (not `??`) so an EMPTY string falls

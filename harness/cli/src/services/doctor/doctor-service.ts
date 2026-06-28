@@ -347,6 +347,81 @@ function checkRecordTypes(recordTypes: RecordTypeEntry[]): LayerReport {
   };
 }
 
+/** The kill-switch env (mirrors capture-service's `KILL_SWITCH_ENV`; doctor stays
+ *  decoupled from the telemetry module, so the name is duplicated, not imported). */
+const TELEMETRY_KILL_SWITCH = 'HARNESS_NO_TELEMETRY';
+
+/**
+ * Resolve the EFFECTIVE git hooks dir: `core.hooksPath` when set (read from
+ * `.git/config` — deterministic for the standard single-repo layout; worktrees /
+ * config-includes fall back to `.git/hooks`, which is the git default anyway).
+ */
+function resolveHooksDir(fs: FsPort, cwd: string): string {
+  const cfg = fs.exists(posixJoin(cwd, '.git/config'))
+    ? fs.readText(posixJoin(cwd, '.git/config'))
+    : null;
+  const m = cfg?.match(/^\s*hooksPath\s*=\s*(.+?)\s*$/m);
+  if (m?.[1]) {
+    const p = m[1].trim();
+    return p.startsWith('/') ? p : posixJoin(cwd, p);
+  }
+  return posixJoin(cwd, '.git/hooks');
+}
+
+/**
+ * Deterministic scan for the **post-commit telemetry-flush hook** — the
+ * recursion-safe mechanism that flushes the counts-only telemetry buffer to
+ * `refs/harness-telemetry/*` on every commit, so a session that commits without
+ * running `checks`/`ship` never strands its telemetry (the model can't "forget").
+ *
+ * Scoped to the case that actually matters: a git repo that IS capturing telemetry
+ * (the buffer exists) but has NO flush hook. A repo that never captured, has
+ * telemetry disabled, or isn't a git repo gets no nag (stays ok). The hook is
+ * "active" when the effective hooks dir holds a `post-commit` that runs
+ * `harness telemetry sync`. NEVER invokes anything (P7) — a pure fs/port read.
+ */
+function checkTelemetryHook(
+  fs: FsPort,
+  proc: ProcessPort,
+  git: GitPort,
+  env: EnvPort,
+): LayerReport {
+  const name = 'telemetry-flush-hook';
+  const cwd = toPosix(proc.cwd());
+  const capturing = fs.exists(posixJoin(cwd, HARNESS_DIR, TEMP_DIR, 'telemetry'));
+  if (!capturing || !git.isRepo() || env.get(TELEMETRY_KILL_SWITCH) === '1') {
+    return {
+      name,
+      ok: true,
+      detail: capturing
+        ? 'telemetry off or not a git repo — flush hook not needed'
+        : 'no telemetry captured yet — flush hook not needed',
+    };
+  }
+  const hookPath = posixJoin(resolveHooksDir(fs, cwd), 'post-commit');
+  const body = fs.exists(hookPath) ? fs.readText(hookPath) : null;
+  if (body?.includes('telemetry sync')) {
+    return {
+      name,
+      ok: true,
+      detail: `post-commit telemetry-sync hook active (${posixRelative(cwd, hookPath) || hookPath})`,
+    };
+  }
+  const dev = fs.exists(CLI_DEV_MARKER);
+  return {
+    name,
+    ok: false,
+    detail:
+      'telemetry is being captured but NO post-commit flush hook is installed — buffered ' +
+      'segments may never reach refs/harness-telemetry/* if you commit without running `checks`/`ship`',
+    next_action: dev
+      ? 'Run `just install-hooks` — installs a recursion-safe `post-commit` hook that runs ' +
+        '`harness telemetry sync` (a counts-only ref push; NOT the heavyweight checks gate).'
+      : 'Add a `post-commit` git hook that runs `harness telemetry sync`, so each commit flushes ' +
+        'buffered telemetry to refs/harness-telemetry/* (counts-only; recursion-safe).',
+  };
+}
+
 /**
  * Gather the doctor report via the injected adapters + the assembled verb
  * registry. Pure of `process.exit` and direct Node I/O — all side effects go
@@ -366,6 +441,7 @@ export function buildDoctorReport(
     checkCliBuild(deps.fs),
     checkExtensions(registry, conventions),
     checkQualityGate(registry),
+    checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
     checkCoreInstructions(),
     checkRecordTypes(recordTypes),
   ];

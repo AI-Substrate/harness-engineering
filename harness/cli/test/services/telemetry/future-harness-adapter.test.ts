@@ -84,7 +84,7 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     // emitted, version pinned. Empty v1-compat collections are omitted (v2).
     for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
     for (const k of SEGMENT_REQUIRED_KEYS) expect(Object.keys(seg)).toContain(k);
-    expect(seg.schema_version).toBe('2.0');
+    expect(seg.schema_version).toBe('2.2');
     // the one implemented capability survives; everything unimplemented is null/omitted
     expect(seg.tools).toEqual({ AcmeTool: 2 });
     expect(seg.tokens).toBeNull();
@@ -117,7 +117,9 @@ describe('T007 — future-harness adapter (AC-12)', () => {
       git: new FakeGit({ isRepo: true, branch: 'b', remoteUrl: 'github.com/x/y' }),
       command: 'flow',
       // A brand-new adapter, dropped into the array — capture-service is untouched.
-      adapters: [{ ...futureAdapter, handles: () => true }],
+      // It reports a source position (like any real adapter) so the window is non-empty
+      // and the capture has activity to spool (FIX-1 skips no-activity captures).
+      adapters: [{ ...futureAdapter, handles: () => true, currentPosition: () => 5 }],
     };
     captureTelemetry(deps);
 

@@ -20,6 +20,17 @@ Other repos are **consumers**: they install the CLI + skills, and *their* harnes
 
 This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-written in plan 014; boot = the CLI's vitest suite via `just test`) — `/eng-harness-flow` boots it and reports normally here. The repo's *rules* (constitution, architecture, idioms) still live separately in `docs/project-rules/`. **Do not run `/eng-harness-flow` adoption against this repo** — this is the harness's own home, not a target repo; its governance doc is maintained by hand like any other repo's. For a zero-context start **in this repo**, invoke the bin via node directly: `node harness/cli/bin/harness.js instructions` (the agent briefing), then `… help` / `… doctor --json`. Don't lean on `npx` for the repo's *own* bin — `npx --no-install` resolution of the root package's own bin is nondeterministic across npm majors (plan 017; npm 10 ok, npm 11.13 `Permission denied`), and bare `npx harness` fetches an unrelated registry package. In **consumer** repos (harness installed as a dependency) `npx --no-install harness …` is fine — that path is proven by the package-smoke CI job.
 
+## Local checks
+
+- Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
+
+### Git hooks: NO pre-push gate, YES a post-commit telemetry flush
+
+These are deliberately asymmetric — keep them straight:
+
+- **NO `pre-push` checks gate.** A tracked `.githooks/pre-push` that ran `harness checks` on every push was removed because it recursed: `harness checks` auto-pushes telemetry on exit, the push re-fired the gate, and it pinned a 16-core box at load 175. **Do not re-add a push-triggered `harness checks` gate.**
+- **YES a `post-commit` telemetry flush** (`just install-hooks` → `core.hooksPath=.githooks` → `.githooks/post-commit`). It runs **only `harness telemetry sync`** — a counts-only push to `refs/harness-telemetry/*` — so each commit flushes buffered telemetry without anyone remembering to. It **cannot recurse** (no build, no tests; the telemetry push is `--no-verify`, so it triggers no hook) and **cannot block a commit** (post-commit's exit code is ignored). `harness doctor` warns when a repo is capturing telemetry but has no flush hook — run `just install-hooks` to resolve it. The `--no-verify` on the telemetry push (`exec-git-write.ts`) is **load-bearing**: it is what makes any commit/push-time flush recursion-proof.
+
 ## Repo framing
 
 - Build a reusable, evidence-backed guide for engineering harnesses: how teams create fast, observable, repeatable development loops.

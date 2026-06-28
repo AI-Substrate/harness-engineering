@@ -59,6 +59,14 @@ export class ExecGitWrite implements GitWritePort {
     return sha.length > 0 ? sha : null;
   }
 
+  refTree(ref: string): string | null {
+    // LOCAL peel of the ref's own commit to its tree — no remote contact.
+    const r = this.run(['rev-parse', '--verify', '--quiet', `${ref}^{tree}`]);
+    if (r.status !== 0) return null;
+    const sha = r.stdout.trim();
+    return sha.length > 0 ? sha : null;
+  }
+
   commitTree(tree: string, parent: string | null, message: string): string {
     const args = ['commit-tree', tree, '-m', message];
     if (parent !== null) args.push('-p', parent);
@@ -105,7 +113,12 @@ export class ExecGitWrite implements GitWritePort {
   }
 
   push(refspec: string): void {
-    const r = this.run(['push', 'origin', refspec]);
+    // `--no-verify` is LOAD-BEARING, not a convenience: telemetry pushes go to
+    // `refs/harness-telemetry/*` and must never trigger a `pre-push` hook. A
+    // push-triggered gate that itself pushes telemetry would recurse (the pre-push
+    // checks gate did exactly this — load avg 175). Bypassing hooks here makes the
+    // telemetry flush hook-immune, so a `post-commit` flush can never recurse.
+    const r = this.run(['push', '--no-verify', 'origin', refspec]);
     if (r.status !== 0) throw new Error(`git push failed: ${r.stderr?.trim()}`);
   }
 }

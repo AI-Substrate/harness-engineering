@@ -59,10 +59,14 @@ describe('T009 — kill-switch (AC-05)', () => {
     expect(fs.renames).toEqual([]);
   });
 
-  it('default (unset) still captures', () => {
+  it('default (unset) still captures — buffer segment AND the OTLP spool pair', () => {
     const { d, fs } = deps({ CLAUDE_CODE_SESSION_ID: 'sess1' }, [liveAdapter]);
     captureTelemetry(d);
     expect(fs.writes.some((p) => p.includes('/telemetry/'))).toBe(true);
+    // T015: the spool .jsonl pair is part of the captured output (T010) — so the
+    // kill-switch test above (writes === []) also proves the spool is suppressed.
+    expect(fs.writes.some((p) => p.includes('.logs.jsonl'))).toBe(true);
+    expect(fs.writes.some((p) => p.includes('.metrics.jsonl'))).toBe(true);
   });
 });
 
