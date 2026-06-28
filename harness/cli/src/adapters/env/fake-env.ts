@@ -19,6 +19,10 @@ export class FakeEnv implements EnvPort {
     return this.vars[name];
   }
 
+  entries(): Record<string, string> {
+    return { ...this.vars };
+  }
+
   home(): string | undefined {
     this.homeCalls++;
     return this.homeDir;

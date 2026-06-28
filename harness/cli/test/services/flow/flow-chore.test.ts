@@ -13,11 +13,7 @@ import {
   navShow,
   setStatus,
 } from '../../../src/services/flow/flow-mutations.js';
-import {
-  renderFlow,
-  renderRailBody,
-  renderRailLine,
-} from '../../../src/services/flow/flow-renderer.js';
+import { renderFlow, renderRailBody } from '../../../src/services/flow/flow-renderer.js';
 import { resolveFlowSchema, validateFlowDoc } from '../../../src/services/flow/flow-schema.js';
 
 /**

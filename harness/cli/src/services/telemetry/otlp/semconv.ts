@@ -30,6 +30,12 @@ export const RES_HARNESS = 'harness.harness';
 export const RES_COMMAND = 'harness.command';
 export const RES_BRANCH = 'harness.branch';
 export const RES_SCHEMA_VERSION = 'harness.schema_version';
+/**
+ * The allowlisted env snapshot (segment `captured_env`) → ONE kvlist-valued
+ * resource attribute (name → value), not N dynamic keys — so the frozen
+ * attribute contract stays a closed, fixed set (mirrors `harness.checks.gates`).
+ */
+export const RES_ENV = 'harness.env';
 
 // ── harness.* — reconstruction-critical, owned by us ─────────────────────────
 export const A = {

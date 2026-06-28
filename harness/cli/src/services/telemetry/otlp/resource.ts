@@ -8,6 +8,7 @@ import type { Segment } from '../segment.js';
 import {
   RES_BRANCH,
   RES_COMMAND,
+  RES_ENV,
   RES_HARNESS,
   RES_SCHEMA_VERSION,
   RES_SERVICE,
@@ -26,5 +27,14 @@ export function resourceAttrs(seg: Segment): KeyValue[] {
     kv(RES_SCHEMA_VERSION, sv(seg.schema_version)),
   ];
   if (seg.branch !== null) attrs.push(kv(RES_BRANCH, sv(seg.branch)));
+  // The allowlisted env snapshot → ONE kvlist attribute (omitted when absent/empty),
+  // so the resource attribute key set stays closed even as var names vary.
+  const env = seg.captured_env;
+  if (env !== undefined && Object.keys(env).length > 0) {
+    const values: KeyValue[] = Object.keys(env)
+      .sort()
+      .map((k) => kv(k, sv(env[k])));
+    attrs.push(kv(RES_ENV, { kvlistValue: { values } }));
+  }
   return attrs;
 }

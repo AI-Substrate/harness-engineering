@@ -29,8 +29,10 @@ import { computeRollup } from './rollup.js';
  * The cross-tool schema version of the segment contract. Bump on a field-set change.
  * v2.0 (plan 034 Phase 5): promoted to an event stream — adds `events[]` + the
  * derived `rollup` (the v1 count fields remain as a compatibility view).
+ * v2.1: `harness_version` (the producing CLI version → OTLP `service.version`).
+ * v2.2: `captured_env` (an allowlisted, secret-denylisted env-var snapshot).
  */
-export const SEGMENT_SCHEMA_VERSION = '2.1';
+export const SEGMENT_SCHEMA_VERSION = '2.2';
 
 export interface SegmentTokens {
   input: number;
@@ -144,6 +146,13 @@ export interface Segment {
   plans_touched?: string[];
   events?: SegmentEvents;
   thinking?: SegmentThinking | null;
+  /**
+   * v2.2 — an allowlisted snapshot of selected env vars at capture time
+   * (name → value). Counts-only is relaxed HERE by design: the allowlist is a
+   * narrow code constant and secret-shaped names are denylisted at capture, so a
+   * value is never free-form prompt/content. Omitted when nothing matched.
+   */
+  captured_env?: Record<string, string>;
 }
 
 /**
@@ -174,6 +183,7 @@ export const SEGMENT_FIELD_KEYS = [
   'plans_touched',
   'events',
   'thinking',
+  'captured_env',
 ] as const;
 
 /**
@@ -219,6 +229,8 @@ export interface SegmentInput {
   plans_touched?: string[];
   events?: Partial<SegmentEvents>;
   thinking?: SegmentThinking | null;
+  /** v2.2 — allowlisted env snapshot (already glob-selected + denylist-filtered by the caller). */
+  captured_env?: Record<string, string>;
   /** v2.0 — the ordered event stream an adapter emits; serialized via the per-kind allowlist. */
   event_stream?: readonly Event[];
 }
@@ -463,6 +475,16 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     seg.events = { compactions, api_errors: apiErrors, local_commands: localCommands };
   }
   if (input.thinking != null) seg.thinking = input.thinking;
+  // v2.2 — the allowlisted env snapshot the caller already filtered (glob +
+  // secret denylist). Omitted when empty (the dominant case). Copied (never the
+  // caller's object) and re-keyed in sorted order for byte-stable goldens.
+  const capturedEnv = input.captured_env ?? {};
+  const envKeys = Object.keys(capturedEnv).sort();
+  if (envKeys.length > 0) {
+    const out: Record<string, string> = {};
+    for (const k of envKeys) out[k] = capturedEnv[k];
+    seg.captured_env = out;
+  }
 
   // v2.0 substrate — always present (the event stream; the rollup it derives).
   seg.event_stream = eventStream;

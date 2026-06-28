@@ -17,6 +17,7 @@ import {
   computeWindow,
   detectHarness,
   hasActivity,
+  selectCapturedEnv,
 } from '../../../src/services/telemetry/capture-service.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
@@ -93,6 +94,73 @@ describe('T005 — detectHarness (innermost wins)', () => {
 
   it('returns null when no harness env is present (zero-harness)', () => {
     expect(detectHarness(new FakeEnv({}))).toBeNull();
+  });
+});
+
+describe('v2.2 — selectCapturedEnv (allowlist glob + secret denylist)', () => {
+  it('captures names matching a glob (PIJ_*), ignoring everything else', () => {
+    const env = new FakeEnv({
+      PIJ_ID: 'orch-7',
+      PIJ_ROLE: 'coder',
+      HOME: '/home/u',
+      PATH: '/usr/bin',
+      CLAUDE_CODE_SESSION_ID: 'cl-1',
+    });
+    expect(selectCapturedEnv(env)).toEqual({ PIJ_ID: 'orch-7', PIJ_ROLE: 'coder' });
+  });
+
+  it('drops genuine credential-shaped names even when a glob selected them', () => {
+    const env = new FakeEnv({
+      PIJ_ID: 'orch-7',
+      PIJ_TOKEN: 'gho_shouldNeverLand',
+      PIJ_API_KEY: 'sk-nope',
+      PIJ_SECRET_KEY: 'akia-nope',
+      PIJ_PASSWORD: 'hunter2',
+      PIJ_AUTH: 'nope',
+      PIJ_SESSION_TOKEN: 'sess-secret-nope',
+    });
+    expect(selectCapturedEnv(env)).toEqual({ PIJ_ID: 'orch-7' });
+  });
+
+  it('KEEPS benign correlation handles — SESSION_ID / STATUS_KEY are ids, not secrets', () => {
+    // The pij seam injects exactly these; the tuned denylist must not eat them
+    // (a bare SESSION/KEY substring would). This is the "pij flows through" case.
+    const env = new FakeEnv({
+      PIJ_SESSION_ID: 'pij-sess-9',
+      PIJ_STATUS_KEY: 'status/9',
+      PIJ_ROLE: 'coder',
+      PIJ_PANE_ID: '%7',
+    });
+    expect(selectCapturedEnv(env)).toEqual({
+      PIJ_SESSION_ID: 'pij-sess-9',
+      PIJ_STATUS_KEY: 'status/9',
+      PIJ_ROLE: 'coder',
+      PIJ_PANE_ID: '%7',
+    });
+  });
+
+  it('drops content-bearing names (a prompt/task value is content, not a count — P12)', () => {
+    // PIJ_SPAWN_TASK carries the colleague's full task prompt — the live-probe leak.
+    const env = new FakeEnv({
+      PIJ_SESSION_ID: 'pij-9',
+      PIJ_SPAWN_TASK: 'fix the bug in foo.ts then run the tests',
+      PIJ_PROMPT: 'do the thing',
+      PIJ_COMMAND: 'harness doctor',
+    });
+    expect(selectCapturedEnv(env)).toEqual({ PIJ_SESSION_ID: 'pij-9' });
+  });
+
+  it('drops free-form-shaped VALUES name-agnostically (multi-line or over-long)', () => {
+    const env = new FakeEnv({
+      PIJ_ID: 'orch-7',
+      PIJ_BLOB: 'line one\nline two\nline three', // multi-line ⇒ content
+      PIJ_LONG: 'x'.repeat(300), // over the 256 cap ⇒ content/payload
+    });
+    expect(selectCapturedEnv(env)).toEqual({ PIJ_ID: 'orch-7' });
+  });
+
+  it('returns empty when nothing matches (the dominant host case → field omitted)', () => {
+    expect(selectCapturedEnv(new FakeEnv({ HOME: '/home/u', PATH: '/usr/bin' }))).toEqual({});
   });
 });
 

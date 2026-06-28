@@ -114,6 +114,82 @@ export function detectHarness(env: EnvPort): DetectedHarness | null {
 }
 
 /**
+ * Allowlisted env-var name globs captured into every segment (`captured_env`).
+ * A glob is an exact name or a `<prefix>*` prefix match. Code-constant BY DESIGN
+ * (not env/config-driven): widening what telemetry records is then a reviewed
+ * code change, fully auditable in git. Empty on most hosts → the field is omitted.
+ */
+export const ENV_CAPTURE_GLOBS: readonly string[] = ['PIJ_*'];
+
+/**
+ * Secret-shaped key-NAME guard, applied AFTER the globs: a name matching this is
+ * DROPPED even when a glob selected it (so `PIJ_*` never sweeps `PIJ_TOKEN`). The
+ * value then never reaches the segment, the buffer, or the pushed telemetry ref.
+ * Matched case-insensitively against the NAME only — never the value (a value is
+ * never inspected, so a non-secret-named var is captured verbatim).
+ *
+ * Tuned to genuine CREDENTIAL shapes, NOT broad substrings: a bare `SESSION` or
+ * `KEY` would eat benign correlation handles like `PIJ_SESSION_ID` /
+ * `PIJ_STATUS_KEY` (ids, not secrets). So `KEY` is denied only in a credential
+ * compound (`API_KEY`, `SECRET_KEY`, `SSH_KEY`, …) and `SESSION_TOKEN` /
+ * `SESSION_SECRET` are caught by the `TOKEN` / `SECRET` words, while `SESSION_ID`
+ * flows. The narrow code-constant allowlist is the primary gate; this is
+ * defense-in-depth for when a glob is widened.
+ */
+export const ENV_CAPTURE_DENY =
+  /(?:^|_)(?:TOKEN|TOKENS|SECRET|SECRETS|PASSWORD|PASSWD|PASSPHRASE|CREDENTIAL|CREDENTIALS|PRIVATE|BEARER|COOKIE|AUTH)(?:_|$)|APIKEY|(?:API|ACCESS|SECRET|PRIVATE|SIGNING|ENCRYPT|ENCRYPTION|SSH|GPG|PGP)[_-]?KEY/i;
+
+/**
+ * Free-form-CONTENT name guard, applied alongside the secret denylist. A var
+ * whose name marks it as carrying a prompt/task/message/description holds
+ * free-form text — NOT a count or identifier — so capturing its value would
+ * leak message content into committed/pushed telemetry (P12/AC-04). `PIJ_SPAWN_TASK`
+ * (the colleague's task prompt) is the motivating case. Names only — paired with
+ * the value-shape guard below for content that slips a benign-looking name.
+ */
+export const ENV_CAPTURE_CONTENT_DENY =
+  /(?:^|_)(?:TASK|TASKS|PROMPT|PROMPTS|MESSAGE|MESSAGES|MSG|TEXT|BODY|CONTENT|DESCRIPTION|DESC|COMMENT|COMMENTS|NOTE|NOTES|INSTRUCTION|INSTRUCTIONS|REQUEST|QUERY|INPUT|ARGS|ARGV|CMD|COMMAND)(?:_|$)/i;
+
+/**
+ * A captured value must look like an id/flag/path, never free-form content. A
+ * value that is multi-line OR longer than this is almost certainly a prompt /
+ * blob / serialized payload, so it is dropped name-agnostically — the second
+ * line of defense behind {@link ENV_CAPTURE_CONTENT_DENY} (catches a content var
+ * with a benign name, e.g. `PIJ_SPAWN_TASK` even were `TASK` not denied).
+ */
+export const ENV_VALUE_MAX_LEN = 256;
+
+function envNameMatches(name: string, glob: string): boolean {
+  return glob.endsWith('*') ? name.startsWith(glob.slice(0, -1)) : name === glob;
+}
+
+/** A value is id/flag-shaped (capturable) iff single-line and within the length cap. */
+function isIdShapedValue(v: string): boolean {
+  return v.length <= ENV_VALUE_MAX_LEN && !/[\r\n]/.test(v);
+}
+
+/**
+ * Select the allowlisted, non-secret, non-content env vars for a segment's
+ * `captured_env`. Pure over the injected env port: enumerate → keep names
+ * matching ANY glob → drop secret-shaped names → drop content-bearing names →
+ * drop free-form-shaped values (multi-line / over-long) → return a NEW object.
+ * Empty when nothing matches (the serializer then omits the field). The
+ * serializer re-sorts keys, so order here is irrelevant.
+ */
+export function selectCapturedEnv(env: EnvPort): Record<string, string> {
+  const all = env.entries();
+  const out: Record<string, string> = {};
+  for (const name of Object.keys(all)) {
+    if (!ENV_CAPTURE_GLOBS.some((g) => envNameMatches(name, g))) continue;
+    if (ENV_CAPTURE_DENY.test(name)) continue;
+    if (ENV_CAPTURE_CONTENT_DENY.test(name)) continue;
+    if (!isIdShapedValue(all[name])) continue;
+    out[name] = all[name];
+  }
+  return out;
+}
+
+/**
  * Compute the capture window from the prior watermark + the current source
  * extent. No prior cursor (or a shrunk/rotated source) → `session-start` from 0;
  * otherwise the `last-command` delta. A null current position (missing source)
@@ -316,6 +392,9 @@ function buildInput(
       local_commands: caps.local_commands ?? 0,
     },
     thinking: caps.thinking ?? null,
+    // v2.2 — allowlisted env snapshot at THIS capture point (glob-selected +
+    // secret-denylisted). Empty on most hosts → omitted by the serializer.
+    captured_env: selectCapturedEnv(deps.env),
     // Compose the timeline: flow + branch prepend at the window start; the
     // triggering harness command appends as a zero-gap marker at the window end;
     // the flow_log replay markers append last (rollup-excluded, own real `t`).

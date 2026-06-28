@@ -3,6 +3,7 @@ import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js'
 import {
   RES_BRANCH,
   RES_COMMAND,
+  RES_ENV,
   RES_HARNESS,
   RES_SCHEMA_VERSION,
   RES_SERVICE,
@@ -61,10 +62,10 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
   });
 
-  it('pins schema_version to "2.0"', () => {
+  it('pins schema_version to "2.2"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('2.1');
+    expect(seg.schema_version).toBe('2.2');
   });
 
   it('headline capabilities stay present-but-null; empty v1-compat collections are OMITTED', () => {
@@ -228,6 +229,56 @@ describe('T001 — v1-compat view: prompt array + grouped subagents', () => {
       { type: 'reviewer', count: 2, tokens: 150, tool_uses: 6 },
       { type: 'reviewer', model: 'claude-opus-4-8', count: 1, tokens: 10 },
     ]);
+  });
+});
+
+describe('v2.2 — captured_env (allowlisted env snapshot)', () => {
+  it('emits captured_env when present, with keys in sorted order', () => {
+    const seg = serializeSegment(
+      { ...baseInput(), captured_env: { PIJ_ROLE: 'coder', PIJ_ID: 'orch-7' } },
+      REPO,
+    ) as Record<string, unknown>;
+    expect(seg.captured_env).toEqual({ PIJ_ID: 'orch-7', PIJ_ROLE: 'coder' });
+    expect(Object.keys(seg.captured_env as object)).toEqual(['PIJ_ID', 'PIJ_ROLE']); // sorted
+  });
+
+  it('omits captured_env entirely when empty (the dominant host case)', () => {
+    const a = serializeSegment(baseInput(), REPO) as Record<string, unknown>;
+    const b = serializeSegment({ ...baseInput(), captured_env: {} }, REPO) as Record<
+      string,
+      unknown
+    >;
+    expect('captured_env' in a).toBe(false);
+    expect('captured_env' in b).toBe(false);
+  });
+
+  it('projects captured_env to a single harness.env kvlist resource attribute', () => {
+    const seg = serializeSegment(
+      {
+        ...baseInput(),
+        captured_env: { PIJ_ID: 'orch-7', PIJ_ROLE: 'coder' },
+        event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }],
+      },
+      REPO,
+    );
+    const attrs = attrMap(segmentToOtlpLogs(seg).resourceLogs[0].resource.attributes);
+    const env = attrs.get(RES_ENV);
+    const pairs = (env?.kvlistValue?.values ?? []).map((v) => [v.key, v.value.stringValue]);
+    expect(pairs).toEqual([
+      ['PIJ_ID', 'orch-7'],
+      ['PIJ_ROLE', 'coder'],
+    ]);
+  });
+
+  it('omits harness.env when no env was captured (no empty attr)', () => {
+    const seg = serializeSegment(
+      { ...baseInput(), event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }] },
+      REPO,
+    );
+    const keys = new Set(
+      attrMap(segmentToOtlpLogs(seg).resourceLogs[0].resource.attributes).keys(),
+    );
+    expect(keys.has(RES_ENV)).toBe(false);
   });
 });
 
