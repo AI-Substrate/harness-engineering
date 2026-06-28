@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "flow-template-orient-instructions",
   "nav": {
-    "now": "phase-2",
+    "now": "phase-3",
     "next": null,
     "intent": "Refine the OOTB flight-plan starter (D1-D6): bake chores into the template + delete the skill-side gate/§3b; add 'harness flow orient'; per-node instructions[] field; colour-by-type with icon/visual modifiers; orient-every-turn invariant; orient shows chores with ticks. Folds into the 039 branch/PR.",
     "bag": {
@@ -519,6 +519,49 @@
         "from": "phase-1",
         "to": "phase-2"
       }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T22:24:56.646Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T23:09:27.719Z",
+      "details": {
+        "node": "phase-2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-28T23:09:28.124Z",
+      "details": {
+        "from": "phase-2",
+        "to": "phase-3"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T23:09:28.524Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "in_progress"
+      }
     }
   ],
   "nodes": [
@@ -697,23 +740,24 @@
       "id": "phase-2",
       "type": "phase",
       "label": "P2: orient verb",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-06-28T21:48:50.221Z",
-      "modified_at": "2026-06-28T21:48:50.613Z"
+      "modified_at": "2026-06-28T23:09:27.719Z",
+      "ran_at": "2026-06-28T23:09:27.719Z"
     },
     {
       "id": "phase-3",
       "type": "phase",
       "label": "P3: Renderer (type-colour/badges/legend)",
-      "status": "known",
+      "status": "in_progress",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-06-28T21:48:50.613Z",
-      "modified_at": "2026-06-28T21:48:51.001Z"
+      "modified_at": "2026-06-28T23:09:28.524Z"
     },
     {
       "id": "phase-4",
