@@ -1,7 +1,8 @@
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "command": "flow",
   "harness": "copilot-cli",
+  "harness_version": "0.0.0-fixture",
   "harness_session_id": "b67cd3ce-e0ee-4048-831e-7f4591f20a60",
   "timecode": "2026-06-25T00:00:00Z",
   "window": {

@@ -67,6 +67,8 @@ export interface CaptureDeps {
   db?: DbPort;
   /** The harness command that triggered capture (the kernel preamble passes this — Phase 3). */
   command: string;
+  /** The producing harness CLI version (the kernel preamble passes `readVersion()`) → segment `harness_version` / OTLP `service.version`. */
+  version?: string;
   /** Per-harness adapters; the null-default is always the final fallback (AC-12). */
   adapters?: HarnessAdapter[];
 }
@@ -294,6 +296,7 @@ function buildInput(
   return {
     command: deps.command,
     harness: detected.harness,
+    harness_version: deps.version ?? 'unknown',
     harness_session_id: detected.sessionId,
     timecode,
     window,

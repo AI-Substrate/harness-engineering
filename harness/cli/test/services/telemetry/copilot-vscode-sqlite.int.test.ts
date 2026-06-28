@@ -121,6 +121,7 @@ function buildSegment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'copilot-vscode',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: sessionId,
     timecode: '2026-06-25T00:00:00Z',
     window: ctx.window,

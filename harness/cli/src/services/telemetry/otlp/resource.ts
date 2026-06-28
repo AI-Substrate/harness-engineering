@@ -11,6 +11,7 @@ import {
   RES_HARNESS,
   RES_SCHEMA_VERSION,
   RES_SERVICE,
+  RES_SERVICE_VERSION,
   RES_SESSION,
 } from './semconv.js';
 import { type KeyValue, kv, sv } from './types.js';
@@ -18,6 +19,7 @@ import { type KeyValue, kv, sv } from './types.js';
 export function resourceAttrs(seg: Segment): KeyValue[] {
   const attrs: KeyValue[] = [
     kv(RES_SERVICE, sv('harness')),
+    kv(RES_SERVICE_VERSION, sv(seg.harness_version)),
     kv(RES_SESSION, sv(seg.harness_session_id)),
     kv(RES_HARNESS, sv(seg.harness)),
     kv(RES_COMMAND, sv(seg.command)),

@@ -392,6 +392,7 @@ export async function main(
         git: deps.git,
         db: new NodeDb(),
         command: deriveCommand(argv),
+        version,
         adapters: coreTelemetryAdapters,
       });
     } catch {

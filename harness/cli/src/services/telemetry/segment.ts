@@ -30,7 +30,7 @@ import { computeRollup } from './rollup.js';
  * v2.0 (plan 034 Phase 5): promoted to an event stream — adds `events[]` + the
  * derived `rollup` (the v1 count fields remain as a compatibility view).
  */
-export const SEGMENT_SCHEMA_VERSION = '2.0';
+export const SEGMENT_SCHEMA_VERSION = '2.1';
 
 export interface SegmentTokens {
   input: number;
@@ -120,6 +120,8 @@ export interface Segment {
   command: string;
   /** The detected innermost harness (`claude-code` | `copilot-cli` | `cursor` | …). */
   harness: string;
+  /** The harness CLI version that PRODUCED this segment (e.g. `0.6.0`) — the OTLP `service.version`. */
+  harness_version: string;
   /** Opaque correlation handle — NOT an individual identity (AC-11/13). */
   harness_session_id: string;
   timecode: string;
@@ -154,6 +156,7 @@ export const SEGMENT_FIELD_KEYS = [
   'schema_version',
   'command',
   'harness',
+  'harness_version',
   'harness_session_id',
   'timecode',
   'window',
@@ -184,6 +187,7 @@ export const SEGMENT_REQUIRED_KEYS = [
   'schema_version',
   'command',
   'harness',
+  'harness_version',
   'harness_session_id',
   'timecode',
   'window',
@@ -198,6 +202,8 @@ export const SEGMENT_REQUIRED_KEYS = [
 export interface SegmentInput {
   command: string;
   harness: string;
+  /** The producing harness CLI version (the composition root passes `readVersion()`). */
+  harness_version?: string;
   harness_session_id: string;
   timecode: string;
   window: SegmentWindow;
@@ -413,6 +419,9 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     schema_version: SEGMENT_SCHEMA_VERSION,
     command: input.command,
     harness: input.harness,
+    // Always present (required): defaults to 'unknown' if a caller omits it, so a
+    // segment is never schema-invalid; the live composition root always supplies it.
+    harness_version: input.harness_version ?? 'unknown',
     harness_session_id: input.harness_session_id,
     timecode: input.timecode,
     window: {

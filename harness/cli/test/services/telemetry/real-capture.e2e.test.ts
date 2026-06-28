@@ -68,6 +68,7 @@ function segment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'claude-code',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: SESSION,
     timecode: '2026-06-25T00:00:00Z',
     window,
@@ -183,6 +184,7 @@ function copilotSegment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'copilot-cli',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: CO_SID,
     timecode: '2026-06-25T00:00:00Z',
     window: coWindow,
@@ -297,6 +299,7 @@ function cursorSegment() {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'cursor-agent',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
     harness_session_id: CUR_CONV,
     timecode: '2026-06-25T00:00:00Z',
     window: curWindow,

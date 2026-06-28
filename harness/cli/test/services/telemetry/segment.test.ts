@@ -6,6 +6,7 @@ import {
   RES_HARNESS,
   RES_SCHEMA_VERSION,
   RES_SERVICE,
+  RES_SERVICE_VERSION,
   RES_SESSION,
 } from '../../../src/services/telemetry/otlp/semconv.js';
 import { attrMap } from '../../../src/services/telemetry/otlp/types.js';
@@ -63,7 +64,7 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
   it('pins schema_version to "2.0"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('2.0');
+    expect(seg.schema_version).toBe('2.1');
   });
 
   it('headline capabilities stay present-but-null; empty v1-compat collections are OMITTED', () => {
@@ -233,7 +234,7 @@ describe('T001 — v1-compat view: prompt array + grouped subagents', () => {
 describe('T014 — the segment → OTLP resource mapping uses the frozen harness.* contract', () => {
   it('emits exactly the frozen resource attribute set (identity written once, harness.* names)', () => {
     // A populated, branch-bearing segment → OTLP Logs; the ResourceLogs resource
-    // must carry precisely the six frozen resource attributes, no more, no less.
+    // must carry precisely the seven frozen resource attributes, no more, no less.
     const seg = serializeSegment(
       { ...baseInput(), event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }] },
       REPO,
@@ -241,7 +242,15 @@ describe('T014 — the segment → OTLP resource mapping uses the frozen harness
     const logs = segmentToOtlpLogs(seg);
     const keys = new Set(attrMap(logs.resourceLogs[0].resource.attributes).keys());
     expect(keys).toEqual(
-      new Set([RES_SERVICE, RES_SESSION, RES_HARNESS, RES_COMMAND, RES_SCHEMA_VERSION, RES_BRANCH]),
+      new Set([
+        RES_SERVICE,
+        RES_SERVICE_VERSION,
+        RES_SESSION,
+        RES_HARNESS,
+        RES_COMMAND,
+        RES_SCHEMA_VERSION,
+        RES_BRANCH,
+      ]),
     );
   });
 
@@ -259,7 +268,14 @@ describe('T014 — the segment → OTLP resource mapping uses the frozen harness
     );
     expect(keys.has(RES_BRANCH)).toBe(false);
     expect(keys).toEqual(
-      new Set([RES_SERVICE, RES_SESSION, RES_HARNESS, RES_COMMAND, RES_SCHEMA_VERSION]),
+      new Set([
+        RES_SERVICE,
+        RES_SERVICE_VERSION,
+        RES_SESSION,
+        RES_HARNESS,
+        RES_COMMAND,
+        RES_SCHEMA_VERSION,
+      ]),
     );
   });
 });

@@ -23,6 +23,8 @@ export const GENAI_TOKEN_TYPE = 'gen_ai.token.type';
 
 // ── Resource attributes (once per session) ───────────────────────────────────
 export const RES_SERVICE = 'service.name';
+/** Stable OTEL resource attribute — the producing harness CLI version. */
+export const RES_SERVICE_VERSION = 'service.version';
 export const RES_SESSION = 'harness.session_id';
 export const RES_HARNESS = 'harness.harness';
 export const RES_COMMAND = 'harness.command';

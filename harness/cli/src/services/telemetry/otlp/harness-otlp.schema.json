@@ -1,12 +1,13 @@
 {
-  "$id": "harness-otlp-attributes-2.0",
+  "$id": "harness-otlp-attributes-2.1",
   "title": "harness.* OTLP attribute contract — successor to segment.schema.json",
   "description": "The frozen attribute vocabulary the harness emits on OTLP Logs + Metrics (plan 038). The single source is semconv.ts; harness-otlp-schema.test.ts pins this file key-set-equal to that module so a semconv rename without a contract bump trips the freeze. The on-disk consumer contract (what the eng-thrive scraper reads) is OTLP/JSON whose attributes are exactly these names; the reconstruction-critical layer is owned under harness.* + the pinned schema_url, the interop layer adopts only stable OTEL gen_ai.* names.",
   "schema_url": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
-  "scope_version": "2.0",
+  "scope_version": "2.1",
   "additionalAttributes": false,
   "resource_attributes": [
     "service.name",
+    "service.version",
     "harness.session_id",
     "harness.harness",
     "harness.command",
