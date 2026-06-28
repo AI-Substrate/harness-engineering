@@ -1,0 +1,394 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "sample-1",
+  "nav": {
+    "now": "research",
+    "next": null
+  },
+  "created_at": "2026-06-28T20:15:15.341Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.6.0",
+    "branch": "feat/039-flow-reconcile-cli-trigger",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-28T20:15:15.341Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:15:15.352Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "sample-1"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:19:23.621Z",
+      "details": {
+        "node": "backpressure",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:19:23.621Z",
+      "details": {
+        "node": "boot-1",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:19:23.621Z",
+      "details": {
+        "node": "observe-1",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:19:23.622Z",
+      "details": {
+        "node": "retro-1",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:19:23.622Z",
+      "details": {
+        "node": "retro-ship",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:42:01.615Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:42:02.705Z",
+      "details": {
+        "node": "backpressure",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:42:30.963Z",
+      "details": {
+        "node": "backpressure",
+        "from": "done",
+        "to": "todo",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:42:43.055Z",
+      "details": {
+        "node": "boot-1",
+        "from": "assumed",
+        "to": "todo",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:42:43.427Z",
+      "details": {
+        "node": "observe-1",
+        "from": "assumed",
+        "to": "todo",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:42:43.802Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:43:22.102Z",
+      "details": {
+        "node": "backpressure",
+        "from": "todo",
+        "to": "assumed",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:43:22.482Z",
+      "details": {
+        "node": "boot-1",
+        "from": "todo",
+        "to": "assumed",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:43:22.864Z",
+      "details": {
+        "node": "observe-1",
+        "from": "todo",
+        "to": "assumed",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:43:23.225Z",
+      "details": {
+        "node": "retro-1",
+        "from": "assumed",
+        "to": "assumed",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:43:23.606Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "assumed",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-28T20:43:23.973Z",
+      "details": {
+        "from": "phase-1",
+        "to": "research"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "in_progress",
+      "command": "/the-flow 1a explore",
+      "next": [
+        "plan"
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "assumed",
+      "command": "/the-flow 1b plan",
+      "next": [
+        "phase-1"
+      ]
+    },
+    {
+      "id": "phase-1",
+      "type": "phase",
+      "phase": 1,
+      "label": "P1: Implementation",
+      "status": "known",
+      "command": "/the-flow 6 implement",
+      "next": [
+        "ship"
+      ]
+    },
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "command": "/the-flow 8 ship",
+      "next": []
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure survey",
+      "status": "assumed",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-28T20:19:23.621Z",
+      "modified_at": "2026-06-28T20:43:22.102Z",
+      "branch_of": "plan",
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "ran_at": "2026-06-28T20:42:02.704Z"
+    },
+    {
+      "id": "boot-1",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "assumed",
+      "next": [
+        "phase-1"
+      ],
+      "created_at": "2026-06-28T20:19:23.621Z",
+      "modified_at": "2026-06-28T20:43:22.482Z",
+      "branch_of": "phase-1",
+      "command": "run /eng-harness-flow --hook pre-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-1",
+      "type": "observe",
+      "label": "Observe: P1",
+      "status": "assumed",
+      "next": [
+        "phase-1"
+      ],
+      "created_at": "2026-06-28T20:19:23.621Z",
+      "modified_at": "2026-06-28T20:43:22.864Z",
+      "branch_of": "phase-1",
+      "command": "harness observe \"<what>\" --kind <kind>",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-1",
+      "type": "harness-retro",
+      "label": "Retro: P1 (drain)",
+      "status": "assumed",
+      "next": [
+        "phase-1"
+      ],
+      "created_at": "2026-06-28T20:19:23.621Z",
+      "modified_at": "2026-06-28T20:43:23.225Z",
+      "branch_of": "phase-1",
+      "command": "run /eng-harness-flow --hook post-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-ship",
+      "type": "harness-retro",
+      "label": "Retro: ship (harvest)",
+      "status": "assumed",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-28T20:19:23.621Z",
+      "modified_at": "2026-06-28T20:43:23.606Z",
+      "branch_of": "ship",
+      "command": "run /eng-harness-flow --hook post-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    }
+  ],
+  "title": "sample-1"
+}
