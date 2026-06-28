@@ -513,6 +513,9 @@ export function registerFlowAct(
     .option('--note <note>', 'set the node note')
     .option('--user-input <text>', 'set the genesis user_input')
     .option('--artifacts <list>', 'comma-separated artifact paths (replaces the node list)')
+    .option('--add-instruction <text>', 'append one instruction to the node instructions[]')
+    .option('--instructions <a||b>', 'replace the node instructions[] (|| -separated)')
+    .option('--clear-instructions', 'empty the node instructions[]')
     .option('--command <cmd>', 'set the command/ref this node runs (e.g. a slash-command)')
     .option('--zone <band>', 'rail band: preflight | flight | postflight')
     .option(
@@ -532,6 +535,9 @@ export function registerFlowAct(
         note?: string;
         userInput?: string;
         artifacts?: string;
+        addInstruction?: string;
+        instructions?: string;
+        clearInstructions?: boolean;
         command?: string;
         zone?: string;
         choreKind?: string;
@@ -546,9 +552,14 @@ export function registerFlowAct(
         if (opts.zone !== undefined) fields.zone = opts.zone;
         const chore = choreFromFlags(opts.choreKind, opts.importance);
         if (chore !== undefined) fields.chore = chore;
-        runMutation(io, deps, opts, (doc) =>
-          setNode(doc, opts.node, fields, { clock: deps.clock }),
-        );
+        runMutation(io, deps, opts, (doc) => {
+          // `--add-instruction` appends, so the new list is resolved against the
+          // node's CURRENT instructions[] (read from the doc here, not pre-parse).
+          const current = doc.nodes.find((n) => n.id === opts.node)?.instructions;
+          const resolved = resolveInstructions(Array.isArray(current) ? current : [], opts);
+          if (resolved !== undefined) fields.instructions = resolved;
+          return setNode(doc, opts.node, fields, { clock: deps.clock });
+        });
       },
     );
 
@@ -974,6 +985,46 @@ function splitIds(raw: string | undefined): string[] | undefined {
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+}
+
+/**
+ * Split a `--instructions "a||b"` value on `||` into trimmed, non-empty entries.
+ * Instructions are free prose (commas are common), so the delimiter is `||`, not a
+ * comma — unlike `splitIds`. (plan 040 D4.)
+ */
+function splitInstructions(raw: string): string[] {
+  return raw
+    .split('||')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Resolve the node's new `instructions[]` from the set-node flags, composing them in
+ * a deterministic order against the node's CURRENT list: `--clear-instructions`
+ * empties, `--instructions "a||b"` replaces (`||`-split), `--add-instruction <t>`
+ * appends. Returns `undefined` when no instruction flag is present (leave the field
+ * untouched). (plan 040 D4 / AC-01.)
+ */
+function resolveInstructions(
+  current: string[],
+  opts: { addInstruction?: string; instructions?: string; clearInstructions?: boolean },
+): string[] | undefined {
+  if (
+    opts.clearInstructions !== true &&
+    opts.instructions === undefined &&
+    opts.addInstruction === undefined
+  ) {
+    return undefined;
+  }
+  let list = [...current];
+  if (opts.clearInstructions === true) list = [];
+  if (opts.instructions !== undefined) list = splitInstructions(opts.instructions);
+  if (opts.addInstruction !== undefined) {
+    const t = opts.addInstruction.trim();
+    if (t.length > 0) list = [...list, t];
+  }
+  return list;
 }
 
 /**

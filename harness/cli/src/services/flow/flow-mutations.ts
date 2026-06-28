@@ -301,6 +301,8 @@ export interface NodeSpec {
   user_input?: string;
   authority?: string;
   artifacts?: string[];
+  /** Authored + runtime guidance (plan 040 D4) — mirrors `artifacts` plumbing. */
+  instructions?: string[];
   zone?: string;
   /** The command/ref this node runs (Phase 4 — wired by `--command`). */
   command?: string;
@@ -323,6 +325,7 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
     ...(spec.user_input !== undefined && { user_input: spec.user_input }),
     ...(spec.authority !== undefined && { authority: spec.authority }),
     ...(spec.artifacts !== undefined && { artifacts: [...spec.artifacts] }),
+    ...(spec.instructions !== undefined && { instructions: [...spec.instructions] }),
     ...(spec.zone !== undefined && { zone: spec.zone }),
     ...(spec.command !== undefined && { command: spec.command }),
     ...(spec.chore !== undefined && { chore: { ...spec.chore } }),
@@ -946,6 +949,7 @@ function specFrom(raw: Record<string, unknown>): NodeSpec {
   // The shape is validated at runtime by `badChore`; the cast only satisfies TS.
   if (isObject(raw.chore)) spec.chore = raw.chore as unknown as NodeSpec['chore'];
   if (Array.isArray(raw.artifacts)) spec.artifacts = raw.artifacts as string[];
+  if (Array.isArray(raw.instructions)) spec.instructions = raw.instructions as string[];
   if (typeof raw.user_input === 'string') spec.user_input = raw.user_input;
   return spec;
 }

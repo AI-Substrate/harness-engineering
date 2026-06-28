@@ -94,6 +94,12 @@ export interface FlowNode {
   comments?: FlowComment[];
   /** Output artifacts produced at this node (files/paths) — drives the `📄N` badge + body-log. */
   artifacts?: string[];
+  /**
+   * Authored + runtime guidance for this node (plan 040 D4) — the "static bone".
+   * Round-trips through every mutation; `orient` prints the full text; a `📝N` badge
+   * marks presence in the render (P3). The text NEVER appears in the diagram.
+   */
+  instructions?: string[];
   /** Forward-compat (Finding 02b): `cursor | substrate`, default `cursor`, unused in v1. */
   authority?: string;
   /** Rail band: `preflight | flight | postflight` (ws-002); unset → defaulted by type. */

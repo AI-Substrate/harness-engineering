@@ -780,3 +780,150 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     expect(doc.nodes.find((n: { id: string }) => n.id === 'p2').next).toEqual(['p1']);
   });
 });
+
+describe('harness flow set-node — instructions[] flags + full round-trip (plan 040 P1)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const FLOW = '/repo/.harness/flows/demo.json';
+
+  async function seed(): Promise<VerbActDeps> {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    return deps;
+  }
+
+  function instructionsOf(deps: VerbActDeps, id: string): unknown {
+    const doc = JSON.parse(deps.fs.readText(FLOW) as string) as {
+      nodes: { id: string; instructions?: string[] }[];
+    };
+    return doc.nodes.find((n) => n.id === id)?.instructions;
+  }
+
+  it('--instructions "a||b" REPLACES the node list (split on ||)', async () => {
+    const deps = await seed();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--instructions',
+      'read nav||run orient',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['read nav', 'run orient']);
+  });
+
+  it('--add-instruction APPENDS to the existing list', async () => {
+    const deps = await seed();
+    await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--instructions',
+      'first',
+    ]);
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--add-instruction',
+      'second',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['first', 'second']);
+  });
+
+  it('--add-instruction on a node with no instructions seeds a one-item list', async () => {
+    const deps = await seed();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--add-instruction',
+      'only',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['only']);
+  });
+
+  it('--clear-instructions EMPTIES the list', async () => {
+    const deps = await seed();
+    await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--instructions',
+      'a||b',
+    ]);
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--clear-instructions',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual([]);
+  });
+
+  it('AC-01 — instructions survive a create → apply → set-node → render round-trip', async () => {
+    const deps = await seed();
+    // apply: upsert instructions onto an existing node via the transactional batch
+    deps.fs.writeText(
+      '/repo/ops.json',
+      JSON.stringify([{ op: 'upsert', id: 'boot', instructions: ['boot the harness'] }]),
+    );
+    const applied = await runFlow(deps, [
+      'flow',
+      'apply',
+      '--slug',
+      'demo',
+      '--ops',
+      '/repo/ops.json',
+    ]);
+    expect(applied.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['boot the harness']);
+    // set-node: append a runtime-authored instruction
+    const set = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--add-instruction',
+      'then observe',
+    ]);
+    expect(set.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['boot the harness', 'then observe']);
+    // render: the field persists in the JSON; its TEXT never appears in the diagram
+    // (AC-02 — the `📝N` badge lands in P3; here we only prove the text never leaks).
+    const rendered = await runFlow(deps, ['flow', 'render', '--slug', 'demo']);
+    expect(rendered.code).toBe(0);
+    const md = (rendered.env.data as { rendered: string }).rendered;
+    expect(md).not.toContain('boot the harness');
+    expect(md).not.toContain('then observe');
+    // render is read-only → the JSON still carries instructions afterwards
+    expect(instructionsOf(deps, 'boot')).toEqual(['boot the harness', 'then observe']);
+  });
+});
