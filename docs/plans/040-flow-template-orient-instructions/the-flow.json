@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "flow-template-orient-instructions",
   "nav": {
-    "now": "phase-3",
+    "now": "phase-4",
     "next": null,
     "intent": "Refine the OOTB flight-plan starter (D1-D6): bake chores into the template + delete the skill-side gate/§3b; add 'harness flow orient'; per-node instructions[] field; colour-by-type with icon/visual modifiers; orient-every-turn invariant; orient shows chores with ticks. Folds into the 039 branch/PR.",
     "bag": {
@@ -562,6 +562,38 @@
         "from": "known",
         "to": "in_progress"
       }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T23:27:47.318Z",
+      "details": {
+        "node": "phase-3",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-28T23:27:47.719Z",
+      "details": {
+        "from": "phase-3",
+        "to": "phase-4"
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-28T23:27:48.140Z",
+      "details": {
+        "node": "phase-4",
+        "from": "known",
+        "to": "in_progress"
+      }
     }
   ],
   "nodes": [
@@ -752,23 +784,24 @@
       "id": "phase-3",
       "type": "phase",
       "label": "P3: Renderer (type-colour/badges/legend)",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-06-28T21:48:50.613Z",
-      "modified_at": "2026-06-28T23:09:28.524Z"
+      "modified_at": "2026-06-28T23:27:47.318Z",
+      "ran_at": "2026-06-28T23:27:47.318Z"
     },
     {
       "id": "phase-4",
       "type": "phase",
       "label": "P4: the-flow skill (template/expander/invariant)",
-      "status": "known",
+      "status": "in_progress",
       "next": [
         "phase-5"
       ],
       "created_at": "2026-06-28T21:48:51.001Z",
-      "modified_at": "2026-06-28T21:48:51.405Z"
+      "modified_at": "2026-06-28T23:27:48.140Z"
     },
     {
       "id": "phase-5",
