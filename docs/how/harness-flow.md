@@ -152,6 +152,38 @@ drift), and groups nodes into zone bands. Read it like this:
 > still *reads* (extra fields are tolerated); call `nav set` to adopt the new
 > position model.
 
+### `orient` — where am I, what do I do next
+
+`nav show` + `rail` + `chores --at` answer "where am I" in three commands. **`orient`**
+folds them into one read so a weak model (or a freshly-reset context) sees its next
+step in a single call instead of inferring it:
+
+```bash
+harness flow orient --slug my-flow          # DEFAULT: human text — rail + the now-node + its chores
+harness flow orient --slug my-flow --json   # opt into the structured envelope
+```
+
+The **default is the human text** — orient exists for a weak model (or a freshly-reset
+context) to *read* its next step, so JSON is opt-in via `--json`. (Unlike most reads,
+the format is driven by the flag, not by whether stdout is a TTY.)
+
+For the node at **`nav.now`** it prints, in order:
+
+1. **The rail** — the same line as `harness flow rail` (reused, not reimplemented).
+2. **The current node** — its `label`, its `command`, and its **full `instructions[]`
+   text, verbatim**. (This is the *one* surface that prints instruction text — the
+   diagram never shows it; a `📝N` badge marks its presence there.)
+3. **The chores anchored here** — every chore anchored at `nav.now`, in **all**
+   statuses (not just the outstanding ones), each with a status pip:
+   `■` done · `▨` skipped · `□` to-do · `▣` to-do & strongly-recommended. Seeing the
+   done ones tick is the point — the checklist visibly completes.
+
+`orient` is a pure **read** — it never mutates and writes nothing. The `--json` form
+emits `{ now, rail, node: { id, label, command, instructions }, chores: [ …, pip ] }`.
+A **set-but-dangling `nav.now`** (it names a node that isn't in `nodes[]` — a corrupt
+flow) is an **error** (`E305`), not a silent `node: null`; a flow with *no* position
+set degrades gracefully (the rail still prints).
+
 ---
 
 ## Chores — cross-cutting upkeep on the spine

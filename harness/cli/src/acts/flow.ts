@@ -434,6 +434,61 @@ export function registerFlowAct(
       return emitRawAndExit(`${renderChoresTable(chores)}\n`, io.writers, 0);
     });
 
+  // --- orient ------------------------------------------------------------
+  // The "where am I / what do I do next" read (plan 040 Phase 2): in ONE command,
+  // the rail + the `nav.now` node's label/command/full instructions[] text + the
+  // chores anchored here, each with a status pip — so a weak model READS its next
+  // step instead of inferring it. A READ — never mutates. Reuses `renderRailLine`
+  // (no reimplementation) + `listChores` (ALL statuses, so completed checks show
+  // ticked — `dueChores` would hide them; D6). The DEFAULT is the human text (D2 is
+  // for a weak model); `--json` opts into the structured envelope.
+  flow
+    .command('orient')
+    .description(
+      'Print where the flow is: rail + the nav.now node (label/command/instructions) + its chores (default: human text; --json for the envelope)',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .option('--json', 'emit the structured envelope instead of the human text')
+    .action((opts: { path?: string; slug?: string }) => {
+      // D2: orient is a weak-model read, so the DEFAULT is the human block and the
+      // structured envelope is an EXPLICIT `--json` opt-in — INDEPENDENT of the
+      // ambient TTY-derived io.mode (which defaults a piped/non-TTY orient to json).
+      // The root's `--json`/`--no-json` collapse to ONE commander boolean that can't
+      // tell an explicit flag from the non-TTY default, so read the tri-state from
+      // raw argv exactly as the entrypoint's `jsonFlag` does (the local `--json`
+      // option above is for `--help` discoverability; the argv read is the decision).
+      // `rawArgs` is a real commander field (the full argv) but isn't in its public
+      // typings — narrow-cast to read it (no value-taking global flag precedes the
+      // verb, so a flat scan is safe; same caveat the entrypoint's argv scans carry).
+      const rawArgs = (program as unknown as { rawArgs?: readonly string[] }).rawArgs ?? [];
+      const wantJson = orientWantsJson(rawArgs);
+      const orientIo: CliIo = { mode: wantJson ? 'json' : 'human', writers: io.writers };
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(orientIo, failureEnvelope(needPath(), deps.clock));
+      const read = readFlowDoc(resolved.path, svc);
+      if (!read.ok) return emit(orientIo, failureEnvelope(read, deps.clock));
+      const view = orientView(read.doc);
+      // Robustness: a SET nav.now that doesn't resolve to a node in nodes[] is a
+      // corrupt/inconsistent flow — error (E305, the missing-NODE case; the
+      // missing-FILE case is E301) rather than silently returning ok + node:null. A
+      // null/empty nav.now (no position) stays graceful (rail + "no current node").
+      if (view.now !== null && view.node === null) {
+        return emit(orientIo, failureEnvelope(danglingNow(view.now), deps.clock));
+      }
+      if (wantJson) {
+        return emit(
+          orientIo,
+          formatOk(
+            'flow',
+            { path: resolved.path, ...view } as unknown as Record<string, unknown>,
+            deps.clock,
+          ),
+        );
+      }
+      return emitRawAndExit(`${renderOrient(view)}\n`, orientIo.writers, 0);
+    });
+
   // --- status ------------------------------------------------------------
   flow
     .command('status')
@@ -968,6 +1023,35 @@ function needPath(): FlowFailure {
   };
 }
 
+/**
+ * Whether `harness flow orient` was EXPLICITLY asked for the JSON envelope (plan 040
+ * P2-fix). orient defaults to the HUMAN block (D2 is a weak-model read), so — unlike
+ * every other command — it must NOT inherit the ambient mode, which defaults a
+ * non-TTY orient to json. The root's `--json`/`--no-json` collapse to one commander
+ * boolean that loses the "absent" state, so (as the entrypoint's `jsonFlag` does) we
+ * read the tri-state straight from raw argv: explicit `--json` wins, `--no-json`
+ * forces human, absent ⇒ human. This is the ONE sanctioned act-level argv read.
+ */
+function orientWantsJson(argv: readonly string[]): boolean {
+  return argv.includes('--json') && !argv.includes('--no-json');
+}
+
+/**
+ * The orient robustness failure: a SET `nav.now` that doesn't resolve to any node
+ * in `nodes[]` — a corrupt/inconsistent flow. Reuses `E305 FLOW_NODE_INVALID` (the
+ * "a node that does not exist" code), the missing-NODE analogue of the missing-FILE
+ * `E301`. (plan 040 P2-fix.)
+ */
+function danglingNow(now: string): FlowFailure {
+  return {
+    ok: false,
+    status: 'error',
+    code: ErrorCodes.FLOW_NODE_INVALID,
+    message: `nav.now points at "${now}", which is not a node in this flow.`,
+    next_action: 'Set the position to an existing node: `harness flow nav set --now <node>`.',
+  };
+}
+
 /** Read the ops payload from stdin (`harness flow apply --ops -`). Synchronous fd-0
  *  read; returns '' on EOF / no stdin (an empty payload then fails JSON.parse cleanly). */
 function readStdin(): string {
@@ -1037,6 +1121,85 @@ function resolveInstructions(
 function choreFromFlags(kind?: string, importance?: string): Chore | undefined {
   if (kind === undefined && importance === undefined) return undefined;
   return { kind: kind ?? '', importance: importance ?? '' };
+}
+
+/**
+ * The chore status pip for `orient` (D6): `■` done · `▨` skipped · else outstanding
+ * — `▣` when a still-open chore is `strongly-recommended` (the one importance with
+ * teeth), `□` otherwise. The `🧰` glyph + importance marker is a P3 render concern —
+ * NOT added here; once P3 lands, the shared render inherits it.
+ */
+function chorePip(row: ChoreRow): string {
+  if (row.status === 'done') return '■';
+  if (row.status === 'skipped') return '▨';
+  return row.importance === 'strongly-recommended' ? '▣' : '□';
+}
+
+/** One chore line in the `orient` read — a `ChoreRow` plus its status pip. */
+interface OrientChore extends ChoreRow {
+  pip: string;
+}
+
+/** The structured `harness flow orient` read: rail + the nav.now node + chores-with-pips. */
+interface OrientView {
+  now: string | null;
+  rail: string;
+  node: { id: string; label: string; command: string | null; instructions: string[] } | null;
+  chores: OrientChore[];
+}
+
+/**
+ * Compose the `orient` read for `nav.now` (plan 040 Phase 2 / AC-03): the shared
+ * rail line, the current node's label/command/full `instructions[]` text, and the
+ * chores anchored here — `listChores` (ALL statuses, so a completed check shows
+ * ticked), NOT `dueChores` (which would hide done/skipped; D6) — each tagged with
+ * its status pip. A READ — never mutates. Degrades gracefully: no position / a
+ * dangling `nav.now` → `node: null`, `chores: []` (the rail still renders).
+ */
+function orientView(doc: FlowDoc): OrientView {
+  const now = doc.nav?.now;
+  const nowId = typeof now === 'string' && now.length > 0 ? now : null;
+  const node = nowId !== null ? doc.nodes.find((n) => n.id === nowId) : undefined;
+  const chores = nowId !== null ? listChores(doc, nowId) : [];
+  return {
+    now: nowId,
+    rail: renderRailLine(doc),
+    node:
+      node === undefined
+        ? null
+        : {
+            id: node.id,
+            label: node.label ?? node.id,
+            command: typeof node.command === 'string' ? node.command : null,
+            instructions: Array.isArray(node.instructions) ? node.instructions : [],
+          },
+    chores: chores.map((c) => ({ ...c, pip: chorePip(c) })),
+  };
+}
+
+/**
+ * Human-readable `harness flow orient` block (JSON mode rides the envelope instead):
+ * the rail line, then the `nav.now` node (label/command + its `instructions[]`
+ * verbatim — the ONE surface that prints instruction text), then the anchored chores
+ * each with a status pip. Empty sections are simply omitted.
+ */
+function renderOrient(view: OrientView): string {
+  const lines: string[] = [view.rail];
+  if (view.node === null) {
+    lines.push('', '(no current node — set one with `harness flow nav set --now <node>`)');
+    return lines.join('\n');
+  }
+  const cmd = view.node.command ? `  ${view.node.command}` : '';
+  lines.push('', `▶ ${view.node.label} (${view.node.id})${cmd}`);
+  if (view.node.instructions.length > 0) {
+    lines.push('  Instructions:');
+    for (const t of view.node.instructions) lines.push(`    • ${t}`);
+  }
+  if (view.chores.length > 0) {
+    lines.push('  Chores:');
+    for (const c of view.chores) lines.push(`    ${c.pip} ${c.label}`);
+  }
+  return lines.join('\n');
 }
 
 /** Human-readable `harness flow chores` table (JSON mode rides the envelope instead). */
