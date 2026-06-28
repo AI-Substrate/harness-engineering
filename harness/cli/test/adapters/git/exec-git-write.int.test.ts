@@ -108,6 +108,46 @@ describe('ExecGitWrite — real orphan-ref plumbing', () => {
   });
 
   /**
+   * RECURSION-SAFETY GUARD — the telemetry push MUST carry `--no-verify` so it can
+   * never trigger a `pre-push` hook. A push-triggered gate that itself pushes
+   * telemetry recursed catastrophically (the removed pre-push `harness checks` gate
+   * → load average 175). This proves the flag is present AND effective: a `pre-push`
+   * hook that ALWAYS fails cannot block the telemetry push.
+   */
+  it('push uses --no-verify: a failing pre-push hook cannot block it', () => {
+    const remote = mkdtempSync(join(tmpdir(), 'telem-gitwrite-remote-'));
+    try {
+      execFileSync('git', ['init', '--bare', '-q', remote]);
+      g('remote', 'add', 'origin', remote);
+      // A pre-push hook that ALWAYS fails — a push WITHOUT --no-verify aborts here.
+      writeFileSync(
+        join(repo, '.git', 'hooks', 'pre-push'),
+        '#!/usr/bin/env bash\necho "pre-push BLOCK" >&2\nexit 1\n',
+        { mode: 0o755 },
+      );
+      const ref = telemetryRefFor('2026/03/24', 'sessNoVerify');
+      const blob = git.hashObject('{"command":"doctor","window":{"from":0,"to":1}}\n');
+      const tree = git.mktree([{ mode: '100644', type: 'blob', sha: blob, name: '1.json' }]);
+      const commit = git.commitTree(tree, null, 'telemetry: flush nv');
+      git.updateRef(ref, commit, null);
+
+      // --no-verify bypasses the failing hook → push succeeds, the ref lands on the remote.
+      expect(() => git.push(`${ref}:${ref}`)).not.toThrow();
+      expect(
+        execFileSync('git', ['--git-dir', remote, 'rev-parse', ref], { encoding: 'utf8' }).trim(),
+      ).toBe(commit);
+    } finally {
+      try {
+        g('remote', 'remove', 'origin');
+      } catch {
+        /* best-effort cleanup */
+      }
+      rmSync(join(repo, '.git', 'hooks', 'pre-push'), { force: true });
+      rmSync(remote, { recursive: true, force: true });
+    }
+  });
+
+  /**
    * AC-13 / A4 fallback branch — the OTHER half of attribution: when the repo has
    * NO configured `user.name`/`user.email`, `commitTree` injects the generic
    * `TELEMETRY_FALLBACK_AUTHOR` so an unconfigured environment (a fresh CI runner)

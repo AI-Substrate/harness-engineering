@@ -23,7 +23,13 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 ## Local checks
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
-- **There is intentionally NO `pre-push` git hook.** A tracked `.githooks/pre-push` that ran `harness checks` on every push was removed: `harness checks` auto-pushes telemetry on exit (`refs/harness-telemetry/*`) *without* `--no-verify`, so a push-triggered checks gate re-triggers itself — an exponential push⇄checks recursion (it pinned a 16-core box at load 175). **Do not re-add it** (do not run `just install-hooks` — the recipe is gone — or set `core.hooksPath=.githooks`). If a local pre-push gate is ever wanted again, it must first guarantee telemetry pushes carry `--no-verify` so the gate cannot recurse.
+
+### Git hooks: NO pre-push gate, YES a post-commit telemetry flush
+
+These are deliberately asymmetric — keep them straight:
+
+- **NO `pre-push` checks gate.** A tracked `.githooks/pre-push` that ran `harness checks` on every push was removed because it recursed: `harness checks` auto-pushes telemetry on exit, the push re-fired the gate, and it pinned a 16-core box at load 175. **Do not re-add a push-triggered `harness checks` gate.**
+- **YES a `post-commit` telemetry flush** (`just install-hooks` → `core.hooksPath=.githooks` → `.githooks/post-commit`). It runs **only `harness telemetry sync`** — a counts-only push to `refs/harness-telemetry/*` — so each commit flushes buffered telemetry without anyone remembering to. It **cannot recurse** (no build, no tests; the telemetry push is `--no-verify`, so it triggers no hook) and **cannot block a commit** (post-commit's exit code is ignored). `harness doctor` warns when a repo is capturing telemetry but has no flush hook — run `just install-hooks` to resolve it. The `--no-verify` on the telemetry push (`exec-git-write.ts`) is **load-bearing**: it is what makes any commit/push-time flush recursion-proof.
 
 ## Repo framing
 

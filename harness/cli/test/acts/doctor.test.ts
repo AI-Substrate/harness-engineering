@@ -49,6 +49,7 @@ describe('registerDoctorAct', () => {
       'cli-build',
       'extensions',
       'quality-gate',
+      'telemetry-flush-hook',
       'instructions',
       'record-types',
     ]);

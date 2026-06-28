@@ -203,6 +203,22 @@ checks:
     npm run build
     node harness/cli/bin/harness.js checks
 
+# Install the recursion-safe telemetry-flush git hook for this clone (sets core.hooksPath -> .githooks).
+# `.githooks/post-commit` runs ONLY `harness telemetry sync` — a counts-only push to
+# refs/harness-telemetry/* — so each commit flushes buffered telemetry without the model
+# having to remember. It is NOT the old pre-push checks gate (no build, no tests, can't
+# recurse: the sync push is --no-verify). `harness doctor` warns when it is missing.
+# Standalone + idempotent (NOT a build dependency — opt in once). Undo: `git config --unset core.hooksPath`.
+install-hooks:
+    @if ! git rev-parse --git-dir >/dev/null 2>&1; then \
+        echo "… not a git checkout — skipping hook install"; \
+    elif [ "$(git config --get core.hooksPath || true)" = ".githooks" ]; then \
+        echo "✓ telemetry-flush hook already enabled (core.hooksPath=.githooks)."; \
+    else \
+        git config core.hooksPath .githooks && \
+        echo "✓ telemetry-flush hook enabled (core.hooksPath=.githooks) — harness telemetry sync runs on every commit."; \
+    fi
+
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":
     @bash scripts/new-test-repo.sh "{{dest}}"

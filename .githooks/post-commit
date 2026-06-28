@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Post-commit telemetry flush (plan 038 follow-up) — the DETERMINISTIC flush point.
+#
+# Flushes the counts-only telemetry buffer to refs/harness-telemetry/* via
+# `harness telemetry sync`, so a session that commits without running `checks`
+# or `ship` never strands its telemetry. Flushing is infrastructure here, not a
+# model responsibility — the agent can't "forget" to do it.
+#
+# Why this is SAFE — and categorically different from the removed pre-push gate:
+#   - it runs ONLY `harness telemetry sync` — no build, no tests, ~instant;
+#   - the sync's push is `--no-verify`, so it can NEVER trigger another hook
+#     (the pre-push `harness checks` gate recursed precisely because its push
+#     re-fired the gate — load average 175). This hook cannot recurse.
+#   - it runs on `post-commit`, whose exit code git IGNORES, so it can never
+#     block or fail a commit. Offline / no-remote / telemetry-off → silent no-op.
+#
+# Enable once per clone:  just install-hooks   (sets core.hooksPath=.githooks)
+# Telemetry off entirely:  export HARNESS_NO_TELEMETRY=1
+set -uo pipefail
+
+[ "${HARNESS_NO_TELEMETRY:-}" = "1" ] && exit 0
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+bin="$repo_root/harness/cli/bin/harness.js"
+[ -f "$bin" ] || exit 0   # dist not built / not the harness repo → nothing to do
+
+# Best-effort and fully decoupled from the commit's success; never block.
+node "$bin" telemetry sync >/dev/null 2>&1 || true
+exit 0
