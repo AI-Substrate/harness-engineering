@@ -74,8 +74,8 @@ jobs:
       - name: Build (tsc emit + generators) — prerequisite for the gate
         run: npm run build
 
-      # The ONE quality gate: the SAME composite `harness checks` devs run locally and
-      # the .githooks/pre-push hook enforces, so CI and local can't drift. It runs
+      # The ONE quality gate: the SAME composite `harness checks` devs run locally,
+      # so CI and local can't drift. It runs
       # tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and
       # arch/skills/markdown/windows-check, aggregated into one honest envelope. Invoke
       # the bin via node directly (plan 017: `npx harness` resolves the root bin

@@ -135,8 +135,7 @@ compact target="harness-foundations":
 # built instead of rebuilding.
 #
 # Build the CLI (docs + tsc) and (re)link `harness` globally to this working tree.
-# Depends on install-hooks so a normal build also enables the pre-push gate (once).
-build: install-hooks
+build:
     npm run build
     npm link --ignore-scripts
     @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
@@ -146,8 +145,7 @@ build: install-hooks
 # at $(npm prefix -g)/bin, pointing at harness/cli/bin/harness.js. The link is
 # LIVE: re-run this (or `just build`) after changes to refresh the dist it serves.
 # Undo with `just uninstall-cli`.
-# Depends on install-hooks so installing the CLI also enables the pre-push gate (once).
-install-cli: install-hooks
+install-cli:
     npm run build
     npm link --ignore-scripts
     @command -v harness >/dev/null 2>&1 \
@@ -198,26 +196,12 @@ windows-check:
 # fix -> format -> test -> lint-md -> windows-check (the engineering loop).
 fft: fix format test lint-md windows-check
 
-# The mandated composite quality gate — the SAME command CI and the pre-push hook run.
+# The mandated composite quality gate — the SAME command CI runs.
 # Builds the core first (the bin + drift guards need dist/), then runs `harness checks`
 # (tests+coverage, biome, typecheck, docs/flows/telemetry drift, arch/skills/markdown/windows).
 checks:
     npm run build
     node harness/cli/bin/harness.js checks
-
-# Enable the tracked pre-push gate for this clone (sets core.hooksPath -> .githooks).
-# `.git/hooks` is not tracked, so activation is per-clone — but `just build` /
-# `just install-cli` depend on this, so a normal setup turns it on. Idempotent + quiet
-# once enabled; no-ops outside a git checkout. Skip a single push with --no-verify.
-install-hooks:
-    @if ! git rev-parse --git-dir >/dev/null 2>&1; then \
-        echo "… not a git checkout — skipping pre-push hook install"; \
-    elif [ "$(git config --get core.hooksPath || true)" = ".githooks" ]; then \
-        true; \
-    else \
-        git config core.hooksPath .githooks && \
-        echo "✓ pre-push hook enabled (core.hooksPath=.githooks) — runs 'harness checks' before each push; bypass with 'git push --no-verify'."; \
-    fi
 
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":

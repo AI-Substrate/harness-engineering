@@ -3,9 +3,9 @@
 ## What this verb computes (the deterministic part)
 
 `harness checks` is this repo's **mandated quality gate** — the one command you run
-**before considering work done**, and the **same command CI and the `.githooks/pre-push`
-hook run** (so local and CI can't drift). It **composes** the repo's deterministic
-checks into a single honest envelope (it never auto-fixes, unlike `just fft`):
+**before considering work done**, and the **same command CI runs** (so local and CI
+can't drift). It **composes** the repo's deterministic checks into a single honest
+envelope (it never auto-fixes, unlike `just fft`):
 
 | Gate | Runs | Posture |
 |---|---|---|
@@ -21,8 +21,8 @@ checks into a single honest envelope (it never auto-fixes, unlike `just fft`):
 | `windows-check` | `harness windows-check` | warn-launch — findings → `degraded` |
 
 **Prerequisite:** the caller must `npm run build` first — `bin/harness.js` runs from
-`dist/` and the drift guards need it (CI and the pre-push hook both build first;
-`just checks` does too). `data` carries `{ durationMs, summary, gates[] }`, where each
+`dist/` and the drift guards need it (CI builds first; `just checks` does too).
+`data` carries `{ durationMs, summary, gates[] }`, where each
 gate is `{ name, status, exit, note }`.
 
 ### Verdicts
