@@ -11,6 +11,15 @@ This repository is **two things at once** — keep them distinct (the full versi
 
 Other repos are **consumers**: they install the CLI + skills, and *their* harness substrate (`.harness/extensions/`, governance doc, fixtures) lives in *their* tree — not here.
 
+### Where the SDD / the-flow skills live (NOT this repo)
+
+`the-flow` and the rest of the SDD pipeline skills are **authored in a different repo**:
+
+- **Source of truth**: `/Users/jordanknight/github/tools/skills/SDD/` (e.g. `the-flow/`, `validate-v2/`, `thesis/`, `crew-cut/`). **Edit here.**
+- **Deployed copy**: `~/.claude/skills/the-flow/` is a *deployed/symlinked* artifact — read-only for inspection, **never edit it**; changes get overwritten on the next deploy.
+
+So when working on `the-flow` (schema, template, references, routing), open `/Users/jordanknight/github/tools/skills/SDD/the-flow/…`, not the `~/.claude` mirror. (The `eng-harness-*` skills are the opposite — *those* are authored **here** under `skills/`.)
+
 ### Build mode vs. dogfood mode (do not conflate)
 
 - **Editing** `skills/eng-harness-*/SKILL.md` or `harness/cli/` is **product development** — it changes the harness shipped to every consumer. Treat it as source work, governed by the repo's tests/checks/constitution.
