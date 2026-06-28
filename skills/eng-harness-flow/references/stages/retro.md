@@ -172,11 +172,14 @@ Want me to save these to the project so they're not forgotten?
   • "tasks"         draft copy-pasteable fix-tasks
   • "plan"          draft plan specs for the bigger ones
   • "diffs"         stage ready-to-apply patches for you to review
+  • "extension"     scaffold a new `harness <verb>` for the sensor-shaped ones
 
   ▮
 ```
 
-Lead each entry with the plain description, then a one-line "→ what would fix it" hint — the `kind/target` taxonomy stays in the data, never on screen. The **two questions use the same locked wording** as the in-flight section (the seam is the last cheap moment to catch what the session never wrote down). The plain routes map one-to-one to the actions in Step 3: **yes / Enter** = save all · **pick** = save selected · **skip** = save nothing · **tasks** / **plan** / **diffs** = the three "take it further" routes.
+Lead each entry with the plain description, then a one-line "→ what would fix it" hint — the `kind/target` taxonomy stays in the data, never on screen. The **two questions use the same locked wording** as the in-flight section (the seam is the last cheap moment to catch what the session never wrote down). The plain routes map one-to-one to the actions in Step 3: **yes / Enter** = save all · **pick** = save selected · **skip** = save nothing · **tasks** / **plan** / **diffs** / **extension** = the four "take it further" routes.
+
+Offer **"extension"** only when at least one pending entry is **sensor-shaped** — a friction you *inferred* what a command could have *proved* (targets `project-sensor` / `runtime-inspectability` / `architecture-fitness` / `security` / `schema`, or any `magic-wand` that names a check / diagnostic / command). That class wants a **first-class, discoverable verb**, not a justfile line that rots unseen — it is the loop's encoding move proper (§ The "extension" route). When nothing pending is sensor-shaped, omit the route.
 
 ### Step 3 — Route by action
 
@@ -256,6 +259,24 @@ Compound lifecycle:
 
 `Run:` = best-effort command(s) exercising the change (from `suggested_encoding` when it names one; `(manual review only)` if genuinely unknown). `Expected:` = observable outcomes. The footer makes "encoded" mean *the loop changed AND we can prove it*.
 
+#### "extension" — scaffold a new `harness <verb>` (the encoding move proper)
+
+For each **sensor-shaped** entry — one you *inferred* what a command could have *proved* (targets `project-sensor` / `runtime-inspectability` / `architecture-fitness` / `security` / `schema`, or a `magic-wand` naming a check / diagnostic / command) — the durable encoding is a **first-class, discoverable verb**, not a one-off recipe. A justfile line is local and undiscoverable; a `harness <verb>` is loadable, self-documenting via `--help`, and found by every future agent — so a recurring inference is paid *once* instead of re-paid in tokens every session.
+
+This route does NOT author the verb itself (that is the router's encode step) — it does for extensions exactly what "diffs" does for patches: **emit the ready-to-run scaffold command** for the user to land, and record the intent. Per sensor-shaped entry:
+
+1. Derive a verb name (lowercase, hyphenated) + the wrapped command from `description` + `suggested_encoding` when it names a real repo command; else leave the wrap blank for custom logic.
+2. Print a copy-pasteable scaffold line (and a one-line sketch of what its `run(ctx)` should prove):
+
+   ```bash
+   harness new <verb> --wrap "<command>"   # e.g. harness new ci-smoke --wrap "just ci-smoke"
+   harness new <verb>                       # custom-logic stub (fill run(ctx) to prove <X>)
+   ```
+
+3. Save the entry to the record with `system.compound.status: suggested` and `resolved_by: harness new <verb>`. Clear.
+
+Entries are saved whether or not the user runs the scaffold (the suggestion is captured regardless). The guided fill-the-handler-and-validate step is the router's to route onward — this route only surfaces that the friction is **extension-shaped** and hands over the exact command.
+
 #### "skip" — save nothing
 
 `harness observe --clear` without saving anything. Print one line: "✓ skipped — 3 notes dropped, nothing saved". Unrecoverable — use sparingly.
@@ -301,7 +322,13 @@ The entry is **still saved to the record** regardless of the answer — the offe
 ### Encoding-hint generation (one line per entry)
 
 1. `entry.suggested_encoding` set → use it verbatim
-2. Else derive from kind + target: `difficulty/tooling` → "wrap in a justfile recipe" · `difficulty/skill` → "edit the SKILL.md" · `*/harness-itself` → "file an upstream issue on AI-Substrate/harness-engineering (or edit the source if this IS the harness repo)" · `magic-wand/*` → "encode as the suggestion above" · `gift/*` → "no encoding needed" · `insight/*` → "document in AGENTS.md or a docs/how article"
+2. Else derive from kind + target — **escalate sensor-shaped friction to a first-class verb, not a one-off recipe** (check this rung FIRST):
+   - `*/project-sensor` · `*/runtime-inspectability` · `*/architecture-fitness` · `*/security` · `*/schema`, or any difficulty whose fix is a **repeatable check / diagnostic / proof** (you *inferred* what a command could have *proved*) → **"scaffold a new `harness <verb>` extension (`harness new <verb>`) — a runnable, discoverable sensor every future agent finds via `--help`"**. This is the encoding move proper: a recurring inference becomes a deterministic verb, not a justfile line that rots undiscovered.
+   - `difficulty/tooling` (a one-off shell convenience, *not* a proof) → "wrap in a justfile recipe"
+   - `difficulty/skill` → "edit the SKILL.md"
+   - `*/harness-itself` → "file an upstream issue on AI-Substrate/harness-engineering (or edit the source if this IS the harness repo)"
+   - `magic-wand/*` → "encode as the suggestion above — a `harness <verb>` if it names a check / command / diagnostic, else a recipe or doc"
+   - `gift/*` → "no encoding needed" · `insight/*` → "document in AGENTS.md or a docs/how article"
 3. Else → "(no encoding hint — review manually)"
 
 ### `--drain` edge cases
@@ -371,7 +398,7 @@ Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harn
 - **Stale flags** (observational, never enforced): `open` > **4 weeks** → stale; `suggested` > **2 weeks** without `resolved_by` → stale.
 - **Prioritize top-10**: recurrence (count) → severity (`blocking` > `degrading` > `annoying` > none) → back-pressure leverage (clusters indicating missing proof/sensors/evidence/architecture/security/schema checks stay legible as proof-improvement candidates — display guidance only, no gate, no score, no index) → age.
 - **Token-cost framing (the leak detector)**: a recurring cluster is **the same inference being re-paid in tokens every session until someone encodes it** into the environment. Label recurrence with that cost. Display wording only — schema, statuses, and clustering logic are unchanged.
-- Recognize proof/back-pressure candidates by targets (`project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `infra`, `tooling`), by mentions of smoke/screenshot/log/trace/health/dependency-rule/CodeQL/schema checks, and by workarounds like "read code manually" / "eyeballed". Keep original fields intact; never rewrite kinds.
+- Recognize proof/back-pressure candidates by targets (`project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `infra`, `tooling`), by mentions of smoke/screenshot/log/trace/health/dependency-rule/CodeQL/schema checks, and by workarounds like "read code manually" / "eyeballed". Keep original fields intact; never rewrite kinds. **The remedy for a recurring proof/sensor cluster is a first-class `harness <verb>` extension (`harness new <verb>`)** — a discoverable, runnable sensor — not a one-off recipe; surface that as the encoding for these clusters (the "extension" route below).
 
 ### Step 4 — Print the view (NO on-disk writes)
 
@@ -422,7 +449,7 @@ Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harve
 
 ### Step 5 — Action menu
 
-The same save routes as the drain (keep all / pick / skip / tasks / plan / diffs — though saving is usually a no-op here, since these entries are already committed), plus three **lifecycle ops** to mark how a cluster landed. The ops mutate `system.compound.status` IN-PLACE in the source record (file's `schema_version`/`retro_id` untouched; last-write-wins on the rare concurrent harvest):
+The same save routes as the drain (keep all / pick / skip / tasks / plan / diffs / **extension** — though saving is usually a no-op here, since these entries are already committed), plus three **lifecycle ops** to mark how a cluster landed. Offer **"extension"** for any sensor-shaped cluster (§ the drain's "extension" route): it emits the `harness new <verb>` scaffold command so a recurring inference becomes a discoverable verb instead of being re-paid in tokens every session. The ops mutate `system.compound.status` IN-PLACE in the source record (file's `schema_version`/`retro_id` untouched; last-write-wins on the rare concurrent harvest):
 
 - **"done"** (it's been encoded) → `status: encoded`; prompt for `resolved_by:` (commit hash / PR URL / diff path)
 - **"won't-fix"** → `status: wontfix`
