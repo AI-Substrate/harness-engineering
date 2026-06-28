@@ -57,6 +57,31 @@ const CHORE_PIP: Record<string, string> = {
   skipped: '▨',
 };
 
+/**
+ * Chore importance → label/rail marker glyph (D5; ws-002). The marker rides the
+ * `🧰` badge in the label AND the `⚑ due:` rail callout — the text surface that has
+ * no CSS, so the glyph (not the border) carries importance for a weak model.
+ * `recommended` / `informational` / anything else → PLAIN (no marker char): `🧰°`
+ * optional · `🧰` recommended · `🧰‼` strongly-recommended. Terminal-safe glyphs.
+ */
+const IMPORTANCE_MARKER: Record<string, string> = {
+  optional: '°',
+  'strongly-recommended': '‼',
+};
+/**
+ * Chore importance → ADDITIVE classDef (D5). Colour stays TYPE; importance is a
+ * second `:::` token (mermaid `id["…"]:::harness:::impStrong`) carrying border-only
+ * weight — the graphical read that pairs with the rail-legible glyph marker.
+ * `recommended` / `informational` → no border class (plain 1px).
+ */
+const IMPORTANCE_CLASS: Record<string, string> = {
+  optional: 'impOptional',
+  'strongly-recommended': 'impStrong',
+};
+/** The `🧰` badge's importance marker for a chore (`°`/plain/`‼`); '' when unmapped. */
+const choreMarker = (importance: string | undefined): string =>
+  IMPORTANCE_MARKER[importance ?? ''] ?? '';
+
 /** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
 export type Zone = 'preflight' | 'flight' | 'postflight';
 const ZONES: ReadonlySet<string> = new Set<string>(['preflight', 'flight', 'postflight']);
@@ -95,13 +120,22 @@ const CLASS_DEFS: readonly string[] = [
   'classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;',
   'classDef companion fill:#D1C4E9,stroke:#5E35B1;',
   'classDef worker fill:#B2DFDB,stroke:#00897B;',
-  'classDef chore fill:#E0F2F1,stroke:#00897B,stroke-dasharray:3 2;',
   'classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;',
+  // Importance is an ADDITIVE border channel (D5) — colour stays TYPE; these stack
+  // as a SECOND `:::` token (`:::harness:::impStrong`). Chore-ness is now the `🧰`
+  // badge + dotted edge, so the old teal `classDef chore` is retired.
+  'classDef impOptional stroke-dasharray:2 3;',
+  'classDef impStrong stroke-width:3px;',
 ];
 
+// Two channels (D5/D4): a COLOUR row (type/status — `🧰 chore` dropped, no longer a
+// colour) and a BADGES row (the colour-independent label glyphs, incl. D4 `📝
+// instructions` and the D5 `🧰` importance markers). Kept as one rendered line.
 const LEGEND =
-  '**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative)' +
-  ' · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker · 🧰 chore (upkeep).';
+  '**Legend** — colour = type/status: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed' +
+  ' · 🔶 decision · 🗣 user input · 🟪 harness · 🤖 companion · 🛠 worker.' +
+  ' Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore' +
+  ' (° optional / recommended / ‼ strongly-recommended).';
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -179,20 +213,25 @@ function buildIdMap(nodes: readonly FlowNode[]): Map<string, string> {
 // Per-node render decisions.
 // ---------------------------------------------------------------------------
 
-/** The classDef a node renders with: decision > chore > harness > status-mapped > unknown.
- *  Chore-class is FLAG-driven, not TYPE-driven (039 AC-11): a chore-flagged node renders
- *  `:::chore` even when its type is a harness seam (`harness-boot`/`harness-retro`/
- *  `backpressure`/`observe`) — in a flight-plan every harness touchpoint IS due upkeep.
- *  An un-flagged seam node still renders `:::harness` (AC-08 back-compat). The decision
- *  rhombus keeps its class (and shape) over a chore flag. */
+/** The classDef a node renders with: decision > harness-type > status-mapped > unknown
+ *  (D5; AC-04, F-01). Colour now encodes **type** ONLY — the chore flag NO LONGER
+ *  overrides the class (039 AC-11 reversed). A chore-flagged harness seam renders
+ *  `:::harness` (violet); a chore on a spine node keeps its status-mapped colour;
+ *  chore-ness + importance ride the `🧰<marker>` label badge + the additive
+ *  `impOptional`/`impStrong` border instead. The decision rhombus still wins its class. */
 function nodeClass(node: FlowNode): string {
   if (node.type === 'decision') return 'decision';
-  if (node.chore !== undefined) return 'chore';
   if (HARNESS_TYPES.has(node.type)) return 'harness';
   return STATUS_CLASS[node.status] ?? 'unknown';
 }
 
-/** The node label: escaped `label` (or id), plus `💬N`/`📄N` badges (comments / artifacts). */
+/**
+ * The node label: escaped `label` (or id) + the colour-independent badge channel,
+ * in one fixed order — `<label> 💬N 📄N 📝N 🧰<marker>` (D4/D5). `💬N` comments ·
+ * `📄N` artifacts · `📝N` instructions (COUNT only — the instruction TEXT never
+ * enters the diagram; `orient` prints it) · `🧰<marker>` when the node is a chore,
+ * the marker (`°`/plain/`‼`) carrying importance on the text surface.
+ */
 function nodeLabel(node: FlowNode): string {
   const base = escapeMermaid(node.label ?? node.id);
   const badges: string[] = [];
@@ -200,16 +239,26 @@ function nodeLabel(node: FlowNode): string {
   if (comments > 0) badges.push(`💬${comments}`);
   const artifacts = Array.isArray(node.artifacts) ? node.artifacts.length : 0;
   if (artifacts > 0) badges.push(`📄${artifacts}`);
+  const instructions = Array.isArray(node.instructions) ? node.instructions.length : 0;
+  if (instructions > 0) badges.push(`📝${instructions}`);
+  if (node.chore !== undefined) badges.push(`🧰${choreMarker(node.chore.importance)}`);
   return badges.length > 0 ? `${base} ${badges.join(' ')}` : base;
 }
 
-/** Declare a node: `decision` is a rhombus fork `{"…"}`; everything else a box `["…"]`. */
+/**
+ * Declare a node: `decision` is a rhombus fork `{"…"}`; everything else a box `["…"]`.
+ * Importance rides an ADDITIVE second class token (D5) — `:::<type>:::impOptional` /
+ * `:::impStrong` for optional / strongly-recommended chores (colour stays the type
+ * class); recommended / informational / non-chore nodes emit the single class token.
+ */
 function declareNode(node: FlowNode, mid: string): string {
   const label = nodeLabel(node);
   const cls = nodeClass(node);
+  const imp = node.chore !== undefined ? IMPORTANCE_CLASS[node.chore.importance] : undefined;
+  const classTok = imp ? `:::${cls}:::${imp}` : `:::${cls}`;
   return node.type === 'decision'
-    ? `    ${mid}{"${label}"}:::${cls}`
-    : `    ${mid}["${label}"]:::${cls}`;
+    ? `    ${mid}{"${label}"}${classTok}`
+    : `    ${mid}["${label}"]${classTok}`;
 }
 
 function isExcursion(node: FlowNode): boolean {
@@ -498,7 +547,11 @@ export function renderRailLine(doc: FlowDoc, mode: ChoreRailMode = 'collapse'): 
   const line = `[${railTitle(doc)}] ${renderRailBody(nodes, mode)}`;
   const due = dueChores(doc);
   if (due.length === 0) return line;
-  return `${line}  ⚑ due: ${due.map((c) => escapeMd(c.label)).join(', ')}`;
+  // Each due chore carries its `🧰`+importance marker (D5 rail parity) so the text
+  // surface signals chore-ness + how strongly it's advised; the `, ` join is kept.
+  return `${line}  ⚑ due: ${due
+    .map((c) => `${escapeMd(c.label)} 🧰${choreMarker(c.importance)}`)
+    .join(', ')}`;
 }
 
 /** The embedded rail line for the rendered `.md` — the shared zoned body, labelled. */

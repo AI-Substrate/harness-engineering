@@ -31,8 +31,9 @@ flowchart TD
     classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;
     classDef companion fill:#D1C4E9,stroke:#5E35B1;
     classDef worker fill:#B2DFDB,stroke:#00897B;
-    classDef chore fill:#E0F2F1,stroke:#00897B,stroke-dasharray:3 2;
     classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
+    classDef impOptional stroke-dasharray:2 3;
+    classDef impStrong stroke-width:3px;
 ```
 
-**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker · 🧰 chore (upkeep).
+**Legend** — colour = type/status: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness · 🤖 companion · 🛠 worker. Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended).
