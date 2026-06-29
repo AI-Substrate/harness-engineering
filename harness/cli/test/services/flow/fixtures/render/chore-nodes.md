@@ -10,7 +10,7 @@ flowchart TD
     spec["Spec"]:::done
     val["Validate 🧰"]:::unknown
     build["Build"]:::wip
-    compact["Compact context 🧰°"]:::done:::impOptional
+    compact["Compact context 🧰°"]:::done
     dec{"Ship or iterate? 🧰"}:::decision
     review["Review"]:::known
     archive["Archive branch 🧰"]:::unknown
@@ -25,7 +25,7 @@ flowchart TD
     review --> merge
     archive --> merge
 
-    guard["Grill the design 🧰‼"]:::unknown:::impStrong
+    guard["Grill the design 🧰‼"]:::unknown
     guard -.-> build
 
     classDef done fill:#C8E6C9,stroke:#2E7D32;
@@ -41,6 +41,8 @@ flowchart TD
     classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
     classDef impOptional stroke-dasharray:2 3;
     classDef impStrong stroke-width:3px;
+    class compact impOptional;
+    class guard impStrong;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness · 🤖 companion · 🛠 worker. Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended).

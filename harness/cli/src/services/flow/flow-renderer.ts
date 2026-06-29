@@ -70,9 +70,10 @@ const IMPORTANCE_MARKER: Record<string, string> = {
 };
 /**
  * Chore importance → ADDITIVE classDef (D5). Colour stays TYPE; importance is a
- * second `:::` token (mermaid `id["…"]:::harness:::impStrong`) carrying border-only
- * weight — the graphical read that pairs with the rail-legible glyph marker.
- * `recommended` / `informational` → no border class (plain 1px).
+ * border-only weight applied via a SEPARATE `class <id> <impClass>;` statement
+ * (mermaid rejects a chained `id:::harness:::impStrong`) — the graphical read that
+ * pairs with the rail-legible glyph marker. `recommended` / `informational` → no
+ * border class (plain 1px).
  */
 const IMPORTANCE_CLASS: Record<string, string> = {
   optional: 'impOptional',
@@ -121,9 +122,10 @@ const CLASS_DEFS: readonly string[] = [
   'classDef companion fill:#D1C4E9,stroke:#5E35B1;',
   'classDef worker fill:#B2DFDB,stroke:#00897B;',
   'classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;',
-  // Importance is an ADDITIVE border channel (D5) — colour stays TYPE; these stack
-  // as a SECOND `:::` token (`:::harness:::impStrong`). Chore-ness is now the `🧰`
-  // badge + dotted edge, so the old teal `classDef chore` is retired.
+  // Importance is an ADDITIVE border channel (D5) — colour stays TYPE; these are
+  // applied via a separate `class <id> <impClass>;` statement (mermaid rejects a
+  // chained `:::harness:::impStrong`). Chore-ness is now the `🧰` badge + dotted
+  // edge, so the old teal `classDef chore` is retired.
   'classDef impOptional stroke-dasharray:2 3;',
   'classDef impStrong stroke-width:3px;',
 ];
@@ -254,11 +256,24 @@ function nodeLabel(node: FlowNode): string {
 function declareNode(node: FlowNode, mid: string): string {
   const label = nodeLabel(node);
   const cls = nodeClass(node);
-  const imp = node.chore !== undefined ? IMPORTANCE_CLASS[node.chore.importance] : undefined;
-  const classTok = imp ? `:::${cls}:::${imp}` : `:::${cls}`;
+  // Only the TYPE class goes inline — mermaid's `:::` shorthand takes exactly ONE
+  // class; a chained `:::type:::imp` is a PARSE ERROR (STYLE_SEPARATOR). The additive
+  // importance border is applied separately via a `class <id> <imp>;` statement
+  // (see importanceClassLine), which mermaid does accept.
   return node.type === 'decision'
-    ? `    ${mid}{"${label}"}${classTok}`
-    : `    ${mid}["${label}"]${classTok}`;
+    ? `    ${mid}{"${label}"}:::${cls}`
+    : `    ${mid}["${label}"]:::${cls}`;
+}
+
+/** The additive importance border for a chore node, as a SEPARATE mermaid `class`
+ *  statement (D5). Mermaid rejects chained inline classes (`id:::a:::b`), so the
+ *  `impOptional`/`impStrong` border MUST be applied with `class <id> <impClass>;`
+ *  after the classDefs — never as a second `:::` token. `recommended`/`informational`
+ *  map to no border, so they yield no line. */
+function importanceClassLine(node: FlowNode, mid: string): string | undefined {
+  if (node.chore === undefined) return undefined;
+  const imp = IMPORTANCE_CLASS[node.chore.importance];
+  return imp ? `    class ${mid} ${imp};` : undefined;
 }
 
 function isExcursion(node: FlowNode): boolean {
@@ -352,9 +367,14 @@ export function renderFlow(doc: FlowDoc): string {
     out.push(...agentLines);
   }
 
-  // 6. classDefs (foot).
+  // 6. classDefs (foot) + the additive importance-border `class` statements (D5 —
+  //    a separate statement, NOT a chained `:::` token which mermaid rejects).
   out.push('');
   for (const def of CLASS_DEFS) out.push(`    ${def}`);
+  for (const n of nodes) {
+    const line = importanceClassLine(n, mid(n.id));
+    if (line) out.push(line);
+  }
   out.push('```');
 
   // --- Legend ----------------------------------------------------------------

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -43,6 +44,87 @@ function mermaidBlock(rendered: string): string {
   const m = rendered.match(/```mermaid\n([\s\S]*?)\n```/);
   return m ? m[1] : '';
 }
+
+/** The harness's own headless `mermaid.parse()` runner (jsdom, no Chromium) — the
+ *  SAME validator `harness markdown-lint` uses, reused here because its frozen scope
+ *  excludes `docs/plans/**` + test fixtures, so the renderer's output was never
+ *  syntax-checked (which let an invalid chained `:::a:::b` ship). */
+const MERMAID_RUNNER = fileURLToPath(
+  new URL(
+    '../../../../../.harness/extensions/markdown-lint/lib/mermaid-runner.mjs',
+    import.meta.url,
+  ),
+);
+
+type Fence = { path: string; text: string };
+function validateMermaid(fences: Fence[]): { path?: string; valid: boolean; error?: string }[] {
+  const out = execFileSync('node', [MERMAID_RUNNER, JSON.stringify(fences)], { encoding: 'utf8' });
+  const last = out.trim().split('\n').filter(Boolean).pop() ?? '{}';
+  const parsed = JSON.parse(last) as {
+    ok: boolean;
+    loadError?: string;
+    results?: { path?: string; valid: boolean; error?: string }[];
+  };
+  if (!parsed.ok) throw new Error(`mermaid-runner setup failed: ${parsed.loadError}`);
+  return parsed.results ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Plan 040 — the renderer's mermaid output must actually PARSE. A chained inline
+// class (`id:::harness:::impOptional`) is a mermaid PARSE ERROR (STYLE_SEPARATOR)
+// that string-only golden comparison never caught — importance borders go via a
+// separate `class <id> <imp>;` statement instead.
+// ---------------------------------------------------------------------------
+
+describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
+  const fixtures = readdirSync(FIXTURE_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => f.replace(/\.json$/, ''));
+
+  it('every golden fixture renders syntactically valid mermaid (headless mermaid.parse)', () => {
+    const fences = fixtures
+      .map((name) => ({ path: name, text: mermaidBlock(renderFlow(loadFixture(name))) }))
+      .filter((f) => f.text.length > 0);
+    const results = validateMermaid(fences);
+    const invalid = results.filter((r) => !r.valid);
+    expect(invalid, `invalid mermaid fences: ${JSON.stringify(invalid)}`).toHaveLength(0);
+  });
+
+  it('importance borders use a separate `class` statement, never a chained `:::a:::b`', () => {
+    const block = mermaidBlock(
+      renderFlow(
+        doc([
+          { id: 'p1', type: 'phase', label: 'P1', status: 'known', next: ['ship'] },
+          { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
+          {
+            id: 'opt',
+            type: 'backpressure',
+            label: 'Opt',
+            status: 'assumed',
+            next: ['p1'],
+            chore: { kind: 'command', importance: 'optional' },
+          },
+          {
+            id: 'strong',
+            type: 'harness-retro',
+            label: 'Strong',
+            status: 'assumed',
+            next: ['p1'],
+            chore: { kind: 'command', importance: 'strongly-recommended' },
+          },
+        ]),
+      ),
+    );
+    // the bug: no chained inline class token anywhere
+    expect(block).not.toMatch(/:::[A-Za-z][\w-]*:::/);
+    // importance applied as separate, valid `class` statements
+    expect(block).toContain('class opt impOptional;');
+    expect(block).toContain('class strong impStrong;');
+    // and the whole thing actually parses
+    const [res] = validateMermaid([{ path: 'importance', text: block }]);
+    expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // T001 — golden-file render parity (byte-identical) + drift detection.
@@ -518,8 +600,10 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    // colour stays `done` (status); optional adds the `🧰°` marker + the `impOptional` border
-    expect(out).toContain('compact["Compact 🧰°"]:::done:::impOptional');
+    // colour stays `done` (status); optional adds the `🧰°` marker + the `impOptional`
+    // border — border via a SEPARATE `class` statement (mermaid rejects chained `:::`)
+    expect(out).toContain('compact["Compact 🧰°"]:::done');
+    expect(out).toContain('class compact impOptional;');
   });
 
   it('importance: optional→🧰°/impOptional · recommended→🧰/no border · strongly→🧰‼/impStrong', () => {
@@ -551,9 +635,12 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    expect(out).toContain('opt["opt 🧰°"]:::harness:::impOptional');
-    expect(out).toContain('rec["rec 🧰"]:::harness\n'); // recommended: plain marker, single class
-    expect(out).toContain('strong["strong 🧰‼"]:::harness:::impStrong');
+    expect(out).toContain('opt["opt 🧰°"]:::harness');
+    expect(out).toContain('class opt impOptional;');
+    expect(out).toContain('rec["rec 🧰"]:::harness\n'); // recommended: plain marker, single class, no border line
+    expect(out).not.toContain('class rec '); // recommended → no importance border statement
+    expect(out).toContain('strong["strong 🧰‼"]:::harness');
+    expect(out).toContain('class strong impStrong;');
   });
 
   it('badge ORDER is 💬N 📄N 📝N 🧰<marker> and instruction TEXT never leaks (D4/D5)', () => {
@@ -572,8 +659,9 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    // exact assembled order; impOptional border rides the optional chore
-    expect(out).toContain('n["Boot check 💬1 📄1 📝2 🧰°"]:::harness:::impOptional');
+    // exact assembled order; impOptional border rides the optional chore (separate `class` stmt)
+    expect(out).toContain('n["Boot check 💬1 📄1 📝2 🧰°"]:::harness');
+    expect(out).toContain('class n impOptional;');
     // 📝N is a COUNT — the instruction text is absent from the entire render (D4)
     expect(out).not.toContain('Read the brief end to end');
     expect(out).not.toContain('Run the linter');

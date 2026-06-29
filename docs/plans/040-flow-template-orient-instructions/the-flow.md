@@ -24,7 +24,7 @@ flowchart TD
     phase_4 --> phase_5
     phase_5 --> ship
 
-    backpressure["Backpressure survey 🧰°"]:::harness:::impOptional
+    backpressure["Backpressure survey 🧰°"]:::harness
     boot_1["Boot check 🧰"]:::harness
     observe_1["Observe: P1 🧰"]:::harness
     retro_1["Retro: P1 (drain) 🧰"]:::harness
@@ -76,6 +76,7 @@ flowchart TD
     classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
     classDef impOptional stroke-dasharray:2 3;
     classDef impStrong stroke-width:3px;
+    class backpressure impOptional;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness · 🤖 companion · 🛠 worker. Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended).
