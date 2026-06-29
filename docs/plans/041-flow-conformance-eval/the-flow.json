@@ -3,8 +3,8 @@
   "kind": "flight-plan",
   "slug": "flow-conformance-eval",
   "nav": {
-    "now": "phase-2",
-    "next": "phase-3",
+    "now": "phase-3",
+    "next": "ship",
     "intent": "Build a flow-conformance eval harness: an orchestrator drives a blind agent through the-flow on a fixed task, graded deterministically via telemetry/OTel + filesystem, config-driven, reports to .harness/live-testing/<slug>/",
     "bag": {
       "mode": "unknown",
@@ -271,6 +271,50 @@
         "from": "phase-1",
         "to": "phase-2"
       }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:04:46.112Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:42:47.725Z",
+      "details": {
+        "node": "phase-2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:42:48.188Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:42:48.629Z",
+      "details": {
+        "from": "phase-2",
+        "to": "phase-3"
+      }
     }
   ],
   "nodes": [
@@ -478,12 +522,20 @@
       "id": "phase-2",
       "type": "phase",
       "label": "P2: The flow-eval engine",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-06-29T04:40:45.670Z",
-      "modified_at": "2026-06-29T04:40:46.081Z"
+      "modified_at": "2026-06-29T06:42:48.188Z",
+      "ran_at": "2026-06-29T06:42:47.725Z",
+      "comments": [
+        {
+          "at": "2026-06-29T06:42:48.188Z",
+          "text": "flow-eval extension built via flow-pair. Review: all 7 code risks cleared, dim-0 satisfied; 2 artifact gaps fixed (execution log by orchestrator, instructions.md by coder). doctor:ok E144 cleared. 42 flow-eval tests / 1641 suite pass.",
+          "kind": "note"
+        }
+      ]
     },
     {
       "id": "phase-3",
