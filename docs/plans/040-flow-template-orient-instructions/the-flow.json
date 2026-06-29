@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "flow-template-orient-instructions",
   "nav": {
-    "now": "phase-4",
+    "now": "phase-5",
     "next": null,
     "intent": "Refine the OOTB flight-plan starter (D1-D6): bake chores into the template + delete the skill-side gate/§3b; add 'harness flow orient'; per-node instructions[] field; colour-by-type with icon/visual modifiers; orient-every-turn invariant; orient shows chores with ticks. Folds into the 039 branch/PR.",
     "bag": {
@@ -594,6 +594,38 @@
         "from": "known",
         "to": "in_progress"
       }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T00:05:31.637Z",
+      "details": {
+        "node": "phase-4",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T00:05:32.049Z",
+      "details": {
+        "from": "phase-4",
+        "to": "phase-5"
+      }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T00:05:32.454Z",
+      "details": {
+        "node": "phase-5",
+        "from": "known",
+        "to": "in_progress"
+      }
     }
   ],
   "nodes": [
@@ -796,23 +828,24 @@
       "id": "phase-4",
       "type": "phase",
       "label": "P4: the-flow skill (template/expander/invariant)",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "phase-5"
       ],
       "created_at": "2026-06-28T21:48:51.001Z",
-      "modified_at": "2026-06-28T23:27:48.140Z"
+      "modified_at": "2026-06-29T00:05:31.637Z",
+      "ran_at": "2026-06-29T00:05:31.637Z"
     },
     {
       "id": "phase-5",
       "type": "phase",
       "label": "P5: Doctrine-parity + coexistence",
-      "status": "known",
+      "status": "in_progress",
       "next": [
         "ship"
       ],
       "created_at": "2026-06-28T21:48:51.405Z",
-      "modified_at": "2026-06-28T21:48:51.405Z"
+      "modified_at": "2026-06-29T00:05:32.454Z"
     },
     {
       "id": "boot-2",
