@@ -5,91 +5,35 @@
 
 **Rail**: ◆─□─[ ◐─■─□─▨ ]─◇─◇  ◆ Spec · [*] · [ ◐ Build · [*2] ] · ◇ Review · ◇ Merge
 
-### ◆ Spec · _done_
-
 ```mermaid
-flowchart LR
+flowchart TD
     spec["Spec"]:::done
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-```
-
-↓
-
-### □ Validate · _todo_
-
-```mermaid
-flowchart LR
     val["Validate 🧰"]:::unknown
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-```
-
-↓
-
-### ◐ Build · _in progress_
-
-```mermaid
-flowchart LR
     build["Build"]:::wip
-    guard["Grill the design 🧰‼"]:::unknown
-    build -.- guard
-    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef impStrong stroke-width:3px;
-    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
-    class guard impStrong;
-    class build current;
-```
-
-↓
-
-### ■ Compact context · _done_
-
-```mermaid
-flowchart LR
     compact["Compact context 🧰° ✓"]:::done
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef impOptional stroke-dasharray:2 3;
-    class compact impOptional;
-```
-
-↓
-
-### □ Ship or iterate? · _todo_
-
-```mermaid
-flowchart LR
     dec{"Ship or iterate? 🧰"}:::decision
-    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-```
-
-↓
-
-### ◇ Review · _known_
-
-```mermaid
-flowchart LR
     review["Review"]:::known
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
-```
-
-↓
-
-### ▨ Archive branch · _skipped_
-
-```mermaid
-flowchart LR
     archive["Archive branch 🧰 ✕"]:::unknown
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-```
-
-↓
-
-### ◇ Merge · _assumed_
-
-```mermaid
-flowchart LR
     merge["Merge"]:::assumed
+
+    spec --> val --> build --> compact --> dec --> review --> archive --> merge
+
+    buildC["□‼ Grill the design"]:::chore
+
+    %% dotted links pull each gutter box beside its node
+    build -.- buildC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
     classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
+    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
+    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
+    classDef impOptional stroke-dasharray:2 3;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class compact impOptional;
+    class build current;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

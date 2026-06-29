@@ -644,14 +644,24 @@ describe('T014 — anchored loop-chore injection (the AC-07 recipe never orphans
     expect(at['ehf-post-flight']).toBe('ship');
   });
 
-  it('the render draws a connected dotted excursion for each chore (no floating box)', () => {
+  it('folds each anchored chore into its node’s connected gutter box (no floating box) — TD-columns', () => {
     const md = renderFlow(inject(spineDoc()));
-    // sections render: each chore is attached inside its parent's section by an
-    // undirected dotted link (`parent -.- chore`), so no chore ever floats free.
-    expect(md).toContain('plan -.- ehf_pre_flight');
-    expect(md).toContain('plan -.- ehf_pre_coding');
-    expect(md).toContain('plan -.- ehf_post_coding');
-    expect(md).toContain('ship -.- ehf_post_flight');
+    // TD-columns render: a node's branch_of chores COLLAPSE into ONE combined gutter
+    // box, biased beside the node by a dotted `parent -.- <node>C` link — so no chore
+    // floats free. The 3 plan-anchored chores fold into the single `planC` box;
+    // post-flight (anchored to ship) into `shipC`.
+    expect(md).toContain('plan -.- planC');
+    expect(md).toContain('ship -.- shipC');
+    // PROVE all 3 plan-anchored chores are present (their labels live in the one planC box).
+    const planBox = md.split('\n').find((l) => l.startsWith('    planC['));
+    expect(planBox).toBeDefined();
+    expect(planBox).toContain('pre-flight hook');
+    expect(planBox).toContain('pre-coding hook');
+    expect(planBox).toContain('post-coding hook');
+    // and post-flight rides the ship gutter box.
+    const shipBox = md.split('\n').find((l) => l.startsWith('    shipC['));
+    expect(shipBox).toBeDefined();
+    expect(shipBox).toContain('post-flight hook');
   });
 
   it('re-injection is idempotent (dedup on the --hook token → no new nodes)', () => {

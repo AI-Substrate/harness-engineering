@@ -5,80 +5,28 @@
 
 **Rail**: ◆─◆─[ ◆─◐ ]─◇─◇  ◆ Research · ◆ Plan (spec + impl) · [ ◆ Phase 1 · Flow engine · ◐ Phase 2 · Render + CI parity + docs ] · ◇ Review · ◇ Merge
 
-### ◆ Research · _done_
-
 ```mermaid
-flowchart LR
+flowchart TD
     research["Research 📄2"]:::done
-    say_research>"🗣 make this a first class concept ... deterministic ... event log inside the json ... limit phases please"]:::said
-    say_research -.- research
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-```
-
-↓
-
-### ◆ Plan (spec + impl) · _done_
-
-```mermaid
-flowchart LR
     plan["Plan (spec + impl) 💬2 📄1"]:::done
-    ws_cli["Workshop · harness flow CLI surface 💬1"]:::done
-    ws_events["Workshop · event + comment taxonomy"]:::done
-    plan -.- ws_cli
-    plan -.- ws_events
-    say_plan>"🗣 the plan phase is a little different on how it talks to phases. re-read it then do the plan please."]:::said
-    say_plan -.- plan
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-```
-
-↓
-
-### ◆ Phase 1 · Flow engine · _done_
-
-```mermaid
-flowchart LR
     p1["Phase 1 · Flow engine 📄2"]:::done
-    say_p1>"🗣 continue with phase 5 tasks then validate please"]:::said
-    say_p1 -.- p1
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-```
-
-↓
-
-### ◐ Phase 2 · Render + CI parity + docs · _in progress_
-
-```mermaid
-flowchart LR
     p2["Phase 2 · Render + CI parity + docs 💬1"]:::wip
-    say_p2>"🗣 implement without companion as we have another task using companion already"]:::said
-    say_p2 -.- p2
+    review["Review"]:::known
+    merge["Merge"]:::known
+
+    research --> plan --> p1 --> p2 --> review --> merge
+
+    planC["◆ Workshop · harness flow CLI surface<br/>◆ Workshop · event + comment taxonomy"]:::chore
+
+    %% dotted links pull each gutter box beside its node
+    plan -.- planC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
     classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
     class p2 current;
-```
-
-↓
-
-### ◇ Review · _known_
-
-```mermaid
-flowchart LR
-    review["Review"]:::known
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
-```
-
-↓
-
-### ◇ Merge · _known_
-
-```mermaid
-flowchart LR
-    merge["Merge"]:::known
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

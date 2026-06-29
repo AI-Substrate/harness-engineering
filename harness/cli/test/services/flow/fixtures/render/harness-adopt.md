@@ -5,50 +5,32 @@
 
 **Rail**: ◆─[ ◐ ]─◇─◇  ◆ Install harness · [ ◐ Governance + boot contract ] · ◇ Build + run boot (last) · ◇ Bridge → harness loop?
 
-### ◆ Install harness · _done_
-
 ```mermaid
-flowchart LR
+flowchart TD
     install["Install harness"]:::done
-    scout["Scout (harnessability)"]:::unknown
-    install -.- scout
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
-    class install current;
-```
-
-↓
-
-### ◐ Governance + boot contract · _in progress_
-
-```mermaid
-flowchart LR
     governance["Governance + boot contract"]:::wip
-    inject["Inject (wire seams)"]:::assumed
-    governance -.- inject
+    build_boot["Build + run boot (last)"]:::assumed
+    bridge{"Bridge → harness loop?"}:::decision
+
+    install --> governance --> build_boot --> bridge
+
+    installC["◇ Scout (harnessability)"]:::chore
+    governanceC["◇ Inject (wire seams)"]:::chore
+
+    %% invisible chain holds the gutter boxes in their own column
+    installC ~~~ governanceC
+
+    %% dotted links pull each gutter box beside its node
+    install -.- installC
+    governance -.- governanceC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
     classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
     classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-```
-
-↓
-
-### ◇ Build + run boot (last) · _assumed_
-
-```mermaid
-flowchart LR
-    build_boot["Build + run boot (last)"]:::assumed
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-```
-
-↓
-
-### ◇ Bridge → harness loop? · _assumed_
-
-```mermaid
-flowchart LR
-    bridge{"Bridge → harness loop?"}:::decision
     classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class install current;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

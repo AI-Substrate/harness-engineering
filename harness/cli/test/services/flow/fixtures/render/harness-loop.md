@@ -5,74 +5,24 @@
 
 **Rail**: ◆─◆─[ ◐─◇ ]─◇─◇─◇  ◆ Boot · ◆ Backpressure Check · [ ◐ Do Work + Observe · ◇ Buffer non-empty? ] · ◇ Retro — drain buffer · ◇ Retro — harvest · ◇ Improve
 
-### ◆ Boot · _done_
-
 ```mermaid
-flowchart LR
+flowchart TD
     boot["Boot"]:::done
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-```
-
-↓
-
-### ◆ Backpressure Check · _done_
-
-```mermaid
-flowchart LR
     backpressure["Backpressure Check"]:::harness
-    classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
-```
-
-↓
-
-### ◐ Do Work + Observe · _in progress_
-
-```mermaid
-flowchart LR
     observe["Do Work + Observe"]:::harness
+    drain_gate{"Buffer non-empty?"}:::decision
+    retro_drain["Retro — drain buffer"]:::assumed
+    retro_harvest["Retro — harvest"]:::assumed
+    improve["Improve"]:::assumed
+
+    boot --> backpressure --> observe --> drain_gate --> retro_drain --> retro_harvest --> improve
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
     classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
+    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
     class observe current;
-```
-
-↓
-
-### ◇ Buffer non-empty? · _assumed_
-
-```mermaid
-flowchart LR
-    drain_gate{"Buffer non-empty?"}:::decision
-    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-```
-
-↓
-
-### ◇ Retro — drain buffer · _assumed_
-
-```mermaid
-flowchart LR
-    retro_drain["Retro — drain buffer"]:::assumed
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-```
-
-↓
-
-### ◇ Retro — harvest · _assumed_
-
-```mermaid
-flowchart LR
-    retro_harvest["Retro — harvest"]:::assumed
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-```
-
-↓
-
-### ◇ Improve · _assumed_
-
-```mermaid
-flowchart LR
-    improve["Improve"]:::assumed
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

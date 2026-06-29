@@ -76,7 +76,7 @@ describe('harness flow render', () => {
     expect(r.code).toBe(0);
     expect(r.env.status).toBe('ok');
     const rendered = (r.env.data as { rendered: string }).rendered;
-    expect(rendered).toContain('flowchart LR');
+    expect(rendered).toContain('flowchart TD');
     expect(rendered).toContain('**Legend**');
   });
 
@@ -97,7 +97,7 @@ describe('harness flow render', () => {
     await seedFlow(deps);
     const r = await runFlow(deps, ['flow', 'render', '--input', FLOW]);
     expect(r.code).toBe(0);
-    expect((r.env.data as { rendered: string }).rendered).toContain('flowchart LR');
+    expect((r.env.data as { rendered: string }).rendered).toContain('flowchart TD');
   });
 
   it('--check passes (exit 0, drift:false) when the committed sibling .md matches', async () => {
@@ -177,7 +177,7 @@ describe('harness flow render', () => {
       '--slug',
       'demo',
     ]);
-    expect(out).toContain('flowchart LR');
+    expect(out).toContain('flowchart TD');
     expect(out).toContain('**Legend**');
     expect(out).not.toContain('flow: ok'); // raw passthrough, not the envelope summary
   });
