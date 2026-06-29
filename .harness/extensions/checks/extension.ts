@@ -15,6 +15,7 @@ import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
  *   - check:docs   — `npm run check:docs`                        (hard gate: generated-docs drift)
  *   - check:flows  — `npm run check:flows`                       (hard gate: flow schema/render drift)
  *   - check:telemetry-fixtures — `npm run check:telemetry-fixtures` (hard gate: telemetry golden drift)
+ *   - check:doctrine-parity — `npm run check:doctrine-parity`    (warn-launch: degraded; harness chore/seam doctrine drift; SKIPS=ok when the-flow absent — CI; fails-by-default on deploy-lag, so non-blocking)
  *   - arch-check   — `harness arch-check`                        (warn-launch: degraded)
  *   - skills-check — `harness skills-check`                      (hard gate: error on violation)
  *   - markdown-lint— `harness markdown-lint`                     (warn-launch: degraded)
@@ -44,20 +45,28 @@ interface GateResult {
   note: string;
 }
 
-/** Run one shell-command gate (HARD gate: any non-zero exit => error). */
+/**
+ * Run one shell-command gate. `severity` picks how a non-zero exit is reported:
+ *  - `'hard'` (default) → `error` (blocks: any non-zero exit => `checks` exit 1).
+ *  - `'warn'` → `degraded` (warn-launch: visible finding, non-blocking/exit 0) — the same
+ *    posture as `arch-check`/`markdown-lint`. Used for gates whose red is environment-fragile
+ *    (e.g. `check:doctrine-parity`, which keys on the *deployed* the-flow and so fails by
+ *    default on deploy-lag), where a real drift should surface as a finding, not a build break.
+ */
 async function runCmdGate(
   ctx: Parameters<HarnessVerb['run']>[0],
   name: string,
   cmd: string,
   args: string[],
-  opts: { cwd: string; failNote: string },
+  opts: { cwd: string; failNote: string; severity?: 'hard' | 'warn' },
 ): Promise<GateResult> {
   const r = await ctx.exec(cmd, args, { cwd: opts.cwd });
   if (r.ok) return { name, status: 'ok', exit: r.code, note: '' };
   // Surface a short tail of the real output so a CI failure says WHY, not just the hint
   // (the composite captures sub-stdout, so this note is the only breadcrumb in the log).
   const tail = (r.stderr || r.stdout || '').trimEnd().split('\n').slice(-3).join(' ');
-  return { name, status: 'error', exit: r.code, note: tail ? `${opts.failNote} — ${tail}` : opts.failNote };
+  const status: GateStatus = opts.severity === 'warn' ? 'degraded' : 'error';
+  return { name, status, exit: r.code, note: tail ? `${opts.failNote} — ${tail}` : opts.failNote };
 }
 
 /** Pull the failure-relevant lines out of a vitest run (skip the coverage table / noise),
@@ -100,7 +109,7 @@ const checks: HarnessVerb = {
   description:
     'Runs the repo\u2019s deterministic checks and aggregates: tests (`vitest run --coverage`), biome, typecheck, ' +
     'check:docs, check:flows, check:telemetry-fixtures, and skills-check are hard gates (error => exit 1); ' +
-    'arch-check, markdown-lint, windows-check are warn-launch (findings => degraded/exit 0). Any hard-gate error => ' +
+    'check:doctrine-parity, arch-check, markdown-lint, windows-check are warn-launch (findings => degraded/exit 0). Any hard-gate error => ' +
     'checks error/exit 1; otherwise any degraded/unconfigured gate => checks degraded/exit 0; all clean => ok/exit 0. ' +
     'PREREQUISITE: `npm run build` first (the bin + drift guards need `dist/`). `harness boot` composes this; CI ' +
     'calls it. Extend the gate by adding a line here as the team grows. See `harness instructions checks`.',
@@ -157,6 +166,21 @@ const checks: HarnessVerb = {
         await runCmdGate(ctx, 'check:telemetry-fixtures', 'npm', ['run', 'check:telemetry-fixtures'], {
           cwd: root,
           failNote: 'Telemetry goldens drifted \u2014 run `npm run gen:telemetry-fixtures` and commit the result.',
+        }),
+      );
+      // Doctrine-parity guard (WARN-LAUNCH): the harness chore/seam `doctrine-parity:039` block
+      // must be byte-identical in `skills/eng-harness-flow/SKILL.md` and the-flow's canonical
+      // `harness-seams.md`. SKIPS (exit 0) when the-flow is absent (CI / a the-flow-less machine)
+      // \u2014 eng-harness-flow never depends on the-flow at runtime. A located-but-divergent copy is
+      // a `degraded` finding (NOT a build break): it keys on the *deployed* the-flow, so it fails
+      // by default on deploy-lag (in-repo block edited, the-flow not yet re-deployed) \u2014 too
+      // environment-fragile for a hard gate. Real drift stays visible; re-deploy the-flow to clear.
+      gates.push(
+        await runCmdGate(ctx, 'check:doctrine-parity', 'npm', ['run', 'check:doctrine-parity'], {
+          cwd: root,
+          severity: 'warn',
+          failNote:
+            'Harness chore/seam doctrine drifted \u2014 edit BOTH the `doctrine-parity:039` blocks (the-flow `harness-seams.md` + `eng-harness-flow/SKILL.md`) byte-identical, then re-deploy the-flow.',
         }),
       );
 

@@ -82,7 +82,10 @@ missed**. Exact shape (full detail in [`flight-plan-ops.md`](./flight-plan-ops.m
   than adding a duplicate; else `insert-node --branch-of <anchor>` a fresh **anchored**
   chore. (the-flow's `harness-seams.md` records this ownership so emission + injection
   don't double-fire.)
-- `coding`/observe stays silent (no chore); `improve` follows a retro (no chore).
+- `coding` gets **no `/eng-harness-flow` fire-hook chore** (silent in *that* sense), but
+  `observe` **is** a per-phase chore — the-flow bakes the `harness observe` capture
+  `branch_of` the phase, separate from these four fire hooks; `improve` follows a retro
+  (no chore).
 - **No `.harness/loop.flow.json` is authored while the-flow is active.**
 
 #### Standalone (no the-flow) → its own `.harness/loop.flow.json`
