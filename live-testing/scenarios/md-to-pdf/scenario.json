@@ -1,0 +1,32 @@
+{
+  "slug": "md-to-pdf",
+  "title": "Add a markdown→PDF harness extension (mermaid, validated)",
+  "task": "Create a git worktree of this repo and add a new harness extension that converts a markdown file to PDF, including rendered mermaid diagrams, with validated output.",
+  "base": {
+    "repo": ".",
+    "ref": "v0.6.0"
+  },
+  "subject": {
+    "harness": "claude",
+    "model": "opus",
+    "effort": "high"
+  },
+  "flow": {
+    "mode": "simple",
+    "stages": [
+      "explore",
+      "plan",
+      "validate",
+      "compact",
+      "implement",
+      "review",
+      "fix",
+      "validate"
+    ]
+  },
+  "prompts": {
+    "orchestrator": "prompts/orchestrator.md",
+    "subject": "prompts/subject.md"
+  },
+  "assertions": "assertions.json"
+}
