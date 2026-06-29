@@ -5,57 +5,91 @@
 
 **Rail**: ◆─[ ◇─◐─✗─◇─◇ ]─◇  ◆ Start · [ ◇ Pick a path · ◐ Path A (in progress) · ✗ Path B (unknown type, blocked) · ◇ Join (assumed) · ◇ He said "hi" &lt;b&gt;bold&lt;/b&gt; \| pipe #hash [bracket] {brace} second line ] · ◇ End
 
+### ◆ Start · _done_
+
 ```mermaid
-flowchart TD
+flowchart LR
     start["Start"]:::done
-    dec{"Pick a path"}:::decision
-    a["Path A (in progress)"]:::wip
-    b["Path B (unknown type, blocked)"]:::blocked
-    join["Join (assumed)"]:::assumed
-    adv["He said #quot;hi#quot; #lt;b#gt;bold#lt;/b#gt; #124; pipe #35;hash #91;bracket#93; #123;brace#125; second line 💬1"]:::unknown
-    end_["End"]:::known
-
-    start --> dec
-    dec --> a
-    dec --> b
-    a --> join
-    b --> join
-    join --> adv
-    adv --> end_
-
-    bp["Backpressure survey"]:::harness
-    boot["Pre-flight boot"]:::harness
-    retro["Post-coding retro"]:::harness
-    bp -.-> dec
-    boot -.-> a
-    retro -.-> a
-
-    say_adv>"🗣 do the thing #quot;quoted#quot; & #lt;tag#gt; #124; pipe #93;close#125; #35;frag"]:::said
-    say_adv -.- adv
-
-    subgraph cmp_code_review_companion["🤖 code-review-companion"]
-      a
-    end
-    style cmp_code_review_companion fill:#D1C4E9,stroke:#5E35B1
-    wrk_docs_writer["🛠 docs-writer"]:::worker
-    wrk_docs_writer -. builds .-> join
-
     classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
+```
+
+↓
+
+### ◇ Pick a path · _known_
+
+```mermaid
+flowchart LR
+    dec{"Pick a path"}:::decision
+    bp["Backpressure survey"]:::harness
+    dec -.- bp
     classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
     classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-    classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;
-    classDef worker fill:#00A38C,stroke:#005046,color:#fff;
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef impOptional stroke-dasharray:2 3;
-    classDef impStrong stroke-width:3px;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
     class dec current;
+```
+
+↓
+
+### ◐ Path A (in progress) · _in progress_
+
+```mermaid
+flowchart LR
+    a["Path A (in progress)"]:::wip
+    boot["Pre-flight boot"]:::harness
+    retro["Post-coding retro"]:::harness
+    a -.- boot
+    a -.- retro
+    cmp_code_review_companion["🤖 code-review-companion"]:::companion
+    cmp_code_review_companion -. covers .-> a
+    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
+    classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
+    classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;
+```
+
+↓
+
+### ✗ Path B (unknown type, blocked) · _blocked_
+
+```mermaid
+flowchart LR
+    b["Path B (unknown type, blocked)"]:::blocked
+    classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;
+```
+
+↓
+
+### ◇ Join (assumed) · _assumed_
+
+```mermaid
+flowchart LR
+    join["Join (assumed)"]:::assumed
+    wrk_docs_writer["🛠 docs-writer"]:::worker
+    wrk_docs_writer -. builds .-> join
+    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
+    classDef worker fill:#00A38C,stroke:#005046,color:#fff;
+```
+
+↓
+
+### ◇ He said "hi" &lt;b&gt;bold&lt;/b&gt; \| pipe #hash [bracket] {brace} second line · _mystery-status_
+
+```mermaid
+flowchart LR
+    adv["He said #quot;hi#quot; #lt;b#gt;bold#lt;/b#gt; #124; pipe #35;hash #91;bracket#93; #123;brace#125; second line 💬1"]:::unknown
+    say_adv>"🗣 do the thing #quot;quoted#quot; & #lt;tag#gt; #124; pipe #93;close#125; #35;frag"]:::said
+    say_adv -.- adv
+    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
+    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
+```
+
+↓
+
+### ◇ End · _known_
+
+```mermaid
+flowchart LR
+    end_["End"]:::known
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

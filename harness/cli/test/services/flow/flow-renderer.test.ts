@@ -39,10 +39,15 @@ function doc(nodes: Partial<FlowNode>[], extra: Partial<FlowDoc> = {}): FlowDoc 
   } as FlowDoc;
 }
 
-/** Extract the fenced mermaid block body (between the ``` fences). */
+/** Extract the FIRST fenced mermaid block body (between the ``` fences). */
 function mermaidBlock(rendered: string): string {
   const m = rendered.match(/```mermaid\n([\s\S]*?)\n```/);
   return m ? m[1] : '';
+}
+
+/** Extract EVERY fenced mermaid block body (the sections render emits one per node). */
+function mermaidBlocks(rendered: string): string[] {
+  return [...rendered.matchAll(/```mermaid\n([\s\S]*?)\n```/g)].map((m) => m[1]);
 }
 
 /** The harness's own headless `mermaid.parse()` runner (jsdom, no Chromium) — the
@@ -91,38 +96,41 @@ describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
   });
 
   it('importance borders use a separate `class` statement, never a chained `:::a:::b`', () => {
-    const block = mermaidBlock(
-      renderFlow(
-        doc([
-          { id: 'p1', type: 'phase', label: 'P1', status: 'known', next: ['ship'] },
-          { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
-          {
-            id: 'opt',
-            type: 'backpressure',
-            label: 'Opt',
-            status: 'assumed',
-            next: ['p1'],
-            chore: { kind: 'command', importance: 'optional' },
-          },
-          {
-            id: 'strong',
-            type: 'harness-retro',
-            label: 'Strong',
-            status: 'assumed',
-            next: ['p1'],
-            chore: { kind: 'command', importance: 'strongly-recommended' },
-          },
-        ]),
-      ),
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'known', next: ['ship'] },
+        { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
+        {
+          id: 'opt',
+          type: 'backpressure',
+          label: 'Opt',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'command', importance: 'optional' },
+        },
+        {
+          id: 'strong',
+          type: 'harness-retro',
+          label: 'Strong',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'command', importance: 'strongly-recommended' },
+        },
+      ]),
     );
-    // the bug: no chained inline class token anywhere
-    expect(block).not.toMatch(/:::[A-Za-z][\w-]*:::/);
-    // importance applied as separate, valid `class` statements
-    expect(block).toContain('class opt impOptional;');
-    expect(block).toContain('class strong impStrong;');
-    // and the whole thing actually parses
-    const [res] = validateMermaid([{ path: 'importance', text: block }]);
-    expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
+    // the bug: no chained inline class token anywhere across any per-node fence
+    expect(out).not.toMatch(/:::[A-Za-z][\w-]*:::/);
+    // importance applied as separate, valid `class` statements (in p1's fence — both
+    // chores branch off p1, so they render in its section)
+    expect(out).toContain('class opt impOptional;');
+    expect(out).toContain('class strong impStrong;');
+    // and every fence actually parses
+    for (const block of mermaidBlocks(out)) {
+      const [res] = validateMermaid([{ path: 'importance', text: block }]);
+      expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
+    }
   });
 });
 
@@ -167,34 +175,23 @@ describe('flow-renderer · golden-file parity', () => {
 // ---------------------------------------------------------------------------
 
 describe('flow-renderer · render rules', () => {
-  it('emits flowchart TD + every classDef (rule 1)', () => {
+  it('emits flowchart LR + only the classDefs a fence references (rule 1, sections)', () => {
     const out = renderFlow(
       doc([{ id: 'a', type: 'research', label: 'A', status: 'done', next: [] }]),
     );
-    expect(out).toContain('flowchart TD');
-    for (const cls of [
-      'classDef done',
-      'classDef wip',
-      'classDef blocked',
-      'classDef known',
-      'classDef assumed',
-      'classDef said',
-      'classDef harness',
-      'classDef decision',
-      'classDef companion',
-      'classDef worker',
-      'classDef unknown',
-      // D5 — importance is an ADDITIVE border channel (colour stays type).
-      'classDef impOptional',
-      'classDef impStrong',
-    ]) {
-      expect(out).toContain(cls);
-    }
+    // sections render: each node is its own small left-to-right diagram.
+    expect(out).toContain('flowchart LR');
+    expect(out).not.toContain('flowchart TD');
+    // classDefs are emitted ON DEMAND — a lone `done` node defines only `classDef done`,
+    // never the unused rest (keeps each fence minimal + valid).
+    expect(out).toContain('classDef done');
+    expect(out).not.toContain('classDef wip');
+    expect(out).not.toContain('classDef worker');
     // D5 — chore is no longer a colour; the teal `classDef chore` is retired.
     expect(out).not.toContain('classDef chore ');
   });
 
-  it('renders spine nodes with solid edges in order (rule 2)', () => {
+  it('renders spine nodes as ordered sections (rule 2, sections)', () => {
     const out = renderFlow(
       doc([
         { id: 'research', type: 'research', label: 'R', status: 'done', next: ['plan'] },
@@ -202,9 +199,15 @@ describe('flow-renderer · render rules', () => {
         { id: 'p1', type: 'phase', label: 'Phase 1', status: 'in_progress', next: [] },
       ]),
     );
-    expect(out).toContain('research --> plan');
-    expect(out).toContain('plan --> p1');
+    // each spine node is a heading + its own fence, in topo order (the document is the spine)
+    expect(out).toContain('### ◆ R · _done_');
+    expect(out).toContain('### ◆ P · _done_');
+    expect(out).toContain('### ◐ Phase 1 · _in progress_');
     expect(out).toContain('p1["Phase 1"]:::wip');
+    // heading order follows the flow, joined by `↓`
+    expect(out.indexOf('### ◆ R')).toBeLessThan(out.indexOf('### ◆ P'));
+    expect(out.indexOf('### ◆ P')).toBeLessThan(out.indexOf('### ◐ Phase 1'));
+    expect(out).toContain('\n↓\n');
   });
 
   it('maps each status to its class (rule 5)', () => {
@@ -239,8 +242,10 @@ describe('flow-renderer · render rules', () => {
         },
       ]),
     );
-    expect(out).toContain('ws -.-> plan');
-    expect(out).toContain('plan --> merge'); // spine stays solid
+    // the excursion renders inside its parent's section, attached by an undirected
+    // dotted link (`parent -.- child`); merge is its own separate section.
+    expect(out).toContain('plan -.- ws');
+    expect(out).toContain('### ◇ M · _known_');
   });
 
   it('styles harness-seam nodes violet regardless of status (rule 4/5)', () => {
@@ -361,12 +366,14 @@ describe('flow-renderer · render rules', () => {
         { id: 'b', type: 'phase', label: 'B', status: 'known', next: [] },
       ]),
     );
+    // decision keeps its rhombus + class; its branches a/b are their own sections
+    // (no inter-section spine edges in the sections render).
     expect(out).toContain('dec{"Pick"}:::decision');
-    expect(out).toContain('dec --> a');
-    expect(out).toContain('dec --> b');
+    expect(out).toContain('### ◇ A · _known_');
+    expect(out).toContain('### ◇ B · _known_');
   });
 
-  it('renders companion as a wrapping subgraph and worker as a side node (rule 7)', () => {
+  it('renders covering agents inside the covered node section (rule 7, sections)', () => {
     const out = renderFlow(
       doc([{ id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] }], {
         agents: [
@@ -375,9 +382,10 @@ describe('flow-renderer · render rules', () => {
         ],
       } as Partial<FlowDoc>),
     );
-    // ids are mermaid-sanitised (hyphen → underscore); the label keeps the slug verbatim
-    expect(out).toContain('subgraph cmp_code_review_companion["🤖 code-review-companion"]');
-    expect(out).toContain('style cmp_code_review_companion');
+    // a per-fence section can't span a cross-fence subgraph, so a companion renders
+    // as a labelled node that `covers` the head; a worker as a node that `builds` it.
+    expect(out).toContain('cmp_code_review_companion["🤖 code-review-companion"]:::companion');
+    expect(out).toContain('cmp_code_review_companion -. covers .-> p1');
     expect(out).toContain('wrk_docs_writer["🛠 docs-writer"]:::worker');
     expect(out).toContain('wrk_docs_writer -. builds .-> p1');
   });
@@ -487,8 +495,11 @@ describe('flow-renderer · tolerance + safety', () => {
 
   it('escapes mermaid/markdown control characters so the .md cannot be corrupted', () => {
     const out = renderFlow(loadFixture('kitchen-sink'));
-    // exactly one fenced mermaid block — adversarial text injected no stray fence
-    expect((out.match(/```/g) ?? []).length).toBe(2);
+    // fences stay balanced (one open + one close per section) — adversarial text
+    // injected no stray fence (an odd count would mean an unescaped ``` leaked).
+    const fenceCount = (out.match(/```/g) ?? []).length;
+    expect(fenceCount).toBeGreaterThanOrEqual(2);
+    expect(fenceCount % 2).toBe(0);
     // quotes + angle brackets are entity-escaped, not raw
     expect(out).toContain('#quot;hi#quot;');
     expect(out).toContain('#lt;b#gt;bold');
@@ -497,10 +508,11 @@ describe('flow-renderer · tolerance + safety', () => {
     expect(out).toContain('#124; pipe');
     expect(out).toContain('#91;bracket#93;');
     expect(out).toContain('#123;brace#125;');
-    // a newline inside a label collapsed to one line (no broken declaration)
-    const block = mermaidBlock(out);
-    expect(block).not.toContain('[bracket]'); // never raw inside the mermaid diagram
-    const advLine = block.split('\n').find((l) => l.includes('second line'));
+    // a newline inside a label collapsed to one line (no broken declaration) —
+    // search across ALL per-node fences (the adversarial node has its own section).
+    const allBlocks = mermaidBlocks(out).join('\n');
+    expect(allBlocks).not.toContain('[bracket]'); // never raw inside any mermaid diagram
+    const advLine = allBlocks.split('\n').find((l) => l.includes('second line'));
     expect(advLine).toBeDefined();
     expect(advLine).toContain('He said'); // label stayed on a single line
   });
@@ -520,7 +532,8 @@ describe('flow-renderer · tolerance + safety', () => {
       ]),
     );
     expect(out).toContain('ws_cli["W"]:::done');
-    expect(out).toContain('ws_cli -.-> plan');
+    // the sanitised excursion attaches to its parent by the undirected dotted link
+    expect(out).toContain('plan -.- ws_cli');
   });
 
   it('guards mermaid reserved keywords used as node ids (e.g. `end`)', () => {
@@ -531,7 +544,7 @@ describe('flow-renderer · tolerance + safety', () => {
       ]),
     );
     expect(out).toContain('end_["End"]:::known'); // suffixed away from the reserved word
-    expect(out).toContain('a --> end_');
+    expect(out).toContain('### ◇ End · _known_'); // `end` is its own section
     expect(out).not.toMatch(/\n {4}end\["End"\]/); // never a bare `end[...]`
   });
 });

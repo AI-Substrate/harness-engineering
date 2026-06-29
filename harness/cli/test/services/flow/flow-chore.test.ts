@@ -293,7 +293,7 @@ describe('T008 — importance-aware name collapse (show | collapse | hide)', () 
 });
 
 describe('T011 — chore-ness rides the 🧰 badge, colour=type (D5; F-01)', () => {
-  it('a chore node carries the 🧰 badge (colour=type) and the importance classDefs are emitted', () => {
+  it('a chore node carries the 🧰 badge (colour=type); importance classDefs are emitted on-demand', () => {
     const doc = loopDoc({
       nodes: [
         { id: 'boot', type: 'boot', label: 'Boot', status: 'done', next: ['c1'] },
@@ -311,8 +311,10 @@ describe('T011 — chore-ness rides the 🧰 badge, colour=type (D5; F-01)', () 
     // D5: the chore flag no longer sets a colour — `improve`+`todo` has no status colour
     // → `:::unknown`; chore-ness is the `🧰` badge (recommended → plain marker).
     expect(md).toMatch(/c1\["Compact 🧰"\]:::unknown/);
-    expect(md).toContain('classDef impOptional');
-    expect(md).toContain('classDef impStrong');
+    // sections render emits classDefs ON DEMAND — a `recommended` chore has no border,
+    // so neither importance classDef is referenced and neither is emitted.
+    expect(md).not.toContain('classDef impOptional');
+    expect(md).not.toContain('classDef impStrong');
     expect(md).not.toContain('classDef chore '); // teal chore colour retired
   });
 
@@ -644,10 +646,12 @@ describe('T014 — anchored loop-chore injection (the AC-07 recipe never orphans
 
   it('the render draws a connected dotted excursion for each chore (no floating box)', () => {
     const md = renderFlow(inject(spineDoc()));
-    expect(md).toContain('ehf_pre_flight -.-> plan');
-    expect(md).toContain('ehf_pre_coding -.-> plan');
-    expect(md).toContain('ehf_post_coding -.-> plan');
-    expect(md).toContain('ehf_post_flight -.-> ship');
+    // sections render: each chore is attached inside its parent's section by an
+    // undirected dotted link (`parent -.- chore`), so no chore ever floats free.
+    expect(md).toContain('plan -.- ehf_pre_flight');
+    expect(md).toContain('plan -.- ehf_pre_coding');
+    expect(md).toContain('plan -.- ehf_post_coding');
+    expect(md).toContain('ship -.- ehf_post_flight');
   });
 
   it('re-injection is idempotent (dedup on the --hook token → no new nodes)', () => {

@@ -5,47 +5,91 @@
 
 **Rail**: ◆─□─[ ◐─■─□─▨ ]─◇─◇  ◆ Spec · [*] · [ ◐ Build · [*2] ] · ◇ Review · ◇ Merge
 
+### ◆ Spec · _done_
+
 ```mermaid
-flowchart TD
+flowchart LR
     spec["Spec"]:::done
-    val["Validate 🧰"]:::unknown
-    build["Build"]:::wip
-    compact["Compact context 🧰° ✓"]:::done
-    dec{"Ship or iterate? 🧰"}:::decision
-    review["Review"]:::known
-    archive["Archive branch 🧰 ✕"]:::unknown
-    merge["Merge"]:::assumed
-
-    spec --> val
-    val --> build
-    build --> compact
-    compact --> dec
-    dec --> review
-    dec --> archive
-    review --> merge
-    archive --> merge
-
-    guard["Grill the design 🧰‼"]:::unknown
-    guard -.-> build
-
     classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-    classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
-    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-    classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;
-    classDef worker fill:#00A38C,stroke:#005046,color:#fff;
+```
+
+↓
+
+### □ Validate · _todo_
+
+```mermaid
+flowchart LR
+    val["Validate 🧰"]:::unknown
     classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef impOptional stroke-dasharray:2 3;
+```
+
+↓
+
+### ◐ Build · _in progress_
+
+```mermaid
+flowchart LR
+    build["Build"]:::wip
+    guard["Grill the design 🧰‼"]:::unknown
+    build -.- guard
+    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
+    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
     classDef impStrong stroke-width:3px;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
-    class compact impOptional;
     class guard impStrong;
     class build current;
+```
+
+↓
+
+### ■ Compact context · _done_
+
+```mermaid
+flowchart LR
+    compact["Compact context 🧰° ✓"]:::done
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef impOptional stroke-dasharray:2 3;
+    class compact impOptional;
+```
+
+↓
+
+### □ Ship or iterate? · _todo_
+
+```mermaid
+flowchart LR
+    dec{"Ship or iterate? 🧰"}:::decision
+    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
+```
+
+↓
+
+### ◇ Review · _known_
+
+```mermaid
+flowchart LR
+    review["Review"]:::known
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+```
+
+↓
+
+### ▨ Archive branch · _skipped_
+
+```mermaid
+flowchart LR
+    archive["Archive branch 🧰 ✕"]:::unknown
+    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
+```
+
+↓
+
+### ◇ Merge · _assumed_
+
+```mermaid
+flowchart LR
+    merge["Merge"]:::assumed
+    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

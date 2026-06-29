@@ -13,7 +13,17 @@ import { dueChores } from './flow-mutations.js';
  * byte-stable across runs/OS (golden-file pinned + `--check` drift-guarded) and
  * covers every render rule (00-routing § Render rules + the render-surface
  * decision: genesis 🗣 bubble per node, `comments[]` → `💬N` badge + a per-node
- * markdown body-log, a distinct `decision` class, the agents subgraph).
+ * markdown body-log, a distinct `decision` class, covering agents as nodes).
+ *
+ * LAYOUT — sections, not a monolithic graph. A single `flowchart TD` of the whole
+ * spine skewed diagonally: every node carried a one-sided fan of dotted excursions,
+ * and dagre (LAYERED — no rank=same/constraint=false) shoved each node toward its
+ * fan, so the backbone walked down-right. The fix is structural: the rail is the
+ * at-a-glance overview, then EACH spine node renders as a heading + a SMALL
+ * self-contained `flowchart LR` of {node + its `branch_of` excursions (+ genesis
+ * bubble + covering agents)}, joined by `↓`. A one-hub diagram cannot skew, and the
+ * markdown reading order is a dead-straight spine — all while rendering inline
+ * anywhere (no ELK, no Graphviz).
  *
  * Two safety invariants are load-bearing (Risk #10):
  *   - every user-supplied string (`label`/`user_input`/comment text/refs/slug) is
@@ -55,6 +65,16 @@ const CHORE_PIP: Record<string, string> = {
   todo: '□',
   done: '■',
   skipped: '▨',
+};
+/** status → human word for the per-node section heading (tolerant: unknown → raw). */
+const STATUS_WORD: Record<string, string> = {
+  done: 'done',
+  in_progress: 'in progress',
+  blocked: 'blocked',
+  known: 'known',
+  assumed: 'assumed',
+  todo: 'todo',
+  skipped: 'skipped',
 };
 
 /**
@@ -319,7 +339,6 @@ export function renderFlow(doc: FlowDoc): string {
   const idMap = buildIdMap(nodes);
   const mid = (original: string): string =>
     idMap.get(original) ?? (original.replace(/[^A-Za-z0-9_]/g, '_') || 'node');
-  const known = (id: unknown): id is string => typeof id === 'string' && idMap.has(id);
 
   const out: string[] = [];
 
@@ -347,68 +366,115 @@ export function renderFlow(doc: FlowDoc): string {
   out.push(renderRail(nodes));
   out.push('');
 
-  // --- Mermaid diagram -------------------------------------------------------
-  out.push('```mermaid');
-  out.push('flowchart TD');
-
-  const mains = nodes.filter((n) => !isExcursion(n));
+  // --- Per-node sections — the document IS the spine ------------------------
+  // The old monolithic `flowchart TD` skewed diagonally: every spine node carried
+  // a one-sided fan of dotted excursions, and dagre (a LAYERED engine — no
+  // rank=same/constraint=false) shoved each node sideways to sit near its fan, so
+  // the backbone walked down-right. The fix is structural, not a layout tweak:
+  // emit ONE small self-contained mermaid per spine node ({node + its branch_of
+  // excursions, + genesis bubble + covering agents}). A single-hub diagram cannot
+  // skew, the markdown reading order (heading → mini-diagram → `↓`) is a
+  // dead-straight spine, and the rail above is the at-a-glance overview. Renders
+  // inline anywhere (no engine swap, no Graphviz).
   const excursions = nodes.filter((n) => isExcursion(n));
+  const order = topoOrderMain(nodes);
+  const orderedIds = new Set(order.map((n) => n.id));
 
-  // 1. main node declarations + 2. solid spine edges.
-  for (const n of mains) out.push(declareNode(n, mid(n.id)));
-  const solidEdges: string[] = [];
-  for (const n of mains) {
-    for (const t of Array.isArray(n.next) ? n.next : []) {
-      if (known(t)) solidEdges.push(`    ${mid(n.id)} --> ${mid(t)}`);
+  // group excursions under their `branch_of` parent; an orphan (parent missing)
+  // rides a trailing pseudo-section so the renderer never silently drops a node.
+  const exByParent = new Map<string, FlowNode[]>();
+  for (const n of excursions) {
+    const key = typeof n.branch_of === 'string' && orderedIds.has(n.branch_of) ? n.branch_of : '';
+    const arr = exByParent.get(key);
+    if (arr) arr.push(n);
+    else exByParent.set(key, [n]);
+  }
+  const docAgents: FlowAgent[] = Array.isArray((doc as { agents?: unknown }).agents)
+    ? ((doc as { agents?: unknown }).agents as FlowAgent[])
+    : [];
+
+  const sections: { head: FlowNode | null; kids: FlowNode[] }[] = order.map((head) => ({
+    head,
+    kids: exByParent.get(head.id) ?? [],
+  }));
+  const orphans = exByParent.get('') ?? [];
+  if (orphans.length > 0) sections.push({ head: null, kids: orphans });
+
+  sections.forEach((sec, i) => {
+    const head = sec.head;
+    out.push(
+      head
+        ? `### ${pipOf(head)} ${escapeMd(head.label ?? head.id)} · _${STATUS_WORD[head.status] ?? String(head.status ?? 'unknown')}_`
+        : '### ⋯ unattached',
+    );
+    out.push('');
+    out.push('```mermaid');
+    out.push('flowchart LR');
+
+    const fenceNodes: FlowNode[] = head ? [head, ...sec.kids] : [...sec.kids];
+    for (const n of fenceNodes) out.push(declareNode(n, mid(n.id)));
+    if (head) for (const k of sec.kids) out.push(`    ${mid(head.id)} -.- ${mid(k.id)}`);
+
+    const used = new Set<string>();
+    for (const n of fenceNodes) used.add(nodeClass(n));
+
+    // genesis user_input bubble for the head node (rule 6).
+    if (head && typeof head.user_input === 'string' && head.user_input.length > 0) {
+      const sid = `say_${mid(head.id)}`;
+      out.push(`    ${sid}>"🗣 ${escapeMermaid(head.user_input)}"]:::said`);
+      out.push(`    ${sid} -.- ${mid(head.id)}`);
+      used.add('said');
     }
-  }
-  if (solidEdges.length > 0) {
-    out.push('');
-    out.push(...solidEdges);
-  }
 
-  // 3. excursion declarations + dotted edges (workshops, backpressure, harness seams).
-  if (excursions.length > 0) {
-    out.push('');
-    for (const n of excursions) out.push(declareNode(n, mid(n.id)));
-    for (const n of excursions) {
-      for (const t of Array.isArray(n.next) ? n.next : []) {
-        if (known(t)) out.push(`    ${mid(n.id)} -.-> ${mid(t)}`);
+    // agents covering the head node — a per-fence node (sections can't span a
+    // cross-fence companion subgraph, so a companion renders as a labelled node).
+    if (head) {
+      docAgents.forEach((a, ai) => {
+        if (!(Array.isArray(a.covers) ? a.covers : []).includes(head.id)) return;
+        const slug = typeof a.slug === 'string' && a.slug.length > 0 ? a.slug : `agent_${ai}`;
+        const safe = slug.replace(/[^A-Za-z0-9_]/g, '_') || `agent_${ai}`;
+        if (a.kind === 'worker' || a.render === 'side') {
+          out.push(`    wrk_${safe}["🛠 ${escapeMermaid(slug)}"]:::worker`);
+          out.push(`    wrk_${safe} -. builds .-> ${mid(head.id)}`);
+          used.add('worker');
+        } else {
+          out.push(`    cmp_${safe}["🤖 ${escapeMermaid(slug)}"]:::companion`);
+          out.push(`    cmp_${safe} -. covers .-> ${mid(head.id)}`);
+          used.add('companion');
+        }
+      });
+    }
+
+    // importance-border + current classes referenced in THIS fence.
+    for (const n of fenceNodes) {
+      if (n.chore !== undefined) {
+        const ic = IMPORTANCE_CLASS[n.chore.importance];
+        if (ic) used.add(ic);
       }
     }
-  }
+    const isCurrent = head !== null && nav?.now === head.id;
+    if (isCurrent) used.add('current');
 
-  // 4. genesis user_input bubbles — exactly one per node carrying user_input (rule 6).
-  const bubbles = nodes.filter((n) => typeof n.user_input === 'string' && n.user_input.length > 0);
-  if (bubbles.length > 0) {
-    out.push('');
-    for (const n of bubbles) {
-      const sid = `say_${mid(n.id)}`;
-      out.push(`    ${sid}>"🗣 ${escapeMermaid(n.user_input as string)}"]:::said`);
-      out.push(`    ${sid} -.- ${mid(n.id)}`);
+    // emit ONLY the classDefs this fence references (every referenced class defined).
+    for (const def of CLASS_DEFS) {
+      const start = 'classDef '.length;
+      const name = def.slice(start, def.indexOf(' ', start));
+      if (used.has(name)) out.push(`    ${def}`);
     }
-  }
-
-  // 5. agents — companion (render:wrap) → subgraph; worker (render:side) → side node (rule 7).
-  const agentLines = renderAgents(doc, mid, known);
-  if (agentLines.length > 0) {
-    out.push('');
-    out.push(...agentLines);
-  }
-
-  // 6. classDefs (foot) + the additive importance-border `class` statements (D5 —
-  //    a separate statement, NOT a chained `:::` token which mermaid rejects).
-  out.push('');
-  for (const def of CLASS_DEFS) out.push(`    ${def}`);
-  for (const n of nodes) {
-    const line = importanceClassLine(n, mid(n.id));
-    if (line) out.push(line);
-  }
-  // The current-node overlay LAST, so the bright-orange "you are here" wins over the
-  // node's status colour + any importance border (mermaid applies later classes over
-  // earlier same-property declarations).
-  if (known(nav?.now)) out.push(`    class ${mid(nav.now as string)} current;`);
-  out.push('```');
+    for (const n of fenceNodes) {
+      const line = importanceClassLine(n, mid(n.id));
+      if (line) out.push(line);
+    }
+    // The current-node overlay LAST, so the bright-orange "you are here" wins over
+    // the status colour + any importance border.
+    if (isCurrent && head) out.push(`    class ${mid(head.id)} current;`);
+    out.push('```');
+    if (i < sections.length - 1) {
+      out.push('');
+      out.push('↓');
+      out.push('');
+    }
+  });
 
   // --- Legend ----------------------------------------------------------------
   out.push('');
@@ -631,34 +697,4 @@ interface FlowAgent {
   render?: string;
   covers?: string[];
   result?: string;
-}
-
-/** Render the `agents[]` overlay: companions wrap their covered phases, workers sit beside. */
-function renderAgents(
-  doc: FlowDoc,
-  mid: (id: string) => string,
-  known: (id: unknown) => id is string,
-): string[] {
-  const agents = Array.isArray((doc as { agents?: unknown }).agents)
-    ? ((doc as { agents?: unknown }).agents as FlowAgent[])
-    : [];
-  const lines: string[] = [];
-  agents.forEach((a, i) => {
-    const slug = typeof a.slug === 'string' && a.slug.length > 0 ? a.slug : `agent_${i}`;
-    const safe = slug.replace(/[^A-Za-z0-9_]/g, '_') || `agent_${i}`;
-    const covers = (Array.isArray(a.covers) ? a.covers : []).filter(known);
-    if (a.kind === 'worker' || a.render === 'side') {
-      const wid = `wrk_${safe}`;
-      lines.push(`    ${wid}["🛠 ${escapeMermaid(slug)}"]:::worker`);
-      for (const c of covers) lines.push(`    ${wid} -. builds .-> ${mid(c)}`);
-    } else {
-      // companion (render:wrap) — a subgraph wrapping the covered phases.
-      const gid = `cmp_${safe}`;
-      lines.push(`    subgraph ${gid}["🤖 ${escapeMermaid(slug)}"]`);
-      for (const c of covers) lines.push(`      ${mid(c)}`);
-      lines.push('    end');
-      lines.push(`    style ${gid} fill:#D1C4E9,stroke:#5E35B1`);
-    }
-  });
-  return lines;
 }

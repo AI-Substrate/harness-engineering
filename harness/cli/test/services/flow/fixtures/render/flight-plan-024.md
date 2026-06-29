@@ -5,55 +5,80 @@
 
 **Rail**: ◆─◆─[ ◆─◐ ]─◇─◇  ◆ Research · ◆ Plan (spec + impl) · [ ◆ Phase 1 · Flow engine · ◐ Phase 2 · Render + CI parity + docs ] · ◇ Review · ◇ Merge
 
+### ◆ Research · _done_
+
 ```mermaid
-flowchart TD
+flowchart LR
     research["Research 📄2"]:::done
-    plan["Plan (spec + impl) 💬2 📄1"]:::done
-    p1["Phase 1 · Flow engine 📄2"]:::done
-    p2["Phase 2 · Render + CI parity + docs 💬1"]:::wip
-    merge["Merge"]:::known
-    review["Review"]:::known
-
-    research --> plan
-    plan --> p1
-    p1 --> p2
-    p2 --> review
-    review --> merge
-
-    ws_cli["Workshop · harness flow CLI surface 💬1"]:::done
-    ws_events["Workshop · event + comment taxonomy"]:::done
-    ws_cli -.-> plan
-    ws_events -.-> plan
-
     say_research>"🗣 make this a first class concept ... deterministic ... event log inside the json ... limit phases please"]:::said
     say_research -.- research
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
+```
+
+↓
+
+### ◆ Plan (spec + impl) · _done_
+
+```mermaid
+flowchart LR
+    plan["Plan (spec + impl) 💬2 📄1"]:::done
+    ws_cli["Workshop · harness flow CLI surface 💬1"]:::done
+    ws_events["Workshop · event + comment taxonomy"]:::done
+    plan -.- ws_cli
+    plan -.- ws_events
     say_plan>"🗣 the plan phase is a little different on how it talks to phases. re-read it then do the plan please."]:::said
     say_plan -.- plan
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
+```
+
+↓
+
+### ◆ Phase 1 · Flow engine · _done_
+
+```mermaid
+flowchart LR
+    p1["Phase 1 · Flow engine 📄2"]:::done
     say_p1>"🗣 continue with phase 5 tasks then validate please"]:::said
     say_p1 -.- p1
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
+```
+
+↓
+
+### ◐ Phase 2 · Render + CI parity + docs · _in progress_
+
+```mermaid
+flowchart LR
+    p2["Phase 2 · Render + CI parity + docs 💬1"]:::wip
     say_p2>"🗣 implement without companion as we have another task using companion already"]:::said
     say_p2 -.- p2
-    say_ws_cli>"🗣 lets do the cli surface workshop."]:::said
-    say_ws_cli -.- ws_cli
-    say_ws_events>"🗣 do next workshop"]:::said
-    say_ws_events -.- ws_events
-
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
     classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
-    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
     classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-    classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
-    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-    classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;
-    classDef worker fill:#00A38C,stroke:#005046,color:#fff;
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef impOptional stroke-dasharray:2 3;
-    classDef impStrong stroke-width:3px;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
     class p2 current;
+```
+
+↓
+
+### ◇ Review · _known_
+
+```mermaid
+flowchart LR
+    review["Review"]:::known
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+```
+
+↓
+
+### ◇ Merge · _known_
+
+```mermaid
+flowchart LR
+    merge["Merge"]:::known
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

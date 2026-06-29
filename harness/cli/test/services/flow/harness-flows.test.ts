@@ -127,8 +127,10 @@ describe('🧰 harness-adopt flow', () => {
   it('renders the bridge as a decision rhombus + excursions dotted (R-4)', () => {
     const md = renderFlow(doc);
     expect(md).toContain('bridge{"Bridge → harness loop?"}:::decision');
-    expect(md).toContain('scout -.-> governance');
-    expect(md).toContain('inject -.-> build_boot');
+    // sections render: an excursion attaches inside its `branch_of` parent's section
+    // by an undirected dotted link (`parent -.- excursion`).
+    expect(md).toContain('install -.- scout');
+    expect(md).toContain('governance -.- inject');
   });
 
   it('rails as [adopt] with the spine only (excursions off the rail)', () => {
