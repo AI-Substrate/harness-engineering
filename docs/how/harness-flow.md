@@ -34,15 +34,17 @@ flowchart TD
     root --> nodes["<b>nodes[]</b>"]
     nodes --> spine["<b>spine</b> — the main next[] chain"]
     nodes --> exc["<b>excursions</b> — branch_of<br/>(dotted, rejoin the spine)"]
-    spine --> node["{ id, type, label, status, next[] }<br/>+ zone · command · chore · comments[]"]
+    spine --> node["{ id, type, label, status, next[] }<br/>+ zone · command · chore · instructions[] · comments[]"]
     root -. read by .-> render["harness flow render"]
     render -. regenerates .-> md["the-flow.md<br/><i>(derived — never hand-edited)</i>"]
 ```
 
 - **nodes[]** — each a `{ id, type, label, status, next[] }` (+ optional
-  `branch_of`, `zone`, `command`, `chore`, `user_input`, `comments[]`, timestamps).
-  `zone` (`preflight | flight | postflight`) places the node in a rail band; unset
-  → a default by node type.
+  `branch_of`, `zone`, `command`, `chore`, `instructions[]`, `user_input`,
+  `comments[]`, timestamps). `zone` (`preflight | flight | postflight`) places the
+  node in a rail band; unset → a default by node type. `instructions[]` is authored
+  guidance an agent *reads* — surfaced in full by `orient`, marked by a `📝N` badge
+  in the diagram (§ Node `instructions`).
 - **nav** — the position object `{ now, next, intent?, bag? }`. `now` is the
   validated current node id (the truth); `next` is an advisory node id or `null`
   (the LLM dispatches — the CLI never routes); `intent` is free text; `bag` is a
@@ -92,7 +94,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 
 | Verb | What it does |
 |------|--------------|
-| `create <type> --slug <s>` | Instantiate a flow from its type's template (root identity + provenance stamped). `--bare` for root-only; `--schema`/`--template` to override; `--agent <name>` + `--plan-id <id>` stamp provenance (the rail-title source); `--title <t>` sets an explicit rail label. |
+| `create <type> --slug <s>` | Instantiate a flow from its type's template (root identity + provenance stamped). `--bare` for root-only; `--schema`/`--template` to override; `--agent <name>` + `--plan-id <id>` stamp provenance (the rail-title source); `--title <t>` sets an explicit rail label. The template's `nodes[]` are copied **verbatim** (all fields — `next[]`/`branch_of`/`chore`/`instructions[]`), so a template may carry a complete **seed**, not just a bare spine (see § Seed templates). |
 | `new <type>` | Scaffold a custom flow-type **schema overlay** into `.harness/schemas/flows/<type>.schema.json`. |
 | `show` | Read a flow and print its summary envelope. |
 | `list` | Discover flows under `.harness/flows/` (or `--dir`). |
@@ -102,7 +104,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 | `rail [--chores show\|collapse\|hide]` | Emit the one-line rail: `[<title>] <pips>  <names>`, banded `pre ─ [ flight ] ─ post`. `--chores` controls chore-name visibility (default `collapse`). |
 | `status --node <id> --to <status>` | Set a node status (stamps `ran_at` on `done`/`blocked`). |
 | `add-node --id --type --label [--status --next --artifacts --zone --command --chore-kind --importance]` | Append a node (`--command` sets its ref; `--chore-kind`+`--importance` mark it a chore). |
-| `set-node --node <id> [--label --note --user-input --artifacts --command --zone --chore-kind --importance]` | Merge fields into a node. `--command`/`--zone`/`--chore-kind`+`--importance` let you **flag an existing node as a chore** in place (e.g. turn a the-flow seam node into a chore — plan 032 R-1); cannot re-parent. |
+| `set-node --node <id> [--label --note --user-input --artifacts --command --zone --chore-kind --importance --add-instruction --instructions --clear-instructions]` | Merge fields into a node. `--command`/`--zone`/`--chore-kind`+`--importance` let you **flag an existing node as a chore** in place (e.g. turn a the-flow seam node into a chore — plan 032 R-1). The instruction flags edit `instructions[]` (§ Node `instructions`): `--add-instruction "<t>"` appends (the common path), `--instructions "<a||b>"` replaces (`||`-separated), `--clear-instructions` empties. Cannot re-parent. |
 | `insert-node --id --type --label (--after\|--before\|--branch-of) [--zone --command --chore-kind --importance]` | Insert + splice edges deterministically; the DAG is re-checked before write. |
 | `comment --node <id> --text <t> [--source --kind --refs]` | Append a timestamped comment. |
 | `chores [--at <node>] [--list] [--json]` | List the flow's chore nodes (status · importance · kind · anchor · ref). `--at <node>` filters to chores anchored at that node — the position-aware "due at `<node>`" read. |
@@ -151,6 +153,76 @@ drift), and groups nodes into zone bands. Read it like this:
 > and the `cursor` verb was removed (no alias). A flow written in the old shape
 > still *reads* (extra fields are tolerated); call `nav set` to adopt the new
 > position model.
+
+### `orient` — where am I, what do I do next
+
+`nav show` + `rail` + `chores --at` answer "where am I" in three commands. **`orient`**
+folds them into one read so a weak model (or a freshly-reset context) sees its next
+step in a single call instead of inferring it:
+
+```bash
+harness flow orient --slug my-flow          # DEFAULT: human text — rail + the now-node + its chores
+harness flow orient --slug my-flow --json   # opt into the structured envelope
+```
+
+The **default is the human text** — orient exists for a weak model (or a freshly-reset
+context) to *read* its next step, so JSON is opt-in via `--json`. (Unlike most reads,
+the format is driven by the flag, not by whether stdout is a TTY.)
+
+For the node at **`nav.now`** it prints, in order:
+
+1. **The rail** — the same line as `harness flow rail` (reused, not reimplemented).
+2. **The current node** — its `label`, its `command`, and its **full `instructions[]`
+   text, verbatim**. (This is the *one* surface that prints instruction text — the
+   diagram never shows it; a `📝N` badge marks its presence there.)
+3. **The chores anchored here** — every chore anchored at `nav.now`, in **all**
+   statuses (not just the outstanding ones), each with a status pip:
+   `■` done · `▨` skipped · `□` to-do · `▣` to-do & strongly-recommended. Seeing the
+   done ones tick is the point — the checklist visibly completes.
+
+`orient` is a pure **read** — it never mutates and writes nothing. The `--json` form
+emits `{ now, rail, node: { id, label, command, instructions }, chores: [ …, pip ] }`.
+A **set-but-dangling `nav.now`** (it names a node that isn't in `nodes[]` — a corrupt
+flow) is an **error** (`E305`), not a silent `node: null`; a flow with *no* position
+set degrades gracefully (the rail still prints).
+
+---
+
+## Node `instructions` — authored guidance an agent reads
+
+`instructions[]` is a `string[]` of authored, imperative guidance for the LLM driving
+the flow — the static *what / how / done-signal* for a node (it mirrors `artifacts`;
+entries are free prose and may contain `\n`). It is **read**, never executed:
+
+- **`orient` prints it in full** at `nav.now` — the *one* surface that shows
+  instruction text. The diagram never does; it marks presence with a **`📝N` badge**
+  (like `💬N`/`📄N`), so a weak model re-reads its current step every turn instead of
+  inferring it.
+- **Authored two ways.** Baked into a **seed template** (the static "bone" — e.g.
+  the-flow's full-seed flight-plan template authors instructions on every node), and
+  edited at runtime via `set-node`. An agent can both enrich an existing node and
+  create nodes that carry instructions.
+- **Edit with `set-node`** — composed in this order against the node's current list:
+  `--clear-instructions` empties → `--instructions "a||b"` replaces (`||`-separated,
+  since instruction prose commonly contains commas) → `--add-instruction "<t>"`
+  appends one line (the common path). Passing no instruction flag leaves the field
+  untouched.
+- **Boundary.** Instructions are the forward-looking imperative bone; a node
+  `comment` is the backward-looking timestamped log. A driving skill's coaching voice
+  may *elaborate* on instructions but should not *contradict* them.
+
+## Seed templates — a template can carry a whole starter, not just a spine
+
+`create --template <file>` copies the template's `nodes[]` **verbatim** — every field,
+including `branch_of` excursions, `chore` flags, and `instructions[]` — and stamps
+root identity (provenance / events / nav / per-node `created_at`). So a template is
+free to ship a **complete seed**, not just a bare spine: the-flow's
+`flight-plan.template.json`, for example, is a full 9-node starter (the 4-node SDD
+spine **plus** 5 baked-in harness chores, each with authored `instructions[]`), so a
+freshly-created flow is fully ready with zero inference. `--bare` skips the template
+entirely for a root-only flow you build up with `add-node`; the two bundled
+`harness-adopt`/`harness-loop` templates (§ The bundled flows) are seeds in the same
+way.
 
 ---
 

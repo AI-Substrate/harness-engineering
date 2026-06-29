@@ -292,8 +292,8 @@ describe('T008 — importance-aware name collapse (show | collapse | hide)', () 
   });
 });
 
-describe('T011 — chore nodes get a distinct mermaid class (tolerant; old renderers fall back)', () => {
-  it('a chore node declares with :::chore and the classDef block is emitted', () => {
+describe('T011 — chore-ness rides the 🧰 badge, colour=type (D5; F-01)', () => {
+  it('a chore node carries the 🧰 badge (colour=type) and the importance classDefs are emitted', () => {
     const doc = loopDoc({
       nodes: [
         { id: 'boot', type: 'boot', label: 'Boot', status: 'done', next: ['c1'] },
@@ -308,11 +308,15 @@ describe('T011 — chore nodes get a distinct mermaid class (tolerant; old rende
       ],
     }) as unknown as FlowDoc;
     const md = renderFlow(doc);
-    expect(md).toMatch(/c1\["Compact[^\]]*"\]:::chore/);
-    expect(md).toContain('classDef chore');
+    // D5: the chore flag no longer sets a colour — `improve`+`todo` has no status colour
+    // → `:::unknown`; chore-ness is the `🧰` badge (recommended → plain marker).
+    expect(md).toMatch(/c1\["Compact 🧰"\]:::unknown/);
+    expect(md).toContain('classDef impOptional');
+    expect(md).toContain('classDef impStrong');
+    expect(md).not.toContain('classDef chore '); // teal chore colour retired
   });
 
-  it('a non-chore node keeps its status class (chore class does not leak)', () => {
+  it('a non-chore node keeps its status class (no badge leaks)', () => {
     const md = renderFlow(loopDoc() as unknown as FlowDoc);
     expect(md).toMatch(/boot\["Boot"\]:::done/);
   });
@@ -430,7 +434,7 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
     expect(chores[0]?.kind).toBe('skill');
   });
 
-  it('lifecycle: insert → validate clean → render shows :::chore → listChores finds it runnable', () => {
+  it('lifecycle: insert → validate clean → render shows the 🧰 badge → listChores finds it runnable', () => {
     const r = insertNode(
       loopDoc() as unknown as FlowDoc,
       {
@@ -447,7 +451,7 @@ describe('T012 — consolidation: C7 events, two-overlay validation, orthogonali
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(validateFlowDoc(r.doc, loopSchema())).toEqual([]);
-    expect(renderFlow(r.doc)).toMatch(/c1\["Validate[^\]]*"\]:::chore/);
+    expect(renderFlow(r.doc)).toMatch(/c1\["Validate 🧰"\]:::unknown/);
     const chores = listChores(r.doc);
     expect(chores[0]).toMatchObject({ id: 'c1', kind: 'command', anchor: 'boot', runnable: true });
   });

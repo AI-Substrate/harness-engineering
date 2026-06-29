@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -43,6 +44,87 @@ function mermaidBlock(rendered: string): string {
   const m = rendered.match(/```mermaid\n([\s\S]*?)\n```/);
   return m ? m[1] : '';
 }
+
+/** The harness's own headless `mermaid.parse()` runner (jsdom, no Chromium) — the
+ *  SAME validator `harness markdown-lint` uses, reused here because its frozen scope
+ *  excludes `docs/plans/**` + test fixtures, so the renderer's output was never
+ *  syntax-checked (which let an invalid chained `:::a:::b` ship). */
+const MERMAID_RUNNER = fileURLToPath(
+  new URL(
+    '../../../../../.harness/extensions/markdown-lint/lib/mermaid-runner.mjs',
+    import.meta.url,
+  ),
+);
+
+type Fence = { path: string; text: string };
+function validateMermaid(fences: Fence[]): { path?: string; valid: boolean; error?: string }[] {
+  const out = execFileSync('node', [MERMAID_RUNNER, JSON.stringify(fences)], { encoding: 'utf8' });
+  const last = out.trim().split('\n').filter(Boolean).pop() ?? '{}';
+  const parsed = JSON.parse(last) as {
+    ok: boolean;
+    loadError?: string;
+    results?: { path?: string; valid: boolean; error?: string }[];
+  };
+  if (!parsed.ok) throw new Error(`mermaid-runner setup failed: ${parsed.loadError}`);
+  return parsed.results ?? [];
+}
+
+// ---------------------------------------------------------------------------
+// Plan 040 — the renderer's mermaid output must actually PARSE. A chained inline
+// class (`id:::harness:::impOptional`) is a mermaid PARSE ERROR (STYLE_SEPARATOR)
+// that string-only golden comparison never caught — importance borders go via a
+// separate `class <id> <imp>;` statement instead.
+// ---------------------------------------------------------------------------
+
+describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
+  const fixtures = readdirSync(FIXTURE_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => f.replace(/\.json$/, ''));
+
+  it('every golden fixture renders syntactically valid mermaid (headless mermaid.parse)', () => {
+    const fences = fixtures
+      .map((name) => ({ path: name, text: mermaidBlock(renderFlow(loadFixture(name))) }))
+      .filter((f) => f.text.length > 0);
+    const results = validateMermaid(fences);
+    const invalid = results.filter((r) => !r.valid);
+    expect(invalid, `invalid mermaid fences: ${JSON.stringify(invalid)}`).toHaveLength(0);
+  });
+
+  it('importance borders use a separate `class` statement, never a chained `:::a:::b`', () => {
+    const block = mermaidBlock(
+      renderFlow(
+        doc([
+          { id: 'p1', type: 'phase', label: 'P1', status: 'known', next: ['ship'] },
+          { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
+          {
+            id: 'opt',
+            type: 'backpressure',
+            label: 'Opt',
+            status: 'assumed',
+            next: ['p1'],
+            chore: { kind: 'command', importance: 'optional' },
+          },
+          {
+            id: 'strong',
+            type: 'harness-retro',
+            label: 'Strong',
+            status: 'assumed',
+            next: ['p1'],
+            chore: { kind: 'command', importance: 'strongly-recommended' },
+          },
+        ]),
+      ),
+    );
+    // the bug: no chained inline class token anywhere
+    expect(block).not.toMatch(/:::[A-Za-z][\w-]*:::/);
+    // importance applied as separate, valid `class` statements
+    expect(block).toContain('class opt impOptional;');
+    expect(block).toContain('class strong impStrong;');
+    // and the whole thing actually parses
+    const [res] = validateMermaid([{ path: 'importance', text: block }]);
+    expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // T001 — golden-file render parity (byte-identical) + drift detection.
@@ -102,9 +184,14 @@ describe('flow-renderer · render rules', () => {
       'classDef companion',
       'classDef worker',
       'classDef unknown',
+      // D5 — importance is an ADDITIVE border channel (colour stays type).
+      'classDef impOptional',
+      'classDef impStrong',
     ]) {
       expect(out).toContain(cls);
     }
+    // D5 — chore is no longer a colour; the teal `classDef chore` is retired.
+    expect(out).not.toContain('classDef chore ');
   });
 
   it('renders spine nodes with solid edges in order (rule 2)', () => {
@@ -191,6 +278,38 @@ describe('flow-renderer · render rules', () => {
     expect(out).toContain('bp["bp"]:::harness');
   });
 
+  it('styles an `observe` seam violet too — colour=type, not status (plan 040 P3.1)', () => {
+    // `observe` is a harness-loop seam exactly like backpressure/boot/retro: the
+    // per-phase `coding`-hook capture. It must render `:::harness`, never fall to
+    // status-mapping (`:::assumed`). Covers both a bare seam and a chore-flagged one.
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'in_progress', next: [] },
+        {
+          id: 'obsbare',
+          type: 'observe',
+          label: 'observe',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+        },
+        {
+          id: 'obschore',
+          type: 'observe',
+          label: 'Observe',
+          status: 'assumed',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ]),
+    );
+    // bare observe → violet despite `assumed` status (today it renders `:::assumed`).
+    expect(out).toContain('obsbare["observe"]:::harness');
+    // chore-flagged observe, still incomplete → FADED violet AND keeps its `🧰` badge.
+    expect(out).toContain('obschore["Observe 🧰"]:::harnessFaded');
+  });
+
   it('emits exactly one genesis bubble per node carrying user_input (rule 6)', () => {
     const out = renderFlow(
       doc([
@@ -270,7 +389,10 @@ describe('flow-renderer · render rules', () => {
         { id: 'merge', type: 'merge', label: 'M', status: 'known', next: [] },
       ]),
     );
-    expect(out).toContain('**Legend**:');
+    // D5 — two-channel legend: a colour=type/status row, then a Badges row.
+    expect(out).toContain('**Legend** — colour = type/status:');
+    expect(out).toContain('Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore');
+    expect(out).not.toContain('🧰 chore (upkeep)'); // chore is no longer a colour
     expect(out).toContain('**Rail**:');
     // zoned; each name carries its pip; bands joined by ` · `: research(pre,done) · merge(post,known)
     expect(out).toContain('**Rail**: ◆─◇  ◆ R · ◇ M');
@@ -434,6 +556,238 @@ describe('flow-renderer · effectiveZone (zone default-by-type; unknown → flig
   it('an explicit valid zone overrides the type default; an invalid zone falls back to type', () => {
     expect(effectiveZone({ type: 'phase', zone: 'preflight' })).toBe('preflight');
     expect(effectiveZone({ type: 'research', zone: 'bogus' })).toBe('preflight');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 040 D5 (AC-02/04/05; F-01) — colour encodes TYPE only; chore-ness + importance
+// move OFF colour onto the `🧰<marker>` label badge + the additive
+// `impOptional`/`impStrong` border; the D4 `📝N` instructions badge (count only —
+// text never leaks); a two-channel legend; rail due-chores carry `🧰`+marker.
+// Oracle: workshops/002-d5-visual-modifier-vocabulary.md (the worked mermaid).
+// ---------------------------------------------------------------------------
+describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance, legend)', () => {
+  it('an INCOMPLETE chore-flagged harness-retro renders :::harnessFaded (faded until done)', () => {
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] },
+        {
+          id: 'retro',
+          type: 'harness-retro',
+          label: 'Drain',
+          status: 'todo',
+          branch_of: 'p1',
+          next: ['p1'],
+          chore: { kind: 'skill', importance: 'recommended' },
+        },
+      ]),
+    );
+    // harness type → violet, but an incomplete chore is FADED; recommended → plain `🧰`,
+    // no status mark, single class token (no importance border)
+    expect(out).toContain('retro["Drain 🧰"]:::harnessFaded');
+    expect(out).not.toContain(':::chore');
+  });
+
+  it('a chore on a NON-harness spine node keeps its status-mapped colour (chore ≠ colour)', () => {
+    const out = renderFlow(
+      doc([
+        {
+          id: 'compact',
+          type: 'phase',
+          label: 'Compact',
+          status: 'done',
+          next: [],
+          chore: { kind: 'builtin', importance: 'optional' },
+        },
+      ]),
+    );
+    // colour stays `done` (status); optional adds the `🧰°` marker, the done `✓` mark,
+    // + the `impOptional` border — border via a SEPARATE `class` statement (mermaid
+    // rejects chained `:::`)
+    expect(out).toContain('compact["Compact 🧰° ✓"]:::done');
+    expect(out).toContain('class compact impOptional;');
+  });
+
+  it('importance: optional→🧰°/impOptional · recommended→🧰/no border · strongly→🧰‼/impStrong', () => {
+    const out = renderFlow(
+      doc([
+        {
+          id: 'opt',
+          type: 'harness-boot',
+          label: 'opt',
+          status: 'done',
+          next: [],
+          chore: { kind: 'command', importance: 'optional' },
+        },
+        {
+          id: 'rec',
+          type: 'harness-boot',
+          label: 'rec',
+          status: 'done',
+          next: [],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+        {
+          id: 'strong',
+          type: 'harness-boot',
+          label: 'strong',
+          status: 'done',
+          next: [],
+          chore: { kind: 'command', importance: 'strongly-recommended' },
+        },
+      ]),
+    );
+    expect(out).toContain('opt["opt 🧰° ✓"]:::harness');
+    expect(out).toContain('class opt impOptional;');
+    expect(out).toContain('rec["rec 🧰 ✓"]:::harness\n'); // recommended: plain marker, single class, no border line
+    expect(out).not.toContain('class rec '); // recommended → no importance border statement
+    expect(out).toContain('strong["strong 🧰‼ ✓"]:::harness');
+    expect(out).toContain('class strong impStrong;');
+  });
+
+  it('badge ORDER is 💬N 📄N 📝N 🧰<marker> and instruction TEXT never leaks (D4/D5)', () => {
+    const out = renderFlow(
+      doc([
+        {
+          id: 'n',
+          type: 'harness-boot',
+          label: 'Boot check',
+          status: 'done',
+          next: [],
+          comments: [{ at: '2026-01-01T00:00:00Z', text: 'c', source: 'agent', kind: 'note' }],
+          artifacts: ['a.md'],
+          instructions: ['Read the brief end to end', 'Run the linter'],
+          chore: { kind: 'command', importance: 'optional' },
+        },
+      ]),
+    );
+    // exact assembled order; impOptional border rides the optional chore (separate `class` stmt);
+    // the done `✓` mark trails the `🧰°` badge
+    expect(out).toContain('n["Boot check 💬1 📄1 📝2 🧰° ✓"]:::harness');
+    expect(out).toContain('class n impOptional;');
+    // 📝N is a COUNT — the instruction text is absent from the entire render (D4)
+    expect(out).not.toContain('Read the brief end to end');
+    expect(out).not.toContain('Run the linter');
+  });
+
+  it('📝N renders only for a non-empty instructions[] array', () => {
+    // scope to the mermaid block — the legend's `📝 instructions` is always present.
+    const none = renderFlow(
+      doc([{ id: 'a', type: 'phase', label: 'A', status: 'done', next: [] }]),
+    );
+    expect(mermaidBlock(none)).not.toContain('📝');
+    const empty = renderFlow(
+      doc([{ id: 'a', type: 'phase', label: 'A', status: 'done', next: [], instructions: [] }]),
+    );
+    expect(mermaidBlock(empty)).not.toContain('📝');
+    const three = renderFlow(
+      doc([
+        {
+          id: 'a',
+          type: 'phase',
+          label: 'A',
+          status: 'done',
+          next: [],
+          instructions: ['x', 'y', 'z'],
+        },
+      ]),
+    );
+    expect(three).toContain('a["A 📝3"]:::done');
+  });
+
+  it('an UN-flagged harness seam still renders :::harness with no `🧰` badge (AC-08 back-compat)', () => {
+    const out = renderFlow(
+      doc([
+        { id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] },
+        {
+          id: 'boot',
+          type: 'harness-boot',
+          label: 'boot',
+          status: 'done',
+          branch_of: 'p1',
+          next: ['p1'],
+        },
+      ]),
+    );
+    expect(out).toContain('boot["boot"]:::harness'); // no badge — not a chore
+    expect(mermaidBlock(out)).not.toContain('🧰'); // legend always has `🧰 chore`; diagram must not
+  });
+
+  it('the two-channel legend drops `🧰 chore` from the colour row and adds a Badges row (AC-05)', () => {
+    const out = renderFlow(doc([{ id: 'a', type: 'phase', label: 'A', status: 'done', next: [] }]));
+    expect(out).toContain(
+      '**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).',
+    );
+    expect(out).not.toContain('🧰 chore (upkeep)'); // chore is no longer a colour
+  });
+
+  it('renderRailLine surfaces due chores with a `🧰`+importance marker (rail parity, AC-03)', () => {
+    const d = doc(
+      [
+        { id: 'plan', type: 'plan', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'merge', label: 'Ship', status: 'known', next: [] },
+        {
+          id: 'bp',
+          type: 'backpressure',
+          label: 'Backpressure',
+          status: 'todo',
+          branch_of: 'plan',
+          next: ['plan'],
+          chore: { kind: 'command', importance: 'optional' },
+        },
+      ],
+      { nav: { now: 'plan', next: 'ship' } },
+    );
+    expect(renderRailLine(d)).toContain('⚑ due: Backpressure 🧰°'); // optional → °
+  });
+
+  it('rail due-chore: a recommended chore gets a plain `🧰` (no importance marker)', () => {
+    const d = doc(
+      [
+        { id: 'plan', type: 'plan', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'merge', label: 'Ship', status: 'known', next: [] },
+        {
+          id: 'bp',
+          type: 'backpressure',
+          label: 'Backpressure',
+          status: 'todo',
+          branch_of: 'plan',
+          next: ['plan'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ],
+      { nav: { now: 'plan', next: 'ship' } },
+    );
+    const line = renderRailLine(d);
+    expect(line).toContain('⚑ due: Backpressure 🧰');
+    expect(line).not.toContain('🧰°');
+    expect(line).not.toContain('🧰‼');
+  });
+
+  it('renderRailLine with NO due chores at the cursor is byte-identical to today (no due: segment)', () => {
+    const d = doc([{ id: 'p1', type: 'phase', label: 'Build', status: 'in_progress', next: [] }]);
+    expect(renderRailLine(d)).toBe('[test] [ ◐ ]  [ ◐ Build ]'); // unchanged
+    expect(renderRailLine(d)).not.toContain('due:');
+  });
+
+  it('a done/skipped chore at the cursor is NOT surfaced as due', () => {
+    const d = doc(
+      [
+        { id: 'plan', type: 'plan', label: 'Plan', status: 'in_progress', next: ['ship'] },
+        { id: 'ship', type: 'merge', label: 'Ship', status: 'known', next: [] },
+        {
+          id: 'bp',
+          type: 'backpressure',
+          label: 'Backpressure',
+          status: 'done',
+          branch_of: 'plan',
+          next: ['plan'],
+          chore: { kind: 'command', importance: 'recommended' },
+        },
+      ],
+      { nav: { now: 'plan', next: 'ship' } },
+    );
+    expect(renderRailLine(d)).not.toContain('due:');
   });
 });
 

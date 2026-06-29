@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
@@ -17,12 +18,15 @@ import {
 import {
   addComment,
   addNode,
+  applyBatch,
   type ChoreRow,
   getMeta,
   insertNode,
   listChores,
   type MutationResult,
+  mvNode,
   navShow,
+  removeNode,
   setIntent,
   setMeta,
   setNext,
@@ -430,6 +434,61 @@ export function registerFlowAct(
       return emitRawAndExit(`${renderChoresTable(chores)}\n`, io.writers, 0);
     });
 
+  // --- orient ------------------------------------------------------------
+  // The "where am I / what do I do next" read (plan 040 Phase 2): in ONE command,
+  // the rail + the `nav.now` node's label/command/full instructions[] text + the
+  // chores anchored here, each with a status pip — so a weak model READS its next
+  // step instead of inferring it. A READ — never mutates. Reuses `renderRailLine`
+  // (no reimplementation) + `listChores` (ALL statuses, so completed checks show
+  // ticked — `dueChores` would hide them; D6). The DEFAULT is the human text (D2 is
+  // for a weak model); `--json` opts into the structured envelope.
+  flow
+    .command('orient')
+    .description(
+      'Print where the flow is: rail + the nav.now node (label/command/instructions) + its chores (default: human text; --json for the envelope)',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .option('--json', 'emit the structured envelope instead of the human text')
+    .action((opts: { path?: string; slug?: string }) => {
+      // D2: orient is a weak-model read, so the DEFAULT is the human block and the
+      // structured envelope is an EXPLICIT `--json` opt-in — INDEPENDENT of the
+      // ambient TTY-derived io.mode (which defaults a piped/non-TTY orient to json).
+      // The root's `--json`/`--no-json` collapse to ONE commander boolean that can't
+      // tell an explicit flag from the non-TTY default, so read the tri-state from
+      // raw argv exactly as the entrypoint's `jsonFlag` does (the local `--json`
+      // option above is for `--help` discoverability; the argv read is the decision).
+      // `rawArgs` is a real commander field (the full argv) but isn't in its public
+      // typings — narrow-cast to read it (no value-taking global flag precedes the
+      // verb, so a flat scan is safe; same caveat the entrypoint's argv scans carry).
+      const rawArgs = (program as unknown as { rawArgs?: readonly string[] }).rawArgs ?? [];
+      const wantJson = orientWantsJson(rawArgs);
+      const orientIo: CliIo = { mode: wantJson ? 'json' : 'human', writers: io.writers };
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(orientIo, failureEnvelope(needPath(), deps.clock));
+      const read = readFlowDoc(resolved.path, svc);
+      if (!read.ok) return emit(orientIo, failureEnvelope(read, deps.clock));
+      const view = orientView(read.doc);
+      // Robustness: a SET nav.now that doesn't resolve to a node in nodes[] is a
+      // corrupt/inconsistent flow — error (E305, the missing-NODE case; the
+      // missing-FILE case is E301) rather than silently returning ok + node:null. A
+      // null/empty nav.now (no position) stays graceful (rail + "no current node").
+      if (view.now !== null && view.node === null) {
+        return emit(orientIo, failureEnvelope(danglingNow(view.now), deps.clock));
+      }
+      if (wantJson) {
+        return emit(
+          orientIo,
+          formatOk(
+            'flow',
+            { path: resolved.path, ...view } as unknown as Record<string, unknown>,
+            deps.clock,
+          ),
+        );
+      }
+      return emitRawAndExit(`${renderOrient(view)}\n`, orientIo.writers, 0);
+    });
+
   // --- status ------------------------------------------------------------
   flow
     .command('status')
@@ -509,6 +568,9 @@ export function registerFlowAct(
     .option('--note <note>', 'set the node note')
     .option('--user-input <text>', 'set the genesis user_input')
     .option('--artifacts <list>', 'comma-separated artifact paths (replaces the node list)')
+    .option('--add-instruction <text>', 'append one instruction to the node instructions[]')
+    .option('--instructions <a||b>', 'replace the node instructions[] (|| -separated)')
+    .option('--clear-instructions', 'empty the node instructions[]')
     .option('--command <cmd>', 'set the command/ref this node runs (e.g. a slash-command)')
     .option('--zone <band>', 'rail band: preflight | flight | postflight')
     .option(
@@ -528,6 +590,9 @@ export function registerFlowAct(
         note?: string;
         userInput?: string;
         artifacts?: string;
+        addInstruction?: string;
+        instructions?: string;
+        clearInstructions?: boolean;
         command?: string;
         zone?: string;
         choreKind?: string;
@@ -542,9 +607,14 @@ export function registerFlowAct(
         if (opts.zone !== undefined) fields.zone = opts.zone;
         const chore = choreFromFlags(opts.choreKind, opts.importance);
         if (chore !== undefined) fields.chore = chore;
-        runMutation(io, deps, opts, (doc) =>
-          setNode(doc, opts.node, fields, { clock: deps.clock }),
-        );
+        runMutation(io, deps, opts, (doc) => {
+          // `--add-instruction` appends, so the new list is resolved against the
+          // node's CURRENT instructions[] (read from the doc here, not pre-parse).
+          const current = doc.nodes.find((n) => n.id === opts.node)?.instructions;
+          const resolved = resolveInstructions(Array.isArray(current) ? current : [], opts);
+          if (resolved !== undefined) fields.instructions = resolved;
+          return setNode(doc, opts.node, fields, { clock: deps.clock });
+        });
       },
     );
 
@@ -606,6 +676,117 @@ export function registerFlowAct(
               branchOf: opts.branchOf,
               rejoin: opts.rejoin,
             },
+            { clock: deps.clock },
+          ),
+        );
+      },
+    );
+
+  // --- apply -------------------------------------------------------------
+  // The transactional batch (plan 039): a JSON array of generic node ops from
+  // --ops <file | -> (stdin). Two-phase (materialize creates → position edges),
+  // one final DAG-check, one atomic write or none; forward refs resolve at the end;
+  // a fully-no-op batch is byte-identical. The CLI stays roster-blind — the caller
+  // computes the ops.
+  flow
+    .command('apply')
+    .description(
+      'Apply a transactional batch of node ops (--ops <file | ->): one DAG-check, one atomic write or none',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption('--ops <src>', 'a JSON array of ops from a file path, or "-" for stdin')
+    .action((opts: { path?: string; slug?: string; ops: string }) => {
+      const raw = opts.ops === '-' ? readStdin() : svc.fs.readText(toPosix(opts.ops));
+      if (raw === null) {
+        return emit(
+          io,
+          failureEnvelope(
+            {
+              ok: false,
+              status: 'error',
+              code: ErrorCodes.FLOW_NOT_FOUND,
+              message: `--ops file not found or unreadable: ${opts.ops}`,
+              next_action: 'Pass --ops <file> or --ops - to read the ops JSON from stdin.',
+            },
+            deps.clock,
+          ),
+        );
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return emit(
+          io,
+          failureEnvelope(
+            {
+              ok: false,
+              status: 'error',
+              code: ErrorCodes.INVALID_ARGS,
+              message: '--ops is not valid JSON.',
+              next_action:
+                'Pass a JSON array of ops, e.g. [{"op":"add","id":"x","type":"phase","label":"X"}].',
+            },
+            deps.clock,
+          ),
+        );
+      }
+      runMutation(io, deps, opts, (doc) => applyBatch(doc, parsed, { clock: deps.clock }));
+    });
+
+  // --- remove-node -------------------------------------------------------
+  flow
+    .command('remove-node')
+    .description(
+      'Remove a node + rewire predecessors→successors (DAG-rechecked; --force for a terminal node)',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption('--id <id>', 'node id to remove')
+    .option('--force', 'allow removing a terminal (done/skipped) node (D5)')
+    .action((opts: { path?: string; slug?: string; id: string; force?: boolean }) => {
+      runMutation(io, deps, opts, (doc) =>
+        removeNode(doc, opts.id, { force: opts.force }, { clock: deps.clock }),
+      );
+    });
+
+  // --- mv-node -----------------------------------------------------------
+  flow
+    .command('mv-node')
+    .description(
+      'Re-parent a node (--after/--before/--branch-of [+ --rejoin]); DAG-rechecked; --force for a terminal',
+    )
+    .option('--path <path>', 'flow file path')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption('--id <id>', 'node id to move')
+    .option('--after <node>', 'move to after this node')
+    .option('--before <node>', 'move to before this node')
+    .option('--branch-of <node>', 'move to an excursion of this node')
+    .option('--rejoin <node>', 'branch rejoin target (default: the branch-of node)')
+    .option('--force', 'allow moving a terminal (done/skipped) node (D5)')
+    .action(
+      (opts: {
+        path?: string;
+        slug?: string;
+        id: string;
+        after?: string;
+        before?: string;
+        branchOf?: string;
+        rejoin?: string;
+        force?: boolean;
+      }) => {
+        runMutation(io, deps, opts, (doc) =>
+          mvNode(
+            doc,
+            opts.id,
+            {
+              after: opts.after,
+              before: opts.before,
+              branchOf: opts.branchOf,
+              rejoin: opts.rejoin,
+            },
+            { force: opts.force },
             { clock: deps.clock },
           ),
         );
@@ -842,6 +1023,45 @@ function needPath(): FlowFailure {
   };
 }
 
+/**
+ * Whether `harness flow orient` was EXPLICITLY asked for the JSON envelope (plan 040
+ * P2-fix). orient defaults to the HUMAN block (D2 is a weak-model read), so — unlike
+ * every other command — it must NOT inherit the ambient mode, which defaults a
+ * non-TTY orient to json. The root's `--json`/`--no-json` collapse to one commander
+ * boolean that loses the "absent" state, so (as the entrypoint's `jsonFlag` does) we
+ * read the tri-state straight from raw argv: explicit `--json` wins, `--no-json`
+ * forces human, absent ⇒ human. This is the ONE sanctioned act-level argv read.
+ */
+function orientWantsJson(argv: readonly string[]): boolean {
+  return argv.includes('--json') && !argv.includes('--no-json');
+}
+
+/**
+ * The orient robustness failure: a SET `nav.now` that doesn't resolve to any node
+ * in `nodes[]` — a corrupt/inconsistent flow. Reuses `E305 FLOW_NODE_INVALID` (the
+ * "a node that does not exist" code), the missing-NODE analogue of the missing-FILE
+ * `E301`. (plan 040 P2-fix.)
+ */
+function danglingNow(now: string): FlowFailure {
+  return {
+    ok: false,
+    status: 'error',
+    code: ErrorCodes.FLOW_NODE_INVALID,
+    message: `nav.now points at "${now}", which is not a node in this flow.`,
+    next_action: 'Set the position to an existing node: `harness flow nav set --now <node>`.',
+  };
+}
+
+/** Read the ops payload from stdin (`harness flow apply --ops -`). Synchronous fd-0
+ *  read; returns '' on EOF / no stdin (an empty payload then fails JSON.parse cleanly). */
+function readStdin(): string {
+  try {
+    return readFileSync(0, 'utf8');
+  } catch {
+    return '';
+  }
+}
+
 /** Split a comma list into trimmed ids (undefined → undefined). */
 function splitIds(raw: string | undefined): string[] | undefined {
   if (raw === undefined) return undefined;
@@ -849,6 +1069,46 @@ function splitIds(raw: string | undefined): string[] | undefined {
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
+}
+
+/**
+ * Split a `--instructions "a||b"` value on `||` into trimmed, non-empty entries.
+ * Instructions are free prose (commas are common), so the delimiter is `||`, not a
+ * comma — unlike `splitIds`. (plan 040 D4.)
+ */
+function splitInstructions(raw: string): string[] {
+  return raw
+    .split('||')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Resolve the node's new `instructions[]` from the set-node flags, composing them in
+ * a deterministic order against the node's CURRENT list: `--clear-instructions`
+ * empties, `--instructions "a||b"` replaces (`||`-split), `--add-instruction <t>`
+ * appends. Returns `undefined` when no instruction flag is present (leave the field
+ * untouched). (plan 040 D4 / AC-01.)
+ */
+function resolveInstructions(
+  current: string[],
+  opts: { addInstruction?: string; instructions?: string; clearInstructions?: boolean },
+): string[] | undefined {
+  if (
+    opts.clearInstructions !== true &&
+    opts.instructions === undefined &&
+    opts.addInstruction === undefined
+  ) {
+    return undefined;
+  }
+  let list = [...current];
+  if (opts.clearInstructions === true) list = [];
+  if (opts.instructions !== undefined) list = splitInstructions(opts.instructions);
+  if (opts.addInstruction !== undefined) {
+    const t = opts.addInstruction.trim();
+    if (t.length > 0) list = [...list, t];
+  }
+  return list;
 }
 
 /**
@@ -861,6 +1121,87 @@ function splitIds(raw: string | undefined): string[] | undefined {
 function choreFromFlags(kind?: string, importance?: string): Chore | undefined {
   if (kind === undefined && importance === undefined) return undefined;
   return { kind: kind ?? '', importance: importance ?? '' };
+}
+
+/**
+ * The chore status pip for `orient` (D6): `■` done · `▨` skipped · else outstanding
+ * — `▣` when a still-open chore is `strongly-recommended` (the one importance with
+ * teeth), `□` otherwise. The `🧰` glyph + importance marker is a P3 render concern —
+ * NOT added here; once P3 lands, the shared render inherits it.
+ */
+function chorePip(row: ChoreRow): string {
+  if (row.status === 'done') return '■';
+  if (row.status === 'skipped') return '▨';
+  return row.importance === 'strongly-recommended' ? '▣' : '□';
+}
+
+/** One chore line in the `orient` read — a `ChoreRow` plus its status pip. */
+interface OrientChore extends ChoreRow {
+  pip: string;
+}
+
+/** The structured `harness flow orient` read: rail + the nav.now node + chores-with-pips. */
+interface OrientView {
+  now: string | null;
+  rail: string;
+  node: { id: string; label: string; command: string | null; instructions: string[] } | null;
+  chores: OrientChore[];
+}
+
+/**
+ * Compose the `orient` read for `nav.now` (plan 040 Phase 2 / AC-03): the shared
+ * rail line, the current node's label/command/full `instructions[]` text, and the
+ * chores anchored here — `listChores` (ALL statuses, so a completed check shows
+ * ticked), NOT `dueChores` (which would hide done/skipped; D6) — each tagged with
+ * its status pip. A READ — never mutates. No position (empty `nav.now`) → `node:
+ * null`, `chores: []`, and the rail still renders (graceful). A SET-but-dangling
+ * `nav.now` ALSO yields `node: null` HERE, but the orient ACTION treats that as a
+ * corrupt flow and errors (E305) — it does NOT degrade to `node: null` downstream.
+ */
+function orientView(doc: FlowDoc): OrientView {
+  const now = doc.nav?.now;
+  const nowId = typeof now === 'string' && now.length > 0 ? now : null;
+  const node = nowId !== null ? doc.nodes.find((n) => n.id === nowId) : undefined;
+  const chores = nowId !== null ? listChores(doc, nowId) : [];
+  return {
+    now: nowId,
+    rail: renderRailLine(doc),
+    node:
+      node === undefined
+        ? null
+        : {
+            id: node.id,
+            label: node.label ?? node.id,
+            command: typeof node.command === 'string' ? node.command : null,
+            instructions: Array.isArray(node.instructions) ? node.instructions : [],
+          },
+    chores: chores.map((c) => ({ ...c, pip: chorePip(c) })),
+  };
+}
+
+/**
+ * Human-readable `harness flow orient` block (JSON mode rides the envelope instead):
+ * the rail line, then the `nav.now` node (label/command + its `instructions[]`
+ * verbatim — the ONE surface that prints instruction text), then the anchored chores
+ * each with a status pip. Empty sections are simply omitted.
+ */
+function renderOrient(view: OrientView): string {
+  const lines: string[] = [view.rail];
+  if (view.node === null) {
+    lines.push('', '(no current node — set one with `harness flow nav set --now <node>`)');
+    return lines.join('\n');
+  }
+  const cmd = view.node.command ? `  ${view.node.command}` : '';
+  lines.push('', `▶ ${view.node.label} (${view.node.id})${cmd}`);
+  if (view.node.instructions.length > 0) {
+    lines.push('  Instructions:');
+    for (const t of view.node.instructions) lines.push(`    • ${t}`);
+  }
+  if (view.chores.length > 0) {
+    lines.push('  Chores:');
+    for (const c of view.chores) lines.push(`    ${c.pip} ${c.label}`);
+  }
+  return lines.join('\n');
 }
 
 /** Human-readable `harness flow chores` table (JSON mode rides the envelope instead). */

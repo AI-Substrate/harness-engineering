@@ -301,6 +301,8 @@ export interface NodeSpec {
   user_input?: string;
   authority?: string;
   artifacts?: string[];
+  /** Authored + runtime guidance (plan 040 D4) — mirrors `artifacts` plumbing. */
+  instructions?: string[];
   zone?: string;
   /** The command/ref this node runs (Phase 4 — wired by `--command`). */
   command?: string;
@@ -323,6 +325,7 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
     ...(spec.user_input !== undefined && { user_input: spec.user_input }),
     ...(spec.authority !== undefined && { authority: spec.authority }),
     ...(spec.artifacts !== undefined && { artifacts: [...spec.artifacts] }),
+    ...(spec.instructions !== undefined && { instructions: [...spec.instructions] }),
     ...(spec.zone !== undefined && { zone: spec.zone }),
     ...(spec.command !== undefined && { command: spec.command }),
     ...(spec.chore !== undefined && { chore: { ...spec.chore } }),
@@ -593,17 +596,6 @@ export function insertNode(
   placement: Placement,
   deps: MutationDeps,
 ): MutationResult {
-  const modes = [placement.after, placement.before, placement.branchOf].filter(
-    (m) => m !== undefined,
-  );
-  if (modes.length !== 1) {
-    return fail(
-      ErrorCodes.INVALID_ARGS,
-      `insert-node needs exactly one placement flag (--after | --before | --branch-of); got ${modes.length}.`,
-      'Pass exactly one of --after <id>, --before <id>, or --branch-of <id>.',
-    );
-  }
-
   const next = clone(doc);
   if (findNode(next, spec.id) !== undefined) {
     return fail(
@@ -619,34 +611,13 @@ export function insertNode(
 
   const now = deps.clock.nowIso();
   const node = materialize(spec, now);
-  const events: { node: string; edge_op: string }[] = [];
 
-  if (placement.after !== undefined) {
-    const target = findNode(next, placement.after);
-    if (target === undefined) return nodeNotFound(placement.after);
-    node.next = [...target.next]; // N inherits X's out-edges
-    target.next = [node.id]; // X now points only at N
-    target.modified_at = now; // its edge set changed → bump (companion HIGH)
-    events.push({ node: target.id, edge_op: 'splice-after' });
-  } else if (placement.before !== undefined) {
-    const target = findNode(next, placement.before);
-    if (target === undefined) return nodeNotFound(placement.before);
-    // Reverse-scan ALL nodes for predecessors of X (multi-predecessor support).
-    for (const p of next.nodes) {
-      if (p.next.includes(placement.before)) {
-        p.next = p.next.map((e) => (e === placement.before ? node.id : e));
-        p.modified_at = now; // its edge set changed → bump
-        events.push({ node: p.id, edge_op: 'splice-before' });
-      }
-    }
-    node.next = [placement.before]; // N → X
-  } else if (placement.branchOf !== undefined) {
-    const target = findNode(next, placement.branchOf);
-    if (target === undefined) return nodeNotFound(placement.branchOf);
-    node.branch_of = placement.branchOf;
-    node.next = [placement.rejoin ?? placement.branchOf]; // rejoin (default = the branch point); X.next UNCHANGED
-    // No existing edge rewired → only node-created fires.
-  }
+  // Splice the edges via the shared placement algebra (extracted so mv-node and the
+  // apply batch reuse the exact same logic). Exactly one of after/before/branch-of
+  // (else E108); a missing target → E305. The node is not yet pushed, so a forward /
+  // self ref resolves through the post-push badNext + DAG re-check below.
+  const placed = applyPlacement(next.nodes, node, placement, now);
+  if (!placed.ok) return placed;
 
   next.nodes.push(node);
 
@@ -684,7 +655,7 @@ export function insertNode(
       deps.clock,
     ),
   );
-  for (const e of events) {
+  for (const e of placed.edges) {
     next.events.push(
       buildBuiltinEvent(
         'node-updated',
@@ -694,5 +665,539 @@ export function insertNode(
       ),
     );
   }
+  return { ok: true, doc: next };
+}
+
+// ---------------------------------------------------------------------------
+// Plan 039 — generic transactional node primitives: applyPlacement (the shared
+// edge algebra), remove-node, mv-node, and the batch `apply`. All PURE
+// (doc → MutationResult on a clone) + roster-blind — they only enforce mechanical
+// integrity (existence, the edge algebra, the DAG, and the D5 terminal guard).
+// ---------------------------------------------------------------------------
+
+/** The two terminal statuses the D5 guard protects: a `done`/`skipped` node is
+ *  never silently reverted, removed, or moved (without explicit `force`). */
+const TERMINAL_STATUSES = new Set(['done', 'skipped']);
+const isTerminal = (node: FlowNode): boolean => TERMINAL_STATUSES.has(node.status);
+
+/** The D5 refusal — an honest diagnostic, nothing written (matches the advisory invariant). */
+function d5Refuse(message: string): FlowFailure {
+  return fail(
+    ErrorCodes.INVALID_ARGS,
+    message,
+    'Use `harness flow status` for a deliberate status change, or pass --force to remove/move a terminal node. Nothing was written.',
+  );
+}
+
+type EdgeEvent = { node: string; edge_op: string };
+
+/**
+ * The shared edge-placement algebra (extracted from insert-node; reused by mv-node
+ * and the apply batch). Splices `node`'s edges for exactly one of `after`/`before`/
+ * `branchOf` against the existing `nodes` (the node may or may not already be in the
+ * array — the `--before` predecessor scan skips the node itself). Mutates `nodes` +
+ * `node` in place; returns the rewired-edge events, or a FlowFailure (E108 wrong
+ * placement count · E305 missing target). Does NOT push the node or re-check the DAG.
+ */
+function applyPlacement(
+  nodes: FlowNode[],
+  node: FlowNode,
+  placement: Placement,
+  now: string,
+): { ok: true; edges: EdgeEvent[] } | FlowFailure {
+  const modes = [placement.after, placement.before, placement.branchOf].filter(
+    (m) => m !== undefined,
+  );
+  if (modes.length !== 1) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `placement needs exactly one of --after / --before / --branch-of; got ${modes.length}.`,
+      'Pass exactly one of --after <id>, --before <id>, or --branch-of <id>.',
+    );
+  }
+  const edges: EdgeEvent[] = [];
+  if (placement.after !== undefined) {
+    const target = nodes.find((n) => n.id === placement.after);
+    if (target === undefined) return nodeNotFound(placement.after);
+    node.next = [...(Array.isArray(target.next) ? target.next : [])]; // N inherits X's out-edges
+    target.next = [node.id]; // X now points only at N
+    target.modified_at = now;
+    edges.push({ node: target.id, edge_op: 'splice-after' });
+  } else if (placement.before !== undefined) {
+    const target = nodes.find((n) => n.id === placement.before);
+    if (target === undefined) return nodeNotFound(placement.before);
+    for (const p of nodes) {
+      if (p.id === node.id) continue; // never rewire the moved/inserted node to itself
+      if (!Array.isArray(p.next) || !p.next.includes(placement.before)) continue;
+      p.next = p.next.map((e) => (e === placement.before ? node.id : e));
+      p.modified_at = now;
+      edges.push({ node: p.id, edge_op: 'splice-before' });
+    }
+    node.next = [placement.before]; // N → X
+  } else if (placement.branchOf !== undefined) {
+    const target = nodes.find((n) => n.id === placement.branchOf);
+    if (target === undefined) return nodeNotFound(placement.branchOf);
+    node.branch_of = placement.branchOf;
+    node.next = [placement.rejoin ?? placement.branchOf]; // X.next UNCHANGED
+  }
+  return { ok: true, edges };
+}
+
+/**
+ * Rewire every predecessor of `id` to point at `id`'s successors instead — the
+ * "splice it out" step shared by remove-node (then deletes the node) and mv-node
+ * (then re-places it). Mutates `nodes` in place; returns the rewired-edge events.
+ */
+function rewireThrough(nodes: FlowNode[], id: string, now: string): EdgeEvent[] {
+  const node = nodes.find((n) => n.id === id);
+  const succs = node && Array.isArray(node.next) ? node.next : [];
+  const edges: EdgeEvent[] = [];
+  for (const p of nodes) {
+    if (p.id === id || !Array.isArray(p.next) || !p.next.includes(id)) continue;
+    const rebuilt: string[] = [];
+    for (const e of p.next) {
+      const repl = e === id ? succs : [e];
+      for (const r of repl) if (!rebuilt.includes(r)) rebuilt.push(r);
+    }
+    p.next = rebuilt;
+    p.modified_at = now;
+    edges.push({ node: p.id, edge_op: 'rewire' });
+  }
+  return edges;
+}
+
+/** First `next`/`branch_of` target that names no node in the set (dangling edge) — `dagIssue`
+ *  treats dangling refs as "not a cycle", so the batch + remove/mv validate this separately. */
+function firstDanglingRef(nodes: FlowNode[]): string | null {
+  const ids = new Set(nodes.map((n) => n.id));
+  for (const n of nodes) {
+    for (const t of Array.isArray(n.next) ? n.next : []) if (!ids.has(t)) return t;
+    if (typeof n.branch_of === 'string' && n.branch_of.length > 0 && !ids.has(n.branch_of)) {
+      return n.branch_of;
+    }
+  }
+  return null;
+}
+
+/** Core remove (no clone/D5/events): rewire predecessors→successors, then splice the
+ *  node out. Returns the rewired-edge events or E305 (missing node). */
+function removeCore(
+  nodes: FlowNode[],
+  id: string,
+  now: string,
+): { ok: true; edges: EdgeEvent[] } | FlowFailure {
+  const idx = nodes.findIndex((n) => n.id === id);
+  if (idx === -1) return nodeNotFound(id);
+  const edges = rewireThrough(nodes, id, now);
+  nodes.splice(idx, 1);
+  return { ok: true, edges };
+}
+
+/** Core re-parent (no clone/D5/events): detach (predecessors bypass the node) then
+ *  re-splice at the new placement. Returns the combined edge events or a FlowFailure. */
+function mvCore(
+  nodes: FlowNode[],
+  id: string,
+  placement: Placement,
+  now: string,
+): { ok: true; edges: EdgeEvent[] } | FlowFailure {
+  const node = nodes.find((n) => n.id === id);
+  if (node === undefined) return nodeNotFound(id);
+  const detached = rewireThrough(nodes, id, now);
+  node.next = [];
+  delete node.branch_of; // drop the excursion flag so the move re-roots cleanly
+  const placed = applyPlacement(nodes, node, placement, now);
+  if (!placed.ok) return placed;
+  node.modified_at = now;
+  return { ok: true, edges: [...detached, ...placed.edges] };
+}
+
+/**
+ * `flow remove-node` — delete a node and rewire predecessors→successors so no
+ * orphan/dangling edge remains; DAG-rechecked. A graph-breaking removal (cycle/
+ * orphan/dangling) is refused (`E309`), nothing written. A `done`/`skipped`
+ * terminal node needs `--force` (D5). Fires one `node-updated {removed}` + one
+ * `node-updated {rewire}` per rewired predecessor.
+ */
+export function removeNode(
+  doc: FlowDoc,
+  id: string,
+  opts: { force?: boolean },
+  deps: MutationDeps,
+): MutationResult {
+  const next = clone(doc);
+  const node = findNode(next, id);
+  if (node === undefined) return nodeNotFound(id);
+  if (isTerminal(node) && opts.force !== true) {
+    return d5Refuse(`node "${id}" is ${node.status} (terminal) — removing it needs --force.`);
+  }
+  const now = deps.clock.nowIso();
+  const r = removeCore(next.nodes, id, now);
+  if (!r.ok) return r;
+  const issue = dagIssue(next.nodes);
+  const dangling = firstDanglingRef(next.nodes);
+  if (issue !== null || dangling !== null) {
+    return fail(
+      ErrorCodes.FLOW_EDGE_INVALID,
+      `remove-node would produce an invalid flow graph: ${issue ?? `dangling edge to removed node "${dangling}"`}.`,
+      'Pick a different node, or rewire the surrounding edges first so the result stays an acyclic, connected flow. Nothing was written.',
+    );
+  }
+  next.events.push(
+    buildBuiltinEvent('node-updated', { node: id, fields: ['removed'] }, next.events, deps.clock),
+  );
+  for (const e of r.edges) {
+    next.events.push(
+      buildBuiltinEvent(
+        'node-updated',
+        { node: e.node, fields: ['next'], edge_op: e.edge_op },
+        next.events,
+        deps.clock,
+      ),
+    );
+  }
+  return { ok: true, doc: next };
+}
+
+/**
+ * `flow mv-node` — re-parent a node (`--after`/`--before`/`--branch-of` + optional
+ * `--rejoin`) and rewire; DAG-rechecked. Cannot create a cycle (refused `E309`). A
+ * terminal node needs `--force` (D5). Fires `node-updated {moved}` + the rewired-edge
+ * events.
+ */
+export function mvNode(
+  doc: FlowDoc,
+  id: string,
+  placement: Placement,
+  opts: { force?: boolean },
+  deps: MutationDeps,
+): MutationResult {
+  const next = clone(doc);
+  const node = findNode(next, id);
+  if (node === undefined) return nodeNotFound(id);
+  if (isTerminal(node) && opts.force !== true) {
+    return d5Refuse(`node "${id}" is ${node.status} (terminal) — moving it needs --force.`);
+  }
+  const now = deps.clock.nowIso();
+  const r = mvCore(next.nodes, id, placement, now);
+  if (!r.ok) return r;
+  const moved = findNode(next, id);
+  const nextErr = badNext(next, moved?.next);
+  if (nextErr !== null) return nextErr;
+  const issue = dagIssue(next.nodes);
+  if (issue !== null) {
+    return fail(
+      ErrorCodes.FLOW_EDGE_INVALID,
+      `mv-node would produce an invalid flow graph: ${issue}.`,
+      'Pick a placement (--after/--before/--branch-of) that keeps the flow acyclic. Nothing was written.',
+    );
+  }
+  next.events.push(
+    buildBuiltinEvent('node-updated', { node: id, fields: ['moved'] }, next.events, deps.clock),
+  );
+  for (const e of r.edges) {
+    next.events.push(
+      buildBuiltinEvent(
+        'node-updated',
+        { node: e.node, fields: ['next'], edge_op: e.edge_op },
+        next.events,
+        deps.clock,
+      ),
+    );
+  }
+  return { ok: true, doc: next };
+}
+
+// ---------------------------------------------------------------------------
+// apply — the transactional batch (AC-01/02/03/04). Two-phase: materialize node
+// creates/upserts, then position edges, then validate the final DAG ONCE.
+// ---------------------------------------------------------------------------
+
+/** The op kinds `apply` accepts. */
+export type FlowOpKind = 'add' | 'upsert' | 'set' | 'insert' | 'mv' | 'remove';
+
+function isObject(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
+/** A normalized, validated op (parsed once, up-front, before any mutation). */
+interface NormOp {
+  op: FlowOpKind;
+  id: string;
+  /** add/upsert/insert — the node to materialize (insert ignores `next`; placement owns it). */
+  spec?: NodeSpec;
+  /** upsert-merge / set — the shallow-merge field set. */
+  fields?: Record<string, unknown>;
+  /** insert/mv — the edge placement. */
+  placement?: Placement;
+  /** mv/remove — D5 override. */
+  force?: boolean;
+}
+
+/** Build a NodeSpec from a raw op object (defaults: status `known`; absent type/label → ''). */
+function specFrom(raw: Record<string, unknown>): NodeSpec {
+  const spec: NodeSpec = {
+    id: String(raw.id),
+    type: typeof raw.type === 'string' ? raw.type : '',
+    label: typeof raw.label === 'string' ? raw.label : '',
+    status: typeof raw.status === 'string' ? raw.status : 'known',
+  };
+  if (Array.isArray(raw.next)) spec.next = raw.next as string[];
+  if (typeof raw.branch_of === 'string') spec.branch_of = raw.branch_of;
+  if (typeof raw.zone === 'string') spec.zone = raw.zone;
+  if (typeof raw.command === 'string') spec.command = raw.command;
+  // The shape is validated at runtime by `badChore`; the cast only satisfies TS.
+  if (isObject(raw.chore)) spec.chore = raw.chore as unknown as NodeSpec['chore'];
+  if (Array.isArray(raw.artifacts)) spec.artifacts = raw.artifacts as string[];
+  if (Array.isArray(raw.instructions)) spec.instructions = raw.instructions as string[];
+  if (typeof raw.user_input === 'string') spec.user_input = raw.user_input;
+  return spec;
+}
+
+/** The shallow-merge field set = the op object minus its control keys. */
+const OP_CONTROL_KEYS = new Set(['op', 'id', 'after', 'before', 'branch_of', 'rejoin', 'force']);
+function fieldsFrom(raw: Record<string, unknown>): Record<string, unknown> {
+  const fields: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw)) if (!OP_CONTROL_KEYS.has(k)) fields[k] = v;
+  return fields;
+}
+
+/** Map an op's snake-case placement keys to a Placement (camelCase `branchOf`). */
+function placementFrom(raw: Record<string, unknown>): Placement {
+  return {
+    after: typeof raw.after === 'string' ? raw.after : undefined,
+    before: typeof raw.before === 'string' ? raw.before : undefined,
+    branchOf: typeof raw.branch_of === 'string' ? raw.branch_of : undefined,
+    rejoin: typeof raw.rejoin === 'string' ? raw.rejoin : undefined,
+  };
+}
+
+/** Validate + normalize one raw op (E108 on a malformed op — before any mutation). */
+function parseOp(raw: unknown, i: number): NormOp | FlowFailure {
+  if (!isObject(raw)) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `op #${i} is not an object.`,
+      'Each op is a JSON object with an "op" and "id".',
+    );
+  }
+  if (typeof raw.id !== 'string' || raw.id.length === 0) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `op #${i} is missing a string "id".`,
+      'Every op needs an "id".',
+    );
+  }
+  const id = raw.id;
+  switch (raw.op) {
+    case 'add':
+    case 'insert': {
+      if (typeof raw.type !== 'string' || typeof raw.label !== 'string') {
+        return fail(
+          ErrorCodes.INVALID_ARGS,
+          `op #${i} ("${raw.op}" ${id}) needs a "type" and a "label".`,
+          'A node-creating op carries at least {op, id, type, label}.',
+        );
+      }
+      return raw.op === 'insert'
+        ? { op: 'insert', id, spec: specFrom(raw), placement: placementFrom(raw) }
+        : { op: 'add', id, spec: specFrom(raw) };
+    }
+    case 'upsert':
+      return { op: 'upsert', id, spec: specFrom(raw), fields: fieldsFrom(raw) };
+    case 'set':
+      return { op: 'set', id, fields: fieldsFrom(raw) };
+    case 'mv':
+      return { op: 'mv', id, placement: placementFrom(raw), force: raw.force === true };
+    case 'remove':
+      return { op: 'remove', id, force: raw.force === true };
+    default:
+      return fail(
+        ErrorCodes.INVALID_ARGS,
+        `op #${i} has an unknown op kind ${JSON.stringify(raw.op)}.`,
+        'Use one of: add, upsert, set, insert, mv, remove.',
+      );
+  }
+}
+
+/** Shallow-merge `fields` into `node`, skipping no-op fields; bump `modified_at` if any
+ *  field actually changed. Returns the changed keys (drives the node-updated event). */
+function mergeInto(node: FlowNode, fields: Record<string, unknown>, now: string): string[] {
+  const changed: string[] = [];
+  for (const [k, v] of Object.entries(fields)) {
+    if (k === 'id') continue; // identity is immutable
+    if (JSON.stringify(node[k]) === JSON.stringify(v)) continue; // per-field no-op
+    node[k] = v;
+    changed.push(k);
+  }
+  if (changed.length > 0) node.modified_at = now;
+  return changed;
+}
+
+/**
+ * `flow apply` — apply a transactional batch of generic node ops. **Two-phase**:
+ * (phase 0) splice out `remove`s, (phase 1) materialize `add`/`upsert`/`insert`
+ * nodes, (phase 2) position edges + merge `set`s, then validate the **final** DAG
+ * **once** and (the act) write **once or not at all**. Forward refs resolve at the
+ * end (order within a batch is irrelevant). The **batch-wide D5 guard** refuses any
+ * resurrection of a base-terminal node — including a `remove`-then-re-`add` of the
+ * same terminal id. A fully-no-op batch fires no event and returns the doc
+ * **byte-identical** (no write). Invalid op / cycle / orphan / dangling → nothing
+ * written (`E108`/`E309`/`E305`).
+ */
+export function applyBatch(doc: FlowDoc, rawOps: unknown, deps: MutationDeps): MutationResult {
+  if (!Array.isArray(rawOps)) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      'apply expects a JSON array of ops.',
+      'Pass --ops <file | -> a JSON array, e.g. [{"op":"add","id":"x","type":"phase","label":"X"}].',
+    );
+  }
+  const ops: NormOp[] = [];
+  for (let i = 0; i < rawOps.length; i++) {
+    const parsed = parseOp(rawOps[i], i);
+    if (!('op' in parsed)) return parsed; // FlowFailure
+    ops.push(parsed);
+  }
+
+  const next = clone(doc);
+  const now = deps.clock.nowIso();
+  const baseTerminals = new Set(next.nodes.filter(isTerminal).map((n) => n.id));
+  const fire = (kind: string, details: Record<string, unknown>): void => {
+    next.events.push(buildBuiltinEvent(kind, details, next.events, deps.clock));
+  };
+  const fireEdges = (edges: EdgeEvent[]): void => {
+    for (const e of edges)
+      fire('node-updated', { node: e.node, fields: ['next'], edge_op: e.edge_op });
+  };
+  const createdDetails = (spec: NodeSpec): Record<string, unknown> => ({
+    node: spec.id,
+    type: spec.type,
+    ...(spec.chore !== undefined && {
+      chore: { kind: spec.chore.kind, importance: spec.chore.importance },
+    }),
+  });
+
+  // PHASE 0 — removals first, so a `remove`-then-re-`add` of the same id is a fresh
+  // insert (the laundering case), not a dup-id error. D5 force is checked per-op; the
+  // batch-wide resurrection guard below catches the re-add.
+  for (const op of ops) {
+    if (op.op !== 'remove') continue;
+    const node = findNode(next, op.id);
+    if (node === undefined) return nodeNotFound(op.id);
+    if (isTerminal(node) && op.force !== true) {
+      return d5Refuse(`node "${op.id}" is ${node.status} (terminal) — removing it needs force.`);
+    }
+    const r = removeCore(next.nodes, op.id, now);
+    if (!r.ok) return r;
+    fire('node-updated', { node: op.id, fields: ['removed'] });
+    fireEdges(r.edges);
+  }
+
+  // PHASE 1 — node materialization (add / upsert / insert). No edge validation yet
+  // (forward refs resolve at the final DAG check), so build order stops mattering.
+  for (const op of ops) {
+    if (op.op === 'add') {
+      if (op.spec === undefined) continue;
+      if (findNode(next, op.id) !== undefined) {
+        return fail(
+          ErrorCodes.INVALID_ARGS,
+          `op "add" ${op.id}: a node with that id already exists.`,
+          'Use op "upsert" to insert-or-merge, or pick a unique id.',
+        );
+      }
+      const guard = badZone(op.spec) ?? badChore(op.spec);
+      if (guard !== null) return guard;
+      next.nodes.push(materialize(op.spec, now));
+      fire('node-created', createdDetails(op.spec));
+    } else if (op.op === 'insert') {
+      if (op.spec === undefined) continue;
+      if (findNode(next, op.id) !== undefined) {
+        return fail(
+          ErrorCodes.INVALID_ARGS,
+          `op "insert" ${op.id}: a node with that id already exists.`,
+          'Pick a unique id for the inserted node (or use op "mv" to move an existing one).',
+        );
+      }
+      const guard = badZone(op.spec) ?? badChore(op.spec);
+      if (guard !== null) return guard;
+      next.nodes.push(materialize(op.spec, now)); // placement applied in phase 2
+      fire('node-created', createdDetails(op.spec));
+    } else if (op.op === 'upsert' && op.spec !== undefined) {
+      const guard = badZone(op.spec) ?? badChore(op.spec);
+      if (guard !== null) return guard;
+      const existing = findNode(next, op.id);
+      if (existing === undefined) {
+        next.nodes.push(materialize(op.spec, now)); // insert-if-absent
+        fire('node-created', createdDetails(op.spec));
+      } else {
+        const changed = mergeInto(existing, op.fields ?? {}, now); // shallow-merge-if-present
+        if (changed.length > 0) fire('node-updated', { node: op.id, fields: changed });
+      }
+    }
+  }
+
+  // PHASE 2 — edge positioning (insert placement / mv) + field merges (set) against
+  // the complete node set.
+  for (const op of ops) {
+    if (op.op === 'set') {
+      const node = findNode(next, op.id);
+      if (node === undefined) return nodeNotFound(op.id);
+      const fields = op.fields ?? {};
+      if (fields.zone !== undefined) {
+        const z = badZone({ zone: fields.zone } as NodeSpec);
+        if (z !== null) return z;
+      }
+      if (fields.chore !== undefined) {
+        const c = badChore({ chore: fields.chore } as NodeSpec);
+        if (c !== null) return c;
+      }
+      const changed = mergeInto(node, fields, now);
+      if (changed.length > 0) fire('node-updated', { node: op.id, fields: changed });
+    } else if (op.op === 'insert' && op.placement !== undefined) {
+      const node = findNode(next, op.id);
+      if (node === undefined) continue; // materialized in phase 1
+      const placed = applyPlacement(next.nodes, node, op.placement, now);
+      if (!placed.ok) return placed;
+      fireEdges(placed.edges);
+    } else if (op.op === 'mv' && op.placement !== undefined) {
+      const node = findNode(next, op.id);
+      if (node === undefined) return nodeNotFound(op.id);
+      if (isTerminal(node) && op.force !== true) {
+        return d5Refuse(`node "${op.id}" is ${node.status} (terminal) — moving it needs force.`);
+      }
+      const r = mvCore(next.nodes, op.id, op.placement, now);
+      if (!r.ok) return r;
+      fire('node-updated', { node: op.id, fields: ['moved'] });
+      fireEdges(r.edges);
+    }
+  }
+
+  // BATCH-WIDE D5 — a base-terminal id still present must still be terminal (no
+  // silent revert, and no remove-then-re-add laundering of a `done`/`skipped` node).
+  for (const id of baseTerminals) {
+    const node = findNode(next, id);
+    if (node !== undefined && !isTerminal(node)) {
+      return d5Refuse(
+        `op would resurrect terminal node "${id}" (re-stamping a done/skipped node as ${node.status}).`,
+      );
+    }
+  }
+
+  // FINAL validation — ONCE: dangling refs (E305) then the DAG (E309 cycle/orphan).
+  const dangling = firstDanglingRef(next.nodes);
+  if (dangling !== null) return nodeNotFound(dangling);
+  const issue = dagIssue(next.nodes);
+  if (issue !== null) {
+    return fail(
+      ErrorCodes.FLOW_EDGE_INVALID,
+      `apply would produce an invalid flow graph: ${issue}.`,
+      'Fix the ops so the final graph stays an acyclic, connected flow. Nothing was written.',
+    );
+  }
+
+  // BYTE-STABILITY — a fully-no-op batch fired no event; return the ORIGINAL doc so
+  // the act writes byte-identical bytes (no modified_at bump, no event).
+  if (next.events.length === doc.events.length) return { ok: true, doc };
   return { ok: true, doc: next };
 }

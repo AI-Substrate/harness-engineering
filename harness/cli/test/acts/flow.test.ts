@@ -548,6 +548,9 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     return deps;
   }
   const railOf = (env: Envelope) => (env.data as { rail: string }).rail;
+  /** The rail's name-lane body, with the 039 AC-11 `⚑ due:` cursor callout stripped — the
+   *  `--chores` mode governs the NAME LANE; the due callout is an unconditional separate surface. */
+  const bodyOf = (rail: string) => rail.split('  ⚑ due:')[0];
 
   it('rail --chores show renders the chore name; default collapse hides it behind [*]', async () => {
     const deps = await seedWithChore();
@@ -556,17 +559,21 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     expect(railOf(shown.env)).toContain('Validate');
 
     const collapsed = await runFlow(deps, ['flow', 'rail', '--slug', 'demo']); // default
-    expect(railOf(collapsed.env)).toContain('[*]');
-    expect(railOf(collapsed.env)).not.toContain('Validate');
+    expect(bodyOf(railOf(collapsed.env))).toContain('[*]');
+    expect(bodyOf(railOf(collapsed.env))).not.toContain('Validate'); // name lane collapses it
+    // 039 AC-11: a chore due at the cursor is still surfaced in the ⚑ due: callout.
+    expect(railOf(collapsed.env)).toContain('⚑ due: Validate');
   });
 
   it('rail --chores hide drops the name AND the [*] marker but keeps the square pip', async () => {
     const deps = await seedWithChore();
     const hidden = await runFlow(deps, ['flow', 'rail', '--slug', 'demo', '--chores', 'hide']);
     expect(hidden.code).toBe(0);
-    expect(railOf(hidden.env)).not.toContain('Validate');
-    expect(railOf(hidden.env)).not.toContain('[*]');
+    expect(bodyOf(railOf(hidden.env))).not.toContain('Validate'); // name lane drops it
+    expect(bodyOf(railOf(hidden.env))).not.toContain('[*]');
     expect(railOf(hidden.env)).toContain('□');
+    // 039 AC-11: the cursor's due chore still surfaces in the ⚑ due: callout.
+    expect(railOf(hidden.env)).toContain('⚑ due: Validate');
   });
 
   it('rail --chores with an invalid mode → E108', async () => {
@@ -771,5 +778,152 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     expect(ok.code).toBe(0);
     const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/fp.json') as string);
     expect(doc.nodes.find((n: { id: string }) => n.id === 'p2').next).toEqual(['p1']);
+  });
+});
+
+describe('harness flow set-node — instructions[] flags + full round-trip (plan 040 P1)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const FLOW = '/repo/.harness/flows/demo.json';
+
+  async function seed(): Promise<VerbActDeps> {
+    const fs = new FakeFs();
+    fs.mkdirp('/repo/.harness');
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    return deps;
+  }
+
+  function instructionsOf(deps: VerbActDeps, id: string): unknown {
+    const doc = JSON.parse(deps.fs.readText(FLOW) as string) as {
+      nodes: { id: string; instructions?: string[] }[];
+    };
+    return doc.nodes.find((n) => n.id === id)?.instructions;
+  }
+
+  it('--instructions "a||b" REPLACES the node list (split on ||)', async () => {
+    const deps = await seed();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--instructions',
+      'read nav||run orient',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['read nav', 'run orient']);
+  });
+
+  it('--add-instruction APPENDS to the existing list', async () => {
+    const deps = await seed();
+    await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--instructions',
+      'first',
+    ]);
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--add-instruction',
+      'second',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['first', 'second']);
+  });
+
+  it('--add-instruction on a node with no instructions seeds a one-item list', async () => {
+    const deps = await seed();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--add-instruction',
+      'only',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['only']);
+  });
+
+  it('--clear-instructions EMPTIES the list', async () => {
+    const deps = await seed();
+    await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--instructions',
+      'a||b',
+    ]);
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--clear-instructions',
+    ]);
+    expect(r.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual([]);
+  });
+
+  it('AC-01 — instructions survive a create → apply → set-node → render round-trip', async () => {
+    const deps = await seed();
+    // apply: upsert instructions onto an existing node via the transactional batch
+    deps.fs.writeText(
+      '/repo/ops.json',
+      JSON.stringify([{ op: 'upsert', id: 'boot', instructions: ['boot the harness'] }]),
+    );
+    const applied = await runFlow(deps, [
+      'flow',
+      'apply',
+      '--slug',
+      'demo',
+      '--ops',
+      '/repo/ops.json',
+    ]);
+    expect(applied.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['boot the harness']);
+    // set-node: append a runtime-authored instruction
+    const set = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--add-instruction',
+      'then observe',
+    ]);
+    expect(set.code).toBe(0);
+    expect(instructionsOf(deps, 'boot')).toEqual(['boot the harness', 'then observe']);
+    // render: the field persists in the JSON; its TEXT never appears in the diagram
+    // (AC-02 — the `📝N` badge lands in P3; here we only prove the text never leaks).
+    const rendered = await runFlow(deps, ['flow', 'render', '--slug', 'demo']);
+    expect(rendered.code).toBe(0);
+    const md = (rendered.env.data as { rendered: string }).rendered;
+    expect(md).not.toContain('boot the harness');
+    expect(md).not.toContain('then observe');
+    // render is read-only → the JSON still carries instructions afterwards
+    expect(instructionsOf(deps, 'boot')).toEqual(['boot the harness', 'then observe']);
   });
 });

@@ -103,7 +103,23 @@ hand-building.
 When the ⚙️ loop runs **alongside an active `the-flow.json`**, the router places the
 four fire-hook steps as **chores** on that flight plan (so the-flow's rail tracks
 them and they stop getting missed). Standalone, it authors its own loop instead
-(§ below). The exact, deterministic chore shape:
+(§ below).
+
+**D1 coexistence — flag-in-place only, never mint twins.** Under **D1** a the-flow
+**bakes its own full chore set at `create`** (the five harness chores + the per-phase
+boot/observe/drain trios — see the `doctrine-parity:039` block in [`../SKILL.md`](../SKILL.md),
+mirrored in the-flow's `references/harness-seams.md`), so an active **D1** the-flow
+**already carries** every fire-hook chore. `eng-harness-flow` is the single owner of the
+chore **flag**, not a second placer of chore **nodes**: alongside a D1 the-flow it only
+ever **dedups on the `--hook <X>` token and flags the existing node in place** (step 2
+below — an idempotent no-op against an already-baked chore). The **`insert-node` mint
+path (step 3) is therefore INERT against a D1 the-flow** — its scan always finds the
+baked chore — and fires **only** for a **legacy / bare / pre-039 host flow** that emitted
+seam nodes *without* chore flags (or a non-the-flow SDD host with no baked chores). This
+is exactly what keeps placement single: the-flow emits, `eng-harness-flow` flags, neither
+mints a twin.
+
+The exact, deterministic chore shape:
 
 | Field | Value |
 |---|---|
@@ -139,10 +155,11 @@ the chore flag:
 2. **Found** → flag it in place: `harness flow set-node --node <that-node> --chore-kind
    command --importance <i> --command "run /eng-harness-flow --hook <X>"` (does **not**
    duplicate; the seam node keeps its type + violet render, gains a chore pip).
-3. **Not found** → add an **anchored** chore — never a bare `add-node` (that leaves it
-   an orphan: `anchor:null`, no edge, floating off the rail, with no deterministic point
-   to run it). Use `insert-node --branch-of <anchor>`, where `<anchor>` is the hook's
-   node from the **hook → anchor map** above:
+3. **Not found** (a **legacy / bare / pre-039** host flow only — **never a D1 the-flow**,
+   whose scan always finds the baked chore) → add an **anchored** chore — never a bare
+   `add-node` (that leaves it an orphan: `anchor:null`, no edge, floating off the rail,
+   with no deterministic point to run it). Use `insert-node --branch-of <anchor>`, where
+   `<anchor>` is the hook's node from the **hook → anchor map** above:
 
    ```
    harness flow insert-node --path <the-flow.json> --id ehf-<hook> --type chore \
@@ -156,8 +173,12 @@ the chore flag:
    `harness flow chores --at <anchor>` (or `harness flow nav show` → `due_chores`) to see
    which hook is **due at the current node**: anchored chores are checks, not decorations.
 
-`coding`/observe stays **silent** (no chore); `improve` follows a retro (no chore) —
-only the **four fire hooks** become chores.
+`coding` gets **no `/eng-harness-flow` fire-hook chore** — the loop injects no router
+call for it (silent in *that* sense). But `observe` **is** a per-phase chore in its own
+right: the-flow bakes the `harness observe "<what>" --kind <kind>` capture `branch_of`
+the phase, separate from these four fire hooks. `improve` follows a retro (no chore) —
+so only the **four fire hooks** become chores *via this loop injection*; the per-phase
+`observe` chore is the-flow-baked, not one of them.
 
 > A note in the-flow's `references/harness-seams.md` records that `eng-harness-flow`
 > owns the chore flag, so seam emission and chore injection never double-fire.
