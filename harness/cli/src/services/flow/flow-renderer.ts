@@ -83,6 +83,16 @@ const IMPORTANCE_CLASS: Record<string, string> = {
 const choreMarker = (importance: string | undefined): string =>
   IMPORTANCE_MARKER[importance ?? ''] ?? '';
 
+/**
+ * Chore status → the `🧰` badge's status mark (SPACED off the badge for legibility):
+ * a satisfied chore gets a ` ✓` tick, a skipped one a ` ✕`, and an incomplete chore
+ * NO mark at all — its faded-violet fill (see `nodeClass`) already reads as "not yet".
+ * So done chores POP (tick + full colour) out of a faded, unmarked backlog. '' for an
+ * incomplete chore or a non-done/skipped state.
+ */
+const choreStatusGlyph = (status: string | undefined): string =>
+  status === 'done' ? ' ✓' : status === 'skipped' ? ' ✕' : '';
+
 /** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
 export type Zone = 'preflight' | 'flight' | 'postflight';
 const ZONES: ReadonlySet<string> = new Set<string>(['preflight', 'flight', 'postflight']);
@@ -109,35 +119,47 @@ export function effectiveZone(node: { type?: string; zone?: unknown }): Zone {
   return ZONE_BY_TYPE[node.type ?? ''] ?? 'flight';
 }
 
-/** The classDef block — emitted once at the foot of the diagram (rule 1). */
+/** The classDef block — emitted once at the foot of the diagram (rule 1). Saturated
+ *  status palette (not pastel): the status a node is IN reads at a glance — vivid green
+ *  done, bright green in-progress, hard red blocked, strong blue known — with white
+ *  text on the dark fills for contrast. `assumed`/`unknown` stay deliberately muted
+ *  (dashed, low-chroma) because they are NOT-yet-real states. */
 const CLASS_DEFS: readonly string[] = [
-  'classDef done fill:#C8E6C9,stroke:#2E7D32;',
-  'classDef wip fill:#FFE0B2,stroke:#EF6C00;',
-  'classDef blocked fill:#FFCDD2,stroke:#C62828;',
-  'classDef known fill:#BBDEFB,stroke:#1565C0;',
-  'classDef assumed fill:#ECEFF1,stroke:#90A4AE,stroke-dasharray:5 3;',
-  'classDef said fill:#FFF9C4,stroke:#F9A825;',
-  'classDef harness fill:#EDE7F6,stroke:#673AB7;',
-  'classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;',
-  'classDef companion fill:#D1C4E9,stroke:#5E35B1;',
-  'classDef worker fill:#B2DFDB,stroke:#00897B;',
-  'classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;',
+  'classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;',
+  'classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;',
+  'classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;',
+  'classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;',
+  'classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;',
+  'classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;',
+  'classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;',
+  // A harness CHORE that is not yet done — faded violet, so the backlog recedes and a
+  // satisfied (full-violet + `✓`) chore pops out of it.
+  'classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;',
+  'classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;',
+  'classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;',
+  'classDef worker fill:#00A38C,stroke:#005046,color:#fff;',
+  'classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;',
   // Importance is an ADDITIVE border channel (D5) — colour stays TYPE; these are
   // applied via a separate `class <id> <impClass>;` statement (mermaid rejects a
   // chained `:::harness:::impStrong`). Chore-ness is now the `🧰` badge + dotted
   // edge, so the old teal `classDef chore` is retired.
   'classDef impOptional stroke-dasharray:2 3;',
   'classDef impStrong stroke-width:3px;',
+  // The CURRENT node (`nav.now`) — a bright-orange "you are here" overlay, applied
+  // LAST (after the status class + any importance border) so it always wins. Vivid
+  // fill + a heavy ring so the cursor position is unmistakable regardless of status.
+  'classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;',
 ];
 
 // Two channels (D5/D4): a COLOUR row (type/status — `🧰 chore` dropped, no longer a
 // colour) and a BADGES row (the colour-independent label glyphs, incl. D4 `📝
 // instructions` and the D5 `🧰` importance markers). Kept as one rendered line.
 const LEGEND =
-  '**Legend** — colour = type/status: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed' +
-  ' · 🔶 decision · 🗣 user input · 🟪 harness · 🤖 companion · 🛠 worker.' +
+  '**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed' +
+  ' · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker' +
+  ' · 🟧 current (you are here).' +
   ' Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore' +
-  ' (° optional / recommended / ‼ strongly-recommended).';
+  ' (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).';
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -216,23 +238,28 @@ function buildIdMap(nodes: readonly FlowNode[]): Map<string, string> {
 // ---------------------------------------------------------------------------
 
 /** The classDef a node renders with: decision > harness-type > status-mapped > unknown
- *  (D5; AC-04, F-01). Colour now encodes **type** ONLY — the chore flag NO LONGER
- *  overrides the class (039 AC-11 reversed). A chore-flagged harness seam renders
- *  `:::harness` (violet); a chore on a spine node keeps its status-mapped colour;
- *  chore-ness + importance ride the `🧰<marker>` label badge + the additive
- *  `impOptional`/`impStrong` border instead. The decision rhombus still wins its class. */
+ *  (D5; AC-04, F-01). Colour encodes **type** — a harness seam is violet — but a harness
+ *  CHORE additionally dims by status: an incomplete/skipped chore renders FADED violet
+ *  (`harnessFaded`) and a satisfied one the FULL vivid `harness`, so a done chore visibly
+ *  pops out of the faded backlog (paired with the `✓` label tick). A chore on a spine
+ *  node keeps its status-mapped colour; the decision rhombus still wins its class. */
 function nodeClass(node: FlowNode): string {
   if (node.type === 'decision') return 'decision';
-  if (HARNESS_TYPES.has(node.type)) return 'harness';
+  if (HARNESS_TYPES.has(node.type)) {
+    if (node.chore !== undefined && node.status !== 'done') return 'harnessFaded';
+    return 'harness';
+  }
   return STATUS_CLASS[node.status] ?? 'unknown';
 }
 
 /**
  * The node label: escaped `label` (or id) + the colour-independent badge channel,
- * in one fixed order — `<label> 💬N 📄N 📝N 🧰<marker>` (D4/D5). `💬N` comments ·
+ * in one fixed order — `<label> 💬N 📄N 📝N 🧰<marker><pip>` (D4/D5). `💬N` comments ·
  * `📄N` artifacts · `📝N` instructions (COUNT only — the instruction TEXT never
- * enters the diagram; `orient` prints it) · `🧰<marker>` when the node is a chore,
- * the marker (`°`/plain/`‼`) carrying importance on the text surface.
+ * enters the diagram; `orient` prints it) · `🧰<marker><mark>` when the node is a chore,
+ * the marker (`°`/plain/`‼`) carrying importance and the spaced trailing mark (` ✓` done ·
+ * ` ✕` skipped · none for incomplete) carrying STATUS on the text surface — paired with
+ * the faded-violet fill an incomplete chore gets, so done chores pop.
  */
 function nodeLabel(node: FlowNode): string {
   const base = escapeMermaid(node.label ?? node.id);
@@ -243,7 +270,8 @@ function nodeLabel(node: FlowNode): string {
   if (artifacts > 0) badges.push(`📄${artifacts}`);
   const instructions = Array.isArray(node.instructions) ? node.instructions.length : 0;
   if (instructions > 0) badges.push(`📝${instructions}`);
-  if (node.chore !== undefined) badges.push(`🧰${choreMarker(node.chore.importance)}`);
+  if (node.chore !== undefined)
+    badges.push(`🧰${choreMarker(node.chore.importance)}${choreStatusGlyph(node.status)}`);
   return badges.length > 0 ? `${base} ${badges.join(' ')}` : base;
 }
 
@@ -376,6 +404,10 @@ export function renderFlow(doc: FlowDoc): string {
     const line = importanceClassLine(n, mid(n.id));
     if (line) out.push(line);
   }
+  // The current-node overlay LAST, so the bright-orange "you are here" wins over the
+  // node's status colour + any importance border (mermaid applies later classes over
+  // earlier same-property declarations).
+  if (known(nav?.now)) out.push(`    class ${mid(nav.now as string)} current;`);
   out.push('```');
 
   // --- Legend ----------------------------------------------------------------

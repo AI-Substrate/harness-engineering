@@ -306,8 +306,8 @@ describe('flow-renderer · render rules', () => {
     );
     // bare observe → violet despite `assumed` status (today it renders `:::assumed`).
     expect(out).toContain('obsbare["observe"]:::harness');
-    // chore-flagged observe → still violet AND keeps its `🧰` badge.
-    expect(out).toContain('obschore["Observe 🧰"]:::harness');
+    // chore-flagged observe, still incomplete → FADED violet AND keeps its `🧰` badge.
+    expect(out).toContain('obschore["Observe 🧰"]:::harnessFaded');
   });
 
   it('emits exactly one genesis bubble per node carrying user_input (rule 6)', () => {
@@ -567,7 +567,7 @@ describe('flow-renderer · effectiveZone (zone default-by-type; unknown → flig
 // Oracle: workshops/002-d5-visual-modifier-vocabulary.md (the worked mermaid).
 // ---------------------------------------------------------------------------
 describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance, legend)', () => {
-  it('a CHORE-FLAGGED harness-retro renders :::harness (colour=type; the flag no longer overrides)', () => {
+  it('an INCOMPLETE chore-flagged harness-retro renders :::harnessFaded (faded until done)', () => {
     const out = renderFlow(
       doc([
         { id: 'p1', type: 'phase', label: 'P1', status: 'done', next: [] },
@@ -582,8 +582,9 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    // harness type → violet; recommended chore → plain `🧰`, single class token (no border)
-    expect(out).toContain('retro["Drain 🧰"]:::harness');
+    // harness type → violet, but an incomplete chore is FADED; recommended → plain `🧰`,
+    // no status mark, single class token (no importance border)
+    expect(out).toContain('retro["Drain 🧰"]:::harnessFaded');
     expect(out).not.toContain(':::chore');
   });
 
@@ -600,9 +601,10 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    // colour stays `done` (status); optional adds the `🧰°` marker + the `impOptional`
-    // border — border via a SEPARATE `class` statement (mermaid rejects chained `:::`)
-    expect(out).toContain('compact["Compact 🧰°"]:::done');
+    // colour stays `done` (status); optional adds the `🧰°` marker, the done `✓` mark,
+    // + the `impOptional` border — border via a SEPARATE `class` statement (mermaid
+    // rejects chained `:::`)
+    expect(out).toContain('compact["Compact 🧰° ✓"]:::done');
     expect(out).toContain('class compact impOptional;');
   });
 
@@ -635,11 +637,11 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    expect(out).toContain('opt["opt 🧰°"]:::harness');
+    expect(out).toContain('opt["opt 🧰° ✓"]:::harness');
     expect(out).toContain('class opt impOptional;');
-    expect(out).toContain('rec["rec 🧰"]:::harness\n'); // recommended: plain marker, single class, no border line
+    expect(out).toContain('rec["rec 🧰 ✓"]:::harness\n'); // recommended: plain marker, single class, no border line
     expect(out).not.toContain('class rec '); // recommended → no importance border statement
-    expect(out).toContain('strong["strong 🧰‼"]:::harness');
+    expect(out).toContain('strong["strong 🧰‼ ✓"]:::harness');
     expect(out).toContain('class strong impStrong;');
   });
 
@@ -659,8 +661,9 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
         },
       ]),
     );
-    // exact assembled order; impOptional border rides the optional chore (separate `class` stmt)
-    expect(out).toContain('n["Boot check 💬1 📄1 📝2 🧰°"]:::harness');
+    // exact assembled order; impOptional border rides the optional chore (separate `class` stmt);
+    // the done `✓` mark trails the `🧰°` badge
+    expect(out).toContain('n["Boot check 💬1 📄1 📝2 🧰° ✓"]:::harness');
     expect(out).toContain('class n impOptional;');
     // 📝N is a COUNT — the instruction text is absent from the entire render (D4)
     expect(out).not.toContain('Read the brief end to end');
@@ -713,7 +716,7 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
   it('the two-channel legend drops `🧰 chore` from the colour row and adds a Badges row (AC-05)', () => {
     const out = renderFlow(doc([{ id: 'a', type: 'phase', label: 'A', status: 'done', next: [] }]));
     expect(out).toContain(
-      '**Legend** — colour = type/status: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness · 🤖 companion · 🛠 worker. Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended).',
+      '**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).',
     );
     expect(out).not.toContain('🧰 chore (upkeep)'); // chore is no longer a colour
   });
