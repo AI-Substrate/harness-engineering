@@ -8,6 +8,7 @@ import { formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
+import { getSessionEvidence } from '../services/telemetry/session-evidence.js';
 import { syncTelemetry } from '../services/telemetry/sync-service.js';
 
 /** The ports the `telemetry` act injects into the sync service (a subset of VerbActDeps). */
@@ -33,7 +34,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
   const telemetry = program
     .command('telemetry')
     .description(
-      'Telemetry sync — flush counts-only segments to per-session dated refs under refs/harness-telemetry/',
+      'Telemetry — flush counts-only segments to dated refs (`sync`) and read a pij session’s evidence (`get`)',
     );
 
   telemetry
@@ -98,6 +99,66 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
                   result.segments === 0
                     ? 'telemetry sync: nothing to flush\n'
                     : `telemetry sync: flushed ${result.segments} segment(s) across ${result.sessions} session(s)${result.pushed ? ' and pushed' : ''}\n`,
+                );
+              },
+            };
+      exitWithEnvelope(envelope, port);
+    });
+
+  telemetry
+    .command('get')
+    .description(
+      "Read a pij session's telemetry into a normalized, counts-only evidence object (the conformance scorer's telemetry lane)",
+    )
+    .argument('<pij-session-id>', 'The pij session id whose telemetry to resolve')
+    .option(
+      '--worktree <path>',
+      'Worktree root whose buffer to read (overrides pij-folder resolution)',
+    )
+    .action(async (pijSessionId: string, options: { worktree?: string }) => {
+      const evidence = await getSessionEvidence(
+        pijSessionId,
+        { fs: deps.fs, env: deps.env, proc: deps.proc },
+        options.worktree ? { worktree: options.worktree } : undefined,
+      );
+
+      // Unknown id → honest error envelope (exit 1); the buffer is never mutated.
+      if (evidence === null) {
+        const envelope = formatError(
+          'telemetry',
+          ErrorCodes.UNKNOWN,
+          `no telemetry found for pij session '${pijSessionId}'`,
+          deps.clock,
+          {
+            next_action:
+              'Check the id (`pij list`); telemetry is captured per command — run a harness command in that session, then retry. Use --worktree <path> if it ran from a git worktree.',
+          },
+        );
+        const port: OutputPort =
+          io.mode === 'json'
+            ? createOutputPort('json', io.writers)
+            : {
+                emit: (e) => {
+                  io.writers.err(`harness telemetry get: ${e.error?.message ?? 'not found'}\n`);
+                  if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
+                },
+              };
+        exitWithEnvelope(envelope, port);
+        return;
+      }
+
+      const envelope = formatOk('telemetry', evidence, deps.clock, {
+        next_action:
+          'Counts-only evidence derived from the session event stream; the conformance scorer consumes it as its telemetry lane.',
+      });
+      const port: OutputPort =
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: () => {
+                const gaps = evidence.gaps.length ? `, gaps: ${evidence.gaps.join(',')}` : '';
+                io.writers.out(
+                  `telemetry get: ${evidence.segments} segment(s), ${evidence.skill_order.length} skill(s), ${Object.keys(evidence.tools).length} tool(s)${gaps}\n`,
                 );
               },
             };
