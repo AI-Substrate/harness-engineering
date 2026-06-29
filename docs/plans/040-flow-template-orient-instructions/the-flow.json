@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "flow-template-orient-instructions",
   "nav": {
-    "now": "phase-5",
+    "now": "ship",
     "next": null,
     "intent": "Refine the OOTB flight-plan starter (D1-D6): bake chores into the template + delete the skill-side gate/§3b; add 'harness flow orient'; per-node instructions[] field; colour-by-type with icon/visual modifiers; orient-every-turn invariant; orient shows chores with ticks. Folds into the 039 branch/PR.",
     "bag": {
@@ -626,6 +626,27 @@
         "from": "known",
         "to": "in_progress"
       }
+    },
+    {
+      "id": "STA-012",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T01:51:12.815Z",
+      "details": {
+        "node": "phase-5",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T01:51:33.825Z",
+      "details": {
+        "from": "phase-5",
+        "to": "ship"
+      }
     }
   ],
   "nodes": [
@@ -840,12 +861,13 @@
       "id": "phase-5",
       "type": "phase",
       "label": "P5: Doctrine-parity + coexistence",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "ship"
       ],
       "created_at": "2026-06-28T21:48:51.405Z",
-      "modified_at": "2026-06-29T00:05:32.454Z"
+      "modified_at": "2026-06-29T01:51:12.815Z",
+      "ran_at": "2026-06-29T01:51:12.815Z"
     },
     {
       "id": "boot-2",
