@@ -249,9 +249,10 @@ function nodeLabel(node: FlowNode): string {
 
 /**
  * Declare a node: `decision` is a rhombus fork `{"…"}`; everything else a box `["…"]`.
- * Importance rides an ADDITIVE second class token (D5) — `:::<type>:::impOptional` /
- * `:::impStrong` for optional / strongly-recommended chores (colour stays the type
- * class); recommended / informational / non-chore nodes emit the single class token.
+ * Only the single TYPE class is inline (`:::<type>`) — mermaid rejects a chained
+ * `:::a:::b`. The additive importance border (D5) is emitted SEPARATELY as a
+ * `class <id> <impClass>;` statement (see importanceClassLine); recommended /
+ * informational / non-chore nodes get no such statement.
  */
 function declareNode(node: FlowNode, mid: string): string {
   const label = nodeLabel(node);
