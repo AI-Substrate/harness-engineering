@@ -217,8 +217,9 @@ entries are free prose and may contain `\n`). It is **read**, never executed:
 including `branch_of` excursions, `chore` flags, and `instructions[]` — and stamps
 root identity (provenance / events / nav / per-node `created_at`). So a template is
 free to ship a **complete seed**, not just a bare spine: the-flow's
-`flight-plan.template.json`, for example, is a full 9-node starter (the 4-node SDD
-spine **plus** 5 baked-in harness chores, each with authored `instructions[]`), so a
+`flight-plan.template.json`, for example, is a full 10-node starter (the 5-node SDD
+spine — research → plan → phase-1 → review-1 → ship — **plus** 5 baked-in harness
+chores, each with authored `instructions[]`), so a
 freshly-created flow is fully ready with zero inference. `--bare` skips the template
 entirely for a root-only flow you build up with `add-node`; the two bundled
 `harness-adopt`/`harness-loop` templates (§ The bundled flows) are seeds in the same

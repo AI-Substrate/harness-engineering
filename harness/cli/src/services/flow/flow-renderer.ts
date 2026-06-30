@@ -12,8 +12,21 @@ import { dueChores } from './flow-mutations.js';
  * **best-fit, not byte-matched** to the prototype — what matters is that it is
  * byte-stable across runs/OS (golden-file pinned + `--check` drift-guarded) and
  * covers every render rule (00-routing § Render rules + the render-surface
- * decision: genesis 🗣 bubble per node, `comments[]` → `💬N` badge + a per-node
- * markdown body-log, a distinct `decision` class, the agents subgraph).
+ * decision: `comments[]` → `💬N` badge + a per-node markdown body-log (the Node
+ * log), a distinct `decision` class, covering agents folded into the gutter box).
+ *
+ * LAYOUT — TD two columns (plan 043). One `flowchart TD` per flow: the spine is a
+ * straight LEFT column (every spine node declared once, chained linearly in topo
+ * order `n0 --> n1 --> …`); each node's side-content collapses into ONE combined
+ * gutter box in a parallel RIGHT column. The old per-excursion fan skewed the spine
+ * diagonally (dagre, LAYERED, shoved each node toward its fan); collapsing every
+ * node's `branch_of` excursions + covering agents into a single newline-joined box
+ * drops the side-node count ~4×, and an invisible `~~~` chain holds the boxes in
+ * their own column while dotted `-.-` links bias each box onto its node's row. Each
+ * gutter LINE is `<pip><importance-marker> <label>` (agents: `🤖`/`🛠 <slug>`); the
+ * per-node 🗣 user_input bubble is dropped (it was the other skew source). Row
+ * alignment is a dagre BIAS, not guaranteed — but the markdown reading order (rail
+ * → spine column) is a dead-straight spine, rendering inline anywhere (no ELK/Graphviz).
  *
  * Two safety invariants are load-bearing (Risk #10):
  *   - every user-supplied string (`label`/`user_input`/comment text/refs/slug) is
@@ -56,7 +69,6 @@ const CHORE_PIP: Record<string, string> = {
   done: '■',
   skipped: '▨',
 };
-
 /**
  * Chore importance → label/rail marker glyph (D5; ws-002). The marker rides the
  * `🧰` badge in the label AND the `⚑ due:` rail callout — the text surface that has
@@ -139,6 +151,11 @@ const CLASS_DEFS: readonly string[] = [
   'classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;',
   'classDef worker fill:#00A38C,stroke:#005046,color:#fff;',
   'classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;',
+  // The gutter box (plan 043 TD-columns): one combined right-column box per spine node
+  // holding its `branch_of` excursions + covering agents as newline-joined lines.
+  // `text-align:left` keeps the stacked lines flush; a soft violet fill reads as a
+  // distinct gutter lane beside the saturated spine.
+  'classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;',
   // Importance is an ADDITIVE border channel (D5) — colour stays TYPE; these are
   // applied via a separate `class <id> <impClass>;` statement (mermaid rejects a
   // chained `:::harness:::impStrong`). Chore-ness is now the `🧰` badge + dotted
@@ -309,6 +326,31 @@ function isExcursion(node: FlowNode): boolean {
   return typeof node.branch_of === 'string' && node.branch_of.length > 0;
 }
 
+/**
+ * The gutter LINE pip for an excursion folded into a combined box (plan 043). A chore
+ * shows its SQUARE by status (`□` todo · `■` done · `▨` skipped); a non-chore excursion
+ * keeps the diamond family. NOTE: unlike `pipOf`, importance is NOT folded into the pip
+ * glyph here — it rides a separate marker char so a strongly-recommended todo reads
+ * `□‼`, not `▣` (the gutter line carries pip + marker as two channels, like the rail).
+ */
+function gutterPip(node: FlowNode): string {
+  if (node.chore !== undefined) return CHORE_PIP[node.status] ?? '□';
+  return STATUS_PIP[node.status] ?? '◇';
+}
+
+/** One gutter-box line for an excursion: `<pip><importance-marker> <escaped label>`. */
+function gutterLine(node: FlowNode): string {
+  const marker = node.chore !== undefined ? choreMarker(node.chore.importance) : '';
+  return `${gutterPip(node)}${marker} ${escapeMermaid(node.label ?? node.id)}`;
+}
+
+/** One gutter-box line for a covering agent: `🛠 <slug>` (worker/side) or `🤖 <slug>`. */
+function agentGutterLine(a: FlowAgent): string {
+  const slug = typeof a.slug === 'string' && a.slug.length > 0 ? a.slug : 'agent';
+  const glyph = a.kind === 'worker' || a.render === 'side' ? '🛠' : '🤖';
+  return `${glyph} ${escapeMermaid(slug)}`;
+}
+
 // ---------------------------------------------------------------------------
 // The renderer.
 // ---------------------------------------------------------------------------
@@ -319,7 +361,6 @@ export function renderFlow(doc: FlowDoc): string {
   const idMap = buildIdMap(nodes);
   const mid = (original: string): string =>
     idMap.get(original) ?? (original.replace(/[^A-Za-z0-9_]/g, '_') || 'node');
-  const known = (id: unknown): id is string => typeof id === 'string' && idMap.has(id);
 
   const out: string[] = [];
 
@@ -347,67 +388,110 @@ export function renderFlow(doc: FlowDoc): string {
   out.push(renderRail(nodes));
   out.push('');
 
-  // --- Mermaid diagram -------------------------------------------------------
+  // --- TD two-column diagram (plan 043) -------------------------------------
+  // ONE `flowchart TD`: the spine is a straight LEFT column (declared once, chained
+  // linearly in topo order); each node's side-content (its `branch_of` excursions +
+  // covering agents) collapses into ONE combined gutter box in a parallel RIGHT
+  // column, held by an invisible `~~~` chain and biased onto its node's row by a
+  // dotted `-.-` link. Collapsing the old per-excursion fan into one box per node
+  // (~4× fewer side nodes) + dropping the 🗣 user_input bubble removes the diagonal
+  // skew. Row alignment is a dagre BIAS, not guaranteed.
+  const excursions = nodes.filter((n) => isExcursion(n));
+  const order = topoOrderMain(nodes);
+  const orderedIds = new Set(order.map((n) => n.id));
+
+  // group excursions under their `branch_of` parent; an orphan (parent missing/not on
+  // the spine) rides a trailing gutter box so the renderer never silently drops a node.
+  const exByParent = new Map<string, FlowNode[]>();
+  for (const n of excursions) {
+    const key = typeof n.branch_of === 'string' && orderedIds.has(n.branch_of) ? n.branch_of : '';
+    const arr = exByParent.get(key);
+    if (arr) arr.push(n);
+    else exByParent.set(key, [n]);
+  }
+  const docAgents: FlowAgent[] = Array.isArray((doc as { agents?: unknown }).agents)
+    ? ((doc as { agents?: unknown }).agents as FlowAgent[])
+    : [];
+  const agentsFor = (id: string): FlowAgent[] =>
+    docAgents.filter((a) => (Array.isArray(a.covers) ? a.covers : []).includes(id));
+
   out.push('```mermaid');
   out.push('flowchart TD');
 
-  const mains = nodes.filter((n) => !isExcursion(n));
-  const excursions = nodes.filter((n) => isExcursion(n));
+  // 1) spine node declarations (badges/classes/decision-rhombus preserved).
+  for (const n of order) out.push(declareNode(n, mid(n.id)));
 
-  // 1. main node declarations + 2. solid spine edges.
-  for (const n of mains) out.push(declareNode(n, mid(n.id)));
-  const solidEdges: string[] = [];
-  for (const n of mains) {
-    for (const t of Array.isArray(n.next) ? n.next : []) {
-      if (known(t)) solidEdges.push(`    ${mid(n.id)} --> ${mid(t)}`);
+  // 2) the spine chain — one connected left column in reading order.
+  if (order.length >= 2) {
+    out.push('');
+    out.push(`    ${order.map((n) => mid(n.id)).join(' --> ')}`);
+  }
+
+  // 3) one combined gutter box per spine node carrying side-content (excursions +
+  //    covering agents), in spine order; plus a trailing box for any orphans.
+  const gutters: { parentMid: string | null; boxId: string }[] = [];
+  const gutterDecls: string[] = [];
+  for (const head of order) {
+    const lines = [
+      ...(exByParent.get(head.id) ?? []).map(gutterLine),
+      ...agentsFor(head.id).map(agentGutterLine),
+    ];
+    if (lines.length === 0) continue;
+    const boxId = `${mid(head.id)}C`;
+    gutterDecls.push(`    ${boxId}["${lines.join('<br/>')}"]:::chore`);
+    gutters.push({ parentMid: mid(head.id), boxId });
+  }
+  const orphans = exByParent.get('') ?? [];
+  if (orphans.length > 0) {
+    gutterDecls.push(`    orphansC["${orphans.map(gutterLine).join('<br/>')}"]:::chore`);
+    gutters.push({ parentMid: null, boxId: 'orphansC' });
+  }
+  if (gutterDecls.length > 0) {
+    out.push('');
+    for (const d of gutterDecls) out.push(d);
+  }
+
+  // 4) invisible chain holds the gutter boxes in their own column (spine order).
+  if (gutters.length >= 2) {
+    out.push('');
+    out.push('    %% invisible chain holds the gutter boxes in their own column');
+    out.push(`    ${gutters.map((g) => g.boxId).join(' ~~~ ')}`);
+  }
+
+  // 5) dotted links bias each gutter box beside its node (same row).
+  const linked = gutters.filter((g) => g.parentMid !== null);
+  if (linked.length > 0) {
+    out.push('');
+    out.push('    %% dotted links pull each gutter box beside its node');
+    for (const g of linked) out.push(`    ${g.parentMid} -.- ${g.boxId}`);
+  }
+
+  // 6) classDefs (only those referenced) + additive importance borders + the current
+  //    overlay LAST so the bright-orange "you are here" wins over status + importance.
+  const used = new Set<string>();
+  for (const n of order) used.add(nodeClass(n));
+  if (gutters.length > 0) used.add('chore');
+  for (const n of order) {
+    if (n.chore !== undefined) {
+      const ic = IMPORTANCE_CLASS[n.chore.importance];
+      if (ic) used.add(ic);
     }
   }
-  if (solidEdges.length > 0) {
-    out.push('');
-    out.push(...solidEdges);
-  }
+  const currentId =
+    typeof nav?.now === 'string' && orderedIds.has(nav.now) ? (nav.now as string) : null;
+  if (currentId) used.add('current');
 
-  // 3. excursion declarations + dotted edges (workshops, backpressure, harness seams).
-  if (excursions.length > 0) {
-    out.push('');
-    for (const n of excursions) out.push(declareNode(n, mid(n.id)));
-    for (const n of excursions) {
-      for (const t of Array.isArray(n.next) ? n.next : []) {
-        if (known(t)) out.push(`    ${mid(n.id)} -.-> ${mid(t)}`);
-      }
-    }
-  }
-
-  // 4. genesis user_input bubbles — exactly one per node carrying user_input (rule 6).
-  const bubbles = nodes.filter((n) => typeof n.user_input === 'string' && n.user_input.length > 0);
-  if (bubbles.length > 0) {
-    out.push('');
-    for (const n of bubbles) {
-      const sid = `say_${mid(n.id)}`;
-      out.push(`    ${sid}>"🗣 ${escapeMermaid(n.user_input as string)}"]:::said`);
-      out.push(`    ${sid} -.- ${mid(n.id)}`);
-    }
-  }
-
-  // 5. agents — companion (render:wrap) → subgraph; worker (render:side) → side node (rule 7).
-  const agentLines = renderAgents(doc, mid, known);
-  if (agentLines.length > 0) {
-    out.push('');
-    out.push(...agentLines);
-  }
-
-  // 6. classDefs (foot) + the additive importance-border `class` statements (D5 —
-  //    a separate statement, NOT a chained `:::` token which mermaid rejects).
   out.push('');
-  for (const def of CLASS_DEFS) out.push(`    ${def}`);
-  for (const n of nodes) {
+  for (const def of CLASS_DEFS) {
+    const start = 'classDef '.length;
+    const name = def.slice(start, def.indexOf(' ', start));
+    if (used.has(name)) out.push(`    ${def}`);
+  }
+  for (const n of order) {
     const line = importanceClassLine(n, mid(n.id));
     if (line) out.push(line);
   }
-  // The current-node overlay LAST, so the bright-orange "you are here" wins over the
-  // node's status colour + any importance border (mermaid applies later classes over
-  // earlier same-property declarations).
-  if (known(nav?.now)) out.push(`    class ${mid(nav.now as string)} current;`);
+  if (currentId) out.push(`    class ${mid(currentId)} current;`);
   out.push('```');
 
   // --- Legend ----------------------------------------------------------------
@@ -631,34 +715,4 @@ interface FlowAgent {
   render?: string;
   covers?: string[];
   result?: string;
-}
-
-/** Render the `agents[]` overlay: companions wrap their covered phases, workers sit beside. */
-function renderAgents(
-  doc: FlowDoc,
-  mid: (id: string) => string,
-  known: (id: unknown) => id is string,
-): string[] {
-  const agents = Array.isArray((doc as { agents?: unknown }).agents)
-    ? ((doc as { agents?: unknown }).agents as FlowAgent[])
-    : [];
-  const lines: string[] = [];
-  agents.forEach((a, i) => {
-    const slug = typeof a.slug === 'string' && a.slug.length > 0 ? a.slug : `agent_${i}`;
-    const safe = slug.replace(/[^A-Za-z0-9_]/g, '_') || `agent_${i}`;
-    const covers = (Array.isArray(a.covers) ? a.covers : []).filter(known);
-    if (a.kind === 'worker' || a.render === 'side') {
-      const wid = `wrk_${safe}`;
-      lines.push(`    ${wid}["🛠 ${escapeMermaid(slug)}"]:::worker`);
-      for (const c of covers) lines.push(`    ${wid} -. builds .-> ${mid(c)}`);
-    } else {
-      // companion (render:wrap) — a subgraph wrapping the covered phases.
-      const gid = `cmp_${safe}`;
-      lines.push(`    subgraph ${gid}["🤖 ${escapeMermaid(slug)}"]`);
-      for (const c of covers) lines.push(`      ${mid(c)}`);
-      lines.push('    end');
-      lines.push(`    style ${gid} fill:#D1C4E9,stroke:#5E35B1`);
-    }
-  });
-  return lines;
 }

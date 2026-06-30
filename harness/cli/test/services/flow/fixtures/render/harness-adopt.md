@@ -12,29 +12,23 @@ flowchart TD
     build_boot["Build + run boot (last)"]:::assumed
     bridge{"Bridge → harness loop?"}:::decision
 
-    install --> governance
-    governance --> build_boot
-    build_boot --> bridge
+    install --> governance --> build_boot --> bridge
 
-    scout["Scout (harnessability)"]:::unknown
-    inject["Inject (wire seams)"]:::assumed
-    scout -.-> governance
-    inject -.-> build_boot
+    installC["◇ Scout (harnessability)"]:::chore
+    governanceC["◇ Inject (wire seams)"]:::chore
+
+    %% invisible chain holds the gutter boxes in their own column
+    installC ~~~ governanceC
+
+    %% dotted links pull each gutter box beside its node
+    install -.- installC
+    governance -.- governanceC
 
     classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
     classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
     classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-    classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
     classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-    classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;
-    classDef worker fill:#00A38C,stroke:#005046,color:#fff;
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef impOptional stroke-dasharray:2 3;
-    classDef impStrong stroke-width:3px;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
     class install current;
 ```
