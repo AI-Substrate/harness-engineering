@@ -10,6 +10,16 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.8.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.7.0...v0.8.0) (2026-06-30)
+
+
+### Features
+
+* **flow-042:** per-phase review spine node — parity twin + docs + plan ([7b1f708](https://github.com/AI-Substrate/harness-engineering/commit/7b1f7089487da29f42978b5e9271dfd2e99061c3))
+* **flow-render:** sectioned layout — kill the diagonal spine skew ([a37a601](https://github.com/AI-Substrate/harness-engineering/commit/a37a601a299a8e78ced7448172f14919afe261ac))
+* **flow-render:** TD two-column renderer layout (plan 043) ([2156f0f](https://github.com/AI-Substrate/harness-engineering/commit/2156f0fb4b15658d680165901c1c62a85ff9fc59))
+* **flow:** per-phase review spine node + TD two-column renderer (plans 042–043) ([b97c317](https://github.com/AI-Substrate/harness-engineering/commit/b97c31729afdcc41a0ce42fc8e6bce3d60853d87))
+
 ## [0.7.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.6.0...v0.7.0) (2026-06-29)
 
 
