@@ -8,7 +8,7 @@
     "intent": "Make eng-harness-flow mission-first, lean, and user-legible per the 13-patch handoff brief (scratch/paste/20260630T013710.md): dual-mandate thesis, lean SKILL.md hot path, sharpen advisory, two-decision plain-language retro closeout, concrete observe triggers, non-skippable post-flight encode offer, the-flow harness-seams thesis echo. Preserve the frozen contracts (5 hooks, --event, --json, --hooks, boot-LAST gate, coding=silent-observe, progressive disclosure, harness-blind modules, never-gate).",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-06-30T01:39:58.835Z",
@@ -267,6 +267,44 @@
         "from": "review-1",
         "to": "ship"
       }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-30T07:06:13.738Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-30T07:06:14.257Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "skipped",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-30T07:06:14.807Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -376,13 +414,22 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
+      ],
+      "modified_at": "2026-06-30T07:06:14.807Z",
+      "ran_at": "2026-06-30T07:06:13.738Z",
+      "comments": [
+        {
+          "at": "2026-06-30T07:06:14.807Z",
+          "text": "Shipped: this repo 3b0a2ab2 -> feat/041-flow-conformance-eval (rides PR #49, no branch per user); tools 1b8b6ed -> main. Deployed both skills (just install-skills-from-source); doctrine-parity green post-deploy; live SKILL.md now leads mission-first. Post-flight harvest skipped honestly — no friction captured this smooth prose run. Report: ship/2026-06-30/ship-report.md.",
+          "kind": "note"
+        }
       ]
     },
     {
@@ -472,7 +519,7 @@
       "id": "retro-ship",
       "type": "harness-retro",
       "label": "Retro: ship (harvest)",
-      "status": "assumed",
+      "status": "skipped",
       "branch_of": "ship",
       "next": [
         "ship"
@@ -486,7 +533,8 @@
         "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-06-30T07:06:14.257Z"
     }
   ]
 }
