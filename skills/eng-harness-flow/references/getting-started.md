@@ -8,10 +8,12 @@ A visual guide to the **engineering harness** and the loop it operates. The harn
 
 ## The Big Picture
 
+The engineering harness exists because every agent session starts **cold**. Agents don't inherit tribal setup knowledge, repeated review feedback, or the last run's hard-won discoveries unless those things are **encoded into the repo**. The harness gives that encoding a home: a discoverable, runnable, deterministic surface for booting, checking, observing, validating, and improving the product. When you have to infer something important twice, prefer moving it out of tokens and into that surface — a command, check, fixture, smoke test, diagnostic, template, default, or clearer error.
+
 Two zones, one bridge:
 
 - **🧰 Adoption gate** (once per repo) — the repo *adopts* the harness: install the CLI, scout the repo, governance, an injection point into the flow you already run, and a **working boot command — built LAST**, deliberately, so the moment it works you run it and flow straight into real work.
-- **⚙️ Engineering loop** (every session, forever) — the cycle that *runs* the substrate: `Boot → Backpressure Check → Do Work and Observe → Retro and Magic Wand → Improve`, then back to Boot. It never "completes" — it compounds.
+- **⚙️ Engineering loop** (every session, forever) — the cycle that *runs* the substrate: `Boot → Backpressure Check → Do Work and Observe → Retro and Improve → Encode`, then back to Boot. It never "completes" — it compounds.
 
 The router (`/eng-harness-flow`) sits *beside* both zones, not inside either: on every call it re-reads the repo's deterministic signals and routes you to the first missing adoption rung, or — once the gate holds — to the right loop stage for where your work is.
 
