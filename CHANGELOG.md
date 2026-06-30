@@ -10,6 +10,78 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.7.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.6.0...v0.7.0) (2026-06-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* **telemetry:** drop branch_changed boolean — the branch event is the single source of truth
+* **telemetry:** schema 1.1 — command/prompt signals + compact subagents
+
+### Features
+
+* **eng-harness-flow:** restore the retro→extension encoding bridge dropped in 022 ([790bd08](https://github.com/AI-Substrate/harness-engineering/commit/790bd08d172e57c3dab4e75c3e61a64149355d63))
+* **flow-039:** Phase 1 — transactional node primitives + chore-aware renderer + canonical seam doctrine ([4f4b384](https://github.com/AI-Substrate/harness-engineering/commit/4f4b384c53a532df90fd406d51680248f8edd927))
+* **flow-039:** Route A — transactional flow primitives + chore-aware renderer + canonical seam doctrine ([b95ca23](https://github.com/AI-Substrate/harness-engineering/commit/b95ca237ad98933ccba02d72ecf9e56461ee739f))
+* **flow-040:** P1 — per-node instructions[] field + set-node flags ([f7ac73f](https://github.com/AI-Substrate/harness-engineering/commit/f7ac73ffcc8684f735fc350b9513f5f603192964))
+* **flow-040:** P2 — `harness flow orient` read (default human, --json opt-in) ([7e9582a](https://github.com/AI-Substrate/harness-engineering/commit/7e9582a792179a5c997a7c406632b297bc1ce191))
+* **flow-040:** P3 — renderer D5 (colour=type, badges, importance, legend) ([b4f2209](https://github.com/AI-Substrate/harness-engineering/commit/b4f2209f15a50960bed6c902ffda98cc477f4b66))
+* **flow-040:** P5 — doctrine-parity guard + eng-harness-flow D1 coexistence ([c09361a](https://github.com/AI-Substrate/harness-engineering/commit/c09361ab4fe46c1fb472c39b1846145739b50fa5))
+* **flow-040:** visible chore status + vivid render palette + current-node highlight ([d0a5084](https://github.com/AI-Substrate/harness-engineering/commit/d0a50843404b43719bcfebc25f7c79da11c29166))
+* **telemetry-038:** T001 — 3-way OTLP conformance harness + protobufjs devDep ([75992b1](https://github.com/AI-Substrate/harness-engineering/commit/75992b125f9bec1ad5ad58aa7567bfe94c0026ad))
+* **telemetry-038:** T002/T006/T007/T009 — OTLP Logs serializer + reconstruction proof ([4bd2a5a](https://github.com/AI-Substrate/harness-engineering/commit/4bd2a5a88705b68bfe390608e1a1acb0e4f35df8))
+* **telemetry-038:** T005 — mint + drift-guard per-instance OTLP goldens ([9cc6f8a](https://github.com/AI-Substrate/harness-engineering/commit/9cc6f8a4673957c30b2f28c2e1195d50208a015e))
+* **telemetry-038:** T008 — rollup → OTLP Metrics (cumulative-per-session) ([5a22e5f](https://github.com/AI-Substrate/harness-engineering/commit/5a22e5fbdb7eba4143153878b234741f42331d35))
+* **telemetry-038:** T010 — emit transport-agnostic OTLP spool at the capture seam ([678ed81](https://github.com/AI-Substrate/harness-engineering/commit/678ed816e7d0df9184fff03ca03a72198b4e2c00))
+* **telemetry-038:** T011 — publish OTLP .jsonl spool over keep-and-harden git-refs ([ab03aa0](https://github.com/AI-Substrate/harness-engineering/commit/ab03aa0fd1688feea26e7b78b3e57d7cee6010c5))
+* **telemetry-038:** T012 — harden the keep (H4 session-id entropy, H5 idempotent re-push) ([3a36cf3](https://github.com/AI-Substrate/harness-engineering/commit/3a36cf3301be88b717ffbd8b55b74c5ae98ddff2))
+* **telemetry-038:** T014 — freeze the harness.* OTLP attribute contract + retarget tests ([05995ee](https://github.com/AI-Substrate/harness-engineering/commit/05995eeacc032c417dfe8fb34a559cfc21a09409))
+* **telemetry:** capture allowlisted env vars into segments (captured_env, schema 2.2) ([5b4b5b2](https://github.com/AI-Substrate/harness-engineering/commit/5b4b5b20fa534d79db38d5b51f64ccd53986fe23))
+* **telemetry:** Claude adapter emits v2 event stream (Phase 5 T5.4a) ([c2a0712](https://github.com/AI-Substrate/harness-engineering/commit/c2a0712a1013a52b27c657ad4d97fde68cd1ef98))
+* **telemetry:** compute branch_changed + emit a branch event (034 P5 DL-003) ([77b12eb](https://github.com/AI-Substrate/harness-engineering/commit/77b12eb494c6204e65238014edb2367ed7055473))
+* **telemetry:** Copilot adapter emits v2 event stream (Phase 5 T5.4b) ([5be03e5](https://github.com/AI-Substrate/harness-engineering/commit/5be03e545a192513f0090f6611c10a9181c16cc7))
+* **telemetry:** Copilot VS Code Chat surface + attributable commits (plan 034 Phase 6 / A4) ([#40](https://github.com/AI-Substrate/harness-engineering/issues/40)) ([c6c2134](https://github.com/AI-Substrate/harness-engineering/commit/c6c2134c781d2a1240af86c2cd0cefef97bf6540))
+* **telemetry:** Cursor adapter emits bubble-anchored v2 event stream (Phase 5 T5.5) ([7f68d17](https://github.com/AI-Substrate/harness-engineering/commit/7f68d1788ba5627ba6cc66723e689fb22f9530a0))
+* **telemetry:** cursor model attribution via read-only sqlite DbPort ([42cc8a5](https://github.com/AI-Substrate/harness-engineering/commit/42cc8a5804b14dd44c1ae721423a213795ef30ed))
+* **telemetry:** cursor-agent capability adapter ([7b0e67b](https://github.com/AI-Substrate/harness-engineering/commit/7b0e67b7dbc99729f5c8fa6d6f499e71c4f6b58d))
+* **telemetry:** flow_log replay — surface the-flow's events[] into the stream (plan 035) ([4cf8621](https://github.com/AI-Substrate/harness-engineering/commit/4cf86216cc18bbe9c8588b8d97f6faa858e67315))
+* **telemetry:** flow-stage events from the-flow.json nav (034 P5 T5.6) ([5245dfe](https://github.com/AI-Substrate/harness-engineering/commit/5245dfe336bf2042c5b747af5bd8115c37f9f4b1))
+* **telemetry:** OTEL/OTLP telemetry standard + env capture (plan 038) ([6dd8b82](https://github.com/AI-Substrate/harness-engineering/commit/6dd8b82c4c576baddb50667f73cc9c5c7b10a6ab))
+* **telemetry:** outcome events checks + command_exit (034 P5 T5.7) ([b7d0a0e](https://github.com/AI-Substrate/harness-engineering/commit/b7d0a0e395bcd0351cf2b46e009611482b93472e))
+* **telemetry:** real scrubbed fixture corpus + review fixes (plan 037) ([#42](https://github.com/AI-Substrate/harness-engineering/issues/42)) ([253daf5](https://github.com/AI-Substrate/harness-engineering/commit/253daf5b256c2f946ea9992041919d7fdf8b6cab))
+* **telemetry:** recursion-safe post-commit telemetry flush + doctor scan + --no-verify push ([0e7d471](https://github.com/AI-Substrate/harness-engineering/commit/0e7d471197a130f41f9e74afd98996d72e21429e))
+* **telemetry:** schema 1.1 — command/prompt signals + compact subagents ([24d46b3](https://github.com/AI-Substrate/harness-engineering/commit/24d46b3a0580285724664f5d054e9118780cbaeb))
+* **telemetry:** segment v2.0 event stream + rollup engine (Phase 5 T5.1-5.3) ([7d33083](https://github.com/AI-Substrate/harness-engineering/commit/7d330839315f1859dadb6a8c8029e0ff7b7fdc3a))
+* **telemetry:** stamp the producing CLI version → segment harness_version + OTLP service.version ([254f710](https://github.com/AI-Substrate/harness-engineering/commit/254f7109ec6ec8e2fea8b59c12346ec41dbf0fe0))
+* **telemetry:** v2 event-stream telemetry + flow replay (plans 034 P5 + 035) ([1af767a](https://github.com/AI-Substrate/harness-engineering/commit/1af767ad2cf951f89775de97e9e00f7260dc4fe2))
+* **telemetry:** v2-lean segment — drop command arrays, omit empties, surface harness verb in timeline ([f14d640](https://github.com/AI-Substrate/harness-engineering/commit/f14d6404aa5af21410b31cd792c87b65d0c54d1e))
+
+
+### Bug Fixes
+
+* **ci:** remove the pre-push checks gate — it recursed via telemetry auto-sync ([b2861a5](https://github.com/AI-Substrate/harness-engineering/commit/b2861a5caede777fed8c342f327cd8fd5c583368))
+* **flow-040:** P3.1 — `observe` is a harness type (D5 colour parity) ([cc4f9c5](https://github.com/AI-Substrate/harness-engineering/commit/cc4f9c5ec15af04281540403962883ab01b41026))
+* **flow-040:** renderer emitted INVALID mermaid (chained :::class) — split to a class statement ([c28a8c9](https://github.com/AI-Substrate/harness-engineering/commit/c28a8c966f3d6be78e04501b2ad2cc20b7f0cb8f))
+* **flow:** accept --message as an alias for --text on `flow comment` ([3505801](https://github.com/AI-Substrate/harness-engineering/commit/3505801ba8a32f088ed93d618a2e6bd24c5c6766))
+* **telemetry-038:** address 2 review findings (metrics flow_log bounds + 14-kind coverage) ([b5189f3](https://github.com/AI-Substrate/harness-engineering/commit/b5189f3ba0d1b68f0c6d20178507b034c75a53a4))
+* **telemetry-038:** address companion phase-drain review (1 HIGH + 2 MEDIUM, run 0d3a) ([f3cd90a](https://github.com/AI-Substrate/harness-engineering/commit/f3cd90a9c318281eb00e8528ee626a3f01748d03))
+* **telemetry-038:** F1 — watermark must not skip an un-flushed seq on interleaved date buckets ([c967f41](https://github.com/AI-Substrate/harness-engineering/commit/c967f41ee4a5e3f0dcf04dbd8b662b2daa022fce))
+* **telemetry-038:** T011 — never publish-and-consume a partial OTLP spool ([4e97524](https://github.com/AI-Substrate/harness-engineering/commit/4e97524979c5c0b3ca4d76fbfe12f08ca2c8ca42))
+* **telemetry:** address flow_log review (F001 schema drift HIGH + F002/F003/F007) ([511c126](https://github.com/AI-Substrate/harness-engineering/commit/511c1261d6f565ee0bf9bf67153c59563185f6d0))
+* **telemetry:** cast serializeEvent unknown-kind skeleton to Event (034 P5 build) ([55df92a](https://github.com/AI-Substrate/harness-engineering/commit/55df92aca1bb28b9252f3b23ad426759c0c97499))
+* **telemetry:** companion F003 HIGH + F004-F007 (034 P5 outcome provenance + docs) ([cf8ede2](https://github.com/AI-Substrate/harness-engineering/commit/cf8ede2b20be5f07ef4163189cb0e7a269a2c39b))
+* **telemetry:** Copilot command_exit only for a lone harness command (034 P5 F008) ([f3d227d](https://github.com/AI-Substrate/harness-engineering/commit/f3d227d06c04a0f6dbacb21c05bd91aee1c34711))
+* **telemetry:** decouple Copilot command capture from toolName (034 P5) ([aa1eb31](https://github.com/AI-Substrate/harness-engineering/commit/aa1eb31b17785dfd0d927204f40c35b77d9cf995))
+* **telemetry:** emit Copilot tool event when name is only on execution_complete (companion HIGH, AC-16) ([610b872](https://github.com/AI-Substrate/harness-engineering/commit/610b87282b0030b5457a85d3afbf3a74e665f2b3))
+* **telemetry:** repair Copilot adapter for current Copilot CLI format ([9e84e1e](https://github.com/AI-Substrate/harness-engineering/commit/9e84e1ef745e2e8caa1a4bd493ba076c8635c18c))
+* **telemetry:** resolve flight-plan path from deep cwd (034 P5 companion F001/F002) ([f271492](https://github.com/AI-Substrate/harness-engineering/commit/f2714923116df67ffd0c174e5ff19108baa67b94))
+* **telemetry:** stop spooling no-activity captures + nested-invocation re-entrancy guard ([b8f9993](https://github.com/AI-Substrate/harness-engineering/commit/b8f9993b60850cb5745c24eef219e75b956a722d))
+
+
+### Code Refactoring
+
+* **telemetry:** drop branch_changed boolean — the branch event is the single source of truth ([f0bf241](https://github.com/AI-Substrate/harness-engineering/commit/f0bf241253b010b18679a4207b8b7c841a0670bb))
+
 ## [0.6.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.5.0...v0.6.0) (2026-06-24)
 
 

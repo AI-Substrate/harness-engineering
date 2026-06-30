@@ -160,6 +160,9 @@ scratch/
 agents/*/runs/
 .minih/
 
+# flow-pair run ledger (per-run prompts/diffs/ledger — local orchestration state)
+.flow-pair/
+
 # Harness scratch buffer — crash-resilient agent working notes (.harness/ itself is committed;
 # only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).
 .harness/temp/

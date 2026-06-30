@@ -124,11 +124,20 @@ describe('🧰 harness-adopt flow', () => {
     expect(byId(doc, 'bridge')?.zone).toBe('postflight');
   });
 
-  it('renders the bridge as a decision rhombus + excursions dotted (R-4)', () => {
+  it('renders the bridge as a decision rhombus + excursions in gutter boxes (R-4)', () => {
     const md = renderFlow(doc);
     expect(md).toContain('bridge{"Bridge → harness loop?"}:::decision');
-    expect(md).toContain('scout -.-> governance');
-    expect(md).toContain('inject -.-> build_boot');
+    // TD-columns render: each excursion folds into its `branch_of` parent's combined
+    // gutter box, biased beside the node by a dotted `parent -.- <node>C` link.
+    expect(md).toContain('install -.- installC');
+    expect(md).toContain('governance -.- governanceC');
+    // and the excursion labels still appear, each inside its parent's gutter box.
+    const installBox = md.split('\n').find((l) => l.startsWith('    installC['));
+    expect(installBox).toBeDefined();
+    expect(installBox).toContain('Scout');
+    const governanceBox = md.split('\n').find((l) => l.startsWith('    governanceC['));
+    expect(governanceBox).toBeDefined();
+    expect(governanceBox).toContain('Inject');
   });
 
   it('rails as [adopt] with the spine only (excursions off the rail)', () => {
