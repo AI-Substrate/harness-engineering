@@ -40,6 +40,30 @@ function evidence(): SessionEvidence {
   };
 }
 
+/**
+ * Copilot-shaped evidence (F8): skills run as anonymous `tools.skill` + harness verbs,
+ * but the harness emits NO `kind:"skill"`/`kind:"flow"` NAME events — so `skills`,
+ * `skill_order`, and `flow_seams` are structurally empty and the `skill_name_capture`
+ * gap is set. the-flow ran (its `flow` verb family is present); the eng-harness-flow
+ * loop did NOT (no observe/retro/boot/backpressure verbs).
+ */
+function copilotEvidence(): SessionEvidence {
+  return {
+    pij_session_id: 'pij-copilot',
+    harness: 'copilot-cli',
+    segments: 24,
+    skills: {},
+    skill_order: [],
+    files: { written: ['x.ts'], edited: [] },
+    flow_seams: [],
+    harness_verbs: { flow: 13, 'flow nav': 11, 'flow orient': 6, doctor: 5, 'markdown-pdf': 4, checks: 1 },
+    checks: [],
+    compactions: 0,
+    tools: { bash: 100, skill: 4, view: 182 },
+    gaps: ['subagent_tokens', 'plans_touched', 'skill_name_capture'],
+  };
+}
+
 /** A worktree fixture with one of each fs artifact the assertions look for. */
 function worktreeFs(): FakeFs {
   return new FakeFs(
@@ -168,6 +192,33 @@ describe('resolvers — fs+telemetry composite (retro-drained: three-valued AND)
   });
 });
 
+describe('resolvers — F11: retro drain keys on the real `record` verb, not phantom `retro`', () => {
+  const A = a('retro-drained', { evidence_glob: '.harness/records/retro/**/*.md' }, { source: 'fs+telemetry' });
+
+  /** The REAL harness drain shape: `observe` (capture) → `record` (write), NO `retro` verb. */
+  function realDrainEvidence(): SessionEvidence {
+    const ev = evidence();
+    ev.harness_verbs = { observe: 3, record: 2, boot: 1, checks: 1 }; // no `retro` verb exists
+    return ev;
+  }
+
+  it('PASSES on a real drain — `record` verb ran + record file exists (the F11 fix)', async () => {
+    expect(await resolveAssertion(A, ctxWith(realDrainEvidence()))).toBe('pass');
+  });
+
+  it('flips pass→fail when the `record` verb is dropped (non-vacuous; stale file alone never passes)', async () => {
+    const ev = realDrainEvidence();
+    ev.harness_verbs.record = 0; // the mutation: no drain-write this session, only a pre-existing file
+    expect(await resolveAssertion(A, ctxWith(ev))).toBe('fail');
+  });
+
+  it('still honours a legacy `retro` verb if some harness emits one (backward compat)', async () => {
+    const ev = realDrainEvidence();
+    ev.harness_verbs = { retro: 1 }; // legacy-only shape
+    expect(await resolveAssertion(A, ctxWith(ev))).toBe('pass');
+  });
+});
+
 describe('resolvers — dim-0: a mutated fixture FLIPS the verdict (non-vacuity)', () => {
   it('skill-called pass→fail when the fixture drops the skill count', async () => {
     const ok = ctxWith(evidence());
@@ -189,5 +240,37 @@ describe('resolvers — dim-0: a mutated fixture FLIPS the verdict (non-vacuity)
   it('tool-used min raises the bar so the same fixture flips pass→fail', async () => {
     expect(await resolveAssertion(a('tool-used', { tool: 'Write', min: 5 }), ctxWith(evidence()))).toBe('pass');
     expect(await resolveAssertion(a('tool-used', { tool: 'Write', min: 6 }), ctxWith(evidence()))).toBe('fail');
+  });
+});
+
+describe('resolvers — F8: skill-name-capture gap (copilot) ⇒ verb-signature fallback', () => {
+  it('skill-called the-flow PASSES via its `flow` verb signature (no kind:skill event)', async () => {
+    expect(await resolveAssertion(a('skill-called', { skill: 'the-flow' }), ctxWith(copilotEvidence()))).toBe('pass');
+  });
+
+  it('skill-called eng-harness-flow FAILS — loop verbs absent (preserves the real F7 signal)', async () => {
+    expect(await resolveAssertion(a('skill-called', { skill: 'eng-harness-flow' }), ctxWith(copilotEvidence()))).toBe('fail');
+  });
+
+  it('eng-harness-flow flips fail→pass when a loop verb (observe) appears (non-vacuous)', async () => {
+    const ev = copilotEvidence();
+    ev.harness_verbs.observe = 1; // the mutation: the loop actually engaged
+    expect(await resolveAssertion(a('skill-called', { skill: 'eng-harness-flow' }), ctxWith(ev))).toBe('pass');
+  });
+
+  it('skill-called a skill with NO known signature ⇒ unknown (never a false fail)', async () => {
+    expect(await resolveAssertion(a('skill-called', { skill: 'validate-v2' }), ctxWith(copilotEvidence()))).toBe('unknown');
+  });
+
+  it('skill-sequence and flow-seam-fired ⇒ unknown (names/seams uncaptured for copilot)', async () => {
+    const rc = ctxWith(copilotEvidence());
+    expect(await resolveAssertion(a('skill-sequence', { skills: ['explore', 'plan', 'implement'] }), rc)).toBe('unknown');
+    expect(await resolveAssertion(a('flow-seam-fired', { hook: 'pre-coding' }), rc)).toBe('unknown');
+  });
+
+  it('the fallback is GATED on the gap: the same empty skills WITHOUT the gap still FAIL (Claude semantics intact)', async () => {
+    const ev = copilotEvidence();
+    ev.gaps = ev.gaps.filter((g) => g !== 'skill_name_capture'); // mutation: drop the gap marker
+    expect(await resolveAssertion(a('skill-called', { skill: 'the-flow' }), ctxWith(ev))).toBe('fail');
   });
 });

@@ -137,19 +137,56 @@ function fsMatch(a: Assertion, rc: ResolveContext): boolean {
   return matchGlob(rc.fs, rc.worktree, glob.split('/').filter((s) => s.length > 0));
 }
 
+// ---- skill-name-capture fallback (F8: copilot emits no `kind:"skill"`/`kind:"flow"`) ----
+
+/**
+ * Verb signatures for skills whose telemetry NAME events some harnesses don't emit
+ * (copilot — flagged by the `skill_name_capture` gap). A skill counts as "called" when
+ * ANY of its signature harness verbs ran. Used ONLY on the fallback path when names are
+ * uncaptured; harnesses that DO name skills (Claude) populate `skills` and never reach
+ * here. The signatures are each skill's own CLI surface: `the-flow` drives the `flow`
+ * verb family; `eng-harness-flow` drives the loop verbs (absence ⇒ the loop never ran —
+ * the real conformance signal, preserved).
+ */
+const SKILL_VERB_SIGNATURES: Record<string, string[]> = {
+  'the-flow': ['flow'],
+  'eng-harness-flow': ['observe', 'retro', 'boot', 'backpressure'],
+};
+
+/** Did any harness verb equal to — or prefixed `"<p> "` by — one of `prefixes` run? */
+function anyVerbRan(harnessVerbs: Record<string, number>, prefixes: string[]): boolean {
+  return Object.keys(harnessVerbs).some((v) =>
+    prefixes.some((p) => v === p || v.startsWith(`${p} `)),
+  );
+}
+
 // ---- telemetry-lane resolvers (evidence === null ⇒ unknown) ----
 
 const skillCalled: ResolverFn = (a, rc) => {
   if (!rc.evidence) return 'unknown';
   const skill = strParam(a, 'skill');
   if (!skill) return 'unknown';
-  return bool((rc.evidence.skills[skill] ?? 0) >= numParam(a, 'min', 1));
+  if ((rc.evidence.skills[skill] ?? 0) >= numParam(a, 'min', 1)) return 'pass';
+  // Fallback: this harness doesn't capture skill NAMES (copilot — `skill_name_capture`).
+  // Infer the call from the skill's CLI-verb signature; a skill with no known signature
+  // can't be verified ⇒ `unknown`, never a false `fail` (the determinism boundary).
+  if (rc.evidence.gaps.includes('skill_name_capture')) {
+    const sig = SKILL_VERB_SIGNATURES[skill];
+    if (!sig) return 'unknown';
+    return bool(anyVerbRan(rc.evidence.harness_verbs, sig));
+  }
+  return 'fail';
 };
 
 const skillSequence: ResolverFn = (a, rc) => {
   if (!rc.evidence) return 'unknown';
   const skills = a.params.skills;
   if (!Array.isArray(skills) || skills.some((s) => typeof s !== 'string')) return 'unknown';
+  // Stage-level skill NAMES aren't captured by every harness (copilot) — a SEQUENCE can't
+  // be verified without them ⇒ `unknown`, never a false `fail` (the determinism boundary).
+  if (rc.evidence.gaps.includes('skill_name_capture') && rc.evidence.skill_order.length === 0) {
+    return 'unknown';
+  }
   const ordered = a.params.ordered !== false; // default true
   const order = rc.evidence.skill_order;
   if (!ordered) return bool((skills as string[]).every((s) => order.includes(s)));
@@ -167,6 +204,12 @@ const flowSeamFired: ResolverFn = (a, rc) => {
   if (!rc.evidence) return 'unknown';
   const hook = strParam(a, 'hook');
   if (!hook) return 'unknown';
+  // Seam (`kind:"flow"`) events aren't emitted by every harness (copilot) — when the
+  // seam stream is structurally empty under that gap, a fired seam can't be confirmed
+  // ⇒ `unknown`, never a false `fail` (the determinism boundary).
+  if (rc.evidence.gaps.includes('skill_name_capture') && rc.evidence.flow_seams.length === 0) {
+    return 'unknown';
+  }
   return bool(
     rc.evidence.flow_seams.some((s) => s === hook || s.endsWith(`:${hook}`) || s.includes(hook)),
   );
@@ -241,11 +284,18 @@ function andVerdict(a: Verdict, b: Verdict): Verdict {
 }
 
 const retroDrained: ResolverFn = (a, rc) => {
-  // telemetry half: a `retro` harness verb ran.
-  const telemetry: Verdict = !rc.evidence
-    ? 'unknown'
-    : bool((rc.evidence.harness_verbs.retro ?? 0) >= numParam(a, 'min', 1));
-  // fs half: a retro record file exists.
+  // telemetry half: a retro drain wrote a record THIS session. The harness has no
+  // `retro` verb — a drain is `harness observe` (capture) → `harness record` (write),
+  // so the real drain-write signal is the `record` verb (legacy `retro` still honoured).
+  // F11: keying on the phantom `retro` verb false-failed every genuine drain.
+  const min = numParam(a, 'min', 1);
+  const driveVerbs = rc.evidence
+    ? (rc.evidence.harness_verbs.record ?? 0) + (rc.evidence.harness_verbs.retro ?? 0)
+    : 0;
+  const telemetry: Verdict = !rc.evidence ? 'unknown' : bool(driveVerbs >= min);
+  // fs half: a retro record file exists. AND-ed with the telemetry half, this also
+  // guards against a stale pre-existing record passing alone — a `record` verb must
+  // have fired this session for the file to count.
   const evidenceGlob = strParam(a, 'evidence_glob') ?? strParam(a, 'glob');
   const fsHalf: Verdict = evidenceGlob
     ? bool(matchGlob(rc.fs, rc.worktree, evidenceGlob.split('/').filter((s) => s.length > 0)))

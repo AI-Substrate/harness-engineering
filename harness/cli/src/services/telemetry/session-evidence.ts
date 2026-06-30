@@ -225,6 +225,15 @@ function fold(pijSessionId: string, segments: readonly Segment[]): SessionEviden
   const gaps: string[] = [];
   if (!subagentTokensKnown) gaps.push('subagent_tokens');
   if (!anyPlans) gaps.push('plans_touched');
+  // Skill/seam NAMES uncaptured (e.g. the copilot harness): skills run as anonymous
+  // `tools.skill` invocations + `subagent`/`harness` events, but NO `kind:"skill"`/
+  // `kind:"flow"` NAME events are emitted — so `skills`/`skill_order`/`flow_seams` are
+  // structurally empty even though skills ran. Mark it so name-based resolvers fall
+  // back to verb signatures (or resolve `unknown`), never a false `fail` — a capture
+  // gap is not a conformance failure (the determinism boundary, plan 041 / F8).
+  if (Object.keys(skills).length === 0 && (tools.skill ?? 0) > 0) {
+    gaps.push('skill_name_capture');
+  }
 
   return {
     pij_session_id: pijSessionId,

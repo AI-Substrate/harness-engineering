@@ -3,20 +3,15 @@ name: eng-harness-flow
 description: |
   Front door for the engineering-harness loop. Use it at work seams so agents
   pursue two goals at once: complete the requested task, AND improve the
-  deterministic engineering environment that future agents and teammates will use.
+  deterministic engineering environment future agents and teammates inherit.
   Before work: boot and check backpressure. During work: capture friction and
   missing proof. After work: drain/harvest observations. At closeout: offer to
   encode the best lesson as a command, check, fixture, sensor, diagnostic,
   template, default, or clearer error. Advisory means the user is never blocked —
-  it does NOT mean the agent may silently skip the loop. Mechanically it is a
-  stateless router: it re-derives where the work sits on the loop from deterministic
-  repo signals plus an optional caller hint and routes to the SINGLE correct harness
-  skill (never call the children directly); it enforces the adoption gate
-  (install → scout → governance → inject → boot LAST) before the engineering zone
-  (boot → backpressure → observe → retro → improve), honours `at=` / `--event` /
-  `--plan-dir` / `--spec` / `--phase` / `--prompt-optional` / `--json` / `--hooks`,
-  and never gates, scores, or blocks (nor invents a health verdict — that is
-  `harness doctor`'s job).
+  it does NOT mean the agent may silently skip the loop. Mechanically a stateless
+  router: it re-derives where work sits from repo signals and routes to the one
+  correct harness skill (never call children directly); honours the adoption gate
+  and `--event`/`--json`/`--hooks`; never gates, scores, or blocks.
 ---
 # eng-harness-flow
 
