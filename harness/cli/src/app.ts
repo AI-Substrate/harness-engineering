@@ -20,6 +20,7 @@ import { NodeBackground } from './adapters/exec/node-background.js';
 import { NodeExec } from './adapters/exec/node-exec.js';
 import { NodeFs } from './adapters/fs/node-fs.js';
 import { ExecGit } from './adapters/git/exec-git.js';
+import { ExecGitRead } from './adapters/git/exec-git-read.js';
 import { ExecGitWrite } from './adapters/git/exec-git-write.js';
 import { JitiLoader } from './adapters/loader/jiti-loader.js';
 import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
@@ -267,7 +268,11 @@ export function buildProgram(
   registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
-  registerTelemetryAct(program, io, { ...deps, gitWrite: deps.gitWrite ?? new ExecGitWrite() });
+  registerTelemetryAct(program, io, {
+    ...deps,
+    gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    gitRead: new ExecGitRead(),
+  });
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
     registerVerbAct(program, verb, deps, io);

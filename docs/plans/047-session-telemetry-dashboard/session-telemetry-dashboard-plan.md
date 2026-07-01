@@ -257,3 +257,9 @@ Build the export→report→render pipeline in three cohesive phases: **P1** loc
 | v1 (no-`event_stream`) segment crashes `segmentToOtlpLogs` | Medium | Medium | Task 1.7 normalizes-or-degrades v1 before forward-regen; AC-02 scoped to "without crashing" |
 | Privacy leak in a committed sample | Low | High | P12 + KF-07: scrub + byte-scan + `git check-ignore`; AC-11 scan test |
 | `computeRollup` semantics insufficient for stage windowing | Low | Medium | Reuse `fold`/`computeRollup`; stage windows per-session then summed (002 Q2) |
+
+## Fixes
+
+| ID | Created | Summary | Domain(s) | Status | Source |
+|----|---------|---------|-----------|--------|--------|
+| [FX001](./fixes/FX001-capture-bash-command-signature.md) | 2026-07-01 | Keep the already-computed non-harness command signatures in the event stream so `bash_command` keys by `rg`/`git` (argv granularity), not just tool name | telemetry / _adapters | Proposed | Phase-2 discovery (observe MW-001) + principal directive |

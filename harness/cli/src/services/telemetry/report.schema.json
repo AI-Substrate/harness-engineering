@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/report/v1",
+  "title": "TelemetryReport",
+  "description": "A derived rollup OVER 1..N SessionExport files (plan 047 Phase 2). Answers 'across these sessions, where did the time and tokens go?' — it is NOT a session and NOT an eval RunRecord. Every dimension derives from the ONE lossless event stream a SessionExport carries (otlpLogsToEvents(signals.logs)); counts are EXACT, time/tokens are ESTIMATES with a declared `attribution`. Additive: additionalProperties:true + a pinned schema_version so a new dimension/facet is a new key, never a breaking change.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "scope", "filter", "totals", "rollups", "attribution", "provenance"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "harness.telemetry-report/v1",
+      "description": "Pinned envelope version. Bump on a field-set change."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["session_count", "single", "session_ids"],
+      "properties": {
+        "session_count": { "type": "integer", "minimum": 0, "description": "How many sessions were rolled up." },
+        "single": { "type": "boolean", "description": "true ⇒ a one-session report (the only N=1-vs-N>1 shape difference)." },
+        "session_ids": { "type": "array", "items": { "type": "string" }, "description": "harness_session_ids rolled up (may be capped ⇒ provenance.session_count is authoritative)." }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "What narrowed this report — echoed for self-description. An absent field = that facet unfiltered. `repo` is ECHO-ONLY (a SessionExport carries no repo facet in v1; repo narrowing is Phase 3 / workshop 004).",
+      "properties": {
+        "harness": { "type": "array", "items": { "type": "string" } },
+        "model": { "type": "array", "items": { "type": "string" } },
+        "branch": { "type": "array", "items": { "type": "string" } },
+        "repo": { "type": "array", "items": { "type": "string" }, "description": "Echo-only in v1 (not applied)." },
+        "date_from": { "type": "string" },
+        "date_to": { "type": "string" }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["time_s", "tokens", "sessions"],
+      "description": "The headline numbers. time_s = Σ per-session wall time; tokens = Σ turn tokens (output + all buckets).",
+      "properties": {
+        "time_s": { "type": "number", "minimum": 0 },
+        "tokens": { "$ref": "#/$defs/rollupTokens" },
+        "sessions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "rollups": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/rollup" },
+      "description": "Every dimension, the SAME row shape. Additive: a new dimension is a new key old readers ignore. v1 ships flow_stage / skill / tool / bash_command / harness_command.",
+      "required": ["flow_stage", "skill", "tool", "bash_command", "harness_command"],
+      "properties": {
+        "flow_stage": { "$ref": "#/$defs/rollup" },
+        "skill": { "$ref": "#/$defs/rollup" },
+        "tool": { "$ref": "#/$defs/rollup" },
+        "bash_command": { "$ref": "#/$defs/rollup", "description": "Shell-family tool runs keyed by shell-tool name (bash/shell). EXCLUDES `harness …` invocations (co-timed harness events) to avoid double-count. NOTE: the workshop-002 `rg ×54` example renders here as `bash`/`shell` — v2 telemetry scrubs argv at capture (P12), so this is tool-name granularity, not argv-keyed." },
+        "harness_command": { "$ref": "#/$defs/rollup", "description": "⭐ The prominent, dedicated dimension — in-stream `harness` event verbs (e.g. `doctor`, `flow nav`)." }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["tokens", "time", "exact", "bash_command_key", "notes"],
+      "description": "How to read the numbers — never mistake an estimate for a ledger. `bash_command_key` + `notes` are ALWAYS emitted (the D1 shell-tool-granularity / no-double-count contract is self-describing), so both are required.",
+      "properties": {
+        "tokens": { "type": "string", "description": "e.g. 'turn-window-even-split' — a turn's tokens attribute to the dimension(s) active in its window, split evenly (v1)." },
+        "time": { "type": "string", "description": "e.g. 'timeline-bracket' — wall-clock between consecutive timeline events (flow_stage uses computeRollup stage windowing)." },
+        "exact": { "type": "array", "items": { "type": "string" }, "description": "Which columns are exact (['count'])." },
+        "bash_command_key": { "type": "string", "description": "'shell-tool-name' — argv is unavailable from the counts-only substrate (D1)." },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["date_range", "repos", "branches", "harnesses", "models", "session_count", "source_paths", "generated_at"],
+      "description": "Rendered at the bottom of the HTML — exactly what data backs the numbers. source_paths are repo-relative / home-stripped (never an absolute /Users/… path — P12).",
+      "properties": {
+        "date_range": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["from", "to"],
+          "properties": { "from": { "type": "string" }, "to": { "type": "string" } }
+        },
+        "repos": { "type": "array", "items": { "type": "string" } },
+        "branches": { "type": "array", "items": { "type": "string" } },
+        "harnesses": { "type": "array", "items": { "type": "string" } },
+        "models": { "type": "array", "items": { "type": "string" } },
+        "session_count": { "type": "integer", "minimum": 0, "description": "Authoritative N (scope.session_ids may be capped)." },
+        "source_paths": { "type": "array", "items": { "type": "string" } },
+        "generated_at": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "rollupTokens": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["output", "total"],
+      "properties": {
+        "output": { "type": "number", "minimum": 0, "description": "Estimated generated (output) tokens." },
+        "total": { "type": "number", "minimum": 0, "description": "Estimated all-bucket tokens (in + out + cache)." }
+      }
+    },
+    "rollupEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["key", "count", "time_s", "tokens"],
+      "description": "One row — identical across every dimension so the HTML renders them uniformly.",
+      "properties": {
+        "key": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0, "description": "EXACT event/segment count." },
+        "time_s": { "type": "number", "minimum": 0, "description": "ESTIMATE (timeline-bracket)." },
+        "tokens": { "$ref": "#/$defs/rollupTokens" }
+      }
+    },
+    "rollup": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["dimension", "entries", "total"],
+      "properties": {
+        "dimension": { "type": "string", "enum": ["flow_stage", "skill", "tool", "bash_command", "harness_command"] },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/rollupEntry" }, "description": "Sorted desc (default tokens.total; --sort overrides)." },
+        "total": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["count", "time_s", "tokens"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 0 },
+            "time_s": { "type": "number", "minimum": 0 },
+            "tokens": { "$ref": "#/$defs/rollupTokens" }
+          }
+        },
+        "truncated": { "type": "integer", "minimum": 0, "description": "Rows dropped past a --top cap — surfaced, never silent." }
+      }
+    }
+  }
+}

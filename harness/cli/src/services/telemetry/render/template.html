@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Telemetry Report</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1b1f24; --muted: #5b6672;
+    --line: #e5e8ec; --accent: #3b5bdb; --star: #b8860b; --star-bg: #fff8e6;
+    --star-line: #f0d98a; --zebra: #fafbfc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header.report-head {
+    padding: 20px 24px; border-bottom: 1px solid var(--line);
+    background: var(--panel); display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  header.report-head h1 { margin: 0; font-size: 18px; font-weight: 650; }
+  header.report-head .sub { color: var(--muted); font-size: 12.5px; }
+  main { padding: 20px 24px 8px; max-width: 1200px; margin: 0 auto; }
+  .totals { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+  .totals .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 16px; min-width: 150px;
+  }
+  .totals .card .label { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  .totals .card .metrics { color: var(--muted); font-size: 12.5px; display: grid; gap: 2px; }
+  .totals .card .metrics b { color: var(--ink); font-weight: 600; }
+  section.dim { margin-bottom: 26px; }
+  section.dim > h2 {
+    font-size: 14px; font-weight: 650; margin: 0 0 8px; display: flex; align-items: center; gap: 8px;
+  }
+  section.dim > h2 .hint { color: var(--muted); font-weight: 400; font-size: 12px; }
+  section.dim.star > h2 { color: var(--star); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  section.dim.star table { border-color: var(--star-line); }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { background: #f0f2f5; font-size: 12px; color: var(--muted); font-weight: 600; }
+  section.dim.star thead th { background: var(--star-bg); color: var(--star); }
+  tbody tr:nth-child(even) { background: var(--zebra); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.key { font-weight: 600; white-space: nowrap; }
+  td.cell { font-variant-numeric: tabular-nums; }
+  td.cell .c { font-weight: 600; }
+  td.cell .sub { color: var(--muted); font-size: 12px; }
+  td.absent { color: #b6bdc6; }
+  .truncated { color: var(--muted); font-size: 12px; padding: 6px 12px; }
+  .empty { color: var(--muted); padding: 40px; text-align: center; }
+  footer.provenance {
+    margin-top: 8px; padding: 16px 24px 30px; border-top: 1px solid var(--line);
+    background: var(--panel); color: var(--muted); font-size: 12.5px;
+  }
+  footer.provenance b { color: var(--ink); font-weight: 600; }
+  footer.provenance .row { margin: 3px 0; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 999px; background: #eef1f6;
+    color: var(--muted); font-size: 11.5px; margin: 0 4px 4px 0; }
+</style>
+</head>
+<body>
+<header class="report-head">
+  <h1>Telemetry Report</h1>
+  <span class="sub" id="head-sub"></span>
+</header>
+<main id="root"></main>
+<footer class="provenance" id="provenance"></footer>
+
+<!--REPORT_DATA-->
+
+<script>
+(function () {
+  "use strict";
+
+  // ── Formatting (the view computes nothing but presentation) ──
+  function trim1(n) {
+    var r = Math.round(n * 10) / 10;
+    return Number.isInteger(r) ? String(r) : r.toFixed(1);
+  }
+  function fmtDur(s) {
+    s = Math.max(0, Math.round(s || 0));
+    if (s < 60) return s + "s";
+    var m = s / 60;
+    if (m < 60) return trim1(m) + "m";
+    var h = m / 60;
+    if (h < 24) return trim1(h) + "h";
+    return trim1(h / 24) + " days";
+  }
+  function fmtTok(n) {
+    n = Math.round(n || 0);
+    if (n >= 1e6) return trim1(n / 1e6) + "M";
+    if (n >= 1e3) return trim1(n / 1e3) + "k";
+    return String(n);
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  // ── Load the inline-embedded reports (NO fetch — file:// safe) ──
+  function loadColumns() {
+    var nodes = document.querySelectorAll("script.report-column");
+    var out = [];
+    for (var i = 0; i < nodes.length; i++) {
+      try {
+        var obj = JSON.parse(nodes[i].textContent);
+        if (obj && obj.report) out.push({ label: obj.label || "", report: obj.report });
+      } catch (e) { /* skip a malformed block, never throw */ }
+    }
+    return out;
+  }
+
+  function filterLabel(f) {
+    if (!f) return "";
+    var parts = [];
+    ["model", "harness", "branch", "repo"].forEach(function (k) {
+      if (f[k] && f[k].length) parts.push(f[k].join("+"));
+    });
+    return parts.join(" · ");
+  }
+  function labelFor(col, i) {
+    return col.label || filterLabel(col.report.filter) || ("Session " + (i + 1));
+  }
+
+  var DIMS = [
+    { key: "harness_command", label: "Harness command", star: true, hint: "the loop machinery's own surface" },
+    { key: "flow_stage", label: "Flow stage" },
+    { key: "skill", label: "Skill" },
+    { key: "tool", label: "Tool" },
+    { key: "bash_command", label: "Bash command", hint: "shell-tool granularity; excludes harness" }
+  ];
+
+  function renderTotals(cols) {
+    var html = '<div class="totals">';
+    cols.forEach(function (col, i) {
+      var t = col.report.totals || { tokens: {} };
+      html += '<div class="card"><div class="label">' + esc(labelFor(col, i)) + "</div>" +
+        '<div class="metrics">' +
+        "<div><b>" + (t.sessions || 0) + "</b> session(s)</div>" +
+        "<div><b>" + fmtDur(t.time_s) + "</b> total time</div>" +
+        "<div><b>" + fmtTok(t.tokens ? t.tokens.total : 0) + "</b> tokens (" +
+        fmtTok(t.tokens ? t.tokens.output : 0) + " output)</div>" +
+        "</div></div>";
+    });
+    return html + "</div>";
+  }
+
+  function cell(entry) {
+    if (!entry) return '<td class="cell absent">–</td>';
+    return '<td class="cell"><span class="c">' + entry.count + "×</span>" +
+      ' <span class="sub">' + fmtTok(entry.tokens ? entry.tokens.total : 0) + " tok · " +
+      fmtDur(entry.time_s) + "</span></td>";
+  }
+
+  function renderDim(dim, cols) {
+    // Union of keys across columns, sorted desc by summed tokens.total.
+    var index = {}; // key -> { key, score, byCol: {colIdx: entry} }
+    cols.forEach(function (col, ci) {
+      var r = col.report.rollups ? col.report.rollups[dim.key] : null;
+      if (!r || !r.entries) return;
+      r.entries.forEach(function (e) {
+        var row = index[e.key] || (index[e.key] = { key: e.key, score: 0, byCol: {} });
+        row.byCol[ci] = e;
+        row.score += e.tokens ? e.tokens.total : 0;
+      });
+    });
+    var keys = Object.keys(index).sort(function (a, b) {
+      return index[b].score - index[a].score || (a < b ? -1 : a > b ? 1 : 0);
+    });
+
+    var cls = "dim" + (dim.star ? " star" : "");
+    var html = '<section class="' + cls + '"><h2>' + (dim.star ? "★ " : "") + esc(dim.label) +
+      (dim.hint ? ' <span class="hint">— ' + esc(dim.hint) + "</span>" : "") + "</h2>";
+
+    if (!keys.length) {
+      html += '<table><tbody><tr><td class="absent" style="padding:10px 12px">no ' +
+        esc(dim.label.toLowerCase()) + " activity</td></tr></tbody></table></section>";
+      return html;
+    }
+
+    html += "<table><thead><tr><th>" + esc(dim.label) + "</th>";
+    cols.forEach(function (col, i) { html += "<th>" + esc(labelFor(col, i)) + "</th>"; });
+    html += "</tr></thead><tbody>";
+    keys.forEach(function (k) {
+      html += '<tr><td class="key">' + esc(k) + "</td>";
+      cols.forEach(function (_col, ci) { html += cell(index[k].byCol[ci]); });
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+
+    // Surface any truncation (never a silent cap).
+    var trunc = [];
+    cols.forEach(function (col, i) {
+      var r = col.report.rollups ? col.report.rollups[dim.key] : null;
+      if (r && r.truncated) trunc.push("+" + r.truncated + " more in " + labelFor(col, i));
+    });
+    if (trunc.length) html += '<div class="truncated">' + esc(trunc.join(" · ")) + "</div>";
+    return html + "</section>";
+  }
+
+  function uniq(list) {
+    var seen = {}, out = [];
+    (list || []).forEach(function (v) { if (v && !seen[v]) { seen[v] = 1; out.push(v); } });
+    return out;
+  }
+  function badges(list) {
+    if (!list || !list.length) return '<span class="absent">—</span>';
+    return list.map(function (v) { return '<span class="badge">' + esc(v) + "</span>"; }).join("");
+  }
+
+  function renderProvenance(cols) {
+    var repos = [], branches = [], harnesses = [], models = [], sources = [];
+    var from = null, to = null, sessions = 0;
+    cols.forEach(function (col) {
+      var p = col.report.provenance || {};
+      repos = repos.concat(p.repos || []);
+      branches = branches.concat(p.branches || []);
+      harnesses = harnesses.concat(p.harnesses || []);
+      models = models.concat(p.models || []);
+      sources = sources.concat(p.source_paths || []);
+      sessions += p.session_count || 0;
+      var dr = p.date_range || {};
+      if (dr.from && (!from || dr.from < from)) from = dr.from;
+      if (dr.to && (!to || dr.to > to)) to = dr.to;
+    });
+    var gen = (cols[0] && cols[0].report.provenance && cols[0].report.provenance.generated_at) || "";
+    return "<div class='row'><b>Based on " + sessions + " session(s)</b>" +
+      (from || to ? " · " + esc(from || "?") + " → " + esc(to || "?") : "") + "</div>" +
+      "<div class='row'>Harnesses: " + badges(uniq(harnesses)) + "</div>" +
+      "<div class='row'>Models: " + badges(uniq(models)) + "</div>" +
+      "<div class='row'>Branches: " + badges(uniq(branches)) + "</div>" +
+      (uniq(repos).length ? "<div class='row'>Repos: " + badges(uniq(repos)) + "</div>" : "") +
+      "<div class='row'>Sources: " + badges(uniq(sources)) + "</div>" +
+      (gen ? "<div class='row'>Generated " + esc(gen) + "</div>" : "");
+  }
+
+  function render() {
+    var cols = loadColumns();
+    var root = document.getElementById("root");
+    var prov = document.getElementById("provenance");
+    var sub = document.getElementById("head-sub");
+    if (!cols.length) {
+      root.innerHTML = '<p class="empty">No report data embedded in this folder.</p>';
+      return;
+    }
+    sub.textContent = cols.length === 1 ? "single session" : cols.length + " reports compared";
+    var html = renderTotals(cols);
+    DIMS.forEach(function (dim) { html += renderDim(dim, cols); });
+    root.innerHTML = html;
+    prov.innerHTML = renderProvenance(cols);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", render);
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>

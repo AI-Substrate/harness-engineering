@@ -1,0 +1,43 @@
+{
+  "schema_version": "harness.session-export/v1",
+  "identity": {
+    "harness_session_id": "44444444-4444-4444-8444-444444444444",
+    "harness": "claude-code",
+    "harness_version": "0.0.0-fixture",
+    "pij_session_id": null,
+    "branch": "dev",
+    "models": [
+      "fixture-model"
+    ]
+  },
+  "source": {
+    "kind": "temp",
+    "root": ".harness/temp/telemetry",
+    "segment_count": 1
+  },
+  "summary": {
+    "segment_schema_versions": {
+      "harness.telemetry-segment/v2": 1
+    },
+    "first_timecode": "2026-06-25T00:00:00.000Z",
+    "last_timecode": "2026-06-25T00:00:00.000Z",
+    "tokens": {
+      "in": 0,
+      "out": 0,
+      "cache_read": 0,
+      "cache_create": 0,
+      "total": 0,
+      "subagent_tokens": 0,
+      "grand_total": 0
+    },
+    "degraded": []
+  },
+  "signals": {
+    "logs": {
+      "resourceLogs": []
+    },
+    "metrics": {
+      "resourceMetrics": []
+    }
+  }
+}

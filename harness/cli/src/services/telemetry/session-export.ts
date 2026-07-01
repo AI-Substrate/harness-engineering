@@ -6,9 +6,18 @@ import { telemetryDir } from './cursor.js';
 import type { Event } from './events.js';
 import { otlpLogsToEvents, segmentToOtlpLogs } from './otlp/logs.js';
 import { rollupToOtlpMetrics } from './otlp/metrics.js';
-import type { LogsData, MetricsData } from './otlp/types.js';
+import {
+  RES_BRANCH,
+  RES_COMMAND,
+  RES_ENV,
+  RES_HARNESS,
+  RES_SCHEMA_VERSION,
+  RES_SERVICE_VERSION,
+  RES_SESSION,
+} from './otlp/semconv.js';
+import { type AnyValue, attrMap, type LogsData, type MetricsData, readStr } from './otlp/types.js';
 import { computeRollup, parseIso } from './rollup.js';
-import type { Segment } from './segment.js';
+import type { Segment, SegmentModelStat, SegmentTokens } from './segment.js';
 
 /**
  * `SessionExport` (plan 047 Phase 1) — a thin, validatable envelope wrapping ONE
@@ -91,6 +100,19 @@ export interface CombineSessionDeps {
 export interface CombineSessionOpts {
   /** Explicit telemetry buffer root override; the buffer is `<root>/.harness/temp/telemetry`. */
   root?: string;
+  /**
+   * The source discriminator echoed into `source.kind` (default `'temp'`). The
+   * git-ref source passes `'git-ref'`; combine itself is source-agnostic — it reads
+   * whatever the injected {@link CombineFs} exposes (a temp buffer or committed
+   * shard blobs wrapped as an fs).
+   */
+  kind?: SessionExportSource['kind'];
+  /**
+   * Echoed into `source.root` (default the repo-relative temp buffer path). The
+   * git-ref source passes the ref namespace (`refs/harness-telemetry/*`) so the
+   * envelope is honest about where the bytes came from — never a `/Users/…` leak.
+   */
+  sourceRoot?: string;
 }
 
 /** A v1 flat-view segment carries histograms instead of an `event_stream`. */
@@ -168,26 +190,136 @@ interface SeqRead {
   events: Event[];
 }
 
-/** Read one session subdir's segments (+ optional OTLP companions), corrupt-safe. */
-function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
-  const seqs = fs
-    .readdir(sessionDir)
-    .map((n) => /^(\d+)\.json$/.exec(n))
-    .filter((m): m is RegExpExecArray => m !== null)
-    .map((m) => ({ name: m[0], seq: Number.parseInt(m[1], 10) }))
-    .sort((a, b) => a.seq - b.seq);
-  const out: SeqRead[] = [];
-  for (const f of seqs) {
-    const raw = fs.readText(posixJoin(sessionDir, f.name));
-    if (raw === null) continue;
-    let seg: Segment;
-    try {
-      seg = JSON.parse(raw) as Segment;
-    } catch {
-      continue; // a corrupt buffer file is skipped, never fatal
+/** Build a `SegmentTokens` from an event-derived rollup's token buckets. */
+function tokensFromRollup(
+  t: { in: number; out: number; cache_read: number; cache_create: number } | null,
+): SegmentTokens | null {
+  if (t === null) return null;
+  const total = t.in + t.out + t.cache_read + t.cache_create;
+  // A committed shard's OTLP logs carry per-turn in/out/cache tokens but NOT
+  // subagent-token attribution (that lived only in the segment json, which the
+  // canonical shard omits), so subagent reconstructs as 0-observed — honest to
+  // what the counts-only substrate carries (KF-02: forward-regen, never invert).
+  return {
+    input: t.in,
+    output: t.out,
+    cache_read: t.cache_read,
+    cache_create: t.cache_create,
+    total,
+    subagent_tokens: 0,
+    grand_total: total,
+  };
+}
+
+/** Distinct model names (+ a minimal turns/output stat) from an event stream — the identity seam. */
+function modelsFromEvents(events: readonly Event[]): Record<string, SegmentModelStat> {
+  const models: Record<string, SegmentModelStat> = {};
+  for (const e of events) {
+    const model = e.kind === 'model' ? e.model : e.kind === 'turn' ? e.model : undefined;
+    if (typeof model !== 'string' || model.length === 0) continue;
+    models[model] ??= { turns: 0, output_tokens: 0 };
+    const stat = models[model];
+    if (e.kind === 'turn') {
+      stat.turns += 1;
+      if (typeof e.out === 'number') stat.output_tokens += e.out;
     }
-    const companion = fs.readText(posixJoin(sessionDir, `${f.seq}.logs.jsonl`));
-    out.push({ seg, events: eventsForSeq(seg, companion) });
+  }
+  return models;
+}
+
+/** Rebuild the allowlisted env snapshot from the `harness.env` kvlist resource attribute. */
+function envFromKvlist(attr: AnyValue | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const { key, value } of attr?.kvlistValue?.values ?? []) {
+    const s = readStr(value);
+    if (s !== undefined) out[key] = s;
+  }
+  return out;
+}
+
+/**
+ * Reconstruct one seq's {@link SeqRead} from a committed OTLP **logs** blob when
+ * there is NO `<seq>.json` — the canonical committed-shard shape (`sync-service`
+ * publishes `<seq>.logs.jsonl` + `<seq>.metrics.jsonl` and keeps the json LOCAL).
+ * Events come from {@link otlpLogsToEvents} (lossless inverse); identity + tokens +
+ * models are lifted from the `harness.*` resource attributes + the event stream, so
+ * a logs-only shard yields a NON-empty, identity-bearing segment (not `segment_count:0`).
+ * Never throws — a corrupt blob is skipped.
+ */
+function reconstructFromLogs(logsRaw: string): SeqRead | null {
+  let logs: LogsData;
+  try {
+    logs = JSON.parse(logsRaw) as LogsData;
+  } catch {
+    return null; // a corrupt logs blob is skipped, never fatal
+  }
+  const events = otlpLogsToEvents(logs);
+  const m = attrMap(logs.resourceLogs?.[0]?.resource?.attributes);
+  const branch = readStr(m.get(RES_BRANCH));
+  const rollup = events.length > 0 ? computeRollup(events) : null;
+  const seg: Segment = {
+    schema_version: readStr(m.get(RES_SCHEMA_VERSION)) ?? 'unknown',
+    command: readStr(m.get(RES_COMMAND)) ?? 'session',
+    harness: readStr(m.get(RES_HARNESS)) ?? 'unknown',
+    harness_version: readStr(m.get(RES_SERVICE_VERSION)) ?? 'unknown',
+    harness_session_id: readStr(m.get(RES_SESSION)) ?? '',
+    timecode: events[0]?.t ?? '',
+    window: { since: 'session-start', from: 0, to: 0 },
+    branch: branch ?? null,
+    tokens: tokensFromRollup(rollup?.tokens ?? null),
+    effort: null,
+    event_stream: events,
+    rollup,
+  };
+  const models = modelsFromEvents(events);
+  if (Object.keys(models).length > 0) seg.models = models;
+  const capturedEnv = envFromKvlist(m.get(RES_ENV));
+  if (Object.keys(capturedEnv).length > 0) seg.captured_env = capturedEnv;
+  return { seg, events };
+}
+
+/**
+ * Read one session subdir's segments, corrupt-safe + SOURCE-AGNOSTIC. A `<seq>.json`
+ * is read json-anchored (identity/tokens from the segment, events from the
+ * `<seq>.logs.jsonl` companion) — the temp path, UNCHANGED. A `<seq>.logs.jsonl`
+ * with NO matching `<seq>.json` (the canonical committed shard) is reconstructed
+ * logs-rooted (P3 git-ref) so a logs-only shard is never dropped.
+ */
+function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
+  const jsonSeqs = new Set<number>();
+  const logsOnly: number[] = [];
+  for (const n of fs.readdir(sessionDir)) {
+    const j = /^(\d+)\.json$/.exec(n);
+    if (j !== null) {
+      jsonSeqs.add(Number.parseInt(j[1], 10));
+      continue;
+    }
+    const l = /^(\d+)\.logs\.jsonl$/.exec(n);
+    if (l !== null) logsOnly.push(Number.parseInt(l[1], 10));
+  }
+  // Union of json seqs + logs-only seqs (a logs blob whose json is absent), sorted.
+  const seqs = [
+    ...new Set<number>([...jsonSeqs, ...logsOnly.filter((s) => !jsonSeqs.has(s))]),
+  ].sort((a, b) => a - b);
+  const out: SeqRead[] = [];
+  for (const seq of seqs) {
+    if (jsonSeqs.has(seq)) {
+      const raw = fs.readText(posixJoin(sessionDir, `${seq}.json`));
+      if (raw === null) continue;
+      let seg: Segment;
+      try {
+        seg = JSON.parse(raw) as Segment;
+      } catch {
+        continue; // a corrupt buffer file is skipped, never fatal
+      }
+      const companion = fs.readText(posixJoin(sessionDir, `${seq}.logs.jsonl`));
+      out.push({ seg, events: eventsForSeq(seg, companion) });
+    } else {
+      const logsRaw = fs.readText(posixJoin(sessionDir, `${seq}.logs.jsonl`));
+      if (logsRaw === null) continue;
+      const recon = reconstructFromLogs(logsRaw);
+      if (recon !== null) out.push(recon);
+    }
   }
   return out;
 }
@@ -324,7 +456,11 @@ export function combineSession(
   return {
     schema_version: SESSION_EXPORT_SCHEMA_VERSION,
     identity,
-    source: { kind: 'temp', root: telemetryDir('.'), segment_count: reads.length },
+    source: {
+      kind: opts?.kind ?? 'temp',
+      root: opts?.sourceRoot ?? telemetryDir('.'),
+      segment_count: reads.length,
+    },
     summary: {
       segment_schema_versions: versions,
       first_timecode: firstTc,

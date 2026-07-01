@@ -57,7 +57,8 @@ These are deliberately asymmetric — keep them straight:
 
 ## Source handling and research workflow
 
-- `scratch/` is a private research workspace and is gitignored. Raw sources, notes, excerpts, and evidence drafts live there only.
+- `scratch/` is the **user-accessible temporary working area** and is gitignored — agents may write here freely for artifacts the user wants to inspect (e.g. sample outputs, generated HTML/report demos under `scratch/sample-telemetry/`, scratch scripts, evidence drafts). Prefer `scratch/` over the session-private OS temp dir when the output is something the user should be able to open locally.
+- `scratch/` is also the private research workspace. Raw sources, notes, excerpts, and evidence drafts live there only.
 - Some sources are referenced in-place from local repositories instead of copied into `scratch/`; respect the source registry handling note for each source.
 - Never commit raw source documents, private notes, customer-specific details, person names, internal codewords, employer/client names, or unreleased platform details.
 - Public/tracked content must use neutral language such as “a legacy platform,” “a private source,” “the team,” or “the experiment.”
