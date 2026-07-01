@@ -258,3 +258,123 @@ describe('registerTelemetryAct — telemetry get', () => {
     expect(code).toBe(0);
   });
 });
+
+/*
+Test Doc (review note N1 — plan 047 Phase 1):
+- Why: `telemetry session save <id>` is the CORE act wrapping `combineSession` (the service is
+  unit-tested; the act's option parsing, file WRITE, Envelope + evidence[] wiring, and the two
+  honest error paths — empty session, unsupported --source — were only proven by the live smoke).
+- Contract: valid session → ok envelope + evidence[<out>] + a schema-valid file on disk; empty
+  session → error exit 1 (no file written); --source git-ref → error exit 1 (Phase 3); text mode
+  → one-line summary.
+- Quality: pins the act/envelope/exit + fs-write wiring with fakes (no real fs).
+*/
+describe('registerTelemetryAct — telemetry session save', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Drive the SYNC `session save` action; the mocked exit throw surfaces synchronously. */
+  function runSave(args: string[], io: CliIo, fs: FakeFs): number {
+    let code = -1;
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      code = c ?? 0;
+      throw new Error(`exit:${code}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, io, {
+      fs,
+      proc: new FakeProcess({}, '/repo'),
+      clock: new FakeClock('2026-06-23T11:00:00.000Z'),
+      env: new FakeEnv(),
+      gitWrite: new FakeGitWrite(),
+    });
+    expect(() => program.parse(['node', 'harness', 'telemetry', 'session', ...args])).toThrow(
+      /^exit:/,
+    );
+    return code;
+  }
+
+  /** A v2 segment combineSession can read: identity + one turn event carrying tokens. */
+  function saveSeg(): string {
+    return JSON.stringify({
+      schema_version: '2.2',
+      command: 'flow',
+      harness: 'claude-code',
+      harness_version: '0.6.0',
+      harness_session_id: 'sessSave',
+      timecode: '2026-06-23T11:00:00.000Z',
+      branch: 'main',
+      tokens: {
+        input: 10,
+        output: 20,
+        cache_read: 0,
+        cache_create: 0,
+        total: 30,
+        subagent_tokens: 0,
+        grand_total: 30,
+      },
+      models: { 'claude-opus-4-8': { turns: 1, output_tokens: 20 } },
+      event_stream: [{ t: '2026-06-23T11:00:01.000Z', kind: 'turn', dur_s: 1, in: 10, out: 20 }],
+      rollup: null,
+    });
+  }
+
+  /** Buffer under cwd ('/repo' → TEL), one session subdir 'sessSave' holding one segment. */
+  function saveBufferFs(): FakeFs {
+    return new FakeFs(
+      { [`${TEL}/sessSave/0.json`]: saveSeg() },
+      { [TEL]: ['sessSave'], [`${TEL}/sessSave`]: ['0.json'] },
+    );
+  }
+
+  it('valid session → ok envelope (exit 0), evidence[<out>], and a schema-valid file on disk', () => {
+    const { io, out } = ioFor('json');
+    const fs = saveBufferFs();
+    const code = runSave(
+      ['save', 'sessSave', '--source', 'temp', '--out', '/out/sessSave.session.json'],
+      io,
+      fs,
+    );
+    const env = JSON.parse(out());
+    expect(env.command).toBe('telemetry');
+    expect(env.status).toBe('ok');
+    expect(env.data).toMatchObject({ session_id: 'sessSave', segment_count: 1 });
+    expect(env.evidence).toEqual([{ label: 'session export', path: '/out/sessSave.session.json' }]);
+    // The file was actually written and is a valid SessionExport envelope.
+    const written = fs.readText('/out/sessSave.session.json');
+    expect(written).not.toBeNull();
+    const doc = JSON.parse(written as string);
+    expect(doc.schema_version).toBe('harness.session-export/v1');
+    expect(doc.identity.harness_session_id).toBe('sessSave');
+    expect(doc.identity.models).toEqual(['claude-opus-4-8']);
+    expect(doc.signals.logs.resourceLogs).toHaveLength(1);
+    expect(code).toBe(0);
+  });
+
+  it('empty/unknown session → error envelope (exit 1), no file written', () => {
+    const { io, out } = ioFor('json');
+    const fs = saveBufferFs();
+    const code = runSave(['save', 'noSuchSession', '--out', '/out/x.session.json'], io, fs);
+    const env = JSON.parse(out());
+    expect(env.status).toBe('error');
+    expect(fs.readText('/out/x.session.json')).toBeNull(); // buffer/output untouched
+    expect(code).toBe(1);
+  });
+
+  it('--source git-ref → honest error envelope (exit 1) — the Phase 3 seam', () => {
+    const { io, out } = ioFor('json');
+    const code = runSave(['save', 'sessSave', '--source', 'git-ref'], io, saveBufferFs());
+    const env = JSON.parse(out());
+    expect(env.status).toBe('error');
+    expect(env.error.message).toContain('git-ref');
+    expect(code).toBe(1);
+  });
+
+  it('text mode prints a one-line summary', () => {
+    const { io, out } = ioFor('text');
+    const code = runSave(['save', 'sessSave', '--out', '/out/s.session.json'], io, saveBufferFs());
+    expect(out()).toContain('telemetry session save: combined 1 segment(s)');
+    expect(code).toBe(0);
+  });
+});
