@@ -86,6 +86,7 @@ function encodeEvent(e: Event): LogRecord {
         kv(A.TOOL_SPAN_S, nv(e.span_s)),
       );
       if (e.signature !== undefined) attrs.push(kv(A.TOOL_SIG, sv(e.signature)));
+      if (e.result_tokens !== undefined) attrs.push(kv(A.TOOL_RESULT_TOKENS, nv(e.result_tokens)));
       break;
     case 'skill':
       attrs.push(kv(A.SKILL_NAME, sv(e.name)), kv(A.SKILL_STATUS, sv(e.status)));
@@ -192,6 +193,8 @@ function decodeEvent(rec: LogRecord): Event {
       };
       const sig = readStr(m.get(A.TOOL_SIG));
       if (sig !== undefined) ev.signature = sig;
+      const resultTokens = readNum(m.get(A.TOOL_RESULT_TOKENS));
+      if (resultTokens !== undefined) ev.result_tokens = resultTokens;
       return ev;
     }
     case 'skill': {

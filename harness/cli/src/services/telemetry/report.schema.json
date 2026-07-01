@@ -38,11 +38,21 @@
     "totals": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["time_s", "tokens", "sessions"],
-      "description": "The headline numbers. time_s = Σ per-session wall time; tokens = Σ turn tokens (output + all buckets).",
+      "required": ["time_s", "tokens", "cache", "sessions"],
+      "description": "The headline numbers (FX002). time_s = Σ per-session ACTIVE time (agent+human, idle excluded); tokens = non-cache {input, output}; cache = session-level context re-reads (never per-dimension).",
       "properties": {
-        "time_s": { "type": "number", "minimum": 0 },
+        "time_s": { "type": "number", "minimum": 0, "description": "Active time (idle excluded), never wall-span." },
         "tokens": { "$ref": "#/$defs/rollupTokens" },
+        "cache": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["read", "create"],
+          "description": "Context re-reads (cache), session-level ONLY — labelled, never attributed per-dimension.",
+          "properties": {
+            "read": { "type": "number", "minimum": 0, "description": "cache_read — the model re-reading its context." },
+            "create": { "type": "number", "minimum": 0, "description": "cache_create — context written to the cache." }
+          }
+        },
         "sessions": { "type": "integer", "minimum": 0 }
       }
     },
@@ -98,21 +108,22 @@
     "rollupTokens": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["output", "total"],
+      "required": ["input", "output"],
+      "description": "Per-dimension tokens (FX002): non-cache {input, output}, kept SEPARATE. input = fresh (non-cached) input; output = generated tokens. cache_read/cache_create are NEVER per-dimension (session-level only — totals.cache).",
       "properties": {
-        "output": { "type": "number", "minimum": 0, "description": "Estimated generated (output) tokens." },
-        "total": { "type": "number", "minimum": 0, "description": "Estimated all-bucket tokens (in + out + cache)." }
+        "input": { "type": "number", "minimum": 0, "description": "Estimated non-cache (fresh) input tokens." },
+        "output": { "type": "number", "minimum": 0, "description": "Estimated generated (output) tokens." }
       }
     },
     "rollupEntry": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["key", "count", "time_s", "tokens"],
-      "description": "One row — identical across every dimension so the HTML renders them uniformly.",
+      "required": ["key", "count", "tokens"],
+      "description": "One row — identical across every dimension so the HTML renders them uniformly. time_s is present ONLY for the time-bearing lenses (skill / flow_stage); command rows (tool / bash_command / harness_command) OMIT it (no honest per-call duration — FX002).",
       "properties": {
         "key": { "type": "string" },
         "count": { "type": "integer", "minimum": 0, "description": "EXACT event/segment count." },
-        "time_s": { "type": "number", "minimum": 0, "description": "ESTIMATE (timeline-bracket)." },
+        "time_s": { "type": "number", "minimum": 0, "description": "ESTIMATE (active, idle-excluded) — skill/flow_stage only; absent on command rows." },
         "tokens": { "$ref": "#/$defs/rollupTokens" }
       }
     },
@@ -122,14 +133,14 @@
       "required": ["dimension", "entries", "total"],
       "properties": {
         "dimension": { "type": "string", "enum": ["flow_stage", "skill", "tool", "bash_command", "harness_command"] },
-        "entries": { "type": "array", "items": { "$ref": "#/$defs/rollupEntry" }, "description": "Sorted desc (default tokens.total; --sort overrides)." },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/rollupEntry" }, "description": "Sorted desc (default input+output; --sort overrides)." },
         "total": {
           "type": "object",
           "additionalProperties": true,
-          "required": ["count", "time_s", "tokens"],
+          "required": ["count", "tokens"],
           "properties": {
             "count": { "type": "integer", "minimum": 0 },
-            "time_s": { "type": "number", "minimum": 0 },
+            "time_s": { "type": "number", "minimum": 0, "description": "Present only for the time-bearing lenses (skill / flow_stage)." },
             "tokens": { "$ref": "#/$defs/rollupTokens" }
           }
         },

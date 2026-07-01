@@ -27,7 +27,7 @@
  */
 
 import { otlpLogsToEvents } from './otlp/logs.js';
-import { computeRollup, parseIso } from './rollup.js';
+import { classifyGap, computeRollup, IDLE_CAP_S, parseIso } from './rollup.js';
 import type { SessionExport } from './session-export.js';
 
 export const TELEMETRY_REPORT_SCHEMA_VERSION = 'harness.telemetry-report/v1' as const;
@@ -46,29 +46,42 @@ export const REPORT_DIMENSIONS: readonly ReportDimension[] = [
 /** Row ordering key (`--sort`). */
 export type ReportSortKey = 'tokens' | 'time' | 'count';
 
-/** Estimated token attribution for a row (`output` = generated tokens; `total` = all buckets). */
+/**
+ * Per-dimension token attribution (FX002) — `input` and `output` kept SEPARATE,
+ * both NON-CACHE. `input` = fresh (non-cached) turn input; `output` = generated
+ * tokens. `cache_read`/`cache_create` are NEVER attributed per-dimension — they
+ * are the cost of the CONVERSATION re-reading its own context, surfaced at the
+ * session level only ({@link ReportTotals.cache}, labelled "context re-reads").
+ */
 export interface RollupTokens {
+  input: number;
   output: number;
-  total: number;
 }
 
 /** One row — identical across every dimension so the HTML renders them uniformly. */
 export interface RollupEntry {
-  /** `'rg'` | `'harness nav'` | `'the-flow'` | `'Read'` | `'implement'`. */
+  /** `'rg'` | `'harness nav'` | `'the-flow'` | `'Read'` | `'08'`. */
   key: string;
   /** EXACT (event/segment count). */
   count: number;
-  /** ESTIMATE (timeline-bracket). */
-  time_s: number;
-  /** ESTIMATE (turn-window even-split). */
+  /**
+   * ESTIMATE — active (idle-excluded) time. Present ONLY for the lenses that own
+   * a window: `skill` (this-call → next-skill-call span) and `flow_stage`
+   * (between consecutive `/the-flow` calls). OMITTED for the command lenses
+   * (`tool`/`bash_command`/`harness_command`) — the capture carries no honest
+   * per-call duration (FX002 Note), so a command row shows NO time at all.
+   */
+  time_s?: number;
+  /** ESTIMATE — non-cache `{ input, output }` (FX002). */
   tokens: RollupTokens;
 }
 
 export interface Rollup {
   dimension: ReportDimension;
-  /** Sorted desc (default `tokens.total`; `--sort` overrides). */
+  /** Sorted desc (default `input + output`; `--sort` overrides). */
   entries: RollupEntry[];
-  total: { count: number; time_s: number; tokens: RollupTokens };
+  /** `time_s` present only for the time-bearing lenses (skill / flow_stage). */
+  total: { count: number; time_s?: number; tokens: RollupTokens };
   /** Rows dropped past a `--top` cap — surfaced, never silent. */
   truncated?: number;
 }
@@ -97,9 +110,21 @@ export interface ReportFilter {
   date_to?: string;
 }
 
+/** Session-level context re-reads (FX002) — cache is NEVER attributed per-dimension. */
+export interface SessionCache {
+  /** `cache_read` — the model re-reading its whole context each turn. */
+  read: number;
+  /** `cache_create` — context written to the cache. */
+  create: number;
+}
+
 export interface ReportTotals {
+  /** ACTIVE time (agent + human, idle excluded) — never wall-span (FX002-5). */
   time_s: number;
+  /** Non-cache `{ input, output }` (FX002). */
   tokens: RollupTokens;
+  /** Context re-reads (cache), session-level ONLY — labelled, never per-dimension. */
+  cache: SessionCache;
   sessions: number;
 }
 
@@ -169,16 +194,18 @@ function shellKey(name: string): string | null {
   return n === 'bash' || n === 'sh' || n === 'shell' ? n : null;
 }
 
-/** The concrete (never-'unknown') token buckets a turn carries, defaulted to 0. */
-function turnTokens(e: { in?: number; out?: number; cache_read?: number; cache_create?: number }): {
-  output: number;
-  total: number;
-} {
-  const inn = e.in ?? 0;
-  const out = e.out ?? 0;
-  const cr = e.cache_read ?? 0;
-  const cc = e.cache_create ?? 0;
-  return { output: out, total: inn + out + cr + cc };
+/** The skill whose consecutive calls bracket the report-time flow_stage lens (FX002-4). */
+const THE_FLOW_SKILL = 'the-flow';
+/** Stage label for a `/the-flow` call with no leading-digit arg (FX001 Facet B absent). */
+const UNLABELED_STAGE = 'unlabeled';
+
+/** A turn's NON-cache input (fresh) — never `cache_read`/`cache_create` (FX002). 0 for non-turns. */
+function turnInput(e: { kind: string; in?: number }): number {
+  return e.kind === 'turn' ? (e.in ?? 0) : 0;
+}
+/** A turn's generated output. 0 for non-turns. */
+function turnOutput(e: { kind: string; out?: number }): number {
+  return e.kind === 'turn' ? (e.out ?? 0) : 0;
 }
 
 /** A per-session, time-ordered view of the stream with the derived rollup (flow_log excluded). */
@@ -201,8 +228,8 @@ function viewOf(exp: SessionExport): SessionView {
 interface Cell {
   count: number;
   time_s: number;
+  input: number;
   output: number;
-  total: number;
 }
 
 class DimAcc {
@@ -211,7 +238,7 @@ class DimAcc {
   cell(key: string): Cell {
     let c = this.cells.get(key);
     if (c === undefined) {
-      c = { count: 0, time_s: 0, output: 0, total: 0 };
+      c = { count: 0, time_s: 0, input: 0, output: 0 };
       this.cells.set(key, c);
     }
     return c;
@@ -225,36 +252,50 @@ class DimAcc {
     if (s > 0) this.cell(key).time_s += s;
   }
 
-  addTokens(key: string, output: number, total: number): void {
+  addTokens(key: string, input: number, output: number): void {
     const c = this.cell(key);
+    c.input += input;
     c.output += output;
-    c.total += total;
   }
 
-  /** Snapshot to a finished, sorted, optionally-truncated `Rollup`. */
-  finish(dimension: ReportDimension, sort: ReportSortKey, top?: number): Rollup {
+  /**
+   * Snapshot to a finished, sorted, optionally-truncated `Rollup`. `withTime`
+   * gates the `time_s` field: the command lenses (`tool`/`bash_command`/
+   * `harness_command`) pass `false` so no time appears on any command row (FX002 —
+   * the capture has no honest per-call duration); `skill`/`flow_stage` pass `true`.
+   */
+  finish(dimension: ReportDimension, sort: ReportSortKey, withTime: boolean, top?: number): Rollup {
     const entries: RollupEntry[] = [...this.cells.entries()]
       .filter(([key]) => key.length > 0)
-      .map(([key, c]) => ({
-        key,
-        count: Math.round(c.count),
-        time_s: Math.round(c.time_s),
-        tokens: { output: Math.round(c.output), total: Math.round(c.total) },
-      }));
+      .map(([key, c]) => {
+        const entry: RollupEntry = {
+          key,
+          count: Math.round(c.count),
+          tokens: { input: Math.round(c.input), output: Math.round(c.output) },
+        };
+        if (withTime) entry.time_s = Math.round(c.time_s);
+        return entry;
+      });
     sortEntries(entries, sort);
 
     const total = entries.reduce(
       (acc, e) => {
         acc.count += e.count;
-        acc.time_s += e.time_s;
+        acc.time_s += e.time_s ?? 0;
+        acc.tokens.input += e.tokens.input;
         acc.tokens.output += e.tokens.output;
-        acc.tokens.total += e.tokens.total;
         return acc;
       },
-      { count: 0, time_s: 0, tokens: { output: 0, total: 0 } },
+      { count: 0, time_s: 0, tokens: { input: 0, output: 0 } },
     );
 
-    const rollup: Rollup = { dimension, entries, total };
+    const rollupTotal: Rollup['total'] = {
+      count: total.count,
+      tokens: total.tokens,
+    };
+    if (withTime) rollupTotal.time_s = total.time_s;
+
+    const rollup: Rollup = { dimension, entries, total: rollupTotal };
     if (top !== undefined && top >= 0 && entries.length > top) {
       rollup.truncated = entries.length - top;
       rollup.entries = entries.slice(0, top);
@@ -266,7 +307,11 @@ class DimAcc {
 /** Sort rows desc by the chosen measure; stable key-asc tiebreak (deterministic output). */
 function sortEntries(entries: RollupEntry[], sort: ReportSortKey): void {
   const measure = (e: RollupEntry): number =>
-    sort === 'time' ? e.time_s : sort === 'count' ? e.count : e.tokens.total;
+    sort === 'time'
+      ? (e.time_s ?? 0)
+      : sort === 'count'
+        ? e.count
+        : e.tokens.input + e.tokens.output;
   entries.sort((a, b) => {
     const d = measure(b) - measure(a);
     return d !== 0 ? d : a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
@@ -284,28 +329,50 @@ interface Accs {
 }
 
 /**
- * Fold ONE session's events into the shared accumulators. Cross-session
- * aggregation is just calling this per session (re-aggregate from Logs, never
- * sum cumulative metrics — KF-03).
+ * Fold ONE session's events into the shared accumulators (FX002 attribution).
+ * Cross-session aggregation is just calling this per session (re-aggregate from
+ * Logs, never sum cumulative metrics — KF-03). Three report-time lenses over one
+ * idle-classified timeline:
+ *  - **command** (`tool`/`bash_command`/`harness_command`): count + `{input,output}`,
+ *    NO time. `output` = even share of the LAUNCHING turn's out; `input` = share of
+ *    the FOLLOWING turn's non-cache in (byte-weighted by FX003 `result_tokens` when
+ *    present, else even).
+ *  - **skill**: count + active time (this call → next skill call) + non-cache in/out.
+ *  - **flow_stage**: count + active time + non-cache in/out per `/the-flow` bracket.
+ * Cache (`cache_read`/`cache_create`) is NEVER attributed per-dimension — it is
+ * returned for the session-level total only.
  */
 function foldSession(
   view: SessionView,
   acc: Accs,
-): { output: number; total: number; wall: number } {
+): { input: number; output: number; cacheRead: number; cacheCreate: number; active: number } {
   const ev = view.events;
   const n = ev.length;
 
-  // Gap AFTER each event (timeline-bracket time attribution). Last event = 0.
+  // Idle-classified gap AFTER each event (FX002-5). A big gap ENDING at a user
+  // `prompt` is the human away (idle) → contributes ZERO; agent gaps + brief human
+  // gaps (≤ IDLE_CAP_S) stay. `gapAfter[i]` = the ACTIVE seconds between event i and
+  // i+1, so Σ = the session's active time (agent+human, idle excluded).
   const gapAfter: number[] = new Array(n).fill(0);
   for (let i = 0; i < n - 1; i++) {
     const g = parseIso(ev[i + 1].t) - parseIso(ev[i].t);
-    gapAfter[i] = Number.isFinite(g) && g > 0 ? g : 0;
+    if (!Number.isFinite(g) || g <= 0) continue;
+    const kind = classifyGap(g, ev[i + 1].kind === 'prompt', IDLE_CAP_S);
+    gapAfter[i] = kind === 'idle' ? 0 : g;
   }
+  // Active seconds in the index window [a, b) — i.e. time [t_a, t_b), idle already
+  // excluded. gapAfter[b-1] connects event b-1 to the boundary event b (= t_b), so
+  // it is inside the window; the sum runs i = a .. b-1.
+  const activeBetween = (a: number, b: number): number => {
+    let s = 0;
+    for (let i = a; i < b && i < n; i++) s += gapAfter[i];
+    return s;
+  };
 
   // Which shell tools events are FULLY consumed by a co-timed harness call (D1
-  // no-double-count): match each harness event's `t` to a shell tools event at
-  // the same `t`, greedily. `bashNet[i]` = the bash-count that shell event i
-  // contributes AFTER excluding harness invocations.
+  // no-double-count): match each harness event's `t` to a shell tools event at the
+  // same `t`, greedily. `bashNet[i]` = the bash-count shell event i contributes
+  // AFTER excluding harness invocations.
   const harnessAtT = new Map<string, number>();
   for (const e of ev) if (e.kind === 'harness') harnessAtT.set(e.t, (harnessAtT.get(e.t) ?? 0) + 1);
   const bashNet: number[] = new Array(n).fill(0);
@@ -320,116 +387,158 @@ function foldSession(
     bashNet[i] = e.count - excluded;
   }
 
-  // ── Counts + time (per event) ──
+  // ── Command counts (NO time — the capture has no honest per-call duration) ──
   for (let i = 0; i < n; i++) {
     const e = ev[i];
-    const gap = gapAfter[i];
-    if (e.kind === 'flow') {
-      acc.flow_stage.addCount(e.stage, 1);
-      // flow_stage time comes from computeRollup (authoritative stage windowing), below.
-    } else if (e.kind === 'skill') {
-      acc.skill.addCount(e.name, 1);
-      acc.skill.addTime(e.name, gap);
-    } else if (e.kind === 'tools') {
+    if (e.kind === 'tools') {
       acc.tool.addCount(e.name, e.count);
-      acc.tool.addTime(e.name, gap);
       const sk = shellKey(e.name);
       if (sk !== null && bashNet[i] > 0) {
-        // FX001-5: key by the captured command signature (`rg`, `git commit`) when
-        // present, else fall back to the shell-tool name (old data / no signature).
-        const bk = e.signature ?? sk;
-        acc.bash_command.addCount(bk, bashNet[i]);
-        acc.bash_command.addTime(bk, gap);
+        // FX001-5: key by the captured command signature when present, else the tool name.
+        acc.bash_command.addCount(e.signature ?? sk, bashNet[i]);
       }
     } else if (e.kind === 'harness') {
       acc.harness_command.addCount(e.verb, 1);
-      acc.harness_command.addTime(e.verb, gap);
     }
   }
 
-  // flow_stage wall-time from the authoritative engine (`IDLE_CAP_S=300`).
-  for (const [stage, s] of Object.entries(view.rollup.flow_stage_time_s)) {
-    acc.flow_stage.addTime(stage, s);
-  }
-
-  // ── Token attribution: turn-window even-split ──
+  // Session token sums (non-cache in/out + cache buckets, from turns).
   const turnIdx: number[] = [];
   for (let i = 0; i < n; i++) if (ev[i].kind === 'turn') turnIdx.push(i);
-
+  let sessionIn = 0;
   let sessionOut = 0;
-  let sessionTotal = 0;
+  let sessionCr = 0;
+  let sessionCc = 0;
+  for (const ti of turnIdx) {
+    const t = ev[ti] as { in?: number; out?: number; cache_read?: number; cache_create?: number };
+    sessionIn += t.in ?? 0;
+    sessionOut += t.out ?? 0;
+    sessionCr += t.cache_read ?? 0;
+    sessionCc += t.cache_create ?? 0;
+  }
+
+  // ── Command tokens: launching-out (even) + following-in (byte-weighted) ──
   for (let k = 0; k < turnIdx.length; k++) {
     const ti = turnIdx[k];
-    const turn = ev[ti] as {
-      in?: number;
-      out?: number;
-      cache_read?: number;
-      cache_create?: number;
-    };
-    const { output, total } = turnTokens(turn);
-    sessionOut += output;
-    sessionTotal += total;
-    if (total === 0 && output === 0) continue;
+    const output = turnOutput(ev[ti]);
+    const nextTi = k + 1 < turnIdx.length ? turnIdx[k + 1] : n;
+    // INPUT = the FOLLOWING turn's non-cache in (the result these tools dumped back).
+    const input = k + 1 < turnIdx.length ? turnInput(ev[nextTi]) : 0;
+    if (output === 0 && input === 0) continue;
 
-    // The turn's window = [t_k, t_{k+1}) — activity this turn drove.
     const from = parseIso(ev[ti].t);
-    const to = k + 1 < turnIdx.length ? parseIso(ev[turnIdx[k + 1]].t) : Number.POSITIVE_INFINITY;
+    const to = k + 1 < turnIdx.length ? parseIso(ev[nextTi].t) : Number.POSITIVE_INFINITY;
     const inWindow = (i: number): boolean => {
       const t = parseIso(ev[i].t);
-      return Number.isFinite(t) ? t >= from && t < to : i > ti; // NaN t: fall back to index order
+      return Number.isFinite(t) ? t >= from && t < to : i > ti && i < nextTi;
     };
 
-    // Per-dimension distinct active keys in the window, split evenly.
-    const toolKeys = new Set<string>();
-    const bashKeys = new Set<string>();
-    const skillKeys = new Set<string>();
-    const harnessKeys = new Set<string>();
+    const tool = new WeightMap();
+    const bash = new WeightMap();
+    const harness = new WeightMap();
     for (let i = 0; i < n; i++) {
       if (i === ti || !inWindow(i)) continue;
       const e = ev[i];
       if (e.kind === 'tools') {
-        toolKeys.add(e.name);
+        tool.add(e.name, e.result_tokens);
         const sk = shellKey(e.name);
-        if (sk !== null && bashNet[i] > 0) bashKeys.add(e.signature ?? sk);
-      } else if (e.kind === 'skill') {
-        skillKeys.add(e.name);
+        if (sk !== null && bashNet[i] > 0) bash.add(e.signature ?? sk, e.result_tokens);
       } else if (e.kind === 'harness') {
-        harnessKeys.add(e.verb);
+        harness.add(e.verb, undefined);
       }
     }
-    // flow_stage is ALWAYS "active" via the stage in force at the turn.
-    const stage = stageActiveAt(ev, ti);
-
-    splitInto(acc.tool, toolKeys, output, total);
-    splitInto(acc.bash_command, bashKeys, output, total);
-    splitInto(acc.skill, skillKeys, output, total);
-    splitInto(acc.harness_command, harnessKeys, output, total);
-    if (stage !== null) splitInto(acc.flow_stage, new Set([stage]), output, total);
+    splitCommand(acc.tool, tool, input, output);
+    splitCommand(acc.bash_command, bash, input, output);
+    splitCommand(acc.harness_command, harness, input, output);
   }
 
-  return { output: sessionOut, total: sessionTotal, wall: view.rollup.activity.wall_s };
-}
+  // ── Skill lens: this call → next skill call (idle-excluded) ──
+  const skillIdx: number[] = [];
+  for (let i = 0; i < n; i++) if (ev[i].kind === 'skill') skillIdx.push(i);
+  for (let j = 0; j < skillIdx.length; j++) {
+    const si = skillIdx[j];
+    const name = (ev[si] as { name: string }).name;
+    const end = j + 1 < skillIdx.length ? skillIdx[j + 1] : n;
+    acc.skill.addCount(name, 1);
+    acc.skill.addTime(name, activeBetween(si, end));
+    const tok = windowTurnTokens(ev, si, end);
+    acc.skill.addTokens(name, tok.input, tok.output);
+  }
 
-/** The `flow` stage in force at (≤) event index `ti` — the last flow marker before it. */
-function stageActiveAt(ev: SessionView['events'], ti: number): string | null {
-  let stage: string | null = null;
-  const at = parseIso(ev[ti].t);
-  for (let i = 0; i <= ti; i++) {
+  // ── flow_stage lens: consecutive `/the-flow` skill brackets (report-time) ──
+  const flowIdx: number[] = [];
+  for (let i = 0; i < n; i++) {
     const e = ev[i];
-    if (e.kind !== 'flow') continue;
-    const t = parseIso(ev[i].t);
-    // Prefer time order; tolerate NaN by index order (i <= ti already holds).
-    if (!Number.isFinite(at) || !Number.isFinite(t) || t <= at) stage = e.stage;
+    if (e.kind === 'skill' && e.name === THE_FLOW_SKILL) flowIdx.push(i);
   }
-  return stage;
+  for (let m = 0; m < flowIdx.length; m++) {
+    const bi = flowIdx[m];
+    const label = (ev[bi] as { arg?: string }).arg ?? UNLABELED_STAGE;
+    const end = m + 1 < flowIdx.length ? flowIdx[m + 1] : n;
+    acc.flow_stage.addCount(label, 1);
+    acc.flow_stage.addTime(label, activeBetween(bi, end));
+    const tok = windowTurnTokens(ev, bi, end);
+    acc.flow_stage.addTokens(label, tok.input, tok.output);
+  }
+
+  return {
+    input: sessionIn,
+    output: sessionOut,
+    cacheRead: sessionCr,
+    cacheCreate: sessionCc,
+    active: activeBetween(0, n),
+  };
 }
 
-/** Even-split a turn's tokens across the distinct keys active in its window. */
-function splitInto(acc: DimAcc, keys: Set<string>, output: number, total: number): void {
-  if (keys.size === 0) return;
-  const shareOut = output / keys.size;
-  const shareTot = total / keys.size;
-  for (const key of keys) acc.addTokens(key, shareOut, shareTot);
+/**
+ * Per-key result-size weights for one command window (FX002/FX003). Every distinct
+ * key is present (so it gets an output share); `hasRt` records whether ANY call in
+ * the window carried a `result_tokens` size (⇒ byte-weight the input-split).
+ */
+class WeightMap {
+  readonly rt = new Map<string, number>();
+  hasRt = false;
+  add(key: string, resultTokens: number | undefined): void {
+    if (!this.rt.has(key)) this.rt.set(key, 0);
+    if (resultTokens !== undefined) {
+      this.rt.set(key, (this.rt.get(key) ?? 0) + resultTokens);
+      this.hasRt = true;
+    }
+  }
+}
+
+/**
+ * Attribute one turn's command tokens: `output` even-split across the distinct
+ * keys; `input` byte-weighted by `result_tokens` when the window carried any real
+ * dump size (FX003), else even-split (declared estimate for old/size-less data).
+ */
+function splitCommand(acc: DimAcc, w: WeightMap, input: number, output: number): void {
+  const keys = [...w.rt.keys()];
+  if (keys.length === 0) return;
+  const shareOut = output / keys.length;
+  const totalRt = [...w.rt.values()].reduce((a, b) => a + b, 0);
+  const weighted = w.hasRt && totalRt > 0;
+  for (const key of keys) {
+    const shareIn = weighted ? input * ((w.rt.get(key) ?? 0) / totalRt) : input / keys.length;
+    acc.addTokens(key, shareIn, shareOut);
+  }
+}
+
+/** Σ non-cache `{ input, output }` of the turns in the index window [a, b). */
+function windowTurnTokens(
+  ev: SessionView['events'],
+  a: number,
+  b: number,
+): { input: number; output: number } {
+  let input = 0;
+  let output = 0;
+  for (let i = a; i < b && i < ev.length; i++) {
+    if (ev[i].kind === 'turn') {
+      input += turnInput(ev[i]);
+      output += turnOutput(ev[i]);
+    }
+  }
+  return { input, output };
 }
 
 // ── Filtering ───────────────────────────────────────────────────────────────
@@ -493,9 +602,11 @@ export function buildReport(
     harness_command: new DimAcc(),
   };
 
+  let totalIn = 0;
   let totalOut = 0;
-  let totalTok = 0;
-  let totalWall = 0;
+  let totalCacheR = 0;
+  let totalCacheC = 0;
+  let totalActive = 0;
   const sessionIds: string[] = [];
   const branches: string[] = [];
   const harnesses: string[] = [];
@@ -505,9 +616,11 @@ export function buildReport(
 
   for (const exp of included) {
     const sums = foldSession(viewOf(exp), acc);
+    totalIn += sums.input;
     totalOut += sums.output;
-    totalTok += sums.total;
-    totalWall += sums.wall;
+    totalCacheR += sums.cacheRead;
+    totalCacheC += sums.cacheCreate;
+    totalActive += sums.active;
     sessionIds.push(exp.identity.harness_session_id);
     uniquePush(branches, exp.identity.branch);
     uniquePush(harnesses, exp.identity.harness);
@@ -538,27 +651,32 @@ export function buildReport(
     },
     filter: echoedFilter,
     totals: {
-      time_s: Math.round(totalWall),
-      tokens: { output: Math.round(totalOut), total: Math.round(totalTok) },
+      time_s: Math.round(totalActive),
+      tokens: { input: Math.round(totalIn), output: Math.round(totalOut) },
+      cache: { read: Math.round(totalCacheR), create: Math.round(totalCacheC) },
       sessions: included.length,
     },
     rollups: {
-      flow_stage: acc.flow_stage.finish('flow_stage', sort, opts.top),
-      skill: acc.skill.finish('skill', sort, opts.top),
-      tool: acc.tool.finish('tool', sort, opts.top),
-      bash_command: acc.bash_command.finish('bash_command', sort, opts.top),
-      harness_command: acc.harness_command.finish('harness_command', sort, opts.top),
+      // Time-bearing lenses (skill / flow_stage) emit `time_s`; the command lenses
+      // (tool / bash_command / harness_command) do NOT — no honest per-call duration.
+      flow_stage: acc.flow_stage.finish('flow_stage', sort, true, opts.top),
+      skill: acc.skill.finish('skill', sort, true, opts.top),
+      tool: acc.tool.finish('tool', sort, false, opts.top),
+      bash_command: acc.bash_command.finish('bash_command', sort, false, opts.top),
+      harness_command: acc.harness_command.finish('harness_command', sort, false, opts.top),
     },
     attribution: {
-      tokens: 'turn-window-even-split',
-      time: 'timeline-bracket',
+      tokens:
+        'non-cache-input+output; command input byte-weighted by result_tokens when present, else even-split',
+      time: 'per-lens: commands=none; skill=this-call→next-skill-call; flow_stage=between-the-flow-calls; idle excluded',
       exact: ['count'],
       bash_command_key: 'shell-command-signature-or-tool-name',
       notes: [
-        // D1 + FX001-5: when a shell call's command signature was captured
-        // (program+verb only, P12-safe — `rg`, `git commit`), bash_command keys by
-        // it (argv-token granularity, the workshop-002 `rg ×54` ask); for older data
-        // with no signature it falls back to the shell-tool name (`bash`/`shell`).
+        // FX002: per-dimension tokens are non-cache {input, output}, SEPARATE.
+        'Per-dimension tokens are non-cache {input, output}: output = even share of the launching turn\u2019s output; input = share of the following turn\u2019s non-cache input (the result dumped back), byte-weighted by the tool result_tokens when captured (FX003), else even-split.',
+        'cache_read / cache_create are the conversation re-reading its own context ("context re-reads") \u2014 counted at the SESSION level only (totals.cache), NEVER attributed to any command/skill/stage row.',
+        'Commands (tool / bash_command / harness_command) carry NO time \u2014 the capture has no honest per-call duration. Skills span this-call\u2192next-skill-call; flow_stage spans between consecutive /the-flow calls (leading-digit arg = stage label); both exclude idle. totals.time_s is active time (agent+human), never wall-span.',
+        // D1 + FX001-5: bash_command keys by the captured signature when present.
         'bash_command keys by the captured command signature (program+verb, e.g. rg / git commit) when available, else the shell-tool name (bash/shell); only the signature — never full argv — is stored (P12).',
         'harness_command counts in-stream harness verbs; bash_command excludes co-timed harness invocations to avoid double-count.',
       ],

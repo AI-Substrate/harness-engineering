@@ -54,7 +54,8 @@
       "kind": "tools",
       "name": "bash",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "result_tokens": 3390
     },
     {
       "t": "2026-06-24T09:29:21.862Z",

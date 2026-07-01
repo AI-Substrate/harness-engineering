@@ -101,6 +101,16 @@ export interface ToolsEvent extends EventBase {
    * verbs stay separate `harness` events); absent for non-shell tools.
    */
   signature?: string;
+  /**
+   * The total size (a token-count ESTIMATE, never payload text) of the
+   * `tool_result` payload(s) this burst dumped back, summed across its `count`
+   * calls (FX003). A privacy-safe number by construction — the size of what a
+   * call returned, which lands as the *next* turn's input; the report's command
+   * lens uses it to byte-weight the input-split (a 200k-dumping `cat` vs a 3-line
+   * `git status`). Absent when the source has no per-tool payload (e.g.
+   * copilot-vscode, turns-only) — an honest omission, never a fabricated 0.
+   */
+  result_tokens?: number;
 }
 
 /** A skill span with an inferred lifecycle status (§4.3). */

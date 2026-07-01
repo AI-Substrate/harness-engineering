@@ -345,6 +345,7 @@ export function serializeEvent(e: Event): Event {
     case 'tools': {
       const ev: Event = { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
       if (typeof e.signature === 'string') ev.signature = e.signature;
+      if (typeof e.result_tokens === 'number') ev.result_tokens = e.result_tokens;
       return ev;
     }
     case 'skill': {

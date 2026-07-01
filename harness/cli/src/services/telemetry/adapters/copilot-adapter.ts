@@ -70,6 +70,15 @@ function asObj(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
 }
 
+/**
+ * A privacy-safe token-count ESTIMATE of a `tool_result` payload (FX003) — a
+ * char/4 heuristic over its size, NEVER the content and NEVER a tokenizer. Only
+ * the resulting number is kept.
+ */
+function estimateResultTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
 /** Word count of a user prompt (string or text blocks); null when empty/absent. Counts ONLY — text never retained (AC-04). */
 function promptWords(content: unknown): number | null {
   let text = '';
@@ -191,6 +200,8 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   const commandByCall = new Map<string, { cmd: string; t: string | null }>();
   const successByCall = new Map<string, boolean>(); // execution_complete `success` → command_exit
   const completeAtByCall = new Map<string, string>(); // execution_complete ts → command_exit `t`
+  // FX003: callId → its tool_result payload size (estimate), attached to the call post-loop.
+  const resultTokensByCall = new Map<string, number>();
   const userPrompts: number[] = []; // word count of each user prompt in the window
   const subagents: SegmentSubagentInput[] = [];
   const windowInteractionIds = new Set<string>();
@@ -260,6 +271,12 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       if (o.type === 'tool.execution_complete' && callId !== null) {
         if (typeof data.success === 'boolean') successByCall.set(callId, data.success);
         if (ts !== null) completeAtByCall.set(callId, ts);
+        // FX003: the completion carries the tool_result payload (`result.content`);
+        // size it (count only, never the text) for the report's dumper signal.
+        const resultContent = str(asObj(data.result).content);
+        if (resultContent !== null) {
+          resultTokensByCall.set(callId, estimateResultTokens(resultContent));
+        }
       }
     } else if (o.type === 'subagent.completed') {
       const name = str(data.agentName) ?? str(data.agentDisplayName);
@@ -318,6 +335,8 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     const call: ToolCall = { name, t };
     const sig = sigByCall.get(callId);
     if (sig !== undefined) call.signature = sig;
+    const rt = resultTokensByCall.get(callId);
+    if (rt !== undefined) call.result_tokens = rt;
     return call;
   });
   return {

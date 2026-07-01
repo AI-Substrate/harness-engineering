@@ -9,6 +9,7 @@ import { otlpLogsToEvents } from '../../../src/services/telemetry/otlp/logs.js';
 import {
   buildReport,
   matchesFilter,
+  REPORT_DIMENSIONS,
   type Rollup,
   TELEMETRY_REPORT_SCHEMA_VERSION,
 } from '../../../src/services/telemetry/report.js';
@@ -82,17 +83,17 @@ function seg(events: Event[], over: Partial<SegmentInput> = {}): Segment {
   );
 }
 
-/** Row map by key for terse assertions. */
+/** Row map by key for terse assertions (FX002 shape: `{input, output}`, optional time). */
 function byKey(
   r: Rollup,
-): Record<string, { count: number; time_s: number; output: number; total: number }> {
-  const out: Record<string, { count: number; time_s: number; output: number; total: number }> = {};
+): Record<string, { count: number; time_s?: number; input: number; output: number }> {
+  const out: Record<string, { count: number; time_s?: number; input: number; output: number }> = {};
   for (const e of r.entries) {
     out[e.key] = {
       count: e.count,
       time_s: e.time_s,
+      input: e.tokens.input,
       output: e.tokens.output,
-      total: e.tokens.total,
     };
   }
   return out;
@@ -203,68 +204,167 @@ describe('T003 — cross-session (N>1) sums the SAME key into ONE entry (re-aggr
     expect(byKey(one.rollups.bash_command).bash.count).toBe(5); // the count assertion discriminates
   });
 
-  it('totals.time_s equals Σ per-session computeRollup wall time', () => {
+  it('totals.time_s equals Σ per-session ACTIVE time (agent+human, idle excluded)', () => {
     const e1 = exportOf('c', [CLAUDE]);
     const e2 = exportOf('r', [CURSOR]);
-    const expectedWall = [e1, e2].reduce(
-      (s, e) => s + computeRollup(otlpLogsToEvents(e.signals.logs)).activity.wall_s,
-      0,
-    );
-    expect(buildReport([e1, e2]).totals.time_s).toBe(Math.round(expectedWall));
+    const expectedActive = [e1, e2].reduce((s, e) => {
+      const a = computeRollup(otlpLogsToEvents(e.signals.logs)).activity;
+      return s + a.agent_working_s + a.human_s;
+    }, 0);
+    // FX002-5: totals.time_s is ACTIVE time (never wall-span). Tolerate ±1 for the
+    // separate rounding of agent/human vs the summed active float.
+    const actual = buildReport([e1, e2]).totals.time_s;
+    expect(Math.abs(actual - expectedActive)).toBeLessThanOrEqual(1);
   });
 });
 
-// ── T003 — flow_stage wall-time from computeRollup (authoritative windowing) ──
+// ── FX002-4 — flow_stage brackets consecutive /the-flow skill calls ──────────
 
-describe('T003 — flow_stage wall-time comes from computeRollup.flow_stage_time_s', () => {
+describe('FX002-4 — flow_stage brackets consecutive /the-flow skill calls (report-time)', () => {
+  // Two the-flow calls (stages 07, 08 — the FX001 Facet-B digit is the stage id);
+  // active time + non-cache tokens accrue per bracket. Read + skill08 share a t.
   const flowSeg = (turnT: string): Segment =>
     seg([
-      { t: '2026-06-29T00:00:00Z', kind: 'flow', flow: 'f', stage: 'plan', status: 'active' },
+      {
+        t: '2026-06-29T00:00:00Z',
+        kind: 'skill',
+        name: 'the-flow',
+        status: 'completed',
+        arg: '07',
+      },
       { t: '2026-06-29T00:01:00Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
-      { t: '2026-06-29T00:01:00Z', kind: 'flow', flow: 'f', stage: 'implement', status: 'active' },
-      { t: turnT, kind: 'turn', dur_s: 0, out: 100 },
+      {
+        t: '2026-06-29T00:01:00Z',
+        kind: 'skill',
+        name: 'the-flow',
+        status: 'completed',
+        arg: '08',
+      },
+      { t: turnT, kind: 'turn', dur_s: 0, out: 100, in: 40 },
     ]);
 
-  it('plan gets the 60s gap, implement gets the 120s gap; counts are 1 each', () => {
-    const report = buildReport([exportOf('f', [flowSeg('2026-06-29T00:03:00Z')])]);
-    const fs = byKey(report.rollups.flow_stage);
-    expect(fs.plan.time_s).toBe(60);
-    expect(fs.implement.time_s).toBe(120);
-    expect(fs.plan.count).toBe(1);
-    expect(fs.implement.count).toBe(1);
+  it('stage 07 gets the 60s bracket, stage 08 the 120s bracket; counts 1 each', () => {
+    const fs = byKey(
+      buildReport([exportOf('f', [flowSeg('2026-06-29T00:03:00Z')])]).rollups.flow_stage,
+    );
+    expect(fs['07'].time_s).toBe(60);
+    expect(fs['08'].time_s).toBe(120);
+    expect(fs['07'].count).toBe(1);
+    expect(fs['08'].count).toBe(1);
+    // The turn falls in stage 08 → its non-cache tokens land there.
+    expect(fs['08'].output).toBe(100);
+    expect(fs['08'].input).toBe(40);
   });
 
-  it('is NON-VACUOUS: moving the turn earlier (00:02:00) shrinks implement 120 → 60', () => {
+  it('is NON-VACUOUS: moving the turn earlier (00:02:00) shrinks stage 08 120 -> 60', () => {
     const later = buildReport([exportOf('f', [flowSeg('2026-06-29T00:03:00Z')])]);
     const earlier = buildReport([exportOf('f', [flowSeg('2026-06-29T00:02:00Z')])]);
-    expect(byKey(later.rollups.flow_stage).implement.time_s).toBe(120);
-    expect(byKey(earlier.rollups.flow_stage).implement.time_s).toBe(60); // the time assertion discriminates
+    expect(byKey(later.rollups.flow_stage)['08'].time_s).toBe(120);
+    expect(byKey(earlier.rollups.flow_stage)['08'].time_s).toBe(60);
+  });
+
+  it('a /the-flow call with NO digit arg -> an "unlabeled" bracket', () => {
+    const s = seg([
+      { t: '2026-06-29T00:00:00Z', kind: 'skill', name: 'the-flow', status: 'completed' },
+      { t: '2026-06-29T00:00:30Z', kind: 'turn', dur_s: 0, out: 10, in: 0 },
+    ]);
+    const fs = byKey(buildReport([exportOf('u', [s])]).rollups.flow_stage);
+    expect(fs.unlabeled).toBeDefined();
+    expect(fs.unlabeled.count).toBe(1);
   });
 });
 
-// ── T004/T005 — per-dimension token attribution (turn-window even-split) ─────
+// ── FX002 — command token attribution (launching-out + following-in) ─────────
 
-describe('T004/T005 — token attribution is populated and NON-VACUOUS', () => {
-  it('a turn attributes its tokens to the single tool active in its window', () => {
+describe('FX002 — command tokens: launching-out (even) + following-in (byte-weighted)', () => {
+  it("a command's output = its share of the LAUNCHING turn's out (input 0 with no next turn)", () => {
     const s = seg([
       { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 200, in: 0 },
       { t: '2026-06-29T00:00:30Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
     ]);
-    expect(byKey(buildReport([exportOf('t', [s])]).rollups.tool).Read.output).toBe(200);
+    const read = byKey(buildReport([exportOf('t', [s])]).rollups.tool).Read;
+    expect(read.output).toBe(200);
+    expect(read.input).toBe(0);
   });
 
-  it('even-split: two tools in a turn window each get HALF the turn tokens', () => {
+  it("a command's input = its share of the FOLLOWING turn's non-cache in (the dump)", () => {
+    const s = seg([
+      { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 50, in: 0 },
+      { t: '2026-06-29T00:00:10Z', kind: 'tools', name: 'catbig', count: 1, span_s: 0 },
+      { t: '2026-06-29T00:00:20Z', kind: 'turn', dur_s: 0, out: 10, in: 900 },
+    ]);
+    // MUTATION: attributing input from the SAME (launching) turn flips input 900 -> 0.
+    const cat = byKey(buildReport([exportOf('t', [s])]).rollups.tool).catbig;
+    expect(cat.output).toBe(50); // launching turn0 out
+    expect(cat.input).toBe(900); // following turn1 non-cache in
+  });
+
+  it('even-split: two tools in the launching window share the out and the next-turn in', () => {
     const s = seg([
       { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 200, in: 0 },
-      { t: '2026-06-29T00:00:30Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
-      { t: '2026-06-29T00:00:31Z', kind: 'tools', name: 'Edit', count: 1, span_s: 0 },
+      { t: '2026-06-29T00:00:10Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
+      { t: '2026-06-29T00:00:11Z', kind: 'tools', name: 'Edit', count: 1, span_s: 0 },
+      { t: '2026-06-29T00:00:20Z', kind: 'turn', dur_s: 0, out: 0, in: 80 },
     ]);
     const tool = byKey(buildReport([exportOf('t', [s])]).rollups.tool);
     expect(tool.Read.output).toBe(100);
     expect(tool.Edit.output).toBe(100);
+    expect(tool.Read.input).toBe(40); // even-split of next-turn in=80 (no result_tokens)
+    expect(tool.Edit.input).toBe(40);
   });
 
-  it('is NON-VACUOUS: mutating the turn output flips the attributed tokens (not just a count)', () => {
+  it('FX003 byte-weight: the input-split is proportional to result_tokens, else even', () => {
+    const weighted = seg([
+      { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 0, in: 0 },
+      {
+        t: '2026-06-29T00:00:10Z',
+        kind: 'tools',
+        name: 'catbig',
+        count: 1,
+        span_s: 0,
+        result_tokens: 300,
+      },
+      {
+        t: '2026-06-29T00:00:11Z',
+        kind: 'tools',
+        name: 'gitst',
+        count: 1,
+        span_s: 0,
+        result_tokens: 100,
+      },
+      { t: '2026-06-29T00:00:20Z', kind: 'turn', dur_s: 0, out: 0, in: 400 },
+    ]);
+    const tool = byKey(buildReport([exportOf('w', [weighted])]).rollups.tool);
+    expect(tool.catbig.input).toBe(300); // 400 x 300/400
+    expect(tool.gitst.input).toBe(100); // 400 x 100/400
+
+    // MUTATION (the reviewer's "zero result_tokens"): weighting collapses to even.
+    const even = seg([
+      { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 0, in: 0 },
+      {
+        t: '2026-06-29T00:00:10Z',
+        kind: 'tools',
+        name: 'catbig',
+        count: 1,
+        span_s: 0,
+        result_tokens: 0,
+      },
+      {
+        t: '2026-06-29T00:00:11Z',
+        kind: 'tools',
+        name: 'gitst',
+        count: 1,
+        span_s: 0,
+        result_tokens: 0,
+      },
+      { t: '2026-06-29T00:00:20Z', kind: 'turn', dur_s: 0, out: 0, in: 400 },
+    ]);
+    const tool2 = byKey(buildReport([exportOf('e', [even])]).rollups.tool);
+    expect(tool2.catbig.input).toBe(200);
+    expect(tool2.gitst.input).toBe(200);
+  });
+
+  it('is NON-VACUOUS: mutating the launching-turn output flips the attributed output', () => {
     const mk = (out: number): Segment =>
       seg([
         { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out, in: 0 },
@@ -273,31 +373,147 @@ describe('T004/T005 — token attribution is populated and NON-VACUOUS', () => {
     expect(byKey(buildReport([exportOf('t', [mk(200)])]).rollups.tool).Read.output).toBe(200);
     expect(byKey(buildReport([exportOf('t', [mk(999)])]).rollups.tool).Read.output).toBe(999);
   });
+});
 
-  it('T005 — flow_stage carries tokens: a turn attributes to the stage active at the turn', () => {
+// ── FX002 — honest attribution rules (mutation-defended) ─────────────────────
+
+describe('FX002 — idle / cache / skill-window / no-command-time (mutation-defended)', () => {
+  it('idle-excluded: a >IDLE_CAP gap before a prompt contributes ZERO active time', () => {
     const s = seg([
-      { t: '2026-06-29T00:00:00Z', kind: 'flow', flow: 'f', stage: 'implement', status: 'active' },
-      { t: '2026-06-29T00:00:30Z', kind: 'turn', dur_s: 0, out: 150, in: 50 },
+      { t: '2026-06-29T00:00:00Z', kind: 'skill', name: 'grill', status: 'completed' },
+      { t: '2026-06-29T00:00:30Z', kind: 'turn', dur_s: 0, out: 10, in: 0 },
+      { t: '2026-06-29T01:00:30Z', kind: 'prompt', words: 5 }, // +1h ending at a prompt = idle
     ]);
-    const fs = byKey(buildReport([exportOf('f', [s])]).rollups.flow_stage);
-    expect(fs.implement.output).toBe(150);
-    expect(fs.implement.total).toBe(200); // in + out
+    const report = buildReport([exportOf('i', [s])]);
+    // active = 30s; the idle hour is excluded. MUTATION: dropping the classifyGap
+    // idle-zeroing balloons this to ~3630s.
+    expect(report.totals.time_s).toBe(30);
+    expect(byKey(report.rollups.skill).grill.time_s).toBe(30);
   });
 
-  it('T005 — Σ per-dimension entry tokens ≤ report.totals.tokens (reconciles within the estimate)', () => {
+  it('cache-excluded: a huge cache_read never inflates any per-dimension token', () => {
     const s = seg([
-      { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 200, in: 100 },
-      { t: '2026-06-29T00:00:30Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
-      { t: '2026-06-29T00:00:40Z', kind: 'turn', dur_s: 0, out: 60, in: 40 },
-      { t: '2026-06-29T00:00:50Z', kind: 'tools', name: 'Edit', count: 1, span_s: 0 },
+      {
+        t: '2026-06-29T00:00:00Z',
+        kind: 'turn',
+        dur_s: 0,
+        out: 60,
+        in: 0,
+        cache_read: 9_000_000,
+        cache_create: 5000,
+      },
+      { t: '2026-06-29T00:00:10Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
     ]);
-    const report = buildReport([exportOf('t', [s])]);
-    expect(report.totals.tokens.output).toBe(260);
-    expect(report.totals.tokens.total).toBe(400);
-    for (const dim of [report.rollups.tool, report.rollups.skill] as const) {
-      expect(dim.total.tokens.output).toBeLessThanOrEqual(report.totals.tokens.output);
-      expect(dim.total.tokens.total).toBeLessThanOrEqual(report.totals.tokens.total);
+    const report = buildReport([exportOf('c', [s])]);
+    const read = byKey(report.rollups.tool).Read;
+    // MUTATION: folding cache_read into the per-dim token balloons this to millions.
+    expect(read.output).toBe(60);
+    expect(read.input).toBe(0);
+    // cache lives at the SESSION level only, labelled "context re-reads".
+    expect(report.totals.cache.read).toBe(9_000_000);
+    expect(report.totals.cache.create).toBe(5000);
+    expect(report.totals.tokens.input).toBe(0);
+    expect(report.totals.tokens.output).toBe(60);
+  });
+
+  it('skill window spans this-call -> NEXT skill call (idle-excluded), never a point', () => {
+    const s = seg([
+      { t: '2026-06-29T00:00:00Z', kind: 'skill', name: 'plan', status: 'superseded' },
+      { t: '2026-06-29T00:00:40Z', kind: 'turn', dur_s: 0, out: 10, in: 5 },
+      { t: '2026-06-29T00:01:00Z', kind: 'skill', name: 'build', status: 'completed' },
+      { t: '2026-06-29T00:01:30Z', kind: 'turn', dur_s: 0, out: 20, in: 8 },
+    ]);
+    const skill = byKey(buildReport([exportOf('s', [s])]).rollups.skill);
+    // MUTATION: collapsing the window to a point (end = si) flips both times to 0.
+    expect(skill.plan.time_s).toBe(60); // [00:00, 01:00)
+    expect(skill.build.time_s).toBe(30); // [01:00, end)
+    // tokens accrue over each window (non-cache in/out).
+    expect(skill.plan.output).toBe(10);
+    expect(skill.plan.input).toBe(5);
+    expect(skill.build.output).toBe(20);
+    expect(skill.build.input).toBe(8);
+  });
+
+  it('command rows (tool / bash_command / harness_command) carry NO time_s field', () => {
+    const s = seg([
+      { t: '2026-06-29T00:00:00Z', kind: 'turn', dur_s: 0, out: 10, in: 0 },
+      {
+        t: '2026-06-29T00:00:10Z',
+        kind: 'tools',
+        name: 'Bash',
+        count: 1,
+        span_s: 0,
+        signature: 'rg',
+      },
+      { t: '2026-06-29T00:00:20Z', kind: 'harness', verb: 'checks' },
+    ]);
+    const report = buildReport([exportOf('n', [s])]);
+    for (const dim of ['tool', 'bash_command', 'harness_command'] as const) {
+      for (const e of report.rollups[dim].entries) {
+        expect(e.time_s).toBeUndefined();
+        expect('time_s' in e).toBe(false);
+      }
+      expect(report.rollups[dim].total.time_s).toBeUndefined();
+      expect(JSON.stringify(report.rollups[dim].entries)).not.toContain('time_s');
     }
+  });
+
+  it('P12/reconciliation: no cache/total on any per-dim ROW; sum per-dim tokens <= session', () => {
+    const s = seg([
+      {
+        t: '2026-06-29T00:00:00Z',
+        kind: 'turn',
+        dur_s: 0,
+        out: 200,
+        in: 100,
+        cache_read: 777,
+        cache_create: 88,
+      },
+      { t: '2026-06-29T00:00:10Z', kind: 'tools', name: 'Read', count: 1, span_s: 0 },
+      { t: '2026-06-29T00:00:20Z', kind: 'turn', dur_s: 0, out: 60, in: 40 },
+      { t: '2026-06-29T00:00:30Z', kind: 'tools', name: 'Edit', count: 1, span_s: 0 },
+    ]);
+    const report = buildReport([exportOf('r', [s])]);
+    for (const dim of REPORT_DIMENSIONS) {
+      const rowsJson = JSON.stringify(report.rollups[dim].entries);
+      for (const forbidden of ['cache_read', 'cache_create', 'total']) {
+        expect(rowsJson).not.toContain(forbidden);
+      }
+      expect(report.rollups[dim].total.tokens.output).toBeLessThanOrEqual(
+        report.totals.tokens.output,
+      );
+      expect(report.rollups[dim].total.tokens.input).toBeLessThanOrEqual(
+        report.totals.tokens.input,
+      );
+    }
+    expect(report.totals.tokens.output).toBe(260); // 200 + 60
+    expect(report.totals.tokens.input).toBe(140); // 100 + 40 (non-cache)
+    expect(report.totals.cache.read).toBe(777);
+    expect(report.totals.cache.create).toBe(88);
+  });
+
+  it('reconciliation: sum flow_stage.time == active time when the session opens with /the-flow', () => {
+    const s = seg([
+      {
+        t: '2026-06-29T00:00:00Z',
+        kind: 'skill',
+        name: 'the-flow',
+        status: 'completed',
+        arg: '01',
+      },
+      { t: '2026-06-29T00:00:30Z', kind: 'turn', dur_s: 0, out: 10, in: 0 },
+      {
+        t: '2026-06-29T00:01:00Z',
+        kind: 'skill',
+        name: 'the-flow',
+        status: 'completed',
+        arg: '02',
+      },
+      { t: '2026-06-29T00:01:40Z', kind: 'turn', dur_s: 0, out: 20, in: 0 },
+    ]);
+    const report = buildReport([exportOf('fs', [s])]);
+    expect(report.rollups.flow_stage.total.time_s ?? 0).toBe(report.totals.time_s);
+    expect(report.rollups.tool.total.time_s).toBeUndefined();
   });
 });
 

@@ -194,7 +194,8 @@
           "exit": { "type": "integer" },
           "gates": { "type": "object", "additionalProperties": { "type": "string" } },
           "signature": { "type": "string" },
-          "arg": { "type": "string" }
+          "arg": { "type": "string" },
+          "result_tokens": { "type": "integer" }
         }
       }
     },

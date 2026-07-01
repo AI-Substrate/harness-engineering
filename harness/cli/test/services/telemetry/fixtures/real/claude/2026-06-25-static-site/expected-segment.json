@@ -91,7 +91,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "git remote"
+      "signature": "git remote",
+      "result_tokens": 104
     },
     {
       "t": "2026-06-11T06:38:42.383Z",
@@ -99,7 +100,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "echo"
+      "signature": "echo",
+      "result_tokens": 81
     },
     {
       "t": "2026-06-11T06:38:46.938Z",
@@ -117,7 +119,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "gh auth"
+      "signature": "gh auth",
+      "result_tokens": 64
     },
     {
       "t": "2026-06-11T06:39:03.766Z",
@@ -135,7 +138,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "gh api"
+      "signature": "gh api",
+      "result_tokens": 17
     },
     {
       "t": "2026-06-11T06:39:26.434Z",
@@ -152,7 +156,8 @@
       "kind": "tools",
       "name": "Write",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "result_tokens": 35
     },
     {
       "t": "2026-06-11T06:39:43.438Z",
@@ -170,7 +175,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "gh api"
+      "signature": "gh api",
+      "result_tokens": 88
     },
     {
       "t": "2026-06-11T06:39:53.742Z",
@@ -187,7 +193,8 @@
       "kind": "tools",
       "name": "AskUserQuestion",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "result_tokens": 57
     },
     {
       "t": "2026-06-11T06:40:50.377Z",
@@ -229,7 +236,8 @@
       "kind": "tools",
       "name": "Edit",
       "count": 2,
-      "span_s": 6
+      "span_s": 6,
+      "result_tokens": 74
     },
     {
       "t": "2026-06-11T06:45:51.844Z",
@@ -272,7 +280,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "git add"
+      "signature": "git add",
+      "result_tokens": 37
     },
     {
       "t": "2026-06-11T06:49:54.737Z",
@@ -290,7 +299,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "git commit"
+      "signature": "git commit",
+      "result_tokens": 84
     },
     {
       "t": "2026-06-11T06:50:02.178Z",
@@ -308,7 +318,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "sleep"
+      "signature": "sleep",
+      "result_tokens": 37
     },
     {
       "t": "2026-06-11T06:50:14.695Z",
@@ -326,7 +337,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "gh run"
+      "signature": "gh run",
+      "result_tokens": 467
     },
     {
       "t": "2026-06-11T06:50:31.320Z",
@@ -344,7 +356,8 @@
       "name": "Bash",
       "count": 1,
       "span_s": 0,
-      "signature": "sleep"
+      "signature": "sleep",
+      "result_tokens": 2
     },
     {
       "t": "2026-06-11T06:50:47.679Z",

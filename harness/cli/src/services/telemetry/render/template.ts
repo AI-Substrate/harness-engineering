@@ -153,12 +153,15 @@ export const REPORT_TEMPLATE_HTML = `<!doctype html>
     var html = '<div class="totals">';
     cols.forEach(function (col, i) {
       var t = col.report.totals || { tokens: {} };
+      var tok = t.tokens || {};
+      var cache = t.cache || {};
       html += '<div class="card"><div class="label">' + esc(labelFor(col, i)) + "</div>" +
         '<div class="metrics">' +
         "<div><b>" + (t.sessions || 0) + "</b> session(s)</div>" +
-        "<div><b>" + fmtDur(t.time_s) + "</b> total time</div>" +
-        "<div><b>" + fmtTok(t.tokens ? t.tokens.total : 0) + "</b> tokens (" +
-        fmtTok(t.tokens ? t.tokens.output : 0) + " output)</div>" +
+        "<div><b>" + fmtDur(t.time_s) + "</b> active time</div>" +
+        "<div><b>" + fmtTok(tok.input || 0) + "</b> in · <b>" + fmtTok(tok.output || 0) + "</b> out</div>" +
+        '<div class="cache"><b>' + fmtTok(cache.read || 0) + "</b> + <b>" + fmtTok(cache.create || 0) +
+        "</b> context re-reads</div>" +
         "</div></div>";
     });
     return html + "</div>";
@@ -166,13 +169,17 @@ export const REPORT_TEMPLATE_HTML = `<!doctype html>
 
   function cell(entry) {
     if (!entry) return '<td class="cell absent">–</td>';
+    var tok = entry.tokens || {};
+    var io = fmtTok(tok.input || 0) + " in · " + fmtTok(tok.output || 0) + " out";
+    // time_s is present ONLY for the time-bearing lenses (skill / flow_stage);
+    // command rows carry no time (FX002) → show tokens only.
+    var time = entry.time_s == null ? "" : " · " + fmtDur(entry.time_s);
     return '<td class="cell"><span class="c">' + entry.count + "×</span>" +
-      ' <span class="sub">' + fmtTok(entry.tokens ? entry.tokens.total : 0) + " tok · " +
-      fmtDur(entry.time_s) + "</span></td>";
+      ' <span class="sub">' + io + time + "</span></td>";
   }
 
   function renderDim(dim, cols) {
-    // Union of keys across columns, sorted desc by summed tokens.total.
+    // Union of keys across columns, sorted desc by summed input+output tokens.
     var index = {}; // key -> { key, score, byCol: {colIdx: entry} }
     cols.forEach(function (col, ci) {
       var r = col.report.rollups ? col.report.rollups[dim.key] : null;
@@ -180,7 +187,7 @@ export const REPORT_TEMPLATE_HTML = `<!doctype html>
       r.entries.forEach(function (e) {
         var row = index[e.key] || (index[e.key] = { key: e.key, score: 0, byCol: {} });
         row.byCol[ci] = e;
-        row.score += e.tokens ? e.tokens.total : 0;
+        row.score += e.tokens ? (e.tokens.input || 0) + (e.tokens.output || 0) : 0;
       });
     });
     var keys = Object.keys(index).sort(function (a, b) {

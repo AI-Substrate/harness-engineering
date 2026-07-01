@@ -29,7 +29,7 @@ function emptyRollup(dimension: ReportDimension): Rollup {
   return {
     dimension,
     entries: [],
-    total: { count: 0, time_s: 0, tokens: { output: 0, total: 0 } },
+    total: { count: 0, tokens: { input: 0, output: 0 } },
   };
 }
 
@@ -41,37 +41,38 @@ function mkReport(over: {
   harnessCmd: Record<string, number>;
   time_s?: number;
 }): TelemetryReport {
+  // Command lenses carry NO time_s (FX002) — only {input, output}.
   const bashEntries = Object.entries(over.bash).map(([key, count]) => ({
     key,
     count,
-    time_s: 12,
-    tokens: { output: count * 10, total: count * 20 },
+    tokens: { input: count * 10, output: count * 5 },
   }));
   const harnessEntries = Object.entries(over.harnessCmd).map(([key, count]) => ({
     key,
     count,
-    time_s: 5,
-    tokens: { output: 0, total: 0 },
+    tokens: { input: 0, output: 0 },
   }));
-  const sum = (
-    es: { count: number; time_s: number; tokens: { output: number; total: number } }[],
-  ) =>
+  const sum = (es: { count: number; tokens: { input: number; output: number } }[]) =>
     es.reduce(
       (a, e) => ({
         count: a.count + e.count,
-        time_s: a.time_s + e.time_s,
         tokens: {
+          input: a.tokens.input + e.tokens.input,
           output: a.tokens.output + e.tokens.output,
-          total: a.tokens.total + e.tokens.total,
         },
       }),
-      { count: 0, time_s: 0, tokens: { output: 0, total: 0 } },
+      { count: 0, tokens: { input: 0, output: 0 } },
     );
   return {
     schema_version: TELEMETRY_REPORT_SCHEMA_VERSION,
     scope: { session_count: 1, single: true, session_ids: [over.sessionId] },
     filter: {},
-    totals: { time_s: over.time_s ?? 3661, tokens: { output: 500, total: 1200 }, sessions: 1 },
+    totals: {
+      time_s: over.time_s ?? 3661,
+      tokens: { input: 700, output: 500 },
+      cache: { read: 4_200_000, create: 12_000 },
+      sessions: 1,
+    },
     rollups: {
       flow_stage: emptyRollup('flow_stage'),
       skill: emptyRollup('skill'),
@@ -84,10 +85,10 @@ function mkReport(over: {
       },
     },
     attribution: {
-      tokens: 'turn-window-even-split',
-      time: 'timeline-bracket',
+      tokens: 'non-cache-input+output',
+      time: 'per-lens',
       exact: ['count'],
-      bash_command_key: 'shell-tool-name',
+      bash_command_key: 'shell-command-signature-or-tool-name',
       notes: [],
     },
     provenance: {
@@ -194,6 +195,24 @@ describe('T009 — render validation: N reports → N columns, inline data, keys
   it('N=1 renders a single column (session save path)', () => {
     const html = renderReports([cols[0]]);
     expect(html.match(/class="report-column"/g) ?? []).toHaveLength(1);
+  });
+
+  it('FX002 render: the template surfaces session cache as "context re-reads" + {input,output}', () => {
+    const html = renderReports(cols);
+    // The shipped template renders session-level cache separately, labelled.
+    expect(html).toContain('context re-reads');
+    // Rows/totals are in/out (never a single "tokens.total").
+    expect(html).toContain(' in \u00b7 ');
+    expect(html).toContain(' out');
+    // The embedded JSON carries the session-level cache (never per-dimension).
+    const jsons = [...html.matchAll(/class="report-column">(.*?)<\/script>/gs)].map((m) =>
+      JSON.parse(m[1].replace(/\\u003c/g, '<')),
+    );
+    expect(jsons[0].report.totals.cache).toEqual({ read: 4_200_000, create: 12_000 });
+    // …and no per-dimension row leaks a cache bucket.
+    const rowsJson = JSON.stringify(jsons[0].report.rollups.bash_command.entries);
+    expect(rowsJson).not.toContain('cache_read');
+    expect(rowsJson).not.toContain('total');
   });
 
   it('escapes `<` in embedded JSON so a value can never break out of the script tag', () => {

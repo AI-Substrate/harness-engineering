@@ -55,6 +55,12 @@ export interface ToolCall {
    * Absent for non-shell tools (they collapse by name as before).
    */
   signature?: string;
+  /**
+   * The size (a token-count ESTIMATE, never payload text) of THIS call's
+   * `tool_result` payload (FX003). `collapseToolBursts` sums it across the burst.
+   * Absent when the source carries no per-tool payload (honest omission).
+   */
+  result_tokens?: number;
 }
 
 /** A collapsed tool burst (the shape of a `tools` event's payload). */
@@ -65,6 +71,12 @@ export interface ToolBurst {
   span_s: number;
   /** Carried from the burst's calls (a burst is a single `(name, signature)`). */
   signature?: string;
+  /**
+   * Σ of the burst's calls' `result_tokens` (FX003) — the total this signature
+   * dumped back over its `count` calls. Absent when NO call in the burst carried
+   * a size (honest absence — never a fabricated 0).
+   */
+  result_tokens?: number;
 }
 
 /**
@@ -86,6 +98,7 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
     first: number;
     last: number;
     count: number;
+    resultTokens?: number;
   } | null = null;
   for (const call of calls) {
     const at = parseIso(call.t);
@@ -99,10 +112,14 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
     ) {
       cur.last = at;
       cur.count += 1;
+      if (call.result_tokens !== undefined) {
+        cur.resultTokens = (cur.resultTokens ?? 0) + call.result_tokens;
+      }
       continue;
     }
     if (cur !== null) bursts.push(finishBurst(cur));
     cur = { t: call.t, name: call.name, signature: call.signature, first: at, last: at, count: 1 };
+    if (call.result_tokens !== undefined) cur.resultTokens = call.result_tokens;
   }
   if (cur !== null) bursts.push(finishBurst(cur));
   return bursts;
@@ -115,11 +132,13 @@ function finishBurst(b: {
   first: number;
   last: number;
   count: number;
+  resultTokens?: number;
 }): ToolBurst {
   const span =
     Number.isFinite(b.last) && Number.isFinite(b.first) ? Math.round(b.last - b.first) : 0;
   const burst: ToolBurst = { t: b.t, name: b.name, count: b.count, span_s: span < 0 ? 0 : span };
   if (b.signature !== undefined) burst.signature = b.signature;
+  if (b.resultTokens !== undefined) burst.result_tokens = b.resultTokens;
   return burst;
 }
 
