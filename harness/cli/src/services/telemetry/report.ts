@@ -14,10 +14,11 @@
  *                     authoritative stage windowing, `flow_stage_time_s`).
  *  - `skill`        — `skill` event names (count = runs, == `computeRollup.skills[n].runs`).
  *  - `tool`         — `tools` event names (count = Σ burst counts, == `computeRollup.tools[n]`).
- *  - `bash_command` — shell-family `tools` events keyed by tool name lowercased
- *                     (`bash`/`shell`); v2 scrubs argv at capture, so this is
- *                     tool-name granularity (D1), and it EXCLUDES `harness …`
- *                     invocations (co-timed `harness` events) to avoid double-count.
+ *  - `bash_command` — shell-family `tools` events keyed by the captured command
+ *                     SIGNATURE (`rg`, `git commit` — program+verb only, P12-safe)
+ *                     when present (FX001), else the lowercased tool name
+ *                     (`bash`/`shell`); EXCLUDES co-timed `harness …` invocations
+ *                     to avoid double-count.
  *  - `harness_command` ⭐ — `harness` event verbs (`doctor`, `flow nav`) (D2).
  *
  * PURE SERVICE (P2): imports ports **type-only**, no `node:*` / git / clock. The
@@ -334,8 +335,11 @@ function foldSession(
       acc.tool.addTime(e.name, gap);
       const sk = shellKey(e.name);
       if (sk !== null && bashNet[i] > 0) {
-        acc.bash_command.addCount(sk, bashNet[i]);
-        acc.bash_command.addTime(sk, gap);
+        // FX001-5: key by the captured command signature (`rg`, `git commit`) when
+        // present, else fall back to the shell-tool name (old data / no signature).
+        const bk = e.signature ?? sk;
+        acc.bash_command.addCount(bk, bashNet[i]);
+        acc.bash_command.addTime(bk, gap);
       }
     } else if (e.kind === 'harness') {
       acc.harness_command.addCount(e.verb, 1);
@@ -386,7 +390,7 @@ function foldSession(
       if (e.kind === 'tools') {
         toolKeys.add(e.name);
         const sk = shellKey(e.name);
-        if (sk !== null && bashNet[i] > 0) bashKeys.add(sk);
+        if (sk !== null && bashNet[i] > 0) bashKeys.add(e.signature ?? sk);
       } else if (e.kind === 'skill') {
         skillKeys.add(e.name);
       } else if (e.kind === 'harness') {
@@ -549,13 +553,14 @@ export function buildReport(
       tokens: 'turn-window-even-split',
       time: 'timeline-bracket',
       exact: ['count'],
-      bash_command_key: 'shell-tool-name',
+      bash_command_key: 'shell-command-signature-or-tool-name',
       notes: [
-        // D1: the workshop-002 `rg ×54` example renders as `bash`/`shell` here —
-        // v2 telemetry scrubs argv at capture (P12), so bash_command is tool-name
-        // granularity, not argv-keyed, and excludes co-timed `harness …` calls.
-        'bash_command is keyed by shell-tool name (bash/shell); per-command argv is not available from the counts-only substrate.',
-        'harness_command counts in-stream harness verbs; bash_command excludes harness invocations to avoid double-count.',
+        // D1 + FX001-5: when a shell call's command signature was captured
+        // (program+verb only, P12-safe — `rg`, `git commit`), bash_command keys by
+        // it (argv-token granularity, the workshop-002 `rg ×54` ask); for older data
+        // with no signature it falls back to the shell-tool name (`bash`/`shell`).
+        'bash_command keys by the captured command signature (program+verb, e.g. rg / git commit) when available, else the shell-tool name (bash/shell); only the signature — never full argv — is stored (P12).',
+        'harness_command counts in-stream harness verbs; bash_command excludes co-timed harness invocations to avoid double-count.',
       ],
     },
     provenance: {

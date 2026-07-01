@@ -55,7 +55,7 @@
         "flow_stage": { "$ref": "#/$defs/rollup" },
         "skill": { "$ref": "#/$defs/rollup" },
         "tool": { "$ref": "#/$defs/rollup" },
-        "bash_command": { "$ref": "#/$defs/rollup", "description": "Shell-family tool runs keyed by shell-tool name (bash/shell). EXCLUDES `harness …` invocations (co-timed harness events) to avoid double-count. NOTE: the workshop-002 `rg ×54` example renders here as `bash`/`shell` — v2 telemetry scrubs argv at capture (P12), so this is tool-name granularity, not argv-keyed." },
+        "bash_command": { "$ref": "#/$defs/rollup", "description": "Shell-family tool runs keyed by the captured command signature — program+verb only, P12-safe (e.g. `rg`, `git commit`) — when available, else the shell-tool name (`bash`/`shell`) for older signature-less data. EXCLUDES `harness …` invocations (co-timed harness events) to avoid double-count. The workshop-002 `rg ×54` ask is met at signature granularity via FX001; only the signature, never full argv, is stored (P12)." },
         "harness_command": { "$ref": "#/$defs/rollup", "description": "⭐ The prominent, dedicated dimension — in-stream `harness` event verbs (e.g. `doctor`, `flow nav`)." }
       }
     },
@@ -63,12 +63,12 @@
       "type": "object",
       "additionalProperties": true,
       "required": ["tokens", "time", "exact", "bash_command_key", "notes"],
-      "description": "How to read the numbers — never mistake an estimate for a ledger. `bash_command_key` + `notes` are ALWAYS emitted (the D1 shell-tool-granularity / no-double-count contract is self-describing), so both are required.",
+      "description": "How to read the numbers — never mistake an estimate for a ledger. `bash_command_key` + `notes` are ALWAYS emitted (the command-signature-or-tool-name / no-double-count contract is self-describing), so both are required.",
       "properties": {
         "tokens": { "type": "string", "description": "e.g. 'turn-window-even-split' — a turn's tokens attribute to the dimension(s) active in its window, split evenly (v1)." },
         "time": { "type": "string", "description": "e.g. 'timeline-bracket' — wall-clock between consecutive timeline events (flow_stage uses computeRollup stage windowing)." },
         "exact": { "type": "array", "items": { "type": "string" }, "description": "Which columns are exact (['count'])." },
-        "bash_command_key": { "type": "string", "description": "'shell-tool-name' — argv is unavailable from the counts-only substrate (D1)." },
+        "bash_command_key": { "type": "string", "description": "'shell-command-signature-or-tool-name' — keys by the captured program+verb signature (`rg`, `git commit`) when available, else the shell-tool name; never full argv (P12 / FX001)." },
         "notes": { "type": "array", "items": { "type": "string" } }
       }
     },

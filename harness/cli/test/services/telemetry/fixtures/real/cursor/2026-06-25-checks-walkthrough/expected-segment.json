@@ -62,7 +62,8 @@
       "kind": "tools",
       "name": "Shell",
       "count": 2,
-      "span_s": 1
+      "span_s": 1,
+      "signature": "node"
     },
     {
       "t": "2026-06-24T03:53:56.921Z",
@@ -88,7 +89,8 @@
       "kind": "tools",
       "name": "Shell",
       "count": 2,
-      "span_s": 14
+      "span_s": 14,
+      "signature": "node"
     },
     {
       "t": "2026-06-24T03:54:34.960Z",
@@ -120,7 +122,8 @@
       "kind": "tools",
       "name": "Shell",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "signature": "node"
     },
     {
       "t": "2026-06-24T03:58:28.409Z",
@@ -146,7 +149,8 @@
       "kind": "tools",
       "name": "Shell",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "signature": "node"
     },
     {
       "t": "2026-06-24T04:14:21.937Z",
@@ -176,7 +180,8 @@
       "kind": "tools",
       "name": "Shell",
       "count": 2,
-      "span_s": 13
+      "span_s": 13,
+      "signature": "node"
     },
     {
       "t": "2026-06-24T04:14:34.733Z",

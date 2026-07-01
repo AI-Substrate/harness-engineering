@@ -1,4 +1,9 @@
-import { commandSignatures, harnessSubcommand } from '../command-signature.js';
+import {
+  commandSignatures,
+  harnessSubcommand,
+  shellSignature,
+  skillDigitArg,
+} from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import { outcomeEvents } from '../outcome-events.js';
@@ -267,11 +272,19 @@ export const claudeAdapter: HarnessAdapter = {
           } else if (block.type === 'tool_use') {
             const name = typeof block.name === 'string' ? block.name : 'unknown';
             increment(tools, name);
-            if (ts !== null) toolCalls.push({ name, t: ts });
             const tInput = (block.input as Record<string, unknown> | undefined) ?? {};
+            // FX001-A: a shell tool's non-harness command signature (kept, not
+            // discarded) → keys its burst; harness verbs stay separate below.
+            let signature: string | undefined;
             if (name === 'Skill' && typeof tInput.skill === 'string') {
               increment(skills, tInput.skill);
-              if (ts !== null) skillOpens.push({ name: tInput.skill, t: ts });
+              // FX001-B: only a LEADING pure-digit positional survives (P12).
+              const arg = skillDigitArg(tInput.args);
+              if (ts !== null) {
+                const open: SkillOpen = { name: tInput.skill, t: ts };
+                if (arg !== undefined) open.arg = arg;
+                skillOpens.push(open);
+              }
             } else if (name === 'Agent') {
               const id = typeof block.id === 'string' ? block.id : '';
               if (id !== '') {
@@ -285,6 +298,7 @@ export const claudeAdapter: HarnessAdapter = {
             } else if (name === 'Write' && typeof tInput.file_path === 'string') {
               written.push(tInput.file_path);
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
+              signature = shellSignature(tInput.command);
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
               // Mark this Bash call as a harness invocation so ONLY its result is
               // parsed for outcome events (companion F003).
@@ -295,6 +309,11 @@ export const claudeAdapter: HarnessAdapter = {
               ) {
                 harnessBashIds.add(id);
               }
+            }
+            if (ts !== null) {
+              const call: ToolCall = { name, t: ts };
+              if (signature !== undefined) call.signature = signature;
+              toolCalls.push(call);
             }
           }
         }

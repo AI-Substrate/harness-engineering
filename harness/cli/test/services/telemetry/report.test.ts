@@ -123,25 +123,37 @@ describe('T002/T003 — rollup counts are EXACT across all five dimensions', () 
     }
   });
 
-  it('claude: tool {Bash:10,Write:1,AskUserQuestion:1,Edit:2}; bash_command {bash:10}; no harness', () => {
+  it('claude: tool {Bash:10,Write:1,AskUserQuestion:1,Edit:2}; bash_command by signature (Σ=10); no harness', () => {
     const report = buildReport([exportOf('claude', [CLAUDE])]);
     const tool = byKey(report.rollups.tool);
     expect(tool.Bash.count).toBe(10);
     expect(tool.Write.count).toBe(1);
     expect(tool.AskUserQuestion.count).toBe(1);
     expect(tool.Edit.count).toBe(2);
-    expect(byKey(report.rollups.bash_command).bash.count).toBe(10);
+    // FX001-5: bash_command now keys by the captured command SIGNATURE (`git commit`,
+    // `gh api`, …), not a single `bash` bucket; the per-signature counts still sum to
+    // the 10 Bash calls. MUTATION: report keying by tool name (drop `e.signature ?? sk`)
+    // collapses these back to a single `bash:10` row → `git commit` vanishes → fails.
+    const bc = byKey(report.rollups.bash_command);
+    expect(bc.bash).toBeUndefined();
+    expect(bc['git commit'].count).toBe(1);
+    expect(bc['gh api'].count).toBe(2);
+    expect(Object.values(bc).reduce((n, e) => n + e.count, 0)).toBe(10);
     expect(report.rollups.harness_command.entries).toHaveLength(0);
     expect(report.scope.single).toBe(true);
   });
 
-  it('cursor: tool {Shell:8,Glob:1,Read:1}; bash_command {shell:8}', () => {
+  it('cursor: tool {Shell:8,Glob:1,Read:1}; bash_command {node:8} (signature-keyed)', () => {
     const report = buildReport([exportOf('cursor', [CURSOR])]);
     const tool = byKey(report.rollups.tool);
     expect(tool.Shell.count).toBe(8);
     expect(tool.Glob.count).toBe(1);
     expect(tool.Read.count).toBe(1);
-    expect(byKey(report.rollups.bash_command).shell.count).toBe(8);
+    // FX001-5: the 8 `node harness/cli/bin/harness.js …` shell calls key by their
+    // `node` signature (argv dropped, P12). MUTATION: keying by tool name yields a
+    // `shell:8` row instead → `node` is undefined → fails.
+    expect(byKey(report.rollups.bash_command).node.count).toBe(8);
+    expect(byKey(report.rollups.bash_command).shell).toBeUndefined();
   });
 
   it('D1 — copilot: harness_command {doctor:1}; the co-timed bash is EXCLUDED (bash_command empty, no double-count)', () => {
@@ -405,7 +417,7 @@ describe('envelope basics', () => {
     expect(report.schema_version).toBe(TELEMETRY_REPORT_SCHEMA_VERSION);
     expect(report.provenance.generated_at).toBe('2026-07-01T00:00:00Z');
     expect(report.provenance.source_paths).toEqual(['./sessions']);
-    expect(report.attribution.bash_command_key).toBe('shell-tool-name');
+    expect(report.attribution.bash_command_key).toBe('shell-command-signature-or-tool-name');
   });
 });
 

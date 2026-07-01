@@ -1,5 +1,10 @@
 import type { EnvPort } from '../../../adapters/env/env-port.js';
-import { commandSignatures, harnessSubcommand } from '../command-signature.js';
+import {
+  commandSignatures,
+  harnessSubcommand,
+  shellSignature,
+  skillDigitArg,
+} from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
@@ -312,13 +317,26 @@ export const cursorAdapter: HarnessAdapter = {
           if (b.type !== 'tool_use') continue;
           const name = typeof b.name === 'string' ? b.name : 'unknown';
           tools[name] = (tools[name] ?? 0) + 1;
-          if (at !== undefined) toolCalls.push({ name, t: at });
           const input = (b.input ?? {}) as Record<string, unknown>;
+          // FX001-A: keep a shell call's non-harness command signature (keys its burst).
+          let signature: string | undefined;
           if ((name === 'Shell' || name === 'Bash') && typeof input.command === 'string') {
+            signature = shellSignature(input.command);
             if (at !== undefined) commandObs.push({ cmd: input.command, t: at });
           } else if (name === 'Skill' && typeof input.skill === 'string') {
             skills[input.skill] = (skills[input.skill] ?? 0) + 1;
-            if (at !== undefined) skillOpens.push({ name: input.skill, t: at });
+            // FX001-B: only a LEADING pure-digit positional survives (P12).
+            const arg = skillDigitArg(input.args);
+            if (at !== undefined) {
+              const open: SkillOpen = { name: input.skill, t: at };
+              if (arg !== undefined) open.arg = arg;
+              skillOpens.push(open);
+            }
+          }
+          if (at !== undefined) {
+            const call: ToolCall = { name, t: at };
+            if (signature !== undefined) call.signature = signature;
+            toolCalls.push(call);
           }
         }
         asstIdx += 1;

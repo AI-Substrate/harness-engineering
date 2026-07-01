@@ -1,7 +1,7 @@
 # Fix FX001: Capture command/skill param signatures into the event stream
 
 **Created**: 2026-07-01
-**Status**: Proposed (awaiting GO)
+**Status**: Complete — implemented + cross-model reviewed (gpt-5.5, Dim-0 ×5) + orchestrator-verified (2026-07-01); see [reviews/fx001-review.md](../reviews/fx001-review.md)
 **Plan**: [047-session-telemetry-dashboard](../session-telemetry-dashboard-plan.md) — motivating consumer (the `bash_command` rollup, Phase 2)
 **Source**: Phase-2 build discovery (coder pij-1ih6gj9 dlg-0001 + orchestrator verification) → observe `MW-001`/`DL-001`; principal directives — (1) "collect first param for any external bash command (bash rg) or powershell"; (2) for skills, "just grab digits if it's the first thing after the command — `/the-flow 08 \"sldjdlf\"` gets `08` but not the text; `the-flow sdkfsdlskdflk` or `the-flow a sldf` are NOT picked up"
 

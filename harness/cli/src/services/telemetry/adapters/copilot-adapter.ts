@@ -1,4 +1,4 @@
-import { commandSignatures, harnessSubcommand } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand, shellSignature } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import type { ToolCall } from '../rollup.js';
@@ -196,7 +196,10 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   const windowInteractionIds = new Set<string>();
 
   const prompts: { t: string; words: number }[] = [];
-  const toolCalls: ToolCall[] = [];
+  // FX001-A: the tool-call event is emitted at the FIRST event carrying the name,
+  // but a shell call's `arguments.command` can land on a DIFFERENT event; so record
+  // the callId here and resolve the signature post-loop (when commandByCall is complete).
+  const toolCallsRaw: { name: string; t: string; callId: string }[] = [];
   const subagentEvts: { t: string; name: string }[] = [];
   const modelEvts: { t: string; model: string; effort?: string }[] = [];
   const turnStart = new Map<string, string>();
@@ -237,7 +240,7 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
         // whether execution_start OR execution_complete (the name moved between the
         // two across CLI versions) — so rollup.tools matches the v1 tools histogram
         // exactly even when the name is only on execution_complete (companion HIGH, AC-16).
-        if (ts !== null) toolCalls.push({ name: toolName, t: ts });
+        if (ts !== null) toolCallsRaw.push({ name: toolName, t: ts, callId });
       }
       // A shell tool's command line → captured by call id INDEPENDENTLY of
       // toolName: `arguments.command` and the (moved) `toolName` can land on
@@ -285,10 +288,15 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // have arrived on a different event than `arguments.command` (companion MEDIUM).
   const commandObs: { cmd: string; t: string }[] = [];
   const commandExits: { verb: string; exit: number; t: string }[] = [];
+  // FX001-A: callId → the shell call's non-harness signature (harness verbs stay
+  // separate `harness` events, so a pure-harness command contributes no signature).
+  const sigByCall = new Map<string, string>();
   for (const [callId, { cmd, t }] of commandByCall) {
     const tn = toolNameByCall.get(callId);
     if (tn !== 'bash' && tn !== 'shell') continue;
     if (t !== null) commandObs.push({ cmd, t });
+    const sig = shellSignature(cmd);
+    if (sig !== undefined) sigByCall.set(callId, sig);
     // command_exit (AC-19) — a harness subcommand's exit from the `success` flag.
     // Copilot has ONE success bool for the WHOLE shell execution, so it can be
     // attributed only to a LONE harness command: a compound — whether two harness
@@ -305,6 +313,13 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       }
     }
   }
+  // Attach the resolved signature to each shell tool call (order preserved).
+  const toolCalls: ToolCall[] = toolCallsRaw.map(({ name, t, callId }) => {
+    const call: ToolCall = { name, t };
+    const sig = sigByCall.get(callId);
+    if (sig !== undefined) call.signature = sig;
+    return call;
+  });
   return {
     effort,
     tools,

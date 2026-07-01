@@ -342,12 +342,16 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.model === 'string') ev.model = e.model;
       return ev;
     }
-    case 'tools':
-      return { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
+    case 'tools': {
+      const ev: Event = { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
+      if (typeof e.signature === 'string') ev.signature = e.signature;
+      return ev;
+    }
     case 'skill': {
       const ev: Event = { ...base, kind: 'skill', name: e.name, status: e.status };
       const d = num(e.dur_s);
       if (d !== undefined) ev.dur_s = d;
+      if (typeof e.arg === 'string') ev.arg = e.arg;
       return ev;
     }
     case 'flow': {

@@ -44,6 +44,7 @@ export function buildEventStream(raw: RawEvents): Event[] {
 
   for (const b of collapseToolBursts(raw.toolCalls ?? [])) {
     const e: Event = { t: b.t, kind: 'tools', name: b.name, count: b.count, span_s: b.span_s };
+    if (b.signature !== undefined) e.signature = b.signature;
     if (p !== undefined) e.t_precision = p;
     events.push(e);
   }
@@ -52,6 +53,7 @@ export function buildEventStream(raw: RawEvents): Event[] {
   const statuses = inferSkillStatuses(opens, raw.lastSkillActive ?? false);
   opens.forEach((open, i) => {
     const e: Event = { t: open.t, kind: 'skill', name: open.name, status: statuses[i] };
+    if (open.arg !== undefined) e.arg = open.arg;
     if (p !== undefined) e.t_precision = p;
     events.push(e);
   });

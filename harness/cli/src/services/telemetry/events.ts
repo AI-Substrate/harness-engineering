@@ -93,6 +93,14 @@ export interface ToolsEvent extends EventBase {
   name: string;
   count: number;
   span_s: number;
+  /**
+   * The privacy-safe command signature of a SHELL-family tool burst (FX001) —
+   * `commandSignatures()`'s program+verb only (`rg`, `git commit`), allowlisted
+   * BY CONSTRUCTION (no flags/paths/values/quotes). Present only when the burst
+   * is a shell tool AND the signature resolves to a non-harness command (harness
+   * verbs stay separate `harness` events); absent for non-shell tools.
+   */
+  signature?: string;
 }
 
 /** A skill span with an inferred lifecycle status (§4.3). */
@@ -101,6 +109,15 @@ export interface SkillEvent extends EventBase {
   name: string;
   status: SkillStatus;
   dur_s?: number;
+  /**
+   * A skill invocation's LEADING PURE-DIGIT positional (FX001, Facet B) — e.g.
+   * `/the-flow 08` → `08`. Captured ONLY when the first whitespace-delimited
+   * token after the skill name matches `^\d+$`; a non-digit or quoted first token
+   * (`the-flow specify`, `"x"`) and any later token are NEVER stored (P12/AC-15).
+   * A bare integer is a fixed-shape, non-sensitive stage/step number. Orthogonal
+   * to flow-stage mapping (stages come from `the-flow.json` nav — {@link FlowEvent}).
+   */
+  arg?: string;
 }
 
 /** A flight-plan stage transition (read from `the-flow.json` nav, never from args). */

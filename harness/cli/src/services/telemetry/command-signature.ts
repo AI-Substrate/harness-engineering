@@ -241,6 +241,34 @@ export function harnessSubcommand(signature: string): string | null {
 }
 
 /**
+ * The privacy-safe SHELL signature to attach to a shell tool event (FX001-A) —
+ * the FIRST non-harness command signature of a (possibly chained) command line
+ * (`rg foo` → `rg`; `rg foo && harness checks` → `rg`; `harness doctor` →
+ * `undefined`). Reuses {@link partitionCommands} verbatim, so it inherits the
+ * program+verb allowlist and NEVER carries a positional/flag/path/quote. A pure
+ * harness invocation yields `undefined` (the harness verb is a separate
+ * `HarnessEvent`, so attaching nothing here avoids a bash/harness double-count).
+ */
+export function shellSignature(raw: string): string | undefined {
+  return partitionCommands([raw]).bash[0];
+}
+
+/**
+ * A skill invocation's LEADING PURE-DIGIT positional (FX001-B) — the first
+ * whitespace-delimited token of the raw ARGUMENT string (the text after the
+ * skill name) IFF it matches `^\d+$` (`08`, `7`); otherwise `undefined`. A
+ * bare integer is a fixed-shape, non-sensitive stage/step number; a non-digit
+ * first token (`specify`, `a sldf`) or a quoted string (`"sldjdlf"`) can carry
+ * free-form/sensitive content, so it is NEVER returned (P12/AC-15). Also drops
+ * every token AFTER the first, so `08 "sldjdlf"` → `08`.
+ */
+export function skillDigitArg(rawArgs: unknown): string | undefined {
+  if (typeof rawArgs !== 'string') return undefined;
+  const first = rawArgs.trim().split(/\s+/)[0];
+  return first !== undefined && /^\d+$/.test(first) ? first : undefined;
+}
+
+/**
  * Partition raw shell command lines into counts-only command signatures: harness
  * invocations (sub-command only, e.g. `flow nav`) vs every other bash command
  * (full signature, e.g. `git status`). Order preserved; nothing deduped — the

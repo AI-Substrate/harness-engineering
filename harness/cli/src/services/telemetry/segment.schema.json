@@ -193,7 +193,8 @@
           "verb": { "type": "string" },
           "exit": { "type": "integer" },
           "gates": { "type": "object", "additionalProperties": { "type": "string" } },
-          "signature": { "type": "string" }
+          "signature": { "type": "string" },
+          "arg": { "type": "string" }
         }
       }
     },

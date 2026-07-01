@@ -85,10 +85,12 @@ function encodeEvent(e: Event): LogRecord {
         kv(A.TOOL_COUNT, nv(e.count)),
         kv(A.TOOL_SPAN_S, nv(e.span_s)),
       );
+      if (e.signature !== undefined) attrs.push(kv(A.TOOL_SIG, sv(e.signature)));
       break;
     case 'skill':
       attrs.push(kv(A.SKILL_NAME, sv(e.name)), kv(A.SKILL_STATUS, sv(e.status)));
       if (e.dur_s !== undefined) attrs.push(kv(A.SKILL_DUR_S, nv(e.dur_s)));
+      if (e.arg !== undefined) attrs.push(kv(A.SKILL_ARG, sv(e.arg)));
       break;
     case 'flow':
       attrs.push(
@@ -180,14 +182,18 @@ function decodeEvent(rec: LogRecord): Event {
       if (model !== undefined) ev.model = model;
       return ev;
     }
-    case 'tools':
-      return {
+    case 'tools': {
+      const ev: ToolsEvent = {
         ...base,
         kind,
         name: readStr(m.get(A.TOOL_NAME)) ?? '',
         count: readNum(m.get(A.TOOL_COUNT)) ?? 0,
         span_s: readNum(m.get(A.TOOL_SPAN_S)) ?? 0,
-      } satisfies ToolsEvent;
+      };
+      const sig = readStr(m.get(A.TOOL_SIG));
+      if (sig !== undefined) ev.signature = sig;
+      return ev;
+    }
     case 'skill': {
       const ev: SkillEvent = {
         ...base,
@@ -197,6 +203,8 @@ function decodeEvent(rec: LogRecord): Event {
       };
       const d = readNum(m.get(A.SKILL_DUR_S));
       if (d !== undefined) ev.dur_s = d;
+      const arg = readStr(m.get(A.SKILL_ARG));
+      if (arg !== undefined) ev.arg = arg;
       return ev;
     }
     case 'flow': {
