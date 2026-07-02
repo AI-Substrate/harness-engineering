@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "telemetry-ref-rollup",
   "nav": {
-    "now": "phase-1",
+    "now": "ship",
     "next": null
   },
   "created_at": "2026-07-02T21:11:55.420Z",
@@ -163,6 +163,50 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-02T23:41:13.109Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-02T23:41:13.848Z",
+      "details": {
+        "node": "review-1",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-02T23:41:14.672Z",
+      "details": {
+        "from": "phase-1",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-02T23:41:15.437Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -211,7 +255,7 @@
       "type": "phase",
       "phase": 1,
       "label": "Phase 1: Ref rollup + migration (T001-T006)",
-      "status": "in_progress",
+      "status": "done",
       "command": "/the-flow 6 implement",
       "next": [
         "review-1"
@@ -221,7 +265,7 @@
         "Run /the-flow 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
         "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof."
       ],
-      "modified_at": "2026-07-02T23:06:07.343Z",
+      "modified_at": "2026-07-02T23:41:15.437Z",
       "comments": [
         {
           "at": "2026-07-02T21:25:12.151Z",
@@ -242,14 +286,19 @@
         {
           "at": "2026-07-02T23:06:07.343Z",
           "text": "Review round 2 (gpt-5.5): F1-F3 verified fixed (laundering mutation re-run RED); T007 union/prune Dim-0 all 5 mutations RED-verified. Fresh HIGH: ExecGitWrite.run lacks maxBuffer (ENOBUFS ~1MiB) + readRefTree skips failed blob reads -> possible force-push of truncated roll. Narrow fix dispatched (fail-closed + shared 64MiB constant + >1MiB int test)."
+        },
+        {
+          "at": "2026-07-02T23:41:15.437Z",
+          "text": "Phase 1 COMPLETE incl. T006 dogfood: migration rewrote 26 sessions (17943 segments unioned), June totals +8% (recovery proof), buffer 100MB->3.9MB, steady-state fetch-free. Review: 3 rounds (2 FIX_REQUIRED -> APPROVE), record at reviews/p1-ref-rollup-review.md. Retro drained: .harness/records/retro/2026-07-02/004-049-p1-ref-rollup-drain.md. OPEN pre-ship: DL-001 no-op sync perf (~2min/96s CPU)."
         }
-      ]
+      ],
+      "ran_at": "2026-07-02T23:41:13.109Z"
     },
     {
       "id": "review-1",
       "type": "review",
       "label": "Review: P1",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 7 review",
       "next": [
         "ship"
@@ -259,7 +308,9 @@
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /the-flow 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
-      ]
+      ],
+      "modified_at": "2026-07-02T23:41:13.848Z",
+      "ran_at": "2026-07-02T23:41:13.848Z"
     },
     {
       "id": "ship",
