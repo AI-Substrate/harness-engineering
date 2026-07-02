@@ -1,0 +1,36 @@
+{
+  "schema_version": "2.0",
+  "command": "arch-check",
+  "harness": "cursor-agent",
+  "harness_session_id": "01aa25af-f038-4c50-b3ce-f23108ed50b7",
+  "timecode": "2026-06-24T21:45:27.922Z",
+  "window": {
+    "since": "last-command",
+    "from": 18,
+    "to": 18
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": null,
+  "models": {},
+  "effort": null,
+  "skills": {},
+  "tools": {},
+  "bash_commands": [],
+  "harness_commands": [],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null,
+  "event_stream": [],
+  "rollup": null
+}

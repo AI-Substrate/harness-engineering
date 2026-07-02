@@ -1,0 +1,106 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "cursor-agent",
+  "harness_session_id": "01aa25af-f038-4c50-b3ce-f23108ed50b7",
+  "timecode": "2026-06-24T21:45:16.387Z",
+  "window": {
+    "since": "last-command",
+    "from": 13,
+    "to": 18
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": null,
+  "models": {
+    "composer-2.5": {
+      "turns": 3,
+      "output_tokens": 0
+    }
+  },
+  "effort": null,
+  "skills": {},
+  "tools": {
+    "Shell": 2
+  },
+  "bash_commands": [
+    "node",
+    "node"
+  ],
+  "harness_commands": [],
+  "user_prompts": [
+    68
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null,
+  "event_stream": [
+    {
+      "t": "2026-06-24T03:54:46.286Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:54:46.286Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T03:58:18.352Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T03:58:18.352Z",
+      "t_precision": "anchored",
+      "kind": "tools",
+      "name": "Shell",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T03:58:28.409Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-24T21:45:10.184Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 68
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 64224,
+      "agent_working_s": 222,
+      "human_s": 0,
+      "idle_s": 64002,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {
+      "Shell": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}
