@@ -1,0 +1,57 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "copilot-cli",
+  "harness_session_id": "60ffc719-905a-4292-b6f6-bfc4aa81f787",
+  "timecode": "2026-06-24T09:31:03.569Z",
+  "window": {
+    "since": "last-command",
+    "from": 7,
+    "to": 12
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": null,
+  "models": {},
+  "effort": null,
+  "skills": {},
+  "tools": {},
+  "bash_commands": [],
+  "harness_commands": [],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null,
+  "event_stream": [
+    {
+      "t": "2026-06-24T09:30:58.980Z",
+      "kind": "turn",
+      "dur_s": 0
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

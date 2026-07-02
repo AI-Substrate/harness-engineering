@@ -1,0 +1,100 @@
+{
+  "schema_version": "2.1",
+  "command": "doctor",
+  "harness": "copilot-vscode",
+  "harness_session_id": "60ffc719-905a-4292-b6f6-bfc4aa81f787",
+  "timecode": "2026-06-25T01:22:39.300Z",
+  "window": {
+    "since": "last-command",
+    "from": 12,
+    "to": 22
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 6,
+    "output": 650,
+    "cache_create": 21118,
+    "cache_read": 116540,
+    "total": 138314,
+    "subagent_tokens": 0,
+    "grand_total": 138314,
+    "scope": "command"
+  },
+  "effort": "max",
+  "models": {
+    "claude-opus-4.8": {
+      "turns": 3,
+      "output_tokens": 650
+    }
+  },
+  "tools": {
+    "bash": 1
+  },
+  "premium_requests": 15,
+  "code_changes": {
+    "lines_added": 0,
+    "lines_removed": 0,
+    "files_modified": 0
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T09:31:02.454Z",
+      "kind": "harness",
+      "verb": "doctor"
+    },
+    {
+      "t": "2026-06-24T09:31:02.454Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T09:31:03.633Z",
+      "kind": "command_exit",
+      "verb": "doctor",
+      "exit": 0
+    },
+    {
+      "t": "2026-06-24T09:31:03.636Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 6,
+      "out": 650,
+      "cache_read": 116540,
+      "cache_create": 21118,
+      "model": "claude-opus-4.8"
+    },
+    {
+      "t": "2026-06-24T09:31:03.636Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 1,
+      "agent_working_s": 1,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 6,
+      "out": 650,
+      "cache_read": 116540,
+      "cache_create": 21118
+    },
+    "tools": {
+      "bash": 1
+    },
+    "outcomes": {
+      "exits": {
+        "doctor": 0
+      }
+    }
+  }
+}
