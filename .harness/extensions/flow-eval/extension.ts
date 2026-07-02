@@ -30,8 +30,10 @@ import type {
   VerbResult,
 } from '@ai-substrate/engineering-harness/contract';
 import { writeReport } from './report.js';
+import { contentHash, readLedger, type TelemetrySummary } from './ledger.js';
+import { compareModels, renderLedgerList } from './ledger-view.js';
 import type { ResolveContext, SessionEvidence } from './resolvers.js';
-import { join, loadScenario } from './scenario.js';
+import { buildJudgeProvenance, join, loadScenario } from './scenario.js';
 import { scoreScenario } from './scorer.js';
 
 /** Where committed scenario bundles live, relative to the repo cwd. */
@@ -76,6 +78,65 @@ function makeRunId(nowIso: string, session: string): string {
   return `${stamp}-${suffix}`;
 }
 
+/**
+ * Parse the `telemetry session save` envelope's `totals` into a denormalized
+ * {@link TelemetrySummary}. Returns `null` when ANY of the four cost fields is
+ * missing or non-finite — an honest "no summary" (a reader counts + excludes the
+ * run), NEVER a zero-filled fabrication (F4 / 2.5).
+ */
+function parseTelemetrySummary(totals: unknown): TelemetrySummary | null {
+  if (typeof totals !== 'object' || totals === null) return null;
+  const t = totals as Record<string, unknown>;
+  const tok = t.tokens as Record<string, unknown> | undefined;
+  const cache = t.cache as Record<string, unknown> | undefined;
+  const fin = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const active = fin(t.active_time_s);
+  const inTok = fin(tok?.input);
+  const outTok = fin(tok?.output);
+  const cRead = fin(cache?.read);
+  const cCreate = fin(cache?.create);
+  const turns = fin(t.turns);
+  if (active === null || inTok === null || outTok === null || cRead === null || cCreate === null || turns === null) {
+    return null;
+  }
+  return { active_time_s: active, tokens: { input: inTok, output: outTok }, cache: { read: cRead, create: cCreate }, turns };
+}
+
+/**
+ * Snapshot the session's cost/export via the READ-ONLY `telemetry session save`
+ * verb (F4). This is ONE extra exec AFTER scoring — it is `save`, NOT `get`, so
+ * the evidence-fetch-once contract is untouched. Returns the written export path
+ * + a {@link TelemetrySummary} parsed from the envelope `totals`, or `null` on
+ * ANY failure (verb missing/errored, non-ok or absent envelope, unparsable
+ * totals) — honest degradation, never a throw, never fabricated zeros.
+ */
+async function saveTelemetrySummary(
+  ctx: VerbContext,
+  harnessSessionId: string,
+  outPath: string,
+): Promise<{ session_export: string; telemetry_summary: TelemetrySummary } | null> {
+  const r = await ctx.exec('harness', [
+    'telemetry',
+    'session',
+    'save',
+    harnessSessionId,
+    '--out',
+    outPath,
+    '--no-html',
+    '--json',
+  ]);
+  if (!r.ok) return null;
+  try {
+    const env = JSON.parse(r.stdout) as { status?: string; data?: { out?: unknown; totals?: unknown } };
+    if (env.status !== 'ok' || typeof env.data !== 'object' || env.data === null) return null;
+    const out = typeof env.data.out === 'string' && env.data.out.length > 0 ? env.data.out : outPath;
+    const summary = parseTelemetrySummary(env.data.totals);
+    return summary === null ? null : { session_export: out, telemetry_summary: summary };
+  } catch {
+    return null;
+  }
+}
+
 /** `flow-eval score` — the only action verb (collect evidence → resolve → report). */
 async function runScore(ctx: VerbContext): Promise<VerbResult> {
   const slug = strOpt(ctx, 'scenario');
@@ -103,9 +164,49 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
     fs: ctx.fs,
     exec: (command, args, opts) => ctx.exec(command, args, opts),
   };
-  const scored = await scoreScenario(loaded.scenario.assertions, rc);
+  const scored = await scoreScenario(loaded.scenario.assertions, rc, loaded.scenario.config.judge);
   const finishedAt = ctx.clock.nowIso();
   const runId = makeRunId(startedAt, session);
+  const provenance = {
+    judge: buildJudgeProvenance(loaded.scenario.config.judge, loaded.scenario.config.subject.model),
+  };
+
+  // Seed-tuple hashes: the `--compare` match key (scenario_hash + base_ref) + a
+  // packet-drift key (prompt_hash). Hashed from the raw bundle bytes — a null
+  // read hashes as empty (an honest, stable "absent"), never a throw.
+  const dir = loaded.scenario.dir;
+  const scenarioRaw = ctx.fs.readText(join(dir, 'scenario.json')) ?? '';
+  const assertionsRaw = ctx.fs.readText(join(dir, loaded.scenario.config.assertions)) ?? '';
+  const subjectPromptRaw = ctx.fs.readText(join(dir, loaded.scenario.config.prompts.subject)) ?? '';
+  const scenarioHash = contentHash(scenarioRaw, assertionsRaw);
+  const promptHash = contentHash(subjectPromptRaw);
+  const orchestratorId = ctx.env.get('PIJ_SESSION_ID');
+
+  // F4: snapshot the session's cost/export IF the telemetry evidence gave us the
+  // HARNESS session id (`--session` is a pij id; `telemetry session save` is keyed
+  // by the harness id — the reviewer's blocker). ONE extra READ-ONLY exec AFTER
+  // scoring; ANY failure ⇒ honest nulls (cost stays absent, never zero-filled).
+  let sessionExport: string | null = null;
+  let telemetrySummary: TelemetrySummary | null = null;
+  const harnessSessionId = evidence?.harness_session_id ?? null;
+  if (harnessSessionId && ctx.fsWrite) {
+    const exportPath = join(ctx.cwd, '.harness', 'live-testing', slug, runId, 'session-export.json');
+    const saved = await saveTelemetrySummary(ctx, harnessSessionId, exportPath);
+    if (saved) {
+      sessionExport = saved.session_export;
+      telemetrySummary = saved.telemetry_summary;
+    }
+  }
+
+  // The read-then-write surface the ledger append needs: `ctx.fsWrite` has no
+  // append + no read, so pair its writers with `ctx.fs.readText` (task 2.2).
+  const reportIo = ctx.fsWrite
+    ? {
+        readText: (p: string): string | null => ctx.fs.readText(p),
+        writeText: (p: string, c: string): void => ctx.fsWrite?.writeText(p, c),
+        mkdirp: (p: string): void => ctx.fsWrite?.mkdirp(p),
+      }
+    : undefined;
 
   const written = writeReport(
     {
@@ -123,9 +224,28 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       started_at: startedAt,
       finished_at: finishedAt,
       scored,
+      provenance,
+      ledger: {
+        seed: {
+          scenario_hash: scenarioHash,
+          prompt_hash: promptHash,
+          ...(orchestratorId !== undefined && orchestratorId.length > 0 && {
+            orchestrator_id: orchestratorId,
+          }),
+        },
+        telemetry_available: evidence !== null,
+        // F13 wall-span from the telemetry evidence; honest `null` when absent.
+        duration_s: evidence?.duration_s ?? null,
+        // F4: real cost provenance when the session's harness id was known + the
+        // `telemetry session save` snapshot succeeded; honest `null` otherwise
+        // (a missing summary is counted + excluded by the reader, NEVER zeroed).
+        session_export: sessionExport,
+        telemetry_summary: telemetrySummary,
+        provenance,
+      },
     },
     ctx.cwd,
-    ctx.fsWrite,
+    reportIo,
   );
   if (!written.ok) {
     return ctx.error('E_REPORT', written.error, {
@@ -149,16 +269,71 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       telemetry: { available: evidence !== null, segments: evidence?.segments ?? 0 },
       report_dir: written.dir,
       files: written.files,
+      ...(written.ledger !== undefined && { ledger: written.ledger }),
     },
     {
       evidence: [
         { label: 'flow-eval report (json)', path: written.files.json },
         { label: 'flow-eval report (md)', path: written.files.md },
+        ...(written.ledger !== undefined
+          ? [{ label: 'flow-eval ledger', path: written.ledger }]
+          : []),
       ],
       next_action:
         scored.judged.length > 0
           ? `Fill the ${scored.judged.length} judged field(s) in ${written.files.json}, then read the report.`
           : `Read the report at ${written.files.md}.`,
+    },
+  );
+}
+
+/** Normalize the repeatable `--compare` flag to a string[] (commander may hand a string or array). */
+function compareModels_opt(ctx: VerbContext): string[] {
+  const v = ctx.options.compare;
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim());
+  if (typeof v === 'string' && v.trim().length > 0) return [v.trim()];
+  return [];
+}
+
+/**
+ * `flow-eval ledger` — the READ verb over the scenario ledger (tasks 2.4/2.5). No
+ * `--compare` ⇒ the longitudinal list (runs over time + per-lane flips); one or
+ * more `--compare <model>` ⇒ the model-vs-model board (refuses a mismatched
+ * scenario_hash/base_ref). Pure read: never fetches telemetry, never drives pij.
+ */
+function runLedger(ctx: VerbContext): VerbResult {
+  const slug = strOpt(ctx, 'scenario');
+  if (!slug) {
+    return ctx.error('E_ARGS', '--scenario <slug> is required', {
+      next_action: 'Re-run: harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]',
+    });
+  }
+  const { records, skipped } = readLedger(ctx.cwd, slug, ctx.fs);
+  const compare = compareModels_opt(ctx);
+
+  if (compare.length > 0) {
+    const cmp = compareModels(slug, records, compare);
+    if (!cmp.ok) {
+      return ctx.error('E_COMPARE', cmp.error, {
+        next_action:
+          'Compare needs ≥2 --compare <model> groups sharing one scenario_hash + base_ref. Inspect the ledger with `harness flow-eval ledger --scenario ' +
+          `${slug}\`.`,
+      });
+    }
+    return ctx.ok(
+      { scenario: slug, ...cmp.data, skipped, board: cmp.board },
+      { next_action: `Model-vs-model board for ${compare.join(' vs ')} (see \`board\`). ✱ = Wilson-separated / McNemar-significant.` },
+    );
+  }
+
+  const list = renderLedgerList(slug, records);
+  return ctx.ok(
+    { ...list.data, skipped, board: list.board },
+    {
+      next_action:
+        records.length === 0
+          ? `No runs recorded for ${slug} yet — run \`harness flow-eval score --scenario ${slug} --session <pij-id>\`.`
+          : `${records.length} run(s); ${list.data.flipped_lanes.length} flipped lane(s). Read \`board\` for the history.`,
     },
   );
 }
@@ -176,6 +351,17 @@ function scaffoldScenarioJson(slug: string): string {
       stages: ['explore', 'plan', 'validate', 'compact', 'implement', 'review', 'fix', 'validate'],
     },
     prompts: { orchestrator: 'prompts/orchestrator.md', subject: 'prompts/subject.md' },
+    judge: {
+      model: 'gpt-5.5',
+      model_version: 'gpt-5.5-2026-07-01',
+      criteria: ['plan-coherence', 'report-contract-coverage', 'explanation-matches-telemetry'],
+      different_family_than_subject: true,
+      artifact_only: true,
+      identity_stripped: true,
+      temperature: 0,
+      version_pinned: true,
+      anti_verbosity: 'Do not reward length, rhetorical polish, or confidence without artifact evidence.',
+    },
     assertions: 'assertions.json',
   };
   return `${JSON.stringify(obj, null, 2)}\n`;
@@ -205,8 +391,8 @@ function scaffoldAssertionsJson(slug: string): string {
         id: 'A3',
         type: 'judged',
         source: 'judged',
-        params: { field: 'quality', prompt: 'TODO: the quality question for the orchestrator.' },
-        describe: 'overall quality call',
+        params: {},
+        describe: 'artifact-only judge review over the configured sub-criteria',
       },
     ],
   };
@@ -240,7 +426,7 @@ function runScaffold(ctx: VerbContext): VerbResult {
     ctx.fsWrite.writeText(join(dir, 'assertions.json'), scaffoldAssertionsJson(slug));
     ctx.fsWrite.writeText(
       join(promptsDir, 'orchestrator.md'),
-      `# Orchestrator prompt — ${slug}\n\nTODO: how the orchestrator drives the-flow over pij for this scenario.\n`,
+      `# Orchestrator prompt — ${slug}\n\nTODO: how the orchestrator drives the-flow over pij for this scenario.\n\n## Judge scaffold\n\nUse only verified artifacts (report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts). Do not feed subject prose, transcript text, identity hints, or self-report into the judge.\n\nScore each configured criterion after concise evidence notes, then choose pass | fail | unknown. The canonical good-flow anchor slot is intentionally present but deferred until the human-gold calibration set lands.\n`,
     );
     ctx.fsWrite.writeText(
       join(promptsDir, 'subject.md'),
@@ -270,32 +456,40 @@ function runScaffold(ctx: VerbContext): VerbResult {
 const flowEval: HarnessVerb = {
   name: 'flow-eval',
   summary:
-    'Flow-conformance evaluator: `score` a finished pij session against a scenario, or `scaffold` a new scenario. Never drives pij.',
+    'Flow-conformance evaluator: `score` a finished pij session, read the run `ledger` (+ `--compare`), or `scaffold` a scenario. Never drives pij.',
   description:
     'Actions:\n' +
-    '  score    --scenario <slug> --session <pij-id> [--worktree <path>]   collect evidence + resolve + write report (the only action verb)\n' +
+    '  score    --scenario <slug> --session <pij-id> [--worktree <path>]   collect evidence + resolve + write report + append the ledger\n' +
+    '  ledger   --scenario <slug> [--compare <model> --compare <model>]    read runs over time (per-lane flips) or a model-vs-model board\n' +
     '  scaffold --slug <slug>                                             write a ready-to-edit scenario skeleton\n\n' +
     'score loads live-testing/scenarios/<slug>/, fetches the session telemetry ONCE via `harness telemetry get --json`, ' +
-    'resolves every assertion to pass/fail/unknown, scores it (unknowns excluded; a required fail caps the verdict to FAIL), ' +
-    'and writes report.{json,md} to .harness/live-testing/<slug>/<run-id>/. The orchestrator drives pij/the-flow in the shell; ' +
-    'this verb only READS the resulting evidence + worktree.',
-  args: [{ name: '[action]', description: 'score | scaffold' }],
+    'resolves every assertion to pass/fail/unknown, scores it (unknowns excluded; a required capability/safety fail caps the verdict to FAIL), ' +
+    'writes report.{json,md} to .harness/live-testing/<slug>/<run-id>/, and appends one RunRecord to .harness/live-testing/<slug>/ledger.jsonl. ' +
+    'ledger reads that ledger back: the default lists runs + per-lane verdict history with flips marked; --compare groups by model and renders ' +
+    'pass^k + Wilson CIs per axis + McNemar per binary lane + cost columns (refusing a comparison across a mismatched scenario_hash/base_ref). ' +
+    'The orchestrator drives pij/the-flow in the shell; this verb only READS the resulting evidence + worktree.',
+  args: [{ name: '[action]', description: 'score | ledger | scaffold' }],
   options: [
-    { flags: '--scenario <slug>', description: '(score) Scenario slug under live-testing/scenarios/' },
+    { flags: '--scenario <slug>', description: '(score|ledger) Scenario slug under live-testing/scenarios/' },
     { flags: '--session <pij-id>', description: '(score) The pij session id whose telemetry to score' },
     {
       flags: '--worktree <path>',
       description: "(score) The subject's worktree root (fs lane + telemetry locator); defaults to cwd",
+    },
+    {
+      flags: '--compare <models...>',
+      description: '(ledger) A model to include in a model-vs-model board (repeatable; ≥2 to compare)',
     },
     { flags: '--slug <slug>', description: '(scaffold) The scenario slug to scaffold' },
   ],
   run(ctx: VerbContext): VerbResult | Promise<VerbResult> {
     const action = (ctx.args.action ?? '').trim();
     if (action === 'score') return runScore(ctx);
+    if (action === 'ledger') return runLedger(ctx);
     if (action === 'scaffold') return runScaffold(ctx);
-    return ctx.error('E_ACTION', `unknown action '${action || '(none)'}' — expected 'score' or 'scaffold'`, {
+    return ctx.error('E_ACTION', `unknown action '${action || '(none)'}' — expected 'score', 'ledger', or 'scaffold'`, {
       next_action:
-        'Run `harness flow-eval score --scenario <slug> --session <pij-id> [--worktree <path>]` or `harness flow-eval scaffold --slug <slug>`.',
+        'Run `harness flow-eval score --scenario <slug> --session <pij-id>`, `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]`, or `harness flow-eval scaffold --slug <slug>`.',
     });
   },
 };

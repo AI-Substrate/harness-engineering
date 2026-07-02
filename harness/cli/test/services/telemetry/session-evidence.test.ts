@@ -217,6 +217,51 @@ describe('getSessionEvidence — fold plan-037 fixtures into normalized evidence
     expect(ev.checks).toEqual([{ status: 'degraded' }, { status: 'ok' }]);
     expect(ev.compactions).toBe(1);
     expect(ev.tools).toEqual({ Bash: 2 });
+    // F13 (AC-08): wall-span from the first event (…:01Z) to the last (…:10Z) = 9s.
+    expect(ev.duration_s).toBe(9);
+  });
+
+  it('F13: duration_s is null when fewer than two timestamped events exist (honest, never 0)', async () => {
+    const one = synthetic('pij-one', [{ t: '2026-06-29T00:00:01Z', kind: 'compaction' }]);
+    const { files, dirs } = layout('/wt', [{ sub: 's', segments: [one] }]);
+    const { deps } = makeDeps({ files, dirs });
+    const ev = await getSessionEvidence('pij-one', deps, { worktree: '/wt' });
+    // NON-VACUITY: a single-event run has an UNKNOWN span → null, not 0.
+    expect(ev?.duration_s).toBeNull();
+  });
+
+  it('F13: duration_s spans across segments (min of seg0 → max of seg1)', async () => {
+    const seg0 = synthetic('pij-span', [
+      { t: '2026-06-29T00:00:00Z', kind: 'skill', name: 'a', status: 'completed' },
+    ]);
+    const seg1 = synthetic('pij-span', [
+      { t: '2026-06-29T00:02:00Z', kind: 'skill', name: 'b', status: 'completed' },
+    ]);
+    const { files, dirs } = layout('/wt', [{ sub: 's', segments: [seg0, seg1] }]);
+    const { deps } = makeDeps({ files, dirs });
+    const ev = await getSessionEvidence('pij-span', deps, { worktree: '/wt' });
+    expect(ev?.duration_s).toBe(120); // 2 minutes across the two segments
+  });
+
+  it('F4: harness_session_id is folded from the matched segments (the key `session save` takes)', async () => {
+    const seg = synthetic('pij-hs', [{ t: '2026-06-29T00:00:01Z', kind: 'compaction' }], {
+      harness_session_id: 'claude-abc123',
+    });
+    const { files, dirs } = layout('/wt', [{ sub: 's', segments: [seg] }]);
+    const { deps } = makeDeps({ files, dirs });
+    const ev = await getSessionEvidence('pij-hs', deps, { worktree: '/wt' });
+    expect(ev?.harness_session_id).toBe('claude-abc123');
+  });
+
+  it('F4: harness_session_id is null (honest) when no segment carries a non-empty one', async () => {
+    const seg = synthetic('pij-nohs', [{ t: '2026-06-29T00:00:01Z', kind: 'compaction' }], {
+      harness_session_id: '',
+    });
+    const { files, dirs } = layout('/wt', [{ sub: 's', segments: [seg] }]);
+    const { deps } = makeDeps({ files, dirs });
+    const ev = await getSessionEvidence('pij-nohs', deps, { worktree: '/wt' });
+    // NON-VACUITY: an empty id folds to null, never a fabricated placeholder.
+    expect(ev?.harness_session_id).toBeNull();
   });
 
   it('aggregates across segments (counts sum, skill_order preserved) and tracks gaps', async () => {

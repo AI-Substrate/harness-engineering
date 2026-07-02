@@ -11,6 +11,7 @@ import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { posixDirname, posixJoin } from '../services/shared/posix-path.js';
 import { telemetryDir } from '../services/telemetry/cursor.js';
+import { otlpLogsToEvents } from '../services/telemetry/otlp/logs.js';
 import { type ReportColumn, renderReports } from '../services/telemetry/render/report-html.js';
 import {
   buildReport,
@@ -561,17 +562,30 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
       if (dir.length > 0) deps.fs.mkdirp(dir);
       deps.fs.writeText(outPath, `${JSON.stringify(exp, null, 2)}\n`);
 
+      // Build the report ONCE (reused for the totals block below AND the HTML view):
+      // the SAME renderer as `telemetry report`, no second one (F-03).
+      const report = buildReport([exp], {
+        sourcePaths: [posixJoin('.harness/temp/telemetry', sessionId)],
+        generatedAt: deps.clock.nowIso(),
+      });
+      // A compact, denormalized totals block so a downstream consumer (e.g.
+      // `flow-eval score`'s ledger `telemetry_summary`) can read all four cost
+      // fields from ONE stable source: active (idle-excluded) time + non-cache
+      // tokens + cache from the report totals, turns = the count of `turn` events.
+      const totals = {
+        active_time_s: report.totals.time_s,
+        tokens: { input: report.totals.tokens.input, output: report.totals.tokens.output },
+        cache: { read: report.totals.cache.read, create: report.totals.cache.create },
+        turns: otlpLogsToEvents(exp.signals.logs).filter((e) => e.kind === 'turn').length,
+      };
+
       // Co-produce the session VIEW (T008): the N=1 `report` render — the SAME
-      // renderer as `telemetry report`, no second one (F-03). `--no-html` suppresses.
+      // report object built above, no re-derivation. `--no-html` suppresses.
       const evidence: { label: string; path: string }[] = [
         { label: 'session export', path: outPath },
       ];
       let htmlOut: string | undefined;
       if (options.html !== false) {
-        const report = buildReport([exp], {
-          sourcePaths: [posixJoin('.harness/temp/telemetry', sessionId)],
-          generatedAt: deps.clock.nowIso(),
-        });
         htmlOut = htmlPathForSession(outPath);
         const label = exp.identity.harness.length > 0 ? exp.identity.harness : sessionId;
         deps.fs.writeText(htmlOut, renderReports([{ label, report }]));
@@ -587,6 +601,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           degraded: exp.summary.degraded,
           out: outPath,
           html: htmlOut ?? null,
+          totals,
         },
         deps.clock,
         {

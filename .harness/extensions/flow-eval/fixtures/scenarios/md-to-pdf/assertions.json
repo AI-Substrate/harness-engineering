@@ -13,6 +13,6 @@
     { "id": "A10", "type": "artifact-exists", "source": "fs", "params": { "glob": "docs/**/*.md" }, "describe": "left a doc artifact" },
     { "id": "A11", "type": "command-succeeds", "source": "fs", "params": { "cmd": "node harness/cli/dist/index.js flow-eval --help" }, "describe": "the extension loads + registers" },
     { "id": "A12", "type": "retro-drained", "source": "fs+telemetry", "params": { "evidence_glob": ".harness/records/retro/**/*.md" }, "describe": "drained the retro to a record" },
-    { "id": "A13", "type": "judged", "source": "judged", "params": { "field": "backpressure_quality", "prompt": "Did the subject design a PROPER deterministic backpressure checker for the PDF output, or a token gesture?" }, "describe": "backpressure design quality" }
+    { "id": "A13", "type": "judged", "source": "judged", "params": {}, "describe": "artifact-only judge review over the configured sub-criteria" }
   ]
 }

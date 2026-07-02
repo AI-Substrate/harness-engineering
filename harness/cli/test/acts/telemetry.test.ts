@@ -344,6 +344,14 @@ describe('registerTelemetryAct — telemetry session save', () => {
     expect(env.command).toBe('telemetry');
     expect(env.status).toBe('ok');
     expect(env.data).toMatchObject({ session_id: 'sessSave', segment_count: 1 });
+    // F4: a compact totals block so `flow-eval score` can populate telemetry_summary
+    // from ONE stable source (non-cache tokens + cache + turns; active time present).
+    expect(env.data.totals).toMatchObject({
+      tokens: { input: 10, output: 20 },
+      cache: { read: 0, create: 0 },
+      turns: 1,
+    });
+    expect(typeof env.data.totals.active_time_s).toBe('number');
     // T008: session save co-produces the N=1 HTML view beside the .session.json.
     expect(env.evidence).toEqual([
       { label: 'session export', path: '/out/sessSave.session.json' },

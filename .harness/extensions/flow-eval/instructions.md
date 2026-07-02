@@ -30,12 +30,31 @@ per verb, so the action is a positional the verb dispatches on):
      failure).
    - **fs** lane (`file-created`, `file-content-matches`, `artifact-exists`,
      `command-succeeds`) — reads the subject's `--worktree`.
+   - **fs (safety)** lane (`forbidden-state`) — a guardrail: a `forbidden_glob` that MUST
+     NOT match / a `require_path`|`require_glob` that MUST exist (AND-ed; fail dominates).
    - **fs+telemetry** composite (`retro-drained`) — a three-valued AND of both lanes.
-   - **judged** lane (`judged`) — NOT resolved deterministically; see below.
-4. **Score** (`scorer.ts`): `score = Σ(weight of pass) / Σ(weight of pass+fail)` —
-   `unknown` is **excluded from the denominator** (a capability gap never drags the
-   score down). A `required` assertion that resolves `fail` increments `required_failed`,
-   which **caps the run verdict to FAIL**.
+   - **judged** lane (`judged`) — NOT resolved deterministically; it expands into
+     scenario-configured sub-criteria (`plan-coherence`,
+     `report-contract-coverage`, `explanation-matches-telemetry`); see below.
+
+   `skill-sequence` accepts a `match_mode` (`strict` | `superset` | `subset` | `unordered`;
+   **default `superset`**) plus per-skill `arg_overrides` (`'ignore' | '<regex>'`) that
+   tolerate volatile arg tails (plan paths/phases). `strict` = ordered subsequence,
+   `superset` = every required present (order/extras ignored), `subset` = no out-of-scope
+   skill, `unordered` = exact set.
+4. **Score** (`scorer.ts`) on **two axes** (workshop 003 §D1). Each assertion `type` maps to
+   exactly one **axis** — `process` (the ritual: telemetry lanes + `retro-drained` + `judged`),
+   `capability` (the artifact: fs lanes), or `safety` (`forbidden-state`) — *orthogonal* to the
+   proof-source lane above.
+   - `score = Σ(weight pass) / Σ(weight pass+fail)` — back-compat single number over all lanes;
+     `unknown` is **excluded from the denominator**.
+   - `axis_scores: {process, capability}` — the same pass-rate computed **per axis**
+     (unknown-excluded per axis).
+   - The FAIL **cap consults ONLY capability + safety**: a `required` fail on those axes caps
+     the verdict to FAIL (and increments `required_failed`); a `required` **process** fail
+     informs the process score but **never caps**.
+   - **Mimicry alarm**: `alarms` carries `'mimicry'` when `process ≥ 0.8 && capability ≤ 0.4`
+     (both axes measured) — the "right ritual, broken artifact" signal.
 5. **Write** `report.{json,md}` to `.harness/live-testing/<slug>/<run-id>/` via the
    feature-detected `ctx.fsWrite` (absent → honest `error`, never a silent no-op).
 
@@ -45,7 +64,7 @@ per verb, so the action is a positional the verb dispatches on):
 |---|---|---|
 | no required fail, no fail, no unknown | `PASS` | `ok` / 0 |
 | no required fail, but some `fail` and/or `unknown` | `PASS_WITH_NOTES` | `ok` / 0 |
-| any **required** assertion resolves `fail` | `FAIL` | `ok` / 0 |
+| any **required capability/safety** assertion resolves `fail` (`required_failed > 0`) | `FAIL` | `ok` / 0 |
 | missing `--scenario` / `--session` | — | `error` (`E_ARGS`) / 1 |
 | malformed / missing scenario bundle | — | `error` (`E_SCENARIO`) / 1 |
 | core provides no `ctx.fsWrite` | — | `error` (`E_REPORT` / `E_NO_FSWRITE`) / 1 |
@@ -60,11 +79,25 @@ evaluation that found non-conformance, not a tool error.
 - **You (or the orchestrator) drive the session; this verb only grades it.** Run the
   subject through the-flow over pij in the shell *first*, then call `score` against the
   finished session id + its worktree. `score` consumes evidence — it does not produce it.
-- **`judged` assertions are surfaced as fields for you to fill.** Each lands in the
-  report's `judged[]` with `verdict: null, rationale: null, by: null` plus its `prompt`
-  /`rubric`. After the run, read each `judged` field, answer its prompt against the
-  evidence + worktree, and fill `verdict`/`rationale`/`by` in `report.json`. The
-  deterministic core never guesses these — that's the human/LLM-in-the-loop boundary.
+- **`judged` assertions are decomposed into fields for you to fill.** Scenario
+  config lists which criteria apply; a single `judged` assertion expands to named
+  `judged[]` entries (not a blended score), each with `verdict: null`, `rationale:
+  null`, `by: null`, plus an artifact-only CoT-before-score prompt and rubric. After
+  the run, answer each field as `pass`/`fail`/`unknown` against **verified artifacts
+  only** (`report.json`/`report.md`, deterministic result rows, session export, and
+  worktree artifacts) — never subject prose/transcript/self-report — and fill
+  `verdict`/`rationale`/`by` in `report.json`. The deterministic core never guesses
+  these — that's the human/LLM-in-the-loop boundary.
+- **Judge config is provenance, not a cap.** Reports and ledger records include
+  judge model+version, different-family assertion/check, artifact-only, temp-0,
+  version-pinned, anti-verbosity, and prompt-scaffold metadata. If the judge and
+  subject model families match, the report carries a visible
+  `judge-same-family-as-subject` warning; scoring still completes. `judged` can
+  never be `required` and never caps the run verdict.
+- **Reference anchor is scaffolded; calibration is deferred.** Judge prompts include
+  a canonical good-flow anchor slot so a later human-gold calibration set can be
+  dropped in without changing report shape. That calibration set is explicitly
+  deferred (`human-gold-calibration-set-deferred`) in provenance until it exists.
 - **Trust the envelope + the report, never scraped prose.** `data.telemetry.available`
   tells you whether the telemetry lane had evidence; if `false`, expect telemetry
   assertions as `unknown` (and a `PASS_WITH_NOTES` rather than a false `FAIL`).
@@ -93,7 +126,8 @@ deterministic where possible and reserve `judged` for genuinely subjective quali
 - **Telemetry is fetched exactly once** per `score` run and shared across all telemetry
   assertions — don't add per-assertion fetches.
 - **`unknown` is not `fail`.** A telemetry capability gap excludes the assertion from the
-  score; it does not sink the verdict. Only a `required` *fail* caps to `FAIL`.
+  score; it does not sink the verdict. Only a `required` *fail* on a **capability or safety**
+  axis caps to `FAIL` — a required *process* fail never caps (it lowers `axis_scores.process`).
 - **Node-free runtime.** All I/O goes through `ctx.exec` / `ctx.fs` / `ctx.fsWrite`; the
   engine imports only the published `contract` types and never throws (the kernel
   finalizes the returned `VerbResult`).

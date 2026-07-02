@@ -41,6 +41,15 @@ import type { Segment } from './segment.js';
 export interface SessionEvidence {
   /** The pij session id this evidence was joined on (echoed back). */
   pij_session_id: string;
+  /**
+   * The harness session id of the matched segments — the telemetry buffer subdir
+   * `harness telemetry session save <id>` takes (F4). `null` when no segment
+   * carried one (honest absence, never a fabricated id). Distinct from
+   * {@link pij_session_id}: `--session` is a pij id, but the cost/export snapshot
+   * verb is keyed by the HARNESS session id, and only the segment stream knows it.
+   * Kept in LOCK-STEP with the flow-eval extension's re-declared `SessionEvidence`.
+   */
+  harness_session_id: string | null;
   /** The harness that produced the matched segments (e.g. `claude-code`). */
   harness: string;
   /** Number of telemetry segments joined into this evidence. */
@@ -63,6 +72,15 @@ export interface SessionEvidence {
   tools: Record<string, number>;
   /** Field names that were absent / unknown (e.g. `subagent_tokens`, `plans_touched`). */
   gaps: string[];
+  /**
+   * Wall-span in seconds between the first + last telemetry event across the
+   * joined segments (F13, plan 046 · AC-08); `null` when fewer than two
+   * timestamped events exist (an honest "unknown", never a fabricated 0). This
+   * is wall-clock span — distinct from the 047 export's idle-excluded
+   * `active_time_s`. Kept in LOCK-STEP with the flow-eval extension's re-declared
+   * `SessionEvidence` (`.harness/extensions/flow-eval/resolvers.ts`).
+   */
+  duration_s: number | null;
 }
 
 /** The two fs reads the evidence path uses — list buffer subdirs, read each segment. */
@@ -185,9 +203,20 @@ function fold(pijSessionId: string, segments: readonly Segment[]): SessionEviden
   let compactions = 0;
   let subagentTokensKnown = true;
   let anyPlans = false;
+  // F13 (plan 046 · AC-08): the run's wall-span, tracked as min/max event epoch.
+  // Only parseable `ev.t` count; a span needs ≥ 2 timestamped events (else null).
+  let minT = Number.POSITIVE_INFINITY;
+  let maxT = Number.NEGATIVE_INFINITY;
+  let timestamped = 0;
 
   for (const seg of segments) {
     for (const ev of seg.event_stream ?? []) {
+      const ms = Date.parse(ev.t);
+      if (!Number.isNaN(ms)) {
+        timestamped += 1;
+        if (ms < minT) minT = ms;
+        if (ms > maxT) maxT = ms;
+      }
       switch (ev.kind) {
         case 'skill':
           skills[ev.name] = (skills[ev.name] ?? 0) + 1;
@@ -237,6 +266,11 @@ function fold(pijSessionId: string, segments: readonly Segment[]): SessionEviden
 
   return {
     pij_session_id: pijSessionId,
+    // The matched segments all belong to this pij session; take the first one's
+    // harness session id (honest `null` when none carried a non-empty id) — the
+    // key `telemetry session save` needs (F4).
+    harness_session_id:
+      segments.find((s) => (s.harness_session_id ?? '').length > 0)?.harness_session_id ?? null,
     harness: segments[0]?.harness ?? 'unknown',
     segments: segments.length,
     skills,
@@ -248,6 +282,9 @@ function fold(pijSessionId: string, segments: readonly Segment[]): SessionEviden
     compactions,
     tools,
     gaps,
+    // A span needs ≥ 2 timestamped events; otherwise the duration is honestly
+    // unknown (null), never 0. Rounded to whole seconds.
+    duration_s: timestamped >= 2 && maxT > minT ? Math.round((maxT - minT) / 1000) : null,
   };
 }
 

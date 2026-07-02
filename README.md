@@ -110,6 +110,15 @@ Reduce all that diffuse engineering-environment knowledge to a single focal poin
   + [friction capture] + [human-selected encoding] = engineering harness nucleus
 ```
 
+## How we evaluate this system
+
+This repo evaluates the harness by dogfooding it: a blind peer agent does real
+work, the run is watched by both deterministic evidence and a hardened judged
+layer, and the findings are fed back into the harness or the eval process. The
+flow-conformance evaluator writes per-run reports and an append-only ledger so
+we can see regressions, compare models, and spot ritual-without-capability
+mimicry. Start with [Evaluating the harness](docs/how/evaluating-the-harness.md).
+
 ## Install
 
 The CLI is published to the **public npm registry** as `@ai-substrate/engineering-harness` — an **ambient global tool** (like `git`/`node`), installed once per machine and **never committed into a repo** (Node >= 22, no token or `.npmrc`):

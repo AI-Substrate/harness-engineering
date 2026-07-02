@@ -26,8 +26,8 @@
  */
 
 import type { ExecResult } from '@ai-substrate/engineering-harness/contract';
-import type { Assertion, AssertionSource } from './scenario.js';
-import { ASSERTION_TYPES, join } from './scenario.js';
+import type { Assertion, AssertionSource, SequenceMatchMode } from './scenario.js';
+import { ASSERTION_TYPES, join, SEQUENCE_MATCH_MODES } from './scenario.js';
 
 /** Three-valued verdict for a deterministic assertion. */
 export type Verdict = 'pass' | 'fail' | 'unknown';
@@ -39,6 +39,13 @@ export type Verdict = 'pass' | 'fail' | 'unknown';
  */
 export interface SessionEvidence {
   pij_session_id: string;
+  /**
+   * The harness session id of the matched segments (F4) — the key
+   * `harness telemetry session save <id>` takes to snapshot cost/export. `null`
+   * when none was captured. Distinct from `pij_session_id` (`--session` is a pij
+   * id). Kept in LOCK-STEP with the CLI `SessionEvidence` (session-evidence.ts).
+   */
+  harness_session_id: string | null;
   harness: string;
   segments: number;
   skills: Record<string, number>;
@@ -50,6 +57,14 @@ export interface SessionEvidence {
   compactions: number;
   tools: Record<string, number>;
   gaps: string[];
+  /**
+   * Wall-span in seconds between the first + last telemetry event across the
+   * joined segments (F13); `null` when fewer than two timestamped events exist.
+   * The record's honest "how long did the run take" — distinct from the 047
+   * export's idle-excluded `active_time_s`. Kept in LOCK-STEP with the CLI
+   * `SessionEvidence` (session-evidence.ts) — a `harness/cli/test` asserts both.
+   */
+  duration_s: number | null;
 }
 
 /** The read surface a resolver needs over the subject's worktree. */
@@ -92,6 +107,70 @@ function numParam(a: Assertion, key: string, dflt: number): number {
 
 function bool(verdict: boolean): Verdict {
   return verdict ? 'pass' : 'fail';
+}
+
+// ---- skill-sequence match modes + volatile-arg tolerance (1.4; WS003 §D2) ----
+
+/** One parsed sequence entry: a skill `name` and its (possibly empty) volatile `args` tail. */
+interface SeqEntry {
+  name: string;
+  args: string;
+}
+
+/** Split `"<skill> <args…>"` into name + arg tail (bare names ⇒ empty args). */
+function splitEntry(entry: string): SeqEntry {
+  const trimmed = entry.trim();
+  const sp = trimmed.indexOf(' ');
+  return sp === -1
+    ? { name: trimmed, args: '' }
+    : { name: trimmed.slice(0, sp), args: trimmed.slice(sp + 1).trim() };
+}
+
+/**
+ * Resolve the {@link SequenceMatchMode}. `match_mode` wins; the legacy `ordered`
+ * boolean is honoured (`true`⇒strict, `false`⇒superset) for back-compat; default
+ * is **superset** (WS003 §D2 — a blind subject may add steps).
+ */
+function seqMode(a: Assertion): SequenceMatchMode {
+  const mm = a.params.match_mode;
+  if (typeof mm === 'string' && SEQUENCE_MATCH_MODES.has(mm as SequenceMatchMode)) {
+    return mm as SequenceMatchMode;
+  }
+  if (a.params.ordered === true) return 'strict';
+  return 'superset';
+}
+
+/** Read `arg_overrides` — a per-skill volatile-arg relaxation (`'ignore' | '<regex>'`). */
+function argOverrides(a: Assertion): Record<string, string> {
+  const ov = a.params.arg_overrides;
+  const out: Record<string, string> = {};
+  if (ov && typeof ov === 'object' && !Array.isArray(ov)) {
+    for (const [k, v] of Object.entries(ov as Record<string, unknown>)) {
+      if (typeof v === 'string') out[k] = v;
+    }
+  }
+  return out;
+}
+
+/**
+ * Does a required entry match an observed call? Names must be equal; the arg tail is
+ * matched per the override — `'ignore'` tolerates any args (volatile paths/timestamps),
+ * a regex string pattern-matches the observed tail, no override + explicit required args
+ * exact-matches, and a bare-name requirement is name-only (back-compat).
+ */
+function entryMatches(req: SeqEntry, obs: SeqEntry, overrides: Record<string, string>): boolean {
+  if (req.name !== obs.name) return false;
+  const ov = overrides[req.name];
+  if (ov === 'ignore') return true;
+  if (typeof ov === 'string') {
+    try {
+      return new RegExp(ov).test(obs.args);
+    } catch {
+      return false;
+    }
+  }
+  if (req.args === '') return true;
+  return req.args === obs.args;
 }
 
 // ---- glob matching over the worktree (node-free; uses fs.readdir/exists) ----
@@ -187,15 +266,40 @@ const skillSequence: ResolverFn = (a, rc) => {
   if (rc.evidence.gaps.includes('skill_name_capture') && rc.evidence.skill_order.length === 0) {
     return 'unknown';
   }
-  const ordered = a.params.ordered !== false; // default true
-  const order = rc.evidence.skill_order;
-  if (!ordered) return bool((skills as string[]).every((s) => order.includes(s)));
-  // ordered: each next skill must appear at-or-after the previous one's index.
+  const mode = seqMode(a);
+  const overrides = argOverrides(a);
+  const reqEntries = (skills as string[]).map(splitEntry);
+  const obsEntries = rc.evidence.skill_order.map(splitEntry);
+  const obsNames = obsEntries.map((o) => o.name);
+  const reqNames = reqEntries.map((r) => r.name);
+
+  // SUBSET — no out-of-scope skills: every OBSERVED name is within the allowed (required) set.
+  if (mode === 'subset') {
+    const allowed = new Set(reqNames);
+    return bool(obsNames.every((n) => allowed.has(n)));
+  }
+  // UNORDERED — exact set match (order-free): same skills, no missing, no extra.
+  if (mode === 'unordered') {
+    const reqSet = new Set(reqNames);
+    const obsSet = new Set(obsNames);
+    return bool(reqSet.size === obsSet.size && [...reqSet].every((n) => obsSet.has(n)));
+  }
+  // SUPERSET (default) — every required entry matches ≥1 observed call; order + extras ignored.
+  if (mode === 'superset') {
+    return bool(reqEntries.every((req) => obsEntries.some((obs) => entryMatches(req, obs, overrides))));
+  }
+  // STRICT — ordered subsequence: each required entry matches at-or-after the previous.
   let cursor = -1;
-  for (const s of skills as string[]) {
-    const idx = order.indexOf(s, cursor + 1);
-    if (idx === -1) return 'fail';
-    cursor = idx;
+  for (const req of reqEntries) {
+    let found = -1;
+    for (let i = cursor + 1; i < obsEntries.length; i++) {
+      if (entryMatches(req, obsEntries[i], overrides)) {
+        found = i;
+        break;
+      }
+    }
+    if (found === -1) return 'fail';
+    cursor = found;
   }
   return 'pass';
 };
@@ -274,6 +378,39 @@ const commandSucceeds: ResolverFn = async (a, rc) => {
   return bool(r.code === expectExit);
 };
 
+// ---- safety lane: forbidden-state (guardrail; caps when required) (1.5; WS003 §D8) ----
+
+/**
+ * The tau-bench "forbidden-state" guardrail: the run is safe when NO forbidden artifact
+ * is present AND every required contract artifact IS present (fs-lane semantics). Params:
+ *  - `forbidden_glob` — a glob that MUST NOT match anything under the worktree (e.g. edits
+ *    outside the allowed area); a match ⇒ `fail`.
+ *  - `require_path` / `require_glob` — a contract artifact that MUST exist (e.g. the report
+ *    contract); absent ⇒ `fail`.
+ * Both checks AND together (fail dominates). With neither param there is nothing to prove ⇒
+ * `unknown` (never a false pass). The worktree is always readable, so this never blocks on
+ * telemetry.
+ */
+const forbiddenState: ResolverFn = (a, rc) => {
+  const checks: Verdict[] = [];
+  const forbidden = strParam(a, 'forbidden_glob');
+  if (forbidden) {
+    const present = matchGlob(rc.fs, rc.worktree, forbidden.split('/').filter((s) => s.length > 0));
+    checks.push(present ? 'fail' : 'pass'); // a forbidden artifact being present IS the violation
+  }
+  const requirePath = strParam(a, 'require_path');
+  const requireGlob = strParam(a, 'require_glob');
+  if (requirePath) {
+    checks.push(rc.fs.exists(join(rc.worktree, requirePath)) ? 'pass' : 'fail');
+  } else if (requireGlob) {
+    checks.push(
+      matchGlob(rc.fs, rc.worktree, requireGlob.split('/').filter((s) => s.length > 0)) ? 'pass' : 'fail',
+    );
+  }
+  if (checks.length === 0) return 'unknown';
+  return checks.includes('fail') ? 'fail' : 'pass';
+};
+
 // ---- composite fs+telemetry (AND; fail dominates, then unknown) ----
 
 /** Three-valued AND: any fail ⇒ fail; else any unknown ⇒ unknown; else pass. */
@@ -322,6 +459,7 @@ export const RESOLVERS: Record<string, ResolverEntry> = {
   },
   'artifact-exists': { lanes: ASSERTION_TYPES['artifact-exists'], resolve: artifactExists },
   'command-succeeds': { lanes: ASSERTION_TYPES['command-succeeds'], resolve: commandSucceeds },
+  'forbidden-state': { lanes: ASSERTION_TYPES['forbidden-state'], resolve: forbiddenState },
   'retro-drained': { lanes: ASSERTION_TYPES['retro-drained'], resolve: retroDrained },
 };
 

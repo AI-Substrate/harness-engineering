@@ -7,7 +7,7 @@ import {
   resolveAssertion,
   type SessionEvidence,
 } from './resolvers.js';
-import { ASSERTION_TYPES, type Assertion } from './scenario.js';
+import { ASSERTION_AXES, ASSERTION_TYPES, type Assertion, axisFor } from './scenario.js';
 
 /*
 Test Doc:
@@ -37,6 +37,7 @@ function evidence(): SessionEvidence {
     compactions: 1,
     tools: { Write: 5, Edit: 3 },
     gaps: ['plans_touched'],
+    duration_s: 900,
   };
 }
 
@@ -61,6 +62,7 @@ function copilotEvidence(): SessionEvidence {
     compactions: 0,
     tools: { bash: 100, skill: 4, view: 182 },
     gaps: ['subagent_tokens', 'plans_touched', 'skill_name_capture'],
+    duration_s: 4200,
   };
 }
 
@@ -111,6 +113,22 @@ describe('resolvers — registry shape stays in lock-step with the type catalog'
       expect(entry.lanes).toEqual(ASSERTION_TYPES[type]);
     }
   });
+
+  it('every type has exactly one axis (process|capability|safety) in lock-step with the catalog (1.1)', () => {
+    // Axis map covers EVERY type in the catalog (no drift), and only those.
+    expect(Object.keys(ASSERTION_AXES).sort()).toEqual(Object.keys(ASSERTION_TYPES).sort());
+    for (const type of Object.keys(ASSERTION_TYPES)) {
+      expect(['process', 'capability', 'safety']).toContain(ASSERTION_AXES[type]);
+      expect(axisFor(type)).toBe(ASSERTION_AXES[type]);
+    }
+    // The cap-bearing axes are exactly the fs-capability + safety lanes; process never caps.
+    expect(ASSERTION_AXES['file-created']).toBe('capability');
+    expect(ASSERTION_AXES['forbidden-state']).toBe('safety');
+    expect(ASSERTION_AXES['retro-drained']).toBe('process'); // orthogonal to its fs+telemetry lane
+    expect(ASSERTION_AXES['skill-sequence']).toBe('process');
+    // An unknown type is never a cap axis.
+    expect(axisFor('teleport')).toBe('process');
+  });
 });
 
 describe('resolvers — telemetry lane (evidence present ⇒ pass/fail)', () => {
@@ -125,10 +143,10 @@ describe('resolvers — telemetry lane (evidence present ⇒ pass/fail)', () => 
     expect(await resolveAssertion(a('compaction-occurred', { min: 1 }), rc)).toBe('pass');
   });
 
-  it('skill-sequence FAILS when the order is violated (out-of-order)', async () => {
+  it('skill-sequence FAILS when the order is violated (out-of-order) under STRICT mode', async () => {
     const rc = ctxWith(evidence());
-    // implement→plan is not a subsequence of [explore,plan,the-flow,implement].
-    expect(await resolveAssertion(a('skill-sequence', { skills: ['implement', 'plan'] }), rc)).toBe('fail');
+    // implement→plan is not a subsequence of [explore,plan,the-flow,implement]. STRICT enforces order.
+    expect(await resolveAssertion(a('skill-sequence', { skills: ['implement', 'plan'], match_mode: 'strict' }), rc)).toBe('fail');
   });
 
   it('checks-ran FAILS when the required status was never seen', async () => {
@@ -272,5 +290,146 @@ describe('resolvers — F8: skill-name-capture gap (copilot) ⇒ verb-signature 
     const ev = copilotEvidence();
     ev.gaps = ev.gaps.filter((g) => g !== 'skill_name_capture'); // mutation: drop the gap marker
     expect(await resolveAssertion(a('skill-called', { skill: 'the-flow' }), ctxWith(ev))).toBe('fail');
+  });
+});
+
+describe('resolvers — 1.4 skill-sequence match_mode (WS003 §D2); default SUPERSET', () => {
+  // Observed trajectory: explore → plan → the-flow → implement (an EXTRA `the-flow` step).
+  const seq = (params: Record<string, unknown>) => a('skill-sequence', params);
+
+  it('DEFAULT is SUPERSET — order-agnostic presence; out-of-order still PASSES (the default flip vs strict)', async () => {
+    const rc = ctxWith(evidence());
+    // Same skills, reversed order — SUPERSET ignores order, so this PASSES (STRICT would FAIL: pinned above).
+    expect(await resolveAssertion(seq({ skills: ['implement', 'plan'] }), rc)).toBe('pass');
+  });
+
+  describe('STRICT — ordered subsequence (order is the invariant)', () => {
+    it('PASSES when required skills appear in order (extras allowed between)', async () => {
+      expect(await resolveAssertion(seq({ skills: ['explore', 'plan', 'implement'], match_mode: 'strict' }), ctxWith(evidence()))).toBe('pass');
+    });
+    it('FLIPS to fail when the order is violated', async () => {
+      expect(await resolveAssertion(seq({ skills: ['implement', 'explore'], match_mode: 'strict' }), ctxWith(evidence()))).toBe('fail');
+    });
+  });
+
+  describe('LEGACY `ordered: true` maps to STRICT (back-compat; load-bearing — live md-to-pdf uses it)', () => {
+    // Mutating seqMode's `ordered === true ⇒ 'strict'` to 'superset' MUST flip these RED.
+    it('FLIPS to fail on out-of-order — proving STRICT, not the default SUPERSET', async () => {
+      // ['implement','explore'] is NOT an ordered subsequence of [explore,plan,the-flow,implement];
+      // SUPERSET (the mutation) would PASS since both are present — so this asserts the strict mapping.
+      expect(await resolveAssertion(seq({ ordered: true, skills: ['implement', 'explore'] }), ctxWith(evidence()))).toBe('fail');
+    });
+    it("is equivalent to match_mode:'strict' across ordered-pass and out-of-order-fail", async () => {
+      const inOrder = ['explore', 'plan', 'implement'];
+      const outOfOrder = ['implement', 'explore'];
+      expect(await resolveAssertion(seq({ ordered: true, skills: inOrder }), ctxWith(evidence()))).toBe(
+        await resolveAssertion(seq({ match_mode: 'strict', skills: inOrder }), ctxWith(evidence())),
+      );
+      expect(await resolveAssertion(seq({ ordered: true, skills: outOfOrder }), ctxWith(evidence()))).toBe(
+        await resolveAssertion(seq({ match_mode: 'strict', skills: outOfOrder }), ctxWith(evidence())),
+      );
+      // and concretely: in-order PASSES, out-of-order FAILS (guards against both collapsing to a constant).
+      expect(await resolveAssertion(seq({ ordered: true, skills: inOrder }), ctxWith(evidence()))).toBe('pass');
+      expect(await resolveAssertion(seq({ ordered: true, skills: outOfOrder }), ctxWith(evidence()))).toBe('fail');
+    });
+  });
+
+  describe('SUPERSET — every required present, order + extras ignored (≥)', () => {
+    it('PASSES with extra steps present (the-flow is extra)', async () => {
+      expect(await resolveAssertion(seq({ skills: ['explore', 'implement'], match_mode: 'superset' }), ctxWith(evidence()))).toBe('pass');
+    });
+    it('FLIPS to fail when a required skill is absent', async () => {
+      expect(await resolveAssertion(seq({ skills: ['explore', 'deploy'], match_mode: 'superset' }), ctxWith(evidence()))).toBe('fail');
+    });
+  });
+
+  describe('SUBSET — no out-of-scope skills (observed ⊆ required); scope-creep guard', () => {
+    it('PASSES when every observed skill is in the allowed set', async () => {
+      // allowed superset of the observed 4 → no scope creep.
+      expect(await resolveAssertion(seq({ skills: ['explore', 'plan', 'the-flow', 'implement', 'review'], match_mode: 'subset' }), ctxWith(evidence()))).toBe('pass');
+    });
+    it('FLIPS to fail when the subject ran a skill outside the allowed set (the-flow omitted)', async () => {
+      expect(await resolveAssertion(seq({ skills: ['explore', 'plan', 'implement'], match_mode: 'subset' }), ctxWith(evidence()))).toBe('fail');
+    });
+  });
+
+  describe('UNORDERED — exact set match, order ignored (== )', () => {
+    it('PASSES when the sets are equal regardless of order', async () => {
+      expect(await resolveAssertion(seq({ skills: ['implement', 'the-flow', 'plan', 'explore'], match_mode: 'unordered' }), ctxWith(evidence()))).toBe('pass');
+    });
+    it('FLIPS to fail when an extra observed skill breaks exact equality', async () => {
+      // missing `the-flow` from the required set → observed has an extra → not equal.
+      expect(await resolveAssertion(seq({ skills: ['explore', 'plan', 'implement'], match_mode: 'unordered' }), ctxWith(evidence()))).toBe('fail');
+    });
+  });
+
+  describe('per-arg overrides — volatile-arg tolerance (ignore | regex), NOT membership', () => {
+    /** Evidence whose skill_order entries carry volatile args (a plan path). */
+    function argEvidence(): SessionEvidence {
+      const ev = evidence();
+      ev.skill_order = ['explore', 'plan docs/plans/046-x/plan.md', 'implement'];
+      return ev;
+    }
+
+    it('a bare-name required entry is name-only (args never constrain it) — back-compat', async () => {
+      expect(await resolveAssertion(seq({ skills: ['plan', 'implement'], match_mode: 'strict' }), ctxWith(argEvidence()))).toBe('pass');
+    });
+
+    it("no override + a required entry WITH args exact-matches the arg tail (fails on a volatile mismatch)", async () => {
+      expect(await resolveAssertion(seq({ skills: ['plan docs/plans/999-other/plan.md'], match_mode: 'strict' }), ctxWith(argEvidence()))).toBe('fail');
+    });
+
+    it("arg_overrides '<skill>':'ignore' relaxes the arg tail so a volatile path still matches (FLIP vs above)", async () => {
+      expect(
+        await resolveAssertion(
+          seq({ skills: ['plan docs/plans/999-other/plan.md'], match_mode: 'strict', arg_overrides: { plan: 'ignore' } }),
+          ctxWith(argEvidence()),
+        ),
+      ).toBe('pass');
+    });
+
+    it("arg_overrides '<skill>':'<regex>' pattern-matches the arg tail (pass on match, fail on miss)", async () => {
+      const pass = seq({ skills: ['plan x'], match_mode: 'strict', arg_overrides: { plan: '046-x' } });
+      const fail = seq({ skills: ['plan x'], match_mode: 'strict', arg_overrides: { plan: '^999-' } });
+      expect(await resolveAssertion(pass, ctxWith(argEvidence()))).toBe('pass');
+      expect(await resolveAssertion(fail, ctxWith(argEvidence()))).toBe('fail');
+    });
+  });
+
+  it('still resolves UNKNOWN under the copilot skill_name_capture gap (mode never overrides the gap guard)', async () => {
+    const rc = ctxWith(copilotEvidence());
+    expect(await resolveAssertion(seq({ skills: ['explore', 'implement'], match_mode: 'superset' }), rc)).toBe('unknown');
+  });
+});
+
+describe('resolvers — 1.5 forbidden-state (safety axis, fs lane; WS003 §D8)', () => {
+  const fstate = (params: Record<string, unknown>) =>
+    a('forbidden-state', params, { source: 'fs', required: true });
+
+  it('PASSES when no forbidden artifact matches and the required contract is present', async () => {
+    const A = fstate({ forbidden_glob: 'secrets/**/*.key', require_path: 'README.md' });
+    expect(await resolveAssertion(A, ctxWith(null, worktreeFs()))).toBe('pass');
+  });
+
+  it('FLIPS to fail when a forbidden artifact IS present (out-of-scope edit)', async () => {
+    // The worktree HAS .harness/extensions/foo/extension.ts — forbid edits there.
+    const A = fstate({ forbidden_glob: '.harness/extensions/**/*.ts' });
+    expect(await resolveAssertion(A, ctxWith(null, worktreeFs()))).toBe('fail');
+  });
+
+  it('FLIPS to fail when the required report-contract file is absent', async () => {
+    const A = fstate({ require_path: 'REPORT_CONTRACT.md' });
+    expect(await resolveAssertion(A, ctxWith(null, worktreeFs()))).toBe('fail');
+  });
+
+  it('is UNKNOWN when neither a forbidden nor a required param is given (nothing to evaluate)', async () => {
+    expect(await resolveAssertion(fstate({}), ctxWith(null, worktreeFs()))).toBe('unknown');
+  });
+
+  it('supports require_glob and AND-s both checks (fail dominates)', async () => {
+    const ok = fstate({ forbidden_glob: 'nope/**', require_glob: 'docs/**/*.md' });
+    expect(await resolveAssertion(ok, ctxWith(null, worktreeFs()))).toBe('pass');
+    const bad = fstate({ forbidden_glob: 'README.md', require_glob: 'docs/**/*.md' }); // README exists ⇒ forbidden hit
+    expect(await resolveAssertion(bad, ctxWith(null, worktreeFs()))).toBe('fail');
   });
 });
