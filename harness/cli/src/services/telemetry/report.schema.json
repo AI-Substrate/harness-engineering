@@ -122,9 +122,29 @@
           }
         }
       }
+    },
+    "control_timeline": {
+      "type": "array",
+      "description": "SINGLE-session reports ONLY (plan 048 Phase 2): the ordered, closed-allowlist control-marker stream the insights discipline panel + subagent section consume. Absent on cohort/aggregate reports. Each marker carries exactly one already-captured, P12-safe discriminant (a verb / status / agent slug / branch / git push|commit signature) — never args, paths, or content.",
+      "items": { "$ref": "#/$defs/timelineMarker" }
     }
   },
   "$defs": {
+    "timelineMarker": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "key", "t"],
+      "description": "One ordered control marker. `key` is the P12-safe discriminant per kind: harness→verb, checks→status, subagent→name, branch→to, bash→a git push/commit signature.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["harness", "checks", "subagent", "branch", "bash"],
+          "description": "CLOSED allowlist — no other event kind may surface (the timeline is a control stream, not an event dump)."
+        },
+        "key": { "type": "string" },
+        "t": { "type": "string" }
+      }
+    },
     "rollupTokens": {
       "type": "object",
       "additionalProperties": true,

@@ -189,6 +189,13 @@ export interface TelemetryReport {
   };
   attribution: ReportAttribution;
   provenance: ReportProvenance;
+  /**
+   * SINGLE-session reports ONLY (plan 048 Phase 2): the ordered, closed-allowlist
+   * control-marker stream ({@link TimelineMarker}). Absent on cohort/aggregate
+   * reports — the insights layer's discipline panel + subagent section degrade
+   * honestly when it is missing.
+   */
+  control_timeline?: TimelineMarker[];
 }
 
 export interface BuildReportOptions {
@@ -275,6 +282,68 @@ export interface FlowStageMechanism {
 export interface TokenCoverage {
   measured: number;
   unmeasured: number;
+}
+
+/**
+ * The CLOSED allowlist of event kinds that may surface as a {@link TimelineMarker}
+ * (plan 048 Phase 2, Q2). The `control_timeline` is the ONLY ordered evidence the
+ * insights layer's discipline panel (sequence joins) and subagent section consume;
+ * it is a P12-safe **control** stream — deliberately NOT a general event dump. Only
+ * kinds whose one discriminant field is already an allowlisted, non-sensitive
+ * marker (a verb / a status / a fixed agent slug / a branch / a command SIGNATURE —
+ * never args, paths, or content) are admitted. Adding any other kind (e.g.
+ * `prompt`) would turn the timeline into a replayable event log — forbidden.
+ */
+export const TIMELINE_KINDS = ['harness', 'checks', 'subagent', 'branch', 'bash'] as const;
+
+export type TimelineKind = (typeof TIMELINE_KINDS)[number];
+
+/**
+ * One ordered control marker (plan 048 Phase 2). `key` is the SINGLE P12-safe
+ * discriminant per kind: `harness`→verb, `checks`→status, `subagent`→name,
+ * `branch`→to (new branch), `bash`→a git push/commit SIGNATURE (program+verb
+ * only, FX001). Ordered ascending by `t`. Emitted ONLY into single-session reports
+ * ({@link ReportScope.single}) — a cohort/aggregate report never carries one, so
+ * the insights layer degrades the panel/subagent sections honestly when it is
+ * absent.
+ */
+export interface TimelineMarker {
+  kind: TimelineKind;
+  key: string;
+  t: string;
+}
+
+/**
+ * The git command SIGNATURES that become a `bash` timeline marker — the ONLY
+ * non-harness commands the discipline panel needs (a real `push` signal for
+ * checks-before-push; `commit` for retro cadence). Kept tiny + explicit so the
+ * timeline never widens into a general shell log.
+ */
+const TIMELINE_BASH_SIGNATURES = new Set(['git push', 'git commit']);
+
+/**
+ * Project one session's ordered event stream onto the closed-allowlist
+ * {@link TimelineMarker} sequence. Every branch reads exactly one already-captured,
+ * P12-safe field; a kind not in {@link TIMELINE_KINDS} (prompt/turn/tools[non-git]/
+ * skill/flow/…) produces NOTHING. `events` is expected pre-sorted ascending by `t`
+ * (as {@link viewOf} returns), so the output inherits that order.
+ */
+function buildControlTimeline(events: SessionView['events']): TimelineMarker[] {
+  const out: TimelineMarker[] = [];
+  for (const e of events) {
+    if (e.kind === 'harness') out.push({ kind: 'harness', key: e.verb, t: e.t });
+    else if (e.kind === 'checks') out.push({ kind: 'checks', key: e.status, t: e.t });
+    else if (e.kind === 'subagent') out.push({ kind: 'subagent', key: e.name, t: e.t });
+    else if (e.kind === 'branch') out.push({ kind: 'branch', key: e.to, t: e.t });
+    else if (
+      e.kind === 'tools' &&
+      e.signature !== undefined &&
+      TIMELINE_BASH_SIGNATURES.has(e.signature)
+    ) {
+      out.push({ kind: 'bash', key: e.signature, t: e.t });
+    }
+  }
+  return out;
 }
 
 /** A turn's NON-cache input (fresh) — never `cache_read`/`cache_create` (FX002). 0 for non-turns. */
@@ -763,9 +832,11 @@ export function buildReport(
   const models: string[] = [];
   let from: string | null = null;
   let to: string | null = null;
+  let controlTimeline: TimelineMarker[] | undefined;
 
   for (const exp of included) {
-    const sums = foldSession(viewOf(exp), acc);
+    const view = viewOf(exp);
+    const sums = foldSession(view, acc);
     totalIn += sums.input;
     totalOut += sums.output;
     totalCacheR += sums.cacheRead;
@@ -784,6 +855,9 @@ export function buildReport(
     const l = exp.summary.last_timecode;
     if (f !== null && (from === null || f < from)) from = f;
     if (l !== null && (to === null || l > to)) to = l;
+    // The ordered control timeline is a SINGLE-session artifact (scope.single):
+    // build it only for a one-session report, from that session's ordered stream.
+    if (included.length === 1) controlTimeline = buildControlTimeline(view.events);
   }
 
   const idCap = opts.sessionIdCap ?? 200;
@@ -852,5 +926,6 @@ export function buildReport(
       flow_stage_mechanism: mechanism,
       token_coverage: tokenCoverage,
     },
+    ...(controlTimeline !== undefined ? { control_timeline: controlTimeline } : {}),
   };
 }

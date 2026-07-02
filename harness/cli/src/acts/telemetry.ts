@@ -11,7 +11,9 @@ import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { posixDirname, posixJoin } from '../services/shared/posix-path.js';
 import { telemetryDir } from '../services/telemetry/cursor.js';
+import { buildInsights, type InsightInput } from '../services/telemetry/insights.js';
 import { otlpLogsToEvents } from '../services/telemetry/otlp/logs.js';
+import { renderInsights } from '../services/telemetry/render/insights-html.js';
 import { type ReportColumn, renderReports } from '../services/telemetry/render/report-html.js';
 import {
   buildReport,
@@ -236,6 +238,112 @@ function readExports(
     exports.push(doc);
   }
   return { exports, skipped };
+}
+
+/** True if a parsed doc looks like a saved `TelemetryReport` (defensive input guard). */
+function isTelemetryReport(doc: unknown): doc is TelemetryReport {
+  if (typeof doc !== 'object' || doc === null) return false;
+  const d = doc as Record<string, unknown>;
+  return (
+    typeof d.schema_version === 'string' &&
+    d.schema_version.startsWith('harness.telemetry-report') &&
+    typeof d.scope === 'object' &&
+    d.scope !== null &&
+    typeof d.rollups === 'object' &&
+    d.rollups !== null &&
+    typeof d.provenance === 'object' &&
+    d.provenance !== null
+  );
+}
+
+/** A stable, home-stripped label for one report input (its file stem). */
+function reportInputName(path: string, cwd: string): string {
+  const base = path.split('/').filter(Boolean).pop() ?? path;
+  const stem = base.endsWith(REPORT_FILE_SUFFIX)
+    ? base.slice(0, -REPORT_FILE_SUFFIX.length)
+    : base.endsWith('.json')
+      ? base.slice(0, -'.json'.length)
+      : base;
+  return sanitizeInputPath(stem, cwd);
+}
+
+/**
+ * Load the `insights` inputs: each arg is a `*.report.json` file OR a folder swept
+ * for `*.report.json`. Every unreadable / non-JSON / non-report path becomes a
+ * NAMED `skipped` entry (the 2.4 error contract) — never silently dropped. The
+ * loaded reports are de-duped by their sanitized name.
+ */
+function readReportInputs(
+  fs: ReportFs,
+  paths: readonly string[],
+  cwd: string,
+): { loaded: InsightInput[]; skipped: { path: string; reason: string }[] } {
+  const loaded: InsightInput[] = [];
+  const skipped: { path: string; reason: string }[] = [];
+  const seenPaths = new Set<string>();
+  const usedNames = new Map<string, number>();
+  const consume = (p: string): void => {
+    // Dedup by PATH (not name): two distinct reports can share a file stem (the
+    // `report` verb defaults every stem to `report`), so a name-keyed dedup would
+    // wrongly collapse them. Path-keyed dedup only drops the SAME file twice.
+    if (seenPaths.has(p)) return;
+    seenPaths.add(p);
+    const raw = fs.readText(p);
+    if (raw === null) {
+      skipped.push({ path: sanitizeInputPath(p, cwd), reason: 'not found or unreadable' });
+      return;
+    }
+    let doc: unknown;
+    try {
+      doc = JSON.parse(raw);
+    } catch {
+      skipped.push({ path: sanitizeInputPath(p, cwd), reason: 'invalid JSON' });
+      return;
+    }
+    if (!isTelemetryReport(doc)) {
+      skipped.push({ path: sanitizeInputPath(p, cwd), reason: 'not a TelemetryReport' });
+      return;
+    }
+    const base = reportInputName(p, cwd);
+    // Distinct inputs keep distinct names even when their file stems collide
+    // (disambiguated `report`, `report-2`, …) so provenance/HTML never conflate them.
+    const count = usedNames.get(base) ?? 0;
+    usedNames.set(base, count + 1);
+    const name = count === 0 ? base : `${base}-${count + 1}`;
+    loaded.push({ name, report: doc });
+  };
+  for (const p of paths) {
+    const norm = p.replace(/\\/g, '/');
+    if (norm.endsWith('.json')) {
+      consume(norm);
+      continue;
+    }
+    // A folder: sweep every *.report.json under it (recursively).
+    const found = sweepBySuffix(fs, norm, REPORT_FILE_SUFFIX);
+    if (found.length === 0) {
+      skipped.push({ path: sanitizeInputPath(norm, cwd), reason: 'no *.report.json found' });
+    }
+    for (const f of found) consume(f);
+  }
+  return { loaded, skipped };
+}
+
+/** Recursively collect every file ending in `suffix` under `paths` (never throws). */
+function sweepBySuffix(fs: ReportFs, root: string, suffix: string): string[] {
+  const found = new Set<string>();
+  const seen = new Set<string>();
+  const walk = (p: string): void => {
+    const norm = p.replace(/\\/g, '/');
+    if (seen.has(norm)) return;
+    seen.add(norm);
+    if (norm.endsWith(suffix)) {
+      if (fs.readText(norm) !== null) found.add(norm);
+      return;
+    }
+    for (const name of fs.readdir(norm)) walk(posixJoin(norm, name));
+  };
+  walk(root);
+  return [...found].sort();
 }
 
 /**
@@ -865,6 +973,117 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           : {
               emit: () => {
                 io.writers.out(`telemetry report-render: ${count} report(s) → ${htmlPath}\n`);
+              },
+            };
+      exitWithEnvelope(envelope, port);
+    });
+
+  telemetry
+    .command('insights')
+    .description(
+      'Compute the WS001 v1 insight sections + discipline panel over 1..N saved *.report.json (+ a self-contained HTML). Consumes reports ONLY — no shards, no external joins, no LLM.',
+    )
+    .argument(
+      '<paths...>',
+      'One or more *.report.json files (or folders swept for them). Single-session reports unlock the per-session sections.',
+    )
+    .option('--out <dir>', 'Output folder (insights.json + index.html)', './telemetry-insights')
+    .option('--no-html', 'Data-only: skip the co-produced HTML render')
+    .action((paths: string[], options: { out: string; html: boolean }) => {
+      const cwd = deps.proc.cwd();
+      const { loaded, skipped } = readReportInputs(deps.fs, paths, cwd);
+
+      const textErr = (label: string): OutputPort =>
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: (e) => {
+                io.writers.err(`harness telemetry insights: ${e.error?.message ?? label}\n`);
+                if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
+              },
+            };
+
+      // No usable input → honest hard error (nothing computed / written).
+      if (loaded.length === 0) {
+        const named = skipped.map((s) => `${s.path} (${s.reason})`).join('; ');
+        const envelope = formatError(
+          'telemetry',
+          ErrorCodes.UNKNOWN,
+          `no valid TelemetryReport found${named.length > 0 ? `: ${named}` : ` under ${paths.join(', ')}`}`,
+          deps.clock,
+          {
+            details: { skipped },
+            next_action:
+              'Produce reports first: `harness telemetry report <session.json…> --out <dir>` (or `telemetry sweep --month`), then feed the *.report.json here.',
+          },
+        );
+        exitWithEnvelope(envelope, textErr('no valid reports'));
+        return;
+      }
+
+      const doc = buildInsights(loaded, { skipped, generatedAt: deps.clock.nowIso() });
+
+      const outDir = options.out;
+      deps.fs.mkdirp(outDir);
+      const jsonPath = posixJoin(outDir, 'insights.json');
+      deps.fs.writeText(jsonPath, `${JSON.stringify(doc, null, 2)}\n`);
+      const evidence: { label: string; path: string }[] = [{ label: 'insights', path: jsonPath }];
+      let htmlPath: string | undefined;
+      if (options.html !== false) {
+        htmlPath = posixJoin(outDir, 'index.html');
+        deps.fs.writeText(htmlPath, renderInsights(doc));
+        evidence.push({ label: 'insights view', path: htmlPath });
+      }
+
+      const pipeline =
+        'Phase-3 loop: sweep → `report` EACH cached export → `insights` over the N *.report.json' +
+        (htmlPath ? '. Open index.html under file:// (self-contained).' : '.');
+
+      // 2.4 error contract: a bad input among good ones is NAMED (envelope errors),
+      // while the partial run still wrote the artifacts + recorded the omission in
+      // insights.json provenance.skipped_inputs (never a silent drop).
+      if (skipped.length > 0) {
+        const named = skipped.map((s) => `${s.path} (${s.reason})`).join('; ');
+        const envelope = formatError(
+          'telemetry',
+          ErrorCodes.INVALID_ARGS,
+          `skipped ${skipped.length} unreadable input(s): ${named}`,
+          deps.clock,
+          {
+            details: {
+              out: jsonPath,
+              html: htmlPath ?? null,
+              skipped,
+              sections: doc.sections.length,
+            },
+            next_action: `Partial insights written to ${jsonPath} (omissions recorded in provenance.skipped_inputs). Fix the named input(s) and re-run. ${pipeline}`,
+          },
+        );
+        exitWithEnvelope(envelope, textErr('partial run'));
+        return;
+      }
+
+      const envelope = formatOk(
+        'telemetry',
+        {
+          out: jsonPath,
+          html: htmlPath ?? null,
+          sections: doc.sections.length,
+          single_session_reports: doc.provenance.single_session_reports,
+          aggregate_reports: doc.provenance.aggregate_reports,
+        },
+        deps.clock,
+        { evidence, next_action: pipeline },
+      );
+      const port: OutputPort =
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: () => {
+                const view = htmlPath ? ` (+ ${htmlPath})` : '';
+                io.writers.out(
+                  `telemetry insights: ${loaded.length} report(s) → ${jsonPath}${view}\n`,
+                );
               },
             };
       exitWithEnvelope(envelope, port);

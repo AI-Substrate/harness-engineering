@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "cohort-telemetry-insights",
   "nav": {
-    "now": "phase-1",
+    "now": "phase-3",
     "next": null
   },
   "created_at": "2026-07-02T07:49:11.080Z",
@@ -267,6 +267,50 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-02T10:44:17.236Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-02T11:45:26.889Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-02T11:45:27.514Z",
+      "details": {
+        "node": "review-2",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-02T11:45:28.207Z",
+      "details": {
+        "from": "phase-1",
+        "to": "phase-3"
+      }
     }
   ],
   "nodes": [
@@ -319,11 +363,15 @@
         "Run /the-flow 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
         "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof."
       ],
-      "modified_at": "2026-07-02T10:31:11.327Z",
+      "modified_at": "2026-07-02T10:44:17.236Z",
       "comments": [
         {
           "at": "2026-07-02T10:31:11.327Z",
           "text": "P1 APPROVED (review recorded: reviews/p1-measures-foundation-review.md; 1940 tests green; CRITICAL cross-month leak fixed). AC-12 live-confirmed (segment 19407). Open: AC-13 digit confirm awaits one user-typed /the-flow <digit>."
+        },
+        {
+          "at": "2026-07-02T10:44:17.236Z",
+          "text": "P1 committed+pushed: f3fea425 (18 files). P2 dispatched to coder pij-1kwcc01."
         }
       ]
     },
@@ -469,24 +517,26 @@
       "id": "phase-2",
       "type": "phase",
       "label": "P2: The insights layer v1",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-2"
       ],
       "created_at": "2026-07-02T08:09:40.467Z",
-      "modified_at": "2026-07-02T08:09:41.135Z"
+      "modified_at": "2026-07-02T11:45:26.889Z",
+      "ran_at": "2026-07-02T11:45:26.889Z"
     },
     {
       "id": "review-2",
       "type": "review",
       "label": "Review: P2",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-07-02T08:09:41.135Z",
-      "modified_at": "2026-07-02T08:10:25.830Z",
-      "zone": "flight"
+      "modified_at": "2026-07-02T11:45:27.514Z",
+      "zone": "flight",
+      "ran_at": "2026-07-02T11:45:27.514Z"
     },
     {
       "id": "phase-3",
