@@ -246,6 +246,32 @@ describe('ExecGitWrite — real orphan-ref plumbing', () => {
     expect(back?.content).toBe(logsBytes); // full bytes, not an ENOBUFS-truncated prefix
     expect(Buffer.byteLength(back?.content ?? '')).toBe(Buffer.byteLength(logsBytes));
   });
+
+  it('readRefBlob reads ONE ref blob byte-verbatim; null for a missing name or ref (plan 049 DL-001)', () => {
+    // The manifest-only no-op fast path: a LOCAL `cat-file blob <ref>:<name>` that reads
+    // exactly one blob rather than the whole (multi-MB) tree. Byte-verbatim (P12), and a
+    // clean null — never a throw — when the ref or the path is absent.
+    const ref = telemetryRefFor('2026/04/03', 'sessBlob');
+    expect(git.readRefBlob(ref, 'manifest.json')).toBeNull(); // absent ref → null
+
+    const manifestBytes =
+      '{"format":"harness-telemetry-rollup/v1","session":"sessBlob","start_date":"2026/04/03","max_seq":7}\n';
+    const logsBytes = '{"resourceLogs":[{"seq":1}]}\n';
+    const manifest = git.hashObject(manifestBytes);
+    const logs = git.hashObject(logsBytes);
+    const tree = git.mktree([
+      { mode: '100644', type: 'blob', sha: logs, name: 'session.logs.jsonl' },
+      { mode: '100644', type: 'blob', sha: manifest, name: 'manifest.json' },
+    ]);
+    const commit = git.commitTree(tree, null, 'roll-blob');
+    expect(git.updateRef(ref, commit, null)).toBe(true);
+
+    // Reads exactly the named blob, byte-verbatim (trailing NL intact).
+    expect(git.readRefBlob(ref, 'manifest.json')).toBe(manifestBytes);
+    expect(git.readRefBlob(ref, 'session.logs.jsonl')).toBe(logsBytes);
+    // A path that is not in the tree → clean null (the ref exists, the blob does not).
+    expect(git.readRefBlob(ref, 'does-not-exist.json')).toBeNull();
+  });
 });
 
 /**

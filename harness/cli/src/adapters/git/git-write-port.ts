@@ -119,6 +119,19 @@ export interface GitWritePort {
    */
   readRefTree(ref: string): RefTreeBlob[] | null;
   /**
+   * Read ONE named blob from a ref's tip tree — a LOCAL `cat-file blob <ref>:<name>`
+   * (the ref's OWN object, NEVER the remote), returning null when the ref OR the path
+   * is absent. The targeted fast path for the steady-state no-op sync decision (plan
+   * 049 DL-001): that decision needs ONLY `manifest.json`'s `max_seq`, and a full
+   * {@link readRefTree} `cat-file`s every blob — including the multi-MB
+   * `session.logs.jsonl` — just to reach the manifest, which dominated a no-op sync.
+   * FAIL CLOSED, in the same discipline as {@link readRefTree}: a spawn-level failure
+   * (ENOBUFS truncation / timeout) THROWS (never a silent partial), while a clean
+   * non-zero exit (ref/path absent) returns null. Uses the shared `GIT_MAX_BUFFER`;
+   * fetch-free (AC-03) — the same `cat-file` class as {@link refTree}'s peel.
+   */
+  readRefBlob(ref: string, name: string): string | null;
+  /**
    * `commit-tree` using the **contributor's configured git identity** for author +
    * committer (attributable); falls back to {@link TELEMETRY_FALLBACK_AUTHOR} only
    * when no `user.name`/`user.email` is configured. `parent` null = an orphan root

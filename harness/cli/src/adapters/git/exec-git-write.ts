@@ -116,6 +116,26 @@ export class ExecGitWrite implements GitWritePort {
     return blobs;
   }
 
+  readRefBlob(ref: string, name: string): string | null {
+    // Targeted LOCAL single-blob read `cat-file blob <ref>:<name>` — the manifest-only
+    // fast path for the steady-state no-op sync decision (plan 049 DL-001). The no-op
+    // decision needs ONLY `manifest.json`'s max_seq; the full `readRefTree` cat-files
+    // EVERY blob (incl. the multi-MB `session.logs.jsonl`) just to reach it, which
+    // dominated a no-op sync (~96s CPU on this repo). Reads exactly one blob instead.
+    //
+    // FAIL CLOSED like `readRefTree`: a spawn-level failure (ENOBUFS truncation on an
+    // outsized blob, timeout) sets `.error` → THROW (never a silent partial); a clean
+    // non-zero exit (the ref or the path is absent) → null. LOCAL only — reads the
+    // ref's OWN object, never the remote (AC-03), in the same `cat-file` class as
+    // `readRefTree`, so the fetch-free invariant holds. `<ref>:<name>` is git's
+    // extended-object syntax for "the blob at <name> in <ref>'s tree".
+    const r = this.run(['cat-file', 'blob', `${ref}:${name}`]);
+    if (r.error)
+      throw new Error(`git cat-file blob read failed for ${ref}:${name}: ${r.error.message}`);
+    if (r.status !== 0) return null; // clean non-zero exit → the ref or the path is absent
+    return r.stdout;
+  }
+
   commitTree(tree: string, parent: string | null, message: string): string {
     const args = ['commit-tree', tree, '-m', message];
     if (parent !== null) args.push('-p', parent);

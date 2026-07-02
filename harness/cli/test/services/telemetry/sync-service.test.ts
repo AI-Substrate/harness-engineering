@@ -216,13 +216,16 @@ describe('syncTelemetry — rolled one-ref-per-session-at-start-date (plan 049)'
     expect(syncTelemetry(deps).ok).toBe(true);
 
     // NON-VACUOUS proof: the write port never pulled, and the read port never walked
-    // history — the append built purely from the LOCAL buffer + local ref-tree read.
+    // history — the append built purely from the LOCAL buffer + local ref reads.
     expect(git.calls).not.toContain('lsRemoteTelemetryRefs');
     expect(git.calls).not.toContain('fetchRef');
     expect(gitRead.calls).not.toContain('listRefHistory');
     expect(gitRead.calls).not.toContain('readTreeAtCommit');
-    // …AND the union base IS read locally: `readRefTree` (a `cat-file` of the ref's
-    // OWN tree) is called — the fetch-free union source that lets the buffer be pruned.
+    // …AND the ref is read LOCALLY: the manifest-only watermark probe (`readRefBlob`,
+    // the DL-001 no-op fast path) AND — because this run rewrites (seq 2 is new) — the
+    // full `readRefTree` union base. Both are `cat-file`s of the ref's OWN tree, fetch-free.
+    expect(git.calls).toContain('readRefBlob');
+    expect(git.readBlobNames).toContain('manifest.json'); // reads ONLY the manifest to decide
     expect(git.calls).toContain('readRefTree');
   });
 
@@ -361,6 +364,75 @@ describe('syncTelemetry — rolled one-ref-per-session-at-start-date (plan 049)'
     expect(git.tip(ref)).toBe(tipBefore); // ref tip unchanged
     expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('2'); // watermark untouched
     expect(fs.readdir(`${TEL}/sessA`).sort()).toEqual(bufferBefore); // buffer NOT pruned (seq 3 survives)
+  });
+
+  it('DL-001: the steady-state NO-OP decision reads manifest.json ONLY — never the full readRefTree', () => {
+    // The perf fix (retro DL-001): a no-op sync (nothing new past the watermark) must
+    // NOT cat-file the whole rolled tree (incl. the multi-MB session.logs.jsonl) just to
+    // learn max_seq — it reads only `manifest.json` via `readRefBlob`. Mutation that flips
+    // this RED: route the no-op decision back through the full `readRolledRef`/`readRefTree`.
+    const files: Record<string, string> = {};
+    const names: string[] = [];
+    seqTriple(files, names, 'sessA', 1, ['x']);
+    seqTriple(files, names, 'sessA', 2, ['x']);
+    const { deps, fs, git } = makeDeps(files, { [TEL]: ['sessA'], [`${TEL}/sessA`]: names });
+
+    // Sync 1 flushes seq 1,2 to the ref and T007 prunes the buffer to empty.
+    expect(syncTelemetry(deps).pushed).toBe(true);
+    expect(fs.readdir(`${TEL}/sessA`)).toEqual([]); // buffer fully pruned
+
+    // Sync 2 is a pure no-op (watermark == ref max, nothing buffered). Reset the call log
+    // so the assertions see ONLY the no-op run's git reads.
+    git.calls.length = 0;
+    git.readBlobNames.length = 0;
+    const r2 = syncTelemetry(deps);
+
+    expect(r2.ok).toBe(true);
+    expect(r2.segments).toBe(0);
+    expect(git.calls).not.toContain('commitTree'); // no rewrite
+    expect(git.calls).not.toContain('push');
+    // The load-bearing perf assertion: the manifest-only fast path ran, the full
+    // whole-tree read did NOT. Reading the full tree on a no-op is the DL-001 waste.
+    expect(git.calls).toContain('readRefBlob');
+    expect(git.readBlobNames).toEqual(['manifest.json']); // exactly one blob, the manifest
+    expect(git.calls).not.toContain('readRefTree'); // the multi-MB tree read is SKIPPED
+    // Still fetch-free (AC-03) — the no-op path never reaches the remote.
+    expect(git.calls).not.toContain('lsRemoteTelemetryRefs');
+    expect(git.calls).not.toContain('fetchRef');
+  });
+
+  it('DL-001: readRefBlob fails closed — a spawn/ENOBUFS manifest read aborts the sync, everything untouched', () => {
+    // The manifest-only fast path shares readRefTree's fail-closed discipline: a spawn
+    // error on the single-blob read THROWS (never a silent wrong watermark that could
+    // mis-skip a real flush), so the whole sync surfaces ok:false and touches nothing.
+    const files: Record<string, string> = {};
+    const names: string[] = [];
+    seqTriple(files, names, 'sessA', 1, ['x']);
+    const { deps, fs, git } = makeDeps(files, { [TEL]: ['sessA'], [`${TEL}/sessA`]: names });
+
+    // Sync 1 flushes seq 1; a new seq 2 lands (so a rewrite WOULD happen absent the failure).
+    expect(syncTelemetry(deps).pushed).toBe(true);
+    fs.writeText(`${TEL}/sessA/2.json`, seg(['x']));
+    fs.writeText(`${TEL}/sessA/2.logs.jsonl`, logsBlob(2));
+    fs.writeText(`${TEL}/sessA/2.metrics.jsonl`, metricsBlob(2));
+    names.push('2.json', '2.logs.jsonl', '2.metrics.jsonl');
+
+    const ref = telemetryRefFor('2026/03/23', 'sessA');
+    const tipBefore = git.tip(ref);
+    const commitsBefore = git.commits.length;
+    const pushesBefore = git.pushed.length;
+    const bufferBefore = fs.readdir(`${TEL}/sessA`).sort();
+
+    // The watermark probe fails closed (a spawn/ENOBUFS error on the manifest read).
+    git.failReadRefBlob = true;
+    const r = syncTelemetry(deps);
+
+    expect(r.ok).toBe(false); // the failure surfaces — never a silent mis-skip
+    expect(git.commits.length).toBe(commitsBefore); // ref NOT rewritten
+    expect(git.pushed.length).toBe(pushesBefore); // NOT force-pushed
+    expect(git.tip(ref)).toBe(tipBefore); // ref tip unchanged
+    expect(fs.readText(`${TEL}/sessA.flushed`)?.trim()).toBe('1'); // watermark untouched
+    expect(fs.readdir(`${TEL}/sessA`).sort()).toEqual(bufferBefore); // buffer NOT pruned (seq 2 survives)
   });
 
   it('the .startdate sidecar is AUTHORITATIVE — a pre-seeded date wins over the buffer timecode', () => {

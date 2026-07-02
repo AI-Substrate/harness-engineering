@@ -50,6 +50,15 @@ export class FakeGitWrite implements GitWritePort {
    * (plan 049 round-2 F1).
    */
   failReadRefTree = false;
+  /**
+   * Set true to make `readRefBlob` throw — models the real adapter's FAIL-CLOSED
+   * path (a spawn-level / ENOBUFS failure on the single-blob manifest read) so a
+   * service test can prove the no-op decision fails closed: sync `ok:false`, ref +
+   * buffer + watermark untouched (plan 049 DL-001).
+   */
+  failReadRefBlob = false;
+  /** The `name`s passed to {@link readRefBlob} — proves the no-op path reads ONLY `manifest.json`. */
+  readonly readBlobNames: string[] = [];
   /** The remote telemetry ref names {@link lsRemoteTelemetryRefs} reports (the migration's remote view). */
   private remoteTelemetryRefs: string[] = [];
   /**
@@ -129,6 +138,24 @@ export class FakeGitWrite implements GitWritePort {
     return entries
       .filter((e) => e.type === 'blob')
       .map((e) => ({ name: e.name, content: this.blobBySha.get(e.sha) ?? '' }));
+  }
+
+  readRefBlob(ref: string, name: string): string | null {
+    this.calls.push('readRefBlob');
+    this.readBlobNames.push(name);
+    if (this.failReadRefBlob)
+      throw new Error(
+        'FakeGitWrite.readRefBlob: simulated spawn/ENOBUFS single-blob read (fail closed)',
+      );
+    const commit = this.refs.get(ref);
+    if (commit === undefined) return null; // ref does not exist → fresh session
+    const treeSha = this.commitTrees.get(commit);
+    if (treeSha === undefined) return null;
+    const entries = this.treeEntriesBySha.get(treeSha);
+    if (entries === undefined) return null;
+    const entry = entries.find((e) => e.type === 'blob' && e.name === name);
+    if (entry === undefined) return null; // path absent in the tree → clean null
+    return this.blobBySha.get(entry.sha) ?? null;
   }
 
   commitTree(tree: string, parent: string | null, message: string): string {

@@ -372,6 +372,21 @@ function readRolledRef(git: GitWritePort, ref: string): SessionMaterial | null {
   };
 }
 
+/**
+ * The rolled ref's watermark, read MANIFEST-ONLY (plan 049 DL-001). The steady-state
+ * no-op decision needs ONLY `manifest.json`'s `max_seq` to answer "is anything new?";
+ * the full {@link readRolledRef} (a `readRefTree` that `cat-file`s EVERY blob, incl.
+ * the multi-MB `session.logs.jsonl`) is pure waste on that path. So the loop reads the
+ * one manifest blob here — fetch-free + fail-closed via {@link GitWritePort.readRefBlob}
+ * — and only pays for the full union read once a rewrite is certain. 0 when the ref (or
+ * its manifest) is absent, identical to the null-ref case {@link readRolledRef} returns.
+ */
+function readRefMaxSeq(git: GitWritePort, ref: string): number {
+  const manifest = git.readRefBlob(ref, ROLLED_MANIFEST_NAME);
+  if (manifest === null) return 0;
+  return parseManifest(manifest)?.max_seq ?? 0;
+}
+
 /** The date bucket of an existing local telemetry ref for `session`, or null. */
 function scanLocalRefDate(deps: SyncDeps, session: string): string | null {
   if (deps.gitRead === undefined) return null;
@@ -438,11 +453,10 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
     const ref = telemetryRefFor(startDate, session);
 
     // The rolled ref is the FLUSHED truth; the buffer holds only the UNFLUSHED delta
-    // (T007 prunes the rest). Read the ref's tip tree — a LOCAL, fetch-free read
-    // (AC-03) — as the union base so the whole-session tip is rebuilt even though the
-    // already-pushed seqs are gone from the buffer.
-    const refState = readRolledRef(deps.git, ref);
-    const refMaxSeq = refState?.maxSeq ?? 0;
+    // (T007 prunes the rest). The no-op decision needs ONLY the ref's watermark, so
+    // read it MANIFEST-ONLY (a LOCAL, fetch-free single-blob read — AC-03; plan 049
+    // DL-001) rather than cat-file'ing the whole (multi-MB) tree just to skip.
+    const refMaxSeq = readRefMaxSeq(deps.git, ref);
 
     // The additions are the buffer seqs BEYOND the ref's watermark; seqs ≤ refMaxSeq
     // are already published (skip them — no double-count, no duplicate blob).
@@ -450,8 +464,14 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
 
     // Steady-state no-op: nothing new AND the local watermark already reflects the ref
     // (no lost watermark to repair). A lost watermark (already < refMaxSeq) still
-    // reconstructs from the ref below and idempotently re-pushes (AC-04).
+    // reconstructs from the ref below and idempotently re-pushes (AC-04). Reaching here
+    // paid for ONE manifest blob, never the full tree read.
     if (newBufferSeqs.length === 0 && already >= refMaxSeq) continue;
+
+    // A rewrite WILL happen (new seqs, or a lost watermark to repair) → NOW read the
+    // full ref tip tree for the union base. This is the expensive whole-tree read the
+    // no-op path above avoided; it is the flushed half of the T007 union.
+    const refState = readRolledRef(deps.git, ref);
 
     // Union = the ref's flushed content ++ the new (unflushed) buffer seqs. This is
     // the F-03 fix (tip tree = whole session), now sourced from ref+buffer so the

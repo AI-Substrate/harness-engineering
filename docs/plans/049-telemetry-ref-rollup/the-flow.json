@@ -207,6 +207,18 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-02T23:45:55.293Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -323,7 +335,14 @@
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-07-02T23:45:55.293Z",
+          "text": "Pre-ship: DL-001 perf fix in flight (manifest-only no-op read via readRefBlob). P1 code+closeout pushed (0f016671, 619317e3)."
+        }
+      ],
+      "modified_at": "2026-07-02T23:45:55.293Z"
     },
     {
       "id": "backpressure",
