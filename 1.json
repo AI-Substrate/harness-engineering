@@ -1,0 +1,527 @@
+{
+  "schema_version": "2.0",
+  "command": "markdown-lint",
+  "harness": "copilot-cli",
+  "harness_session_id": "2fcbb797-7cb9-43dd-bf4b-7bfb90abc474",
+  "timecode": "2026-06-24T21:43:51.091Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 658
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 224532,
+    "output": 65281,
+    "cache_create": 163006,
+    "cache_read": 2411495,
+    "total": 2864314,
+    "subagent_tokens": 0,
+    "grand_total": 2864314
+  },
+  "models": {
+    "claude-opus-4.8": {
+      "turns": 21,
+      "output_tokens": 52732
+    },
+    "gpt-5.4-mini": {
+      "turns": 20,
+      "output_tokens": 12549
+    }
+  },
+  "effort": "max",
+  "skills": {},
+  "tools": {
+    "skill": 1,
+    "view": 93,
+    "bash": 9,
+    "grep": 2,
+    "tool_search_tool_regex": 1,
+    "flowspace-list_graphs": 1,
+    "flowspace-docs_list": 1,
+    "sql": 3,
+    "task": 3,
+    "glob": 15,
+    "rg": 6,
+    "read_agent": 3,
+    "create": 1
+  },
+  "bash_commands": [
+    "cd",
+    "head",
+    "echo",
+    "head",
+    "echo",
+    "which",
+    "cd",
+    "echo",
+    "ls",
+    "echo",
+    "ls",
+    "echo",
+    "ls",
+    "cd",
+    "echo",
+    "find",
+    "find",
+    "head",
+    "echo",
+    "ls",
+    "echo",
+    "ls",
+    "echo",
+    "ls",
+    "cd",
+    "echo",
+    "grep",
+    "head",
+    "echo",
+    "find",
+    "head",
+    "find",
+    "sort",
+    "find",
+    "sort",
+    "cd",
+    "echo",
+    "grep",
+    "head",
+    "echo",
+    "cat",
+    "echo",
+    "ls",
+    "sed",
+    "grep",
+    "head",
+    "cd",
+    "echo",
+    "ls",
+    "head",
+    "echo",
+    "grep",
+    "head",
+    "cd",
+    "node",
+    "node"
+  ],
+  "harness_commands": [],
+  "user_prompts": [
+    68,
+    2025,
+    6
+  ],
+  "subagents": [
+    {
+      "count": 3,
+      "agent_name": "explore",
+      "model": "gpt-5.4-mini",
+      "status": "completed"
+    }
+  ],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null,
+  "event_stream": [
+    {
+      "t": "2026-06-24T21:30:29.127Z",
+      "kind": "model",
+      "model": "claude-opus-4.8",
+      "effort": "max"
+    },
+    {
+      "t": "2026-06-24T21:31:39.914Z",
+      "kind": "prompt",
+      "words": 68
+    },
+    {
+      "t": "2026-06-24T21:31:45.106Z",
+      "kind": "tools",
+      "name": "skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:31:45.131Z",
+      "kind": "prompt",
+      "words": 2025
+    },
+    {
+      "t": "2026-06-24T21:32:19.796Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:32:19.796Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:32:34.716Z",
+      "kind": "tools",
+      "name": "grep",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:32:43.078Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:33:48.059Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:33:48.059Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 2,
+      "span_s": 6
+    },
+    {
+      "t": "2026-06-24T21:34:07.623Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:34:07.623Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:34:33.414Z",
+      "kind": "tools",
+      "name": "tool_search_tool_regex",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:34:33.414Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:34:45.607Z",
+      "kind": "tools",
+      "name": "flowspace-list_graphs",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:34:45.607Z",
+      "kind": "tools",
+      "name": "flowspace-docs_list",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:34:45.607Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:35:28.508Z",
+      "kind": "tools",
+      "name": "sql",
+      "count": 2,
+      "span_s": 5
+    },
+    {
+      "t": "2026-06-24T21:35:33.626Z",
+      "kind": "prompt",
+      "words": 6
+    },
+    {
+      "t": "2026-06-24T21:35:39.446Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 3,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:36.858Z",
+      "kind": "tools",
+      "name": "task",
+      "count": 3,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:41.590Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 8,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-24T21:36:42.973Z",
+      "kind": "tools",
+      "name": "rg",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:44.100Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 8,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:44.659Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:44.659Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 16,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-24T21:36:45.900Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:47.238Z",
+      "kind": "tools",
+      "name": "rg",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:47.238Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 23,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-24T21:36:49.074Z",
+      "kind": "tools",
+      "name": "rg",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:49.074Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:49.074Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 6,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:50.753Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:50.753Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 10,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-24T21:36:51.307Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:52.335Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 12,
+      "span_s": 3
+    },
+    {
+      "t": "2026-06-24T21:36:54.852Z",
+      "kind": "tools",
+      "name": "rg",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:55.041Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:36:56.370Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 2,
+      "span_s": 2
+    },
+    {
+      "t": "2026-06-24T21:37:02.021Z",
+      "kind": "subagent",
+      "name": "explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-24T21:37:02.770Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:37:02.770Z",
+      "kind": "tools",
+      "name": "glob",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:37:02.770Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:37:10.814Z",
+      "kind": "tools",
+      "name": "read_agent",
+      "count": 3,
+      "span_s": 10
+    },
+    {
+      "t": "2026-06-24T21:37:10.833Z",
+      "kind": "subagent",
+      "name": "explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-24T21:37:13.261Z",
+      "kind": "subagent",
+      "name": "explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-24T21:39:52.491Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:39:52.491Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:40:40.835Z",
+      "kind": "tools",
+      "name": "sql",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:43:01.375Z",
+      "kind": "tools",
+      "name": "create",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:43:43.390Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 2,
+      "span_s": 6
+    },
+    {
+      "t": "2026-06-24T21:43:43.436Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 13795,
+      "out": 17615,
+      "cache_read": 620061,
+      "cache_create": 96580,
+      "model": "claude-opus-4.8"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 794,
+      "agent_working_s": 718,
+      "human_s": 76,
+      "idle_s": 0,
+      "working_ratio": 0.9
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 13795,
+      "out": 17615,
+      "cache_read": 620061,
+      "cache_create": 96580
+    },
+    "tools": {
+      "skill": 1,
+      "view": 93,
+      "bash": 9,
+      "grep": 2,
+      "tool_search_tool_regex": 1,
+      "flowspace-list_graphs": 1,
+      "flowspace-docs_list": 1,
+      "sql": 3,
+      "task": 3,
+      "glob": 15,
+      "rg": 6,
+      "read_agent": 3,
+      "create": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

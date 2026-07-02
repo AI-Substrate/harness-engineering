@@ -1,0 +1,174 @@
+{
+  "schema_version": "2.0",
+  "command": "markdown-lint",
+  "harness": "copilot-cli",
+  "harness_session_id": "2fcbb797-7cb9-43dd-bf4b-7bfb90abc474",
+  "timecode": "2026-06-24T21:46:04.701Z",
+  "window": {
+    "since": "last-command",
+    "from": 658,
+    "to": 728
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 13797,
+    "output": 20529,
+    "cache_create": 101931,
+    "cache_read": 801866,
+    "total": 938123,
+    "subagent_tokens": 0,
+    "grand_total": 938123
+  },
+  "models": {
+    "claude-opus-4.8": {
+      "turns": 12,
+      "output_tokens": 20529
+    }
+  },
+  "effort": "max",
+  "skills": {},
+  "tools": {
+    "bash": 4,
+    "sql": 1,
+    "skill": 1,
+    "view": 3,
+    "grep": 1,
+    "edit": 1
+  },
+  "bash_commands": [
+    "cd",
+    "echo",
+    "markdownlint-cli2",
+    "tail",
+    "echo",
+    "cd",
+    "remark",
+    "grep",
+    "head",
+    "echo",
+    "cd",
+    "remark",
+    "echo",
+    "echo",
+    "cat",
+    "echo",
+    "rm",
+    "cd",
+    "node",
+    "node",
+    "echo",
+    "markdownlint-cli2",
+    "grep"
+  ],
+  "harness_commands": [],
+  "user_prompts": [
+    2063
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null,
+  "event_stream": [
+    {
+      "t": "2026-06-24T21:44:08.375Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 3,
+      "span_s": 22
+    },
+    {
+      "t": "2026-06-24T21:44:39.358Z",
+      "kind": "tools",
+      "name": "sql",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:44:43.315Z",
+      "kind": "tools",
+      "name": "skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:44:43.327Z",
+      "kind": "prompt",
+      "words": 2063
+    },
+    {
+      "t": "2026-06-24T21:45:18.017Z",
+      "kind": "tools",
+      "name": "view",
+      "count": 3,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:45:18.017Z",
+      "kind": "tools",
+      "name": "grep",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:45:55.364Z",
+      "kind": "tools",
+      "name": "edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T21:45:55.395Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 13797,
+      "out": 20529,
+      "cache_read": 801866,
+      "cache_create": 101931,
+      "model": "claude-opus-4.8"
+    },
+    {
+      "t": "2026-06-24T21:46:03.070Z",
+      "kind": "tools",
+      "name": "bash",
+      "count": 1,
+      "span_s": 0
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 115,
+      "agent_working_s": 115,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 13797,
+      "out": 20529,
+      "cache_read": 801866,
+      "cache_create": 101931
+    },
+    "tools": {
+      "bash": 4,
+      "sql": 1,
+      "skill": 1,
+      "view": 3,
+      "grep": 1,
+      "edit": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}
