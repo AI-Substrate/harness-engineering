@@ -1,0 +1,54 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "copilot-vscode",
+  "harness_session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+  "timecode": "2026-06-25T02:53:26.215Z",
+  "window": {
+    "since": "last-command",
+    "from": 7,
+    "to": 8
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": null,
+  "effort": null,
+  "user_prompts": [
+    146
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-25T02:52:08.382Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 146
+    },
+    {
+      "t": "2026-06-25T02:52:08.382Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T02:52:08.382Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "copilot-vscode",
+  "harness_session_id": "7fb3a97f-3430-412d-8c91-d1467a86bfc0",
+  "timecode": "2026-06-25T02:51:06.894Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 7
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": null,
+  "effort": null,
+  "user_prompts": [
+    124,
+    4,
+    12,
+    71,
+    4,
+    2,
+    3
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-25T00:25:09.904Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 124
+    },
+    {
+      "t": "2026-06-25T00:25:09.904Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T00:25:30.905Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-06-25T00:25:30.905Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T00:51:59.484Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 12
+    },
+    {
+      "t": "2026-06-25T00:51:59.484Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T01:26:12.982Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 71
+    },
+    {
+      "t": "2026-06-25T01:26:12.982Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T01:33:55.629Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-06-25T01:33:55.629Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T01:38:02.076Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 2
+    },
+    {
+      "t": "2026-06-25T01:38:02.076Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T01:48:25.148Z",
+      "t_precision": "anchored",
+      "kind": "prompt",
+      "words": 3
+    },
+    {
+      "t": "2026-06-25T01:48:25.148Z",
+      "t_precision": "anchored",
+      "kind": "turn",
+      "dur_s": 0
+    },
+    {
+      "t": "2026-06-25T01:48:25.148Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 4995,
+      "agent_working_s": 0,
+      "human_s": 267,
+      "idle_s": 4728,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}
