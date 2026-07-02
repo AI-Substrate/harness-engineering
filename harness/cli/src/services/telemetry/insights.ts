@@ -24,7 +24,13 @@
  * (`acts/telemetry.ts`) reads the files, injects `generated_at`, and writes output.
  */
 
-import type { Rollup, TelemetryReport, TimelineMarker, TokenCoverage } from './report.js';
+import type {
+  FlowStageMechanism,
+  Rollup,
+  TelemetryReport,
+  TimelineMarker,
+  TokenCoverage,
+} from './report.js';
 import { parseIso } from './rollup.js';
 
 export const INSIGHTS_SCHEMA_VERSION = 'harness.telemetry-insights/v1' as const;
@@ -76,6 +82,31 @@ export interface SectionSuppression {
   reason: string;
 }
 
+/**
+ * Era/mechanism coverage for a section whose signal depends on a marker CLASS that
+ * only exists in some eras (D-B). Evidence-based, never date-guessed: it counts, over
+ * the single-session inputs, how many sessions lack the marker class a row needs — so
+ * an all-zero row (e.g. `checks-before-push: 0/0`) can be rendered as UNMEASURABLE for
+ * those sessions rather than as a confident zero. Surfaced in section provenance.
+ */
+export interface SectionCoverage {
+  /** Single-session reports whose per-session evidence was evaluated. */
+  sessions: number;
+  /**
+   * Sessions with bash calls but NO bash-signature markers in their control timeline
+   * (pre-FX001 era: `git push`/`git commit` signatures were not captured) — so the
+   * push/checks-before-push signal is unmeasurable for them, not a true zero.
+   */
+  push_signatures_unavailable: number;
+  /**
+   * Sessions with no FlowEvent-/digit-labeled stage windows (e.g. pre-1.2-fix FlowEvent
+   * starvation) — so stage economics is unmeasurable for them, not an empty result.
+   */
+  stage_labels_unavailable: number;
+  /** Human declaration distinguishing an unmeasurable era gap from a genuine zero. */
+  note: string;
+}
+
 /** One report section — a named generator's output; renders uniformly. */
 export interface InsightSection {
   id: string;
@@ -85,6 +116,8 @@ export interface InsightSection {
   rows: InsightRow[];
   /** Present iff rows were folded below {@link N_THRESHOLD}. */
   suppressed?: SectionSuppression;
+  /** Era/mechanism coverage (D-B): declares which sessions a marker class is absent for. */
+  coverage?: SectionCoverage;
   /** Footnotes: non-additivity, the `unavailable` reason, the keying rule, etc. */
   note?: string;
   /** Alternate row orderings by key (e.g. bash: `by_count` / `by_sent`). */
@@ -216,6 +249,10 @@ interface Unit {
   timeline: TimelineMarker[];
   hasTimeline: boolean;
   tokenMeasured: boolean;
+  /** Total bash-command calls (D-B: bash activity present but no signature markers ⇒ pre-era). */
+  bashCalls: number;
+  /** This session's stage-labelling mechanism counts (D-B: 0 flow+digit ⇒ stages unavailable). */
+  mechanism: FlowStageMechanism;
 }
 
 export const UNASSIGNED = 'unassigned';
@@ -248,6 +285,42 @@ function unitOf(input: InsightInput): Unit {
     timeline: r.control_timeline ?? [],
     hasTimeline: r.control_timeline !== undefined,
     tokenMeasured: r.provenance.token_coverage.measured > 0,
+    bashCalls: r.rollups.bash_command.total.count,
+    mechanism: r.provenance.flow_stage_mechanism,
+  };
+}
+
+/**
+ * D-B era/mechanism coverage: over the single-session units, count how many lack a
+ * marker CLASS a downstream row depends on — EVIDENCE-BASED, never date-guessed.
+ *
+ * - `push_signatures_unavailable`: sessions that ran bash commands yet whose control
+ *   timeline carries NO `bash` (`git push`/`git commit`) signature marker — i.e. a
+ *   pre-FX001 shard, where the push signal was never captured. A `checks-before-push:
+ *   0/0` over such sessions is UNMEASURABLE, not a confident zero.
+ * - `stage_labels_unavailable`: sessions with zero FlowEvent-/digit-labeled stage
+ *   windows (`flow + digit === 0`) — e.g. pre-1.2-fix FlowEvent starvation — so stage
+ *   economics is unmeasurable for them, not simply empty.
+ *
+ * Returns `undefined` when there are no single-session units to evaluate (the section
+ * degrades via `available:false` instead).
+ */
+function coverageDeclaration(units: Unit[]): SectionCoverage | undefined {
+  if (units.length === 0) return undefined;
+  const pushUnavailable = units.filter(
+    (u) => u.bashCalls > 0 && !u.timeline.some((m) => m.kind === 'bash'),
+  ).length;
+  const stageUnavailable = units.filter((u) => u.mechanism.flow + u.mechanism.digit === 0).length;
+  const note =
+    `Push signatures unavailable for ${pushUnavailable}/${units.length} session(s) ` +
+    `(bash calls present but no git push/commit signature markers — pre-FX001 era); ` +
+    `stage labels unavailable for ${stageUnavailable}/${units.length} session(s) ` +
+    `(no FlowEvent/digit-labeled windows). An unavailable marker class reads as UNMEASURABLE, distinct from a true zero.`;
+  return {
+    sessions: units.length,
+    push_signatures_unavailable: pushUnavailable,
+    stage_labels_unavailable: stageUnavailable,
+    note,
   };
 }
 
@@ -366,6 +439,8 @@ function stageEconomics(reports: InsightInput[], units: Unit[]): InsightSection 
     rows: rendered,
   };
   if (suppressed !== undefined) section.suppressed = suppressed;
+  const coverage = coverageDeclaration(units);
+  if (coverage !== undefined) section.coverage = coverage;
   if (units.length === 0) {
     section.note =
       'Per-work-unit averages and explore→ship elapsed need single-session reports (unavailable here — aggregate-only input).';
@@ -510,30 +585,45 @@ function activeWallRatio(units: Unit[]): InsightSection {
     };
   }
   const withWall = units.filter((u) => u.wall_s !== null);
-  const active = withWall.reduce((a, u) => a + u.active_s, 0);
-  const wall = withWall.reduce((a, u) => a + (u.wall_s ?? 0), 0);
+  // D-A: a session whose active time exceeds its own calendar span is a timestamp-
+  // precision artifact (the gap classifier accrued more active seconds than the
+  // observed wall span). Honesty-first: EXCLUDE it from the cohort sums + DECLARE the
+  // exclusion — never a silent clamp of the number.
+  const impossible = (u: Unit): boolean => u.wall_s !== null && u.active_s > u.wall_s;
+  const cohortUnits = withWall.filter((u) => !impossible(u));
+  const excluded = withWall.length - cohortUnits.length;
+  const active = cohortUnits.reduce((a, u) => a + u.active_s, 0);
+  const wall = cohortUnits.reduce((a, u) => a + (u.wall_s ?? 0), 0);
   const rows: InsightRow[] = [];
   rows.push(
     makeRow({
       claim: `cohort: ${Math.round(active)}s active over ${Math.round(wall)}s wall (ratio ${wall > 0 ? (active / wall).toFixed(2) : 'n/a'})`,
       measures_used: ['totals.time_s (active)', 'provenance.date_range (wall)'],
-      n: withWall.length,
-      caveat: `Active is idle-excluded; wall is the calendar span (includes overnight/idle). Over ${withWall.length}/${units.length} session(s) with a parseable date range.`,
+      n: cohortUnits.length,
+      caveat:
+        `Active is idle-excluded; wall is the calendar span (includes overnight/idle). Over ${cohortUnits.length}/${units.length} session(s) with a parseable date range` +
+        (excluded > 0
+          ? `. Excluded ${excluded} session(s) whose active exceeded their calendar span (timestamp-precision artifact) so the aggregate is not inflated.`
+          : '.'),
       values: {
         scope: 'cohort',
         active_s: Math.round(active),
         wall_s: Math.round(wall),
         ratio: wall > 0 ? Math.round((active / wall) * 100) / 100 : null,
+        excluded,
       },
     }),
   );
   for (const u of units) {
+    const bad = impossible(u);
     rows.push(
       makeRow({
         claim: `${u.sessionId}: ${Math.round(u.active_s)}s active over ${u.wall_s === null ? 'unknown' : `${Math.round(u.wall_s)}s`} wall`,
         measures_used: ['totals.time_s', 'provenance.date_range'],
         n: 1,
-        caveat: 'A single session (n=1); the cohort row above is the aggregate claim.',
+        caveat: bad
+          ? 'Active exceeds the calendar span — a timestamp-precision artifact (coarse/anchored timestamps let the gap classifier over-accrue active seconds); EXCLUDED from the cohort aggregate.'
+          : 'A single session (n=1); the cohort row above is the aggregate claim.',
         values: {
           session: u.sessionId,
           active_s: Math.round(u.active_s),
@@ -542,6 +632,7 @@ function activeWallRatio(units: Unit[]): InsightSection {
             u.wall_s !== null && u.wall_s > 0
               ? Math.round((u.active_s / u.wall_s) * 100) / 100
               : null,
+          ...(bad ? { data_quality: 'active-exceeds-wall' } : {}),
         },
       }),
     );
@@ -733,6 +824,7 @@ function disciplinePanel(units: Unit[], workUnits: WorkUnit[]): InsightSection {
     };
   }
   const totals = sumRaw(workUnits.map((w) => w.discipline));
+  const coverage = coverageDeclaration(units);
   const rows: InsightRow[] = [];
 
   rows.push(
@@ -771,13 +863,20 @@ function disciplinePanel(units: Unit[], workUnits: WorkUnit[]): InsightSection {
     }),
   );
 
+  // D-B: when NO push happened AND some sessions ran bash without any signature marker,
+  // `0/0` is UNMEASURABLE for those sessions (pre-FX001 era), not a confident zero.
+  const pushUnmeasurable =
+    totals.pushes === 0 && coverage !== undefined && coverage.push_signatures_unavailable > 0;
   rows.push(
     makeRow({
       claim: `checks-before-push: ${totals.pushesWithPriorChecks}/${totals.pushes} push(es) had a prior \`checks\``,
       measures_used: ['control_timeline (checks marker / harness checks, git push signature)'],
       n: totals.pushes,
       caveat:
-        'A push is compliant when a checks signal (verdict or `harness checks`) precedes it in time within the work unit — strict `checks.t < push.t`.',
+        'A push is compliant when a checks signal (verdict or `harness checks`) precedes it in time within the work unit — strict `checks.t < push.t`.' +
+        (pushUnmeasurable && coverage !== undefined
+          ? ` UNMEASURABLE for ${coverage.push_signatures_unavailable}/${coverage.sessions} session(s): git push signatures are absent in that era (pre-FX001 markers) — distinct from a true 0/0.`
+          : ''),
       values: {
         pushes: totals.pushes,
         with_prior_checks: totals.pushesWithPriorChecks,
@@ -809,7 +908,14 @@ function disciplinePanel(units: Unit[], workUnits: WorkUnit[]): InsightSection {
     }),
   );
 
-  return { id: 'discipline', title: 'Discipline panel', available: true, rows };
+  const section: InsightSection = {
+    id: 'discipline',
+    title: 'Discipline panel',
+    available: true,
+    rows,
+  };
+  if (coverage !== undefined) section.coverage = coverage;
+  return section;
 }
 
 // ── §7 Per-work-unit table ──────────────────────────────────────────────────

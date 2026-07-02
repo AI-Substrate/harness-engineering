@@ -8,6 +8,7 @@ import {
 } from '../../../src/services/telemetry/insights.js';
 import {
   FLOW_STAGE_MAP_VERSION,
+  type FlowStageMechanism,
   type Rollup,
   type RollupEntry,
   TELEMETRY_REPORT_SCHEMA_VERSION,
@@ -57,6 +58,7 @@ interface MkOpts {
   timeline?: TimelineMarker[];
   measured?: number;
   unmeasured?: number;
+  mechanism?: FlowStageMechanism;
 }
 
 function mkReport(o: MkOpts = {}): TelemetryReport {
@@ -90,7 +92,7 @@ function mkReport(o: MkOpts = {}): TelemetryReport {
       source_paths: [],
       generated_at: '',
       flow_stage_map_version: FLOW_STAGE_MAP_VERSION,
-      flow_stage_mechanism: { flow: 0, digit: 0, unlabeled: 0 },
+      flow_stage_mechanism: o.mechanism ?? { flow: 0, digit: 0, unlabeled: 0 },
       token_coverage: { measured: o.measured ?? (single ? 1 : 2), unmeasured: o.unmeasured ?? 0 },
     },
   };
@@ -360,6 +362,110 @@ describe('2.3 discipline panel — sequence joins', () => {
   it('discipline is UNAVAILABLE when no timeline is present', () => {
     const doc = buildInsights([input(mkReport({ timeline: undefined }))]);
     expect(doc.discipline.available).toBe(false);
+  });
+});
+
+// ── D-A active>wall honesty (dogfood 2026-06 defect) ────────────────────────
+
+describe('§5 active-vs-wall — D-A active>wall honesty', () => {
+  it('a session whose active exceeds its calendar span is EXCLUDED from the cohort + carries a data-quality caveat (mutation: exclusion-dropped, impossible row folded into cohort → RED)', () => {
+    // Valid: 10s active over a 100s calendar span (ratio 0.1).
+    const good = mkReport({
+      sessionId: 'good',
+      branches: ['feat/good'],
+      active_s: 10,
+      from: '2026-06-24T00:00:00.000Z',
+      to: '2026-06-24T00:01:40.000Z', // 100s wall
+    });
+    // The real dogfood defect: 222s active over a ~14s span (ratio ~15.9) — impossible.
+    const bad = mkReport({
+      sessionId: 'bad',
+      branches: ['feat/bad'],
+      active_s: 222,
+      from: '2026-06-24T21:45:16.387Z',
+      to: '2026-06-24T21:45:30.322Z', // ~13.9s wall
+    });
+
+    const doc = buildInsights([input(good), input(bad)]);
+    const s = sectionById(doc, 'active_wall_ratio');
+
+    // The cohort row sums ONLY the valid session — the impossible one is excluded, declared.
+    const cohort = s.rows.find((r) => r.values.scope === 'cohort');
+    expect(cohort?.values).toMatchObject({ active_s: 10, wall_s: 100, excluded: 1 });
+    expect(cohort?.n).toBe(1);
+    expect(cohort?.caveat).toMatch(/exclud/i);
+
+    // The impossible per-session row still renders honestly, flagged as a data-quality artifact.
+    const badRow = s.rows.find((r) => r.values.session === 'bad');
+    expect(badRow?.values.data_quality).toBe('active-exceeds-wall');
+    expect(badRow?.caveat).toMatch(/exceeds (the )?calendar span|timestamp-precision/i);
+
+    // The valid per-session row is untouched (no data-quality flag).
+    const goodRow = s.rows.find((r) => r.values.session === 'good');
+    expect(goodRow?.values.data_quality).toBeUndefined();
+  });
+
+  it('with NO impossible session the cohort excludes nothing (excluded: 0)', () => {
+    const a = mkReport({
+      sessionId: 'a',
+      active_s: 30,
+      from: '2026-06-24T00:00:00.000Z',
+      to: '2026-06-24T00:02:00.000Z', // 120s wall
+    });
+    const doc = buildInsights([input(a)]);
+    const cohort = sectionById(doc, 'active_wall_ratio').rows.find(
+      (r) => r.values.scope === 'cohort',
+    );
+    expect(cohort?.values).toMatchObject({ active_s: 30, wall_s: 120, excluded: 0 });
+    expect(cohort?.n).toBe(1);
+  });
+});
+
+// ── D-B era/mechanism coverage (dogfood 2026-06 defect) ─────────────────────
+
+describe('§1/§2.3 — D-B era/mechanism coverage declaration', () => {
+  it('declares push-signature + stage-label coverage and marks checks-before-push UNMEASURABLE (not a plain 0/0) when bash calls exist but no signature markers (mutation: coverage-declaration-dropped → RED)', () => {
+    // Pre-FX001-era session: bash CALLS present, but the timeline carries NO bash-signature
+    // markers (only an `observe` so the panel is available); stages unlabeled (mechanism all 0).
+    const preEra = mkReport({
+      sessionId: 'pre',
+      branches: ['feat/pre'],
+      bash: [entry('git', 3)],
+      timeline: [mk('harness', 'observe', '2026-06-01T00:00:01Z')],
+      mechanism: { flow: 0, digit: 0, unlabeled: 4 },
+    });
+    const doc = buildInsights([input(preEra)]);
+
+    // Coverage is surfaced in section provenance for BOTH the discipline panel and stage economics.
+    expect(doc.discipline.coverage).toMatchObject({ sessions: 1, push_signatures_unavailable: 1 });
+    const stage = sectionById(doc, 'stage_economics');
+    expect(stage.coverage).toMatchObject({ sessions: 1, stage_labels_unavailable: 1 });
+
+    // checks-before-push distinguishes UNMEASURABLE from a true zero.
+    const cbp = doc.discipline.rows.find((r) => String(r.claim).startsWith('checks-before-push'));
+    expect(cbp?.values).toMatchObject({ pushes: 0 });
+    expect(cbp?.caveat).toMatch(/unmeasurable/i);
+    expect(cbp?.caveat).toMatch(/1\/1/);
+
+    // CONTRAST: a session WITH a real bash-signature marker is measurable — no "unmeasurable" caveat.
+    const post = mkReport({
+      sessionId: 'post',
+      branches: ['feat/post'],
+      bash: [entry('git', 1)],
+      timeline: [
+        mk('checks', 'ok', '2026-07-01T00:00:01Z'),
+        mk('bash', 'git push', '2026-07-01T00:00:02Z'),
+      ],
+      mechanism: { flow: 3, digit: 0, unlabeled: 0 },
+    });
+    const doc2 = buildInsights([input(post)]);
+    expect(doc2.discipline.coverage).toMatchObject({ push_signatures_unavailable: 0 });
+    expect(sectionById(doc2, 'stage_economics').coverage).toMatchObject({
+      stage_labels_unavailable: 0,
+    });
+    const cbp2 = doc2.discipline.rows.find((r) => String(r.claim).startsWith('checks-before-push'));
+    expect(cbp2?.values).toMatchObject({ pushes: 1, with_prior_checks: 1 });
+    expect(cbp2?.caveat).not.toMatch(/unmeasurable/i);
   });
 });
 

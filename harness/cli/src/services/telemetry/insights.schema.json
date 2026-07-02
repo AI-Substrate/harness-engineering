@@ -64,6 +64,18 @@
           }
         },
         "note": { "type": "string" },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "D-B era/mechanism coverage: over the single-session inputs, how many lack a marker class this section's rows depend on — so an all-zero row can read as UNMEASURABLE (era gap) rather than a confident zero. Evidence-based, never date-guessed.",
+          "required": ["sessions", "push_signatures_unavailable", "stage_labels_unavailable", "note"],
+          "properties": {
+            "sessions": { "type": "integer", "minimum": 0 },
+            "push_signatures_unavailable": { "type": "integer", "minimum": 0, "description": "Sessions with bash calls but no git push/commit signature markers (pre-FX001 era)." },
+            "stage_labels_unavailable": { "type": "integer", "minimum": 0, "description": "Sessions with no FlowEvent-/digit-labeled stage windows (e.g. FlowEvent starvation)." },
+            "note": { "type": "string" }
+          }
+        },
         "orderings": {
           "type": "object",
           "additionalProperties": { "type": "array", "items": { "type": "string" } }
