@@ -29,7 +29,7 @@ import type {
   VerbContext,
   VerbResult,
 } from '@ai-substrate/engineering-harness/contract';
-import { writeReport } from './report.js';
+import { renderMarkdownFromReportJson, writeReport } from './report.js';
 import { contentHash, readLedger, type TelemetrySummary } from './ledger.js';
 import { compareModels, renderLedgerList } from './ledger-view.js';
 import type { ResolveContext, SessionEvidence } from './resolvers.js';
@@ -76,6 +76,19 @@ function makeRunId(nowIso: string, session: string): string {
   const stamp = nowIso.replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '').replace('T', '-');
   const suffix = session.replace(/[^a-zA-Z0-9]/g, '').slice(-6) || 'run';
   return `${stamp}-${suffix}`;
+}
+
+/**
+ * F-A: detect the subject worktree's short HEAD via `git rev-parse --short HEAD`
+ * (run against the WORKTREE cwd). Returns the trimmed sha, or `null` on ANY
+ * failure or empty output — an honest "couldn't detect", never a throw and never
+ * a false drift claim. Only called when `--worktree` was explicitly given.
+ */
+async function detectWorktreeHead(ctx: VerbContext, worktree: string): Promise<string | null> {
+  const r = await ctx.exec('git', ['rev-parse', '--short', 'HEAD'], { cwd: worktree });
+  if (!r.ok) return null;
+  const head = r.stdout.trim();
+  return head.length > 0 ? head : null;
 }
 
 /**
@@ -158,6 +171,30 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   const startedAt = ctx.clock.nowIso();
   const evidence = await fetchEvidence(ctx, session, strOpt(ctx, 'worktree'));
 
+  // F-A: the HONEST subject + base_ref. `--subject-*` / `--base-ref` overrides win
+  // over `scenario.json#subject` / `base.ref`; they cascade to the report header,
+  // the RunRecord.subject/base_ref, AND the seed_tuple (buildRunRecord derives the
+  // seed from these same values, so they stay lock-step).
+  const subjectHarness = strOpt(ctx, 'subjectHarness') ?? loaded.scenario.config.subject.harness;
+  const subjectModel = strOpt(ctx, 'subjectModel') ?? loaded.scenario.config.subject.model;
+  const subjectEffort = strOpt(ctx, 'subjectEffort') ?? loaded.scenario.config.subject.effort;
+  const baseRef = strOpt(ctx, 'baseRef') ?? loaded.scenario.config.base.ref;
+
+  // F-A: when a worktree is explicitly given, detect its HEAD and surface a VISIBLE
+  // warning (envelope + report.md) when it disagrees with the effective base_ref —
+  // never a crash, never a silent pass. A failed/empty detection ⇒ no warning.
+  const worktreeOpt = strOpt(ctx, 'worktree');
+  const warnings: string[] = [];
+  if (worktreeOpt) {
+    const head = await detectWorktreeHead(ctx, worktreeOpt);
+    if (head !== null && head !== baseRef) {
+      warnings.push(
+        `worktree HEAD ${head} ≠ base_ref ${baseRef} — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`,
+      );
+    }
+  }
+  const baseRefWarning = warnings.length > 0 ? warnings[0] : null;
+
   const rc: ResolveContext = {
     evidence,
     worktree,
@@ -168,7 +205,7 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   const finishedAt = ctx.clock.nowIso();
   const runId = makeRunId(startedAt, session);
   const provenance = {
-    judge: buildJudgeProvenance(loaded.scenario.config.judge, loaded.scenario.config.subject.model),
+    judge: buildJudgeProvenance(loaded.scenario.config.judge, subjectModel),
   };
 
   // Seed-tuple hashes: the `--compare` match key (scenario_hash + base_ref) + a
@@ -213,14 +250,15 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       scenario: slug,
       run_id: runId,
       subject: {
-        harness: loaded.scenario.config.subject.harness,
-        model: loaded.scenario.config.subject.model,
+        harness: subjectHarness,
+        model: subjectModel,
         pij_session_id: session,
-        ...(loaded.scenario.config.subject.effort !== undefined && {
-          effort: loaded.scenario.config.subject.effort,
+        ...(subjectEffort !== undefined && {
+          effort: subjectEffort,
         }),
       },
-      base_ref: loaded.scenario.config.base.ref,
+      base_ref: baseRef,
+      ...(baseRefWarning !== null && { base_ref_warning: baseRefWarning }),
       started_at: startedAt,
       finished_at: finishedAt,
       scored,
@@ -270,6 +308,7 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       report_dir: written.dir,
       files: written.files,
       ...(written.ledger !== undefined && { ledger: written.ledger }),
+      ...(warnings.length > 0 && { warnings }),
     },
     {
       evidence: [
@@ -281,8 +320,72 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       ],
       next_action:
         scored.judged.length > 0
-          ? `Fill the ${scored.judged.length} judged field(s) in ${written.files.json}, then read the report.`
+          ? `Fill the ${scored.judged.length} judged field(s) in ${written.files.json}, then run \`harness flow-eval render --scenario ${slug} --run ${runId}\` to re-render report.md.`
           : `Read the report at ${written.files.md}.`,
+    },
+  );
+}
+
+/**
+ * `flow-eval render` — F-C: regenerate `report.md` from the CURRENT `report.json`
+ * (including any judged verdicts/rationale/by the orchestrator filled AFTER the
+ * original `score`). Idempotent; NO telemetry fetch; NO ledger write (the ledger
+ * is append-only — a filled judged verdict never retro-mutates a ledger line).
+ */
+function runRender(ctx: VerbContext): VerbResult {
+  const slug = strOpt(ctx, 'scenario');
+  const runId = strOpt(ctx, 'run');
+  if (!slug || !runId) {
+    return ctx.error('E_ARGS', 'both --scenario <slug> and --run <run-id> are required', {
+      next_action: 'Re-run: harness flow-eval render --scenario <slug> --run <run-id>',
+    });
+  }
+  if (!ctx.fsWrite) {
+    return ctx.error('E_NO_FSWRITE', 'this core build does not provide ctx.fsWrite', {
+      next_action: 'Upgrade the engineering-harness core to render reports.',
+    });
+  }
+  const dir = join(ctx.cwd, '.harness', 'live-testing', slug, runId);
+  const jsonPath = join(dir, 'report.json');
+  const mdPath = join(dir, 'report.md');
+  const raw = ctx.fs.readText(jsonPath);
+  if (raw === null) {
+    return ctx.error('E_NOT_FOUND', `no report.json at ${jsonPath}`, {
+      next_action: `Run \`harness flow-eval score --scenario ${slug} --session <pij-id>\` first, or check the --run id.`,
+    });
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return ctx.error('E_REPORT', `report.json at ${jsonPath} is not valid JSON`, {
+      next_action: 'Repair or regenerate the report.json (re-run `score`).',
+    });
+  }
+  const rendered = renderMarkdownFromReportJson(parsed);
+  if (!rendered.ok) {
+    return ctx.error('E_REPORT', rendered.error, {
+      next_action: 'The report.json is missing fields the renderer needs; re-run `score`.',
+    });
+  }
+  try {
+    ctx.fsWrite.writeText(mdPath, rendered.md);
+  } catch (err) {
+    return ctx.error('E_WRITE', `failed to write report.md: ${err instanceof Error ? err.message : String(err)}`, {
+      next_action: 'Check write permissions on the run directory.',
+    });
+  }
+  return ctx.ok(
+    {
+      scenario: slug,
+      run_id: runId,
+      files: { json: jsonPath, md: mdPath },
+      judged_total: rendered.judged_total,
+      judged_filled: rendered.judged_filled,
+    },
+    {
+      evidence: [{ label: 'flow-eval report (md)', path: mdPath }],
+      next_action: `Re-rendered report.md from report.json (${rendered.judged_filled}/${rendered.judged_total} judged filled). The ledger is append-only — judged verdicts do NOT retro-mutate ledger lines.`,
     },
   );
 }
@@ -456,25 +559,48 @@ function runScaffold(ctx: VerbContext): VerbResult {
 const flowEval: HarnessVerb = {
   name: 'flow-eval',
   summary:
-    'Flow-conformance evaluator: `score` a finished pij session, read the run `ledger` (+ `--compare`), or `scaffold` a scenario. Never drives pij.',
+    'Flow-conformance evaluator: `score` a finished pij session, `render` its report from filled judged fields, read the run `ledger` (+ `--compare`), or `scaffold` a scenario. Never drives pij.',
   description:
     'Actions:\n' +
     '  score    --scenario <slug> --session <pij-id> [--worktree <path>]   collect evidence + resolve + write report + append the ledger\n' +
+    '  render   --scenario <slug> --run <run-id>                          regenerate report.md from the CURRENT report.json (filled judged fields)\n' +
     '  ledger   --scenario <slug> [--compare <model> --compare <model>]    read runs over time (per-lane flips) or a model-vs-model board\n' +
     '  scaffold --slug <slug>                                             write a ready-to-edit scenario skeleton\n\n' +
     'score loads live-testing/scenarios/<slug>/, fetches the session telemetry ONCE via `harness telemetry get --json`, ' +
     'resolves every assertion to pass/fail/unknown, scores it (unknowns excluded; a required capability/safety fail caps the verdict to FAIL), ' +
     'writes report.{json,md} to .harness/live-testing/<slug>/<run-id>/, and appends one RunRecord to .harness/live-testing/<slug>/ledger.jsonl. ' +
+    '`--subject-*` / `--base-ref` override the recorded subject/base_ref (report + ledger + seed_tuple stay lock-step); a worktree HEAD that disagrees with base_ref surfaces a visible warning. ' +
+    'render regenerates report.md from the on-disk report.json after the orchestrator fills judged verdicts — idempotent, no telemetry, no ledger write (the ledger is append-only). ' +
     'ledger reads that ledger back: the default lists runs + per-lane verdict history with flips marked; --compare groups by model and renders ' +
     'pass^k + Wilson CIs per axis + McNemar per binary lane + cost columns (refusing a comparison across a mismatched scenario_hash/base_ref). ' +
     'The orchestrator drives pij/the-flow in the shell; this verb only READS the resulting evidence + worktree.',
-  args: [{ name: '[action]', description: 'score | ledger | scaffold' }],
+  args: [{ name: '[action]', description: 'score | render | ledger | scaffold' }],
   options: [
     { flags: '--scenario <slug>', description: '(score|ledger) Scenario slug under live-testing/scenarios/' },
     { flags: '--session <pij-id>', description: '(score) The pij session id whose telemetry to score' },
     {
       flags: '--worktree <path>',
       description: "(score) The subject's worktree root (fs lane + telemetry locator); defaults to cwd",
+    },
+    {
+      flags: '--subject-harness <harness>',
+      description: '(score) Override the subject harness recorded in the report/ledger/seed_tuple (else scenario.json#subject.harness)',
+    },
+    {
+      flags: '--subject-model <model>',
+      description: '(score) Override the subject model recorded in the report/ledger/seed_tuple (else scenario.json#subject.model)',
+    },
+    {
+      flags: '--subject-effort <effort>',
+      description: '(score) Override the subject effort recorded in the report/ledger/seed_tuple (else scenario.json#subject.effort)',
+    },
+    {
+      flags: '--base-ref <ref>',
+      description: '(score) Override the base ref recorded in the report/ledger/seed_tuple, and compared against the worktree HEAD (else scenario.json#base.ref)',
+    },
+    {
+      flags: '--run <run-id>',
+      description: '(render) The run-id under .harness/live-testing/<slug>/ whose report.md to regenerate from report.json',
     },
     {
       flags: '--compare <models...>',
@@ -485,11 +611,12 @@ const flowEval: HarnessVerb = {
   run(ctx: VerbContext): VerbResult | Promise<VerbResult> {
     const action = (ctx.args.action ?? '').trim();
     if (action === 'score') return runScore(ctx);
+    if (action === 'render') return runRender(ctx);
     if (action === 'ledger') return runLedger(ctx);
     if (action === 'scaffold') return runScaffold(ctx);
-    return ctx.error('E_ACTION', `unknown action '${action || '(none)'}' — expected 'score', 'ledger', or 'scaffold'`, {
+    return ctx.error('E_ACTION', `unknown action '${action || '(none)'}' — expected 'score', 'render', 'ledger', or 'scaffold'`, {
       next_action:
-        'Run `harness flow-eval score --scenario <slug> --session <pij-id>`, `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]`, or `harness flow-eval scaffold --slug <slug>`.',
+        'Run `harness flow-eval score --scenario <slug> --session <pij-id>`, `harness flow-eval render --scenario <slug> --run <run-id>`, `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]`, or `harness flow-eval scaffold --slug <slug>`.',
     });
   },
 };

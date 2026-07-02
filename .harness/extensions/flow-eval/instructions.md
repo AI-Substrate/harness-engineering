@@ -4,13 +4,36 @@
 
 `harness flow-eval` is a **generic, config-driven flow-conformance evaluator**: it
 grades a *finished* pij session against a scenario's assertions and writes a report.
-It is **one command with two actions** (the contract registers one top-level command
+It is **one command with several actions** (the contract registers one top-level command
 per verb, so the action is a positional the verb dispatches on):
 
 | Action | Invocation | What it does |
 |---|---|---|
-| `score` | `harness flow-eval score --scenario <slug> --session <pij-id> [--worktree <path>]` | **the only action verb** — load → fetch telemetry ONCE → resolve every assertion → score → write the report |
+| `score` | `harness flow-eval score --scenario <slug> --session <pij-id> [--worktree <path>] [--subject-harness <h>] [--subject-model <m>] [--subject-effort <e>] [--base-ref <ref>]` | **the primary action verb** — load → fetch telemetry ONCE → resolve every assertion → score → write the report + append the ledger |
+| `render` | `harness flow-eval render --scenario <slug> --run <run-id>` | regenerate `report.md` from the CURRENT `report.json` (surfaces judged verdicts the orchestrator filled after `score`) — idempotent, no telemetry, no ledger write |
+| `ledger` | `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]` | read the run ledger back (runs over time + per-lane flips, or a model-vs-model board) |
 | `scaffold` | `harness flow-eval scaffold --slug <slug>` | write a ready-to-edit scenario skeleton (refuses to clobber an existing bundle) |
+
+### Recording an honest subject + base_ref (`--subject-*` / `--base-ref`)
+
+`scenario.json#subject` / `base.ref` are only **defaults**. When the run's real subject or
+base differs (e.g. a `codex/gpt-5.5` subject on a worktree cut from a specific sha, not the
+scenario's declared `opus`/`v0.6.0`), pass the overrides so the recorded evidence is honest:
+
+- `--subject-harness <h> --subject-model <m> --subject-effort <e>` override the recorded subject;
+- `--base-ref <ref>` overrides the recorded base ref.
+
+Overrides win over `scenario.json` for **all three** of the report header, the
+`RunRecord.subject`/`base_ref`, **and** the `seed_tuple` — they stay **lock-step** (the
+`seed_tuple` is derived from the same effective values, so the `--compare` match key never
+drifts from the header). `RunRecord` **fields are unchanged**; only their **values** become
+honest, so the schema round-trip + `validateRunRecord` still hold.
+
+If `--worktree <path>` is given, `score` also detects the worktree's HEAD
+(`git rev-parse --short HEAD`) and, when it disagrees with the effective `base_ref`, emits a
+**visible warning** in both the envelope (`data.warnings`) and `report.md` — never a crash,
+never a silent pass. A HEAD it cannot detect (missing/empty) yields no warning (honest, not a
+false alarm).
 
 ### What `score` does, step by step
 
@@ -49,7 +72,10 @@ per verb, so the action is a positional the verb dispatches on):
    - `score = Σ(weight pass) / Σ(weight pass+fail)` — back-compat single number over all lanes;
      `unknown` is **excluded from the denominator**.
    - `axis_scores: {process, capability}` — the same pass-rate computed **per axis**
-     (unknown-excluded per axis).
+     (unknown-excluded per axis). An axis with **no scorable (pass|fail) lane** is
+     **unmeasured** — the ledger records it as `null` and `report.md` renders it as
+     `unmeasured`, **never `0.00`** (a `0.00` is legal only for a measured axis that
+     genuinely scored zero).
    - The FAIL **cap consults ONLY capability + safety**: a `required` fail on those axes caps
      the verdict to FAIL (and increments `required_failed`); a `required` **process** fail
      informs the process score but **never caps**.
@@ -65,8 +91,9 @@ per verb, so the action is a positional the verb dispatches on):
 | no required fail, no fail, no unknown | `PASS` | `ok` / 0 |
 | no required fail, but some `fail` and/or `unknown` | `PASS_WITH_NOTES` | `ok` / 0 |
 | any **required capability/safety** assertion resolves `fail` (`required_failed > 0`) | `FAIL` | `ok` / 0 |
-| missing `--scenario` / `--session` | — | `error` (`E_ARGS`) / 1 |
+| missing `--scenario` / `--session` (score) or `--scenario` / `--run` (render) | — | `error` (`E_ARGS`) / 1 |
 | malformed / missing scenario bundle | — | `error` (`E_SCENARIO`) / 1 |
+| `render` with no `report.json` at the run dir | — | `error` (`E_NOT_FOUND`) / 1 |
 | core provides no `ctx.fsWrite` | — | `error` (`E_REPORT` / `E_NO_FSWRITE`) / 1 |
 | unknown action | — | `error` (`E_ACTION`) / 1 |
 
@@ -88,6 +115,14 @@ evaluation that found non-conformance, not a tool error.
   worktree artifacts) — never subject prose/transcript/self-report — and fill
   `verdict`/`rationale`/`by` in `report.json`. The deterministic core never guesses
   these — that's the human/LLM-in-the-loop boundary.
+- **After filling judged fields, re-render with `render`.** `score` renders
+  `report.md` at score time, when the judged verdicts are still `_pending_`. Once you
+  fill them in `report.json`, run `harness flow-eval render --scenario <slug> --run
+  <run-id>` to regenerate `report.md` from the CURRENT `report.json` (surfacing the
+  filled verdicts + rationale + by). `render` is idempotent, fetches no telemetry, and
+  writes only `report.md`. **The ledger is append-only** — a judged verdict filled
+  after `score` does **not** retro-mutate the already-appended ledger line (judged
+  fields never cap the deterministic verdict, so the ledger's stance is unchanged).
 - **Judge config is provenance, not a cap.** Reports and ledger records include
   judge model+version, different-family assertion/check, artifact-only, temp-0,
   version-pinned, anti-verbosity, and prompt-scaffold metadata. If the judge and

@@ -64,6 +64,8 @@ export interface ReportInput {
   run_id: string;
   subject: ReportSubject;
   base_ref: string;
+  /** F-A: a visible worktree-drift warning (HEAD ≠ base_ref); rendered + persisted for re-render. */
+  base_ref_warning?: string | null;
   started_at: string;
   finished_at: string;
   scored: ScoredReport;
@@ -92,6 +94,7 @@ export function buildReportJson(input: ReportInput): Record<string, unknown> {
       ...(input.subject.effort !== undefined && { effort: input.subject.effort }),
     },
     base_ref: input.base_ref,
+    ...(input.base_ref_warning ? { base_ref_warning: input.base_ref_warning } : {}),
     started_at: input.started_at,
     finished_at: input.finished_at,
     deterministic: {
@@ -148,13 +151,24 @@ export function buildReportMd(input: ReportInput): string {
   lines.push('');
   lines.push(`- **Verdict**: ${scored.verdict}`);
   lines.push(`- **Score**: ${d.score.toFixed(2)} (${d.passed} pass / ${d.failed} fail / ${d.unknown} unknown of ${d.total})`);
-  lines.push(`- **Axis scores**: process ${d.axis_scores.process.toFixed(2)} · capability ${d.axis_scores.capability.toFixed(2)}`);
+  // F-B: an axis with NO scorable (pass|fail) lane is UNMEASURED — render `unmeasured`,
+  // never `0.00` (a `0.00` is legal ONLY for a measured axis that scored zero). The
+  // measured-ness test mirrors the ledger's `scorable()` (buildRunRecord), keeping the
+  // report header honest with the RunRecord's null-axis semantics.
+  const axisMeasured = (axis: 'process' | 'capability'): boolean =>
+    d.results.some((r) => r.axis === axis && r.status !== 'unknown');
+  const axisCell = (axis: 'process' | 'capability'): string =>
+    axisMeasured(axis) ? d.axis_scores[axis].toFixed(2) : 'unmeasured';
+  lines.push(`- **Axis scores**: process ${axisCell('process')} · capability ${axisCell('capability')}`);
   lines.push(`- **Required (capability/safety) failed**: ${d.required_failed}`);
   if (scored.alarms.length > 0) {
     lines.push(`- **Alarms**: ${scored.alarms.map(mdCell).join(', ')}`);
   }
   lines.push(`- **Subject**: ${input.subject.harness} · ${input.subject.model}${input.subject.effort ? ` · ${input.subject.effort}` : ''} · session \`${input.subject.pij_session_id}\``);
   lines.push(`- **Base ref**: ${input.base_ref}`);
+  if (input.base_ref_warning) {
+    lines.push(`- **⚠ base_ref warning**: ${mdCell(input.base_ref_warning)}`);
+  }
   lines.push(`- **Run**: ${input.run_id} (${input.started_at} → ${input.finished_at})`);
   if (input.provenance?.judge) {
     const j = input.provenance.judge;
@@ -181,6 +195,7 @@ export function buildReportMd(input: ReportInput): string {
       lines.push(`- **${mdCell(j.field)}** (${mdCell(j.id)}): ${mdCell(j.describe ?? j.prompt)}`);
       if (j.criterion !== undefined) lines.push(`  - criterion: ${mdCell(j.criterion)}`);
       lines.push(`  - verdict: ${j.verdict ?? '_pending_'} · by: ${j.by ?? '_pending_'}`);
+      if (j.rationale) lines.push(`  - rationale: ${mdCell(j.rationale)}`);
     }
   }
   if (input.provenance?.judge) {
@@ -197,6 +212,65 @@ export function buildReportMd(input: ReportInput): string {
   }
   lines.push('');
   return lines.join('\n');
+}
+
+/** F-C: the re-render result — the regenerated markdown + judged fill counts. */
+export type RenderFromJsonResult =
+  | { ok: true; md: string; judged_total: number; judged_filled: number }
+  | { ok: false; error: string };
+
+/**
+ * F-C: regenerate `report.md` from an already-written `report.json` object —
+ * including any judged verdicts/rationale/by the orchestrator filled in AFTER the
+ * original `score` render. Pure + idempotent: re-rendering the same JSON yields
+ * byte-identical markdown. Reconstructs the {@link ReportInput} shape the renderer
+ * needs from the persisted JSON and delegates to {@link buildReportMd} — the null
+ * axis + drift-warning honesty (F-A/F-B) come along for free. Never throws.
+ */
+export function renderMarkdownFromReportJson(parsed: unknown): RenderFromJsonResult {
+  if (typeof parsed !== 'object' || parsed === null) {
+    return { ok: false, error: 'report.json is not an object' };
+  }
+  const j = parsed as Record<string, unknown>;
+  const det = j.deterministic as Record<string, unknown> | undefined;
+  if (typeof det !== 'object' || det === null || !Array.isArray(det.results)) {
+    return { ok: false, error: 'report.json is missing a deterministic.results block' };
+  }
+  const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+  const axis = (det.axis_scores as Record<string, unknown> | undefined) ?? {};
+  const judged = (Array.isArray(j.judged) ? j.judged : []) as JudgedField[];
+  const provenance = j.provenance as { judge?: unknown } | undefined;
+
+  const scored: ScoredReport = {
+    deterministic: {
+      score: num(det.score),
+      axis_scores: { process: num(axis.process), capability: num(axis.capability) },
+      passed: num(det.passed),
+      failed: num(det.failed),
+      unknown: num(det.unknown),
+      total: num(det.total, det.results.length),
+      required_failed: num(det.required_failed),
+      results: det.results as ResultRow[],
+    },
+    judged,
+    alarms: (Array.isArray(j.alarms) ? j.alarms : []) as string[],
+    verdict: j.verdict as ScoredReport['verdict'],
+  };
+
+  const input: ReportInput = {
+    scenario: typeof j.scenario === 'string' ? j.scenario : '',
+    run_id: typeof j.run_id === 'string' ? j.run_id : '',
+    subject: j.subject as ReportSubject,
+    base_ref: typeof j.base_ref === 'string' ? j.base_ref : '',
+    base_ref_warning: typeof j.base_ref_warning === 'string' ? j.base_ref_warning : null,
+    started_at: typeof j.started_at === 'string' ? j.started_at : '',
+    finished_at: typeof j.finished_at === 'string' ? j.finished_at : '',
+    scored,
+    provenance: { judge: (provenance?.judge ?? null) as ReportProvenance['judge'] },
+  };
+
+  const judged_filled = judged.filter((x) => x != null && x.verdict !== null && x.verdict !== undefined).length;
+  return { ok: true, md: buildReportMd(input), judged_total: judged.length, judged_filled };
 }
 
 /**

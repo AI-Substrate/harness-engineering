@@ -9,6 +9,7 @@ import { FakeFs } from '../../../harness/cli/src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../../harness/cli/src/adapters/git/fake-git.js';
 import { buildVerbContext } from '../../../harness/cli/src/services/extensions/verb-context.js';
 import flowEval from './extension.js';
+import { validateRunRecord } from './ledger.js';
 import { loadScenario } from './scenario.js';
 
 /*
@@ -311,6 +312,186 @@ describe('flow-eval score — F4 cost/export wiring (session save → telemetry_
     const saveCalls = exec.calls.filter((c) => c.command === 'harness' && c.args[1] === 'session');
     expect(saveCalls).toHaveLength(0);
     expect(lastLedgerRecord(fs).telemetry_summary).toBeNull();
+  });
+});
+
+describe('flow-eval score — F-A subject/base-ref fidelity + worktree drift warning (dogfood run-1)', () => {
+  const HEAD_KEY = 'git rev-parse --short HEAD';
+
+  /** The record appended on the LAST line of the scenario ledger (the run we just scored). */
+  function lastLedgerRecord(fs: FakeFs): Record<string, unknown> {
+    const path = fs.writes.find((p) => p.endsWith('ledger.jsonl'));
+    expect(path).toBeDefined();
+    const raw = fs.readText(path as string) as string;
+    return JSON.parse(raw.trim().split('\n').pop() as string);
+  }
+
+  it('--subject-* / --base-ref overrides win over scenario.json for subject, base_ref, seed_tuple AND the report header', async () => {
+    const exec = new FakeExec({ [TELEMETRY_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) } });
+    const fs = repoFs();
+    const ctx = buildCtx(
+      'score',
+      { scenario: 'md-to-pdf', session: SESSION, worktree: WT, subjectHarness: 'pi', subjectModel: 'gpt-5.5', subjectEffort: 'medium', baseRef: 'e27e4c69' },
+      fs,
+      exec,
+    );
+
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok');
+
+    // report.json carries the HONEST subject + base_ref (the override, NOT the fixture defaults).
+    const reportPath = fs.writes.find((p) => p.endsWith('report.json')) as string;
+    const json = JSON.parse(fs.readText(reportPath) as string);
+    expect(json.subject).toMatchObject({ harness: 'pi', model: 'gpt-5.5', effort: 'medium', pij_session_id: SESSION });
+    expect(json.base_ref).toBe('e27e4c69');
+
+    // report.md header reflects the override too.
+    const md = fs.readText(fs.writes.find((p) => p.endsWith('report.md')) as string) as string;
+    expect(md).toContain('pi · gpt-5.5 · medium');
+    expect(md).toContain('**Base ref**: e27e4c69');
+
+    // NON-VACUITY (override-ignored → RED): ledger subject/base_ref AND seed_tuple stay LOCK-STEP.
+    const rec = lastLedgerRecord(fs);
+    expect(rec.subject).toMatchObject({ model: 'gpt-5.5', harness: 'pi', effort: 'medium' });
+    expect(rec.base_ref).toBe('e27e4c69');
+    expect(rec.seed_tuple).toMatchObject({ model: 'gpt-5.5', harness: 'pi', effort: 'medium', base_ref: 'e27e4c69' });
+    // the fixture defaults (opus / claude / v0.6.0) must NOT survive anywhere in the record.
+    const recStr = JSON.stringify(rec);
+    expect(recStr).not.toContain('opus');
+    expect(recStr).not.toContain('v0.6.0');
+    expect(recStr).not.toContain('"harness":"claude"');
+
+    // schema round-trip still holds — RunRecord FIELDS unchanged, only their VALUES honest.
+    expect(validateRunRecord(rec)).toEqual([]);
+  });
+
+  it('warns (envelope + report.md) when the worktree HEAD ≠ the effective base_ref, never crashing', async () => {
+    const exec = new FakeExec({
+      [TELEMETRY_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) },
+      [HEAD_KEY]: { code: 0, stdout: 'e27e4c6\n' },
+    });
+    const fs = repoFs();
+    // base_ref stays the fixture default v0.6.0; the worktree's real HEAD is a different sha.
+    const ctx = buildCtx('score', { scenario: 'md-to-pdf', session: SESSION, worktree: WT }, fs, exec);
+
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok'); // never a crash, never a silent pass
+
+    const data = res.data as Record<string, unknown>;
+    const warnings = (data.warnings as string[] | undefined) ?? [];
+    expect(warnings.join(' ')).toContain('e27e4c6');
+    expect(warnings.join(' ')).toContain('v0.6.0');
+
+    // the drift is visible in report.md too.
+    const md = fs.readText(fs.writes.find((p) => p.endsWith('report.md')) as string) as string;
+    expect(md).toMatch(/worktree HEAD/i);
+    expect(md).toContain('e27e4c6');
+
+    // HEAD was detected against the WORKTREE cwd (not the caller's cwd).
+    const headCall = exec.calls.find((c) => c.command === 'git' && c.args.join(' ') === 'rev-parse --short HEAD');
+    expect(headCall?.cwd).toBe(WT);
+  });
+
+  it('does NOT warn when the worktree HEAD matches the effective (overridden) base_ref', async () => {
+    const exec = new FakeExec({
+      [TELEMETRY_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) },
+      [HEAD_KEY]: { code: 0, stdout: 'e27e4c6\n' },
+    });
+    const fs = repoFs();
+    const ctx = buildCtx('score', { scenario: 'md-to-pdf', session: SESSION, worktree: WT, baseRef: 'e27e4c6' }, fs, exec);
+
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok');
+    expect((res.data as Record<string, unknown>).warnings ?? []).toHaveLength(0);
+    const md = fs.readText(fs.writes.find((p) => p.endsWith('report.md')) as string) as string;
+    expect(md).not.toMatch(/base_ref warning/i);
+  });
+
+  it('does NOT attempt HEAD detection when no --worktree is given (no false drift warning)', async () => {
+    const exec = new FakeExec({ harness: { code: 0, stdout: '' } });
+    const fs = repoFs();
+    // No worktree → fs lane resolves against cwd; HEAD detection is skipped entirely.
+    const ctx = buildCtx('score', { scenario: 'md-to-pdf', session: SESSION }, fs, exec);
+    await flowEval.run(ctx);
+    expect(exec.calls.some((c) => c.command === 'git')).toBe(false);
+  });
+});
+
+describe('flow-eval render — regenerates report.md from the CURRENT report.json (F-C)', () => {
+  async function scoreOnce(fs: FakeFs): Promise<{ runId: string; jsonPath: string; mdPath: string }> {
+    const exec = new FakeExec({ [TELEMETRY_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) } });
+    const res = await flowEval.run(buildCtx('score', { scenario: 'md-to-pdf', session: SESSION, worktree: WT }, fs, exec));
+    expect(res.status).toBe('ok');
+    const runId = (res.data as Record<string, unknown>).run_id as string;
+    const jsonPath = fs.writes.find((p) => p.endsWith('report.json')) as string;
+    return { runId, jsonPath, mdPath: jsonPath.replace('report.json', 'report.md') };
+  }
+
+  it('re-renders FILLED judged verdicts/rationale/by that the first score left `_pending_`', async () => {
+    const fs = repoFs();
+    const { runId, jsonPath, mdPath } = await scoreOnce(fs);
+
+    // pre-condition: the score-time report.md shows the judged fields as _pending_.
+    expect(fs.readText(mdPath) as string).toContain('_pending_');
+
+    // the orchestrator fills the judged verdicts in report.json (post-render).
+    const json = JSON.parse(fs.readText(jsonPath) as string);
+    for (const j of json.judged) {
+      j.verdict = 'pass';
+      j.rationale = `evidence for ${j.field}`;
+      j.by = 'gpt-5.5@judge';
+    }
+    json.judged[1].verdict = 'fail';
+    fs.writeText(jsonPath, `${JSON.stringify(json, null, 2)}\n`);
+
+    const res = await flowEval.run(buildCtx('render', { scenario: 'md-to-pdf', run: runId }, fs, new FakeExec()));
+    expect(res.status).toBe('ok');
+    expect((res.data as Record<string, unknown>).judged_filled).toBe(3);
+
+    const md = fs.readText(mdPath) as string;
+    // NON-VACUITY (render-skips-judged → RED): the fills now show; nothing left pending.
+    expect(md).not.toContain('_pending_');
+    expect(md).toContain('by: gpt-5.5@judge');
+    expect(md).toContain('rationale: evidence for plan-coherence');
+    expect(md).toMatch(/verdict: fail/);
+    expect(md).toMatch(/verdict: pass/);
+  });
+
+  it('writes ONLY report.md and performs NO telemetry/ledger/pij/git side effects; is idempotent', async () => {
+    const fs = repoFs();
+    const { runId, mdPath } = await scoreOnce(fs);
+
+    const renderExec = new FakeExec();
+    const before = fs.writes.length;
+    const r1 = await flowEval.run(buildCtx('render', { scenario: 'md-to-pdf', run: runId }, fs, renderExec));
+    expect(r1.status).toBe('ok');
+    // render's ONLY write is report.md — never the ledger, never report.json.
+    expect(fs.writes.slice(before)).toEqual([mdPath]);
+    // render never fetches telemetry, never drives pij, never shells git.
+    expect(renderExec.calls).toHaveLength(0);
+
+    const md1 = fs.readText(mdPath) as string;
+    const r2 = await flowEval.run(buildCtx('render', { scenario: 'md-to-pdf', run: runId }, fs, renderExec));
+    expect(r2.status).toBe('ok');
+    expect(fs.readText(mdPath) as string).toBe(md1); // byte-identical re-render (idempotent)
+  });
+
+  it('errors E_ARGS without --run and E_NOT_FOUND when the report.json is absent', async () => {
+    const noArgs = await flowEval.run(buildCtx('render', { scenario: 'md-to-pdf' }, new FakeFs(), new FakeExec()));
+    expect(noArgs.status).toBe('error');
+    expect(noArgs.error?.code).toBe('E_ARGS');
+
+    const missing = await flowEval.run(buildCtx('render', { scenario: 'md-to-pdf', run: 'no-such-run' }, new FakeFs(), new FakeExec()));
+    expect(missing.status).toBe('error');
+    expect(missing.error?.code).toBe('E_NOT_FOUND');
+  });
+
+  it("score's next_action points at `render` when judged fields are pending", async () => {
+    const fs = repoFs();
+    const exec = new FakeExec({ [TELEMETRY_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) } });
+    const res = await flowEval.run(buildCtx('score', { scenario: 'md-to-pdf', session: SESSION, worktree: WT }, fs, exec));
+    expect(res.status).toBe('ok');
+    expect(String(res.next_action)).toContain('flow-eval render --scenario md-to-pdf --run');
   });
 });
 

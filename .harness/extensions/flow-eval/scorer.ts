@@ -54,8 +54,10 @@ export interface JudgedField {
   describe?: string;
   /** Filled by the orchestrator LLM after the run — null until then. */
   verdict: Verdict | null;
-  rationale: null;
-  by: null;
+  /** Filled by the orchestrator after the run (F-C re-render surfaces it); null until then. */
+  rationale: string | null;
+  /** Who filled the verdict (judge model id); null until then. */
+  by: string | null;
 }
 
 /** Per-axis pass-rates (unknown-excluded), workshop 003 §D1. Safety is cap-only, not scored. */

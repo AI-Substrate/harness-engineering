@@ -153,6 +153,28 @@ describe('writeReport — writes report.{json,md} via ctx.fsWrite (AC-07)', () =
     expect(md).toContain('**Judge warnings**: judge-same-family-as-subject');
   });
 
+  it('F-B: a null/unmeasured axis renders `unmeasured`, NEVER `0.00` (dogfood run-1)', () => {
+    // Process axis has ONLY an unknown lane → no scorable (pass|fail) lane → unmeasured.
+    // Capability axis has a real `fail` → measured, and legitimately scores 0.00.
+    const unmeasuredProcess: ScoredReport = {
+      ...scored,
+      deterministic: {
+        ...scored.deterministic,
+        axis_scores: { process: 0, capability: 0 },
+        results: [
+          { id: 'P1', type: 'skill-called', source: 'telemetry', axis: 'process', status: 'unknown', required: false, weight: 1 },
+          { id: 'C1', type: 'file-created', source: 'fs', axis: 'capability', status: 'fail', required: false, weight: 1 },
+        ],
+      },
+    };
+    const md = buildReportMd({ ...input, scored: unmeasuredProcess });
+    // NON-VACUITY (null-axis-as-"0.00" → RED): the all-unknown process axis must not read 0.00.
+    expect(md).toContain('process unmeasured');
+    expect(md).not.toContain('process 0.00');
+    // A genuinely measured zero (capability: one fail, no pass) STILL renders 0.00.
+    expect(md).toContain('capability 0.00');
+  });
+
   it('renders an Alarms line + Axis cells when the scored report carries a mimicry flag', () => {
     const md = buildReportMd({ ...input, scored: { ...scored, alarms: ['mimicry'] } });
     expect(md).toContain('**Alarms**: mimicry');

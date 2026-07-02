@@ -28,22 +28,28 @@ systems that do the work, and links the authoritative docs instead of restating 
   - `score --scenario <slug> --session <pij-id> [--worktree <path>]` — grades a
     **finished** session and writes `report.{json,md}`. It never drives pij.
 
-## The loop (≈5 beats)
+## The loop (≈6 beats)
 
 1. **Pick or scaffold a scenario** under `live-testing/scenarios/<slug>/`
    (`harness flow-eval scaffold --slug <slug>`; the committed example is `md-to-pdf`).
 2. **Spawn a BLIND subject peer** — via `/flow-pair` (preferred) or `pij spawn` —
    and hand it only the scenario task + report contract (never the assertions).
 3. **Let it run** the task to completion in its own worktree; capture its `pij` id.
-4. **Score it**: `harness flow-eval score --scenario <slug> --session <pij-id> --worktree <path>`.
+4. **Score it**: `harness flow-eval score --scenario <slug> --session <pij-id> --worktree <path>`
+   (add `--subject-harness/-model/-effort` + `--base-ref <ref>` when the real subject/base
+   differs from `scenario.json`'s defaults, so the recorded evidence stays honest).
 5. **Read the report** at `.harness/live-testing/<slug>/<run-id>/report.{json,md}`;
    fill any `judged` fields, note the two-axis scores + any `mimicry` alarm.
+6. **Re-render after filling judged fields**:
+   `harness flow-eval render --scenario <slug> --run <run-id>` regenerates `report.md`
+   from the filled `report.json` (idempotent; no telemetry; the ledger is append-only).
 
 ## One worked invocation (md→PDF)
 
 ```
 harness flow-eval score --scenario md-to-pdf --session pij-abc123 --worktree /path/to/subject/worktree
 # → .harness/live-testing/md-to-pdf/<run-id>/report.{json,md}
+harness flow-eval render --scenario md-to-pdf --run <run-id>   # re-render report.md after filling judged fields
 ```
 
 ## Running the `harness` bin
