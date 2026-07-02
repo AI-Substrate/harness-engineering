@@ -243,6 +243,77 @@ function resolvePlanId(env: EnvPort, cwd: string): string | null {
 }
 
 /**
+ * The distinct `docs/plans/<id>/` prefixes touched by this window's file paths
+ * (T1.2-fix / AC-12). The root cause of live-empty `plans_touched`: env/cwd
+ * derivation (`resolvePlanId`) ~never fires in a real run — the agent runs from
+ * the repo root with no `HARNESS_PLAN_ID`, yet edits `docs/plans/<id>/…` all
+ * session. Those edits ARE captured (`files.written`/`files.edited`), so the plan
+ * identity is derivable from them with NO new I/O — a pure prefix scan. Returns
+ * ids in first-seen order (deduped), P12-safe (path prefixes only, already
+ * captured). A path like `docs/plansfoo/x` never false-matches (literal segment).
+ */
+function plansFromTouchedFiles(files: HarnessCapabilities['files']): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const paths = [...(files?.written ?? []), ...(files?.edited ?? [])];
+  for (const p of paths) {
+    const m = /(?:^|\/)docs\/plans\/([^/]+)/.exec(toPosix(p));
+    const id = m?.[1];
+    if (id !== undefined && id.length > 0 && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+/** Dedupe plan ids, preserving first-seen order (the union's stable shape). */
+function dedupePlans(ids: readonly string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+/** True when a `docs/plans/<planId>/the-flow.json` path is among the touched files. */
+function theFlowJsonTouched(files: HarnessCapabilities['files'], planId: string): boolean {
+  const needle = `docs/plans/${planId}/the-flow.json`;
+  const paths = [...(files?.written ?? []), ...(files?.edited ?? [])];
+  return paths.some((p) => toPosix(p).endsWith(needle));
+}
+
+/**
+ * Choose which plan's `the-flow.json` to read for the window's FlowEvent
+ * (T1.2-fix). The env/cwd-derived id still wins (preserves the existing
+ * flight-plan-read contract); otherwise an EVIDENCE-derived fallback keys off the
+ * touched-file union so guided runs (which only ever surface plan identity through
+ * their edits) still emit a stage:
+ *  - exactly ONE plan in the union ⇒ read it;
+ *  - MULTIPLE ⇒ read the one whose OWN `the-flow.json` is among the touched paths,
+ *    but only when that disambiguates to exactly one candidate;
+ *  - still ambiguous (zero or several such) ⇒ `null` ⇒ NO flow event (honest —
+ *    `plans_touched` still keeps the full list; a stage is never fabricated).
+ */
+function selectFlightPlanId(
+  envCwdPlanId: string | null,
+  unionIds: readonly string[],
+  files: HarnessCapabilities['files'],
+): string | null {
+  if (envCwdPlanId !== null) return envCwdPlanId;
+  if (unionIds.length === 1) return unionIds[0];
+  if (unionIds.length > 1) {
+    const withFlow = unionIds.filter((id) => theFlowJsonTouched(files, id));
+    if (withFlow.length === 1) return withFlow[0];
+  }
+  return null;
+}
+
+/**
  * Resolve the linked plan's `the-flow.json` path. `planIdFromCwd` supports running
  * from ANY depth under `docs/plans/<id>/` (e.g. `…/tasks`), so naively joining
  * `cwd + docs/plans/<id>` would double the segment and silently miss the flight
@@ -364,7 +435,7 @@ function buildInput(
   window: SegmentWindow,
   caps: HarnessCapabilities,
   branch: BranchInfo,
-  planId: string | null,
+  plansTouched: string[],
   flightPlan: unknown,
   flowLog: readonly Event[],
 ): SegmentInput {
@@ -385,7 +456,7 @@ function buildInput(
     user_prompts: caps.user_prompts ?? [],
     subagents: caps.subagents ?? [],
     files: caps.files ?? { written: [], edited: [] },
-    plans_touched: planId !== null ? [planId] : [],
+    plans_touched: plansTouched,
     events: {
       compactions: caps.compactions ?? [],
       api_errors: caps.api_errors ?? 0,
@@ -512,20 +583,39 @@ function captureUnsafe(deps: CaptureDeps): void {
     changed: priorBranch !== null && currentBranch !== null && priorBranch !== currentBranch,
   };
 
+  // Extract the window's capabilities FIRST — its `files` are the evidence the
+  // plan-identity union (below) reads (T1.2-fix); nothing about `caps` depends on
+  // the plan link, so this reorder is behaviour-neutral for every non-plan field.
+  const ctx: HarnessContext = { ...source, window };
+  const caps = adapter.extract(ctx);
+
+  // Plan identity (T1.2-fix / AC-12): `plans_touched` is the DEDUPED UNION of the
+  // env/cwd-derived id (kept for the flight-plan read) PLUS every distinct
+  // `docs/plans/<id>/` prefix in this window's touched files — because env/cwd
+  // derivation ~never fires in a real run (repo-root cwd, no HARNESS_PLAN_ID), yet
+  // the agent's edits carry the plan identity. Pure derivation, no new I/O.
+  const envCwdPlanId = resolvePlanId(deps.env, cwd);
+  const touchedPlanIds = plansFromTouchedFiles(caps.files);
+  const plansTouched = dedupePlans([
+    ...(envCwdPlanId !== null ? [envCwdPlanId] : []),
+    ...touchedPlanIds,
+  ]);
+
   // Flow replay: read the linked flight plan ONCE, then window its append-only
   // `events[]` log by an array OFFSET kept per (session, plan) — collision-proof,
-  // unlike a `fired_at` watermark (plan 035).
-  const planId = resolvePlanId(deps.env, cwd);
-  const flightPlan = readFlightPlan(deps.fs, cwd, planId);
+  // unlike a `fired_at` watermark (plan 035). The plan whose `the-flow.json` is
+  // read is the env/cwd id when present, else the evidence-derived choice from the
+  // touched-file union (single ⇒ that; multiple ⇒ the one whose the-flow.json was
+  // itself touched; still ambiguous ⇒ null ⇒ no fabricated FlowEvent).
+  const flightPlanId = selectFlightPlanId(envCwdPlanId, plansTouched, caps.files);
+  const flightPlan = readFlightPlan(deps.fs, cwd, flightPlanId);
   const flowCursorPath =
-    planId !== null ? flowCursorPathFor(cwd, detected.sessionId, planId) : null;
+    flightPlanId !== null ? flowCursorPathFor(cwd, detected.sessionId, flightPlanId) : null;
   const priorFlowOffset = flowCursorPath !== null ? readFlowCursor(deps.fs, flowCursorPath) : 0;
   const flowLog = flowLogEvents(flightPlan, priorFlowOffset);
 
-  const ctx: HarnessContext = { ...source, window };
-  const caps = adapter.extract(ctx);
   const segment: Segment = serializeSegment(
-    buildInput(deps, detected, window, caps, branch, planId, flightPlan, flowLog.events),
+    buildInput(deps, detected, window, caps, branch, plansTouched, flightPlan, flowLog.events),
     cwd,
   );
 

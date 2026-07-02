@@ -100,7 +100,27 @@
         "models": { "type": "array", "items": { "type": "string" } },
         "session_count": { "type": "integer", "minimum": 0, "description": "Authoritative N (scope.session_ids may be capped)." },
         "source_paths": { "type": "array", "items": { "type": "string" } },
-        "generated_at": { "type": "string" }
+        "generated_at": { "type": "string" },
+        "flow_stage_map_version": { "type": "string", "description": "The pinned versioned semantic stage-map (node id → research/plan/implement/review/ship) applied to the flow_stage lens (T1.4/D3)." },
+        "flow_stage_mechanism": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Per-window labeling mechanism counts for the flow_stage lens (T1.4): flow = nav-derived FlowEvent (primary); digit = /the-flow <n> bracket (fallback); unlabeled = /the-flow call with neither.",
+          "properties": {
+            "flow": { "type": "integer", "minimum": 0 },
+            "digit": { "type": "integer", "minimum": 0 },
+            "unlabeled": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "token_coverage": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Sessions with real token data vs a DECLARED token gap (T1.6/AC-04): a v2.0-era thin shard (turns with no usage attrs) is `unmeasured`, never a fabricated zero. measured + unmeasured == session_count.",
+          "properties": {
+            "measured": { "type": "integer", "minimum": 0 },
+            "unmeasured": { "type": "integer", "minimum": 0 }
+          }
+        }
       }
     }
   },
@@ -124,7 +144,8 @@
         "key": { "type": "string" },
         "count": { "type": "integer", "minimum": 0, "description": "EXACT event/segment count." },
         "time_s": { "type": "number", "minimum": 0, "description": "ESTIMATE (active, idle-excluded) — skill/flow_stage only; absent on command rows." },
-        "tokens": { "$ref": "#/$defs/rollupTokens" }
+        "tokens": { "$ref": "#/$defs/rollupTokens" },
+        "semantic_stage": { "type": "string", "enum": ["research", "plan", "implement", "review", "ship"], "description": "flow_stage lens ONLY (T1.4): the versioned semantic-map projection of `key`; omitted when the label has no mapping (a bare digit / unlabeled)." }
       }
     },
     "rollup": {

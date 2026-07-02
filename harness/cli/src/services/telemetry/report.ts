@@ -10,8 +10,14 @@
  *
  * Five dimensions, ONE row shape (`RollupEntry`) so the HTML renders them all with
  * one component:
- *  - `flow_stage`   — `flow` event stages; wall-time from `computeRollup` (the
- *                     authoritative stage windowing, `flow_stage_time_s`).
+ *  - `flow_stage`   — FlowEvent-PRIMARY (T1.4): nav-derived `flow` events bracket
+ *                     the stage windows (`stage` = the `the-flow.json` nav node id),
+ *                     with the `/the-flow` digit bracket as the FALLBACK and
+ *                     `unlabeled` only when neither exists; active time + non-cache
+ *                     tokens per window. A versioned semantic map (node id →
+ *                     research/plan/implement/review/ship) adds `semantic_stage`,
+ *                     and the per-window mechanism (flow/digit/unlabeled) counts +
+ *                     map version ride in `provenance`.
  *  - `skill`        — `skill` event names (count = runs, == `computeRollup.skills[n].runs`).
  *  - `tool`         — `tools` event names (count = Σ burst counts, == `computeRollup.tools[n]`).
  *  - `bash_command` — shell-family `tools` events keyed by the captured command
@@ -74,6 +80,14 @@ export interface RollupEntry {
   time_s?: number;
   /** ESTIMATE — non-cache `{ input, output }` (FX002). */
   tokens: RollupTokens;
+  /**
+   * The `flow_stage` lens ONLY (T1.4/D3): the versioned semantic-map projection of
+   * `key` (a nav node id / digit) onto `research|plan|implement|review|ship`.
+   * OMITTED when the label has no mapping (a bare digit, `unlabeled`) — an honest
+   * absence, never a guessed stage. The map version is in
+   * {@link ReportProvenance.flow_stage_map_version}.
+   */
+  semantic_stage?: string;
 }
 
 export interface Rollup {
@@ -151,6 +165,12 @@ export interface ReportProvenance {
   session_count: number;
   source_paths: string[];
   generated_at: string;
+  /** The pinned semantic stage-map version applied to the `flow_stage` lens (T1.4). */
+  flow_stage_map_version: string;
+  /** Per-window labeling mechanism counts for the `flow_stage` lens (T1.4). */
+  flow_stage_mechanism: FlowStageMechanism;
+  /** Sessions with real token data vs a declared token gap (T1.6 / AC-04). */
+  token_coverage: TokenCoverage;
 }
 
 export interface TelemetryReport {
@@ -198,6 +218,64 @@ function shellKey(name: string): string | null {
 const THE_FLOW_SKILL = 'the-flow';
 /** Stage label for a `/the-flow` call with no leading-digit arg (FX001 Facet B absent). */
 const UNLABELED_STAGE = 'unlabeled';
+
+/**
+ * The versioned semantic stage map (T1.4 / WS001 D3). The `flow_stage` lens labels
+ * a window with the RAW nav node id (`research`, `phase-5`, `review-2`, …); this
+ * map projects that id onto the five canonical stages so cross-plan economics
+ * aggregate. Owned by the REPORT layer (not capture — capture stays dumb) and
+ * VERSIONED: the version rides in `provenance.flow_stage_map_version` so a
+ * re-mapping is a visible, comparable change, never a silent re-label. Unmapped
+ * ids (a bare digit, `unlabeled`) return `null` — an honest gap, never a guess.
+ */
+export const FLOW_STAGE_MAP_VERSION = 'flow-stage-map/v1' as const;
+
+/** The five canonical semantic stages a nav node id maps onto (T1.4). */
+export type SemanticStage = 'research' | 'plan' | 'implement' | 'review' | 'ship';
+
+/**
+ * Project a raw flow-stage label (a `the-flow.json` nav node id) onto a
+ * {@link SemanticStage}, or `null` when it maps to nothing (honest — a digit
+ * bracket or `unlabeled` has no semantic stage). Pattern rules (v1): `research`→
+ * research; `plan`/`workshop*`→plan; `phase-*`/`implement*`→implement;
+ * `review*`→review; `ship`→ship.
+ */
+export function semanticStage(label: string): SemanticStage | null {
+  const s = label.toLowerCase();
+  if (s === 'research') return 'research';
+  if (s === 'plan' || s.startsWith('workshop')) return 'plan';
+  if (s === 'ship') return 'ship';
+  if (s.startsWith('phase-') || s.startsWith('phase') || s.startsWith('implement')) {
+    return 'implement';
+  }
+  if (s.startsWith('review')) return 'review';
+  return null;
+}
+
+/**
+ * Which mechanism labeled each `flow_stage` window (T1.4, addendum 2). Historical
+ * months carry ~zero FlowEvents, so the lens MUST declare per-window provenance:
+ * `flow` = a nav-derived `flow` event (PRIMARY); `digit` = a `/the-flow <n>`
+ * bracket (FALLBACK); `unlabeled` = a `/the-flow` call with neither. Recorded in
+ * `provenance.flow_stage_mechanism` so a reader knows how much of the stage
+ * economics rests on the authoritative nav source vs the weaker digit proxy.
+ */
+export interface FlowStageMechanism {
+  flow: number;
+  digit: number;
+  unlabeled: number;
+}
+
+/**
+ * How many swept sessions carried real token data vs none (T1.6 / AC-04). A
+ * v2.0-era thin shard (turns with no usage attrs) is `unmeasured` — DECLARED here
+ * so a swept month never presents a token gap as a fabricated zero. `measured` +
+ * `unmeasured` == the report's session_count.
+ */
+export interface TokenCoverage {
+  measured: number;
+  unmeasured: number;
+}
 
 /** A turn's NON-cache input (fresh) — never `cache_read`/`cache_create` (FX002). 0 for non-turns. */
 function turnInput(e: { kind: string; in?: number }): number {
@@ -264,7 +342,20 @@ class DimAcc {
    * `harness_command`) pass `false` so no time appears on any command row (FX002 —
    * the capture has no honest per-call duration); `skill`/`flow_stage` pass `true`.
    */
-  finish(dimension: ReportDimension, sort: ReportSortKey, withTime: boolean, top?: number): Rollup {
+  /**
+   * Snapshot to a finished, sorted, optionally-truncated `Rollup`. `withTime`
+   * gates the `time_s` field: the command lenses (`tool`/`bash_command`/
+   * `harness_command`) pass `false` so no time appears on any command row (FX002 —
+   * the capture has no honest per-call duration); `skill`/`flow_stage` pass `true`.
+   * `semanticOf` (flow_stage only) projects each key onto a semantic stage (T1.4).
+   */
+  finish(
+    dimension: ReportDimension,
+    sort: ReportSortKey,
+    withTime: boolean,
+    top?: number,
+    semanticOf?: (key: string) => string | null,
+  ): Rollup {
     const entries: RollupEntry[] = [...this.cells.entries()]
       .filter(([key]) => key.length > 0)
       .map(([key, c]) => {
@@ -274,6 +365,10 @@ class DimAcc {
           tokens: { input: Math.round(c.input), output: Math.round(c.output) },
         };
         if (withTime) entry.time_s = Math.round(c.time_s);
+        if (semanticOf !== undefined) {
+          const sem = semanticOf(key);
+          if (sem !== null) entry.semantic_stage = sem;
+        }
         return entry;
       });
     sortEntries(entries, sort);
@@ -338,14 +433,25 @@ interface Accs {
  *    the FOLLOWING turn's non-cache in (byte-weighted by FX003 `result_tokens` when
  *    present, else even).
  *  - **skill**: count + active time (this call → next skill call) + non-cache in/out.
- *  - **flow_stage**: count + active time + non-cache in/out per `/the-flow` bracket.
+ *  - **flow_stage** (T1.4): FlowEvent-PRIMARY — nav-derived `flow` events bracket
+ *    the stage windows (`stage` = node id); the `/the-flow` digit bracket is the
+ *    FALLBACK (only when no `flow` event exists); `unlabeled` only when neither.
+ *    Returns the per-window mechanism counts so provenance can declare them.
  * Cache (`cache_read`/`cache_create`) is NEVER attributed per-dimension — it is
  * returned for the session-level total only.
  */
 function foldSession(
   view: SessionView,
   acc: Accs,
-): { input: number; output: number; cacheRead: number; cacheCreate: number; active: number } {
+): {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheCreate: number;
+  active: number;
+  mechanism: FlowStageMechanism;
+  tokenMeasured: boolean;
+} {
   const ev = view.events;
   const n = ev.length;
 
@@ -402,15 +508,27 @@ function foldSession(
     }
   }
 
-  // Session token sums (non-cache in/out + cache buckets, from turns).
+  // Session token sums (non-cache in/out + cache buckets, from turns). `tokenMeasured`
+  // records whether ANY turn carried a real token field — so a v2.0-era thin shard
+  // (turns with no usage attrs) is DECLARED as a token gap, never counted as a
+  // measured zero (T1.6 / AC-04: no fabricated tokens).
   const turnIdx: number[] = [];
   for (let i = 0; i < n; i++) if (ev[i].kind === 'turn') turnIdx.push(i);
   let sessionIn = 0;
   let sessionOut = 0;
   let sessionCr = 0;
   let sessionCc = 0;
+  let tokenMeasured = false;
   for (const ti of turnIdx) {
     const t = ev[ti] as { in?: number; out?: number; cache_read?: number; cache_create?: number };
+    if (
+      typeof t.in === 'number' ||
+      typeof t.out === 'number' ||
+      typeof t.cache_read === 'number' ||
+      typeof t.cache_create === 'number'
+    ) {
+      tokenMeasured = true;
+    }
     sessionIn += t.in ?? 0;
     sessionOut += t.out ?? 0;
     sessionCr += t.cache_read ?? 0;
@@ -465,20 +583,48 @@ function foldSession(
     acc.skill.addTokens(name, tok.input, tok.output);
   }
 
-  // ── flow_stage lens: consecutive `/the-flow` skill brackets (report-time) ──
-  const flowIdx: number[] = [];
-  for (let i = 0; i < n; i++) {
-    const e = ev[i];
-    if (e.kind === 'skill' && e.name === THE_FLOW_SKILL) flowIdx.push(i);
-  }
-  for (let m = 0; m < flowIdx.length; m++) {
-    const bi = flowIdx[m];
-    const label = (ev[bi] as { arg?: string }).arg ?? UNLABELED_STAGE;
-    const end = m + 1 < flowIdx.length ? flowIdx[m + 1] : n;
-    acc.flow_stage.addCount(label, 1);
-    acc.flow_stage.addTime(label, activeBetween(bi, end));
-    const tok = windowTurnTokens(ev, bi, end);
-    acc.flow_stage.addTokens(label, tok.input, tok.output);
+  // ── flow_stage lens (T1.4): FlowEvent-PRIMARY, digit FALLBACK, unlabeled last ──
+  // Nav-derived `flow` events are the authoritative stage source (`stage` = node
+  // id); they win whenever any exist in the session. Only a session with NO flow
+  // event falls back to the `/the-flow` digit brackets, and a bracket with no
+  // leading-digit arg is `unlabeled`. Per-window mechanism counts feed provenance.
+  const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0 };
+  const flowEvtIdx: number[] = [];
+  for (let i = 0; i < n; i++) if (ev[i].kind === 'flow') flowEvtIdx.push(i);
+
+  if (flowEvtIdx.length > 0) {
+    // PRIMARY: bracket by consecutive flow events; label = the nav stage id.
+    for (let m = 0; m < flowEvtIdx.length; m++) {
+      const bi = flowEvtIdx[m];
+      const stage = (ev[bi] as { stage?: string }).stage;
+      const label = stage !== undefined && stage.length > 0 ? stage : UNLABELED_STAGE;
+      const end = m + 1 < flowEvtIdx.length ? flowEvtIdx[m + 1] : n;
+      acc.flow_stage.addCount(label, 1);
+      acc.flow_stage.addTime(label, activeBetween(bi, end));
+      const tok = windowTurnTokens(ev, bi, end);
+      acc.flow_stage.addTokens(label, tok.input, tok.output);
+      mechanism.flow += 1;
+    }
+  } else {
+    // FALLBACK: consecutive `/the-flow` skill brackets (leading-digit arg = label).
+    const flowIdx: number[] = [];
+    for (let i = 0; i < n; i++) {
+      const e = ev[i];
+      if (e.kind === 'skill' && e.name === THE_FLOW_SKILL) flowIdx.push(i);
+    }
+    for (let m = 0; m < flowIdx.length; m++) {
+      const bi = flowIdx[m];
+      const arg = (ev[bi] as { arg?: string }).arg;
+      const labeled = arg !== undefined && arg.length > 0;
+      const label = labeled ? arg : UNLABELED_STAGE;
+      const end = m + 1 < flowIdx.length ? flowIdx[m + 1] : n;
+      acc.flow_stage.addCount(label, 1);
+      acc.flow_stage.addTime(label, activeBetween(bi, end));
+      const tok = windowTurnTokens(ev, bi, end);
+      acc.flow_stage.addTokens(label, tok.input, tok.output);
+      if (labeled) mechanism.digit += 1;
+      else mechanism.unlabeled += 1;
+    }
   }
 
   return {
@@ -487,6 +633,8 @@ function foldSession(
     cacheRead: sessionCr,
     cacheCreate: sessionCc,
     active: activeBetween(0, n),
+    mechanism,
+    tokenMeasured,
   };
 }
 
@@ -607,6 +755,8 @@ export function buildReport(
   let totalCacheR = 0;
   let totalCacheC = 0;
   let totalActive = 0;
+  const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0 };
+  const tokenCoverage: TokenCoverage = { measured: 0, unmeasured: 0 };
   const sessionIds: string[] = [];
   const branches: string[] = [];
   const harnesses: string[] = [];
@@ -621,6 +771,11 @@ export function buildReport(
     totalCacheR += sums.cacheRead;
     totalCacheC += sums.cacheCreate;
     totalActive += sums.active;
+    mechanism.flow += sums.mechanism.flow;
+    mechanism.digit += sums.mechanism.digit;
+    mechanism.unlabeled += sums.mechanism.unlabeled;
+    if (sums.tokenMeasured) tokenCoverage.measured += 1;
+    else tokenCoverage.unmeasured += 1;
     sessionIds.push(exp.identity.harness_session_id);
     uniquePush(branches, exp.identity.branch);
     uniquePush(harnesses, exp.identity.harness);
@@ -659,7 +814,8 @@ export function buildReport(
     rollups: {
       // Time-bearing lenses (skill / flow_stage) emit `time_s`; the command lenses
       // (tool / bash_command / harness_command) do NOT — no honest per-call duration.
-      flow_stage: acc.flow_stage.finish('flow_stage', sort, true, opts.top),
+      // flow_stage rows also carry the versioned semantic_stage projection (T1.4).
+      flow_stage: acc.flow_stage.finish('flow_stage', sort, true, opts.top, semanticStage),
       skill: acc.skill.finish('skill', sort, true, opts.top),
       tool: acc.tool.finish('tool', sort, false, opts.top),
       bash_command: acc.bash_command.finish('bash_command', sort, false, opts.top),
@@ -668,17 +824,19 @@ export function buildReport(
     attribution: {
       tokens:
         'non-cache-input+output; command input byte-weighted by result_tokens when present, else even-split',
-      time: 'per-lens: commands=none; skill=this-call→next-skill-call; flow_stage=between-the-flow-calls; idle excluded',
+      time: 'per-lens: commands=none; skill=this-call→next-skill-call; flow_stage=between-consecutive-flow-events (FlowEvent-primary; /the-flow digit brackets fall back); idle excluded',
       exact: ['count'],
       bash_command_key: 'shell-command-signature-or-tool-name',
       notes: [
         // FX002: per-dimension tokens are non-cache {input, output}, SEPARATE.
         'Per-dimension tokens are non-cache {input, output}: output = even share of the launching turn\u2019s output; input = share of the following turn\u2019s non-cache input (the result dumped back), byte-weighted by the tool result_tokens when captured (FX003), else even-split.',
         'cache_read / cache_create are the conversation re-reading its own context ("context re-reads") \u2014 counted at the SESSION level only (totals.cache), NEVER attributed to any command/skill/stage row.',
-        'Commands (tool / bash_command / harness_command) carry NO time \u2014 the capture has no honest per-call duration. Skills span this-call\u2192next-skill-call; flow_stage spans between consecutive /the-flow calls (leading-digit arg = stage label); both exclude idle. totals.time_s is active time (agent+human), never wall-span.',
+        'Commands (tool / bash_command / harness_command) carry NO time \u2014 the capture has no honest per-call duration. Skills span this-call\u2192next-skill-call; flow_stage is FlowEvent-primary (nav node id = stage), spanning between consecutive flow events, with the /the-flow digit bracket as the fallback and `unlabeled` only when neither exists; both exclude idle. totals.time_s is active time (agent+human), never wall-span.',
         // D1 + FX001-5: bash_command keys by the captured signature when present.
         'bash_command keys by the captured command signature (program+verb, e.g. rg / git commit) when available, else the shell-tool name (bash/shell); only the signature — never full argv — is stored (P12).',
         'harness_command counts in-stream harness verbs; bash_command excludes co-timed harness invocations to avoid double-count.',
+        // T1.4/D3: flow_stage semantic projection + per-window mechanism provenance.
+        `flow_stage rows carry a semantic_stage (${FLOW_STAGE_MAP_VERSION}: nav node id \u2192 research/plan/implement/review/ship; unmapped labels omit it); provenance.flow_stage_mechanism counts how many windows each mechanism (flow/digit/unlabeled) labeled.`,
       ],
     },
     provenance: {
@@ -690,6 +848,9 @@ export function buildReport(
       session_count: included.length,
       source_paths: opts.sourcePaths ?? [],
       generated_at: opts.generatedAt ?? '',
+      flow_stage_map_version: FLOW_STAGE_MAP_VERSION,
+      flow_stage_mechanism: mechanism,
+      token_coverage: tokenCoverage,
     },
   };
 }

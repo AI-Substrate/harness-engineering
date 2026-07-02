@@ -197,14 +197,19 @@ describe('T009 — render validation: N reports → N columns, inline data, keys
     expect(html.match(/class="report-column"/g) ?? []).toHaveLength(1);
   });
 
-  it('FX002 render: the template surfaces session cache as "context re-reads" + {input,output}', () => {
+  it('T1.5 render contract: token columns are sent/received; NO cache column in the HTML', () => {
     const html = renderReports(cols);
-    // The shipped template renders session-level cache separately, labelled.
-    expect(html).toContain('context re-reads');
-    // Rows/totals are in/out (never a single "tokens.total").
-    expect(html).toContain(' in \u00b7 ');
-    expect(html).toContain(' out');
-    // The embedded JSON carries the session-level cache (never per-dimension).
+    // WS001 D2 / AC-03: the rendered token columns collapse to sent (= non-cache
+    // input) and received (= output). Cache disappears as a RENDERED concept.
+    expect(html).toContain(' sent \u00b7 ');
+    expect(html).toContain(' received');
+    // MUTATION cache-column-reintroduced: no "context re-reads" / cache line renders.
+    expect(html).not.toContain('context re-reads');
+    // A measured zero still renders `0` (the template's fmtTok mirror, applied to
+    // the doctor row's {input:0,output:0}) — never blanked or hidden.
+    expect(formatTokens(0)).toBe('0');
+    // Internals may KEEP the session-level cache in the JSON (attribution) — it is
+    // simply never rendered as a column.
     const jsons = [...html.matchAll(/class="report-column">(.*?)<\/script>/gs)].map((m) =>
       JSON.parse(m[1].replace(/\\u003c/g, '<')),
     );
@@ -213,6 +218,16 @@ describe('T009 — render validation: N reports → N columns, inline data, keys
     const rowsJson = JSON.stringify(jsons[0].report.rollups.bash_command.entries);
     expect(rowsJson).not.toContain('cache_read');
     expect(rowsJson).not.toContain('total');
+  });
+
+  it('T1.5 mutation guard: the shipped TEMPLATE renders no cache column at all', () => {
+    // The template string carries no embedded data, so any `cache` token here is a
+    // RENDER concept — reintroducing the cache line (mutation) flips this RED.
+    expect(REPORT_TEMPLATE_HTML).not.toContain('context re-reads');
+    expect(REPORT_TEMPLATE_HTML).not.toContain('t.cache');
+    expect(REPORT_TEMPLATE_HTML).not.toContain('class="cache"');
+    expect(REPORT_TEMPLATE_HTML).toContain('sent');
+    expect(REPORT_TEMPLATE_HTML).toContain('received');
   });
 
   it('escapes `<` in embedded JSON so a value can never break out of the script tag', () => {

@@ -21,6 +21,17 @@ import {
 } from '../services/telemetry/report.js';
 import { getSessionEvidence } from '../services/telemetry/session-evidence.js';
 import { combineSession, type SessionExport } from '../services/telemetry/session-export.js';
+import {
+  fingerprintBlobs,
+  nextSweepCache,
+  parseMonth,
+  parseTelemetryRef,
+  planMonthSweep,
+  refInMonth,
+  SWEEP_CACHE_FILE,
+  type SweepCache,
+  type SweepRefInput,
+} from '../services/telemetry/sweep.js';
 import { syncTelemetry } from '../services/telemetry/sync-service.js';
 
 /** The ports the `telemetry` act injects into the sync service (a subset of VerbActDeps). */
@@ -131,6 +142,31 @@ function combineSessionFromGitRef(
     sessionId,
     { fs, proc: deps.proc, env: deps.env },
     gitBacked ? { kind: 'git-ref', sourceRoot: TELEMETRY_REF_GLOB } : { kind: 'temp' },
+  );
+}
+
+/**
+ * Combine ONE session from an EXPLICIT ref list — the month sweep's PLANNED,
+ * in-month refs — rather than re-globbing every ref for the session (F1/AC-01).
+ * The re-glob path ({@link readSessionShards}) folds ALL of a session's shards into
+ * the combine, so a session with both June AND July refs would leak June shards
+ * into a July sweep. The sweep therefore combines exactly `s.refs` (git-ref source,
+ * never `auto`/temp): a month report is scoped to that month's committed shards.
+ */
+function combineSessionFromRefs(
+  sessionId: string,
+  refs: readonly string[],
+  gitRead: GitReadPort,
+  deps: TelemetryActDeps,
+): SessionExport {
+  const blobs: ShardBlob[] = [];
+  for (const ref of refs) blobs.push(...gitRead.readShardTree(ref));
+  const sessionDir = posixJoin(telemetryDir(deps.proc.cwd()), sessionId);
+  const fs = shardCombineFs(blobs, sessionDir, undefined);
+  return combineSession(
+    sessionId,
+    { fs, proc: deps.proc, env: deps.env },
+    { kind: 'git-ref', sourceRoot: TELEMETRY_REF_GLOB },
   );
 }
 
@@ -313,6 +349,23 @@ function htmlPathForSession(outPath: string): string {
   }
   if (outPath.endsWith('.json')) return `${outPath.slice(0, -'.json'.length)}.html`;
   return `${outPath}.html`;
+}
+
+/** Read the on-disk per-sweep export cache ({} when absent / malformed — never throws). */
+function readSweepCache(fs: ReportFs, path: string): SweepCache {
+  const raw = fs.readText(path);
+  if (raw === null) return {};
+  try {
+    const doc = JSON.parse(raw) as unknown;
+    if (typeof doc !== 'object' || doc === null) return {};
+    const out: SweepCache = {};
+    for (const [k, v] of Object.entries(doc as Record<string, unknown>)) {
+      if (typeof v === 'string') out[k] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
 }
 
 /**
@@ -812,6 +865,174 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           : {
               emit: () => {
                 io.writers.out(`telemetry report-render: ${count} report(s) → ${htmlPath}\n`);
+              },
+            };
+      exitWithEnvelope(envelope, port);
+    });
+
+  telemetry
+    .command('sweep')
+    .description(
+      'Sweep ONE month of committed telemetry (refs/harness-telemetry/YYYY/MM/*) into a report (+ HTML) — from refs alone, re-runnable (per-session export cache)',
+    )
+    .requiredOption('--month <YYYY-MM>', 'The month to sweep (e.g. 2026-07)')
+    .option(
+      '--out <dir>',
+      'Output folder (the month report json + index.html + the export cache)',
+      './telemetry-report',
+    )
+    .option('--no-html', 'Data-only: skip the co-produced HTML render')
+    .action((options: { month: string; out: string; html: boolean }) => {
+      const sweepPort = (): OutputPort =>
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: (e) => {
+                io.writers.err(`harness telemetry sweep: ${e.error?.message ?? 'failed'}\n`);
+                if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
+              },
+            };
+
+      // A malformed month is an honest error — never a silent empty sweep.
+      if (parseMonth(options.month) === null) {
+        exitWithEnvelope(
+          formatError(
+            'telemetry',
+            ErrorCodes.UNKNOWN,
+            `--month '${options.month}' is not a valid YYYY-MM`,
+            deps.clock,
+            { next_action: 'Pass a calendar month, e.g. --month 2026-07.' },
+          ),
+          sweepPort(),
+        );
+        return;
+      }
+
+      // The month sweep composes the git-ref read path — it needs the read port.
+      if (deps.gitRead === undefined) {
+        exitWithEnvelope(
+          formatError(
+            'telemetry',
+            ErrorCodes.UNKNOWN,
+            'telemetry sweep needs the git read port, which is not available in this context',
+            deps.clock,
+            { next_action: 'Invoke via the harness CLI — the composition root wires ExecGitRead.' },
+          ),
+          sweepPort(),
+        );
+        return;
+      }
+      const gitRead = deps.gitRead;
+
+      // Enumerate every committed telemetry ref ONCE, keep the in-month ones, and
+      // fingerprint each ref's shard tree (the cache's tip proxy). The pure planner
+      // groups by session + decides reuse-vs-reexport.
+      const refInputs: SweepRefInput[] = [];
+      for (const ref of gitRead.listTelemetryRefs(TELEMETRY_REF_GLOB)) {
+        const parsed = parseTelemetryRef(ref);
+        if (parsed === null || !refInMonth(parsed.datePath, options.month)) continue;
+        refInputs.push({
+          ref,
+          session: parsed.session,
+          datePath: parsed.datePath,
+          fingerprint: fingerprintBlobs(gitRead.readShardTree(ref)),
+        });
+      }
+
+      const outDir = options.out;
+      const cachePath = posixJoin(outDir, SWEEP_CACHE_FILE);
+      const plan = planMonthSweep(options.month, refInputs, readSweepCache(deps.fs, cachePath));
+
+      // Per-session export: reuse an unchanged session's prior .session.json (cache
+      // hit); otherwise re-export from EXACTLY this month's PLANNED refs (`s.refs`),
+      // so a session that also has other-month refs never leaks them into this
+      // month's report (F1/AC-01). The cache key already follows the planned refs
+      // (the combined fingerprint is over `s.refs`), so a different month's sweep of
+      // the same session re-exports rather than reusing this artifact.
+      const sessionsDir = posixJoin(outDir, 'sessions');
+      const exports: SessionExport[] = [];
+      let exported = 0;
+      let reused = 0;
+      let empty = 0;
+      for (const s of plan.sessions) {
+        const sessionPath = posixJoin(sessionsDir, `${s.session}${SESSION_FILE_SUFFIX}`);
+        if (s.cached && deps.fs.exists(sessionPath)) {
+          const raw = deps.fs.readText(sessionPath);
+          if (raw !== null) {
+            try {
+              const doc = JSON.parse(raw) as unknown;
+              if (isSessionExport(doc)) {
+                exports.push(doc);
+                reused++;
+                continue;
+              }
+            } catch {
+              // fall through to a fresh export when the cached file is unreadable
+            }
+          }
+        }
+        const exp = combineSessionFromRefs(s.session, s.refs, gitRead, deps);
+        if (exp.source.segment_count === 0) {
+          empty++;
+          continue;
+        }
+        deps.fs.mkdirp(sessionsDir);
+        deps.fs.writeText(sessionPath, `${JSON.stringify(exp, null, 2)}\n`);
+        exports.push(exp);
+        exported++;
+      }
+
+      // Roll the month up with the SAME builder as `report` — version-tolerant: a
+      // v2.0 thin shard folds to time-only rows with the token gap DECLARED in
+      // provenance.token_coverage (never a fabricated zero, never a crash).
+      const report = buildReport(exports, {
+        sourcePaths: [plan.month_prefix],
+        generatedAt: deps.clock.nowIso(),
+      });
+
+      deps.fs.mkdirp(outDir);
+      const jsonPath = posixJoin(outDir, `${options.month}${REPORT_FILE_SUFFIX}`);
+      deps.fs.writeText(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+      const evidence: { label: string; path: string }[] = [{ label: 'report', path: jsonPath }];
+      let htmlPath: string | undefined;
+      if (options.html !== false) {
+        htmlPath = posixJoin(outDir, 'index.html');
+        deps.fs.writeText(htmlPath, renderReports([{ label: options.month, report }]));
+        evidence.push({ label: 'report view', path: htmlPath });
+      }
+
+      // Persist the cache LAST so a re-sweep skips the unchanged sessions.
+      deps.fs.writeText(cachePath, `${JSON.stringify(nextSweepCache(plan), null, 2)}\n`);
+
+      const envelope = formatOk(
+        'telemetry',
+        {
+          month: options.month,
+          sessions: report.scope.session_count,
+          exported,
+          reused,
+          empty,
+          token_coverage: report.provenance.token_coverage,
+          out: jsonPath,
+          html: htmlPath ?? null,
+        },
+        deps.clock,
+        {
+          evidence,
+          next_action: htmlPath
+            ? 'Open the index.html under file:// (self-contained). Re-run to refresh; unchanged sessions are cache-skipped.'
+            : 'A schema-valid month TelemetryReport. Render it with `harness telemetry report-render <folder>`.',
+        },
+      );
+      const port: OutputPort =
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: () => {
+                const view = htmlPath ? ` (+ ${htmlPath})` : '';
+                io.writers.out(
+                  `telemetry sweep ${options.month}: ${report.scope.session_count} session(s) [${exported} exported, ${reused} reused] → ${jsonPath}${view}\n`,
+                );
               },
             };
       exitWithEnvelope(envelope, port);
