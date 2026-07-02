@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.1",
+  "command": "boot",
+  "harness": "claude-code",
+  "harness_session_id": "19a601fe-098e-409f-90df-b69dec8bf629",
+  "timecode": "2026-06-24T03:28:21.368Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 9
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 5710,
+    "output": 144,
+    "cache_create": 5457,
+    "cache_read": 14162,
+    "total": 25473,
+    "subagent_tokens": 0,
+    "grand_total": 25473
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 144
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 1
+  },
+  "bash_commands": [],
+  "harness_commands": [
+    "boot"
+  ],
+  "user_prompts": [
+    18
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  }
+}
