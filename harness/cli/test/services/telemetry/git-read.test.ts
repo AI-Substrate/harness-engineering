@@ -393,4 +393,59 @@ describe('ExecGitRead — real-git round-trip + read-only invariant (T006/T008, 
       rmSync(repo, { recursive: true, force: true });
     }
   });
+
+  /**
+   * Plan 049 T001 — the migration recovery-walk primitives against real git:
+   * `listRefHistory` (every commit sha, tip-first) + `readTreeAtCommit` (the tree at
+   * an arbitrary commit). Models the F-03 clobber: two syncs, each an orphan commit
+   * carrying DISJOINT seq blobs, one parented on the other. The tip tree holds only
+   * the 2nd sync's blobs — walking the history recovers the 1st sync's buried blobs.
+   */
+  it('listRefHistory + readTreeAtCommit recover segments buried in non-tip commits (F-03)', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'harness-gitread-hist-'));
+    try {
+      const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+      git('init', '-q', '-b', 'main');
+      git('config', 'user.email', 'test@example.com');
+      git('config', 'user.name', 'Test');
+      spawnSync('bash', ['-c', 'echo hello > README.md'], { cwd: repo });
+      git('add', 'README.md');
+      git('commit', '-qm', 'init');
+
+      const gw = new ExecGitWrite(repo);
+      const blob = (name: string, content: string) => ({
+        mode: '100644' as const,
+        type: 'blob' as const,
+        sha: gw.hashObject(content),
+        name,
+      });
+      // Sync 1: tree holds ONLY seq 0's blob.
+      const tree1 = gw.mktree([blob('0.logs.jsonl', '{"resourceLogs":[0]}\n')]);
+      const commit1 = gw.commitTree(tree1, null, 'sync 1');
+      expect(gw.updateRef(REF, commit1, null)).toBe(true);
+      // Sync 2 (the clobber): a fresh tree with ONLY seq 1's blob, parented on sync 1.
+      const tree2 = gw.mktree([blob('1.logs.jsonl', '{"resourceLogs":[1]}\n')]);
+      const commit2 = gw.commitTree(tree2, commit1, 'sync 2');
+      expect(gw.updateRef(REF, commit2, commit1)).toBe(true);
+
+      const gr = new ExecGitRead(repo);
+      // The tip tree hides seq 0 (the clobber) — this is exactly F-03.
+      expect(gr.readShardTree(REF).map((b) => b.name)).toEqual(['1.logs.jsonl']);
+
+      // The full history is walkable, tip-first.
+      const history = gr.listRefHistory(REF);
+      expect(history[0]).toBe(commit2);
+      expect(history).toContain(commit1);
+
+      // Unioning the tree at EVERY commit recovers both seqs.
+      const recovered = new Set<string>();
+      for (const c of history) for (const b of gr.readTreeAtCommit(c)) recovered.add(b.name);
+      expect([...recovered].sort()).toEqual(['0.logs.jsonl', '1.logs.jsonl']);
+
+      // Still read-only.
+      expect(porcelain(repo)).toBe('');
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
+  });
 });

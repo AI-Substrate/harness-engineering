@@ -99,7 +99,7 @@ describe('registerTelemetryAct — telemetry sync', () => {
       pushed: true,
       plans: ['034-x', '055-y'],
     });
-    expect(git.pushed).toEqual([`${TELEMETRY_REF}:${TELEMETRY_REF}`]);
+    expect(git.pushed).toEqual([`+${TELEMETRY_REF}:${TELEMETRY_REF}`]);
     expect(code).toBe(0);
   });
 

@@ -86,39 +86,46 @@ goldens, drift-checked by `npm run check:telemetry-fixtures`).
 
 ## Transport — keep-and-harden git refs
 
-`harness telemetry sync` publishes the OTLP spool to **per-(capture-date, session)
-shard refs**, exactly as before — only the tree contents changed from the segment
-JSON to the OTLP pair:
+`harness telemetry sync` rolls the OTLP spool up into **one ref per session, keyed
+at the session's start date** — one commit, one tree carrying the whole session:
 
 ```
-refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>
-  └─ commit tree (flat):
-       <seq>.logs.jsonl
-       <seq>.metrics.jsonl
+refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>
+  └─ orphan commit, rewritten every sync; tree (flat):
+       session.logs.jsonl      (every seq's OTLP Logs record, concatenated seq-ordered)
+       session.metrics.jsonl   (every seq's OTLP Metrics record, seq-ordered)
+       manifest.json           ({format, session, start_date, max_seq})
+       <seq>.json              (loose fallback — only for a seq with no OTLP pair)
 ```
 
-- **Single-writer-per-(date,session)-ref.** A ref is written by exactly one
-  session, so every push is a clean create-or-fast-forward — **no fetch to write**,
-  no cross-writer contention. This is what makes a whole team safe (the canonical
-  `refs/changes/*` / `refs/pull/*` pattern).
-- **Offline-safe.** A failed shard push rolls that shard's local ref back and
-  leaves the buffer + watermark intact, so the next sync retries it. A buffered
-  segment is never lost.
-- **Idempotent re-push.** If a shard ref already holds the exact tree (a re-sync
-  after a lost watermark), the **duplicate commit is skipped but the ref is still
-  re-pushed** — idempotent on the remote (a no-op when current, a fast-forward when a
-  prior push was interrupted). A local ref-tree match alone does **not** prove the
-  remote received it (a crash between the local ref update and the push leaves the
-  local ref ahead), so the buffer is never consumed without re-delivering. The
-  existence check is a **local** ref-tree peel, never a remote fetch.
-- **Session-id entropy.** The session id is the ref segment; a lossy sanitize gets a
-  wide deterministic digest suffix so distinct ids collide only with **negligible**
-  probability (a collision would be a non-fast-forward = lost telemetry). A clean
-  UUID-like id passes through unchanged.
+- **One-ref-per-session, single-writer.** A session's buffer lives in exactly one
+  clone, so that clone owns the ref outright and force-pushes its own rewrite —
+  **no fetch to write**, no cross-writer contention. This is what makes a whole team
+  safe (the canonical `refs/changes/*` / `refs/pull/*` pattern). A multi-day session
+  stays at **one** ref at its start date (pinned in a `<session>.startdate` sidecar).
+- **Tip tree = the whole session.** The tree is rebuilt from the entire local buffer
+  each sync, so a reader that peels only the tip always sees every segment — the
+  earlier clobber-on-rewrite data-loss (a per-sync tree holding only that run's seqs)
+  is fixed by construction.
+- **Forced push.** Because each sync writes a fresh **orphan** commit (a full rewrite,
+  never an ancestor of the prior), the push is forced (`+ref:ref`) — a plain push would
+  non-fast-forward against any divergent-sha/equal-content remote.
+- **Offline-safe.** A failed push rolls that session's local ref back and leaves the
+  buffer + watermark intact, so the next sync retries it. A buffered segment is never
+  lost.
+- **Idempotent re-push.** If the ref already holds the exact (content-addressed) tree
+  (a re-sync after a lost watermark), the **duplicate commit is skipped but the ref is
+  still force-re-pushed** — a local ref-tree match alone does not prove the remote
+  received it, so the buffer is never consumed without re-delivering. The existence
+  check is a **local** ref-tree peel, never a remote fetch.
 - **Partial / legacy fallback.** If a `<seq>` has no OTLP pair (a pre-spool buffer
-  entry, or a crash *between* the two atomic spool writes), that shard publishes the
-  full segment `<seq>.json` instead — the reconstruction oracle, so nothing is ever
-  dropped. A complete OTLP pair is published only when **both** files are present.
+  entry, or a crash *between* the two atomic spool writes), the full segment
+  `<seq>.json` is carried loose in the tree instead — the reconstruction oracle, so
+  nothing is ever dropped.
+- **First-run migration.** The first sync that finds old per-capture-date refs unions
+  each session's full commit history (recovering any segments buried by the old
+  clobber), rewrites them to the new start-date rolled refs, verifies, and deletes the
+  old refs — a one-time, sentinel-gated pass; steady state stays fetch-free.
 
 ---
 
@@ -127,9 +134,11 @@ refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>
 The downstream eng-thrive scraper (out of this repo) reads telemetry like this:
 
 1. **One globbed fetch**: `git fetch <remote> 'refs/harness-telemetry/*:refs/harness-telemetry/*'`
-   collects every shard; the `<YYYY>/<MM>/<DD>` prefix is the prune/retention key.
-2. **Per shard ref**, read the flat commit tree: each entry is `<seq>.logs.jsonl`
-   or `<seq>.metrics.jsonl` (or a legacy `<seq>.json` under the partial fallback).
+   collects every session's ref; the `<start-YYYY>/<MM>/<DD>` prefix is the prune/retention key.
+2. **Per session ref**, read the flat commit tree: `session.logs.jsonl` +
+   `session.metrics.jsonl` (each a seq-ordered JSONL of OTLP records) + `manifest.json`
+   (plus any loose `<seq>.json` fallback, and legacy per-seq `<seq>.logs.jsonl` on a
+   ref not yet migrated).
 3. **Parse each `.jsonl`** as OTLP/JSON. Reconstruct the session timeline from the
    Logs: event kind from `harness.event.kind`, exact timestamp from
    `harness.event.t`, the rest from the per-kind `harness.*` attributes; recompute

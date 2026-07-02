@@ -47,4 +47,19 @@ export interface GitReadPort {
    * the working tree.
    */
   readShardTree(ref: string): ShardBlob[];
+  /**
+   * List the commit shas in a ref's FULL history, tip-first (`rev-list <ref>`) — the
+   * migration union walk (plan 049 · F-03 recovery). A multi-sync old-shape ref
+   * clobbered earlier segments into non-tip commits; walking the whole history and
+   * unioning trees recovers them. `[]` when the ref is absent. LOCAL only (the ref
+   * must already be fetched) — never contacts a remote.
+   */
+  listRefHistory(ref: string): string[];
+  /**
+   * Read the flat tree at ONE commit sha (`cat-file` walk of `<commit>^{tree}`) — the
+   * per-commit half of the history union. Same shape as {@link readShardTree} but
+   * anchored at an arbitrary commit rather than a ref tip. `[]` for an empty/absent
+   * tree. READ-ONLY.
+   */
+  readTreeAtCommit(commit: string): ShardBlob[];
 }

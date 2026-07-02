@@ -26,6 +26,21 @@ export interface FsPort {
    */
   rename(from: string, to: string): void;
   /**
+   * Delete a single file. Idempotent — a missing path is a no-op, never an error
+   * (mirrors `rmSync(path, { force:true })`). Additive for the telemetry buffer
+   * prune (plan 049 T007): sync deletes flushed `<seq>` buffer files once their
+   * bytes are durably pushed. A real I/O failure MAY throw; callers that must not
+   * fail on a prune error (the sync) wrap it in their own try/catch.
+   */
+  deleteFile(path: string): void;
+  /**
+   * Recursively delete a directory and everything under it. Idempotent — a missing
+   * path is a no-op (mirrors `rmSync(path, { recursive:true, force:true })`).
+   * Additive for the T007 prune: an aged-out, fully-flushed session dir is removed
+   * whole. MAY throw on a real I/O failure; the sync swallows it.
+   */
+  removeDir(path: string): void;
+  /**
    * Canonical absolute path with every symlink resolved, or null if the path is
    * missing / unresolvable (never throws). The portable replacement for a POSIX
    * `realpath` shell-out — it underpins the CWE-59 confine guard (plan 031).

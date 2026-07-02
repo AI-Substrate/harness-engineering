@@ -1,5 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { type GitWritePort, TELEMETRY_FALLBACK_AUTHOR, type TreeEntry } from './git-write-port.js';
+import { GIT_MAX_BUFFER } from './exec-git-limits.js';
+import {
+  type GitWritePort,
+  type RefTreeBlob,
+  TELEMETRY_FALLBACK_AUTHOR,
+  TELEMETRY_REF_PREFIX,
+  type TreeEntry,
+} from './git-write-port.js';
 
 /**
  * Real git WRITE plumbing (plan 034 Phase 4) — wraps `hash-object` / `mktree` /
@@ -33,6 +40,10 @@ export class ExecGitWrite implements GitWritePort {
       cwd: this.cwd,
       encoding: 'utf8',
       timeout: this.timeoutMs,
+      // A rolled blob (`session.logs.jsonl`) can exceed Node's default 1 MiB cap;
+      // lift it to the shared ceiling so `readRefTree` reads the whole blob rather
+      // than an ENOBUFS-truncated prefix (plan 049 round-2 F1).
+      maxBuffer: GIT_MAX_BUFFER,
       ...(input !== undefined && { input }),
       ...(extraEnv && { env: { ...process.env, ...extraEnv } }),
     });
@@ -65,6 +76,44 @@ export class ExecGitWrite implements GitWritePort {
     if (r.status !== 0) return null;
     const sha = r.stdout.trim();
     return sha.length > 0 ? sha : null;
+  }
+
+  readRefTree(ref: string): RefTreeBlob[] | null {
+    // Walk the ref's tip tree with `cat-file -p <ref>^{tree}` — a LOCAL read of the
+    // ref's OWN object, never the remote (AC-03) — then `cat-file blob <sha>` each
+    // flat entry. The rolled tree is flat by construction (sync-service builds no
+    // subtrees), so a non-recursive walk suffices; a subtree entry (should never
+    // occur) is skipped.
+    //
+    // FAIL CLOSED (plan 049 round-2 F1): this is the T007 union base — the flushed
+    // half of the rolled rewrite — so a PARTIAL read would force-push a truncated
+    // roll (the F-03 data-loss class, via ops). `null` means ONLY the clean "ref
+    // absent" case (git exits non-zero, no spawn error); any spawn-level failure
+    // (ENOBUFS truncation, timeout) or a blob read that fails after its sha came
+    // FROM the tree THROWS, so the sync surfaces `ok:false` and leaves the ref +
+    // buffer + watermark untouched — never a silently short tree.
+    const tree = this.run(['cat-file', '-p', `${ref}^{tree}`]);
+    if (tree.error)
+      throw new Error(`git cat-file tree read failed for ${ref}: ${tree.error.message}`);
+    if (tree.status !== 0) return null; // clean non-zero exit → the ref/tree is absent
+    const blobs: RefTreeBlob[] = [];
+    for (const line of tree.stdout.split('\n')) {
+      // `<mode> SP <type> SP <sha> TAB <name>`.
+      const m = /^(\S+) (\S+) (\S+)\t(.+)$/.exec(line);
+      if (m === null) continue;
+      const [, , type, sha, name] = m;
+      if (type !== 'blob') continue;
+      const blob = this.run(['cat-file', 'blob', sha]);
+      // The sha is FROM the tree listing, so the blob MUST read cleanly. A spawn
+      // error (ENOBUFS/timeout) or a non-zero exit means a partial/lost blob — throw
+      // rather than return a short tree that would rewrite the ref with fewer bytes.
+      if (blob.error || blob.status !== 0)
+        throw new Error(
+          `git cat-file blob read failed for ${name} (${sha}): ${blob.error?.message ?? blob.stderr?.trim()}`,
+        );
+      blobs.push({ name, content: blob.stdout });
+    }
+    return blobs;
   }
 
   commitTree(tree: string, parent: string | null, message: string): string {
@@ -120,5 +169,33 @@ export class ExecGitWrite implements GitWritePort {
     // telemetry flush hook-immune, so a `post-commit` flush can never recurse.
     const r = this.run(['push', '--no-verify', 'origin', refspec]);
     if (r.status !== 0) throw new Error(`git push failed: ${r.stderr?.trim()}`);
+  }
+
+  lsRemoteTelemetryRefs(): string[] {
+    // The ONE sanctioned remote read (plan 049 migration) — `ls-remote` lists ref
+    // names without fetching objects. `<sha> TAB <ref>` lines; keep the ref column.
+    const r = this.run(['ls-remote', 'origin', `${TELEMETRY_REF_PREFIX}/*`]);
+    if (r.status !== 0) throw new Error(`git ls-remote failed: ${r.stderr?.trim()}`);
+    return r.stdout
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0)
+      .map((l) => l.split('\t')[1] ?? '')
+      .filter((ref) => ref.startsWith(`${TELEMETRY_REF_PREFIX}/`));
+  }
+
+  fetchRef(ref: string): void {
+    // Bring ONE old-shape ref's full history local so the migration can walk it
+    // (`rev-list` + tree reads). Forced (`+`) so a divergent local copy is replaced;
+    // `--no-tags` keeps the fetch scoped to exactly this ref.
+    const r = this.run(['fetch', '--no-tags', 'origin', `+${ref}:${ref}`]);
+    if (r.status !== 0) throw new Error(`git fetch failed: ${r.stderr?.trim()}`);
+  }
+
+  deleteRemoteRef(ref: string): void {
+    // Delete the remote ref via the SAME hook-immune push path (`--no-verify`) — a
+    // colon-prefixed refspec (`:<ref>`) is git's delete form.
+    const r = this.run(['push', '--no-verify', 'origin', `:${ref}`]);
+    if (r.status !== 0) throw new Error(`git delete-remote failed: ${r.stderr?.trim()}`);
   }
 }

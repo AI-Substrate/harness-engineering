@@ -16,6 +16,7 @@ import {
   RES_SESSION,
 } from './otlp/semconv.js';
 import { type AnyValue, attrMap, type LogsData, type MetricsData, readStr } from './otlp/types.js';
+import { ROLLED_LOGS_NAME, splitJsonl } from './rolled-shard.js';
 import { computeRollup, parseIso } from './rollup.js';
 import type { Segment, SegmentModelStat, SegmentTokens } from './segment.js';
 
@@ -279,16 +280,36 @@ function reconstructFromLogs(logsRaw: string): SeqRead | null {
 }
 
 /**
- * Read one session subdir's segments, corrupt-safe + SOURCE-AGNOSTIC. A `<seq>.json`
- * is read json-anchored (identity/tokens from the segment, events from the
- * `<seq>.logs.jsonl` companion) — the temp path, UNCHANGED. A `<seq>.logs.jsonl`
- * with NO matching `<seq>.json` (the canonical committed shard) is reconstructed
- * logs-rooted (P3 git-ref) so a logs-only shard is never dropped.
+ * Read one session subdir's segments, corrupt-safe + SOURCE-AGNOSTIC across THREE
+ * shapes (plan 049 dual-shape):
+ *   • temp buffer / legacy committed shard — per-seq `<seq>.json` (json-anchored, with
+ *     an optional `<seq>.logs.jsonl` companion) and/or logs-only `<seq>.logs.jsonl`
+ *     (reconstructed logs-rooted). UNCHANGED.
+ *   • ROLLED committed ref — a single `session.logs.jsonl` holding every seq's OTLP
+ *     logs record (one JSON object per line, seq-ordered); each line is reconstructed
+ *     logs-rooted. Loose `<seq>.json` fallbacks (partial/absent spool at roll time)
+ *     are still picked up by the per-seq branch below, so nothing is dropped.
+ * A seq is only ever in ONE shape (the roller never both concatenates AND leaves a
+ * loose json for the same seq), so there is no double-count.
  */
 function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
+  const names = fs.readdir(sessionDir);
+  const out: SeqRead[] = [];
+
+  // Rolled shape (plan 049): reconstruct every seq from the concatenated logs blob.
+  if (names.includes(ROLLED_LOGS_NAME)) {
+    const rolledLogs = fs.readText(posixJoin(sessionDir, ROLLED_LOGS_NAME));
+    if (rolledLogs !== null) {
+      for (const line of splitJsonl(rolledLogs)) {
+        const recon = reconstructFromLogs(line);
+        if (recon !== null) out.push(recon);
+      }
+    }
+  }
+
   const jsonSeqs = new Set<number>();
   const logsOnly: number[] = [];
-  for (const n of fs.readdir(sessionDir)) {
+  for (const n of names) {
     const j = /^(\d+)\.json$/.exec(n);
     if (j !== null) {
       jsonSeqs.add(Number.parseInt(j[1], 10));
@@ -301,7 +322,6 @@ function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
   const seqs = [
     ...new Set<number>([...jsonSeqs, ...logsOnly.filter((s) => !jsonSeqs.has(s))]),
   ].sort((a, b) => a - b);
-  const out: SeqRead[] = [];
   for (const seq of seqs) {
     if (jsonSeqs.has(seq)) {
       const raw = fs.readText(posixJoin(sessionDir, `${seq}.json`));

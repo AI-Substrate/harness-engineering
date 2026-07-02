@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { GIT_MAX_BUFFER } from './exec-git-limits.js';
 import type { GitReadPort, ShardBlob } from './git-read-port.js';
 
 /**
@@ -28,8 +29,9 @@ export class ExecGitRead implements GitReadPort {
       cwd: this.cwd,
       encoding: 'utf8',
       timeout: this.timeoutMs,
-      // A shard blob can be large; lift the default 1MB stdout cap generously.
-      maxBuffer: 64 * 1024 * 1024,
+      // A shard blob can be large; lift the default 1MB stdout cap generously
+      // (shared with the WRITE adapter — plan 049 round-2 F1).
+      maxBuffer: GIT_MAX_BUFFER,
     });
   }
 
@@ -51,7 +53,30 @@ export class ExecGitRead implements GitReadPort {
   readShardTree(ref: string): ShardBlob[] {
     // Walk the ref's tree with `cat-file -p <ref>^{tree}` — LOCAL peel, no remote
     // contact — then `cat-file blob <sha>` each entry. Only `cat-file` verbs.
-    const tree = this.run(['cat-file', '-p', `${ref}^{tree}`]);
+    return this.readTreeAt(`${ref}^{tree}`);
+  }
+
+  listRefHistory(ref: string): string[] {
+    // `rev-list <ref>` lists every commit sha reachable from the ref, tip-first —
+    // a pure read (no ref created/moved/fetched). The migration walks this to union
+    // trees across the full history and recover clobbered segments (F-03).
+    const r = this.run(['rev-list', ref]);
+    if (r.status !== 0) return [];
+    return r.stdout
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+  }
+
+  readTreeAtCommit(commit: string): ShardBlob[] {
+    // The per-commit tree read for the history union — `<commit>^{tree}`, same
+    // read-only `cat-file` walk as {@link readShardTree}.
+    return this.readTreeAt(`${commit}^{tree}`);
+  }
+
+  /** Shared read-only `cat-file` tree walk of a `<rev>^{tree}` spec. */
+  private readTreeAt(treeSpec: string): ShardBlob[] {
+    const tree = this.run(['cat-file', '-p', treeSpec]);
     if (tree.status !== 0) return [];
     const blobs: ShardBlob[] = [];
     for (const line of tree.stdout.split('\n')) {

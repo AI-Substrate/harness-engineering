@@ -1,10 +1,11 @@
 # Harness telemetry
 
 How the harness captures a **counts-only**, per-session telemetry `segment` on
-every command, buffers it out of your working tree, and flushes it to
-per-session, date-sharded out-of-tree git refs for the eng-thrive measurement
-program — plus how it is pushed (manually, or automatically on `checks`), how to
-disable it, the structure it takes, and the privacy / offline guarantees.
+every command, buffers it out of your working tree, and rolls it up into **one
+out-of-tree git ref per session, keyed at the session's start date**, for the
+eng-thrive measurement program — plus how it is pushed (manually, or
+automatically on `checks`), how to disable it, the structure it takes, and the
+privacy / offline guarantees.
 
 > **This is the sensor, not the analyst.** Telemetry **emits + commits** faithful
 > counts. It builds no scanner, no dashboard, no correlation. Downstream
@@ -28,17 +29,30 @@ command* via a per-session cursor, and writes one normalized `segment` — token
 skills, tools, subagents, files, plan links, model/branch/timecode — to a
 **gitignored buffer**. Nothing is pushed on the hot path.
 
-A separate, explicit step — `harness telemetry sync` — flushes the buffered
-segments into **per-(capture-date, session) shard refs** under
-`refs/harness-telemetry/`, via plumbing (never touching your index or working
-tree), and pushes each shard. Sharding the ref namespace — rather than funnelling
-a whole team into one shared ref — is what makes concurrent writers safe (see
-[Team scale](#team-scale--many-engineers-one-repo)).
+A separate, explicit step — `harness telemetry sync` — rolls each session's
+buffered segments up into **one ref per session, keyed at the session's start
+date** (`refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`), via plumbing
+(never touching your index or working tree), and force-pushes that single ref.
+Each sync rewrites the ref with a fresh orphan commit whose tree — rebuilt from
+the whole local buffer — carries the **entire** session (`session.logs.jsonl` +
+`session.metrics.jsonl` + a `manifest.json`), so a reader that peels only the tip
+tree always sees the complete session. One ref per session (rather than one per
+capture-date, and rather than funnelling a whole team into one shared ref) is
+what keeps a multi-day session to a single place *and* makes concurrent writers
+safe (see [Team scale](#team-scale--many-engineers-one-repo)).
 
 ```
 harness <verb>   ──preamble──▶  .harness/temp/telemetry/<session>/<seq>.json          (gitignored buffer)
-harness telemetry sync          ──plumbing──▶  refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>  ──push──▶  central scraper
+harness telemetry sync          ──plumbing──▶  refs/harness-telemetry/<start-date>/<session>  ──force-push──▶  central scraper
 ```
+
+The **first** `harness telemetry sync` in a repo that still holds old
+per-capture-date refs also runs a one-time **migration**: it discovers every old
+ref (the one sanctioned `ls-remote` + fetch), unions each session's segments
+across its full commit history — recovering any buried by the earlier
+clobber-on-rewrite behaviour — rewrites them to the new start-date-keyed rolled
+refs, verifies the rollup, then deletes the old refs. Steady-state syncs after
+that are fetch-free.
 
 Two properties make this safe to run on **every** command:
 
@@ -213,15 +227,19 @@ from a `ship` step, or on a schedule):
 harness telemetry sync
 ```
 
-It flushes every buffered segment past each session's watermark into
-**per-(capture-date, session) shard refs** —
-`refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>` — one commit per shard, and
-pushes each shard's refspec using your **ambient git credentials** (the CLI
-handles no tokens). Each shard's commit tree is a flat `<seq>.json` set; the
-date+session hierarchy lives in the ref name, and the date is taken from each
-segment's own capture timecode (so a session that crosses midnight splits cleanly
-into one shard per day). Each shard ref is append-only, so re-syncing the same
-session/date extends its history.
+It rolls every buffered segment up into **one ref per session, keyed at the
+session's start date** — `refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`
+— rebuilt from the whole local buffer on each sync, and force-pushes that single
+refspec using your **ambient git credentials** (the CLI handles no tokens). The
+ref's commit tree carries the entire session: `session.logs.jsonl` +
+`session.metrics.jsonl` (every seq's OTLP record, concatenated seq-ordered) + a
+`manifest.json` (format marker, start date, max published seq). The start date is
+taken from the session's first segment and pinned in a `<session>.startdate`
+sidecar, so a session that crosses midnight — or spans several days — stays at
+**one** ref at its start date rather than trailing a ref-per-day. Each sync
+rewrites the ref with a fresh orphan commit (a full rewrite, so the tip tree is
+always the whole session), which is why the push is **forced** (`+ref:ref`);
+re-syncing with nothing new re-pushes the same content without a duplicate commit.
 
 ### Automatic sync on `checks`
 
@@ -265,16 +283,19 @@ To keep the auto-push but silence it, or to turn it off, see
 A single shared, mutable `refs/harness-telemetry` does **not** work for a team:
 many engineers pushing from independent clones is a distributed write-contention
 problem — every pusher after the first gets a non-fast-forward rejection, and
-their telemetry never drains. **Sharding the ref namespace by (date, session)
-solves this structurally:** no two writers ever target the same ref, so every
-push is a clean create-or-fast-forward — no fetch, no merge, no retry. This is the
-canonical git pattern for "many writers append out-of-tree metadata" (cf. Gerrit
-`refs/changes/*`, GitHub `refs/pull/*`).
+their telemetry never drains. **One ref per session solves this structurally:**
+no two writers ever target the same ref (a session's buffer lives in exactly one
+clone), so each writer owns its ref outright and force-pushes its own rewrite —
+no fetch, no merge, no cross-writer retry. This is the canonical git pattern for
+"many writers append out-of-tree metadata" (cf. Gerrit `refs/changes/*`, GitHub
+`refs/pull/*`). Because a session is written by a single clone, the append stays
+**fetch-free**: the rewrite reads the local buffer + a local ref-tree peel, never
+the remote.
 
-The shard key is the **session** (an opaque per-session id — the contributor
+The ref key is the **session** (an opaque per-session id — the contributor
 identity rides on the commit, not the ref name; [§ Attribution](#attribution--contributor-commit-team-grain-use)),
-so sharding introduces no new identity exposure beyond what the commit already
-carries.
+so keying per session introduces no new identity exposure beyond what the commit
+already carries.
 
 **Collecting it upstream is one fetch, not many.** A globbed refspec is a single
 network round-trip — the server advertises every matching ref at once:
@@ -284,11 +305,11 @@ git fetch origin '+refs/harness-telemetry/*:refs/harness-telemetry/*'   # all se
 ```
 
 Ref count stays cheap (a ref is just a name + a SHA; problems only begin in the
-tens-of-thousands), and the date prefix is the **retention/prune key** — a scraper
-drops a day after ingesting it:
+tens-of-thousands), and the **start-date** prefix is the **retention/prune key** —
+a scraper drops a day after ingesting it:
 
 ```bash
-git push origin --delete 'refs/harness-telemetry/2026/03/23/<session>'   # prune after ingest
+git push origin --delete 'refs/harness-telemetry/2026/03/23/<session>'   # prune after ingest (by start date)
 ```
 
 Treat the refs as an **ingestion buffer, not the system of record**: long-term

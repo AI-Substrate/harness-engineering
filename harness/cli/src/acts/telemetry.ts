@@ -479,11 +479,13 @@ function readSweepCache(fs: ReportFs, path: string): SweepCache {
 /**
  * Register the `telemetry` command family (plan 034 Phase 4). A CORE command
  * (reserved, like `flow`/`record`/`observe`) mirroring the `flow` family shape.
- * Its `sync` verb flushes the gitignored telemetry buffer to per-(date,session)
- * shard refs under `refs/harness-telemetry/` via plumbing — no business logic
- * here; `sync-service` does the work, this maps the outcome onto the Envelope +
- * exit code (ok → 0; a failed shard push / ref-update → error exit 1, the buffer
- * left intact for retry).
+ * Its `sync` verb ROLLS the gitignored telemetry buffer into ONE ref per session
+ * at its start date (`refs/harness-telemetry/<start-date>/<session>`) via plumbing
+ * — a forced orphan rewrite whose tip tree is the whole session (plan 049) — and
+ * on the first run migrates any old per-(capture-date, session) refs. No business
+ * logic here; `sync-service` does the work, this maps the outcome onto the
+ * Envelope + exit code (ok → 0; a failed roll push / ref-update → error exit 1,
+ * the buffer left intact for retry).
  */
 export function registerTelemetryAct(program: Command, io: CliIo, deps: TelemetryActDeps): void {
   const telemetry = program
@@ -495,7 +497,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
   telemetry
     .command('sync')
     .description(
-      'Flush buffered telemetry to refs/harness-telemetry/<date>/<session> shards (best-effort per-shard push)',
+      'Roll buffered telemetry into one ref per session at its start date (refs/harness-telemetry/<start-date>/<session>), forced-push it, and (first run) migrate any old per-date refs',
     )
     .action(() => {
       const result = syncTelemetry({
@@ -503,6 +505,8 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         env: deps.env,
         proc: deps.proc,
         git: deps.gitWrite,
+        clock: deps.clock,
+        ...(deps.gitRead !== undefined && { gitRead: deps.gitRead }),
       });
 
       if (!result.ok) {
@@ -534,15 +538,19 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         {
           synced: result.segments,
           sessions: result.sessions,
+          // `pushed` = a FRESH commit was published this run; an idempotent
+          // re-push (bytes already on the ref — lost-watermark re-run / divergent
+          // remote) still force-delivers but is excluded, so re-runs don't inflate it.
           pushed: result.pushed,
           plans: result.plans,
+          ...(result.migration !== undefined && { migration: result.migration }),
         },
         deps.clock,
         {
           next_action:
             result.segments === 0
               ? 'Nothing buffered to flush.'
-              : 'Segments flushed to refs/harness-telemetry/<date>/<session>; the scraper fetches refs/harness-telemetry/* in one pass.',
+              : 'Segments flushed to refs/harness-telemetry/<start-date>/<session>; the scraper fetches refs/harness-telemetry/* in one pass.',
         },
       );
       const port: OutputPort =
@@ -550,10 +558,15 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           ? createOutputPort('json', io.writers)
           : {
               emit: () => {
+                const migLine =
+                  result.migration !== undefined && result.migration.rewritten > 0
+                    ? `telemetry sync: migrated ${result.migration.rewritten} session(s), ${result.migration.deleted} old ref(s) removed\n`
+                    : '';
                 io.writers.out(
-                  result.segments === 0
-                    ? 'telemetry sync: nothing to flush\n'
-                    : `telemetry sync: flushed ${result.segments} segment(s) across ${result.sessions} session(s)${result.pushed ? ' and pushed' : ''}\n`,
+                  migLine +
+                    (result.segments === 0
+                      ? 'telemetry sync: nothing to flush\n'
+                      : `telemetry sync: flushed ${result.segments} segment(s) across ${result.sessions} session(s)${result.pushed ? ' and pushed' : ''}\n`),
                 );
               },
             };
