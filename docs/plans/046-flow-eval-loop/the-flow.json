@@ -1073,6 +1073,18 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-050",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-02T05:21:15.258Z",
+      "details": {
+        "node": "phase-4",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -1349,12 +1361,16 @@
         "review-4"
       ],
       "created_at": "2026-06-30T22:27:18.162Z",
-      "modified_at": "2026-07-02T04:26:03.698Z",
+      "modified_at": "2026-07-02T05:21:15.258Z",
       "command": "/the-flow 6 implement",
       "comments": [
         {
           "at": "2026-07-02T04:26:03.698Z",
           "text": "Task 4.5 added: fix round from dogfood run-1 (seed-tuple fidelity, null-axis render, judged re-render). Dispatching to flow-pair coder."
+        },
+        {
+          "at": "2026-07-02T05:21:15.258Z",
+          "text": "Task 4.6 added (drain follow-ups SUGG-003/SUGG-004/INS-001) and dispatched to coder pij-1t8xjkx. 4.4 capture half done (retro record 002); encode half rides 4.6. Cross-model comparison (4.3's board, AC-12) queued behind 4.6. Codex telemetry adapter deferred out of 046."
         }
       ]
     },

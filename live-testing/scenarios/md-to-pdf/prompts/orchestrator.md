@@ -20,6 +20,22 @@ follow it top to bottom.
 
 ## Step-list
 
+0. **Pre-create the subject worktree at the pinned base ref.** So the run is
+   comparable, the **orchestrator** — not the subject — cuts the worktree from
+   `base.ref`. A blind packet can't pin a ref, and a fully autonomous subject won't
+   branch from `v0.6.0` on its own, so pinning `base_ref` is the orchestrator's job:
+
+   ```
+   REPO="$(git rev-parse --show-toplevel)"
+   WORKTREE="$REPO/.worktrees/md-to-pdf-$(date +%Y%m%d-%H%M%S)"
+   git worktree add "$WORKTREE" v0.6.0
+   ```
+
+   Capture `$WORKTREE` — it is the subject's working directory AND the `--worktree`
+   for scoring. Telling the subject *where* to work is task-scope, not method
+   leakage (you never say *how*). If the subject's own HEAD later disagrees with
+   `base.ref`, `score` surfaces a visible drift warning.
+
 1. **Spawn the subject.** Launch the matrix-knob harness in its own pane:
 
    ```
@@ -52,8 +68,15 @@ follow it top to bottom.
    EOF); the second strips the self-documenting HTML comments — what remains is
    the blind packet only.
 
-   The subject now knows the task and the report contract — and nothing about how
-   to do it. Do not answer "how" questions; answer only task-scope questions.
+   Then hand the subject its worktree path (task-scope — WHERE, not HOW):
+
+   ```
+   pij send $SUBJECT "Your worktree is $WORKTREE (already checked out at the pinned base ref). Do all of your work there."
+   ```
+
+   The subject now knows the task, the report contract, and its worktree — and
+   nothing about how to do it. Do not answer "how" questions; answer only
+   task-scope questions.
 
 4. **Drive the-flow (Simple mode).** Steer the subject through the SDD journey
    over pij. Planning **must select Simple**, and you **compact before
@@ -78,49 +101,70 @@ follow it top to bottom.
    backpressure checker) — record what it offered; that feeds the judged field
    (A11) in step 9.
 
-6. **Collect the run coordinates.** When the subject reports `DONE`, capture:
+6. **Collect the run coordinates.** When the subject reports `DONE`, you already
+   hold both join keys:
 
    - `$SUBJECT` — the pij session id (telemetry join key);
-   - `$WORKTREE` — the subject's worktree path (from its completion report, or
-     `pij path $SUBJECT --dir`). This is the `--worktree` for scoring.
+   - `$WORKTREE` — the worktree you pre-created in step 0 (the `--worktree` for
+     scoring). Confirm the subject actually worked there.
 
-7. **Resolve subject-specific assertions.** Two assertions are authored as
-   placeholders because only the subject knows its own verb name and validator.
-   Open `assertions.json` and replace both `cmd` tokens with the real commands the
-   subject reported (each runs relative to the worktree); leave every other
-   assertion untouched:
+7. **Resolve subject-specific assertions per-run — never edit the bundle.** Two
+   assertions are authored as placeholders because only the subject knows its own
+   verb name and validator. Resolve them at score time with repeatable
+   `--resolve <id>=<command>` flags (step 8); do **not** edit `assertions.json`
+   (mutating the committed fixture dirties a shared file and breaks the core e2e).
+   Each command runs relative to the worktree:
 
-   - `A7` → **`SUBJECT_EXTENSION_HELP`**: replace with
-     `node harness/cli/dist/index.js <new-verb> --help`, using the verb the
-     subject registered. Commander exits **nonzero** if that verb never loaded, so
-     this is a *failure-sensitive* proof the extension is really wired in — unlike
-     `doctor`, which exits 0 even when an extension is degraded, so it can never
-     fail this check.
-   - `A8` → **`SUBJECT_PDF_VALIDATOR`**: replace with the real command the subject
-     reported for validating its PDF output.
+   - `A7` → **`SUBJECT_EXTENSION_HELP`**: resolve with
+     `--resolve A7='node harness/cli/dist/index.js <new-verb> --help'`, using the
+     verb the subject registered. Commander exits **nonzero** if that verb never
+     loaded, so this is a *failure-sensitive* proof the extension is really wired
+     in — unlike `doctor`, which exits 0 even when an extension is degraded.
+   - `A8` → **`SUBJECT_PDF_VALIDATOR`**: resolve with
+     `--resolve A8='<the real PDF-validator command the subject reported>'`.
+
+   ⚠ This legacy scenario has **no** `placeholder_policy` (raw-exec, to keep the
+   frozen e2e stable), so a forgotten `--resolve` executes the bare token and
+   **false-fails** the required `A7` lane (worse than an `unknown`). Always pass
+   BOTH `--resolve` flags here.
 
 8. **Score the finished session.** Run the evaluator (it fetches the session's
    telemetry once, resolves every assertion, and writes the report):
 
    ```
-   harness flow-eval score --scenario md-to-pdf --session $SUBJECT --worktree $WORKTREE
+   harness flow-eval score --scenario md-to-pdf --session $SUBJECT --worktree $WORKTREE --resolve A7='node harness/cli/dist/index.js <new-verb> --help' --resolve A8='<pdf-validator-cmd>'
    ```
 
-   Output lands in `.harness/live-testing/md-to-pdf/<run-id>/report.{json,md}`.
-   Check `data.telemetry.available` — if `false`, the telemetry lane resolved
-   `unknown` (a capability gap, not a subject failure); confirm the join key and
-   worktree before reading the verdict.
+   Output lands in `.harness/live-testing/md-to-pdf/<run-id>/report.{json,md}`; the
+   resolved commands are recorded in `report.json` + the ledger provenance. Check
+   `data.telemetry.available` — if `false`, the telemetry lane resolved `unknown`
+   (a capability gap, not a subject failure); confirm the join key and worktree
+   before reading the verdict.
 
-9. **Fill the judged field(s).** The report surfaces `A11`
+9. **Fill the judged field(s), then re-render.** The report surfaces `A11`
    (`backpressure_quality`) under `judged[]` with `verdict: null`. Answer its
    prompt against the evidence + worktree (did the subject build a *proper*
-   deterministic PDF backpressure checker, or a token gesture?), then write
-   `verdict` / `rationale` / `by` into `report.json`.
+   deterministic PDF backpressure checker, or a token gesture?), write
+   `verdict` / `rationale` / `by` into `report.json`, then re-render so the fills
+   show in the human report:
 
-10. **Read the report.** `report.md` is the human rendering: a deterministic
-    results table (✓/✗/? per row), the judged section, and the one-line verdict
-    (`PASS` / `PASS_WITH_NOTES` / `FAIL`). Archive the run; to compare a second
-    model, repeat from step 1 with a different `--model`/`--harness`.
+   ```
+   harness flow-eval render --scenario md-to-pdf --run <run-id>
+   ```
+
+10. **Read the report; supersede a stale re-score.** `report.md` is the human
+    rendering: a deterministic results table (✓/✗/? per row), the judged section,
+    and the one-line verdict (`PASS` / `PASS_WITH_NOTES` / `FAIL`). If you had to
+    RE-SCORE this session (e.g. a wrong subject/base-ref on the first pass), mark
+    the stale run superseded so `--compare` ignores it — the ledger is append-only,
+    so nothing is rewritten:
+
+    ```
+    harness flow-eval supersede --scenario md-to-pdf --run <stale-run-id> --by <corrected-run-id>
+    ```
+
+    Archive the run; to compare a second model, repeat from step 0 with a
+    different `--model`/`--harness`.
 
 11. **Tear down.** Close the subject pane when the run is archived:
 
@@ -132,17 +176,17 @@ follow it top to bottom.
 
 ```mermaid
 flowchart LR
-    spawn["pij spawn<br/>claude · opus"] --> canary["canary-verify<br/>model"]
-    canary --> blind["deliver BLIND<br/>subject.md"]
+    worktree["git worktree add<br/>@ v0.6.0 (step 0)"] --> spawn["pij spawn<br/>claude · opus"]
+    spawn --> canary["canary-verify<br/>model"]
+    canary --> blind["deliver BLIND<br/>subject.md + worktree"]
     blind --> explore --> plan["plan --simple"]
     plan --> validate1["validate"]
     validate1 --> compact["compact<br/>(before implement)"]
     compact --> implement --> review --> fix --> validate2["validate"]
     validate2 --> collect["collect session id<br/>+ worktree"]
-    collect --> resolve["resolve A7+A8<br/>placeholder cmds"]
-    resolve --> score["harness flow-eval score"]
-    score --> judged["fill judged<br/>backpressure_quality"]
-    judged --> report["read report.md"]
+    collect --> score["flow-eval score<br/>--resolve A7 + A8"]
+    score --> judged["fill judged<br/>+ render"]
+    judged --> report["read report.md<br/>(supersede if re-scored)"]
 ```
 
 ## Notes for a comparable run
@@ -152,5 +196,11 @@ flowchart LR
 - **Simple, and compact-before-implement, are load-bearing** — they are explicit
   scenario choreography (`scenario.json` → `flow`), and assertions `A2`/`A5`
   check for them in the telemetry.
+- **Autonomous-subject honesty (A2/A5).** `A2` (explore→plan→implement order) and
+  `A5` (compact-before-implement) are *orchestrator-driven* choreography. A fully
+  autonomous subject may never pause for your cadence nudges, so these can be
+  **unobservable** in a single run — the telemetry lane then reports honest
+  `unknown`, NOT a subject failure. Read an `unknown` on A2/A5 as "the choreography
+  wasn't enforceable here," and weigh whether A2/A5 belong in an autonomous run.
 - **One knob at a time.** To compare Opus vs another model, change only
   `--model`/`--harness` in step 1; everything else stays fixed.

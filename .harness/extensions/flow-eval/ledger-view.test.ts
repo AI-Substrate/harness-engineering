@@ -257,3 +257,31 @@ describe('compareModels — 2.5 model-vs-model board', () => {
     expect(cap?.separated).toBe(true);
   });
 });
+
+describe('supersede — 4.6 SUGG-004 list marking + compare exclusion', () => {
+  it('renderLedgerList marks a superseded run (listed but flagged ⊘, never dropped)', () => {
+    const stale = mkRecord({ model: 'opus', run_id: 'stale' });
+    const fresh = mkRecord({ model: 'gpt-5.5', run_id: 'fresh' });
+    const { data, board } = renderLedgerList('md-to-pdf', [stale, fresh], new Set(['stale']));
+    expect(data.superseded_runs).toEqual(['stale']);
+    expect(data.runs.find((r) => r.run_id === 'stale')?.superseded).toBe(true);
+    expect(data.runs.find((r) => r.run_id === 'fresh')?.superseded).toBe(false);
+    expect(board).toContain('⊘');
+    // append-only: the stale run is still LISTED, only flagged.
+    expect(data.runs.map((r) => r.run_id)).toEqual(['stale', 'fresh']);
+  });
+
+  it('compareModels EXCLUDES superseded records (mutation: compare-includes-superseded → RED)', () => {
+    const s1 = mkRecord({ model: 'sonnet-5', run_id: 's1' });
+    const bogus = mkRecord({ model: 'sonnet-5', run_id: 'bogus' }); // a stale re-score of sonnet-5
+    const g1 = mkRecord({ model: 'gpt-5.5', run_id: 'g1' });
+
+    const withSup = compareModels('md-to-pdf', [s1, bogus, g1], ['sonnet-5', 'gpt-5.5'], new Set(['bogus']));
+    expect(withSup.ok).toBe(true);
+    if (withSup.ok) expect(withSup.data.counts['sonnet-5']).toBe(1); // bogus excluded from the group
+
+    // NON-VACUITY: WITHOUT the supersede set the bogus line IS counted (proves the exclusion matters).
+    const without = compareModels('md-to-pdf', [s1, bogus, g1], ['sonnet-5', 'gpt-5.5']);
+    if (without.ok) expect(without.data.counts['sonnet-5']).toBe(2);
+  });
+});

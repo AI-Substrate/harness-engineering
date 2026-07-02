@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../harness/cli/src/adapters/fs/fake-fs.js';
 import {
+  appendAnnotation,
   appendRunRecord,
   buildRunRecord,
   type BuildRunRecordInput,
+  buildSupersedeAnnotation,
   contentHash,
   ledgerPath,
   readLedger,
   RUN_RECORD_SCHEMA,
   RUN_RECORD_SCHEMA_VERSION,
   runRecordLine,
+  supersededRunIds,
   type TelemetrySummary,
+  validateAnnotation,
   validateRunRecord,
 } from './ledger.js';
 import { buildJudgeProvenance, type JudgeConfig } from './scenario.js';
@@ -260,6 +264,60 @@ describe('readLedger — parses records in order, skips corrupt / future-version
   });
 
   it('returns empty (no throw) when the ledger file is absent', () => {
-    expect(readLedger(CWD, 'never-run', new FakeFs())).toEqual({ records: [], skipped: [] });
+    expect(readLedger(CWD, 'never-run', new FakeFs())).toEqual({ records: [], skipped: [], annotations: [] });
+  });
+});
+
+describe('ledger supersede annotations — 4.6 SUGG-004 (append-only, byte-stable)', () => {
+  const CWD = '/repo';
+
+  it('validateAnnotation accepts a well-formed supersede and rejects a malformed one', () => {
+    expect(validateAnnotation(buildSupersedeAnnotation({ run_id: 'old', superseded_by: 'new', ts: 'T' }))).toEqual([]);
+    expect(validateAnnotation({ kind: 'supersede', run_id: '', superseded_by: 'new', ts: 'T' })).not.toEqual([]);
+    expect(validateAnnotation({ kind: 'nope' })[0]).toMatch(/unknown annotation kind/);
+  });
+
+  it('validateRunRecord REJECTS a supersede annotation (they are distinct shapes, never conflated)', () => {
+    const ann = buildSupersedeAnnotation({ run_id: 'old', superseded_by: 'new', ts: 'T' });
+    expect(validateRunRecord(ann).length).toBeGreaterThan(0);
+  });
+
+  it('appendAnnotation adds ONE line and leaves every prior RunRecord line byte-identical (mutation: annotation-mutates-existing-lines → RED)', () => {
+    const fs = new FakeFs();
+    const path = ledgerPath(CWD, 'md-to-pdf');
+    appendRunRecord(buildRunRecord(input({ run_id: 'run-1' })), CWD, fs);
+    appendRunRecord(buildRunRecord(input({ run_id: 'run-2' })), CWD, fs);
+    const beforeAnnotation = fs.readText(path) as string;
+
+    const ann = buildSupersedeAnnotation({ run_id: 'run-1', superseded_by: 'run-2', ts: '2026-07-02T00:00:00.000Z' });
+    const res = appendAnnotation(ann, CWD, 'md-to-pdf', fs);
+    expect(res.ok).toBe(true);
+
+    const after = fs.readText(path) as string;
+    // NON-VACUITY: the pre-annotation bytes are an EXACT prefix — no prior record was rewritten.
+    expect(after.startsWith(beforeAnnotation)).toBe(true);
+    const lines = after.split('\n').filter((l) => l.length > 0);
+    expect(lines).toHaveLength(3);
+    expect(JSON.parse(lines[2])).toEqual(ann); // the appended line is exactly the annotation
+  });
+
+  it('readLedger parses annotations distinctly from records; supersededRunIds names the stale run', () => {
+    const fs = new FakeFs();
+    appendRunRecord(buildRunRecord(input({ run_id: 'run-1' })), CWD, fs);
+    appendRunRecord(buildRunRecord(input({ run_id: 'run-2' })), CWD, fs);
+    appendAnnotation(
+      buildSupersedeAnnotation({ run_id: 'run-1', superseded_by: 'run-2', ts: '2026-07-02T00:00:00.000Z' }),
+      CWD,
+      'md-to-pdf',
+      fs,
+    );
+
+    const { records, annotations, skipped } = readLedger(CWD, 'md-to-pdf', fs);
+    // both real records still load (the stale line is NOT dropped — append-only stands).
+    expect(records.map((r) => r.run_id)).toEqual(['run-1', 'run-2']);
+    expect(skipped).toEqual([]);
+    expect(annotations).toHaveLength(1);
+    expect(annotations[0]).toMatchObject({ kind: 'supersede', run_id: 'run-1', superseded_by: 'run-2' });
+    expect([...supersededRunIds(annotations)]).toEqual(['run-1']);
   });
 });

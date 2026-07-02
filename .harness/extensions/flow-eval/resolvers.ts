@@ -83,6 +83,32 @@ export interface ResolveContext {
   fs: ResolverFs;
   /** Run a real command (the `command-succeeds` lane). cwd defaults to the worktree. */
   exec(command: string, args: string[], opts: { cwd: string }): Promise<ExecResult>;
+  /**
+   * Per-run assertion resolution (task 4.6, SUGG-003): assertion id → the real
+   * command an orchestrator supplied via `--resolve <id>=<cmd>`. A `command-succeeds`
+   * whose id appears here runs THIS command in place of its bundle `cmd` — so a
+   * subject-specific placeholder is resolved WITHOUT ever mutating the committed
+   * `live-testing/scenarios/` bundle. Absent/empty ⇒ no overrides.
+   */
+  resolutions?: Record<string, string>;
+  /**
+   * How an UNRESOLVED placeholder `cmd` behaves (task 4.6, scenario-level opt-in):
+   *  - `'unknown'` — an unresolved placeholder token resolves the assertion `unknown`
+   *    with no exec (honest "not run", never a silent pass / crash);
+   *  - `'raw'` (default, legacy) — the literal token is executed as-is (back-compat:
+   *    the frozen md-to-pdf bundle carries no policy and keeps raw-exec).
+   */
+  placeholderPolicy?: 'raw' | 'unknown';
+}
+
+/**
+ * A `command-succeeds` `cmd` that is a bare screaming-snake token (`SUBJECT_PDF_VALIDATOR`)
+ * — the authored shape for a subject-specific placeholder only the subject can fill. A
+ * real command is lowercase / has a path separator / has arguments, so it never matches.
+ */
+const PLACEHOLDER_TOKEN = /^[A-Z][A-Z0-9_]+$/;
+export function isPlaceholderToken(cmd: string): boolean {
+  return PLACEHOLDER_TOKEN.test(cmd.trim());
 }
 
 /** A resolver: type-dispatched, lane-tagged, three-valued (may be async for `command-succeeds`). */
@@ -366,8 +392,19 @@ const fileContentMatches: ResolverFn = (a, rc) => {
 };
 
 const commandSucceeds: ResolverFn = async (a, rc) => {
-  const cmd = strParam(a, 'cmd');
+  // 4.6 per-run resolution: a `--resolve <id>=<cmd>` override wins over the bundle
+  // `cmd`, so a subject-specific placeholder is resolved without touching the
+  // committed scenario file.
+  const resolved = rc.resolutions?.[a.id];
+  const rawCmd = strParam(a, 'cmd');
+  const cmd = resolved ?? rawCmd;
   if (!cmd) return 'unknown';
+  // An UNRESOLVED placeholder token under the 'unknown' policy resolves `unknown`
+  // (honest "not run"), never executing the literal token or silently passing. Under
+  // the default/legacy 'raw' policy the token is executed as-is (back-compat).
+  if (resolved === undefined && isPlaceholderToken(cmd) && (rc.placeholderPolicy ?? 'raw') === 'unknown') {
+    return 'unknown';
+  }
   const parts = cmd.split(/\s+/).filter((p) => p.length > 0);
   if (parts.length === 0) return 'unknown';
   const [command, ...args] = parts;

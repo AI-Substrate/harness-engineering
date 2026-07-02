@@ -57,6 +57,12 @@ export interface ReportSubject {
 
 export interface ReportProvenance {
   judge: JudgeProvenance | null;
+  /**
+   * 4.6 (SUGG-003): the per-run resolved commands `--resolve <id>=<cmd>` supplied —
+   * assertion id → the real command that ran in place of a placeholder token. Present
+   * only when ≥1 resolution was given, so a comparison knows what actually ran.
+   */
+  resolutions?: Record<string, string>;
 }
 
 export interface ReportInput {
@@ -132,6 +138,9 @@ export function buildReportJson(input: ReportInput): Record<string, unknown> {
     })),
     provenance: {
       judge: input.provenance?.judge ?? null,
+      ...(input.provenance?.resolutions && Object.keys(input.provenance.resolutions).length > 0
+        ? { resolutions: input.provenance.resolutions }
+        : {}),
     },
     alarms: scored.alarms,
     verdict: scored.verdict,
@@ -170,6 +179,12 @@ export function buildReportMd(input: ReportInput): string {
     lines.push(`- **⚠ base_ref warning**: ${mdCell(input.base_ref_warning)}`);
   }
   lines.push(`- **Run**: ${input.run_id} (${input.started_at} → ${input.finished_at})`);
+  if (input.provenance?.resolutions && Object.keys(input.provenance.resolutions).length > 0) {
+    const rs = Object.entries(input.provenance.resolutions)
+      .map(([id, c]) => `${id}=${c}`)
+      .join(' · ');
+    lines.push(`- **Resolved commands** (\`--resolve\`): ${mdCell(rs)}`);
+  }
   if (input.provenance?.judge) {
     const j = input.provenance.judge;
     lines.push(`- **Judge**: ${j.model}@${j.model_version} (${j.judge_family}; subject family ${j.subject_family})`);
@@ -239,7 +254,7 @@ export function renderMarkdownFromReportJson(parsed: unknown): RenderFromJsonRes
   const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
   const axis = (det.axis_scores as Record<string, unknown> | undefined) ?? {};
   const judged = (Array.isArray(j.judged) ? j.judged : []) as JudgedField[];
-  const provenance = j.provenance as { judge?: unknown } | undefined;
+  const provenance = j.provenance as { judge?: unknown; resolutions?: unknown } | undefined;
 
   const scored: ScoredReport = {
     deterministic: {
@@ -266,7 +281,12 @@ export function renderMarkdownFromReportJson(parsed: unknown): RenderFromJsonRes
     started_at: typeof j.started_at === 'string' ? j.started_at : '',
     finished_at: typeof j.finished_at === 'string' ? j.finished_at : '',
     scored,
-    provenance: { judge: (provenance?.judge ?? null) as ReportProvenance['judge'] },
+    provenance: {
+      judge: (provenance?.judge ?? null) as ReportProvenance['judge'],
+      ...(provenance?.resolutions && typeof provenance.resolutions === 'object'
+        ? { resolutions: provenance.resolutions as Record<string, string> }
+        : {}),
+    },
   };
 
   const judged_filled = judged.filter((x) => x != null && x.verdict !== null && x.verdict !== undefined).length;

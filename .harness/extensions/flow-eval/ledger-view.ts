@@ -91,6 +91,8 @@ export interface RunRow {
   process: number | null;
   verdict: RunRecord['verdict'];
   duration_s: number | null;
+  /** True when a supersede annotation marks this run stale (4.6 SUGG-004). */
+  superseded: boolean;
 }
 
 export interface LaneHistory {
@@ -111,6 +113,8 @@ export interface LedgerListData {
   runs: RunRow[];
   lanes: LaneHistory[];
   flipped_lanes: string[];
+  /** run_ids marked superseded by a supersede annotation (4.6 SUGG-004). */
+  superseded_runs: string[];
 }
 
 function laneOf(r: RunRecord, assertionId: string): LaneOutcome | undefined {
@@ -160,7 +164,11 @@ function subjectLabel(r: RunRecord): string {
 }
 
 /** Derive the 2.4 list data + a rendered board from the scenario's records. */
-export function renderLedgerList(scenario: string, records: RunRecord[]): { data: LedgerListData; board: string } {
+export function renderLedgerList(
+  scenario: string,
+  records: RunRecord[],
+  superseded: ReadonlySet<string> = new Set(),
+): { data: LedgerListData; board: string } {
   const runs: RunRow[] = records.map((r) => ({
     run_id: r.run_id,
     ts: r.ts,
@@ -170,6 +178,7 @@ export function renderLedgerList(scenario: string, records: RunRecord[]): { data
     process: r.axis_scores.process,
     verdict: r.verdict,
     duration_s: r.duration_s,
+    superseded: superseded.has(r.run_id),
   }));
   const lanes = buildLaneHistories(records);
   const baseRefs = [...new Set(records.map((r) => r.base_ref))];
@@ -180,6 +189,7 @@ export function renderLedgerList(scenario: string, records: RunRecord[]): { data
     runs,
     lanes,
     flipped_lanes: lanes.filter((l) => l.flipped).map((l) => l.assertion_id),
+    superseded_runs: runs.filter((r) => r.superseded).map((r) => r.run_id),
   };
 
   const lines: string[] = [];
@@ -191,8 +201,11 @@ export function renderLedgerList(scenario: string, records: RunRecord[]): { data
   lines.push('');
   lines.push('  #  date/ts               subject                     effort  cap    proc   verdict');
   runs.forEach((row, i) => {
+    // A superseded run stays LISTED (append-only), but is flagged so a reader never
+    // trusts a stale line as a live result.
+    const supMark = row.superseded ? '  ⊘ superseded' : '';
     lines.push(
-      `  ${String(i + 1).padStart(2)} ${row.ts.padEnd(22).slice(0, 22)}${row.subject.padEnd(28).slice(0, 28)}${row.effort.padEnd(8).slice(0, 8)}${fmtScore(row.capability).padEnd(7)}${fmtScore(row.process).padEnd(7)}${row.verdict}`,
+      `  ${String(i + 1).padStart(2)} ${row.ts.padEnd(22).slice(0, 22)}${row.subject.padEnd(28).slice(0, 28)}${row.effort.padEnd(8).slice(0, 8)}${fmtScore(row.capability).padEnd(7)}${fmtScore(row.process).padEnd(7)}${row.verdict}${supMark}`,
     );
   });
   lines.push('');
@@ -206,6 +219,10 @@ export function renderLedgerList(scenario: string, records: RunRecord[]): { data
   if (data.flipped_lanes.length > 0) {
     lines.push('');
     lines.push(`⚑ flipped lane(s): ${data.flipped_lanes.join(', ')}`);
+  }
+  if (data.superseded_runs.length > 0) {
+    lines.push('');
+    lines.push(`⊘ superseded run(s) (excluded from --compare): ${data.superseded_runs.join(', ')}`);
   }
   return { data, board: lines.join('\n') };
 }
@@ -408,19 +425,28 @@ function fmtInt(n: number | null): string {
  * not computed. Groups the ledger by `seed_tuple.model` (only the requested
  * models), then derives per-axis Wilson + per-lane pass^k/McNemar + cost.
  */
-export function compareModels(scenario: string, records: RunRecord[], models: string[]): CompareResult {
+export function compareModels(
+  scenario: string,
+  records: RunRecord[],
+  models: string[],
+  superseded: ReadonlySet<string> = new Set(),
+): CompareResult {
   const wanted = models.filter((m) => m.length > 0);
   if (wanted.length < 2) {
     return { ok: false, error: 'compare needs at least two --compare <model> groups' };
   }
+  // 4.6 SUGG-004: a superseded run is a stale re-score — EXCLUDE it from every group
+  // so a comparison never ingests the bogus line (the line itself still stands in the
+  // append-only ledger; it is just not counted here).
+  const live = records.filter((r) => !superseded.has(r.run_id));
   const groups = new Map<string, RunRecord[]>();
   for (const m of wanted) groups.set(m, []);
-  for (const r of records) {
+  for (const r of live) {
     const m = r.seed_tuple.model;
     if (groups.has(m)) groups.get(m)?.push(r);
   }
 
-  const compared = records.filter((r) => groups.has(r.seed_tuple.model));
+  const compared = live.filter((r) => groups.has(r.seed_tuple.model));
   if (compared.length === 0) {
     return { ok: false, error: `no runs found for models: ${wanted.join(', ')}` };
   }

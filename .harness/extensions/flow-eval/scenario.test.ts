@@ -198,3 +198,27 @@ describe('loadScenario — malformed bundles return a descriptive error (no thro
     }
   });
 });
+
+describe('loadScenario — placeholder_policy (4.6 SUGG-003, optional; default absent)', () => {
+  const one = [{ id: 'A1', type: 'file-created', source: 'fs', params: { glob: 'x' } }];
+
+  it("carries a valid 'unknown' / 'raw' placeholder_policy into the config", () => {
+    const u = loadScenario('x', bundleFs(scenarioJson({ placeholder_policy: 'unknown' }), assertionsJson(one)), '/s');
+    expect(u.ok).toBe(true);
+    if (u.ok) expect(u.scenario.config.placeholder_policy).toBe('unknown');
+    const raw = loadScenario('x', bundleFs(scenarioJson({ placeholder_policy: 'raw' }), assertionsJson(one)), '/s');
+    if (raw.ok) expect(raw.scenario.config.placeholder_policy).toBe('raw');
+  });
+
+  it('is absent (undefined) on a legacy bundle — back-compat, the score path defaults to raw', () => {
+    const r = loadScenario('x', bundleFs(scenarioJson(), assertionsJson(one)), '/s');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.scenario.config.placeholder_policy).toBeUndefined();
+  });
+
+  it('rejects an invalid placeholder_policy value (never a silent coerce)', () => {
+    const r = loadScenario('x', bundleFs(scenarioJson({ placeholder_policy: 'nope' }), assertionsJson(one)), '/s');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/placeholder_policy/);
+  });
+});

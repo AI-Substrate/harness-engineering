@@ -94,7 +94,7 @@ export interface RunRecord {
   /** Fraction `unknown` per axis — a dropped sensor stays visible, not masked (003 Q3). */
   unknown_rate_by_axis?: { capability: number; process: number };
   /** Additive provenance for non-deterministic surfaces; absent on legacy records. */
-  provenance?: { judge: JudgeProvenance | null };
+  provenance?: { judge: JudgeProvenance | null; resolutions?: Record<string, string> };
 }
 
 /**
@@ -209,6 +209,7 @@ export const RUN_RECORD_SCHEMA = {
       type: 'object',
       properties: {
         judge: { type: ['object', 'null'] },
+        resolutions: { type: 'object' },
       },
     },
   },
@@ -270,7 +271,7 @@ export interface BuildRunRecordInput {
   session_export?: string | null;
   /** Denormalized cost totals; `null` honestly when absent (never zero-filled). */
   telemetry_summary?: TelemetrySummary | null;
-  provenance?: { judge: JudgeProvenance | null };
+  provenance?: { judge: JudgeProvenance | null; resolutions?: Record<string, string> };
 }
 
 /**
@@ -332,13 +333,95 @@ export function buildRunRecord(input: BuildRunRecordInput): RunRecord {
     session_export: input.session_export ?? null,
     telemetry_summary: input.telemetry_summary ?? null,
     unknown_rate_by_axis: { capability: rateOn('capability'), process: rateOn('process') },
-    ...(input.provenance !== undefined && { provenance: { judge: input.provenance.judge ?? null } }),
+    ...(input.provenance !== undefined && {
+      provenance: {
+        judge: input.provenance.judge ?? null,
+        ...(input.provenance.resolutions && Object.keys(input.provenance.resolutions).length > 0
+          ? { resolutions: input.provenance.resolutions }
+          : {}),
+      },
+    }),
   };
 }
 
 /** Serialize a record to its single, newline-terminated JSONL line. */
 export function runRecordLine(record: RunRecord): string {
   return `${JSON.stringify(record)}\n`;
+}
+
+// ---- ledger annotations (4.6 SUGG-004: supersede without mutating history) --
+
+/**
+ * A ledger ANNOTATION — a non-RunRecord line that annotates the append-only log
+ * WITHOUT rewriting any prior record (byte-stability is sacred; AC-05). It is
+ * discriminated from a {@link RunRecord} purely by its `kind` field (RunRecords
+ * never carry `kind`), so {@link validateRunRecord} stays strict about real records
+ * and readers consume/skip annotations correctly.
+ *
+ * The only kind today is `supersede`: a corrected re-score marks the stale record
+ * superseded, so `ledger` can flag it and `--compare` can exclude it — the bogus
+ * line still stands (append-only), it is just no longer counted.
+ */
+export const LEDGER_ANNOTATION_KINDS = ['supersede'] as const;
+export type LedgerAnnotationKind = (typeof LEDGER_ANNOTATION_KINDS)[number];
+
+export interface SupersedeAnnotation {
+  kind: 'supersede';
+  /** The run_id being superseded (the stale record). */
+  run_id: string;
+  /** The run_id that supersedes it (the corrected re-score). */
+  superseded_by: string;
+  /** ISO-8601, UTC — when the supersede was recorded. */
+  ts: string;
+}
+
+export type LedgerAnnotation = SupersedeAnnotation;
+
+/** Discriminate an annotation line from a RunRecord (RunRecords carry no `kind`). */
+export function isAnnotationValue(v: unknown): v is { kind: unknown } {
+  return typeof v === 'object' && v !== null && 'kind' in v;
+}
+
+/**
+ * Validate a {@link LedgerAnnotation} — its OWN guard (kept separate from
+ * {@link validateRunRecord} so a real RunRecord is never mistaken for an annotation
+ * and vice-versa). Returns a list of problems (empty ⇒ valid).
+ */
+export function validateAnnotation(v: unknown): string[] {
+  const problems: string[] = [];
+  if (typeof v !== 'object' || v === null) return ['annotation is not an object'];
+  const a = v as Record<string, unknown>;
+  if (a.kind !== 'supersede') {
+    problems.push(`unknown annotation kind: ${String(a.kind)}`);
+    return problems;
+  }
+  if (typeof a.run_id !== 'string' || a.run_id.length === 0) problems.push('supersede.run_id must be a non-empty string');
+  if (typeof a.superseded_by !== 'string' || a.superseded_by.length === 0) {
+    problems.push('supersede.superseded_by must be a non-empty string');
+  }
+  if (typeof a.ts !== 'string' || a.ts.length === 0) problems.push('supersede.ts must be a non-empty string');
+  return problems;
+}
+
+/** Build a supersede annotation (pure). */
+export function buildSupersedeAnnotation(input: {
+  run_id: string;
+  superseded_by: string;
+  ts: string;
+}): SupersedeAnnotation {
+  return { kind: 'supersede', run_id: input.run_id, superseded_by: input.superseded_by, ts: input.ts };
+}
+
+/** Serialize an annotation to its single, newline-terminated JSONL line. */
+export function annotationLine(annotation: LedgerAnnotation): string {
+  return `${JSON.stringify(annotation)}\n`;
+}
+
+/** The set of run_ids marked superseded by supersede annotations (the stale runs). */
+export function supersededRunIds(annotations: readonly LedgerAnnotation[]): Set<string> {
+  const set = new Set<string>();
+  for (const a of annotations) if (a.kind === 'supersede') set.add(a.run_id);
+  return set;
 }
 
 // ---- validation (schema-derived; no ajv in this repo) ----------------------
@@ -423,10 +506,35 @@ export function appendRunRecord(record: RunRecord, cwd: string, io: LedgerIo): A
   }
 }
 
+/**
+ * Append ONE annotation line (e.g. `supersede`) to the scenario ledger — the SAME
+ * byte-stable read-then-write as {@link appendRunRecord}: prior lines are never
+ * rewritten, only a new line is added (AC-05). Never throws.
+ */
+export function appendAnnotation(
+  annotation: LedgerAnnotation,
+  cwd: string,
+  scenario: string,
+  io: LedgerIo,
+): AppendResult {
+  const path = ledgerPath(cwd, scenario);
+  try {
+    io.mkdirp(join(cwd, '.harness', 'live-testing', scenario));
+    const prior = io.readText(path) ?? '';
+    const sep = prior.length > 0 && !prior.endsWith('\n') ? '\n' : '';
+    io.writeText(path, `${prior}${sep}${annotationLine(annotation)}`);
+    return { ok: true, path };
+  } catch (err) {
+    return { ok: false, error: `failed to append annotation to ledger: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
 export interface ReadLedgerResult {
   records: RunRecord[];
   /** One entry per line that failed to parse / validate — surfaced, never silently dropped. */
   skipped: Array<{ line: number; reason: string }>;
+  /** Annotation lines (e.g. `supersede`), parsed distinctly from RunRecords (4.6 SUGG-004). */
+  annotations: LedgerAnnotation[];
 }
 
 /**
@@ -439,7 +547,8 @@ export function readLedger(cwd: string, scenario: string, fs: { readText(path: s
   const raw = fs.readText(ledgerPath(cwd, scenario));
   const records: RunRecord[] = [];
   const skipped: Array<{ line: number; reason: string }> = [];
-  if (raw === null) return { records, skipped };
+  const annotations: LedgerAnnotation[] = [];
+  if (raw === null) return { records, skipped, annotations };
   const lines = raw.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -451,6 +560,17 @@ export function readLedger(cwd: string, scenario: string, fs: { readText(path: s
       skipped.push({ line: i + 1, reason: 'invalid JSON' });
       continue;
     }
+    // An annotation line (carries `kind`) is parsed by its OWN guard, so a real
+    // RunRecord validation is never applied to it (and vice-versa).
+    if (isAnnotationValue(parsed)) {
+      const problems = validateAnnotation(parsed);
+      if (problems.length > 0) {
+        skipped.push({ line: i + 1, reason: problems.join('; ') });
+        continue;
+      }
+      annotations.push(parsed as LedgerAnnotation);
+      continue;
+    }
     const problems = validateRunRecord(parsed);
     if (problems.length > 0) {
       skipped.push({ line: i + 1, reason: problems.join('; ') });
@@ -458,5 +578,5 @@ export function readLedger(cwd: string, scenario: string, fs: { readText(path: s
     }
     records.push(parsed as RunRecord);
   }
-  return { records, skipped };
+  return { records, skipped, annotations };
 }

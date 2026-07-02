@@ -176,6 +176,14 @@ export interface ScenarioConfig {
   prompts: { orchestrator: string; subject: string };
   /** Subjective judge hardening config (workshop 003 §D4), required when `judged` is used. */
   judge?: JudgeConfig;
+  /**
+   * How an unresolved `command-succeeds` placeholder token behaves at score time
+   * (task 4.6, SUGG-003). `'unknown'` ⇒ an unresolved placeholder resolves `unknown`
+   * with a visible note (honest "not run"); `'raw'` (default when absent) ⇒ the token
+   * is executed as-is (legacy — the frozen md-to-pdf bundle carries no policy).
+   * `scaffold` emits `'unknown'` so NEW scenarios get honest unknowns by default.
+   */
+  placeholder_policy?: 'raw' | 'unknown';
   /** Relative filename of the assertions bundle (e.g. `assertions.json`). */
   assertions: string;
 }
@@ -318,6 +326,13 @@ function validateConfig(raw: unknown, issues: string[]): ScenarioConfig | null {
   if (!isNonEmptyString(raw.assertions)) {
     issues.push("scenario.json: 'assertions' must be a relative filename (e.g. 'assertions.json')");
   }
+  if (
+    raw.placeholder_policy !== undefined &&
+    raw.placeholder_policy !== 'raw' &&
+    raw.placeholder_policy !== 'unknown'
+  ) {
+    issues.push("scenario.json: 'placeholder_policy' must be 'raw' or 'unknown' when present");
+  }
   let judgeConfig: JudgeConfig | undefined;
   if (raw.judge !== undefined) {
     const judge = raw.judge;
@@ -391,6 +406,7 @@ function validateConfig(raw: unknown, issues: string[]): ScenarioConfig | null {
     flow: { mode: s.flow.mode, stages: [...s.flow.stages] },
     prompts: { orchestrator: s.prompts.orchestrator, subject: s.prompts.subject },
     ...(judgeConfig !== undefined && { judge: judgeConfig }),
+    ...(s.placeholder_policy !== undefined && { placeholder_policy: s.placeholder_policy }),
     assertions: s.assertions,
   };
 }

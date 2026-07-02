@@ -30,9 +30,17 @@ import type {
   VerbResult,
 } from '@ai-substrate/engineering-harness/contract';
 import { renderMarkdownFromReportJson, writeReport } from './report.js';
-import { contentHash, readLedger, type TelemetrySummary } from './ledger.js';
+import {
+  appendAnnotation,
+  buildSupersedeAnnotation,
+  contentHash,
+  readLedger,
+  supersededRunIds,
+  type TelemetrySummary,
+} from './ledger.js';
 import { compareModels, renderLedgerList } from './ledger-view.js';
 import type { ResolveContext, SessionEvidence } from './resolvers.js';
+import { isPlaceholderToken } from './resolvers.js';
 import { buildJudgeProvenance, join, loadScenario } from './scenario.js';
 import { scoreScenario } from './scorer.js';
 
@@ -45,6 +53,27 @@ function scenariosRoot(cwd: string): string {
 function strOpt(ctx: VerbContext, key: string): string | undefined {
   const v = ctx.options[key];
   return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+}
+
+/**
+ * Parse the repeatable `--resolve <id>=<command>` flag into an `id → command` map
+ * (task 4.6, SUGG-003). Each entry is split on the FIRST `=` (a command may itself
+ * contain `=`); a blank id or command is ignored. commander may hand a single string
+ * or an array (variadic) — both are normalized. Never throws.
+ */
+function resolveMap_opt(ctx: VerbContext): Record<string, string> {
+  const v = ctx.options.resolve;
+  const raw = Array.isArray(v) ? v : typeof v === 'string' ? [v] : [];
+  const out: Record<string, string> = {};
+  for (const entry of raw) {
+    if (typeof entry !== 'string') continue;
+    const eq = entry.indexOf('=');
+    if (eq <= 0) continue;
+    const id = entry.slice(0, eq).trim();
+    const command = entry.slice(eq + 1).trim();
+    if (id.length > 0 && command.length > 0) out[id] = command;
+  }
+  return out;
 }
 
 /**
@@ -71,11 +100,15 @@ async function fetchEvidence(
   }
 }
 
+/** The stable per-session suffix a run-id ends with (all runs of one pij session share it). */
+function sessionSuffix(session: string): string {
+  return session.replace(/[^a-zA-Z0-9]/g, '').slice(-6) || 'run';
+}
+
 /** Build a deterministic run-id from the clock + session (no Math.random). */
 function makeRunId(nowIso: string, session: string): string {
   const stamp = nowIso.replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '').replace('T', '-');
-  const suffix = session.replace(/[^a-zA-Z0-9]/g, '').slice(-6) || 'run';
-  return `${stamp}-${suffix}`;
+  return `${stamp}-${sessionSuffix(session)}`;
 }
 
 /**
@@ -195,17 +228,40 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   }
   const baseRefWarning = warnings.length > 0 ? warnings[0] : null;
 
+  // 4.6 (SUGG-003): per-run assertion resolution. `--resolve <id>=<cmd>` overrides a
+  // `command-succeeds` cmd WITHOUT mutating the committed bundle; the scenario's
+  // `placeholder_policy` decides how an UNRESOLVED placeholder behaves (default 'raw').
+  const resolutions = resolveMap_opt(ctx);
+  const placeholderPolicy = loaded.scenario.config.placeholder_policy ?? 'raw';
+  // Surface a visible note for every command-succeeds placeholder left unresolved
+  // under the 'unknown' policy (its row will resolve `unknown`, never a silent pass).
+  if (placeholderPolicy === 'unknown') {
+    for (const asrt of loaded.scenario.assertions) {
+      if (asrt.type !== 'command-succeeds') continue;
+      if (asrt.id in resolutions) continue;
+      const cmd = typeof asrt.params.cmd === 'string' ? asrt.params.cmd : '';
+      if (cmd.length > 0 && isPlaceholderToken(cmd)) {
+        warnings.push(
+          `unresolved placeholder ${cmd} for ${asrt.id} — pass --resolve ${asrt.id}='<command>' (it resolved unknown, not run)`,
+        );
+      }
+    }
+  }
+
   const rc: ResolveContext = {
     evidence,
     worktree,
     fs: ctx.fs,
     exec: (command, args, opts) => ctx.exec(command, args, opts),
+    resolutions,
+    placeholderPolicy,
   };
   const scored = await scoreScenario(loaded.scenario.assertions, rc, loaded.scenario.config.judge);
   const finishedAt = ctx.clock.nowIso();
   const runId = makeRunId(startedAt, session);
   const provenance = {
     judge: buildJudgeProvenance(loaded.scenario.config.judge, subjectModel),
+    ...(Object.keys(resolutions).length > 0 && { resolutions }),
   };
 
   // Seed-tuple hashes: the `--compare` match key (scenario_hash + base_ref) + a
@@ -292,6 +348,24 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   }
 
   const d = scored.deterministic;
+  // 4.6 (SUGG-004): cheap re-score detection — a prior ledger record whose run_id
+  // shares THIS session's suffix is very likely the same session re-scored, so hint
+  // at `supersede`. All runs of one pij session share the `-<suffix>` run-id tail.
+  let priorSessionRuns: string[] = [];
+  if (written.ledger !== undefined) {
+    const tail = `-${sessionSuffix(session)}`;
+    priorSessionRuns = readLedger(ctx.cwd, slug, ctx.fs)
+      .records.filter((r) => r.run_id !== runId && r.run_id.endsWith(tail))
+      .map((r) => r.run_id);
+  }
+  const baseNext =
+    scored.judged.length > 0
+      ? `Fill the ${scored.judged.length} judged field(s) in ${written.files.json}, then run \`harness flow-eval render --scenario ${slug} --run ${runId}\` to re-render report.md.`
+      : `Read the report at ${written.files.md}.`;
+  const supersedeHint =
+    priorSessionRuns.length > 0
+      ? ` NOTE: ${priorSessionRuns.length} prior run(s) of this session are recorded (${priorSessionRuns.join(', ')}); if this re-score corrects one, run \`harness flow-eval supersede --scenario ${slug} --run <old-run-id> --by ${runId}\`.`
+      : '';
   return ctx.ok(
     {
       scenario: slug,
@@ -309,6 +383,7 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       files: written.files,
       ...(written.ledger !== undefined && { ledger: written.ledger }),
       ...(warnings.length > 0 && { warnings }),
+      ...(priorSessionRuns.length > 0 && { prior_session_runs: priorSessionRuns }),
     },
     {
       evidence: [
@@ -318,10 +393,7 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
           ? [{ label: 'flow-eval ledger', path: written.ledger }]
           : []),
       ],
-      next_action:
-        scored.judged.length > 0
-          ? `Fill the ${scored.judged.length} judged field(s) in ${written.files.json}, then run \`harness flow-eval render --scenario ${slug} --run ${runId}\` to re-render report.md.`
-          : `Read the report at ${written.files.md}.`,
+      next_action: baseNext + supersedeHint,
     },
   );
 }
@@ -411,11 +483,12 @@ function runLedger(ctx: VerbContext): VerbResult {
       next_action: 'Re-run: harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]',
     });
   }
-  const { records, skipped } = readLedger(ctx.cwd, slug, ctx.fs);
+  const { records, skipped, annotations } = readLedger(ctx.cwd, slug, ctx.fs);
+  const superseded = supersededRunIds(annotations);
   const compare = compareModels_opt(ctx);
 
   if (compare.length > 0) {
-    const cmp = compareModels(slug, records, compare);
+    const cmp = compareModels(slug, records, compare, superseded);
     if (!cmp.ok) {
       return ctx.error('E_COMPARE', cmp.error, {
         next_action:
@@ -424,19 +497,81 @@ function runLedger(ctx: VerbContext): VerbResult {
       });
     }
     return ctx.ok(
-      { scenario: slug, ...cmp.data, skipped, board: cmp.board },
-      { next_action: `Model-vs-model board for ${compare.join(' vs ')} (see \`board\`). ✱ = Wilson-separated / McNemar-significant.` },
+      { ...cmp.data, scenario: slug, skipped, board: cmp.board },
+      { next_action: `Model-vs-model board for ${compare.join(' vs ')} (see \`board\`). ✱ = Wilson-separated / McNemar-significant. Superseded runs are excluded.` },
     );
   }
 
-  const list = renderLedgerList(slug, records);
+  const list = renderLedgerList(slug, records, superseded);
   return ctx.ok(
     { ...list.data, skipped, board: list.board },
     {
       next_action:
         records.length === 0
           ? `No runs recorded for ${slug} yet — run \`harness flow-eval score --scenario ${slug} --session <pij-id>\`.`
-          : `${records.length} run(s); ${list.data.flipped_lanes.length} flipped lane(s). Read \`board\` for the history.`,
+          : `${records.length} run(s); ${list.data.flipped_lanes.length} flipped lane(s)${list.data.superseded_runs.length > 0 ? `; ${list.data.superseded_runs.length} superseded` : ''}. Read \`board\` for the history.`,
+    },
+  );
+}
+
+/**
+ * `flow-eval supersede` — mark a stale run superseded by a corrected re-score
+ * (task 4.6, SUGG-004). APPENDS one annotation line (`{kind:"supersede", …}`) to
+ * the scenario ledger; existing RunRecord lines stay byte-stable (append-only is
+ * sacred). `ledger` then flags the superseded run and `--compare` excludes it, but
+ * the stale line itself is never rewritten or deleted.
+ */
+function runSupersede(ctx: VerbContext): VerbResult {
+  const slug = strOpt(ctx, 'scenario');
+  const oldRun = strOpt(ctx, 'run');
+  const byRun = strOpt(ctx, 'by');
+  if (!slug || !oldRun || !byRun) {
+    return ctx.error('E_ARGS', 'all of --scenario <slug>, --run <old-run-id> and --by <new-run-id> are required', {
+      next_action: 'Re-run: harness flow-eval supersede --scenario <slug> --run <old-run-id> --by <new-run-id>',
+    });
+  }
+  // A run cannot supersede itself: that would tombstone it (excluded from --compare)
+  // with no corrected replacement, violating the stale-by-corrected contract. Reject
+  // BEFORE any append so the ledger stays byte-identical.
+  if (oldRun === byRun) {
+    return ctx.error('E_ARGS', `a run cannot supersede itself (--run and --by are both '${oldRun}')`, {
+      next_action: `Score the corrected run first, then \`harness flow-eval supersede --scenario ${slug} --run ${oldRun} --by <new-run-id>\`.`,
+    });
+  }
+  if (!ctx.fsWrite) {
+    return ctx.error('E_NO_FSWRITE', 'this core build does not provide ctx.fsWrite', {
+      next_action: 'Upgrade the engineering-harness core to write the ledger annotation.',
+    });
+  }
+  const { records } = readLedger(ctx.cwd, slug, ctx.fs);
+  const has = (id: string): boolean => records.some((r) => r.run_id === id);
+  if (!has(oldRun)) {
+    return ctx.error('E_NOT_FOUND', `no run '${oldRun}' in the ${slug} ledger`, {
+      next_action: `List the runs with \`harness flow-eval ledger --scenario ${slug}\` and re-check the --run id.`,
+    });
+  }
+  if (!has(byRun)) {
+    return ctx.error('E_NOT_FOUND', `no run '${byRun}' in the ${slug} ledger (the --by re-score must already be recorded)`, {
+      next_action: `Score the corrected run first, then \`harness flow-eval supersede --scenario ${slug} --run ${oldRun} --by <new-run-id>\`.`,
+    });
+  }
+  const annotation = buildSupersedeAnnotation({ run_id: oldRun, superseded_by: byRun, ts: ctx.clock.nowIso() });
+  const io = {
+    readText: (p: string): string | null => ctx.fs.readText(p),
+    writeText: (p: string, c: string): void => ctx.fsWrite?.writeText(p, c),
+    mkdirp: (p: string): void => ctx.fsWrite?.mkdirp(p),
+  };
+  const appended = appendAnnotation(annotation, ctx.cwd, slug, io);
+  if (!appended.ok) {
+    return ctx.error('E_LEDGER', appended.error, {
+      next_action: 'Check write permissions on the scenario ledger directory.',
+    });
+  }
+  return ctx.ok(
+    { scenario: slug, superseded: oldRun, superseded_by: byRun, ledger: appended.path },
+    {
+      evidence: [{ label: 'flow-eval ledger', path: appended.path }],
+      next_action: `Recorded: run ${oldRun} is superseded by ${byRun}. The stale line still stands (append-only); \`harness flow-eval ledger --scenario ${slug}\` now flags it and \`--compare\` excludes it.`,
     },
   );
 }
@@ -454,6 +589,10 @@ function scaffoldScenarioJson(slug: string): string {
       stages: ['explore', 'plan', 'validate', 'compact', 'implement', 'review', 'fix', 'validate'],
     },
     prompts: { orchestrator: 'prompts/orchestrator.md', subject: 'prompts/subject.md' },
+    // 4.6: NEW scenarios default to honest unknowns — an unresolved placeholder
+    // command resolves `unknown` (with a note) instead of executing the literal
+    // token. Resolve it per-run with `--resolve <id>=<command>` (never edit this file).
+    placeholder_policy: 'unknown',
     judge: {
       model: 'gpt-5.5',
       model_version: 'gpt-5.5-2026-07-01',
@@ -492,6 +631,15 @@ function scaffoldAssertionsJson(slug: string): string {
       },
       {
         id: 'A3',
+        type: 'command-succeeds',
+        source: 'fs',
+        required: true,
+        params: { cmd: 'SUBJECT_VALIDATOR' },
+        describe:
+          "the subject's own validator passes — resolve per-run with `--resolve A3='<command>'` (placeholder_policy: unknown ⇒ an unresolved token scores unknown, never a raw exec)",
+      },
+      {
+        id: 'A4',
         type: 'judged',
         source: 'judged',
         params: {},
@@ -559,22 +707,25 @@ function runScaffold(ctx: VerbContext): VerbResult {
 const flowEval: HarnessVerb = {
   name: 'flow-eval',
   summary:
-    'Flow-conformance evaluator: `score` a finished pij session, `render` its report from filled judged fields, read the run `ledger` (+ `--compare`), or `scaffold` a scenario. Never drives pij.',
+    'Flow-conformance evaluator: `score` a finished pij session, `render` its report from filled judged fields, read the run `ledger` (+ `--compare`), `supersede` a stale run, or `scaffold` a scenario. Never drives pij.',
   description:
     'Actions:\n' +
-    '  score    --scenario <slug> --session <pij-id> [--worktree <path>]   collect evidence + resolve + write report + append the ledger\n' +
-    '  render   --scenario <slug> --run <run-id>                          regenerate report.md from the CURRENT report.json (filled judged fields)\n' +
-    '  ledger   --scenario <slug> [--compare <model> --compare <model>]    read runs over time (per-lane flips) or a model-vs-model board\n' +
-    '  scaffold --slug <slug>                                             write a ready-to-edit scenario skeleton\n\n' +
+    '  score     --scenario <slug> --session <pij-id> [--worktree <path>] [--resolve <id>=<cmd>...]   collect evidence + resolve + write report + append the ledger\n' +
+    '  render    --scenario <slug> --run <run-id>                          regenerate report.md from the CURRENT report.json (filled judged fields)\n' +
+    '  ledger    --scenario <slug> [--compare <model> --compare <model>]    read runs over time (per-lane flips) or a model-vs-model board\n' +
+    '  supersede --scenario <slug> --run <old-run-id> --by <new-run-id>    mark a stale run superseded by a re-score (append-only annotation)\n' +
+    '  scaffold  --slug <slug>                                             write a ready-to-edit scenario skeleton\n\n' +
     'score loads live-testing/scenarios/<slug>/, fetches the session telemetry ONCE via `harness telemetry get --json`, ' +
     'resolves every assertion to pass/fail/unknown, scores it (unknowns excluded; a required capability/safety fail caps the verdict to FAIL), ' +
     'writes report.{json,md} to .harness/live-testing/<slug>/<run-id>/, and appends one RunRecord to .harness/live-testing/<slug>/ledger.jsonl. ' +
     '`--subject-*` / `--base-ref` override the recorded subject/base_ref (report + ledger + seed_tuple stay lock-step); a worktree HEAD that disagrees with base_ref surfaces a visible warning. ' +
+    '`--resolve <id>=<cmd>` resolves a placeholder command-succeeds assertion per-run WITHOUT editing live-testing/scenarios/ (recorded in the report + RunRecord provenance); under a scenario `placeholder_policy: "unknown"` an UNRESOLVED placeholder scores unknown, never a raw exec. ' +
     'render regenerates report.md from the on-disk report.json after the orchestrator fills judged verdicts — idempotent, no telemetry, no ledger write (the ledger is append-only). ' +
-    'ledger reads that ledger back: the default lists runs + per-lane verdict history with flips marked; --compare groups by model and renders ' +
-    'pass^k + Wilson CIs per axis + McNemar per binary lane + cost columns (refusing a comparison across a mismatched scenario_hash/base_ref). ' +
+    'ledger reads that ledger back: the default lists runs + per-lane verdict history with flips + superseded runs marked; --compare groups by model and renders ' +
+    'pass^k + Wilson CIs per axis + McNemar per binary lane + cost columns (refusing a comparison across a mismatched scenario_hash/base_ref; superseded runs excluded). ' +
+    'supersede appends a `{kind:"supersede"}` annotation line so a corrected re-score marks the stale record without mutating any prior line. ' +
     'The orchestrator drives pij/the-flow in the shell; this verb only READS the resulting evidence + worktree.',
-  args: [{ name: '[action]', description: 'score | render | ledger | scaffold' }],
+  args: [{ name: '[action]', description: 'score | render | ledger | supersede | scaffold' }],
   options: [
     { flags: '--scenario <slug>', description: '(score|ledger) Scenario slug under live-testing/scenarios/' },
     { flags: '--session <pij-id>', description: '(score) The pij session id whose telemetry to score' },
@@ -599,8 +750,16 @@ const flowEval: HarnessVerb = {
       description: '(score) Override the base ref recorded in the report/ledger/seed_tuple, and compared against the worktree HEAD (else scenario.json#base.ref)',
     },
     {
+      flags: '--resolve <pairs...>',
+      description: "(score) Per-run resolution of a placeholder command-succeeds assertion: --resolve <id>=<command> (repeatable). Overrides the bundle cmd WITHOUT editing live-testing/scenarios/; recorded in report.json + the RunRecord provenance",
+    },
+    {
       flags: '--run <run-id>',
-      description: '(render) The run-id under .harness/live-testing/<slug>/ whose report.md to regenerate from report.json',
+      description: '(render|supersede) The run-id under .harness/live-testing/<slug>/ — render regenerates its report.md; supersede marks it superseded',
+    },
+    {
+      flags: '--by <new-run-id>',
+      description: '(supersede) The corrected re-score run-id that supersedes --run (must already be recorded in the ledger)',
     },
     {
       flags: '--compare <models...>',
@@ -613,10 +772,11 @@ const flowEval: HarnessVerb = {
     if (action === 'score') return runScore(ctx);
     if (action === 'render') return runRender(ctx);
     if (action === 'ledger') return runLedger(ctx);
+    if (action === 'supersede') return runSupersede(ctx);
     if (action === 'scaffold') return runScaffold(ctx);
-    return ctx.error('E_ACTION', `unknown action '${action || '(none)'}' — expected 'score', 'render', 'ledger', or 'scaffold'`, {
+    return ctx.error('E_ACTION', `unknown action '${action || '(none)'}' — expected 'score', 'render', 'ledger', 'supersede', or 'scaffold'`, {
       next_action:
-        'Run `harness flow-eval score --scenario <slug> --session <pij-id>`, `harness flow-eval render --scenario <slug> --run <run-id>`, `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]`, or `harness flow-eval scaffold --slug <slug>`.',
+        'Run `harness flow-eval score --scenario <slug> --session <pij-id>`, `harness flow-eval render --scenario <slug> --run <run-id>`, `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]`, `harness flow-eval supersede --scenario <slug> --run <old-run-id> --by <new-run-id>`, or `harness flow-eval scaffold --slug <slug>`.',
     });
   },
 };

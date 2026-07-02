@@ -4,6 +4,7 @@ import { FakeFs } from '../../../harness/cli/src/adapters/fs/fake-fs.js';
 import {
   RESOLVERS,
   type ResolveContext,
+  isPlaceholderToken,
   resolveAssertion,
   type SessionEvidence,
 } from './resolvers.js';
@@ -191,6 +192,60 @@ describe('resolvers — fs lane (worktree reads; absent ⇒ fail)', () => {
     expect(await resolveAssertion(a('command-succeeds', { cmd: 'node bad.js' }, { source: 'fs' }), rc)).toBe('fail');
     // the command ran in the worktree, not the orchestrator cwd
     expect(exec.calls.find((c) => c.args.includes('ok.js'))?.cwd).toBe(WT);
+  });
+});
+
+describe('resolvers — 4.6 per-run resolution + placeholder policy (SUGG-003)', () => {
+  /** A command-succeeds assertion carrying a subject-specific placeholder cmd. */
+  function cmd(id: string, token: string) {
+    return a('command-succeeds', { cmd: token }, { source: 'fs', id });
+  }
+  function cmdCtx(exec: FakeExec, extra: Partial<ResolveContext> = {}): ResolveContext {
+    return { evidence: null, worktree: WT, fs: worktreeFs(), exec: (c, ar, o) => exec.run(c, ar, o), ...extra };
+  }
+
+  it('isPlaceholderToken matches a bare screaming-snake token but never a real command', () => {
+    expect(isPlaceholderToken('SUBJECT_EXTENSION_HELP')).toBe(true);
+    expect(isPlaceholderToken('SUBJECT_PDF_VALIDATOR')).toBe(true);
+    expect(isPlaceholderToken('node harness/cli/dist/index.js md-pdf --help')).toBe(false);
+    expect(isPlaceholderToken('just build')).toBe(false);
+    expect(isPlaceholderToken('X')).toBe(false); // single char is not a token
+  });
+
+  it('a --resolve override runs the resolved command in place of the placeholder (resolution-ignored → RED)', async () => {
+    // The resolved command exits 0; the raw placeholder token is scripted to exit 1.
+    // If the resolver IGNORED the resolution and ran the raw token, the verdict would flip.
+    const exec = new FakeExec({ 'node real.js --help': { code: 0 }, SUBJECT_EXTENSION_HELP: { code: 1 } });
+    const rc = cmdCtx(exec, { resolutions: { A7: 'node real.js --help' } });
+    expect(await resolveAssertion(cmd('A7', 'SUBJECT_EXTENSION_HELP'), rc)).toBe('pass');
+    // it ran the RESOLVED command, never the bare token.
+    expect(exec.calls.some((c) => c.command === 'node' && c.args.join(' ') === 'real.js --help')).toBe(true);
+    expect(exec.calls.some((c) => c.command === 'SUBJECT_EXTENSION_HELP')).toBe(false);
+  });
+
+  it("an UNRESOLVED placeholder under policy 'unknown' resolves unknown and never execs the token", async () => {
+    const exec = new FakeExec();
+    const rc = cmdCtx(exec, { placeholderPolicy: 'unknown' });
+    expect(await resolveAssertion(cmd('A8', 'SUBJECT_PDF_VALIDATOR'), rc)).toBe('unknown');
+    // never a silent pass, never a crash, never a raw exec of the token.
+    expect(exec.calls.some((c) => c.command === 'SUBJECT_PDF_VALIDATOR')).toBe(false);
+  });
+
+  it("legacy 'raw' policy (default) executes the placeholder token as-is (frozen md-to-pdf back-compat)", async () => {
+    const exec = new FakeExec({ SUBJECT_PDF_VALIDATOR: { code: 0 } });
+    const rc = cmdCtx(exec); // no placeholderPolicy ⇒ default 'raw'
+    expect(await resolveAssertion(cmd('A8', 'SUBJECT_PDF_VALIDATOR'), rc)).toBe('pass');
+    // NON-VACUITY: it really RAN the token (a non-zero exit would fail).
+    expect(exec.calls.some((c) => c.command === 'SUBJECT_PDF_VALIDATOR')).toBe(true);
+    const bad = new FakeExec({ SUBJECT_PDF_VALIDATOR: { code: 1 } });
+    expect(await resolveAssertion(cmd('A8', 'SUBJECT_PDF_VALIDATOR'), cmdCtx(bad))).toBe('fail');
+  });
+
+  it("a --resolve override wins even under policy 'unknown'", async () => {
+    const exec = new FakeExec({ 'node r.js': { code: 0 } });
+    const rc = cmdCtx(exec, { placeholderPolicy: 'unknown', resolutions: { A7: 'node r.js' } });
+    expect(await resolveAssertion(cmd('A7', 'SUBJECT_EXTENSION_HELP'), rc)).toBe('pass');
+    expect(exec.calls.some((c) => c.command === 'node' && c.args.join(' ') === 'r.js')).toBe(true);
   });
 });
 

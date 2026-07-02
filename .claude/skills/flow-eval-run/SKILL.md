@@ -37,7 +37,9 @@ systems that do the work, and links the authoritative docs instead of restating 
 3. **Let it run** the task to completion in its own worktree; capture its `pij` id.
 4. **Score it**: `harness flow-eval score --scenario <slug> --session <pij-id> --worktree <path>`
    (add `--subject-harness/-model/-effort` + `--base-ref <ref>` when the real subject/base
-   differs from `scenario.json`'s defaults, so the recorded evidence stays honest).
+   differs from `scenario.json`'s defaults; add `--resolve <id>=<command>` for each
+   subject-specific placeholder `command-succeeds` assertion — resolve per-run, never edit
+   the committed `assertions.json`).
 5. **Read the report** at `.harness/live-testing/<slug>/<run-id>/report.{json,md}`;
    fill any `judged` fields, note the two-axis scores + any `mimicry` alarm.
 6. **Re-render after filling judged fields**:
@@ -47,9 +49,10 @@ systems that do the work, and links the authoritative docs instead of restating 
 ## One worked invocation (md→PDF)
 
 ```
-harness flow-eval score --scenario md-to-pdf --session pij-abc123 --worktree /path/to/subject/worktree
+harness flow-eval score --scenario md-to-pdf --session pij-abc123 --worktree /path/to/subject/worktree --resolve A7='node harness/cli/dist/index.js <new-verb> --help' --resolve A8='<pdf-validator-cmd>'
 # → .harness/live-testing/md-to-pdf/<run-id>/report.{json,md}
 harness flow-eval render --scenario md-to-pdf --run <run-id>   # re-render report.md after filling judged fields
+harness flow-eval supersede --scenario md-to-pdf --run <stale-run-id> --by <corrected-run-id>  # only if you re-scored the session
 ```
 
 ## Running the `harness` bin

@@ -526,6 +526,8 @@ describe('flow-eval scaffold — writes a valid skeleton, refuses to clobber', (
     // the scaffolded scenario.json is itself valid JSON carrying the slug.
     const parsed = JSON.parse(fs.readText(`${base}/scenario.json`) as string);
     expect(parsed.slug).toBe('new-scn');
+    // 4.6 rider: scaffold emits the placeholder guard ON for new scenarios.
+    expect(parsed.placeholder_policy).toBe('unknown');
     expect(parsed.judge.criteria).toEqual([
       'plan-coherence',
       'report-contract-coverage',
@@ -533,7 +535,13 @@ describe('flow-eval scaffold — writes a valid skeleton, refuses to clobber', (
     ]);
     const loaded = loadScenario('new-scn', fs, `${REPO}/live-testing/scenarios`);
     expect(loaded.ok).toBe(true);
-    if (loaded.ok) expect(loaded.scenario.assertions.find((a) => a.type === 'judged')?.required).toBeUndefined();
+    if (loaded.ok) {
+      expect(loaded.scenario.config.placeholder_policy).toBe('unknown');
+      // it ships a placeholder command-succeeds so the honest-unknown guard is exercised.
+      const cmdA = loaded.scenario.assertions.find((a) => a.type === 'command-succeeds');
+      expect(cmdA?.params.cmd).toBe('SUBJECT_VALIDATOR');
+      expect(loaded.scenario.assertions.find((a) => a.type === 'judged')?.required).toBeUndefined();
+    }
   });
 
   it('refuses (E_EXISTS) when the scenario already exists', async () => {
@@ -620,5 +628,223 @@ describe('flow-eval ledger — reads the scenario ledger (2.4/2.5)', () => {
     const res = await flowEval.run(buildCtx('ledger', { scenario: 'md-to-pdf', compare: ['sonnet-5', 'gpt-5.5'] }, fs, new FakeExec()));
     expect(res.status).toBe('error');
     expect(res.error?.code).toBe('E_COMPARE');
+  });
+});
+
+describe('flow-eval score — 4.6 per-run resolution (SUGG-003): --resolve + placeholder_policy', () => {
+  /** A one-assertion scenario whose only lane is a subject-specific placeholder command. */
+  function resolveBundleFs(policy?: 'raw' | 'unknown', cmd = 'SUBJECT_VALIDATOR'): FakeFs {
+    const scn = {
+      slug: 'resolvedemo',
+      title: 't',
+      task: 'do',
+      base: { repo: '.', ref: 'HEAD' },
+      subject: { harness: 'claude', model: 'opus' },
+      flow: { mode: 'simple', stages: ['implement'] },
+      prompts: { orchestrator: 'prompts/o.md', subject: 'prompts/s.md' },
+      ...(policy !== undefined && { placeholder_policy: policy }),
+      assertions: 'assertions.json',
+    };
+    const asr = {
+      scenario: 'resolvedemo',
+      assertions: [
+        { id: 'C1', type: 'command-succeeds', source: 'fs', required: true, params: { cmd }, describe: 'subject validator' },
+      ],
+    };
+    return new FakeFs({
+      [`${REPO}/live-testing/scenarios/resolvedemo/scenario.json`]: JSON.stringify(scn),
+      [`${REPO}/live-testing/scenarios/resolvedemo/assertions.json`]: JSON.stringify(asr),
+    });
+  }
+  function report(fs: FakeFs): Record<string, unknown> {
+    return JSON.parse(fs.readText(fs.writes.find((p) => p.endsWith('report.json')) as string) as string);
+  }
+  function lastLedgerRecord(fs: FakeFs): Record<string, unknown> {
+    const raw = fs.readText(fs.writes.find((p) => p.endsWith('ledger.jsonl')) as string) as string;
+    return JSON.parse(raw.trim().split('\n').pop() as string);
+  }
+
+  it('--resolve overrides the placeholder cmd and records the resolution in report.json + the ledger (resolution-ignored → RED)', async () => {
+    const fs = resolveBundleFs('unknown');
+    // resolved cmd exits 0 (pass); the raw token is scripted to exit 1 — running it would FAIL.
+    const exec = new FakeExec({ 'node real.js': { code: 0 }, SUBJECT_VALIDATOR: { code: 1 } });
+    const ctx = buildCtx('score', { scenario: 'resolvedemo', session: SESSION, worktree: WT, resolve: ['C1=node real.js'] }, fs, exec);
+
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok');
+    const data = res.data as Record<string, unknown>;
+    expect(data.passed).toBe(1);
+    expect(data.failed).toBe(0);
+    // it ran the RESOLVED command, never the raw placeholder token.
+    expect(exec.calls.some((c) => c.command === 'node' && c.args.join(' ') === 'real.js')).toBe(true);
+    expect(exec.calls.some((c) => c.command === 'SUBJECT_VALIDATOR')).toBe(false);
+
+    // recorded in report.json provenance AND the RunRecord provenance (comparison must know what ran).
+    expect(report(fs).provenance).toMatchObject({ resolutions: { C1: 'node real.js' } });
+    const rec = lastLedgerRecord(fs);
+    expect((rec.provenance as Record<string, unknown>).resolutions).toEqual({ C1: 'node real.js' });
+    expect(validateRunRecord(rec)).toEqual([]); // schema round-trip still holds (additive)
+  });
+
+  it("an unresolved placeholder under policy 'unknown' resolves unknown + warns, never a silent pass or raw exec", async () => {
+    const fs = resolveBundleFs('unknown');
+    const exec = new FakeExec();
+    const ctx = buildCtx('score', { scenario: 'resolvedemo', session: SESSION, worktree: WT }, fs, exec);
+
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok');
+    const data = res.data as Record<string, unknown>;
+    expect(data.unknown).toBe(1);
+    expect(data.passed).toBe(0);
+    expect(data.required_failed).toBe(0); // an unknown NEVER caps, even for a required lane
+    const warnings = (data.warnings as string[] | undefined) ?? [];
+    expect(warnings.join(' ')).toContain('SUBJECT_VALIDATOR');
+    expect(warnings.join(' ')).toContain('--resolve C1=');
+    // never executed the raw token; the row is unknown, not a silent pass.
+    expect(exec.calls.some((c) => c.command === 'SUBJECT_VALIDATOR')).toBe(false);
+    const c1 = (report(fs).deterministic as { results: Array<{ id: string; status: string }> }).results.find((r) => r.id === 'C1');
+    expect(c1?.status).toBe('unknown');
+  });
+
+  it('without placeholder_policy (default raw) a placeholder token is executed as-is (frozen-bundle back-compat, no warning)', async () => {
+    const fs = resolveBundleFs(); // no policy ⇒ legacy raw-exec
+    const exec = new FakeExec({ SUBJECT_VALIDATOR: { code: 0 } });
+    const ctx = buildCtx('score', { scenario: 'resolvedemo', session: SESSION, worktree: WT }, fs, exec);
+
+    const res = await flowEval.run(ctx);
+    const data = res.data as Record<string, unknown>;
+    expect(data.passed).toBe(1);
+    expect(exec.calls.some((c) => c.command === 'SUBJECT_VALIDATOR')).toBe(true);
+    expect(((data.warnings as string[] | undefined) ?? []).join(' ')).not.toContain('unresolved placeholder');
+  });
+
+  it('resolves ONLY the named id — a second lane keeps its own cmd (first-match mutation → RED)', async () => {
+    // Two command-succeeds lanes; only C1 gets a --resolve override. This is the
+    // isolation sensor: a `Object.values(rc.resolutions)[0]` first-match bug would
+    // leak C1's resolved cmd onto C2, so `node c2.js` would never run.
+    const scn = {
+      slug: 'twolane',
+      title: 't',
+      task: 'do',
+      base: { repo: '.', ref: 'HEAD' },
+      subject: { harness: 'claude', model: 'opus' },
+      flow: { mode: 'simple', stages: ['implement'] },
+      prompts: { orchestrator: 'prompts/o.md', subject: 'prompts/s.md' },
+      assertions: 'assertions.json',
+    };
+    const asr = {
+      scenario: 'twolane',
+      assertions: [
+        { id: 'C1', type: 'command-succeeds', source: 'fs', required: true, params: { cmd: 'SUBJECT_VALIDATOR' }, describe: 'subject validator' },
+        { id: 'C2', type: 'command-succeeds', source: 'fs', required: true, params: { cmd: 'node c2.js' }, describe: 'own cmd' },
+      ],
+    };
+    const fs = new FakeFs({
+      [`${REPO}/live-testing/scenarios/twolane/scenario.json`]: JSON.stringify(scn),
+      [`${REPO}/live-testing/scenarios/twolane/assertions.json`]: JSON.stringify(asr),
+    });
+    const exec = new FakeExec({ 'node c1.js': { code: 0 }, 'node c2.js': { code: 0 } });
+    const ctx = buildCtx('score', { scenario: 'twolane', session: SESSION, worktree: WT, resolve: ['C1=node c1.js'] }, fs, exec);
+
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok');
+    expect((res.data as Record<string, unknown>).passed).toBe(2);
+
+    // C1 ran the RESOLVED cmd; C2 ran its OWN cmd (the mutation would run c1.js here instead).
+    expect(exec.calls.some((c) => c.command === 'node' && c.args.join(' ') === 'c1.js')).toBe(true);
+    expect(exec.calls.some((c) => c.command === 'node' && c.args.join(' ') === 'c2.js')).toBe(true);
+    // exactly ONE lane ran c1.js — the resolution did not leak onto the other lane.
+    expect(exec.calls.filter((c) => c.command === 'node' && c.args.join(' ') === 'c1.js').length).toBe(1);
+
+    // provenance records exactly the one resolution, not both lanes.
+    expect(report(fs).provenance).toMatchObject({ resolutions: { C1: 'node c1.js' } });
+    expect(Object.keys((report(fs).provenance as { resolutions: Record<string, string> }).resolutions)).toEqual(['C1']);
+  });
+});
+
+describe('flow-eval supersede — 4.6 SUGG-004 (append-only annotation; ledger flags + compare excludes)', () => {
+  const LEDGER = `${REPO}/.harness/live-testing/md-to-pdf/ledger.jsonl`;
+  function recLine(over: Record<string, unknown>): string {
+    const base = {
+      schema_version: 1,
+      run_id: 'r',
+      ts: '2026-07-01T00:00:00.000Z',
+      scenario: 'md-to-pdf',
+      subject: { model: 'opus', harness: 'claude' },
+      base_ref: 'base-A',
+      seed_tuple: { model: 'opus', harness: 'claude', base_ref: 'base-A', scenario_hash: 'fnv1a:v1', prompt_hash: 'p' },
+      lanes: [{ lane: 'skill-sequence', assertion_id: 'A2', verdict: 'pass', required: true, axis: 'process' }],
+      axis_scores: { capability: 1, process: 1 },
+      verdict: 'PASS',
+      telemetry_available: true,
+      duration_s: 900,
+      session_export: null,
+      telemetry_summary: null,
+    };
+    return `${JSON.stringify({ ...base, ...over })}\n`;
+  }
+
+  it('appends the annotation without rewriting prior lines; ledger flags the stale run + --compare excludes it', async () => {
+    const fs = new FakeFs({
+      [LEDGER]:
+        recLine({ run_id: 'staleopus', subject: { model: 'opus', harness: 'claude' }, seed_tuple: { model: 'opus', harness: 'claude', base_ref: 'base-A', scenario_hash: 'fnv1a:v1', prompt_hash: 'p' } }) +
+        recLine({ run_id: 'freshopus', subject: { model: 'opus', harness: 'claude' }, seed_tuple: { model: 'opus', harness: 'claude', base_ref: 'base-A', scenario_hash: 'fnv1a:v1', prompt_hash: 'p' } }) +
+        recLine({ run_id: 'g1', subject: { model: 'gpt-5.5', harness: 'claude' }, seed_tuple: { model: 'gpt-5.5', harness: 'claude', base_ref: 'base-A', scenario_hash: 'fnv1a:v1', prompt_hash: 'p' } }),
+    });
+    const before = fs.readText(LEDGER) as string;
+
+    const res = await flowEval.run(buildCtx('supersede', { scenario: 'md-to-pdf', run: 'staleopus', by: 'freshopus' }, fs, new FakeExec()));
+    expect(res.status).toBe('ok');
+    expect(res.data).toMatchObject({ superseded: 'staleopus', superseded_by: 'freshopus' });
+
+    // append-only: the three pre-existing records are a byte-exact prefix (nothing rewritten).
+    const after = fs.readText(LEDGER) as string;
+    expect(after.startsWith(before)).toBe(true);
+
+    // the ledger LIST now flags the stale run (still listed, never dropped).
+    const list = await flowEval.run(buildCtx('ledger', { scenario: 'md-to-pdf' }, fs, new FakeExec()));
+    expect((list.data as Record<string, unknown>).superseded_runs).toEqual(['staleopus']);
+    expect(String((list.data as Record<string, unknown>).board)).toContain('⊘');
+
+    // --compare EXCLUDES it: opus keeps only the fresh run.
+    const cmp = await flowEval.run(buildCtx('ledger', { scenario: 'md-to-pdf', compare: ['opus', 'gpt-5.5'] }, fs, new FakeExec()));
+    expect(cmp.status).toBe('ok');
+    expect((cmp.data as { counts: Record<string, number> }).counts.opus).toBe(1);
+  });
+
+  it('errors E_ARGS without --by and E_NOT_FOUND for an unknown --run', async () => {
+    const fs = new FakeFs({ [LEDGER]: recLine({ run_id: 'only' }) });
+    const noBy = await flowEval.run(buildCtx('supersede', { scenario: 'md-to-pdf', run: 'only' }, fs, new FakeExec()));
+    expect(noBy.status).toBe('error');
+    expect(noBy.error?.code).toBe('E_ARGS');
+
+    const missing = await flowEval.run(buildCtx('supersede', { scenario: 'md-to-pdf', run: 'nope', by: 'only' }, fs, new FakeExec()));
+    expect(missing.status).toBe('error');
+    expect(missing.error?.code).toBe('E_NOT_FOUND');
+  });
+
+  it('rejects self-supersede (--run === --by) with E_ARGS and writes NO annotation (ledger byte-identical)', async () => {
+    const fs = new FakeFs({ [LEDGER]: recLine({ run_id: 'only' }) });
+    const before = fs.readText(LEDGER) as string;
+
+    const res = await flowEval.run(buildCtx('supersede', { scenario: 'md-to-pdf', run: 'only', by: 'only' }, fs, new FakeExec()));
+    expect(res.status).toBe('error');
+    expect(res.error?.code).toBe('E_ARGS');
+
+    // no append happened: the ledger is byte-identical (a self-supersede would tombstone
+    // the run with no corrected replacement — reject BEFORE any write).
+    expect(fs.readText(LEDGER)).toBe(before);
+    expect(fs.writes.some((p) => p === LEDGER)).toBe(false);
+  });
+
+  it("score hints `supersede` when a prior run of the SAME session is already recorded", async () => {
+    const fs = repoFs();
+    // a prior run of the same session (its run-id shares the session's `-ixture` suffix).
+    fs.writeText(LEDGER, recLine({ run_id: '20260101-000000Z-ixture', scenario: 'md-to-pdf' }));
+    const exec = new FakeExec({ [TELEMETRY_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) } });
+    const res = await flowEval.run(buildCtx('score', { scenario: 'md-to-pdf', session: SESSION, worktree: WT }, fs, exec));
+    expect(res.status).toBe('ok');
+    expect(String(res.next_action)).toContain('supersede');
+    expect((res.data as Record<string, unknown>).prior_session_runs).toEqual(['20260101-000000Z-ixture']);
   });
 });

@@ -9,9 +9,10 @@ per verb, so the action is a positional the verb dispatches on):
 
 | Action | Invocation | What it does |
 |---|---|---|
-| `score` | `harness flow-eval score --scenario <slug> --session <pij-id> [--worktree <path>] [--subject-harness <h>] [--subject-model <m>] [--subject-effort <e>] [--base-ref <ref>]` | **the primary action verb** — load → fetch telemetry ONCE → resolve every assertion → score → write the report + append the ledger |
+| `score` | `harness flow-eval score --scenario <slug> --session <pij-id> [--worktree <path>] [--subject-harness <h>] [--subject-model <m>] [--subject-effort <e>] [--base-ref <ref>] [--resolve <id>=<cmd>...]` | **the primary action verb** — load → fetch telemetry ONCE → resolve every assertion → score → write the report + append the ledger |
 | `render` | `harness flow-eval render --scenario <slug> --run <run-id>` | regenerate `report.md` from the CURRENT `report.json` (surfaces judged verdicts the orchestrator filled after `score`) — idempotent, no telemetry, no ledger write |
-| `ledger` | `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]` | read the run ledger back (runs over time + per-lane flips, or a model-vs-model board) |
+| `ledger` | `harness flow-eval ledger --scenario <slug> [--compare <model> --compare <model>]` | read the run ledger back (runs over time + per-lane flips + superseded runs, or a model-vs-model board) |
+| `supersede` | `harness flow-eval supersede --scenario <slug> --run <old-run-id> --by <new-run-id>` | mark a stale run superseded by a corrected re-score — appends an **append-only** annotation line; `ledger` then flags it and `--compare` excludes it (no prior line is rewritten) |
 | `scaffold` | `harness flow-eval scaffold --slug <slug>` | write a ready-to-edit scenario skeleton (refuses to clobber an existing bundle) |
 
 ### Recording an honest subject + base_ref (`--subject-*` / `--base-ref`)
@@ -34,6 +35,47 @@ If `--worktree <path>` is given, `score` also detects the worktree's HEAD
 **visible warning** in both the envelope (`data.warnings`) and `report.md` — never a crash,
 never a silent pass. A HEAD it cannot detect (missing/empty) yields no warning (honest, not a
 false alarm).
+
+### Per-run assertion resolution (`--resolve`) + `placeholder_policy`
+
+Some scenarios author a `command-succeeds` assertion as a **placeholder token** (a bare
+screaming-snake `cmd` like `SUBJECT_PDF_VALIDATOR`) because only the subject knows its own
+verb name / validator command. Resolve these **per run**, at score time, WITHOUT ever editing
+the committed bundle:
+
+- **`--resolve <id>=<command>`** (repeatable) overrides the `cmd` of assertion `<id>` with the
+  real command. The resolved commands are recorded in `report.json` **and** the `RunRecord`
+  provenance (`provenance.resolutions`), so a `--compare` knows exactly what ran. `live-testing/
+  scenarios/` is **never written** at run time.
+- **`scenario.json#placeholder_policy`** decides what an **unresolved** placeholder does:
+  - `"unknown"` (emitted by `scaffold` for every new scenario) → an unresolved placeholder
+    resolves the assertion **`unknown`** with a visible envelope warning — honest "not run",
+    **never a silent pass and never a raw exec** of the literal token.
+  - `"raw"` (default when the key is absent — legacy) → the literal token is executed as-is.
+
+⚠ **Failure mode of a legacy `"raw"` scenario (e.g. the frozen `md-to-pdf`):** because there is
+no `placeholder_policy`, a **forgotten `--resolve`** executes the bare placeholder token, which
+is not a real command → a non-zero exit → the required `command-succeeds` lane **false-fails**
+(worse than an `unknown`). For such scenarios the runbook/skill **mandates** passing every
+`--resolve` flag. New scenarios (`placeholder_policy: "unknown"`) degrade to an honest `unknown`
+instead, so this trap is opt-out only for legacy bundles.
+
+### Superseding a stale run (`supersede`)
+
+The ledger is **append-only** — a re-score never rewrites the mis-stamped original. When a run
+was scored wrong (e.g. a wrong subject/base-ref that a later run corrected), record the
+correction with:
+
+```
+harness flow-eval supersede --scenario <slug> --run <old-run-id> --by <new-run-id>
+```
+
+This APPENDS one distinct annotation line (`{kind:"supersede", run_id, superseded_by, ts}`) —
+no prior RunRecord line is touched (byte-stable). Thereafter `ledger` lists the stale run with a
+`⊘ superseded` flag (it is never dropped), and `--compare` **excludes** it so a comparison never
+ingests the bogus line. The annotation has its own schema guard, so `validateRunRecord` still
+holds for real records. `score` also prints a `supersede` hint in its `next_action` when it
+detects a prior run of the **same session** already in the ledger.
 
 ### What `score` does, step by step
 
@@ -143,6 +185,10 @@ Use `scaffold` to start: `harness flow-eval scaffold --slug <slug>` writes a val
 loadable skeleton (one assertion per lane) under `live-testing/scenarios/<slug>/`. Edit
 the assertions to taste, then `score` against a real session. Keep assertions
 deterministic where possible and reserve `judged` for genuinely subjective quality calls.
+The skeleton ships `placeholder_policy: "unknown"` and a placeholder `command-succeeds`
+assertion, so a new scenario's subject-specific command is resolved per-run with
+`--resolve <id>=<command>` and an unresolved one scores an honest `unknown` (never a raw
+exec of the literal token).
 
 ## Assumptions
 
