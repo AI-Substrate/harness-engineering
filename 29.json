@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "command": "windows-check",
+  "harness": "copilot-cli",
+  "harness_session_id": "87c74648-0c9e-42c7-bb56-8eecca66ac18",
+  "timecode": "2026-06-24T02:06:17.754Z",
+  "window": {
+    "since": "last-command",
+    "from": 77,
+    "to": 82
+  },
+  "branch": "main",
+  "branch_changed": false,
+  "tokens": null,
+  "models": {},
+  "effort": null,
+  "skills": {},
+  "tools": {
+    "send_inbox": 1
+  },
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null
+}

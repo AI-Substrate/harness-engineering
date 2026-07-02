@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "command": "boot",
+  "harness": "copilot-cli",
+  "harness_session_id": "87c74648-0c9e-42c7-bb56-8eecca66ac18",
+  "timecode": "2026-06-24T02:06:06.405Z",
+  "window": {
+    "since": "last-command",
+    "from": 55,
+    "to": 68
+  },
+  "branch": "main",
+  "branch_changed": false,
+  "tokens": {
+    "input": 2703,
+    "output": 3259,
+    "cache_create": 51759,
+    "cache_read": 100559,
+    "total": 158280,
+    "subagent_tokens": 0,
+    "grand_total": 158280
+  },
+  "models": {
+    "claude-opus-4.8": {
+      "turns": 3,
+      "output_tokens": 1843
+    },
+    "claude-haiku-4.5": {
+      "turns": 1,
+      "output_tokens": 1416
+    }
+  },
+  "effort": "max",
+  "skills": {},
+  "tools": {
+    "bash": 1
+  },
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null
+}
