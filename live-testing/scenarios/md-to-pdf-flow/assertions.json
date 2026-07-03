@@ -1,0 +1,122 @@
+{
+  "scenario": "md-to-pdf-flow",
+  "assertions": [
+    {
+      "id": "A1",
+      "type": "skill-called",
+      "source": "telemetry",
+      "required": true,
+      "params": { "skill": "the-flow", "min": 1 },
+      "describe": "drove the SDD journey via /the-flow (the mandated method)"
+    },
+    {
+      "id": "A2",
+      "type": "skill-sequence",
+      "source": "telemetry",
+      "params": { "skills": ["explore", "plan", "implement"], "ordered": true },
+      "describe": "ran explore → plan → implement in order (subject-driven — the subject owns its own cadence here, so this is genuinely scoreable, not orchestrator choreography)"
+    },
+    {
+      "id": "A3",
+      "type": "skill-called",
+      "source": "telemetry",
+      "params": { "skill": "eng-harness-flow", "min": 1 },
+      "describe": "engaged the engineering-harness loop (guided the-flow auto-fires its seams; a direct-jump-only run legitimately misses this, hence not required)"
+    },
+    {
+      "id": "A4",
+      "type": "flow-seam-fired",
+      "source": "telemetry",
+      "params": { "hook": "pre-coding" },
+      "describe": "hit the backpressure seam before coding"
+    },
+    {
+      "id": "A5",
+      "type": "compaction-occurred",
+      "source": "telemetry",
+      "params": { "min": 1 },
+      "describe": "compacted at least once (the-flow recommends compact-before-implement; subject-owned)"
+    },
+    {
+      "id": "A6",
+      "type": "file-created",
+      "source": "fs",
+      "required": true,
+      "params": { "glob": "docs/plans/*/the-flow.json" },
+      "describe": "a CLI-driven flight plan exists — the spine was instantiated from the template (plan 024: the CLI is the only writer; a missing flight plan means the flow was narrated, not run)"
+    },
+    {
+      "id": "A7",
+      "type": "file-created",
+      "source": "fs",
+      "required": true,
+      "params": { "glob": ".harness/extensions/*/extension.ts" },
+      "describe": "created the new extension under .harness/extensions/"
+    },
+    {
+      "id": "A8",
+      "type": "command-succeeds",
+      "source": "fs",
+      "required": true,
+      "params": { "cmd": "SUBJECT_EXTENSION_HELP" },
+      "describe": "the new verb actually registered — resolve per-run with --resolve A8='node harness/cli/bin/harness.js <new-verb> --help' (commander exits nonzero if the verb never loaded)"
+    },
+    {
+      "id": "A9",
+      "type": "command-succeeds",
+      "source": "fs",
+      "params": { "cmd": "SUBJECT_PDF_VALIDATOR" },
+      "describe": "the subject's own PDF validator passes — resolve per-run with --resolve A9='<the real validator command the subject reported>'"
+    },
+    {
+      "id": "A10",
+      "type": "checks-ran",
+      "source": "telemetry",
+      "params": { "status": "ok" },
+      "describe": "ran harness checks green"
+    },
+    {
+      "id": "A11",
+      "type": "retro-drained",
+      "source": "fs+telemetry",
+      "params": { "evidence_glob": ".harness/records/retro/**/*.md", "min": 1 },
+      "describe": "drained the retro to a record (verb ran AND a record exists)"
+    },
+    {
+      "id": "A14",
+      "type": "harness-verb-ran",
+      "source": "telemetry",
+      "params": { "verb": "observe", "min": 1 },
+      "describe": "recorded in-flight observations (harness observe) — the eng-harness loop's mid-work capture seam, deterministic so reports/insights can read it"
+    },
+    {
+      "id": "A15",
+      "type": "artifact-exists",
+      "source": "fs",
+      "params": { "glob": ".harness/records/retro/**/*.md" },
+      "describe": "a retro record artifact exists in the worktree (the drained observations landed as a durable record with entries — the report/insight layer reads these for suggested retro items)"
+    },
+    {
+      "id": "A12",
+      "type": "judged",
+      "source": "judged",
+      "params": {
+        "field": "backpressure_quality",
+        "prompt": "Did the subject design a PROPER deterministic backpressure checker for the PDF output (e.g. a sensor that validates mermaid render fidelity, not just file size), or a token gesture?",
+        "rubric": "PASS = a deterministic sensor that actually inspects render fidelity / structure; PARTIAL = a check that runs but only proves the file exists or is non-empty; FAIL = no backpressure checker offered."
+      },
+      "describe": "backpressure design quality (orchestrator-judged)"
+    },
+    {
+      "id": "A13",
+      "type": "judged",
+      "source": "judged",
+      "params": {
+        "field": "flow_fidelity",
+        "prompt": "Did the subject GENUINELY drive the-flow — flight plan created and advanced through the CLI, stage artifacts (dossier/plan/validation/review) real and consistent with the telemetry timeline — or did it mimic the shape (hand-authored the-flow.json, narrated router envelopes, artifacts written after the fact)?",
+        "rubric": "PASS = CLI-written flight plan whose nav/status history matches the telemetry timeline and real stage artifacts; PARTIAL = flow used but stages skipped/back-filled or seams narrated rather than fired; FAIL = mimicry — the shape exists but telemetry shows it was not driven."
+      },
+      "describe": "flow fidelity vs mimicry (orchestrator-judged, cross-checked against telemetry)"
+    }
+  ]
+}

@@ -392,10 +392,17 @@ function pairingIds(group: RunRecord[]): Map<string, RunRecord> {
  * Build a model's {@link LaneReliability} for one lane: the mean (`pass_1` + its
  * Wilson CI) AND the observed all-k reliability (`pass_k` = 1 iff every present
  * run passed, else 0) — never the mean masquerading as `pass^k`. `k` is the
- * number of runs that carried the lane; a run without it is excluded (F1).
+ * number of runs with a SCORABLE (pass|fail) verdict on the lane; a run without
+ * the lane is excluded (F1), and so is an `unknown` verdict (SUGG-002) — unknown
+ * means the evidence channel was unavailable, and counting it as a 0.00 trial
+ * would render a blind telemetry lane as universal failure (the scorer and
+ * axisTally already exclude unknowns; this keeps the board consistent).
  */
 function laneReliability(group: RunRecord[], id: string): LaneReliability {
-  const present = group.filter((r) => laneOf(r, id) !== undefined);
+  const present = group.filter((r) => {
+    const v = laneOf(r, id)?.verdict;
+    return v === 'pass' || v === 'fail';
+  });
   const k = present.length;
   const passes = present.filter((r) => laneOf(r, id)?.verdict === 'pass').length;
   if (k === 0) {

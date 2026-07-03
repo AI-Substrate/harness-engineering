@@ -177,6 +177,36 @@ describe('compareModels — 2.5 model-vs-model board', () => {
     expect(a2?.mcnemar?.pairs).toBe(3);
   });
 
+  it('an all-UNKNOWN lane is unmeasured (k=0, pass_1 null) — never a 0.00 pass rate (SUGG-002)', () => {
+    // A blind telemetry lane (e.g. an old base ref) resolves unknown on every run.
+    // Unknown = evidence unavailable, excluded from every denominator (same rule as
+    // the scorer + axisTally) — counting it as a 0.00 trial reads as universal failure.
+    const recs: RunRecord[] = [
+      mkRecord({ model: 'sonnet-5', lanes: [lane('A1', 'unknown', 'process', true)] }),
+      mkRecord({ model: 'sonnet-5', lanes: [lane('A1', 'unknown', 'process', true)] }),
+      mkRecord({ model: 'gpt-5.5', lanes: [lane('A1', 'unknown', 'process', true)] }),
+      mkRecord({ model: 'gpt-5.5', lanes: [lane('A1', 'unknown', 'process', true)] }),
+    ];
+    const res = compareModels('md-to-pdf', recs, ['sonnet-5', 'gpt-5.5']);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    const a1 = res.data.lanes.find((l) => l.assertion_id === 'A1');
+    expect(a1?.by_model['sonnet-5']).toMatchObject({ passes: 0, k: 0, pass_1: null, pass_1_wilson: null, pass_k: null, pass_k_est: null });
+    expect(a1?.by_model['gpt-5.5']).toMatchObject({ k: 0, pass_1: null });
+    // And a MIXED lane counts only the scorable runs: pass+unknown → k=1, pass_1=1.
+    const recs2: RunRecord[] = [
+      mkRecord({ model: 'sonnet-5', lanes: [lane('A1', 'pass', 'process', true)] }),
+      mkRecord({ model: 'sonnet-5', lanes: [lane('A1', 'unknown', 'process', true)] }),
+      mkRecord({ model: 'gpt-5.5', lanes: [lane('A1', 'pass', 'process', true)] }),
+      mkRecord({ model: 'gpt-5.5', lanes: [lane('A1', 'pass', 'process', true)] }),
+    ];
+    const res2 = compareModels('md-to-pdf', recs2, ['sonnet-5', 'gpt-5.5']);
+    expect(res2.ok).toBe(true);
+    if (!res2.ok) return;
+    const a1m = res2.data.lanes.find((l) => l.assertion_id === 'A1');
+    expect(a1m?.by_model['sonnet-5']).toMatchObject({ passes: 1, k: 1, pass_1: 1 });
+  });
+
   it('F1: a 2-of-3 lane renders pass^1=0.67 AND pass^k=0 — the mean can NEVER masquerade as reliability', () => {
     const recs: RunRecord[] = [
       mkRecord({ model: 'sonnet-5', lanes: [lane('A2', 'pass', 'process', true)] }),

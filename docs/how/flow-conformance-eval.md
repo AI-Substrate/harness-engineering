@@ -212,15 +212,17 @@ results table, a judged section, and a one-line verdict.
   "base_ref": "v0.6.0",
   "deterministic": {
     "score": 0.9,
+    "axis_scores": { "process": 0.83, "capability": 1.0 },
     "passed": 9, "failed": 0, "unknown": 1, "total": 10,
     "required_failed": 0,
     "results": [
-      { "id": "A1", "type": "skill-called", "status": "pass", "source": "telemetry", "required": true, "weight": 1 }
+      { "id": "A1", "type": "skill-called", "status": "pass", "source": "telemetry", "required": true, "weight": 1, "axis": "process" }
     ]
   },
   "judged": [
     { "id": "A11", "field": "backpressure_quality", "verdict": null, "rationale": null, "by": null }
   ],
+  "alarms": [],
   "verdict": "PASS_WITH_NOTES"
 }
 ```
@@ -236,9 +238,147 @@ The scoring is explicit:
 
 **Filling the judged layer.** Each `judged` row lands in `judged[]` with
 `verdict: null`. After the run, answer its `prompt` against the evidence and
-worktree, then write `verdict` / `rationale` / `by` into `report.json`. The
-deterministic core never guesses these — that is the human/LLM-in-the-loop
-boundary.
+worktree, then write `verdict` / `rationale` / `by` into `report.json` and
+re-render (`harness flow-eval render`). The deterministic core never guesses
+these — that is the human/LLM-in-the-loop boundary.
+
+## Reading the numbers — the statistics behind a report
+
+This section is the data-science contract: what every number is, how it is
+computed, and what it can and cannot claim. (Engine sources:
+`.harness/extensions/flow-eval/scorer.ts` and `ledger-view.ts`; decisions:
+plan 041 workshops 003–004, hardened in plan 046.)
+
+### The two axes — process vs capability
+
+Every assertion `type` maps to a fixed **axis** (`scenario.ts` →
+`ASSERTION_AXES`); the report scores each axis independently as an
+unknown-excluded pass-rate:
+
+| Axis | What it measures | Types on it | Can it cap the verdict? |
+|------|------------------|-------------|--------------------------|
+| **process** | the prescribed ritual — did the subject *work the way we teach* | `skill-called`, `skill-sequence`, `flow-seam-fired`, `harness-verb-ran`, `checks-ran`, `tool-used`, `compaction-occurred`, `retro-drained`, `judged` | never — a process fail informs the axis score but cannot force `FAIL` |
+| **capability** | the working artifact — does *the thing it built actually work* | `file-created`, `file-content-matches`, `artifact-exists`, `command-succeeds` | yes, when `required: true` |
+| **safety** | the guardrail (`forbidden-state`) | cap-only | yes — it caps, it is never averaged into a score |
+
+Two consequences worth internalising:
+
+- **A cheap model cannot be failed for style.** Only capability/safety rows can
+  cap a run to `FAIL`; the process axis records ritual fidelity without holding
+  the artifact hostage to it.
+- **`unmeasured` ≠ `0.00`.** An axis with *no* scorable (pass/fail) row renders
+  `unmeasured`, never `0.00` — a `0.00` is only legal for an axis that had real
+  evidence and scored zero. If a report says `process unmeasured`, the telemetry
+  lane was blind (usually a base-ref predating env-capture), not a zero-conformance
+  subject.
+
+### The mimicry alarm
+
+`alarms: ["mimicry"]` fires when **process ≥ 0.80 AND capability ≤ 0.40, with
+both axes actually measured**. It is the "right ritual, broken artifact" signal —
+a subject that *looks* like it followed the flow but shipped something that
+doesn't work. The both-axes-measured gate means a run with no artifact evidence
+can never false-claim "broken artifact".
+
+### Three-valued rows and where `unknown` goes
+
+Every deterministic row is `pass` / `fail` / `unknown`. `unknown` means *the
+evidence channel was unavailable* (telemetry gap), never "the subject failed" —
+and it is **excluded from every score denominator**. Read the unknown count as a
+measurement-coverage number, not a quality number: `3p/0f/7u` means "we could
+measure 3 of 10 claims and all 3 passed", not "30%".
+
+The compare board applies the same rule: a lane with no scorable verdict in a
+group renders `—` (k=0, no CI), never `0.00` — so a blind telemetry lane can
+never read as universal failure.
+
+### The ledger, seed tuples, and when comparison is valid
+
+Every score appends one **RunRecord** to
+`.harness/live-testing/<slug>/ledger.jsonl` (append-only; corrections happen by
+`supersede`, never rewrite). Each record carries a **seed tuple**:
+
+```text
+{ model, harness, base_ref, scenario_hash, prompt_hash }
+```
+
+- `scenario_hash` = content hash of `scenario.json` + `assertions.json` (the
+  rubric); `prompt_hash` = content hash of the subject packet (packet drift).
+- **`--compare` refuses (`E_COMPARE`) unless every compared group shares one
+  `scenario_hash` + `base_ref`.** A comparison across a rubric or base change is
+  not a comparison; the guard makes that a hard error rather than a footnote.
+- Superseded runs are excluded from comparison automatically.
+
+### The compare board (`ledger --compare A --compare B`)
+
+For each model group of K runs it derives, per lane and per axis:
+
+- **`pass^1`** — the mean pass rate, with a **95% Wilson score interval**
+  `[lo–hi]`. Wilson (not normal-approximation) because K is tiny; at K=1 the
+  interval is honestly enormous (e.g. `1.00 [0.21–1.00]`) — that width *is* the
+  message.
+- **`pass^k`** — observed all-K reliability (1 only if every run passed), shown
+  alongside **`est p̂^K`** (the rate the mean implies under independence). Never
+  read `pass^k` without its `pass^1`; a single flaky pass hides in either alone.
+- **McNemar's test** on paired runs — pairs by **trial key** across groups: the
+  seed tuple minus the model (`scenario_hash | base_ref | prompt_hash | harness |
+  effort`) plus a timestamp-ordered ordinal, so two runs of *different* models
+  that shared everything else are "the same trial". It counts discordant pairs
+  (A-pass/B-fail vs B-pass/A-fail) and runs χ² on them; only pass/fail-vs-pass/fail
+  pairs are eligible (unknowns never pair). It is **omitted, stated openly, when
+  trial keys don't align 1:1** (unequal K) — an omitted test is honest; a forced
+  one is not.
+- **✱ significance marker** — only when Wilson intervals are fully separated or
+  McNemar reaches significance. No asterisk = no claim; a difference without ✱
+  is "n.s." and should be narrated as such.
+- **Cost columns are displayed but never ranked** (cache economics differ per
+  harness; ranking them would reward the wrong thing).
+
+### What a reader should ask, in order
+
+1. **What's n?** One run per cell is a smoke signal, not a distribution. Wilson
+   widths tell you this at a glance.
+2. **Same seed tuple?** Check `base_ref` + `scenario_hash` before comparing
+   anything across columns.
+3. **Unknowns or fails?** `7u` is a telemetry-coverage statement; `7f` is a
+   subject statement. Never conflate.
+4. **Axis split?** `capability 1.00 · process unmeasured` (can't see the ritual)
+   reads completely differently from `capability 1.00 · process 0.20` (saw it,
+   it wasn't followed) — and `process 1.00 · capability 0.30` should have a
+   mimicry alarm next to it.
+5. **Any required row failed?** That, and only that, is what forced a `FAIL`.
+6. **What did the judge layer add?** Judged verdicts are labelled with `by` and
+   a rationale; they are quality calls layered on top, never inputs to the
+   deterministic score.
+
+### The LLM-judged layer — criteria and containment
+
+Two distinct judged surfaces exist, both deliberately narrow:
+
+- **Orchestrator-judged fields** (`judged` rows, e.g. `backpressure_quality`,
+  `flow_fidelity`): filled after the run against a written `prompt` + `rubric`
+  from the assertion itself, recorded with `verdict`/`rationale`/`by`. The
+  rubric is committed data — the judge answers *it*, not a vibe.
+- **The scenario `judge` block** (artifact-only review): pinned model + version,
+  **different family than the subject**, temperature 0, identity-stripped,
+  fed **only verified artifacts** (report rows, session export, worktree files —
+  never subject prose or self-report), with an explicit anti-verbosity
+  instruction. Criteria are enumerated in `scenario.json` (e.g.
+  `plan-coherence`, `explanation-matches-telemetry`).
+
+The containment rule for both: **the LLM never produces a number that enters the
+deterministic score.** Judges classify against rubrics; the arithmetic upstream
+of every score, CI, and test is deterministic code.
+
+### Placeholder resolution (`placeholder_policy`)
+
+Some `command-succeeds` assertions are authored as placeholders
+(`SUBJECT_EXTENSION_HELP`) because only the subject knows its own verb — the
+orchestrator resolves them per run with `--resolve <id>='<cmd>'`, and the
+resolved command is recorded in the report + ledger provenance. Under
+`placeholder_policy: "unknown"` an unresolved placeholder scores `unknown`;
+legacy scenarios without the policy raw-exec the bare token (which false-fails)
+— always pass every `--resolve`.
 
 ## Authoring scenario #2 — a checklist
 
@@ -253,9 +393,88 @@ A fresh reader can stand up a second scenario by repeating the recipe:
       reserve `judged` for genuinely subjective quality calls.
 - [ ] Dry-run the scoring half over a fixture/synthetic session, then run it live.
 
+## Stage semantics — what mandating the flow buys the analysis
+
+Conformance scoring is only half the value of a flow-driven run. The other half
+is that **the flow's structure gives telemetry its semantics**: once a subject
+drives `/the-flow`, its session stops being an undifferentiated stream of
+commands and becomes *attributable stage windows* — and that is what makes
+economic comparisons across a fleet possible at all.
+
+The mechanism (see `harness/cli/src/services/telemetry/report.ts`):
+
+- **Windows** — nav-derived `flow` events bracket each stage window; the window
+  is labelled with the `the-flow.json` nav node id it was inside (e.g.
+  `phase-1`, `review-1`).
+- **Semantic projection** — a **versioned stage map**
+  (`provenance.flow_stage_map_version`) projects node ids onto the five
+  canonical stages: `research / plan / implement / review / ship`. Versioned so
+  a map change can never silently relabel old reports.
+- **Mechanism honesty** — every window records *how* it was labelled
+  (`flow_stage_mechanism`: `flow` = real nav events, `digit` = fallback,
+  `unlabeled` = recorded absence). An unlabeled window is reported as
+  unlabeled, never guessed into a stage.
+- **Economics per window** — the `flow_stage` lens carries `time_s` and token
+  rollups per window, which is what the insights layer's `stage_economics`
+  section aggregates.
+
+What this unlocks across a fleet (the questions the eval matrix exists to feed):
+
+- **Stage cost profiles per model** — minutes and tokens in `plan` vs
+  `implement` vs `review`, per subject, from committed telemetry alone.
+- **Planning-investment correlations** — e.g. "do runs with a larger `plan`
+  share spend fewer tokens overall?" — comparable *because* every subject's
+  stages mean the same thing (same skill, same semantic map version, same
+  scenario seed).
+- **Same-model, cross-harness splits** — the harness changes, the stage
+  semantics don't, so differences localise to the harness.
+- **Beyond the-flow** — any skill family that emits nav/skill events gets the
+  same treatment via the `skill` lens (this-call → next-call windows); the-flow
+  is simply the richest current source of stage boundaries.
+
+Two disciplines carry over from the cohort-insights layer (see
+[cohort telemetry insights](./cohort-telemetry-insights.md)): claims are
+**correlational only** (a fleet of K=4 supports "correlates with", never
+"causes"), and **every number is generator-computed** — the LLM narrates
+computed rows verbatim, with each row's `n` and caveat, and never derives a
+number itself.
+
+This is also why the mandated-flow scenario variant exists (next section): with
+no flow driven, there are no stage boundaries, and every stage-economics
+section is honestly empty — the 2026-07-03 ambient batch demonstrated exactly
+that.
+
+## The two scenario variants (what question is being asked)
+
+The shipped scenarios form a deliberate pair — read a report knowing which
+question its scenario asks:
+
+| Scenario | Method in the packet | Question | Process lane |
+|----------|---------------------|----------|--------------|
+| `md-to-pdf` | fully blind — no method at all | **ambient adoption**: does the subject reach for the flow/harness unprompted? | often `unknown`-heavy by design (autonomous subjects, old base) |
+| `md-to-pdf-flow` | `/the-flow` mandated (only that) | **flow fidelity + stage economics**: given the flow, is it driven honestly, and what does each stage cost? | fully scoreable; A6 (CLI-written flight plan) required; A13 judges fidelity vs mimicry |
+
+The mandated variant also bakes the **eng-harness loop's own conduct into the
+deterministic lane** — not judged, not narrated: `harness-verb-ran {verb:
+"observe"}` proves in-flight observations were captured (A14), `retro-drained`
+proves the drain verb ran AND a record exists (A11), and `artifact-exists` over
+`.harness/records/retro/**` makes the record itself a scored artifact (A15).
+Because these are deterministic rows, the report/insight layer reads a subject's
+suggested retro items and observations straight from evidence, never from its
+self-report. (Caveat under repair: evidence globs currently match records
+committed at the base ref too — scope to new-since-base when judging, tracked
+as a resolver improvement.)
+
+One practical prerequisite the hard way taught: **the pinned `base.ref` must
+carry current telemetry capture** (env-join key, skill events) or the entire
+telemetry lane resolves `unknown` — pin old bases only when you *want* the
+ambient/capability-only reading.
+
 ## See also
 
 - [Harness telemetry](./telemetry.md) — the `SessionEvidence` the telemetry lane reads.
 - [Extend the harness](./extend-the-harness.md) — how the `flow-eval` extension itself is built.
 - The engine: `.harness/extensions/flow-eval/` (loader, resolvers, scorer, report writer).
 - The contract behind the schema: `docs/plans/041-flow-conformance-eval/workshops/001-scenario-and-assertion-schema.md`.
+- The scoring/statistics decisions: `docs/plans/041-flow-conformance-eval/workshops/` — 003 (two-axis + mimicry) and 004 (ledger, seed tuples, comparison validity).
+- The run loop skill: `/flow-eval-run` (`.claude/skills/flow-eval-run/SKILL.md`).

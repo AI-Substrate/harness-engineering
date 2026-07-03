@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How we evaluate agent flows — the eval process, explained</title>
+<style>
+  :root{
+    /* Microsoft corporate palette */
+    --ms-red:#F25022; --ms-green:#7FBA00; --ms-blue:#00A4EF; --ms-yellow:#FFB900;
+    --fluent:#0078D4; --fluent-dark:#005A9E;
+    --ink:#201F1E; --ink-2:#484644; --muted:#605E5C;
+    --bg:#FAF9F8; --panel:#FFFFFF; --panel-2:#F3F2F1; --line:#EDEBE9; --line-2:#D2D0CE;
+  }
+  *{box-sizing:border-box;}
+  html{background:var(--bg);}
+  body{
+    margin:0; padding:0; color:var(--ink);
+    font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+    font-size:16px; line-height:1.55;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 28px 100px;}
+  h1{font-size:40px; font-weight:700; letter-spacing:-.015em; line-height:1.15; text-wrap:balance; margin:.4em 0 .3em;}
+  h2{font-size:24px; font-weight:700; letter-spacing:-.01em; margin:0 0 .5em;}
+  h3{font-size:16px; font-weight:600; margin:0 0 .35em;}
+  p{margin:.4em 0 .9em; max-width:70ch;}
+  code{font-family:"Cascadia Code",Consolas,Menlo,monospace; font-size:.85em; background:var(--panel-2); padding:1px 5px; border-radius:3px;}
+  .num{font-family:"Cascadia Code",Consolas,Menlo,monospace; font-variant-numeric:tabular-nums;}
+  section{margin-top:64px;}
+  .lede{font-size:19px; color:var(--ink-2); max-width:62ch;}
+
+  /* masthead */
+  header{padding-top:56px;}
+  .quad{display:flex; gap:4px; margin-bottom:22px;}
+  .quad span{width:14px; height:14px; display:block;}
+  .eyebrow{font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--fluent); margin-bottom:10px;}
+
+  /* the loop */
+  .loop{display:grid; grid-template-columns:repeat(5,1fr); gap:0; margin:28px 0 10px; counter-reset:step;}
+  .step{
+    background:var(--panel); border:1px solid var(--line); border-left:none; padding:16px 16px 14px; position:relative;
+  }
+  .step:first-child{border-left:1px solid var(--line);}
+  .step::before{
+    counter-increment:step; content:counter(step);
+    font-family:"Cascadia Code",Consolas,monospace; font-size:12px; font-weight:600;
+    color:#fff; background:var(--fluent); width:22px; height:22px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; margin-bottom:10px;
+  }
+  .step h3{font-size:14.5px;}
+  .step p{font-size:13px; color:var(--muted); margin:0;}
+  .loop-note{font-size:13px; color:var(--muted); max-width:75ch;}
+
+  /* lane cards */
+  .lanes{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:22px 0;}
+  .lane{background:var(--panel); border:1px solid var(--line); border-top:4px solid var(--ms-blue); padding:22px 24px;}
+  .lane.judged{border-top-color:var(--ms-yellow);}
+  .lane .kicker{font-size:11.5px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; margin-bottom:8px;}
+  .lane .kicker.det{color:var(--ms-blue);} .lane .kicker.jud{color:#B8860B;}
+  .lane ul{margin:.5em 0 0; padding-left:1.2em;}
+  .lane li{margin:.45em 0; font-size:14.5px;}
+  .lane li::marker{color:var(--line-2);}
+  .hardrule{
+    margin-top:14px; padding:10px 14px; background:var(--panel-2); border-left:3px solid var(--ms-red);
+    font-size:14px; font-weight:600;
+  }
+
+  /* axes */
+  .axes{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin:20px 0;}
+  .axis{background:var(--panel); border:1px solid var(--line); padding:20px 22px;}
+  .axis .dot{width:12px; height:12px; display:inline-block; margin-right:8px; vertical-align:baseline;}
+  .axis p{font-size:14px; color:var(--ink-2); margin-bottom:0;}
+  .axis .cap{font-size:12.5px; font-weight:600; margin-top:12px;}
+  .cap.yes{color:var(--ms-red);} .cap.no{color:var(--ms-green);}
+
+  /* verdict rows */
+  .verdicts{margin:20px 0; border:1px solid var(--line); background:var(--panel);}
+  .vrow{display:grid; grid-template-columns:200px 1fr; border-bottom:1px solid var(--line);}
+  .vrow:last-child{border-bottom:none;}
+  .vrow .v{padding:14px 18px; font-weight:700; font-size:14px; display:flex; align-items:center; gap:10px;}
+  .vrow .d{padding:14px 18px; font-size:14.5px; color:var(--ink-2); border-left:1px solid var(--line);}
+  .chip{width:10px; height:10px; border-radius:50%;}
+  .chip.pass{background:var(--ms-green);} .chip.notes{background:var(--ms-yellow);} .chip.fail{background:var(--ms-red);}
+
+  /* alarm strip */
+  .alarm{
+    display:grid; grid-template-columns:auto 1fr; gap:16px; align-items:start;
+    background:#FDF3F0; border:1px solid #F5C6B8; padding:18px 20px; margin:20px 0;
+  }
+  .alarm .flag{font-size:22px; line-height:1;}
+  .alarm p{margin:0; font-size:14.5px; max-width:none;}
+
+  /* stats cards */
+  .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin:22px 0;}
+  .stat-card{background:var(--panel); border:1px solid var(--line); padding:20px 22px;}
+  .stat-card .formula{
+    font-family:"Cascadia Code",Consolas,monospace; font-size:13px; background:var(--panel-2);
+    padding:8px 12px; margin:10px 0; overflow-x:auto; white-space:nowrap;
+  }
+  .stat-card p{font-size:14px; color:var(--ink-2); margin-bottom:0;}
+  .example{font-size:13px; color:var(--muted); margin-top:10px;}
+  .example b{color:var(--ink);}
+
+  /* semantics diagram */
+  .timeline{background:var(--panel); border:1px solid var(--line); padding:24px; margin:22px 0; overflow-x:auto;}
+  .tl-track{display:flex; gap:3px; min-width:640px;}
+  .tl-seg{padding:10px 0 8px; text-align:center; font-size:12.5px; font-weight:600; color:#fff;}
+  .tl-labels{display:flex; gap:3px; min-width:640px; margin-top:6px;}
+  .tl-labels div{font-size:11.5px; color:var(--muted); text-align:center;}
+  .tl-cap{font-size:13px; color:var(--muted); margin-top:14px; max-width:75ch;}
+
+  /* reader checklist */
+  ol.checklist{counter-reset:q; list-style:none; padding:0; margin:20px 0;}
+  ol.checklist li{
+    counter-increment:q; background:var(--panel); border:1px solid var(--line); margin-top:-1px;
+    padding:14px 18px 14px 56px; position:relative; font-size:14.5px;
+  }
+  ol.checklist li::before{
+    content:counter(q); position:absolute; left:18px; top:13px;
+    font-family:"Cascadia Code",Consolas,monospace; font-size:13px; font-weight:600; color:var(--fluent);
+  }
+  ol.checklist b{font-weight:600;}
+
+  .principles{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:20px 0;}
+  .principle{border-left:3px solid var(--fluent); padding:4px 0 4px 16px;}
+  .principle h3{font-size:15px;}
+  .principle p{font-size:14px; color:var(--ink-2); margin:0;}
+
+  footer{margin-top:80px; border-top:1px solid var(--line-2); padding-top:16px; font-size:13px; color:var(--muted);}
+  a{color:var(--fluent); text-decoration:none;}
+  a:hover{text-decoration:underline; color:var(--fluent-dark);}
+  @media (max-width:860px){
+    .loop{grid-template-columns:1fr; }
+    .step{border-left:1px solid var(--line); border-top:none;}
+    .step:first-child{border-top:1px solid var(--line);}
+    .lanes,.stats,.axes,.principles{grid-template-columns:1fr;}
+    .vrow{grid-template-columns:1fr;}
+    .vrow .d{border-left:none; border-top:1px solid var(--line); padding-top:10px;}
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .step{transition:box-shadow .15s ease;}
+    .step:hover{box-shadow:0 2px 12px rgba(0,0,0,.07);}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="quad" aria-hidden="true">
+    <span style="background:var(--ms-red)"></span>
+    <span style="background:var(--ms-green)"></span>
+    <span style="background:var(--ms-blue)"></span>
+    <span style="background:var(--ms-yellow)"></span>
+  </div>
+  <div class="eyebrow">Engineering Harness · Flow-Conformance Evaluation</div>
+  <h1>How we evaluate agent flows</h1>
+  <p class="lede">We hand an AI agent a real software task, watch how it works through
+  committed telemetry and the files it produces, and grade the finished session against
+  written criteria — deterministically wherever evidence allows, with a tightly-contained
+  LLM layer only where judgment is genuinely required. This page explains the whole
+  process in plain terms, without watering any of it down.</p>
+</header>
+
+<section>
+  <h2>The loop, end to end</h2>
+  <div class="loop">
+    <div class="step"><h3>Author a scenario</h3><p>A committed data bundle: the task paragraph, a pinned base commit, the assertions to check, and two prompts (subject &amp; runbook). Adding an eval costs data, not engine code.</p></div>
+    <div class="step"><h3>Spawn a blind subject</h3><p>A fresh agent gets its own worktree at the pinned commit and only the task + a reporting protocol — never the assertions, scoring rules, or hidden expectations.</p></div>
+    <div class="step"><h3>Let it work</h3><p>The subject does the task for real. Every harness command it runs is captured as counts-only telemetry; every file it writes lands in its worktree.</p></div>
+    <div class="step"><h3>Score the evidence</h3><p><code>harness flow-eval score</code> reads the finished session — telemetry once, worktree directly — resolves every assertion to pass / fail / unknown, and writes the report + an append-only ledger line.</p></div>
+    <div class="step"><h3>Judge, then feed back</h3><p>Rubric-bound judged fields are filled after the run. Findings flow back into the harness — better sensors, better docs, better flow — and the loop runs again.</p></div>
+  </div>
+  <p class="loop-note">Two roles, strictly separated: the <b>orchestrator</b> drives the run
+  (spawn, verify the model, deliver the packet, answer gate questions under a fixed policy);
+  the <b>evaluator</b> never drives anything — it only reads what a finished session left behind.
+  A run that finds non-conformance is a <em>successful evaluation</em>, not a tooling error.</p>
+</section>
+
+<section>
+  <h2>Two ways of knowing: deterministic and judged</h2>
+  <div class="lanes">
+    <div class="lane">
+      <div class="kicker det">Deterministic — computed from evidence</div>
+      <h3>Telemetry + filesystem lanes</h3>
+      <ul>
+        <li><b>Telemetry lane</b> — did the skills run, in what order, did the seams fire, did checks pass, did a compaction happen? Read from counts-only session telemetry committed to git refs.</li>
+        <li><b>Filesystem lane</b> — does the output exist, does its content match, does a real command exit clean when run in the subject's worktree?</li>
+        <li><b>Harness-loop conduct is deterministic too</b> — did the agent record in-flight observations (<code>harness observe</code>), drain them into a retro, and leave the record as a real artifact? Scored from evidence, so reports and insights read an agent's suggested retro items directly — never from its self-report.</li>
+        <li>Every row resolves three-valued: <b>pass</b>, <b>fail</b>, or <b>unknown</b> — where unknown means <em>the evidence channel was unavailable</em>, never "the subject failed". Unknowns are excluded from every score denominator.</li>
+      </ul>
+    </div>
+    <div class="lane judged">
+      <div class="kicker jud">Judged — decided against a written rubric</div>
+      <h3>The contained LLM layer</h3>
+      <ul>
+        <li><b>Rubric fields</b> — genuinely subjective calls (e.g. "is this validator a real sensor or a token gesture?") answered after the run against a committed prompt + rubric, recorded with verdict, rationale, and who judged.</li>
+        <li><b>Artifact-only judge</b> — a pinned model from a <em>different family</em> than the subject, temperature 0, identity-stripped, fed only verified artifacts (report rows, exports, worktree files) — never the subject's own prose or self-report, with an explicit anti-verbosity instruction.</li>
+      </ul>
+      <div class="hardrule">The one hard rule: the LLM never produces a number that enters the deterministic score. Judges classify against rubrics; all arithmetic is code.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Two axes, so ritual can't hide a broken artifact</h2>
+  <p>Every assertion belongs to a fixed axis, and each axis is scored independently
+  (pass-rate, unknowns excluded):</p>
+  <div class="axes">
+    <div class="axis">
+      <h3><span class="dot" style="background:var(--ms-blue)"></span>Process</h3>
+      <p>The prescribed ritual — did the agent work the way we teach? Skills, stage order, seams, checks, retro, compaction.</p>
+      <div class="cap no">Can never force a FAIL verdict</div>
+    </div>
+    <div class="axis">
+      <h3><span class="dot" style="background:var(--ms-green)"></span>Capability</h3>
+      <p>The working artifact — does the thing it built actually exist, register, and run? Files, content, real commands.</p>
+      <div class="cap yes">Caps the verdict when a required row fails</div>
+    </div>
+    <div class="axis">
+      <h3><span class="dot" style="background:var(--ms-red)"></span>Safety</h3>
+      <p>The guardrail — forbidden states. Cap-only: it can sink a verdict but is never averaged into a score.</p>
+      <div class="cap yes">Caps the verdict when a required row fails</div>
+    </div>
+  </div>
+  <p>An axis with <em>no</em> scorable evidence renders <b>unmeasured</b> — never
+  <code>0.00</code>. A zero is only legal when there was real evidence and it scored zero.</p>
+
+  <div class="alarm">
+    <div class="flag" aria-hidden="true">⚑</div>
+    <p><b>The mimicry alarm.</b> When process ≥ 0.80 and capability ≤ 0.40 — with both axes
+    actually measured — the report raises <code>mimicry</code>: the "right ritual, broken
+    artifact" signal. An agent that <em>looks</em> like it followed the flow but shipped
+    something that doesn't work is the exact failure mode this system exists to catch.</p>
+  </div>
+
+  <div class="verdicts">
+    <div class="vrow"><div class="v"><span class="chip pass"></span>PASS</div><div class="d">Every row measured, nothing failed, nothing unknown.</div></div>
+    <div class="vrow"><div class="v"><span class="chip notes"></span>PASS_WITH_NOTES</div><div class="d">Some fails and/or unknowns, but no <em>required</em> row failed. Read the notes — an unknown-heavy pass means limited measurement coverage, not excellence.</div></div>
+    <div class="vrow"><div class="v"><span class="chip fail"></span>FAIL</div><div class="d">A required capability or safety row failed. Process style alone can never put a run here.</div></div>
+  </div>
+  <p>The overall score is weighted and unknown-excluded:
+  <code>score = Σ weight(pass) ÷ Σ weight(pass + fail)</code>.</p>
+</section>
+
+<section>
+  <h2>The statistics — small-sample honesty</h2>
+  <p>Runs accumulate in an append-only ledger, each stamped with a <b>seed tuple</b>
+  (model, harness, base commit, a hash of the rubric, a hash of the subject packet).
+  Model-vs-model comparison <em>refuses to run</em> unless every compared group shares one
+  rubric hash and one base commit — comparing across a rubric change is a category error,
+  so it's a hard error, not a footnote.</p>
+  <div class="stats">
+    <div class="stat-card">
+      <h3>pass<sup>1</sup> — the rate, with its uncertainty</h3>
+      <div class="formula">pass¹ = passes / k · 95% Wilson CI</div>
+      <p>Mean pass rate per lane per model, always shown with a Wilson score interval —
+      chosen over the normal approximation because k is tiny.</p>
+      <div class="example">At k=1, <b>1.00 [0.21–1.00]</b> — that huge interval <em>is</em> the message: one run proves almost nothing.</div>
+    </div>
+    <div class="stat-card">
+      <h3>pass<sup>k</sup> — observed reliability</h3>
+      <div class="formula">pass^k = 1 iff all k runs passed · est p̂^k</div>
+      <p>Did it pass <em>every</em> time? Reported alongside the mean (never instead of it),
+      with the smooth estimate labelled <code>est</code> so nobody mistakes a curve for a fact.</p>
+      <div class="example">2-of-3 renders <b>pass¹ 0.67, pass^k 0</b> — a mean can never masquerade as reliability.</div>
+    </div>
+    <div class="stat-card">
+      <h3>McNemar — paired significance</h3>
+      <div class="formula">χ² over discordant pairs, paired by trial key</div>
+      <p>Two models on the <em>same trial</em> (same seed tuple minus the model): count the
+      trials where exactly one of them passed, test whether the asymmetry is real.</p>
+      <div class="example">Omitted, and <b>says so</b>, when trials don't align 1:1 — an omitted test is honest; a forced one is not.</div>
+    </div>
+  </div>
+  <p>A difference earns the <b>✱ significance marker</b> only when Wilson intervals fully
+  separate or McNemar reaches significance. No asterisk means "not significant" — and gets
+  narrated that way. Cost columns (tokens, credits, cache) are displayed but <b>never
+  ranked</b>: cache economics differ per harness, and ranking them rewards the wrong thing.
+  Unknown verdicts never enter any denominator — a blind telemetry lane renders
+  <b>—</b>, not 0.00.</p>
+</section>
+
+<section>
+  <h2>Stage semantics — where the economics come from</h2>
+  <p>When a subject drives the delivery flow, its flight-plan navigation events bracket the
+  session into <b>stage windows</b>, and a versioned semantic map projects them onto five
+  canonical stages. Time and tokens are then attributable per stage:</p>
+  <div class="timeline">
+    <div class="tl-track" aria-hidden="true">
+      <div class="tl-seg" style="flex:2; background:var(--ms-blue)">research</div>
+      <div class="tl-seg" style="flex:3; background:var(--fluent)">plan</div>
+      <div class="tl-seg" style="flex:5; background:var(--ms-green)">implement</div>
+      <div class="tl-seg" style="flex:2.4; background:var(--ms-yellow); color:var(--ink)">review</div>
+      <div class="tl-seg" style="flex:1.2; background:var(--ms-red)">ship</div>
+    </div>
+    <div class="tl-labels" aria-hidden="true">
+      <div style="flex:2">time_s · tokens</div><div style="flex:3">time_s · tokens</div>
+      <div style="flex:5">time_s · tokens</div><div style="flex:2.4">time_s · tokens</div>
+      <div style="flex:1.2">time_s · tokens</div>
+    </div>
+    <p class="tl-cap">Every window also records <em>how</em> it was labelled — real navigation
+    events, a fallback, or honestly <code>unlabeled</code> (a recorded absence, never a guessed
+    stage). The map is versioned, so adding new semantics later can never silently relabel old
+    reports.</p>
+  </div>
+  <p>This is what unlocks fleet-level questions: stage cost profiles per model, "does more
+  planning correlate with fewer total tokens?", and same-model-different-harness splits where
+  the stages mean the same thing on both sides. All such claims stay <b>correlational</b> —
+  a fleet of four supports "correlates with", never "causes" — and every number is
+  computed by code, restated verbatim in any narration with its n and caveat.</p>
+</section>
+
+<section>
+  <h2>Reading a report — six questions, in order</h2>
+  <ol class="checklist">
+    <li><b>What's n?</b> One run per cell is a smoke signal, not a distribution — the Wilson width tells you at a glance.</li>
+    <li><b>Same seed tuple?</b> Check base commit + rubric hash before comparing anything across columns.</li>
+    <li><b>Unknowns or fails?</b> <code>3p/0f/7u</code> means "we could measure 3 of 10 claims and all 3 passed" — a coverage statement, never "30%".</li>
+    <li><b>What's the axis split?</b> <em>capability 1.00 · process unmeasured</em> (couldn't see the ritual) reads completely differently from <em>capability 1.00 · process 0.20</em> (saw it; it wasn't followed).</li>
+    <li><b>Did a required row fail?</b> That, and only that, is what forces a FAIL.</li>
+    <li><b>What did the judge layer add?</b> Judged verdicts carry a rationale and a "by" — quality calls layered on top, never inputs to the deterministic arithmetic.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>The principles underneath</h2>
+  <div class="principles">
+    <div class="principle"><h3>Blind subjects</h3><p>The agent never sees the assertions, the scoring, or what "good" looks like — so the eval measures approach, not recall of the rubric.</p></div>
+    <div class="principle"><h3>Evidence over narrative</h3><p>Telemetry and the worktree decide. An agent's own account of its work is never scoring input.</p></div>
+    <div class="principle"><h3>Honest unknowns</h3><p>Where the evidence channel is blind, the system says <em>unknown</em> and excludes it — it never guesses, and never lets a measurement gap read as a failure.</p></div>
+    <div class="principle"><h3>Failure is a finding</h3><p>A FAIL verdict is a successful evaluation. The loop exists to surface non-conformance and feed it back into a better harness.</p></div>
+  </div>
+</section>
+
+<footer>
+  Companion to <a href="./flow-conformance-eval.md">flow-conformance-eval.md</a> (the full
+  reference: assertion registry, scenario authoring, formulas with sources) ·
+  engine at <code>.harness/extensions/flow-eval/</code> · scenarios at
+  <code>live-testing/scenarios/</code> · run reports at <code>.harness/live-testing/</code>.
+</footer>
+
+</div>
+</body>
+</html>
