@@ -118,5 +118,16 @@ harness flow-eval supersede --scenario md-to-pdf --run <stale-run-id> --by <corr
   test. And start every report file with `<meta charset="utf-8">` — copies
   opened via `file://` render em-dashes as `Â`-mojibake without it (bit both
   batch-2 and batch-3 reports).
+- **The analysis-report contract — don't water it down.** Every batch report
+  (and any rollup) carries the semantic layer, not just verdict/cost tables:
+  (1) **time-semantics bars** — flow cohorts get stage economics from
+  CLI-written nav events; non-flow cohorts get turn-classified attribution
+  (loop/build/verify) derived from the raw event stream; (2) a **conduct
+  matrix** with raw-event ground truth per cell (counts, record paths — not
+  bare ✓/✗); (3) **axis-score semantics** (what process vs capability measured,
+  which misses are instrument artifacts); (4) an **instrument-findings section**
+  (the eval evaluating itself — DL/SUGG items with tags). A first-draft batch-4
+  rollup shipped without these and had to be rebuilt; cost/verdict tables alone
+  read as watered down.
 - This skill is meant to be **iterated after each real run** — when a beat needs
   tribal knowledge, fix it here (a line) or in the extension's `instructions.md`.
