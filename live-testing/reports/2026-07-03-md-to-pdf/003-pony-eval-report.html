@@ -1,0 +1,177 @@
+<meta charset="utf-8">
+<title>flow-eval · batch 3 — the ponytail cohort</title>
+<style>
+  :root{
+    --ms-red:#F25022; --ms-green:#7FBA00; --ms-blue:#00A4EF; --ms-yellow:#FFB900;
+    --fluent:#0078D4; --fluent-dark:#005A9E;
+    --ink:#201F1E; --ink-2:#484644; --muted:#605E5C;
+    --bg:#FAF9F8; --panel:#FFFFFF; --panel-2:#F3F2F1; --line:#EDEBE9; --line-2:#D2D0CE;
+  }
+  *{box-sizing:border-box;}
+  html{background:var(--bg);}
+  body{margin:0; color:var(--ink); font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:16px; line-height:1.55;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 28px 100px;}
+  h1{font-size:38px; font-weight:700; letter-spacing:-.015em; line-height:1.15; text-wrap:balance; margin:.4em 0 .3em;}
+  h2{font-size:23px; font-weight:700; letter-spacing:-.01em; margin:0 0 .5em;}
+  h3{font-size:16px; font-weight:600; margin:0 0 .35em;}
+  p{margin:.4em 0 .9em; max-width:72ch;}
+  code{font-family:"Cascadia Code",Consolas,Menlo,monospace; font-size:.85em; background:var(--panel-2); padding:1px 5px; border-radius:3px;}
+  .num{font-family:"Cascadia Code",Consolas,Menlo,monospace; font-variant-numeric:tabular-nums;}
+  section{margin-top:60px;}
+  header{padding-top:56px;}
+  .quad{display:flex; gap:4px; margin-bottom:22px;}
+  .quad span{width:14px; height:14px; display:block;}
+  .eyebrow{font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--fluent); margin-bottom:10px;}
+  .lede{font-size:18.5px; color:var(--ink-2); max-width:64ch;}
+  .caveat{font-size:13.5px; color:var(--muted); max-width:78ch;}
+
+  .tbl-wrap{overflow-x:auto; margin:16px 0 6px;}
+  table{border-collapse:collapse; width:100%; font-size:14px; background:var(--panel);}
+  th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); font-weight:600; padding:9px 12px; border-bottom:2px solid var(--ink); white-space:nowrap;}
+  td{padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top;}
+  td.num,th.num{text-align:right;}
+  tr:last-child td{border-bottom:none;}
+  .best{color:var(--fluent-dark); font-weight:700;}
+  .pill{display:inline-block; font-size:10px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; padding:2px 7px; border-radius:2px; color:#fff; background:var(--ms-yellow); color:var(--ink);}
+
+  /* stage economics */
+  .stages{background:var(--panel); border:1px solid var(--line); padding:22px 24px 16px; margin:18px 0;}
+  .st-row{display:grid; grid-template-columns:170px 1fr 84px; gap:14px; align-items:center; margin:13px 0;}
+  .st-label{font-size:13px; font-weight:600;}
+  .st-label small{display:block; font-weight:400; color:var(--muted); font-size:11.5px;}
+  .st-bar{display:flex; height:26px; overflow:hidden;}
+  .st-seg{display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden;}
+  .st-total{font-size:12px; color:var(--muted); text-align:right;}
+  .legend{display:flex; flex-wrap:wrap; gap:16px; font-size:11.5px; color:var(--muted); margin-top:14px;}
+  .sw{display:inline-block; width:14px; height:9px; margin-right:5px;}
+
+  /* conduct matrix */
+  .matrix td:first-child{font-weight:600; font-size:13.5px;}
+  .y{color:var(--ms-green); font-weight:700;} .n{color:var(--ms-red); font-weight:700;}
+  .s{color:#B8860B; font-weight:700;}
+
+  /* insights */
+  .insight{border-top:1px solid var(--line); padding:18px 0 8px; display:grid; grid-template-columns:44px 1fr; gap:14px;}
+  .insight:first-of-type{border-top:2px solid var(--ink);}
+  .rank{font-family:"Cascadia Code",Consolas,monospace; font-size:13px; color:var(--fluent); padding-top:3px;}
+  .insight p{margin:.3em 0 .5em; max-width:70ch;}
+  .evidence{font-size:13px; color:var(--muted);}
+  .evidence b{color:var(--ink); font-weight:600;}
+
+  .findings li{margin:.55em 0; max-width:74ch; font-size:14.5px;}
+  .tag{font-family:"Cascadia Code",Consolas,monospace; font-size:10.5px; background:var(--ink); color:var(--bg); padding:2px 6px; border-radius:2px; margin-right:6px;}
+  .tag.fixed{background:var(--ms-green);}
+  .tag.works{background:var(--fluent);}
+  footer{margin-top:76px; border-top:1px solid var(--line-2); padding-top:16px; font-size:13px; color:var(--muted);}
+  a{color:var(--fluent); text-decoration:none;} a:hover{text-decoration:underline;}
+  @media (max-width:820px){ .st-row{grid-template-columns:120px 1fr 70px;} }
+</style>
+<div class="wrap">
+<header>
+  <div class="quad"><span style="background:var(--ms-red)"></span><span style="background:var(--ms-green)"></span><span style="background:var(--ms-blue)"></span><span style="background:var(--ms-yellow)"></span></div>
+  <div class="eyebrow">flow-eval · md-to-pdf-ponytail · batch 3 · 2026-07-03</div>
+  <h1>The lazy cohort: same task, <code>/ponytail full</code> mandated</h1>
+  <p class="lede">Third cohort on the same task and pinned base: after <b>blind</b> (batch&nbsp;1) and <b>/the-flow mandated</b> (batch&nbsp;2), four subjects built the markdown→PDF extension under a disciplined-minimalism doctrine. All four shipped working, validated extensions with <b>zero new dependencies</b> — at a fraction of every prior cohort's cost. The doctrine's collateral damage landed exactly where predicted: the engineering-harness <em>loop</em>.</p>
+  <p class="caveat">Verdicts: 4× PASS_WITH_NOTES, capability 1.00 across the board, judged 6/6 filled per run. n=1 per cell — read direction, not decimals. Runs: <code>.harness/live-testing/md-to-pdf-ponytail/</code> (committed, ledgered).</p>
+</header>
+
+<section>
+  <h2>The cohort at a glance</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Subject</th><th class="num">Packet→last event</th><th class="num">Turns</th><th class="num">Tools</th><th class="num">Cost signal</th><th class="num">New code</th><th class="num">New deps</th><th class="num">ponytail: markers</th><th class="num">Tests</th><th class="num">Det. rows</th></tr>
+    <tr><td>GPT-5.5 · Copilot</td><td class="num best">6.2 min</td><td class="num">40</td><td class="num">55</td><td class="num best">203 AIC</td><td class="num">4 files · +239</td><td class="num">0</td><td class="num">0</td><td class="num">2</td><td class="num">4p/8f/0u</td></tr>
+<tr><td colspan="10" style="border-bottom:1px solid var(--line);padding-top:0;color:var(--muted);font-size:12.5px">fastest & cheapest; system-tool pipeline (mmdc→pandoc→pdfinfo); validator proves structure, not embedded diagrams</td></tr>
+<tr><td>Fable 5 · Claude Code</td><td class="num">9.7 min</td><td class="num">—</td><td class="num">37</td><td class="num">35.7k fresh tok¹</td><td class="num">5 files · +315</td><td class="num">0</td><td class="num">2</td><td class="num">7</td><td class="num">4p/8f/0u</td></tr>
+<tr><td colspan="10" style="border-bottom:1px solid var(--line);padding-top:0;color:var(--muted);font-size:12.5px">proof-from-output-bytes validator (mdpdf-ok-⟨n⟩ written to PDF /Title only after mermaid.run() resolves)</td></tr>
+<tr><td>Sonnet 5 · Copilot</td><td class="num">17.0 min</td><td class="num">77</td><td class="num">79</td><td class="num">263 AIC</td><td class="num">4 files · +352</td><td class="num">0</td><td class="num">0</td><td class="num">4</td><td class="num">4p/8f/0u</td></tr>
+<tr><td colspan="10" style="border-bottom:1px solid var(--line);padding-top:0;color:var(--muted);font-size:12.5px">empirical verifier: measured that SVG→PDF silently drops mermaid labels, switched to PNG; pdfimages counts diagrams IN the output</td></tr>
+<tr><td>Opus 4.8 · Copilot</td><td class="num">17.7 min</td><td class="num">45</td><td class="num">48</td><td class="num">416 AIC</td><td class="num">5 files · ~496²</td><td class="num">0</td><td class="num">1</td><td class="num">9</td><td class="num">4p/6f/2u</td></tr>
+<tr><td colspan="10" style="border-bottom:1px solid var(--line);padding-top:0;color:var(--muted);font-size:12.5px">cleanest architecture (pure decision.ts + subprocess); byte-level validation; left its work uncommitted</td></tr>
+  </table></div>
+  <p class="caveat">¹ fresh = input+output tokens (10.2k in + 25.5k out; plus 68.7k cache-write, 2.05M cache-read) — same definition as prior batches. ² Opus left its extension untracked/uncommitted; line count from the working tree. Copilot AIC figures have each pane's boot cost subtracted (16.1 / 12.5 / 35.1).</p>
+</section>
+
+<section>
+  <h2>Three doctrines, one task — the cost triangle</h2>
+  <p>Same four models, same base ref, same task paragraph; only the mandate clause changed across batches. Multiples are ponytail vs that model's <em>blind</em> run (and, last column, vs its <em>flow</em> run).</p>
+  <div class="tbl-wrap"><table>
+    <tr><th>Model</th><th class="num">Blind (b1)</th><th class="num">Flow (b2)</th><th class="num">Ponytail (b3)</th><th class="num">Cost vs blind</th><th class="num">Wall vs blind</th><th class="num">Cost vs flow</th></tr>
+    <tr><td>GPT-5.5</td><td class="num">506 AIC · 12.2 min</td><td class="num">1216 AIC · 19.8 min</td><td class="num">203 AIC · 6.2 min</td><td class="num best">×0.40</td><td class="num">×0.51</td><td class="num">×0.17</td></tr>
+<tr><td>Sonnet 5</td><td class="num">335 AIC · 14.9 min</td><td class="num">1142 AIC · 42.9 min</td><td class="num">263 AIC · 17.0 min</td><td class="num best">×0.79</td><td class="num">×1.14</td><td class="num">×0.23</td></tr>
+<tr><td>Opus 4.8</td><td class="num">483 AIC · 15.8 min</td><td class="num">1240 AIC · 32.7 min</td><td class="num">416 AIC · 17.7 min</td><td class="num best">×0.86</td><td class="num">×1.12</td><td class="num">×0.34</td></tr>
+<tr><td>Fable 5</td><td class="num">89.9k fresh · 15.5 min</td><td class="num">162.1k fresh · 53.6 min</td><td class="num">35.7k fresh · 9.7 min</td><td class="num best">×0.40</td><td class="num">×0.63</td><td class="num">×0.22</td></tr>
+  </table></div>
+  <p>Ponytail is the cheapest cohort on record for every model — <b>×0.40–0.86 of blind credits</b> and roughly <b>a fifth to a third of flow credits</b>. But wall time splits by model: GPT-5.5 and Fable got dramatically faster, while Sonnet and Opus spent their savings on <em>verification</em> — Sonnet's 17 minutes include empirically measuring a silent label-dropping bug and visually confirming output via <code>pdftoppm</code>.</p>
+</section>
+
+<section>
+  <h2>The harness-usage watch <span class="pill">standing concern</span></h2>
+  <p>The question this batch was told to keep an eye on: does frugality eat the harness? Split answer — <b>the loop died, the sensors survived model-dependently</b>. Column order: GPT-5.5 · Fable 5 · Sonnet 5 · Opus 4.8.</p>
+  <div class="tbl-wrap"><table class="matrix">
+    <tr><th>Conduct (raw-event ground truth)</th><th>GPT-5.5</th><th>Fable 5</th><th>Sonnet 5</th><th>Opus 4.8</th></tr>
+    <tr><td>Invoked /ponytail (the mandate)</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 transcript</td></tr>
+<tr><td>Ambient /the-flow adoption</td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td></tr>
+<tr><td>eng-harness-flow loop (any seam)</td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td></tr>
+<tr><td>harness observe (in-flight capture)</td><td><span class="n">✗</span> 0</td><td><span class="n">✗</span> 0</td><td><span class="n">✗</span> 0</td><td><span class="n">✗</span> 0</td></tr>
+<tr><td>Retro drained to a record</td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td></tr>
+<tr><td>Compacted at least once</td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td></tr>
+<tr><td>Sensor usage (checks/doctor/lint/arch)</td><td><span class="s">◐</span> checks ×1</td><td><span class="s">◐</span> checks+doctor</td><td><span class="y">✓</span> checks ×4 · doctor ×2 · md-lint ×8 · win-check ×6</td><td><span class="y">✓</span> arch ×4 · md-lint ×8 · doctor ×2</td></tr>
+  </table></div>
+  <p>Every subject honored the mandate (one real <code>/ponytail full</code> invocation each, verified in raw event streams — the deterministic A1 fails are the DL-005 capture gap, not conduct). But <b>observe/retro/loop conduct is 0/4</b>: ponytail's YAGNI reflex classifies the harness <em>loop</em> as skippable mechanism, while the <em>sensor</em> surface (checks, doctor, lint, arch-check) survives in the two subjects whose personality already leans on it. The blind cohort — no doctrine at all — used the sensor surface more heavily than this one.</p>
+  <p><b>Candidate fix (skill-side, not packet-side):</b> add the harness loop to ponytail's own <em>“When NOT to be lazy”</em> carve-outs (it already protects validation, error handling, security, accessibility from simplification). Editing the eval packet instead would contaminate the mandate variable and break cross-batch comparability. If adopted, a re-run cohort gives a clean A/B on a new seed tuple.</p>
+</section>
+
+<section>
+  <h2>What minimalism did to verification</h2>
+  <p>The task's "validated output" clause met four very different answers — all deterministic, none a file-size gesture, but with a real quality spread:</p>
+  <ol class="findings">
+    <li><span class="tag works">output-proof</span><b>Fable 5</b> — the page writes <code>mdpdf-ok-⟨n⟩</code> into <code>document.title</code> only after <code>mermaid.run()</code> resolves; Chrome copies it into the PDF's <code>/Title</code>; the validator reads it back from the PDF bytes and cross-checks n against the source fence count. Render fidelity proven from the artifact itself, near-zero mechanism.</li>
+    <li><span class="tag works">output-proof</span><b>Sonnet 5</b> — <code>pdfimages</code> counts embedded raster images in the produced PDF against the source's mermaid fence count; fewer diagrams than fences → exit 1. Chose PNG over SVG after <em>measuring</em> that non-browser SVG→PDF paths silently drop mermaid's foreignObject labels while still "succeeding".</li>
+    <li><span class="tag">render-proof</span><b>Opus 4.8</b> — subprocess validates %PDF- signature, %%EOF trailer, pdfinfo page count, and that every fence produced a non-trivial SVG. Proves the renders happened; does not prove they landed in the final PDF.</li>
+    <li><span class="tag">structure-only</span><b>GPT-5.5</b> — mmdc hard-fails broken diagrams; pdfinfo asserts valid PDF + pages ≥ 1. <b>Open question raised by Sonnet's measurement:</b> GPT-5.5's pipeline is exactly the SVG→weasyprint path Sonnet measured as label-dropping — its PDF may carry label-less diagrams while validating "ok". Unverified (worktree torn down); worth a probe if this extension graduates.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Instrument findings (the eval evaluating itself)</h2>
+  <ol class="findings">
+    <li><span class="tag">DL-005</span>Telemetry capture windows open only around harness commands — a minimal-process cohort produces almost no windows, so the telemetry lane went blind (1 segment for GPT-5.5 &amp; Fable) exactly where ambient-conduct behaviour is most interesting. Raw event streams carried the ground truth; judged layer reconciled. Candidate: session-lifetime capture or event-stream fallback for skills/tools lanes.</li>
+    <li><span class="tag">SUGG-006</span>Spawning via <code>(cd $WORKTREE &amp;&amp; pij spawn …)</code> records the owner as <em>unknown</em>, so teardown needs <code>--force</code> on sessions this orchestrator did spawn — the mechanical-cwd-boundary pattern breaks pij ownership attribution.</li>
+    <li><span class="tag">SUGG-003</span>A9 (<code>checks</code> green) stays unreachable on this base (pre-existing warn-launch degraded findings) — consistent across all three batches, so comparable, but it deflates every process score by one row.</li>
+    <li><span class="tag">conduct</span>Two hygiene blemishes outside the rubric: Sonnet left one late fix uncommitted (a real weasyprint cwd discovery, documented in the diff); Opus never committed at all. Both working trees were scored and preserved before teardown.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Insights, ranked</h2>
+  <div class="insight"><div class="rank">01</div><div>
+    <h3>Minimalism bought capability 1.00 at the lowest cost ever recorded on this task</h3>
+    <p>Four working, validated extensions; zero new dependencies across the entire cohort; ×0.40–0.86 of blind credits and ~⅕–⅓ of flow credits. On pure task economics, ponytail wins this task outright.</p>
+    <div class="evidence"><b>Evidence:</b> cohort table + cost triangle above; ledger runs 050238Z/050744Z/051424Z/051428Z.</div>
+  </div></div>
+  <div class="insight"><div class="rank">02</div><div>
+    <h3>Verification did not collapse — it stratified by model personality</h3>
+    <p>Two of four built <em>output-proof</em> validators arguably stronger than some flow-cohort backpressure designs. But the floor dropped too: the cheapest run's validator can't see a diagram that silently lost its labels. Under minimalism, verification quality is whatever the model's own culture supplies — the doctrine neither mandates nor forbids it.</p>
+    <div class="evidence"><b>Evidence:</b> validator panel; Sonnet's measured foreignObject label-drop; A14 judged rows all pass with graded caveats.</div>
+  </div></div>
+  <div class="insight"><div class="rank">03</div><div>
+    <h3>The harness loop is ponytail's blind spot — the standing watch is confirmed</h3>
+    <p>0/4 observe, 0/4 retro, 0/4 loop seams, while the same models under no doctrine at all used the sensor surface more. YAGNI classifies the improvement loop as optional mechanism. The fix belongs in the skill's own carve-out list, not in eval packets.</p>
+    <div class="evidence"><b>Evidence:</b> conduct matrix (raw-event ground truth); batch-1 sensor baseline; observe buffer CONF-001.</div>
+  </div></div>
+  <div class="insight"><div class="rank">04</div><div>
+    <h3>The instrument under-samples exactly the cohorts it most needs to see (DL-005)</h3>
+    <p>Command-anchored capture windows mean a frugal subject is nearly invisible to the telemetry lane. Every deterministic skill-lane fail this batch was a capture artifact, not conduct — caught only because the runbook mandates raw-event cross-checks before judging.</p>
+    <div class="evidence"><b>Evidence:</b> 1 segment vs 242 raw events (GPT-5.5); 1 segment vs a full transcript (Fable); Opus captured 9 segments only because it ran 38 harness commands.</div>
+  </div></div>
+  <div class="insight"><div class="rank">05</div><div>
+    <h3>Model personality persists through any doctrine</h3>
+    <p>Sonnet measured before believing (again — it was also the one that caught a security bug pre-code in batch 2). Opus architected cleanly and documented ceilings (and again treated bookkeeping as optional). GPT-5.5 sprinted to the leanest working thing. Fable spent its budget on one elegant design idea. The mandate changed the budget; it didn't change who they are.</p>
+    <div class="evidence"><b>Evidence:</b> per-subject headlines in the cohort table; batch-2 conduct headlines for the same four models.</div>
+  </div></div>
+</section>
+
+<footer>
+  flow-eval batch 3 · scenario <code>md-to-pdf-ponytail</code> (committed eb8c805b) · base c159d3d6 · orchestrator pij-4s10mb (Claude Fable 5) · judged rows filled evidence-first from raw event streams, diffs, and re-executed validators · all numbers in tables are generated from a single data block in the page source, not hand-transcribed.
+</footer>
+</div>

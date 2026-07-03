@@ -1,0 +1,160 @@
+<meta charset="utf-8">
+<title>flow-eval · batch 4 — ponytail + the harness carve-out</title>
+<style>
+  :root{
+    --ms-red:#F25022; --ms-green:#7FBA00; --ms-blue:#00A4EF; --ms-yellow:#FFB900;
+    --fluent:#0078D4; --fluent-dark:#005A9E;
+    --ink:#201F1E; --ink-2:#484644; --muted:#605E5C;
+    --bg:#FAF9F8; --panel:#FFFFFF; --panel-2:#F3F2F1; --line:#EDEBE9; --line-2:#D2D0CE;
+  }
+  *{box-sizing:border-box;}
+  html{background:var(--bg);}
+  body{margin:0; color:var(--ink); font-family:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:16px; line-height:1.55;}
+  .wrap{max-width:980px; margin:0 auto; padding:0 28px 100px;}
+  h1{font-size:38px; font-weight:700; letter-spacing:-.015em; line-height:1.15; text-wrap:balance; margin:.4em 0 .3em;}
+  h2{font-size:23px; font-weight:700; letter-spacing:-.01em; margin:0 0 .5em;}
+  h3{font-size:16px; font-weight:600; margin:0 0 .35em;}
+  p{margin:.4em 0 .9em; max-width:72ch;}
+  code{font-family:"Cascadia Code",Consolas,Menlo,monospace; font-size:.85em; background:var(--panel-2); padding:1px 5px; border-radius:3px;}
+  .num{font-family:"Cascadia Code",Consolas,Menlo,monospace; font-variant-numeric:tabular-nums;}
+  section{margin-top:60px;}
+  header{padding-top:56px;}
+  .quad{display:flex; gap:4px; margin-bottom:22px;}
+  .quad span{width:14px; height:14px; display:block;}
+  .eyebrow{font-size:12px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--fluent); margin-bottom:10px;}
+  .lede{font-size:18.5px; color:var(--ink-2); max-width:64ch;}
+  .caveat{font-size:13.5px; color:var(--muted); max-width:78ch;}
+
+  .tbl-wrap{overflow-x:auto; margin:16px 0 6px;}
+  table{border-collapse:collapse; width:100%; font-size:14px; background:var(--panel);}
+  th{text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); font-weight:600; padding:9px 12px; border-bottom:2px solid var(--ink); white-space:nowrap;}
+  td{padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top;}
+  td.num,th.num{text-align:right;}
+  tr:last-child td{border-bottom:none;}
+  .best{color:var(--fluent-dark); font-weight:700;}
+  .pill{display:inline-block; font-size:10px; font-weight:600; letter-spacing:.07em; text-transform:uppercase; padding:2px 7px; border-radius:2px; color:#fff; background:var(--ms-yellow); color:var(--ink);}
+
+  /* stage economics */
+  .stages{background:var(--panel); border:1px solid var(--line); padding:22px 24px 16px; margin:18px 0;}
+  .st-row{display:grid; grid-template-columns:170px 1fr 84px; gap:14px; align-items:center; margin:13px 0;}
+  .st-label{font-size:13px; font-weight:600;}
+  .st-label small{display:block; font-weight:400; color:var(--muted); font-size:11.5px;}
+  .st-bar{display:flex; height:26px; overflow:hidden;}
+  .st-seg{display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden;}
+  .st-total{font-size:12px; color:var(--muted); text-align:right;}
+  .legend{display:flex; flex-wrap:wrap; gap:16px; font-size:11.5px; color:var(--muted); margin-top:14px;}
+  .sw{display:inline-block; width:14px; height:9px; margin-right:5px;}
+
+  /* conduct matrix */
+  .matrix td:first-child{font-weight:600; font-size:13.5px;}
+  .y{color:var(--ms-green); font-weight:700;} .n{color:var(--ms-red); font-weight:700;}
+  .s{color:#B8860B; font-weight:700;}
+
+  /* insights */
+  .insight{border-top:1px solid var(--line); padding:18px 0 8px; display:grid; grid-template-columns:44px 1fr; gap:14px;}
+  .insight:first-of-type{border-top:2px solid var(--ink);}
+  .rank{font-family:"Cascadia Code",Consolas,monospace; font-size:13px; color:var(--fluent); padding-top:3px;}
+  .insight p{margin:.3em 0 .5em; max-width:70ch;}
+  .evidence{font-size:13px; color:var(--muted);}
+  .evidence b{color:var(--ink); font-weight:600;}
+
+  .findings li{margin:.55em 0; max-width:74ch; font-size:14.5px;}
+  .tag{font-family:"Cascadia Code",Consolas,monospace; font-size:10.5px; background:var(--ink); color:var(--bg); padding:2px 6px; border-radius:2px; margin-right:6px;}
+  .tag.fixed{background:var(--ms-green);}
+  .tag.works{background:var(--fluent);}
+  footer{margin-top:76px; border-top:1px solid var(--line-2); padding-top:16px; font-size:13px; color:var(--muted);}
+  a{color:var(--fluent); text-decoration:none;} a:hover{text-decoration:underline;}
+  @media (max-width:820px){ .st-row{grid-template-columns:120px 1fr 70px;} }
+</style>
+<div class="wrap">
+<header>
+  <div class="quad"><span style="background:var(--ms-red)"></span><span style="background:var(--ms-green)"></span><span style="background:var(--ms-blue)"></span><span style="background:var(--ms-yellow)"></span></div>
+  <div class="eyebrow">flow-eval · md-to-pdf-ponytail-harness · batch 4 · 2026-07-03</div>
+  <h1>The carve-out A/B: ponytail, but the harness loop is not skippable</h1>
+  <p class="lede">Batch 3 found that <code>/ponytail full</code> alone kills the engineering-harness loop (0/4 observe, 0/4 retro). This batch re-ran the same task, base, and ponytail mandate with <b>one added variable</b>: the packet names <code>/eng-harness-flow</code> and declares harness conduct non-skippable. Three Copilot subjects (Fable sat out on cost). <b>The carve-out works — loop conduct restored 3/3 — at ×1.6–1.9 credits, and the time it buys is visible in the semantic attribution below.</b></p>
+  <p class="caveat">Verdicts: 3× PASS_WITH_NOTES, capability 1.00 ×3, judged 6/6 per run. AIC = session total minus each model's batch-3 observed boot (16.1/12.5/35.1), marked ~. n=1 per cell. Runs: <code>.harness/live-testing/md-to-pdf-ponytail-harness/</code> (committed, ledgered).</p>
+</header>
+
+<section>
+  <h2>The cohort</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Subject</th><th class="num">Wall</th><th class="num">Turns</th><th class="num">Tools</th><th class="num">Cost</th><th class="num">New code</th><th class="num">New deps</th><th class="num">Tests</th><th class="num">Det. rows</th><th class="num">Axis scores</th></tr>
+    <tr><td>GPT-5.5 · Copilot</td><td class="num">8.8 min</td><td class="num">69</td><td class="num">96</td><td class="num">~379 AIC</td><td class="num">3 files · +236</td><td class="num">0</td><td class="num">0</td><td class="num">6p/6f/0u</td><td class="num">process 0.55 · capability 1.00</td></tr>
+<tr><td>Sonnet 5 · Copilot</td><td class="num">20.3 min</td><td class="num">115</td><td class="num">112</td><td class="num">~418 AIC</td><td class="num">9 files · +688</td><td class="num">0</td><td class="num">12</td><td class="num">6p/6f/0u</td><td class="num">process 0.55 · capability 1.00</td></tr>
+<tr><td>Opus 4.8 · Copilot</td><td class="num">21.0 min</td><td class="num">79</td><td class="num">86</td><td class="num">~700 AIC</td><td class="num">12 files · +969</td><td class="num">2 devDeps</td><td class="num">10</td><td class="num">6p/6f/0u</td><td class="num">process 0.55 · capability 1.00</td></tr>
+  </table></div>
+  <p class="caveat">Axis semantics: <b>capability</b> = does the artifact work (extension registered, validator passes, files exist); <b>process</b> = was the mandated conduct followed. Process 0.55 = 6 of 11 measured process rows pass — the misses are A1/A3 (capture-window artifacts, reconciled below), A4 (seam envelope not independently visible), A5 (nobody compacted), A9 (unreachable on this base — SUGG-003). No mimicry alarm fired on any run.</p>
+</section>
+
+<section>
+  <h2>Semantic time attribution — where the carve-out's minutes went</h2>
+  <p>No flow stages exist in this cohort, so semantics come from <b>turn classification over the raw event stream</b>: each assistant turn is attributed to harness-loop conduct, verification, or build by the commands it executed. The batch-3 rows are the same models under ponytail alone — the loop share is the carve-out, visible as time.</p>
+  <div class="stages">
+    <div class="st-row"><div class="st-label">GPT-5.5 <small>b4 · +carve-out</small></div><div class="st-bar" style="width:41%"><div class="st-seg" style="flex:2.8; background:var(--ms-red)">2.8</div><div class="st-seg" style="flex:5.2; background:var(--ms-green)">5.2</div><div class="st-seg" style="flex:0.6; background:var(--ms-blue)"></div></div><div class="st-total num">8.6 min</div></div>
+<div class="st-row"><div class="st-label">Sonnet 5 <small>b4 · +carve-out</small></div><div class="st-bar" style="width:97%"><div class="st-seg" style="flex:3.0; background:var(--ms-red)">3.0</div><div class="st-seg" style="flex:10.8; background:var(--ms-green)">10.8</div><div class="st-seg" style="flex:6.4; background:var(--ms-blue)">6.4</div></div><div class="st-total num">20.1 min</div></div>
+<div class="st-row"><div class="st-label">Opus 4.8 <small>b4 · +carve-out</small></div><div class="st-bar" style="width:100%"><div class="st-seg" style="flex:4.1; background:var(--ms-red)">4.1</div><div class="st-seg" style="flex:14.0; background:var(--ms-green)">14.0</div><div class="st-seg" style="flex:2.6; background:var(--ms-blue)">2.6</div></div><div class="st-total num">20.8 min</div></div>
+    <div class="st-row"><div class="st-label">GPT-5.5 <small>b3 · ponytail alone</small></div><div class="st-bar" style="width:28%"><div class="st-seg" style="flex:0.8; background:var(--ms-red)"></div><div class="st-seg" style="flex:3.6; background:var(--ms-green)">3.6</div><div class="st-seg" style="flex:1.4; background:var(--ms-blue)">1.4</div></div><div class="st-total num">5.8 min</div></div>
+<div class="st-row"><div class="st-label">Sonnet 5 <small>b3 · ponytail alone</small></div><div class="st-bar" style="width:81%"><div class="st-seg" style="flex:0.7; background:var(--ms-red)"></div><div class="st-seg" style="flex:10.1; background:var(--ms-green)">10.1</div><div class="st-seg" style="flex:6.0; background:var(--ms-blue)">6.0</div></div><div class="st-total num">16.8 min</div></div>
+<div class="st-row"><div class="st-label">Opus 4.8 <small>b3 · ponytail alone</small></div><div class="st-bar" style="width:83%"><div class="st-seg" style="flex:0.2; background:var(--ms-red)"></div><div class="st-seg" style="flex:12.4; background:var(--ms-green)">12.4</div><div class="st-seg" style="flex:4.7; background:var(--ms-blue)">4.7</div></div><div class="st-total num">17.3 min</div></div>
+    <div class="legend">
+  <span><span class="sw" style="background:var(--ms-red)"></span>harness-loop conduct (observe/record/doctor/checks turns)</span>
+  <span><span class="sw" style="background:var(--ms-green)"></span>build (everything else)</span>
+  <span><span class="sw" style="background:var(--ms-blue)"></span>verify (md-to-pdf runs, pdf tools, tests)</span>
+  <span>· bars scaled to Opus-b4's 20.8 min · turn-classified approximation: each assistant turn is attributed to the highest-priority command class it executed</span>
+</div>
+  </div>
+  <p>Three readings. <b>GPT-5.5</b> paid the biggest relative loop tax (0.8→2.8 min, a third of its session) — and that pressure is the likely culprit for its dropped unit test. <b>Sonnet</b> added loop time without touching its verify budget (6.0→6.4 min — its verification culture is load-bearing, not discretionary). <b>Opus</b> grew every category at once (+1.6 build, +3.9 loop… and two new dependencies): given one non-skippable duty, it stopped economizing generally.</p>
+</section>
+
+<section>
+  <h2>The A/B — what one explicit carve-out costs and buys</h2>
+  <div class="tbl-wrap"><table>
+    <tr><th>Model</th><th class="num">Ponytail (b3)</th><th class="num">+ carve-out (b4)</th><th class="num">Cost ×</th><th class="num">Wall ×</th><th class="num">Loop-conduct time</th></tr>
+    <tr><td>GPT-5.5</td><td class="num">203 AIC · 6.2 min</td><td class="num">~379 AIC · 8.8 min</td><td class="num best">×1.87</td><td class="num">×1.42</td><td class="num">0.8 → 2.8 min (33% of session)</td></tr>
+<tr><td>Sonnet 5</td><td class="num">263 AIC · 17.0 min</td><td class="num">~418 AIC · 20.3 min</td><td class="num best">×1.59</td><td class="num">×1.19</td><td class="num">0.7 → 3.0 min (15%)</td></tr>
+<tr><td>Opus 4.8</td><td class="num">416 AIC · 17.7 min</td><td class="num">~700 AIC · 21.0 min</td><td class="num best">×1.68</td><td class="num">×1.19</td><td class="num">0.2 → 4.1 min (20%)</td></tr>
+  </table></div>
+</section>
+
+<section>
+  <h2>Conduct matrix — raw-event ground truth</h2>
+  <div class="tbl-wrap"><table class="matrix">
+    <tr><th>Conduct</th><th>GPT-5.5</th><th>Sonnet 5</th><th>Opus 4.8</th></tr>
+    <tr><td>Invoked /ponytail (mandate 1)</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 raw events</td></tr>
+<tr><td>Invoked /eng-harness-flow (mandate 2)</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 raw events</td><td><span class="y">✓</span> ×1 raw events</td></tr>
+<tr><td>harness observe (in-flight captures)</td><td><span class="y">✓</span> ×14</td><td><span class="y">✓</span> ×8</td><td><span class="y">✓</span> ×8</td></tr>
+<tr><td>Retro drained to a record (A10)</td><td><span class="y">✓</span> 001-md-to-pdf-extension.md</td><td><span class="y">✓</span> 001-md-to-pdf.md + harness-change record</td><td><span class="y">✓</span> 001-md-to-pdf.md (incl. MW-001 magic-wand)</td></tr>
+<tr><td>Sensor sweep (doctor/checks/lint)</td><td><span class="y">✓</span> doctor ×12 · checks ×4 · md-lint ×4</td><td><span class="y">✓</span> doctor ×6 · win-check ×4 · md-lint ×4</td><td><span class="y">✓</span> doctor ×6 · md-lint ×2</td></tr>
+<tr><td>Own verb exercised during build</td><td><span class="y">✓</span> md-to-pdf ×9</td><td><span class="y">✓</span> md-to-pdf ×15</td><td><span class="y">✓</span> md-to-pdf ×11</td></tr>
+<tr><td>Compacted (A5)</td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td></tr>
+<tr><td>Ambient /the-flow (A2, observational)</td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td><td><span class="n">✗</span> </td></tr>
+<tr><td>Left a runnable test</td><td><span class="n">✗</span> 0 (had 2 in b3 — displaced)</td><td><span class="y">✓</span> 12 (validate + extract)</td><td><span class="y">✓</span> 10 (incl. real-Chromium e2e)</td></tr>
+<tr><td>Dependency delta</td><td><span class="y">✓</span> 0</td><td><span class="y">✓</span> 0</td><td><span class="n">✗</span> +2 devDeps (puppeteer, marked; 325-line lockfile)</td></tr>
+  </table></div>
+  <p>All three retro records are real documents with real findings: GPT-5.5 captured the cold-worktree <code>dist/</code> gap and a linked-worktree doctor blind spot; Sonnet encoded <b>two green-but-wrong tool behaviours</b> it discovered empirically (mermaid's HTML labels render invisibly outside Chromium — fixed with <code>htmlLabels:false</code>; pandoc/weasyprint drops unresolvable images at exit 0, only visible on stderr — now scanned per-diagram) with <code>status:encoded</code> and a <code>suggested_encoding</code> for the harness docs; Opus filed magic-wand MW-001 proposing a <code>ctx.execJson()</code> helper for binary-IO subprocesses. This is the improvement loop producing durable, reusable engineering knowledge — the thing batch 3 showed minimalism silently deletes.</p>
+</section>
+
+<section>
+  <h2>The trade the mandates made</h2>
+  <ol class="findings">
+    <li><span class="tag works">restored</span>Loop conduct went from <b>0/4 to 3/3</b> — observe, drain, records, both skills genuinely invoked (raw-event verified, every subject) — and telemetry visibility recovered with it (7 segments each vs batch 3's single segment; loop verbs open capture windows, DL-005 relief as predicted).</li>
+    <li><span class="tag">displaced</span><b>GPT-5.5 dropped its unit test.</b> Its batch-3 run left a 2-case vitest; this run left none — validation lives only in the runtime path. Under the tightest budget, the two mandates competed and the check discipline lost.</li>
+    <li><span class="tag">eroded</span><b>Opus's minimalism gave way.</b> Two new npm devDeps + a 64-line how-doc + README edits, where its own batch-3 run had proven installed tools sufficed. Scored an honest <b>fail on A13.ladder-adherence</b> — the only judged fail in the ponytail family. The engineering itself is strong (parse≠render honored: mermaid.parse is syntax-only, so it renders with real Chromium and validates the PDF bytes; a real-Chromium e2e in <code>just checks</code>); the ladder was not.</li>
+    <li><span class="tag works">held</span><b>Sonnet held both mandates at once</b> — zero deps AND full loop AND the batch's best verification. The dual mandate is satisfiable; it just wasn't free for everyone.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Instrument findings (the eval evaluating itself)</h2>
+  <ol class="findings">
+    <li><span class="tag fixed">DL-005 relief</span>Loop verbs opened 7 capture windows per subject (vs 1 in batch 3) — the telemetry lane could see this cohort. A1/A3 still false-fail because the <em>skill invocations</em> fired between windows; the general fix (session-lifetime capture or event-stream fallback) remains queued.</li>
+    <li><span class="tag">A4 gap</span>The <code>pre-coding</code> seam row is not independently observable: the router's hook envelopes live inside the skill invocation, not as CLI commands, so <code>flow_seams</code> stays empty even when the loop demonstrably ran. Assertion-design follow-up: A4 needs an evidence source that survives skill-internal routing.</li>
+    <li><span class="tag">SUGG-003</span>A9 (<code>checks</code> green) unreachable on this base — pre-existing warn-launch degraded findings; consistent across all four batches, comparable, deflates every process score by one row.</li>
+    <li><span class="tag">SUGG-006</span>Second occurrence: subshell spawn <code>(cd $WORKTREE && pij spawn …)</code> records owner as unknown → teardown needs <code>--force</code>. The mechanical-cwd-boundary pattern and pij ownership attribution are still in tension.</li>
+  </ol>
+</section>
+
+<footer>
+  flow-eval batch 4 · scenario <code>md-to-pdf-ponytail-harness</code> (committed 9d3946c4) · base c159d3d6 · orchestrator pij-4s10mb (Claude Fable 5) · every table generated from a single data block; every conduct claim verified in raw session event streams (sessions 3cfb3345 / 32e987d4 / 31db33e0).
+</footer>
+</div>
