@@ -74,7 +74,16 @@ describe('loadScenario — the committed md-to-pdf fixture', () => {
     expect(r.scenario.config.slug).toBe('md-to-pdf');
     expect(r.scenario.config.base.ref).toBe('v0.6.0');
     expect(r.scenario.config.subject).toMatchObject({ harness: 'claude', model: 'opus' });
-    expect(r.scenario.config.judge?.criteria).toEqual(Object.keys(JUDGED_CRITERIA));
+    // a scenario picks a SUBSET of the registry — every entry must be registered, but the
+    // registry may carry criteria this fixture doesn't use (e.g. ladder-adherence)
+    expect(r.scenario.config.judge?.criteria).toEqual([
+      'plan-coherence',
+      'report-contract-coverage',
+      'explanation-matches-telemetry',
+    ]);
+    for (const c of r.scenario.config.judge?.criteria ?? []) {
+      expect(Object.keys(JUDGED_CRITERIA)).toContain(c);
+    }
     expect(r.scenario.config.judge).toMatchObject({
       model: 'gpt-5.5',
       model_version: 'gpt-5.5-2026-07-01',

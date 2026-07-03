@@ -1,0 +1,39 @@
+{
+  "slug": "md-to-pdf-ponytail",
+  "title": "Add a markdown→PDF harness extension, working under /ponytail full (disciplined minimalism)",
+  "task": "Add a new harness extension that converts a markdown file to PDF, including rendered mermaid diagrams, with validated output — working under the /ponytail skill in full mode for the entire task.",
+  "base": {
+    "repo": ".",
+    "ref": "c159d3d6ee1a27b65bc52cd8da9d0d0ac69a7aae"
+  },
+  "subject": {
+    "harness": "claude",
+    "model": "opus",
+    "effort": "high"
+  },
+  "flow": {
+    "mode": "none",
+    "stages": []
+  },
+  "prompts": {
+    "orchestrator": "prompts/orchestrator.md",
+    "subject": "prompts/subject.md"
+  },
+  "placeholder_policy": "unknown",
+  "judge": {
+    "model": "gpt-5.5",
+    "model_version": "gpt-5.5-2026-07-01",
+    "criteria": [
+      "ladder-adherence",
+      "report-contract-coverage",
+      "explanation-matches-telemetry"
+    ],
+    "different_family_than_subject": true,
+    "artifact_only": true,
+    "identity_stripped": true,
+    "temperature": 0,
+    "version_pinned": true,
+    "anti_verbosity": "Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose."
+  },
+  "assertions": "assertions.json"
+}

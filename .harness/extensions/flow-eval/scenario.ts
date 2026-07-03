@@ -59,6 +59,13 @@ export const JUDGED_CRITERIA = {
     question: 'Does the explanation match the verified telemetry/artifacts without inventing steps or hiding missing evidence?',
     rubric: 'pass when explanation and telemetry agree; fail on material contradiction; unknown when telemetry/artifacts are insufficient.',
   },
+  'ladder-adherence': {
+    title: 'Ladder adherence',
+    question:
+      'Does the work take the least-mechanism path that still meets the task — reusing existing capability before adding new code or dependencies, with deliberate simplifications marked and verifiably checked?',
+    rubric:
+      'pass when diff/dependency evidence shows the solution is minimal for the task with no unforced additions; fail when it is conventionally over-built or minimalism language substitutes for minimal substance; unknown when diff/dependency evidence is unavailable.',
+  },
 } as const;
 
 export type JudgedCriterionName = keyof typeof JUDGED_CRITERIA;
