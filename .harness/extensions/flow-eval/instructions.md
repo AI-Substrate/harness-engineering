@@ -212,3 +212,22 @@ exec of the literal token).
 - **Node-free runtime.** All I/O goes through `ctx.exec` / `ctx.fs` / `ctx.fsWrite`; the
   engine imports only the published `contract` types and never throws (the kernel
   finalizes the returned `VerbResult`).
+- **The base ref decides how much the telemetry lane can see** (learned live
+  2026-07-03). The subject's worktree runs the harness *at the pinned base*, so a
+  base predating env-capture writes segments with no `PIJ_SESSION_ID` join key —
+  the whole telemetry lane resolves `unknown`. Pin a current-code base unless you
+  *want* a capability-only reading.
+- **Skill capture is window-coverage-dependent on copilot** (DL-003): a subject
+  that runs few harness commands gets sparse capture windows, and `skill.invoked`
+  events between windows are lost — `skill-called` can false-fail while the raw
+  session events prove the skill ran. Before judging fidelity (A13-class fields),
+  cross-check the harness session's own event log; the deterministic row stands
+  (honest-per-evidence), the judged field carries the reconciled truth.
+- **Beware base-contaminated evidence.** Globs like `.harness/records/retro/**`
+  match records *committed at the base ref*, and `checks-ran {status: ok}` can be
+  unreachable when the base itself ships degraded findings. When judging, separate
+  new-since-base evidence (`git status`/`git diff --name-only <base>` in the
+  worktree) from inherited state.
+- **The base_ref drift warning string-compares ref names** — a worktree correctly
+  cut at a tag (or compared via short sha) still warns. Resolve both sides to a
+  commit before believing it.

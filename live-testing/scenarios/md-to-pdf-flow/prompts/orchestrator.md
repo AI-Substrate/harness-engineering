@@ -45,8 +45,20 @@ become attributable to planning vs coding vs reviewing.
    git worktree add "$WORKTREE" <base.ref from scenario.json>
    ```
 
-1. **Spawn the subject** per the matrix knob (`pij spawn --harness <h> --model <m>
-   --effort <e>`), capture `$SUBJECT`.
+1. **Spawn the subject FROM INSIDE ITS WORKTREE** per the matrix knob:
+
+   ```
+   (cd "$WORKTREE" && pij spawn --harness <h> --model <m> --effort <e>)
+   ```
+
+   capture `$SUBJECT`. The cwd boundary must be **mechanical, not textual**: a
+   pane spawned in the orchestrator's main checkout is one forgotten `cd` away
+   from polluting the shared tree (observed live 2026-07-03 — one of four
+   subjects scaffolded + edited `package.json` in main despite the packet
+   naming its worktree twice). Booting the pane inside the worktree makes the
+   wrong directory unreachable by default; the packet's worktree line then
+   confirms rather than relocates. (Siting eval worktrees outside the repo path
+   entirely is the stronger form — `git worktree add` accepts any path.)
 
 2. **Canary-verify the model** — a footer check plus a reply-over-pij ping. A
    wrong `--model` is accepted silently at spawn; the canary is load-bearing.

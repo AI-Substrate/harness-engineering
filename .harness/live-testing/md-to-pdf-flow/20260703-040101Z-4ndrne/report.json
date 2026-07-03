@@ -1,0 +1,260 @@
+{
+  "scenario": "md-to-pdf-flow",
+  "run_id": "20260703-040101Z-4ndrne",
+  "subject": {
+    "harness": "claude",
+    "model": "claude-fable-5",
+    "pij_session_id": "pij-14ndrne",
+    "effort": "high"
+  },
+  "base_ref": "c159d3d6ee1a27b65bc52cd8da9d0d0ac69a7aae",
+  "base_ref_warning": "worktree HEAD 99c9ef32 \u2260 base_ref c159d3d6ee1a27b65bc52cd8da9d0d0ac69a7aae \u2014 the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong",
+  "started_at": "2026-07-03T04:01:01.782Z",
+  "finished_at": "2026-07-03T04:01:08.226Z",
+  "deterministic": {
+    "score": 1,
+    "axis_scores": {
+      "process": 0,
+      "capability": 1
+    },
+    "passed": 5,
+    "failed": 0,
+    "unknown": 8,
+    "total": 13,
+    "required_failed": 0,
+    "results": [
+      {
+        "id": "A1",
+        "type": "skill-called",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": true,
+        "weight": 1,
+        "describe": "drove the SDD journey via /the-flow (the mandated method)"
+      },
+      {
+        "id": "A2",
+        "type": "skill-sequence",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "ran explore \u2192 plan \u2192 implement in order (subject-driven \u2014 the subject owns its own cadence here, so this is genuinely scoreable, not orchestrator choreography)"
+      },
+      {
+        "id": "A3",
+        "type": "skill-called",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "engaged the engineering-harness loop (guided the-flow auto-fires its seams; a direct-jump-only run legitimately misses this, hence not required)"
+      },
+      {
+        "id": "A4",
+        "type": "flow-seam-fired",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "hit the backpressure seam before coding"
+      },
+      {
+        "id": "A5",
+        "type": "compaction-occurred",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "compacted at least once (the-flow recommends compact-before-implement; subject-owned)"
+      },
+      {
+        "id": "A6",
+        "type": "file-created",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "a CLI-driven flight plan exists \u2014 the spine was instantiated from the template (plan 024: the CLI is the only writer; a missing flight plan means the flow was narrated, not run)"
+      },
+      {
+        "id": "A7",
+        "type": "file-created",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "created the new extension under .harness/extensions/"
+      },
+      {
+        "id": "A8",
+        "type": "command-succeeds",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "the new verb actually registered \u2014 resolve per-run with --resolve A8='node harness/cli/bin/harness.js <new-verb> --help' (commander exits nonzero if the verb never loaded)"
+      },
+      {
+        "id": "A9",
+        "type": "command-succeeds",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "the subject's own PDF validator passes \u2014 resolve per-run with --resolve A9='<the real validator command the subject reported>'"
+      },
+      {
+        "id": "A10",
+        "type": "checks-ran",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "ran harness checks green"
+      },
+      {
+        "id": "A11",
+        "type": "retro-drained",
+        "source": "fs+telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "drained the retro to a record (verb ran AND a record exists)"
+      },
+      {
+        "id": "A14",
+        "type": "harness-verb-ran",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "recorded in-flight observations (harness observe) \u2014 the eng-harness loop's mid-work capture seam, deterministic so reports/insights can read it"
+      },
+      {
+        "id": "A15",
+        "type": "artifact-exists",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "a retro record artifact exists in the worktree (the drained observations landed as a durable record with entries \u2014 the report/insight layer reads these for suggested retro items)"
+      }
+    ]
+  },
+  "judged": [
+    {
+      "id": "A12.plan-coherence",
+      "criterion": "plan-coherence",
+      "field": "plan-coherence",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Plan coherence\nQuestion: Does the plan follow a coherent, task-relevant sequence from understanding to validation?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when the plan is coherent and scoped; fail when it is incoherent or unrelated; unknown when artifacts do not show the plan.",
+      "describe": "backpressure design quality (orchestrator-judged): Plan coherence",
+      "verdict": "pass",
+      "rationale": "Blocking validation coherent plan->code: ok envelope carries proof {pages, bytes, mermaid:{fences,rendered}, engine}; invalid mermaid -> error/1 with path:line (no PDF); missing browser -> unconfigured/2. Verified live via A9.",
+      "by": "orchestrator pij-4s10mb (claude-fable-5)"
+    },
+    {
+      "id": "A12.report-contract-coverage",
+      "criterion": "report-contract-coverage",
+      "field": "report-contract-coverage",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Report contract coverage\nQuestion: Does the final report cover the required contract fields and evidence rather than only prose claims?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when required report fields/evidence are present; fail when material contract fields are absent; unknown when the report artifact is unavailable.",
+      "describe": "backpressure design quality (orchestrator-judged): Report contract coverage",
+      "verdict": "pass",
+      "rationale": "Report covered the contract completely: worktree, extension, exercise+confirm semantics, 3 commits over pinned base, push/PR correctly withheld behind separate confirms, and a harvest encode offer (deterministic cwd guard) with its evidence.",
+      "by": "orchestrator pij-4s10mb (claude-fable-5)"
+    },
+    {
+      "id": "A12.explanation-matches-telemetry",
+      "criterion": "explanation-matches-telemetry",
+      "field": "explanation-matches-telemetry",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Explanation matches telemetry\nQuestion: Does the explanation match the verified telemetry/artifacts without inventing steps or hiding missing evidence?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when explanation and telemetry agree; fail on material contradiction; unknown when telemetry/artifacts are insufficient.",
+      "describe": "backpressure design quality (orchestrator-judged): Explanation matches telemetry",
+      "verdict": "pass",
+      "rationale": "Claimed envelope behavior reproduced live by the A9 resolve (ok/exit-0 with render counts).",
+      "by": "orchestrator pij-4s10mb (claude-fable-5)"
+    },
+    {
+      "id": "A13.plan-coherence",
+      "criterion": "plan-coherence",
+      "field": "plan-coherence",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Plan coherence\nQuestion: Does the plan follow a coherent, task-relevant sequence from understanding to validation?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when the plan is coherent and scoped; fail when it is incoherent or unrelated; unknown when artifacts do not show the plan.",
+      "describe": "flow fidelity vs mimicry (orchestrator-judged, cross-checked against telemetry): Plan coherence",
+      "verdict": "pass",
+      "rationale": "Flight plan CLI-written and complete: research->plan (validate-v2 VALIDATED WITH FIXES)->backpressure->boot->implement (8/8 tasks)->review (4 subagents, 5 MED fixed in-loop)->ship staged; full artifact set under docs/plans/050-md-to-pdf-extension/ incl. ship-report.",
+      "by": "orchestrator pij-4s10mb (claude-fable-5)"
+    },
+    {
+      "id": "A13.report-contract-coverage",
+      "criterion": "report-contract-coverage",
+      "field": "report-contract-coverage",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Report contract coverage\nQuestion: Does the final report cover the required contract fields and evidence rather than only prose claims?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when required report fields/evidence are present; fail when material contract fields are absent; unknown when the report artifact is unavailable.",
+      "describe": "flow fidelity vs mimicry (orchestrator-judged, cross-checked against telemetry): Report contract coverage",
+      "verdict": "pass",
+      "rationale": "Conduct matches the report incl. the self-disclosed main-checkout incident (relocated, reverted, verified clean by the orchestrator) and the chore envelopes recorded in flow state.",
+      "by": "orchestrator pij-4s10mb (claude-fable-5)"
+    },
+    {
+      "id": "A13.explanation-matches-telemetry",
+      "criterion": "explanation-matches-telemetry",
+      "field": "explanation-matches-telemetry",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Explanation matches telemetry\nQuestion: Does the explanation match the verified telemetry/artifacts without inventing steps or hiding missing evidence?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when explanation and telemetry agree; fail on material contradiction; unknown when telemetry/artifacts are insufficient.",
+      "describe": "flow fidelity vs mimicry (orchestrator-judged, cross-checked against telemetry): Explanation matches telemetry",
+      "verdict": "pass",
+      "rationale": "Telemetry lane was blind (DL-004: ship flush pruned the buffer; worktree capture gap) so all 8 telemetry rows are honest unknowns - but the claude transcript corroborates every claim: Skill invocations the-flow x1, eng-harness-flow x5, validate-v2 x1, all four hooks + observe commands present. 0 compactions (its one conduct gap, matching A5-unknown).",
+      "by": "orchestrator pij-4s10mb (claude-fable-5)"
+    }
+  ],
+  "provenance": {
+    "judge": {
+      "model": "gpt-5.5",
+      "model_version": "gpt-5.5-2026-07-01",
+      "subject_model": "claude-fable-5",
+      "judge_family": "openai",
+      "subject_family": "claude",
+      "different_family_than_subject_asserted": true,
+      "different_family_than_subject": true,
+      "artifact_only": true,
+      "identity_stripped": true,
+      "temperature": 0,
+      "version_pinned": true,
+      "anti_verbosity": "Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "criteria": [
+        "plan-coherence",
+        "report-contract-coverage",
+        "explanation-matches-telemetry"
+      ],
+      "prompt_scaffold": {
+        "cot_before_score": true,
+        "canonical_good_flow_anchor": null,
+        "calibration_set": "human-gold-calibration-set-deferred",
+        "artifact_only": true
+      },
+      "warnings": []
+    },
+    "resolutions": {
+      "A8": "node harness/cli/bin/harness.js md-to-pdf --help",
+      "A9": "node harness/cli/bin/harness.js md-to-pdf scratch/eval-sample.md"
+    }
+  },
+  "alarms": [],
+  "verdict": "PASS_WITH_NOTES"
+}

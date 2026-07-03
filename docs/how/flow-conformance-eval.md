@@ -51,13 +51,17 @@ live-testing/scenarios/<slug>/        # COMMITTED source of truth (version-contr
     subject.md                        # the BLIND packet — eval framing + report contract ONLY
     orchestrator.md                   # how the orchestrator drives the-flow over pij
 
-.harness/live-testing/<slug>/<run-id>/   # EPHEMERAL output (per run — gitignore it)
+.harness/live-testing/<slug>/<run-id>/   # COMMITTED output (per run — the durable evidence)
   report.json                         # machine verdict (deterministic results + judged fields)
   report.md                           # human-readable rendering
+.harness/live-testing/<slug>/ledger.jsonl  # append-only RunRecords — the longitudinal record
 ```
 
-Scenario definitions are reusable, reviewed inputs and belong in git; run reports
-are evidence per run and should be gitignored. `<run-id>` is a timestamp plus a
+Scenario definitions are reusable, reviewed inputs and belong in git — and since
+2026-07-03 so do the run outputs: the append-only `ledger.jsonl` is what
+`--compare` groups on across batches, and the per-run reports are its evidence,
+so both must survive clones and machines (they were gitignored as "ephemeral"
+pre-046; the ledger design superseded that). `<run-id>` is a timestamp plus a
 short session suffix, so repeated runs of the same scenario (Opus vs GPT) never
 collide.
 
