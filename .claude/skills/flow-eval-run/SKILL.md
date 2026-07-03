@@ -115,6 +115,8 @@ harness flow-eval supersede --scenario md-to-pdf --run <stale-run-id> --by <corr
   transposition spot-check: extract a row and eyeball the cells against the
   source tuple. Same rule the telemetry-insights pipeline enforces with its
   origination smoke test — eval reports get the discipline even without the
-  test.
+  test. And start every report file with `<meta charset="utf-8">` — copies
+  opened via `file://` render em-dashes as `Â`-mojibake without it (bit both
+  batch-2 and batch-3 reports).
 - This skill is meant to be **iterated after each real run** — when a beat needs
   tribal knowledge, fix it here (a line) or in the extension's `instructions.md`.
