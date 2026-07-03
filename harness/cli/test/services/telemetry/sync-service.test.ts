@@ -540,6 +540,40 @@ describe('syncTelemetry — rolled one-ref-per-session-at-start-date (plan 049)'
     expect(latestManifest(git)?.max_seq).toBe(2);
   });
 
+  it('never emits duplicate tree entries when the ref tip is an OLD-shape (pre-rollup) tree whose loose seqs are still buffered', () => {
+    // A v0.6.0 CLI (e.g. running inside an eval worktree pinned to an old tag) can
+    // auto-push an OLD-shape per-seq tree to the SAME start-date ref path this writer
+    // uses. That tree has NO manifest → refMaxSeq=0 → every buffered seq is "new",
+    // while readRolledRef ALSO carries the ref's loose <seq>.json blobs. Without
+    // name-dedup the union ships `1.json` twice — a tree GitHub's fsck REJECTS
+    // (duplicateEntries), seen live 2026-07-03. Buffer bytes win on collision.
+    const files: Record<string, string> = {
+      [`${TEL}/sessA/1.json`]: seg(['x']),
+      [`${TEL}/sessA/2.json`]: seg(['y']),
+    };
+    const git = new FakeGitWrite();
+    // Seed the OLD-shape ref: a tree of loose per-seq blobs, NO manifest.json.
+    const oldBlob = git.hashObject(seg(['x']));
+    const oldTree = git.mktree([{ mode: '100644', type: 'blob', sha: oldBlob, name: '1.json' }]);
+    const oldCommit = git.commitTree(oldTree, null, 'old-shape v0.6.0 sync');
+    git.updateRef(telemetryRefFor('2026/03/23', 'sessA'), oldCommit, null);
+
+    const { deps } = makeDeps(
+      files,
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json', '2.json'] },
+      { git },
+    );
+    const r = syncTelemetry(deps);
+    expect(r.ok).toBe(true);
+
+    const names = (git.trees.at(-1) ?? []).map((e) => e.name);
+    expect(new Set(names).size).toBe(names.length); // NO duplicate entries — fsck-safe
+    expect(names.filter((n) => n === '1.json')).toHaveLength(1);
+    expect(names).toContain('2.json');
+    expect(names).toContain(ROLLED_MANIFEST_NAME); // converted to the rolled shape
+    expect(latestManifest(git)?.max_seq).toBe(2);
+  });
+
   it('is a clean no-op with no buffer (no telemetry dir)', () => {
     const { deps, git } = makeDeps({}, {});
     const r = syncTelemetry(deps);

@@ -477,10 +477,19 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
     // the F-03 fix (tip tree = whole session), now sourced from ref+buffer so the
     // buffer can be pruned. New seqs are all > refMaxSeq, so appending keeps seq order.
     const bufferMat = readSessionMaterial(deps.fs, sessionDir, newBufferSeqs);
+    // Loose blobs are deduped BY NAME (buffer bytes win): an OLD-shape (pre-rollup)
+    // ref tip at the same path — e.g. a v0.6.0 CLI auto-pushing from a worktree —
+    // has no manifest, so refMaxSeq=0 makes every buffered seq "new" while the ref
+    // ALSO carries those seqs as loose blobs; concatenating both would emit a tree
+    // with duplicate entries, which remote fsck rejects (duplicateEntries).
+    const bufferLooseNames = new Set(bufferMat.looseJson.map((b) => b.name));
     const material: SessionMaterial = {
       logsLines: [...(refState?.logsLines ?? []), ...bufferMat.logsLines],
       metricsLines: [...(refState?.metricsLines ?? []), ...bufferMat.metricsLines],
-      looseJson: [...(refState?.looseJson ?? []), ...bufferMat.looseJson],
+      looseJson: [
+        ...(refState?.looseJson ?? []).filter((b) => !bufferLooseNames.has(b.name)),
+        ...bufferMat.looseJson,
+      ],
       maxSeq: Math.max(refMaxSeq, bufferMat.maxSeq),
       plans: bufferMat.plans,
       lowestDate: bufferMat.lowestDate,
