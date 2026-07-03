@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "2c84eb2a-6f46-4044-b179-2c946fd904fc",
+  "timecode": "2026-07-03T02:17:54.034Z",
+  "window": {
+    "since": "last-command",
+    "from": 0,
+    "to": 0
+  },
+  "branch": null,
+  "branch_changed": false,
+  "tokens": null,
+  "models": {},
+  "effort": null,
+  "skills": {},
+  "tools": {},
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null
+}
