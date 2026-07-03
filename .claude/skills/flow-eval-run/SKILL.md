@@ -105,5 +105,16 @@ harness flow-eval supersede --scenario md-to-pdf --run <stale-run-id> --by <corr
   § Reading the numbers, with a plain-language companion at
   [`docs/how/flow-conformance-eval-explainer.html`](../../../docs/how/flow-conformance-eval-explainer.html).
 - A `FAIL` verdict is a **successful** evaluation that found non-conformance, not a tool error.
+- **Analysis pages are generated, never hand-transcribed.** When writing a
+  cross-run comparison (HTML or md), every number in a table flows from a
+  single data block (tuples/JSON at the top of a generator script) into the
+  markup — the LLM never hand-places `<td>` cells. A hand-authored batch-2
+  table shipped with two swapped cells (cost↔tools) that the author had
+  half-noticed and papered over with a caveat sentence instead of fixing;
+  generation makes that failure class impossible. After generating, run one
+  transposition spot-check: extract a row and eyeball the cells against the
+  source tuple. Same rule the telemetry-insights pipeline enforces with its
+  origination smoke test — eval reports get the discipline even without the
+  test.
 - This skill is meant to be **iterated after each real run** — when a beat needs
   tribal knowledge, fix it here (a line) or in the extension's `instructions.md`.

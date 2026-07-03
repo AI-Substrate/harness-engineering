@@ -231,3 +231,15 @@ exec of the literal token).
 - **The base_ref drift warning string-compares ref names** — a worktree correctly
   cut at a tag (or compared via short sha) still warns. Resolve both sides to a
   commit before believing it.
+- **Capture windows under-sample minimal-process cohorts** (DL-005, the general
+  form of DL-003 — seen live on the ponytail batch, and it hits claude-code
+  sessions too, not just copilot): windows open around harness commands, so a
+  frugal subject that runs one command all session yields one thin segment while
+  its raw event stream shows the whole task. Every telemetry-lane row (skills,
+  seams, verbs, compaction) can false-fail at once. The raw session log
+  (`~/.copilot/session-state/<id>/events.jsonl` / the claude transcript JSONL)
+  is the ground truth to reconcile against.
+- **Analysis write-ups generate their tables from a data block** — never
+  hand-transcribe numbers into `<td>` cells (a batch-2 report shipped a swapped
+  cell pair this way). See `docs/how/flow-conformance-eval.md` § Writing the
+  analysis up.

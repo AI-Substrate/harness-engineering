@@ -355,6 +355,21 @@ For each model group of K runs it derives, per lane and per axis:
    a rationale; they are quality calls layered on top, never inputs to the
    deterministic score.
 
+### Writing the analysis up — numbers are generated, never hand-placed
+
+The cross-run analysis page (the HTML report an orchestrator writes after a
+batch) follows the same discipline the telemetry-insights pipeline enforces
+mechanically: **every number in a table flows from one data block into the
+markup via a generator** — tuples or JSON at the top of a script render the
+`<td>` cells; the author never hand-transcribes a figure into position. The
+motivating incident is on the record: a hand-authored batch-2 table shipped
+with a swapped cost/tools cell pair, and the author had half-noticed — writing
+a caveat sentence restating the correct values instead of fixing the row.
+Generation removes the failure class; a post-generation spot-check (extract one
+row, compare against its source tuple) catches regressions in the generator
+itself. Prose may **restate** a generated number verbatim; it never derives a
+new one.
+
 ### The LLM-judged layer — criteria and containment
 
 Two distinct judged surfaces exist, both deliberately narrow:
