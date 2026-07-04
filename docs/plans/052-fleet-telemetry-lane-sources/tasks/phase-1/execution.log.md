@@ -35,3 +35,16 @@ Pure, ports-only, fail-safe extractors (`copilot-ledger.ts`, `codex-ledger.ts`, 
 - **Non-goals honoured**: no pij-side code, no flow-pair skill edits, no USD conversion in the CLI (billing units only).
 - **pi worker lanes**: no harness telemetry + no side-channel ledger today → documented as an honest gap in the matrix (not a regression; no pi worker in the 051 roster).
 - **env-tree ref enumeration**: T005's ref source is wired for the roster path (orphan → ref); enumerating ref-only sessions as lanes under env-tree scope (no roster) would need a registry reverse-join and is left as a follow-on — the fleet-eval use case is roster-scoped.
+
+## FIX round 1 — F1 MAJOR: a malformed side channel must degrade, not vanish
+
+**Review** (`reviews/review.phase-1.md`, verdict FIX_REQUIRED): `buildLedgerLane` returned `null` whenever a reader came back `measured:false` — conflating **source absent** (no descriptor / no side-channel file) with **source present-but-malformed**. `enrichOrphans` then left the malformed-ledger member in `orphans`, so `sessions[]` and `totals.cost.unmeasured_lanes` silently omitted a known rostered member — contradicting the honesty invariant and the documented surface in `docs/how/telemetry.md`.
+
+**Fix (in `fleet-evidence.ts` only)**: split present from absent on the raw `readText` result — `null` (missing file) is absence → honest `orphan`; any string (even garbage) is presence → run the pure extractor. A present-but-unmeasured ledger now returns a **degraded lane** (`degradedLedgerLane`): `source:"ledger"`, `cost_measured:false`, `tokens:{0,0}`, **no** `billing`, empty evidence — so the member stays in `sessions[]` and increments `unmeasured_lanes`. Switched the two reader calls to the pure `extractCopilotLedger`/`extractCodexLedger` (+ `copilotSessionEventsPath`) so the wiring owns the present/absent branch; the measured path is byte-for-byte unchanged. Closed schema unchanged (a degraded lane omits the optional `billing`, validates clean).
+
+**Fleet-level negative test** (`fleet-golden-051.test.ts` → `describe('fix-001 …')`, 3 cases):
+- *malformed copilot shutdown* — coder lane PRESENT in `sessions[]` with `source:"ledger"`, `cost_measured:false`, `tokens:{0,0}`, `billing` undefined, NOT in `orphans`, `unmeasured_lanes===1`/`measured_lanes===3`, schema-clean. **Non-vacuous** — mutating the fix back to `return null` fails it at `expect(coder).toBeDefined()`.
+- *malformed codex rollout* — same degradation on the other ledger branch (validator lane, `unmeasured_lanes===1`).
+- *absent side channel (no file)* — coder stays an `orphan` (NOT a zero-filled lane): guards the split against over-correction.
+
+**Gate**: `just fix` + full `harness checks` green (docs bundle regenerated + staged for the `docs/how/telemetry.md` wording clarification). Golden still 4/4 lanes; targeted `fleet-golden-051.test.ts` 12/12.

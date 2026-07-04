@@ -1,6 +1,6 @@
 import type { GitReadPort } from '../../adapters/git/git-read-port.js';
-import { findCodexRollout, readCodexLedger } from './codex-ledger.js';
-import { readCopilotLedger } from './copilot-ledger.js';
+import { extractCodexLedger, findCodexRollout } from './codex-ledger.js';
+import { copilotSessionEventsPath, extractCopilotLedger } from './copilot-ledger.js';
 import type { PijDescriptor, PijRegistry } from './pij-registry.js';
 import { readPijRegistry } from './pij-registry.js';
 import { type RefLane, readRefLanes } from './ref-source.js';
@@ -419,9 +419,22 @@ function ledgerEvidence(
  * Build a LEDGER lane for a roster member with no live/ref telemetry, from its pij
  * descriptor's join keys (plan 052 · T007 — precedence tier 3). copilot → the
  * `session.shutdown` billing ledger (AIC + token buckets); codex → the rollout
- * `token_count` total (via `transcriptPath`, else the session-id locator). Returns
- * `null` when the harness has no side channel or the ledger is unmeasured — the
- * caller keeps that member an honest orphan, never a zero-filled lane (AC-02).
+ * `token_count` total (via `transcriptPath`, else the session-id locator).
+ *
+ * THREE honest outcomes (plan 052 · fix-001 — the honesty invariant): a malformed
+ * side channel must degrade the lane, never make the member vanish.
+ *   - **measured lane** — the side-channel FILE is present AND parses to a billing
+ *     total (`cost_measured:true`, with `billing`).
+ *   - **degraded lane** ({@link degradedLedgerLane}) — the FILE is present but its
+ *     shape is malformed / unmeasured: the member stays a first-class lane
+ *     (`source:'ledger'`, `cost_measured:false`, `{0,0}` tokens, no billing) so it is
+ *     counted in `unmeasured_lanes`, never silently dropped.
+ *   - **`null`** — the side channel is ABSENT (no descriptor side channel, no home, or
+ *     no file at all): the caller keeps that member an honest orphan (AC-02).
+ *
+ * The present-vs-absent split is the raw `readText` result — `null` (missing file) is
+ * absence; any string (even garbage) is presence — so a truncated/schema-drifted
+ * ledger degrades instead of disappearing.
  */
 export function buildLedgerLane(
   pijId: string,
@@ -431,8 +444,13 @@ export function buildLedgerLane(
 ): FleetLane | null {
   const home = deps.env.home();
   if (desc.harness === 'copilot' && desc.harness_session_id !== null) {
-    const led = readCopilotLedger(deps.fs, home, desc.harness_session_id);
-    if (!led.measured || led.nano_aiu === null) return null;
+    if (!home) return null; // no home → the side channel is unlocatable → honest orphan
+    const raw = deps.fs.readText(copilotSessionEventsPath(home, desc.harness_session_id));
+    if (raw === null) return null; // no side-channel FILE → honest orphan
+    const led = extractCopilotLedger(raw);
+    if (!led.measured || led.nano_aiu === null) {
+      return degradedLedgerLane(pijId, role, 'copilot', desc); // present but malformed → unmeasured lane
+    }
     const b = led.token_buckets ?? { input: 0, output: 0, cache_read: 0, cache_create: 0 };
     const grand = b.input + b.output + b.cache_read + b.cache_create;
     return {
@@ -450,8 +468,13 @@ export function buildLedgerLane(
   if (desc.harness === 'codex') {
     const path =
       desc.transcript_path ?? findCodexRollout(deps.fs, home, desc.harness_session_id ?? '');
-    const led = readCodexLedger(deps.fs, path);
-    if (!led.measured || led.token_buckets === null) return null;
+    if (!path) return null; // no resolvable rollout path → honest orphan
+    const raw = deps.fs.readText(path);
+    if (raw === null) return null; // path named but the FILE is absent → honest orphan
+    const led = extractCodexLedger(raw);
+    if (!led.measured || led.token_buckets === null) {
+      return degradedLedgerLane(pijId, role, 'codex', desc); // present but malformed → unmeasured lane
+    }
     const b = led.token_buckets;
     return {
       pij_id: pijId,
@@ -474,6 +497,31 @@ export function buildLedgerLane(
     };
   }
   return null;
+}
+
+/**
+ * A roster-scoped DEGRADED ledger lane (plan 052 · fix-001): the side-channel FILE
+ * exists but its shape is malformed / unmeasured. The member stays a first-class lane
+ * — `source:'ledger'`, `cost_measured:false`, zeroed tokens, NO billing, empty
+ * evidence — so it is counted in `unmeasured_lanes` and never dropped from lane
+ * accounting (the honesty invariant: a broken ledger degrades, it does not vanish).
+ */
+function degradedLedgerLane(
+  pijId: string,
+  role: string | null,
+  harness: 'copilot' | 'codex',
+  desc: PijDescriptor,
+): FleetLane {
+  return {
+    pij_id: pijId,
+    role,
+    harness,
+    model: desc.model,
+    cost_measured: false,
+    tokens: { grand_total: 0, output: 0 },
+    source: 'ledger',
+    evidence: ledgerEvidence(pijId, desc.harness_session_id, harness),
+  };
 }
 
 /** An empty roster-scoped shell — used when the buffer yields no live lane at all. */

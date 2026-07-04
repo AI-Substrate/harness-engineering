@@ -276,9 +276,13 @@ side-channel, a **`billing`** block (`nano_aiu` and/or `token_buckets`):
   vendor **ledger** (`source: ledger`) — the copilot `session.shutdown` billing
   record or the codex rollout `token_count` total, joined through the pij registry.
   `totals.cost.grand_total` sums `tokens.grand_total` over lanes with
-  `cost_measured: true`; a lane that resolves to none of the three tiers stays
+  `cost_measured: true`; a lane that resolves to a tier but whose cost can't be read
+  — a live copilot-null lane, or a **present-but-malformed** ledger/rollup — stays
   `cost_measured: false`, **excluded from the sum** (never zero-filled) and counted
-  in `unmeasured_lanes`. Fleet cost is still an honest **lower bound**.
+  in `unmeasured_lanes`, so a broken side-channel **degrades** the lane rather than
+  making the member vanish. A rostered member with **no resolvable source at all** is
+  instead an `orphan` (below), not a zero-filled lane. Fleet cost is still an honest
+  **lower bound**.
 - **Time** — `totals.time.wall_clock_s` is the **union** of the lanes' event-time
   spans; `active_s` is their **sum**; `active/wall` is the parallelism ratio. Both
   come from `event_stream[].t` timestamps (the segment `window` is an event index,

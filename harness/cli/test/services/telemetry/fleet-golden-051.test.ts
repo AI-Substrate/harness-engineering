@@ -62,6 +62,9 @@ const CODER_SID = '34524328-5ab0-41c4-8cc9-62b03128930d';
 const REVIEWER_SID = '6daaffe6-4e9b-4477-8d0d-007ca9dfb5b0';
 const CODEX_ROLLOUT =
   '/home/dev/.codex/sessions/2026/07/04/rollout-2026-07-04T13-45-43-019f2b3b-6fbb-73b3-a9ec-b78a01deb9d0.jsonl';
+const CODER_EVENTS = `${HOME}/.copilot/session-state/${CODER_SID}/events.jsonl`;
+const CODER_PIJ = 'pij-g7t974';
+const VALIDATOR_PIJ = 'pij-wolk0r';
 
 function orchestratorSegment(): Segment {
   const events: Event[] = [
@@ -100,7 +103,13 @@ const ROSTER = JSON.stringify({
   },
 });
 
-function goldenDeps(): SessionEvidenceDeps {
+/**
+ * The golden fixture deps. `overrides` patches the seeded file map AFTER the base
+ * build (a `null` value DELETES that path — modelling an ABSENT side channel; a
+ * string REPLACES it — modelling a malformed one), so the fix-001 negatives can flip
+ * one lane's ledger without rebuilding the whole roster.
+ */
+function goldenDeps(overrides?: Record<string, string | null>): SessionEvidenceDeps {
   const seg = orchestratorSegment();
   const files: Record<string, string> = {
     // roster
@@ -111,9 +120,7 @@ function goldenDeps(): SessionEvidenceDeps {
     [`${HOME}/.pij/pij-106t2i1.json`]: fixture('pij/pij-106t2i1.json'),
     [`${HOME}/.pij/pij-wolk0r.json`]: fixture('pij/pij-wolk0r.json'),
     // copilot shutdown ledgers (coder + reviewer)
-    [`${HOME}/.copilot/session-state/${CODER_SID}/events.jsonl`]: fixture(
-      'copilot/coder-34524328.events.jsonl',
-    ),
+    [CODER_EVENTS]: fixture('copilot/coder-34524328.events.jsonl'),
     [`${HOME}/.copilot/session-state/${REVIEWER_SID}/events.jsonl`]: fixture(
       'copilot/reviewer-6daaffe6.events.jsonl',
     ),
@@ -127,6 +134,10 @@ function goldenDeps(): SessionEvidenceDeps {
     [tel(REPO)]: ['orch'],
     [`${tel(REPO)}/orch`]: ['0.json'],
   };
+  for (const [path, content] of Object.entries(overrides ?? {})) {
+    if (content === null) delete files[path];
+    else files[path] = content;
+  }
   return {
     fs: new FakeFs(files, dirs),
     env: new FakeEnv({}, HOME),
@@ -276,6 +287,82 @@ describe('AC-06 — a flushed lane resolves via its ref rollup (source: ref) bef
     // The copilot workers still resolve via their ledgers (no ref) — precedence is per-lane.
     expect(fleet.sessions.find((l) => l.role === 'coder')?.source).toBe('ledger');
     expect(fleet.orphans).toEqual([]);
+  });
+});
+
+// ── fix-001: a malformed side channel degrades the lane, it does not vanish ───────
+describe('fix-001 — a malformed side-channel ledger degrades to an unmeasured lane (honesty invariant)', () => {
+  // A `session.shutdown` that is PRESENT but carries no numeric `totalNanoAiu` — the
+  // truncated / schema-drifted shape a real reader degrades to `measured:false`.
+  const MALFORMED_COPILOT_SHUTDOWN = `${JSON.stringify({
+    type: 'session.shutdown',
+    data: { tokenDetails: { input: { tokenCount: 5 } } },
+  })}\n`;
+  // A codex rollout with a `token_count` event but no `total_token_usage.total_tokens`.
+  const MALFORMED_CODEX_ROLLOUT = `${JSON.stringify({
+    type: 'event_msg',
+    payload: { type: 'token_count', info: { model_context_window: 200000 } },
+  })}\n`;
+
+  it('a rostered copilot member with a malformed shutdown stays a cost_measured:false ledger lane, counted in unmeasured_lanes', async () => {
+    const fleet = await getFleetEvidence(
+      ROOT,
+      goldenDeps({ [CODER_EVENTS]: MALFORMED_COPILOT_SHUTDOWN }),
+      { rosterPath: `${REPO}/roster.json` },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+
+    // PRESENT, not vanished: the coder is still a first-class lane in sessions[]…
+    const coder = fleet.sessions.find((l) => l.pij_id === CODER_PIJ);
+    expect(coder).toBeDefined();
+    expect(coder?.role).toBe('coder');
+    expect(coder?.source).toBe('ledger');
+    expect(coder?.cost_measured).toBe(false);
+    expect(coder?.tokens).toEqual({ grand_total: 0, output: 0 });
+    expect(coder?.billing).toBeUndefined();
+
+    // …NOT quietly dropped into orphans, and the roster is still whole (4 lanes)…
+    expect(fleet.orphans).not.toContain(CODER_PIJ);
+    expect(fleet.sessions).toHaveLength(4);
+
+    // …and COUNTED as an unmeasured lane so the accounting stays honest (F1).
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
+    expect(fleet.totals.cost.measured_lanes).toBe(3);
+
+    // still a clean, closed-schema fleet (the degraded lane validates).
+    expect(closedViolations(FLEET_SCHEMA, fleet, FLEET_SCHEMA)).toEqual([]);
+  });
+
+  it('a rostered codex member with a malformed rollout also degrades (both ledger branches)', async () => {
+    const fleet = await getFleetEvidence(
+      ROOT,
+      goldenDeps({ [CODEX_ROLLOUT]: MALFORMED_CODEX_ROLLOUT }),
+      { rosterPath: `${REPO}/roster.json` },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+
+    const validator = fleet.sessions.find((l) => l.pij_id === VALIDATOR_PIJ);
+    expect(validator).toBeDefined();
+    expect(validator?.source).toBe('ledger');
+    expect(validator?.cost_measured).toBe(false);
+    expect(validator?.tokens).toEqual({ grand_total: 0, output: 0 });
+    expect(fleet.orphans).not.toContain(VALIDATOR_PIJ);
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
+    expect(closedViolations(FLEET_SCHEMA, fleet, FLEET_SCHEMA)).toEqual([]);
+  });
+
+  it('by contrast an ABSENT side channel (no file) stays an honest orphan — the split is real, not over-correcting', async () => {
+    const fleet = await getFleetEvidence(ROOT, goldenDeps({ [CODER_EVENTS]: null }), {
+      rosterPath: `${REPO}/roster.json`,
+    });
+    if (fleet === null) throw new Error('expected a fleet');
+
+    // no side-channel FILE at all → an orphan, never a zero-filled phantom lane.
+    expect(fleet.sessions.find((l) => l.pij_id === CODER_PIJ)).toBeUndefined();
+    expect(fleet.orphans).toContain(CODER_PIJ);
+    expect(fleet.sessions).toHaveLength(3);
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(0);
+    expect(fleet.totals.cost.measured_lanes).toBe(3);
   });
 });
 
