@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "pij-fleet-session-eval",
   "nav": {
-    "now": "review-1",
+    "now": "ship",
     "next": "ship",
     "intent": "Eval pij fleets as one joined session: orchestrator builds flow artifacts, spawns pij coders/reviewer, joins child sessions via captured parent-link env vars, scores time/quality/cost per named scenario (each scenario carries its reason/vibe)",
     "bag": {
@@ -291,6 +291,42 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T05:36:44.847Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-04T05:36:45.749Z",
+      "details": {
+        "from": "review-1",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "STA-012",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T05:36:46.574Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -371,14 +407,16 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-07-04T05:36:46.574Z",
+      "ran_at": "2026-07-04T05:36:46.574Z"
     },
     {
       "id": "backpressure",
@@ -474,7 +512,7 @@
       "id": "retro-ship",
       "type": "harness-retro",
       "label": "Retro: ship (harvest)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "ship",
       "next": [
         "ship"
@@ -488,7 +526,9 @@
         "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-04T05:36:44.847Z",
+      "ran_at": "2026-07-04T05:36:44.847Z"
     },
     {
       "id": "workshop-1",
