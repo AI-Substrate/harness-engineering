@@ -3,9 +3,9 @@
   "kind": "flight-plan",
   "slug": "fleet-telemetry-lane-sources",
   "nav": {
-    "now": "phase-2",
+    "now": "ship",
     "next": null,
-    "intent": "P2 build: fleet semantic rollup (T009-T012), delegated to coder d-002; golden reconcile vs 051 debrief §05"
+    "intent": "Ship 052: push to open PR 49, telemetry flush, fleet teardown + live get-fleet dogfood, terminal harvest"
   },
   "created_at": "2026-07-04T05:28:55.905Z",
   "provenance": {
@@ -465,6 +465,42 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-04T07:57:40.993Z",
+      "details": {
+        "from": "phase-2",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "STA-015",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T08:02:04.966Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-016",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T08:02:05.795Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -550,14 +586,16 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-07-04T08:02:04.966Z",
+      "ran_at": "2026-07-04T08:02:04.966Z"
     },
     {
       "id": "backpressure",
@@ -651,7 +689,7 @@
       "id": "retro-ship",
       "type": "harness-retro",
       "label": "Retro: ship (harvest)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "ship",
       "next": [
         "ship"
@@ -665,7 +703,9 @@
         "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-04T08:02:05.795Z",
+      "ran_at": "2026-07-04T08:02:05.795Z"
     },
     {
       "id": "phase-2",
