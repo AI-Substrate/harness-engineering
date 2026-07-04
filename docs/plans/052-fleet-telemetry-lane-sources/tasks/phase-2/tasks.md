@@ -17,9 +17,9 @@ Phase 1 made cost visible on every lane; Phase 2 makes *quality/semantics* a fle
 
 | ✓ | id | task | proves |
 |---|----|------|--------|
-| [ ] | T009 | **Semantic rollup in FleetEvidence**: aggregate artifact/flow_log/skill events per lane + fleet-level — review findings by severity, verdict sequence (fix cycles = FIX_REQUIRED→APPROVE transitions), plan phases/CS, workshop decisions, chore completion, `flow_stage_time_s` — with per-lane `semantics_measured` flag (false ≠ zeros) | AC-07 |
-| [ ] | T010 | **Schema**: closed extension of `fleet-export.schema.json` for the semantics block (ids/counts/enums only) + negative-key test failing an un-enumerated field | AC-03, AC-07 |
-| [ ] | T011 | **Golden reconcile**: run the rollup over the real 051 fleet (fixtures + live orchestrator segments); diff vs the debrief §05 counts above; write `evidence/fleet-051-semantics.json` + an evidence note explaining every discrepancy (blind-lane vs real mismatch) | AC-07 |
-| [ ] | T012 | **Docs**: `docs/how/telemetry.md` § fleet semantics — what a telemetry-only report can/cannot claim, per-lane coverage, the `semantics_measured` contract | AC-08 |
+| [x] | T009 | **Semantic rollup in FleetEvidence**: aggregate artifact/flow_log/skill events per lane + fleet-level — review findings by severity, verdict sequence (fix cycles = FIX_REQUIRED→APPROVE transitions), plan phases/CS, workshop decisions, chore completion, `flow_stage_time_s` — with per-lane `semantics_measured` flag (false ≠ zeros) | AC-07 |
+| [x] | T010 | **Schema**: closed extension of `fleet-export.schema.json` for the semantics block (ids/counts/enums only) + negative-key test failing an un-enumerated field | AC-03, AC-07 |
+| [x] | T011 | **Golden reconcile**: run the rollup over the real 051 fleet (fixtures + live orchestrator segments); diff vs the debrief §05 counts above; write `evidence/fleet-051-semantics.json` + an evidence note explaining every discrepancy (blind-lane vs real mismatch) | AC-07 |
+| [x] | T012 | **Docs**: `docs/how/telemetry.md` § fleet semantics — what a telemetry-only report can/cannot claim, per-lane coverage, the `semantics_measured` contract | AC-08 |
 
 Keep this table and `execution.log.md` live as you go.

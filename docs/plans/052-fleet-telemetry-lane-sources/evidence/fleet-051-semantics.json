@@ -1,0 +1,63 @@
+{
+  "generated_by": "harness telemetry get-fleet pij-4s10mb --roster run.json (plan 052 · T011; real reader, real 051 artifacts)",
+  "scope": "roster",
+  "fleet_semantics": {
+    "measured_lanes": 1,
+    "blind_lanes": 3,
+    "plan_phases": 1,
+    "workshop_decisions": 4,
+    "nodes": 11,
+    "nodes_done": 11,
+    "chores_done": 0,
+    "chores_todo": 0
+  },
+  "lanes": [
+    {
+      "role": "orchestrator",
+      "pij_id": "pij-4s10mb",
+      "harness": "claude",
+      "source": "live",
+      "semantics": {
+        "semantics_measured": true,
+        "artifact_events": 6,
+        "plan_phases": 1,
+        "plan_cs": 3,
+        "workshop_decisions": 4,
+        "nodes": 11,
+        "nodes_done": 11,
+        "chores_done": 0,
+        "chores_todo": 0
+      }
+    },
+    {
+      "role": "coder",
+      "pij_id": "pij-g7t974",
+      "harness": "copilot",
+      "source": "ledger",
+      "semantics": {
+        "semantics_measured": false,
+        "artifact_events": 0
+      }
+    },
+    {
+      "role": "reviewer",
+      "pij_id": "pij-106t2i1",
+      "harness": "copilot",
+      "source": "ledger",
+      "semantics": {
+        "semantics_measured": false,
+        "artifact_events": 0
+      }
+    },
+    {
+      "role": "validator",
+      "pij_id": "pij-wolk0r",
+      "harness": "codex",
+      "source": "ledger",
+      "semantics": {
+        "semantics_measured": false,
+        "artifact_events": 0
+      }
+    }
+  ]
+}

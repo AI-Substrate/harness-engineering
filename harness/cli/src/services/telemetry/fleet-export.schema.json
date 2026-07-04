@@ -57,13 +57,14 @@
         },
         "segments": { "type": "integer", "minimum": 0, "description": "Total segments merged across all lanes." }
       }
-    }
+    },
+    "semantics": { "$ref": "#/$defs/fleetSemantics" }
   },
   "$defs": {
     "fleetLane": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pij_id", "role", "harness", "model", "cost_measured", "tokens", "source", "evidence"],
+      "required": ["pij_id", "role", "harness", "model", "cost_measured", "tokens", "source", "evidence", "semantics"],
       "properties": {
         "pij_id": { "type": "string", "description": "The child's own pij id (captured_env.PIJ_SESSION_ID) — the join key." },
         "role": { "type": ["string", "null"], "description": "Role from the roster when scoped (coder/reviewer/…), else null." },
@@ -98,7 +99,8 @@
             }
           }
         },
-        "evidence": { "$ref": "#/$defs/sessionEvidence" }
+        "evidence": { "$ref": "#/$defs/sessionEvidence" },
+        "semantics": { "$ref": "#/$defs/laneSemantics" }
       }
     },
     "sessionEvidence": {
@@ -164,6 +166,75 @@
         },
         "gaps": { "type": "array", "items": { "type": "string" } },
         "duration_s": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "semanticFindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical", "high", "med", "low"],
+      "description": "Review findings by severity — counts only.",
+      "properties": {
+        "critical": { "type": "integer", "minimum": 0 },
+        "high": { "type": "integer", "minimum": 0 },
+        "med": { "type": "integer", "minimum": 0 },
+        "low": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "verdictPath": {
+      "type": "array",
+      "description": "Review verdict path — closed vocabulary (the plan-050 extractor gates values; `other` is its fallback). No free text.",
+      "items": {
+        "type": "string",
+        "enum": ["APPROVE", "APPROVE_WITH_NOTES", "FIX_REQUIRED", "NEEDS_ATTENTION", "other"]
+      }
+    },
+    "laneSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One lane's semantic (quality/process) rollup (plan 052 · T009), aggregated from its artifact events + flow-stage timing. HONESTY: a blind lane is `semantics_measured:false` and OMITS every dimension — never a `0`; each dimension is present only when its artifact type was captured (counts/enums only, P12).",
+      "required": ["semantics_measured", "artifact_events"],
+      "properties": {
+        "semantics_measured": { "type": "boolean", "description": "false ⇒ a blind lane (no artifact/flow-stage capture); every dimension below is then ABSENT, never 0." },
+        "artifact_events": { "type": "integer", "minimum": 0, "description": "How many artifact events the lane carried (0 on a blind lane)." },
+        "findings": { "$ref": "#/$defs/semanticFindings" },
+        "verdicts": { "$ref": "#/$defs/verdictPath" },
+        "fix_cycles": { "type": "integer", "minimum": 0, "description": "FIX_REQUIRED→APPROVE transitions in the verdict path." },
+        "plan_phases": { "type": "integer", "minimum": 0 },
+        "plan_cs": { "type": ["integer", "null"], "minimum": 0 },
+        "workshop_decisions": { "type": "integer", "minimum": 0 },
+        "nodes": { "type": "integer", "minimum": 0 },
+        "nodes_done": { "type": "integer", "minimum": 0 },
+        "chores_done": { "type": "integer", "minimum": 0 },
+        "chores_todo": { "type": "integer", "minimum": 0 },
+        "flow_stage_time_s": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 },
+          "description": "flow stage → seconds (histogram; keys open, values non-negative)."
+        }
+      }
+    },
+    "fleetSemantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The fleet-level semantic rollup with honest per-lane COVERAGE flags (plan 052 · T009). measured/blind lane counts are always present; each aggregate dimension is present only when ≥1 measured lane carried it (OMISSION-not-zero, same contract as a lane).",
+      "required": ["measured_lanes", "blind_lanes"],
+      "properties": {
+        "measured_lanes": { "type": "integer", "minimum": 0 },
+        "blind_lanes": { "type": "integer", "minimum": 0 },
+        "findings": { "$ref": "#/$defs/semanticFindings" },
+        "verdicts": { "$ref": "#/$defs/verdictPath" },
+        "fix_cycles": { "type": "integer", "minimum": 0 },
+        "plan_phases": { "type": "integer", "minimum": 0 },
+        "workshop_decisions": { "type": "integer", "minimum": 0 },
+        "nodes": { "type": "integer", "minimum": 0 },
+        "nodes_done": { "type": "integer", "minimum": 0 },
+        "chores_done": { "type": "integer", "minimum": 0 },
+        "chores_todo": { "type": "integer", "minimum": 0 },
+        "flow_stage_time_s": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0 },
+          "description": "flow stage → seconds, summed across measured lanes."
+        }
       }
     }
   }

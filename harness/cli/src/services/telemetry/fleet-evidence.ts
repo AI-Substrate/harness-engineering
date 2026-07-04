@@ -1,6 +1,7 @@
 import type { GitReadPort } from '../../adapters/git/git-read-port.js';
 import { extractCodexLedger, findCodexRollout } from './codex-ledger.js';
 import { copilotSessionEventsPath, extractCopilotLedger } from './copilot-ledger.js';
+import type { ArtifactEvent } from './events.js';
 import type { PijDescriptor, PijRegistry } from './pij-registry.js';
 import { readPijRegistry } from './pij-registry.js';
 import { type RefLane, readRefLanes } from './ref-source.js';
@@ -85,6 +86,63 @@ export interface FleetLaneBilling {
   token_buckets?: Record<string, number>;
 }
 
+/** Review findings by severity (the quality signal), summed over a lane's review artifacts. */
+export interface FleetSemanticFindings {
+  critical: number;
+  high: number;
+  med: number;
+  low: number;
+}
+
+/**
+ * The SEMANTIC (quality/process) rollup for ONE lane (plan 052 · T009) — aggregated
+ * from the lane's `artifact` events (plan 050 counts/enums) + its segments'
+ * `rollup.flow_stage_time_s`. It answers "what did the process DO", distinct from the
+ * cost/time dimensions.
+ *
+ * HONESTY INVARIANT (AC-07, hard requirement): a lane with NO semantic capture is
+ * `semantics_measured:false` and carries NONE of the dimension fields — NEVER a `0`.
+ * A blind lane is thus DISTINGUISHABLE from a lane that measured zero findings (which
+ * IS `semantics_measured:true` with `findings:{critical:0,…}`). Each dimension is
+ * present on a MEASURED lane only when that ARTIFACT TYPE was captured: a lane that
+ * captured a plan + workshop but no review has `plan_phases`/`workshop_decisions` but
+ * NO `findings` — the review was blind, and the rollup says so by OMISSION, not `0`.
+ * Counts/enums only (Constitution P12) — no prose from artifacts travels.
+ */
+export interface FleetLaneSemantics {
+  /**
+   * `false` ⇒ this lane emitted no `artifact` events and no flow-stage timing (a blind
+   * lane — e.g. a side-channel-only ledger lane, or a worker whose harness never
+   * captured artifact semantics, dossier F-07). When `false`, every dimension below is
+   * ABSENT — never zero-filled.
+   */
+  semantics_measured: boolean;
+  /** How many `artifact` events the lane carried (the measured evidence; `0` on a blind lane). */
+  artifact_events: number;
+  /** Review findings by severity — present iff ≥1 `review` artifact was captured (may sum to 0). */
+  findings?: FleetSemanticFindings;
+  /** The ordered, consecutive-deduped review verdict path (fix-cycle signal); present iff ≥1 verdict was captured. */
+  verdicts?: string[];
+  /** `FIX_REQUIRED → APPROVE(_WITH_NOTES)` transitions in {@link verdicts}; present iff ≥1 verdict was captured. */
+  fix_cycles?: number;
+  /** Plan phase count (latest plan snapshot); present iff ≥1 `plan` artifact was captured. */
+  plan_phases?: number;
+  /** Plan complexity score CS-n (latest plan snapshot); `null` when the plan carried none. */
+  plan_cs?: number | null;
+  /** Workshop decisions (summed over the latest snapshot per workshop path); present iff ≥1 `workshop` artifact. */
+  workshop_decisions?: number;
+  /** Flight-plan total node count (latest `the-flow.json` snapshot); present iff ≥1 `flight-plan` artifact. */
+  nodes?: number;
+  /** Flight-plan nodes in `done` status (latest snapshot). */
+  nodes_done?: number;
+  /** Flight-plan chores done (latest snapshot). */
+  chores_done?: number;
+  /** Flight-plan chores still todo (latest snapshot). */
+  chores_todo?: number;
+  /** Per-flow-stage seconds, summed from each segment's `rollup.flow_stage_time_s`; present iff non-empty. */
+  flow_stage_time_s?: Record<string, number>;
+}
+
 /** One session, one row in the fleet (workshop D2). */
 export interface FleetLane {
   /** The child's own pij id (`captured_env.PIJ_SESSION_ID`) — the join key. */
@@ -109,6 +167,8 @@ export interface FleetLane {
   billing?: FleetLaneBilling;
   /** The existing per-session evidence object, unchanged (D2 — reused via {@link fold}). */
   evidence: SessionEvidence;
+  /** The lane's SEMANTIC (quality/process) rollup (plan 052 · T009); blind lanes flag `semantics_measured:false`. */
+  semantics: FleetLaneSemantics;
 }
 
 /** Cost totals — a lower bound over MEASURED lanes, with unmeasured loudly counted (AC-02). */
@@ -137,6 +197,43 @@ export interface FleetTotals {
 /** How the fleet membership was scoped. */
 export type FleetScope = 'env-tree' | 'roster' | 'explicit';
 
+/**
+ * The FLEET-level SEMANTIC rollup (plan 052 · T009) — the process/quality shape of the
+ * whole run, aggregated across its MEASURED lanes. `measured_lanes`/`blind_lanes` are
+ * the honest COVERAGE flags: a consumer reads them FIRST to know how much of the fleet
+ * the semantics actually cover (a fleet whose quality work ran in blind lanes reports
+ * high `blind_lanes` and omits the dimensions those lanes carried). Each aggregate
+ * dimension is present only when ≥1 measured lane carried it — so a fleet with no
+ * captured review has NO `findings`/`verdicts` (never `0`), the same OMISSION-not-zero
+ * contract as a lane. Counts/enums only (P12).
+ */
+export interface FleetSemantics {
+  /** Lanes with `semantics_measured:true`. */
+  measured_lanes: number;
+  /** Lanes with `semantics_measured:false` (a blind lane — no artifact/flow-stage capture). */
+  blind_lanes: number;
+  /** Fleet review findings by severity (summed over measured lanes); present iff any lane captured a review. */
+  findings?: FleetSemanticFindings;
+  /** Concatenated review verdict paths across measured lanes (orchestrator lane first); present iff any verdict captured. */
+  verdicts?: string[];
+  /** Total `FIX_REQUIRED → APPROVE` fix cycles across measured lanes; present iff any verdict captured. */
+  fix_cycles?: number;
+  /** Plan phase count (max across measured lanes — a fleet shares one plan); present iff any plan captured. */
+  plan_phases?: number;
+  /** Workshop decisions (summed over measured lanes); present iff any workshop captured. */
+  workshop_decisions?: number;
+  /** Flight-plan node count (max across measured lanes); present iff any flight-plan captured. */
+  nodes?: number;
+  /** Flight-plan nodes done (max across measured lanes). */
+  nodes_done?: number;
+  /** Flight-plan chores done (max across measured lanes). */
+  chores_done?: number;
+  /** Flight-plan chores todo (max across measured lanes). */
+  chores_todo?: number;
+  /** Per-flow-stage seconds, summed across measured lanes; present iff non-empty. */
+  flow_stage_time_s?: Record<string, number>;
+}
+
 /** The merged fleet evidence — N {@link SessionEvidence} joined into one unit (workshop D2). */
 export interface FleetEvidence {
   /** The orchestrator (root pij id) this fleet was joined on. */
@@ -149,6 +246,8 @@ export interface FleetEvidence {
   /** Env-tree children not in the roster (D1 diff); empty without a roster. */
   unrostered: string[];
   totals: FleetTotals;
+  /** The fleet-level semantic rollup with honest per-lane coverage flags (plan 052 · T009). */
+  semantics: FleetSemantics;
 }
 
 /** One roster member parsed from a flow-pair `run.json` (`role → {pijId}`). */
@@ -260,6 +359,219 @@ function laneModel(segs: readonly Segment[]): string | null {
   return null;
 }
 
+// ── semantic rollup (plan 052 · T009) ────────────────────────────────────────
+
+/** The blind (unmeasured) lane semantics shell — a lane with NO artifact/flow-stage capture. */
+function blindLaneSemantics(): FleetLaneSemantics {
+  return { semantics_measured: false, artifact_events: 0 };
+}
+
+/** Compare two artifact events by their ISO `t` (older first); NaN sorts last. */
+function byArtifactTime(a: ArtifactEvent, b: ArtifactEvent): number {
+  const ta = Date.parse(a.t);
+  const tb = Date.parse(b.t);
+  if (Number.isNaN(ta)) return Number.isNaN(tb) ? 0 : 1;
+  if (Number.isNaN(tb)) return -1;
+  return ta - tb;
+}
+
+/**
+ * The LATEST snapshot per artifact `path` (a re-saved file emits a time series; the
+ * final state is its truth). De-dupes so re-saves don't multiply a file's counts.
+ */
+function latestByPath(events: readonly ArtifactEvent[]): ArtifactEvent[] {
+  const byPath = new Map<string, ArtifactEvent>();
+  for (const e of [...events].sort(byArtifactTime)) byPath.set(e.path, e);
+  return [...byPath.values()];
+}
+
+/** Collapse consecutive-duplicate tokens (a verdict path `[FIX,FIX,APPROVE]` → `[FIX,APPROVE]`). */
+function dedupeConsecutive(seq: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const v of seq) if (out[out.length - 1] !== v) out.push(v);
+  return out;
+}
+
+/** Count `FIX_REQUIRED → APPROVE(_WITH_NOTES)` adjacencies in a deduped verdict path. */
+function countFixCycles(seq: readonly string[]): number {
+  let n = 0;
+  for (let i = 1; i < seq.length; i++) {
+    if (
+      seq[i - 1] === 'FIX_REQUIRED' &&
+      (seq[i] === 'APPROVE' || seq[i] === 'APPROVE_WITH_NOTES')
+    ) {
+      n += 1;
+    }
+  }
+  return n;
+}
+
+/**
+ * Build a lane's {@link FleetLaneSemantics} from its RAW segments (plan 052 · T009).
+ * Reads the `artifact` events (plan 050 counts/enums) + `rollup.flow_stage_time_s`;
+ * a lane with neither is `semantics_measured:false` (blind — no dimension fields, never
+ * zeros). Each dimension is emitted only when its artifact TYPE was captured, so a
+ * lane's OMISSIONS are the honest map of what it couldn't see (the review that ran in
+ * another lane). Pure; counts/enums only.
+ */
+function laneSemantics(segs: readonly Segment[]): FleetLaneSemantics {
+  const artifacts: ArtifactEvent[] = [];
+  const flowStage: Record<string, number> = {};
+  for (const seg of segs) {
+    for (const ev of seg.event_stream ?? []) {
+      if (ev.kind === 'artifact') artifacts.push(ev);
+    }
+    const fst = seg.rollup?.flow_stage_time_s;
+    if (fst) for (const [k, v] of Object.entries(fst)) flowStage[k] = (flowStage[k] ?? 0) + v;
+  }
+  const hasFlowStage = Object.keys(flowStage).length > 0;
+  if (artifacts.length === 0 && !hasFlowStage) return blindLaneSemantics();
+
+  const sem: FleetLaneSemantics = {
+    semantics_measured: true,
+    artifact_events: artifacts.length,
+  };
+
+  // findings — latest review snapshot per path, summed (a measured review may be 0/0/0/0).
+  const reviews = latestByPath(artifacts.filter((e) => e.artifact_type === 'review'));
+  if (reviews.length > 0) {
+    const f: FleetSemanticFindings = { critical: 0, high: 0, med: 0, low: 0 };
+    for (const e of reviews) {
+      f.critical += e.counts.findings_critical ?? 0;
+      f.high += e.counts.findings_high ?? 0;
+      f.med += e.counts.findings_med ?? 0;
+      f.low += e.counts.findings_low ?? 0;
+    }
+    sem.findings = f;
+  }
+
+  // verdict path + fix cycles — ALL review verdicts in time order (transitions matter,
+  // so this is NOT path-deduped: a review re-saved FIX_REQUIRED→APPROVE is the signal).
+  const verdicts = dedupeConsecutive(
+    [...artifacts]
+      .filter((e) => e.artifact_type === 'review' && e.enums.verdict !== undefined)
+      .sort(byArtifactTime)
+      .map((e) => e.enums.verdict as string),
+  );
+  if (verdicts.length > 0) {
+    sem.verdicts = verdicts;
+    sem.fix_cycles = countFixCycles(verdicts);
+  }
+
+  // plan — latest plan snapshot (phases + CS).
+  const plans = latestByPath(artifacts.filter((e) => e.artifact_type === 'plan'));
+  if (plans.length > 0) {
+    const p = plans[plans.length - 1];
+    sem.plan_phases = p.counts.phases ?? 0;
+    sem.plan_cs = p.counts.cs ?? null;
+  }
+
+  // workshop decisions — latest snapshot per workshop path, summed.
+  const workshops = latestByPath(artifacts.filter((e) => e.artifact_type === 'workshop'));
+  if (workshops.length > 0) {
+    sem.workshop_decisions = workshops.reduce((n, e) => n + (e.counts.decisions ?? 0), 0);
+  }
+
+  // flight-plan node/chore rollup — latest the-flow.json snapshot.
+  const flightPlans = latestByPath(artifacts.filter((e) => e.artifact_type === 'flight-plan'));
+  if (flightPlans.length > 0) {
+    const fp = flightPlans[flightPlans.length - 1];
+    sem.nodes = fp.counts.nodes ?? 0;
+    sem.nodes_done = fp.counts.done ?? 0;
+    sem.chores_done = fp.counts.chores_done ?? 0;
+    sem.chores_todo = fp.counts.chores_todo ?? 0;
+  }
+
+  if (hasFlowStage) sem.flow_stage_time_s = flowStage;
+  return sem;
+}
+
+/**
+ * Aggregate the lanes' semantics into the FLEET-level {@link FleetSemantics} (plan 052
+ * · T009). `measured_lanes`/`blind_lanes` are the coverage truth; each aggregate
+ * dimension is emitted only when ≥1 measured lane carried it (OMISSION-not-zero). Sums
+ * ADDITIVE event dimensions (findings, fix_cycles, workshop decisions) and takes the
+ * MAX of STRUCTURAL ones (plan phases, flight-plan nodes/chores — a fleet shares one
+ * plan/flight-plan, so summing would double-count a re-observed artifact).
+ */
+function fleetSemantics(lanes: readonly FleetLane[]): FleetSemantics {
+  let measured = 0;
+  let blind = 0;
+  const findings: FleetSemanticFindings = { critical: 0, high: 0, med: 0, low: 0 };
+  let hasFindings = false;
+  const verdicts: string[] = [];
+  let fixCycles = 0;
+  let hasVerdict = false;
+  let planPhases = 0;
+  let hasPlan = false;
+  let workshopDecisions = 0;
+  let hasWorkshop = false;
+  let nodes = 0;
+  let nodesDone = 0;
+  let choresDone = 0;
+  let choresTodo = 0;
+  let hasFlow = false;
+  const flowStage: Record<string, number> = {};
+
+  for (const lane of lanes) {
+    const s = lane.semantics;
+    if (!s.semantics_measured) {
+      blind += 1;
+      continue;
+    }
+    measured += 1;
+    if (s.findings) {
+      hasFindings = true;
+      findings.critical += s.findings.critical;
+      findings.high += s.findings.high;
+      findings.med += s.findings.med;
+      findings.low += s.findings.low;
+    }
+    if (s.verdicts) {
+      hasVerdict = true;
+      verdicts.push(...s.verdicts);
+      fixCycles += s.fix_cycles ?? 0;
+    }
+    if (s.plan_phases !== undefined) {
+      hasPlan = true;
+      planPhases = Math.max(planPhases, s.plan_phases);
+    }
+    if (s.workshop_decisions !== undefined) {
+      hasWorkshop = true;
+      workshopDecisions += s.workshop_decisions;
+    }
+    if (s.nodes !== undefined) {
+      hasFlow = true;
+      nodes = Math.max(nodes, s.nodes);
+      nodesDone = Math.max(nodesDone, s.nodes_done ?? 0);
+      choresDone = Math.max(choresDone, s.chores_done ?? 0);
+      choresTodo = Math.max(choresTodo, s.chores_todo ?? 0);
+    }
+    if (s.flow_stage_time_s) {
+      for (const [k, v] of Object.entries(s.flow_stage_time_s)) {
+        flowStage[k] = (flowStage[k] ?? 0) + v;
+      }
+    }
+  }
+
+  const out: FleetSemantics = { measured_lanes: measured, blind_lanes: blind };
+  if (hasFindings) out.findings = findings;
+  if (hasVerdict) {
+    out.verdicts = verdicts;
+    out.fix_cycles = fixCycles;
+  }
+  if (hasPlan) out.plan_phases = planPhases;
+  if (hasWorkshop) out.workshop_decisions = workshopDecisions;
+  if (hasFlow) {
+    out.nodes = nodes;
+    out.nodes_done = nodesDone;
+    out.chores_done = choresDone;
+    out.chores_todo = choresTodo;
+  }
+  if (Object.keys(flowStage).length > 0) out.flow_stage_time_s = flowStage;
+  return out;
+}
+
 /** Total seconds covered by the UNION of `[min,max]` intervals (overlap counted once). */
 function unionSeconds(intervals: ReadonlyArray<{ min: number; max: number }>): number {
   const sorted = [...intervals].sort((a, b) => a.min - b.min);
@@ -323,6 +635,7 @@ export function buildFleetEvidence(
       tokens,
       source: 'live',
       evidence,
+      semantics: laneSemantics(segs),
     };
   };
 
@@ -394,6 +707,7 @@ export function buildFleetEvidence(
       },
       segments: segCount,
     },
+    semantics: fleetSemantics(sessions),
   };
 }
 
@@ -463,6 +777,7 @@ export function buildLedgerLane(
       source: 'ledger',
       billing: { nano_aiu: led.nano_aiu, token_buckets: { ...b } },
       evidence: ledgerEvidence(pijId, desc.harness_session_id, 'copilot'),
+      semantics: blindLaneSemantics(),
     };
   }
   if (desc.harness === 'codex') {
@@ -494,6 +809,7 @@ export function buildLedgerLane(
         },
       },
       evidence: ledgerEvidence(pijId, desc.harness_session_id, 'codex'),
+      semantics: blindLaneSemantics(),
     };
   }
   return null;
@@ -521,6 +837,7 @@ function degradedLedgerLane(
     tokens: { grand_total: 0, output: 0 },
     source: 'ledger',
     evidence: ledgerEvidence(pijId, desc.harness_session_id, harness),
+    semantics: blindLaneSemantics(),
   };
 }
 
@@ -538,10 +855,11 @@ function emptyRosterFleet(rootPijId: string, roster: FleetRoster | null): FleetE
       time: { wall_clock_s: null, active_s: null },
       segments: 0,
     },
+    semantics: { measured_lanes: 0, blind_lanes: 0 },
   };
 }
 
-/** Recompute cost + segment totals over the current lanes (time stays — ledger lanes have no span). */
+/** Recompute cost/segment totals AND the fleet semantics over the current lanes (time stays — ledger lanes have no span). */
 function recomputeCostAndSegments(fleet: FleetEvidence): void {
   let grand = 0;
   let output = 0;
@@ -565,6 +883,9 @@ function recomputeCostAndSegments(fleet: FleetEvidence): void {
     unmeasured_lanes: unmeasured,
   };
   fleet.totals.segments = segs;
+  // Lanes changed (orphans promoted to ref/ledger lanes) → re-aggregate the semantic
+  // coverage so `blind_lanes` reflects every newly-added (semantics-blind) side channel.
+  fleet.semantics = fleetSemantics(fleet.sessions);
 }
 
 /** Build a REF lane for a rostered member whose flushed telemetry lives in a synced rollup. */
@@ -583,6 +904,10 @@ function buildRefLane(
     tokens: ref.tokens,
     source: 'ref',
     evidence: ledgerEvidence(pijId, desc.harness_session_id, desc.harness ?? 'unknown'),
+    // The ref reader (T005) recovers COST only, not the artifact event stream, so a
+    // ref-resolved lane is semantically blind until ref-side artifact extraction lands
+    // (documented follow-on) — never zero-filled.
+    semantics: blindLaneSemantics(),
   };
 }
 

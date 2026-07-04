@@ -344,6 +344,39 @@ long orchestrator lane can be ~98% cache reads, billed at ~1/10 the input rate),
 the raw `grand_total` overstates spend — the per-lane `billing` block is the
 authoritative unit.
 
+### Fleet semantics — the process shape, not just the price
+
+Cost and time say what a run *consumed*; the **semantic rollup** says what the
+process *did*. Every lane carries a `semantics` block, and the fleet a top-level
+one, aggregated from the lane's `artifact`/`flow` events (the [artifact
+semantics](#the-event-stream-v20) above) — **counts/enums only**, no prose:
+
+- **review** `findings` by severity, the ordered `verdicts` path, and `fix_cycles`
+  (`FIX_REQUIRED → APPROVE` transitions);
+- **plan** `plan_phases` + `plan_cs`; **workshop** `workshop_decisions`;
+- **flight-plan** `nodes` / `nodes_done` / `chores_done` / `chores_todo`;
+- per-stage `flow_stage_time_s`.
+
+The load-bearing rule is the honesty flag **`semantics_measured`**: a lane with no
+artifact capture is `semantics_measured: false` and **omits every dimension — never
+a `0`**. So a blind lane is distinguishable from one that measured *zero* findings
+(that lane is `semantics_measured: true` with `findings: {critical: 0, …}`). Each
+dimension is emitted only when its artifact type was captured, so a lane that saw a
+plan but not the review reports `plan_phases` and **no** `findings` — the review
+ran elsewhere, and the rollup says so by omission.
+
+Read the fleet-level **`measured_lanes` / `blind_lanes`** counts *first*: they are
+the coverage truth. A telemetry-only report can claim the process shape of the
+**instrumented** lanes; it **cannot** claim what happened in blind ones. In a
+flow-pair run that means the orchestrator's planning artifacts surface, but a
+read-only reviewer's findings (no harness telemetry — F-05) and a worker that
+emitted 0 artifact events (F-07) are absent — reported as blind, not as zero. See
+`docs/plans/052-fleet-telemetry-lane-sources/evidence/fleet-051-semantics-note.md`
+for a worked reconcile of a real fleet against a hand-made quality table, with
+every discrepancy (blind lane vs extractor precision vs capture-time drift)
+enumerated. Ledger- and ref-resolved lanes recover **cost** but not the event
+stream, so they are semantically blind until worker-lane artifact capture lands.
+
 ## Syncing — `harness telemetry sync`
 
 Capture is decoupled from push. Run sync explicitly (e.g. at the end of a session,

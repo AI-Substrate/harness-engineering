@@ -709,8 +709,9 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
                   0,
                 );
                 const aic = nanoAiu > 0 ? `, ${(nanoAiu / 1e9).toFixed(1)} AIC` : '';
+                const sem = fleet.semantics;
                 io.writers.out(
-                  `telemetry get-fleet: ${fleet.sessions.length} lane(s) [${c.measured_lanes} measured, ${c.unmeasured_lanes} unmeasured] (${srcSummary}), ${c.grand_total.toLocaleString()} tokens${aic}, wall ${wall === null ? 'unknown' : `${wall}s`}, scope ${fleet.scope}\n`,
+                  `telemetry get-fleet: ${fleet.sessions.length} lane(s) [${c.measured_lanes} measured, ${c.unmeasured_lanes} unmeasured] (${srcSummary}), ${c.grand_total.toLocaleString()} tokens${aic}, wall ${wall === null ? 'unknown' : `${wall}s`}, semantics ${sem.measured_lanes}/${sem.measured_lanes + sem.blind_lanes} lanes measured, scope ${fleet.scope}\n`,
                 );
               },
             };
