@@ -29,3 +29,17 @@
 
 - `harness checks`: exit 0, status `degraded` (`tests`, `biome`, `typecheck`, `check:docs`, `check:flows`, `check:telemetry-fixtures`, `check:doctrine-parity`, `skills-check`, `windows-check` ok; `arch-check` and `markdown-lint` warn-only degraded).
 - Targeted restored mutation check: `cd harness/cli && npx vitest run test/services/telemetry/fleet-golden-051.test.ts --coverage=false` passed 9/9.
+
+## Re-review — fix commit `533ea8f9`
+
+**Verdict**: APPROVE
+
+**Findings**: none.
+
+**F1 verification**: PASS. `buildLedgerLane` now distinguishes absent side-channel material from present-but-malformed material: `readText(...) === null` remains an orphan, while any present Copilot/Codex ledger text that parses as `measured:false` returns `degradedLedgerLane(...)`. The degraded lane is roster-scoped with `source:"ledger"`, `cost_measured:false`, zero tokens, no billing block, and empty folded evidence; `enrichOrphans` promotes it into `sessions[]`, removes it from `orphans`, and `recomputeCostAndSegments` increments `totals.cost.unmeasured_lanes`.
+
+**New negative tests**: PASS. `fleet-golden-051.test.ts` adds three `fix-001` cases: malformed Copilot shutdown degrades, malformed Codex rollout degrades, and an absent side-channel file stays an orphan. These directly cover the split requested in F1.
+
+**Non-vacuous test proof**: PASS. I temporarily mutated the Copilot malformed-ledger branch back to the old behavior (`return null`). The targeted command `cd harness/cli && npx vitest run test/services/telemetry/fleet-golden-051.test.ts --testNamePattern "rostered copilot member with a malformed shutdown" --coverage=false` failed at `fleet-golden-051.test.ts:317`, flipping `expect(coder).toBeDefined()` because the coder lane became `undefined`. After restoring the commit, `cd harness/cli && npx vitest run test/services/telemetry/fleet-golden-051.test.ts --coverage=false` passed 12/12.
+
+**Checks observed**: `harness checks` exit 0, status `degraded`: `tests`, `biome`, `typecheck`, `check:docs`, `check:flows`, `check:telemetry-fixtures`, `check:doctrine-parity`, `skills-check`, and `windows-check` ok; `arch-check` and `markdown-lint` remain warn-launch degraded/non-blocking.
