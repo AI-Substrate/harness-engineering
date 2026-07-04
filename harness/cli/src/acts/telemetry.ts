@@ -11,6 +11,7 @@ import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { posixDirname, posixJoin } from '../services/shared/posix-path.js';
 import { telemetryDir } from '../services/telemetry/cursor.js';
+import { getFleetEvidence } from '../services/telemetry/fleet-evidence.js';
 import { buildInsights, type InsightInput } from '../services/telemetry/insights.js';
 import { otlpLogsToEvents } from '../services/telemetry/otlp/logs.js';
 import { renderInsights } from '../services/telemetry/render/insights-html.js';
@@ -627,6 +628,76 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
                 const gaps = evidence.gaps.length ? `, gaps: ${evidence.gaps.join(',')}` : '';
                 io.writers.out(
                   `telemetry get: ${evidence.segments} segment(s), ${evidence.skill_order.length} skill(s), ${Object.keys(evidence.tools).length} tool(s)${gaps}\n`,
+                );
+              },
+            };
+      exitWithEnvelope(envelope, port);
+    });
+
+  telemetry
+    .command('get-fleet')
+    .description(
+      'Join a flow-pair fleet (orchestrator + pij children) into one FleetEvidence with honest cost/time totals (plan 051)',
+    )
+    .argument('<root-pij-id>', 'The orchestrator (root) pij id whose child sessions form the fleet')
+    .option(
+      '--roster <path>',
+      'A flow-pair run.json whose `roster` scopes membership + fills orphan/unrostered diffs (D1); env-tree scope without it',
+    )
+    .option(
+      '--worktree <path>',
+      'Worktree root whose buffer to read (overrides pij-folder resolution)',
+    )
+    .action(async (rootPijId: string, options: { roster?: string; worktree?: string }) => {
+      const fleet = await getFleetEvidence(
+        rootPijId,
+        { fs: deps.fs, env: deps.env, proc: deps.proc },
+        {
+          ...(options.worktree ? { worktree: options.worktree } : {}),
+          ...(options.roster ? { rosterPath: options.roster } : {}),
+        },
+      );
+
+      // No child joins to this root → honest error envelope (exit 1); buffer untouched.
+      if (fleet === null) {
+        const envelope = formatError(
+          'telemetry',
+          ErrorCodes.UNKNOWN,
+          `no fleet telemetry found for root pij id '${rootPijId}'`,
+          deps.clock,
+          {
+            next_action:
+              'Check the root id (`pij list`); a fleet needs ≥1 child whose captured_env.PIJ_PARENT_ID equals this root. Use --worktree <path> if the children ran from a git worktree.',
+          },
+        );
+        const port: OutputPort =
+          io.mode === 'json'
+            ? createOutputPort('json', io.writers)
+            : {
+                emit: (e) => {
+                  io.writers.err(
+                    `harness telemetry get-fleet: ${e.error?.message ?? 'not found'}\n`,
+                  );
+                  if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
+                },
+              };
+        exitWithEnvelope(envelope, port);
+        return;
+      }
+
+      const envelope = formatOk('telemetry', fleet, deps.clock, {
+        next_action:
+          'Fleet evidence merged from the child session event streams; cost is a lower bound over measured lanes (copilot-null lanes counted as unmeasured, never zero-filled).',
+      });
+      const port: OutputPort =
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: () => {
+                const c = fleet.totals.cost;
+                const wall = fleet.totals.time.wall_clock_s;
+                io.writers.out(
+                  `telemetry get-fleet: ${fleet.sessions.length} lane(s) [${c.measured_lanes} measured, ${c.unmeasured_lanes} unmeasured], ${c.grand_total.toLocaleString()} tokens, wall ${wall === null ? 'unknown' : `${wall}s`}, scope ${fleet.scope}\n`,
                 );
               },
             };

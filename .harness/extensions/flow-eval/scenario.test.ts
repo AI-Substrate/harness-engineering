@@ -231,3 +231,26 @@ describe('loadScenario — placeholder_policy (4.6 SUGG-003, optional; default a
     if (!r.ok) expect(r.error).toMatch(/placeholder_policy/);
   });
 });
+
+describe('loadScenario — intent register (plan 051 D4, optional; default absent · AC-05)', () => {
+  const one = [{ id: 'A1', type: 'file-created', source: 'fs', params: { glob: 'x' } }];
+
+  it('carries a valid { reason, vibe } intent into the config', () => {
+    const intent = { reason: 'prove fleet beats solo on cost-per-quality', vibe: 'a real team, not one model in three hats' };
+    const r = loadScenario('x', bundleFs(scenarioJson({ intent }), assertionsJson(one)), '/s');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.scenario.config.intent).toEqual(intent);
+  });
+
+  it('is absent (undefined) on a legacy bundle — every existing scenario still loads', () => {
+    const r = loadScenario('x', bundleFs(scenarioJson(), assertionsJson(one)), '/s');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.scenario.config.intent).toBeUndefined();
+  });
+
+  it('rejects a malformed intent (missing/empty reason or vibe) — never a silent partial', () => {
+    const r = loadScenario('x', bundleFs(scenarioJson({ intent: { reason: 'why' } }), assertionsJson(one)), '/s');
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/intent/);
+  });
+});

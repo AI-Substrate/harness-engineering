@@ -191,6 +191,14 @@ export interface ScenarioConfig {
    * `scaffold` emits `'unknown'` so NEW scenarios get honest unknowns by default.
    */
   placeholder_policy?: 'raw' | 'unknown';
+  /**
+   * Why this scenario is measured + how it should feel (workshop D4 · the user's
+   * steer). OPTIONAL and non-breaking: absent on every existing scenario, `scaffold`
+   * emits it for new ones. Carried through verbatim — machine-adjacent but
+   * human-worded (ids/counts posture does not apply: this is a curated register
+   * entry, never telemetry).
+   */
+  intent?: { reason: string; vibe: string };
   /** Relative filename of the assertions bundle (e.g. `assertions.json`). */
   assertions: string;
 }
@@ -340,6 +348,17 @@ function validateConfig(raw: unknown, issues: string[]): ScenarioConfig | null {
   ) {
     issues.push("scenario.json: 'placeholder_policy' must be 'raw' or 'unknown' when present");
   }
+  // `intent` (workshop D4) — OPTIONAL: absent on legacy scenarios, validated only
+  // when present so old bundles keep loading unchanged (AC-05).
+  let intentConfig: { reason: string; vibe: string } | undefined;
+  if (raw.intent !== undefined) {
+    const intent = raw.intent;
+    if (!isObject(intent) || !isNonEmptyString(intent.reason) || !isNonEmptyString(intent.vibe)) {
+      issues.push("scenario.json: 'intent' must be { reason, vibe } (non-empty strings) when present");
+    } else {
+      intentConfig = { reason: intent.reason, vibe: intent.vibe };
+    }
+  }
   let judgeConfig: JudgeConfig | undefined;
   if (raw.judge !== undefined) {
     const judge = raw.judge;
@@ -414,6 +433,7 @@ function validateConfig(raw: unknown, issues: string[]): ScenarioConfig | null {
     prompts: { orchestrator: s.prompts.orchestrator, subject: s.prompts.subject },
     ...(judgeConfig !== undefined && { judge: judgeConfig }),
     ...(s.placeholder_policy !== undefined && { placeholder_policy: s.placeholder_policy }),
+    ...(intentConfig !== undefined && { intent: intentConfig }),
     assertions: s.assertions,
   };
 }

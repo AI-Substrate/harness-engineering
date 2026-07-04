@@ -589,6 +589,13 @@ function scaffoldScenarioJson(slug: string): string {
       stages: ['explore', 'plan', 'validate', 'compact', 'implement', 'review', 'fix', 'validate'],
     },
     prompts: { orchestrator: 'prompts/orchestrator.md', subject: 'prompts/subject.md' },
+    // D4 (plan 051): every measured scenario carries WHY it exists + how it should
+    // feel — machine-adjacent but human-worded. Optional in the loader; scaffold
+    // seeds it so new scenarios are never mute about their intent.
+    intent: {
+      reason: `TODO: why we measure ${slug} — what claim it proves (e.g. fleet beats solo on cost-per-quality for a bounded task).`,
+      vibe: 'TODO: how this run should FEEL (e.g. a real team — orchestrator plans + verifies, workers build — not one model narrating three hats).',
+    },
     // 4.6: NEW scenarios default to honest unknowns — an unresolved placeholder
     // command resolves `unknown` (with a note) instead of executing the literal
     // token. Resolve it per-run with `--resolve <id>=<command>` (never edit this file).

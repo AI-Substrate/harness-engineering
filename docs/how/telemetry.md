@@ -247,6 +247,47 @@ A segment records the plan it relates to when either holds:
 Multiple distinct plans seen across a session's segments are flushed as a
 **deduped set**.
 
+## Fleets — joining a flow-pair run (`harness telemetry get-fleet`)
+
+A flow-pair run is a **fleet**: an orchestrator pij session that spawns child
+pij sessions (a coder, a reviewer, …). `pij spawn` stamps each child's env with
+`PIJ_SESSION_ID` (its own id), `PIJ_PARENT_ID` (the spawner), and `PIJ_HARNESS`
+(`claude` | `copilot` | `codex` | `pi`); telemetry captures all three into
+`captured_env`, so the whole fleet can be re-joined from history alone — nothing
+extra is captured.
+
+```sh
+# env-tree: every child whose captured_env.PIJ_PARENT_ID == the root
+harness telemetry get-fleet <root-pij-id> --json
+
+# roster-scoped: reconcile the env tree against a flow-pair run.json roster
+harness telemetry get-fleet <root-pij-id> --roster .flow-pair/runs/<run>/run.json --json
+```
+
+The result is a **`FleetEvidence`** (closed, counts-only shape in
+`fleet-export.schema.json`) — one lane per child, each embedding the same
+per-session evidence `harness telemetry get` returns, plus fleet totals:
+
+- **Cost** — `totals.cost.grand_total` sums `tokens.grand_total` over lanes with
+  `cost_measured: true` **only**. Copilot children capture `tokens: null` today,
+  so those lanes are `cost_measured: false`, **excluded from the sum** (never
+  zero-filled) and counted in `unmeasured_lanes`. Fleet cost is an honest **lower
+  bound** until copilot token capture lands.
+- **Time** — `totals.time.wall_clock_s` is the **union** of the lanes' event-time
+  spans; `active_s` is their **sum**; `active/wall` is the parallelism ratio. Both
+  come from `event_stream[].t` timestamps (the segment `window` is an event index,
+  not wall-clock), and are `null` only when no lane had a measurable span.
+- **Membership** — without a roster the `scope` is `env-tree` (a superset: a
+  parent pij id is stable across the orchestrator's whole life, so it can conflate
+  several runs). With `--roster`, `scope` is `roster` and two diffs surface the
+  discrepancy as a first-class signal: `orphans` (rostered ids with no captured
+  telemetry) and `unrostered` (env-tree children absent from the roster).
+
+Depth-1 by contract (grandchildren are reserved, not walked). Read-only and
+fail-safe — an unknown root or an empty buffer resolves to an honest error /
+`null`, never a throw. See `docs/plans/051-pij-fleet-session-eval/` for the design
+(workshop D1–D3) and the fleet-050 retrospective evidence.
+
 ## Syncing — `harness telemetry sync`
 
 Capture is decoupled from push. Run sync explicitly (e.g. at the end of a session,

@@ -123,8 +123,12 @@ function pijFolder(deps: SessionEvidenceDeps, id: string): string | null {
   }
 }
 
-/** Telemetry buffer dirs to try, in priority order (deduped): worktree → pij folder → cwd. */
-function candidateRoots(
+/**
+ * Telemetry buffer dirs to try, in priority order (deduped): worktree → pij folder → cwd.
+ * Exported (read-only) so the fleet-evidence service reuses the SAME worktree-safe
+ * buffer-location logic instead of re-deriving it (plan 051 · T002).
+ */
+export function candidateRoots(
   id: string,
   deps: SessionEvidenceDeps,
   opts?: SessionEvidenceOpts,
@@ -162,8 +166,13 @@ export function locateSession(
   return null;
 }
 
-/** Read every buffered segment under a telemetry dir (sorted by subdir, then seq); skip unreadable/corrupt. */
-function readSegments(fs: EvidenceFs, telDir: string): Segment[] {
+/**
+ * Read every buffered segment under a telemetry dir (sorted by subdir, then seq);
+ * skip unreadable/corrupt. Exported (read-only) so the fleet-evidence service reads
+ * the WHOLE buffer once and groups by pij session id, rather than re-scanning per
+ * lane (plan 051 · T002).
+ */
+export function readSegments(fs: EvidenceFs, telDir: string): Segment[] {
   const out: Segment[] = [];
   const subs = fs
     .readdir(telDir)
@@ -190,8 +199,13 @@ function readSegments(fs: EvidenceFs, telDir: string): Segment[] {
   return out;
 }
 
-/** Fold the matched segments into normalized evidence (the derivation contract). */
-function fold(pijSessionId: string, segments: readonly Segment[]): SessionEvidence {
+/**
+ * Fold the matched segments into normalized evidence (the derivation contract).
+ * Exported (read-only) so the fleet-evidence merge reuses the exact per-session
+ * fold instead of reimplementing it (plan 051 · T002; dossier F-05 "reuse, don't
+ * reimplement"). `pijSessionId` is echoed into `SessionEvidence.pij_session_id`.
+ */
+export function fold(pijSessionId: string, segments: readonly Segment[]): SessionEvidence {
   const skills: Record<string, number> = {};
   const skillOrder: string[] = [];
   const tools: Record<string, number> = {};

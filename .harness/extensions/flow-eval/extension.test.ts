@@ -528,6 +528,11 @@ describe('flow-eval scaffold — writes a valid skeleton, refuses to clobber', (
     expect(parsed.slug).toBe('new-scn');
     // 4.6 rider: scaffold emits the placeholder guard ON for new scenarios.
     expect(parsed.placeholder_policy).toBe('unknown');
+    // D4 (plan 051): scaffold seeds the intent register (reason + vibe).
+    expect(typeof parsed.intent?.reason).toBe('string');
+    expect(parsed.intent.reason.length).toBeGreaterThan(0);
+    expect(typeof parsed.intent?.vibe).toBe('string');
+    expect(parsed.intent.vibe.length).toBeGreaterThan(0);
     expect(parsed.judge.criteria).toEqual([
       'plan-coherence',
       'report-contract-coverage',
@@ -537,6 +542,9 @@ describe('flow-eval scaffold — writes a valid skeleton, refuses to clobber', (
     expect(loaded.ok).toBe(true);
     if (loaded.ok) {
       expect(loaded.scenario.config.placeholder_policy).toBe('unknown');
+      // the scaffolded intent survives the load path (optional field carried through).
+      expect(loaded.scenario.config.intent?.reason).toBe(parsed.intent.reason);
+      expect(loaded.scenario.config.intent?.vibe).toBe(parsed.intent.vibe);
       // it ships a placeholder command-succeeds so the honest-unknown guard is exercised.
       const cmdA = loaded.scenario.assertions.find((a) => a.type === 'command-succeeds');
       expect(cmdA?.params.cmd).toBe('SUBJECT_VALIDATOR');
