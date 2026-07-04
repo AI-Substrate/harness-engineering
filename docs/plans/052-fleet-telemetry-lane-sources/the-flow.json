@@ -336,6 +336,58 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T07:12:08.701Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T07:12:09.477Z",
+      "details": {
+        "node": "review-1",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T07:12:10.238Z",
+      "details": {
+        "node": "observe-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T07:13:05.723Z",
+      "details": {
+        "node": "retro-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -378,7 +430,7 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: Lane sources + capture fixes",
-      "status": "known",
+      "status": "done",
       "command": "/the-flow 6 implement",
       "next": [
         "review-1"
@@ -391,13 +443,14 @@
       "fields": {
         "label": "P1: Lane sources + capture fixes"
       },
-      "modified_at": "2026-07-04T05:33:12.819Z"
+      "modified_at": "2026-07-04T07:12:08.701Z",
+      "ran_at": "2026-07-04T07:12:08.701Z"
     },
     {
       "id": "review-1",
       "type": "review",
       "label": "Review: P1",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 7 review",
       "next": [
         "phase-2"
@@ -413,7 +466,8 @@
           "phase-2"
         ]
       },
-      "modified_at": "2026-07-04T05:33:27.422Z"
+      "modified_at": "2026-07-04T07:12:09.477Z",
+      "ran_at": "2026-07-04T07:12:09.477Z"
     },
     {
       "id": "ship",
@@ -476,7 +530,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -490,13 +544,15 @@
         "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
         "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
         "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates."
-      ]
+      ],
+      "modified_at": "2026-07-04T07:12:10.238Z",
+      "ran_at": "2026-07-04T07:12:10.238Z"
     },
     {
       "id": "retro-1",
       "type": "harness-retro",
       "label": "Retro: P1 (drain)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -510,7 +566,9 @@
         "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
         "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-1 --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-04T07:13:05.723Z",
+      "ran_at": "2026-07-04T07:13:05.723Z"
     },
     {
       "id": "retro-ship",
