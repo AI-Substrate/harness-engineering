@@ -3,9 +3,9 @@
   "kind": "flight-plan",
   "slug": "fleet-telemetry-lane-sources",
   "nav": {
-    "now": "plan",
+    "now": "phase-1",
     "next": null,
-    "intent": "Close the fleet-telemetry measurement gaps found in the 051 debrief: lane-source readers (copilot shutdown, codex rollouts, telemetry refs), run-end sweep, lane-source doc matrix, artifact-layer fixes, fleet semantic rollup"
+    "intent": "P1 build: lane-source readers + capture fixes (T001-T008); awaiting fleet-vs-solo call, backpressure survey due first"
   },
   "created_at": "2026-07-04T05:28:55.905Z",
   "provenance": {
@@ -285,6 +285,57 @@
         ],
         "edge_op": "splice-after"
       }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T06:03:22.965Z",
+      "details": {
+        "node": "plan",
+        "from": "done",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-04T06:03:23.801Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T06:06:37.941Z",
+      "details": {
+        "node": "backpressure",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T06:09:30.293Z",
+      "details": {
+        "node": "boot-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -319,8 +370,8 @@
         "Run /the-flow 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
         "Done when <slug>-plan.md carries both halves and reads **Status**: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run."
       ],
-      "modified_at": "2026-07-04T05:31:28.954Z",
-      "ran_at": "2026-07-04T05:31:28.954Z"
+      "modified_at": "2026-07-04T06:03:22.965Z",
+      "ran_at": "2026-07-04T06:03:22.965Z"
     },
     {
       "id": "phase-1",
@@ -381,7 +432,7 @@
       "id": "backpressure",
       "type": "backpressure",
       "label": "Backpressure survey",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "plan",
       "next": [
         "plan"
@@ -395,13 +446,15 @@
         "Optional pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
         "Run /eng-harness-flow --hook pre-coding --json — advisory output only; the plan verb does not auto-read it, so fold the findings in yourself.",
         "Optional and skippable — never gates. Decline with a real `harness flow status backpressure --to skipped`, never a narrated skip."
-      ]
+      ],
+      "modified_at": "2026-07-04T06:06:37.941Z",
+      "ran_at": "2026-07-04T06:06:37.941Z"
     },
     {
       "id": "boot-1",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -415,7 +468,9 @@
         "Recommended pre-flight seam: confirm the harness is healthy before you start coding this phase.",
         "Run /eng-harness-flow --hook pre-flight --json — read-only/advisory; narrate its envelope verbatim, never fabricate one.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status boot-1 --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-04T06:09:30.293Z",
+      "ran_at": "2026-07-04T06:09:30.293Z"
     },
     {
       "id": "observe-1",
