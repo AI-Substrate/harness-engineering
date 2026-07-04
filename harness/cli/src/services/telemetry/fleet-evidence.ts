@@ -220,6 +220,12 @@ export interface FleetSemantics {
   fix_cycles?: number;
   /** Plan phase count (max across measured lanes — a fleet shares one plan); present iff any plan captured. */
   plan_phases?: number;
+  /**
+   * Plan complexity score CS-n (max non-null across measured lanes — a fleet shares one plan,
+   * so this is the observed value, not a sum); `null` when that plan carried no CS. Travels with
+   * {@link plan_phases}: present iff any plan captured.
+   */
+  plan_cs?: number | null;
   /** Workshop decisions (summed over measured lanes); present iff any workshop captured. */
   workshop_decisions?: number;
   /** Flight-plan node count (max across measured lanes); present iff any flight-plan captured. */
@@ -503,6 +509,7 @@ function fleetSemantics(lanes: readonly FleetLane[]): FleetSemantics {
   let fixCycles = 0;
   let hasVerdict = false;
   let planPhases = 0;
+  let planCs: number | null = null;
   let hasPlan = false;
   let workshopDecisions = 0;
   let hasWorkshop = false;
@@ -535,6 +542,11 @@ function fleetSemantics(lanes: readonly FleetLane[]): FleetSemantics {
     if (s.plan_phases !== undefined) {
       hasPlan = true;
       planPhases = Math.max(planPhases, s.plan_phases);
+      // plan_cs travels with plan_phases; take the max non-null (a fleet shares one plan,
+      // so this is that plan's CS — null stays null until a measured lane carries a CS).
+      if (s.plan_cs !== undefined && s.plan_cs !== null) {
+        planCs = planCs === null ? s.plan_cs : Math.max(planCs, s.plan_cs);
+      }
     }
     if (s.workshop_decisions !== undefined) {
       hasWorkshop = true;
@@ -560,7 +572,10 @@ function fleetSemantics(lanes: readonly FleetLane[]): FleetSemantics {
     out.verdicts = verdicts;
     out.fix_cycles = fixCycles;
   }
-  if (hasPlan) out.plan_phases = planPhases;
+  if (hasPlan) {
+    out.plan_phases = planPhases;
+    out.plan_cs = planCs;
+  }
   if (hasWorkshop) out.workshop_decisions = workshopDecisions;
   if (hasFlow) {
     out.nodes = nodes;

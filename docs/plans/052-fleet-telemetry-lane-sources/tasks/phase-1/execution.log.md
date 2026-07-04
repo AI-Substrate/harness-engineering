@@ -86,3 +86,14 @@ Result — `measured_lanes:1 · blind_lanes:3`. **Reproduces** §05: plan `CS-3`
 ## Gate
 
 `just fix` clean; full `harness checks` green; targeted `fleet-*` + `artifact-semantics` suites green. Committed `feat(telemetry-052):` with explicit pathspecs (never `git add -A`), `--no-verify`.
+
+## FIX round 1 (d-002 · review F1 MAJOR)
+
+Reviewer found the fleet-level rollup omitted **`plan_cs`** even though the lane block, T009/docs, and the reconcile note all advertise it — a telemetry-only consumer reading `fleet_semantics` could not recover the plan complexity score. Fix (smallest, per packet):
+
+- `fleet-evidence.ts`: added `plan_cs?: number | null` to `FleetSemantics` and aggregated it in `fleetSemantics(...)` alongside `plan_phases` — **max non-null across measured lanes** (a fleet shares one plan, so this is that plan's CS, not a sum; stays `null` until a measured lane carries a CS). Documented in the field JSDoc + an inline comment.
+- `fleet-export.schema.json`: added `plan_cs` (`["integer","null"]`) to the closed `fleetSemantics` block.
+- Tests: fleet unit test now asserts `expect(s.plan_cs).toBe(3)`; the fully-blind fleet test asserts `plan_phases`/`plan_cs` are BOTH `undefined` (omission, not zero); the 051 golden asserts fleet-level `expect(s.plan_cs).toBe(3)`. **Non-vacuity proven by mutation**: forcing `out.plan_cs = null` failed exactly those two fleet assertions (unit + golden), which read the real rollup — not a builder literal; restored.
+- `evidence/fleet-051-semantics.json`: `fleet_semantics` block now carries `plan_cs:3` (test-pinned as the reader's true output), making the note's Plan-row `plan_cs:3 · plan_phases:1` claim true at fleet level. Note wording already correct — untouched.
+
+Docs (`telemetry.md`) already list `plan_cs` as a fleet dimension and were out of the F1 file scope, so unchanged (no `docs-content.ts` regen). `just fix` clean; full `harness checks` exit 0 (hard gates all ok; arch-check 2 + markdown-lint 11 the same pre-existing warn-launch findings). Phase 1 golden + all Phase 2 tests green. New commit `fix(telemetry-052):`, explicit pathspecs, `--no-verify`.

@@ -221,6 +221,7 @@ describe('GOLDEN — the 051 fleet semantic reconcile vs debrief §05 (plan 052 
     const s = (await reconcile()).semantics;
     // Plan row: CS-3 · Simple · 1 phase (matches §05 exactly).
     expect(s.plan_phases).toBe(1);
+    expect(s.plan_cs).toBe(3);
     // Workshop row: the extractor counts 4 `Selected` markers (§05's hand count was 5 — D5
     // build-order wasn't `Selected`-marked; enumerated as a precision discrepancy in the note).
     expect(s.workshop_decisions).toBe(4);

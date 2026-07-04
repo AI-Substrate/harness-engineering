@@ -225,6 +225,7 @@
         "verdicts": { "$ref": "#/$defs/verdictPath" },
         "fix_cycles": { "type": "integer", "minimum": 0 },
         "plan_phases": { "type": "integer", "minimum": 0 },
+        "plan_cs": { "type": ["integer", "null"], "minimum": 0 },
         "workshop_decisions": { "type": "integer", "minimum": 0 },
         "nodes": { "type": "integer", "minimum": 0 },
         "nodes_done": { "type": "integer", "minimum": 0 },

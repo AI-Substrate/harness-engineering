@@ -274,6 +274,7 @@ describe('T009 — the fleet-level rollup carries honest lane COVERAGE', () => {
     expect(s.nodes).toBe(11);
     expect(s.nodes_done).toBe(9);
     expect(s.plan_phases).toBe(1);
+    expect(s.plan_cs).toBe(3);
   });
 
   it('a fully-blind fleet reports blind_lanes only — NO zero-filled dimensions', () => {
@@ -297,6 +298,8 @@ describe('T009 — the fleet-level rollup carries honest lane COVERAGE', () => {
     expect(s.findings).toBeUndefined();
     expect(s.verdicts).toBeUndefined();
     expect(s.nodes).toBeUndefined();
+    expect(s.plan_phases).toBeUndefined();
+    expect(s.plan_cs).toBeUndefined();
     expect(s.flow_stage_time_s).toBeUndefined();
   });
 });

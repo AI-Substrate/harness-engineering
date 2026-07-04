@@ -5,6 +5,7 @@
     "measured_lanes": 1,
     "blind_lanes": 3,
     "plan_phases": 1,
+    "plan_cs": 3,
     "workshop_decisions": 4,
     "nodes": 11,
     "nodes_done": 11,
