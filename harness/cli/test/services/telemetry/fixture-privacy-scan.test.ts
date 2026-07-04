@@ -35,6 +35,7 @@ import type { Segment } from '../../../src/services/telemetry/segment.js';
  */
 
 const FIXTURES_ROOT = fileURLToPath(new URL('./fixtures/real', import.meta.url));
+const LANE_SOURCES_ROOT = fileURLToPath(new URL('./fixtures/lane-sources', import.meta.url));
 
 type Kind = 'json' | 'text';
 function kindOf(path: string): Kind {
@@ -246,5 +247,34 @@ describe('OTLP output byte-scan (T004)', () => {
       ],
     });
     expect(scanForLeaks(leaky, bannedFor('json'), ['alice'])).toContain('macos-home');
+  });
+});
+
+/**
+ * Plan 052 · T003–T007 · AC-02 — extend the byte-scan to the LANE-SOURCE fixtures
+ * (the scrubbed real copilot `session.shutdown` + codex `token_count` side-channels +
+ * the roster's pij descriptors). They carry vendor billing counts + session ids only;
+ * this proves no machine path / identity / secret survived the scrub before commit.
+ */
+describe('lane-source fixture byte-scan (plan 052 · AC-02)', () => {
+  function laneSourceFixtures(): string[] {
+    return readdirSync(LANE_SOURCES_ROOT, { recursive: true, encoding: 'utf8' })
+      .filter((p) => /\.(jsonl?|json)$/.test(p.replace(/\\/g, '/')))
+      .map((p) => `${LANE_SOURCES_ROOT}/${p}`);
+  }
+  const artifacts = laneSourceFixtures();
+  const identity = identityTokens();
+
+  it('finds the copilot shutdown, codex rollout, and pij descriptor fixtures to scan', () => {
+    expect(artifacts.some((p) => p.endsWith('.events.jsonl'))).toBe(true); // copilot ledgers
+    expect(artifacts.some((p) => p.endsWith('.rollout.jsonl'))).toBe(true); // codex ledger
+    expect(artifacts.some((p) => /pij-[^/]+\.json$/.test(p))).toBe(true); // pij descriptors
+  });
+
+  it.each(
+    artifacts.map((p) => [p.replace(LANE_SOURCES_ROOT, 'fixtures/lane-sources'), p] as const),
+  )('no leak in committed bytes of %s', (_label, path) => {
+    const bytes = readFileSync(path, 'utf8');
+    expect(scanForLeaks(bytes, bannedFor(kindOf(path)), identity)).toEqual([]);
   });
 });

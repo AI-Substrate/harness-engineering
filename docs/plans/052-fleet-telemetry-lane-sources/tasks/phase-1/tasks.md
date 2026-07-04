@@ -26,13 +26,13 @@ The 051 fleet debrief recovered 3 of 4 cost lanes by hand from vendor side-chann
 
 | ✓ | id | task | proves |
 |---|----|------|--------|
-| [ ] | T001 | Investigate F-07: copilot worker lane emitted 0 artifact events despite running harness commands. Diagnose at source (adapter vs plan-cursor init) using ref `34524328` + a probe; fix if small, else document + name a follow-on. Root cause in execution log | AC-05 |
-| [ ] | T002 | Fix F-08 packet false positive: `*-packet.md` / rubric-line verdict lists must NOT classify as review (require Findings/Verdict report shape). Fixtures from real 050+051 packets (scrubbed) + real review.phase-1.md still → FIX_REQUIRED `{critical:1}` | AC-04 |
-| [ ] | T003 | Copilot shutdown reader `copilot-ledger.ts`: pure extractor over `session-state/<id>/events.jsonl` → `{aic, token_buckets, api_duration_ms, code_changes_counts}` from `session.shutdown`; ports-only I/O; malformed → unmeasured. Scrubbed real fixture | AC-01..03 |
-| [ ] | T004 | codex rollout reader `codex-ledger.ts`: last `token_count` per rollout under `~/.codex/sessions/<date>/`; join via pij `transcriptPath` when present, explicit roster mapping else | AC-01..03 |
-| [ ] | T005 | Refs reader: enumerate `refs/harness-telemetry/*` rollups as a fleet source so flushed lanes stay visible; live-vs-ref dedupe by session id | AC-06 |
-| [ ] | T006 | pij registry join port `pij-registry.ts`: read `~/.pij/*.json` → `pijId ↔ harnessSessionId/harness/model/spawnedBy`; absent dir → source unavailable, never error | AC-01 |
-| [ ] | T007 | Wire into get-fleet: precedence live→ref→ledger; `FleetLane` gains `source` + `billing {aic?, token_buckets?}`; closed schema extended + negative-key test; **golden test: real 051 run resolves 4/4 lanes at the exact numbers above**; regenerate 051 evidence as proof | AC-01..03, 06 |
-| [ ] | T008 | Lane-source matrix in `docs/how/telemetry.md`: per harness — cost/semantic sources, materialization timing (shutdown-only!), join keys, never-available; run-end sweep procedure (sync → snapshot before teardown); F-10 billing conventions | AC-08 |
+| [x] | T001 | Investigate F-07: copilot worker lane emitted 0 artifact events despite running harness commands. Diagnose at source (adapter vs plan-cursor init) using ref `34524328` + a probe; fix if small, else document + name a follow-on. Root cause in execution log | AC-05 |
+| [x] | T002 | Fix F-08 packet false positive: `*-packet.md` / rubric-line verdict lists must NOT classify as review (require Findings/Verdict report shape). Fixtures from real 050+051 packets (scrubbed) + real review.phase-1.md still → FIX_REQUIRED `{critical:1}` | AC-04 |
+| [x] | T003 | Copilot shutdown reader `copilot-ledger.ts`: pure extractor over `session-state/<id>/events.jsonl` → `{aic, token_buckets, api_duration_ms, code_changes_counts}` from `session.shutdown`; ports-only I/O; malformed → unmeasured. Scrubbed real fixture | AC-01..03 |
+| [x] | T004 | codex rollout reader `codex-ledger.ts`: last `token_count` per rollout under `~/.codex/sessions/<date>/`; join via pij `transcriptPath` when present, explicit roster mapping else | AC-01..03 |
+| [x] | T005 | Refs reader: enumerate `refs/harness-telemetry/*` rollups as a fleet source so flushed lanes stay visible; live-vs-ref dedupe by session id | AC-06 |
+| [x] | T006 | pij registry join port `pij-registry.ts`: read `~/.pij/*.json` → `pijId ↔ harnessSessionId/harness/model/spawnedBy`; absent dir → source unavailable, never error | AC-01 |
+| [x] | T007 | Wire into get-fleet: precedence live→ref→ledger; `FleetLane` gains `source` + `billing {aic?, token_buckets?}`; closed schema extended + negative-key test; **golden test: real 051 run resolves 4/4 lanes at the exact numbers above**; regenerate 051 evidence as proof | AC-01..03, 06 |
+| [x] | T008 | Lane-source matrix in `docs/how/telemetry.md`: per harness — cost/semantic sources, materialization timing (shutdown-only!), join keys, never-available; run-end sweep procedure (sync → snapshot before teardown); F-10 billing conventions | AC-08 |
 
 Keep this table and `execution.log.md` live as you go.

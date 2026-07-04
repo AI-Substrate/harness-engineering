@@ -1,3 +1,9 @@
+import type { GitReadPort } from '../../adapters/git/git-read-port.js';
+import { findCodexRollout, readCodexLedger } from './codex-ledger.js';
+import { readCopilotLedger } from './copilot-ledger.js';
+import type { PijDescriptor, PijRegistry } from './pij-registry.js';
+import { readPijRegistry } from './pij-registry.js';
+import { type RefLane, readRefLanes } from './ref-source.js';
 import type { Segment } from './segment.js';
 import {
   candidateRoots,
@@ -54,6 +60,31 @@ export interface FleetLaneTokens {
   output: number;
 }
 
+/**
+ * Where a lane's cost/evidence was resolved from (plan 052 · T007), in precedence
+ * order: `live` = the local temp buffer segments; `ref` = a synced
+ * `refs/harness-telemetry/*` rollup (a flushed lane); `ledger` = a vendor
+ * side-channel (copilot `session.shutdown` / codex rollout `token_count`) recovered
+ * post-hoc via the pij registry join. A lane carries the FIRST source that resolves.
+ */
+export type FleetLaneSource = 'live' | 'ref' | 'ledger';
+
+/**
+ * Billing units carried per lane (plan 052 · T007 / dossier F-10) — the AUTHORITATIVE
+ * cost unit, distinct from the raw token `grand_total`. `nano_aiu` is copilot's AIC
+ * billing unit ×10⁹ (AIC = nano_aiu/1e9), an integer so the export stays counts-only
+ * (Constitution P12); `token_buckets` is an open-keyed integer histogram (copilot:
+ * input/output/cache_read/cache_create; codex: input/output/cached/reasoning/total).
+ * Omitted on a lane with no recovered billing (a live claude lane carries its cost in
+ * `tokens`; billing is for the side-channel-recovered lanes).
+ */
+export interface FleetLaneBilling {
+  /** Copilot billing unit — nano-AIU (AIC ×1e9). AIC = nano_aiu/1e9. Integer, lossless. */
+  nano_aiu?: number;
+  /** Token buckets by name — integers (never a raw grand total surfaced as the unit, F-10). */
+  token_buckets?: Record<string, number>;
+}
+
 /** One session, one row in the fleet (workshop D2). */
 export interface FleetLane {
   /** The child's own pij id (`captured_env.PIJ_SESSION_ID`) — the join key. */
@@ -65,12 +96,17 @@ export interface FleetLane {
   /** First model name seen across the lane's segments, or `null` when none carried one. */
   model: string | null;
   /**
-   * `false` ⇒ a `tokens: null` (copilot) lane (F-07) — NEVER zero-filled into
-   * `totals.cost`; counted in `unmeasured_lanes` instead.
+   * `false` ⇒ a `tokens: null` (copilot) lane with no recovered ledger (F-07) —
+   * NEVER zero-filled into `totals.cost`; counted in `unmeasured_lanes` instead. A
+   * ledger-resolved lane IS measured (its billing is the recovered side-channel).
    */
   cost_measured: boolean;
   /** This lane's cost (fleet-layer — `SessionEvidence` carries no tokens). `{0,0}` when unmeasured. */
   tokens: FleetLaneTokens;
+  /** Where this lane resolved from: `live` → `ref` → `ledger` (plan 052 · T007). */
+  source: FleetLaneSource;
+  /** Recovered billing units (AIC / token buckets); omitted when none (dossier F-10). */
+  billing?: FleetLaneBilling;
   /** The existing per-session evidence object, unchanged (D2 — reused via {@link fold}). */
   evidence: SessionEvidence;
 }
@@ -130,6 +166,13 @@ export interface FleetRoster {
 export interface FleetEvidenceOpts extends SessionEvidenceOpts {
   /** Path to a flow-pair `run.json` whose `roster` scopes membership (D1); optional. */
   rosterPath?: string;
+  /**
+   * Optional git READ port (plan 052 · T005). When present, `refs/harness-telemetry/*`
+   * rollups are enumerated as a fleet source so a FLUSHED (pruned-from-temp) rostered
+   * lane resolves `source:'ref'` instead of collapsing to an orphan (AC-06). Absent →
+   * the ref tier is simply skipped (live → ledger), never an error.
+   */
+  gitRead?: GitReadPort;
 }
 
 /**
@@ -278,6 +321,7 @@ export function buildFleetEvidence(
       model: laneModel(segs),
       cost_measured: measured,
       tokens,
+      source: 'live',
       evidence,
     };
   };
@@ -354,10 +398,201 @@ export function buildFleetEvidence(
 }
 
 /**
+ * A minimal {@link SessionEvidence} for a lane resolved from a side-channel LEDGER
+ * (no live/ref segments): the canonical empty fold, restamped with the real harness
+ * + harness session id. `segments: 0` and the standard `gaps` are the honest signal
+ * that no event-stream semantics exist for this lane (Phase 2 will flag it
+ * `semantics_measured:false`) — never a fabricated activity.
+ */
+function ledgerEvidence(
+  pijId: string,
+  harnessSessionId: string | null,
+  harness: string,
+): SessionEvidence {
+  const ev = fold(pijId, []);
+  ev.harness = harness;
+  ev.harness_session_id = harnessSessionId;
+  return ev;
+}
+
+/**
+ * Build a LEDGER lane for a roster member with no live/ref telemetry, from its pij
+ * descriptor's join keys (plan 052 · T007 — precedence tier 3). copilot → the
+ * `session.shutdown` billing ledger (AIC + token buckets); codex → the rollout
+ * `token_count` total (via `transcriptPath`, else the session-id locator). Returns
+ * `null` when the harness has no side channel or the ledger is unmeasured — the
+ * caller keeps that member an honest orphan, never a zero-filled lane (AC-02).
+ */
+export function buildLedgerLane(
+  pijId: string,
+  role: string | null,
+  desc: PijDescriptor,
+  deps: SessionEvidenceDeps,
+): FleetLane | null {
+  const home = deps.env.home();
+  if (desc.harness === 'copilot' && desc.harness_session_id !== null) {
+    const led = readCopilotLedger(deps.fs, home, desc.harness_session_id);
+    if (!led.measured || led.nano_aiu === null) return null;
+    const b = led.token_buckets ?? { input: 0, output: 0, cache_read: 0, cache_create: 0 };
+    const grand = b.input + b.output + b.cache_read + b.cache_create;
+    return {
+      pij_id: pijId,
+      role,
+      harness: 'copilot',
+      model: desc.model,
+      cost_measured: true,
+      tokens: { grand_total: grand, output: b.output },
+      source: 'ledger',
+      billing: { nano_aiu: led.nano_aiu, token_buckets: { ...b } },
+      evidence: ledgerEvidence(pijId, desc.harness_session_id, 'copilot'),
+    };
+  }
+  if (desc.harness === 'codex') {
+    const path =
+      desc.transcript_path ?? findCodexRollout(deps.fs, home, desc.harness_session_id ?? '');
+    const led = readCodexLedger(deps.fs, path);
+    if (!led.measured || led.token_buckets === null) return null;
+    const b = led.token_buckets;
+    return {
+      pij_id: pijId,
+      role,
+      harness: 'codex',
+      model: desc.model,
+      cost_measured: true,
+      tokens: { grand_total: b.total, output: b.output },
+      source: 'ledger',
+      billing: {
+        token_buckets: {
+          input: b.input,
+          output: b.output,
+          cached: b.cached,
+          reasoning: b.reasoning,
+          total: b.total,
+        },
+      },
+      evidence: ledgerEvidence(pijId, desc.harness_session_id, 'codex'),
+    };
+  }
+  return null;
+}
+
+/** An empty roster-scoped shell — used when the buffer yields no live lane at all. */
+function emptyRosterFleet(rootPijId: string, roster: FleetRoster | null): FleetEvidence | null {
+  if (roster === null) return null; // env-tree scope needs ≥1 live child
+  return {
+    root_pij_id: rootPijId,
+    scope: 'roster',
+    sessions: [],
+    orphans: roster.members.map((m) => m.pij_id),
+    unrostered: [],
+    totals: {
+      cost: { grand_total: 0, output: 0, measured_lanes: 0, unmeasured_lanes: 0 },
+      time: { wall_clock_s: null, active_s: null },
+      segments: 0,
+    },
+  };
+}
+
+/** Recompute cost + segment totals over the current lanes (time stays — ledger lanes have no span). */
+function recomputeCostAndSegments(fleet: FleetEvidence): void {
+  let grand = 0;
+  let output = 0;
+  let measured = 0;
+  let unmeasured = 0;
+  let segs = 0;
+  for (const l of fleet.sessions) {
+    segs += l.evidence.segments;
+    if (l.cost_measured) {
+      grand += l.tokens.grand_total;
+      output += l.tokens.output;
+      measured += 1;
+    } else {
+      unmeasured += 1;
+    }
+  }
+  fleet.totals.cost = {
+    grand_total: grand,
+    output,
+    measured_lanes: measured,
+    unmeasured_lanes: unmeasured,
+  };
+  fleet.totals.segments = segs;
+}
+
+/** Build a REF lane for a rostered member whose flushed telemetry lives in a synced rollup. */
+function buildRefLane(
+  pijId: string,
+  role: string | null,
+  desc: PijDescriptor,
+  ref: RefLane,
+): FleetLane {
+  return {
+    pij_id: pijId,
+    role,
+    harness: desc.harness ?? 'unknown',
+    model: desc.model,
+    cost_measured: ref.measured,
+    tokens: ref.tokens,
+    source: 'ref',
+    evidence: ledgerEvidence(pijId, desc.harness_session_id, desc.harness ?? 'unknown'),
+  };
+}
+
+/**
+ * Resolve each roster orphan (a rostered member with no LIVE lane) against the ref
+ * source then the vendor ledger — precedence **ref → ledger** (plan 052 · T005/T007),
+ * live having already won for any member in `sessions`. Resolved members are promoted
+ * into `sessions` (source `ref`/`ledger`) and dropped from `orphans`; children are
+ * re-sorted by descending cost with the orchestrator first. Cost/segment totals are
+ * recomputed; time is untouched. Mutates `fleet` in place.
+ */
+function enrichOrphans(
+  fleet: FleetEvidence,
+  roster: FleetRoster,
+  registry: PijRegistry,
+  refLanes: Map<string, RefLane>,
+  deps: SessionEvidenceDeps,
+): void {
+  const roleOf = new Map(roster.members.map((m) => [m.pij_id, m.role] as const));
+  const resolved: FleetLane[] = [];
+  const remaining: string[] = [];
+  for (const pijId of fleet.orphans) {
+    const desc = registry.by_pij.get(pijId);
+    let lane: FleetLane | null = null;
+    if (desc) {
+      // Tier 2 — ref (a flushed lane), keyed by the descriptor's harness session id.
+      const ref = desc.harness_session_id ? refLanes.get(desc.harness_session_id) : undefined;
+      if (ref !== undefined) {
+        lane = buildRefLane(pijId, roleOf.get(pijId) ?? null, desc, ref);
+      } else {
+        // Tier 3 — vendor ledger (copilot shutdown / codex rollout).
+        lane = buildLedgerLane(pijId, roleOf.get(pijId) ?? null, desc, deps);
+      }
+    }
+    if (lane !== null) resolved.push(lane);
+    else remaining.push(pijId);
+  }
+  if (resolved.length === 0) return;
+
+  const orch = fleet.sessions.find((l) => l.pij_id === fleet.root_pij_id) ?? null;
+  const children = [
+    ...fleet.sessions.filter((l) => l.pij_id !== fleet.root_pij_id),
+    ...resolved,
+  ].sort((a, b) => b.tokens.grand_total - a.tokens.grand_total || a.pij_id.localeCompare(b.pij_id));
+  fleet.sessions = orch ? [orch, ...children] : children;
+  fleet.orphans = remaining.sort();
+  recomputeCostAndSegments(fleet);
+}
+
+/**
  * Read + join + merge a fleet's telemetry into a {@link FleetEvidence}, or `null`
- * when no child joins to this root. Scans the worktree-safe candidate buffer roots
- * (worktree → orchestrator pij folder → cwd, via {@link candidateRoots}) and uses
- * the FIRST that yields ≥1 lane. Fail-safe: any unexpected error resolves to `null`.
+ * when nothing resolves. Precedence per lane is **live → ref → ledger** (plan 052 ·
+ * T007): the local temp buffer first (worktree-safe {@link candidateRoots}), then —
+ * for rostered members still missing — their vendor side-channel LEDGER, joined via
+ * the pij registry (copilot `session.shutdown` AIC, codex rollout `token_count`). So
+ * a run whose workers have died still reports 4/4 lanes: the orchestrator live, the
+ * workers from their shutdown/rollout ledgers. Fail-safe: any unexpected error
+ * resolves to `null`.
  */
 export async function getFleetEvidence(
   rootPijId: string,
@@ -370,11 +605,31 @@ export async function getFleetEvidence(
       const raw = deps.fs.readText(opts.rosterPath);
       if (raw !== null) roster = parseRoster(raw);
     }
+
+    // Tier 1 — live temp buffer (the FIRST candidate root that yields a lane).
+    let live: FleetEvidence | null = null;
     for (const telDir of candidateRoots(rootPijId, deps, opts)) {
-      const fleet = buildFleetEvidence(rootPijId, readSegments(deps.fs, telDir), roster);
-      if (fleet !== null) return fleet;
+      const built = buildFleetEvidence(rootPijId, readSegments(deps.fs, telDir), roster);
+      if (built !== null) {
+        live = built;
+        break;
+      }
     }
-    return null;
+
+    const fleet = live ?? emptyRosterFleet(rootPijId, roster);
+    if (fleet === null) return null; // no live lane and no roster to resolve
+
+    // Tiers 2 + 3 — ref rollups then vendor ledgers for rostered orphans (env-tree
+    // scope has no orphans, so its lanes are live-only). Both are read-only + fail-safe.
+    if (roster !== null) {
+      const registry = readPijRegistry(deps);
+      const refLanes = opts?.gitRead ? readRefLanes(opts.gitRead) : new Map<string, RefLane>();
+      if (registry.available || refLanes.size > 0) {
+        enrichOrphans(fleet, roster, registry, refLanes, deps);
+      }
+    }
+
+    return fleet.sessions.length > 0 ? fleet : null;
   } catch {
     return null;
   }

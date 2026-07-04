@@ -80,6 +80,58 @@ describe('extractor: review', () => {
   });
 });
 
+describe('F-08 — review-packet templates are NOT reviews (plan 052 T002)', () => {
+  // The REAL 050/051 packet shapes (public repo grammar): a rubric verdict line +
+  // a finding-FORMAT line with `<…>` placeholders and no concrete `F<digit>`.
+  const PACKET = [
+    '# Review packet — 051 Phase 1',
+    '## Output',
+    'Write `docs/plans/051-x/reviews/review.phase-1.md`:',
+    '- `**Verdict**: APPROVE | APPROVE_WITH_NOTES | FIX_REQUIRED`',
+    '- Findings `F<N> · <CRITICAL|HIGH|MED>` with file:line, claim, proof, smallest fix',
+  ].join('\n');
+
+  // The REAL 051 review.phase-1.md shape: a single verdict + one CRITICAL finding.
+  const REAL_REVIEW = [
+    '# Review — plan 051 phase 1',
+    '**Verdict**: FIX_REQUIRED',
+    '## Findings',
+    '### F1 · CRITICAL · roster scope is only labelled, not actually scoped',
+  ].join('\n');
+
+  it('a *-packet.md path matches NO extractor (never classified as review)', () => {
+    expect(matchExtractor('docs/plans/051-x/reviews/review-packet.md')).toBeNull();
+    expect(matchExtractor('docs/plans/050-x/reviews/review-packet.md')).toBeNull();
+  });
+
+  it('a real review.phase-1.md path still matches the review extractor', () => {
+    expect(matchExtractor('docs/plans/051-x/reviews/review.phase-1.md')?.type).toBe('review');
+  });
+
+  it('the packet emits NO artifact event (capture pass)', () => {
+    const events = artifactSemanticsEvents(
+      reader({ '/repo/docs/plans/051-x/reviews/review-packet.md': PACKET }),
+      REPO,
+      { written: ['docs/plans/051-x/reviews/review-packet.md'] },
+      '2026-07-04T00:00:00Z',
+    );
+    expect(events).toEqual([]);
+  });
+
+  it('the REAL 051 review still yields verdict FIX_REQUIRED, findings {critical:1} (AC-04)', () => {
+    const { counts, enums } = extractorFor('review').extract(REAL_REVIEW);
+    expect(enums).toEqual({ verdict: 'FIX_REQUIRED' });
+    expect(counts).toEqual({ findings_critical: 1 });
+  });
+
+  it('a rubric verdict line is rejected even in a non-packet review file (defense in depth)', () => {
+    // A pipe-separated vocabulary enumeration is an instruction, not a verdict —
+    // no verdict enum travels, whatever the filename.
+    const rubric = '**Verdict**: APPROVE | APPROVE_WITH_NOTES | FIX_REQUIRED | NEEDS_ATTENTION';
+    expect(extractorFor('review').extract(rubric).enums).toEqual({});
+  });
+});
+
 describe('extractor: plan', () => {
   it('counts phases, CS, gate rows, gaps, workshop opps; lifts mode + status (Full)', () => {
     const content = [

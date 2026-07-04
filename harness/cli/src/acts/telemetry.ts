@@ -655,6 +655,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         {
           ...(options.worktree ? { worktree: options.worktree } : {}),
           ...(options.roster ? { rosterPath: options.roster } : {}),
+          ...(deps.gitRead ? { gitRead: deps.gitRead } : {}),
         },
       );
 
@@ -687,7 +688,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
 
       const envelope = formatOk('telemetry', fleet, deps.clock, {
         next_action:
-          'Fleet evidence merged from the child session event streams; cost is a lower bound over measured lanes (copilot-null lanes counted as unmeasured, never zero-filled).',
+          'Fleet evidence merged per lane (precedence live → ref → ledger): live temp segments, then rostered members recovered from their vendor ledgers (copilot session.shutdown AIC, codex rollout tokens). Cost is a lower bound; unresolved lanes are counted unmeasured, never zero-filled.',
       });
       const port: OutputPort =
         io.mode === 'json'
@@ -696,8 +697,20 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
               emit: () => {
                 const c = fleet.totals.cost;
                 const wall = fleet.totals.time.wall_clock_s;
+                const bySource = fleet.sessions.reduce<Record<string, number>>((acc, l) => {
+                  acc[l.source] = (acc[l.source] ?? 0) + 1;
+                  return acc;
+                }, {});
+                const srcSummary = Object.entries(bySource)
+                  .map(([s, n]) => `${n} ${s}`)
+                  .join(', ');
+                const nanoAiu = fleet.sessions.reduce(
+                  (sum, l) => sum + (l.billing?.nano_aiu ?? 0),
+                  0,
+                );
+                const aic = nanoAiu > 0 ? `, ${(nanoAiu / 1e9).toFixed(1)} AIC` : '';
                 io.writers.out(
-                  `telemetry get-fleet: ${fleet.sessions.length} lane(s) [${c.measured_lanes} measured, ${c.unmeasured_lanes} unmeasured], ${c.grand_total.toLocaleString()} tokens, wall ${wall === null ? 'unknown' : `${wall}s`}, scope ${fleet.scope}\n`,
+                  `telemetry get-fleet: ${fleet.sessions.length} lane(s) [${c.measured_lanes} measured, ${c.unmeasured_lanes} unmeasured] (${srcSummary}), ${c.grand_total.toLocaleString()} tokens${aic}, wall ${wall === null ? 'unknown' : `${wall}s`}, scope ${fleet.scope}\n`,
                 );
               },
             };

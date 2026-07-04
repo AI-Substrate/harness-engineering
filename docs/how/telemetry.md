@@ -266,27 +266,79 @@ harness telemetry get-fleet <root-pij-id> --roster .flow-pair/runs/<run>/run.jso
 
 The result is a **`FleetEvidence`** (closed, counts-only shape in
 `fleet-export.schema.json`) — one lane per child, each embedding the same
-per-session evidence `harness telemetry get` returns, plus fleet totals:
+per-session evidence `harness telemetry get` returns, plus fleet totals. Every lane
+carries a **`source`** (`live` | `ref` | `ledger`) and, when recovered from a vendor
+side-channel, a **`billing`** block (`nano_aiu` and/or `token_buckets`):
 
-- **Cost** — `totals.cost.grand_total` sums `tokens.grand_total` over lanes with
-  `cost_measured: true` **only**. Copilot children capture `tokens: null` today,
-  so those lanes are `cost_measured: false`, **excluded from the sum** (never
-  zero-filled) and counted in `unmeasured_lanes`. Fleet cost is an honest **lower
-  bound** until copilot token capture lands.
+- **Cost** — resolved per lane in precedence order **live → ref → ledger**: the
+  local temp buffer first; then, for a rostered member whose buffer was already
+  flushed, its synced `refs/harness-telemetry/*` rollup (`source: ref`); then its
+  vendor **ledger** (`source: ledger`) — the copilot `session.shutdown` billing
+  record or the codex rollout `token_count` total, joined through the pij registry.
+  `totals.cost.grand_total` sums `tokens.grand_total` over lanes with
+  `cost_measured: true`; a lane that resolves to none of the three tiers stays
+  `cost_measured: false`, **excluded from the sum** (never zero-filled) and counted
+  in `unmeasured_lanes`. Fleet cost is still an honest **lower bound**.
 - **Time** — `totals.time.wall_clock_s` is the **union** of the lanes' event-time
   spans; `active_s` is their **sum**; `active/wall` is the parallelism ratio. Both
   come from `event_stream[].t` timestamps (the segment `window` is an event index,
-  not wall-clock), and are `null` only when no lane had a measurable span.
+  not wall-clock), and are `null` only when no lane had a measurable span. Ledger
+  lanes carry no event stream, so they add cost but not time.
 - **Membership** — without a roster the `scope` is `env-tree` (a superset: a
   parent pij id is stable across the orchestrator's whole life, so it can conflate
   several runs). With `--roster`, `scope` is `roster` and two diffs surface the
-  discrepancy as a first-class signal: `orphans` (rostered ids with no captured
-  telemetry) and `unrostered` (env-tree children absent from the roster).
+  discrepancy as a first-class signal: `orphans` (rostered ids that resolved to no
+  source at all) and `unrostered` (env-tree children absent from the roster).
 
 Depth-1 by contract (grandchildren are reserved, not walked). Read-only and
 fail-safe — an unknown root or an empty buffer resolves to an honest error /
 `null`, never a throw. See `docs/plans/051-pij-fleet-session-eval/` for the design
-(workshop D1–D3) and the fleet-050 retrospective evidence.
+(workshop D1–D3) and `docs/plans/052-fleet-telemetry-lane-sources/` for the lane
+sources below.
+
+### Lane sources — where each harness's cost + semantics live
+
+The knowledge that used to be tribal (which side-channel holds which harness's
+cost, when it materializes, and the key that joins it) is the matrix below. Every
+cell is a **deterministic reader** inside `get-fleet` — no hand archaeology.
+
+| harness | cost source | **materializes** | join key | semantics | never available |
+|---|---|---|---|---|---|
+| **claude** (orchestrator) | live temp segments → synced `ref` rollup | per-command (live), then on `checks`/sync flush | `captured_env.PIJ_SESSION_ID` (live) · ref last path segment (ref) | full artifact/flow/skill events | — |
+| **copilot** (worker) | `~/.copilot/session-state/<id>/events.jsonl` → `session.shutdown` (`totalNanoAiu` = AIC×1e9, `tokenDetails`, `codeChanges`) | **shutdown-only** — written once, at graceful session end | pij registry `harnessSessionId` → the session dir | `artifact` events (F-07 fix: `create`/`edit` paths now captured) | live per-command tokens (always null mid-session — F-01) |
+| **codex** (worker) | `~/.codex/sessions/<Y/M/D>/rollout-*.jsonl` → last `token_count` (`total_token_usage`) | per-turn, running total | pij registry `transcriptPath` (else session-id in the rollout filename) | none captured | AIC (codex bills in raw tokens) |
+| **pi** (worker) | — (no harness telemetry, no side-channel ledger yet) | — | pij registry | none | cost + semantics (documented gap) |
+
+The load-bearing caveat is **materialization timing**: a copilot lane's billing
+exists **only after** the session shuts down gracefully — a `get-fleet` run while a
+copilot worker is still live reads its ledger as unmeasured. Read-only peers (a
+reviewer that never commits) leave **no** harness telemetry at all; the shutdown
+ledger is their only trace (dossier F-05).
+
+### Run-end sweep — snapshot before teardown
+
+Because the temp buffer is volatile (the post-commit flush prunes it) and copilot
+ledgers only materialize at shutdown, capture the fleet **at run end, before tearing
+peers down**:
+
+```sh
+# 1. flush every still-live lane's buffer into its ref rollup
+harness telemetry sync
+# 2. let each copilot/codex peer exit gracefully (writes its shutdown/rollout ledger)
+# 3. snapshot the joined fleet (live + ref + ledger) while the side-channels still exist
+harness telemetry get-fleet <root-pij-id> --roster <run.json> --json > fleet.json
+```
+
+### Billing conventions (F-10)
+
+Report **billing units, never raw token grand totals**. Copilot bills in **AIC**
+(`nano_aiu / 1e9`, ≈ \$0.01/credit); codex and others are indicative USD via a
+pricing table (an analysis-layer concern — the CLI emits raw units only, never a USD
+conversion). `totalPremiumRequests` is a **legacy** (pre-2026-06) field — carried for
+provenance, **never** surfaced as cost. Cache reads dominate modern token totals (a
+long orchestrator lane can be ~98% cache reads, billed at ~1/10 the input rate), so
+the raw `grand_total` overstates spend — the per-lane `billing` block is the
+authoritative unit.
 
 ## Syncing — `harness telemetry sync`
 

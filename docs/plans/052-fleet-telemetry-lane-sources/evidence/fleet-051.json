@@ -1,0 +1,180 @@
+{
+  "root_pij_id": "pij-4s10mb",
+  "scope": "roster",
+  "sessions": [
+    {
+      "pij_id": "pij-4s10mb",
+      "role": "orchestrator",
+      "harness": "claude",
+      "model": "claude-opus-4.8",
+      "cost_measured": true,
+      "tokens": {
+        "grand_total": 650,
+        "output": 150
+      },
+      "source": "live",
+      "evidence": {
+        "pij_session_id": "pij-4s10mb",
+        "harness_session_id": "15eaa924-56f3-4427-9abc-000000000000",
+        "harness": "claude-code",
+        "segments": 1,
+        "skills": {},
+        "skill_order": [],
+        "files": {
+          "written": [],
+          "edited": []
+        },
+        "flow_seams": [],
+        "harness_verbs": {},
+        "checks": [],
+        "compactions": 0,
+        "tools": {},
+        "gaps": [
+          "plans_touched"
+        ],
+        "duration_s": 1800
+      }
+    },
+    {
+      "pij_id": "pij-g7t974",
+      "role": "coder",
+      "harness": "copilot",
+      "model": null,
+      "cost_measured": true,
+      "tokens": {
+        "grand_total": 20728768,
+        "output": 139800
+      },
+      "source": "ledger",
+      "billing": {
+        "nano_aiu": 1742858875000,
+        "token_buckets": {
+          "input": 16009,
+          "output": 139800,
+          "cache_read": 19952600,
+          "cache_create": 620359
+        }
+      },
+      "evidence": {
+        "pij_session_id": "pij-g7t974",
+        "harness_session_id": "34524328-5ab0-41c4-8cc9-62b03128930d",
+        "harness": "copilot",
+        "segments": 0,
+        "skills": {},
+        "skill_order": [],
+        "files": {
+          "written": [],
+          "edited": []
+        },
+        "flow_seams": [],
+        "harness_verbs": {},
+        "checks": [],
+        "compactions": 0,
+        "tools": {},
+        "gaps": [
+          "plans_touched"
+        ],
+        "duration_s": null
+      }
+    },
+    {
+      "pij_id": "pij-106t2i1",
+      "role": "reviewer",
+      "harness": "copilot",
+      "model": null,
+      "cost_measured": true,
+      "tokens": {
+        "grand_total": 1923348,
+        "output": 18597
+      },
+      "source": "ledger",
+      "billing": {
+        "nano_aiu": 298534500000,
+        "token_buckets": {
+          "input": 327791,
+          "output": 18597,
+          "cache_read": 1576960,
+          "cache_create": 0
+        }
+      },
+      "evidence": {
+        "pij_session_id": "pij-106t2i1",
+        "harness_session_id": "6daaffe6-4e9b-4477-8d0d-007ca9dfb5b0",
+        "harness": "copilot",
+        "segments": 0,
+        "skills": {},
+        "skill_order": [],
+        "files": {
+          "written": [],
+          "edited": []
+        },
+        "flow_seams": [],
+        "harness_verbs": {},
+        "checks": [],
+        "compactions": 0,
+        "tools": {},
+        "gaps": [
+          "plans_touched"
+        ],
+        "duration_s": null
+      }
+    },
+    {
+      "pij_id": "pij-wolk0r",
+      "role": "validator",
+      "harness": "codex",
+      "model": null,
+      "cost_measured": true,
+      "tokens": {
+        "grand_total": 1368083,
+        "output": 15846
+      },
+      "source": "ledger",
+      "billing": {
+        "token_buckets": {
+          "input": 1352237,
+          "output": 15846,
+          "cached": 1214208,
+          "reasoning": 8372,
+          "total": 1368083
+        }
+      },
+      "evidence": {
+        "pij_session_id": "pij-wolk0r",
+        "harness_session_id": "019f2b3b-6fbb-73b3-a9ec-b78a01deb9d0",
+        "harness": "codex",
+        "segments": 0,
+        "skills": {},
+        "skill_order": [],
+        "files": {
+          "written": [],
+          "edited": []
+        },
+        "flow_seams": [],
+        "harness_verbs": {},
+        "checks": [],
+        "compactions": 0,
+        "tools": {},
+        "gaps": [
+          "plans_touched"
+        ],
+        "duration_s": null
+      }
+    }
+  ],
+  "orphans": [],
+  "unrostered": [],
+  "totals": {
+    "cost": {
+      "grand_total": 24020849,
+      "output": 174393,
+      "measured_lanes": 4,
+      "unmeasured_lanes": 0
+    },
+    "time": {
+      "wall_clock_s": 1800,
+      "active_s": 1800
+    },
+    "segments": 1
+  }
+}

@@ -39,7 +39,8 @@ import type {
  * → `cache_create`; `metrics.output_tokens + reasoning_tokens` → `output` (reasoning
  * folded in so `total = input+output+cache_create+cache_read` stays the invariant).
  * Subagent tokens are not cleanly correlatable → `null` (never guessed).
- * `files`/`compactions`/`thinking` are `null` this phase.
+ * `files` are the `create`/`edit` tool target paths (F-07 / plan 052 T001 — so the
+ * artifact-semantics pass fires on copilot lanes); `compactions`/`thinking` stay `null`.
  *
  * PRIVACY (AC-04): only counts + names + correlation ids (used internally for
  * windowing, never emitted) are read — tool `arguments` and message text are never
@@ -169,6 +170,10 @@ const nullCaps: HarnessCapabilities = {
 interface EventsView {
   effort: string | null;
   tools: Record<string, number>;
+  /** Files created in the window (from `create`/`write` tool `arguments.path`). */
+  written: string[];
+  /** Files modified in the window (from `edit`/`str_replace` tool `arguments.path`). */
+  edited: string[];
   userPrompts: number[];
   subagents: SegmentSubagentInput[];
   /** Interaction ids active in THIS window — the token-attribution key. */
@@ -198,6 +203,9 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // command line by call id, captured INDEPENDENTLY of toolName (they can land on
   // different events) — resolved to bash/shell post-loop via toolNameByCall.
   const commandByCall = new Map<string, { cmd: string; t: string | null }>();
+  // File path by call id (F-07 / plan 052 T001): the copilot editor tools carry a
+  // clean `arguments.path`; classified to written/edited post-loop via toolNameByCall.
+  const pathByCall = new Map<string, string>();
   const successByCall = new Map<string, boolean>(); // execution_complete `success` → command_exit
   const completeAtByCall = new Map<string, string>(); // execution_complete ts → command_exit `t`
   // FX003: callId → its tool_result payload size (estimate), attached to the call post-loop.
@@ -264,6 +272,14 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       if (callId !== null && !commandByCall.has(callId)) {
         const cmd = str(asObj(data.arguments).command);
         if (cmd !== null) commandByCall.set(callId, { cmd, t: ts });
+      }
+      // A file tool's target path → captured by call id, classified written/edited
+      // post-loop via toolNameByCall (F-07 / plan 052 T001). Only the `path` field is
+      // read (a repo id, relativized + confined at serialize time); never the file
+      // body (`file_text`/`old_str`/`new_str`), which carries free text (AC-04).
+      if (callId !== null && !pathByCall.has(callId)) {
+        const p = str(asObj(data.arguments).path);
+        if (p !== null) pathByCall.set(callId, p);
       }
       // The execution's outcome (AC-19): Copilot reports a `success` boolean on
       // completion (it carries no result envelope, so `checks` isn't derivable —
@@ -339,9 +355,24 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     if (rt !== undefined) call.result_tokens = rt;
     return call;
   });
+  // Files touched (F-07 / plan 052 T001): classify each captured tool `path` by its
+  // tool name — `create`/`write` create a file, `edit`/`str_replace` modify one;
+  // `view` and every other tool are read-only and contribute nothing. This is the
+  // copilot analogue of the claude adapter's `Write`/`Edit` extraction, so the
+  // capture-time artifact-semantics pass has a changed-file set on copilot worker
+  // lanes too (they emitted 0 `artifact` events before this — the root of F-07).
+  const written: string[] = [];
+  const edited: string[] = [];
+  for (const [callId, p] of pathByCall) {
+    const tn = toolNameByCall.get(callId);
+    if (tn === 'create' || tn === 'write') written.push(p);
+    else if (tn === 'edit' || tn === 'str_replace' || tn === 'str_replace_editor') edited.push(p);
+  }
   return {
     effort,
     tools,
+    written,
+    edited,
     userPrompts,
     subagents,
     windowInteractionIds,
@@ -384,6 +415,8 @@ export const copilotAdapter: HarnessAdapter = {
         : {
             effort: null,
             tools: {},
+            written: [],
+            edited: [],
             userPrompts: [],
             subagents: [],
             windowInteractionIds: new Set(),
@@ -531,7 +564,10 @@ export const copilotAdapter: HarnessAdapter = {
       tools: Object.keys(ev.tools).length > 0 ? ev.tools : null,
       user_prompts: ev.userPrompts.length > 0 ? ev.userPrompts : null,
       subagents: ev.subagents.length > 0 ? ev.subagents : null,
-      files: null,
+      files:
+        ev.written.length > 0 || ev.edited.length > 0
+          ? { written: ev.written, edited: ev.edited }
+          : null,
       compactions: null,
       api_errors: null,
       local_commands: null,

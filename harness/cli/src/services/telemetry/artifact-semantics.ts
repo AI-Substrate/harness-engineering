@@ -134,10 +134,40 @@ const PR_STATE_VOCAB = ['OPEN', 'MERGED', 'CLOSED', 'DRAFT'] as const;
 
 // ── the ten extractors (thin regex counters — KISS) ──────────────────────────
 
+/**
+ * The FIRST verdict token on the `**Verdict**:` line, gated to {@link VERDICT_VOCAB}
+ * (else `other`); `undefined` when absent OR when the line is a RUBRIC (F-08 / plan
+ * 052 T002). A review-PACKET template enumerates the whole vocabulary as
+ * pipe-separated options (`**Verdict**: APPROVE | APPROVE_WITH_NOTES | FIX_REQUIRED`)
+ * — an instruction, not a verdict — so ≥2 DISTINCT verdicts across `|`-split
+ * segments rejects it. A real verdict is one token; later parenthetical mentions
+ * (`APPROVE (FIX_REQUIRED → fixed)`) use arrows/parens, not pipes, so they still
+ * resolve to the leading token.
+ */
+function reviewVerdict(content: string): string | undefined {
+  const m = /\*\*Verdict\*\*:([^\n]*)/.exec(content);
+  if (m === null) return undefined;
+  const line = m[1] ?? '';
+  const parts = line.split('|');
+  if (parts.length >= 2) {
+    const distinct = new Set<string>();
+    for (const part of parts) {
+      for (const v of VERDICT_VOCAB) if (new RegExp(`\\b${v}\\b`).test(part)) distinct.add(v);
+    }
+    if (distinct.size >= 2) return undefined; // rubric list → not a verdict
+  }
+  return enumOf(line, /([A-Z][A-Z_]{2,})/, VERDICT_VOCAB);
+}
+
 /** Row 1–4: reviews — fixes, findings by severity, re-review loops, verdict. */
 const reviewExtractor: ArtifactExtractor = {
   type: 'review',
-  match: (p) => /\/reviews\/[^/]+\.md$/.test(p),
+  // A real review report lives at `reviews/<name>.md`, but NOT a review-PACKET
+  // template (`*-packet.md`) — those enumerate the finding/verdict GRAMMAR as
+  // instructions, so classifying them as reviews mis-reports a template's rubric
+  // as a real verdict (F-08 / plan 052 T002). Excluded here → no extractor matches
+  // → the packet emits nothing (there is no default extractor).
+  match: (p) => /\/reviews\/[^/]+\.md$/.test(p) && !/-packet\.md$/.test(p),
   extract: (content) => {
     const counts: Counts = { ...tallyFindings(content) };
     put(counts, 'fixes', countOf(content, /\*\*Fix(?:\s*\([^)]*\))?\*\*:/g));
@@ -145,8 +175,9 @@ const reviewExtractor: ArtifactExtractor = {
     const enums: Enums = {};
     // Verdict grammar varies: `**Verdict**: FIX_REQUIRED`, `✅ **APPROVE** (…)`,
     // `✅ APPROVE_WITH_NOTES …`. Take the FIRST UPPER_SNAKE token on the verdict
-    // line regardless of bold/emoji wrapping; the enum vocab still gates it (F1).
-    const verdict = enumOf(content, /\*\*Verdict\*\*:[^\n]*?([A-Z][A-Z_]{2,})/, VERDICT_VOCAB);
+    // line regardless of bold/emoji wrapping; the enum vocab still gates it, and a
+    // pipe-separated rubric line is rejected outright (F1 / F-08).
+    const verdict = reviewVerdict(content);
     if (verdict !== undefined) enums.verdict = verdict;
     return { counts, enums };
   },

@@ -63,13 +63,13 @@
     "fleetLane": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pij_id", "role", "harness", "model", "cost_measured", "tokens", "evidence"],
+      "required": ["pij_id", "role", "harness", "model", "cost_measured", "tokens", "source", "evidence"],
       "properties": {
         "pij_id": { "type": "string", "description": "The child's own pij id (captured_env.PIJ_SESSION_ID) — the join key." },
         "role": { "type": ["string", "null"], "description": "Role from the roster when scoped (coder/reviewer/…), else null." },
         "harness": { "type": "string", "description": "pij harness label (claude | copilot | codex | pi) or the segment harness." },
         "model": { "type": ["string", "null"], "description": "First model name seen across the lane, or null." },
-        "cost_measured": { "type": "boolean", "description": "false ⇒ a tokens:null (copilot) lane, excluded from totals (never zero-filled)." },
+        "cost_measured": { "type": "boolean", "description": "false ⇒ a tokens:null (copilot) lane with no ledger, excluded from totals (never zero-filled)." },
         "tokens": {
           "type": "object",
           "additionalProperties": false,
@@ -78,6 +78,24 @@
           "properties": {
             "grand_total": { "type": "integer", "minimum": 0 },
             "output": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "source": {
+          "type": "string",
+          "enum": ["live", "ref", "ledger"],
+          "description": "Where the lane resolved from, in precedence order: live temp buffer → synced ref rollup → vendor side-channel ledger (plan 052 · T007)."
+        },
+        "billing": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Recovered billing units (dossier F-10) — the authoritative cost unit, distinct from the raw token grand_total. Omitted on a live claude lane. ids/counts only (P12).",
+          "properties": {
+            "nano_aiu": { "type": "integer", "minimum": 0, "description": "Copilot billing unit — nano-AIU (AIC ×1e9); AIC = nano_aiu/1e9. Integer, lossless." },
+            "token_buckets": {
+              "type": "object",
+              "additionalProperties": { "type": "integer", "minimum": 0 },
+              "description": "Token buckets by name (histogram; keys open, values integer counts)."
+            }
           }
         },
         "evidence": { "$ref": "#/$defs/sessionEvidence" }
