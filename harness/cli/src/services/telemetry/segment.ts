@@ -411,6 +411,32 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.signature === 'string') ev.signature = e.signature;
       return ev;
     }
+    case 'artifact': {
+      // ALLOWLIST: pick each field explicitly and REBUILD the counts/enums maps
+      // (never spread the input) — the extractor already gated the enum VALUES to
+      // a fixed vocabulary (`other` fallback), so no free-form artifact text can
+      // reach the output (AC-05). Zero/non-finite counts are dropped so a garbage
+      // artifact serializes with `{}` counts (AC-04).
+      const counts: Record<string, number> = {};
+      for (const [k, v] of Object.entries(e.counts)) {
+        const n = num(v);
+        if (n !== undefined) counts[k] = n;
+      }
+      const enums: Record<string, string> = {};
+      for (const [k, v] of Object.entries(e.enums)) enums[k] = String(v);
+      const ev: Event = {
+        ...base,
+        kind: 'artifact',
+        path: e.path,
+        artifact_type: e.artifact_type,
+        change: e.change,
+        counts,
+        enums,
+        size: { lines: e.size.lines, bytes: e.size.bytes },
+      };
+      if (typeof e.plan_id === 'string' && e.plan_id.length > 0) ev.plan_id = e.plan_id;
+      return ev;
+    }
     default:
       // Unknown kind — never pass fields through; keep the skeleton only. The
       // switch above is exhaustive over the closed `Event` union, so this is a

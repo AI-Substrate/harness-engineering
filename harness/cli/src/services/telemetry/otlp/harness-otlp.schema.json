@@ -62,6 +62,14 @@
     "harness.subagent.dur_s",
     "harness.effort",
     "harness.api_error.signature",
+    "harness.artifact.type",
+    "harness.artifact.path",
+    "harness.artifact.plan_id",
+    "harness.artifact.change",
+    "harness.artifact.counts",
+    "harness.artifact.enums",
+    "harness.artifact.size_lines",
+    "harness.artifact.size_bytes",
     "harness.token.type"
   ]
 }

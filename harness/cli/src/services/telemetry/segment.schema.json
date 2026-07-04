@@ -168,7 +168,8 @@
               "subagent",
               "compaction",
               "model",
-              "api_error"
+              "api_error",
+              "artifact"
             ]
           },
           "words": { "type": "integer" },
@@ -195,7 +196,128 @@
           "gates": { "type": "object", "additionalProperties": { "type": "string" } },
           "signature": { "type": "string" },
           "arg": { "type": "string" },
-          "result_tokens": { "type": "integer" }
+          "result_tokens": { "type": "integer" },
+          "path": { "type": "string" },
+          "artifact_type": {
+            "enum": [
+              "review",
+              "plan",
+              "workshop",
+              "dossier",
+              "tasks",
+              "execution-log",
+              "backpressure",
+              "validation",
+              "ship-report",
+              "flight-plan"
+            ]
+          },
+          "plan_id": { "type": "string" },
+          "change": { "enum": ["written", "edited"] },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "absent": { "type": "integer" },
+              "blocked": { "type": "integer" },
+              "buildable": { "type": "integer" },
+              "checks_green": { "type": "integer" },
+              "checks_total": { "type": "integer" },
+              "chores": { "type": "integer" },
+              "chores_done": { "type": "integer" },
+              "chores_skipped": { "type": "integer" },
+              "chores_todo": { "type": "integer" },
+              "comments": { "type": "integer" },
+              "cs": { "type": "integer" },
+              "decisions": { "type": "integer" },
+              "deferred": { "type": "integer" },
+              "deviations": { "type": "integer" },
+              "done": { "type": "integer" },
+              "entries": { "type": "integer" },
+              "events": { "type": "integer" },
+              "exists": { "type": "integer" },
+              "findings": { "type": "integer" },
+              "findings_critical": { "type": "integer" },
+              "findings_high": { "type": "integer" },
+              "findings_low": { "type": "integer" },
+              "findings_med": { "type": "integer" },
+              "fixes": { "type": "integer" },
+              "gaps": { "type": "integer" },
+              "gate_fail": { "type": "integer" },
+              "gate_na": { "type": "integer" },
+              "gate_pass": { "type": "integer" },
+              "high": { "type": "integer" },
+              "in_progress": { "type": "integer" },
+              "nodes": { "type": "integer" },
+              "open": { "type": "integer" },
+              "phases": { "type": "integer" },
+              "pr_opened": { "type": "integer" },
+              "re_reviews": { "type": "integer" },
+              "resolved": { "type": "integer" },
+              "sections": { "type": "integer" },
+              "skipped": { "type": "integer" },
+              "todo": { "type": "integer" },
+              "workshop_opps": { "type": "integer" },
+              "workshops": { "type": "integer" }
+            }
+          },
+          "enums": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "APPROVE",
+                  "APPROVE_WITH_NOTES",
+                  "FIX_REQUIRED",
+                  "NEEDS_ATTENTION",
+                  "VALIDATED",
+                  "VALIDATED_WITH_FIXES",
+                  "other"
+                ]
+              },
+              "mode": { "type": "string", "enum": ["SIMPLE", "FULL", "other"] },
+              "status": { "type": "string", "enum": ["READY", "DRAFT", "other"] },
+              "target_proof": {
+                "type": "string",
+                "enum": [
+                  "CONTRACT_READY",
+                  "PREFERRED_DIRECTION",
+                  "DIRECTIONAL",
+                  "EXPLORATORY",
+                  "other"
+                ]
+              },
+              "current_proof": {
+                "type": "string",
+                "enum": [
+                  "CONTRACT_READY",
+                  "PREFERRED_DIRECTION",
+                  "DIRECTIONAL",
+                  "EXPLORATORY",
+                  "other"
+                ]
+              },
+              "certainty": {
+                "type": "string",
+                "enum": ["FULL", "PARTIAL", "NONE", "COMPLETE", "other"]
+              },
+              "pr_state": {
+                "type": "string",
+                "enum": ["OPEN", "MERGED", "CLOSED", "DRAFT", "other"]
+              }
+            }
+          },
+          "size": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["lines", "bytes"],
+            "properties": {
+              "lines": { "type": "integer" },
+              "bytes": { "type": "integer" }
+            }
+          }
         }
       }
     },

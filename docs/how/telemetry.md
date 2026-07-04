@@ -130,6 +130,7 @@ kinds:
 | `skill` | skill name + lifecycle status | skill/subagent opens |
 | `flow` | flight-plan `flow`/`stage`/`status` (the **current-stage anchor**) | `the-flow.json` nav (not args) |
 | `flow_log` | a flight-plan mutation: `op` + `node`/`from`/`to`/`type`/`edge_op` | `the-flow.json` `events[]` log (the **transition history**) |
+| `artifact` | a counts-only snapshot of a changed flow/SDD artifact: `artifact_type` + `counts`/`enums`/`size` | a review/plan/workshop/… in the window's changed files |
 | `branch` | the new branch (`to`) + prior (`from?`) | a git branch switch between captures |
 | `harness` | sub-command verb (sans params) | `harness …` calls |
 | `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
@@ -150,6 +151,34 @@ sometimes backfilled — times must not distort gap/stage math), and the **initi
 stage is recoverable only via the first `cursor-moved.from` (a flow that never moved,
 or was positioned by an advisory `nav --next` only, leaves no journey — read absence
 as *unknown*, not *stayed put*).
+
+**Artifact semantics (`artifact`).** The flow writes rich, deterministic artifacts —
+reviews, plans, workshops, dossiers, tasks, execution logs, backpressure coverage,
+validations, ship reports, and `the-flow.json`. Their **process signals** (fixes per
+review, phases per plan, workshop depth, gate PASS/FAIL, validation verdict) sit
+unread in those files. The artifact pass reads them at **capture time**: when a
+registered artifact appears in the window's `files.written`/`edited` set, a thin
+regex extractor parses it and emits one `artifact` event carrying the artifact's
+`path` (repo-relative), `plan_id`, `change` (`written`/`edited`), a `counts` map
+(integers only), an `enums` map (fixed-vocabulary verdicts/statuses/proof-levels,
+with an `other` fallback), and a `size` (`lines`/`bytes`). Files change over time, so
+each change re-emits an updated snapshot — a **semantic time series** per artifact, at
+zero added agent burden (the sensor rides the existing capture window; there is no
+watcher and no form to fill in).
+
+The **privacy floor is unchanged**: `counts` are integers, `enums` are allowlisted
+tokens gated by the extractor itself (a novel verdict maps to `other`, never travels
+verbatim), and there is **no free-text field by construction** — finding text, fix
+descriptions, and decision prose can never be emitted. The `counts`/`enums` **keys**
+are themselves a **closed, schema-enumerated union** (`additionalProperties: false`),
+so an extractor cannot invent a key to smuggle text through the map name. Extraction
+is **defensive**: an unparseable/garbage artifact yields empty counts (never a capture
+failure), and missing / binary / oversized / out-of-repo files are skipped. Like
+`flow_log`, an `artifact` event carries a **capture-time** `t` and is **excluded from
+the rollup**, so its snapshot stamp never distorts gap/wall/stage math. It complements
+the flight-plan replay: `flow_log` is the *transition history*, the `artifact` snapshot
+of `the-flow.json` is the *current shape* (nodes by type/status, phases, workshops,
+chores done/skipped/todo) — cheap to query without replaying every event.
 
 **The rollup — derived, recomputable.** `rollup` is a pure function of
 `event_stream[]` (a consumer may ignore it and recompute):

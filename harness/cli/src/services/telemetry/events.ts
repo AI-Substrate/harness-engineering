@@ -45,7 +45,8 @@ export type EventKind =
   | 'subagent'
   | 'compaction'
   | 'model'
-  | 'api_error';
+  | 'api_error'
+  | 'artifact';
 
 /** The closed set of event kinds — the serializer + schema are kept equal to this. */
 export const EVENT_KINDS: readonly EventKind[] = [
@@ -63,7 +64,94 @@ export const EVENT_KINDS: readonly EventKind[] = [
   'compaction',
   'model',
   'api_error',
+  'artifact',
 ] as const;
+
+/**
+ * The closed vocabulary of flow/SDD artifact types an extractor can stamp
+ * (plan 050). Fixed set — the serializer + schema enumerate it, so a novel type
+ * can never appear on the wire.
+ */
+export type ArtifactType =
+  | 'review'
+  | 'plan'
+  | 'workshop'
+  | 'dossier'
+  | 'tasks'
+  | 'execution-log'
+  | 'backpressure'
+  | 'validation'
+  | 'ship-report'
+  | 'flight-plan';
+
+/**
+ * The CLOSED union of `counts` keys any extractor may emit — the schema mirror of
+ * this (segment.schema.json `event_stream.items.counts`) is `additionalProperties:
+ * false`, so a rogue extractor key is both a compile error (via
+ * {@link ArtifactEvent.counts}) AND a schema-validation failure. An extractor
+ * cannot invent a numeric channel outside this set. Keep this equal to the schema.
+ */
+export const ARTIFACT_COUNT_KEYS = [
+  'absent',
+  'blocked',
+  'buildable',
+  'checks_green',
+  'checks_total',
+  'chores',
+  'chores_done',
+  'chores_skipped',
+  'chores_todo',
+  'comments',
+  'cs',
+  'decisions',
+  'deferred',
+  'deviations',
+  'done',
+  'entries',
+  'events',
+  'exists',
+  'findings',
+  'findings_critical',
+  'findings_high',
+  'findings_low',
+  'findings_med',
+  'fixes',
+  'gaps',
+  'gate_fail',
+  'gate_na',
+  'gate_pass',
+  'high',
+  'in_progress',
+  'nodes',
+  'open',
+  'phases',
+  'pr_opened',
+  're_reviews',
+  'resolved',
+  'sections',
+  'skipped',
+  'todo',
+  'workshop_opps',
+  'workshops',
+] as const;
+export type ArtifactCountKey = (typeof ARTIFACT_COUNT_KEYS)[number];
+
+/**
+ * The CLOSED union of `enums` keys any extractor may emit. Each key's VALUE is
+ * itself gated to a fixed vocabulary (with an `other` fallback) at extraction
+ * time and, additively, by the schema's per-key `enum` list — so neither the key
+ * NOR the value can carry free text (privacy contract, AC-05).
+ */
+export const ARTIFACT_ENUM_KEYS = [
+  'verdict',
+  'mode',
+  'status',
+  'target_proof',
+  'current_proof',
+  'certainty',
+  'pr_state',
+] as const;
+export type ArtifactEnumKey = (typeof ARTIFACT_ENUM_KEYS)[number];
 
 interface EventBase {
   t: Iso;
@@ -217,6 +305,36 @@ export interface ApiErrorEvent extends EventBase {
   signature?: string;
 }
 
+/**
+ * A counts-only semantic snapshot of a flow/SDD artifact (plan 050), emitted
+ * from the capture window when the artifact is in `files.written/edited`. Files
+ * change over time; each change re-emits an updated snapshot → a semantic time
+ * series per artifact, at ZERO agent burden.
+ *
+ * PRIVACY (AC-05, Constitution P12): the payload is `counts` (integers) + `enums`
+ * (fixed-vocabulary tokens with an `other` fallback — the EXTRACTOR is the value
+ * allowlist gate, same posture as `checks.gates`) + a repo-relative `path` + a
+ * `size`. There is NO free-text field by construction; finding/fix/decision prose
+ * can never travel. A `t` stamped at CAPTURE TIME (the "save time"), so — like
+ * {@link FlowLogEvent} — it is EXCLUDED from {@link Rollup} gap/wall/stage math.
+ */
+export interface ArtifactEvent extends EventBase {
+  kind: 'artifact';
+  /** Repo-relative path of the artifact (out-of-repo paths are skipped, never emitted). */
+  path: string;
+  artifact_type: ArtifactType;
+  /** The `docs/plans/<id>/` this artifact belongs to; omitted when the path carries none. */
+  plan_id?: string;
+  /** Which capture set the path came from. */
+  change: 'written' | 'edited';
+  /** Numeric elements (fixes, phases, gate rows, …). Keys are the CLOSED {@link ArtifactCountKey} set; zero-valued keys are omitted. */
+  counts: Partial<Record<ArtifactCountKey, number>>;
+  /** Fixed-vocabulary verdicts/statuses/modes; keys are the CLOSED {@link ArtifactEnumKey} set, values gated by the extractor. */
+  enums: Partial<Record<ArtifactEnumKey, string>>;
+  /** Artifact bulk — lines + UTF-8 bytes (the "workshop length" / "research length" measure). */
+  size: { lines: number; bytes: number };
+}
+
 /** The ordered event stream's element type. */
 export type Event =
   | PromptEvent
@@ -232,7 +350,8 @@ export type Event =
   | SubagentEvent
   | CompactionEvent
   | ModelEvent
-  | ApiErrorEvent;
+  | ApiErrorEvent
+  | ArtifactEvent;
 
 // ── Derived rollup (recomputable from `events[]`) ──────────────────────────
 

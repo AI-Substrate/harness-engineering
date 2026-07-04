@@ -18,6 +18,7 @@ import {
   type HarnessSource,
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
+import { artifactSemanticsEvents } from './artifact-semantics.js';
 import {
   branchPathFor,
   cursorPathFor,
@@ -377,6 +378,17 @@ function withFlowLogEvents(flowLog: readonly Event[], stream: readonly Event[]):
   return flowLog.length === 0 ? [...stream] : [...stream, ...flowLog];
 }
 
+/**
+ * Append the `artifact` semantic snapshots (plan 050) — one counts-only event per
+ * changed flow/SDD artifact in the window's `files.written/edited` set. Appended
+ * AFTER the flow_log markers: like them they carry a CAPTURE-TIME `t` and are
+ * rollup-excluded, so their stamp never distorts gap/wall/stage math; a replay
+ * consumer sorts the concatenated timeline by `t`. Empty changed set → unchanged.
+ */
+function withArtifactEvents(artifacts: readonly Event[], stream: readonly Event[]): Event[] {
+  return artifacts.length === 0 ? [...stream] : [...stream, ...artifacts];
+}
+
 /** Branch state for a capture: the current git branch, the prior one, and whether it changed. */
 interface BranchInfo {
   current: string | null;
@@ -438,8 +450,14 @@ function buildInput(
   plansTouched: string[],
   flightPlan: unknown,
   flowLog: readonly Event[],
+  cwd: string,
 ): SegmentInput {
   const timecode = deps.clock.nowIso();
+  // Artifact-semantics pass (plan 050): read each changed flow/SDD artifact at
+  // capture time and project its structural markers into counts-only `artifact`
+  // events, stamped at `timecode` (the "save time"). Guarded + defensive inside
+  // the helper (skips missing/binary/oversized/out-of-repo; never throws).
+  const artifactEvents = artifactSemanticsEvents(deps.fs, cwd, caps.files, timecode);
   return {
     command: deps.command,
     harness: detected.harness,
@@ -468,12 +486,16 @@ function buildInput(
     captured_env: selectCapturedEnv(deps.env),
     // Compose the timeline: flow + branch prepend at the window start; the
     // triggering harness command appends as a zero-gap marker at the window end;
-    // the flow_log replay markers append last (rollup-excluded, own real `t`).
-    event_stream: withFlowLogEvents(
-      flowLog,
-      withHarnessCommandEvent(
-        deps.command,
-        withBranchEvent(branch, timecode, withFlowEvent(flightPlan, caps.event_stream ?? [])),
+    // the flow_log replay markers append next (rollup-excluded, own real `t`);
+    // the artifact-semantics snapshots append last (rollup-excluded, capture `t`).
+    event_stream: withArtifactEvents(
+      artifactEvents,
+      withFlowLogEvents(
+        flowLog,
+        withHarnessCommandEvent(
+          deps.command,
+          withBranchEvent(branch, timecode, withFlowEvent(flightPlan, caps.event_stream ?? [])),
+        ),
       ),
     ),
   };
@@ -615,7 +637,7 @@ function captureUnsafe(deps: CaptureDeps): void {
   const flowLog = flowLogEvents(flightPlan, priorFlowOffset);
 
   const segment: Segment = serializeSegment(
-    buildInput(deps, detected, window, caps, branch, plansTouched, flightPlan, flowLog.events),
+    buildInput(deps, detected, window, caps, branch, plansTouched, flightPlan, flowLog.events, cwd),
     cwd,
   );
 
