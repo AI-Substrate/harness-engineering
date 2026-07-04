@@ -3,8 +3,8 @@
   "kind": "flight-plan",
   "slug": "semantic-artifact-telemetry",
   "nav": {
-    "now": "phase-1",
-    "next": "review-1",
+    "now": "review-1",
+    "next": "ship",
     "intent": "Semantic telemetry from flow artifacts: count fixes from reviews, phases from plans, workshop/research lengths etc, extracted at save/import time so files carry updated telem over time",
     "bag": {
       "mode": "Simple",
@@ -228,6 +228,116 @@
         "from": "plan",
         "to": "phase-1"
       }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:33.099Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:33.887Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:34.675Z",
+      "details": {
+        "node": "review-1",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:35.460Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:36.270Z",
+      "details": {
+        "node": "observe-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:37.029Z",
+      "details": {
+        "node": "observe-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:03:37.849Z",
+      "details": {
+        "from": "phase-1",
+        "to": "review-1"
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:04:44.842Z",
+      "details": {
+        "node": "retro-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T01:04:45.632Z",
+      "details": {
+        "node": "retro-1",
+        "fields": [
+          "note"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -280,7 +390,7 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: Implementation",
-      "status": "in_progress",
+      "status": "done",
       "command": "/the-flow 6 implement",
       "next": [
         "review-1"
@@ -290,13 +400,15 @@
         "Run /the-flow 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
         "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof."
       ],
-      "modified_at": "2026-07-04T00:11:42.767Z"
+      "modified_at": "2026-07-04T01:03:33.887Z",
+      "ran_at": "2026-07-04T01:03:33.099Z",
+      "note": "T001-T006 done via flow-pair (opus-4.8 coder xhigh); checks exit 0; 55 extractor tests + integration green; 1 fix round"
     },
     {
       "id": "review-1",
       "type": "review",
       "label": "Review: P1",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 7 review",
       "next": [
         "ship"
@@ -306,6 +418,15 @@
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /the-flow 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "modified_at": "2026-07-04T01:03:35.460Z",
+      "ran_at": "2026-07-04T01:03:34.675Z",
+      "comments": [
+        {
+          "at": "2026-07-04T01:03:35.460Z",
+          "text": "gpt-5.5 xhigh peer review: FIX_REQUIRED (F1 verdict regex, F2 open key maps, F3 inventory gaps) -> fix round -> narrow re-review APPROVE; Dim-0 mutation flipped RED at artifact-semantics.test.ts:52+:360; orchestrator sanity pass re-verified schema closure + 73/73 green",
+          "kind": "validation"
+        }
       ]
     },
     {
@@ -371,7 +492,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -385,13 +506,16 @@
         "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
         "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
         "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates."
-      ]
+      ],
+      "modified_at": "2026-07-04T01:03:37.029Z",
+      "ran_at": "2026-07-04T01:03:36.270Z",
+      "note": "real capture during phase: DL-007 (flow-eval score telemetry-lookup divergence)"
     },
     {
       "id": "retro-1",
       "type": "harness-retro",
       "label": "Retro: P1 (drain)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -405,7 +529,10 @@
         "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
         "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-1 --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-04T01:04:45.632Z",
+      "ran_at": "2026-07-04T01:04:44.841Z",
+      "note": "post-coding drain: 16 entries -> .harness/records/retro/2026-07-04/001-flow-eval-batches-and-050-drain.md; buffer cleared"
     },
     {
       "id": "retro-ship",
