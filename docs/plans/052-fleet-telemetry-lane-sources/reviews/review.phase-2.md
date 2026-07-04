@@ -29,3 +29,19 @@
 
 - `cd harness/cli && npx vitest run test/services/telemetry/fleet-semantics.test.ts test/services/telemetry/fleet-semantics-golden-051.test.ts test/services/telemetry/fleet-golden-051.test.ts --coverage=false`: passed 27/27 after restoring mutations.
 - `node harness/cli/bin/harness.js checks`: exit 0, status `degraded`; hard gates ok (`tests`, `biome`, `typecheck`, `check:docs`, `check:flows`, `check:telemetry-fixtures`, `check:doctrine-parity`, `skills-check`, `windows-check`), warn-launch degraded gates remain `arch-check` and `markdown-lint`.
+
+---
+
+## Re-review — F1 fix
+
+**Commit**: `dd415226`  
+**Verdict**: APPROVE
+
+The F1 fix is real. `FleetSemantics` now includes `plan_cs?: number | null`; `fleetSemantics(...)` aggregates it with the plan rollup as max non-null across measured lanes and emits it whenever a measured plan is present; the closed fleet schema includes `plan_cs`; the unit and 051 golden tests assert fleet-level `plan_cs: 3`; and the regenerated `fleet-051-semantics.json` now carries `"fleet_semantics": { ..., "plan_cs": 3, ... }`.
+
+**Non-vacuity proof**: I temporarily mutated the aggregator to `out.plan_cs = null`. The cited assertions both failed for the expected reason:
+
+- `fleet-semantics.test.ts:277`: `expect(s.plan_cs).toBe(3)` received `null`.
+- `fleet-semantics-golden-051.test.ts:224`: `expect(s.plan_cs).toBe(3)` received `null`.
+
+After restoring the source, `cd harness/cli && npx vitest run test/services/telemetry/fleet-semantics.test.ts test/services/telemetry/fleet-semantics-golden-051.test.ts test/services/telemetry/fleet-golden-051.test.ts --coverage=false --reporter=dot` passed 27/27. `node harness/cli/bin/harness.js checks` exited 0 with status `degraded`; hard gates are ok, with the same warn-launch degraded `arch-check` and `markdown-lint` gates.
