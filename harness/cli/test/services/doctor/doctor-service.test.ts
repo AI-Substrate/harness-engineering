@@ -114,6 +114,50 @@ describe('buildDoctorReport', () => {
     expect(env.status).toBe('ok');
   });
 
+  it('version-skew: dev repo, running version matches repo package.json → ok', () => {
+    /*
+    Test Doc:
+    - Why: field report 2026-07-04 — npm latest lagged the repo head, so reinstalls silently
+      DOWNGRADED consumers (osk ran 0.6.0 against 0.7.0 doctrine: stale flow renders,
+      old-schema telemetry). The layer makes the shadow visible at the first doctor run.
+    - Contract: dev marker + runningVersion == repo package.json version → ok:true.
+    */
+    const fs = new FakeFs({ ...BUILT_CLI, 'package.json': '{"version":"0.7.0"}' });
+    const report = buildDoctorReport({ ...deps({ fs }), runningVersion: '0.7.0' }, EMPTY);
+    const layer = report.layers.find((l) => l.name === 'version-skew');
+    expect(layer?.ok).toBe(true);
+    expect(layer?.detail).toContain('matches the repo');
+  });
+
+  it('version-skew: dev repo, stale global binary (running < repo) → not-ok, npm link next_action, envelope degraded', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, 'package.json': '{"version":"0.7.0"}' });
+    const report = buildDoctorReport({ ...deps({ fs }), runningVersion: '0.6.0' }, EMPTY);
+    const layer = report.layers.find((l) => l.name === 'version-skew');
+    expect(layer?.ok).toBe(false);
+    expect(layer?.detail).toContain('running harness 0.6.0 but this repo is 0.7.0');
+    expect(layer?.next_action).toContain('npm link');
+    const env = doctorEnvelope(report, new FakeClock('2026-06-08T07:20:00.000Z'));
+    expect(env.status).toBe('degraded');
+  });
+
+  it('version-skew: consumer install (no dev marker) → ok n/a; missing runningVersion → ok skipped', () => {
+    const consumer = buildDoctorReport(
+      { ...deps({ fs: new FakeFs() }), runningVersion: '0.6.0' },
+      EMPTY,
+    );
+    const consumerLayer = consumer.layers.find((l) => l.name === 'version-skew');
+    expect(consumerLayer?.ok).toBe(true);
+    expect(consumerLayer?.detail).toMatch(/consumer/);
+
+    const noVersion = buildDoctorReport(
+      deps({ fs: new FakeFs({ ...BUILT_CLI, 'package.json': '{"version":"0.7.0"}' }) }),
+      EMPTY,
+    );
+    const skipped = noVersion.layers.find((l) => l.name === 'version-skew');
+    expect(skipped?.ok).toBe(true);
+    expect(skipped?.detail).toContain('skipped');
+  });
+
   it('extensions layer is honest about no extensions installed (ok, with guidance)', () => {
     const report = buildDoctorReport(deps(), EMPTY);
     const ext = report.layers.find((l) => l.name === 'extensions');

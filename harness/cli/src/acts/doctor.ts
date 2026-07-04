@@ -13,6 +13,7 @@ import {
 } from '../services/doctor/doctor-service.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
 import type { RecordRegistry } from '../services/record/registry.js';
+import { readVersion } from '../version.js';
 
 /**
  * Register the `doctor` command — safe to run at session start. Constructs the
@@ -41,6 +42,7 @@ export function registerDoctorAct(
           git: new ExecGit(),
           env: new NodeEnv(),
           clock,
+          runningVersion: readVersion(),
         },
         registry,
         recordRegistry,

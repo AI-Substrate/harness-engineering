@@ -4,7 +4,7 @@
   "slug": "pij-fleet-session-eval",
   "nav": {
     "now": "plan",
-    "next": "plan",
+    "next": "phase-1",
     "intent": "Eval pij fleets as one joined session: orchestrator builds flow artifacts, spawns pij coders/reviewer, joins child sessions via captured parent-link env vars, scores time/quality/cost per named scenario (each scenario carries its reason/vibe)",
     "bag": {
       "mode": "unknown",
@@ -96,6 +96,62 @@
         "from": "research",
         "to": "plan"
       }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:45:54.138Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:45:54.935Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:53:44.286Z",
+      "details": {
+        "node": "plan",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:53:45.106Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:53:45.928Z",
+      "details": {
+        "from": "plan",
+        "to": "plan"
+      }
     }
   ],
   "nodes": [
@@ -121,7 +177,7 @@
       "id": "plan",
       "type": "plan",
       "label": "Plan",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 1b plan",
       "next": [
         "phase-1"
@@ -130,7 +186,10 @@
         "Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.",
         "Run /the-flow 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
         "Done when <slug>-plan.md carries both halves and reads **Status**: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run."
-      ]
+      ],
+      "modified_at": "2026-07-04T03:53:45.106Z",
+      "note": "Plan VALIDATED by codex gpt-5.5 peer pij-wolk0r (no material findings; spot-checks cited at source; aggregate re-verified). Simple CS-3 READY.",
+      "ran_at": "2026-07-04T03:53:44.286Z"
     },
     {
       "id": "phase-1",
