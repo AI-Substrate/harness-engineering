@@ -152,6 +152,33 @@
         "from": "plan",
         "to": "plan"
       }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:54:37.788Z",
+      "details": {
+        "node": "backpressure",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-04T03:54:38.598Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "note"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -240,7 +267,7 @@
       "id": "backpressure",
       "type": "backpressure",
       "label": "Backpressure survey",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "plan",
       "next": [
         "plan"
@@ -254,7 +281,10 @@
         "Optional pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
         "Run /eng-harness-flow --hook pre-coding --json — advisory output only; the plan verb does not auto-read it, so fold the findings in yourself.",
         "Optional and skippable — never gates. Decline with a real `harness flow status backpressure --to skipped`, never a narrated skip."
-      ]
+      ],
+      "modified_at": "2026-07-04T03:54:38.597Z",
+      "ran_at": "2026-07-04T03:54:37.788Z",
+      "note": "Strong — all behaviour/architecture ACs have EXISTS sensors (vitest/checks/ajv/arch-check); no Phase 0"
     },
     {
       "id": "boot-1",
