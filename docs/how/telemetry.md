@@ -131,6 +131,7 @@ kinds:
 | `flow` | flight-plan `flow`/`stage`/`status` (the **current-stage anchor**) | `the-flow.json` nav (not args) |
 | `flow_log` | a flight-plan mutation: `op` + `node`/`from`/`to`/`type`/`edge_op` | `the-flow.json` `events[]` log (the **transition history**) |
 | `artifact` | a counts-only snapshot of a changed flow/SDD artifact: `artifact_type` + `counts`/`enums`/`size` | a review/plan/workshop/… in the window's changed files |
+| `mark` | a peer's counts-only **self-attestation**: `mark_kind` + optional `verdict` + finding `counts` | `harness telemetry mark` (agent-invoked, not auto-derived) |
 | `branch` | the new branch (`to`) + prior (`from?`) | a git branch switch between captures |
 | `harness` | sub-command verb (sans params) | `harness …` calls |
 | `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
@@ -397,12 +398,59 @@ the coverage truth. A telemetry-only report can claim the process shape of the
 **instrumented** lanes; it **cannot** claim what happened in blind ones. In a
 flow-pair run that means the orchestrator's planning artifacts surface, but a
 read-only reviewer's findings (no harness telemetry — F-05) and a worker that
-emitted 0 artifact events (F-07) are absent — reported as blind, not as zero. See
+emitted 0 artifact events (F-07) are absent — reported as blind, not as zero. A
+read-only reviewer can **opt out of blindness** by emitting a `mark` (see
+[Marks](#marks--peer-self-attestation-harness-telemetry-mark) below): its verdict
+then lands on its own lane's `semantics.mark` and the lane reads
+`semantics_measured: true`. See
 `docs/plans/052-fleet-telemetry-lane-sources/evidence/fleet-051-semantics-note.md`
 for a worked reconcile of a real fleet against a hand-made quality table, with
 every discrepancy (blind lane vs extractor precision vs capture-time drift)
 enumerated. Ledger- and ref-resolved lanes recover **cost** but not the event
 stream, so they are semantically blind until worker-lane artifact capture lands.
+
+## Marks — peer self-attestation (`harness telemetry mark`)
+
+Every semantic event above is **auto-derived** during passive capture — a review
+`artifact` only appears because a reviewer *wrote a review file*. A **read-only
+reviewer** runs no harness command and may write no file, so its verdict never
+reaches its lane: the lane is blind (F-05). `harness telemetry mark` closes that
+hole. It is the one **agent-invoked** semantic emit — a peer stamps a counts-only
+marker onto **its own** session lane with a single call:
+
+```bash
+harness telemetry mark --kind review --verdict fix-required --findings-critical 1
+```
+
+- **Shape-guarded, no free text.** `--kind` and `--verdict` are identifier slugs
+  (`^[a-z][a-z0-9-]{0,31}$`); the finding buckets (`--findings-critical` /
+  `-high` / `-med` / `-low`, plus a total `--findings`) are non-negative integers.
+  There is **no prose field by construction** — a bad slug (uppercase, whitespace,
+  over-long) is rejected with an `unconfigured` outcome (exit 2) naming the shape,
+  and **no marker is written** (telemetry is best-effort — it never blocks work).
+- **Cost-excluded, attribution-visible.** The marker is its own segment carrying
+  `tokens: null` and a single `mark` event; it contributes **zero** to
+  rollup gap/time/token math (like `artifact`/`flow_log`, it rides a capture-time
+  `t`) and zero to fleet cost. It surfaces on the emitting lane's
+  `semantics.mark` (`marks`, `kinds`, deduped `verdicts`, summed `findings`), and
+  a **mark-only lane is no longer blind** (`semantics_measured: true`).
+- **Generic — the vocabulary is prose, not a second binary.** The verb carries no
+  flow-stage vocabulary. The flow/skill layer decides *which* `kind`/`verdict` to
+  emit and formats the call as prose the agent renders — the Node CLI stays the one
+  cross-platform surface; there is no skill-side executable to install.
+
+**Where a mark shows up (F3 nuance).** A mark surfaces through
+`harness telemetry get-fleet` (read from the **live buffer** `<seq>.json`), **not**
+through `harness telemetry report` or the committed OTLP shards — the marker
+deliberately writes **no** OTLP sidecar, so it is fleet-attribution evidence, not
+part of the reconstruction-critical `harness.*` transport. Emit a mark, then read
+it back on your lane:
+
+```bash
+harness telemetry mark --kind review --verdict approve
+harness telemetry get-fleet <root-pij-id> --json    # → sessions[].semantics.mark
+```
+
 
 ## Syncing — `harness telemetry sync`
 

@@ -179,13 +179,15 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
   // `flow_log` events are PURE REPLAY MARKERS (plan 035) — they carry their own
   // real `fired_at`, which can predate the window (backfilled flight-plan history).
   // `artifact` events (plan 050) likewise carry a CAPTURE-TIME `t` (the "save time"
-  // snapshot stamp), not a work instant. Excluding both from the rollup keeps
-  // gap/wall/stage math anchored to the window's work events; a single backfilled
-  // marker or capture-time snapshot would otherwise re-sort to the front and
-  // fabricate a huge mis-attributed gap (and `wall_s`). They remain in
-  // `event_stream` for replay; the rollup is derived only from the timed work events.
+  // snapshot stamp), not a work instant. `mark` events (plan 053 — a peer's
+  // counts-only self-attestation) are annotation with a capture-time `t` too.
+  // Excluding all three from the rollup keeps gap/wall/stage math anchored to the
+  // window's work events; a single backfilled marker, capture-time snapshot, or
+  // peer mark would otherwise re-sort to the front and fabricate a huge
+  // mis-attributed gap (and `wall_s`). They remain in `event_stream` for replay /
+  // attribution; the rollup is derived only from the timed work events.
   const ev = [...events]
-    .filter((e) => e.kind !== 'flow_log' && e.kind !== 'artifact')
+    .filter((e) => e.kind !== 'flow_log' && e.kind !== 'artifact' && e.kind !== 'mark')
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
   let agent = 0;

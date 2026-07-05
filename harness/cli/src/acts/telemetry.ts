@@ -5,14 +5,16 @@ import type { FsPort } from '../adapters/fs/fs-port.js';
 import type { GitReadPort, ShardBlob } from '../adapters/git/git-read-port.js';
 import { type GitWritePort, TELEMETRY_REF_GLOB } from '../adapters/git/git-write-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
-import { formatError, formatOk } from '../output/envelope.js';
+import { formatError, formatOk, formatUnconfigured } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { posixDirname, posixJoin } from '../services/shared/posix-path.js';
 import { telemetryDir } from '../services/telemetry/cursor.js';
+import type { MarkCountKey } from '../services/telemetry/events.js';
 import { getFleetEvidence } from '../services/telemetry/fleet-evidence.js';
 import { buildInsights, type InsightInput } from '../services/telemetry/insights.js';
+import { runMark } from '../services/telemetry/mark.js';
 import { otlpLogsToEvents } from '../services/telemetry/otlp/logs.js';
 import { renderInsights } from '../services/telemetry/render/insights-html.js';
 import { type ReportColumn, renderReports } from '../services/telemetry/render/report-html.js';
@@ -573,6 +575,96 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
             };
       exitWithEnvelope(envelope, port);
     });
+
+  telemetry
+    .command('mark')
+    .description(
+      "Emit a peer's counts-only self-attestation (a `mark`) onto its own session telemetry lane — the reviewer-verdict channel that puts a read-only peer's outcome on its lane. Shape-guarded slugs + integer finding counts only; no free text.",
+    )
+    .requiredOption(
+      '--kind <slug>',
+      'The mark category slug (^[a-z][a-z0-9-]{0,31}$), e.g. `review`',
+    )
+    .option('--verdict <slug>', 'Optional verdict slug (same shape), e.g. `fix-required`')
+    .option('--findings-critical <n>', 'Critical finding count (non-negative integer)')
+    .option('--findings-high <n>', 'High finding count (non-negative integer)')
+    .option('--findings-med <n>', 'Medium finding count (non-negative integer)')
+    .option('--findings-low <n>', 'Low finding count (non-negative integer)')
+    .option('--findings <n>', 'Total finding count (non-negative integer)')
+    .action(
+      (options: {
+        kind: string;
+        verdict?: string;
+        findingsCritical?: string;
+        findingsHigh?: string;
+        findingsMed?: string;
+        findingsLow?: string;
+        findings?: string;
+      }) => {
+        // Parse count flags → numbers; a non-integer string becomes NaN and is
+        // rejected by the guard (buildMarkEvent) with a shaped next_action.
+        const counts: Partial<Record<MarkCountKey, number>> = {};
+        const put = (key: MarkCountKey, raw: string | undefined): void => {
+          if (raw !== undefined) counts[key] = Number(raw);
+        };
+        put('findings_critical', options.findingsCritical);
+        put('findings_high', options.findingsHigh);
+        put('findings_med', options.findingsMed);
+        put('findings_low', options.findingsLow);
+        put('findings', options.findings);
+
+        const result = runMark(
+          { fs: deps.fs, env: deps.env, proc: deps.proc, clock: deps.clock },
+          {
+            kind: options.kind,
+            ...(options.verdict !== undefined && { verdict: options.verdict }),
+            counts,
+          },
+        );
+
+        if (!result.ok) {
+          const envelope = formatUnconfigured('telemetry', result.next_action, deps.clock);
+          const port: OutputPort =
+            io.mode === 'json'
+              ? createOutputPort('json', io.writers)
+              : {
+                  emit: (e) => {
+                    io.writers.err(`harness telemetry mark: ${e.next_action ?? 'unconfigured'}\n`);
+                  },
+                };
+          exitWithEnvelope(envelope, port);
+          return;
+        }
+
+        const envelope = formatOk(
+          'telemetry',
+          {
+            kind: result.event.mark_kind,
+            ...(result.event.verdict !== undefined && { verdict: result.event.verdict }),
+            counts: result.event.counts,
+            session: result.sessionId,
+            harness: result.harness,
+          },
+          deps.clock,
+          {
+            evidence: [{ label: 'marker segment', path: result.path }],
+            next_action:
+              'The mark is on this session lane; it surfaces via `harness telemetry get-fleet` (cost-excluded, attribution-visible).',
+          },
+        );
+        const port: OutputPort =
+          io.mode === 'json'
+            ? createOutputPort('json', io.writers)
+            : {
+                emit: () => {
+                  io.writers.out(
+                    `telemetry mark: recorded ${result.event.mark_kind}${result.event.verdict ? ` (${result.event.verdict})` : ''} → ${result.path}\n`,
+                  );
+                },
+              };
+        exitWithEnvelope(envelope, port);
+      },
+    );
 
   telemetry
     .command('get')

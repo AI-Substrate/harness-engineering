@@ -31,8 +31,10 @@ import { computeRollup } from './rollup.js';
  * derived `rollup` (the v1 count fields remain as a compatibility view).
  * v2.1: `harness_version` (the producing CLI version → OTLP `service.version`).
  * v2.2: `captured_env` (an allowlisted, secret-denylisted env-var snapshot).
+ * v2.3 (plan 053): adds the `mark` event kind (a peer's counts-only
+ * self-attestation) to the `event_stream` union — no new top-level segment field.
  */
-export const SEGMENT_SCHEMA_VERSION = '2.2';
+export const SEGMENT_SCHEMA_VERSION = '2.3';
 
 export interface SegmentTokens {
   input: number;
@@ -435,6 +437,20 @@ export function serializeEvent(e: Event): Event {
         size: { lines: e.size.lines, bytes: e.size.bytes },
       };
       if (typeof e.plan_id === 'string' && e.plan_id.length > 0) ev.plan_id = e.plan_id;
+      return ev;
+    }
+    case 'mark': {
+      // ALLOWLIST (plan 053): pick the two shape-guarded slugs + REBUILD the counts
+      // map (never spread) — `buildMarkEvent` already gated `mark_kind`/`verdict` to
+      // the slug shape and the counts to non-negative integers, so no free text can
+      // reach the output (AC-05). Zero/non-finite counts are dropped (artifact parity).
+      const counts: Record<string, number> = {};
+      for (const [k, v] of Object.entries(e.counts)) {
+        const n = num(v);
+        if (n !== undefined) counts[k] = n;
+      }
+      const ev: Event = { ...base, kind: 'mark', mark_kind: e.mark_kind, counts };
+      if (typeof e.verdict === 'string') ev.verdict = e.verdict;
       return ev;
     }
     default:

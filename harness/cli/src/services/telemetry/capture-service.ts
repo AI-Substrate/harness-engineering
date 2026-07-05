@@ -225,6 +225,35 @@ function nextSeq(fs: FsPort, sessionDir: string): number {
 }
 
 /**
+ * Write a pre-serialized {@link Segment} as the next `<seq>.json` in the session's
+ * gitignored telemetry buffer, atomically (temp + rename — mirror {@link captureUnsafe}).
+ * Returns the written path.
+ *
+ * Used by `harness telemetry mark` (plan 053) to drop a self-contained marker segment
+ * onto the CALLER's own lane. UNLIKE the passive capture path this writes ONLY the
+ * `<seq>.json` (no `.logs.jsonl`/`.metrics.jsonl` OTLP sidecars): `readSegments`
+ * matches `^\d+\.json$`, so `get-fleet` picks the marker up from the live buffer, but
+ * the mark deliberately does NOT ride the OTLP transport (it is not `telemetry
+ * report` / committed-shard evidence — dossier F3).
+ */
+export function writeSegmentFile(
+  deps: { fs: FsPort; proc: ProcessPort },
+  cwd: string,
+  sessionId: string,
+  segment: Segment,
+): string {
+  ensureTemp({ fs: deps.fs, proc: deps.proc });
+  const sessionDir = sessionDirFor(cwd, sessionId);
+  deps.fs.mkdirp(sessionDir);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
+  const tmp = `${entryPath}.tmp`;
+  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
+  deps.fs.rename(tmp, entryPath);
+  return entryPath;
+}
+
+/**
  * Derive the plan id from a cwd under `docs/plans/<id>/` (the `<ordinal>-<slug>`
  * dir name), or null (plan 034 Phase 4, T006 — closes AC-08's "run inside
  * `docs/plans/<id>/`" clause; capture otherwise only saw `HARNESS_PLAN_ID`). The

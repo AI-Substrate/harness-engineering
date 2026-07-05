@@ -46,7 +46,8 @@ export type EventKind =
   | 'compaction'
   | 'model'
   | 'api_error'
-  | 'artifact';
+  | 'artifact'
+  | 'mark';
 
 /** The closed set of event kinds — the serializer + schema are kept equal to this. */
 export const EVENT_KINDS: readonly EventKind[] = [
@@ -65,6 +66,7 @@ export const EVENT_KINDS: readonly EventKind[] = [
   'model',
   'api_error',
   'artifact',
+  'mark',
 ] as const;
 
 /**
@@ -335,6 +337,45 @@ export interface ArtifactEvent extends EventBase {
   size: { lines: number; bytes: number };
 }
 
+/**
+ * The CLOSED union of `counts` keys a {@link MarkEvent} may emit — a SUBSET of
+ * {@link ARTIFACT_COUNT_KEYS} (so `segment.schema.json`'s shared `counts` object
+ * already enumerates them; no schema drift). Finding-severity buckets only: a mark
+ * is a peer's counts-only self-attestation, never a numeric channel outside this set.
+ */
+export const MARK_COUNT_KEYS = [
+  'findings',
+  'findings_critical',
+  'findings_high',
+  'findings_med',
+  'findings_low',
+] as const;
+export type MarkCountKey = (typeof MARK_COUNT_KEYS)[number];
+
+/**
+ * A peer's COUNTS-ONLY self-attestation (plan 053), emitted by `harness telemetry
+ * mark` onto the CALLER's own session lane. It closes the reviewer lane-attribution
+ * hole — a read-only reviewer runs no harness command and may write no file, so its
+ * verdict never reaches its lane today; a `mark` puts it there.
+ *
+ * PRIVACY (AC-05, Constitution P12): leak-proof BY CONSTRUCTION — `mark_kind` and the
+ * optional `verdict` are identifier SLUGS (`^[a-z][a-z0-9-]{0,31}$`, the guard
+ * enforced by {@link import('./mark.js').buildMarkEvent}) and `counts` are integers
+ * keyed by the CLOSED {@link MarkCountKey} set. There is NO free-text field, so no
+ * prose can travel. Like {@link ArtifactEvent} it carries a CAPTURE-TIME `t`, so it is
+ * EXCLUDED from {@link Rollup} gap/time math and rides the segment's `tokens:null`
+ * (cost-excluded) — attribution-visible yet never double-counted.
+ */
+export interface MarkEvent extends EventBase {
+  kind: 'mark';
+  /** The mark category slug (`--kind`), e.g. `review` — shape-guarded, never prose. */
+  mark_kind: string;
+  /** Optional verdict slug (`--verdict`), e.g. `fix-required` — same shape guard. */
+  verdict?: string;
+  /** Integer count buckets; keys are the CLOSED {@link MarkCountKey} set; zero/absent omitted. */
+  counts: Partial<Record<MarkCountKey, number>>;
+}
+
 /** The ordered event stream's element type. */
 export type Event =
   | PromptEvent
@@ -351,8 +392,8 @@ export type Event =
   | CompactionEvent
   | ModelEvent
   | ApiErrorEvent
-  | ArtifactEvent;
-
+  | ArtifactEvent
+  | MarkEvent;
 // ── Derived rollup (recomputable from `events[]`) ──────────────────────────
 
 export interface RollupActivity {

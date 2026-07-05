@@ -210,7 +210,32 @@
           "type": "object",
           "additionalProperties": { "type": "number", "minimum": 0 },
           "description": "flow stage → seconds (histogram; keys open, values non-negative)."
-        }
+        },
+        "mark": { "$ref": "#/$defs/laneMark" }
+      }
+    },
+    "laneMark": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "A lane's peer self-attestation rollup (plan 053), aggregated from its `mark` events (`harness telemetry mark`). This is what puts a read-only reviewer's verdict on its OWN lane. Slugs are shape-guarded; counts only (P12) — no prose.",
+      "required": ["marks", "kinds"],
+      "properties": {
+        "marks": { "type": "integer", "minimum": 0, "description": "How many mark events the lane carried." },
+        "kinds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Distinct mark category slugs (`mark_kind`), sorted."
+        },
+        "verdicts": { "$ref": "#/$defs/markVerdictPath" },
+        "findings": { "$ref": "#/$defs/semanticFindings" }
+      }
+    },
+    "markVerdictPath": {
+      "type": "array",
+      "description": "plan 053 — a lane's ordered, consecutive-deduped mark verdict slugs. Shape-guarded identifiers (`^[a-z][a-z0-9-]{0,31}$`), NOT the uppercase artifact verdict vocabulary — a peer chooses its own verdict slug. No free text.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,31}$"
       }
     },
     "fleetSemantics": {

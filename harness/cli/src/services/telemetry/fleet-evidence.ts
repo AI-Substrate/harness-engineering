@@ -1,7 +1,7 @@
 import type { GitReadPort } from '../../adapters/git/git-read-port.js';
 import { extractCodexLedger, findCodexRollout } from './codex-ledger.js';
 import { copilotSessionEventsPath, extractCopilotLedger } from './copilot-ledger.js';
-import type { ArtifactEvent } from './events.js';
+import type { ArtifactEvent, MarkEvent } from './events.js';
 import type { PijDescriptor, PijRegistry } from './pij-registry.js';
 import { readPijRegistry } from './pij-registry.js';
 import { type RefLane, readRefLanes } from './ref-source.js';
@@ -141,6 +141,26 @@ export interface FleetLaneSemantics {
   chores_todo?: number;
   /** Per-flow-stage seconds, summed from each segment's `rollup.flow_stage_time_s`; present iff non-empty. */
   flow_stage_time_s?: Record<string, number>;
+  /** Peer self-attestation markers (plan 053) — present iff ≥1 `mark` event was captured on the lane. */
+  mark?: FleetLaneMark;
+}
+
+/**
+ * A lane's PEER SELF-ATTESTATION rollup (plan 053) — aggregated from its `mark`
+ * events (`harness telemetry mark`). This is the channel that puts a read-only
+ * reviewer's verdict on ITS OWN lane: a reviewer runs no harness command and may
+ * write no file, so absent a mark its lane is blind. Counts/enums only (P12) — the
+ * slugs are shape-guarded, no prose travels.
+ */
+export interface FleetLaneMark {
+  /** How many `mark` events the lane carried. */
+  marks: number;
+  /** Distinct mark category slugs (`mark_kind`), sorted (e.g. `["review"]`). */
+  kinds: string[];
+  /** The ordered, consecutive-deduped mark verdict slugs; present iff ≥1 mark carried a verdict. */
+  verdicts?: string[];
+  /** Findings summed across marks carrying finding counts; present iff ≥1 mark carried any. */
+  findings?: FleetSemanticFindings;
 }
 
 /** One session, one row in the fleet (workshop D2). */
@@ -468,16 +488,21 @@ function countFixCycles(seq: readonly string[]): number {
  */
 function laneSemantics(segs: readonly Segment[]): FleetLaneSemantics {
   const artifacts: ArtifactEvent[] = [];
+  const marks: MarkEvent[] = [];
   const flowStage: Record<string, number> = {};
   for (const seg of segs) {
     for (const ev of seg.event_stream ?? []) {
       if (ev.kind === 'artifact') artifacts.push(ev);
+      else if (ev.kind === 'mark') marks.push(ev);
     }
     const fst = seg.rollup?.flow_stage_time_s;
     if (fst) for (const [k, v] of Object.entries(fst)) flowStage[k] = (flowStage[k] ?? 0) + v;
   }
   const hasFlowStage = Object.keys(flowStage).length > 0;
-  if (artifacts.length === 0 && !hasFlowStage) return blindLaneSemantics();
+  // plan 053: a MARK-ONLY lane (a read-only reviewer that ran no harness command
+  // and wrote no file) must NOT be dropped as blind — its mark IS its measured
+  // semantic evidence. So the blind-guard now also checks for marks.
+  if (artifacts.length === 0 && !hasFlowStage && marks.length === 0) return blindLaneSemantics();
 
   const sem: FleetLaneSemantics = {
     semantics_measured: true,
@@ -535,7 +560,55 @@ function laneSemantics(segs: readonly Segment[]): FleetLaneSemantics {
   }
 
   if (hasFlowStage) sem.flow_stage_time_s = flowStage;
+  if (marks.length > 0) sem.mark = laneMark(marks);
   return sem;
+}
+
+/** Compare two mark events by their ISO `t` (older first); NaN sorts last. */
+function byMarkTime(a: MarkEvent, b: MarkEvent): number {
+  const ta = Date.parse(a.t);
+  const tb = Date.parse(b.t);
+  if (Number.isNaN(ta)) return Number.isNaN(tb) ? 0 : 1;
+  if (Number.isNaN(tb)) return -1;
+  return ta - tb;
+}
+
+/**
+ * Aggregate a lane's `mark` events into its {@link FleetLaneMark} (plan 053). Sums
+ * finding buckets (additive), collects the ordered verdict path (consecutive-deduped,
+ * transitions matter), and lists the distinct mark kinds. Counts/enums only.
+ */
+function laneMark(marks: readonly MarkEvent[]): FleetLaneMark {
+  const kinds = [...new Set(marks.map((m) => m.mark_kind))].sort();
+  const m: FleetLaneMark = { marks: marks.length, kinds };
+
+  const verdicts = dedupeConsecutive(
+    [...marks]
+      .filter((e) => e.verdict !== undefined)
+      .sort(byMarkTime)
+      .map((e) => e.verdict as string),
+  );
+  if (verdicts.length > 0) m.verdicts = verdicts;
+
+  let hasFindings = false;
+  const f: FleetSemanticFindings = { critical: 0, high: 0, med: 0, low: 0 };
+  for (const e of marks) {
+    if (
+      e.counts.findings_critical !== undefined ||
+      e.counts.findings_high !== undefined ||
+      e.counts.findings_med !== undefined ||
+      e.counts.findings_low !== undefined
+    ) {
+      hasFindings = true;
+    }
+    f.critical += e.counts.findings_critical ?? 0;
+    f.high += e.counts.findings_high ?? 0;
+    f.med += e.counts.findings_med ?? 0;
+    f.low += e.counts.findings_low ?? 0;
+  }
+  if (hasFindings) m.findings = f;
+
+  return m;
 }
 
 /**

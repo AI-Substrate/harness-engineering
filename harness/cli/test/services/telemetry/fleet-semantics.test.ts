@@ -44,6 +44,18 @@ function artifact(
   };
 }
 
+/** A peer self-attestation mark event (plan 053 shape). */
+function mark(
+  t: string,
+  markKind: string,
+  verdict?: string,
+  counts: Record<string, number> = {},
+): Event {
+  const e: Event = { t, kind: 'mark', mark_kind: markKind, counts };
+  if (verdict !== undefined) (e as { verdict?: string }).verdict = verdict;
+  return e;
+}
+
 /** Build a real-shaped serialized segment with pij join keys + an event stream. */
 function seg(opts: {
   sid: string;
@@ -63,15 +75,18 @@ function seg(opts: {
     timecode: opts.events[0]?.t ?? '2026-07-04T00:00:00Z',
     window: { since: 'session-start', from: 0, to: 1 },
     branch: null,
-    tokens: opts.tokens ?? {
-      input: 1,
-      output: 1,
-      cache_create: 0,
-      cache_read: 0,
-      total: 2,
-      subagent_tokens: 0,
-      grand_total: 2,
-    },
+    tokens:
+      opts.tokens === undefined
+        ? {
+            input: 1,
+            output: 1,
+            cache_create: 0,
+            cache_read: 0,
+            total: 2,
+            subagent_tokens: 0,
+            grand_total: 2,
+          }
+        : opts.tokens,
     event_stream: opts.events,
     captured_env: env,
   };
@@ -304,6 +319,182 @@ describe('T009 — the fleet-level rollup carries honest lane COVERAGE', () => {
   });
 });
 
+// ── plan 053 · T006/T007: peer self-attestation marks surface per-lane ────────
+describe('T006 — a mark-only lane surfaces its mark (not blind); cost/tokens untouched', () => {
+  it('a read-only reviewer that ONLY marks is semantics_measured (the target case)', () => {
+    // A copilot reviewer (tokens:null) that ran no harness command and wrote no
+    // file — its ONLY event is a mark. Pre-053 this lane read semantics_measured:false.
+    const fleet = buildFleetEvidence(
+      'pij-rev',
+      [
+        seg({
+          sid: 'pij-rev',
+          harness: 'copilot',
+          pijHarness: 'copilot',
+          tokens: null,
+          events: [
+            mark('2026-07-04T05:00:00Z', 'review', 'fix-required', { findings_critical: 1 }),
+          ],
+        }),
+      ],
+      { members: [{ role: 'reviewer', pij_id: 'pij-rev' }] },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+    const lane = fleet.sessions[0];
+    const s = lane.semantics;
+
+    // NOT blind — the mark is measured semantic evidence.
+    expect(s.semantics_measured).toBe(true);
+    expect(s.mark).toEqual({
+      marks: 1,
+      kinds: ['review'],
+      verdicts: ['fix-required'],
+      findings: { critical: 1, high: 0, med: 0, low: 0 },
+    });
+    // artifact_events stays 0 — a mark is NOT an artifact.
+    expect(s.artifact_events).toBe(0);
+    expect(s.findings).toBeUndefined(); // the artifact-review dimension is still absent
+
+    // COST is untouched by the mark — a tokens:null lane stays unmeasured, {0,0}.
+    expect(lane.cost_measured).toBe(false);
+    expect(lane.tokens).toEqual({ grand_total: 0, output: 0 });
+  });
+
+  it('a mark does NOT inflate a measured lane cost, and its verdict path dedupes across re-marks', () => {
+    const fleet = buildFleetEvidence(
+      ROOT,
+      [
+        seg({
+          sid: ROOT,
+          tokens: {
+            input: 10,
+            output: 20,
+            cache_create: 0,
+            cache_read: 0,
+            total: 30,
+            subagent_tokens: 0,
+            grand_total: 30,
+          },
+          events: [
+            { t: '2026-07-04T04:00:00Z', kind: 'turn', dur_s: 1, in: 10, out: 20 },
+            mark('2026-07-04T04:10:00Z', 'review', 'fix-required', { findings_high: 2 }),
+            mark('2026-07-04T04:20:00Z', 'review', 'fix-required'),
+            mark('2026-07-04T04:30:00Z', 'review', 'approve'),
+          ],
+        }),
+      ],
+      { members: [{ role: 'orchestrator', pij_id: ROOT }] },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+    const lane = fleet.sessions[0];
+
+    expect(lane.cost_measured).toBe(true);
+    // cost reflects ONLY the turn's tokens — the marks contribute nothing.
+    expect(lane.tokens.output).toBe(20);
+    expect(lane.semantics.mark).toEqual({
+      marks: 3,
+      kinds: ['review'],
+      verdicts: ['fix-required', 'approve'], // consecutive-deduped
+      findings: { critical: 0, high: 2, med: 0, low: 0 },
+    });
+  });
+
+  it('a mark with no verdict/findings still surfaces (kinds + count only)', () => {
+    const fleet = buildFleetEvidence(
+      'pij-x',
+      [
+        seg({
+          sid: 'pij-x',
+          harness: 'copilot',
+          pijHarness: 'copilot',
+          tokens: null,
+          events: [mark('2026-07-04T05:00:00Z', 'checkpoint')],
+        }),
+      ],
+      { members: [{ role: 'reviewer', pij_id: 'pij-x' }] },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+    const s = fleet.sessions[0].semantics;
+    expect(s.semantics_measured).toBe(true);
+    expect(s.mark).toEqual({ marks: 1, kinds: ['checkpoint'] });
+    expect(s.mark?.verdicts).toBeUndefined();
+    expect(s.mark?.findings).toBeUndefined();
+  });
+});
+
+describe('T007 — consumer proof: a mark-only reviewer lane + a coder lane', () => {
+  it('the mark surfaces on the reviewer lane ONLY; the coder lane is unaffected; cost intact', () => {
+    const roster: FleetRoster = {
+      members: [
+        { role: 'orchestrator', pij_id: ROOT },
+        { role: 'coder', pij_id: 'pij-coder' },
+        { role: 'reviewer', pij_id: 'pij-reviewer' },
+      ],
+    };
+    const fleet = buildFleetEvidence(
+      ROOT,
+      [
+        seg({ sid: ROOT, events: instrumentedOrchestratorEvents() }),
+        // A coder lane: real inference, NO mark.
+        seg({
+          sid: 'pij-coder',
+          parent: ROOT,
+          tokens: {
+            input: 100,
+            output: 200,
+            cache_create: 0,
+            cache_read: 0,
+            total: 300,
+            subagent_tokens: 0,
+            grand_total: 300,
+          },
+          events: [{ t: '2026-07-04T04:03:00Z', kind: 'turn', dur_s: 5, in: 100, out: 200 }],
+        }),
+        // A read-only reviewer lane: tokens:null, its ONLY event is a mark.
+        seg({
+          sid: 'pij-reviewer',
+          parent: ROOT,
+          harness: 'copilot',
+          pijHarness: 'copilot',
+          tokens: null,
+          events: [
+            mark('2026-07-04T04:40:00Z', 'review', 'fix-required', {
+              findings_critical: 2,
+              findings_med: 1,
+            }),
+          ],
+        }),
+      ],
+      roster,
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+
+    const reviewer = fleet.sessions.find((l) => l.pij_id === 'pij-reviewer');
+    const coder = fleet.sessions.find((l) => l.pij_id === 'pij-coder');
+    if (reviewer === undefined || coder === undefined) throw new Error('expected both lanes');
+
+    // The reviewer's mark is on ITS lane, distinct, and it is NOT blind.
+    expect(reviewer.semantics.semantics_measured).toBe(true);
+    expect(reviewer.semantics.mark).toEqual({
+      marks: 1,
+      kinds: ['review'],
+      verdicts: ['fix-required'],
+      findings: { critical: 2, high: 0, med: 1, low: 0 },
+    });
+    expect(reviewer.cost_measured).toBe(false); // cost-excluded (tokens:null)
+
+    // The coder lane carries NO mark and its cost is intact.
+    expect(coder.semantics.mark).toBeUndefined();
+    expect(coder.cost_measured).toBe(true);
+    expect(coder.tokens.output).toBe(200);
+
+    // Fleet cost aggregation is unchanged by the mark — the reviewer is an
+    // unmeasured lane, the coder + orchestrator carry the measured cost.
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
+    expect(fleet.totals.cost.output).toBeGreaterThanOrEqual(200);
+  });
+});
+
 // ── T010: the closed-schema extension rejects an un-enumerated semantics key ──────
 const FLEET_SCHEMA = JSON.parse(
   readFileSync(
@@ -369,6 +560,39 @@ describe('T010 — the semantics block is CLOSED (an un-enumerated key fails)', 
 
   it('a real payload with a lane + fleet semantics block validates clean', () => {
     expect(closedViolations(FLEET_SCHEMA, fleetWithSemantics(), FLEET_SCHEMA)).toEqual([]);
+  });
+
+  it('a lane carrying a mark validates clean against the closed schema (plan 053)', () => {
+    const fleet = buildFleetEvidence(
+      ROOT,
+      [
+        seg({
+          sid: ROOT,
+          events: [
+            mark('2026-07-04T05:00:00Z', 'review', 'fix-required', { findings_critical: 1 }),
+          ],
+        }),
+      ],
+      { members: [{ role: 'reviewer', pij_id: ROOT }] },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+    expect(closedViolations(FLEET_SCHEMA, fleet, FLEET_SCHEMA)).toEqual([]);
+  });
+
+  it('rejects an un-enumerated key inside a LANE mark block (P12)', () => {
+    const fleet = buildFleetEvidence(
+      ROOT,
+      [seg({ sid: ROOT, events: [mark('2026-07-04T05:00:00Z', 'review', 'fix-required')] })],
+      { members: [{ role: 'reviewer', pij_id: ROOT }] },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+    const bad = structuredClone(fleet) as unknown as {
+      sessions: Array<{ semantics: { mark?: Record<string, unknown> } }>;
+    };
+    (bad.sessions[0].semantics.mark as Record<string, unknown>).leaked_prose = 'nope';
+    expect(closedViolations(FLEET_SCHEMA, bad, FLEET_SCHEMA)).toContain(
+      '$.sessions[0].semantics.mark.leaked_prose',
+    );
   });
 
   it('rejects an un-enumerated key inside a LANE semantics block (P12)', () => {
