@@ -5,7 +5,10 @@
   "nav": {
     "now": "ship",
     "next": null,
-    "intent": "Ship 052: push to open PR 49, telemetry flush, fleet teardown + live get-fleet dogfood, terminal harvest"
+    "intent": "Ship 052: push to open PR 49, telemetry flush, fleet teardown + live get-fleet dogfood, terminal harvest",
+    "bag": {
+      "status": "complete"
+    }
   },
   "created_at": "2026-07-04T05:28:55.905Z",
   "provenance": {

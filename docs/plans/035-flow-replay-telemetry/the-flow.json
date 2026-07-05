@@ -220,7 +220,7 @@
     "next": "ship",
     "intent": "Capture the-flow flight-plan activity (the events[] log: moves, status changes, edits, with timestamps) into telemetry so a flow session can be roughly reconstructed with timings.",
     "bag": {
-      "status": "active",
+      "status": "complete",
       "mode": "Simple"
     }
   }

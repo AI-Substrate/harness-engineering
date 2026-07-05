@@ -231,7 +231,7 @@
     "intent": "Finish dropping .the-flow-state.json onto the deterministic nav/bag store: fold session state into nav.intent + nav.bag, derive pending_command/milestones/status, eliminate the hand-written state file.",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   }
 }

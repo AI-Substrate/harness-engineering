@@ -5,59 +5,33 @@
 
 **Rail**: ◆─◆─[ ◇─◇ ]  ◆ Research · ◆ Plan · [ ◇ P1: Implementation · ◇ Ship ]
 
-### ◆ Research · _done_
-
 ```mermaid
-flowchart LR
+flowchart TD
     research["Research 📝3"]:::done
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-```
-
-↓
-
-### ◆ Plan · _done_
-
-```mermaid
-flowchart LR
     plan["Plan 💬1 📝3"]:::done
-    backpressure["Backpressure survey 📝3 🧰°"]:::harnessFaded
-    plan -.- backpressure
-    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
-    classDef impOptional stroke-dasharray:2 3;
-    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
-    class backpressure impOptional;
-    class plan current;
-```
-
-↓
-
-### ◇ P1: Implementation · _known_
-
-```mermaid
-flowchart LR
     phase_1["P1: Implementation 📝3"]:::known
-    boot_1["Boot check 📝3 🧰"]:::harnessFaded
-    observe_1["Observe: P1 📝3 🧰"]:::harnessFaded
-    retro_1["Retro: P1 (drain) 📝3 🧰"]:::harnessFaded
-    phase_1 -.- boot_1
-    phase_1 -.- observe_1
-    phase_1 -.- retro_1
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
-```
-
-↓
-
-### ◇ Ship · _assumed_
-
-```mermaid
-flowchart LR
     ship["Ship 📝3"]:::assumed
-    retro_ship["Retro: ship (harvest) 📝3 🧰"]:::harnessFaded
-    ship -.- retro_ship
+
+    research --> plan --> phase_1 --> ship
+
+    planC["□° Backpressure survey"]:::chore
+    phase_1C["□ Boot check<br/>□ Observe: P1<br/>□ Retro: P1 (drain)"]:::chore
+    shipC["□ Retro: ship (harvest)"]:::chore
+
+    %% invisible chain holds the gutter boxes in their own column
+    planC ~~~ phase_1C ~~~ shipC
+
+    %% dotted links pull each gutter box beside its node
+    plan -.- planC
+    phase_1 -.- phase_1C
+    ship -.- shipC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
     classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class plan current;
 ```
 
 **Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).

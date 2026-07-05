@@ -4,7 +4,10 @@
   "slug": "session-telemetry-dashboard",
   "nav": {
     "now": "ship",
-    "next": "review-3"
+    "next": "review-3",
+    "bag": {
+      "status": "complete"
+    }
   },
   "created_at": "2026-06-30T22:40:11.082Z",
   "provenance": {

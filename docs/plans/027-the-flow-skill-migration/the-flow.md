@@ -3,42 +3,32 @@
 
 **Kind**: flight-plan · **Now**: review · **Next**: merge · **Intent**: Build complete — cursor→nav migration + minih eval harness done; all 6 ACs proven; next: review then deploy (CLI-first) · **Nodes**: 8 · **Events**: 19
 
-**Rail**: ◆─◆─[ ◆─◆ ]─◇─◇  Design (workshops) · Plan the fix ─ [ Fix the-flow prompts · minih eval harness + run ] ─ Review · Merge / deploy
+**Rail**: ◆─◆─[ ◆─◆ ]─◇─◇  ◆ Design (workshops) · ◆ Plan the fix · [ ◆ Fix the-flow prompts · ◆ minih eval harness + run ] · ◇ Review · ◇ Merge / deploy
 
 ```mermaid
 flowchart TD
-    merge["Merge / deploy"]:::known
-    review["Review"]:::known
-    p2["minih eval harness + run 💬1"]:::done
-    p1["Fix the-flow prompts"]:::done
-    plan["Plan the fix"]:::done
     research["Design (workshops)"]:::done
+    plan["Plan the fix"]:::done
+    p1["Fix the-flow prompts"]:::done
+    p2["minih eval harness + run 💬1"]:::done
+    review["Review"]:::known
+    merge["Merge / deploy"]:::known
 
-    review --> merge
-    p2 --> review
-    p1 --> p2
-    plan --> p1
-    research --> plan
+    research --> plan --> p1 --> p2 --> review --> merge
 
-    ws_migrate["WS004: skill migration spec"]:::done
-    ws_eval["WS005: minih eval harness"]:::done
-    ws_migrate -.-> plan
-    ws_eval -.-> plan
+    planC["◆ WS004: skill migration spec<br/>◆ WS005: minih eval harness"]:::chore
 
-    classDef done fill:#C8E6C9,stroke:#2E7D32;
-    classDef wip fill:#FFE0B2,stroke:#EF6C00;
-    classDef blocked fill:#FFCDD2,stroke:#C62828;
-    classDef known fill:#BBDEFB,stroke:#1565C0;
-    classDef assumed fill:#ECEFF1,stroke:#90A4AE,stroke-dasharray:5 3;
-    classDef said fill:#FFF9C4,stroke:#F9A825;
-    classDef harness fill:#EDE7F6,stroke:#673AB7;
-    classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;
-    classDef companion fill:#D1C4E9,stroke:#5E35B1;
-    classDef worker fill:#B2DFDB,stroke:#00897B;
-    classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
+    %% dotted links pull each gutter box beside its node
+    plan -.- planC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class review current;
 ```
 
-**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker.
+**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).
 
 ## Node log
 

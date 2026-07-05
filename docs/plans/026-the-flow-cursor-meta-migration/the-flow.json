@@ -618,7 +618,8 @@
     "next": "merge",
     "intent": "Phase 1 shipped — nav/rail/zone + create --agent (4 commits, suite 788 green); next: review then merge",
     "bag": {
-      "build_commit": "cc63c12"
+      "build_commit": "cc63c12",
+      "status": "complete"
     }
   }
 }

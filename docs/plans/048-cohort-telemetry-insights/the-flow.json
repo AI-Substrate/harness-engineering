@@ -4,7 +4,10 @@
   "slug": "cohort-telemetry-insights",
   "nav": {
     "now": "phase-3",
-    "next": null
+    "next": null,
+    "bag": {
+      "status": "complete"
+    }
   },
   "created_at": "2026-07-02T07:49:11.080Z",
   "provenance": {
@@ -333,6 +336,18 @@
         "from": "known",
         "to": "done"
       }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-02T12:38:08.210Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -426,7 +441,14 @@
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-07-02T12:38:08.210Z",
+          "text": "All phases + reviews done and pushed (P1 f3fea425, P2 7c5a7938, P3 4023f9de). Pre-ship residue: AC-13 digit confirm (one user-typed /the-flow <digit>, else demote-with-note); open follow-ups in retro records 002/003 (time_quality, observe id-collision, codex adapter). Ships with 046/047 on this branch's consolidated PR."
+        }
+      ],
+      "modified_at": "2026-07-02T12:38:08.210Z"
     },
     {
       "id": "backpressure",

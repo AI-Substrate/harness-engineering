@@ -4,7 +4,10 @@
   "slug": "telemetry-ref-rollup",
   "nav": {
     "now": "ship",
-    "next": null
+    "next": null,
+    "bag": {
+      "status": "complete"
+    }
   },
   "created_at": "2026-07-02T21:11:55.420Z",
   "provenance": {

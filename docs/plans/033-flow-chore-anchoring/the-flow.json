@@ -512,7 +512,7 @@
     "intent": "Anchor injected loop-chores so they are deterministic checks, not orphans",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   }
 }

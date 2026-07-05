@@ -8,7 +8,7 @@
     "intent": "Eval pij fleets as one joined session: orchestrator builds flow artifacts, spawns pij coders/reviewer, joins child sessions via captured parent-link env vars, scores time/quality/cost per named scenario (each scenario carries its reason/vibe)",
     "bag": {
       "mode": "unknown",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-07-04T03:14:52.171Z",

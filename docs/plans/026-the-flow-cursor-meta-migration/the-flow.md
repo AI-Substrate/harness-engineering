@@ -3,44 +3,26 @@
 
 **Kind**: flight-plan · **Now**: p1 · **Next**: merge · **Intent**: Phase 1 shipped — nav/rail/zone + create --agent (4 commits, suite 788 green); next: review then merge · **Nodes**: 6 · **Events**: 38
 
-**Rail**: ◆─◆─◆─◆─[ ◆ ]─◇  Workshop · the-flow to cursor/meta · Workshop · nav object (first-class position DB) · Guide · building flows on the flow system · Plan (Simple) — folds workshop, auto-validates ─ [ Phase 1 · Build nav/rail/zone + create --agent ] ─ Merge
+**Rail**: ◆─◆─◆─◆─[ ◆ ]─◇  ◆ Workshop · the-flow to cursor/meta · ◆ Workshop · nav object (first-class position DB) · ◆ Guide · building flows on the flow system · ◆ Plan (Simple) — folds workshop, auto-validates · [ ◆ Phase 1 · Build nav/rail/zone + create --agent ] · ◇ Merge
 
 ```mermaid
 flowchart TD
-    merge["Merge"]:::known
-    p1["Phase 1 · Build nav/rail/zone + create --agent 💬1"]:::done
-    plan["Plan (Simple) — folds workshop, auto-validates 💬2 📄1"]:::done
     ws_migration["Workshop · the-flow to cursor/meta 💬1 📄1"]:::done
     ws_nav["Workshop · nav object (first-class position DB) 💬5 📄1"]:::done
     ws_guide["Guide · building flows on the flow system 📄1"]:::done
+    plan["Plan (Simple) — folds workshop, auto-validates 💬2 📄1"]:::done
+    p1["Phase 1 · Build nav/rail/zone + create --agent 💬1"]:::done
+    merge["Merge"]:::known
 
-    p1 --> merge
-    plan --> p1
-    ws_migration --> ws_nav
-    ws_nav --> ws_guide
-    ws_guide --> plan
+    ws_migration --> ws_nav --> ws_guide --> plan --> p1 --> merge
 
-    say_ws_migration>"🗣 do a new flow, simple mode. workshop the migration of the-flow to new system (where skill edits are and how the vibe changes in how it operates). then run validation. then build while dogfooding; observe and report any issues."]:::said
-    say_ws_migration -.- ws_migration
-    say_ws_nav>"🗣 next can be null — we're not doing workflow, we're letting the LLM use this as a first-class database. do a workshop and get it sorted properly."]:::said
-    say_ws_nav -.- ws_nav
-    say_ws_guide>"🗣 i want a workshop / implementation guide for how to build new flows / skills that rely on this wf system. and: did you doco the rail properly?"]:::said
-    say_ws_guide -.- ws_guide
-
-    classDef done fill:#C8E6C9,stroke:#2E7D32;
-    classDef wip fill:#FFE0B2,stroke:#EF6C00;
-    classDef blocked fill:#FFCDD2,stroke:#C62828;
-    classDef known fill:#BBDEFB,stroke:#1565C0;
-    classDef assumed fill:#ECEFF1,stroke:#90A4AE,stroke-dasharray:5 3;
-    classDef said fill:#FFF9C4,stroke:#F9A825;
-    classDef harness fill:#EDE7F6,stroke:#673AB7;
-    classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;
-    classDef companion fill:#D1C4E9,stroke:#5E35B1;
-    classDef worker fill:#B2DFDB,stroke:#00897B;
-    classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class p1 current;
 ```
 
-**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker.
+**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).
 
 ## Node log
 

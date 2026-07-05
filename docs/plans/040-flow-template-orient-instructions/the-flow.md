@@ -10,75 +10,38 @@ flowchart TD
     research["Research 📄1"]:::done
     plan["Plan 📄1"]:::done
     phase_1["P1: Implementation"]:::done
-    ship["Ship"]:::assumed
     phase_2["P2: orient verb"]:::done
     phase_3["P3: Renderer (type-colour/badges/legend)"]:::done
     phase_4["P4: the-flow skill (template/expander/invariant)"]:::done
     phase_5["P5: Doctrine-parity + coexistence"]:::done
+    ship["Ship"]:::assumed
 
-    research --> plan
-    plan --> phase_1
-    phase_1 --> phase_2
-    phase_2 --> phase_3
-    phase_3 --> phase_4
-    phase_4 --> phase_5
-    phase_5 --> ship
+    research --> plan --> phase_1 --> phase_2 --> phase_3 --> phase_4 --> phase_5 --> ship
 
-    backpressure["Backpressure survey 🧰°"]:::harnessFaded
-    boot_1["Boot check 🧰"]:::harnessFaded
-    observe_1["Observe: P1 🧰"]:::harnessFaded
-    retro_1["Retro: P1 (drain) 🧰"]:::harnessFaded
-    retro_ship["Retro: ship (harvest) 🧰"]:::harnessFaded
-    ws_coexistence["WS: chore-shape ownership 📄1"]:::done
-    ws_visual["WS: D5 visual vocabulary 📄1"]:::done
-    boot_2["Boot check 🧰"]:::harnessFaded
-    observe_2["Observe: P2 🧰"]:::harnessFaded
-    retro_2["Retro: P2 (drain) 🧰"]:::harnessFaded
-    boot_3["Boot check 🧰"]:::harnessFaded
-    observe_3["Observe: P3 🧰"]:::harnessFaded
-    retro_3["Retro: P3 (drain) 🧰"]:::harnessFaded
-    boot_4["Boot check 🧰"]:::harnessFaded
-    observe_4["Observe: P4 🧰"]:::harnessFaded
-    retro_4["Retro: P4 (drain) 🧰"]:::harnessFaded
-    boot_5["Boot check 🧰"]:::harnessFaded
-    observe_5["Observe: P5 🧰"]:::harnessFaded
-    retro_5["Retro: P5 (drain) 🧰"]:::harnessFaded
-    backpressure -.-> plan
-    boot_1 -.-> phase_1
-    observe_1 -.-> phase_1
-    retro_1 -.-> phase_1
-    retro_ship -.-> ship
-    ws_coexistence -.-> plan
-    ws_visual -.-> plan
-    boot_2 -.-> phase_2
-    observe_2 -.-> phase_2
-    retro_2 -.-> phase_2
-    boot_3 -.-> phase_3
-    observe_3 -.-> phase_3
-    retro_3 -.-> phase_3
-    boot_4 -.-> phase_4
-    observe_4 -.-> phase_4
-    retro_4 -.-> phase_4
-    boot_5 -.-> phase_5
-    observe_5 -.-> phase_5
-    retro_5 -.-> phase_5
+    planC["□° Backpressure survey<br/>◆ WS: chore-shape ownership<br/>◆ WS: D5 visual vocabulary"]:::chore
+    phase_1C["□ Boot check<br/>□ Observe: P1<br/>□ Retro: P1 (drain)"]:::chore
+    phase_2C["□ Boot check<br/>□ Observe: P2<br/>□ Retro: P2 (drain)"]:::chore
+    phase_3C["□ Boot check<br/>□ Observe: P3<br/>□ Retro: P3 (drain)"]:::chore
+    phase_4C["□ Boot check<br/>□ Observe: P4<br/>□ Retro: P4 (drain)"]:::chore
+    phase_5C["□ Boot check<br/>□ Observe: P5<br/>□ Retro: P5 (drain)"]:::chore
+    shipC["□ Retro: ship (harvest)"]:::chore
+
+    %% invisible chain holds the gutter boxes in their own column
+    planC ~~~ phase_1C ~~~ phase_2C ~~~ phase_3C ~~~ phase_4C ~~~ phase_5C ~~~ shipC
+
+    %% dotted links pull each gutter box beside its node
+    plan -.- planC
+    phase_1 -.- phase_1C
+    phase_2 -.- phase_2C
+    phase_3 -.- phase_3C
+    phase_4 -.- phase_4C
+    phase_5 -.- phase_5C
+    ship -.- shipC
 
     classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
-    classDef wip fill:#43C04A,stroke:#1B7F2E,color:#04210A;
-    classDef blocked fill:#E53935,stroke:#8E1513,color:#fff;
-    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
     classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
-    classDef said fill:#FFD21F,stroke:#C79100,color:#241c00;
-    classDef harness fill:#7E3FF2,stroke:#4A1FA8,color:#fff;
-    classDef harnessFaded fill:#D6CBEC,stroke:#A892D4,color:#5B4E78;
-    classDef decision fill:#FF8F00,stroke:#B25E00,color:#1a1100,stroke-dasharray:2 2;
-    classDef companion fill:#AB2FCB,stroke:#6A1480,color:#fff;
-    classDef worker fill:#00A38C,stroke:#005046,color:#fff;
-    classDef unknown fill:#ECEFF1,stroke:#90A4AE,color:#1a1a1a,stroke-dasharray:1 4;
-    classDef impOptional stroke-dasharray:2 3;
-    classDef impStrong stroke-width:3px;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
     classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
-    class backpressure impOptional;
     class ship current;
 ```
 

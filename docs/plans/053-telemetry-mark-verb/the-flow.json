@@ -8,7 +8,7 @@
     "intent": "Add a harness telemetry mark verb: shape-guarded counts-only peer self-attestation onto its own telemetry lane (reviewer verdict first, mechanical per-stage spine later)",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-07-05T08:01:31.901Z",
@@ -221,6 +221,44 @@
           "note"
         ]
       }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-05T09:52:21.461Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-05T09:52:22.298Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-05T09:53:21.061Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -302,7 +340,7 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
@@ -310,8 +348,9 @@
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
       ],
-      "note": "Fleet run complete + approved. Eval report: scratch/evals/2026-07-05-053-mark-verb/. Peers torn down (reviewer ledger-reconciled 389.47 AIC, coder live-meter 1844). Push/PR held for user confirm.",
-      "modified_at": "2026-07-05T09:28:51.528Z"
+      "note": "Shipped: mark verb 3c3e4654 + docs 4e2baf5d pushed to feat/041-flow-conformance-eval; CI green (build-test 22/24, ci-required, package-smoke, rename-guard all pass on 4e2baf5d). PR 49 pull-up is the user's action. Eval report in scratch/evals/2026-07-05-053-mark-verb/.",
+      "modified_at": "2026-07-05T09:52:22.297Z",
+      "ran_at": "2026-07-05T09:52:21.461Z"
     },
     {
       "id": "backpressure",
@@ -397,7 +436,7 @@
       "id": "retro-ship",
       "type": "harness-retro",
       "label": "Retro: ship (harvest)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "ship",
       "next": [
         "ship"
@@ -411,7 +450,9 @@
         "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-05T09:53:21.061Z",
+      "ran_at": "2026-07-05T09:53:21.061Z"
     }
   ]
 }

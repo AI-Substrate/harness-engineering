@@ -198,6 +198,7 @@ export function getSessionEvidenceFromContext(
 | 1 | Telemetry session-evidence read path | telemetry | A read-only `telemetry get <pij-session-id>` verb returning a normalized evidence object (worktree-safe) | None |
 | 2 | The `flow-eval` engine | flow-eval | Scenario loader + `type`-dispatched resolvers + three-valued scorer + report writer | Phase 1 |
 | 3 | Scenario #1 (md→PDF) + orchestration + docs | flow-eval | The pinned scenario, blind+orchestrator prompts, assertions, runbook, docs, end-to-end validation | Phases 1–2 |
+| 4 | Eval hardening — seed + run-outcome ledger | flow-eval | Persist every run's seed/config tuple + per-lane outcomes to an append-only ledger so drift is readable over time | Phase 2 |
 
 #### Phase 1: Telemetry session-evidence read path
 **Objective**: Given a pij session id, deterministically locate and parse that session's telemetry into a normalized evidence object — the foundation the scorer's telemetry lane consumes.
@@ -246,6 +247,21 @@ export function getSessionEvidenceFromContext(
 | 3.5 | End-to-end validation: automated scoring half over a captured/fixture session; runbook-verify the live pij drive once | flow-eval | Scorer produces a `report.{json,md}`; runbook step-list verified | AC-09 |
 | 3.6 | `docs/how/flow-conformance-eval.md` — authoring a scenario, the `type` registry, running, reading a report | flow-eval | Guide present; a fresh reader can author scenario #2 | AC-10 |
 
+#### Phase 4: Eval hardening — seed + run-outcome ledger
+**Objective**: Make eval runs comparable *over time* — persist every scored run's reproducibility tuple ("seed") and its per-lane outcomes to a durable, append-only ledger, so drift across model / harness / skill changes is readable rather than lost between one-off runs. This is the record-keeping substrate the research's longitudinal-comparison and `pass^k` findings all read from (see `research/eval-methodology-perplexity-2026-07-01.md`).
+**Domain**: flow-eval
+**Delivers**: an append-only run-outcome ledger (one record per scored run) written alongside the report by `flow-eval score`, plus a read path to view runs over time (per-lane verdict history + score trend).
+**Depends on**: Phase 2 (the scorer/report — the ledger is fed from `score`).
+**Key risks**: an LLM "seed" is **not** a true RNG seed — temperature-0 ≠ deterministic (FP non-associativity, dynamic batching; research §first-principles #2). So record the **full reproducibility tuple** (model + version, effort, harness, base ref, prompt/scenario hashes, orchestrator id) as the "seed", never a single integer, and treat run-to-run lane flips as expected variance to be *measured*, not bugs.
+
+| # | Task | Domain | Success Criteria | Notes |
+|---|------|--------|-----------------|-------|
+| 4.1 | Define the run-record schema: `{run_id, ts, scenario, subject{model,version,harness,effort}, base_ref, seed_tuple, lanes[{lane,verdict,required}], axis_scores, verdict, telemetry_available}` | flow-eval | Schema documented; one scored run round-trips into a valid record | AC-11 |
+| 4.2 | `flow-eval score` appends a record to an append-only ledger (`.harness/live-testing/<slug>/ledger.jsonl`) on every run — never rewrites prior rows | flow-eval | N runs → N ledger lines; prior lines byte-stable across reruns | AC-11 |
+| 4.3 | Read path: `flow-eval ledger --scenario <slug>` lists runs over time (per-lane verdict history + score trend) so a lane flipping run-to-run is visible; **`--compare <modelA> --compare <modelB>` groups by model for first-class cross-model comparison** (e.g. gpt-5.5 vs sonnet-5) — paired only when `scenario_hash`+`base_ref` match | flow-eval | Lists all recorded runs; surfaces a lane that changed verdict across runs; `--compare` renders a model-vs-model board | AC-12 |
+
+> **Related (research-surfaced, not yet scoped into tasks)**: this ledger is the substrate for the broader eval-hardening backlog in [`research/eval-methodology-perplexity-2026-07-01.md`](./research/eval-methodology-perplexity-2026-07-01.md) — K-seeded `pass^k`, the two-axis (process vs capability) scorecard, per-seam trajectory-match modes, judge hardening, outcome-anchored lanes, task-family/holdout. Pull those into Phase 4 (or a Phase 5) when prioritized; this phase delivers only the record-keeping they all depend on, which is what was explicitly requested.
+
 ### Acceptance Coverage Map
 
 | AC | Covered by | Verified in |
@@ -260,6 +276,8 @@ export function getSessionEvidenceFromContext(
 | AC-08 | 3.1–3.4 | scenario loads; blind-packet review |
 | AC-09 | 3.5 | scoring test + runbook verification |
 | AC-10 | 3.6 | guide present |
+| AC-11 | 4.1, 4.2 | run-record schema + append-only ledger written per `score` |
+| AC-12 | 4.3 | `flow-eval ledger` read path shows per-run outcomes + trend |
 
 ### Risks
 

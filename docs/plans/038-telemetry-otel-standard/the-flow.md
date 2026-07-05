@@ -7,71 +7,32 @@
 
 ```mermaid
 flowchart TD
-    ship["Ship"]:::assumed
-    plan["Plan 💬1"]:::done
     research["Research 📄1"]:::done
+    plan["Plan 💬1"]:::done
     implement["Implement: OTLP supplant (16 tasks, sensors-first) 📄1"]:::done
     review["Review (stage 7) 💬1"]:::done
+    ship["Ship"]:::assumed
 
-    plan --> implement
-    research --> plan
-    implement --> review
-    review --> ship
+    research --> plan --> implement --> review --> ship
 
-    otel_deep_research["Deep research: local-OTEL + git-refs 💬1 📄1"]:::done
-    ws_otlp_shape["WS-A: OTLP emit & shape 📄1"]:::done
-    ws_storage_transport["WS-B: storage & transport 📄1"]:::done
-    T001["T001 · 3-way conformance harness + devDep choice"]:::chore
-    T002["T002 · Reconstruction round-trip sensor"]:::chore
-    T003["T003 · OTLP conformance sensor (severity + no-drop + known-key)"]:::chore
-    T004["T004 · Privacy byte-scan over OTLP bytes"]:::chore
-    T005["T005 · Golden drift sensor + minting"]:::chore
-    T006["T006 · harness.* OTLP schema + schema_url + version assertion"]:::chore
-    T007["T007 · event_stream -#gt; OTLP Logs"]:::chore
-    T008["T008 · rollup -#gt; OTLP Metrics"]:::chore
-    T009["T009 · gen_ai.* mapping module"]:::chore
-    T010["T010 · Wire OTLP write at capture seam (spool)"]:::chore
-    T011["T011 · Publish OTLP .jsonl over git-refs"]:::chore
-    T012["T012 · Harden keep (H4/H5)"]:::chore
-    T013["T013 · Update eng-thrive scraper (lockstep) 💬1"]:::chore
-    T014["T014 · Retarget rewritten tests"]:::chore
-    T015["T015 · Touched-storage tests hold .jsonl"]:::chore
-    T016["T016 · Operator doc (docs/how/)"]:::chore
-    otel_deep_research -.-> plan
-    ws_otlp_shape -.-> plan
-    ws_storage_transport -.-> plan
-    T001 -.-> implement
-    T002 -.-> implement
-    T003 -.-> implement
-    T004 -.-> implement
-    T005 -.-> implement
-    T006 -.-> implement
-    T007 -.-> implement
-    T008 -.-> implement
-    T009 -.-> implement
-    T010 -.-> implement
-    T011 -.-> implement
-    T012 -.-> implement
-    T013 -.-> implement
-    T014 -.-> implement
-    T015 -.-> implement
-    T016 -.-> implement
+    planC["◆ Deep research: local-OTEL + git-refs<br/>◆ WS-A: OTLP emit & shape<br/>◆ WS-B: storage & transport"]:::chore
+    implementC["■‼ T001 · 3-way conformance harness + devDep choice<br/>■‼ T002 · Reconstruction round-trip sensor<br/>■‼ T003 · OTLP conformance sensor (severity + no-drop + known-key)<br/>■‼ T004 · Privacy byte-scan over OTLP bytes<br/>■‼ T005 · Golden drift sensor + minting<br/>■‼ T006 · harness.* OTLP schema + schema_url + version assertion<br/>■‼ T007 · event_stream -#gt; OTLP Logs<br/>■‼ T008 · rollup -#gt; OTLP Metrics<br/>■‼ T009 · gen_ai.* mapping module<br/>■‼ T010 · Wire OTLP write at capture seam (spool)<br/>■‼ T011 · Publish OTLP .jsonl over git-refs<br/>■‼ T012 · Harden keep (H4/H5)<br/>▨‼ T013 · Update eng-thrive scraper (lockstep)<br/>■‼ T014 · Retarget rewritten tests<br/>■‼ T015 · Touched-storage tests hold .jsonl<br/>■‼ T016 · Operator doc (docs/how/)"]:::chore
 
-    classDef done fill:#C8E6C9,stroke:#2E7D32;
-    classDef wip fill:#FFE0B2,stroke:#EF6C00;
-    classDef blocked fill:#FFCDD2,stroke:#C62828;
-    classDef known fill:#BBDEFB,stroke:#1565C0;
-    classDef assumed fill:#ECEFF1,stroke:#90A4AE,stroke-dasharray:5 3;
-    classDef said fill:#FFF9C4,stroke:#F9A825;
-    classDef harness fill:#EDE7F6,stroke:#673AB7;
-    classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;
-    classDef companion fill:#D1C4E9,stroke:#5E35B1;
-    classDef worker fill:#B2DFDB,stroke:#00897B;
-    classDef chore fill:#E0F2F1,stroke:#00897B,stroke-dasharray:3 2;
-    classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
+    %% invisible chain holds the gutter boxes in their own column
+    planC ~~~ implementC
+
+    %% dotted links pull each gutter box beside its node
+    plan -.- planC
+    implement -.- implementC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class ship current;
 ```
 
-**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker · 🧰 chore (upkeep).
+**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).
 
 ## Node log
 

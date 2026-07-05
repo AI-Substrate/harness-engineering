@@ -316,6 +316,9 @@
   "nav": {
     "now": "review",
     "next": "merge",
-    "intent": "Build complete — cursor→nav migration + minih eval harness done; all 6 ACs proven; next: review then deploy (CLI-first)"
+    "intent": "Build complete — cursor→nav migration + minih eval harness done; all 6 ACs proven; next: review then deploy (CLI-first)",
+    "bag": {
+      "status": "complete"
+    }
   }
 }

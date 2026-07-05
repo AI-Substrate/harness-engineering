@@ -619,7 +619,7 @@
     "intent": "Capture real logs from all four harness surfaces on this machine, scrub machine paths/identity/secrets while keeping verbatim prompts+tool usage (with a manual 'anything bad' review), commit them as durable fixtures, and add end-to-end tests that drive each real fixture through its adapter to the serialized segment to validate the data we produce.",
     "bag": {
       "mode": "Full",
-      "status": "active"
+      "status": "complete"
     }
   }
 }

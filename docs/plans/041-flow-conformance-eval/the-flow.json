@@ -8,7 +8,7 @@
     "intent": "Build a flow-conformance eval harness: an orchestrator drives a blind agent through the-flow on a fixed task, graded deterministically via telemetry/OTel + filesystem, config-driven, reports to .harness/live-testing/<slug>/",
     "bag": {
       "mode": "unknown",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-06-29T02:58:34.980Z",
@@ -359,6 +359,29 @@
         "from": "phase-3",
         "to": "ship"
       }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-30T21:52:31.605Z",
+      "details": {
+        "node": "phase-4",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-30T21:52:31.605Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
     }
   ],
   "nodes": [
@@ -587,10 +610,10 @@
       "label": "P3: Scenario md→PDF + orchestration + docs",
       "status": "done",
       "next": [
-        "ship"
+        "phase-4"
       ],
       "created_at": "2026-06-29T04:40:46.081Z",
-      "modified_at": "2026-06-29T07:34:48.370Z",
+      "modified_at": "2026-06-30T21:52:31.605Z",
       "ran_at": "2026-06-29T07:34:47.897Z",
       "comments": [
         {
@@ -599,6 +622,18 @@
           "kind": "note"
         }
       ]
+    },
+    {
+      "id": "phase-4",
+      "type": "phase",
+      "label": "P4: Eval hardening — seed + run-outcome ledger",
+      "status": "known",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-30T21:52:31.605Z",
+      "modified_at": "2026-06-30T21:52:31.605Z",
+      "command": "/the-flow 5 tasks --phase \"Phase 4: Eval hardening — seed + run-outcome ledger\" --plan \"docs/plans/041-flow-conformance-eval/flow-conformance-eval-plan.md\""
     }
   ]
 }
