@@ -25,9 +25,10 @@ entries:
     target: project
     system:
       compound:
-        status: open
+        status: encoded
         source: agent-self
         first_seen_at: "2026-07-04T08:00:30Z"
+        resolved_by: "7c4a7fe3 (2026-07-05) — parseRoster carries run.json join keys; enrichOrphans falls back to a synthesized descriptor when the pij one is gone; paired non-vacuous tests. Unblocked by pij plan 031 (525e652)."
 ---
 
 # Retro — 052 ship + terminal harvest
