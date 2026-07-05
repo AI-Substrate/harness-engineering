@@ -1,0 +1,45 @@
+{
+  "schema_version": "2.3",
+  "command": "telemetry mark",
+  "harness": "copilot-cli",
+  "harness_version": "unknown",
+  "harness_session_id": "40881e01-ffb9-4946-99d1-f20e46efb1f9",
+  "timecode": "2026-07-05T08:45:21.105Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 0
+  },
+  "branch": null,
+  "tokens": null,
+  "effort": null,
+  "captured_env": {
+    "PIJ_HARNESS": "copilot",
+    "PIJ_PARENT_ID": "pij-4s10mb",
+    "PIJ_SESSION_ID": "pij-135rnay"
+  },
+  "event_stream": [
+    {
+      "t": "2026-07-05T08:45:21.105Z",
+      "kind": "mark",
+      "mark_kind": "review",
+      "counts": {}
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}
