@@ -256,10 +256,24 @@ export interface FleetEvidence {
   semantics: FleetSemantics;
 }
 
-/** One roster member parsed from a flow-pair `run.json` (`role → {pijId}`). */
+/**
+ * One roster member parsed from a flow-pair `run.json` (`role → {pijId, …}`). Beyond
+ * the pij id + role, the member carries the **persisted join keys** flow-pair records
+ * at spawn (`harnessSessionId`, `harness`, `transcriptPath`, `model`) — a
+ * descriptor-independent fallback so the vendor-ledger join survives `pij close`
+ * deleting the peer's `~/.pij/<id>.json` descriptor (SUGG-001).
+ */
 export interface FleetRosterMember {
   role: string;
   pij_id: string;
+  /** `claude | copilot | codex | pi` from run.json, or null when the entry carried none. */
+  harness: string | null;
+  /** The inner harness session id persisted in run.json — the ledger join key that outlives teardown. */
+  harness_session_id: string | null;
+  /** The codex rollout transcript path if run.json carried one (used to locate the rollout). */
+  transcript_path: string | null;
+  /** The member's model label from run.json, or null. */
+  model: string | null;
 }
 
 /** A parsed flow-pair roster — only members with a non-null `pijId` are carried. */
@@ -296,10 +310,42 @@ export function parseRoster(raw: string): FleetRoster | null {
   if (roster === null || typeof roster !== 'object') return null;
   const members: FleetRosterMember[] = [];
   for (const [role, entry] of Object.entries(roster as Record<string, unknown>)) {
-    const pid = (entry as { pijId?: unknown } | null)?.pijId;
-    if (typeof pid === 'string' && pid.length > 0) members.push({ role, pij_id: pid });
+    const e = entry as Record<string, unknown> | null;
+    const pid = e?.pijId;
+    if (typeof pid !== 'string' || pid.length === 0) continue;
+    members.push({
+      role,
+      pij_id: pid,
+      harness: rosterStr(e?.harness),
+      harness_session_id: rosterStr(e?.harnessSessionId),
+      transcript_path: rosterStr(e?.transcriptPath),
+      model: rosterStr(e?.model),
+    });
   }
   return { members };
+}
+
+/** A non-empty string, else null — for lifting optional join keys out of a run.json entry. */
+function rosterStr(v: unknown): string | null {
+  return typeof v === 'string' && v.length > 0 ? v : null;
+}
+
+/**
+ * Synthesize a {@link PijDescriptor} from a roster member's persisted run.json join
+ * keys (SUGG-001) — the fallback used when `pij close` has already deleted the peer's
+ * `~/.pij/<id>.json`, so the vendor ledger still joins after teardown. `null` when the
+ * member carries no `harnessSessionId` (nothing to join on).
+ */
+function rosterDescriptor(m: FleetRosterMember): PijDescriptor | null {
+  if (m.harness_session_id === null) return null;
+  return {
+    pij_id: m.pij_id,
+    harness: m.harness,
+    harness_session_id: m.harness_session_id,
+    transcript_path: m.transcript_path,
+    spawned_by: null,
+    model: m.model,
+  };
 }
 
 /** The three join fields lifted from a segment's `captured_env`, or `null` when unjoinable. */
@@ -942,10 +988,16 @@ function enrichOrphans(
   deps: SessionEvidenceDeps,
 ): void {
   const roleOf = new Map(roster.members.map((m) => [m.pij_id, m.role] as const));
+  const memberOf = new Map(roster.members.map((m) => [m.pij_id, m] as const));
   const resolved: FleetLane[] = [];
   const remaining: string[] = [];
   for (const pijId of fleet.orphans) {
-    const desc = registry.by_pij.get(pijId);
+    // Prefer the LIVE pij descriptor; fall back to the roster's persisted run.json join
+    // keys when `pij close` has deleted `~/.pij/<id>.json` (SUGG-001) — a
+    // descriptor-independent join so a torn-down fleet still resolves its ledgers. The
+    // live/bound descriptor always wins when present, so this is byte-inert pre-teardown.
+    const member = memberOf.get(pijId);
+    const desc = registry.by_pij.get(pijId) ?? (member ? rosterDescriptor(member) : null);
     let lane: FleetLane | null = null;
     if (desc) {
       // Tier 2 — ref (a flushed lane), keyed by the descriptor's harness session id.
@@ -1012,7 +1064,11 @@ export async function getFleetEvidence(
     if (roster !== null) {
       const registry = readPijRegistry(deps);
       const refLanes = opts?.gitRead ? readRefLanes(opts.gitRead) : new Map<string, RefLane>();
-      if (registry.available || refLanes.size > 0) {
+      // Also enrich when the registry is unavailable (every peer torn down → `~/.pij`
+      // emptied) but the roster still carries run.json join keys — the SUGG-001 fallback,
+      // the ONLY join left once `pij close` has deleted the descriptors.
+      const rosterHasJoinKeys = roster.members.some((m) => m.harness_session_id !== null);
+      if (registry.available || refLanes.size > 0 || rosterHasJoinKeys) {
         enrichOrphans(fleet, roster, registry, refLanes, deps);
       }
     }

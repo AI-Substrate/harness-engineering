@@ -335,30 +335,30 @@ back unmeasured:
 So the one action that *writes* a copilot ledger is the same action that *breaks the
 join to it* — you cannot hold both through the descriptor alone. The way out is the
 run's `run.json` roster: `pij spawn` records each member's `harnessSessionId` there
-at spawn (before use, P9), so the join can survive teardown **through the roster**
-instead of the deleted descriptor. The intended sweep:
+at spawn (before use, P9), so the join **survives teardown through the roster**
+instead of the deleted descriptor. `get-fleet` reads that fallback — when a rostered
+member has no `~/.pij` descriptor (closed) but its `run.json` entry carries a
+`harnessSessionId`, the vendor ledger still resolves. So the sweep works even after
+teardown:
 
 ```sh
 # 1. flush every still-live lane's buffer into its ref rollup
 harness telemetry sync
 # 2. close each spawned copilot/codex peer so it writes its shutdown/rollout ledger
-#    (this ALSO deletes its ~/.pij descriptor — expected; the roster is the join now)
+#    (this ALSO deletes its ~/.pij descriptor — expected; the run.json roster is the join now)
 pij close <peer-id>            # for each peer you spawned
 # 3. snapshot the joined fleet — the roster supplies harnessSessionId, so the ledgers
 #    under ~/.copilot/session-state/<id>/ + ~/.codex/sessions/ still resolve
 harness telemetry get-fleet <root-pij-id> --roster <run.json> --json > fleet.json
 ```
 
-> **Live caveat — until the roster fallback lands.** `get-fleet` today reads the join
-> key from the pij descriptor, **not yet** from `run.json`, so a snapshot taken
-> *after* `pij close` degrades ledger lanes to unmeasured — observed live on the 052
-> run itself, which tore its peers down before snapshotting. Two safe paths today:
-> snapshot **live/ref** cost *before* close (misses copilot, whose cost is
-> shutdown-only), or recover manually — `run.json` maps each `pijId →
-> harnessSessionId`, and the ledgers persist on disk at
-> `~/.copilot/session-state/<harnessSessionId>/`. Wiring `run.json`'s
-> `harnessSessionId` into the roster reader — a descriptor-independent join — is the
-> tracked fix (see Known limitations).
+> **The descriptor still wins when present** — the roster fallback fires only for a
+> member the pij registry no longer has, so a *live* fleet joins exactly as before
+> (byte-inert pre-teardown). The join key is `run.json`'s `harnessSessionId`, so an
+> old `run.json` that predates it (pijId-only) can't recover a closed lane — regenerate
+> the roster or snapshot before close. A cleaner live path (consume `pij sessions
+> --json` instead of globbing `~/.pij`) is an optional follow-on, not required for
+> correctness.
 
 ### Billing conventions (F-10)
 
@@ -564,14 +564,14 @@ absent the field is `null`, never estimated.
   shape; it is not estimated in the meantime.
 - **Out-of-repo path fidelity.** As above, files written outside the repo are
   recorded as basenames only — intentional (no leak) but lossy for correlation.
-- **Ledger-join fragility at teardown.** The copilot/codex ledger join runs through
-  the pij descriptor (`~/.pij/<id>.json`), which `pij close` deletes — so a fleet
-  snapshot taken *after* teardown degrades ledger lanes to `cost_measured: false`
-  (observed live on the 052 run). The `run.json` roster already persists the same
-  `harnessSessionId` at spawn; wiring it into the roster reader as a
-  descriptor-independent join is the tracked fix. Until then, follow the
-  [run-end sweep](#run-end-sweep--and-the-teardown-order-trap) order (snapshot before
-  close, or recover via the roster + on-disk ledgers).
+- **Ledger-join after teardown needs a fresh `run.json`.** The copilot/codex ledger
+  join runs through the pij descriptor (`~/.pij/<id>.json`), which `pij close` deletes.
+  `get-fleet` covers this with a **descriptor-independent fallback** (SUGG-001,
+  shipped): a rostered member with no live descriptor but a `harnessSessionId` in
+  `run.json` still resolves its ledger — so the [run-end sweep](#run-end-sweep--and-the-teardown-order-trap)
+  works after close. The residual limit is roster freshness: a `run.json` written
+  before this fix (pijId-only, no `harnessSessionId`) can't recover a torn-down lane —
+  regenerate the roster or snapshot before close.
 - **Read-only-peer semantics recovery is unproven.** A reviewer that runs no harness
   command emits no segment (F-05); its verdict survives only in the review *file* it
   writes, which enters telemetry only if the committing lane's capture observes that

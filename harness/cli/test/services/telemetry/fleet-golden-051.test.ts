@@ -366,6 +366,74 @@ describe('fix-001 — a malformed side-channel ledger degrades to an unmeasured 
   });
 });
 
+// ── SUGG-001: the ledger join survives `pij close` via the run.json harnessSessionId ─
+describe('SUGG-001 — a torn-down fleet still joins its ledgers via run.json (descriptor-independent)', () => {
+  // Models the state AFTER `pij close`: every `~/.pij/<id>.json` descriptor deleted
+  // (the dir is empty → the registry is unavailable), so the ONLY join left is the
+  // `harnessSessionId` flow-pair persisted into run.json at spawn.
+  const TORN_ROSTER = JSON.stringify({
+    roster: {
+      coder: { pijId: CODER_PIJ, harness: 'copilot', harnessSessionId: CODER_SID },
+      orchestrator: { pijId: ROOT },
+    },
+  });
+
+  function teardownDeps(overrides?: Record<string, string | null>): SessionEvidenceDeps {
+    const files: Record<string, string> = {
+      [`${REPO}/roster.json`]: TORN_ROSTER,
+      // the coder's copilot shutdown ledger still exists on disk after close…
+      [CODER_EVENTS]: fixture('copilot/coder-34524328.events.jsonl'),
+      // …and the orchestrator's own live buffer is still present.
+      [`${tel(REPO)}/orch/0.json`]: JSON.stringify(orchestratorSegment()),
+    };
+    const dirs: Record<string, string[]> = {
+      [`${HOME}/.pij`]: [], // every descriptor deleted by `pij close` → registry unavailable
+      [tel(REPO)]: ['orch'],
+      [`${tel(REPO)}/orch`]: ['0.json'],
+    };
+    for (const [path, content] of Object.entries(overrides ?? {})) {
+      if (content === null) delete files[path];
+      else files[path] = content;
+    }
+    return {
+      fs: new FakeFs(files, dirs),
+      env: new FakeEnv({}, HOME),
+      proc: new FakeProcess({}, REPO),
+    };
+  }
+
+  it('a copilot member with no ~/.pij descriptor joins its ledger via the run.json harnessSessionId', async () => {
+    const fleet = await getFleetEvidence(ROOT, teardownDeps(), {
+      rosterPath: `${REPO}/roster.json`,
+    });
+    if (fleet === null) throw new Error('expected a fleet');
+
+    const coder = fleet.sessions.find((l) => l.pij_id === CODER_PIJ);
+    expect(coder).toBeDefined();
+    expect(coder?.source).toBe('ledger');
+    expect(coder?.cost_measured).toBe(true);
+    expect(coder?.billing?.nano_aiu).toBe(1742858875000); // recovered post-teardown
+    expect(fleet.orphans).not.toContain(CODER_PIJ);
+    expect(fleet.totals.cost.measured_lanes).toBe(2); // orchestrator (live) + coder (ledger)
+  });
+
+  it('without the run.json harnessSessionId there is nothing to join on → the member stays an orphan (the fallback is load-bearing)', async () => {
+    // Same torn-down state, but the roster omits the join key — the SUGG-001 mutation.
+    const rosterNoKey = JSON.stringify({
+      roster: { coder: { pijId: CODER_PIJ }, orchestrator: { pijId: ROOT } },
+    });
+    const fleet = await getFleetEvidence(
+      ROOT,
+      teardownDeps({ [`${REPO}/roster.json`]: rosterNoKey }),
+      { rosterPath: `${REPO}/roster.json` },
+    );
+    if (fleet === null) throw new Error('expected a fleet');
+
+    expect(fleet.sessions.find((l) => l.pij_id === CODER_PIJ)).toBeUndefined();
+    expect(fleet.orphans).toContain(CODER_PIJ);
+  });
+});
+
 // ── a minimal closed-schema walker (mirrors fleet-evidence.test.ts) ──────────────
 type JsonSchema = Record<string, unknown> & {
   $ref?: string;

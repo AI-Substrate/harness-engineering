@@ -303,19 +303,38 @@ describe('buildFleetEvidence — roster scoping + D1 diffs (AC-04)', () => {
 });
 
 describe('parseRoster — tolerant flow-pair run.json parse', () => {
-  it('parses role → pijId, skipping null (lazy) members', () => {
+  it('parses role → pijId + persisted join keys (SUGG-001), skipping null (lazy) members', () => {
     const raw = JSON.stringify({
       orchestrator: ROOT,
       roster: {
-        coder: { pijId: 'pij-g7t974', harness: 'copilot' },
+        coder: { pijId: 'pij-g7t974', harness: 'copilot', harnessSessionId: 'cf83-uuid' },
         reviewer: { pijId: null, note: 'lazy' },
-        validator: { pijId: 'pij-wolk0r', harness: 'codex' },
+        validator: {
+          pijId: 'pij-wolk0r',
+          harness: 'codex',
+          transcriptPath: '/x/rollout.jsonl',
+          model: 'gpt-5.5',
+        },
       },
     });
     const parsed = parseRoster(raw);
     expect(parsed?.members).toEqual([
-      { role: 'coder', pij_id: 'pij-g7t974' },
-      { role: 'validator', pij_id: 'pij-wolk0r' },
+      {
+        role: 'coder',
+        pij_id: 'pij-g7t974',
+        harness: 'copilot',
+        harness_session_id: 'cf83-uuid',
+        transcript_path: null,
+        model: null,
+      },
+      {
+        role: 'validator',
+        pij_id: 'pij-wolk0r',
+        harness: 'codex',
+        harness_session_id: null,
+        transcript_path: '/x/rollout.jsonl',
+        model: 'gpt-5.5',
+      },
     ]);
   });
 
