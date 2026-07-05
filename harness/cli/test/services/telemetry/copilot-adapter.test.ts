@@ -270,3 +270,40 @@ describe('copilotAdapter.extract — files from editor tools (F-07 / plan 052 T0
     expect(seg.files).toEqual({ written: ['src/new.ts'], edited: ['src/old.ts'] });
   });
 });
+
+describe('copilotAdapter.extract — apply_patch file capture (copilot v1.x file-edit tool)', () => {
+  // Real copilot v1.0.69 shape (captured live 2026-07-05): `apply_patch`'s `arguments`
+  // is the raw patch STRING — the path lives in the *** Add/Update/Delete File: headers,
+  // NOT `arguments.path`. One patch can touch several files. `Add`→written, `Update`/
+  // `Delete`→edited. The +/- body lines are free text and are never read (AC-04).
+  const APPLY_PATCH_EVENTS = [
+    { type: 'session.start', timestamp: '2026-07-05T00:00:00Z', data: {} },
+    {
+      type: 'tool.execution_start',
+      timestamp: '2026-07-05T00:00:01Z',
+      data: {
+        toolCallId: 'p1',
+        toolName: 'apply_patch',
+        arguments:
+          '*** Begin Patch\n*** Add File: reviews/review.phase-1.md\n+# Review\n+**Verdict**: FIX_REQUIRED\n*** Update File: src/existing.ts\n@@\n-old\n+new\n*** End Patch\n',
+      },
+    },
+  ]
+    .map((e) => JSON.stringify(e))
+    .join('\n');
+
+  function patchFs(): FakeFs {
+    return new FakeFs(
+      { [copilotEventsPath(HOME, SESSION)]: APPLY_PATCH_EVENTS },
+      { [copilotLogsDir(HOME)]: [] },
+    );
+  }
+
+  it('extracts header paths: Add→written, Update→edited (multi-file, from the patch body)', () => {
+    const caps = copilotAdapter.extract({ ...source(patchFs()), window: WINDOW });
+    expect(caps.files).toEqual({
+      written: ['reviews/review.phase-1.md'],
+      edited: ['src/existing.ts'],
+    });
+  });
+});

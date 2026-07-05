@@ -39,8 +39,9 @@ import type {
  * → `cache_create`; `metrics.output_tokens + reasoning_tokens` → `output` (reasoning
  * folded in so `total = input+output+cache_create+cache_read` stays the invariant).
  * Subagent tokens are not cleanly correlatable → `null` (never guessed).
- * `files` are the `create`/`edit` tool target paths (F-07 / plan 052 T001 — so the
- * artifact-semantics pass fires on copilot lanes); `compactions`/`thinking` stay `null`.
+ * `files` are the `create`/`edit`/`apply_patch` tool target paths (F-07 / plan 052 T001
+ * — so the artifact-semantics pass fires on copilot lanes); `compactions`/`thinking`
+ * stay `null`.
  *
  * PRIVACY (AC-04): only counts + names + correlation ids (used internally for
  * windowing, never emitted) are read — tool `arguments` and message text are never
@@ -78,6 +79,27 @@ function asObj(v: unknown): Record<string, unknown> {
  */
 function estimateResultTokens(text: string): number {
   return Math.ceil(text.length / 4);
+}
+
+/**
+ * Extract target paths from an `apply_patch` payload (copilot's file-edit tool since
+ * v1.x). The path lives in the patch HEADER lines, never an `arguments.path` field:
+ *   `*** Add File: <path>`     → created  (add: true)
+ *   `*** Update File: <path>`  → modified
+ *   `*** Delete File: <path>`  → modified
+ * ONLY the header paths are read (repo ids, relativized + confined at serialize time);
+ * the `+`/`-` body lines carry free text and are never read (AC-04). Multiple files
+ * per patch are supported.
+ */
+function parseApplyPatchPaths(patch: string): { path: string; add: boolean }[] {
+  const out: { path: string; add: boolean }[] = [];
+  for (const line of nonEmptyLines(patch)) {
+    const m = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line.trim());
+    if (m === null) continue;
+    const p = m[2].trim();
+    if (p.length > 0) out.push({ path: p, add: m[1] === 'Add' });
+  }
+  return out;
 }
 
 /** Word count of a user prompt (string or text blocks); null when empty/absent. Counts ONLY — text never retained (AC-04). */
@@ -206,6 +228,10 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // File path by call id (F-07 / plan 052 T001): the copilot editor tools carry a
   // clean `arguments.path`; classified to written/edited post-loop via toolNameByCall.
   const pathByCall = new Map<string, string>();
+  // apply_patch (copilot's file-edit tool since v1.x) carries its patch as a STRING
+  // `arguments` payload — the target path(s) live in the *** Add/Update/Delete File:
+  // headers, not `arguments.path`. Captured raw by call id, parsed post-loop.
+  const patchByCall = new Map<string, string>();
   const successByCall = new Map<string, boolean>(); // execution_complete `success` → command_exit
   const completeAtByCall = new Map<string, string>(); // execution_complete ts → command_exit `t`
   // FX003: callId → its tool_result payload size (estimate), attached to the call post-loop.
@@ -280,6 +306,14 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       if (callId !== null && !pathByCall.has(callId)) {
         const p = str(asObj(data.arguments).path);
         if (p !== null) pathByCall.set(callId, p);
+      }
+      // apply_patch's `arguments` is the raw patch STRING (not an object), so the
+      // `arguments.path` capture above misses it; record the patch body here and
+      // extract its header paths post-loop. `str()` is non-null only for a string
+      // arguments payload, so create/edit (object arguments) never land here.
+      if (callId !== null && !patchByCall.has(callId)) {
+        const patch = str(data.arguments);
+        if (patch !== null) patchByCall.set(callId, patch);
       }
       // The execution's outcome (AC-19): Copilot reports a `success` boolean on
       // completion (it carries no result envelope, so `checks` isn't derivable —
@@ -367,6 +401,15 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     const tn = toolNameByCall.get(callId);
     if (tn === 'create' || tn === 'write') written.push(p);
     else if (tn === 'edit' || tn === 'str_replace' || tn === 'str_replace_editor') edited.push(p);
+  }
+  // apply_patch: one patch can touch several files — classify each by its header op
+  // (`Add` creates, `Update`/`Delete` modify), from the patch body captured above.
+  for (const [callId, patch] of patchByCall) {
+    if (toolNameByCall.get(callId) !== 'apply_patch') continue;
+    for (const { path: p, add } of parseApplyPatchPaths(patch)) {
+      if (add) written.push(p);
+      else edited.push(p);
+    }
   }
   return {
     effort,
