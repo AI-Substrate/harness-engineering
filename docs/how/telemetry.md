@@ -319,19 +319,46 @@ copilot worker is still live reads its ledger as unmeasured. Read-only peers (a
 reviewer that never commits) leave **no** harness telemetry at all; the shutdown
 ledger is their only trace (dossier F-05).
 
-### Run-end sweep — snapshot before teardown
+### Run-end sweep — and the teardown-order trap
 
-Because the temp buffer is volatile (the post-commit flush prunes it) and copilot
-ledgers only materialize at shutdown, capture the fleet **at run end, before tearing
-peers down**:
+Two facts collide at teardown, and getting the order wrong **silently** degrades
+every worker lane to `cost_measured: false` — it never errors, the fleet just comes
+back unmeasured:
+
+1. A copilot lane's cost lives **only** in its `session.shutdown` ledger, written
+   **only when the peer exits** — a still-live peer reads as unmeasured (F-01). You
+   have to end the peer to get its cost.
+2. The ledger's **join key** is the pij registry descriptor (`~/.pij/<id>.json` →
+   `harnessSessionId` → the session dir), and **`pij close` deletes that
+   descriptor**. Ending the peer destroys the join.
+
+So the one action that *writes* a copilot ledger is the same action that *breaks the
+join to it* — you cannot hold both through the descriptor alone. The way out is the
+run's `run.json` roster: `pij spawn` records each member's `harnessSessionId` there
+at spawn (before use, P9), so the join can survive teardown **through the roster**
+instead of the deleted descriptor. The intended sweep:
 
 ```sh
 # 1. flush every still-live lane's buffer into its ref rollup
 harness telemetry sync
-# 2. let each copilot/codex peer exit gracefully (writes its shutdown/rollout ledger)
-# 3. snapshot the joined fleet (live + ref + ledger) while the side-channels still exist
+# 2. close each spawned copilot/codex peer so it writes its shutdown/rollout ledger
+#    (this ALSO deletes its ~/.pij descriptor — expected; the roster is the join now)
+pij close <peer-id>            # for each peer you spawned
+# 3. snapshot the joined fleet — the roster supplies harnessSessionId, so the ledgers
+#    under ~/.copilot/session-state/<id>/ + ~/.codex/sessions/ still resolve
 harness telemetry get-fleet <root-pij-id> --roster <run.json> --json > fleet.json
 ```
+
+> **Live caveat — until the roster fallback lands.** `get-fleet` today reads the join
+> key from the pij descriptor, **not yet** from `run.json`, so a snapshot taken
+> *after* `pij close` degrades ledger lanes to unmeasured — observed live on the 052
+> run itself, which tore its peers down before snapshotting. Two safe paths today:
+> snapshot **live/ref** cost *before* close (misses copilot, whose cost is
+> shutdown-only), or recover manually — `run.json` maps each `pijId →
+> harnessSessionId`, and the ledgers persist on disk at
+> `~/.copilot/session-state/<harnessSessionId>/`. Wiring `run.json`'s
+> `harnessSessionId` into the roster reader — a descriptor-independent join — is the
+> tracked fix (see Known limitations).
 
 ### Billing conventions (F-10)
 
@@ -537,6 +564,20 @@ absent the field is `null`, never estimated.
   shape; it is not estimated in the meantime.
 - **Out-of-repo path fidelity.** As above, files written outside the repo are
   recorded as basenames only — intentional (no leak) but lossy for correlation.
+- **Ledger-join fragility at teardown.** The copilot/codex ledger join runs through
+  the pij descriptor (`~/.pij/<id>.json`), which `pij close` deletes — so a fleet
+  snapshot taken *after* teardown degrades ledger lanes to `cost_measured: false`
+  (observed live on the 052 run). The `run.json` roster already persists the same
+  `harnessSessionId` at spawn; wiring it into the roster reader as a
+  descriptor-independent join is the tracked fix. Until then, follow the
+  [run-end sweep](#run-end-sweep--and-the-teardown-order-trap) order (snapshot before
+  close, or recover via the roster + on-disk ledgers).
+- **Read-only-peer semantics recovery is unproven.** A reviewer that runs no harness
+  command emits no segment (F-05); its verdict survives only in the review *file* it
+  writes, which enters telemetry only if the committing lane's capture observes that
+  write. That the verdict then lands on the committer's lane (the orchestrator, in
+  flow-pair) is the design intent but is **not yet proven live** — treat read-only
+  peers as semantically blind until a measured fleet demonstrates otherwise.
 
 ## See also
 
