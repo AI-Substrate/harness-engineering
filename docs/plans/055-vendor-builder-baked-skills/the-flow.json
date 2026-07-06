@@ -3,12 +3,12 @@
   "kind": "flight-plan",
   "slug": "vendor-builder-baked-skills",
   "nav": {
-    "now": "review-1",
-    "next": "ship",
+    "now": "ship",
+    "next": null,
     "intent": "Vendor SDD the-flow into this repo as the 'builder' skill (+ its deps validate-v2, constitution, extract-domain), add a thin the-flow redirect, bake skills into the npm build for GitHub-free local-path install, and make harness update re-apply skills by the last-recorded method (targets/scope) via a skills lock. Coexist with eng-harness-flow (future merge).",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-07-06T19:58:28.514Z",
@@ -212,6 +212,62 @@
         "from": "phase-1",
         "to": "review-1"
       }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-06T21:43:19.646Z",
+      "details": {
+        "from": "review-1",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-06T21:43:19.846Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-06T21:43:20.093Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-06T21:46:20.106Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-06T21:46:20.316Z",
+      "details": {
+        "node": "ship",
+        "from": "in_progress",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -316,14 +372,17 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-07-06T21:46:20.316Z",
+      "note": "PR #60 open, all CI green (build-test 22+24, rename-guard, ci-required, package-smoke incl. baked-skills guard).",
+      "ran_at": "2026-07-06T21:46:20.316Z"
     },
     {
       "id": "backpressure",
