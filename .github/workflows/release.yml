@@ -83,9 +83,13 @@ jobs:
 
       # OIDC trusted publishing — no NODE_AUTH_TOKEN; npm exchanges the GitHub
       # OIDC token (id-token: write) with the registry's trusted-publisher config.
-      # Provenance is automatic under trusted publishing (flag kept for clarity).
-      - name: Publish (latest, public, OIDC trusted publishing + provenance)
-        run: npm publish --access public --provenance
+      # Provenance is DISABLED: sigstore provenance rejects private source repos
+      # (npm E422 "Unsupported ... visibility: private"), which silently broke
+      # 0.7.0–0.9.0. Trusted publishing auto-enables provenance, so we must opt
+      # out explicitly via NPM_CONFIG_PROVENANCE=false (dropping the flag alone
+      # is not enough). Re-enable provenance only if this repo goes public.
+      - name: Publish (latest, public, OIDC trusted publishing — provenance off)
+        run: NPM_CONFIG_PROVENANCE=false npm publish --access public
 
   # Canary (AC-11) — prove publish + ANONYMOUS install from a branch BEFORE merge.
   # Triggered by a push to `canary/**` (pre-merge) or workflow_dispatch (post-merge
@@ -126,8 +130,8 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Publish (canary dist-tag — never touches latest; OIDC, no token)
-        run: npm publish --tag canary --access public --provenance
+      - name: Publish (canary dist-tag — never touches latest; OIDC, no token; provenance off)
+        run: NPM_CONFIG_PROVENANCE=false npm publish --tag canary --access public
 
       - name: Verify — ANONYMOUS install of @canary runs; latest untouched (AC-11)
         run: |
