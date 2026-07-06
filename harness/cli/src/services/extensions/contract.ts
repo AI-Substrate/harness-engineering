@@ -85,6 +85,7 @@ export interface VerbContext {
     mkdirp(path: string): void;
     rename(from: string, to: string): void;
     copy(src: string, destDir: string, opts?: { confineRoot?: string }): boolean;
+    copyDir(src: string, dest: string): boolean;
     mkdtemp(prefix: string): string;
   };
   /**

@@ -129,13 +129,13 @@ harness doctor          # sanity-check the install
 harness update          # later: upgrade to @latest (no-op if current)
 ```
 
-Then install the **skills** — the choreography agents drive — published via [`npx skills`](https://github.com/vercel-labs/skills):
+Then install the **skills** — the choreography agents drive. The CLI stages the package's baked `skills/` tree locally and wraps [`npx skills`](https://github.com/vercel-labs/skills):
 
 ```bash
-npx skills@latest add AI-Substrate/harness-engineering/skills -a claude-code -g
+harness skills install --target claude-code --global
 ```
 
-Swap `-a` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `-g` for a project-local install. The CLI also wraps this as `harness skills install` / `harness skills update`. Full per-CLI matrix and update/prune notes: [`INSTALL.md`](./INSTALL.md), [`harness/cli/README.md`](harness/cli/README.md), [`skills/README.md`](skills/README.md).
+Swap `--target` for `github-copilot`, `codex`, `cursor`, `opencode`, `pi`…; drop `--global` for a project-local install. The install is recorded in `skills.lock.json`, so bare `harness update` can reconcile skills later with the fresh package copy. Full per-CLI matrix and update/prune notes: [`INSTALL.md`](./INSTALL.md), [`harness/cli/README.md`](harness/cli/README.md), [`skills/README.md`](skills/README.md).
 
 ## Engineering harness vs agent harness
 
@@ -154,7 +154,7 @@ None of this is new — engineering harnesses (build systems, test harnesses, sm
 |---|---|
 | [`harness-foundations/`](harness-foundations/) | The thesis: [first principles](harness-foundations/first-principles.md), [patterns that work](harness-foundations/patterns-that-work.md), [directives](harness-foundations/directives.md), [the simple version](harness-foundations/simple-mode.md), and [source notes](harness-foundations/source-notes/). |
 | [`harness/cli/`](harness/cli/) | The harness CLI core — a global tool (`npm i -g`), self-updating via `harness update`, extended per repo from `.harness/extensions/`. |
-| [`skills/`](skills/) | The two deployable skills: the [`eng-harness-flow`](skills/eng-harness-flow/SKILL.md) router (the front door — adoption and every loop stage live inside it as modules) and the standalone [`eng-harness-0-harnessability-assessment`](skills/eng-harness-0-harnessability-assessment/SKILL.md) peer. See [`skills/README.md`](skills/README.md). |
+| [`skills/`](skills/) | The deployable skills shipped in the npm package: the [`eng-harness-flow`](skills/eng-harness-flow/SKILL.md) router, [`eng-harness-0-harnessability-assessment`](skills/eng-harness-0-harnessability-assessment/SKILL.md), `grill-agent-done`, and the packaged SDD pipeline (`builder`, `the-flow` redirect, and helper skills). See [`skills/README.md`](skills/README.md). |
 | [`docs/`](docs/) | How-to guides ([records](docs/how/record-and-record-types.md), [architecture conformance](docs/how/architecture-conformance.md), [the `harness flow` verbs](docs/how/harness-flow.md), [dogfooding](docs/how/dogfood-harness-flow.md)), presentations, plans, and project rules. |
 
 Start with [first-principles](harness-foundations/first-principles.md) for the thesis, [patterns-that-work](harness-foundations/patterns-that-work.md) for practical moves, or [directives](harness-foundations/directives.md) for the shortest operating version.

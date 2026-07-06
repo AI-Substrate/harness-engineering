@@ -5,7 +5,7 @@ The engineering harness reaches you through **two channels**, and they update in
 | Channel | What it is | Updated by |
 |---|---|---|
 | **The CLI binary** | `@ai-substrate/engineering-harness` (the `harness` command), published to the public npm registry | `harness update` / `harness self-install` (this guide) |
-| **The skills** | the `eng-harness-*` skills installed into your agent CLI via Vercel `npx skills` | `harness skills update --target <cli>` (or folded into `harness update --target`) |
+| **The skills** | the baked `skills/` tree shipped in the npm package and installed into your agent CLI via Vercel `npx skills` | `harness skills update --target <cli>` (or lock-driven from bare `harness update`) |
 
 `harness update` is the one command that can reconcile **both**.
 
@@ -67,11 +67,13 @@ The CLI binary and the skills are separate channels, so updating one doesn't upd
 ```bash
 harness update --target github-copilot           # upgrade the CLI AND refresh + prune skills for that CLI
 harness update --target github-copilot --global  # …reconciling the global skills install
-harness update                                    # no --target: report-only — shows what would refresh/prune
+harness update                                    # uses skills.lock.json if present; otherwise report-only
 ```
 
-- **With `--target`**, the skills half runs the existing reconcile: `npx skills add` (refresh to latest + pull new) **then** `npx skills remove` of the renamed/removed legacy slugs (the Vercel installer has no native prune, so a rename would otherwise leave a stale twin). A refresh failure surfaces as an **error**; a prune-only failure as **degraded** (the latest skills are installed; re-run the prune by hand).
-- **Without `--target`** (or under `--check`), the skills half is **report-only**: it lists the prune candidates and prints the exact `harness skills update --target <cli>` command, and changes nothing — there's no auto-detection of which CLI your skills live in, so it never guesses.
+- `harness skills install` and `harness skills update` record the target(s), scope, and source in `skills.lock.json`: project installs write `.harness/skills.lock.json`; global installs write `~/.harness/skills.lock.json`.
+- **With `--target`**, the skills half refreshes from the package's baked skills tree: it stages `skills/` into an absolute temp dir, runs `npx skills add <tempdir>` (refresh + pull new), then `npx skills remove` of the renamed/removed legacy slugs. A refresh failure surfaces as an **error**; a prune-only failure as **degraded** (the latest skills are installed; re-run the prune by hand). The explicit target also updates the lock.
+- **Without `--target`**, bare `harness update` reads the lock(s) and reconciles those recorded targets/scopes. If there is no lock (or under `--check`), the skills half is **report-only**: it lists the prune candidates and prints the exact `harness skills update --target <cli>` command, and changes nothing.
+- **After a CLI binary upgrade**, `harness update` does **not** reconcile skills in the old running process. It re-invokes `harness skills update ...` as a child so the freshly-installed binary resolves the freshly-installed package's baked `skills/` tree. If the CLI was already latest, it reconciles in-process.
 
 Every `harness update` envelope carries a `skills` sub-object recording which path ran.
 

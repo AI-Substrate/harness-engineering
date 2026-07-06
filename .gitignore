@@ -167,6 +167,20 @@ agents/*/runs/
 # only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).
 .harness/temp/
 
+# Skills-install OUTPUT (plan 055) — install STATE on a consumer/dev machine, never
+# source. Source skills live in `skills/`; these are produced by `harness skills install`
+# (which shells `npx skills add`) and must never be accidentally committed:
+#   - .harness/skills.lock.json — harness-owned per-project install lock (targets + scope)
+#   - /skills-lock.json          — the vercel `skills` tool's own lockfile (written at cwd)
+#   - .claude/skills/            — installed skill copies (project-local `-a claude-code`)
+# NOTE: already-tracked skills under .claude/skills/ (e.g. flow-eval-run, committed on
+# purpose) stay tracked — gitignore never untracks; this only stops NEW installed copies.
+# Add a genuinely-new committed skill there with `git add -f` if ever needed.
+.harness/skills.lock.json
+/skills-lock.json
+.claude/skills/
+.agents/
+
 # flow-eval (plan 041) run tree — COMMITTED since 2026-07-03: the append-only
 # ledger.jsonl is the longitudinal record `--compare` groups on, and the per-run
 # report.{json,md} are its evidence — cross-batch comparison needs them durable

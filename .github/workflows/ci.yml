@@ -166,7 +166,20 @@ jobs:
             || { echo "::error title=dry-run::bin not packed"; exit 1; }
           jq -e '[.[0].files[].path] | any(startswith("harness/cli/dist/"))' /tmp/pack.json >/dev/null \
             || { echo "::error title=dry-run::dist not packed"; exit 1; }
-          echo "OK: scoped name + bin + dist present; targeting the public npm registry (public access)"
+          # Baked skills MUST ship in the tarball — the GitHub-free offline install
+          # (`harness skills install`) resolves them from the packaged local dir, so a
+          # refactor that drops them silently breaks install on every consumer machine
+          # (plan 055 / AC-10). Assert builder + the-flow redirect + each vendored dep.
+          for s in \
+            "skills/builder/SKILL.md" \
+            "skills/the-flow/SKILL.md" \
+            "skills/validate-v2/SKILL.md" \
+            "skills/plan-0-v2-constitution/SKILL.md" \
+            "skills/plan-v2-extract-domain/SKILL.md"; do
+            jq -e --arg s "$s" '[.[0].files[].path] | any(. == $s)' /tmp/pack.json >/dev/null \
+              || { echo "::error title=dry-run::baked skill not packed: $s"; exit 1; }
+          done
+          echo "OK: scoped name + bin + dist + baked skills present; targeting the public npm registry (public access)"
 
       - name: Pack and smoke-test the installed bin (with a .ts extension fixture)
         run: |

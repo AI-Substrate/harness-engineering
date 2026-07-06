@@ -41,6 +41,18 @@ export interface FsPort {
    */
   removeDir(path: string): void;
   /**
+   * Recursively copy directory `src` into directory path `dest`, creating `dest`
+   * first. Returns true on success, false if the copy was refused or failed
+   * (never throws). Unlike copy(), `dest` is the destination root itself; the
+   * source basename is not added.
+   */
+  copyDir(src: string, dest: string): boolean;
+  /**
+   * Create a UNIQUE temp directory under the OS temp dir (`os.tmpdir()`) with the
+   * given name prefix, returning its absolute path.
+   */
+  mkdtemp(prefix: string): string;
+  /**
    * Canonical absolute path with every symlink resolved, or null if the path is
    * missing / unresolvable (never throws). The portable replacement for a POSIX
    * `realpath` shell-out — it underpins the CWE-59 confine guard (plan 031).
@@ -79,6 +91,13 @@ export interface FileSystemWritePort {
    * clone commits a fixed artifact path as a symlink to an out-of-tree host file.
    */
   copy(src: string, destDir: string, opts?: { confineRoot?: string }): boolean;
+  /**
+   * Recursively copy directory `src` into directory path `dest`, creating `dest`
+   * first. Returns true on success, false if the copy was refused or failed
+   * (never throws). Unlike copy(), `dest` is the destination root itself; the
+   * source basename is not added.
+   */
+  copyDir(src: string, dest: string): boolean;
   /**
    * Create a UNIQUE temp directory under the OS temp dir (`os.tmpdir()`) with the
    * given name prefix, returning its absolute path. The portable, race-free

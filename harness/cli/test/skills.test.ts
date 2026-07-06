@@ -9,11 +9,13 @@ import { FakeProcess } from '../src/adapters/process/fake-process.js';
 import { buildProgram } from '../src/app.js';
 import type { CliIo, OutputMode, Writers } from '../src/output/output-port.js';
 import type { VerbRegistry } from '../src/services/extensions/registry.js';
-import { DEFAULT_SKILLS_SOURCE, LEGACY_SKILL_SLUGS } from '../src/services/skills/contract.js';
+import { LEGACY_SKILL_SLUGS, PACKAGED_SKILLS_SOURCE } from '../src/services/skills/contract.js';
+import { readSkillsLock } from '../src/services/skills/skills-lock.js';
 import {
   buildInstallArgv,
   buildRemoveArgv,
   formatInstallCommand,
+  resolvePackagedSkillsDir,
   resolveSkillsSource,
 } from '../src/services/skills/skills-service.js';
 
@@ -30,24 +32,25 @@ describe('buildInstallArgv (pure)', () => {
   it('builds the canonical argv: skills@latest add <source> -a <t> -y', () => {
     expect(
       buildInstallArgv({
-        source: DEFAULT_SKILLS_SOURCE,
+        source: '/tmp/harness-skills-0',
         targets: ['github-copilot'],
         global: false,
       }),
-    ).toEqual([
-      'skills@latest',
-      'add',
-      'AI-Substrate/harness-engineering/skills',
-      '-a',
-      'github-copilot',
-      '-y',
-    ]);
+    ).toEqual(['skills@latest', 'add', '/tmp/harness-skills-0', '-a', 'github-copilot', '-y']);
   });
 
   it('always appends -y (no blocking picker) and pins skills@latest', () => {
     const argv = buildInstallArgv({ source: 's', targets: ['codex'], global: false });
     expect(argv[0]).toBe('skills@latest');
     expect(argv.at(-1)).toBe('-y');
+  });
+
+  describe('resolvePackagedSkillsDir (pure)', () => {
+    it('resolves from the dist services/skills module URL back to the package root skills dir', () => {
+      expect(
+        resolvePackagedSkillsDir('file:///pkg/harness/cli/dist/services/skills/skills-service.js'),
+      ).toBe('/pkg/skills');
+    });
   });
 
   it('fans out one -a per target, in order', () => {
@@ -213,11 +216,27 @@ describe('resolveSkillsSource (pure — branch → GitHub tree URL)', () => {
   });
 });
 
-function deps(exec: FakeExec): VerbActDeps {
+const packagedDir = resolvePackagedSkillsDir();
+
+function fakeSkillsFs(): FakeFs {
+  return new FakeFs(
+    {
+      [`${packagedDir}/eng-harness-flow/SKILL.md`]: '---\nname: eng-harness-flow\n---\n',
+      [`${packagedDir}/README.md`]: '# skills\n',
+    },
+    {
+      [packagedDir]: ['README.md', 'eng-harness-flow'],
+      [`${packagedDir}/eng-harness-flow`]: ['SKILL.md'],
+    },
+  );
+}
+
+function deps(exec: FakeExec, fs: FakeFs, env = new FakeEnv({}, '/home/u')): VerbActDeps {
   return {
     exec,
-    fs: new FakeFs(),
-    env: new FakeEnv(),
+    fs,
+    fsWrite: fs,
+    env,
     git: new FakeGit(),
     clock: new FakeClock('2026-06-09T00:00:00.000Z'),
     proc: new FakeProcess({}, '/repo'),
@@ -228,7 +247,7 @@ async function runSkills(
   argv: string[],
   mode: OutputMode,
   scripts: Record<string, ExecScript> = {},
-): Promise<{ out: string; err: string; code: number; exec: FakeExec }> {
+): Promise<{ out: string; err: string; code: number; exec: FakeExec; fs: FakeFs }> {
   let out = '';
   let err = '';
   let code = -1;
@@ -242,15 +261,16 @@ async function runSkills(
   };
   const io: CliIo = { mode, writers };
   const exec = new FakeExec(scripts);
+  const fs = fakeSkillsFs();
   const registry: VerbRegistry = { verbs: [], records: [] };
   vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
     code = c ?? 0;
     throw new Error(`exit:${code}`);
   }) as never);
   await expect(
-    buildProgram('9.9.9', io, deps(exec), registry).parseAsync(['node', 'harness', ...argv]),
+    buildProgram('9.9.9', io, deps(exec, fs), registry).parseAsync(['node', 'harness', ...argv]),
   ).rejects.toThrow(/^exit:/);
-  return { out, err, code, exec };
+  return { out, err, code, exec, fs };
 }
 
 describe('harness skills install (pass-through act)', () => {
@@ -259,21 +279,16 @@ describe('harness skills install (pass-through act)', () => {
   });
 
   it('shells out to npx with the exact argv via the ExecPort, exit 0', async () => {
-    const { out, code, exec } = await runSkills(
+    const { out, code, exec, fs } = await runSkills(
       ['skills', 'install', '--target', 'github-copilot'],
       'json',
     );
     expect(exec.calls).toHaveLength(1);
+    expect(fs.mkdtemps).toEqual(['harness-skills-']);
+    expect(fs.copyDirs).toEqual([{ src: packagedDir, dest: '/tmp/harness-skills-0' }]);
     expect(exec.calls[0]).toEqual({
       command: 'npx',
-      args: [
-        'skills@latest',
-        'add',
-        'AI-Substrate/harness-engineering/skills',
-        '-a',
-        'github-copilot',
-        '-y',
-      ],
+      args: ['skills@latest', 'add', '/tmp/harness-skills-0', '-a', 'github-copilot', '-y'],
       cwd: '/repo',
     });
     expect(code).toBe(0);
@@ -281,8 +296,13 @@ describe('harness skills install (pass-through act)', () => {
     expect(env.command).toBe('skills');
     expect(env.status).toBe('ok');
     expect(env.data.command).toBe(
-      'npx skills@latest add AI-Substrate/harness-engineering/skills -a github-copilot -y',
+      'npx skills@latest add /tmp/harness-skills-0 -a github-copilot -y',
     );
+    expect(env.data.source).toBe(PACKAGED_SKILLS_SOURCE);
+    expect(readSkillsLock(fs.readText('/repo/.harness/skills.lock.json'))).toEqual({
+      lockfile_version: 1,
+      installs: [{ scope: 'project', source: PACKAGED_SKILLS_SOURCE, targets: ['github-copilot'] }],
+    });
   });
 
   it('fans out multiple targets and adds -g for --global', async () => {
@@ -294,7 +314,7 @@ describe('harness skills install (pass-through act)', () => {
     expect(exec.calls[0]?.args).toEqual([
       'skills@latest',
       'add',
-      'AI-Substrate/harness-engineering/skills',
+      '/tmp/harness-skills-0',
       '-a',
       'claude-code',
       '-a',
@@ -327,9 +347,7 @@ describe('harness skills install (pass-through act)', () => {
   it('human mode announces the exact npx command on stderr BEFORE running', async () => {
     const { err, out } = await runSkills(['skills', 'install', '--target', 'codex'], 'human');
     expect(err).toContain('about to run:');
-    expect(err).toContain(
-      'npx skills@latest add AI-Substrate/harness-engineering/skills -a codex -y',
-    );
+    expect(err).toContain('npx skills@latest add /tmp/harness-skills-0 -a codex -y');
     expect(err).toContain('vercel-labs/skills');
     // human stdout must NOT carry a JSON envelope
     expect(out).not.toContain('"command":"skills"');
@@ -341,11 +359,21 @@ describe('harness skills install (pass-through act)', () => {
       'json',
     );
     expect(exec.calls[0]?.args).toContain('owner/repo/skills/eng-harness-loop');
+    expect(exec.calls[0]?.args).not.toContain('/tmp/harness-skills-0');
   });
 
-  it('--branch rewrites the default source to a /tree/<ref>/skills URL (subdir tail preserved)', async () => {
+  it('--branch rewrites an explicit GitHub source to a /tree/<ref>/skills URL (subdir tail preserved)', async () => {
     const { exec, out, code } = await runSkills(
-      ['skills', 'install', '--target', 'codex', '--branch', '005-harness-core-refactor'],
+      [
+        'skills',
+        'install',
+        '--target',
+        'codex',
+        '--source',
+        'AI-Substrate/harness-engineering/skills',
+        '--branch',
+        '005-harness-core-refactor',
+      ],
       'json',
     );
     expect(code).toBe(0);
@@ -401,12 +429,20 @@ describe('harness skills update (refresh + prune act)', () => {
   });
 
   it('refreshes (add) THEN prunes (remove legacy slugs) — two ordered npx calls, exit 0', async () => {
-    const { out, code, exec } = await runSkills(['skills', 'update', '--target', 'codex'], 'json');
+    const { out, code, exec, fs } = await runSkills(
+      ['skills', 'update', '--target', 'codex'],
+      'json',
+    );
     expect(exec.calls).toHaveLength(2);
+    expect(fs.copyDirs).toEqual([{ src: packagedDir, dest: '/tmp/harness-skills-0' }]);
     // 1) refresh = the same `add` argv install uses (whole set, no -s filter).
     expect(exec.calls[0]).toEqual({
       command: 'npx',
-      args: buildInstallArgv({ source: DEFAULT_SKILLS_SOURCE, targets: ['codex'], global: false }),
+      args: buildInstallArgv({
+        source: '/tmp/harness-skills-0',
+        targets: ['codex'],
+        global: false,
+      }),
       cwd: '/repo',
     });
     // 2) prune = `remove` the curated legacy slugs.
@@ -420,10 +456,14 @@ describe('harness skills update (refresh + prune act)', () => {
     expect(env.command).toBe('skills');
     expect(env.status).toBe('ok');
     expect(env.data.refresh_command).toBe(
-      'npx skills@latest add AI-Substrate/harness-engineering/skills -a codex -y',
+      'npx skills@latest add /tmp/harness-skills-0 -a codex -y',
     );
     expect(env.data.prune_command).toContain('npx skills@latest remove ');
     expect(env.data.pruned_candidates).toEqual([...LEGACY_SKILL_SLUGS]);
+    expect(readSkillsLock(fs.readText('/repo/.harness/skills.lock.json'))).toEqual({
+      lockfile_version: 1,
+      installs: [{ scope: 'project', source: PACKAGED_SKILLS_SOURCE, targets: ['codex'] }],
+    });
   });
 
   it('--global fans -g into BOTH the refresh and the prune calls', async () => {
@@ -480,17 +520,24 @@ describe('harness skills update (refresh + prune act)', () => {
   it('human mode announces BOTH the refresh and prune commands on stderr before running', async () => {
     const { err, out } = await runSkills(['skills', 'update', '--target', 'codex'], 'human');
     expect(err).toContain('about to run:');
-    expect(err).toContain(
-      'npx skills@latest add AI-Substrate/harness-engineering/skills -a codex -y',
-    );
+    expect(err).toContain('npx skills@latest add /tmp/harness-skills-0 -a codex -y');
     expect(err).toContain('npx skills@latest remove ');
     // human stdout must NOT carry a JSON envelope
     expect(out).not.toContain('"command":"skills"');
   });
 
-  it('--branch rewrites the refresh source to a /tree/<ref>/skills URL', async () => {
+  it('--branch rewrites an explicit refresh source to a /tree/<ref>/skills URL', async () => {
     const { exec, out, code } = await runSkills(
-      ['skills', 'update', '--target', 'codex', '--branch', '005-harness-core-refactor'],
+      [
+        'skills',
+        'update',
+        '--target',
+        'codex',
+        '--source',
+        'AI-Substrate/harness-engineering/skills',
+        '--branch',
+        '005-harness-core-refactor',
+      ],
       'json',
     );
     expect(code).toBe(0);

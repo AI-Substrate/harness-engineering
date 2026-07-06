@@ -15,6 +15,8 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   readonly renames: string[] = [];
   /** Every `copy` call's logical intent (fakes over mocks — assert on history). */
   readonly copies: { src: string; destDir: string; confineRoot?: string }[] = [];
+  /** Every `copyDir` call's logical intent (fakes over mocks — assert on history). */
+  readonly copyDirs: { src: string; dest: string }[] = [];
   /**
    * Sources the fake should treat as ESCAPING a `confineRoot` — so a verb test
    * can model the CWE-59 refusal the real `NodeFs.copy` enforces (without real
@@ -124,6 +126,42 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     this.dropFromParentListing(posix);
   }
 
+  copyDir(src: string, dest: string): boolean {
+    const source = src.replace(/\\/g, '/').replace(/\/+$/, '');
+    const target = dest.replace(/\\/g, '/').replace(/\/+$/, '');
+    this.copyDirs.push({ src, dest });
+    const hasSource =
+      source in this.dirs ||
+      Object.keys(this.files).some((p) => p === source || p.startsWith(`${source}/`));
+    if (!hasSource) return false;
+
+    this.mkdirp(target);
+    for (const [path, contents] of Object.entries(this.files)) {
+      const posixPath = path.replace(/\\/g, '/');
+      if (posixPath === source || posixPath.startsWith(`${source}/`)) {
+        const rel = posixPath === source ? '' : posixPath.slice(source.length + 1);
+        if (rel) {
+          const out = `${target}/${rel}`;
+          const slash = out.lastIndexOf('/');
+          if (slash >= 0) this.mkdirp(out.slice(0, slash));
+          this.files[out] = contents;
+          this.writes.push(out);
+          this.registerParentListing(out);
+        }
+      }
+    }
+    for (const dir of [...Object.keys(this.dirs), ...this.madeDirs]) {
+      const posixDir = dir.replace(/\\/g, '/').replace(/\/+$/, '');
+      if (posixDir === source || posixDir.startsWith(`${source}/`)) {
+        const rel = posixDir === source ? '' : posixDir.slice(source.length + 1);
+        const out = rel ? `${target}/${rel}` : target;
+        this.mkdirp(out);
+        this.registerParentListing(out);
+      }
+    }
+    return true;
+  }
+
   /** Remove `path`'s basename from its parent dir's seeded listing (so readdir reflects the delete). */
   private dropFromParentListing(path: string): void {
     const posix = path.replace(/\\/g, '/');
@@ -136,6 +174,17 @@ export class FakeFs implements FsPort, FileSystemWritePort {
       const i = listing.indexOf(name);
       if (i >= 0) listing.splice(i, 1);
     }
+  }
+
+  private registerParentListing(path: string): void {
+    const posix = path.replace(/\\/g, '/').replace(/\/+$/, '');
+    const slash = posix.lastIndexOf('/');
+    if (slash < 0) return;
+    const parent = posix.slice(0, slash);
+    const name = posix.slice(slash + 1);
+    if (this.dirs[parent] === undefined) this.dirs[parent] = [];
+    const listing = this.dirs[parent];
+    if (name && !listing.includes(name)) listing.push(name);
   }
 
   realpath(path: string): string | null {

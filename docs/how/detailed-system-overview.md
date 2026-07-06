@@ -395,18 +395,25 @@ by a thin pass-through to the Vercel `skills` installer.
 flowchart LR
     SRC["skills/ (authored here)"]
     SRC --> S1["eng-harness-flow — harness-loop router (boot → improve)"]
-    SRC --> S2["the-flow — SDD pipeline front door"]
+    SRC --> S2["builder — SDD pipeline<br/>the-flow — redirect"]
     SRC --> S3["eng-harness-0-harnessability-assessment · grill-agent-done"]
-    SRC -->|"harness skills install → npx skills add AI-Substrate/harness-engineering/skills"| DEST["consumer repo<br/>agent skills dir (.agents/.claude/...)"]
+    SRC -->|"npm package includes skills/"| PKG["@ai-substrate/engineering-harness"]
+    PKG -->|"harness skills install stages skills/ to temp<br/>then npx skills add <tempdir>"| DEST["consumer repo<br/>agent skills dir (.agents/.claude/...)"]
     DEST -->|"agent loads the skill"| DRIVE["skill = inference (print-then-offer, narrate)"]
     DRIVE -->|"prints + runs harness commands"| CLI2["harness CLI = determinism"]
     CLI2 -->|"envelopes / evidence / flight-plan state"| DRIVE
 ```
 
-- `harness skills install` resolves a source (default
-  `AI-Substrate/harness-engineering/skills`, `--branch`/`#ref` aware), then shells
-  out: `npx skills@latest add <source> -a <target> [-g] -s <slug> -y`. `harness
-  skills update` refreshes and prunes renamed/removed slugs.
+- `harness skills install` defaults to the package's baked `skills/` tree, copies it
+  to an absolute temp dir, then shells out:
+  `npx skills@latest add <tempdir> -a <target> [-g] -s <slug> -y`. A user-provided
+  `--source` still passes through (`owner/repo`, local path, `--branch`/`#ref`
+  aware). `harness skills update` refreshes and prunes renamed/removed slugs.
+- Installs write `skills.lock.json` (`.harness/` for project installs,
+  `~/.harness/` for global installs). Bare `harness update` reads that lock to
+  reconcile recorded skills; after a binary upgrade it re-execs the freshly
+  installed `harness skills update` child so it uses the new package's baked
+  skills, not the old running process.
 - The CLI only *invokes* the installer; the Vercel `skills` tool owns the
   target-specific destination. Skills never load implicitly into `minih` — they are
   wired explicitly (see [`AGENTS.md`](../../AGENTS.md) and

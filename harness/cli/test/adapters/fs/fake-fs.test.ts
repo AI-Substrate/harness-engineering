@@ -224,6 +224,25 @@ describe('FakeFs', () => {
     expect(fs.exists('/dest/b.txt')).toBe(true);
   });
 
+  it('copyDir recursively copies nested files into the destination root and records intent', () => {
+    const fs = new FakeFs(
+      {
+        '/src/SKILL.md': 'root',
+        '/src/references/guide.md': 'guide',
+        '/src/references/nested/deep.md': 'deep',
+      },
+      { '/src': ['SKILL.md', 'references'], '/src/references': ['guide.md', 'nested'] },
+    );
+
+    expect(fs.copyDir('/src', '/tmp/harness-skills-0')).toBe(true);
+
+    expect(fs.copyDirs).toEqual([{ src: '/src', dest: '/tmp/harness-skills-0' }]);
+    expect(fs.readText('/tmp/harness-skills-0/SKILL.md')).toBe('root');
+    expect(fs.readText('/tmp/harness-skills-0/references/guide.md')).toBe('guide');
+    expect(fs.readText('/tmp/harness-skills-0/references/nested/deep.md')).toBe('deep');
+    expect(fs.readdir('/tmp/harness-skills-0')).toContain('references');
+  });
+
   it('deleteFile removes a file, drops it from the parent listing, records, and is idempotent (T007)', () => {
     /*
     Test Doc:
@@ -338,6 +357,27 @@ describe('NodeFs', () => {
       const dest = join(base, 'out');
       expect(fs.copy(join(base, 'src.json'), dest)).toBe(true);
       expect(fs.readText(join(dest, 'src.json'))).toBe('PAYLOAD');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('copyDir recursively copies a directory tree into the destination root', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-copy-dir-'));
+    try {
+      const src = join(base, 'src');
+      mkdirSync(join(src, 'references', 'nested'), { recursive: true });
+      writeFileSync(join(src, 'SKILL.md'), 'root');
+      writeFileSync(join(src, 'references', 'guide.md'), 'guide');
+      writeFileSync(join(src, 'references', 'nested', 'deep.md'), 'deep');
+
+      const dest = join(base, 'out');
+      expect(fs.copyDir(src, dest)).toBe(true);
+
+      expect(fs.readText(join(dest, 'SKILL.md'))).toBe('root');
+      expect(fs.readText(join(dest, 'references', 'guide.md'))).toBe('guide');
+      expect(fs.readText(join(dest, 'references', 'nested', 'deep.md'))).toBe('deep');
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
