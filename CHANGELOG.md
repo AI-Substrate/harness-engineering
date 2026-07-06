@@ -10,6 +10,45 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.9.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.8.0...v0.9.0) (2026-07-06)
+
+
+### Features
+
+* **cohort-048:** insights layer v1 — seven sections, discipline panel, structural epistemics, no-mint HTML (Phase 2) ([7c5a793](https://github.com/AI-Substrate/harness-engineering/commit/7c5a7938d19035b7ff79ec164fc2f5a005c8484e))
+* **cohort-048:** LLM edge + docs + real-month dogfood fixes (Phase 3) ([4023f9d](https://github.com/AI-Substrate/harness-engineering/commit/4023f9de3280e7b4879f33ac9664183e3b5e5497))
+* **cohort-048:** measures foundation — FlowEvent-primary stage lens, sent/received render, month-scoped telemetry sweep (Phase 1) ([f3fea42](https://github.com/AI-Substrate/harness-engineering/commit/f3fea425a97ffabb3627007286cc1cebd6e0e4f0))
+* **doctor:** version-skew layer — detect a stale global harness shadowing the repo build ([9d76876](https://github.com/AI-Substrate/harness-engineering/commit/9d768763549e45c81a0882b946fc29eaa0644ee7))
+* **flow-eval-041:** md-to-pdf-ponytail scenario — third cohort, /ponytail full mandate ([eb8c805](https://github.com/AI-Substrate/harness-engineering/commit/eb8c805bbaf70faecc56e40c0dfa88d3bf55aa31))
+* **flow-eval-041:** md-to-pdf-ponytail-harness scenario — the loop carve-out A/B ([9d3946c](https://github.com/AI-Substrate/harness-engineering/commit/9d3946c46b3080cba1daa9fd570db5760e6e23e6))
+* **flow-eval-046:** comparability round — per-run --resolve, ledger supersede, pinned-worktree runbook (task 4.6) ([4c7e736](https://github.com/AI-Substrate/harness-engineering/commit/4c7e736a54c5f631737ce4de034b347799a2df58))
+* **flow-eval-046:** hardened scoring, run ledger + comparison, judge hardening, eval-runner skill (P1-P3 + docs) ([e27e4c6](https://github.com/AI-Substrate/harness-engineering/commit/e27e4c69bc0f5028c80b224154a7236de52b5fac))
+* **flow-eval:** flow-conformance eval harness (plan 041) ([c7dbff4](https://github.com/AI-Substrate/harness-engineering/commit/c7dbff493567b1bd6474c0edaed0facf49eb8de3))
+* **flow-eval:** md-to-pdf-flow scenario, unknown-lane compare fix, eval docs + explainer ([a9235b4](https://github.com/AI-Substrate/harness-engineering/commit/a9235b47cc68e15894931ccdefd552d40fefc4dc))
+* **ref-rollup-049:** one start-dated rolled ref per session + history-union migration + buffer prune (Phase 1) ([0f01667](https://github.com/AI-Substrate/harness-engineering/commit/0f016671bf214e0b9f4602da215279d01d48aa8f))
+* **telemetry-047:** FX001 — capture shell command + skill digit signatures ([057f311](https://github.com/AI-Substrate/harness-engineering/commit/057f311b368f32e9f280e2205c2b2cfe6b7ed605))
+* **telemetry-050:** semantic artifact telemetry — artifact event kind + 10-extractor registry, change-triggered in the capture window ([cf28e3a](https://github.com/AI-Substrate/harness-engineering/commit/cf28e3aa2402d749b81920f6e16561787bba208b))
+* **telemetry-051:** fleet session join — get-fleet verb, FleetEvidence service, scenario intent (phase 1) ([f770402](https://github.com/AI-Substrate/harness-engineering/commit/f770402c9536dda3570082e43fda8289f8f4b41b))
+* **telemetry-052:** fleet lane sources + capture fixes (Phase 1) ([6b2811b](https://github.com/AI-Substrate/harness-engineering/commit/6b2811ba29b76ee6018c8f097e369dbddc76e69e))
+* **telemetry-052:** fleet semantic rollup (Phase 2, T009-T012) ([46a3ec9](https://github.com/AI-Substrate/harness-engineering/commit/46a3ec9c72cb095dfa136010ea52d02d0bce203d))
+* **telemetry:** add `harness telemetry mark` peer self-attestation verb (plan 053 Phase 1) ([3c3e465](https://github.com/AI-Substrate/harness-engineering/commit/3c3e46544f159d60518e8b32f8f13fa0a7522fc8))
+
+
+### Bug Fixes
+
+* **flow-eval-046:** dogfood run-1 fix round — subject/base-ref fidelity, unmeasured-axis render, judged re-render (task 4.5) ([a33e3b5](https://github.com/AI-Substrate/harness-engineering/commit/a33e3b5bc26b87993c9f89716e42ab0c8f71e6d2))
+* **telemetry-047:** honest attribution (FX002) + tool-result-size capture (FX003) ([9473dde](https://github.com/AI-Substrate/harness-engineering/commit/9473ddec97453b761fa3582b8f5e2655234c142a))
+* **telemetry-049:** dedupe loose union blobs by name when the ref tip is an old-shape tree ([c159d3d](https://github.com/AI-Substrate/harness-engineering/commit/c159d3d6ee1a27b65bc52cd8da9d0d0ac69a7aae))
+* **telemetry-052:** aggregate plan_cs into fleet-level semantics (d-002 F1) ([dd41522](https://github.com/AI-Substrate/harness-engineering/commit/dd4152262c8904e274fd6cd5f00cecb4f079ef1e))
+* **telemetry-052:** descriptor-independent ledger join survives pij close (SUGG-001) ([7c4a7fe](https://github.com/AI-Substrate/harness-engineering/commit/7c4a7fe3388adfdf8aa15d15608bbad048fed4a2))
+* **telemetry-052:** malformed side-channel ledgers degrade, not vanish (F1) ([533ea8f](https://github.com/AI-Substrate/harness-engineering/commit/533ea8f98cf155cc12e3ea98092690bbeb55931b))
+* **telemetry:** copilot adapter captures apply_patch file writes (F-07 follow-on) ([fbb0f6c](https://github.com/AI-Substrate/harness-engineering/commit/fbb0f6cb3c42d981914dfbfb0d11d6663d4b712b))
+
+
+### Performance Improvements
+
+* **ref-rollup-049:** manifest-only no-op sync decision via fail-closed readRefBlob (DL-001) ([9c120bc](https://github.com/AI-Substrate/harness-engineering/commit/9c120bcb12bd4676d9b2d217fc6155a92837e586))
+
 ## [0.8.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.7.0...v0.8.0) (2026-06-30)
 
 
