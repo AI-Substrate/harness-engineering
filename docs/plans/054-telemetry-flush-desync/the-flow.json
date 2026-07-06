@@ -239,6 +239,63 @@
         "from": "review-1",
         "to": "ship"
       }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-06T08:08:52.712Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-06T08:08:53.522Z",
+      "details": {
+        "node": "retro-ship",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-06T08:08:54.408Z",
+      "details": {
+        "node": "observe-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-06T08:08:55.262Z",
+      "details": {
+        "node": "retro-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -378,7 +435,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -392,13 +449,15 @@
         "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
         "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
         "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates."
-      ]
+      ],
+      "modified_at": "2026-07-06T08:08:54.408Z",
+      "ran_at": "2026-07-06T08:08:54.408Z"
     },
     {
       "id": "retro-1",
       "type": "harness-retro",
       "label": "Retro: P1 (drain)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -412,13 +471,15 @@
         "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
         "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-1 --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-06T08:08:55.262Z",
+      "ran_at": "2026-07-06T08:08:55.262Z"
     },
     {
       "id": "retro-ship",
       "type": "harness-retro",
       "label": "Retro: ship (harvest)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "ship",
       "next": [
         "ship"
@@ -432,7 +493,10 @@
         "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-06T08:08:53.522Z",
+      "ran_at": "2026-07-06T08:08:52.712Z",
+      "note": "harvest drained: retro 2026-07-06/001 (INS-001 flush-desync root cause [encoded/#58], DL-001 stranded-backlog recovery [open follow-on], DL-002 npm-provenance [encoded/#56], INS-002 verify-physical-artifact lesson)"
     }
   ]
 }
