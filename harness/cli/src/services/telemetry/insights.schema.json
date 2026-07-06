@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://harness.dev/schemas/telemetry-insights.schema.json",
+  "title": "TelemetryInsights",
+  "description": "Plan 048 Phase 2 — the insights layer (WS001 D1, layer 3). Computed over 1..N saved TelemetryReport JSONs ONLY (never shards/exports/external joins). Every row carries its epistemic envelope {claim, measures_used, n, interval?, caveat}; an LLM never computes a number here. Additive-friendly: additionalProperties is permissive so new sections/fields are non-breaking.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "sections", "discipline", "provenance"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "harness.telemetry-insights/v1",
+      "description": "Pinned envelope version. Bump on a field-set change."
+    },
+    "sections": {
+      "type": "array",
+      "description": "The seven WS001 v1 sections, in order.",
+      "items": { "$ref": "#/$defs/section" }
+    },
+    "discipline": {
+      "$ref": "#/$defs/section",
+      "description": "The v1-committed ritual-marker discipline panel (observe→drain, backpressure-before-implement, checks-before-push, retro cadence)."
+    },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["claim", "measures_used", "n", "caveat", "values"],
+      "description": "The epistemic atom. STRUCTURAL rule: n + caveat are mandatory — a row without them cannot be built or rendered. `values` carries the numbers the HTML renders (a null value = honestly UNMEASURED, never a fabricated 0).",
+      "properties": {
+        "claim": { "type": "string" },
+        "measures_used": { "type": "array", "items": { "type": "string" } },
+        "n": { "type": "number", "description": "Sample size behind the estimate (documented per section: invocations/windows for command/skill/stage rows; sessions for work-unit/ratio/outlier rows)." },
+        "interval": { "type": "string" },
+        "caveat": { "type": "string", "minLength": 1 },
+        "values": {
+          "type": "object",
+          "additionalProperties": { "type": ["number", "string", "null"] }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title", "available", "rows"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "available": {
+          "type": "boolean",
+          "description": "false ⇒ the per-session grain this section needs was not supplied (aggregate-only input) — a visible, honest degradation, never fabricated."
+        },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/row" } },
+        "suppressed": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["rows", "reason"],
+          "description": "Visible note that low-n rows were folded into an aggregate (silent truncation forbidden).",
+          "properties": {
+            "rows": { "type": "integer", "minimum": 0 },
+            "reason": { "type": "string" }
+          }
+        },
+        "note": { "type": "string" },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "D-B era/mechanism coverage: over the single-session inputs, how many lack a marker class this section's rows depend on — so an all-zero row can read as UNMEASURABLE (era gap) rather than a confident zero. Evidence-based, never date-guessed.",
+          "required": ["sessions", "push_signatures_unavailable", "stage_labels_unavailable", "note"],
+          "properties": {
+            "sessions": { "type": "integer", "minimum": 0 },
+            "push_signatures_unavailable": { "type": "integer", "minimum": 0, "description": "Sessions with bash calls but no git push/commit signature markers (pre-FX001 era)." },
+            "stage_labels_unavailable": { "type": "integer", "minimum": 0, "description": "Sessions with no FlowEvent-/digit-labeled stage windows (e.g. FlowEvent starvation)." },
+            "note": { "type": "string" }
+          }
+        },
+        "orderings": {
+          "type": "object",
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["input_reports", "skipped_inputs", "n_threshold", "keying_rule", "token_coverage", "caveats", "generated_at"],
+      "description": "Where the numbers came from + the declared, document-don't-fix gaps.",
+      "properties": {
+        "input_reports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["name", "session_count", "single"],
+            "properties": {
+              "name": { "type": "string" },
+              "session_count": { "type": "integer", "minimum": 0 },
+              "single": { "type": "boolean" }
+            }
+          }
+        },
+        "skipped_inputs": {
+          "type": "array",
+          "description": "Inputs that failed to load — a partial run records each omission here (never silently dropped).",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["path", "reason"],
+            "properties": { "path": { "type": "string" }, "reason": { "type": "string" } }
+          }
+        },
+        "single_session_reports": { "type": "integer", "minimum": 0 },
+        "aggregate_reports": { "type": "integer", "minimum": 0 },
+        "flow_stage_map_versions": { "type": "array", "items": { "type": "string" } },
+        "keying_rule": { "type": "string" },
+        "n_threshold": { "type": "integer", "minimum": 1 },
+        "token_coverage": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "measured": { "type": "integer", "minimum": 0 },
+            "unmeasured": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "caveats": { "type": "array", "items": { "type": "string" } },
+        "generated_at": { "type": "string" }
+      }
+    }
+  }
+}

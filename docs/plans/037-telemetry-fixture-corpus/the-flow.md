@@ -7,36 +7,24 @@
 
 ```mermaid
 flowchart TD
-    ship["Ship"]:::assumed
-    plan["Plan 💬1"]:::done
     research["Research"]:::done
+    plan["Plan 💬1"]:::done
     phase_1["Phase 1: Foundation + claude proof"]:::done
     phase_2["Phase 2: Fan out — copilot-cli + vscode + cursor 💬5"]:::done
     phase_3["Phase 3: Operability + regeneration 💬2 📄1"]:::done
     review["Review"]:::known
+    ship["Ship"]:::assumed
 
-    plan --> phase_1
-    research --> plan
-    phase_1 --> phase_2
-    phase_2 --> phase_3
-    phase_3 --> review
-    review --> ship
+    research --> plan --> phase_1 --> phase_2 --> phase_3 --> review --> ship
 
-    classDef done fill:#C8E6C9,stroke:#2E7D32;
-    classDef wip fill:#FFE0B2,stroke:#EF6C00;
-    classDef blocked fill:#FFCDD2,stroke:#C62828;
-    classDef known fill:#BBDEFB,stroke:#1565C0;
-    classDef assumed fill:#ECEFF1,stroke:#90A4AE,stroke-dasharray:5 3;
-    classDef said fill:#FFF9C4,stroke:#F9A825;
-    classDef harness fill:#EDE7F6,stroke:#673AB7;
-    classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;
-    classDef companion fill:#D1C4E9,stroke:#5E35B1;
-    classDef worker fill:#B2DFDB,stroke:#00897B;
-    classDef chore fill:#E0F2F1,stroke:#00897B,stroke-dasharray:3 2;
-    classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class review current;
 ```
 
-**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker · 🧰 chore (upkeep).
+**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).
 
 ## Node log
 

@@ -14,6 +14,8 @@
  */
 import type {
   ApiErrorEvent,
+  ArtifactEvent,
+  ArtifactType,
   BranchEvent,
   ChecksEvent,
   ChecksStatus,
@@ -85,10 +87,13 @@ function encodeEvent(e: Event): LogRecord {
         kv(A.TOOL_COUNT, nv(e.count)),
         kv(A.TOOL_SPAN_S, nv(e.span_s)),
       );
+      if (e.signature !== undefined) attrs.push(kv(A.TOOL_SIG, sv(e.signature)));
+      if (e.result_tokens !== undefined) attrs.push(kv(A.TOOL_RESULT_TOKENS, nv(e.result_tokens)));
       break;
     case 'skill':
       attrs.push(kv(A.SKILL_NAME, sv(e.name)), kv(A.SKILL_STATUS, sv(e.status)));
       if (e.dur_s !== undefined) attrs.push(kv(A.SKILL_DUR_S, nv(e.dur_s)));
+      if (e.arg !== undefined) attrs.push(kv(A.SKILL_ARG, sv(e.arg)));
       break;
     case 'flow':
       attrs.push(
@@ -140,6 +145,29 @@ function encodeEvent(e: Event): LogRecord {
       if (e.signature !== undefined) attrs.push(kv(A.API_ERROR_SIG, sv(e.signature)));
       sev = SEV_ERROR;
       break;
+    case 'artifact': {
+      attrs.push(
+        kv(A.ARTIFACT_TYPE, sv(e.artifact_type)),
+        kv(A.ARTIFACT_PATH, sv(e.path)),
+        kv(A.ARTIFACT_CHANGE, sv(e.change)),
+        kv(A.ARTIFACT_SIZE_LINES, nv(e.size.lines)),
+        kv(A.ARTIFACT_SIZE_BYTES, nv(e.size.bytes)),
+      );
+      if (e.plan_id !== undefined) attrs.push(kv(A.ARTIFACT_PLAN_ID, sv(e.plan_id)));
+      // counts/enums ride as kvlist attrs (like `checks.gates`); an empty map is
+      // OMITTED, so decode's `{}` default round-trips a garbage artifact exactly.
+      const countEntries = Object.entries(e.counts);
+      if (countEntries.length > 0) {
+        const values: KeyValue[] = countEntries.map(([k, v]) => kv(k, nv(v)));
+        attrs.push(kv(A.ARTIFACT_COUNTS, { kvlistValue: { values } }));
+      }
+      const enumEntries = Object.entries(e.enums);
+      if (enumEntries.length > 0) {
+        const values: KeyValue[] = enumEntries.map(([k, v]) => kv(k, sv(v)));
+        attrs.push(kv(A.ARTIFACT_ENUMS, { kvlistValue: { values } }));
+      }
+      break;
+    }
   }
 
   return {
@@ -180,14 +208,20 @@ function decodeEvent(rec: LogRecord): Event {
       if (model !== undefined) ev.model = model;
       return ev;
     }
-    case 'tools':
-      return {
+    case 'tools': {
+      const ev: ToolsEvent = {
         ...base,
         kind,
         name: readStr(m.get(A.TOOL_NAME)) ?? '',
         count: readNum(m.get(A.TOOL_COUNT)) ?? 0,
         span_s: readNum(m.get(A.TOOL_SPAN_S)) ?? 0,
-      } satisfies ToolsEvent;
+      };
+      const sig = readStr(m.get(A.TOOL_SIG));
+      if (sig !== undefined) ev.signature = sig;
+      const resultTokens = readNum(m.get(A.TOOL_RESULT_TOKENS));
+      if (resultTokens !== undefined) ev.result_tokens = resultTokens;
+      return ev;
+    }
     case 'skill': {
       const ev: SkillEvent = {
         ...base,
@@ -197,6 +231,8 @@ function decodeEvent(rec: LogRecord): Event {
       };
       const d = readNum(m.get(A.SKILL_DUR_S));
       if (d !== undefined) ev.dur_s = d;
+      const arg = readStr(m.get(A.SKILL_ARG));
+      if (arg !== undefined) ev.arg = arg;
       return ev;
     }
     case 'flow': {
@@ -281,6 +317,35 @@ function decodeEvent(rec: LogRecord): Event {
       const ev: ApiErrorEvent = { ...base, kind };
       const sig = readStr(m.get(A.API_ERROR_SIG));
       if (sig !== undefined) ev.signature = sig;
+      return ev;
+    }
+    case 'artifact': {
+      // Rebuild counts/enums into plain maps at the wire boundary, then assign —
+      // the closed key discipline lives in the schema + the extractor authoring
+      // site (events.ts ArtifactCountKey/ArtifactEnumKey), not this reconstruction.
+      const counts: Record<string, number> = {};
+      const enums: Record<string, string> = {};
+      const countsAny = m.get(A.ARTIFACT_COUNTS);
+      if (countsAny?.kvlistValue !== undefined)
+        for (const c of countsAny.kvlistValue.values) counts[c.key] = readNum(c.value) ?? 0;
+      const enumsAny = m.get(A.ARTIFACT_ENUMS);
+      if (enumsAny?.kvlistValue !== undefined)
+        for (const en of enumsAny.kvlistValue.values) enums[en.key] = readStr(en.value) ?? '';
+      const ev: ArtifactEvent = {
+        ...base,
+        kind,
+        path: readStr(m.get(A.ARTIFACT_PATH)) ?? '',
+        artifact_type: (readStr(m.get(A.ARTIFACT_TYPE)) ?? 'plan') as ArtifactType,
+        change: (readStr(m.get(A.ARTIFACT_CHANGE)) ?? 'edited') as 'written' | 'edited',
+        counts,
+        enums,
+        size: {
+          lines: readNum(m.get(A.ARTIFACT_SIZE_LINES)) ?? 0,
+          bytes: readNum(m.get(A.ARTIFACT_SIZE_BYTES)) ?? 0,
+        },
+      };
+      const planId = readStr(m.get(A.ARTIFACT_PLAN_ID));
+      if (planId !== undefined) ev.plan_id = planId;
       return ev;
     }
     default:

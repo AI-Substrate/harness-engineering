@@ -47,6 +47,7 @@ describe('registerDoctorAct', () => {
       'toolchain',
       'node-runtime',
       'cli-build',
+      'version-skew',
       'extensions',
       'quality-gate',
       'telemetry-flush-hook',

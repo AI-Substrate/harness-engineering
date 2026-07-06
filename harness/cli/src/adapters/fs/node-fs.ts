@@ -7,6 +7,7 @@ import {
   readFileSync,
   realpathSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -46,6 +47,16 @@ export class NodeFs implements FsPort, FileSystemWritePort {
   rename(from: string, to: string): void {
     // Atomic on the same filesystem (POSIX rename(2) / Windows MoveFileEx replace).
     renameSync(from, to);
+  }
+
+  deleteFile(path: string): void {
+    // `force` makes a missing path a no-op (idempotent prune) — never throws ENOENT.
+    rmSync(path, { force: true });
+  }
+
+  removeDir(path: string): void {
+    // Recursive + force: remove the whole tree, tolerate an already-gone dir.
+    rmSync(path, { recursive: true, force: true });
   }
 
   realpath(path: string): string | null {

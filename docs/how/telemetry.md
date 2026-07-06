@@ -1,10 +1,11 @@
 # Harness telemetry
 
 How the harness captures a **counts-only**, per-session telemetry `segment` on
-every command, buffers it out of your working tree, and flushes it to
-per-session, date-sharded out-of-tree git refs for the eng-thrive measurement
-program — plus how it is pushed (manually, or automatically on `checks`), how to
-disable it, the structure it takes, and the privacy / offline guarantees.
+every command, buffers it out of your working tree, and rolls it up into **one
+out-of-tree git ref per session, keyed at the session's start date**, for the
+eng-thrive measurement program — plus how it is pushed (manually, or
+automatically on `checks`), how to disable it, the structure it takes, and the
+privacy / offline guarantees.
 
 > **This is the sensor, not the analyst.** Telemetry **emits + commits** faithful
 > counts. It builds no scanner, no dashboard, no correlation. Downstream
@@ -28,17 +29,30 @@ command* via a per-session cursor, and writes one normalized `segment` — token
 skills, tools, subagents, files, plan links, model/branch/timecode — to a
 **gitignored buffer**. Nothing is pushed on the hot path.
 
-A separate, explicit step — `harness telemetry sync` — flushes the buffered
-segments into **per-(capture-date, session) shard refs** under
-`refs/harness-telemetry/`, via plumbing (never touching your index or working
-tree), and pushes each shard. Sharding the ref namespace — rather than funnelling
-a whole team into one shared ref — is what makes concurrent writers safe (see
-[Team scale](#team-scale--many-engineers-one-repo)).
+A separate, explicit step — `harness telemetry sync` — rolls each session's
+buffered segments up into **one ref per session, keyed at the session's start
+date** (`refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`), via plumbing
+(never touching your index or working tree), and force-pushes that single ref.
+Each sync rewrites the ref with a fresh orphan commit whose tree — rebuilt from
+the whole local buffer — carries the **entire** session (`session.logs.jsonl` +
+`session.metrics.jsonl` + a `manifest.json`), so a reader that peels only the tip
+tree always sees the complete session. One ref per session (rather than one per
+capture-date, and rather than funnelling a whole team into one shared ref) is
+what keeps a multi-day session to a single place *and* makes concurrent writers
+safe (see [Team scale](#team-scale--many-engineers-one-repo)).
 
 ```
 harness <verb>   ──preamble──▶  .harness/temp/telemetry/<session>/<seq>.json          (gitignored buffer)
-harness telemetry sync          ──plumbing──▶  refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>  ──push──▶  central scraper
+harness telemetry sync          ──plumbing──▶  refs/harness-telemetry/<start-date>/<session>  ──force-push──▶  central scraper
 ```
+
+The **first** `harness telemetry sync` in a repo that still holds old
+per-capture-date refs also runs a one-time **migration**: it discovers every old
+ref (the one sanctioned `ls-remote` + fetch), unions each session's segments
+across its full commit history — recovering any buried by the earlier
+clobber-on-rewrite behaviour — rewrites them to the new start-date-keyed rolled
+refs, verifies the rollup, then deletes the old refs. Steady-state syncs after
+that are fetch-free.
 
 Two properties make this safe to run on **every** command:
 
@@ -116,6 +130,8 @@ kinds:
 | `skill` | skill name + lifecycle status | skill/subagent opens |
 | `flow` | flight-plan `flow`/`stage`/`status` (the **current-stage anchor**) | `the-flow.json` nav (not args) |
 | `flow_log` | a flight-plan mutation: `op` + `node`/`from`/`to`/`type`/`edge_op` | `the-flow.json` `events[]` log (the **transition history**) |
+| `artifact` | a counts-only snapshot of a changed flow/SDD artifact: `artifact_type` + `counts`/`enums`/`size` | a review/plan/workshop/… in the window's changed files |
+| `mark` | a peer's counts-only **self-attestation**: `mark_kind` + optional `verdict` + finding `counts` | `harness telemetry mark` (agent-invoked, not auto-derived) |
 | `branch` | the new branch (`to`) + prior (`from?`) | a git branch switch between captures |
 | `harness` | sub-command verb (sans params) | `harness …` calls |
 | `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
@@ -136,6 +152,34 @@ sometimes backfilled — times must not distort gap/stage math), and the **initi
 stage is recoverable only via the first `cursor-moved.from` (a flow that never moved,
 or was positioned by an advisory `nav --next` only, leaves no journey — read absence
 as *unknown*, not *stayed put*).
+
+**Artifact semantics (`artifact`).** The flow writes rich, deterministic artifacts —
+reviews, plans, workshops, dossiers, tasks, execution logs, backpressure coverage,
+validations, ship reports, and `the-flow.json`. Their **process signals** (fixes per
+review, phases per plan, workshop depth, gate PASS/FAIL, validation verdict) sit
+unread in those files. The artifact pass reads them at **capture time**: when a
+registered artifact appears in the window's `files.written`/`edited` set, a thin
+regex extractor parses it and emits one `artifact` event carrying the artifact's
+`path` (repo-relative), `plan_id`, `change` (`written`/`edited`), a `counts` map
+(integers only), an `enums` map (fixed-vocabulary verdicts/statuses/proof-levels,
+with an `other` fallback), and a `size` (`lines`/`bytes`). Files change over time, so
+each change re-emits an updated snapshot — a **semantic time series** per artifact, at
+zero added agent burden (the sensor rides the existing capture window; there is no
+watcher and no form to fill in).
+
+The **privacy floor is unchanged**: `counts` are integers, `enums` are allowlisted
+tokens gated by the extractor itself (a novel verdict maps to `other`, never travels
+verbatim), and there is **no free-text field by construction** — finding text, fix
+descriptions, and decision prose can never be emitted. The `counts`/`enums` **keys**
+are themselves a **closed, schema-enumerated union** (`additionalProperties: false`),
+so an extractor cannot invent a key to smuggle text through the map name. Extraction
+is **defensive**: an unparseable/garbage artifact yields empty counts (never a capture
+failure), and missing / binary / oversized / out-of-repo files are skipped. Like
+`flow_log`, an `artifact` event carries a **capture-time** `t` and is **excluded from
+the rollup**, so its snapshot stamp never distorts gap/wall/stage math. It complements
+the flight-plan replay: `flow_log` is the *transition history*, the `artifact` snapshot
+of `the-flow.json` is the *current shape* (nodes by type/status, phases, workshops,
+chores done/skipped/todo) — cheap to query without replaying every event.
 
 **The rollup — derived, recomputable.** `rollup` is a pure function of
 `event_stream[]` (a consumer may ignore it and recompute):
@@ -204,6 +248,210 @@ A segment records the plan it relates to when either holds:
 Multiple distinct plans seen across a session's segments are flushed as a
 **deduped set**.
 
+## Fleets — joining a flow-pair run (`harness telemetry get-fleet`)
+
+A flow-pair run is a **fleet**: an orchestrator pij session that spawns child
+pij sessions (a coder, a reviewer, …). `pij spawn` stamps each child's env with
+`PIJ_SESSION_ID` (its own id), `PIJ_PARENT_ID` (the spawner), and `PIJ_HARNESS`
+(`claude` | `copilot` | `codex` | `pi`); telemetry captures all three into
+`captured_env`, so the whole fleet can be re-joined from history alone — nothing
+extra is captured.
+
+```sh
+# env-tree: every child whose captured_env.PIJ_PARENT_ID == the root
+harness telemetry get-fleet <root-pij-id> --json
+
+# roster-scoped: reconcile the env tree against a flow-pair run.json roster
+harness telemetry get-fleet <root-pij-id> --roster .flow-pair/runs/<run>/run.json --json
+```
+
+The result is a **`FleetEvidence`** (closed, counts-only shape in
+`fleet-export.schema.json`) — one lane per child, each embedding the same
+per-session evidence `harness telemetry get` returns, plus fleet totals. Every lane
+carries a **`source`** (`live` | `ref` | `ledger`) and, when recovered from a vendor
+side-channel, a **`billing`** block (`nano_aiu` and/or `token_buckets`):
+
+- **Cost** — resolved per lane in precedence order **live → ref → ledger**: the
+  local temp buffer first; then, for a rostered member whose buffer was already
+  flushed, its synced `refs/harness-telemetry/*` rollup (`source: ref`); then its
+  vendor **ledger** (`source: ledger`) — the copilot `session.shutdown` billing
+  record or the codex rollout `token_count` total, joined through the pij registry.
+  `totals.cost.grand_total` sums `tokens.grand_total` over lanes with
+  `cost_measured: true`; a lane that resolves to a tier but whose cost can't be read
+  — a live copilot-null lane, or a **present-but-malformed** ledger/rollup — stays
+  `cost_measured: false`, **excluded from the sum** (never zero-filled) and counted
+  in `unmeasured_lanes`, so a broken side-channel **degrades** the lane rather than
+  making the member vanish. A rostered member with **no resolvable source at all** is
+  instead an `orphan` (below), not a zero-filled lane. Fleet cost is still an honest
+  **lower bound**.
+- **Time** — `totals.time.wall_clock_s` is the **union** of the lanes' event-time
+  spans; `active_s` is their **sum**; `active/wall` is the parallelism ratio. Both
+  come from `event_stream[].t` timestamps (the segment `window` is an event index,
+  not wall-clock), and are `null` only when no lane had a measurable span. Ledger
+  lanes carry no event stream, so they add cost but not time.
+- **Membership** — without a roster the `scope` is `env-tree` (a superset: a
+  parent pij id is stable across the orchestrator's whole life, so it can conflate
+  several runs). With `--roster`, `scope` is `roster` and two diffs surface the
+  discrepancy as a first-class signal: `orphans` (rostered ids that resolved to no
+  source at all) and `unrostered` (env-tree children absent from the roster).
+
+Depth-1 by contract (grandchildren are reserved, not walked). Read-only and
+fail-safe — an unknown root or an empty buffer resolves to an honest error /
+`null`, never a throw. See `docs/plans/051-pij-fleet-session-eval/` for the design
+(workshop D1–D3) and `docs/plans/052-fleet-telemetry-lane-sources/` for the lane
+sources below.
+
+### Lane sources — where each harness's cost + semantics live
+
+The knowledge that used to be tribal (which side-channel holds which harness's
+cost, when it materializes, and the key that joins it) is the matrix below. Every
+cell is a **deterministic reader** inside `get-fleet` — no hand archaeology.
+
+| harness | cost source | **materializes** | join key | semantics | never available |
+|---|---|---|---|---|---|
+| **claude** (orchestrator) | live temp segments → synced `ref` rollup | per-command (live), then on `checks`/sync flush | `captured_env.PIJ_SESSION_ID` (live) · ref last path segment (ref) | full artifact/flow/skill events | — |
+| **copilot** (worker) | `~/.copilot/session-state/<id>/events.jsonl` → `session.shutdown` (`totalNanoAiu` = AIC×1e9, `tokenDetails`, `codeChanges`) | **shutdown-only** — written once, at graceful session end | pij registry `harnessSessionId` → the session dir | `artifact` events (F-07 fix: `create`/`edit` paths now captured) | live per-command tokens (always null mid-session — F-01) |
+| **codex** (worker) | `~/.codex/sessions/<Y/M/D>/rollout-*.jsonl` → last `token_count` (`total_token_usage`) | per-turn, running total | pij registry `transcriptPath` (else session-id in the rollout filename) | none captured | AIC (codex bills in raw tokens) |
+| **pi** (worker) | — (no harness telemetry, no side-channel ledger yet) | — | pij registry | none | cost + semantics (documented gap) |
+
+The load-bearing caveat is **materialization timing**: a copilot lane's billing
+exists **only after** the session shuts down gracefully — a `get-fleet` run while a
+copilot worker is still live reads its ledger as unmeasured. Read-only peers (a
+reviewer that never commits) leave **no** harness telemetry at all; the shutdown
+ledger is their only trace (dossier F-05).
+
+### Run-end sweep — and the teardown-order trap
+
+Two facts collide at teardown, and getting the order wrong **silently** degrades
+every worker lane to `cost_measured: false` — it never errors, the fleet just comes
+back unmeasured:
+
+1. A copilot lane's cost lives **only** in its `session.shutdown` ledger, written
+   **only when the peer exits** — a still-live peer reads as unmeasured (F-01). You
+   have to end the peer to get its cost.
+2. The ledger's **join key** is the pij registry descriptor (`~/.pij/<id>.json` →
+   `harnessSessionId` → the session dir), and **`pij close` deletes that
+   descriptor**. Ending the peer destroys the join.
+
+So the one action that *writes* a copilot ledger is the same action that *breaks the
+join to it* — you cannot hold both through the descriptor alone. The way out is the
+run's `run.json` roster: `pij spawn` records each member's `harnessSessionId` there
+at spawn (before use, P9), so the join **survives teardown through the roster**
+instead of the deleted descriptor. `get-fleet` reads that fallback — when a rostered
+member has no `~/.pij` descriptor (closed) but its `run.json` entry carries a
+`harnessSessionId`, the vendor ledger still resolves. So the sweep works even after
+teardown:
+
+```sh
+# 1. flush every still-live lane's buffer into its ref rollup
+harness telemetry sync
+# 2. close each spawned copilot/codex peer so it writes its shutdown/rollout ledger
+#    (this ALSO deletes its ~/.pij descriptor — expected; the run.json roster is the join now)
+pij close <peer-id>            # for each peer you spawned
+# 3. snapshot the joined fleet — the roster supplies harnessSessionId, so the ledgers
+#    under ~/.copilot/session-state/<id>/ + ~/.codex/sessions/ still resolve
+harness telemetry get-fleet <root-pij-id> --roster <run.json> --json > fleet.json
+```
+
+> **The descriptor still wins when present** — the roster fallback fires only for a
+> member the pij registry no longer has, so a *live* fleet joins exactly as before
+> (byte-inert pre-teardown). The join key is `run.json`'s `harnessSessionId`, so an
+> old `run.json` that predates it (pijId-only) can't recover a closed lane — regenerate
+> the roster or snapshot before close. A cleaner live path (consume `pij sessions
+> --json` instead of globbing `~/.pij`) is an optional follow-on, not required for
+> correctness.
+
+### Billing conventions (F-10)
+
+Report **billing units, never raw token grand totals**. Copilot bills in **AIC**
+(`nano_aiu / 1e9`, ≈ \$0.01/credit); codex and others are indicative USD via a
+pricing table (an analysis-layer concern — the CLI emits raw units only, never a USD
+conversion). `totalPremiumRequests` is a **legacy** (pre-2026-06) field — carried for
+provenance, **never** surfaced as cost. Cache reads dominate modern token totals (a
+long orchestrator lane can be ~98% cache reads, billed at ~1/10 the input rate), so
+the raw `grand_total` overstates spend — the per-lane `billing` block is the
+authoritative unit.
+
+### Fleet semantics — the process shape, not just the price
+
+Cost and time say what a run *consumed*; the **semantic rollup** says what the
+process *did*. Every lane carries a `semantics` block, and the fleet a top-level
+one, aggregated from the lane's `artifact`/`flow` events (the [artifact
+semantics](#the-event-stream-v20) above) — **counts/enums only**, no prose:
+
+- **review** `findings` by severity, the ordered `verdicts` path, and `fix_cycles`
+  (`FIX_REQUIRED → APPROVE` transitions);
+- **plan** `plan_phases` + `plan_cs`; **workshop** `workshop_decisions`;
+- **flight-plan** `nodes` / `nodes_done` / `chores_done` / `chores_todo`;
+- per-stage `flow_stage_time_s`.
+
+The load-bearing rule is the honesty flag **`semantics_measured`**: a lane with no
+artifact capture is `semantics_measured: false` and **omits every dimension — never
+a `0`**. So a blind lane is distinguishable from one that measured *zero* findings
+(that lane is `semantics_measured: true` with `findings: {critical: 0, …}`). Each
+dimension is emitted only when its artifact type was captured, so a lane that saw a
+plan but not the review reports `plan_phases` and **no** `findings` — the review
+ran elsewhere, and the rollup says so by omission.
+
+Read the fleet-level **`measured_lanes` / `blind_lanes`** counts *first*: they are
+the coverage truth. A telemetry-only report can claim the process shape of the
+**instrumented** lanes; it **cannot** claim what happened in blind ones. In a
+flow-pair run that means the orchestrator's planning artifacts surface, but a
+read-only reviewer's findings (no harness telemetry — F-05) and a worker that
+emitted 0 artifact events (F-07) are absent — reported as blind, not as zero. A
+read-only reviewer can **opt out of blindness** by emitting a `mark` (see
+[Marks](#marks--peer-self-attestation-harness-telemetry-mark) below): its verdict
+then lands on its own lane's `semantics.mark` and the lane reads
+`semantics_measured: true`. See
+`docs/plans/052-fleet-telemetry-lane-sources/evidence/fleet-051-semantics-note.md`
+for a worked reconcile of a real fleet against a hand-made quality table, with
+every discrepancy (blind lane vs extractor precision vs capture-time drift)
+enumerated. Ledger- and ref-resolved lanes recover **cost** but not the event
+stream, so they are semantically blind until worker-lane artifact capture lands.
+
+## Marks — peer self-attestation (`harness telemetry mark`)
+
+Every semantic event above is **auto-derived** during passive capture — a review
+`artifact` only appears because a reviewer *wrote a review file*. A **read-only
+reviewer** runs no harness command and may write no file, so its verdict never
+reaches its lane: the lane is blind (F-05). `harness telemetry mark` closes that
+hole. It is the one **agent-invoked** semantic emit — a peer stamps a counts-only
+marker onto **its own** session lane with a single call:
+
+```bash
+harness telemetry mark --kind review --verdict fix-required --findings-critical 1
+```
+
+- **Shape-guarded, no free text.** `--kind` and `--verdict` are identifier slugs
+  (`^[a-z][a-z0-9-]{0,31}$`); the finding buckets (`--findings-critical` /
+  `-high` / `-med` / `-low`, plus a total `--findings`) are non-negative integers.
+  There is **no prose field by construction** — a bad slug (uppercase, whitespace,
+  over-long) is rejected with an `unconfigured` outcome (exit 2) naming the shape,
+  and **no marker is written** (telemetry is best-effort — it never blocks work).
+- **Cost-excluded, attribution-visible.** The marker is its own segment carrying
+  `tokens: null` and a single `mark` event; it contributes **zero** to
+  rollup gap/time/token math (like `artifact`/`flow_log`, it rides a capture-time
+  `t`) and zero to fleet cost. It surfaces on the emitting lane's
+  `semantics.mark` (`marks`, `kinds`, deduped `verdicts`, summed `findings`), and
+  a **mark-only lane is no longer blind** (`semantics_measured: true`).
+- **Generic — the vocabulary is prose, not a second binary.** The verb carries no
+  flow-stage vocabulary. The flow/skill layer decides *which* `kind`/`verdict` to
+  emit and formats the call as prose the agent renders — the Node CLI stays the one
+  cross-platform surface; there is no skill-side executable to install.
+
+**Where a mark shows up (F3 nuance).** A mark surfaces through
+`harness telemetry get-fleet` (read from the **live buffer** `<seq>.json`), **not**
+through `harness telemetry report` or the committed OTLP shards — the marker
+deliberately writes **no** OTLP sidecar, so it is fleet-attribution evidence, not
+part of the reconstruction-critical `harness.*` transport. Emit a mark, then read
+it back on your lane:
+
+```bash
+harness telemetry mark --kind review --verdict approve
+harness telemetry get-fleet <root-pij-id> --json    # → sessions[].semantics.mark
+```
+
+
 ## Syncing — `harness telemetry sync`
 
 Capture is decoupled from push. Run sync explicitly (e.g. at the end of a session,
@@ -213,15 +461,19 @@ from a `ship` step, or on a schedule):
 harness telemetry sync
 ```
 
-It flushes every buffered segment past each session's watermark into
-**per-(capture-date, session) shard refs** —
-`refs/harness-telemetry/<YYYY>/<MM>/<DD>/<session>` — one commit per shard, and
-pushes each shard's refspec using your **ambient git credentials** (the CLI
-handles no tokens). Each shard's commit tree is a flat `<seq>.json` set; the
-date+session hierarchy lives in the ref name, and the date is taken from each
-segment's own capture timecode (so a session that crosses midnight splits cleanly
-into one shard per day). Each shard ref is append-only, so re-syncing the same
-session/date extends its history.
+It rolls every buffered segment up into **one ref per session, keyed at the
+session's start date** — `refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`
+— rebuilt from the whole local buffer on each sync, and force-pushes that single
+refspec using your **ambient git credentials** (the CLI handles no tokens). The
+ref's commit tree carries the entire session: `session.logs.jsonl` +
+`session.metrics.jsonl` (every seq's OTLP record, concatenated seq-ordered) + a
+`manifest.json` (format marker, start date, max published seq). The start date is
+taken from the session's first segment and pinned in a `<session>.startdate`
+sidecar, so a session that crosses midnight — or spans several days — stays at
+**one** ref at its start date rather than trailing a ref-per-day. Each sync
+rewrites the ref with a fresh orphan commit (a full rewrite, so the tip tree is
+always the whole session), which is why the push is **forced** (`+ref:ref`);
+re-syncing with nothing new re-pushes the same content without a duplicate commit.
 
 ### Automatic sync on `checks`
 
@@ -265,16 +517,19 @@ To keep the auto-push but silence it, or to turn it off, see
 A single shared, mutable `refs/harness-telemetry` does **not** work for a team:
 many engineers pushing from independent clones is a distributed write-contention
 problem — every pusher after the first gets a non-fast-forward rejection, and
-their telemetry never drains. **Sharding the ref namespace by (date, session)
-solves this structurally:** no two writers ever target the same ref, so every
-push is a clean create-or-fast-forward — no fetch, no merge, no retry. This is the
-canonical git pattern for "many writers append out-of-tree metadata" (cf. Gerrit
-`refs/changes/*`, GitHub `refs/pull/*`).
+their telemetry never drains. **One ref per session solves this structurally:**
+no two writers ever target the same ref (a session's buffer lives in exactly one
+clone), so each writer owns its ref outright and force-pushes its own rewrite —
+no fetch, no merge, no cross-writer retry. This is the canonical git pattern for
+"many writers append out-of-tree metadata" (cf. Gerrit `refs/changes/*`, GitHub
+`refs/pull/*`). Because a session is written by a single clone, the append stays
+**fetch-free**: the rewrite reads the local buffer + a local ref-tree peel, never
+the remote.
 
-The shard key is the **session** (an opaque per-session id — the contributor
+The ref key is the **session** (an opaque per-session id — the contributor
 identity rides on the commit, not the ref name; [§ Attribution](#attribution--contributor-commit-team-grain-use)),
-so sharding introduces no new identity exposure beyond what the commit already
-carries.
+so keying per session introduces no new identity exposure beyond what the commit
+already carries.
 
 **Collecting it upstream is one fetch, not many.** A globbed refspec is a single
 network round-trip — the server advertises every matching ref at once:
@@ -284,11 +539,11 @@ git fetch origin '+refs/harness-telemetry/*:refs/harness-telemetry/*'   # all se
 ```
 
 Ref count stays cheap (a ref is just a name + a SHA; problems only begin in the
-tens-of-thousands), and the date prefix is the **retention/prune key** — a scraper
-drops a day after ingesting it:
+tens-of-thousands), and the **start-date** prefix is the **retention/prune key** —
+a scraper drops a day after ingesting it:
 
 ```bash
-git push origin --delete 'refs/harness-telemetry/2026/03/23/<session>'   # prune after ingest
+git push origin --delete 'refs/harness-telemetry/2026/03/23/<session>'   # prune after ingest (by start date)
 ```
 
 Treat the refs as an **ingestion buffer, not the system of record**: long-term
@@ -357,6 +612,20 @@ absent the field is `null`, never estimated.
   shape; it is not estimated in the meantime.
 - **Out-of-repo path fidelity.** As above, files written outside the repo are
   recorded as basenames only — intentional (no leak) but lossy for correlation.
+- **Ledger-join after teardown needs a fresh `run.json`.** The copilot/codex ledger
+  join runs through the pij descriptor (`~/.pij/<id>.json`), which `pij close` deletes.
+  `get-fleet` covers this with a **descriptor-independent fallback** (SUGG-001,
+  shipped): a rostered member with no live descriptor but a `harnessSessionId` in
+  `run.json` still resolves its ledger — so the [run-end sweep](#run-end-sweep--and-the-teardown-order-trap)
+  works after close. The residual limit is roster freshness: a `run.json` written
+  before this fix (pijId-only, no `harnessSessionId`) can't recover a torn-down lane —
+  regenerate the roster or snapshot before close.
+- **Read-only-peer semantics recovery is unproven.** A reviewer that runs no harness
+  command emits no segment (F-05); its verdict survives only in the review *file* it
+  writes, which enters telemetry only if the committing lane's capture observes that
+  write. That the verdict then lands on the committer's lane (the orchestrator, in
+  flow-pair) is the design intent but is **not yet proven live** — treat read-only
+  peers as semantically blind until a measured fleet demonstrates otherwise.
 
 ## See also
 

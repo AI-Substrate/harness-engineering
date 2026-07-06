@@ -1,0 +1,7 @@
+✅ VALIDATED
+
+| Severity | Claim | Proof with file:line | Impact | Smallest fix |
+|---|---|---|---|---|
+| — | No material findings. | Spot checks passed: single-session join is by `PIJ_SESSION_ID` in `harness/cli/src/services/telemetry/session-evidence.ts:109` and `harness/cli/src/services/telemetry/session-evidence.ts:306`; copilot sample has `tokens: null` and parent/child ids in `.harness/temp/telemetry/08375079-813f-422d-a474-29c7bb3198db/1.json:14` and `.harness/temp/telemetry/08375079-813f-422d-a474-29c7bb3198db/1.json:27`; its `window` is event-index, not wall-clock, at `.harness/temp/telemetry/08375079-813f-422d-a474-29c7bb3198db/1.json:8`; live aggregate over `.harness/temp/telemetry` matched the spike total in `docs/plans/051-pij-fleet-session-eval/workshops/001-fleet-join-and-eval-design.md:128` and `docs/plans/051-pij-fleet-session-eval/research-dossier.md:26`; the planned act/service split matches `docs/project-rules/constitution.md:65` and `docs/project-rules/architecture.md:48`; no `docs/adr/` directory was found, matching `docs/plans/051-pij-fleet-session-eval/pij-fleet-session-eval-plan.md:96`. | — | — |
+
+Thesis: The plan delivers a real read-side fleet unit (`FleetEvidence` + `telemetry get-fleet`) with testable cost/time/roster/privacy/intent ACs, validates it on the captured 050 fleet, and honestly leaves live fleet-vs-solo quality scoring as follow-on work rather than pretending it is complete.

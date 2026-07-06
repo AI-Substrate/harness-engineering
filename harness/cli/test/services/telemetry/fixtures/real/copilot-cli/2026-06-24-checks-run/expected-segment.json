@@ -1,5 +1,5 @@
 {
-  "schema_version": "2.2",
+  "schema_version": "2.3",
   "command": "flow",
   "harness": "copilot-cli",
   "harness_version": "0.0.0-fixture",
@@ -54,7 +54,8 @@
       "kind": "tools",
       "name": "bash",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "result_tokens": 3390
     },
     {
       "t": "2026-06-24T09:29:21.862Z",

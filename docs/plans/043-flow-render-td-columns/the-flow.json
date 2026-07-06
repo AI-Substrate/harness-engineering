@@ -8,7 +8,7 @@
     "intent": "Replace the sections layout in flow-renderer.ts with the TD two-column format (straight spine + combined-chore gutter, text extras as badges), matching reference-td-columns-format.md.",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-06-29T21:26:07.999Z",

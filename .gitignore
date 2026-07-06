@@ -167,6 +167,12 @@ agents/*/runs/
 # only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).
 .harness/temp/
 
+# flow-eval (plan 041) run tree — COMMITTED since 2026-07-03: the append-only
+# ledger.jsonl is the longitudinal record `--compare` groups on, and the per-run
+# report.{json,md} are its evidence — cross-batch comparison needs them durable
+# across machines/clones, not machine-local. (Was gitignored as "ephemeral"
+# pre-046; the ledger design superseded that.)
+
 # validate-harness-flow runtime manifest (non-portable abs paths + PIDs; --collect reads it locally,
 # it is not durable AC-8 evidence). The copied reports/records/ROLLUP.md stay tracked.
 docs/plans/*/runs/**/.last-fire.json

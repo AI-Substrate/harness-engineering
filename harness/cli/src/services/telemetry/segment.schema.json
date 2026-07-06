@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.2.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.3.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -20,7 +20,7 @@
     "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "2.2" },
+    "schema_version": { "type": "string", "const": "2.3" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
     "harness_version": { "type": "string" },
@@ -168,7 +168,9 @@
               "subagent",
               "compaction",
               "model",
-              "api_error"
+              "api_error",
+              "artifact",
+              "mark"
             ]
           },
           "words": { "type": "integer" },
@@ -193,7 +195,132 @@
           "verb": { "type": "string" },
           "exit": { "type": "integer" },
           "gates": { "type": "object", "additionalProperties": { "type": "string" } },
-          "signature": { "type": "string" }
+          "signature": { "type": "string" },
+          "arg": { "type": "string" },
+          "result_tokens": { "type": "integer" },
+          "path": { "type": "string" },
+          "artifact_type": {
+            "enum": [
+              "review",
+              "plan",
+              "workshop",
+              "dossier",
+              "tasks",
+              "execution-log",
+              "backpressure",
+              "validation",
+              "ship-report",
+              "flight-plan"
+            ]
+          },
+          "plan_id": { "type": "string" },
+          "mark_kind": { "type": "string", "description": "plan 053 — a `mark` event's category slug (shape-guarded `^[a-z][a-z0-9-]{0,31}$`, never prose)." },
+          "verdict": { "type": "string", "description": "plan 053 — a `mark` event's optional verdict slug (same shape guard; distinct from the artifact `enums.verdict` vocabulary)." },
+          "change": { "enum": ["written", "edited"] },
+          "counts": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "absent": { "type": "integer" },
+              "blocked": { "type": "integer" },
+              "buildable": { "type": "integer" },
+              "checks_green": { "type": "integer" },
+              "checks_total": { "type": "integer" },
+              "chores": { "type": "integer" },
+              "chores_done": { "type": "integer" },
+              "chores_skipped": { "type": "integer" },
+              "chores_todo": { "type": "integer" },
+              "comments": { "type": "integer" },
+              "cs": { "type": "integer" },
+              "decisions": { "type": "integer" },
+              "deferred": { "type": "integer" },
+              "deviations": { "type": "integer" },
+              "done": { "type": "integer" },
+              "entries": { "type": "integer" },
+              "events": { "type": "integer" },
+              "exists": { "type": "integer" },
+              "findings": { "type": "integer" },
+              "findings_critical": { "type": "integer" },
+              "findings_high": { "type": "integer" },
+              "findings_low": { "type": "integer" },
+              "findings_med": { "type": "integer" },
+              "fixes": { "type": "integer" },
+              "gaps": { "type": "integer" },
+              "gate_fail": { "type": "integer" },
+              "gate_na": { "type": "integer" },
+              "gate_pass": { "type": "integer" },
+              "high": { "type": "integer" },
+              "in_progress": { "type": "integer" },
+              "nodes": { "type": "integer" },
+              "open": { "type": "integer" },
+              "phases": { "type": "integer" },
+              "pr_opened": { "type": "integer" },
+              "re_reviews": { "type": "integer" },
+              "resolved": { "type": "integer" },
+              "sections": { "type": "integer" },
+              "skipped": { "type": "integer" },
+              "todo": { "type": "integer" },
+              "workshop_opps": { "type": "integer" },
+              "workshops": { "type": "integer" }
+            }
+          },
+          "enums": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "APPROVE",
+                  "APPROVE_WITH_NOTES",
+                  "FIX_REQUIRED",
+                  "NEEDS_ATTENTION",
+                  "VALIDATED",
+                  "VALIDATED_WITH_FIXES",
+                  "other"
+                ]
+              },
+              "mode": { "type": "string", "enum": ["SIMPLE", "FULL", "other"] },
+              "status": { "type": "string", "enum": ["READY", "DRAFT", "other"] },
+              "target_proof": {
+                "type": "string",
+                "enum": [
+                  "CONTRACT_READY",
+                  "PREFERRED_DIRECTION",
+                  "DIRECTIONAL",
+                  "EXPLORATORY",
+                  "other"
+                ]
+              },
+              "current_proof": {
+                "type": "string",
+                "enum": [
+                  "CONTRACT_READY",
+                  "PREFERRED_DIRECTION",
+                  "DIRECTIONAL",
+                  "EXPLORATORY",
+                  "other"
+                ]
+              },
+              "certainty": {
+                "type": "string",
+                "enum": ["FULL", "PARTIAL", "NONE", "COMPLETE", "other"]
+              },
+              "pr_state": {
+                "type": "string",
+                "enum": ["OPEN", "MERGED", "CLOSED", "DRAFT", "other"]
+              }
+            }
+          },
+          "size": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["lines", "bytes"],
+            "properties": {
+              "lines": { "type": "integer" },
+              "bytes": { "type": "integer" }
+            }
+          }
         }
       }
     },

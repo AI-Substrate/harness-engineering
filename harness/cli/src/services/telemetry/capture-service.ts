@@ -18,6 +18,7 @@ import {
   type HarnessSource,
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
+import { artifactSemanticsEvents } from './artifact-semantics.js';
 import {
   branchPathFor,
   cursorPathFor,
@@ -224,6 +225,35 @@ function nextSeq(fs: FsPort, sessionDir: string): number {
 }
 
 /**
+ * Write a pre-serialized {@link Segment} as the next `<seq>.json` in the session's
+ * gitignored telemetry buffer, atomically (temp + rename — mirror {@link captureUnsafe}).
+ * Returns the written path.
+ *
+ * Used by `harness telemetry mark` (plan 053) to drop a self-contained marker segment
+ * onto the CALLER's own lane. UNLIKE the passive capture path this writes ONLY the
+ * `<seq>.json` (no `.logs.jsonl`/`.metrics.jsonl` OTLP sidecars): `readSegments`
+ * matches `^\d+\.json$`, so `get-fleet` picks the marker up from the live buffer, but
+ * the mark deliberately does NOT ride the OTLP transport (it is not `telemetry
+ * report` / committed-shard evidence — dossier F3).
+ */
+export function writeSegmentFile(
+  deps: { fs: FsPort; proc: ProcessPort },
+  cwd: string,
+  sessionId: string,
+  segment: Segment,
+): string {
+  ensureTemp({ fs: deps.fs, proc: deps.proc });
+  const sessionDir = sessionDirFor(cwd, sessionId);
+  deps.fs.mkdirp(sessionDir);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
+  const tmp = `${entryPath}.tmp`;
+  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
+  deps.fs.rename(tmp, entryPath);
+  return entryPath;
+}
+
+/**
  * Derive the plan id from a cwd under `docs/plans/<id>/` (the `<ordinal>-<slug>`
  * dir name), or null (plan 034 Phase 4, T006 — closes AC-08's "run inside
  * `docs/plans/<id>/`" clause; capture otherwise only saw `HARNESS_PLAN_ID`). The
@@ -240,6 +270,77 @@ function resolvePlanId(env: EnvPort, cwd: string): string | null {
   const explicit = env.get('HARNESS_PLAN_ID');
   if (explicit !== undefined && explicit.length > 0) return explicit;
   return planIdFromCwd(cwd);
+}
+
+/**
+ * The distinct `docs/plans/<id>/` prefixes touched by this window's file paths
+ * (T1.2-fix / AC-12). The root cause of live-empty `plans_touched`: env/cwd
+ * derivation (`resolvePlanId`) ~never fires in a real run — the agent runs from
+ * the repo root with no `HARNESS_PLAN_ID`, yet edits `docs/plans/<id>/…` all
+ * session. Those edits ARE captured (`files.written`/`files.edited`), so the plan
+ * identity is derivable from them with NO new I/O — a pure prefix scan. Returns
+ * ids in first-seen order (deduped), P12-safe (path prefixes only, already
+ * captured). A path like `docs/plansfoo/x` never false-matches (literal segment).
+ */
+function plansFromTouchedFiles(files: HarnessCapabilities['files']): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const paths = [...(files?.written ?? []), ...(files?.edited ?? [])];
+  for (const p of paths) {
+    const m = /(?:^|\/)docs\/plans\/([^/]+)/.exec(toPosix(p));
+    const id = m?.[1];
+    if (id !== undefined && id.length > 0 && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+/** Dedupe plan ids, preserving first-seen order (the union's stable shape). */
+function dedupePlans(ids: readonly string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+/** True when a `docs/plans/<planId>/the-flow.json` path is among the touched files. */
+function theFlowJsonTouched(files: HarnessCapabilities['files'], planId: string): boolean {
+  const needle = `docs/plans/${planId}/the-flow.json`;
+  const paths = [...(files?.written ?? []), ...(files?.edited ?? [])];
+  return paths.some((p) => toPosix(p).endsWith(needle));
+}
+
+/**
+ * Choose which plan's `the-flow.json` to read for the window's FlowEvent
+ * (T1.2-fix). The env/cwd-derived id still wins (preserves the existing
+ * flight-plan-read contract); otherwise an EVIDENCE-derived fallback keys off the
+ * touched-file union so guided runs (which only ever surface plan identity through
+ * their edits) still emit a stage:
+ *  - exactly ONE plan in the union ⇒ read it;
+ *  - MULTIPLE ⇒ read the one whose OWN `the-flow.json` is among the touched paths,
+ *    but only when that disambiguates to exactly one candidate;
+ *  - still ambiguous (zero or several such) ⇒ `null` ⇒ NO flow event (honest —
+ *    `plans_touched` still keeps the full list; a stage is never fabricated).
+ */
+function selectFlightPlanId(
+  envCwdPlanId: string | null,
+  unionIds: readonly string[],
+  files: HarnessCapabilities['files'],
+): string | null {
+  if (envCwdPlanId !== null) return envCwdPlanId;
+  if (unionIds.length === 1) return unionIds[0];
+  if (unionIds.length > 1) {
+    const withFlow = unionIds.filter((id) => theFlowJsonTouched(files, id));
+    if (withFlow.length === 1) return withFlow[0];
+  }
+  return null;
 }
 
 /**
@@ -306,6 +407,17 @@ function withFlowLogEvents(flowLog: readonly Event[], stream: readonly Event[]):
   return flowLog.length === 0 ? [...stream] : [...stream, ...flowLog];
 }
 
+/**
+ * Append the `artifact` semantic snapshots (plan 050) — one counts-only event per
+ * changed flow/SDD artifact in the window's `files.written/edited` set. Appended
+ * AFTER the flow_log markers: like them they carry a CAPTURE-TIME `t` and are
+ * rollup-excluded, so their stamp never distorts gap/wall/stage math; a replay
+ * consumer sorts the concatenated timeline by `t`. Empty changed set → unchanged.
+ */
+function withArtifactEvents(artifacts: readonly Event[], stream: readonly Event[]): Event[] {
+  return artifacts.length === 0 ? [...stream] : [...stream, ...artifacts];
+}
+
 /** Branch state for a capture: the current git branch, the prior one, and whether it changed. */
 interface BranchInfo {
   current: string | null;
@@ -364,11 +476,17 @@ function buildInput(
   window: SegmentWindow,
   caps: HarnessCapabilities,
   branch: BranchInfo,
-  planId: string | null,
+  plansTouched: string[],
   flightPlan: unknown,
   flowLog: readonly Event[],
+  cwd: string,
 ): SegmentInput {
   const timecode = deps.clock.nowIso();
+  // Artifact-semantics pass (plan 050): read each changed flow/SDD artifact at
+  // capture time and project its structural markers into counts-only `artifact`
+  // events, stamped at `timecode` (the "save time"). Guarded + defensive inside
+  // the helper (skips missing/binary/oversized/out-of-repo; never throws).
+  const artifactEvents = artifactSemanticsEvents(deps.fs, cwd, caps.files, timecode);
   return {
     command: deps.command,
     harness: detected.harness,
@@ -385,7 +503,7 @@ function buildInput(
     user_prompts: caps.user_prompts ?? [],
     subagents: caps.subagents ?? [],
     files: caps.files ?? { written: [], edited: [] },
-    plans_touched: planId !== null ? [planId] : [],
+    plans_touched: plansTouched,
     events: {
       compactions: caps.compactions ?? [],
       api_errors: caps.api_errors ?? 0,
@@ -397,12 +515,16 @@ function buildInput(
     captured_env: selectCapturedEnv(deps.env),
     // Compose the timeline: flow + branch prepend at the window start; the
     // triggering harness command appends as a zero-gap marker at the window end;
-    // the flow_log replay markers append last (rollup-excluded, own real `t`).
-    event_stream: withFlowLogEvents(
-      flowLog,
-      withHarnessCommandEvent(
-        deps.command,
-        withBranchEvent(branch, timecode, withFlowEvent(flightPlan, caps.event_stream ?? [])),
+    // the flow_log replay markers append next (rollup-excluded, own real `t`);
+    // the artifact-semantics snapshots append last (rollup-excluded, capture `t`).
+    event_stream: withArtifactEvents(
+      artifactEvents,
+      withFlowLogEvents(
+        flowLog,
+        withHarnessCommandEvent(
+          deps.command,
+          withBranchEvent(branch, timecode, withFlowEvent(flightPlan, caps.event_stream ?? [])),
+        ),
       ),
     ),
   };
@@ -512,20 +634,39 @@ function captureUnsafe(deps: CaptureDeps): void {
     changed: priorBranch !== null && currentBranch !== null && priorBranch !== currentBranch,
   };
 
+  // Extract the window's capabilities FIRST — its `files` are the evidence the
+  // plan-identity union (below) reads (T1.2-fix); nothing about `caps` depends on
+  // the plan link, so this reorder is behaviour-neutral for every non-plan field.
+  const ctx: HarnessContext = { ...source, window };
+  const caps = adapter.extract(ctx);
+
+  // Plan identity (T1.2-fix / AC-12): `plans_touched` is the DEDUPED UNION of the
+  // env/cwd-derived id (kept for the flight-plan read) PLUS every distinct
+  // `docs/plans/<id>/` prefix in this window's touched files — because env/cwd
+  // derivation ~never fires in a real run (repo-root cwd, no HARNESS_PLAN_ID), yet
+  // the agent's edits carry the plan identity. Pure derivation, no new I/O.
+  const envCwdPlanId = resolvePlanId(deps.env, cwd);
+  const touchedPlanIds = plansFromTouchedFiles(caps.files);
+  const plansTouched = dedupePlans([
+    ...(envCwdPlanId !== null ? [envCwdPlanId] : []),
+    ...touchedPlanIds,
+  ]);
+
   // Flow replay: read the linked flight plan ONCE, then window its append-only
   // `events[]` log by an array OFFSET kept per (session, plan) — collision-proof,
-  // unlike a `fired_at` watermark (plan 035).
-  const planId = resolvePlanId(deps.env, cwd);
-  const flightPlan = readFlightPlan(deps.fs, cwd, planId);
+  // unlike a `fired_at` watermark (plan 035). The plan whose `the-flow.json` is
+  // read is the env/cwd id when present, else the evidence-derived choice from the
+  // touched-file union (single ⇒ that; multiple ⇒ the one whose the-flow.json was
+  // itself touched; still ambiguous ⇒ null ⇒ no fabricated FlowEvent).
+  const flightPlanId = selectFlightPlanId(envCwdPlanId, plansTouched, caps.files);
+  const flightPlan = readFlightPlan(deps.fs, cwd, flightPlanId);
   const flowCursorPath =
-    planId !== null ? flowCursorPathFor(cwd, detected.sessionId, planId) : null;
+    flightPlanId !== null ? flowCursorPathFor(cwd, detected.sessionId, flightPlanId) : null;
   const priorFlowOffset = flowCursorPath !== null ? readFlowCursor(deps.fs, flowCursorPath) : 0;
   const flowLog = flowLogEvents(flightPlan, priorFlowOffset);
 
-  const ctx: HarnessContext = { ...source, window };
-  const caps = adapter.extract(ctx);
   const segment: Segment = serializeSegment(
-    buildInput(deps, detected, window, caps, branch, planId, flightPlan, flowLog.events),
+    buildInput(deps, detected, window, caps, branch, plansTouched, flightPlan, flowLog.events, cwd),
     cwd,
   );
 

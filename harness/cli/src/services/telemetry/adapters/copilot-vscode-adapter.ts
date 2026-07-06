@@ -197,6 +197,12 @@ export const copilotVscodeAdapter: HarnessAdapter = {
     const userPrompts: number[] = [];
     let anyTs = false;
 
+    // FX001 exemption: the VS Code Copilot Chat store is TURNS-ONLY (user_message /
+    // assistant_response / timestamp — see TURNS_SQL). It records no tool calls,
+    // no shell `command`, and no skill invocations, so there is NO shell tool event
+    // to carry a command `signature` (Facet A) and NO skill event to carry a digit
+    // `arg` (Facet B). Nothing to keep here — the argv/skill surface simply does
+    // not exist on this harness (honest ceiling, exactly as tokens/models are null).
     for (const turn of windowTurns) {
       if (turn.words > 0) userPrompts.push(turn.words);
       if (turn.t === null) continue; // no timestamp → no timeline event (never fabricated)

@@ -269,6 +269,9 @@
   ],
   "nav": {
     "now": "build",
-    "next": "merge"
+    "next": "merge",
+    "bag": {
+      "status": "complete"
+    }
   }
 }

@@ -1,0 +1,252 @@
+{
+  "scenario": "md-to-pdf-ponytail-harness",
+  "run_id": "20260703-054259Z-tkkrr4",
+  "subject": {
+    "harness": "copilot",
+    "model": "gpt-5.5",
+    "pij_session_id": "pij-tkkrr4",
+    "effort": "high"
+  },
+  "base_ref": "c159d3d6ee1a27b65bc52cd8da9d0d0ac69a7aae",
+  "base_ref_warning": "worktree HEAD c159d3d6 ≠ base_ref c159d3d6ee1a27b65bc52cd8da9d0d0ac69a7aae — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong",
+  "started_at": "2026-07-03T05:42:59.220Z",
+  "finished_at": "2026-07-03T05:43:02.374Z",
+  "deterministic": {
+    "score": 0.5,
+    "axis_scores": {
+      "process": 0.25,
+      "capability": 1
+    },
+    "passed": 6,
+    "failed": 6,
+    "unknown": 0,
+    "total": 12,
+    "required_failed": 0,
+    "results": [
+      {
+        "id": "A1",
+        "type": "skill-called",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "fail",
+        "required": true,
+        "weight": 1,
+        "describe": "actually invoked /ponytail (the mandated doctrine) — a run that never loads the skill is working from vibes, not the mandate (NB: copilot skill capture can gap on claude-model sessions — cross-check raw events before treating a fail as subject fault, DL-003)"
+      },
+      {
+        "id": "A2",
+        "type": "skill-called",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "OBSERVATIONAL: ambient SDD adoption — unchanged from the ponytail variant for cross-batch comparability"
+      },
+      {
+        "id": "A3",
+        "type": "skill-called",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "fail",
+        "required": true,
+        "weight": 1,
+        "describe": "engaged the engineering-harness loop (MANDATED in this variant — the packet names it; required marks importance, a process fail never caps the verdict)"
+      },
+      {
+        "id": "A4",
+        "type": "flow-seam-fired",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "hit the backpressure seam before coding (loop conduct — mandated-adjacent: the packet mandates the loop, the skill teaches its seams)"
+      },
+      {
+        "id": "A5",
+        "type": "compaction-occurred",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "compacted at least once (subject-owned context hygiene; comparability row with the other two variants)"
+      },
+      {
+        "id": "A6",
+        "type": "file-created",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "created the new extension under .harness/extensions/"
+      },
+      {
+        "id": "A7",
+        "type": "command-succeeds",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "the new verb actually registered — resolve per-run with --resolve A7='node harness/cli/bin/harness.js <new-verb> --help' (commander exits nonzero if the verb never loaded)"
+      },
+      {
+        "id": "A8",
+        "type": "command-succeeds",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "the subject's own PDF validator passes — resolve per-run with --resolve A8='<the real validator command the subject reported>' (the task says 'validated output'; ponytail's own doctrine says non-trivial logic leaves one runnable check)"
+      },
+      {
+        "id": "A9",
+        "type": "checks-ran",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "ran harness checks green (NB: base ships pre-existing warn-launch degraded findings, so status:ok is unreachable on this base — consistent across the batch, comparable; SUGG-003)"
+      },
+      {
+        "id": "A10",
+        "type": "retro-drained",
+        "source": "fs+telemetry",
+        "axis": "process",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "drained a retro to a record (loop conduct — mandated-adjacent; verb ran AND a record exists)"
+      },
+      {
+        "id": "A11",
+        "type": "harness-verb-ran",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "recorded in-flight observations (harness observe) — loop conduct, mandated-adjacent; deterministic so reports/insights can read it"
+      },
+      {
+        "id": "A12",
+        "type": "artifact-exists",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "a retro record artifact exists in the worktree (NB: separate new-since-base artifacts from inherited ones via git status — the base may already carry records; SUGG-001)"
+      }
+    ]
+  },
+  "judged": [
+    {
+      "id": "A13.ladder-adherence",
+      "criterion": "ladder-adherence",
+      "field": "ladder-adherence",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Ladder adherence\nQuestion: Does the work take the least-mechanism path that still meets the task — reusing existing capability before adding new code or dependencies, with deliberate simplifications marked and verifiably checked?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "rubric": "pass when diff/dependency evidence shows the solution is minimal for the task with no unforced additions; fail when it is conventionally over-built or minimalism language substitutes for minimal substance; unknown when diff/dependency evidence is unavailable.",
+      "describe": "ponytail fidelity vs vocabulary decoration (orchestrator-judged from diff + dependency evidence, adversarial): Ladder adherence",
+      "verdict": "pass",
+      "rationale": "+236 extension lines over 3 files + a 55-line retro record, ZERO dependency delta, same system-tool wrap as its batch-3 sibling (mmdc/pandoc/pdfinfo). Two caveats: no ponytail: markers, and — unlike its batch-3 run — NO runnable check left behind (the doctrine asks for one; the dual mandate appears to have displaced it). Validation is built into the verb at runtime, so the task requirement stands, but the check-discipline regressed vs batch 3.",
+      "by": "orchestrator pij-4s10mb (Claude Fable 5), evidence-first per runbook"
+    },
+    {
+      "id": "A13.report-contract-coverage",
+      "criterion": "report-contract-coverage",
+      "field": "report-contract-coverage",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Report contract coverage\nQuestion: Does the final report cover the required contract fields and evidence rather than only prose claims?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "rubric": "pass when required report fields/evidence are present; fail when material contract fields are absent; unknown when the report artifact is unavailable.",
+      "describe": "ponytail fidelity vs vocabulary decoration (orchestrator-judged from diff + dependency evidence, adversarial): Report contract coverage",
+      "verdict": "pass",
+      "rationale": "Completion report carried the contract: status, worktree, extension path, exercise command (re-proved as resolved A8, exit 0, mermaid found/rendered=1), the honest degraded-gates note, AND the retro record path — the first subject in any batch to volunteer loop-conduct evidence unprompted.",
+      "by": "orchestrator pij-4s10mb (Claude Fable 5), evidence-first per runbook"
+    },
+    {
+      "id": "A13.explanation-matches-telemetry",
+      "criterion": "explanation-matches-telemetry",
+      "field": "explanation-matches-telemetry",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Explanation matches telemetry\nQuestion: Does the explanation match the verified telemetry/artifacts without inventing steps or hiding missing evidence?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "rubric": "pass when explanation and telemetry agree; fail on material contradiction; unknown when telemetry/artifacts are insufficient.",
+      "describe": "ponytail fidelity vs vocabulary decoration (orchestrator-judged from diff + dependency evidence, adversarial): Explanation matches telemetry",
+      "verdict": "pass",
+      "rationale": "7 telemetry segments (vs 1 in batch 3 — the loop verbs opened capture windows, DL-005 relief as predicted). Raw events confirm skill.invoked ponytail AND eng-harness-flow, observe x14, record x4, checks x4, doctor x12 — the claimed conduct all really happened. A1/A3 deterministic fails remain capture-window artifacts (both skills fired between windows).",
+      "by": "orchestrator pij-4s10mb (Claude Fable 5), evidence-first per runbook"
+    },
+    {
+      "id": "A14.ladder-adherence",
+      "criterion": "ladder-adherence",
+      "field": "ladder-adherence",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Ladder adherence\nQuestion: Does the work take the least-mechanism path that still meets the task — reusing existing capability before adding new code or dependencies, with deliberate simplifications marked and verifiably checked?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "rubric": "pass when diff/dependency evidence shows the solution is minimal for the task with no unforced additions; fail when it is conventionally over-built or minimalism language substitutes for minimal substance; unknown when diff/dependency evidence is unavailable.",
+      "describe": "backpressure design quality (orchestrator-judged; same field as the other variants so the three cohorts compare — here it also tests whether minimalism erodes verification): Ladder adherence",
+      "verdict": "pass",
+      "rationale": "Validator: %PDF- header + pdfinfo page count >= 1 + mermaid found/rendered counts in the result envelope — deterministic, bites on missing/broken output, minimal mechanism. Same class as its batch-3 design: structure-proof, not embedded-diagram proof.",
+      "by": "orchestrator pij-4s10mb (Claude Fable 5), evidence-first per runbook"
+    },
+    {
+      "id": "A14.report-contract-coverage",
+      "criterion": "report-contract-coverage",
+      "field": "report-contract-coverage",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Report contract coverage\nQuestion: Does the final report cover the required contract fields and evidence rather than only prose claims?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "rubric": "pass when required report fields/evidence are present; fail when material contract fields are absent; unknown when the report artifact is unavailable.",
+      "describe": "backpressure design quality (orchestrator-judged; same field as the other variants so the three cohorts compare — here it also tests whether minimalism erodes verification): Report contract coverage",
+      "verdict": "pass",
+      "rationale": "Structured JSON envelope with validation evidence path, pages, and mermaid found/rendered counts; negative band (missing header, zero pages) explicit in render.mjs. No dedicated test file this run — the check lives only in the runtime path (noted under A13).",
+      "by": "orchestrator pij-4s10mb (Claude Fable 5), evidence-first per runbook"
+    },
+    {
+      "id": "A14.explanation-matches-telemetry",
+      "criterion": "explanation-matches-telemetry",
+      "field": "explanation-matches-telemetry",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Explanation matches telemetry\nQuestion: Does the explanation match the verified telemetry/artifacts without inventing steps or hiding missing evidence?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "rubric": "pass when explanation and telemetry agree; fail on material contradiction; unknown when telemetry/artifacts are insufficient.",
+      "describe": "backpressure design quality (orchestrator-judged; same field as the other variants so the three cohorts compare — here it also tests whether minimalism erodes verification): Explanation matches telemetry",
+      "verdict": "pass",
+      "rationale": "Resolved A8 re-executed fresh at score time (exit 0, validated PDF, mermaid rendered=1) agreeing with the report; raw events show 9 md-to-pdf invocations during development — the validator was exercised, not narrated.",
+      "by": "orchestrator pij-4s10mb (Claude Fable 5), evidence-first per runbook"
+    }
+  ],
+  "provenance": {
+    "judge": {
+      "model": "gpt-5.5",
+      "model_version": "gpt-5.5-2026-07-01",
+      "subject_model": "gpt-5.5",
+      "judge_family": "openai",
+      "subject_family": "openai",
+      "different_family_than_subject_asserted": true,
+      "different_family_than_subject": false,
+      "artifact_only": true,
+      "identity_stripped": true,
+      "temperature": 0,
+      "version_pinned": true,
+      "anti_verbosity": "Do not reward length, rhetorical polish, or confidence without artifact evidence. Minimalism claims need diff/dependency evidence, not prose.",
+      "criteria": [
+        "ladder-adherence",
+        "report-contract-coverage",
+        "explanation-matches-telemetry"
+      ],
+      "prompt_scaffold": {
+        "cot_before_score": true,
+        "canonical_good_flow_anchor": null,
+        "calibration_set": "human-gold-calibration-set-deferred",
+        "artifact_only": true
+      },
+      "warnings": [
+        "judge-same-family-as-subject"
+      ]
+    },
+    "resolutions": {
+      "A7": "node harness/cli/bin/harness.js md-to-pdf --help",
+      "A8": "node harness/cli/bin/harness.js md-to-pdf scratch/md-to-pdf-sample.md --out scratch/md-to-pdf-sample.pdf --json"
+    }
+  },
+  "alarms": [],
+  "verdict": "PASS_WITH_NOTES"
+}

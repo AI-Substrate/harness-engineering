@@ -1175,7 +1175,7 @@
     "intent": "Standardise harness telemetry to the OTEL/OTLP standard for upstream ingestion; keep storing locally. Segments may be reshaped OTEL-native — no back-compat required (not shipped yet).",
     "bag": {
       "mode": "simple",
-      "status": "active"
+      "status": "complete"
     }
   }
 }

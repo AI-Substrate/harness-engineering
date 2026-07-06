@@ -7,48 +7,38 @@
 
 ```mermaid
 flowchart TD
-    ship["Ship"]:::assumed
-    phase_3["Phase 3: the-flow surfaces due chores"]:::known
-    phase_2["Phase 2: Anchored injection recipe 💬1"]:::done
-    phase_1["Phase 1: Position-aware due-chore read"]:::done
-    plan["Plan"]:::done
     research["Research"]:::done
+    plan["Plan"]:::done
+    phase_1["Phase 1: Position-aware due-chore read"]:::done
+    phase_2["Phase 2: Anchored injection recipe 💬1"]:::done
+    phase_3["Phase 3: the-flow surfaces due chores"]:::known
+    ship["Ship"]:::assumed
 
-    phase_3 --> ship
-    phase_2 --> phase_3
-    phase_1 --> phase_2
-    plan --> phase_1
-    research --> plan
+    research --> plan --> phase_1 --> phase_2 --> phase_3 --> ship
 
-    ehf_pre_flight["Boot (pre-flight) 💬1"]:::chore
-    ehf_pre_coding["Backpressure (pre-coding) 💬1"]:::chore
-    ehf_post_coding["Retro drain (post-coding) 💬1"]:::chore
-    ehf_post_flight["Harvest+improve (post-flight) 💬1"]:::chore
-    ehf_pre_flight -.-> phase_1
-    ehf_pre_coding -.-> plan
-    ehf_post_coding -.-> phase_3
-    ehf_post_flight -.-> ship
+    planC["■ Backpressure (pre-coding)"]:::chore
+    phase_1C["■‼ Boot (pre-flight)"]:::chore
+    phase_3C["■ Retro drain (post-coding)"]:::chore
+    shipC["■ Harvest+improve (post-flight)"]:::chore
 
-    say_plan>"🗣 build the plan, validate it, then condense to a single phase (Simple) — KISS"]:::said
-    say_plan -.- plan
-    say_research>"🗣 the chores are out on the side, not connected between the plan phases — no deterministic way to know when to run them; theyre not really set up as checks, the agent might forget"]:::said
-    say_research -.- research
+    %% invisible chain holds the gutter boxes in their own column
+    planC ~~~ phase_1C ~~~ phase_3C ~~~ shipC
 
-    classDef done fill:#C8E6C9,stroke:#2E7D32;
-    classDef wip fill:#FFE0B2,stroke:#EF6C00;
-    classDef blocked fill:#FFCDD2,stroke:#C62828;
-    classDef known fill:#BBDEFB,stroke:#1565C0;
-    classDef assumed fill:#ECEFF1,stroke:#90A4AE,stroke-dasharray:5 3;
-    classDef said fill:#FFF9C4,stroke:#F9A825;
-    classDef harness fill:#EDE7F6,stroke:#673AB7;
-    classDef decision fill:#FFF3E0,stroke:#FB8C00,stroke-dasharray:2 2;
-    classDef companion fill:#D1C4E9,stroke:#5E35B1;
-    classDef worker fill:#B2DFDB,stroke:#00897B;
-    classDef chore fill:#E0F2F1,stroke:#00897B,stroke-dasharray:3 2;
-    classDef unknown fill:#FAFAFA,stroke:#BDBDBD,stroke-dasharray:1 4;
+    %% dotted links pull each gutter box beside its node
+    plan -.- planC
+    phase_1 -.- phase_1C
+    phase_3 -.- phase_3C
+    ship -.- shipC
+
+    classDef done fill:#1B7F2E,stroke:#0F4F1B,color:#fff;
+    classDef known fill:#1E73E8,stroke:#0D3F86,color:#fff;
+    classDef assumed fill:#CFD8DC,stroke:#607D8B,color:#1a1a1a,stroke-dasharray:5 3;
+    classDef chore fill:#f5f3ff,stroke:#8b5cf6,color:#4c1d95,text-align:left;
+    classDef current fill:#FF7A00,stroke:#C24E00,color:#1a0e00,stroke-width:4px;
+    class phase_2 current;
 ```
 
-**Legend**: 🟩 done · 🟧 in-progress · 🟥 blocked · 🟦 known (designed) · ⬜ assumed (speculative) · 🔶 decision · 🗣 user input · 🟪 harness loop · 🤖 companion · 🛠 worker · 🧰 chore (upkeep).
+**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).
 
 ## Node log
 

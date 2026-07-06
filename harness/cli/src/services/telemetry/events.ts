@@ -45,7 +45,9 @@ export type EventKind =
   | 'subagent'
   | 'compaction'
   | 'model'
-  | 'api_error';
+  | 'api_error'
+  | 'artifact'
+  | 'mark';
 
 /** The closed set of event kinds — the serializer + schema are kept equal to this. */
 export const EVENT_KINDS: readonly EventKind[] = [
@@ -63,7 +65,95 @@ export const EVENT_KINDS: readonly EventKind[] = [
   'compaction',
   'model',
   'api_error',
+  'artifact',
+  'mark',
 ] as const;
+
+/**
+ * The closed vocabulary of flow/SDD artifact types an extractor can stamp
+ * (plan 050). Fixed set — the serializer + schema enumerate it, so a novel type
+ * can never appear on the wire.
+ */
+export type ArtifactType =
+  | 'review'
+  | 'plan'
+  | 'workshop'
+  | 'dossier'
+  | 'tasks'
+  | 'execution-log'
+  | 'backpressure'
+  | 'validation'
+  | 'ship-report'
+  | 'flight-plan';
+
+/**
+ * The CLOSED union of `counts` keys any extractor may emit — the schema mirror of
+ * this (segment.schema.json `event_stream.items.counts`) is `additionalProperties:
+ * false`, so a rogue extractor key is both a compile error (via
+ * {@link ArtifactEvent.counts}) AND a schema-validation failure. An extractor
+ * cannot invent a numeric channel outside this set. Keep this equal to the schema.
+ */
+export const ARTIFACT_COUNT_KEYS = [
+  'absent',
+  'blocked',
+  'buildable',
+  'checks_green',
+  'checks_total',
+  'chores',
+  'chores_done',
+  'chores_skipped',
+  'chores_todo',
+  'comments',
+  'cs',
+  'decisions',
+  'deferred',
+  'deviations',
+  'done',
+  'entries',
+  'events',
+  'exists',
+  'findings',
+  'findings_critical',
+  'findings_high',
+  'findings_low',
+  'findings_med',
+  'fixes',
+  'gaps',
+  'gate_fail',
+  'gate_na',
+  'gate_pass',
+  'high',
+  'in_progress',
+  'nodes',
+  'open',
+  'phases',
+  'pr_opened',
+  're_reviews',
+  'resolved',
+  'sections',
+  'skipped',
+  'todo',
+  'workshop_opps',
+  'workshops',
+] as const;
+export type ArtifactCountKey = (typeof ARTIFACT_COUNT_KEYS)[number];
+
+/**
+ * The CLOSED union of `enums` keys any extractor may emit. Each key's VALUE is
+ * itself gated to a fixed vocabulary (with an `other` fallback) at extraction
+ * time and, additively, by the schema's per-key `enum` list — so neither the key
+ * NOR the value can carry free text (privacy contract, AC-05).
+ */
+export const ARTIFACT_ENUM_KEYS = [
+  'verdict',
+  'mode',
+  'status',
+  'target_proof',
+  'current_proof',
+  'certainty',
+  'pr_state',
+] as const;
+export type ArtifactEnumKey = (typeof ARTIFACT_ENUM_KEYS)[number];
 
 interface EventBase {
   t: Iso;
@@ -93,6 +183,24 @@ export interface ToolsEvent extends EventBase {
   name: string;
   count: number;
   span_s: number;
+  /**
+   * The privacy-safe command signature of a SHELL-family tool burst (FX001) —
+   * `commandSignatures()`'s program+verb only (`rg`, `git commit`), allowlisted
+   * BY CONSTRUCTION (no flags/paths/values/quotes). Present only when the burst
+   * is a shell tool AND the signature resolves to a non-harness command (harness
+   * verbs stay separate `harness` events); absent for non-shell tools.
+   */
+  signature?: string;
+  /**
+   * The total size (a token-count ESTIMATE, never payload text) of the
+   * `tool_result` payload(s) this burst dumped back, summed across its `count`
+   * calls (FX003). A privacy-safe number by construction — the size of what a
+   * call returned, which lands as the *next* turn's input; the report's command
+   * lens uses it to byte-weight the input-split (a 200k-dumping `cat` vs a 3-line
+   * `git status`). Absent when the source has no per-tool payload (e.g.
+   * copilot-vscode, turns-only) — an honest omission, never a fabricated 0.
+   */
+  result_tokens?: number;
 }
 
 /** A skill span with an inferred lifecycle status (§4.3). */
@@ -101,6 +209,15 @@ export interface SkillEvent extends EventBase {
   name: string;
   status: SkillStatus;
   dur_s?: number;
+  /**
+   * A skill invocation's LEADING PURE-DIGIT positional (FX001, Facet B) — e.g.
+   * `/the-flow 08` → `08`. Captured ONLY when the first whitespace-delimited
+   * token after the skill name matches `^\d+$`; a non-digit or quoted first token
+   * (`the-flow specify`, `"x"`) and any later token are NEVER stored (P12/AC-15).
+   * A bare integer is a fixed-shape, non-sensitive stage/step number. Orthogonal
+   * to flow-stage mapping (stages come from `the-flow.json` nav — {@link FlowEvent}).
+   */
+  arg?: string;
 }
 
 /** A flight-plan stage transition (read from `the-flow.json` nav, never from args). */
@@ -190,6 +307,75 @@ export interface ApiErrorEvent extends EventBase {
   signature?: string;
 }
 
+/**
+ * A counts-only semantic snapshot of a flow/SDD artifact (plan 050), emitted
+ * from the capture window when the artifact is in `files.written/edited`. Files
+ * change over time; each change re-emits an updated snapshot → a semantic time
+ * series per artifact, at ZERO agent burden.
+ *
+ * PRIVACY (AC-05, Constitution P12): the payload is `counts` (integers) + `enums`
+ * (fixed-vocabulary tokens with an `other` fallback — the EXTRACTOR is the value
+ * allowlist gate, same posture as `checks.gates`) + a repo-relative `path` + a
+ * `size`. There is NO free-text field by construction; finding/fix/decision prose
+ * can never travel. A `t` stamped at CAPTURE TIME (the "save time"), so — like
+ * {@link FlowLogEvent} — it is EXCLUDED from {@link Rollup} gap/wall/stage math.
+ */
+export interface ArtifactEvent extends EventBase {
+  kind: 'artifact';
+  /** Repo-relative path of the artifact (out-of-repo paths are skipped, never emitted). */
+  path: string;
+  artifact_type: ArtifactType;
+  /** The `docs/plans/<id>/` this artifact belongs to; omitted when the path carries none. */
+  plan_id?: string;
+  /** Which capture set the path came from. */
+  change: 'written' | 'edited';
+  /** Numeric elements (fixes, phases, gate rows, …). Keys are the CLOSED {@link ArtifactCountKey} set; zero-valued keys are omitted. */
+  counts: Partial<Record<ArtifactCountKey, number>>;
+  /** Fixed-vocabulary verdicts/statuses/modes; keys are the CLOSED {@link ArtifactEnumKey} set, values gated by the extractor. */
+  enums: Partial<Record<ArtifactEnumKey, string>>;
+  /** Artifact bulk — lines + UTF-8 bytes (the "workshop length" / "research length" measure). */
+  size: { lines: number; bytes: number };
+}
+
+/**
+ * The CLOSED union of `counts` keys a {@link MarkEvent} may emit — a SUBSET of
+ * {@link ARTIFACT_COUNT_KEYS} (so `segment.schema.json`'s shared `counts` object
+ * already enumerates them; no schema drift). Finding-severity buckets only: a mark
+ * is a peer's counts-only self-attestation, never a numeric channel outside this set.
+ */
+export const MARK_COUNT_KEYS = [
+  'findings',
+  'findings_critical',
+  'findings_high',
+  'findings_med',
+  'findings_low',
+] as const;
+export type MarkCountKey = (typeof MARK_COUNT_KEYS)[number];
+
+/**
+ * A peer's COUNTS-ONLY self-attestation (plan 053), emitted by `harness telemetry
+ * mark` onto the CALLER's own session lane. It closes the reviewer lane-attribution
+ * hole — a read-only reviewer runs no harness command and may write no file, so its
+ * verdict never reaches its lane today; a `mark` puts it there.
+ *
+ * PRIVACY (AC-05, Constitution P12): leak-proof BY CONSTRUCTION — `mark_kind` and the
+ * optional `verdict` are identifier SLUGS (`^[a-z][a-z0-9-]{0,31}$`, the guard
+ * enforced by {@link import('./mark.js').buildMarkEvent}) and `counts` are integers
+ * keyed by the CLOSED {@link MarkCountKey} set. There is NO free-text field, so no
+ * prose can travel. Like {@link ArtifactEvent} it carries a CAPTURE-TIME `t`, so it is
+ * EXCLUDED from {@link Rollup} gap/time math and rides the segment's `tokens:null`
+ * (cost-excluded) — attribution-visible yet never double-counted.
+ */
+export interface MarkEvent extends EventBase {
+  kind: 'mark';
+  /** The mark category slug (`--kind`), e.g. `review` — shape-guarded, never prose. */
+  mark_kind: string;
+  /** Optional verdict slug (`--verdict`), e.g. `fix-required` — same shape guard. */
+  verdict?: string;
+  /** Integer count buckets; keys are the CLOSED {@link MarkCountKey} set; zero/absent omitted. */
+  counts: Partial<Record<MarkCountKey, number>>;
+}
+
 /** The ordered event stream's element type. */
 export type Event =
   | PromptEvent
@@ -205,8 +391,9 @@ export type Event =
   | SubagentEvent
   | CompactionEvent
   | ModelEvent
-  | ApiErrorEvent;
-
+  | ApiErrorEvent
+  | ArtifactEvent
+  | MarkEvent;
 // ── Derived rollup (recomputable from `events[]`) ──────────────────────────
 
 export interface RollupActivity {

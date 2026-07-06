@@ -1,5 +1,5 @@
 {
-  "schema_version": "2.2",
+  "schema_version": "2.3",
   "command": "flow",
   "harness": "claude-code",
   "harness_version": "0.0.0-fixture",
@@ -89,8 +89,19 @@
       "t": "2026-06-11T06:38:41.626Z",
       "kind": "tools",
       "name": "Bash",
-      "count": 4,
-      "span_s": 23
+      "count": 1,
+      "span_s": 0,
+      "signature": "git remote",
+      "result_tokens": 104
+    },
+    {
+      "t": "2026-06-11T06:38:42.383Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "echo",
+      "result_tokens": 81
     },
     {
       "t": "2026-06-11T06:38:46.938Z",
@@ -103,6 +114,15 @@
       "model": "claude-opus-4-8"
     },
     {
+      "t": "2026-06-11T06:38:47.719Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "gh auth",
+      "result_tokens": 64
+    },
+    {
       "t": "2026-06-11T06:39:03.766Z",
       "kind": "turn",
       "dur_s": 14,
@@ -111,6 +131,15 @@
       "cache_read": 56504,
       "cache_create": 302,
       "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-11T06:39:04.744Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "gh api",
+      "result_tokens": 17
     },
     {
       "t": "2026-06-11T06:39:26.434Z",
@@ -127,7 +156,8 @@
       "kind": "tools",
       "name": "Write",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "result_tokens": 35
     },
     {
       "t": "2026-06-11T06:39:43.438Z",
@@ -144,7 +174,9 @@
       "kind": "tools",
       "name": "Bash",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "signature": "gh api",
+      "result_tokens": 88
     },
     {
       "t": "2026-06-11T06:39:53.742Z",
@@ -161,7 +193,8 @@
       "kind": "tools",
       "name": "AskUserQuestion",
       "count": 1,
-      "span_s": 0
+      "span_s": 0,
+      "result_tokens": 57
     },
     {
       "t": "2026-06-11T06:40:50.377Z",
@@ -203,7 +236,8 @@
       "kind": "tools",
       "name": "Edit",
       "count": 2,
-      "span_s": 6
+      "span_s": 6,
+      "result_tokens": 74
     },
     {
       "t": "2026-06-11T06:45:51.844Z",
@@ -244,8 +278,10 @@
       "t": "2026-06-11T06:49:51.656Z",
       "kind": "tools",
       "name": "Bash",
-      "count": 5,
-      "span_s": 41
+      "count": 1,
+      "span_s": 0,
+      "signature": "git add",
+      "result_tokens": 37
     },
     {
       "t": "2026-06-11T06:49:54.737Z",
@@ -258,6 +294,15 @@
       "model": "claude-opus-4-8"
     },
     {
+      "t": "2026-06-11T06:49:57.034Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "git commit",
+      "result_tokens": 84
+    },
+    {
       "t": "2026-06-11T06:50:02.178Z",
       "kind": "turn",
       "dur_s": 3,
@@ -266,6 +311,15 @@
       "cache_read": 66825,
       "cache_create": 457,
       "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-11T06:50:03.700Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sleep",
+      "result_tokens": 37
     },
     {
       "t": "2026-06-11T06:50:14.695Z",
@@ -278,6 +332,15 @@
       "model": "claude-opus-4-8"
     },
     {
+      "t": "2026-06-11T06:50:16.009Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "gh run",
+      "result_tokens": 467
+    },
+    {
       "t": "2026-06-11T06:50:31.320Z",
       "kind": "turn",
       "dur_s": 3,
@@ -286,6 +349,15 @@
       "cache_read": 67611,
       "cache_create": 1117,
       "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-11T06:50:33.058Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sleep",
+      "result_tokens": 2
     },
     {
       "t": "2026-06-11T06:50:47.679Z",

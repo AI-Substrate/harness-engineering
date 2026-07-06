@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/report/v1",
+  "title": "TelemetryReport",
+  "description": "A derived rollup OVER 1..N SessionExport files (plan 047 Phase 2). Answers 'across these sessions, where did the time and tokens go?' — it is NOT a session and NOT an eval RunRecord. Every dimension derives from the ONE lossless event stream a SessionExport carries (otlpLogsToEvents(signals.logs)); counts are EXACT, time/tokens are ESTIMATES with a declared `attribution`. Additive: additionalProperties:true + a pinned schema_version so a new dimension/facet is a new key, never a breaking change.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "scope", "filter", "totals", "rollups", "attribution", "provenance"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "harness.telemetry-report/v1",
+      "description": "Pinned envelope version. Bump on a field-set change."
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["session_count", "single", "session_ids"],
+      "properties": {
+        "session_count": { "type": "integer", "minimum": 0, "description": "How many sessions were rolled up." },
+        "single": { "type": "boolean", "description": "true ⇒ a one-session report (the only N=1-vs-N>1 shape difference)." },
+        "session_ids": { "type": "array", "items": { "type": "string" }, "description": "harness_session_ids rolled up (may be capped ⇒ provenance.session_count is authoritative)." }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "What narrowed this report — echoed for self-description. An absent field = that facet unfiltered. `repo` is ECHO-ONLY (a SessionExport carries no repo facet in v1; repo narrowing is Phase 3 / workshop 004).",
+      "properties": {
+        "harness": { "type": "array", "items": { "type": "string" } },
+        "model": { "type": "array", "items": { "type": "string" } },
+        "branch": { "type": "array", "items": { "type": "string" } },
+        "repo": { "type": "array", "items": { "type": "string" }, "description": "Echo-only in v1 (not applied)." },
+        "date_from": { "type": "string" },
+        "date_to": { "type": "string" }
+      }
+    },
+    "totals": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["time_s", "tokens", "cache", "sessions"],
+      "description": "The headline numbers (FX002). time_s = Σ per-session ACTIVE time (agent+human, idle excluded); tokens = non-cache {input, output}; cache = session-level context re-reads (never per-dimension).",
+      "properties": {
+        "time_s": { "type": "number", "minimum": 0, "description": "Active time (idle excluded), never wall-span." },
+        "tokens": { "$ref": "#/$defs/rollupTokens" },
+        "cache": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["read", "create"],
+          "description": "Context re-reads (cache), session-level ONLY — labelled, never attributed per-dimension.",
+          "properties": {
+            "read": { "type": "number", "minimum": 0, "description": "cache_read — the model re-reading its context." },
+            "create": { "type": "number", "minimum": 0, "description": "cache_create — context written to the cache." }
+          }
+        },
+        "sessions": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "rollups": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/rollup" },
+      "description": "Every dimension, the SAME row shape. Additive: a new dimension is a new key old readers ignore. v1 ships flow_stage / skill / tool / bash_command / harness_command.",
+      "required": ["flow_stage", "skill", "tool", "bash_command", "harness_command"],
+      "properties": {
+        "flow_stage": { "$ref": "#/$defs/rollup" },
+        "skill": { "$ref": "#/$defs/rollup" },
+        "tool": { "$ref": "#/$defs/rollup" },
+        "bash_command": { "$ref": "#/$defs/rollup", "description": "Shell-family tool runs keyed by the captured command signature — program+verb only, P12-safe (e.g. `rg`, `git commit`) — when available, else the shell-tool name (`bash`/`shell`) for older signature-less data. EXCLUDES `harness …` invocations (co-timed harness events) to avoid double-count. The workshop-002 `rg ×54` ask is met at signature granularity via FX001; only the signature, never full argv, is stored (P12)." },
+        "harness_command": { "$ref": "#/$defs/rollup", "description": "⭐ The prominent, dedicated dimension — in-stream `harness` event verbs (e.g. `doctor`, `flow nav`)." }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["tokens", "time", "exact", "bash_command_key", "notes"],
+      "description": "How to read the numbers — never mistake an estimate for a ledger. `bash_command_key` + `notes` are ALWAYS emitted (the command-signature-or-tool-name / no-double-count contract is self-describing), so both are required.",
+      "properties": {
+        "tokens": { "type": "string", "description": "e.g. 'turn-window-even-split' — a turn's tokens attribute to the dimension(s) active in its window, split evenly (v1)." },
+        "time": { "type": "string", "description": "e.g. 'timeline-bracket' — wall-clock between consecutive timeline events (flow_stage uses computeRollup stage windowing)." },
+        "exact": { "type": "array", "items": { "type": "string" }, "description": "Which columns are exact (['count'])." },
+        "bash_command_key": { "type": "string", "description": "'shell-command-signature-or-tool-name' — keys by the captured program+verb signature (`rg`, `git commit`) when available, else the shell-tool name; never full argv (P12 / FX001)." },
+        "notes": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["date_range", "repos", "branches", "harnesses", "models", "session_count", "source_paths", "generated_at"],
+      "description": "Rendered at the bottom of the HTML — exactly what data backs the numbers. source_paths are repo-relative / home-stripped (never an absolute /Users/… path — P12).",
+      "properties": {
+        "date_range": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["from", "to"],
+          "properties": { "from": { "type": "string" }, "to": { "type": "string" } }
+        },
+        "repos": { "type": "array", "items": { "type": "string" } },
+        "branches": { "type": "array", "items": { "type": "string" } },
+        "harnesses": { "type": "array", "items": { "type": "string" } },
+        "models": { "type": "array", "items": { "type": "string" } },
+        "session_count": { "type": "integer", "minimum": 0, "description": "Authoritative N (scope.session_ids may be capped)." },
+        "source_paths": { "type": "array", "items": { "type": "string" } },
+        "generated_at": { "type": "string" },
+        "flow_stage_map_version": { "type": "string", "description": "The pinned versioned semantic stage-map (node id → research/plan/implement/review/ship) applied to the flow_stage lens (T1.4/D3)." },
+        "flow_stage_mechanism": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Per-window labeling mechanism counts for the flow_stage lens (T1.4): flow = nav-derived FlowEvent (primary); digit = /the-flow <n> bracket (fallback); unlabeled = /the-flow call with neither.",
+          "properties": {
+            "flow": { "type": "integer", "minimum": 0 },
+            "digit": { "type": "integer", "minimum": 0 },
+            "unlabeled": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "token_coverage": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Sessions with real token data vs a DECLARED token gap (T1.6/AC-04): a v2.0-era thin shard (turns with no usage attrs) is `unmeasured`, never a fabricated zero. measured + unmeasured == session_count.",
+          "properties": {
+            "measured": { "type": "integer", "minimum": 0 },
+            "unmeasured": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "control_timeline": {
+      "type": "array",
+      "description": "SINGLE-session reports ONLY (plan 048 Phase 2): the ordered, closed-allowlist control-marker stream the insights discipline panel + subagent section consume. Absent on cohort/aggregate reports. Each marker carries exactly one already-captured, P12-safe discriminant (a verb / status / agent slug / branch / git push|commit signature) — never args, paths, or content.",
+      "items": { "$ref": "#/$defs/timelineMarker" }
+    }
+  },
+  "$defs": {
+    "timelineMarker": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["kind", "key", "t"],
+      "description": "One ordered control marker. `key` is the P12-safe discriminant per kind: harness→verb, checks→status, subagent→name, branch→to, bash→a git push/commit signature.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["harness", "checks", "subagent", "branch", "bash"],
+          "description": "CLOSED allowlist — no other event kind may surface (the timeline is a control stream, not an event dump)."
+        },
+        "key": { "type": "string" },
+        "t": { "type": "string" }
+      }
+    },
+    "rollupTokens": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["input", "output"],
+      "description": "Per-dimension tokens (FX002): non-cache {input, output}, kept SEPARATE. input = fresh (non-cached) input; output = generated tokens. cache_read/cache_create are NEVER per-dimension (session-level only — totals.cache).",
+      "properties": {
+        "input": { "type": "number", "minimum": 0, "description": "Estimated non-cache (fresh) input tokens." },
+        "output": { "type": "number", "minimum": 0, "description": "Estimated generated (output) tokens." }
+      }
+    },
+    "rollupEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["key", "count", "tokens"],
+      "description": "One row — identical across every dimension so the HTML renders them uniformly. time_s is present ONLY for the time-bearing lenses (skill / flow_stage); command rows (tool / bash_command / harness_command) OMIT it (no honest per-call duration — FX002).",
+      "properties": {
+        "key": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0, "description": "EXACT event/segment count." },
+        "time_s": { "type": "number", "minimum": 0, "description": "ESTIMATE (active, idle-excluded) — skill/flow_stage only; absent on command rows." },
+        "tokens": { "$ref": "#/$defs/rollupTokens" },
+        "semantic_stage": { "type": "string", "enum": ["research", "plan", "implement", "review", "ship"], "description": "flow_stage lens ONLY (T1.4): the versioned semantic-map projection of `key`; omitted when the label has no mapping (a bare digit / unlabeled)." }
+      }
+    },
+    "rollup": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["dimension", "entries", "total"],
+      "properties": {
+        "dimension": { "type": "string", "enum": ["flow_stage", "skill", "tool", "bash_command", "harness_command"] },
+        "entries": { "type": "array", "items": { "$ref": "#/$defs/rollupEntry" }, "description": "Sorted desc (default input+output; --sort overrides)." },
+        "total": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["count", "tokens"],
+          "properties": {
+            "count": { "type": "integer", "minimum": 0 },
+            "time_s": { "type": "number", "minimum": 0, "description": "Present only for the time-bearing lenses (skill / flow_stage)." },
+            "tokens": { "$ref": "#/$defs/rollupTokens" }
+          }
+        },
+        "truncated": { "type": "integer", "minimum": 0, "description": "Rows dropped past a --top cap — surfaced, never silent." }
+      }
+    }
+  }
+}

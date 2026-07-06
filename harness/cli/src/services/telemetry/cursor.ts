@@ -22,8 +22,8 @@ export function telemetryDir(cwd: string): string {
  * 32-bit hash passes (distinct bases + multipliers) concatenated into a ~64-bit
  * digest, so distinct lossy ids collide only with NEGLIGIBLE probability (not an
  * absolute guarantee — it is a hash, not a perfect injection). NOT cryptographic;
- * its only job is collision-resistance for the per-(date,session) ref. Pure (P2:
- * no `node:crypto`).
+ * its only job is collision-resistance for the session's rolled ref segment. Pure
+ * (P2: no `node:crypto`).
  */
 function shortHash(s: string): string {
   let h1 = 0x811c9dc5; // FNV-1a basis
@@ -40,8 +40,8 @@ function shortHash(s: string): string {
  * Make an opaque session id safe for a path segment — collapse anything outside
  * `[A-Za-z0-9_-]` (so `..`, `/`, etc. can never escape the telemetry dir).
  *
- * H4 (plan 038, telemetry-otel): the session id is also the per-(date,session)
- * REF segment, and two writers colliding on a segment → a non-fast-forward push →
+ * H4 (plan 038, telemetry-otel): the session id is also the session's rolled REF
+ * segment, and two writers colliding on a segment → a non-fast-forward push →
  * lost telemetry. A lossy collapse breaks uniqueness (`a/b` and `a-b` both → `a-b`;
  * every all-symbol id → the same fallback). So whenever cleaning changed the
  * string, append a wide deterministic digest of the RAW id — collisions then become

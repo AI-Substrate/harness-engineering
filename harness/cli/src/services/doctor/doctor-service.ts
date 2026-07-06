@@ -18,6 +18,8 @@ export interface DoctorDeps {
   git: GitPort;
   env: EnvPort;
   clock: Clock;
+  /** The RUNNING CLI's version — an injected string (`readVersion` reads `node:fs`, so it stays in the wiring, never the service — P2). Absent → the skew check is skipped. */
+  runningVersion?: string;
 }
 
 /** One layer of the doctor report. */
@@ -143,6 +145,62 @@ function checkNodeRuntime(proc: ProcessPort): LayerReport {
     name: 'node-runtime',
     ok: true,
     detail: `Node ${version} (>=${NODE_FLOOR_MAJOR})`,
+  };
+}
+
+/**
+ * Version-skew guard (field-reported 2026-07-04: npm latest lagged the repo head,
+ * so reinstalls silently DOWNGRADED consumers — osk-split-billing ran 0.6.0 against
+ * a 0.7.0 doctrine and produced stale flow renders + old-schema telemetry). In the
+ * dev tree, compare the RUNNING binary's version (its own shipped package.json,
+ * injected) against the repo root `package.json`: a mismatch means a stale
+ * global/npm install is shadowing the repo build. Advisory — degrades the
+ * envelope, never blocks. Old binaries can't self-report (they lack this layer),
+ * so the check protects every version from the one that ships it onward; the
+ * consumer-repo case has no local version source to compare and is skipped.
+ */
+function checkVersionSkew(fs: FsPort, runningVersion?: string): LayerReport {
+  const name = 'version-skew';
+  if (!fs.exists(CLI_DEV_MARKER)) {
+    return {
+      name,
+      ok: true,
+      detail: 'consumer install — skew check n/a (no dev tree to compare against)',
+    };
+  }
+  if (!runningVersion) {
+    return { name, ok: true, detail: 'running version not injected — skew check skipped' };
+  }
+  const raw = fs.exists('package.json') ? fs.readText('package.json') : null;
+  let repoVersion: string | null = null;
+  if (raw !== null) {
+    try {
+      const manifest = JSON.parse(raw) as { version?: unknown };
+      if (typeof manifest.version === 'string') repoVersion = manifest.version;
+    } catch {
+      // unparseable manifest → skip rather than false-alarm
+    }
+  }
+  if (repoVersion === null) {
+    return { name, ok: true, detail: 'repo package.json version unreadable — skew check skipped' };
+  }
+  if (repoVersion === runningVersion) {
+    return {
+      name,
+      ok: true,
+      detail: `running ${runningVersion} matches the repo (no stale install shadowing)`,
+    };
+  }
+  return {
+    name,
+    ok: false,
+    detail:
+      `running harness ${runningVersion} but this repo is ${repoVersion} — a stale global/npm ` +
+      'install is shadowing the repo build (its renders/telemetry follow OLD behaviour)',
+    next_action:
+      'Re-point the global at the repo build: `npm link` from the repo root, then `hash -r` and ' +
+      're-check `harness --version`. Or run the repo dist directly (`node harness/cli/dist/index.js`). ' +
+      'Publishing the current version to npm removes the stale-latest trap for other machines.',
   };
 }
 
@@ -439,6 +497,7 @@ export function buildDoctorReport(
     checkToolchain(deps.proc, deps.fs),
     checkNodeRuntime(deps.proc),
     checkCliBuild(deps.fs),
+    checkVersionSkew(deps.fs, deps.runningVersion),
     checkExtensions(registry, conventions),
     checkQualityGate(registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),

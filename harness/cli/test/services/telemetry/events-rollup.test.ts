@@ -203,6 +203,49 @@ describe('T5.3 — computeRollup tokens / tools / flow-stage / outcomes', () => 
   });
 });
 
+describe('T004 — a mark event contributes ZERO to the rollup (plan 053 · AC-03)', () => {
+  // A mark carries a CAPTURE-TIME `t`; like `artifact`/`flow_log` it must be
+  // EXCLUDED from gap/time math or its wall-clock instant would re-sort into the
+  // stream and fabricate a mis-attributed gap. It is annotation, never work.
+  const work: Event[] = [
+    { t: '2026-06-24T09:00:00Z', kind: 'prompt', words: 5 },
+    { t: '2026-06-24T09:00:10Z', kind: 'turn', dur_s: 10, out: 100 },
+  ];
+  const mark: Event = {
+    t: '2026-06-24T10:00:00Z',
+    kind: 'mark',
+    mark_kind: 'review',
+    verdict: 'fix-required',
+    counts: { findings_critical: 1 },
+  };
+
+  it('inserting a mark leaves activity/tokens/flow-stage math byte-identical', () => {
+    const base = computeRollup(work);
+    const withMark = computeRollup([...work, mark]);
+    expect(withMark).toEqual(base);
+  });
+
+  it('a mark-only stream produces the empty rollup (no wall time, no tokens)', () => {
+    const r = computeRollup([mark]);
+    expect(r.activity.wall_s).toBe(0);
+    expect(r.activity.agent_working_s).toBe(0);
+    expect(r.activity.human_s).toBe(0);
+    expect(r.activity.idle_s).toBe(0);
+    expect(r.tokens).toBeNull();
+    expect(r.flow_stage_time_s).toEqual({});
+  });
+
+  it('a mark between two turns does not open an idle gap (it is filtered before gap math)', () => {
+    const r = computeRollup([
+      { t: '2026-06-24T09:00:00Z', kind: 'turn', dur_s: 1, out: 10 },
+      mark, // 10:00:00 — an hour later; would be a huge idle gap if NOT excluded
+      { t: '2026-06-24T09:00:05Z', kind: 'turn', dur_s: 1, out: 20 },
+    ]);
+    expect(r.activity.idle_s).toBe(0);
+    expect(r.activity.wall_s).toBe(5);
+  });
+});
+
 describe('T5.3 — collapseToolBursts', () => {
   it('collapses same-tool calls inside the window, splits across a long gap', () => {
     const bursts = collapseToolBursts(

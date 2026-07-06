@@ -49,6 +49,18 @@ export function classifyGap(gapS: number, endsAtPrompt: boolean, idleCapS = IDLE
 export interface ToolCall {
   name: string;
   t: string;
+  /**
+   * The privacy-safe command signature of a shell-family call (FX001) — used to
+   * KEY bursts by `(name, signature)` so `bash:rg` and `bash:git` stay distinct.
+   * Absent for non-shell tools (they collapse by name as before).
+   */
+  signature?: string;
+  /**
+   * The size (a token-count ESTIMATE, never payload text) of THIS call's
+   * `tool_result` payload (FX003). `collapseToolBursts` sums it across the burst.
+   * Absent when the source carries no per-tool payload (honest omission).
+   */
+  result_tokens?: number;
 }
 
 /** A collapsed tool burst (the shape of a `tools` event's payload). */
@@ -57,34 +69,57 @@ export interface ToolBurst {
   name: string;
   count: number;
   span_s: number;
+  /** Carried from the burst's calls (a burst is a single `(name, signature)`). */
+  signature?: string;
+  /**
+   * Σ of the burst's calls' `result_tokens` (FX003) — the total this signature
+   * dumped back over its `count` calls. Absent when NO call in the burst carried
+   * a size (honest absence — never a fabricated 0).
+   */
+  result_tokens?: number;
 }
 
 /**
- * Collapse a maximal run of consecutive calls of the SAME tool whose inter-call
- * gap is `< burstNs` into one burst (§4.2). A name change OR a gap ≥ `burstNs`
- * starts a new burst — so a burst is always a single tool name and the per-tool
- * counts survive (`rollup.tools` then equals the v1 `tools` histogram — AC-16; a
- * lossy `"mixed"` bucket would break that). `count` = calls collapsed; `span_s` =
- * last − first; `t` = the burst's first call. Input must be in time order.
+ * Collapse a maximal run of consecutive calls of the SAME tool (AND, for a
+ * shell tool, the same {@link ToolCall.signature}) whose inter-call gap is
+ * `< burstNs` into one burst (§4.2). A name OR signature change, or a gap ≥
+ * `burstNs`, starts a new burst — so a burst is always one `(name, signature)`
+ * and the per-signature counts survive (`bash:rg ×54` vs `bash:git ×12` stay
+ * distinct — FX001-2), while the by-name `rollup.tools` histogram is unchanged
+ * (AC-16). `count` = calls collapsed; `span_s` = last − first; `t` = the burst's
+ * first call. Input must be in time order.
  */
 export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N_S): ToolBurst[] {
   const bursts: ToolBurst[] = [];
-  let cur: { t: string; name: string; first: number; last: number; count: number } | null = null;
+  let cur: {
+    t: string;
+    name: string;
+    signature?: string;
+    first: number;
+    last: number;
+    count: number;
+    resultTokens?: number;
+  } | null = null;
   for (const call of calls) {
     const at = parseIso(call.t);
     if (
       cur !== null &&
       call.name === cur.name &&
+      call.signature === cur.signature &&
       Number.isFinite(at) &&
       Number.isFinite(cur.last) &&
       at - cur.last < burstNs
     ) {
       cur.last = at;
       cur.count += 1;
+      if (call.result_tokens !== undefined) {
+        cur.resultTokens = (cur.resultTokens ?? 0) + call.result_tokens;
+      }
       continue;
     }
     if (cur !== null) bursts.push(finishBurst(cur));
-    cur = { t: call.t, name: call.name, first: at, last: at, count: 1 };
+    cur = { t: call.t, name: call.name, signature: call.signature, first: at, last: at, count: 1 };
+    if (call.result_tokens !== undefined) cur.resultTokens = call.result_tokens;
   }
   if (cur !== null) bursts.push(finishBurst(cur));
   return bursts;
@@ -93,19 +128,26 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
 function finishBurst(b: {
   t: string;
   name: string;
+  signature?: string;
   first: number;
   last: number;
   count: number;
+  resultTokens?: number;
 }): ToolBurst {
   const span =
     Number.isFinite(b.last) && Number.isFinite(b.first) ? Math.round(b.last - b.first) : 0;
-  return { t: b.t, name: b.name, count: b.count, span_s: span < 0 ? 0 : span };
+  const burst: ToolBurst = { t: b.t, name: b.name, count: b.count, span_s: span < 0 ? 0 : span };
+  if (b.signature !== undefined) burst.signature = b.signature;
+  if (b.resultTokens !== undefined) burst.result_tokens = b.resultTokens;
+  return burst;
 }
 
 /** A raw skill open an adapter detected, in time order. */
 export interface SkillOpen {
   name: string;
   t: string;
+  /** The leading pure-digit positional of the invocation (FX001, Facet B), if any. */
+  arg?: string;
 }
 
 /**
@@ -136,12 +178,16 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
   const idleCap = opts.idleCapS ?? IDLE_CAP_S;
   // `flow_log` events are PURE REPLAY MARKERS (plan 035) — they carry their own
   // real `fired_at`, which can predate the window (backfilled flight-plan history).
-  // Excluding them from the rollup keeps gap/wall/stage math anchored to the window's
-  // work events; a single backfilled marker would otherwise re-sort to the front and
-  // fabricate a huge mis-attributed gap (and `wall_s`). They remain in `event_stream`
-  // for replay; the rollup is derived only from the timed work events.
+  // `artifact` events (plan 050) likewise carry a CAPTURE-TIME `t` (the "save time"
+  // snapshot stamp), not a work instant. `mark` events (plan 053 — a peer's
+  // counts-only self-attestation) are annotation with a capture-time `t` too.
+  // Excluding all three from the rollup keeps gap/wall/stage math anchored to the
+  // window's work events; a single backfilled marker, capture-time snapshot, or
+  // peer mark would otherwise re-sort to the front and fabricate a huge
+  // mis-attributed gap (and `wall_s`). They remain in `event_stream` for replay /
+  // attribution; the rollup is derived only from the timed work events.
   const ev = [...events]
-    .filter((e) => e.kind !== 'flow_log')
+    .filter((e) => e.kind !== 'flow_log' && e.kind !== 'artifact' && e.kind !== 'mark')
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
   let agent = 0;

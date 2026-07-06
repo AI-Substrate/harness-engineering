@@ -186,4 +186,162 @@ describe('ExecGitWrite — real orphan-ref plumbing', () => {
       rmSync(noIdRepo, { recursive: true, force: true });
     }
   });
+
+  it('readRefTree lifts a real ref tree back to its flat blobs byte-verbatim; null for a missing ref', () => {
+    // The T007 union source: a LOCAL `cat-file` walk of the ref's own tree (no
+    // remote), returning name+bytes for the rolled rewrite. Byte-verbatim is the P12
+    // guarantee — the reader must not re-encode the concatenated OTLP records.
+    const ref = telemetryRefFor('2026/04/01', 'sessR');
+    expect(git.readRefTree(ref)).toBeNull(); // absent ref → null (a fresh session)
+
+    const logsBytes = '{"resourceLogs":[{"seq":1}]}\n{"resourceLogs":[{"seq":2}]}\n';
+    const manifestBytes =
+      '{"format":"harness-telemetry-rollup/v1","session":"sessR","start_date":"2026/04/01","max_seq":2}\n';
+    const logs = git.hashObject(logsBytes);
+    const manifest = git.hashObject(manifestBytes);
+    const tree = git.mktree([
+      { mode: '100644', type: 'blob', sha: logs, name: 'session.logs.jsonl' },
+      { mode: '100644', type: 'blob', sha: manifest, name: 'manifest.json' },
+    ]);
+    const commit = git.commitTree(tree, null, 'roll');
+    expect(git.updateRef(ref, commit, null)).toBe(true);
+
+    const blobs = git.readRefTree(ref);
+    expect(blobs).not.toBeNull();
+    const byName = Object.fromEntries((blobs ?? []).map((b) => [b.name, b.content]));
+    expect(byName['session.logs.jsonl']).toBe(logsBytes); // byte-verbatim, trailing NL intact
+    expect(byName['manifest.json']).toBe(manifestBytes);
+  });
+
+  it('readRefTree round-trips a >1 MiB blob byte-verbatim (shared 64 MiB maxBuffer — plan 049 round-2 F1)', () => {
+    // A rolled `session.logs.jsonl` routinely exceeds Node's default 1 MiB stdout
+    // cap. WITHOUT the shared maxBuffer, `cat-file blob` returns an ENOBUFS `error`
+    // with a truncated stdout — and readRefTree now FAILS CLOSED on that (throws)
+    // rather than force-pushing a partial roll. With the cap lifted, the whole blob
+    // must round-trip byte-identical.
+    const ref = telemetryRefFor('2026/04/02', 'sessBig');
+    // >1 MiB of distinct single-line JSONL records (each ends in `\n`).
+    const lines: string[] = [];
+    let total = 0;
+    let n = 0;
+    while (total <= 1024 * 1024) {
+      const line = `${JSON.stringify({ resourceLogs: [{ seq: n, pad: 'x'.repeat(64) }] })}\n`;
+      lines.push(line);
+      total += Buffer.byteLength(line);
+      n++;
+    }
+    const logsBytes = lines.join('');
+    expect(Buffer.byteLength(logsBytes)).toBeGreaterThan(1024 * 1024); // guard: actually > 1 MiB
+
+    const logs = git.hashObject(logsBytes);
+    const tree = git.mktree([
+      { mode: '100644', type: 'blob', sha: logs, name: 'session.logs.jsonl' },
+    ]);
+    const commit = git.commitTree(tree, null, 'roll-big');
+    expect(git.updateRef(ref, commit, null)).toBe(true);
+
+    const blobs = git.readRefTree(ref);
+    expect(blobs).not.toBeNull();
+    const back = (blobs ?? []).find((b) => b.name === 'session.logs.jsonl');
+    expect(back?.content).toBe(logsBytes); // full bytes, not an ENOBUFS-truncated prefix
+    expect(Buffer.byteLength(back?.content ?? '')).toBe(Buffer.byteLength(logsBytes));
+  });
+
+  it('readRefBlob reads ONE ref blob byte-verbatim; null for a missing name or ref (plan 049 DL-001)', () => {
+    // The manifest-only no-op fast path: a LOCAL `cat-file blob <ref>:<name>` that reads
+    // exactly one blob rather than the whole (multi-MB) tree. Byte-verbatim (P12), and a
+    // clean null — never a throw — when the ref or the path is absent.
+    const ref = telemetryRefFor('2026/04/03', 'sessBlob');
+    expect(git.readRefBlob(ref, 'manifest.json')).toBeNull(); // absent ref → null
+
+    const manifestBytes =
+      '{"format":"harness-telemetry-rollup/v1","session":"sessBlob","start_date":"2026/04/03","max_seq":7}\n';
+    const logsBytes = '{"resourceLogs":[{"seq":1}]}\n';
+    const manifest = git.hashObject(manifestBytes);
+    const logs = git.hashObject(logsBytes);
+    const tree = git.mktree([
+      { mode: '100644', type: 'blob', sha: logs, name: 'session.logs.jsonl' },
+      { mode: '100644', type: 'blob', sha: manifest, name: 'manifest.json' },
+    ]);
+    const commit = git.commitTree(tree, null, 'roll-blob');
+    expect(git.updateRef(ref, commit, null)).toBe(true);
+
+    // Reads exactly the named blob, byte-verbatim (trailing NL intact).
+    expect(git.readRefBlob(ref, 'manifest.json')).toBe(manifestBytes);
+    expect(git.readRefBlob(ref, 'session.logs.jsonl')).toBe(logsBytes);
+    // A path that is not in the tree → clean null (the ref exists, the blob does not).
+    expect(git.readRefBlob(ref, 'does-not-exist.json')).toBeNull();
+  });
+});
+
+/**
+ * T001 (plan 049 Phase 1) — the additive MIGRATION verbs against a real bare remote:
+ * `lsRemoteTelemetryRefs` (the one sanctioned pull's discovery half), `fetchRef`
+ * (bring an old ref's history local), and `deleteRemoteRef` (post-rollup cleanup via
+ * the `--no-verify` push path). Proven against a throwaway repo + bare remote — the
+ * claims a fake cannot make: real ls-remote parsing, a real forced fetch, a real
+ * remote delete.
+ */
+describe('ExecGitWrite — migration verbs against a real bare remote (plan 049 T001)', () => {
+  let mRepo: string;
+  let remote: string;
+  let mGit: ExecGitWrite;
+  const REF_A = telemetryRefFor('2026/06/24', 'mSessA');
+  const REF_B = telemetryRefFor('2026/06/25', 'mSessB');
+
+  function mg(...args: string[]): string {
+    return execFileSync('git', args, { cwd: mRepo, encoding: 'utf8' }).trim();
+  }
+  function pushRef(ref: string, name: string): string {
+    const blob = mGit.hashObject(`{"seg":"${name}"}\n`);
+    const tree = mGit.mktree([{ mode: '100644', type: 'blob', sha: blob, name }]);
+    const commit = mGit.commitTree(tree, null, `seed ${name}`);
+    mGit.updateRef(ref, commit, null);
+    mGit.push(`${ref}:${ref}`);
+    return commit;
+  }
+
+  beforeAll(() => {
+    mRepo = mkdtempSync(join(tmpdir(), 'telem-migrate-'));
+    remote = mkdtempSync(join(tmpdir(), 'telem-migrate-remote-'));
+    execFileSync('git', ['init', '--bare', '-q', remote]);
+    mg('init', '-q');
+    mg('config', 'user.email', ENGINEER_EMAIL);
+    mg('config', 'user.name', 'Engineer Individual');
+    mg('config', 'commit.gpgsign', 'false');
+    mg('remote', 'add', 'origin', remote);
+    mGit = new ExecGitWrite(mRepo);
+    pushRef(REF_A, '0.json');
+    pushRef(REF_B, '0.json');
+  });
+
+  afterAll(() => {
+    rmSync(mRepo, { recursive: true, force: true });
+    rmSync(remote, { recursive: true, force: true });
+  });
+
+  it('lsRemoteTelemetryRefs discovers exactly the telemetry refs on the remote', () => {
+    expect(mGit.lsRemoteTelemetryRefs().sort()).toEqual([REF_A, REF_B].sort());
+  });
+
+  it('fetchRef brings a remote-only ref local (its history becomes walkable)', () => {
+    // Delete the local ref so only the remote copy remains, then fetch it back.
+    mGit.deleteRef(REF_A);
+    expect(mGit.refTip(REF_A)).toBeNull();
+    mGit.fetchRef(REF_A);
+    expect(mGit.refTip(REF_A)).not.toBeNull();
+    // The fetched ref's tree is readable locally (rev-parse succeeds).
+    expect(mg('cat-file', '-p', `${REF_A}:0.json`)).toContain('"seg"');
+  });
+
+  it('deleteRemoteRef removes the ref from the remote (rides --no-verify)', () => {
+    expect(mGit.lsRemoteTelemetryRefs()).toContain(REF_B);
+    mGit.deleteRemoteRef(REF_B);
+    expect(mGit.lsRemoteTelemetryRefs()).not.toContain(REF_B);
+  });
+
+  it('lsRemoteTelemetryRefs throws when the remote is unreachable (deferrable migration)', () => {
+    const orphan = new ExecGitWrite(mkdtempSync(join(tmpdir(), 'telem-migrate-noremote-')));
+    expect(() => orphan.lsRemoteTelemetryRefs()).toThrow();
+  });
 });

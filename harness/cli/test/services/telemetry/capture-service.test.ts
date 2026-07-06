@@ -627,3 +627,101 @@ describe('triggering-command harness event (timeline visibility)', () => {
     expect(seg?.rollup).toBeNull();
   });
 });
+
+describe('artifact-semantics pass (plan 050) — changed artifacts → `artifact` events', () => {
+  const REVIEW = [
+    '**Verdict**: ✅ **APPROVE** (clean)',
+    '- **F1 · HIGH · x**: thing. **Fix**: done.',
+  ].join('\n');
+
+  /** A capture whose adapter reports `files` for the window, over a seeded FakeFs. */
+  function artifactDeps(
+    fs: FakeFs,
+    files: { written?: string[]; edited?: string[] },
+    clock: FakeClock,
+  ): CaptureDeps {
+    return {
+      fs,
+      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'art' }),
+      clock,
+      proc: new FakeProcess({}, REPO),
+      git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),
+      command: 'flow',
+      adapters: [testAdapter('claude-code', 240, { files })],
+    };
+  }
+
+  it('an edited review in the window emits one counts-only `artifact` event (AC-01)', () => {
+    const fs = new FakeFs({ [`${REPO}/docs/plans/050-x/reviews/r.md`]: REVIEW });
+    captureTelemetry(
+      artifactDeps(
+        fs,
+        { edited: ['docs/plans/050-x/reviews/r.md'] },
+        new FakeClock('2026-07-04T00:00:00.000Z'),
+      ),
+    );
+    const stream = readWrittenSegment(fs, 'art')?.event_stream ?? [];
+    const artifacts = stream.filter((e) => e.kind === 'artifact');
+    expect(artifacts).toHaveLength(1);
+    expect(artifacts[0]).toMatchObject({
+      kind: 'artifact',
+      artifact_type: 'review',
+      path: 'docs/plans/050-x/reviews/r.md',
+      plan_id: '050-x',
+      change: 'edited',
+      counts: { findings_high: 1, fixes: 1 },
+      enums: { verdict: 'APPROVE' },
+    });
+    // The capture-time snapshot is rollup-EXCLUDED (like flow_log) — it must not
+    // fabricate wall/gap time from its single stamp.
+    expect(readWrittenSegment(fs, 'art')?.rollup?.activity.wall_s).toBe(0);
+  });
+
+  it('a missing / oversized artifact never fails capture (AC-04)', () => {
+    const huge = `# big\n${'x'.repeat(600 * 1024)}`;
+    // cursor == position ⇒ empty transcript window, so ONLY an artifact event could
+    // spool a segment; with both files skipped, nothing is written and nothing throws.
+    const fs = new FakeFs({
+      [`${REPO}/docs/plans/050-x/reviews/big.md`]: huge,
+      [`${TEL}/art.cursor`]: '240',
+    });
+    captureTelemetry(
+      artifactDeps(
+        fs,
+        { edited: ['docs/plans/050-x/reviews/gone.md', 'docs/plans/050-x/reviews/big.md'] },
+        new FakeClock('2026-07-04T00:00:00.000Z'),
+      ),
+    );
+    expect(readWrittenSegment(fs, 'art')).toBeNull();
+  });
+
+  it('editing the same artifact across two windows yields two snapshots (AC-03)', () => {
+    const path = `${REPO}/docs/plans/050-x/reviews/r.md`;
+    const clock = new FakeClock('2026-07-04T00:00:00.000Z');
+    const fs = new FakeFs({ [path]: '**Verdict**: ⚠️ **FIX_REQUIRED**' });
+    const d = artifactDeps(fs, { edited: ['docs/plans/050-x/reviews/r.md'] }, clock);
+
+    captureTelemetry(d);
+    const first = (readWrittenSegment(fs, 'art')?.event_stream ?? []).find(
+      (e) => e.kind === 'artifact',
+    );
+    expect(first).toMatchObject({
+      enums: { verdict: 'FIX_REQUIRED' },
+      t: '2026-07-04T00:00:00.000Z',
+    });
+
+    // The review is updated + a later capture window touches it again.
+    fs.writeText(path, REVIEW);
+    clock.set('2026-07-04T01:00:00.000Z');
+    captureTelemetry(d);
+    const second = (readWrittenSegment(fs, 'art')?.event_stream ?? []).find(
+      (e) => e.kind === 'artifact',
+    );
+    // A distinct snapshot: new verdict + fixes, stamped at the second capture time.
+    expect(second).toMatchObject({
+      enums: { verdict: 'APPROVE' },
+      counts: { findings_high: 1, fixes: 1 },
+      t: '2026-07-04T01:00:00.000Z',
+    });
+  });
+});

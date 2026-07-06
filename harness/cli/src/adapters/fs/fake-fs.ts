@@ -23,6 +23,15 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   readonly confineEscapes = new Set<string>();
   /** Every `mkdtemp` prefix requested (fakes over mocks — assert on history). */
   readonly mkdtemps: string[] = [];
+  /** Every `deleteFile` path, in call order (fakes over mocks — assert on history). */
+  readonly deletes: string[] = [];
+  /** Every `removeDir` path, in call order. */
+  readonly removedDirs: string[] = [];
+  /**
+   * Paths whose `deleteFile`/`removeDir` the fake should FAIL (throw) — models a
+   * real I/O error so a caller's error-swallowing (the T007 prune) is provable.
+   */
+  readonly failDeletes = new Set<string>();
   private readonly madeDirs = new Set<string>();
 
   constructor(
@@ -85,6 +94,48 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     }
     this.files[to] = contents;
     delete this.files[from];
+  }
+
+  deleteFile(path: string): void {
+    this.deletes.push(path);
+    if (this.failDeletes.has(path)) {
+      throw new Error(`FakeFs.deleteFile: forced failure: ${path}`);
+    }
+    // Idempotent (mirrors NodeFs `rmSync({force:true})`): a missing path is a no-op.
+    delete this.files[path];
+    this.dropFromParentListing(path);
+  }
+
+  removeDir(path: string): void {
+    this.removedDirs.push(path);
+    if (this.failDeletes.has(path)) {
+      throw new Error(`FakeFs.removeDir: forced failure: ${path}`);
+    }
+    const posix = path.replace(/\\/g, '/');
+    const prefix = posix.endsWith('/') ? posix : `${posix}/`;
+    // Recursively drop every file at or under the dir (mirrors recursive rmSync).
+    for (const p of Object.keys(this.files)) {
+      if (p === posix || p.startsWith(prefix)) delete this.files[p];
+    }
+    delete this.dirs[posix];
+    for (const d of [...this.madeDirs]) {
+      if (d === posix || d.startsWith(prefix)) this.madeDirs.delete(d);
+    }
+    this.dropFromParentListing(posix);
+  }
+
+  /** Remove `path`'s basename from its parent dir's seeded listing (so readdir reflects the delete). */
+  private dropFromParentListing(path: string): void {
+    const posix = path.replace(/\\/g, '/');
+    const slash = posix.lastIndexOf('/');
+    if (slash < 0) return;
+    const parent = posix.slice(0, slash);
+    const name = posix.slice(slash + 1);
+    const listing = this.dirs[parent];
+    if (listing) {
+      const i = listing.indexOf(name);
+      if (i >= 0) listing.splice(i, 1);
+    }
   }
 
   realpath(path: string): string | null {

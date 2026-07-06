@@ -81,9 +81,22 @@ describe('copilotAdapter — v2 event stream (T5.4)', () => {
     });
   });
 
-  it('collapses the bash tool calls into one burst + emits model/subagent/harness', () => {
-    const tools = kinds(stream, 'tools') as Array<Event & { name: string; count: number }>;
-    expect(tools).toContainEqual(expect.objectContaining({ name: 'bash', count: 2 }));
+  it('splits the bash tool calls by (name, signature) + emits model/subagent/harness', () => {
+    const tools = kinds(stream, 'tools') as Array<
+      Event & { name: string; count: number; signature?: string }
+    >;
+    // FX001-2: the two bash calls — `git status -s` (signature `git status`) and the
+    // harness `flow nav` bash (pure harness → NO signature) — are now DISTINCT
+    // (name, signature) bursts, not one `bash ×2` burst. MUTATION: reverting the
+    // `call.signature === cur.signature` guard in collapseToolBursts re-collapses
+    // them into a single `bash ×2` burst → the length-2 + `git status` checks flip.
+    const bashBursts = tools.filter((t) => t.name === 'bash');
+    expect(bashBursts).toHaveLength(2);
+    expect(bashBursts).toContainEqual(
+      expect.objectContaining({ name: 'bash', count: 1, signature: 'git status' }),
+    );
+    // the harness bash burst carries NO signature (harness verb stays a separate event).
+    expect(bashBursts.find((b) => b.signature === undefined)).toMatchObject({ count: 1 });
     expect(kinds(stream, 'model')).toContainEqual(
       expect.objectContaining({ kind: 'model', model: 'claude-opus-4-8', effort: 'high' }),
     );

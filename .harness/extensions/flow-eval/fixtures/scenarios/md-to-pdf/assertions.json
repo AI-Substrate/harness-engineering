@@ -1,0 +1,18 @@
+{
+  "scenario": "md-to-pdf",
+  "assertions": [
+    { "id": "A1", "type": "skill-called", "source": "telemetry", "required": true, "params": { "skill": "the-flow", "min": 1 }, "describe": "drove the SDD journey via /the-flow" },
+    { "id": "A2", "type": "skill-sequence", "source": "telemetry", "params": { "skills": ["explore", "plan", "implement"] }, "describe": "explore→plan→implement in order" },
+    { "id": "A3", "type": "flow-seam-fired", "source": "telemetry", "params": { "hook": "pre-coding" }, "describe": "hit the backpressure seam before coding" },
+    { "id": "A4", "type": "harness-verb-ran", "source": "telemetry", "params": { "verb": "checks", "min": 1 }, "describe": "ran harness checks" },
+    { "id": "A5", "type": "checks-ran", "source": "telemetry", "params": { "status": "ok" }, "describe": "checks came back green" },
+    { "id": "A6", "type": "tool-used", "source": "telemetry", "params": { "tool": "Write", "min": 1 }, "describe": "wrote files" },
+    { "id": "A7", "type": "compaction-occurred", "source": "telemetry", "params": { "min": 1 }, "describe": "compacted before implement" },
+    { "id": "A8", "type": "file-created", "source": "fs", "required": true, "params": { "glob": ".harness/extensions/*/extension.ts" }, "describe": "created the new extension" },
+    { "id": "A9", "type": "file-content-matches", "source": "fs", "params": { "path": "README.md", "pattern": "PDF" }, "describe": "README documents the PDF output" },
+    { "id": "A10", "type": "artifact-exists", "source": "fs", "params": { "glob": "docs/**/*.md" }, "describe": "left a doc artifact" },
+    { "id": "A11", "type": "command-succeeds", "source": "fs", "params": { "cmd": "node harness/cli/dist/index.js flow-eval --help" }, "describe": "the extension loads + registers" },
+    { "id": "A12", "type": "retro-drained", "source": "fs+telemetry", "params": { "evidence_glob": ".harness/records/retro/**/*.md" }, "describe": "drained the retro to a record" },
+    { "id": "A13", "type": "judged", "source": "judged", "params": {}, "describe": "artifact-only judge review over the configured sub-criteria" }
+  ]
+}

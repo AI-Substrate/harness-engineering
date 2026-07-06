@@ -1,4 +1,4 @@
-import { commandSignatures, harnessSubcommand } from '../command-signature.js';
+import { commandSignatures, harnessSubcommand, shellSignature } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import type { ToolCall } from '../rollup.js';
@@ -39,7 +39,9 @@ import type {
  * → `cache_create`; `metrics.output_tokens + reasoning_tokens` → `output` (reasoning
  * folded in so `total = input+output+cache_create+cache_read` stays the invariant).
  * Subagent tokens are not cleanly correlatable → `null` (never guessed).
- * `files`/`compactions`/`thinking` are `null` this phase.
+ * `files` are the `create`/`edit`/`apply_patch` tool target paths (F-07 / plan 052 T001
+ * — so the artifact-semantics pass fires on copilot lanes); `compactions`/`thinking`
+ * stay `null`.
  *
  * PRIVACY (AC-04): only counts + names + correlation ids (used internally for
  * windowing, never emitted) are read — tool `arguments` and message text are never
@@ -68,6 +70,36 @@ function str(v: unknown): string | null {
 
 function asObj(v: unknown): Record<string, unknown> {
   return typeof v === 'object' && v !== null ? (v as Record<string, unknown>) : {};
+}
+
+/**
+ * A privacy-safe token-count ESTIMATE of a `tool_result` payload (FX003) — a
+ * char/4 heuristic over its size, NEVER the content and NEVER a tokenizer. Only
+ * the resulting number is kept.
+ */
+function estimateResultTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Extract target paths from an `apply_patch` payload (copilot's file-edit tool since
+ * v1.x). The path lives in the patch HEADER lines, never an `arguments.path` field:
+ *   `*** Add File: <path>`     → created  (add: true)
+ *   `*** Update File: <path>`  → modified
+ *   `*** Delete File: <path>`  → modified
+ * ONLY the header paths are read (repo ids, relativized + confined at serialize time);
+ * the `+`/`-` body lines carry free text and are never read (AC-04). Multiple files
+ * per patch are supported.
+ */
+function parseApplyPatchPaths(patch: string): { path: string; add: boolean }[] {
+  const out: { path: string; add: boolean }[] = [];
+  for (const line of nonEmptyLines(patch)) {
+    const m = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(line.trim());
+    if (m === null) continue;
+    const p = m[2].trim();
+    if (p.length > 0) out.push({ path: p, add: m[1] === 'Add' });
+  }
+  return out;
 }
 
 /** Word count of a user prompt (string or text blocks); null when empty/absent. Counts ONLY — text never retained (AC-04). */
@@ -160,6 +192,10 @@ const nullCaps: HarnessCapabilities = {
 interface EventsView {
   effort: string | null;
   tools: Record<string, number>;
+  /** Files created in the window (from `create`/`write` tool `arguments.path`). */
+  written: string[];
+  /** Files modified in the window (from `edit`/`str_replace` tool `arguments.path`). */
+  edited: string[];
   userPrompts: number[];
   subagents: SegmentSubagentInput[];
   /** Interaction ids active in THIS window — the token-attribution key. */
@@ -189,14 +225,26 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // command line by call id, captured INDEPENDENTLY of toolName (they can land on
   // different events) — resolved to bash/shell post-loop via toolNameByCall.
   const commandByCall = new Map<string, { cmd: string; t: string | null }>();
+  // File path by call id (F-07 / plan 052 T001): the copilot editor tools carry a
+  // clean `arguments.path`; classified to written/edited post-loop via toolNameByCall.
+  const pathByCall = new Map<string, string>();
+  // apply_patch (copilot's file-edit tool since v1.x) carries its patch as a STRING
+  // `arguments` payload — the target path(s) live in the *** Add/Update/Delete File:
+  // headers, not `arguments.path`. Captured raw by call id, parsed post-loop.
+  const patchByCall = new Map<string, string>();
   const successByCall = new Map<string, boolean>(); // execution_complete `success` → command_exit
   const completeAtByCall = new Map<string, string>(); // execution_complete ts → command_exit `t`
+  // FX003: callId → its tool_result payload size (estimate), attached to the call post-loop.
+  const resultTokensByCall = new Map<string, number>();
   const userPrompts: number[] = []; // word count of each user prompt in the window
   const subagents: SegmentSubagentInput[] = [];
   const windowInteractionIds = new Set<string>();
 
   const prompts: { t: string; words: number }[] = [];
-  const toolCalls: ToolCall[] = [];
+  // FX001-A: the tool-call event is emitted at the FIRST event carrying the name,
+  // but a shell call's `arguments.command` can land on a DIFFERENT event; so record
+  // the callId here and resolve the signature post-loop (when commandByCall is complete).
+  const toolCallsRaw: { name: string; t: string; callId: string }[] = [];
   const subagentEvts: { t: string; name: string }[] = [];
   const modelEvts: { t: string; model: string; effort?: string }[] = [];
   const turnStart = new Map<string, string>();
@@ -237,7 +285,7 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
         // whether execution_start OR execution_complete (the name moved between the
         // two across CLI versions) — so rollup.tools matches the v1 tools histogram
         // exactly even when the name is only on execution_complete (companion HIGH, AC-16).
-        if (ts !== null) toolCalls.push({ name: toolName, t: ts });
+        if (ts !== null) toolCallsRaw.push({ name: toolName, t: ts, callId });
       }
       // A shell tool's command line → captured by call id INDEPENDENTLY of
       // toolName: `arguments.command` and the (moved) `toolName` can land on
@@ -251,12 +299,34 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
         const cmd = str(asObj(data.arguments).command);
         if (cmd !== null) commandByCall.set(callId, { cmd, t: ts });
       }
+      // A file tool's target path → captured by call id, classified written/edited
+      // post-loop via toolNameByCall (F-07 / plan 052 T001). Only the `path` field is
+      // read (a repo id, relativized + confined at serialize time); never the file
+      // body (`file_text`/`old_str`/`new_str`), which carries free text (AC-04).
+      if (callId !== null && !pathByCall.has(callId)) {
+        const p = str(asObj(data.arguments).path);
+        if (p !== null) pathByCall.set(callId, p);
+      }
+      // apply_patch's `arguments` is the raw patch STRING (not an object), so the
+      // `arguments.path` capture above misses it; record the patch body here and
+      // extract its header paths post-loop. `str()` is non-null only for a string
+      // arguments payload, so create/edit (object arguments) never land here.
+      if (callId !== null && !patchByCall.has(callId)) {
+        const patch = str(data.arguments);
+        if (patch !== null) patchByCall.set(callId, patch);
+      }
       // The execution's outcome (AC-19): Copilot reports a `success` boolean on
       // completion (it carries no result envelope, so `checks` isn't derivable —
       // command_exit only). Timestamp the exit at the completion event.
       if (o.type === 'tool.execution_complete' && callId !== null) {
         if (typeof data.success === 'boolean') successByCall.set(callId, data.success);
         if (ts !== null) completeAtByCall.set(callId, ts);
+        // FX003: the completion carries the tool_result payload (`result.content`);
+        // size it (count only, never the text) for the report's dumper signal.
+        const resultContent = str(asObj(data.result).content);
+        if (resultContent !== null) {
+          resultTokensByCall.set(callId, estimateResultTokens(resultContent));
+        }
       }
     } else if (o.type === 'subagent.completed') {
       const name = str(data.agentName) ?? str(data.agentDisplayName);
@@ -285,10 +355,15 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // have arrived on a different event than `arguments.command` (companion MEDIUM).
   const commandObs: { cmd: string; t: string }[] = [];
   const commandExits: { verb: string; exit: number; t: string }[] = [];
+  // FX001-A: callId → the shell call's non-harness signature (harness verbs stay
+  // separate `harness` events, so a pure-harness command contributes no signature).
+  const sigByCall = new Map<string, string>();
   for (const [callId, { cmd, t }] of commandByCall) {
     const tn = toolNameByCall.get(callId);
     if (tn !== 'bash' && tn !== 'shell') continue;
     if (t !== null) commandObs.push({ cmd, t });
+    const sig = shellSignature(cmd);
+    if (sig !== undefined) sigByCall.set(callId, sig);
     // command_exit (AC-19) — a harness subcommand's exit from the `success` flag.
     // Copilot has ONE success bool for the WHOLE shell execution, so it can be
     // attributed only to a LONE harness command: a compound — whether two harness
@@ -305,9 +380,42 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       }
     }
   }
+  // Attach the resolved signature to each shell tool call (order preserved).
+  const toolCalls: ToolCall[] = toolCallsRaw.map(({ name, t, callId }) => {
+    const call: ToolCall = { name, t };
+    const sig = sigByCall.get(callId);
+    if (sig !== undefined) call.signature = sig;
+    const rt = resultTokensByCall.get(callId);
+    if (rt !== undefined) call.result_tokens = rt;
+    return call;
+  });
+  // Files touched (F-07 / plan 052 T001): classify each captured tool `path` by its
+  // tool name — `create`/`write` create a file, `edit`/`str_replace` modify one;
+  // `view` and every other tool are read-only and contribute nothing. This is the
+  // copilot analogue of the claude adapter's `Write`/`Edit` extraction, so the
+  // capture-time artifact-semantics pass has a changed-file set on copilot worker
+  // lanes too (they emitted 0 `artifact` events before this — the root of F-07).
+  const written: string[] = [];
+  const edited: string[] = [];
+  for (const [callId, p] of pathByCall) {
+    const tn = toolNameByCall.get(callId);
+    if (tn === 'create' || tn === 'write') written.push(p);
+    else if (tn === 'edit' || tn === 'str_replace' || tn === 'str_replace_editor') edited.push(p);
+  }
+  // apply_patch: one patch can touch several files — classify each by its header op
+  // (`Add` creates, `Update`/`Delete` modify), from the patch body captured above.
+  for (const [callId, patch] of patchByCall) {
+    if (toolNameByCall.get(callId) !== 'apply_patch') continue;
+    for (const { path: p, add } of parseApplyPatchPaths(patch)) {
+      if (add) written.push(p);
+      else edited.push(p);
+    }
+  }
   return {
     effort,
     tools,
+    written,
+    edited,
     userPrompts,
     subagents,
     windowInteractionIds,
@@ -350,6 +458,8 @@ export const copilotAdapter: HarnessAdapter = {
         : {
             effort: null,
             tools: {},
+            written: [],
+            edited: [],
             userPrompts: [],
             subagents: [],
             windowInteractionIds: new Set(),
@@ -497,7 +607,10 @@ export const copilotAdapter: HarnessAdapter = {
       tools: Object.keys(ev.tools).length > 0 ? ev.tools : null,
       user_prompts: ev.userPrompts.length > 0 ? ev.userPrompts : null,
       subagents: ev.subagents.length > 0 ? ev.subagents : null,
-      files: null,
+      files:
+        ev.written.length > 0 || ev.edited.length > 0
+          ? { written: ev.written, edited: ev.edited }
+          : null,
       compactions: null,
       api_errors: null,
       local_commands: null,

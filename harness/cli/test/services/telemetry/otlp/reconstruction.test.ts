@@ -81,10 +81,11 @@ describe('schema_url pinning + version lockstep (T006)', () => {
 
 /**
  * Companion finding F002 (run …ab81): the real-fixture round-trips only exercise
- * the event kinds those sessions happened to contain. This drives ALL 14 kinds
- * (with their optional fields + a `t_precision` + `checks.gates`) through
- * serializeSegment → OTLP → reconstruct, so encode/decode symmetry is proven for
- * every kind, not just the ones a fixture sampled.
+ * the event kinds those sessions happened to contain. This drives ALL 15 kinds
+ * (with their optional fields + a `t_precision` + `checks.gates` + artifact
+ * `counts`/`enums` kvlists) through serializeSegment → OTLP → reconstruct, so
+ * encode/decode symmetry is proven for every kind, not just the ones a fixture
+ * sampled.
  */
 const ALL_KINDS: Event[] = [
   { t: '2026-06-27T00:00:01Z', kind: 'prompt', words: 12 },
@@ -132,9 +133,21 @@ const ALL_KINDS: Event[] = [
   { t: '2026-06-27T00:00:12Z', kind: 'compaction' },
   { t: '2026-06-27T00:00:13Z', kind: 'model', model: 'claude-opus-4-8', effort: 'high' },
   { t: '2026-06-27T00:00:14Z', kind: 'api_error', signature: 'rate_limit' },
+  {
+    t: '2026-06-27T00:00:15Z',
+    t_precision: 'anchored',
+    kind: 'artifact',
+    path: 'docs/plans/050-x/reviews/p1-review.md',
+    artifact_type: 'review',
+    plan_id: '050-x',
+    change: 'edited',
+    counts: { fixes: 3, findings_high: 1 },
+    enums: { verdict: 'APPROVE' },
+    size: { lines: 42, bytes: 1234 },
+  },
 ];
 
-describe('all-14-kind reconstruction symmetry (companion F002)', () => {
+describe('all-15-kind reconstruction symmetry (companion F002)', () => {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'claude-code',
@@ -146,8 +159,8 @@ describe('all-14-kind reconstruction symmetry (companion F002)', () => {
   };
   const seg = serializeSegment(input, '/repo');
 
-  it('exercises all 14 event kinds', () => {
-    expect(new Set(seg.event_stream.map((e) => e.kind)).size).toBe(14);
+  it('exercises all 15 event kinds', () => {
+    expect(new Set(seg.event_stream.map((e) => e.kind)).size).toBe(15);
   });
 
   it('every kind round-trips byte-faithfully through OTLP', () => {

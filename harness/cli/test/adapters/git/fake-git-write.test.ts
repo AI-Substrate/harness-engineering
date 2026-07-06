@@ -118,3 +118,81 @@ describe('FakeGitWrite — GitWritePort plumbing contract', () => {
     expect(g.commits[0].committer.email).toBe('engineer@example.com');
   });
 });
+
+/**
+ * T001 (plan 049 Phase 1) — the additive migration capability on the write port:
+ * `lsRemoteTelemetryRefs` (the ONE sanctioned remote read), `fetchRef`,
+ * `deleteRemoteRef`, plus the `refTreeOverride` TOCTOU seam. Fakes RECORD every call
+ * (enables the AC-03 zero-fetch proof by exclusion) and model a mutable remote set.
+ */
+describe('FakeGitWrite — migration capability (plan 049 T001)', () => {
+  it('lsRemoteTelemetryRefs reports the seeded remote set and records the call', () => {
+    const remote = [telemetryRefFor('2026/06/24', 's1'), telemetryRefFor('2026/06/25', 's2')];
+    const g = new FakeGitWrite().seedRemoteTelemetryRefs(remote);
+    expect(g.lsRemoteTelemetryRefs()).toEqual(remote);
+    expect(g.calls).toEqual(['lsRemoteTelemetryRefs']);
+  });
+
+  it('fetchRef records the fetched ref (no local mutation — the read port sees fetched refs)', () => {
+    const g = new FakeGitWrite();
+    g.fetchRef(TELEMETRY_REF);
+    expect(g.fetched).toEqual([TELEMETRY_REF]);
+    expect(g.calls).toEqual(['fetchRef']);
+  });
+
+  it('deleteRemoteRef records the delete and removes the ref from the remote set', () => {
+    const a = telemetryRefFor('2026/06/24', 's1');
+    const b = telemetryRefFor('2026/06/25', 's2');
+    const g = new FakeGitWrite().seedRemoteTelemetryRefs([a, b]);
+    g.deleteRemoteRef(a);
+    expect(g.deletedRemote).toEqual([a]);
+    expect(g.lsRemoteTelemetryRefs()).toEqual([b]); // a is gone from the remote
+  });
+
+  it('refTreeOverride models a racing forced push — refTree diverges, refTip/writes do not', () => {
+    const g = new FakeGitWrite();
+    const commit = g.commitTree('our-tree', null, 'roll');
+    g.updateRef(TELEMETRY_REF, commit, null);
+    expect(g.refTree(TELEMETRY_REF)).toBe('our-tree');
+    expect(g.refTip(TELEMETRY_REF)).toBe(commit);
+    // A racer overwrote the ref's CONTENT (TOCTOU seam) — refTree diverges…
+    g.refTreeOverride.set(TELEMETRY_REF, 'racer-tree');
+    expect(g.refTree(TELEMETRY_REF)).toBe('racer-tree');
+    // …but the tip (identity of our write) is untouched.
+    expect(g.refTip(TELEMETRY_REF)).toBe(commit);
+  });
+
+  it('lsRemoteTelemetryRefs throws when the transport is down (failPush), so a migration can defer', () => {
+    const g = new FakeGitWrite().seedRemoteTelemetryRefs([TELEMETRY_REF]);
+    g.failPush = true;
+    expect(() => g.lsRemoteTelemetryRefs()).toThrow();
+  });
+
+  it('readRefTree lifts a written ref tree back to its flat blobs (the T007 union source)', () => {
+    // The rolled writer reads the ref's OWN tree (local, fetch-free) to rebuild the
+    // whole-session tip after the buffer is pruned — assert the fake round-trips a
+    // written tree to name+bytes, and returns null for a ref that does not exist.
+    const g = new FakeGitWrite();
+    expect(g.readRefTree(TELEMETRY_REF)).toBeNull(); // absent ref → null (fresh session)
+
+    const logs = g.hashObject('{"resourceLogs":[{"seq":1}]}\n');
+    const manifest = g.hashObject(
+      '{"format":"x","session":"sessA","start_date":"2026/03/23","max_seq":1}\n',
+    );
+    const tree = g.mktree([
+      { mode: '100644', type: 'blob', sha: logs, name: 'session.logs.jsonl' },
+      { mode: '100644', type: 'blob', sha: manifest, name: 'manifest.json' },
+    ]);
+    const commit = g.commitTree(tree, null, 'roll');
+    g.updateRef(TELEMETRY_REF, commit, null);
+
+    expect(g.readRefTree(TELEMETRY_REF)).toEqual([
+      { name: 'session.logs.jsonl', content: '{"resourceLogs":[{"seq":1}]}\n' },
+      {
+        name: 'manifest.json',
+        content: '{"format":"x","session":"sessA","start_date":"2026/03/23","max_seq":1}\n',
+      },
+    ]);
+    expect(g.calls).toContain('readRefTree');
+  });
+});

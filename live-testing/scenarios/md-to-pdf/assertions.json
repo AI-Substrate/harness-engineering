@@ -1,0 +1,89 @@
+{
+  "scenario": "md-to-pdf",
+  "assertions": [
+    {
+      "id": "A1",
+      "type": "skill-called",
+      "source": "telemetry",
+      "required": true,
+      "params": { "skill": "the-flow", "min": 1 },
+      "describe": "drove the SDD journey via /the-flow"
+    },
+    {
+      "id": "A2",
+      "type": "skill-sequence",
+      "source": "telemetry",
+      "params": { "skills": ["explore", "plan", "implement"], "ordered": true },
+      "describe": "ran explore → plan → implement in order"
+    },
+    {
+      "id": "A3",
+      "type": "skill-called",
+      "source": "telemetry",
+      "params": { "skill": "eng-harness-flow", "min": 1 },
+      "describe": "engaged the engineering-harness loop"
+    },
+    {
+      "id": "A4",
+      "type": "flow-seam-fired",
+      "source": "telemetry",
+      "params": { "hook": "pre-coding" },
+      "describe": "hit the backpressure seam before coding"
+    },
+    {
+      "id": "A5",
+      "type": "compaction-occurred",
+      "source": "telemetry",
+      "params": { "min": 1 },
+      "describe": "compacted before implement (orchestrator-driven)"
+    },
+    {
+      "id": "A6",
+      "type": "file-created",
+      "source": "fs",
+      "required": true,
+      "params": { "glob": ".harness/extensions/*/extension.ts" },
+      "describe": "created the new extension under .harness/extensions/"
+    },
+    {
+      "id": "A7",
+      "type": "command-succeeds",
+      "source": "fs",
+      "required": true,
+      "params": { "cmd": "SUBJECT_EXTENSION_HELP" },
+      "describe": "the new verb actually registered — orchestrator replaces SUBJECT_EXTENSION_HELP with `node harness/cli/dist/index.js <new-verb> --help` (commander exits nonzero if the verb never loaded; unlike `doctor`, which exits 0 even when an extension is degraded)"
+    },
+    {
+      "id": "A8",
+      "type": "command-succeeds",
+      "source": "fs",
+      "params": { "cmd": "SUBJECT_PDF_VALIDATOR" },
+      "describe": "the subject's own PDF validator passes — orchestrator replaces SUBJECT_PDF_VALIDATOR with the real command after the run"
+    },
+    {
+      "id": "A9",
+      "type": "checks-ran",
+      "source": "telemetry",
+      "params": { "status": "ok" },
+      "describe": "ran harness checks green"
+    },
+    {
+      "id": "A10",
+      "type": "retro-drained",
+      "source": "fs+telemetry",
+      "params": { "evidence_glob": ".harness/records/retro/**/*.md", "min": 1 },
+      "describe": "drained the retro to a record (verb ran AND a record exists)"
+    },
+    {
+      "id": "A11",
+      "type": "judged",
+      "source": "judged",
+      "params": {
+        "field": "backpressure_quality",
+        "prompt": "Did the subject design a PROPER deterministic backpressure checker for the PDF output (e.g. a sensor that validates mermaid render fidelity, not just file size), or a token gesture?",
+        "rubric": "PASS = a deterministic sensor that actually inspects render fidelity / structure; PARTIAL = a check that runs but only proves the file exists or is non-empty; FAIL = no backpressure checker offered."
+      },
+      "describe": "backpressure design quality (orchestrator-judged)"
+    }
+  ]
+}

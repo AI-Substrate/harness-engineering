@@ -1,0 +1,639 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "flow-conformance-eval",
+  "nav": {
+    "now": "ship",
+    "next": "ship",
+    "intent": "Build a flow-conformance eval harness: an orchestrator drives a blind agent through the-flow on a fixed task, graded deterministically via telemetry/OTel + filesystem, config-driven, reports to .harness/live-testing/<slug>/",
+    "bag": {
+      "mode": "unknown",
+      "status": "complete"
+    }
+  },
+  "created_at": "2026-06-29T02:58:34.980Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.6.0",
+    "branch": "main",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-06-29T02:58:34.980Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-06-29T02:58:34.992Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "flow-conformance-eval"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T03:04:08.770Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T03:04:09.192Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:00:27.780Z",
+      "details": {
+        "node": "ws-scenario-schema",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:00:28.202Z",
+      "details": {
+        "node": "ws-scenario-schema",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:02:36.037Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:13:26.140Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:13:26.560Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:13:26.979Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:15:37.294Z",
+      "details": {
+        "node": "plan",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:15:37.753Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:36:53.136Z",
+      "details": {
+        "node": "backpressure",
+        "from": "assumed",
+        "to": "skipped",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:40:45.670Z",
+      "details": {
+        "node": "phase-2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:40:45.670Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:40:46.081Z",
+      "details": {
+        "node": "phase-3",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:40:46.081Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:41:04.075Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:41:04.496Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T04:47:23.948Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T05:31:06.674Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T05:31:07.129Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T05:31:07.555Z",
+      "details": {
+        "from": "phase-1",
+        "to": "phase-2"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:04:46.112Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:42:47.725Z",
+      "details": {
+        "node": "phase-2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:42:48.188Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:42:48.629Z",
+      "details": {
+        "from": "phase-2",
+        "to": "phase-3"
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T06:45:04.073Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-06-29T07:34:47.897Z",
+      "details": {
+        "node": "phase-3",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-29T07:34:48.370Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-06-29T07:34:48.822Z",
+      "details": {
+        "from": "phase-3",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-06-30T21:52:31.605Z",
+      "details": {
+        "node": "phase-4",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-06-30T21:52:31.605Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "next"
+        ],
+        "edge_op": "splice-after"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "command": "/the-flow 1a explore",
+      "next": [
+        "plan"
+      ],
+      "instructions": [
+        "Explore how the relevant code works before you plan — start cheap, climb only when the evidence demands it; never jump straight to a plan.",
+        "Run /the-flow 1a explore \"<intent>\" — it produces research-dossier.md, a decision packet (not a transcript) with evidence links.",
+        "Done when the dossier names the core decision the plan must resolve and the findings that bound it."
+      ],
+      "modified_at": "2026-06-29T03:04:09.192Z",
+      "ran_at": "2026-06-29T03:04:08.770Z",
+      "note": "Deep explore: 11 evidence findings, 3 historical, 5 risks. All compose-pieces exist (pij control-plane, telemetry/OTel v2.2 with PIJ_SESSION_ID join, extension contract, flow-skill-eval precedent). Key gap: no telemetry query-by-session verb (F-07). Two-layer eval (deterministic + judged) validated by research."
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/the-flow 1b plan",
+      "next": [
+        "phase-1"
+      ],
+      "instructions": [
+        "Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.",
+        "Run /the-flow 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
+        "Done when <slug>-plan.md carries both halves and reads **Status**: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run."
+      ],
+      "comments": [
+        {
+          "at": "2026-06-29T04:02:36.037Z",
+          "text": "Binding principle (user steer): encode eval machinery as first-class harness extensions/verbs wherever possible — runner/scorer = a harness extension, telemetry-by-session = a read-only core/ext verb (closes F-07), report via ctx.fsWrite, resolvers a type-dispatched module. Loose scripts only where the extension contract can't reach (driving pij panes). Dogfood the harness — build it the harness way.",
+          "kind": "decision"
+        }
+      ],
+      "modified_at": "2026-06-29T04:15:37.753Z",
+      "note": "Plan VALIDATED WITH FIXES (Full, CS-4, READY). Critic: 3 findings (1 HIGH verb-ambiguity + 2 MEDIUM under-spec), all folded — flow-eval is score+scaffold (never drives pij); SessionEvidence interface + getSessionEvidence API specified. Sidecar in validations/.",
+      "ran_at": "2026-06-29T04:15:37.294Z"
+    },
+    {
+      "id": "phase-1",
+      "type": "phase",
+      "phase": 1,
+      "label": "P1: Implementation",
+      "status": "done",
+      "command": "/the-flow 6 implement",
+      "next": [
+        "phase-2"
+      ],
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /the-flow 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof."
+      ],
+      "modified_at": "2026-06-29T05:31:07.129Z",
+      "comments": [
+        {
+          "at": "2026-06-29T04:47:23.948Z",
+          "text": "Phase 1 tasks dossier written (T001-T005) + validated (4 critic fixes folded; files-from-segment correction). Ready to build via flow-pair.",
+          "kind": "note"
+        },
+        {
+          "at": "2026-06-29T05:31:07.129Z",
+          "text": "Built via flow-pair (Opus 4.8 coder + codex GPT-5.5 cross-model reviewer). dlg-0001 FIX_REQUIRED → dlg-0002 APPROVE. Dim-0 non-vacuous (reviewer mutation-tested). harness checks: core gates green. 21 targeted / 424 telemetry suite pass.",
+          "kind": "note"
+        }
+      ],
+      "ran_at": "2026-06-29T05:31:06.674Z"
+    },
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "command": "/the-flow 8 ship",
+      "next": [],
+      "instructions": [
+        "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
+        "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
+        "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure survey",
+      "status": "skipped",
+      "branch_of": "plan",
+      "next": [
+        "plan"
+      ],
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "instructions": [
+        "Optional pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
+        "Run /eng-harness-flow --hook pre-coding --json — advisory output only; the plan verb does not auto-read it, so fold the findings in yourself.",
+        "Optional and skippable — never gates. Decline with a real `harness flow status backpressure --to skipped`, never a narrated skip."
+      ],
+      "modified_at": "2026-06-29T04:36:53.136Z"
+    },
+    {
+      "id": "boot-1",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "assumed",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "run /eng-harness-flow --hook pre-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — read-only/advisory; narrate its envelope verbatim, never fabricate one.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status boot-1 --to skipped`."
+      ]
+    },
+    {
+      "id": "observe-1",
+      "type": "observe",
+      "label": "Observe: P1",
+      "status": "assumed",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "harness observe \"<what>\" --kind <kind>",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates."
+      ]
+    },
+    {
+      "id": "retro-1",
+      "type": "harness-retro",
+      "label": "Retro: P1 (drain)",
+      "status": "assumed",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "run /eng-harness-flow --hook post-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status retro-1 --to skipped`."
+      ]
+    },
+    {
+      "id": "retro-ship",
+      "type": "harness-retro",
+      "label": "Retro: ship (harvest)",
+      "status": "assumed",
+      "branch_of": "ship",
+      "next": [
+        "ship"
+      ],
+      "command": "run /eng-harness-flow --hook post-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
+        "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
+      ]
+    },
+    {
+      "id": "ws-scenario-schema",
+      "type": "workshop",
+      "label": "WS: scenario + assertion schema",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-06-29T04:00:27.780Z",
+      "modified_at": "2026-06-29T04:00:28.202Z",
+      "branch_of": "plan",
+      "note": "Contract Ready: scenario bundle (live-testing/scenarios/<slug>/), assertion schema (flat list, per-assertion source), resolver taxonomy (telemetry/fs/judged + composite), three-valued verdict (pass/fail/unknown), report shape. Recommends a read-only telemetry get <session> verb (F-07)."
+    },
+    {
+      "id": "phase-2",
+      "type": "phase",
+      "label": "P2: The flow-eval engine",
+      "status": "done",
+      "next": [
+        "phase-3"
+      ],
+      "created_at": "2026-06-29T04:40:45.670Z",
+      "modified_at": "2026-06-29T06:42:48.188Z",
+      "ran_at": "2026-06-29T06:42:47.725Z",
+      "comments": [
+        {
+          "at": "2026-06-29T06:42:48.188Z",
+          "text": "flow-eval extension built via flow-pair. Review: all 7 code risks cleared, dim-0 satisfied; 2 artifact gaps fixed (execution log by orchestrator, instructions.md by coder). doctor:ok E144 cleared. 42 flow-eval tests / 1641 suite pass.",
+          "kind": "note"
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "type": "phase",
+      "label": "P3: Scenario md→PDF + orchestration + docs",
+      "status": "done",
+      "next": [
+        "phase-4"
+      ],
+      "created_at": "2026-06-29T04:40:46.081Z",
+      "modified_at": "2026-06-30T21:52:31.605Z",
+      "ran_at": "2026-06-29T07:34:47.897Z",
+      "comments": [
+        {
+          "at": "2026-06-29T07:34:48.370Z",
+          "text": "md-to-pdf scenario + orchestration runbook + docs built via flow-pair. Blind audit PASSED. Review caught A7 false-pass (doctor always exits 0) — fixed to failure-sensitive probe + negative-mutation test. dim-0 satisfied. All 3 phases complete.",
+          "kind": "note"
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "type": "phase",
+      "label": "P4: Eval hardening — seed + run-outcome ledger",
+      "status": "known",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-06-30T21:52:31.605Z",
+      "modified_at": "2026-06-30T21:52:31.605Z",
+      "command": "/the-flow 5 tasks --phase \"Phase 4: Eval hardening — seed + run-outcome ledger\" --plan \"docs/plans/041-flow-conformance-eval/flow-conformance-eval-plan.md\""
+    }
+  ]
+}

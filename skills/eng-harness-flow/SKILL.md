@@ -1,9 +1,39 @@
 ---
 name: eng-harness-flow
 description: |
-  Stateless harness-loop router — the single front door to the eng-harness skill family, and the harness-loop analogue of `the-flow` (which guides the SDD pipeline). On every call it re-derives where the work sits on the loop from deterministic repo signals plus an optional caller hint, then routes to the SINGLE correct harness skill — never call the children directly. It enforces an adoption gate (install → scout → governance → inject → boot LAST) before the engineering zone (boot → backpressure → observe → retro → improve), honours `at=` / `--event` / `--plan-dir` / `--spec` / `--phase` / `--prompt-optional` / `--json`, and resolves hint-vs-signal conflicts via a route/redirect/noop/ambiguous matrix. Stateless — safe to call anytime, from any caller. Never gates, scores, or blocks; never invents a health verdict (that is `harness doctor`'s job).
+  Front door for the engineering-harness loop. Use it at work seams so agents
+  pursue two goals at once: complete the requested task, AND improve the
+  deterministic engineering environment future agents and teammates inherit.
+  Before work: boot and check backpressure. During work: capture friction and
+  missing proof. After work: drain/harvest observations. At closeout: offer to
+  encode the best lesson as a command, check, fixture, sensor, diagnostic,
+  template, default, or clearer error. Advisory means the user is never blocked —
+  it does NOT mean the agent may silently skip the loop. Mechanically a stateless
+  router: it re-derives where work sits from repo signals and routes to the one
+  correct harness skill (never call children directly); honours the adoption gate
+  and `--event`/`--json`/`--hooks`; never gates, scores, or blocks.
 ---
 # eng-harness-flow
+
+## Why this skill exists
+
+Agents optimise for the requested task — fix the bug, add the feature, reach "done". That is necessary but incomplete. This skill gives the agent a **standing second objective**: while doing the work, improve the engineering environment that future agents, humans, and teammates will use.
+
+**Two jobs, every session:**
+- **Primary** — complete the requested work.
+- **Standing secondary** — reduce future inference cost and increase deterministic proof. When the repo makes you guess, retry, hand-check, remember tribal setup, read logs to find a verdict, or infer whether "done" is really done, that is harness feedback. Capture it; at closeout, offer one concrete way to move the repeated part out of tokens and into deterministic substrate — a command, check, fixture, sensor, diagnostic, template, default, or clearer error.
+
+Code review checks the **product**. The harness loop reviews the **process that produced** the code.
+
+**The loop — four beats:**
+1. **Before work** — prove the environment and check backpressure (`--hook pre-flight`, then `--hook pre-coding`).
+2. **During work** — capture friction the moment it bites: `harness observe "<what was hard or unproven>" --kind <kind>`. Fire on: a retry or backtrack · a >30s wait on a tool · a search that returned nothing where you expected matches · a failure you had to *guess* to interpret · runtime behaviour you could only *infer* (no smoke path / log / trace / health evidence) · an architecture, dependency, security, or schema constraint you *eyeballed* that a check could have proved · hidden or tribal setup · catching yourself thinking "if only there were a…".
+3. **After a phase/session** — drain the observations into a retro (`--hook post-coding`).
+4. **At closeout** — harvest, name the single highest-leverage improvement in plain language, and offer to encode it (`--hook post-flight`). **Do not end silently.**
+
+**Meaning of advisory — the user is never blocked; the agent is never silent.** "Advisory" constrains the **user's** freedom (they can decline any step), not the **agent's** duty to *surface* it. Run or offer the harness step at the seam; if the user waves it past, continue. The router itself never gates, scores, or blocks — but silently dropping the boot, the survey, the drain, or the closeout encode offer is the failure this loop exists to prevent.
+
+---
 
 The **single front door** to the harness loop — the harness-loop analogue of `the-flow` (which guides the SDD pipeline). `the-flow` walks a *linear* journey (spec → plan → tasks → code → review → merge); this router routes a *cycle* re-entered wherever the work is: **adopt → boot → backpressure → observe → retro → improve**, drawn in [`references/getting-started.md`](./references/getting-started.md). On every call it re-derives *where on the loop you are* from deterministic repo signals + an optional caller hint, and hands back the **one right harness action** — never call the children directly.
 
@@ -11,7 +41,7 @@ The **single front door** to the harness loop — the harness-loop analogue of `
 
 ## The state contract — stateless routing, CLI-driven flow position (read this first)
 
-`eng-harness-flow` is a **stateless dispatcher** for *routing*: `(repo signals, conversation, optional hint) → next harness action`. Its detection — *which* flow is live, *which* rung is missing, *where* the work sits — is **re-derived every call** from deterministic repo signals, never remembered (re-entry after `/compact` needs nothing reloaded). It **never gates, scores, or blocks** (every route is a suggestion; a hint is never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion).
+`eng-harness-flow` is a **stateless dispatcher** for *routing*: `(repo signals, conversation, optional hint) → next harness action`. Its detection — *which* flow is live, *which* rung is missing, *where* the work sits — is **re-derived every call** from deterministic repo signals, never remembered (re-entry after `/compact` needs nothing reloaded). It **never gates, scores, or blocks** (every route is a suggestion; a hint is never a command; declining the harness is conversational, not a `.disabled` file) — but that is the **user's** licence to decline, never the agent's licence to skip the loop silently (§ Why this skill exists → *Meaning of advisory*); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion).
 
 **What it *does* persist — and the only thing it does (plan 032):** the **position of the flow it is driving**, as a **first-class, CLI-driven flight plan**, through the **real `harness flow` verb family** (never hand-edited JSON). This is the deliberate, *scoped* supersession of the old "writes nothing" stance — the dogfood + the exemplar. The scope is **flow position only**:
 

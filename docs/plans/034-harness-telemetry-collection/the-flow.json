@@ -1123,7 +1123,7 @@
     "intent": "Harness telemetry collection — per-command sensor emitting normalized per-session segments (tokens/skills/tools/subagents/files/plan-links) committed to an orphan git ref for eng-thrive; Claude + Copilot adapters, Cursor later",
     "bag": {
       "mode": "Full",
-      "status": "active",
+      "status": "complete",
       "t1_ratified": "2026-06-23"
     }
   }

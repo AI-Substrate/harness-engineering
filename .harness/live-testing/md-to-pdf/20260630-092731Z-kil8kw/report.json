@@ -1,0 +1,126 @@
+{
+  "scenario": "md-to-pdf",
+  "run_id": "20260630-092731Z-kil8kw",
+  "subject": {
+    "harness": "claude",
+    "model": "opus",
+    "pij_session_id": "pij-1kil8kw",
+    "effort": "high"
+  },
+  "base_ref": "v0.6.0",
+  "started_at": "2026-06-30T09:27:31.242Z",
+  "finished_at": "2026-06-30T09:27:31.432Z",
+  "deterministic": {
+    "score": 0.375,
+    "passed": 3,
+    "failed": 5,
+    "unknown": 2,
+    "total": 10,
+    "required_failed": 1,
+    "results": [
+      {
+        "id": "A1",
+        "type": "skill-called",
+        "source": "telemetry",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "drove the SDD journey via /the-flow"
+      },
+      {
+        "id": "A2",
+        "type": "skill-sequence",
+        "source": "telemetry",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "ran explore → plan → implement in order"
+      },
+      {
+        "id": "A3",
+        "type": "skill-called",
+        "source": "telemetry",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "engaged the engineering-harness loop"
+      },
+      {
+        "id": "A4",
+        "type": "flow-seam-fired",
+        "source": "telemetry",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "hit the backpressure seam before coding"
+      },
+      {
+        "id": "A5",
+        "type": "compaction-occurred",
+        "source": "telemetry",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "compacted before implement (orchestrator-driven)"
+      },
+      {
+        "id": "A6",
+        "type": "file-created",
+        "source": "fs",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "created the new extension under .harness/extensions/"
+      },
+      {
+        "id": "A7",
+        "type": "command-succeeds",
+        "source": "fs",
+        "status": "fail",
+        "required": true,
+        "weight": 1,
+        "describe": "the new verb actually registered — orchestrator replaces SUBJECT_EXTENSION_HELP with `node harness/cli/dist/index.js <new-verb> --help` (commander exits nonzero if the verb never loaded; unlike `doctor`, which exits 0 even when an extension is degraded)"
+      },
+      {
+        "id": "A8",
+        "type": "command-succeeds",
+        "source": "fs",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "the subject's own PDF validator passes — orchestrator replaces SUBJECT_PDF_VALIDATOR with the real command after the run"
+      },
+      {
+        "id": "A9",
+        "type": "checks-ran",
+        "source": "telemetry",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "ran harness checks green"
+      },
+      {
+        "id": "A10",
+        "type": "retro-drained",
+        "source": "fs+telemetry",
+        "status": "fail",
+        "required": false,
+        "weight": 1,
+        "describe": "drained the retro to a record (verb ran AND a record exists)"
+      }
+    ]
+  },
+  "judged": [
+    {
+      "id": "A11",
+      "field": "backpressure_quality",
+      "prompt": "Did the subject design a PROPER deterministic backpressure checker for the PDF output (e.g. a sensor that validates mermaid render fidelity, not just file size), or a token gesture?",
+      "rubric": "PASS = a deterministic sensor that actually inspects render fidelity / structure; PARTIAL = a check that runs but only proves the file exists or is non-empty; FAIL = no backpressure checker offered.",
+      "describe": "backpressure design quality (orchestrator-judged)",
+      "verdict": null,
+      "rationale": null,
+      "by": null
+    }
+  ],
+  "verdict": "FAIL"
+}

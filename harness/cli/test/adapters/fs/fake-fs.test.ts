@@ -223,6 +223,65 @@ describe('FakeFs', () => {
     expect(fs.copies).toEqual([{ src: '/a/b.txt', destDir: '/dest' }]);
     expect(fs.exists('/dest/b.txt')).toBe(true);
   });
+
+  it('deleteFile removes a file, drops it from the parent listing, records, and is idempotent (T007)', () => {
+    /*
+    Test Doc:
+    - Why: the T007 telemetry buffer prune deletes flushed `<seq>` files via ctx.fs.deleteFile;
+      the service must be unit-testable with zero real fs, and the fake must model NodeFs's
+      `rmSync({force:true})` fidelity — a later readText/readdir sees the file gone, a missing
+      path is a no-op.
+    - Contract: deleteFile removes the file from the seed map, splices its basename out of the
+      parent dir's seeded listing, pushes the path to deletes[], and never throws on a missing path.
+    - Worked Example: deleteFile('/t/s/1.json') → readText null, readdir('/t/s') excludes '1.json'.
+    */
+    const fs = new FakeFs(
+      { '/t/s/1.json': 'a', '/t/s/2.json': 'b' },
+      { '/t/s': ['1.json', '2.json'] },
+    );
+    fs.deleteFile('/t/s/1.json');
+    expect(fs.deletes).toEqual(['/t/s/1.json']);
+    expect(fs.readText('/t/s/1.json')).toBeNull();
+    expect(fs.readdir('/t/s')).toEqual(['2.json']);
+    // Idempotent: deleting an already-gone path records the call but never throws.
+    expect(() => fs.deleteFile('/t/s/missing.json')).not.toThrow();
+    expect(fs.deletes).toEqual(['/t/s/1.json', '/t/s/missing.json']);
+  });
+
+  it('deleteFile THROWS for a path seeded into failDeletes (models a real I/O error) (T007)', () => {
+    // The prune's error-swallow can only be PROVEN if the fake can fail a delete.
+    const fs = new FakeFs({ '/t/s/1.json': 'a' });
+    fs.failDeletes.add('/t/s/1.json');
+    expect(() => fs.deleteFile('/t/s/1.json')).toThrow(/forced failure/);
+    expect(fs.deletes).toEqual(['/t/s/1.json']); // the attempt is still recorded
+    expect(fs.readText('/t/s/1.json')).toBe('a'); // and the file survives the failed delete
+  });
+
+  it('removeDir recursively drops a subtree, records, and clears it from the parent listing (T007)', () => {
+    /*
+    Test Doc:
+    - Why: an aged-out, fully-flushed telemetry session dir is removed whole via ctx.fs.removeDir;
+      the fake must model recursive `rmSync({recursive:true,force:true})` — every file under the
+      dir vanishes and the dir disappears from its parent's listing.
+    - Contract: removeDir deletes every seed-map file at or under the dir, removes the dir key +
+      any mkdirp-registered descendants, splices the dir out of the parent listing, records on
+      removedDirs[]; a missing dir is a no-op.
+    */
+    const fs = new FakeFs(
+      { '/t/s/1.json': 'a', '/t/s/1.logs.jsonl': 'x', '/t/other/9.json': 'z' },
+      { '/t': ['s', 'other'], '/t/s': ['1.json', '1.logs.jsonl'] },
+    );
+    fs.removeDir('/t/s');
+    expect(fs.removedDirs).toEqual(['/t/s']);
+    expect(fs.readText('/t/s/1.json')).toBeNull();
+    expect(fs.readText('/t/s/1.logs.jsonl')).toBeNull();
+    expect(fs.readdir('/t')).toEqual(['other']); // 's' spliced out, sibling kept
+    expect(fs.readText('/t/other/9.json')).toBe('z'); // sibling subtree untouched
+    // Idempotent + can be made to fail like deleteFile.
+    expect(() => fs.removeDir('/t/gone')).not.toThrow();
+    fs.failDeletes.add('/t/other');
+    expect(() => fs.removeDir('/t/other')).toThrow(/forced failure/);
+  });
 });
 
 describe('NodeFs', () => {
@@ -370,6 +429,42 @@ describe('NodeFs', () => {
       const dest = join(base, 'out');
       expect(fs.copy(join(clone, '..foo', 'x.json'), dest, { confineRoot: clone })).toBe(true);
       expect(fs.readText(join(dest, 'x.json'))).toBe('INSIDE');
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('deleteFile removes a real file and is idempotent on a missing path (T007)', () => {
+    // The telemetry buffer prune (plan 049 T007) deletes flushed <seq> files; the
+    // real adapter must remove them and tolerate an already-gone path (force:true).
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-del-'));
+    try {
+      const f = join(base, 'seg.json');
+      writeFileSync(f, 'x');
+      expect(fs.exists(f)).toBe(true);
+      fs.deleteFile(f);
+      expect(fs.exists(f)).toBe(false);
+      // Idempotent: deleting the now-missing path does not throw.
+      expect(() => fs.deleteFile(f)).not.toThrow();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('removeDir recursively removes a real dir tree and is idempotent on a missing dir (T007)', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-rmdir-'));
+    try {
+      const dir = join(base, 'session');
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, '1.json'), 'a');
+      writeFileSync(join(dir, '1.logs.jsonl'), 'b');
+      expect(fs.exists(dir)).toBe(true);
+      fs.removeDir(dir);
+      expect(fs.exists(dir)).toBe(false);
+      // Idempotent: removing the now-missing dir does not throw.
+      expect(() => fs.removeDir(dir)).not.toThrow();
     } finally {
       rmSync(base, { recursive: true, force: true });
     }

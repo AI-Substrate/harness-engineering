@@ -31,8 +31,10 @@ import { computeRollup } from './rollup.js';
  * derived `rollup` (the v1 count fields remain as a compatibility view).
  * v2.1: `harness_version` (the producing CLI version → OTLP `service.version`).
  * v2.2: `captured_env` (an allowlisted, secret-denylisted env-var snapshot).
+ * v2.3 (plan 053): adds the `mark` event kind (a peer's counts-only
+ * self-attestation) to the `event_stream` union — no new top-level segment field.
  */
-export const SEGMENT_SCHEMA_VERSION = '2.2';
+export const SEGMENT_SCHEMA_VERSION = '2.3';
 
 export interface SegmentTokens {
   input: number;
@@ -342,12 +344,17 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.model === 'string') ev.model = e.model;
       return ev;
     }
-    case 'tools':
-      return { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
+    case 'tools': {
+      const ev: Event = { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
+      if (typeof e.signature === 'string') ev.signature = e.signature;
+      if (typeof e.result_tokens === 'number') ev.result_tokens = e.result_tokens;
+      return ev;
+    }
     case 'skill': {
       const ev: Event = { ...base, kind: 'skill', name: e.name, status: e.status };
       const d = num(e.dur_s);
       if (d !== undefined) ev.dur_s = d;
+      if (typeof e.arg === 'string') ev.arg = e.arg;
       return ev;
     }
     case 'flow': {
@@ -404,6 +411,46 @@ export function serializeEvent(e: Event): Event {
     case 'api_error': {
       const ev: Event = { ...base, kind: 'api_error' };
       if (typeof e.signature === 'string') ev.signature = e.signature;
+      return ev;
+    }
+    case 'artifact': {
+      // ALLOWLIST: pick each field explicitly and REBUILD the counts/enums maps
+      // (never spread the input) — the extractor already gated the enum VALUES to
+      // a fixed vocabulary (`other` fallback), so no free-form artifact text can
+      // reach the output (AC-05). Zero/non-finite counts are dropped so a garbage
+      // artifact serializes with `{}` counts (AC-04).
+      const counts: Record<string, number> = {};
+      for (const [k, v] of Object.entries(e.counts)) {
+        const n = num(v);
+        if (n !== undefined) counts[k] = n;
+      }
+      const enums: Record<string, string> = {};
+      for (const [k, v] of Object.entries(e.enums)) enums[k] = String(v);
+      const ev: Event = {
+        ...base,
+        kind: 'artifact',
+        path: e.path,
+        artifact_type: e.artifact_type,
+        change: e.change,
+        counts,
+        enums,
+        size: { lines: e.size.lines, bytes: e.size.bytes },
+      };
+      if (typeof e.plan_id === 'string' && e.plan_id.length > 0) ev.plan_id = e.plan_id;
+      return ev;
+    }
+    case 'mark': {
+      // ALLOWLIST (plan 053): pick the two shape-guarded slugs + REBUILD the counts
+      // map (never spread) — `buildMarkEvent` already gated `mark_kind`/`verdict` to
+      // the slug shape and the counts to non-negative integers, so no free text can
+      // reach the output (AC-05). Zero/non-finite counts are dropped (artifact parity).
+      const counts: Record<string, number> = {};
+      for (const [k, v] of Object.entries(e.counts)) {
+        const n = num(v);
+        if (n !== undefined) counts[k] = n;
+      }
+      const ev: Event = { ...base, kind: 'mark', mark_kind: e.mark_kind, counts };
+      if (typeof e.verdict === 'string') ev.verdict = e.verdict;
       return ev;
     }
     default:

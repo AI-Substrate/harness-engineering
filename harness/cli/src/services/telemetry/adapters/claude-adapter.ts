@@ -1,4 +1,9 @@
-import { commandSignatures, harnessSubcommand } from '../command-signature.js';
+import {
+  commandSignatures,
+  harnessSubcommand,
+  shellSignature,
+  skillDigitArg,
+} from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event } from '../events.js';
 import { outcomeEvents } from '../outcome-events.js';
@@ -49,6 +54,16 @@ function toolResultText(content: unknown): string {
       .join('');
   }
   return '';
+}
+
+/**
+ * A privacy-safe token-count ESTIMATE of a `tool_result` payload (FX003) — a
+ * char/4 heuristic over its size, NEVER the content and NEVER a tokenizer (per
+ * memory: tiktoken mis-counts for Claude, and this is a proxy, not a billing
+ * figure). Only the resulting number is ever kept.
+ */
+function estimateResultTokens(text: string): number {
+  return Math.ceil(text.length / 4);
 }
 
 /**
@@ -174,6 +189,9 @@ export const claudeAdapter: HarnessAdapter = {
     // `timestamp` (real transcripts do; a timestamp-less source → event_stream null).
     const direct: Event[] = [];
     const toolCalls: ToolCall[] = [];
+    // FX003: tool_use id → its ToolCall, so the correlated tool_result's payload
+    // size can be back-filled onto the call once the result line arrives.
+    const callById = new Map<string, ToolCall>();
     const skillOpens: SkillOpen[] = [];
     const commandObs: { cmd: string; t: string }[] = [];
     let anyTs = false;
@@ -267,11 +285,19 @@ export const claudeAdapter: HarnessAdapter = {
           } else if (block.type === 'tool_use') {
             const name = typeof block.name === 'string' ? block.name : 'unknown';
             increment(tools, name);
-            if (ts !== null) toolCalls.push({ name, t: ts });
             const tInput = (block.input as Record<string, unknown> | undefined) ?? {};
+            // FX001-A: a shell tool's non-harness command signature (kept, not
+            // discarded) → keys its burst; harness verbs stay separate below.
+            let signature: string | undefined;
             if (name === 'Skill' && typeof tInput.skill === 'string') {
               increment(skills, tInput.skill);
-              if (ts !== null) skillOpens.push({ name: tInput.skill, t: ts });
+              // FX001-B: only a LEADING pure-digit positional survives (P12).
+              const arg = skillDigitArg(tInput.args);
+              if (ts !== null) {
+                const open: SkillOpen = { name: tInput.skill, t: ts };
+                if (arg !== undefined) open.arg = arg;
+                skillOpens.push(open);
+              }
             } else if (name === 'Agent') {
               const id = typeof block.id === 'string' ? block.id : '';
               if (id !== '') {
@@ -285,6 +311,7 @@ export const claudeAdapter: HarnessAdapter = {
             } else if (name === 'Write' && typeof tInput.file_path === 'string') {
               written.push(tInput.file_path);
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
+              signature = shellSignature(tInput.command);
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
               // Mark this Bash call as a harness invocation so ONLY its result is
               // parsed for outcome events (companion F003).
@@ -295,6 +322,15 @@ export const claudeAdapter: HarnessAdapter = {
               ) {
                 harnessBashIds.add(id);
               }
+            }
+            if (ts !== null) {
+              const call: ToolCall = { name, t: ts };
+              if (signature !== undefined) call.signature = signature;
+              toolCalls.push(call);
+              // FX003: register by tool_use id so the correlated tool_result can
+              // back-fill its payload size onto this call.
+              const callId = typeof block.id === 'string' ? block.id : '';
+              if (callId !== '') callById.set(callId, call);
             }
           }
         }
@@ -307,6 +343,14 @@ export const claudeAdapter: HarnessAdapter = {
         for (const block of blocks) {
           if (block.type !== 'tool_result') continue;
           const refId = typeof block.tool_use_id === 'string' ? block.tool_use_id : '';
+
+          // FX003: size the correlated tool_result payload (a count-only estimate,
+          // never the text) and attach it to the launching call, so the report's
+          // command lens can byte-weight the input-split by the real dump size.
+          const sizedCall = callById.get(refId);
+          if (sizedCall !== undefined) {
+            sizedCall.result_tokens = estimateResultTokens(toolResultText(block.content));
+          }
 
           // Outcome events (AC-19): a harness command's result envelope → `checks`
           // and `command_exit` — ONLY for a tool_result produced by a harness Bash

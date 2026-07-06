@@ -204,7 +204,7 @@
     "intent": "First-class CLI-driven harness flow for eng-harness-flow: two mutually-exclusive flows (adopt + loop), chores-into-the-flow integration, schema + nav-mechanics docs, plus three validation agents (validate-harness-flow adapt, loop-flow-eval, flow-coexist-eval).",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   }
 }

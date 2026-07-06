@@ -138,6 +138,19 @@ describe('real claude fixture → segment (AC-01)', () => {
     }
     expect(seg.rollup).not.toBeNull();
   });
+
+  it('FX001-A (real corpus) — a non-harness command surfaces its program+verb signature', () => {
+    // The scrubbed claude capture runs real `git`/`gh` commands. MUTATION: dropping
+    // the kept signature in claude-adapter (never setting call.signature) makes every
+    // Bash tools event signature-less → `git commit` is no longer found → this fails.
+    const bashSigs = seg.event_stream
+      .filter((e): e is typeof e & { name: string; signature?: string } => e.kind === 'tools')
+      .map((e) => e.signature)
+      .filter((s): s is string => s !== undefined);
+    expect(bashSigs).toContain('git commit');
+    // P12: only program+verb ever survives — no signature carries a flag/path/quote.
+    for (const s of bashSigs) expect(s).toMatch(/^[a-z0-9._-]+( [a-z0-9._-]+)?$/i);
+  });
 });
 
 // ── copilot-cli (T003 · plan 2.2 · AC-03) ───────────────────────────────────
@@ -245,6 +258,22 @@ describe('real copilot-cli fixture → segment (AC-03)', () => {
     expect(seg.tokens).not.toBeNull();
     expect(seg.tokens?.grand_total ?? 0).toBeGreaterThan(0);
     expect(seg.event_stream.length).toBeGreaterThan(0);
+  });
+
+  it('FX001-A (real corpus) — a co-timed `harness …` stays a harness event; no bash signature (no double-count)', () => {
+    // The scrubbed copilot-cli capture is a `harness doctor` run: it must emit a
+    // `harness` event (verb `doctor`) and NO bash tools event may carry a signature
+    // — attaching one would both leak the harness verb onto bash AND double-count it
+    // against the HarnessEvent. MUTATION: returning `.harness[0]` from shellSignature
+    // sets the bash burst's signature to `doctor` → the undefined check flips RED.
+    expect(seg.event_stream.filter((e) => e.kind === 'harness')).toContainEqual(
+      expect.objectContaining({ kind: 'harness', verb: 'doctor' }),
+    );
+    const bashSigs = seg.event_stream
+      .filter((e): e is typeof e & { name: string; signature?: string } => e.kind === 'tools')
+      .filter((e) => e.name === 'bash' || e.name === 'shell')
+      .map((e) => e.signature);
+    expect(bashSigs.every((s) => s === undefined)).toBe(true);
   });
 });
 

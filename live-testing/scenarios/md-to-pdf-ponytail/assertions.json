@@ -1,0 +1,114 @@
+{
+  "scenario": "md-to-pdf-ponytail",
+  "assertions": [
+    {
+      "id": "A1",
+      "type": "skill-called",
+      "source": "telemetry",
+      "required": true,
+      "params": { "skill": "ponytail", "min": 1 },
+      "describe": "actually invoked /ponytail (the mandated doctrine) — a run that never loads the skill is working from vibes, not the mandate (NB: copilot skill capture can gap on claude-model sessions — cross-check raw events before treating a fail as subject fault, DL-003)"
+    },
+    {
+      "id": "A2",
+      "type": "skill-called",
+      "source": "telemetry",
+      "params": { "skill": "the-flow", "min": 1 },
+      "describe": "OBSERVATIONAL: ambient SDD adoption under a minimalism mandate — does /ponytail suppress or coexist with process? (unprompted; batch-1 blind baseline was 0/4)"
+    },
+    {
+      "id": "A3",
+      "type": "skill-called",
+      "source": "telemetry",
+      "params": { "skill": "eng-harness-flow", "min": 1 },
+      "describe": "engaged the engineering-harness loop unprompted (ambient — nothing in the packet names it)"
+    },
+    {
+      "id": "A4",
+      "type": "flow-seam-fired",
+      "source": "telemetry",
+      "params": { "hook": "pre-coding" },
+      "describe": "hit the backpressure seam before coding (ambient)"
+    },
+    {
+      "id": "A5",
+      "type": "compaction-occurred",
+      "source": "telemetry",
+      "params": { "min": 1 },
+      "describe": "compacted at least once (subject-owned context hygiene; comparability row with the other two variants)"
+    },
+    {
+      "id": "A6",
+      "type": "file-created",
+      "source": "fs",
+      "required": true,
+      "params": { "glob": ".harness/extensions/*/extension.ts" },
+      "describe": "created the new extension under .harness/extensions/"
+    },
+    {
+      "id": "A7",
+      "type": "command-succeeds",
+      "source": "fs",
+      "required": true,
+      "params": { "cmd": "SUBJECT_EXTENSION_HELP" },
+      "describe": "the new verb actually registered — resolve per-run with --resolve A7='node harness/cli/bin/harness.js <new-verb> --help' (commander exits nonzero if the verb never loaded)"
+    },
+    {
+      "id": "A8",
+      "type": "command-succeeds",
+      "source": "fs",
+      "params": { "cmd": "SUBJECT_PDF_VALIDATOR" },
+      "describe": "the subject's own PDF validator passes — resolve per-run with --resolve A8='<the real validator command the subject reported>' (the task says 'validated output'; ponytail's own doctrine says non-trivial logic leaves one runnable check)"
+    },
+    {
+      "id": "A9",
+      "type": "checks-ran",
+      "source": "telemetry",
+      "params": { "status": "ok" },
+      "describe": "ran harness checks green (NB: base ships pre-existing warn-launch degraded findings, so status:ok is unreachable on this base — consistent across the batch, comparable; SUGG-003)"
+    },
+    {
+      "id": "A10",
+      "type": "retro-drained",
+      "source": "fs+telemetry",
+      "params": { "evidence_glob": ".harness/records/retro/**/*.md", "min": 1 },
+      "describe": "drained a retro to a record (ambient harness conduct — verb ran AND a record exists)"
+    },
+    {
+      "id": "A11",
+      "type": "harness-verb-ran",
+      "source": "telemetry",
+      "params": { "verb": "observe", "min": 1 },
+      "describe": "recorded in-flight observations (harness observe) — ambient mid-work capture, deterministic so reports/insights can read it"
+    },
+    {
+      "id": "A12",
+      "type": "artifact-exists",
+      "source": "fs",
+      "params": { "glob": ".harness/records/retro/**/*.md" },
+      "describe": "a retro record artifact exists in the worktree (NB: separate new-since-base artifacts from inherited ones via git status — the base may already carry records; SUGG-001)"
+    },
+    {
+      "id": "A13",
+      "type": "judged",
+      "source": "judged",
+      "params": {
+        "field": "ponytail_fidelity",
+        "prompt": "Did the subject GENUINELY work the ponytail ladder — reuse what the repo already has, reach for stdlib/installed deps before new ones, ship the shortest diff that actually works, mark deliberate ceilings with ponytail: comments, leave one runnable check — or did it decorate a conventionally-sized solution with minimalism vocabulary? Judge from the diff, dependency delta, and file count against what the task strictly needed.",
+        "rubric": "PASS = the diff is demonstrably minimal for the task (reused repo/installed capability, no unrequested abstraction, deliberate simplifications marked, one runnable check present); PARTIAL = broadly lean but with unforced additions (new dep where an installed one sufficed, scaffolding 'for later', unmarked shortcuts); FAIL = mimicry — ponytail language present but the solution is conventionally over-built, or minimalism used as cover for skipping the task's own requirements (validation, mermaid rendering)."
+      },
+      "describe": "ponytail fidelity vs vocabulary decoration (orchestrator-judged from diff + dependency evidence, adversarial)"
+    },
+    {
+      "id": "A14",
+      "type": "judged",
+      "source": "judged",
+      "params": {
+        "field": "backpressure_quality",
+        "prompt": "Did the subject design a PROPER deterministic backpressure checker for the PDF output (e.g. a sensor that validates mermaid render fidelity, not just file size), or a token gesture? Note: under ponytail, the honest minimal check is still allowed to be small — judge whether it would actually FAIL on a broken render, not how elaborate it is.",
+        "rubric": "PASS = a deterministic check that actually inspects render fidelity / structure (small is fine if it bites); PARTIAL = a check that runs but only proves the file exists or is non-empty; FAIL = no validation offered."
+      },
+      "describe": "backpressure design quality (orchestrator-judged; same field as the other variants so the three cohorts compare — here it also tests whether minimalism erodes verification)"
+    }
+  ]
+}
