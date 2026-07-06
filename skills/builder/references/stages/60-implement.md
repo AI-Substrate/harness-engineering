@@ -1,0 +1,357 @@
+# implement
+
+> Sub-skill — part of a verb library. Knows nothing about any flow:
+> no stage ids, no successor/predecessor names, no flow commands.
+> Composition is the bundling flow's job.
+
+**Verb**: implement
+**Purpose**: Implement exactly one approved phase or subtask using the testing approach from the plan, with domain placement rules; keep the task table + execution log live; update domain.md files after implementation.
+**Consumes**: plan (`**Status**: READY`); Full Mode needs the phase's tasks dossier (`tasks/<phase-slug>/tasks.md`) with human GO given; Simple Mode uses inline plan tasks. Reads the plan's Testing Strategy, the task table, Context Brief / Key Findings, and domain context.
+**Flags**: `--plan "<abs path to plan.md>"` · `--phase "<Phase N: Title>"` (Full Mode) or omitted (Simple Mode) · `[--subtask "<ORD-subtask-slug>"]` · `[--companion]` (+ `[--companion-slug "<slug>"]`, default `code-review-companion`) — run with a live minih review companion (§ Companion mode)
+**Produces**: Code changes + tests per the plan's testing approach; `execution.log.md` with per-task entries; task table + Architecture Map kept current per task; domain.md/registry/domain-map updates; terminal report = unified diffs, evidence, domain files updated, final status vs acceptance criteria, suggested commit message.
+**Side effects**: updates `domain.md` / `registry.md` / `domain-map.md` after implementation (§4); keeps the task table + execution log live per task.
+**Delegates**: progress — per-task protocol after each completed task, and the final-task companion debrief; resolved via the Registry.
+
+---
+
+## Procedure
+
+Implement **exactly one** approved phase or subtask using the **testing approach from the plan**. Apply domain placement rules. Update domain.md files after implementation.
+
+> Elegance: code + the execution log are **output**. Log facts and evidence — what changed, why, the proof (diffs, test results, the task table carry the detail) — not a play-by-play monologue; prose only where it changes a decision or records a discovery. Doctrine + the seven-function line test: `references/00-routing.md` § Shared conventions.
+
+
+## 📝 LOG DISCOVERIES AS YOU GO
+
+Throughout implementation, capture discoveries in:
+1. **Execution Log** (`execution.log.md`) — detailed narrative
+2. **Discoveries Table** (`## Discoveries & Learnings` in tasks.md or plan) — structured record
+
+Log when you encounter: something unexpected, needed research, hit a trouble spot, found a gotcha, made a decision, introduced debt, or gained an insight.
+
+**Tag what a human must see before it ships.** Mark a Discoveries row `Deferred` when something was *consciously punted* — a skipped/blocked task, an unmet acceptance criterion, scope cut to a follow-up, a `TODO`/`FIXME`/`HACK` left in the code — and `Noteworthy` when you made a call a human might have made differently — an autonomous decision, a workaround, a new dependency, or a file touched outside the plan's Domain Manifest. The tag is the only new thing (no new file); the phase-end summary (step 5) and the downstream ship rollup both read these rows. It **never blocks** — it surfaces, so the go-decision is informed.
+
+
+## 🛑 MANDATORY: UPDATE PROGRESS AFTER EVERY TASK — NO EXCEPTIONS
+
+The user watches the task table and execution log for live progress. Keeping them current is **highest priority**.
+
+After EACH task you MUST update these locations before proceeding to the next task:
+
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Per-Task Progress Checklist — use this EVERY time, NO EXCEPTIONS    ┃
+┃                                                                     ┃
+┃ STARTING T00X:                                                      ┃
+┃ [ ] Tasks Table: [ ] → [~]                                          ┃
+┃ [ ] Architecture Map: T00X node → :::inprogress (orange)            ┃
+┃                                                                     ┃
+┃ COMPLETING T00X:                                                    ┃
+┃ [ ] Tasks Table: [~] → [x]                                          ┃
+┃ [ ] Architecture Map: T00X node → :::completed (green)              ┃
+┃ [ ] Architecture Map: File nodes touched → :::completed             ┃
+┃ [ ] Execution Log: append task entry with evidence                  ┃
+┃ [ ] Discoveries table: add any gotchas/insights found               ┃
+┃                                                                     ┃
+┃ IF BLOCKED:                                                         ┃
+┃ [ ] Tasks Table: mark task [!]; note the reason in the Execution Log┃
+┃ [ ] (When unblocked: change back to [~] and continue)               ┃
+┃                                                                     ┃
+┃ ALL TASKS COMPLETE:                                                 ┃
+┃ [ ] Tasks Table: confirm every phase task is [x]                    ┃
+┃ [ ] Execution Log: append a phase-complete summary                  ┃
+┃ [ ] PLAN progress section (if present): mark the phase complete     ┃
+┃                                                                     ┃
+┃ ✓ ALL UPDATES DONE → Proceed to next task                           ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Progress lives in the **task table** (in `tasks.md`, or inline in the plan for Simple Mode) and the **execution log** — there is no separate flight-plan file. The journey-level view (`the-flow.md`) is regenerated by `/the-flow` itself; this skill never writes it.
+
+DO NOT start the next task until ALL updates above are done.
+
+
+```md
+User input:
+
+$ARGUMENTS
+# Expected flags:
+# --phase "<Phase N: Title>" (Full Mode) or omitted (Simple Mode)
+# --plan "<abs path to plan.md>"
+# --subtask "<ORD-subtask-slug>" (optional)
+# --companion (optional — run with a live minih review companion; § Companion mode)
+# --companion-slug "<slug>" (optional, default: code-review-companion)
+
+1) Resolve paths:
+   PLAN = provided --plan
+   PLAN_DIR = dirname(PLAN)
+
+   **Mode Detection**: Read PLAN for `**Mode**: Simple` or `**Mode**: Full`
+
+   **Full Mode**:
+   - PHASE_DIR = PLAN_DIR/tasks/${PHASE_SLUG}
+   - PHASE_DOC = ${PHASE_DIR}/tasks.md
+   - EXEC_LOG = ${PHASE_DIR}/execution.log.md
+   - If --subtask: PHASE_DOC = ${PHASE_DIR}/${SUBTASK_KEY}.md
+
+   **Simple Mode**:
+   - Check for optional dossier: ${PLAN_DIR}/tasks/implementation/tasks.md
+   - If exists → PHASE_DOC = that file
+   - If not → PHASE_DOC = PLAN itself (inline tasks from § Implementation)
+   - EXEC_LOG = ${PLAN_DIR}/execution.log.md
+
+2) Load context:
+   - Read Testing Strategy from plan (approach + mock usage)
+   - Read task table from PHASE_DOC
+   - Read Context Brief / Key Findings for hazards to watch for
+   - **Load domain context** per `references/00-routing.md` § Domain context loading
+
+3) Execute tasks:
+   Follow task order. Apply testing approach from plan:
+
+   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+   ┃ 🛑 STOP! RE-READ "MANDATORY: UPDATE PROGRESS" SECTION ABOVE 🛑       ┃
+   ┃                                                                    ┃
+   ┃ After EACH task you MUST update ALL locations before proceeding:   ┃
+   ┃   1. Tasks Table checkbox                                          ┃
+   ┃   2. Architecture Map diagram nodes                                ┃
+   ┃   3. Execution log entry                                           ┃
+   ┃                                                                    ┃
+   ┃ The user is watching the task table + log — update them FIRST.     ┃
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+   **Full TDD**: RED-GREEN-REFACTOR loop per task
+   **Lightweight**: Minimal validation tests for core functionality
+   **Manual**: Document verification steps, execute manually
+   **Hybrid**: Apply approach per task annotation
+
+   ### Domain Placement Rules
+
+   1. Every new file MUST go under its declared domain's source directory
+   2. Contract files (public interfaces) go in the domain's contracts/ directory
+   3. Cross-domain imports MUST use the target domain's public contracts only
+      (never import from another domain's internals)
+   4. Dependency direction:
+      - business → infrastructure: ✅ allowed
+      - infrastructure → business: ❌ never
+      - business → business: ⚠️ contracts only
+   5. When creating a NEW domain (domain setup task):
+      - Create `docs/domains/<slug>/domain.md` using format from /extract-domain
+      - Create source directory structure
+      - Update `docs/domains/registry.md`
+
+4) After ALL tasks complete — update domain files:
+
+   For each domain touched by this phase:
+
+   a) **Update domain.md § History**:
+      ```markdown
+      | [plan-ordinal-slug] | [What changed — 1 line summary] | [today] |
+      ```
+
+   b) **Update domain.md § Composition** (if new services/adapters/repos created):
+      Add new rows to the composition table.
+
+   c) **Update domain.md § Contracts** (if public interface changed):
+      Add/modify contract entries.
+
+   d) **Update domain.md § Dependencies** (if new domain relationships formed):
+      Add to "This Domain Depends On" or "Domains That Depend On This".
+
+   e) **Update domain.md § Source Location** (if new files added):
+      Add file paths to source location listing.
+
+   f) **Update docs/domains/registry.md** if domain status changed.
+
+   g) **Update docs/domains/domain-map.md** if:
+      - New domain was created → add node with exposed contracts
+      - New contracts were added to existing domain → update node label
+      - New cross-domain dependency formed → add labeled edge
+      - Domain contracts changed → update the Health Summary table
+
+   h) **Update domain.md § Concepts** (if contracts changed or new domain):
+
+      For NEW domains:
+        - Create Concepts table from implemented contracts
+        - Group related contracts into named concepts (verb phrases)
+        - Add narrative + code example per concept (base on actual implemented code)
+
+      For CHANGED contracts:
+        - Add new concepts to table if new capabilities introduced
+        - Update existing concept narratives if entry points changed
+        - Update code examples to match new signatures
+
+      For UNCHANGED contracts: no Concepts updates needed.
+
+5) Output:
+   - Execution Log with per-task entries (write incrementally)
+   - Unified diffs for all touched files
+   - Evidence (test output, verification results)
+   - Domain files updated (domain.md changes listed)
+   - Final status mapped to acceptance criteria
+   - **Deferred & Noteworthy (this phase)** — a short, scannable digest of the `Deferred`/`Noteworthy` Discoveries rows + any skipped/blocked tasks, unmet ACs, and new `TODO`/`FIXME`/`HACK` markers in this phase's diff. Empty → omit it (silence is the all-clear). Emit it as a structured block so a reviewer can lift it verbatim; never a gate.
+   - Suggested commit message
+
+6) For each completed task, follow the **progress** sub-skill's protocol (the
+   delegation declared in this verb's **Delegates** field — resolve its module via
+   the Registry; auto-run, same flags per task: `--plan "<PLAN_PATH>"
+   --phase "<Phase N: Title>" --task "<task-id>" --status completed`).
+
+   For the **final task of the phase**, follow the **progress** sub-skill
+   with:
+   ```bash
+   --plan "<PLAN_PATH>" \
+   --phase "<Phase N: Title>" \
+   --task "<final-task-id>" \
+   --status completed
+   ```
+   (Companion-mode runs add the debrief flags to this final-task call — § Companion mode.)
+
+STOP: Report phase complete. Routing is the flow's job.
+```
+
+## Companion mode (`--companion`)
+
+> **Gate — read this first**: this entire section applies **only** when the `--companion` flag was passed (optionally with `--companion-slug "<slug>"`, default `code-review-companion`). Without the flag, **skip the whole section** — the verb runs exactly as specified above, unchanged. This mode owns the companion protocol; the agent narrating the flow never runs `minih` itself — the protocol below is executed here, inside this verb.
+
+**What it changes**: the phase runs with a parallel `code-review-companion` agent (Power-On-Mode) that **reviews every commit live**. Inline review at commit time beats post-hoc review — context is fresh, diffs are small, fixes are cheap, and the companion runs in its own SDK session/process (a *real* second pair of eyes). Pings are fire-and-forget (the companion replies only if it finds issues), so the hot path stays fast. A companion that reviewed every commit **supersedes a separate post-hoc review pass** — what that means for routing is the flow's call (its Graph carries the decoration), never this sub-skill's.
+
+**Fallbacks (never block the phase)**: `minih --version` fails → point the user at `https://github.com/AI-Substrate/minih` to install; if install isn't an option, log the deviation in EXEC_LOG and run this verb **without** companion mode (a post-hoc review pass becomes the recovery option). Boot fails twice (below) → same fallback. Agent slug doesn't exist → **halt and ask the user**; never silently fabricate a slug.
+
+### If you don't know minih
+
+Self-onboard with these resources **before** booting:
+
+| Resource | URL / command | When |
+|---|---|---|
+| **Full agent-author guide** | https://github.com/AI-Substrate/minih/blob/main/AGENTS_README.md | minih's surface area is new to you |
+| **Same guide, in-CLI** | `minih agent-readme` | Offline / fast — **prefer this over the URL** |
+| **Companion-mode protocol** | https://github.com/AI-Substrate/minih/blob/main/docs/how/companion-mode.md | Power-On-Mode details, farewell envelope shape, control signals |
+| **Top-level help** | `minih --help` | Confirm `minih` is on `$PATH` |
+| **Install (if missing)** | https://github.com/AI-Substrate/minih.git | Clone + follow the README |
+
+When writing execution-log references or briefing users, **link the canonical URLs above** so future readers can self-onboard the same way.
+
+### C0 — Boot or attach the companion (before any task)
+
+a) **Check for an active companion run:**
+
+   ```bash
+   COMPANION_SLUG="${companion_slug:-code-review-companion}"
+   RUN_ID=$(minih status "$COMPANION_SLUG" 2>/dev/null | jq -r '.data | select(.verdict == "active") | .runId')
+   ```
+
+   The `verdict: 'active'` filter is load-bearing — `minih status` defaults to "latest run" which may be a completed one from a prior session.
+
+b) **If no active run, boot one:**
+
+   ```bash
+   if [ -z "$RUN_ID" ]; then
+     export GH_TOKEN=$(gh auth token)   # required; the spawning shell needs this
+     minih run "$COMPANION_SLUG" &
+     sleep 12
+     RUN_ID=$(minih status "$COMPANION_SLUG" 2>/dev/null | jq -r '.data | select(.verdict == "active") | .runId')
+   fi
+   echo "Companion run: $RUN_ID"
+   ```
+
+   **Boot failure modes:**
+   - `E122 GH_TOKEN not set` → `export GH_TOKEN=$(gh auth token)` and retry. The Copilot CLI runtime doesn't reliably inherit; explicit export is required.
+   - Boot times out / no active run after 12s → wait another 30s, re-check. Still nothing after two attempts → **fall back to no-companion mode** (see Fallbacks above).
+   - Agent slug doesn't exist → halt and ask user. Do NOT silently fabricate a slug.
+
+c) **Verify the companion is alive:**
+
+   ```bash
+   minih status "$COMPANION_SLUG" 2>/dev/null | jq '.data | {verdict, currentlyRunningTool, selfReportedState}'
+   ```
+
+   If `verdict: 'dead'` after >30min silent — known false-positive when the companion is mid-tool-call. Check `currentlyRunningTool` and `selfReportedState` — both non-null = alive. Don't kill it.
+
+### C0a — Brief the companion (one-shot, type=briefing)
+
+Send ONE briefing message at session start:
+
+```bash
+minih outside inbox send "$COMPANION_SLUG" --run "$RUN_ID" \
+  --type briefing \
+  --subject "Plan <PLAN_SLUG>: <Phase Title> — Power On Mode start" \
+  --body "Plan: <abs path to plan.md>
+Spec: <abs path to spec.md>
+Phase: <Phase N: Title>
+Tasks doc: <abs path to tasks.md>
+
+Protocol:
+- I will ping at every per-task commit boundary as type=task with subject 'review-request: T### <sha>'
+- Fire-and-forget; reply only if you find issues
+- I'll send a final drain ping then control:stop when the phase is done
+
+Hazards (from Key Findings):
+- <hazard 1>
+- <hazard 2>
+
+Domain context:
+- <domain 1> + <expectations from domain.md>
+- <domain 2> + <expectations>
+
+Please watch for: domain compliance violations, contract drift, anti-reinvention overlaps, scope creep beyond the task table."
+```
+
+Brief once. Don't re-brief mid-phase unless the scope materially changes (then send a `--type briefing` update with a new subject).
+
+### Per-task companion ping (after commit, before the next task)
+
+For each task that produces a commit — this rides on top of the per-task progress checklist above:
+
+```bash
+SHA=$(git rev-parse --short HEAD)
+minih outside inbox send "$COMPANION_SLUG" --run "$RUN_ID" \
+  --type task \
+  --subject "review-request: T### $SHA" \
+  --body "Diff: git show $SHA. Watch for: <task-specific concerns, e.g., domain boundary, contract change, scope drift>. Reply if you find issues."
+```
+
+**Fire-and-forget.** Do NOT wait for a reply before starting the next task. **Always log companion findings** in EXEC_LOG with their `ackOf` mapping back to the review-request you sent.
+
+### Skim the companion inbox between tasks (cheap)
+
+```bash
+minih outside inbox list "$COMPANION_SLUG" --run "$RUN_ID" --since "<last check ts>" 2>/dev/null
+```
+
+- **No new messages** → proceed to the next task immediately.
+- **New `finding`-typed message** → read it. `severity: HIGH|CRITICAL` → address inline before the next task. `MEDIUM|LOW` → queue for end-of-phase or address opportunistically. Either way, log the finding with its `ackOf` mapping.
+- **New `summary` APPROVE** → log it; proceed.
+
+### Handling companion findings inline
+
+1. Read the full finding (file:line, category, recommendation).
+2. Decide: fix now, fix at end of phase, or document deferral with reasoning.
+3. If fixing: make the fix, commit it (typically a `fix:` commit), and ping the new sha as another `review-request: <topic> <new-sha>`. The companion verifies the fix.
+4. If deferring: log the finding ID + reasoning in EXEC_LOG so the end-of-phase reconciliation can surface it.
+
+### Final task — the companion debrief
+
+At end of phase (after the last task's commit + ping has settled), the final-task **progress** delegation (step 6 above) gains the companion debrief flags:
+
+```bash
+--plan "<PLAN_PATH>" \
+--phase "<Phase N: Title>" \
+--task "<final-task-id>" \
+--status completed \
+--companion-run-id "$RUN_ID" \
+--companion-slug "$COMPANION_SLUG"
+```
+
+The progress sub-skill's Step 9 then handles the entire debrief automatically: drain ping → wait → `control:stop` → read farewell envelope → reconcile findings (using the disposition log you kept during the phase) → surface the companion's magicWand as a follow-up candidate. **You don't run the drain ping, stop, or farewell read yourself** — they live in the progress sub-skill; it is the single source of truth for the debrief.
+
+**If the companion died mid-phase** (verdict became `stale` or `completed` before the final ping): pass `--companion-run-id` anyway. Step 9 detects the dead session via `minih status`, logs the deviation, skips drain/stop, and still attempts the farewell read.
+
+### Companion outputs (added to step 5's report)
+
+- **Companion findings reconciliation table** — prepared in EXEC_LOG during the phase; surfaced in the final summary by the progress sub-skill's Step 9
+- **Companion farewell summary** + **magicWand** (if present) — surfaced by Step 9; consider filing the magicWand as a fix dossier or backlog item before the next phase
+
+A companion-mode phase ends the same way as a standard one — the report just carries the extra companion artifacts above, and a separate post-hoc review pass is redundant (the flow's Graph knows).
+
+## Exit
+
+Print the output-contract summary (✅ block: what was produced, where, key fields). Then STOP. Do not name a next stage. If invoked standalone, end with exactly: "Routing is the flow's job — run the parent flow bare to continue."

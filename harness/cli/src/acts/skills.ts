@@ -1,31 +1,41 @@
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
+import type { EnvPort } from '../adapters/env/env-port.js';
 import type { ExecPort } from '../adapters/exec/exec-port.js';
+import type { FsPort } from '../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
 import { formatDegraded, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import {
-  DEFAULT_SKILLS_SOURCE,
   KNOWN_SKILL_TARGETS,
   LEGACY_SKILL_SLUGS,
+  PACKAGED_SKILLS_SOURCE,
   type SkillsInstallOptions,
   type SkillsRemoveOptions,
 } from '../services/skills/contract.js';
 import {
+  type SkillsLockScope,
+  skillsLockPath,
+  writeMergedSkillsLock,
+} from '../services/skills/skills-lock.js';
+import {
   buildInstallArgv,
   buildRemoveArgv,
   formatInstallCommand,
+  resolvePackagedSkillsDir,
   resolveSkillsSource,
 } from '../services/skills/skills-service.js';
 
 const SKILLS_DOCS_URL = 'https://github.com/vercel-labs/skills';
 const MAX_STDERR_TAIL = 800;
 
-/** The ports the `skills` act injects — a subset of VerbActDeps (no fs/git/env needed). */
+/** The ports the `skills` act injects — a subset of VerbActDeps (no git/background needed). */
 export interface SkillsActDeps {
   exec: ExecPort;
+  fs: FsPort;
+  env: EnvPort;
   proc: ProcessPort;
   clock: Clock;
 }
@@ -72,6 +82,81 @@ function failInvalidArgs(
           },
         };
   exitWithEnvelope(envelope, port);
+}
+
+function failSkillsInstall(
+  io: CliIo,
+  deps: SkillsActDeps,
+  label: string,
+  message: string,
+  next_action: string,
+  details?: unknown,
+): void {
+  const envelope = formatError('skills', ErrorCodes.SKILLS_INSTALL_FAILED, message, deps.clock, {
+    next_action,
+    ...(details !== undefined && { details }),
+  });
+  const port: OutputPort =
+    io.mode === 'json'
+      ? createOutputPort('json', io.writers)
+      : {
+          emit: (e) => {
+            io.writers.err(`${label}: ${e.error?.message ?? 'failed'}\n`);
+            if (e.next_action) io.writers.err(`  → ${e.next_action}\n`);
+          },
+        };
+  exitWithEnvelope(envelope, port);
+}
+
+type PreparedSource =
+  | { ok: true; source: string; lockSource: string; branch?: string; tempDir?: string }
+  | { ok: false; reason: string };
+
+function prepareSkillsSource(
+  deps: SkillsActDeps,
+  rawSource: string,
+  branch?: string,
+): PreparedSource {
+  const resolved = resolveSkillsSource(rawSource, branch);
+  if (!resolved.ok) return resolved;
+  if (resolved.source !== PACKAGED_SKILLS_SOURCE) {
+    return {
+      ok: true,
+      source: resolved.source,
+      lockSource: resolved.source,
+      ...(resolved.branch ? { branch: resolved.branch } : {}),
+    };
+  }
+
+  const tempDir = deps.fs.mkdtemp('harness-skills-');
+  const packagedDir = resolvePackagedSkillsDir();
+  if (!deps.fs.copyDir(packagedDir, tempDir)) {
+    return {
+      ok: false,
+      reason: `could not stage packaged skills from ${packagedDir} into ${tempDir}.`,
+    };
+  }
+  return { ok: true, source: tempDir, lockSource: PACKAGED_SKILLS_SOURCE, tempDir };
+}
+
+function scopeFor(global: boolean): SkillsLockScope {
+  return global ? 'global' : 'project';
+}
+
+function writeInstallLock(
+  deps: SkillsActDeps,
+  input: {
+    source: string;
+    targets: string[];
+    global: boolean;
+  },
+): boolean {
+  const scope = scopeFor(input.global);
+  return writeMergedSkillsLock({
+    fs: deps.fs,
+    path: skillsLockPath({ cwd: deps.proc.cwd(), env: deps.env, scope }),
+    entry: { scope, source: input.source, targets: input.targets },
+  });
 }
 
 /**
@@ -131,7 +216,11 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
     )
     .option('-t, --target <cli...>', `CLI target(s), repeatable: ${KNOWN_SKILL_TARGETS.join(', ')}`)
     .option('-g, --global', 'install globally (omit for a project-local install)')
-    .option('--source <repo>', 'skills source (owner/repo or local path)', DEFAULT_SKILLS_SOURCE)
+    .option(
+      '--source <repo>',
+      'skills source (default: packaged; accepts owner/repo or local path)',
+      PACKAGED_SKILLS_SOURCE,
+    )
     .option(
       '-b, --branch <ref>',
       'install from a branch (single-segment; rewrites a GitHub source to /tree/<ref>). Also accepted as --source owner/repo#ref',
@@ -156,22 +245,30 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
         return;
       }
 
-      // Resolve --source (+ --branch / a `#ref` suffix) into the specifier the
-      // Vercel installer truly accepts (a GitHub /tree/<ref> URL for a branch).
-      const resolved = resolveSkillsSource(opts.source, opts.branch);
-      if (!resolved.ok) {
+      const prepared = prepareSkillsSource(deps, opts.source, opts.branch);
+      if (!prepared.ok) {
+        if (opts.source === PACKAGED_SKILLS_SOURCE && opts.branch === undefined) {
+          failSkillsInstall(
+            io,
+            deps,
+            'harness skills install',
+            prepared.reason,
+            'Verify the npm package contains skills/ (run `npm pack --dry-run`) and retry.',
+          );
+          return;
+        }
         failInvalidArgs(
           io,
           deps,
           'harness skills install',
-          resolved.reason,
-          `Re-run with a valid source/branch. ${resolved.reason}`,
+          prepared.reason,
+          `Re-run with a valid source/branch. ${prepared.reason}`,
         );
         return;
       }
 
       const installOpts: SkillsInstallOptions = {
-        source: resolved.source,
+        source: prepared.source,
         targets,
         global: Boolean(opts.global),
         skills: opts.skill,
@@ -197,8 +294,14 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
             command,
             targets,
             global: Boolean(opts.global),
-            source: resolved.source,
-            ...(resolved.branch ? { branch: resolved.branch } : {}),
+            source: prepared.lockSource,
+            ...(prepared.tempDir ? { staged_source: prepared.source } : {}),
+            ...(prepared.branch ? { branch: prepared.branch } : {}),
+            lock_written: writeInstallLock(deps, {
+              source: prepared.lockSource,
+              targets,
+              global: Boolean(opts.global),
+            }),
             installer: SKILLS_DOCS_URL,
           },
           deps.clock,
@@ -251,7 +354,11 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
     )
     .option('-t, --target <cli...>', `CLI target(s), repeatable: ${KNOWN_SKILL_TARGETS.join(', ')}`)
     .option('-g, --global', 'update the global install (omit for a project-local update)')
-    .option('--source <repo>', 'skills source (owner/repo or local path)', DEFAULT_SKILLS_SOURCE)
+    .option(
+      '--source <repo>',
+      'skills source (default: packaged; accepts owner/repo or local path)',
+      PACKAGED_SKILLS_SOURCE,
+    )
     .option(
       '-b, --branch <ref>',
       'update from a branch (single-segment; rewrites a GitHub source to /tree/<ref>). Also accepted as --source owner/repo#ref',
@@ -274,20 +381,30 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
         return;
       }
 
-      const resolved = resolveSkillsSource(opts.source, opts.branch);
-      if (!resolved.ok) {
+      const prepared = prepareSkillsSource(deps, opts.source, opts.branch);
+      if (!prepared.ok) {
+        if (opts.source === PACKAGED_SKILLS_SOURCE && opts.branch === undefined) {
+          failSkillsInstall(
+            io,
+            deps,
+            'harness skills update',
+            prepared.reason,
+            'Verify the npm package contains skills/ (run `npm pack --dry-run`) and retry.',
+          );
+          return;
+        }
         failInvalidArgs(
           io,
           deps,
           'harness skills update',
-          resolved.reason,
-          `Re-run with a valid source/branch. ${resolved.reason}`,
+          prepared.reason,
+          `Re-run with a valid source/branch. ${prepared.reason}`,
         );
         return;
       }
 
       const global = Boolean(opts.global);
-      const refreshArgv = buildInstallArgv({ source: resolved.source, targets, global });
+      const refreshArgv = buildInstallArgv({ source: prepared.source, targets, global });
       const refreshCommand = formatInstallCommand(refreshArgv);
       const removeOpts: SkillsRemoveOptions = { slugs: [...LEGACY_SKILL_SLUGS], targets, global };
       const pruneArgv = buildRemoveArgv(removeOpts);
@@ -347,17 +464,30 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
         pruned_candidates: [...LEGACY_SKILL_SLUGS],
         targets,
         global,
-        source: resolved.source,
-        ...(resolved.branch ? { branch: resolved.branch } : {}),
+        source: prepared.lockSource,
+        ...(prepared.tempDir ? { staged_source: prepared.source } : {}),
+        ...(prepared.branch ? { branch: prepared.branch } : {}),
         installer: SKILLS_DOCS_URL,
       };
 
       if (prune.ok) {
-        const envelope = formatOk('skills', baseData, deps.clock, {
-          next_action: `Skills updated for ${targets.join(
-            ', ',
-          )} — refreshed to latest and pruned renamed/removed slugs. Verify with your CLI's skills listing.`,
-        });
+        const envelope = formatOk(
+          'skills',
+          {
+            ...baseData,
+            lock_written: writeInstallLock(deps, {
+              source: prepared.lockSource,
+              targets,
+              global,
+            }),
+          },
+          deps.clock,
+          {
+            next_action: `Skills updated for ${targets.join(
+              ', ',
+            )} — refreshed to latest and pruned renamed/removed slugs. Verify with your CLI's skills listing.`,
+          },
+        );
         const port: OutputPort =
           io.mode === 'json'
             ? jsonPort()
@@ -380,6 +510,11 @@ export function registerSkillsAct(program: Command, io: CliIo, deps: SkillsActDe
         'skills',
         {
           ...baseData,
+          lock_written: writeInstallLock(deps, {
+            source: prepared.lockSource,
+            targets,
+            global,
+          }),
           prune_failed: true,
           prune_stderr_tail: prune.stderr.slice(-MAX_STDERR_TAIL),
         },

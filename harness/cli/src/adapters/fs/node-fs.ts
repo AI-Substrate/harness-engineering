@@ -1,5 +1,6 @@
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -57,6 +58,15 @@ export class NodeFs implements FsPort, FileSystemWritePort {
   removeDir(path: string): void {
     // Recursive + force: remove the whole tree, tolerate an already-gone dir.
     rmSync(path, { recursive: true, force: true });
+  }
+
+  copyDir(src: string, dest: string): boolean {
+    try {
+      cpSync(src, dest, { recursive: true });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   realpath(path: string): string | null {

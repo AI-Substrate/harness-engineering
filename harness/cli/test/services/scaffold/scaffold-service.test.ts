@@ -180,6 +180,14 @@ describe('scaffoldExtension — error paths (no file written on validation failu
       writeText: () => {
         throw new Error('EACCES');
       },
+      rename: () => {
+        throw new Error('EACCES');
+      },
+      deleteFile: () => {},
+      removeDir: () => {},
+      copyDir: () => false,
+      mkdtemp: () => '/tmp/fake',
+      realpath: () => null,
     };
     const out = scaffoldExtension(
       { name: 'greet' },

@@ -7,8 +7,13 @@ import { type ExecScript, FakeExec } from '../../src/adapters/exec/fake-exec.js'
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
-import { DEFAULT_SKILLS_SOURCE, LEGACY_SKILL_SLUGS } from '../../src/services/skills/contract.js';
-import { buildInstallArgv, buildRemoveArgv } from '../../src/services/skills/skills-service.js';
+import { LEGACY_SKILL_SLUGS, PACKAGED_SKILLS_SOURCE } from '../../src/services/skills/contract.js';
+import { serializeSkillsLock } from '../../src/services/skills/skills-lock.js';
+import {
+  buildInstallArgv,
+  buildRemoveArgv,
+  resolvePackagedSkillsDir,
+} from '../../src/services/skills/skills-service.js';
 
 const PKG = '@ai-substrate/engineering-harness';
 const VIEW = `npm view ${PKG} version --json`;
@@ -17,17 +22,19 @@ const INSTALL = (spec: string) => `npm i -g ${PKG}@${spec}`;
 interface RunOpts {
   scripts?: Record<string, ExecScript>;
   installed?: string;
+  fs?: FakeFs;
 }
 
 async function run(
   argv: string[],
   mode: OutputMode,
   opts: RunOpts = {},
-): Promise<{ out: string; err: string; code: number; exec: FakeExec }> {
+): Promise<{ out: string; err: string; code: number; exec: FakeExec; fs: FakeFs }> {
   const exec = new FakeExec(opts.scripts ?? {});
+  const fs = opts.fs ?? fakeSkillsFs();
   const deps: UpdateActDeps = {
     exec,
-    fs: new FakeFs(),
+    fs,
     env: new FakeEnv({}, '/home/u'),
     clock: new FakeClock('2026-06-15T00:00:00.000Z'),
     proc: new FakeProcess({}, '/repo'),
@@ -51,10 +58,25 @@ async function run(
   const program = new Command().exitOverride();
   registerUpdateAct(program, io, deps, opts.installed ?? '0.2.0');
   await expect(program.parseAsync(['node', 'harness', ...argv])).rejects.toThrow(/^exit:/);
-  return { out, err, code, exec };
+  return { out, err, code, exec, fs };
 }
 
 const execLine = (c: { command: string; args: string[] }) => `${c.command} ${c.args.join(' ')}`;
+const packagedDir = resolvePackagedSkillsDir();
+
+function fakeSkillsFs(extraFiles: Record<string, string> = {}): FakeFs {
+  return new FakeFs(
+    {
+      [`${packagedDir}/eng-harness-flow/SKILL.md`]: '---\nname: eng-harness-flow\n---\n',
+      [`${packagedDir}/README.md`]: '# skills\n',
+      ...extraFiles,
+    },
+    {
+      [packagedDir]: ['README.md', 'eng-harness-flow'],
+      [`${packagedDir}/eng-harness-flow`]: ['SKILL.md'],
+    },
+  );
+}
 
 describe('harness update --check (report-only)', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -232,7 +254,7 @@ describe('harness update — skills reconcile (--target)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   const refreshKey = (t: string[], g = false) =>
-    `npx ${buildInstallArgv({ source: DEFAULT_SKILLS_SOURCE, targets: t, global: g }).join(' ')}`;
+    `npx ${buildInstallArgv({ source: '/tmp/harness-skills-0', targets: t, global: g }).join(' ')}`;
   const pruneKey = (t: string[], g = false) =>
     `npx ${buildRemoveArgv({ slugs: [...LEGACY_SKILL_SLUGS], targets: t, global: g }).join(' ')}`;
 
@@ -252,6 +274,7 @@ describe('harness update — skills reconcile (--target)', () => {
     expect(code).toBe(0);
     const npx = exec.calls.filter((c) => c.command === 'npx');
     expect(npx.map((c) => c.args[1])).toEqual(['add', 'remove']); // refresh then prune
+    expect(npx[0]?.args[2]).toBe('/tmp/harness-skills-0');
   });
 
   it('refresh succeeds but prune fails ⇒ degraded, exit 0 (AC14)', async () => {
@@ -297,5 +320,88 @@ describe('harness update — skills reconcile (--target)', () => {
     expect(env.data.skills.prune_candidates.length).toBeGreaterThan(0);
     expect(env.data.skills.suggested_command).toContain('harness skills update --target');
     expect(exec.calls.some((c) => c.command === 'npx')).toBe(false);
+  });
+
+  it('bare update reads the project skills lock and reconciles its targets when already latest', async () => {
+    const fs = fakeSkillsFs({
+      '/repo/.harness/skills.lock.json': serializeSkillsLock({
+        lockfile_version: 1,
+        installs: [{ scope: 'project', source: PACKAGED_SKILLS_SOURCE, targets: ['codex'] }],
+      }),
+    });
+    const { out, code, exec } = await run(['update'], 'json', {
+      fs,
+      scripts: { [VIEW]: { code: 0, stdout: '"0.2.0"' } },
+    });
+
+    expect(code).toBe(0);
+    const env = JSON.parse(out);
+    expect(env.data.skills).toMatchObject({
+      reconciled: true,
+      targets: ['codex'],
+      source: PACKAGED_SKILLS_SOURCE,
+    });
+    expect(exec.calls.map(execLine)).toEqual([
+      VIEW,
+      'npx skills@latest add /tmp/harness-skills-0 -a codex -y',
+      pruneKey(['codex']),
+    ]);
+  });
+
+  it('after a binary upgrade, bare update re-execs the fresh harness skills update child instead of reconciling in-process', async () => {
+    const fs = fakeSkillsFs({
+      '/repo/.harness/skills.lock.json': serializeSkillsLock({
+        lockfile_version: 1,
+        installs: [{ scope: 'project', source: PACKAGED_SKILLS_SOURCE, targets: ['codex'] }],
+      }),
+    });
+    const { out, code, exec } = await run(['update'], 'json', {
+      fs,
+      scripts: { [VIEW]: { code: 0, stdout: '"0.3.0"' }, [INSTALL('latest')]: { code: 0 } },
+    });
+
+    expect(code).toBe(0);
+    expect(JSON.parse(out).data.skills).toMatchObject({
+      reconciled: true,
+      reexec: true,
+      targets: ['codex'],
+    });
+    expect(exec.calls.map(execLine)).toEqual([
+      VIEW,
+      INSTALL('latest'),
+      'harness skills update --target codex',
+    ]);
+  });
+
+  // U-1 (review 055): a registry-lookup MISS (latest=null) still installs & upgrades;
+  // the binary is now fresh, so skills must reconcile via the re-exec child, NOT
+  // in-process (which would stage stale skills from the pre-upgrade package).
+  it('re-execs the fresh child even when the registry lookup failed (latest null but install ran)', async () => {
+    const fs = fakeSkillsFs({
+      '/repo/.harness/skills.lock.json': serializeSkillsLock({
+        lockfile_version: 1,
+        installs: [{ scope: 'project', source: PACKAGED_SKILLS_SOURCE, targets: ['codex'] }],
+      }),
+    });
+    const { out, code, exec } = await run(['update'], 'json', {
+      fs,
+      // VIEW fails ⇒ result.latest === null ⇒ installed_after === null; INSTALL still succeeds.
+      scripts: {
+        [VIEW]: { code: 1, stderr: 'E401 Unauthorized' },
+        [INSTALL('latest')]: { code: 0 },
+      },
+    });
+
+    expect(code).toBe(0);
+    expect(JSON.parse(out).data.skills).toMatchObject({
+      reconciled: true,
+      reexec: true,
+      targets: ['codex'],
+    });
+    expect(exec.calls.map(execLine)).toEqual([
+      VIEW,
+      INSTALL('latest'),
+      'harness skills update --target codex',
+    ]);
   });
 });

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import type { SkillsInstallOptions, SkillsRemoveOptions } from './contract.js';
 
 /**
@@ -13,6 +14,10 @@ export type SkillsSourceResolution =
 const GH_SHORTHAND = /^([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)(?:\/(.+))?$/;
 /** A bare GitHub repo URL (`https://github.com/owner/repo`, optional `.git` / trailing slash) — no further path. */
 const GH_URL = /^https?:\/\/github\.com\/([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+?)(?:\.git)?\/?$/;
+
+export function resolvePackagedSkillsDir(moduleUrl = import.meta.url): string {
+  return fileURLToPath(new URL('../../../../../skills', moduleUrl));
+}
 
 /**
  * Translate a friendly `--source` (+ optional `--branch`, or a `#ref` suffix on

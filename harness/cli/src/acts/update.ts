@@ -10,14 +10,21 @@ import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import {
-  DEFAULT_SKILLS_SOURCE,
   KNOWN_SKILL_TARGETS,
   LEGACY_SKILL_SLUGS,
+  PACKAGED_SKILLS_SOURCE,
 } from '../services/skills/contract.js';
+import {
+  readSkillsLockFile,
+  type SkillsLockScope,
+  skillsLockPath,
+  writeMergedSkillsLock,
+} from '../services/skills/skills-lock.js';
 import {
   buildInstallArgv,
   buildRemoveArgv,
   formatInstallCommand,
+  resolvePackagedSkillsDir,
 } from '../services/skills/skills-service.js';
 import { PACKAGE_NAME } from '../services/update/constants.js';
 import {
@@ -47,6 +54,12 @@ interface UpdateOpts {
   global?: boolean;
 }
 
+interface SkillsReconcilePlan {
+  targets: string[];
+  global: boolean;
+  source: string;
+}
+
 /** Outcome of the binary (CLI) part of `update` — built without exiting so it can be combined with skills. */
 interface BinaryOutcome {
   status: Status;
@@ -70,6 +83,167 @@ interface SkillsOutcome {
 const severity = (s: Status): number =>
   s === 'error' ? 3 : s === 'unconfigured' ? 2 : s === 'degraded' ? 1 : 0;
 const worst = (a: Status, b: Status): Status => (severity(a) >= severity(b) ? a : b);
+
+function scopeFor(global: boolean): SkillsLockScope {
+  return global ? 'global' : 'project';
+}
+
+function planCommandArgs(plan: SkillsReconcilePlan): string[] {
+  const args = ['skills', 'update', '--target', ...plan.targets];
+  if (plan.global) args.push('--global');
+  if (plan.source !== PACKAGED_SKILLS_SOURCE) args.push('--source', plan.source);
+  return args;
+}
+
+function collectLockedPlans(deps: UpdateActDeps): SkillsReconcilePlan[] {
+  const cwd = deps.proc.cwd();
+  const project = readSkillsLockFile(
+    deps.fs,
+    skillsLockPath({ cwd, env: deps.env, scope: 'project' }),
+  ).installs.filter((i) => i.scope === 'project');
+  const global = readSkillsLockFile(
+    deps.fs,
+    skillsLockPath({ cwd, env: deps.env, scope: 'global' }),
+  ).installs.filter((i) => i.scope === 'global');
+  return [...project, ...global].map((entry) => ({
+    targets: entry.targets,
+    global: entry.scope === 'global',
+    source: entry.source,
+  }));
+}
+
+function plansFor(deps: UpdateActDeps, opts: UpdateOpts): SkillsReconcilePlan[] {
+  const targets = opts.target ?? [];
+  if (targets.length > 0) {
+    return [{ targets, global: Boolean(opts.global), source: PACKAGED_SKILLS_SOURCE }];
+  }
+  return collectLockedPlans(deps);
+}
+
+function stageSkillsSource(
+  deps: UpdateActDeps,
+  plan: SkillsReconcilePlan,
+): { ok: true; source: string; staged?: string } | { ok: false; reason: string } {
+  if (plan.source !== PACKAGED_SKILLS_SOURCE) return { ok: true, source: plan.source };
+  const staged = deps.fs.mkdtemp('harness-skills-');
+  const packagedDir = resolvePackagedSkillsDir();
+  if (!deps.fs.copyDir(packagedDir, staged)) {
+    return {
+      ok: false,
+      reason: `could not stage packaged skills from ${packagedDir} into ${staged}.`,
+    };
+  }
+  return { ok: true, source: staged, staged };
+}
+
+function writeExplicitTargetLock(deps: UpdateActDeps, plan: SkillsReconcilePlan): boolean {
+  const scope = scopeFor(plan.global);
+  return writeMergedSkillsLock({
+    fs: deps.fs,
+    path: skillsLockPath({ cwd: deps.proc.cwd(), env: deps.env, scope }),
+    entry: { scope, source: plan.source, targets: plan.targets },
+  });
+}
+
+async function reconcilePlanInProcess(
+  io: CliIo,
+  deps: UpdateActDeps,
+  plan: SkillsReconcilePlan,
+  explicitTargets: boolean,
+): Promise<SkillsOutcome> {
+  const staged = stageSkillsSource(deps, plan);
+  if (!staged.ok) {
+    return {
+      status: 'error',
+      skills: {
+        reconciled: true,
+        refreshed: false,
+        pruned: false,
+        targets: plan.targets,
+        global: plan.global,
+        source: plan.source,
+        stage_error: staged.reason,
+      },
+      next_action: 'Verify the npm package contains skills/ (run `npm pack --dry-run`) and retry.',
+      summary: `skills: staging failed (${plan.targets.join(', ')})`,
+    };
+  }
+
+  const targets = plan.targets;
+  const global = plan.global;
+  const refreshArgv = buildInstallArgv({ source: staged.source, targets, global });
+  const refreshCommand = formatInstallCommand(refreshArgv);
+  const pruneArgv = buildRemoveArgv({ slugs: [...LEGACY_SKILL_SLUGS], targets, global });
+  const pruneCommand = formatInstallCommand(pruneArgv);
+  if (io.mode !== 'json') {
+    io.writers.err(
+      `harness update — reconciling skills:\n  ${refreshCommand}\n  ${pruneCommand}\n`,
+    );
+  }
+  const cwd = deps.proc.cwd();
+
+  const refresh = await deps.exec.run('npx', refreshArgv, { cwd });
+  if (!refresh.ok) {
+    return {
+      status: 'error',
+      skills: {
+        reconciled: true,
+        refreshed: false,
+        pruned: false,
+        targets,
+        global,
+        source: plan.source,
+        ...(staged.staged ? { staged_source: staged.staged } : {}),
+        refresh_command: refreshCommand,
+        stderr_tail: refresh.stderr.slice(-MAX_STDERR_TAIL),
+      },
+      next_action: `Skills refresh failed (exit ${refresh.code}); skills left unchanged. Re-run: ${refreshCommand}`,
+      summary: `skills: refresh failed (${targets.join(', ')})`,
+    };
+  }
+
+  const prune = await deps.exec.run('npx', pruneArgv, { cwd });
+  const lockWritten = explicitTargets ? writeExplicitTargetLock(deps, plan) : undefined;
+  if (prune.ok) {
+    return {
+      status: 'ok',
+      skills: {
+        reconciled: true,
+        refreshed: true,
+        pruned: true,
+        targets,
+        global,
+        source: plan.source,
+        ...(staged.staged ? { staged_source: staged.staged } : {}),
+        ...(lockWritten !== undefined ? { lock_written: lockWritten } : {}),
+        refresh_command: refreshCommand,
+        prune_command: pruneCommand,
+        pruned_candidates: [...LEGACY_SKILL_SLUGS],
+      },
+      next_action: `Skills reconciled for ${targets.join(', ')} (refreshed + pruned).`,
+      summary: `skills: reconciled (${targets.join(', ')}) — refreshed + pruned`,
+    };
+  }
+
+  return {
+    status: 'degraded',
+    skills: {
+      reconciled: true,
+      refreshed: true,
+      pruned: false,
+      targets,
+      global,
+      source: plan.source,
+      ...(staged.staged ? { staged_source: staged.staged } : {}),
+      ...(lockWritten !== undefined ? { lock_written: lockWritten } : {}),
+      refresh_command: refreshCommand,
+      prune_command: pruneCommand,
+      prune_stderr_tail: prune.stderr.slice(-MAX_STDERR_TAIL),
+    },
+    next_action: `Skills refreshed but prune failed (exit ${prune.code}). Re-run the prune: ${pruneCommand}`,
+    summary: `skills: refreshed (${targets.join(', ')}); prune incomplete`,
+  };
+}
 
 /**
  * Run a global `npm i -g <pkg>@<spec>` and build the outcome (no exit). Announces
@@ -164,10 +338,11 @@ async function skillsOutcome(
   io: CliIo,
   deps: UpdateActDeps,
   opts: UpdateOpts,
+  binaryUpgraded: boolean,
 ): Promise<SkillsOutcome> {
-  const targets = opts.target ?? [];
-  const global = Boolean(opts.global);
-  const reconcile = !opts.check && targets.length > 0;
+  const plans = opts.check ? [] : plansFor(deps, opts);
+  const explicitTargets = (opts.target ?? []).length > 0;
+  const reconcile = !opts.check && plans.length > 0;
 
   if (!reconcile) {
     return {
@@ -182,69 +357,83 @@ async function skillsOutcome(
     };
   }
 
-  const refreshArgv = buildInstallArgv({ source: DEFAULT_SKILLS_SOURCE, targets, global });
-  const refreshCommand = formatInstallCommand(refreshArgv);
-  const pruneArgv = buildRemoveArgv({ slugs: [...LEGACY_SKILL_SLUGS], targets, global });
-  const pruneCommand = formatInstallCommand(pruneArgv);
-  if (io.mode !== 'json') {
-    io.writers.err(
-      `harness update — reconciling skills:\n  ${refreshCommand}\n  ${pruneCommand}\n`,
-    );
-  }
-  const cwd = deps.proc.cwd();
-
-  // Refresh first; if it fails we DON'T prune (existing skills stay intact).
-  const refresh = await deps.exec.run('npx', refreshArgv, { cwd });
-  if (!refresh.ok) {
-    return {
-      status: 'error',
-      skills: {
-        reconciled: true,
-        refreshed: false,
-        pruned: false,
-        targets,
-        global,
-        refresh_command: refreshCommand,
-        stderr_tail: refresh.stderr.slice(-MAX_STDERR_TAIL),
-      },
-      next_action: `Skills refresh failed (exit ${refresh.code}); skills left unchanged. Re-run: ${refreshCommand}`,
-      summary: `skills: refresh failed (${targets.join(', ')})`,
-    };
-  }
-
-  const prune = await deps.exec.run('npx', pruneArgv, { cwd });
-  if (prune.ok) {
+  if (binaryUpgraded) {
+    const commands: string[] = [];
+    for (const plan of plans) {
+      const args = planCommandArgs(plan);
+      const command = `harness ${args.join(' ')}`;
+      commands.push(command);
+      if (io.mode !== 'json') {
+        io.writers.err(`harness update — re-execing fresh binary for skills:\n  ${command}\n`);
+      }
+      const result = await deps.exec.run('harness', args, { cwd: deps.proc.cwd() });
+      if (!result.ok) {
+        return {
+          status: 'error',
+          skills: {
+            reconciled: true,
+            reexec: true,
+            refreshed: false,
+            pruned: false,
+            targets: plan.targets,
+            global: plan.global,
+            source: plan.source,
+            command,
+            stderr_tail: result.stderr.slice(-MAX_STDERR_TAIL),
+          },
+          next_action: `Fresh-binary skills reconcile failed (exit ${result.code}). Re-run: ${command}`,
+          summary: `skills: fresh-binary reconcile failed (${plan.targets.join(', ')})`,
+        };
+      }
+    }
+    const first = plans[0];
     return {
       status: 'ok',
       skills: {
         reconciled: true,
+        reexec: true,
         refreshed: true,
         pruned: true,
-        targets,
-        global,
-        refresh_command: refreshCommand,
-        prune_command: pruneCommand,
-        pruned_candidates: [...LEGACY_SKILL_SLUGS],
+        targets: first?.targets ?? [],
+        global: first?.global ?? false,
+        source: first?.source ?? PACKAGED_SKILLS_SOURCE,
+        commands,
+        ...(plans.length > 1 ? { plans } : {}),
       },
-      next_action: `Skills reconciled for ${targets.join(', ')} (refreshed + pruned).`,
-      summary: `skills: reconciled (${targets.join(', ')}) — refreshed + pruned`,
+      next_action:
+        'Skills reconciled by re-invoking the freshly-installed harness binary (fresh baked skills).',
+      summary: `skills: reconciled via fresh binary (${plans
+        .flatMap((p) => p.targets)
+        .join(', ')})`,
     };
   }
 
+  const outcomes: SkillsOutcome[] = [];
+  for (const plan of plans) {
+    const outcome = await reconcilePlanInProcess(io, deps, plan, explicitTargets);
+    if (outcome.status === 'error') return outcome;
+    outcomes.push(outcome);
+  }
+
+  if (outcomes.length === 1) return outcomes[0] as SkillsOutcome;
+
+  const status = outcomes.reduce<Status>((acc, item) => worst(acc, item.status), 'ok');
+  const plansData = outcomes.map((item) => item.skills);
+  const targets = plans.flatMap((plan) => plan.targets);
   return {
-    status: 'degraded',
+    status,
     skills: {
       reconciled: true,
-      refreshed: true,
-      pruned: false,
+      refreshed: outcomes.every((item) => item.skills.refreshed === true),
+      pruned: outcomes.every((item) => item.skills.pruned === true),
       targets,
-      global,
-      refresh_command: refreshCommand,
-      prune_command: pruneCommand,
-      prune_stderr_tail: prune.stderr.slice(-MAX_STDERR_TAIL),
+      plans: plansData,
     },
-    next_action: `Skills refreshed but prune failed (exit ${prune.code}). Re-run the prune: ${pruneCommand}`,
-    summary: `skills: refreshed (${targets.join(', ')}); prune incomplete`,
+    next_action:
+      status === 'degraded'
+        ? 'One or more skills prune steps failed; inspect skills.plans for the exact command to rerun.'
+        : `Skills reconciled for ${targets.join(', ')} (refreshed + pruned).`,
+    summary: `skills: reconciled (${targets.join(', ')})${status === 'degraded' ? '; prune incomplete' : ' — refreshed + pruned'}`,
   };
 }
 
@@ -355,7 +544,15 @@ export function registerUpdateAct(
         return;
       }
 
-      const skills = await skillsOutcome(io, deps, opts);
+      const before = binary.data.installed_before;
+      // U-1 (review 055): key the re-exec on "an install actually RAN", not a
+      // version delta. A registry-lookup miss yields `installed_after: null`
+      // even though `npm i -g @latest` still ran and upgraded the binary — a
+      // `before !== after` test would then wrongly reconcile skills IN-PROCESS
+      // (stale, from the pre-upgrade package). Only the already-latest early
+      // return skips the install; every other non-error path installed one.
+      const binaryUpgraded = binary.data.already_latest !== true && typeof before === 'string';
+      const skills = await skillsOutcome(io, deps, opts, binaryUpgraded);
       const status = worst(binary.status, skills.status);
       const data = { ...binary.data, skills: skills.skills };
       const jsonPort = () => createOutputPort('json', io.writers);

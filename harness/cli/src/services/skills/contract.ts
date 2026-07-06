@@ -5,14 +5,13 @@
  */
 
 /**
- * The default skills source: this repo's `skills/` subtree (the `owner/repo/subdir`
- * form `npx skills add` accepts), so the command installs THIS harness's skills from
- * anywhere it runs. Scoped to `/skills` ON PURPOSE: a bare `owner/repo` makes the
- * installer fetch the whole repo and recursively sweep EVERY `SKILL.md` it finds —
- * which would pull in any stray skill under `agents/`, fixtures, or future top-level
- * dirs. Pinning the subdir keeps the install to the published skill set only.
+ * Sentinel for the default skills source: the `skills/` tree shipped inside this
+ * npm package. The act stages it into an absolute temp dir and passes that local
+ * path to `npx skills add`, so default installs are GitHub-free/offline after the
+ * package is present. A user-provided `--source` still passes through the
+ * resolver below for GitHub/local-path overrides.
  */
-export const DEFAULT_SKILLS_SOURCE = 'AI-Substrate/harness-engineering/skills';
+export const PACKAGED_SKILLS_SOURCE = 'packaged';
 
 /** CLI targets the Vercel `skills` tool understands (the `-a <agent>` values). Surfaced for help/validation. */
 export const KNOWN_SKILL_TARGETS = [
