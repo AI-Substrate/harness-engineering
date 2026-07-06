@@ -1,0 +1,102 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:29:35.101Z",
+  "window": {
+    "since": "last-command",
+    "from": 17398,
+    "to": 17411
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 33233,
+    "output": 630,
+    "cache_create": 18054,
+    "cache_read": 15933,
+    "total": 67850,
+    "subagent_tokens": 0,
+    "grand_total": 67850
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 630
+    }
+  },
+  "tools": {
+    "Read": 2,
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:29:31.525Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:29:31.525Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 33233,
+      "out": 630,
+      "cache_read": 15933,
+      "cache_create": 18054,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:29:32.479Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 2,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-26T02:29:33.819Z",
+      "kind": "harness",
+      "verb": "flow"
+    },
+    {
+      "t": "2026-06-26T02:29:33.819Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-26T02:29:33.819Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 2,
+      "agent_working_s": 2,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 33233,
+      "out": 630,
+      "cache_read": 15933,
+      "cache_create": 18054
+    },
+    "tools": {
+      "Read": 2,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:01:54.798Z",
+  "window": {
+    "since": "last-command",
+    "from": 18104,
+    "to": 18117
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 133,
+    "output": 5832,
+    "cache_create": 9386,
+    "cache_read": 401959,
+    "total": 417310,
+    "subagent_tokens": 0,
+    "grand_total": 417310
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 5832
+    }
+  },
+  "tools": {
+    "Bash": 2
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:00:48.882Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:00:48.882Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 2653,
+      "cache_read": 197889,
+      "cache_create": 6181,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:00:56.267Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:01:39.861Z",
+      "kind": "turn",
+      "dur_s": 42,
+      "in": 2,
+      "out": 3179,
+      "cache_read": 204070,
+      "cache_create": 3205,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:01:44.185Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:01:44.185Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 55,
+      "agent_working_s": 55,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 5832,
+      "cache_read": 401959,
+      "cache_create": 9386
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T00:15:20.036Z",
+  "window": {
+    "since": "last-command",
+    "from": 17513,
+    "to": 17526
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 45,
+    "output": 882,
+    "cache_create": 136542,
+    "cache_read": 15933,
+    "total": 153402,
+    "subagent_tokens": 0,
+    "grand_total": 153402
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 882
+    }
+  },
+  "user_prompts": [
+    2,
+    236
+  ],
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T00:14:28.118Z",
+      "kind": "prompt",
+      "words": 2
+    },
+    {
+      "t": "2026-06-27T00:14:28.118Z",
+      "kind": "prompt",
+      "words": 236
+    },
+    {
+      "t": "2026-06-27T00:14:35.291Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:14:35.291Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 45,
+      "out": 882,
+      "cache_read": 15933,
+      "cache_create": 136542,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:14:35.291Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 7,
+      "agent_working_s": 7,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 45,
+      "out": 882,
+      "cache_read": 15933,
+      "cache_create": 136542
+    },
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

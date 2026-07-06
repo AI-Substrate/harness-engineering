@@ -1,0 +1,217 @@
+{
+  "schema_version": "2.1",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T01:33:14.524Z",
+  "window": {
+    "since": "last-command",
+    "from": 11108,
+    "to": 11163
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 218,
+    "output": 11781,
+    "cache_create": 8680,
+    "cache_read": 2344751,
+    "total": 2365430,
+    "subagent_tokens": 0,
+    "grand_total": 2365430
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 7,
+      "output_tokens": 11781
+    }
+  },
+  "tools": {
+    "Bash": 4,
+    "Write": 1
+  },
+  "user_prompts": [
+    75,
+    4,
+    39
+  ],
+  "files": {
+    "written": [
+      "scratch/telem/vscode-diag.sh"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 7
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T01:23:28.820Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:23:28.820Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 77,
+      "out": 653,
+      "cache_read": 329016,
+      "cache_create": 3140,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:23:32.264Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T01:23:32.264Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-25T01:23:32.264Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T01:23:32.264Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T01:23:32.264Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:23:45.141Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 1491,
+      "cache_read": 332156,
+      "cache_create": 923,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:29:17.703Z",
+      "kind": "prompt",
+      "words": 75
+    },
+    {
+      "t": "2026-06-25T01:29:24.857Z",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-06-25T01:29:28.339Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 519,
+      "cache_read": 334570,
+      "cache_create": 8,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:29:32.807Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 18
+    },
+    {
+      "t": "2026-06-25T01:29:47.459Z",
+      "kind": "turn",
+      "dur_s": 14,
+      "in": 131,
+      "out": 1216,
+      "cache_read": 334578,
+      "cache_create": 896,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:30:21.251Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 2,
+      "out": 1608,
+      "cache_read": 335474,
+      "cache_create": 1826,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:30:26.054Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:30:56.862Z",
+      "kind": "turn",
+      "dur_s": 28,
+      "in": 2,
+      "out": 2532,
+      "cache_read": 337300,
+      "cache_create": 1825,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:32:25.765Z",
+      "kind": "prompt",
+      "words": 39
+    },
+    {
+      "t": "2026-06-25T01:32:54.878Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 3762,
+      "cache_read": 341657,
+      "cache_create": 62,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:33:07.269Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:33:07.269Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 578,
+      "agent_working_s": 150,
+      "human_s": 96,
+      "idle_s": 333,
+      "working_ratio": 0.61
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 218,
+      "out": 11781,
+      "cache_read": 2344751,
+      "cache_create": 8680
+    },
+    "tools": {
+      "Bash": 4,
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

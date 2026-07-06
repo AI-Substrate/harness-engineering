@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T22:01:26.904Z",
+  "window": {
+    "since": "last-command",
+    "from": 3478,
+    "to": 3745
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 28653,
+    "output": 67986,
+    "cache_create": 159375,
+    "cache_read": 7147828,
+    "total": 7403842,
+    "subagent_tokens": 0,
+    "grand_total": 7403842
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 43,
+      "output_tokens": 67986
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 10,
+    "Read": 12,
+    "AskUserQuestion": 1,
+    "ToolSearch": 1,
+    "mcp__perplexity__perplexity_research": 1,
+    "Agent": 1,
+    "TaskCreate": 1,
+    "Edit": 16,
+    "Write": 2
+  },
+  "subagents": [
+    {
+      "type": "general-purpose",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    }
+  ],
+  "files": {
+    "written": [
+      "harness/cli/src/services/telemetry/sync-service.ts",
+      "harness/cli/test/services/telemetry/sync-service.test.ts"
+    ],
+    "edited": [
+      "harness/cli/src/adapters/git/git-write-port.ts",
+      "harness/cli/src/adapters/git/git-write-port.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/test/adapters/git/fake-git-write.test.ts",
+      "harness/cli/test/adapters/git/exec-git-write.int.test.ts",
+      "harness/cli/test/acts/telemetry.test.ts",
+      "harness/cli/test/acts/telemetry.test.ts",
+      "docs/how/telemetry.md",
+      "docs/how/telemetry.md",
+      "docs/how/telemetry.md",
+      "docs/how/telemetry.md",
+      "docs/how/telemetry.md",
+      "docs/how/harness-value-measures.md",
+      "docs/how/harness-value-measures.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 30
+  }
+}

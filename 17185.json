@@ -1,0 +1,94 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:05:31.113Z",
+  "window": {
+    "since": "last-command",
+    "from": 18171,
+    "to": 18176
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 2449,
+    "output": 1153,
+    "cache_create": 415,
+    "cache_read": 225981,
+    "total": 229998,
+    "subagent_tokens": 0,
+    "grand_total": 229998
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 1153
+    }
+  },
+  "tools": {
+    "Edit": 1
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "harness/cli/test/conformance/otlp-conformance.ts"
+    ]
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:05:16.505Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:05:16.505Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2449,
+      "out": 1153,
+      "cache_read": 225981,
+      "cache_create": 415,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:05:24.492Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:05:24.492Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 8,
+      "agent_working_s": 8,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2449,
+      "out": 1153,
+      "cache_read": 225981,
+      "cache_create": 415
+    },
+    "tools": {
+      "Edit": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

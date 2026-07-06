@@ -1,0 +1,110 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:24:14.606Z",
+  "window": {
+    "since": "last-command",
+    "from": 18416,
+    "to": 18425
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 4,
+    "output": 822,
+    "cache_create": 1438,
+    "cache_read": 661537,
+    "total": 663801,
+    "subagent_tokens": 0,
+    "grand_total": 663801
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 822
+    }
+  },
+  "tools": {
+    "Edit": 1,
+    "Bash": 1
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md"
+    ]
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:23:56.436Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:23:56.436Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 220,
+      "cache_read": 330203,
+      "cache_create": 1131,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:23:56.436Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:24:05.710Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 602,
+      "cache_read": 331334,
+      "cache_create": 307,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:24:05.710Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:24:05.710Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 9,
+      "agent_working_s": 9,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 822,
+      "cache_read": 661537,
+      "cache_create": 1438
+    },
+    "tools": {
+      "Edit": 1,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

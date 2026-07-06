@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T05:54:33.416Z",
+  "window": {
+    "since": "last-command",
+    "from": 6781,
+    "to": 6781
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": null,
+  "models": {},
+  "effort": null,
+  "skills": {},
+  "tools": {},
+  "bash_commands": [],
+  "harness_commands": [],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": null
+}

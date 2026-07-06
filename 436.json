@@ -1,0 +1,406 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T10:46:59.500Z",
+  "window": {
+    "since": "last-command",
+    "from": 15849,
+    "to": 15956
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 2071,
+    "output": 27831,
+    "cache_create": 120662,
+    "cache_read": 1760568,
+    "total": 1911132,
+    "subagent_tokens": 0,
+    "grand_total": 1911132
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 15,
+      "output_tokens": 27831
+    }
+  },
+  "skills": {
+    "validate-v2": 1
+  },
+  "tools": {
+    "Bash": 9,
+    "Read": 3,
+    "Agent": 3,
+    "Write": 2,
+    "Skill": 1
+  },
+  "user_prompts": [
+    2046
+  ],
+  "subagents": [
+    {
+      "count": 3,
+      "type": "Explore"
+    }
+  ],
+  "files": {
+    "written": [
+      "docs/plans/037-telemetry-fixture-corpus/tasks/phase-3-operability-regeneration/tasks.md",
+      "docs/plans/037-telemetry-fixture-corpus/validations/phase-3-tasks-validation.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 13
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T10:37:43.505Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:37:43.505Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 347,
+      "cache_read": 35256,
+      "cache_create": 57953,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:37:46.018Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T10:37:46.018Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T10:37:46.018Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:38:18.514Z",
+      "kind": "turn",
+      "dur_s": 32,
+      "in": 2,
+      "out": 2462,
+      "cache_read": 93209,
+      "cache_create": 887,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:38:20.924Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:38:22.031Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 6
+    },
+    {
+      "t": "2026-06-25T10:38:26.651Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 131,
+      "out": 229,
+      "cache_read": 94096,
+      "cache_create": 9156,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:38:31.072Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 150,
+      "cache_read": 103252,
+      "cache_create": 675,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:38:31.072Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:38:43.822Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 3175,
+      "cache_read": 103927,
+      "cache_create": 4747,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:38:57.998Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 2,
+      "span_s": 13
+    },
+    {
+      "t": "2026-06-25T10:40:27.774Z",
+      "kind": "subagent",
+      "name": "Explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T10:40:43.684Z",
+      "kind": "subagent",
+      "name": "Explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T10:40:50.926Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1028,
+      "cache_read": 108674,
+      "cache_create": 14906,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:40:56.959Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 33
+    },
+    {
+      "t": "2026-06-25T10:41:08.203Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 773,
+      "cache_read": 123580,
+      "cache_create": 1816,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:41:27.119Z",
+      "kind": "turn",
+      "dur_s": 16,
+      "in": 2,
+      "out": 1296,
+      "cache_read": 125396,
+      "cache_create": 2276,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:42:00.457Z",
+      "kind": "turn",
+      "dur_s": 30,
+      "in": 131,
+      "out": 2278,
+      "cache_read": 127672,
+      "cache_create": 1489,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:42:02.442Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:43:18.435Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 6516,
+      "cache_read": 129161,
+      "cache_create": 2390,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:43:18.435Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:43:33.851Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1069,
+      "cache_read": 131551,
+      "cache_create": 6609,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:43:35.488Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:43:35.488Z",
+      "kind": "skill",
+      "name": "validate-v2",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T10:43:35.507Z",
+      "kind": "prompt",
+      "words": 2046
+    },
+    {
+      "t": "2026-06-25T10:43:48.071Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 1,
+      "out": 2394,
+      "cache_read": 138160,
+      "cache_create": 6215,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:44:13.331Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:44:13.343Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:45:21.438Z",
+      "kind": "subagent",
+      "name": "Explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T10:46:02.139Z",
+      "kind": "turn",
+      "dur_s": 41,
+      "in": 1657,
+      "out": 3053,
+      "cache_read": 144375,
+      "cache_create": 4069,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:46:06.252Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:46:11.538Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 1887,
+      "cache_read": 148444,
+      "cache_create": 5371,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:46:31.167Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:46:46.399Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 1174,
+      "cache_read": 153815,
+      "cache_create": 2103,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:46:48.767Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T10:46:48.767Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-25T10:46:48.767Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T10:46:48.767Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:46:48.767Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 545,
+      "agent_working_s": 545,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {
+      "validate-v2": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 0
+      }
+    },
+    "tokens": {
+      "in": 2071,
+      "out": 27831,
+      "cache_read": 1760568,
+      "cache_create": 120662
+    },
+    "tools": {
+      "Bash": 9,
+      "Read": 3,
+      "Agent": 3,
+      "Write": 2,
+      "Skill": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

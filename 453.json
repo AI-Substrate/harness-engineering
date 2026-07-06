@@ -1,0 +1,17 @@
+{
+  "schema_version": "2.0",
+  "command": "observe",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T11:12:08.846Z",
+  "window": {
+    "since": "last-command",
+    "from": 16347,
+    "to": 16347
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": null,
+  "effort": null,
+  "event_stream": [],
+  "rollup": null
+}

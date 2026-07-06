@@ -1,0 +1,105 @@
+{
+  "schema_version": "2.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T04:06:18.912Z",
+  "window": {
+    "since": "last-command",
+    "from": 18610,
+    "to": 18622
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 4,
+    "output": 4936,
+    "cache_create": 6074,
+    "cache_read": 849289,
+    "total": 860303,
+    "subagent_tokens": 0,
+    "grand_total": 860303
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 4936
+    }
+  },
+  "tools": {
+    "Edit": 2
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "harness/cli/test/services/telemetry/otlp/reconstruction.test.ts",
+      "harness/cli/test/services/telemetry/otlp/reconstruction.test.ts"
+    ]
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T04:05:56.864Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T04:05:56.864Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 3191,
+      "cache_read": 423244,
+      "cache_create": 2801,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T04:06:00.149Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 18
+    },
+    {
+      "t": "2026-06-27T04:06:18.578Z",
+      "kind": "turn",
+      "dur_s": 18,
+      "in": 2,
+      "out": 1745,
+      "cache_read": 426045,
+      "cache_create": 3273,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T04:06:18.578Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "markdown-lint"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 22,
+      "agent_working_s": 22,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 4936,
+      "cache_read": 849289,
+      "cache_create": 6074
+    },
+    "tools": {
+      "Edit": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

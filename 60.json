@@ -1,0 +1,95 @@
+{
+  "schema_version": "1.1",
+  "command": "arch-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:07:18.633Z",
+  "window": {
+    "since": "last-command",
+    "from": 7467,
+    "to": 7551
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 413,
+    "output": 29289,
+    "cache_create": 38572,
+    "cache_read": 5187593,
+    "total": 5255867,
+    "subagent_tokens": 0,
+    "grand_total": 5255867
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 13,
+      "output_tokens": 29289
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 5,
+    "Edit": 6,
+    "Read": 4,
+    "Write": 1
+  },
+  "bash_commands": [
+    "cd",
+    "minih",
+    "cd",
+    "echo",
+    "jq",
+    "cd",
+    "echo",
+    "npx vitest",
+    "tail",
+    "cd",
+    "git add",
+    "copilot-adapter.ts",
+    "copilot-events.test.ts",
+    "event-schema-v2-detail.md",
+    "execution.log.md",
+    "git commit",
+    "echo",
+    "git rev-parse",
+    "echo",
+    "minih",
+    "jq",
+    "cd",
+    "minih",
+    "jq",
+    "minih",
+    "jq",
+    "cd",
+    "npx vitest",
+    "tail"
+  ],
+  "harness_commands": [
+    "arch-check"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [
+      "harness/cli/test/services/telemetry/cursor-events.test.ts"
+    ],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/execution.log.md",
+      "harness/cli/src/services/telemetry/event-builder.ts",
+      "harness/cli/src/services/telemetry/event-builder.ts",
+      "harness/cli/src/services/telemetry/adapters/cursor-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/cursor-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/cursor-adapter.ts"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 9
+  }
+}

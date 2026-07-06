@@ -1,0 +1,96 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:37:05.780Z",
+  "window": {
+    "since": "last-command",
+    "from": 17870,
+    "to": 17885
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 2,
+    "output": 174,
+    "cache_create": 8,
+    "cache_read": 65158,
+    "total": 65342,
+    "subagent_tokens": 0,
+    "grand_total": 65342
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 174
+    }
+  },
+  "tools": {
+    "Read": 1
+  },
+  "user_prompts": [
+    4
+  ],
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:36:57.532Z",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-06-27T02:37:03.531Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:37:03.531Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 174,
+      "cache_read": 65158,
+      "cache_create": 8,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:37:03.968Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:37:03.968Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 6,
+      "agent_working_s": 6,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 174,
+      "cache_read": 65158,
+      "cache_create": 8
+    },
+    "tools": {
+      "Read": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

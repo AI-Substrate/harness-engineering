@@ -1,0 +1,17 @@
+{
+  "schema_version": "2.0",
+  "command": "windows-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:25:09.442Z",
+  "window": {
+    "since": "last-command",
+    "from": 17350,
+    "to": 17350
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": null,
+  "effort": null,
+  "event_stream": [],
+  "rollup": null
+}

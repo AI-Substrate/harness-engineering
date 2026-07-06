@@ -1,0 +1,77 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:24:25.968Z",
+  "window": {
+    "since": "last-command",
+    "from": 17826,
+    "to": 17862
+  },
+  "branch": "main",
+  "tokens": null,
+  "effort": "high",
+  "user_prompts": [
+    1883,
+    33,
+    3,
+    6,
+    2,
+    2025
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:22:28.859Z",
+      "kind": "prompt",
+      "words": 33
+    },
+    {
+      "t": "2026-06-27T02:22:28.859Z",
+      "kind": "prompt",
+      "words": 3
+    },
+    {
+      "t": "2026-06-27T02:24:11.260Z",
+      "kind": "prompt",
+      "words": 1883
+    },
+    {
+      "t": "2026-06-27T02:24:12.194Z",
+      "kind": "prompt",
+      "words": 6
+    },
+    {
+      "t": "2026-06-27T02:24:12.338Z",
+      "kind": "prompt",
+      "words": 2
+    },
+    {
+      "t": "2026-06-27T02:24:12.338Z",
+      "kind": "prompt",
+      "words": 2025
+    },
+    {
+      "t": "2026-06-27T02:24:12.338Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 103,
+      "agent_working_s": 0,
+      "human_s": 103,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

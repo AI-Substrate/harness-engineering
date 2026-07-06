@@ -1,0 +1,150 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:50:30.458Z",
+  "window": {
+    "since": "last-command",
+    "from": 8388,
+    "to": 8395
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 4,
+    "output": 1208,
+    "cache_create": 3133,
+    "cache_read": 607014,
+    "total": 611359,
+    "subagent_tokens": 0,
+    "grand_total": 611359
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 1208
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 2
+  },
+  "bash_commands": [
+    "cd",
+    "head",
+    "echo",
+    "tail",
+    "tail",
+    "cd",
+    "tail"
+  ],
+  "harness_commands": [
+    "flow nav",
+    "flow rail",
+    "flow rail",
+    "flow rail"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T07:50:18.287Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:18.287Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1073,
+      "cache_read": 302619,
+      "cache_create": 1776,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:21.086Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-24T07:50:21.086Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-24T07:50:21.086Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-24T07:50:21.086Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 4
+    },
+    {
+      "t": "2026-06-24T07:50:25.546Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 135,
+      "cache_read": 304395,
+      "cache_create": 1357,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:25.546Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-24T07:50:25.650Z",
+      "kind": "command_exit",
+      "verb": "flow",
+      "exit": 1,
+      "status": "error"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 7,
+      "agent_working_s": 7,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 1208,
+      "cache_read": 607014,
+      "cache_create": 3133
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {
+        "flow": 1
+      }
+    }
+  }
+}

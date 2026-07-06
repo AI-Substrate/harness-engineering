@@ -1,0 +1,136 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:43:39.409Z",
+  "window": {
+    "since": "last-command",
+    "from": 17927,
+    "to": 17943
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 4,
+    "output": 15088,
+    "cache_create": 27008,
+    "cache_read": 220123,
+    "total": 262223,
+    "subagent_tokens": 0,
+    "grand_total": 262223
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 15088
+    }
+  },
+  "skills": {
+    "validate-v2": 1
+  },
+  "tools": {
+    "Write": 1,
+    "Skill": 1
+  },
+  "user_prompts": [
+    2046
+  ],
+  "files": {
+    "written": [
+      "docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:40:52.905Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:40:52.905Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 14339,
+      "cache_read": 103769,
+      "cache_create": 12585,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:43:00.679Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:43:11.237Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 749,
+      "cache_read": 116354,
+      "cache_create": 14423,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:43:12.520Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:43:12.520Z",
+      "kind": "skill",
+      "name": "validate-v2",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-27T02:43:12.527Z",
+      "kind": "prompt",
+      "words": 2046
+    },
+    {
+      "t": "2026-06-27T02:43:12.527Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 140,
+      "agent_working_s": 140,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {
+      "validate-v2": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 0
+      }
+    },
+    "tokens": {
+      "in": 4,
+      "out": 15088,
+      "cache_read": 220123,
+      "cache_create": 27008
+    },
+    "tools": {
+      "Write": 1,
+      "Skill": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T23:29:33.788Z",
+  "window": {
+    "since": "last-command",
+    "from": 10075,
+    "to": 10079
+  },
+  "branch": "telemetry-enhancements",
+  "tokens": {
+    "input": 2,
+    "output": 1706,
+    "cache_create": 2256,
+    "cache_read": 525182,
+    "total": 529146,
+    "subagent_tokens": 0,
+    "grand_total": 529146
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 1706
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "plans_touched": [
+    "035-flow-replay-telemetry"
+  ],
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T23:29:06.348Z",
+      "t_precision": "anchored",
+      "kind": "flow",
+      "flow": "the-flow",
+      "stage": "implement",
+      "status": "done"
+    },
+    {
+      "t": "2026-06-24T23:29:06.348Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:29:06.348Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1706,
+      "cache_read": 525182,
+      "cache_create": 2256,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:29:15.083Z",
+      "kind": "harness",
+      "verb": "doctor"
+    },
+    {
+      "t": "2026-06-24T23:29:15.083Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T23:29:15.083Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 9,
+      "agent_working_s": 9,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {
+      "implement": 9
+    },
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 1706,
+      "cache_read": 525182,
+      "cache_create": 2256
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

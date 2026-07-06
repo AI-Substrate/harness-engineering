@@ -1,0 +1,208 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T08:29:55.607Z",
+  "window": {
+    "since": "last-command",
+    "from": 8525,
+    "to": 8556
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 12,
+    "output": 4505,
+    "cache_create": 3559,
+    "cache_read": 2019737,
+    "total": 2027813,
+    "subagent_tokens": 0,
+    "grand_total": 2027813
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 6,
+      "output_tokens": 4505
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 4,
+    "Edit": 1
+  },
+  "bash_commands": [
+    "cd",
+    "npx vitest",
+    "grep",
+    "head",
+    "cd",
+    "git add",
+    "copilot-events.test.ts",
+    "execution.log.md",
+    "git commit",
+    "git log",
+    "cd",
+    "echo",
+    "git status",
+    "grep",
+    "echo",
+    "echo",
+    "git log",
+    "echo",
+    "python3",
+    "cd",
+    "echo",
+    "git diff",
+    "git diff",
+    "head",
+    "echo",
+    "git diff",
+    "head"
+  ],
+  "harness_commands": [],
+  "user_prompts": [
+    3
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/execution.log.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 4
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T08:23:57.557Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T08:23:57.557Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 126,
+      "cache_read": 334687,
+      "cache_create": 523,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T08:23:57.557Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T08:24:06.498Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1497,
+      "cache_read": 335210,
+      "cache_create": 159,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T08:24:21.918Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T08:24:30.877Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 525,
+      "cache_read": 335369,
+      "cache_create": 1584,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T08:24:30.877Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T08:24:41.523Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 1234,
+      "cache_read": 336953,
+      "cache_create": 568,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T08:29:08.265Z",
+      "kind": "prompt",
+      "words": 3
+    },
+    {
+      "t": "2026-06-24T08:29:14.015Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 470,
+      "cache_read": 338755,
+      "cache_create": 8,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T08:29:17.476Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 13
+    },
+    {
+      "t": "2026-06-24T08:29:27.876Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 653,
+      "cache_read": 338763,
+      "cache_create": 717,
+      "model": "claude-opus-4-8"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 330,
+      "agent_working_s": 64,
+      "human_s": 267,
+      "idle_s": 0,
+      "working_ratio": 0.19
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 12,
+      "out": 4505,
+      "cache_read": 2019737,
+      "cache_create": 3559
+    },
+    "tools": {
+      "Bash": 4,
+      "Edit": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T10:44:00.871Z",
+  "window": {
+    "since": "last-command",
+    "from": 2803,
+    "to": 2861
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 5710,
+    "output": 16334,
+    "cache_create": 115319,
+    "cache_read": 924377,
+    "total": 1061740,
+    "subagent_tokens": 0,
+    "grand_total": 1061740
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 8,
+      "output_tokens": 16334
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 5,
+    "Read": 3,
+    "Agent": 2,
+    "Write": 1
+  },
+  "subagents": [
+    {
+      "type": "Explore",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    },
+    {
+      "type": "Explore",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    }
+  ],
+  "files": {
+    "written": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md"
+    ],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 8
+  }
+}

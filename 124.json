@@ -1,0 +1,18 @@
+{
+  "schema_version": "2.0",
+  "command": "arch-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T22:19:40.882Z",
+  "window": {
+    "since": "last-command",
+    "from": 9418,
+    "to": 9418
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": null,
+  "effort": null,
+  "event_stream": [],
+  "rollup": null
+}

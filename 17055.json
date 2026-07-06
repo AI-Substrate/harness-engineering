@@ -1,0 +1,97 @@
+{
+  "schema_version": "2.0",
+  "command": "skills-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:43:55.733Z",
+  "window": {
+    "since": "last-command",
+    "from": 17943,
+    "to": 17953
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 1,
+    "output": 2831,
+    "cache_create": 5886,
+    "cache_read": 130777,
+    "total": 139495,
+    "subagent_tokens": 0,
+    "grand_total": 139495
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 2831
+    }
+  },
+  "tools": {
+    "Bash": 1,
+    "Agent": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:43:28.531Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:43:28.531Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 1,
+      "out": 2831,
+      "cache_read": 130777,
+      "cache_create": 5886,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:43:40.268Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:43:52.415Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:43:52.415Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "skills-check"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 24,
+      "agent_working_s": 24,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 1,
+      "out": 2831,
+      "cache_read": 130777,
+      "cache_create": 5886
+    },
+    "tools": {
+      "Bash": 1,
+      "Agent": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

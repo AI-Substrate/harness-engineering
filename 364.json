@@ -1,0 +1,143 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T06:24:55.236Z",
+  "window": {
+    "since": "last-command",
+    "from": 13191,
+    "to": 13196
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 2,
+    "output": 3588,
+    "cache_create": 1697,
+    "cache_read": 222037,
+    "total": 227324,
+    "subagent_tokens": 0,
+    "grand_total": 227324
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 3588
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T06:24:31.451Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:24:31.451Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 3588,
+      "cache_read": 222037,
+      "cache_create": 1697,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow insert-node"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow insert-node"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow insert-node"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow insert-node"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:24:44.346Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 13,
+      "agent_working_s": 13,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 3588,
+      "cache_read": 222037,
+      "cache_create": 1697
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

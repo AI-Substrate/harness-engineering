@@ -1,0 +1,107 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:15:21.585Z",
+  "window": {
+    "since": "last-command",
+    "from": 18236,
+    "to": 18255
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 4,
+    "output": 13949,
+    "cache_create": 19644,
+    "cache_read": 491662,
+    "total": 525259,
+    "subagent_tokens": 0,
+    "grand_total": 525259
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 13949
+    }
+  },
+  "tools": {
+    "Read": 1,
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:12:20.717Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:12:20.717Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 781,
+      "cache_read": 240412,
+      "cache_create": 10838,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:12:23.398Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:14:53.718Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 13168,
+      "cache_read": 251250,
+      "cache_create": 8806,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:15:00.483Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:15:00.483Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 160,
+      "agent_working_s": 160,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 13949,
+      "cache_read": 491662,
+      "cache_create": 19644
+    },
+    "tools": {
+      "Read": 1,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T01:11:25.321Z",
+  "window": {
+    "since": "last-command",
+    "from": 17637,
+    "to": 17651
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 133,
+    "output": 5587,
+    "cache_create": 16226,
+    "cache_read": 390624,
+    "total": 412570,
+    "subagent_tokens": 0,
+    "grand_total": 412570
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 5587
+    }
+  },
+  "tools": {
+    "AskUserQuestion": 1
+  },
+  "user_prompts": [
+    8
+  ],
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T00:59:04.777Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:59:04.777Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 5214,
+      "cache_read": 190057,
+      "cache_create": 10510,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:59:25.155Z",
+      "kind": "tools",
+      "name": "AskUserQuestion",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T01:11:08.609Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 131,
+      "out": 373,
+      "cache_read": 200567,
+      "cache_create": 5716,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T01:11:09.693Z",
+      "kind": "prompt",
+      "words": 8
+    },
+    {
+      "t": "2026-06-27T01:11:09.693Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 725,
+      "agent_working_s": 724,
+      "human_s": 1,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 5587,
+      "cache_read": 390624,
+      "cache_create": 16226
+    },
+    "tools": {
+      "AskUserQuestion": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

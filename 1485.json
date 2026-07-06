@@ -1,0 +1,88 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:40:57.262Z",
+  "window": {
+    "since": "last-command",
+    "from": 17467,
+    "to": 17472
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 2,
+    "output": 4348,
+    "cache_create": 6017,
+    "cache_read": 117765,
+    "total": 128132,
+    "subagent_tokens": 0,
+    "grand_total": 128132
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 4348
+    }
+  },
+  "tools": {
+    "Agent": 3
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:40:12.798Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:40:12.798Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 4348,
+      "cache_read": 117765,
+      "cache_create": 6017,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:40:26.930Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 3,
+      "span_s": 27
+    },
+    {
+      "t": "2026-06-26T02:40:26.930Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 14,
+      "agent_working_s": 14,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 4348,
+      "cache_read": 117765,
+      "cache_create": 6017
+    },
+    "tools": {
+      "Agent": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

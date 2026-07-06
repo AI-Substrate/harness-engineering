@@ -1,0 +1,138 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T08:11:59.500Z",
+  "window": {
+    "since": "last-command",
+    "from": 14343,
+    "to": 14364
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 134,
+    "output": 2620,
+    "cache_create": 4791,
+    "cache_read": 469212,
+    "total": 476757,
+    "subagent_tokens": 0,
+    "grand_total": 476757
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 2620
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "user_prompts": [
+    2,
+    236,
+    5
+  ],
+  "thinking": {
+    "blocks": 3
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T08:09:18.466Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:09:18.466Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 497,
+      "cache_read": 154908,
+      "cache_create": 1832,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:09:21.728Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T08:09:21.728Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T08:09:21.728Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:09:29.301Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 131,
+      "out": 1410,
+      "cache_read": 156740,
+      "cache_create": 824,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:10:01.520Z",
+      "kind": "prompt",
+      "words": 2
+    },
+    {
+      "t": "2026-06-25T08:10:01.520Z",
+      "kind": "prompt",
+      "words": 236
+    },
+    {
+      "t": "2026-06-25T08:10:07.796Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 1,
+      "out": 713,
+      "cache_read": 157564,
+      "cache_create": 2135,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:11:35.670Z",
+      "kind": "prompt",
+      "words": 5
+    },
+    {
+      "t": "2026-06-25T08:11:35.670Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 137,
+      "agent_working_s": 17,
+      "human_s": 120,
+      "idle_s": 0,
+      "working_ratio": 0.12
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 134,
+      "out": 2620,
+      "cache_read": 469212,
+      "cache_create": 4791
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

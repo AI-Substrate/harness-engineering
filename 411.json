@@ -1,0 +1,120 @@
+{
+  "schema_version": "2.0",
+  "command": "record",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T09:48:46.801Z",
+  "window": {
+    "since": "last-command",
+    "from": 15051,
+    "to": 15066
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 4,
+    "output": 2016,
+    "cache_create": 53882,
+    "cache_read": 126529,
+    "total": 182431,
+    "subagent_tokens": 0,
+    "grand_total": 182431
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 2016
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "user_prompts": [
+    43
+  ],
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T09:40:34.272Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:40:34.272Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 287,
+      "cache_read": 37143,
+      "cache_create": 52243,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:40:35.616Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-25T09:40:35.616Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T09:40:35.938Z",
+      "kind": "command_exit",
+      "verb": "observe",
+      "exit": 0,
+      "status": "ok"
+    },
+    {
+      "t": "2026-06-25T09:40:52.012Z",
+      "kind": "turn",
+      "dur_s": 16,
+      "in": 2,
+      "out": 1729,
+      "cache_read": 89386,
+      "cache_create": 1639,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:48:21.839Z",
+      "kind": "prompt",
+      "words": 43
+    },
+    {
+      "t": "2026-06-25T09:48:21.839Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "record"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 468,
+      "agent_working_s": 18,
+      "human_s": 0,
+      "idle_s": 450,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 2016,
+      "cache_read": 126529,
+      "cache_create": 53882
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {
+        "observe": 0
+      }
+    }
+  }
+}

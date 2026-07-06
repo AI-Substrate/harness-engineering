@@ -1,0 +1,112 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T01:02:40.320Z",
+  "window": {
+    "since": "last-command",
+    "from": 10641,
+    "to": 10654
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 133,
+    "output": 6454,
+    "cache_create": 5170,
+    "cache_read": 361880,
+    "total": 373637,
+    "subagent_tokens": 0,
+    "grand_total": 373637
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 6454
+    }
+  },
+  "tools": {
+    "Bash": 1,
+    "AskUserQuestion": 1
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T00:59:27.351Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T00:59:27.351Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 2597,
+      "cache_read": 179939,
+      "cache_create": 2002,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T00:59:34.192Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T00:59:34.192Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:00:21.286Z",
+      "kind": "turn",
+      "dur_s": 47,
+      "in": 2,
+      "out": 3857,
+      "cache_read": 181941,
+      "cache_create": 3168,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:00:30.764Z",
+      "kind": "tools",
+      "name": "AskUserQuestion",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:00:30.764Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 63,
+      "agent_working_s": 63,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 6454,
+      "cache_read": 361880,
+      "cache_create": 5170
+    },
+    "tools": {
+      "Bash": 1,
+      "AskUserQuestion": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

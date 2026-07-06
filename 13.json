@@ -1,0 +1,49 @@
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T10:53:53.506Z",
+  "window": {
+    "since": "last-command",
+    "from": 2916,
+    "to": 2963
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 143,
+    "output": 4138,
+    "cache_create": 21904,
+    "cache_read": 1473207,
+    "total": 1499392,
+    "subagent_tokens": 0,
+    "grand_total": 1499392
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 7,
+      "output_tokens": 4138
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 8,
+    "Read": 1
+  },
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 5
+  }
+}

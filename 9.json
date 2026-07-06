@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T10:50:02.382Z",
+  "window": {
+    "since": "last-command",
+    "from": 2861,
+    "to": 2916
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 274,
+    "output": 16772,
+    "cache_create": 52704,
+    "cache_read": 1406309,
+    "total": 1476059,
+    "subagent_tokens": 0,
+    "grand_total": 1476059
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 8,
+      "output_tokens": 16772
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 1,
+    "Read": 1,
+    "Agent": 4,
+    "Edit": 5
+  },
+  "subagents": [
+    {
+      "type": "Explore",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    },
+    {
+      "type": "Explore",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    },
+    {
+      "type": "Explore",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    },
+    {
+      "type": "Explore",
+      "agent_name": null,
+      "model": null,
+      "status": null,
+      "tokens": null,
+      "tool_uses": null
+    }
+  ],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 4
+  }
+}

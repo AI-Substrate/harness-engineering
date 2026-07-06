@@ -1,0 +1,47 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:00:03.295Z",
+  "window": {
+    "since": "last-command",
+    "from": 17724,
+    "to": 17731
+  },
+  "branch": "main",
+  "tokens": null,
+  "effort": "high",
+  "user_prompts": [
+    7
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-27T01:59:55.384Z",
+      "kind": "prompt",
+      "words": 7
+    },
+    {
+      "t": "2026-06-27T01:59:55.384Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,188 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T01:05:04.654Z",
+  "window": {
+    "since": "last-command",
+    "from": 10654,
+    "to": 10691
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 200,
+    "output": 12079,
+    "cache_create": 25142,
+    "cache_read": 1170165,
+    "total": 1207586,
+    "subagent_tokens": 0,
+    "grand_total": 1207586
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 6,
+      "output_tokens": 12079
+    }
+  },
+  "tools": {
+    "Bash": 2,
+    "Read": 1,
+    "Edit": 3
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 6
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T01:02:38.272Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:02:38.272Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2108,
+      "cache_read": 185109,
+      "cache_create": 3909,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:02:40.056Z",
+      "kind": "harness",
+      "verb": "flow show"
+    },
+    {
+      "t": "2026-06-25T01:02:40.056Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T01:02:40.056Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:03:09.399Z",
+      "kind": "turn",
+      "dur_s": 29,
+      "in": 2,
+      "out": 2117,
+      "cache_read": 189018,
+      "cache_create": 2419,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:03:11.931Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:03:22.525Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 721,
+      "cache_read": 191437,
+      "cache_create": 2642,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:03:23.446Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:04:12.879Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 4053,
+      "cache_read": 194079,
+      "cache_create": 9100,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:04:18.566Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:04:22.547Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 190,
+      "out": 2609,
+      "cache_read": 203179,
+      "cache_create": 4164,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:04:49.633Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 6
+    },
+    {
+      "t": "2026-06-25T01:04:52.096Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 471,
+      "cache_read": 207343,
+      "cache_create": 2908,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:04:52.096Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 134,
+      "agent_working_s": 134,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 200,
+      "out": 12079,
+      "cache_read": 1170165,
+      "cache_create": 25142
+    },
+    "tools": {
+      "Bash": 2,
+      "Read": 1,
+      "Edit": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

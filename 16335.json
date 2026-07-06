@@ -1,0 +1,123 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T00:49:02.613Z",
+  "window": {
+    "since": "last-command",
+    "from": 17594,
+    "to": 17602
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 133,
+    "output": 2723,
+    "cache_create": 7843,
+    "cache_read": 353644,
+    "total": 364343,
+    "subagent_tokens": 0,
+    "grand_total": 364343
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 2723
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T00:47:48.310Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:47:48.310Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 964,
+      "cache_read": 173404,
+      "cache_create": 6836,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:47:54.364Z",
+      "kind": "harness",
+      "verb": "flow insert-node"
+    },
+    {
+      "t": "2026-06-27T00:47:54.364Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-27T00:47:54.364Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-27T00:47:54.364Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-27T00:47:54.364Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-27T00:47:54.364Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T00:48:05.686Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 131,
+      "out": 1759,
+      "cache_read": 180240,
+      "cache_create": 1007,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:48:05.686Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 17,
+      "agent_working_s": 17,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 2723,
+      "cache_read": 353644,
+      "cache_create": 7843
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

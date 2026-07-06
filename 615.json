@@ -1,0 +1,47 @@
+{
+  "schema_version": "2.0",
+  "command": "windows-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:20:00.341Z",
+  "window": {
+    "since": "last-command",
+    "from": 17325,
+    "to": 17332
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": null,
+  "effort": "high",
+  "user_prompts": [
+    2
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:19:59.981Z",
+      "kind": "prompt",
+      "words": 2
+    },
+    {
+      "t": "2026-06-26T02:19:59.981Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "windows-check"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

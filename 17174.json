@@ -1,0 +1,124 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:03:38.785Z",
+  "window": {
+    "since": "last-command",
+    "from": 18117,
+    "to": 18139
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 6,
+    "output": 6043,
+    "cache_create": 9204,
+    "cache_read": 633311,
+    "total": 648564,
+    "subagent_tokens": 0,
+    "grand_total": 648564
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 6043
+    }
+  },
+  "tools": {
+    "Write": 2,
+    "Bash": 1
+  },
+  "files": {
+    "written": [
+      "harness/cli/test/conformance/otlp-conformance.ts",
+      "harness/cli/test/conformance/otlp-conformance.test.ts"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:02:18.276Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:02:18.276Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 4768,
+      "cache_read": 207275,
+      "cache_create": 3323,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:02:39.539Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 2,
+      "span_s": 13
+    },
+    {
+      "t": "2026-06-27T03:02:52.276Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 967,
+      "cache_read": 210598,
+      "cache_create": 4840,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:02:59.970Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 308,
+      "cache_read": 215438,
+      "cache_create": 1041,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:03:01.603Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:03:01.603Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 43,
+      "agent_working_s": 43,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 6,
+      "out": 6043,
+      "cache_read": 633311,
+      "cache_create": 9204
+    },
+    "tools": {
+      "Write": 2,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

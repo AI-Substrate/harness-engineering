@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T22:04:36.278Z",
+  "window": {
+    "since": "last-command",
+    "from": 3745,
+    "to": 3817
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 10674,
+    "output": 9897,
+    "cache_create": 25987,
+    "cache_read": 2892563,
+    "total": 2939121,
+    "subagent_tokens": 0,
+    "grand_total": 2939121
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 16,
+      "output_tokens": 9897
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 5,
+    "Edit": 7,
+    "Read": 4
+  },
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "harness/cli/test/acts/telemetry.test.ts",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 7
+  }
+}

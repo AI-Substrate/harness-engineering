@@ -1,0 +1,47 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:25:44.505Z",
+  "window": {
+    "since": "last-command",
+    "from": 17351,
+    "to": 17353
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": null,
+  "effort": "high",
+  "user_prompts": [
+    6
+  ],
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:25:43.655Z",
+      "kind": "prompt",
+      "words": 6
+    },
+    {
+      "t": "2026-06-26T02:25:43.655Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

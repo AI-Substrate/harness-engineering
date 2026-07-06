@@ -1,0 +1,108 @@
+{
+  "schema_version": "2.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:44:33.807Z",
+  "window": {
+    "since": "last-command",
+    "from": 8272,
+    "to": 8276
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 2,
+    "output": 663,
+    "cache_create": 466,
+    "cache_read": 274628,
+    "total": 275759,
+    "subagent_tokens": 0,
+    "grand_total": 275759
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 663
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 1
+  },
+  "bash_commands": [
+    "python3",
+    "head"
+  ],
+  "harness_commands": [
+    "markdown-lint"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T07:44:21.970Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:44:21.970Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 663,
+      "cache_read": 274628,
+      "cache_create": 466,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:44:25.074Z",
+      "kind": "harness",
+      "verb": "markdown-lint"
+    },
+    {
+      "t": "2026-06-24T07:44:25.074Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 3,
+      "agent_working_s": 3,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 663,
+      "cache_read": 274628,
+      "cache_create": 466
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T10:38:31.438Z",
+  "window": {
+    "since": "last-command",
+    "from": 2688,
+    "to": 2803
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 32883,
+    "output": 17774,
+    "cache_create": 45284,
+    "cache_read": 5031040,
+    "total": 5126981,
+    "subagent_tokens": 0,
+    "grand_total": 5126981
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 16,
+      "output_tokens": 17774
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 10,
+    "Write": 1,
+    "Edit": 3,
+    "Read": 2
+  },
+  "subagents": [],
+  "files": {
+    "written": [
+      "telemetry-phase3-live-smoke-findings.md"
+    ],
+    "edited": [
+      "MEMORY.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-3-auto-capture-kernel-preamble/execution.log.md",
+      ".gitignore"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 10
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T10:24:51.337Z",
+  "window": {
+    "since": "last-command",
+    "from": 15681,
+    "to": 15687
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 133,
+    "output": 466,
+    "cache_create": 1839,
+    "cache_read": 492778,
+    "total": 495216,
+    "subagent_tokens": 0,
+    "grand_total": 495216
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 466
+    }
+  },
+  "tools": {
+    "Bash": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T10:24:35.257Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:24:35.257Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 303,
+      "cache_read": 245679,
+      "cache_create": 1420,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:24:37.914Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T10:24:37.914Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T10:24:37.914Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 6
+    },
+    {
+      "t": "2026-06-25T10:24:44.317Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 131,
+      "out": 163,
+      "cache_read": 247099,
+      "cache_create": 419,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:24:44.317Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T10:24:44.317Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 9,
+      "agent_working_s": 9,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 466,
+      "cache_read": 492778,
+      "cache_create": 1839
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

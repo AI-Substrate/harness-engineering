@@ -1,0 +1,278 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T01:09:58.703Z",
+  "window": {
+    "since": "last-command",
+    "from": 10691,
+    "to": 10761
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 279,
+    "output": 21412,
+    "cache_create": 30449,
+    "cache_read": 2463043,
+    "total": 2515183,
+    "subagent_tokens": 0,
+    "grand_total": 2515183
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 11,
+      "output_tokens": 21412
+    }
+  },
+  "skills": {
+    "validate-v2": 1
+  },
+  "tools": {
+    "Bash": 4,
+    "Edit": 5,
+    "Skill": 1,
+    "Write": 1
+  },
+  "user_prompts": [
+    2142
+  ],
+  "files": {
+    "written": [
+      "docs/plans/034-harness-telemetry-collection/validations/phase-6-copilot-vscode-validation.md"
+    ],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/validations/phase-6-copilot-vscode-validation.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 8
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T01:04:58.345Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:04:58.345Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 662,
+      "cache_read": 210251,
+      "cache_create": 558,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:05:04.404Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:05:12.098Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 774,
+      "cache_read": 210809,
+      "cache_create": 987,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:05:15.736Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:05:35.680Z",
+      "kind": "turn",
+      "dur_s": 20,
+      "in": 2,
+      "out": 1778,
+      "cache_read": 211796,
+      "cache_create": 861,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:05:41.765Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:05:41.765Z",
+      "kind": "skill",
+      "name": "validate-v2",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T01:05:41.774Z",
+      "kind": "prompt",
+      "words": 2142
+    },
+    {
+      "t": "2026-06-25T01:06:03.731Z",
+      "kind": "turn",
+      "dur_s": 22,
+      "in": 130,
+      "out": 1920,
+      "cache_read": 212657,
+      "cache_create": 7219,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:06:09.707Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:06:53.135Z",
+      "kind": "turn",
+      "dur_s": 43,
+      "in": 2,
+      "out": 3546,
+      "cache_read": 219876,
+      "cache_create": 3584,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:06:58.956Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:07:58.300Z",
+      "kind": "turn",
+      "dur_s": 59,
+      "in": 2,
+      "out": 4383,
+      "cache_read": 223460,
+      "cache_create": 4891,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:08:00.429Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:08:24.027Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1821,
+      "cache_read": 228351,
+      "cache_create": 4398,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:08:24.027Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:08:55.965Z",
+      "kind": "turn",
+      "dur_s": 32,
+      "in": 2,
+      "out": 4009,
+      "cache_read": 232749,
+      "cache_create": 1910,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:09:09.660Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 4,
+      "span_s": 35
+    },
+    {
+      "t": "2026-06-25T01:09:12.035Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 790,
+      "cache_read": 234659,
+      "cache_create": 4120,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:09:24.772Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 131,
+      "out": 828,
+      "cache_read": 238779,
+      "cache_create": 877,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:09:41.035Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 901,
+      "cache_read": 239656,
+      "cache_create": 1044,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:09:41.035Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 283,
+      "agent_working_s": 283,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {
+      "validate-v2": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 0
+      }
+    },
+    "tokens": {
+      "in": 279,
+      "out": 21412,
+      "cache_read": 2463043,
+      "cache_create": 30449
+    },
+    "tools": {
+      "Bash": 4,
+      "Edit": 5,
+      "Skill": 1,
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

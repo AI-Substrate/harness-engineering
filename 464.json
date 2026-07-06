@@ -1,0 +1,405 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T23:14:49.965Z",
+  "window": {
+    "since": "last-command",
+    "from": 16809,
+    "to": 16945
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 567,
+    "output": 45596,
+    "cache_create": 54188,
+    "cache_read": 5678902,
+    "total": 5779253,
+    "subagent_tokens": 0,
+    "grand_total": 5779253
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 21,
+      "output_tokens": 45596
+    }
+  },
+  "tools": {
+    "Bash": 11,
+    "Read": 3,
+    "Edit": 5
+  },
+  "user_prompts": [
+    12,
+    29
+  ],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/project-rules/rules.md",
+      ".harness/extensions/checks/extension.ts",
+      ".harness/extensions/checks/extension.ts",
+      ".harness/extensions/checks/extension.ts",
+      ".harness/extensions/checks/extension.ts"
+    ]
+  },
+  "thinking": {
+    "blocks": 17
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T22:59:54.841Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T22:59:54.841Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 73,
+      "out": 3090,
+      "cache_read": 237236,
+      "cache_create": 2958,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:00:01.267Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:00:42.983Z",
+      "kind": "turn",
+      "dur_s": 56,
+      "in": 69,
+      "out": 2929,
+      "cache_read": 240194,
+      "cache_create": 3738,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:00:47.456Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:01:34.959Z",
+      "kind": "turn",
+      "dur_s": 43,
+      "in": 2,
+      "out": 3154,
+      "cache_read": 243932,
+      "cache_create": 3772,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:01:38.665Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:02:22.227Z",
+      "kind": "turn",
+      "dur_s": 40,
+      "in": 131,
+      "out": 3646,
+      "cache_read": 247704,
+      "cache_create": 3795,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:05:24.464Z",
+      "kind": "prompt",
+      "words": 12
+    },
+    {
+      "t": "2026-06-25T23:05:35.414Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 849,
+      "cache_read": 251499,
+      "cache_create": 3794,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:05:37.149Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:06:18.960Z",
+      "kind": "turn",
+      "dur_s": 42,
+      "in": 2,
+      "out": 3948,
+      "cache_read": 255293,
+      "cache_create": 3767,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:07:39.414Z",
+      "kind": "prompt",
+      "words": 29
+    },
+    {
+      "t": "2026-06-25T23:08:20.868Z",
+      "kind": "turn",
+      "dur_s": 41,
+      "in": 2,
+      "out": 3256,
+      "cache_read": 263008,
+      "cache_create": 52,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:08:24.934Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:08:31.767Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 84,
+      "cache_read": 263060,
+      "cache_create": 3479,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:08:31.767Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:09:29.357Z",
+      "kind": "turn",
+      "dur_s": 58,
+      "in": 2,
+      "out": 4429,
+      "cache_read": 266539,
+      "cache_create": 2747,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:09:34.174Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:10:44.616Z",
+      "kind": "turn",
+      "dur_s": 68,
+      "in": 2,
+      "out": 5523,
+      "cache_read": 269286,
+      "cache_create": 4998,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:10:55.905Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 15
+    },
+    {
+      "t": "2026-06-25T23:11:08.483Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 131,
+      "out": 732,
+      "cache_read": 274284,
+      "cache_create": 5774,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:11:26.014Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 833,
+      "cache_read": 280058,
+      "cache_create": 1382,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:11:26.664Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:11:33.856Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1102,
+      "cache_read": 281440,
+      "cache_create": 1704,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:11:41.111Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:11:48.298Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 482,
+      "cache_read": 283144,
+      "cache_create": 1191,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:11:51.197Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 42
+    },
+    {
+      "t": "2026-06-25T23:12:05.979Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 755,
+      "cache_read": 284335,
+      "cache_create": 567,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:12:26.992Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 2,
+      "out": 1538,
+      "cache_read": 284902,
+      "cache_create": 852,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:13:18.158Z",
+      "kind": "turn",
+      "dur_s": 43,
+      "in": 131,
+      "out": 4794,
+      "cache_read": 285754,
+      "cache_create": 1716,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:13:34.670Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 4,
+      "span_s": 37
+    },
+    {
+      "t": "2026-06-25T23:13:47.125Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 865,
+      "cache_read": 287470,
+      "cache_create": 4992,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:13:52.111Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 453,
+      "cache_read": 292462,
+      "cache_create": 928,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:14:12.017Z",
+      "kind": "turn",
+      "dur_s": 16,
+      "in": 2,
+      "out": 1431,
+      "cache_read": 293390,
+      "cache_create": 522,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:14:38.461Z",
+      "kind": "turn",
+      "dur_s": 25,
+      "in": 2,
+      "out": 1703,
+      "cache_read": 293912,
+      "cache_create": 1460,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T23:14:40.455Z",
+      "kind": "harness",
+      "verb": "checks"
+    },
+    {
+      "t": "2026-06-25T23:14:40.455Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T23:14:40.455Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 886,
+      "agent_working_s": 623,
+      "human_s": 263,
+      "idle_s": 0,
+      "working_ratio": 0.7
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 567,
+      "out": 45596,
+      "cache_read": 5678902,
+      "cache_create": 54188
+    },
+    "tools": {
+      "Bash": 11,
+      "Read": 3,
+      "Edit": 5
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T08:02:23.152Z",
+  "window": {
+    "since": "last-command",
+    "from": 14242,
+    "to": 14259
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 30359,
+    "output": 4015,
+    "cache_create": 20541,
+    "cache_read": 15933,
+    "total": 70848,
+    "subagent_tokens": 0,
+    "grand_total": 70848
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 4015
+    }
+  },
+  "tools": {
+    "Bash": 2,
+    "Read": 3
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T08:01:42.530Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:01:42.530Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 30359,
+      "out": 4015,
+      "cache_read": 15933,
+      "cache_create": 20541,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:01:44.882Z",
+      "kind": "harness",
+      "verb": "flow"
+    },
+    {
+      "t": "2026-06-25T08:01:44.882Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-25T08:01:46.293Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T08:01:46.590Z",
+      "kind": "command_exit",
+      "verb": "flow",
+      "exit": 0,
+      "status": "ok"
+    },
+    {
+      "t": "2026-06-25T08:01:46.764Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 3,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-25T08:01:46.764Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 4,
+      "agent_working_s": 4,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 30359,
+      "out": 4015,
+      "cache_read": 15933,
+      "cache_create": 20541
+    },
+    "tools": {
+      "Bash": 2,
+      "Read": 3
+    },
+    "outcomes": {
+      "exits": {
+        "flow": 0
+      }
+    }
+  }
+}

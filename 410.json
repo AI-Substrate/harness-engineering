@@ -1,0 +1,112 @@
+{
+  "schema_version": "2.0",
+  "command": "observe",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T09:40:35.893Z",
+  "window": {
+    "since": "last-command",
+    "from": 15038,
+    "to": 15051
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 37054,
+    "output": 1888,
+    "cache_create": 21210,
+    "cache_read": 15933,
+    "total": 76085,
+    "subagent_tokens": 0,
+    "grand_total": 76085
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 1888
+    }
+  },
+  "tools": {
+    "Bash": 2,
+    "Read": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T09:40:26.693Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:40:26.693Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 37054,
+      "out": 1888,
+      "cache_read": 15933,
+      "cache_create": 21210,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:40:28.781Z",
+      "kind": "harness",
+      "verb": "flow"
+    },
+    {
+      "t": "2026-06-25T09:40:28.781Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-25T09:40:29.681Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-25T09:40:29.681Z",
+      "kind": "harness",
+      "verb": "observe list"
+    },
+    {
+      "t": "2026-06-25T09:40:30.086Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T09:40:30.086Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "observe"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 3,
+      "agent_working_s": 3,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 37054,
+      "out": 1888,
+      "cache_read": 15933,
+      "cache_create": 21210
+    },
+    "tools": {
+      "Bash": 2,
+      "Read": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

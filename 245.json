@@ -1,0 +1,187 @@
+{
+  "schema_version": "2.0",
+  "command": "telemetry",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T03:14:16.020Z",
+  "window": {
+    "since": "last-command",
+    "from": 12270,
+    "to": 12330
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 3106,
+    "output": 11925,
+    "cache_create": 15073,
+    "cache_read": 3800544,
+    "total": 3830648,
+    "subagent_tokens": 0,
+    "grand_total": 3830648
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 9,
+      "output_tokens": 11925
+    }
+  },
+  "tools": {
+    "Bash": 9
+  },
+  "thinking": {
+    "blocks": 8
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T03:10:56.078Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:10:56.078Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 235,
+      "cache_read": 417980,
+      "cache_create": 395,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:10:57.604Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 7,
+      "span_s": 92
+    },
+    {
+      "t": "2026-06-25T03:11:07.455Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 311,
+      "cache_read": 418375,
+      "cache_create": 366,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:11:14.579Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 407,
+      "cache_read": 418741,
+      "cache_create": 557,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:11:27.951Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2847,
+      "out": 1528,
+      "cache_read": 419298,
+      "cache_create": 614,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:11:44.406Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 131,
+      "out": 437,
+      "cache_read": 419912,
+      "cache_create": 4702,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:11:56.625Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 978,
+      "cache_read": 424614,
+      "cache_create": 939,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:12:26.478Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 55,
+      "out": 1998,
+      "cache_read": 425553,
+      "cache_create": 1418,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:13:15.939Z",
+      "kind": "turn",
+      "dur_s": 67,
+      "in": 63,
+      "out": 3357,
+      "cache_read": 426971,
+      "cache_create": 2129,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:13:18.784Z",
+      "kind": "harness",
+      "verb": "telemetry"
+    },
+    {
+      "t": "2026-06-25T03:13:18.784Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T03:13:52.052Z",
+      "kind": "turn",
+      "dur_s": 33,
+      "in": 2,
+      "out": 2674,
+      "cache_read": 429100,
+      "cache_create": 3953,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T03:13:56.356Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T03:13:56.356Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "telemetry"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 180,
+      "agent_working_s": 180,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 3106,
+      "out": 11925,
+      "cache_read": 3800544,
+      "cache_create": 15073
+    },
+    "tools": {
+      "Bash": 9
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": "2.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:44:12.461Z",
+  "window": {
+    "since": "last-command",
+    "from": 8263,
+    "to": 8266
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 2,
+    "output": 382,
+    "cache_create": 341,
+    "cache_read": 274287,
+    "total": 275012,
+    "subagent_tokens": 0,
+    "grand_total": 275012
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 382
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 1
+  },
+  "bash_commands": [
+    "python3"
+  ],
+  "harness_commands": [
+    "checks"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T07:44:07.731Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:44:07.731Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 382,
+      "cache_read": 274287,
+      "cache_create": 341,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:44:09.162Z",
+      "kind": "harness",
+      "verb": "checks"
+    },
+    {
+      "t": "2026-06-24T07:44:09.162Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 1,
+      "agent_working_s": 1,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 382,
+      "cache_read": 274287,
+      "cache_create": 341
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

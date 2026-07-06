@@ -1,0 +1,238 @@
+{
+  "schema_version": "2.0",
+  "command": "capture-fixtures",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T08:58:11.376Z",
+  "window": {
+    "since": "last-command",
+    "from": 14671,
+    "to": 14734
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 282,
+    "output": 11512,
+    "cache_create": 15682,
+    "cache_read": 3354710,
+    "total": 3382186,
+    "subagent_tokens": 0,
+    "grand_total": 3382186
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 12,
+      "output_tokens": 11512
+    }
+  },
+  "tools": {
+    "Bash": 6,
+    "AskUserQuestion": 1,
+    "Edit": 5
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "harness/cli/test/services/telemetry/fixture-extract.test.ts",
+      "harness/cli/test/services/telemetry/fixture-extract.test.ts",
+      "harness/cli/src/services/telemetry/fixture-extract.ts",
+      ".harness/extensions/telemetry-fixtures/extension.ts",
+      ".harness/extensions/telemetry-fixtures/extension.ts"
+    ]
+  },
+  "thinking": {
+    "blocks": 8
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T08:33:35.468Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:33:35.468Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 660,
+      "cache_read": 271353,
+      "cache_create": 517,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:33:40.222Z",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    },
+    {
+      "t": "2026-06-25T08:33:40.222Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 5,
+      "span_s": 81
+    },
+    {
+      "t": "2026-06-25T08:33:55.877Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 1524,
+      "cache_read": 271870,
+      "cache_create": 1369,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:34:19.726Z",
+      "kind": "turn",
+      "dur_s": 16,
+      "in": 2,
+      "out": 1577,
+      "cache_read": 273239,
+      "cache_create": 2817,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:34:33.058Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 649,
+      "cache_read": 276056,
+      "cache_create": 2270,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:34:55.733Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 131,
+      "out": 1461,
+      "cache_read": 278326,
+      "cache_create": 899,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:35:14.211Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 1050,
+      "cache_read": 279225,
+      "cache_create": 2119,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:35:19.928Z",
+      "kind": "tools",
+      "name": "AskUserQuestion",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:57:02.481Z",
+      "kind": "turn",
+      "dur_s": 19,
+      "in": 2,
+      "out": 1359,
+      "cache_read": 281344,
+      "cache_create": 1181,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:57:06.534Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:57:12.754Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 584,
+      "cache_read": 282525,
+      "cache_create": 1432,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:57:15.145Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 5,
+      "span_s": 41
+    },
+    {
+      "t": "2026-06-25T08:57:27.612Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 960,
+      "cache_read": 283957,
+      "cache_create": 663,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:57:40.041Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 800,
+      "cache_read": 284620,
+      "cache_create": 1039,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:57:44.019Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 131,
+      "out": 294,
+      "cache_read": 285659,
+      "cache_create": 877,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:57:56.626Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 594,
+      "cache_read": 286536,
+      "cache_create": 499,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:57:56.626Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 1461,
+      "agent_working_s": 1461,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 282,
+      "out": 11512,
+      "cache_read": 3354710,
+      "cache_create": 15682
+    },
+    "tools": {
+      "Bash": 6,
+      "AskUserQuestion": 1,
+      "Edit": 5
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

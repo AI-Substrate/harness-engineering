@@ -1,0 +1,102 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:47:11.895Z",
+  "window": {
+    "since": "last-command",
+    "from": 17973,
+    "to": 17977
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 4,
+    "output": 1237,
+    "cache_create": 1402,
+    "cache_read": 300663,
+    "total": 303306,
+    "subagent_tokens": 0,
+    "grand_total": 303306
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 1237
+    }
+  },
+  "tools": {
+    "Edit": 2
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md",
+      "docs/plans/038-telemetry-otel-standard/telemetry-otel-standard-plan.md"
+    ]
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:46:58.896Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:46:58.896Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 638,
+      "cache_read": 149993,
+      "cache_create": 677,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:46:58.896Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 11
+    },
+    {
+      "t": "2026-06-27T02:47:09.617Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 599,
+      "cache_read": 150670,
+      "cache_create": 725,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:47:09.617Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 11,
+      "agent_working_s": 11,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 1237,
+      "cache_read": 300663,
+      "cache_create": 1402
+    },
+    "tools": {
+      "Edit": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

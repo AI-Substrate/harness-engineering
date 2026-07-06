@@ -1,0 +1,103 @@
+{
+  "schema_version": "2.0",
+  "command": "capture-fixtures",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T10:27:51.489Z",
+  "window": {
+    "since": "last-command",
+    "from": 15740,
+    "to": 15749
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 131,
+    "output": 896,
+    "cache_create": 359,
+    "cache_read": 262054,
+    "total": 263440,
+    "subagent_tokens": 0,
+    "grand_total": 263440
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 896
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T10:27:34.001Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:34.001Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 896,
+      "cache_read": 262054,
+      "cache_create": 359,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:38.628Z",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    },
+    {
+      "t": "2026-06-25T10:27:38.628Z",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    },
+    {
+      "t": "2026-06-25T10:27:38.628Z",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    },
+    {
+      "t": "2026-06-25T10:27:38.628Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:27:38.628Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 5,
+      "agent_working_s": 5,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 131,
+      "out": 896,
+      "cache_read": 262054,
+      "cache_create": 359
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

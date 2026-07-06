@@ -1,0 +1,155 @@
+{
+  "schema_version": "2.0",
+  "command": "observe",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T10:29:36.447Z",
+  "window": {
+    "since": "last-command",
+    "from": 15749,
+    "to": 15771
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 10,
+    "output": 4148,
+    "cache_create": 4717,
+    "cache_read": 1322768,
+    "total": 1331643,
+    "subagent_tokens": 0,
+    "grand_total": 1331643
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 5,
+      "output_tokens": 4148
+    }
+  },
+  "tools": {
+    "Bash": 4,
+    "Edit": 1
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/037-telemetry-fixture-corpus/tasks/phase-2-fan-out-copilot-cli-copilot-vscode-cursor/execution.log.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 3
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T10:27:47.649Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:47.649Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 690,
+      "cache_read": 262413,
+      "cache_create": 1164,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:51.176Z",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    },
+    {
+      "t": "2026-06-25T10:27:51.176Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:28:00.137Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 1501,
+      "cache_read": 263577,
+      "cache_create": 736,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:28:16.044Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:28:27.395Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 603,
+      "cache_read": 264313,
+      "cache_create": 1614,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:28:27.395Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 27
+    },
+    {
+      "t": "2026-06-25T10:28:37.546Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 552,
+      "cache_read": 265927,
+      "cache_create": 611,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:28:50.835Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 802,
+      "cache_read": 266538,
+      "cache_create": 592,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:28:50.835Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "observe"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 63,
+      "agent_working_s": 63,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 10,
+      "out": 4148,
+      "cache_read": 1322768,
+      "cache_create": 4717
+    },
+    "tools": {
+      "Bash": 4,
+      "Edit": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

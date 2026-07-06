@@ -1,0 +1,162 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:47:33.683Z",
+  "window": {
+    "since": "last-command",
+    "from": 18562,
+    "to": 18589
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 139,
+    "output": 3952,
+    "cache_create": 5930,
+    "cache_read": 2067185,
+    "total": 2077206,
+    "subagent_tokens": 0,
+    "grand_total": 2077206
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 5,
+      "output_tokens": 3952
+    }
+  },
+  "tools": {
+    "Write": 1,
+    "Edit": 2,
+    "Read": 1
+  },
+  "files": {
+    "written": [
+      "minih-companion-operation.md"
+    ],
+    "edited": [
+      "MEMORY.md",
+      "MEMORY.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 4
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:46:03.834Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:46:03.834Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1471,
+      "cache_read": 410765,
+      "cache_create": 1518,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:46:15.633Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:46:28.893Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 375,
+      "cache_read": 412283,
+      "cache_create": 1551,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:46:28.893Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:46:34.193Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 131,
+      "out": 214,
+      "cache_read": 413834,
+      "cache_create": 442,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:46:34.704Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:46:42.756Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 564,
+      "cache_read": 414276,
+      "cache_create": 1751,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:46:46.091Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:47:00.384Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1328,
+      "cache_read": 416027,
+      "cache_create": 668,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:47:00.384Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 57,
+      "agent_working_s": 57,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 139,
+      "out": 3952,
+      "cache_read": 2067185,
+      "cache_create": 5930
+    },
+    "tools": {
+      "Write": 1,
+      "Edit": 2,
+      "Read": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

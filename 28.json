@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T23:58:44.100Z",
+  "window": {
+    "since": "last-command",
+    "from": 4389,
+    "to": 4508
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 427,
+    "output": 36934,
+    "cache_create": 62286,
+    "cache_read": 8390011,
+    "total": 8489658,
+    "subagent_tokens": 0,
+    "grand_total": 8489658
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 20,
+      "output_tokens": 36934
+    }
+  },
+  "effort": "max",
+  "skills": {},
+  "tools": {
+    "Bash": 7,
+    "Edit": 5,
+    "Read": 3
+  },
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/guide/14-metrics-and-measures.md",
+      "docs/guide/14-metrics-and-measures.md",
+      "docs/guide/14-metrics-and-measures.md",
+      "skills/eng-harness-flow/references/00-routing.md",
+      "skills/eng-harness-flow/references/00-routing.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 18
+  }
+}

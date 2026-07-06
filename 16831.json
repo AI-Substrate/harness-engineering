@@ -1,0 +1,98 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:08:16.506Z",
+  "window": {
+    "since": "last-command",
+    "from": 17771,
+    "to": 17775
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 131,
+    "output": 473,
+    "cache_create": 977,
+    "cache_read": 254729,
+    "total": 256310,
+    "subagent_tokens": 0,
+    "grand_total": 256310
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 473
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:08:03.713Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:08:03.713Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 473,
+      "cache_read": 254729,
+      "cache_create": 977,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:08:07.995Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-27T02:08:07.995Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-27T02:08:07.995Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:08:07.995Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 4,
+      "agent_working_s": 4,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 131,
+      "out": 473,
+      "cache_read": 254729,
+      "cache_create": 977
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

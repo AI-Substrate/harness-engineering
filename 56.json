@@ -1,0 +1,110 @@
+{
+  "schema_version": "1.1",
+  "command": "arch-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T06:42:06.715Z",
+  "window": {
+    "since": "last-command",
+    "from": 7126,
+    "to": 7290
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 1000,
+    "output": 40580,
+    "cache_create": 69613,
+    "cache_read": 8677917,
+    "total": 8789110,
+    "subagent_tokens": 0,
+    "grand_total": 8789110
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 29,
+      "output_tokens": 40580
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 4,
+    "Read": 6,
+    "Edit": 17,
+    "Write": 2
+  },
+  "bash_commands": [
+    "cd",
+    "tail",
+    "echo",
+    "minih",
+    "jq",
+    "echo",
+    "cd",
+    "echo",
+    "minih",
+    "jq",
+    "echo",
+    "echo",
+    "minih",
+    "jq",
+    "cd",
+    "echo",
+    "head",
+    "jq",
+    "echo",
+    "wc",
+    "echo",
+    "head",
+    "jq",
+    "echo",
+    "jq",
+    "sort",
+    "uniq",
+    "cd",
+    "npx vitest",
+    "tail"
+  ],
+  "harness_commands": [
+    "flow comment"
+  ],
+  "user_prompts": [
+    2
+  ],
+  "subagents": [],
+  "files": {
+    "written": [
+      "harness/cli/src/services/telemetry/event-builder.ts",
+      "harness/cli/test/services/telemetry/claude-events.test.ts"
+    ],
+    "edited": [
+      "harness/cli/src/services/telemetry/adapters/harness-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/harness-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/harness-adapter.ts",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/rollup.ts",
+      "harness/cli/test/services/telemetry/events-rollup.test.ts"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 21
+  }
+}

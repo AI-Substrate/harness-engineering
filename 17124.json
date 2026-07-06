@@ -1,0 +1,115 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:55:09.767Z",
+  "window": {
+    "since": "last-command",
+    "from": 18005,
+    "to": 18025
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 4,
+    "output": 2370,
+    "cache_create": 9036,
+    "cache_read": 323452,
+    "total": 334862,
+    "subagent_tokens": 0,
+    "grand_total": 334862
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 2370
+    }
+  },
+  "tools": {
+    "Read": 1,
+    "Bash": 1
+  },
+  "user_prompts": [
+    4
+  ],
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:53:48.135Z",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-06-27T02:53:55.518Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:53:55.518Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 368,
+      "cache_read": 161722,
+      "cache_create": 8,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:53:56.315Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:54:26.502Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2002,
+      "cache_read": 161730,
+      "cache_create": 9028,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:54:31.903Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:54:31.903Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 44,
+      "agent_working_s": 44,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 2370,
+      "cache_read": 323452,
+      "cache_create": 9036
+    },
+    "tools": {
+      "Read": 1,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

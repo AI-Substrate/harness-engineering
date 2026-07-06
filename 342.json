@@ -1,0 +1,122 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T05:52:16.038Z",
+  "window": {
+    "since": "last-command",
+    "from": 13030,
+    "to": 13053
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 133,
+    "output": 5529,
+    "cache_create": 7443,
+    "cache_read": 254200,
+    "total": 267305,
+    "subagent_tokens": 0,
+    "grand_total": 267305
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 5529
+    }
+  },
+  "tools": {
+    "Read": 1,
+    "Bash": 1,
+    "Write": 1
+  },
+  "files": {
+    "written": [
+      "docs/plans/037-telemetry-fixture-corpus/original-ask.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T05:51:12.099Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:51:12.099Z",
+      "kind": "turn",
+      "dur_s": 27,
+      "in": 2,
+      "out": 2101,
+      "cache_read": 125791,
+      "cache_create": 2618,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:51:14.411Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T05:51:15.787Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T05:51:55.383Z",
+      "kind": "turn",
+      "dur_s": 39,
+      "in": 131,
+      "out": 3428,
+      "cache_read": 128409,
+      "cache_create": 4825,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:52:05.204Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T05:52:05.204Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 53,
+      "agent_working_s": 53,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 5529,
+      "cache_read": 254200,
+      "cache_create": 7443
+    },
+    "tools": {
+      "Read": 1,
+      "Bash": 1,
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema_version": "2.1",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T01:34:13.225Z",
+  "window": {
+    "since": "last-command",
+    "from": 11163,
+    "to": 11178
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 4,
+    "output": 1220,
+    "cache_create": 4702,
+    "cache_read": 687266,
+    "total": 693192,
+    "subagent_tokens": 0,
+    "grand_total": 693192
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 1220
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "user_prompts": [
+    5
+  ],
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T01:33:13.911Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:33:13.911Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 364,
+      "cache_read": 341719,
+      "cache_create": 3828,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:33:14.120Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:33:24.007Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 856,
+      "cache_read": 345547,
+      "cache_create": 874,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:34:04.348Z",
+      "kind": "prompt",
+      "words": 5
+    },
+    {
+      "t": "2026-06-25T01:34:04.348Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 50,
+      "agent_working_s": 10,
+      "human_s": 40,
+      "idle_s": 0,
+      "working_ratio": 0.2
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 1220,
+      "cache_read": 687266,
+      "cache_create": 4702
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

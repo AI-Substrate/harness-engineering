@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.1",
+  "command": "skills-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:22:55.967Z",
+  "window": {
+    "since": "last-command",
+    "from": 7842,
+    "to": 7844
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 131,
+    "output": 345,
+    "cache_create": 2790,
+    "cache_read": 147353,
+    "total": 150619,
+    "subagent_tokens": 0,
+    "grand_total": 150619
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 345
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 1
+  },
+  "bash_commands": [
+    "python3",
+    "head"
+  ],
+  "harness_commands": [
+    "checks"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  }
+}

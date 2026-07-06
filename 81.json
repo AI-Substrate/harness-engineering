@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.1",
+  "command": "docs",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:33:56.597Z",
+  "window": {
+    "since": "last-command",
+    "from": 8004,
+    "to": 8056
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 153,
+    "output": 10210,
+    "cache_create": 13229,
+    "cache_read": 2440978,
+    "total": 2464570,
+    "subagent_tokens": 0,
+    "grand_total": 2464570
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 12,
+      "output_tokens": 10210
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 5,
+    "Edit": 7
+  },
+  "bash_commands": [
+    "npx vitest",
+    "tail",
+    "echo",
+    "python3",
+    "git add",
+    "claude-adapter.ts",
+    "copilot-adapter.ts",
+    "outcome-events.test.ts",
+    "claude-events.test.ts",
+    "copilot-events.test.ts",
+    "tasks.md",
+    "execution.log.md",
+    "git commit",
+    "git log",
+    "minih",
+    "tail",
+    "echo",
+    "minih",
+    "grep",
+    "head",
+    "minih",
+    "python3",
+    "head",
+    "minih",
+    "python3"
+  ],
+  "harness_commands": [
+    "arch-check"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/execution.log.md",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/test/services/telemetry/flow-events.test.ts",
+      "docs/plans/034-harness-telemetry-collection/event-schema-v2-detail.md",
+      "docs/plans/034-harness-telemetry-collection/event-schema-v2-detail.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 6
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T09:53:36.638Z",
+  "window": {
+    "since": "last-command",
+    "from": 8804,
+    "to": 8808
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": true,
+  "tokens": {
+    "input": 2,
+    "output": 1798,
+    "cache_create": 256,
+    "cache_read": 426424,
+    "total": 428480,
+    "subagent_tokens": 0,
+    "grand_total": 428480
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 1798
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 1
+  },
+  "bash_commands": [
+    "cd",
+    "npx vitest",
+    "grep",
+    "echo",
+    "python3"
+  ],
+  "harness_commands": [
+    "arch-check"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T09:53:07.380Z",
+      "kind": "branch",
+      "to": "telemetry-enhancements",
+      "from": "demo-prior-branch"
+    },
+    {
+      "t": "2026-06-24T09:53:07.380Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:53:07.380Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1798,
+      "cache_read": 426424,
+      "cache_create": 256,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:53:09.409Z",
+      "kind": "harness",
+      "verb": "arch-check"
+    },
+    {
+      "t": "2026-06-24T09:53:09.409Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 2,
+      "agent_working_s": 2,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 1798,
+      "cache_read": 426424,
+      "cache_create": 256
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

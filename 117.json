@@ -1,0 +1,197 @@
+{
+  "schema_version": "2.0",
+  "command": "observe",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T09:48:53.911Z",
+  "window": {
+    "since": "last-command",
+    "from": 8667,
+    "to": 8704
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 137,
+    "output": 8348,
+    "cache_create": 9122,
+    "cache_read": 1576778,
+    "total": 1594385,
+    "subagent_tokens": 0,
+    "grand_total": 1594385
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 4,
+      "output_tokens": 8348
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 2
+  },
+  "bash_commands": [
+    "cd",
+    "tail",
+    "tail",
+    "tail",
+    "echo",
+    "python3",
+    "cd",
+    "echo",
+    "git branch",
+    "echo",
+    "grep",
+    "echo",
+    "grep",
+    "grep",
+    "head",
+    "echo",
+    "python3"
+  ],
+  "harness_commands": [
+    "observe",
+    "observe",
+    "observe",
+    "observe"
+  ],
+  "user_prompts": [
+    14,
+    9,
+    11
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 4
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T09:35:41.382Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:35:41.382Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2580,
+      "cache_read": 388670,
+      "cache_create": 4045,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:35:54.422Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-24T09:35:54.422Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-24T09:35:54.422Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-24T09:35:54.422Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-24T09:35:54.422Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T09:36:14.023Z",
+      "kind": "turn",
+      "dur_s": 19,
+      "in": 2,
+      "out": 1834,
+      "cache_read": 392715,
+      "cache_create": 3134,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:46:46.440Z",
+      "kind": "prompt",
+      "words": 14
+    },
+    {
+      "t": "2026-06-24T09:47:01.736Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 1356,
+      "cache_read": 397683,
+      "cache_create": 27,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:47:08.098Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T09:47:36.712Z",
+      "kind": "turn",
+      "dur_s": 28,
+      "in": 131,
+      "out": 2578,
+      "cache_read": 397710,
+      "cache_create": 1916,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:48:11.759Z",
+      "kind": "prompt",
+      "words": 9
+    },
+    {
+      "t": "2026-06-24T09:48:16.354Z",
+      "kind": "prompt",
+      "words": 11
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 755,
+      "agent_working_s": 83,
+      "human_s": 40,
+      "idle_s": 632,
+      "working_ratio": 0.68
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 137,
+      "out": 8348,
+      "cache_read": 1576778,
+      "cache_create": 9122
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

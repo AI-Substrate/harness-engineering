@@ -1,0 +1,167 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:51:18.982Z",
+  "window": {
+    "since": "last-command",
+    "from": 8395,
+    "to": 8403
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 135,
+    "output": 550,
+    "cache_create": 1593,
+    "cache_read": 918623,
+    "total": 920901,
+    "subagent_tokens": 0,
+    "grand_total": 920901
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 550
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 3
+  },
+  "bash_commands": [
+    "cd",
+    "tail",
+    "echo",
+    "head",
+    "sed",
+    "cd",
+    "sed",
+    "cd",
+    "sed",
+    "echo",
+    "sed"
+  ],
+  "harness_commands": [
+    "flow rail",
+    "flow node",
+    "flow",
+    "flow",
+    "flow status",
+    "flow nav"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T07:50:30.271Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:30.271Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 205,
+      "cache_read": 305752,
+      "cache_create": 221,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:30.271Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-24T07:50:30.271Z",
+      "kind": "harness",
+      "verb": "flow node"
+    },
+    {
+      "t": "2026-06-24T07:50:30.271Z",
+      "kind": "harness",
+      "verb": "flow"
+    },
+    {
+      "t": "2026-06-24T07:50:30.271Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 11
+    },
+    {
+      "t": "2026-06-24T07:50:35.324Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 183,
+      "cache_read": 305973,
+      "cache_create": 925,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:36.397Z",
+      "kind": "harness",
+      "verb": "flow"
+    },
+    {
+      "t": "2026-06-24T07:50:41.027Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 162,
+      "cache_read": 306898,
+      "cache_create": 447,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:50:41.027Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-24T07:50:41.027Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 11,
+      "agent_working_s": 11,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 135,
+      "out": 550,
+      "cache_read": 918623,
+      "cache_create": 1593
+    },
+    "tools": {
+      "Bash": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

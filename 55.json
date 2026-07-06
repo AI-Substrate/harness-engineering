@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T06:30:35.531Z",
+  "window": {
+    "since": "last-command",
+    "from": 7089,
+    "to": 7126
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 141,
+    "output": 8881,
+    "cache_create": 9225,
+    "cache_read": 1535982,
+    "total": 1554229,
+    "subagent_tokens": 0,
+    "grand_total": 1554229
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 6,
+      "output_tokens": 8881
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 5,
+    "Write": 2
+  },
+  "bash_commands": [
+    "cd",
+    "echo",
+    "tail",
+    "npx vitest",
+    "tail",
+    "cd",
+    "echo",
+    "minih",
+    "jq",
+    "echo",
+    "tail",
+    "cd",
+    "echo",
+    "git rev-parse",
+    "git add",
+    "events.ts",
+    "rollup.ts",
+    "segment.ts",
+    "segment.schema.json",
+    "events-rollup.test.ts",
+    "segment.test.ts",
+    "segment-schema.test.ts",
+    "future-harness-adapter.test.ts",
+    "tasks.md",
+    "execution.log.md",
+    "the-flow.json",
+    "the-flow.md",
+    "git commit",
+    "echo",
+    "git rev-parse",
+    "cd",
+    "minih",
+    "tail",
+    "echo",
+    "minih",
+    "tail"
+  ],
+  "harness_commands": [
+    "arch-check"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/execution.log.md"
+    ],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 5
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": "2.0",
+  "command": "telemetry",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T05:24:23.748Z",
+  "window": {
+    "since": "last-command",
+    "from": 12840,
+    "to": 12857
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 135,
+    "output": 5858,
+    "cache_create": 10760,
+    "cache_read": 647862,
+    "total": 664615,
+    "subagent_tokens": 0,
+    "grand_total": 664615
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 5858
+    }
+  },
+  "tools": {
+    "Bash": 3
+  },
+  "thinking": {
+    "blocks": 3
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T05:22:53.721Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:22:53.721Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 1877,
+      "cache_read": 211146,
+      "cache_create": 6050,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:22:59.229Z",
+      "kind": "harness",
+      "verb": "telemetry sync"
+    },
+    {
+      "t": "2026-06-25T05:22:59.229Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T05:23:24.918Z",
+      "kind": "turn",
+      "dur_s": 24,
+      "in": 2,
+      "out": 2062,
+      "cache_read": 217196,
+      "cache_create": 2324,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:23:29.651Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 27
+    },
+    {
+      "t": "2026-06-25T05:23:53.048Z",
+      "kind": "turn",
+      "dur_s": 22,
+      "in": 2,
+      "out": 1919,
+      "cache_read": 219520,
+      "cache_create": 2386,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:23:53.048Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "telemetry"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 59,
+      "agent_working_s": 59,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 135,
+      "out": 5858,
+      "cache_read": 647862,
+      "cache_create": 10760
+    },
+    "tools": {
+      "Bash": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

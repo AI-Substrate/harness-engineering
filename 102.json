@@ -1,0 +1,143 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:50:21.376Z",
+  "window": {
+    "since": "last-command",
+    "from": 8372,
+    "to": 8388
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 6,
+    "output": 3339,
+    "cache_create": 2955,
+    "cache_read": 901573,
+    "total": 907873,
+    "subagent_tokens": 0,
+    "grand_total": 907873
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 3339
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Edit": 1,
+    "Bash": 2
+  },
+  "bash_commands": [
+    "git add",
+    "copilot-adapter.ts",
+    "capture-service.ts",
+    "claude-events.test.ts",
+    "copilot-events.test.ts",
+    "flow-events.test.ts",
+    "telemetry.md",
+    "event-schema-v2.md",
+    "execution.log.md",
+    "git commit",
+    "git log",
+    "minih",
+    "tail"
+  ],
+  "harness_commands": [],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/execution.log.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T07:49:15.839Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:49:15.839Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 1682,
+      "cache_read": 299664,
+      "cache_create": 406,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:49:33.728Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T07:49:46.767Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 728,
+      "cache_read": 300070,
+      "cache_create": 1769,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T07:49:46.767Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 16
+    },
+    {
+      "t": "2026-06-24T07:49:56.597Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 929,
+      "cache_read": 301839,
+      "cache_create": 780,
+      "model": "claude-opus-4-8"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 41,
+      "agent_working_s": 41,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 6,
+      "out": 3339,
+      "cache_read": 901573,
+      "cache_create": 2955
+    },
+    "tools": {
+      "Edit": 1,
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T23:13:52.641Z",
+  "window": {
+    "since": "last-command",
+    "from": 4345,
+    "to": 4372
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 6,
+    "output": 14058,
+    "cache_create": 365465,
+    "cache_read": 767825,
+    "total": 1147354,
+    "subagent_tokens": 0,
+    "grand_total": 1147354
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 14058
+    }
+  },
+  "effort": "max",
+  "skills": {},
+  "tools": {
+    "Bash": 1,
+    "Write": 1
+  },
+  "subagents": [],
+  "files": {
+    "written": [
+      "docs/guide/14-metrics-and-measures.md"
+    ],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 3
+  }
+}

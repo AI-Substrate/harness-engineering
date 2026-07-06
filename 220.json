@@ -1,0 +1,235 @@
+{
+  "schema_version": "2.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T02:18:52.790Z",
+  "window": {
+    "since": "last-command",
+    "from": 11347,
+    "to": 11383
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 142,
+    "output": 12490,
+    "cache_create": 19778,
+    "cache_read": 3024734,
+    "total": 3057144,
+    "subagent_tokens": 0,
+    "grand_total": 3057144
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 7,
+      "output_tokens": 12490
+    }
+  },
+  "skills": {
+    "validate-v2": 1
+  },
+  "tools": {
+    "Bash": 2,
+    "Skill": 1,
+    "Write": 1,
+    "Edit": 3
+  },
+  "user_prompts": [
+    2226
+  ],
+  "files": {
+    "written": [
+      "docs/plans/034-harness-telemetry-collection/validations/phase-6-copilot-vscode-validation.md"
+    ],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md",
+      "docs/plans/034-harness-telemetry-collection/harness-telemetry-collection-plan.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 4
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T02:15:41.484Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:15:41.484Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 753,
+      "cache_read": 423401,
+      "cache_create": 725,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:15:48.587Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T02:15:48.587Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-25T02:15:48.587Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T02:15:48.587Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T02:15:48.587Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T02:15:52.470Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 776,
+      "cache_read": 424126,
+      "cache_create": 769,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:16:00.727Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T02:16:00.727Z",
+      "kind": "skill",
+      "name": "validate-v2",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T02:16:00.738Z",
+      "kind": "prompt",
+      "words": 2226
+    },
+    {
+      "t": "2026-06-25T02:16:59.387Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 1,
+      "out": 4571,
+      "cache_read": 424895,
+      "cache_create": 6469,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:17:06.833Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T02:17:46.053Z",
+      "kind": "turn",
+      "dur_s": 39,
+      "in": 2,
+      "out": 4479,
+      "cache_read": 431364,
+      "cache_create": 5648,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:18:05.384Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T02:18:09.007Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 683,
+      "cache_read": 437012,
+      "cache_create": 4571,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:18:14.365Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 3,
+      "span_s": 19
+    },
+    {
+      "t": "2026-06-25T02:18:24.591Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 131,
+      "out": 610,
+      "cache_read": 441583,
+      "cache_create": 770,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:18:33.015Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 618,
+      "cache_read": 442353,
+      "cache_create": 826,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:18:33.015Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 172,
+      "agent_working_s": 172,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {
+      "validate-v2": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 0
+      }
+    },
+    "tokens": {
+      "in": 142,
+      "out": 12490,
+      "cache_read": 3024734,
+      "cache_create": 19778
+    },
+    "tools": {
+      "Bash": 2,
+      "Skill": 1,
+      "Write": 1,
+      "Edit": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

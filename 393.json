@@ -1,0 +1,108 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T08:06:42.761Z",
+  "window": {
+    "since": "last-command",
+    "from": 14317,
+    "to": 14320
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 2,
+    "output": 1108,
+    "cache_create": 954,
+    "cache_read": 145298,
+    "total": 147362,
+    "subagent_tokens": 0,
+    "grand_total": 147362
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 1108
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T08:06:04.864Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:06:04.864Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1108,
+      "cache_read": 145298,
+      "cache_create": 954,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:06:11.508Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-25T08:06:11.508Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-25T08:06:11.508Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-25T08:06:11.508Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-25T08:06:11.508Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:06:11.508Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 7,
+      "agent_working_s": 7,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 1108,
+      "cache_read": 145298,
+      "cache_create": 954
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

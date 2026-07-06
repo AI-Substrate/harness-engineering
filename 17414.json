@@ -1,0 +1,121 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:44:12.783Z",
+  "window": {
+    "since": "last-command",
+    "from": 18525,
+    "to": 18548
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 133,
+    "output": 4222,
+    "cache_create": 17647,
+    "cache_read": 729246,
+    "total": 751248,
+    "subagent_tokens": 0,
+    "grand_total": 751248
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 4222
+    }
+  },
+  "tools": {
+    "Bash": 2,
+    "Read": 2
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:42:55.513Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:42:55.513Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 999,
+      "cache_read": 364600,
+      "cache_create": 46,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:42:59.223Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:43:00.754Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:43:46.569Z",
+      "kind": "turn",
+      "dur_s": 45,
+      "in": 131,
+      "out": 3223,
+      "cache_read": 364646,
+      "cache_create": 17601,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:43:51.356Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:43:53.147Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:43:53.147Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 58,
+      "agent_working_s": 58,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 4222,
+      "cache_read": 729246,
+      "cache_create": 17647
+    },
+    "tools": {
+      "Bash": 2,
+      "Read": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

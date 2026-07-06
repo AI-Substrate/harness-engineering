@@ -1,0 +1,104 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T09:54:13.554Z",
+  "window": {
+    "since": "last-command",
+    "from": 15154,
+    "to": 15163
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 2,
+    "output": 232,
+    "cache_create": 664,
+    "cache_read": 76764,
+    "total": 77662,
+    "subagent_tokens": 0,
+    "grand_total": 77662
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 232
+    }
+  },
+  "tools": {
+    "Bash": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T09:54:06.593Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:54:06.593Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 232,
+      "cache_read": 76764,
+      "cache_create": 664,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:54:06.593Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T09:54:06.593Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-25T09:54:06.920Z",
+      "kind": "command_exit",
+      "verb": "flow",
+      "exit": 0,
+      "status": "ok"
+    },
+    {
+      "t": "2026-06-25T09:54:07.220Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T09:54:07.220Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 1,
+      "agent_working_s": 1,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 232,
+      "cache_read": 76764,
+      "cache_create": 664
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {
+        "flow": 0
+      }
+    }
+  }
+}

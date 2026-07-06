@@ -1,0 +1,85 @@
+{
+  "schema_version": "2.0",
+  "command": "windows-check",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:20:12.334Z",
+  "window": {
+    "since": "last-command",
+    "from": 17332,
+    "to": 17333
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 2,
+    "output": 441,
+    "cache_create": 5,
+    "cache_read": 442969,
+    "total": 443417,
+    "subagent_tokens": 0,
+    "grand_total": 443417
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 441
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:20:08.417Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:20:08.417Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 441,
+      "cache_read": 442969,
+      "cache_create": 5,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:20:08.417Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-26T02:20:08.417Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "windows-check"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 441,
+      "cache_read": 442969,
+      "cache_create": 5
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

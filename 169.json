@@ -1,0 +1,201 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T22:54:59.832Z",
+  "window": {
+    "since": "last-command",
+    "from": 9731,
+    "to": 9758
+  },
+  "branch": "telemetry-enhancements",
+  "tokens": {
+    "input": 6,
+    "output": 13718,
+    "cache_create": 3196,
+    "cache_read": 1180022,
+    "total": 1196942,
+    "subagent_tokens": 0,
+    "grand_total": 1196942
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 13718
+    }
+  },
+  "tools": {
+    "Bash": 1,
+    "Read": 1,
+    "Write": 1
+  },
+  "user_prompts": [
+    4,
+    12
+  ],
+  "files": {
+    "written": [
+      "docs/plans/035-flow-replay-telemetry/flow-replay-telemetry-plan.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1048,
+      "cache_read": 386049,
+      "cache_create": 1929,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow create"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow create"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow add-node"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow add-node"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow add-node"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-24T22:51:26.774Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T22:51:49.258Z",
+      "kind": "turn",
+      "dur_s": 19,
+      "in": 2,
+      "out": 1669,
+      "cache_read": 387978,
+      "cache_create": 1239,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T22:51:54.583Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T22:52:04.965Z",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-06-24T22:52:10.385Z",
+      "kind": "prompt",
+      "words": 12
+    },
+    {
+      "t": "2026-06-24T22:53:37.281Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 11001,
+      "cache_read": 405995,
+      "cache_create": 28,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T22:54:38.033Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T22:54:38.033Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 191,
+      "agent_working_s": 175,
+      "human_s": 16,
+      "idle_s": 0,
+      "working_ratio": 0.92
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 6,
+      "out": 13718,
+      "cache_read": 1180022,
+      "cache_create": 3196
+    },
+    "tools": {
+      "Bash": 1,
+      "Read": 1,
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

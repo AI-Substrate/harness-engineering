@@ -1,0 +1,96 @@
+{
+  "schema_version": "1.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T11:14:11.569Z",
+  "window": {
+    "since": "last-command",
+    "from": 2963,
+    "to": 3360
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 9687,
+    "output": 86323,
+    "cache_create": 126401,
+    "cache_read": 26178047,
+    "total": 26400458,
+    "subagent_tokens": 0,
+    "grand_total": 26400458
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 88,
+      "output_tokens": 86323
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "TaskCreate": 1,
+    "Bash": 47,
+    "Write": 13,
+    "Edit": 29,
+    "Read": 1
+  },
+  "subagents": [],
+  "files": {
+    "written": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "harness/cli/test/adapters/git/fake-git-write.test.ts",
+      "harness/cli/src/adapters/git/git-write-port.ts",
+      "harness/cli/src/adapters/git/fake-git-write.ts",
+      "harness/cli/src/adapters/git/exec-git-write.ts",
+      "harness/cli/test/adapters/git/exec-git-write.int.test.ts",
+      "harness/cli/test/services/telemetry/sync-service.test.ts",
+      "harness/cli/src/services/telemetry/sync-service.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/test/acts/telemetry.test.ts",
+      "harness/cli/test/services/telemetry/plan-id-cwd.test.ts",
+      "docs/how/telemetry.md",
+      "harness/cli/test/architecture/no-per-individual-surface.test.ts"
+    ],
+    "edited": [
+      "harness/cli/test/adapters/git/fake-git-write.test.ts",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "harness/cli/src/acts/verb.ts",
+      "harness/cli/src/acts/verb.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/test/app.test.ts",
+      "harness/cli/test/index.test.ts",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/test/services/telemetry/plan-id-cwd.test.ts",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "docs/how/harness-value-measures.md",
+      "docs/how/harness-value-measures.md",
+      "harness/cli/src/services/docs/docs-manifest.json",
+      "harness/cli/test/architecture/no-per-individual-surface.test.ts",
+      "harness/cli/test/architecture/no-per-individual-surface.test.ts"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 40
+  }
+}

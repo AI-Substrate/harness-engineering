@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T23:06:02.311Z",
+  "window": {
+    "since": "last-command",
+    "from": 3817,
+    "to": 4296
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 4893,
+    "output": 121497,
+    "cache_create": 157629,
+    "cache_read": 26641822,
+    "total": 26925841,
+    "subagent_tokens": 0,
+    "grand_total": 26925841
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 95,
+      "output_tokens": 121497
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 48,
+    "Read": 13,
+    "Edit": 22,
+    "Write": 4
+  },
+  "subagents": [],
+  "files": {
+    "written": [
+      "harness/cli/src/services/telemetry/housekeeping.ts",
+      "harness/cli/test/services/telemetry/pending-telemetry.test.ts",
+      "harness/cli/test/services/telemetry/housekeeping.test.ts",
+      "never-stash-concurrent-work.md"
+    ],
+    "edited": [
+      "harness/cli/src/output/envelope.ts",
+      "harness/cli/src/output/envelope.ts",
+      "harness/cli/src/services/telemetry/sync-service.ts",
+      "harness/cli/src/adapters/git/exec-git-write.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/src/app.ts",
+      "harness/cli/src/services/telemetry/housekeeping.ts",
+      "harness/cli/src/services/telemetry/housekeeping.ts",
+      "harness/cli/src/services/telemetry/housekeeping.ts",
+      "harness/cli/src/services/telemetry/housekeeping.ts",
+      "harness/cli/test/services/telemetry/housekeeping.test.ts",
+      "harness/cli/test/services/telemetry/housekeeping.test.ts",
+      "docs/how/telemetry.md",
+      "docs/how/telemetry.md",
+      "docs/how/telemetry.md",
+      "harness/cli/src/services/docs/docs-manifest.json",
+      "harness/cli/src/services/docs/docs-manifest.json",
+      "docs/guide/14-metrics-and-measures.md",
+      "docs/guide/14-metrics-and-measures.md",
+      "docs/how/harness-value-measures.md",
+      "MEMORY.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 72
+  }
+}

@@ -1,0 +1,214 @@
+{
+  "schema_version": "2.0",
+  "command": "capture-fixtures",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T10:27:39.076Z",
+  "window": {
+    "since": "last-command",
+    "from": 15689,
+    "to": 15740
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 149,
+    "output": 9666,
+    "cache_create": 14220,
+    "cache_read": 2542545,
+    "total": 2566580,
+    "subagent_tokens": 0,
+    "grand_total": 2566580
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 10,
+      "output_tokens": 9666
+    }
+  },
+  "tools": {
+    "Bash": 5,
+    "Edit": 5
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "harness/cli/src/services/telemetry/fixture-extract.ts",
+      "harness/cli/src/services/telemetry/fixture-extract.ts",
+      "harness/cli/test/services/telemetry/fixture-extract.test.ts",
+      ".harness/extensions/telemetry-fixtures/extension.ts",
+      ".harness/extensions/telemetry-fixtures/extension.ts"
+    ]
+  },
+  "thinking": {
+    "blocks": 6
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T10:24:58.131Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:24:58.131Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 541,
+      "cache_read": 247834,
+      "cache_create": 385,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:25:02.844Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T10:25:02.844Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T10:25:02.844Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 4,
+      "span_s": 45
+    },
+    {
+      "t": "2026-06-25T10:25:13.577Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 830,
+      "cache_read": 248219,
+      "cache_create": 751,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:25:27.845Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 749,
+      "cache_read": 248970,
+      "cache_create": 1329,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:25:42.147Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 809,
+      "cache_read": 250299,
+      "cache_create": 1004,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:26:22.310Z",
+      "kind": "turn",
+      "dur_s": 35,
+      "in": 131,
+      "out": 3927,
+      "cache_read": 251303,
+      "cache_create": 3742,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:26:36.228Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 5,
+      "span_s": 41
+    },
+    {
+      "t": "2026-06-25T10:26:43.148Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 385,
+      "cache_read": 255045,
+      "cache_create": 4133,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:26:49.309Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 672,
+      "cache_read": 259178,
+      "cache_create": 462,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:26:59.884Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 1199,
+      "cache_read": 259640,
+      "cache_create": 751,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:17.208Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 312,
+      "cache_read": 260391,
+      "cache_create": 1275,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:19.924Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 242,
+      "cache_read": 261666,
+      "cache_create": 388,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T10:27:21.435Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T10:27:21.435Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "capture-fixtures"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 143,
+      "agent_working_s": 143,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 149,
+      "out": 9666,
+      "cache_read": 2542545,
+      "cache_create": 14220
+    },
+    "tools": {
+      "Bash": 5,
+      "Edit": 5
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

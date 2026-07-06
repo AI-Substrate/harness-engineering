@@ -1,0 +1,169 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T08:09:21.992Z",
+  "window": {
+    "since": "last-command",
+    "from": 14320,
+    "to": 14343
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 6,
+    "output": 6327,
+    "cache_create": 8656,
+    "cache_read": 446268,
+    "total": 461257,
+    "subagent_tokens": 0,
+    "grand_total": 461257
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 3,
+      "output_tokens": 6327
+    }
+  },
+  "tools": {
+    "Bash": 1,
+    "Agent": 1,
+    "Write": 1
+  },
+  "subagents": [
+    {
+      "count": 1,
+      "type": "Explore"
+    }
+  ],
+  "files": {
+    "written": [
+      "docs/plans/037-telemetry-fixture-corpus/validations/phase-2-tasks-validation.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 3
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T08:06:36.314Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:06:36.314Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2018,
+      "cache_read": 146252,
+      "cache_create": 2312,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:06:42.479Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T08:06:42.479Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-25T08:06:42.479Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T08:06:42.479Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T08:06:42.479Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T08:06:42.479Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:07:02.679Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2564,
+      "cache_read": 148564,
+      "cache_create": 2888,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:07:20.143Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:08:46.629Z",
+      "kind": "subagent",
+      "name": "Explore",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T08:08:52.547Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1745,
+      "cache_read": 151452,
+      "cache_create": 3456,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T08:09:09.582Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T08:09:09.582Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 153,
+      "agent_working_s": 153,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 6,
+      "out": 6327,
+      "cache_read": 446268,
+      "cache_create": 8656
+    },
+    "tools": {
+      "Bash": 1,
+      "Agent": 1,
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

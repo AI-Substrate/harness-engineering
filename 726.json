@@ -1,0 +1,73 @@
+{
+  "schema_version": "2.0",
+  "command": "checks",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:22:18.138Z",
+  "window": {
+    "since": "last-command",
+    "from": 17348,
+    "to": 17350
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 131,
+    "output": 282,
+    "cache_create": 1460,
+    "cache_read": 443800,
+    "total": 445673,
+    "subagent_tokens": 0,
+    "grand_total": 445673
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 282
+    }
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:22:16.417Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:22:16.417Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 282,
+      "cache_read": 443800,
+      "cache_create": 1460,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:22:16.417Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "checks"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 131,
+      "out": 282,
+      "cache_read": 443800,
+      "cache_create": 1460
+    },
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

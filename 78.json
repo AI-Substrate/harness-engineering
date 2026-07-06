@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.1",
+  "command": "docs",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:31:16.160Z",
+  "window": {
+    "since": "last-command",
+    "from": 7846,
+    "to": 8004
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 711,
+    "output": 29951,
+    "cache_create": 47342,
+    "cache_read": 5838070,
+    "total": 5916074,
+    "subagent_tokens": 0,
+    "grand_total": 5916074
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 33,
+      "output_tokens": 29951
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 10,
+    "Read": 9,
+    "Write": 2,
+    "Edit": 12
+  },
+  "bash_commands": [
+    "sleep",
+    "tail",
+    "echo",
+    "minih",
+    "python3",
+    "head",
+    "minih",
+    "grep",
+    "head",
+    "echo",
+    "minih",
+    "head",
+    "minih",
+    "head",
+    "minih",
+    "head",
+    "echo",
+    "minih",
+    "head",
+    "minih",
+    "tail",
+    "echo",
+    "minih",
+    "tail",
+    "echo",
+    "minih",
+    "tail",
+    "minih",
+    "tail",
+    "echo",
+    "minih",
+    "tail",
+    "echo",
+    "minih",
+    "tail",
+    "npx vitest",
+    "tail",
+    "npx vitest",
+    "tail",
+    "echo",
+    "grep",
+    "head",
+    "echo",
+    "python3",
+    "head",
+    "echo",
+    "grep",
+    "ls",
+    "grep",
+    "npx vitest",
+    "tail"
+  ],
+  "harness_commands": [],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [
+      "harness/cli/src/services/telemetry/outcome-events.ts",
+      "harness/cli/test/services/telemetry/outcome-events.test.ts"
+    ],
+    "edited": [
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/claude-adapter.ts",
+      "harness/cli/test/services/telemetry/claude-events.test.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/src/services/telemetry/adapters/copilot-adapter.ts",
+      "harness/cli/test/services/telemetry/copilot-events.test.ts"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 17
+  }
+}

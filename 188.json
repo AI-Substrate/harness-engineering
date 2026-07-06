@@ -1,0 +1,279 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T23:29:15.331Z",
+  "window": {
+    "since": "last-command",
+    "from": 10048,
+    "to": 10075
+  },
+  "branch": "telemetry-enhancements",
+  "tokens": {
+    "input": 137,
+    "output": 5930,
+    "cache_create": 5112,
+    "cache_read": 2087500,
+    "total": 2098679,
+    "subagent_tokens": 0,
+    "grand_total": 2098679
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 4,
+      "output_tokens": 5930
+    }
+  },
+  "tools": {
+    "Bash": 3
+  },
+  "user_prompts": [
+    25
+  ],
+  "plans_touched": [
+    "035-flow-replay-telemetry"
+  ],
+  "thinking": {
+    "blocks": 3
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T23:22:06.228Z",
+      "t_precision": "anchored",
+      "kind": "flow",
+      "flow": "the-flow",
+      "stage": "implement",
+      "status": "done"
+    },
+    {
+      "t": "2026-06-24T23:22:06.228Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:22:06.228Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1694,
+      "cache_read": 519248,
+      "cache_create": 1421,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:22:21.804Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-24T23:22:21.804Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-24T23:22:21.804Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-24T23:22:21.804Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-24T23:22:21.804Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-24T23:22:21.804Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 23
+    },
+    {
+      "t": "2026-06-24T23:22:30.368Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1759,
+      "cache_read": 520669,
+      "cache_create": 1776,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:22:58.773Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 131,
+      "out": 693,
+      "cache_read": 522445,
+      "cache_create": 1871,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:28:27.663Z",
+      "kind": "prompt",
+      "words": 25
+    },
+    {
+      "t": "2026-06-24T23:28:47.990Z",
+      "kind": "turn",
+      "dur_s": 20,
+      "in": 2,
+      "out": 1784,
+      "cache_read": 525138,
+      "cache_create": 44,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T23:28:52.311Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T23:28:52.311Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    },
+    {
+      "t": "2026-06-24T22:51:27.133Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "created"
+    },
+    {
+      "t": "2026-06-24T22:51:27.428Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-created",
+      "node": "ship",
+      "type": "ship"
+    },
+    {
+      "t": "2026-06-24T22:51:27.727Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-created",
+      "node": "plan",
+      "type": "plan"
+    },
+    {
+      "t": "2026-06-24T22:51:27.966Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-created",
+      "node": "research",
+      "type": "research"
+    },
+    {
+      "t": "2026-06-24T22:51:28.278Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-updated",
+      "node": "research"
+    },
+    {
+      "t": "2026-06-24T22:51:28.612Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "cursor-moved",
+      "to": "plan"
+    },
+    {
+      "t": "2026-06-24T22:55:00.058Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-updated",
+      "node": "plan"
+    },
+    {
+      "t": "2026-06-24T23:12:14.174Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "status-changed",
+      "node": "plan",
+      "from": "in_progress",
+      "to": "done"
+    },
+    {
+      "t": "2026-06-24T23:12:14.394Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-created",
+      "node": "implement",
+      "type": "phase"
+    },
+    {
+      "t": "2026-06-24T23:12:14.394Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-updated",
+      "node": "plan",
+      "edge_op": "splice-after"
+    },
+    {
+      "t": "2026-06-24T23:12:14.602Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "cursor-moved",
+      "from": "plan",
+      "to": "implement"
+    },
+    {
+      "t": "2026-06-24T23:22:22.082Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "status-changed",
+      "node": "implement",
+      "from": "in_progress",
+      "to": "done"
+    },
+    {
+      "t": "2026-06-24T23:22:22.301Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "node-updated",
+      "node": "implement"
+    },
+    {
+      "t": "2026-06-24T23:22:22.549Z",
+      "t_precision": "anchored",
+      "kind": "flow_log",
+      "op": "cursor-moved",
+      "from": "implement",
+      "to": "implement"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 406,
+      "agent_working_s": 77,
+      "human_s": 0,
+      "idle_s": 329,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {
+      "implement": 406
+    },
+    "skills": {},
+    "tokens": {
+      "in": 137,
+      "out": 5930,
+      "cache_read": 2087500,
+      "cache_create": 5112
+    },
+    "tools": {
+      "Bash": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

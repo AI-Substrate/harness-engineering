@@ -1,0 +1,112 @@
+{
+  "schema_version": "2.0",
+  "command": "markdown-lint",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:58:47.064Z",
+  "window": {
+    "since": "last-command",
+    "from": 18075,
+    "to": 18088
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 2,
+    "output": 1868,
+    "cache_create": 1642,
+    "cache_read": 183894,
+    "total": 187406,
+    "subagent_tokens": 0,
+    "grand_total": 187406
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 1868
+    }
+  },
+  "tools": {
+    "Edit": 1,
+    "Read": 1,
+    "Bash": 1
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/038-telemetry-otel-standard/execution.log.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:58:34.411Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:58:34.411Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1868,
+      "cache_read": 183894,
+      "cache_create": 1642,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:58:37.242Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:58:37.710Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:58:39.755Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T02:58:39.755Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "markdown-lint"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 5,
+      "agent_working_s": 5,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 1868,
+      "cache_read": 183894,
+      "cache_create": 1642
+    },
+    "tools": {
+      "Edit": 1,
+      "Read": 1,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

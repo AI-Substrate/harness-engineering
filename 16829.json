@@ -1,0 +1,105 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T02:08:08.320Z",
+  "window": {
+    "since": "last-command",
+    "from": 17758,
+    "to": 17771
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 4,
+    "output": 4885,
+    "cache_create": 12883,
+    "cache_read": 492453,
+    "total": 510225,
+    "subagent_tokens": 0,
+    "grand_total": 510225
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 4885
+    }
+  },
+  "tools": {
+    "Edit": 2
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/038-telemetry-otel-standard/research-storage-and-transport.md",
+      "docs/plans/038-telemetry-otel-standard/research-storage-and-transport.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T02:07:23.147Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:07:23.147Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 4015,
+      "cache_read": 241846,
+      "cache_create": 8761,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:07:48.481Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 11
+    },
+    {
+      "t": "2026-06-27T02:07:53.574Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 870,
+      "cache_read": 250607,
+      "cache_create": 4122,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T02:07:53.574Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 30,
+      "agent_working_s": 30,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 4885,
+      "cache_read": 492453,
+      "cache_create": 12883
+    },
+    "tools": {
+      "Edit": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

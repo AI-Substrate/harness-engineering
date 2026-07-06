@@ -1,0 +1,167 @@
+{
+  "schema_version": "2.1",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T01:41:09.521Z",
+  "window": {
+    "since": "last-command",
+    "from": 11178,
+    "to": 11208
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 139,
+    "output": 12533,
+    "cache_create": 6936,
+    "cache_read": 1740879,
+    "total": 1760487,
+    "subagent_tokens": 0,
+    "grand_total": 1760487
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 5,
+      "output_tokens": 12533
+    }
+  },
+  "tools": {
+    "Bash": 2,
+    "Read": 1,
+    "Edit": 1
+  },
+  "user_prompts": [
+    3
+  ],
+  "files": {
+    "written": [],
+    "edited": [
+      "scratch/telem/vscode-diag.sh"
+    ]
+  },
+  "thinking": {
+    "blocks": 4
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T01:34:09.595Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:34:09.595Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 422,
+      "cache_read": 347277,
+      "cache_create": 11,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:34:12.319Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:34:17.841Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 360,
+      "cache_read": 347288,
+      "cache_create": 635,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:38:03.098Z",
+      "kind": "prompt",
+      "words": 3
+    },
+    {
+      "t": "2026-06-25T01:38:06.624Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 86,
+      "cache_read": 348283,
+      "cache_create": 7,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:38:06.624Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:38:53.733Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 4373,
+      "cache_read": 348290,
+      "cache_create": 1451,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:39:03.816Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:40:53.201Z",
+      "kind": "turn",
+      "dur_s": 89,
+      "in": 2,
+      "out": 7292,
+      "cache_read": 349741,
+      "cache_create": 4832,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T01:41:04.858Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T01:41:04.858Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "doctor"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 415,
+      "agent_working_s": 190,
+      "human_s": 225,
+      "idle_s": 0,
+      "working_ratio": 0.46
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 139,
+      "out": 12533,
+      "cache_read": 1740879,
+      "cache_create": 6936
+    },
+    "tools": {
+      "Bash": 2,
+      "Read": 1,
+      "Edit": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

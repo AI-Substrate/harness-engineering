@@ -1,0 +1,196 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T09:28:29.560Z",
+  "window": {
+    "since": "last-command",
+    "from": 14900,
+    "to": 14947
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 143,
+    "output": 18869,
+    "cache_create": 18636,
+    "cache_read": 2427877,
+    "total": 2465525,
+    "subagent_tokens": 0,
+    "grand_total": 2465525
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 7,
+      "output_tokens": 18869
+    }
+  },
+  "tools": {
+    "Bash": 5,
+    "AskUserQuestion": 1
+  },
+  "user_prompts": [
+    30
+  ],
+  "thinking": {
+    "blocks": 7
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T09:10:52.769Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:10:52.769Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1431,
+      "cache_read": 340534,
+      "cache_create": 1092,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:10:57.725Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T09:10:57.725Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T09:10:57.725Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T09:11:12.163Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 1403,
+      "cache_read": 341626,
+      "cache_create": 1550,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:22:33.400Z",
+      "kind": "prompt",
+      "words": 30
+    },
+    {
+      "t": "2026-06-25T09:23:20.322Z",
+      "kind": "turn",
+      "dur_s": 47,
+      "in": 131,
+      "out": 4202,
+      "cache_read": 344579,
+      "cache_create": 44,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:23:31.793Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 24
+    },
+    {
+      "t": "2026-06-25T09:23:48.594Z",
+      "kind": "turn",
+      "dur_s": 16,
+      "in": 2,
+      "out": 1729,
+      "cache_read": 344623,
+      "cache_create": 4632,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:24:52.857Z",
+      "kind": "turn",
+      "dur_s": 56,
+      "in": 2,
+      "out": 4495,
+      "cache_read": 349255,
+      "cache_create": 2050,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:25:03.930Z",
+      "kind": "tools",
+      "name": "AskUserQuestion",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T09:26:29.363Z",
+      "kind": "turn",
+      "dur_s": 37,
+      "in": 2,
+      "out": 2432,
+      "cache_read": 351305,
+      "cache_create": 4650,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:26:35.269Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T09:27:10.924Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 3177,
+      "cache_read": 355955,
+      "cache_create": 4618,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T09:27:18.555Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T09:27:18.555Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 986,
+      "agent_working_s": 305,
+      "human_s": 0,
+      "idle_s": 681,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 143,
+      "out": 18869,
+      "cache_read": 2427877,
+      "cache_create": 18636
+    },
+    "tools": {
+      "Bash": 5,
+      "AskUserQuestion": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

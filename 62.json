@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.1",
+  "command": "docs",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T07:17:21.463Z",
+  "window": {
+    "since": "last-command",
+    "from": 7572,
+    "to": 7717
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 32757,
+    "output": 25249,
+    "cache_create": 104843,
+    "cache_read": 2433572,
+    "total": 2596421,
+    "subagent_tokens": 0,
+    "grand_total": 2596421
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 19,
+      "output_tokens": 25249
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 8,
+    "Read": 7,
+    "Write": 2,
+    "Edit": 3
+  },
+  "bash_commands": [
+    "cd",
+    "tail",
+    "git",
+    "grep",
+    "head",
+    "python3",
+    "python3",
+    "ls",
+    "echo",
+    "sed",
+    "cd",
+    "npx vitest",
+    "tail",
+    "cd",
+    "npx vitest",
+    "tail",
+    "npx vitest",
+    "tail"
+  ],
+  "harness_commands": [
+    "flow comment"
+  ],
+  "user_prompts": [
+    1908,
+    33,
+    3,
+    6,
+    4,
+    1982
+  ],
+  "subagents": [],
+  "files": {
+    "written": [
+      "harness/cli/src/services/telemetry/flow-nav.ts",
+      "harness/cli/test/services/telemetry/flow-events.test.ts"
+    ],
+    "edited": [
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/src/services/telemetry/capture-service.ts",
+      "harness/cli/src/services/telemetry/capture-service.ts"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 14
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": "2.0",
+  "command": "observe",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T00:32:26.544Z",
+  "window": {
+    "since": "last-command",
+    "from": 17204,
+    "to": 17219
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 4,
+    "output": 1679,
+    "cache_create": 6098,
+    "cache_read": 816923,
+    "total": 824704,
+    "subagent_tokens": 0,
+    "grand_total": 824704
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 1679
+    }
+  },
+  "tools": {
+    "Bash": 2
+  },
+  "thinking": {
+    "blocks": 2
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-26T00:29:34.485Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T00:29:34.485Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 918,
+      "cache_read": 406087,
+      "cache_create": 4749,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T00:29:41.924Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-26T00:31:52.861Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 761,
+      "cache_read": 410836,
+      "cache_create": 1349,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T00:31:57.352Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-26T00:31:57.352Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "observe"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 143,
+      "agent_working_s": 143,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 1679,
+      "cache_read": 816923,
+      "cache_create": 6098
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

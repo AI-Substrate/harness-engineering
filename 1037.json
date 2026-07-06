@@ -1,0 +1,88 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-26T02:30:06.943Z",
+  "window": {
+    "since": "last-command",
+    "from": 17419,
+    "to": 17429
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 2,
+    "output": 319,
+    "cache_create": 4995,
+    "cache_read": 97951,
+    "total": 103267,
+    "subagent_tokens": 0,
+    "grand_total": 103267
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 319
+    }
+  },
+  "tools": {
+    "Read": 1
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-26T02:30:02.059Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:30:02.059Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 319,
+      "cache_read": 97951,
+      "cache_create": 4995,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-26T02:30:03.417Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-26T02:30:03.417Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 1,
+      "agent_working_s": 1,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 319,
+      "cache_read": 97951,
+      "cache_create": 4995
+    },
+    "tools": {
+      "Read": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

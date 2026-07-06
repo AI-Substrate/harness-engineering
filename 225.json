@@ -1,0 +1,93 @@
+{
+  "schema_version": "2.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T02:23:26.005Z",
+  "window": {
+    "since": "last-command",
+    "from": 11465,
+    "to": 11471
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 33885,
+    "output": 3953,
+    "cache_create": 13359,
+    "cache_read": 15933,
+    "total": 67130,
+    "subagent_tokens": 0,
+    "grand_total": 67130
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 3953
+    }
+  },
+  "tools": {
+    "Bash": 2
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T02:23:19.069Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:23:19.069Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 33885,
+      "out": 3953,
+      "cache_read": 15933,
+      "cache_create": 13359,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:23:21.128Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1
+    },
+    {
+      "t": "2026-06-25T02:23:21.965Z",
+      "kind": "harness",
+      "verb": "flow status"
+    },
+    {
+      "t": "2026-06-25T02:23:21.965Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 3,
+      "agent_working_s": 3,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 33885,
+      "out": 3953,
+      "cache_read": 15933,
+      "cache_create": 13359
+    },
+    "tools": {
+      "Bash": 2
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

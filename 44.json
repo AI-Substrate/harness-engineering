@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T06:13:09.768Z",
+  "window": {
+    "since": "last-command",
+    "from": 6781,
+    "to": 6857
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 36650,
+    "output": 13228,
+    "cache_create": 34608,
+    "cache_read": 1462144,
+    "total": 1546630,
+    "subagent_tokens": 0,
+    "grand_total": 1546630
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 5,
+      "output_tokens": 13228
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 2,
+    "Read": 3
+  },
+  "bash_commands": [
+    "cd",
+    "echo",
+    "echo",
+    "echo",
+    "echo",
+    "echo",
+    "echo",
+    "python3",
+    "echo",
+    "head"
+  ],
+  "harness_commands": [
+    "flow insert-node",
+    "flow set-node",
+    "flow nav",
+    "flow render",
+    "flow nav",
+    "flow rail",
+    "flow"
+  ],
+  "user_prompts": [
+    15,
+    5,
+    2355,
+    33,
+    3,
+    6,
+    4,
+    1982
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 5
+  }
+}

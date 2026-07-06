@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-23T11:20:31.273Z",
+  "window": {
+    "since": "last-command",
+    "from": 3360,
+    "to": 3478
+  },
+  "branch": "034-harness-telemetry-collection",
+  "branch_changed": false,
+  "tokens": {
+    "input": 925,
+    "output": 20524,
+    "cache_create": 23736,
+    "cache_read": 9446630,
+    "total": 9491815,
+    "subagent_tokens": 0,
+    "grand_total": 9491815
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 26,
+      "output_tokens": 20524
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 14,
+    "Edit": 13
+  },
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md",
+      "harness/cli/src/adapters/git/fake-git-write.ts",
+      "harness/cli/src/adapters/git/fake-git-write.ts",
+      "harness/cli/test/adapters/git/fake-git-write.test.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/src/acts/telemetry.ts",
+      "harness/cli/src/app.ts",
+      "docs/how/telemetry.md",
+      "docs/how/harness-value-measures.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-4-durable-sync-gitwriteport-orphan-ref-docs/execution.log.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 15
+  }
+}

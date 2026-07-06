@@ -1,0 +1,181 @@
+{
+  "schema_version": "2.0",
+  "command": "doctor",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T09:13:28.617Z",
+  "window": {
+    "since": "last-command",
+    "from": 8587,
+    "to": 8611
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 137,
+    "output": 6562,
+    "cache_create": 17242,
+    "cache_read": 1448407,
+    "total": 1472348,
+    "subagent_tokens": 0,
+    "grand_total": 1472348
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 4,
+      "output_tokens": 6562
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 3
+  },
+  "bash_commands": [
+    "cd",
+    "python3",
+    "cd",
+    "echo",
+    "find",
+    "head",
+    "echo",
+    "head",
+    "echo",
+    "python3",
+    "cd",
+    "python3"
+  ],
+  "harness_commands": [
+    "observe"
+  ],
+  "user_prompts": [
+    16
+  ],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": []
+  },
+  "plans_touched": [
+    "034-harness-telemetry-collection"
+  ],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 4
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-24T09:02:26.511Z",
+      "t_precision": "anchored",
+      "kind": "flow",
+      "flow": "the-flow",
+      "stage": "phase-5",
+      "status": "done"
+    },
+    {
+      "t": "2026-06-24T09:02:26.511Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:02:26.511Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 774,
+      "cache_read": 350572,
+      "cache_create": 13486,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:02:30.672Z",
+      "kind": "harness",
+      "verb": "observe"
+    },
+    {
+      "t": "2026-06-24T09:02:30.672Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T09:02:51.808Z",
+      "kind": "turn",
+      "dur_s": 21,
+      "in": 2,
+      "out": 2001,
+      "cache_read": 364058,
+      "cache_create": 816,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:11:39.607Z",
+      "kind": "prompt",
+      "words": 16
+    },
+    {
+      "t": "2026-06-24T09:12:00.847Z",
+      "kind": "turn",
+      "dur_s": 21,
+      "in": 2,
+      "out": 1793,
+      "cache_read": 366875,
+      "cache_create": 27,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:12:07.987Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-24T09:12:31.863Z",
+      "kind": "turn",
+      "dur_s": 23,
+      "in": 131,
+      "out": 1994,
+      "cache_read": 366902,
+      "cache_create": 2913,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-24T09:12:38.251Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 612,
+      "agent_working_s": 84,
+      "human_s": 0,
+      "idle_s": 528,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {
+      "phase-5": 612
+    },
+    "skills": {},
+    "tokens": {
+      "in": 137,
+      "out": 6562,
+      "cache_read": 1448407,
+      "cache_create": 17242
+    },
+    "tools": {
+      "Bash": 3
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

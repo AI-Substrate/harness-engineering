@@ -1,0 +1,158 @@
+{
+  "schema_version": "2.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T02:23:22.218Z",
+  "window": {
+    "since": "last-command",
+    "from": 11421,
+    "to": 11465
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 133,
+    "output": 1106,
+    "cache_create": 1125,
+    "cache_read": 912497,
+    "total": 914861,
+    "subagent_tokens": 0,
+    "grand_total": 914861
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 1106
+    }
+  },
+  "tools": {
+    "Bash": 1
+  },
+  "user_prompts": [
+    33,
+    3,
+    1891,
+    33,
+    3,
+    6,
+    2,
+    236
+  ],
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T02:20:20.387Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:20:20.387Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 131,
+      "out": 446,
+      "cache_read": 455979,
+      "cache_create": 539,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:20:23.887Z",
+      "kind": "harness",
+      "verb": "flow comment"
+    },
+    {
+      "t": "2026-06-25T02:20:23.887Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T02:20:23.887Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T02:20:35.483Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 660,
+      "cache_read": 456518,
+      "cache_create": 586,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T02:20:40.948Z",
+      "kind": "prompt",
+      "words": 3
+    },
+    {
+      "t": "2026-06-25T02:20:40.966Z",
+      "kind": "prompt",
+      "words": 33
+    },
+    {
+      "t": "2026-06-25T02:20:42.305Z",
+      "kind": "prompt",
+      "words": 33
+    },
+    {
+      "t": "2026-06-25T02:20:42.305Z",
+      "kind": "prompt",
+      "words": 3
+    },
+    {
+      "t": "2026-06-25T02:22:24.553Z",
+      "kind": "prompt",
+      "words": 1891
+    },
+    {
+      "t": "2026-06-25T02:22:25.077Z",
+      "kind": "prompt",
+      "words": 6
+    },
+    {
+      "t": "2026-06-25T02:22:25.093Z",
+      "kind": "prompt",
+      "words": 2
+    },
+    {
+      "t": "2026-06-25T02:22:25.093Z",
+      "kind": "prompt",
+      "words": 236
+    },
+    {
+      "t": "2026-06-25T02:22:25.093Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 125,
+      "agent_working_s": 15,
+      "human_s": 110,
+      "idle_s": 0,
+      "working_ratio": 0.12
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 133,
+      "out": 1106,
+      "cache_read": 912497,
+      "cache_create": 1125
+    },
+    "tools": {
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

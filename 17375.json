@@ -1,0 +1,110 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T03:37:45.898Z",
+  "window": {
+    "since": "last-command",
+    "from": 18500,
+    "to": 18505
+  },
+  "branch": "feat/038-telemetry-otel-standard",
+  "tokens": {
+    "input": 4,
+    "output": 1302,
+    "cache_create": 6009,
+    "cache_read": 709259,
+    "total": 716574,
+    "subagent_tokens": 0,
+    "grand_total": 716574
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 2,
+      "output_tokens": 1302
+    }
+  },
+  "tools": {
+    "Edit": 1,
+    "Bash": 1
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/038-telemetry-otel-standard/execution.log.md"
+    ]
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T03:37:32.249Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:37:32.249Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 792,
+      "cache_read": 352060,
+      "cache_create": 5139,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:37:32.249Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:37:38.517Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 510,
+      "cache_read": 357199,
+      "cache_create": 870,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T03:37:38.517Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T03:37:38.517Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 6,
+      "agent_working_s": 6,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 4,
+      "out": 1302,
+      "cache_read": 709259,
+      "cache_create": 6009
+    },
+    "tools": {
+      "Edit": 1,
+      "Bash": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

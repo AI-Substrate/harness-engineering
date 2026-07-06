@@ -1,0 +1,481 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T06:24:44.704Z",
+  "window": {
+    "since": "last-command",
+    "from": 13053,
+    "to": 13191
+  },
+  "branch": "036-copilot-vscode-telemetry",
+  "tokens": {
+    "input": 5234,
+    "output": 50528,
+    "cache_create": 85000,
+    "cache_read": 3131745,
+    "total": 3272507,
+    "subagent_tokens": 0,
+    "grand_total": 3272507
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 18,
+      "output_tokens": 50528
+    }
+  },
+  "skills": {
+    "validate-v2": 1
+  },
+  "tools": {
+    "Bash": 2,
+    "Read": 1,
+    "Agent": 3,
+    "Write": 2,
+    "Skill": 1,
+    "Edit": 5
+  },
+  "user_prompts": [
+    6,
+    845,
+    11,
+    27,
+    51,
+    16,
+    14,
+    2046
+  ],
+  "subagents": [
+    {
+      "count": 3,
+      "type": "general-purpose"
+    }
+  ],
+  "files": {
+    "written": [
+      "docs/plans/037-telemetry-fixture-corpus/telemetry-fixture-corpus-plan.md",
+      "docs/plans/037-telemetry-fixture-corpus/validations/telemetry-fixture-corpus-plan-validation.md"
+    ],
+    "edited": [
+      "docs/plans/037-telemetry-fixture-corpus/telemetry-fixture-corpus-plan.md",
+      "docs/plans/037-telemetry-fixture-corpus/telemetry-fixture-corpus-plan.md",
+      "docs/plans/037-telemetry-fixture-corpus/telemetry-fixture-corpus-plan.md",
+      "docs/plans/037-telemetry-fixture-corpus/telemetry-fixture-corpus-plan.md",
+      "docs/plans/037-telemetry-fixture-corpus/telemetry-fixture-corpus-plan.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 15
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 954,
+      "cache_read": 133234,
+      "cache_create": 3634,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow create"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow add-node"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow add-node"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow add-node"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow set-node"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow render"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow rail"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "harness",
+      "verb": "flow nav"
+    },
+    {
+      "t": "2026-06-25T05:52:15.756Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T05:52:39.419Z",
+      "kind": "turn",
+      "dur_s": 21,
+      "in": 2,
+      "out": 2085,
+      "cache_read": 136868,
+      "cache_create": 1134,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T05:58:07.789Z",
+      "kind": "prompt",
+      "words": 6
+    },
+    {
+      "t": "2026-06-25T05:58:07.789Z",
+      "kind": "prompt",
+      "words": 845
+    },
+    {
+      "t": "2026-06-25T05:58:24.877Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 2,
+      "out": 1310,
+      "cache_read": 140087,
+      "cache_create": 2004,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:03:34.590Z",
+      "kind": "prompt",
+      "words": 11
+    },
+    {
+      "t": "2026-06-25T06:03:41.189Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 807,
+      "cache_read": 142091,
+      "cache_create": 1329,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:06:21.525Z",
+      "kind": "prompt",
+      "words": 27
+    },
+    {
+      "t": "2026-06-25T06:06:41.841Z",
+      "kind": "turn",
+      "dur_s": 20,
+      "in": 2,
+      "out": 1718,
+      "cache_read": 143420,
+      "cache_create": 850,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:07:44.790Z",
+      "kind": "prompt",
+      "words": 51
+    },
+    {
+      "t": "2026-06-25T06:08:12.090Z",
+      "kind": "turn",
+      "dur_s": 27,
+      "in": 2,
+      "out": 2098,
+      "cache_read": 145988,
+      "cache_create": 91,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:09:03.032Z",
+      "kind": "prompt",
+      "words": 16
+    },
+    {
+      "t": "2026-06-25T06:09:25.801Z",
+      "kind": "turn",
+      "dur_s": 23,
+      "in": 2,
+      "out": 2394,
+      "cache_read": 146079,
+      "cache_create": 2125,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:11:05.697Z",
+      "kind": "prompt",
+      "words": 14
+    },
+    {
+      "t": "2026-06-25T06:11:13.865Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 506,
+      "cache_read": 148204,
+      "cache_create": 2419,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:11:14.839Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:12:26.963Z",
+      "kind": "turn",
+      "dur_s": 71,
+      "in": 131,
+      "out": 7306,
+      "cache_read": 150623,
+      "cache_create": 15615,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:12:42.622Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 2,
+      "span_s": 15
+    },
+    {
+      "t": "2026-06-25T06:14:51.539Z",
+      "kind": "subagent",
+      "name": "general-purpose",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T06:15:14.770Z",
+      "kind": "subagent",
+      "name": "general-purpose",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T06:16:50.245Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 4943,
+      "out": 18454,
+      "cache_read": 166238,
+      "cache_create": 11091,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:18:59.344Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:19:06.156Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 448,
+      "cache_read": 177329,
+      "cache_create": 23483,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:19:07.545Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:19:07.545Z",
+      "kind": "skill",
+      "name": "validate-v2",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T06:19:07.559Z",
+      "kind": "prompt",
+      "words": 2046
+    },
+    {
+      "t": "2026-06-25T06:19:26.062Z",
+      "kind": "turn",
+      "dur_s": 19,
+      "in": 1,
+      "out": 2449,
+      "cache_read": 200812,
+      "cache_create": 5589,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:19:36.497Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:19:46.980Z",
+      "kind": "tools",
+      "name": "Agent",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:21:28.241Z",
+      "kind": "subagent",
+      "name": "general-purpose",
+      "status": "completed"
+    },
+    {
+      "t": "2026-06-25T06:22:41.345Z",
+      "kind": "turn",
+      "dur_s": 73,
+      "in": 131,
+      "out": 5855,
+      "cache_read": 206401,
+      "cache_create": 6632,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:22:48.376Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 5,
+      "span_s": 39
+    },
+    {
+      "t": "2026-06-25T06:23:02.621Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 872,
+      "cache_read": 213033,
+      "cache_create": 6099,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:23:06.902Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 593,
+      "cache_read": 219132,
+      "cache_create": 963,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:23:18.851Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 462,
+      "cache_read": 220095,
+      "cache_create": 684,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:23:24.831Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 614,
+      "cache_read": 220779,
+      "cache_create": 553,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:23:42.290Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1603,
+      "cache_read": 221332,
+      "cache_create": 705,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T06:24:00.235Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T06:24:00.235Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 1904,
+      "agent_working_s": 892,
+      "human_s": 374,
+      "idle_s": 638,
+      "working_ratio": 0.7
+    },
+    "flow_stage_time_s": {},
+    "skills": {
+      "validate-v2": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 0
+      }
+    },
+    "tokens": {
+      "in": 5234,
+      "out": 50528,
+      "cache_read": 3131745,
+      "cache_create": 85000
+    },
+    "tools": {
+      "Bash": 2,
+      "Read": 1,
+      "Agent": 3,
+      "Write": 2,
+      "Skill": 1,
+      "Edit": 5
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

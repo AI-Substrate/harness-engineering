@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.1",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-24T06:49:47.036Z",
+  "window": {
+    "since": "last-command",
+    "from": 7400,
+    "to": 7418
+  },
+  "branch": "telemetry-enhancements",
+  "branch_changed": false,
+  "tokens": {
+    "input": 137,
+    "output": 2793,
+    "cache_create": 2776,
+    "cache_read": 1475789,
+    "total": 1481495,
+    "subagent_tokens": 0,
+    "grand_total": 1481495
+  },
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 4,
+      "output_tokens": 2793
+    }
+  },
+  "effort": "high",
+  "skills": {},
+  "tools": {
+    "Bash": 2,
+    "Edit": 2
+  },
+  "bash_commands": [
+    "cd",
+    "echo",
+    "minih",
+    "jq",
+    "minih",
+    "jq",
+    "echo",
+    "echo",
+    "jq",
+    "echo",
+    "cd",
+    "npx vitest",
+    "tail",
+    "cd",
+    "git add",
+    "copilot-adapter.ts",
+    "copilot-events.test.ts",
+    "tasks.md",
+    "execution.log.md",
+    "git commit",
+    "echo",
+    "git rev-parse",
+    "rev-parse",
+    "minih",
+    "jq"
+  ],
+  "harness_commands": [
+    "arch-check"
+  ],
+  "user_prompts": [],
+  "subagents": [],
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/tasks.md",
+      "docs/plans/034-harness-telemetry-collection/tasks/phase-5/execution.log.md"
+    ]
+  },
+  "plans_touched": [],
+  "events": {
+    "compactions": [],
+    "api_errors": 0,
+    "local_commands": 0
+  },
+  "thinking": {
+    "blocks": 2
+  }
+}

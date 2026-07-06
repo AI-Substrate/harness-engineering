@@ -1,0 +1,94 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T00:47:54.746Z",
+  "window": {
+    "since": "last-command",
+    "from": 17585,
+    "to": 17594
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 2,
+    "output": 6756,
+    "cache_create": 7052,
+    "cache_read": 166352,
+    "total": 180162,
+    "subagent_tokens": 0,
+    "grand_total": 180162
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 6756
+    }
+  },
+  "tools": {
+    "Write": 1
+  },
+  "files": {
+    "written": [
+      "docs/plans/038-telemetry-otel-standard/research-storage-and-transport.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T00:46:58.419Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:46:58.419Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 6756,
+      "cache_read": 166352,
+      "cache_create": 7052,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T00:47:41.722Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T00:47:41.722Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 43,
+      "agent_working_s": 43,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 6756,
+      "cache_read": 166352,
+      "cache_create": 7052
+    },
+    "tools": {
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

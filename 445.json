@@ -1,0 +1,180 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-25T11:11:42.887Z",
+  "window": {
+    "since": "last-command",
+    "from": 16300,
+    "to": 16342
+  },
+  "branch": "037-telemetry-fixture-corpus",
+  "tokens": {
+    "input": 145,
+    "output": 6796,
+    "cache_create": 8748,
+    "cache_read": 2096870,
+    "total": 2112559,
+    "subagent_tokens": 0,
+    "grand_total": 2112559
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 8,
+      "output_tokens": 6796
+    }
+  },
+  "tools": {
+    "Bash": 7,
+    "Edit": 1
+  },
+  "files": {
+    "written": [],
+    "edited": [
+      "docs/plans/037-telemetry-fixture-corpus/tasks/phase-3-operability-regeneration/execution.log.md"
+    ]
+  },
+  "thinking": {
+    "blocks": 7
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-25T11:09:15.995Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:09:15.995Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 675,
+      "cache_read": 258442,
+      "cache_create": 694,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:09:20.857Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T11:09:31.315Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 1548,
+      "cache_read": 259136,
+      "cache_create": 903,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:09:45.215Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-25T11:09:59.128Z",
+      "kind": "turn",
+      "dur_s": 14,
+      "in": 131,
+      "out": 779,
+      "cache_read": 260039,
+      "cache_create": 1645,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:09:59.128Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 6,
+      "span_s": 78
+    },
+    {
+      "t": "2026-06-25T11:10:12.071Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 818,
+      "cache_read": 261684,
+      "cache_create": 933,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:10:33.040Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 2,
+      "out": 1301,
+      "cache_read": 262617,
+      "cache_create": 1012,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:10:43.575Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 567,
+      "cache_read": 263629,
+      "cache_create": 1356,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:10:54.059Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 686,
+      "cache_read": 264985,
+      "cache_create": 1353,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:11:13.733Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 422,
+      "cache_read": 266338,
+      "cache_create": 852,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-25T11:11:13.733Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 118,
+      "agent_working_s": 118,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 145,
+      "out": 6796,
+      "cache_read": 2096870,
+      "cache_create": 8748
+    },
+    "tools": {
+      "Bash": 7,
+      "Edit": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "schema_version": "2.0",
+  "command": "flow",
+  "harness": "claude-code",
+  "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+  "timecode": "2026-06-27T01:56:16.322Z",
+  "window": {
+    "since": "last-command",
+    "from": 17706,
+    "to": 17716
+  },
+  "branch": "main",
+  "tokens": {
+    "input": 2,
+    "output": 6434,
+    "cache_create": 4863,
+    "cache_read": 223038,
+    "total": 234337,
+    "subagent_tokens": 0,
+    "grand_total": 234337
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-4-8": {
+      "turns": 1,
+      "output_tokens": 6434
+    }
+  },
+  "tools": {
+    "Write": 1
+  },
+  "files": {
+    "written": [
+      "docs/plans/038-telemetry-otel-standard/workshops/001-otlp-emit-and-shape.md"
+    ],
+    "edited": []
+  },
+  "thinking": {
+    "blocks": 1
+  },
+  "event_stream": [
+    {
+      "t": "2026-06-27T01:54:59.840Z",
+      "kind": "model",
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T01:54:59.840Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 6434,
+      "cache_read": 223038,
+      "cache_create": 4863,
+      "model": "claude-opus-4-8"
+    },
+    {
+      "t": "2026-06-27T01:56:04.945Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0
+    },
+    {
+      "t": "2026-06-27T01:56:04.945Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "flow"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 65,
+      "agent_working_s": 65,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 1
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": {
+      "in": 2,
+      "out": 6434,
+      "cache_read": 223038,
+      "cache_create": 4863
+    },
+    "tools": {
+      "Write": 1
+    },
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}
