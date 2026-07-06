@@ -10,6 +10,14 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.10.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.9.2...v0.10.0) (2026-07-06)
+
+
+### Features
+
+* **skills:** vendor `builder` flow + bake skills for GitHub-free install ([7d6beef](https://github.com/AI-Substrate/harness-engineering/commit/7d6beef33296778b8a20759e232db2bac0611756))
+* **skills:** vendor `builder` flow + bake skills for GitHub-free install ([9d36c82](https://github.com/AI-Substrate/harness-engineering/commit/9d36c828987957e1361503646a63c05aee6e9f60))
+
 ## [0.9.2](https://github.com/AI-Substrate/harness-engineering/compare/v0.9.1...v0.9.2) (2026-07-06)
 
 
