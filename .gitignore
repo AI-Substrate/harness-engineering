@@ -179,6 +179,7 @@ agents/*/runs/
 .harness/skills.lock.json
 /skills-lock.json
 .claude/skills/
+.agents/
 
 # flow-eval (plan 041) run tree — COMMITTED since 2026-07-03: the append-only
 # ledger.jsonl is the longitudinal record `--compare` groups on, and the per-run

@@ -8,28 +8,34 @@ default:
 list-skills:
     @npx skills@latest add "$(pwd)" -l
 
-# Install the repo skill project-local to supported CLIs from this working tree.
+# Install THIS harness's skills project-local, the baked (harness) way. Builds
+# first so `dist/` + the packaged-skills resolver are current, then runs
+# `harness skills install`, which stages the baked `skills/` dir to a temp path
+# and shells `npx skills add <local dir>` — NO GitHub access. Installs `builder`
+# (+ the `the-flow` redirect) and the rest of the baked set for local use, and
+# records the install in `.harness/skills.lock.json` so `harness update` can
+# reconcile it later. This is how you refresh your own machine after editing a skill.
 install-skills-local:
-    @npx skills@latest add "$(pwd)" \
-        -a claude-code \
-        -a codex \
-        -a opencode \
-        -a github-copilot \
-        -a pi \
-        -y
+    npm run build
+    node harness/cli/bin/harness.js skills install \
+        --target claude-code \
+        --target codex \
+        --target opencode \
+        --target github-copilot \
+        --target pi
 
-# Install the repo skill globally to supported CLIs from this working tree.
+# Same, but a GLOBAL install (`--global`) for the same CLIs.
 install-skills-global:
-    @npx skills@latest add "$(pwd)" \
-        -a claude-code \
-        -a codex \
-        -a opencode \
-        -a github-copilot \
-        -a pi \
-        -g \
-        -y
+    npm run build
+    node harness/cli/bin/harness.js skills install \
+        --target claude-code \
+        --target codex \
+        --target opencode \
+        --target github-copilot \
+        --target pi \
+        --global
 
-# Install the repo skill globally from this working tree, matching the tools repo command name.
+# Install globally from this working tree (kept as the tools-repo-matching name).
 install-skills-from-source: install-skills-global
 
 # Diagnose skill deployment: canonical store, per-CLI views, and stale legacy stores.
