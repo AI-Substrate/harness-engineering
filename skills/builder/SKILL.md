@@ -6,6 +6,8 @@ description: |
 
 # /builder — SDD pipeline dispatch
 
+**v2**
+
 One public skill for the whole SDD pipeline, built to the flow-architecture pattern (`docs/skills-pipeline/flow-architecture.md`): the **sub-skills** (contract-bound verbs, one per stage) live in [`references/stages/`](./references/stages/), the guided-mode engine in [`references/00-routing.md`](./references/00-routing.md), the coaching voice in [`references/coach.md`](./references/coach.md). New to the flow? [`references/getting-started.md`](./references/getting-started.md).
 
 **Progressive disclosure is the contract: load exactly one sub-skill for the current step — never read all of them up front.**
