@@ -26,6 +26,7 @@ import {
   readBranch,
   readCursor,
   readFlowCursor,
+  readFlushed,
   sessionDirFor,
   writeBranch,
   writeCursor,
@@ -211,7 +212,7 @@ function writeJsonLine(fs: FsPort, path: string, obj: unknown): void {
   fs.rename(tmp, path);
 }
 
-/** Next `<seq>.json` index in the session dir (max existing + 1; 1-based). */
+/** Next `<seq>.json` index, seeded above the durable flushed high-water. */
 function nextSeq(fs: FsPort, sessionDir: string): number {
   let max = 0;
   for (const name of fs.readdir(sessionDir)) {
@@ -221,7 +222,7 @@ function nextSeq(fs: FsPort, sessionDir: string): number {
       if (n > max) max = n;
     }
   }
-  return max + 1;
+  return Math.max(readFlushed(fs, `${sessionDir}.flushed`), max) + 1;
 }
 
 /**

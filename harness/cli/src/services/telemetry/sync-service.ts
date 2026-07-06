@@ -10,7 +10,7 @@ import {
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { KILL_SWITCH_ENV } from './capture-service.js';
-import { telemetryDir } from './cursor.js';
+import { readFlushed, telemetryDir } from './cursor.js';
 import {
   buildRolledEntries,
   type LooseBlob,
@@ -134,13 +134,6 @@ function startDatePathFor(telDir: string, session: string): string {
 /** `<telemetryDir>/<session>.cursor` — the capture watermark sidecar (removed on age-out). */
 function cursorSidecarPathFor(telDir: string, session: string): string {
   return posixJoin(telDir, `${session}.cursor`);
-}
-
-function readFlushed(fs: FsPort, path: string): number {
-  const raw = fs.readText(path);
-  if (raw === null) return 0;
-  const t = raw.trim();
-  return /^\d+$/.test(t) ? Number.parseInt(t, 10) : 0;
 }
 
 /** Advance the watermark crash-safely (temp + rename, mirroring the cursor). */

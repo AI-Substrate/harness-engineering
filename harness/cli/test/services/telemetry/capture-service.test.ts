@@ -5,6 +5,7 @@ import { FakeDb } from '../../../src/adapters/db/fake-db.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../../src/adapters/git/fake-git.js';
+import { FakeGitWrite } from '../../../src/adapters/git/fake-git-write.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import { copilotVscodeAdapter } from '../../../src/services/telemetry/adapters/copilot-vscode-adapter.js';
 import type {
@@ -18,9 +19,15 @@ import {
   detectHarness,
   hasActivity,
   selectCapturedEnv,
+  writeSegmentFile,
 } from '../../../src/services/telemetry/capture-service.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
-import type { Segment } from '../../../src/services/telemetry/segment.js';
+import {
+  parseManifest,
+  ROLLED_MANIFEST_NAME,
+} from '../../../src/services/telemetry/rolled-shard.js';
+import { type Segment, serializeSegment } from '../../../src/services/telemetry/segment.js';
+import { syncTelemetry } from '../../../src/services/telemetry/sync-service.js';
 
 /**
  * T005 (plan 1.4 · AC-01 · C3) — innermost-harness detection, cursor windowing,
@@ -68,6 +75,35 @@ function deps(
 function readWrittenSegment(fs: FakeFs, sessionId: string): Segment | null {
   const raw = fs.readText(`${TEL}/${sessionId}/1.json`);
   return raw === null ? null : (JSON.parse(raw) as Segment);
+}
+
+function segmentJson(sessionId: string, seq: number): string {
+  return `${JSON.stringify(
+    serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_version: 'test',
+        harness_session_id: sessionId,
+        timecode: '2026-06-23T04:58:00.000Z',
+        window: { since: 'last-command', from: seq - 1, to: seq },
+        branch: null,
+        event_stream: [],
+      },
+      REPO,
+    ),
+    null,
+    2,
+  )}\n`;
+}
+
+function latestTreeNames(git: FakeGitWrite): string[] {
+  return (git.trees.at(-1) ?? []).map((e) => e.name).sort();
+}
+
+function latestBlob(git: FakeGitWrite, name: string): string | undefined {
+  const entry = (git.trees.at(-1) ?? []).find((e) => e.name === name);
+  return entry ? git.contentOf(entry.sha) : undefined;
 }
 
 describe('T005 — detectHarness (innermost wins)', () => {
@@ -320,6 +356,44 @@ describe('T005 — captureTelemetry happy path', () => {
     expect(seg?.skills).toBeUndefined(); // empty v1-compat collections are omitted (v2)
     expect(seg?.harness).toBe('claude-code');
     expect(seg?.event_stream.some((e) => e.kind === 'branch')).toBe(true); // the activity that kept it
+  });
+});
+
+describe('plan 054 — telemetry buffer wipe resumes above flushed watermark', () => {
+  it('writes the next segment above .flushed and syncs it without clobbering the rolled ref', () => {
+    const session = 'sessWipe';
+    const sessionDir = `${TEL}/${session}`;
+    const dirs: Record<string, string[]> = { [TEL]: [session], [sessionDir]: ['19431.json'] };
+    const fs = new FakeFs({ [`${sessionDir}/19431.json`]: segmentJson(session, 19431) }, dirs);
+    const git = new FakeGitWrite();
+    const syncDeps = {
+      fs,
+      env: new FakeEnv({}),
+      proc: new FakeProcess({}, REPO),
+      git,
+    };
+
+    const first = syncTelemetry(syncDeps);
+    expect(first.ok).toBe(true);
+    expect(first.segments).toBe(1);
+    expect(fs.readText(`${TEL}/${session}.flushed`)?.trim()).toBe('19431');
+    expect(latestTreeNames(git)).toContain('19431.json');
+
+    const nextPath = writeSegmentFile(
+      { fs, proc: new FakeProcess({}, REPO) },
+      REPO,
+      session,
+      JSON.parse(segmentJson(session, 19432)) as Segment,
+    );
+    expect(nextPath).toBe(`${sessionDir}/19432.json`);
+    dirs[sessionDir].push('19432.json');
+
+    const second = syncTelemetry(syncDeps);
+    expect(second.ok).toBe(true);
+    expect(second.segments).toBe(1);
+    expect(latestTreeNames(git)).toEqual(['19431.json', '19432.json', ROLLED_MANIFEST_NAME]);
+    expect(parseManifest(latestBlob(git, ROLLED_MANIFEST_NAME))?.max_seq).toBe(19432);
+    expect(fs.readText(`${TEL}/${session}.flushed`)?.trim()).toBe('19432');
   });
 });
 
