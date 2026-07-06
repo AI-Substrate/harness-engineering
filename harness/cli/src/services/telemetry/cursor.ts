@@ -115,6 +115,14 @@ export function writeFlowCursor(fs: FsPort, path: string, offset: number): void 
   fs.rename(tmp, path);
 }
 
+/** Read the durable flushed segment high-water, or `0` when missing/corrupt. */
+export function readFlushed(fs: FsPort, path: string): number {
+  const raw = fs.readText(path);
+  if (raw === null) return 0;
+  const t = raw.trim();
+  return /^\d+$/.test(t) ? Number.parseInt(t, 10) : 0;
+}
+
 /**
  * Read the watermark, or `null` when missing OR corrupt (non-numeric / negative /
  * empty). A `null` tells the caller to reset to session-start — a corrupt cursor
