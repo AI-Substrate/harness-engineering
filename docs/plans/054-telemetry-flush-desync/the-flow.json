@@ -3,12 +3,12 @@
   "kind": "flight-plan",
   "slug": "telemetry-flush-desync",
   "nav": {
-    "now": "review-1",
-    "next": "ship",
+    "now": "ship",
+    "next": null,
     "intent": "Fix #53: seed nextSeq from max(durable .flushed watermark, maxExistingFile)+1 so a wiped telemetry buffer resumes above the flushed high-water and sync stops silently no-opping",
     "bag": {
       "mode": "Simple",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-07-06T03:49:59.224Z",
@@ -206,6 +206,39 @@
         "from": "phase-1",
         "to": "review-1"
       }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-06T07:54:34.088Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-06T07:54:34.904Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-06T07:54:35.758Z",
+      "details": {
+        "from": "review-1",
+        "to": "ship"
+      }
     }
   ],
   "nodes": [
@@ -286,14 +319,17 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-07-06T07:54:34.904Z",
+      "ran_at": "2026-07-06T07:54:34.088Z",
+      "note": "PR #58 opened off 0.9.1 main; CI green (all hard gates ok; arch-check/markdown-lint pre-existing warns). Commits e6c76433 (fix) + 7713e958 (docs)."
     },
     {
       "id": "backpressure",
