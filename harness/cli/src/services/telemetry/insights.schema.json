@@ -14,7 +14,7 @@
     },
     "sections": {
       "type": "array",
-      "description": "The seven WS001 v1 sections, in order.",
+      "description": "The WS001 sections, in order (plan 056 adds Files written).",
       "items": { "$ref": "#/$defs/section" }
     },
     "discipline": {

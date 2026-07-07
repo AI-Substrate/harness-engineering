@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.3.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.4.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -20,7 +20,7 @@
     "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "2.3" },
+    "schema_version": { "type": "string", "const": "2.4" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
     "harness_version": { "type": "string" },
@@ -170,6 +170,7 @@
               "model",
               "api_error",
               "artifact",
+              "file",
               "mark"
             ]
           },
@@ -217,6 +218,18 @@
           "mark_kind": { "type": "string", "description": "plan 053 — a `mark` event's category slug (shape-guarded `^[a-z][a-z0-9-]{0,31}$`, never prose)." },
           "verdict": { "type": "string", "description": "plan 053 — a `mark` event's optional verdict slug (same shape guard; distinct from the artifact `enums.verdict` vocabulary)." },
           "change": { "enum": ["written", "edited"] },
+          "delta": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "plan 056 — a `file` event's integer line/byte add+remove counts, computed from the tool payload (never the file text).",
+            "required": ["lines_added", "lines_removed", "bytes_added", "bytes_removed"],
+            "properties": {
+              "lines_added": { "type": "integer" },
+              "lines_removed": { "type": "integer" },
+              "bytes_added": { "type": "integer" },
+              "bytes_removed": { "type": "integer" }
+            }
+          },
           "counts": {
             "type": "object",
             "additionalProperties": false,

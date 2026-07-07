@@ -33,7 +33,14 @@
  */
 
 import { otlpLogsToEvents } from './otlp/logs.js';
-import { classifyGap, computeRollup, IDLE_CAP_S, parseIso } from './rollup.js';
+import {
+  type Authorship,
+  classifyGap,
+  computeAuthorship,
+  computeRollup,
+  IDLE_CAP_S,
+  parseIso,
+} from './rollup.js';
 import type { SessionExport } from './session-export.js';
 
 export const TELEMETRY_REPORT_SCHEMA_VERSION = 'harness.telemetry-report/v1' as const;
@@ -196,6 +203,12 @@ export interface TelemetryReport {
    * honestly when it is missing.
    */
   control_timeline?: TimelineMarker[];
+  /**
+   * The "which files did agents write, and how much" surface (plan 056): per-file
+   * write/edit deltas aggregated from the `file` events across every included
+   * session. Absent when no session carried a `file` event (older captures).
+   */
+  authorship?: Authorship;
 }
 
 export interface BuildReportOptions {
@@ -833,6 +846,8 @@ export function buildReport(
   let from: string | null = null;
   let to: string | null = null;
   let controlTimeline: TimelineMarker[] | undefined;
+  // plan 056: the file events across every included session → one authorship view.
+  const fileEventsAll: SessionView['events'] = [];
 
   for (const exp of included) {
     const view = viewOf(exp);
@@ -858,6 +873,8 @@ export function buildReport(
     // The ordered control timeline is a SINGLE-session artifact (scope.single):
     // build it only for a one-session report, from that session's ordered stream.
     if (included.length === 1) controlTimeline = buildControlTimeline(view.events);
+    // plan 056: collect this session's file events for the cohort authorship view.
+    for (const e of view.events) if (e.kind === 'file') fileEventsAll.push(e);
   }
 
   const idCap = opts.sessionIdCap ?? 200;
@@ -927,5 +944,6 @@ export function buildReport(
       token_coverage: tokenCoverage,
     },
     ...(controlTimeline !== undefined ? { control_timeline: controlTimeline } : {}),
+    ...(fileEventsAll.length > 0 ? { authorship: computeAuthorship(fileEventsAll) } : {}),
   };
 }

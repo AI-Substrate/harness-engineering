@@ -86,6 +86,12 @@ export const A = {
   ARTIFACT_ENUMS: 'harness.artifact.enums',
   ARTIFACT_SIZE_LINES: 'harness.artifact.size_lines',
   ARTIFACT_SIZE_BYTES: 'harness.artifact.size_bytes',
+  FILE_PATH: 'harness.file.path',
+  FILE_CHANGE: 'harness.file.change',
+  FILE_LINES_ADDED: 'harness.file.lines_added',
+  FILE_LINES_REMOVED: 'harness.file.lines_removed',
+  FILE_BYTES_ADDED: 'harness.file.bytes_added',
+  FILE_BYTES_REMOVED: 'harness.file.bytes_removed',
   // metric-only attrs
   TOOL: 'harness.tool.name',
   SKILL: 'harness.skill.name',

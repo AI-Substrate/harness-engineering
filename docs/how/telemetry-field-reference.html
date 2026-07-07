@@ -518,6 +518,16 @@
           </ul>
         </div>
         <div class="kcard">
+          <span class="kname">file</span>
+          <p class="kdesc">An agent wrote or edited a file — path + change-delta from the tool payload.</p>
+          <ul>
+            <li><span class="f">harness.file.<b>path</b></span><span class="d">Repo-relative path, or the literal <code>&lt;external&gt;</code> for an out-of-repo write (the directory is never leaked).</span></li>
+            <li><span class="f">harness.file.<b>change</b></span><span class="d">written (a whole-file Write/create) or edited (an in-place change).</span></li>
+            <li><span class="f">harness.file.<b>lines_added</b> / <b>lines_removed</b></span><span class="d">Line churn, computed from the tool payload — never a file read.</span></li>
+            <li><span class="f">harness.file.<b>bytes_added</b> / <b>bytes_removed</b></span><span class="d">UTF-8 byte churn (counts only — the file text never travels).</span></li>
+          </ul>
+        </div>
+        <div class="kcard">
           <span class="kname">api_error</span>
           <p class="kdesc">A model/API error surfaced.</p>
           <ul>

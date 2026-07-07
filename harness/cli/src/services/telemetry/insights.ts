@@ -144,7 +144,7 @@ export interface InsightsProvenance {
 
 export interface InsightsDocument {
   schema_version: typeof INSIGHTS_SCHEMA_VERSION;
-  /** The seven WS001 sections, in order. */
+  /** The eight WS001 sections, in order (plan 056 adds Files written). */
   sections: InsightSection[];
   /** The v1-committed ritual-marker discipline panel. */
   discipline: InsightSection;
@@ -996,6 +996,92 @@ function perWorkUnit(workUnits: WorkUnit[], units: Unit[]): InsightSection {
  * `available:false` when none exist. Never re-reads shards, never joins external
  * data, never fabricates a number.
  */
+/**
+ * §8 Files written (plan 056) — WHICH files agents authored and HOW MUCH, from the
+ * `file` events surfaced in each report's `authorship` aggregate. Deltas come from
+ * the tool payload (a Write's content / an Edit's old→new / an apply_patch's +/-),
+ * NOT a git diff — a per-file churn signal, never the file text. Renders
+ * `available:false` when no input report carried authorship (older captures).
+ */
+function filesWritten(inputs: InsightInput[]): InsightSection {
+  const withAuthorship = inputs.filter((i) => i.report.authorship !== undefined);
+  if (withAuthorship.length === 0) {
+    return {
+      id: 'files_written',
+      title: 'Files written',
+      available: false,
+      rows: [],
+      note: 'Unavailable: no input report carries `authorship` (pre-plan-056 captures emit no `file` events).',
+    };
+  }
+  const byPath = new Map<
+    string,
+    {
+      change: 'written' | 'edited';
+      lines_added: number;
+      lines_removed: number;
+      bytes_added: number;
+      bytes_removed: number;
+      events: number;
+    }
+  >();
+  for (const { report } of withAuthorship) {
+    for (const f of report.authorship?.files ?? []) {
+      const cur = byPath.get(f.path) ?? {
+        change: f.change,
+        lines_added: 0,
+        lines_removed: 0,
+        bytes_added: 0,
+        bytes_removed: 0,
+        events: 0,
+      };
+      cur.change = f.change;
+      cur.lines_added += f.lines_added;
+      cur.lines_removed += f.lines_removed;
+      cur.bytes_added += f.bytes_added;
+      cur.bytes_removed += f.bytes_removed;
+      cur.events += f.events;
+      byPath.set(f.path, cur);
+    }
+  }
+  const CAP = 25;
+  const all = [...byPath.entries()].sort(
+    (a, b) => b[1].lines_added + b[1].lines_removed - (a[1].lines_added + a[1].lines_removed),
+  );
+  const rows = all.slice(0, CAP).map(([path, f]) =>
+    makeRow({
+      claim: `${path}: +${f.lines_added}/-${f.lines_removed} lines over ${f.events} write(s) (${f.change})`,
+      measures_used: ['authorship.files'],
+      // n = how many write/edit events touched this path (the sample behind the churn).
+      n: f.events,
+      caveat:
+        'Deltas are computed from the tool payload (Write content / Edit old→new / apply_patch +/-), not a git diff — a per-file churn estimate, never the file text.',
+      values: {
+        path,
+        change: f.change,
+        lines_added: f.lines_added,
+        lines_removed: f.lines_removed,
+        bytes_added: f.bytes_added,
+        bytes_removed: f.bytes_removed,
+        events: f.events,
+      },
+    }),
+  );
+  const section: InsightSection = {
+    id: 'files_written',
+    title: 'Files written',
+    available: true,
+    rows,
+  };
+  if (all.length > CAP) {
+    section.suppressed = {
+      rows: all.length - CAP,
+      reason: `showing the top ${CAP} files by line churn; ${all.length - CAP} more omitted`,
+    };
+  }
+  return section;
+}
+
 export function buildInsights(
   inputs: InsightInput[],
   opts: BuildInsightsOptions = {},
@@ -1013,6 +1099,7 @@ export function buildInsights(
     activeWallRatio(units),
     outliers(units),
     perWorkUnit(workUnits, units),
+    filesWritten(inputs),
   ];
   const discipline = disciplinePanel(units, workUnits);
 
