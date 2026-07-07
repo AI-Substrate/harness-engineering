@@ -8,7 +8,7 @@
     "intent": "Telemetry: when an agent writes a file, store the file path and its KB size, so we can see which files agents wrote.",
     "bag": {
       "mode": "unknown",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-07-07T05:36:44.395Z",
@@ -212,6 +212,29 @@
         "from": "phase-1",
         "to": "ship"
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-07T08:09:11.577Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-07T08:09:11.758Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "note"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -316,14 +339,17 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/the-flow 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /the-flow 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-07-07T08:09:11.758Z",
+      "ran_at": "2026-07-07T08:09:11.577Z",
+      "note": "Branch feat/056-file-write-telemetry pushed; PR #62 opened. Harness rebuilt + relinked (file event live in dist). Telemetry flushed."
     },
     {
       "id": "backpressure",
