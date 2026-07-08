@@ -275,6 +275,8 @@ Every stage module is a deep-think task — reason as thoroughly as the stage wa
 
 ### Artifact Elegance
 
+**Tokens are expensive — everywhere, not just in what you emit.** Thinking, tool calls, code, and artifacts all cost. Do the work the stage needs (build the plan, write the code — **never under-build to save tokens**), then be direct: shortest path to the real result. This is invariant #13 in operation; the rule below is its artifact-specific edge.
+
 Everything a stage emits — plans, task tables, execution logs, reviews, narration — is **output**, the expensive token. Emit the fewest that carry the meaning. This block is the single home for the rule; stage modules **cite** it (one line each) rather than restating it.
 
 **The seven-function line test.** A line earns its place only if it does at least one of these — otherwise cut it: ① changes a decision · ② constrains an implementation · ③ proves a behaviour · ④ exposes a risk · ⑤ records evidence · ⑥ preserves intent · ⑦ enables the next action.

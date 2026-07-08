@@ -180,6 +180,14 @@ agents/*/runs/
 /skills-lock.json
 .claude/skills/
 .agents/
+# Guard: `npx skills add` run with cwd INSIDE skills/ pollutes the SOURCE tree
+# (recursive .claude/skills/ copies, .harness/, skills-lock.json) — and skills/
+# ships in the npm tarball (package.json#files), so this would get PUBLISHED.
+# Ignore those install artifacts at any depth under skills/ (the vendored source
+# dirs themselves — skills/builder/, skills/the-flow/, … — stay tracked).
+skills/**/.claude/
+skills/**/.harness/
+skills/**/skills-lock.json
 
 # flow-eval (plan 041) run tree — COMMITTED since 2026-07-03: the append-only
 # ledger.jsonl is the longitudinal record `--compare` groups on, and the per-run
