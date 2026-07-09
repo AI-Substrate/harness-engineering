@@ -441,6 +441,7 @@
           <p class="kdesc">A harness sub-verb ran.</p>
           <ul>
             <li><span class="f">harness.<b>verb</b></span><span class="d">The sub-verb, e.g. <code>flow nav</code>, <code>flow create</code>, <code>flow render</code>.</span></li>
+            <li><span class="f">harness.observe.<b>kind</b></span><span class="d">Present ONLY when <code>verb === observe</code> (plan 056): the observation kind, a closed 8-value enum (<code>difficulty · magic-wand · gift · insight · coordination · improvement-suggestion · confusion · win</code>). A fixed-vocabulary token, never prose — it lets the offline conversion query split friction capture by kind.</span></li>
           </ul>
         </div>
         <div class="kcard">
@@ -510,10 +511,10 @@
           <span class="kname">artifact</span>
           <p class="kdesc">A plan artifact was written.</p>
           <ul>
-            <li><span class="f">harness.artifact.<b>type</b> / <b>path</b></span><span class="d">Artifact kind &amp; its path.</span></li>
+            <li><span class="f">harness.artifact.<b>type</b> / <b>path</b></span><span class="d">Artifact kind &amp; its path. The closed type set gains <code>retro</code> (plan 056) alongside review / plan / workshop / dossier / tasks / execution-log / backpressure / validation / ship-report / flight-plan.</span></li>
             <li><span class="f">harness.artifact.<b>plan_id</b></span><span class="d">Owning plan.</span></li>
             <li><span class="f">harness.artifact.<b>change</b></span><span class="d">created / modified / deleted.</span></li>
-            <li><span class="f">harness.artifact.<b>counts</b> / <b>enums</b></span><span class="d">Structured counts &amp; enum tallies.</span></li>
+            <li><span class="f">harness.artifact.<b>counts</b> / <b>enums</b></span><span class="d">Structured counts &amp; enum tallies. A <code>retro</code> artifact adds (plan 056): <code>observations</code> (total entries); <code>disp_*</code> — the drain-outcome mix, one key per disposition (<code>disp_fixed_now · disp_task · disp_plan · disp_diffs · disp_command · disp_kept · disp_declined · disp_deferred</code>); and <code>kind_*</code> — the observation-kind mix (<code>kind_difficulty · kind_magic_wand · kind_gift · kind_insight · kind_coordination · kind_improvement_suggestion · kind_confusion · kind_win</code>). Counts-only — fingerprints and description prose never travel.</span></li>
             <li><span class="f">harness.artifact.<b>size_lines</b> / <b>size_bytes</b></span><span class="d">Artifact size.</span></li>
           </ul>
         </div>
