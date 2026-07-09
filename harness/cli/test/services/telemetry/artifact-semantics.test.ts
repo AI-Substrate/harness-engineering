@@ -342,6 +342,7 @@ describe('registry dispatch (path-first, first-match)', () => {
     ['docs/plans/046-x/validations/046-x-validation.md', 'validation'],
     ['docs/plans/046-x/ship/2026-07-04/ship-report.md', 'ship-report'],
     ['docs/plans/046-x/the-flow.json', 'flight-plan'],
+    ['.harness/records/retro/2026-07-09T11-00-00Z-agent-a8f3.md', 'retro'],
   ];
   for (const [path, type] of cases) {
     it(`${path} → ${type}`, () => {
@@ -600,6 +601,14 @@ describe('F2 — counts/enums are a closed, schema-enumerated key union', () => 
         ],
         events: [1],
       }),
+      retro: [
+        '  - id: DL-001',
+        '    kind: difficulty',
+        '    disposition: fixed-now',
+        '  - id: WIN-001',
+        '    kind: win',
+        '    disposition: declined',
+      ].join('\n'),
     };
     for (const ex of ARTIFACT_EXTRACTORS) {
       const { counts, enums } = ex.extract(fixtures[ex.type]);
@@ -631,6 +640,94 @@ describe('F2 — counts/enums are a closed, schema-enumerated key union', () => 
           expect(vocab, `enum key ${key} is not schema-declared`).toContain(value);
         }
       }
+    }
+  });
+});
+
+describe('retro extractor (plan 056 T004) — observation/disposition/kind counts', () => {
+  // A realistic drained retro record: 4 entries, mixed kinds + dispositions,
+  // including a `declined` and a `deferred` (the AC-04 headline branch). The `fp`
+  // fingerprints and description prose must NEVER surface in the counts.
+  const RETRO_RECORD = `---
+schema_version: "1.2"
+retro_id: "2026-07-09T11:00:00Z-flow-pair-coder-a8f3"
+agent: "flow-pair-coder"
+started_at: "2026-07-09T10:00:00Z"
+entries:
+  - id: DL-001
+    kind: difficulty
+    description: "the misleading error hid the real cause"
+    fp: a3f9c2d1e4b5
+    disposition: fixed-now
+  - id: DL-002
+    kind: difficulty
+    description: "second friction, deferred for later"
+    fp: b1c2d3e4f5a6
+    disposition: deferred
+  - id: SUGG-001
+    kind: improvement-suggestion
+    description: "a nice-to-have we chose not to do"
+    fp: c7d8e9f0a1b2
+    disposition: declined
+  - id: WIN-001
+    kind: win
+    description: "the fingerprint round-tripped first try"
+    fp: d3e4f5a6b7c8
+    disposition: kept
+---
+`;
+
+  const ex = matchExtractor('.harness/records/retro/2026-07-09T11-00-00Z-flow-pair-coder-a8f3.md');
+
+  it('counts observations, kinds, and dispositions summing against the record', () => {
+    expect(ex?.type).toBe('retro');
+    const { counts, enums } = extractArtifact(ex as ArtifactExtractor, RETRO_RECORD);
+    expect(counts.observations).toBe(4);
+    // kinds
+    expect(counts.kind_difficulty).toBe(2);
+    expect(counts.kind_improvement_suggestion).toBe(1);
+    expect(counts.kind_win).toBe(1);
+    // dispositions — declined + deferred present (AC-04 headline)
+    expect(counts.disp_fixed_now).toBe(1);
+    expect(counts.disp_deferred).toBe(1);
+    expect(counts.disp_declined).toBe(1);
+    expect(counts.disp_kept).toBe(1);
+    // sums are internally consistent: kinds sum = dispositions sum = observations
+    const kindSum = (counts.kind_difficulty ?? 0) + (counts.kind_improvement_suggestion ?? 0) + (counts.kind_win ?? 0);
+    const dispSum =
+      (counts.disp_fixed_now ?? 0) + (counts.disp_deferred ?? 0) + (counts.disp_declined ?? 0) + (counts.disp_kept ?? 0);
+    expect(kindSum).toBe(counts.observations);
+    expect(dispSum).toBe(counts.observations);
+    // no free text, no fp travels
+    expect(enums).toEqual({});
+    const json = JSON.stringify(counts);
+    expect(json).not.toContain('a3f9c2d1e4b5');
+    expect(json).not.toContain('misleading');
+  });
+
+  it('a garbage retro file yields {} counts, never a throw', () => {
+    const { counts } = extractArtifact(ex as ArtifactExtractor, 'not a retro at all\n');
+    expect(counts).toEqual({});
+  });
+
+  it('emits a counts-only retro artifact event through the capture window', () => {
+    const reader: ArtifactContentReader = {
+      readText: (p) =>
+        p.endsWith('flow-pair-coder-a8f3.md') ? RETRO_RECORD : null,
+    };
+    const events = artifactSemanticsEvents(
+      reader,
+      REPO,
+      { written: ['.harness/records/retro/2026-07-09T11-00-00Z-flow-pair-coder-a8f3.md'] },
+      '2026-07-09T11:05:00Z',
+    );
+    expect(events).toHaveLength(1);
+    const ev = events[0] as ArtifactEvent;
+    expect(ev.artifact_type).toBe('retro');
+    expect(ev.counts.observations).toBe(4);
+    // every emitted count key is a member of the closed vocabulary
+    for (const k of Object.keys(ev.counts)) {
+      expect(ARTIFACT_COUNT_KEYS).toContain(k);
     }
   });
 });
