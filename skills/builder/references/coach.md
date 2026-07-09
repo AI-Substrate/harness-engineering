@@ -288,7 +288,7 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 ### `awaiting-6` → after a phase
 > **Where we are**: Phase `<N>` landed — `<what it delivered>`; acceptance `<AC refs>` met. Progress was tracked per task (stage 62).
 > `<⚠️ Before we move on — the work flagged: <acceptance criterion X not met> / <task Y left blocked> / <debt logged: "…">. Just making sure you saw those before the next phase.>` *(omit if everything landed clean)*
-> You may have seen a retro prompt `[s/t/p/e/d/a]` at the end — that's the harness draining this phase's friction notes at the **post-coding retro seam** the flow fired at the phase-end edge (the router decides drain-vs-harvest). No harness → you saw nothing, which is also fine.
+> You may have seen the harness offer a few environment improvements it noticed at the end — that's it draining this phase's friction notes at the **post-coding retro seam** the flow fired at the phase-end edge (the router decides drain-vs-harvest, presenting each recommendation conversationally). No harness → you saw nothing, which is also fine.
 > Did you notice `<one execution-log discovery>`? Worth carrying forward.
 > *More phases (Full)*: a between-phase seam — `/compact` now, then {{render-edge: awaiting-6 → tasks}} for Phase `<N+1>`. Type: `compact` or `next phase`.
 > *Last phase / Simple*: next is review — {{render-edge: awaiting-6 → review}} (skip if a companion already reviewed every commit — the Graph's decoration). Type: `review`.
