@@ -118,7 +118,11 @@ function encodeEvent(e: Event): LogRecord {
       break;
     case 'harness':
       attrs.push(kv(A.VERB, sv(e.verb)));
-      if (e.observe_kind !== undefined) attrs.push(kv(A.OBSERVE_KIND, sv(e.observe_kind)));
+      // observe_kind is gated on the `observe` verb at the boundary (plan 056):
+      // a stray value on any other verb is dropped, not encoded.
+      if (e.verb === 'observe' && e.observe_kind !== undefined) {
+        attrs.push(kv(A.OBSERVE_KIND, sv(e.observe_kind)));
+      }
       break;
     case 'checks':
       attrs.push(kv(A.CHECKS_STATUS, sv(e.status)));

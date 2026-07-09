@@ -41,6 +41,21 @@ describe('observe_kind — segment serializer lane (V-01)', () => {
     expect('observe_kind' in out).toBe(false);
   });
 
+  it('DROPS a stray observe_kind carried on a non-observe verb (boundary gate)', () => {
+    // The contract is verb-gated, not merely presence-gated: even if a non-observe
+    // event arrives carrying observe_kind, the serializer must NOT copy it through.
+    const stray = {
+      t: T,
+      kind: 'harness',
+      verb: 'checks',
+      observe_kind: 'difficulty',
+    } as HarnessEvent;
+    const out = serializeEvent(stray) as HarnessEvent;
+    expect(out.verb).toBe('checks');
+    expect(out.observe_kind).toBeUndefined();
+    expect('observe_kind' in out).toBe(false);
+  });
+
   it('emits ONLY the allowlisted keys — no fp, no prose field (workshop D5 guard)', () => {
     const ev: HarnessEvent = { t: T, kind: 'harness', verb: 'observe', observe_kind: 'magic-wand' };
     const out = serializeEvent(ev);
@@ -75,6 +90,24 @@ describe('observe_kind — OTLP round-trip lane (V-01)', () => {
     const anchor = seg.event_stream[0]?.t ?? T;
     const checks: Event = { t: anchor, kind: 'harness', verb: 'checks' };
     const spliced: Segment = { ...seg, event_stream: [...seg.event_stream, checks] };
+    const recon = otlpLogsToEvents(segmentToOtlpLogs(spliced));
+    const back = recon.find(
+      (e): e is HarnessEvent => e.kind === 'harness' && (e as HarnessEvent).verb === 'checks',
+    );
+    expect(back).toBeDefined();
+    expect(back?.observe_kind).toBeUndefined();
+  });
+
+  it('DROPS a stray observe_kind carried on a non-observe verb through the OTLP encode', () => {
+    const seg = loadGolden();
+    const anchor = seg.event_stream[0]?.t ?? T;
+    const stray = {
+      t: anchor,
+      kind: 'harness',
+      verb: 'checks',
+      observe_kind: 'difficulty',
+    } as HarnessEvent;
+    const spliced: Segment = { ...seg, event_stream: [...seg.event_stream, stray] };
     const recon = otlpLogsToEvents(segmentToOtlpLogs(spliced));
     const back = recon.find(
       (e): e is HarnessEvent => e.kind === 'harness' && (e as HarnessEvent).verb === 'checks',

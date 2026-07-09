@@ -220,7 +220,7 @@ harness observe --clear
 
 #### "pick" — save selected
 
-Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
+Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Write **every presented entry** into the record (same envelope): the selected ones stamped `disposition:kept`, the **unselected presented entries stamped `disposition:declined`** — declined entries are written, not dropped (Step 2/3: recurrence analysis needs what we said *no* to). Only after the record is written is the transient buffer cleared (`harness observe --clear`).
 
 #### "tasks" — emit copy-pasteable fix descriptors
 
