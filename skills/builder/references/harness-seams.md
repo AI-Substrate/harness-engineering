@@ -20,6 +20,8 @@ Agents tend to race toward "done". The harness seams deliberately interrupt that
 - at closeout, offer to encode the best lesson so the next run does not pay the same inference cost.
 
 Code review asks whether the code is acceptable. Harness review asks whether the process could be made easier, safer, or more provable next time. The seams are **advisory** — the user may decline any of them — but they are **not** optional admin the agent may silently skip; surfacing them is part of getting to done.
+
+**Pay difficulties forward.** This is the seam-level face of builder `SKILL.md` invariant #14 ("don't apologise — fix"): "us" is agents and humans together, each inheriting the environment the last one left. A friction you hit and route around silently is one the next agent re-hits from scratch; a friction you `harness observe` (or fix small-and-reversible on the spot) is one they never pay for. The seams exist so that every difficulty becomes a durable signal instead of evaporating as remembered prose — the whole point is compounding, not confession.
 ---
 
 ## Flight-plan harness seams — creation, lifecycle & execution discipline
