@@ -118,7 +118,7 @@ Works with **no arguments** (full auto-detect); a parent driving its own flow ca
 
 ## Progressive disclosure
 
-Load **exactly one** verb module (`references/stages/<verb>.md`) when a step is taken — never read all of them up front. A module may lazily pull `references/00-routing.md` § Shared conventions when it cites one (the sanctioned exception); reading modules for verbs you are not executing is not. The verb modules are **harness-blind**: they carry no sibling names, no flow position, no lifecycle-hook self-reference, and no routing — that knowledge lives only here and in `00-routing.md`. Human-mode coaching (the rail, the narration beats, the why-table) lives only in [`references/coach.md`](./references/coach.md), never duplicated into the dispatch or the modules.
+Load **exactly one** verb module (`references/stages/<verb>.md`) when a step is taken — never read all of them up front. A module may lazily pull `references/00-routing.md` § Shared conventions when it cites one (the sanctioned exception); reading modules for verbs you are not executing is not. The verb modules are **orchestration-blind**: they carry no sibling names, no flow position, no lifecycle-hook self-reference, and no routing — that knowledge lives only here and in `00-routing.md`. (A module may still `harness observe` a friction it hits at the moment it bites — execution-log note as the fallback when harness-less — since capturing friction is not orchestration.) Human-mode coaching (the rail, the narration beats, the why-table) lives only in [`references/coach.md`](./references/coach.md), never duplicated into the dispatch or the modules.
 
 ## `--help` — synopsis (print-and-stop)
 

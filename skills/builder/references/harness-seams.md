@@ -2,7 +2,7 @@
 
 The **single owner** of *where & when* the engineering harness is touched across the SDD flow. Loaded **lazily** by guided mode (`coach.md` + `00-routing.md`) only when the flow reaches a harness edge — progressive disclosure, the same way a stage's sub-skill is loaded only when its step is accepted. Direct-jump never loads it (direct-jump goes harness-less by design — `SKILL.md` § Two load paths).
 
-> **The inversion (why this file exists).** Harness seams used to fire as **side-effects buried inside the stage sub-skills**, so the guided **engine** — which owns the rail, the narration, and the flight-plan nodes — never saw them: invisible, untracked, silently skipped. This file pulls every "should the harness run here, and how" decision **up into the flow**. The sub-skills under `references/stages/` are now pure **flow-blind *and* harness-blind verbs** — they describe only their own verb and carry **zero** harness knowledge (no `/eng-harness-flow` literal, no boot/backpressure/retro/observe concept). All harness knowledge lives in exactly three places: **this file** (where/when/whether), the **Graph** in `00-routing.md` (the edges that carry the seams), and the external **`/eng-harness-flow` router** (what actually happens behind the door). Nothing else.
+> **The inversion (why this file exists).** Harness seams used to fire as **side-effects buried inside the stage sub-skills**, so the guided **engine** — which owns the rail, the narration, and the flight-plan nodes — never saw them: invisible, untracked, silently skipped. This file pulls every "should the harness run here, and how" decision **up into the flow**. The sub-skills under `references/stages/` are now pure **flow-blind *and* orchestration-blind verbs** — they describe only their own verb and carry **zero** harness *orchestration* knowledge (no `/eng-harness-flow` literal, no boot/backpressure/retro seam concept). The one thing they *may* still do is `harness observe` a friction they hit at the moment it bites (with an execution-log note as the fallback when harness-less) — capturing friction is not orchestration (builder `SKILL.md` invariant #14). All harness knowledge lives in exactly three places: **this file** (where/when/whether), the **Graph** in `00-routing.md` (the edges that carry the seams), and the external **`/eng-harness-flow` router** (what actually happens behind the door). Nothing else.
 
 > **One door, never its children.** Every harness touchpoint is the single entry point **`/eng-harness-flow`**. Its child skills are private and may move or rename — **never name or invoke them**. The only stable surface is `/eng-harness-flow` + its `--hook` vocabulary (and the permanent `--event` alias).
 
@@ -20,7 +20,6 @@ Agents tend to race toward "done". The harness seams deliberately interrupt that
 - at closeout, offer to encode the best lesson so the next run does not pay the same inference cost.
 
 Code review asks whether the code is acceptable. Harness review asks whether the process could be made easier, safer, or more provable next time. The seams are **advisory** — the user may decline any of them — but they are **not** optional admin the agent may silently skip; surfacing them is part of getting to done.
-
 ---
 
 ## Flight-plan harness seams — creation, lifecycle & execution discipline
