@@ -57,6 +57,10 @@ A harness command is **not** a `/the-flow` command: it has no Registry row, so i
 
 This is what makes a seam **first-class and un-forgettable**: the engine *always fires the advisory call* at the edge (the beat is never missed), and *always offers* what it routes to (nothing irreversible runs unprompted).
 
+### Mid-flow fix excursion — do the small fix now, tracked (plan 056)
+
+The `post-coding` drain (eng-harness-flow `retro.md` § Step 2) presents its observations **recommendation-led** — numbered paragraphs, the highest-value one named with its reasoning, save-all the default — and records a `disposition` for every entry it presents (declines included). When the top recommendation is a **small, reversible fix** (a justfile line, a one-line error message, a fixture), the drain may offer to **make it right now** instead of filing it for later. That in-flight fix is not a silent side-quest: it is tracked as a **flight-plan excursion node** off the current phase — `harness flow insert-node --branch-of <phase-node> --type chore …`, capturing the **intent** ("what we're fixing and why") up front and the **outcome** ("what changed + proof") once done, both as node notes. No mini-plan ceremony; the excursion node *is* the record, and the drained entry's disposition becomes `fixed-now`. This is the operational face of builder `SKILL.md` invariant #14 — fix the small stuff on the spot, but leave a durable trace so the next agent inherits the improvement, not a mystery.
+
 ---
 
 ## Compaction-robust firing — the call is positional, not remembered
