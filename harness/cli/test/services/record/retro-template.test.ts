@@ -100,7 +100,10 @@ describe('retro core record type', () => {
     };
     const entry = schema.$defs.Entry;
     expect(entry.properties.fp, '$defs.Entry must declare fp (1.2)').toBeDefined();
-    expect(entry.properties.disposition, '$defs.Entry must declare disposition (1.2)').toBeDefined();
+    expect(
+      entry.properties.disposition,
+      '$defs.Entry must declare disposition (1.2)',
+    ).toBeDefined();
     // The disposition vocabulary is closed at exactly 8 values (workshop D2).
     expect(entry.properties.disposition?.enum).toEqual([
       'fixed-now',

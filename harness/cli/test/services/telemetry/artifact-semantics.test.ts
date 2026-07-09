@@ -693,9 +693,15 @@ entries:
     expect(counts.disp_declined).toBe(1);
     expect(counts.disp_kept).toBe(1);
     // sums are internally consistent: kinds sum = dispositions sum = observations
-    const kindSum = (counts.kind_difficulty ?? 0) + (counts.kind_improvement_suggestion ?? 0) + (counts.kind_win ?? 0);
+    const kindSum =
+      (counts.kind_difficulty ?? 0) +
+      (counts.kind_improvement_suggestion ?? 0) +
+      (counts.kind_win ?? 0);
     const dispSum =
-      (counts.disp_fixed_now ?? 0) + (counts.disp_deferred ?? 0) + (counts.disp_declined ?? 0) + (counts.disp_kept ?? 0);
+      (counts.disp_fixed_now ?? 0) +
+      (counts.disp_deferred ?? 0) +
+      (counts.disp_declined ?? 0) +
+      (counts.disp_kept ?? 0);
     expect(kindSum).toBe(counts.observations);
     expect(dispSum).toBe(counts.observations);
     // no free text, no fp travels
@@ -712,8 +718,7 @@ entries:
 
   it('emits a counts-only retro artifact event through the capture window', () => {
     const reader: ArtifactContentReader = {
-      readText: (p) =>
-        p.endsWith('flow-pair-coder-a8f3.md') ? RETRO_RECORD : null,
+      readText: (p) => (p.endsWith('flow-pair-coder-a8f3.md') ? RETRO_RECORD : null),
     };
     const events = artifactSemanticsEvents(
       reader,
