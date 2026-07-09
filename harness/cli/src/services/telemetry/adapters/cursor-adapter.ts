@@ -2,11 +2,12 @@ import type { EnvPort } from '../../../adapters/env/env-port.js';
 import {
   commandSignatures,
   harnessSubcommand,
+  observeKindFromCommand,
   shellSignature,
   skillDigitArg,
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event } from '../events.js';
+import type { Event, HarnessEvent } from '../events.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type { SegmentModelStat } from '../segment.js';
 import type {
@@ -344,9 +345,13 @@ export const cursorAdapter: HarnessAdapter = {
     }
 
     for (const { cmd, t } of commandObs) {
+      const observeKind = observeKindFromCommand(cmd);
       for (const sig of commandSignatures(cmd)) {
         const sub = harnessSubcommand(sig);
-        if (sub !== null) direct.push({ t, t_precision: 'anchored', kind: 'harness', verb: sub });
+        if (sub === null) continue;
+        const hev: HarnessEvent = { t, t_precision: 'anchored', kind: 'harness', verb: sub };
+        if (sub === 'observe' && observeKind !== null) hev.observe_kind = observeKind;
+        direct.push(hev);
       }
     }
 

@@ -52,6 +52,7 @@
     "harness.branch.to",
     "harness.branch.from",
     "harness.verb",
+    "harness.observe.kind",
     "harness.checks.status",
     "harness.checks.gates",
     "harness.command.verb",

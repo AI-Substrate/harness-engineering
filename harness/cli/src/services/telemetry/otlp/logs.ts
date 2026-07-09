@@ -27,6 +27,7 @@ import type {
   FlowLogEvent,
   HarnessEvent,
   ModelEvent,
+  ObservationKind,
   PromptEvent,
   SkillEvent,
   SkillStatus,
@@ -117,6 +118,7 @@ function encodeEvent(e: Event): LogRecord {
       break;
     case 'harness':
       attrs.push(kv(A.VERB, sv(e.verb)));
+      if (e.observe_kind !== undefined) attrs.push(kv(A.OBSERVE_KIND, sv(e.observe_kind)));
       break;
     case 'checks':
       attrs.push(kv(A.CHECKS_STATUS, sv(e.status)));
@@ -267,8 +269,12 @@ function decodeEvent(rec: LogRecord): Event {
       if (from !== undefined) ev.from = from;
       return ev;
     }
-    case 'harness':
-      return { ...base, kind, verb: readStr(m.get(A.VERB)) ?? '' } satisfies HarnessEvent;
+    case 'harness': {
+      const ev: HarnessEvent = { ...base, kind, verb: readStr(m.get(A.VERB)) ?? '' };
+      const ok = readStr(m.get(A.OBSERVE_KIND));
+      if (ok !== undefined) ev.observe_kind = ok as ObservationKind;
+      return ev;
+    }
     case 'checks': {
       const ev: ChecksEvent = {
         ...base,
