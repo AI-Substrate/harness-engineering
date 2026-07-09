@@ -75,12 +75,52 @@ describe('retro core record type', () => {
     expect(kinds).toContain('confusion');
   });
 
-  it('template schema_version and schema x-schema-version are in lockstep at 1.1', () => {
+  it('template schema_version and schema x-schema-version are in lockstep at 1.2', () => {
     // No ajv in repo (KF-05); this is the deterministic version-sync red-line (KF-06/R6).
     const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8')) as { 'x-schema-version'?: string };
     const templateVersion = frontmatter(RETRO_TEMPLATE).match(/^schema_version:\s*"([^"]+)"/m)?.[1];
-    expect(templateVersion).toBe('1.1');
-    expect(schema['x-schema-version']).toBe('1.1');
+    expect(templateVersion).toBe('1.2');
+    expect(schema['x-schema-version']).toBe('1.2');
     expect(templateVersion).toBe(schema['x-schema-version']);
+  });
+
+  it('schema 1.2: Entry declares optional fp + disposition; disposition enum has exactly 8 values', () => {
+    // Plan 056: dispositions + fingerprints are the load-bearing analysis fields (workshop D1/D2/D3).
+    // The pinning test previously saw only column-0 top-level keys — entry-level fields were invisible.
+    const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8')) as {
+      $defs: {
+        Entry: {
+          required: string[];
+          properties: {
+            fp?: { pattern?: string };
+            disposition?: { enum?: string[] };
+          };
+        };
+      };
+    };
+    const entry = schema.$defs.Entry;
+    expect(entry.properties.fp, '$defs.Entry must declare fp (1.2)').toBeDefined();
+    expect(entry.properties.disposition, '$defs.Entry must declare disposition (1.2)').toBeDefined();
+    // The disposition vocabulary is closed at exactly 8 values (workshop D2).
+    expect(entry.properties.disposition?.enum).toEqual([
+      'fixed-now',
+      'task',
+      'plan',
+      'diffs',
+      'command',
+      'kept',
+      'declined',
+      'deferred',
+    ]);
+    expect(entry.properties.disposition?.enum).toHaveLength(8);
+    // Additive: neither field is required, so 1.1 records still validate.
+    expect(entry.required).not.toContain('fp');
+    expect(entry.required).not.toContain('disposition');
+  });
+
+  it('template entry declares fp + disposition (1.2) so drained records carry both', () => {
+    // Nested (indented) keys — the top-level-key extractor cannot see these; assert directly.
+    expect(RETRO_TEMPLATE, 'template entry must declare fp').toMatch(/^\s+fp:/m);
+    expect(RETRO_TEMPLATE, 'template entry must declare disposition').toMatch(/^\s+disposition:/m);
   });
 });

@@ -6,7 +6,7 @@ import type { HarnessRecordType } from '../contract.js';
  * `services/scaffold/templates.ts`.
  *
  * `RETRO_TEMPLATE` is a **deployment echo** of the frozen
- * `skills/eng-harness-loop/eng-harness-4-retro/references/retro.schema.json`: its
+ * `skills/eng-harness-flow/references/retro.schema.json`: its
  * frontmatter covers the schema's REQUIRED fields (`schema_version`, `retro_id`,
  * `agent`, `started_at`) and uses only the schema's open `system` object. The
  * schema stays the canonical contract; a future `schema?` field can attach it for
@@ -17,7 +17,7 @@ import type { HarnessRecordType } from '../contract.js';
  * schema's open `system` object — NOT a schema-defined field.
  */
 export const RETRO_TEMPLATE = `---
-schema_version: "1.1"
+schema_version: "1.2"
 retro_id: "<ISO8601Z>-<agent>-<hash>"     # e.g. 2026-06-09T09:55:00Z-github-copilot-a8f3
 agent: "<your-agent-slug>"                 # lowercase kebab, e.g. github-copilot
 plan_id: "<NNN-slug or null>"
@@ -36,6 +36,9 @@ entries:
     severity: degrading                     # blocking | degrading | annoying  (for kind: difficulty)
     workaround: "<what you did to get past it>"
     suggested_encoding: "<e.g. justfile recipe wrapping ripgrep>"
+    fp: "<12-hex fingerprint>"               # 1.2 (optional) set by 'harness observe' — recurrence key
+    disposition: kept                        # 1.2 (optional) drain outcome: fixed-now|task|plan|diffs|command|kept|declined|deferred
+                                             #   drain-time decision; distinct from system.compound.status (long-horizon lifecycle)
     system:
       compound:                             # CONVENTION (open 'system' object), not a schema field
         status: open                        # open | suggested | encoded | wontfix | stale | dismissed
