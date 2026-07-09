@@ -490,3 +490,46 @@ describe('provenance', () => {
     expect(doc.provenance.generated_at).toBe('2026-07-02T00:00:00Z');
   });
 });
+
+describe('observe_conversion + disposition_mix generators (plan 056 T005)', () => {
+  it('observe_conversion emits the ratio over a cohort with friction proxies', () => {
+    const r1 = mkReport();
+    r1.totals.observe_events = 3;
+    r1.totals.friction = { command_errors: 4, api_errors: 2 };
+    const r2 = mkReport({ sessionId: 'sess2' });
+    r2.totals.observe_events = 1;
+    r2.totals.friction = { command_errors: 1, api_errors: 0 };
+
+    const s = sectionById(buildInsights([input(r1), input(r2, 'r2')]), 'observe_conversion');
+    expect(s.available).toBe(true);
+    expect(s.rows).toHaveLength(1);
+    // observes = 4, friction = 7 → rate 0.57 (zero LLM)
+    expect(s.rows[0]?.values).toMatchObject({ observes: 4, friction: 7, rate: 0.57 });
+  });
+
+  it('observe_conversion is unavailable with no observes and no friction', () => {
+    const s = sectionById(buildInsights([input(mkReport())]), 'observe_conversion');
+    expect(s.available).toBe(false);
+  });
+
+  it('disposition_mix tallies disp_* across retro artifact events', () => {
+    const r = mkReport();
+    r.totals.retro = {
+      observations: 5,
+      dispositions: { disp_fixed_now: 2, disp_declined: 1, disp_deferred: 1, disp_kept: 1 },
+    };
+    const s = sectionById(buildInsights([input(r)]), 'disposition_mix');
+    expect(s.available).toBe(true);
+    // one row per disposition, alpha-sorted; shares sum to ~1
+    const byClaim = Object.fromEntries(
+      s.rows.map((row) => [row.claim.split(':')[0], row.values.count]),
+    );
+    expect(byClaim).toMatchObject({ fixed_now: 2, declined: 1, deferred: 1, kept: 1 });
+    expect(s.note).toContain('5 presented observation');
+  });
+
+  it('disposition_mix is definitionally unavailable at T0 (no 1.2 records)', () => {
+    const s = sectionById(buildInsights([input(mkReport())]), 'disposition_mix');
+    expect(s.available).toBe(false);
+  });
+});

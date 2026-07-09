@@ -140,6 +140,19 @@ export interface ReportTotals {
   /** Context re-reads (cache), session-level ONLY — labelled, never per-dimension. */
   cache: SessionCache;
   sessions: number;
+  /**
+   * Friction proxies (plan 056, workshop D6): non-zero `command_exit` + `api_error`
+   * counts across the cohort — the denominator of the observe→friction conversion.
+   * Optional: a report deserialized from before this field is honestly absent.
+   */
+  friction?: { command_errors: number; api_errors: number };
+  /** `harness observe` invocations across the cohort (the conversion numerator). */
+  observe_events?: number;
+  /**
+   * Retro-drain aggregates (plan 056): summed `observations` + `disp_*` counts from
+   * `retro` artifact events. Zero when no 1.2 records exist yet (T0). Counts-only.
+   */
+  retro?: { observations: number; dispositions: Record<string, number> };
 }
 
 /**
@@ -833,10 +846,31 @@ export function buildReport(
   let from: string | null = null;
   let to: string | null = null;
   let controlTimeline: TimelineMarker[] | undefined;
+  // Plan 056 (workshop D6) — friction proxies + retro-drain aggregates. Counted
+  // straight off the ordered event stream (P12-safe: codes/verbs/closed counts only).
+  let commandErrors = 0;
+  let apiErrors = 0;
+  let observeEvents = 0;
+  let retroObservations = 0;
+  const retroDispositions: Record<string, number> = {};
 
   for (const exp of included) {
     const view = viewOf(exp);
     const sums = foldSession(view, acc);
+    for (const e of view.events) {
+      if (e.kind === 'command_exit') {
+        if (e.exit !== 0) commandErrors += 1;
+      } else if (e.kind === 'api_error') {
+        apiErrors += 1;
+      } else if (e.kind === 'harness' && e.verb === 'observe') {
+        observeEvents += 1;
+      } else if (e.kind === 'artifact' && e.artifact_type === 'retro') {
+        retroObservations += e.counts.observations ?? 0;
+        for (const [k, v] of Object.entries(e.counts)) {
+          if (k.startsWith('disp_')) retroDispositions[k] = (retroDispositions[k] ?? 0) + (v ?? 0);
+        }
+      }
+    }
     totalIn += sums.input;
     totalOut += sums.output;
     totalCacheR += sums.cacheRead;
@@ -884,6 +918,9 @@ export function buildReport(
       tokens: { input: Math.round(totalIn), output: Math.round(totalOut) },
       cache: { read: Math.round(totalCacheR), create: Math.round(totalCacheC) },
       sessions: included.length,
+      friction: { command_errors: commandErrors, api_errors: apiErrors },
+      observe_events: observeEvents,
+      retro: { observations: retroObservations, dispositions: retroDispositions },
     },
     rollups: {
       // Time-bearing lenses (skill / flow_stage) emit `time_s`; the command lenses

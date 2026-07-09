@@ -53,7 +53,26 @@
             "create": { "type": "number", "minimum": 0, "description": "cache_create — context written to the cache." }
           }
         },
-        "sessions": { "type": "integer", "minimum": 0 }
+        "sessions": { "type": "integer", "minimum": 0 },
+        "friction": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "plan 056 (workshop D6) — friction proxies: non-zero command_exit + api_error counts (the observe→friction conversion denominator). Optional/additive.",
+          "properties": {
+            "command_errors": { "type": "integer", "minimum": 0 },
+            "api_errors": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "observe_events": { "type": "integer", "minimum": 0, "description": "plan 056 — `harness observe` invocations across the cohort (the conversion numerator)." },
+        "retro": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "plan 056 — retro-drain aggregates from `retro` artifact events. Counts-only; zero until schema-1.2 records are drained.",
+          "properties": {
+            "observations": { "type": "integer", "minimum": 0 },
+            "dispositions": { "type": "object", "additionalProperties": { "type": "integer" } }
+          }
+        }
       }
     },
     "rollups": {
