@@ -29,12 +29,13 @@
 ```mermaid
 flowchart TD
     classDef pending fill:#9E9E9E,stroke:#757575,color:#fff
+    classDef completed fill:#4CAF50,stroke:#388E3C,color:#fff
     subgraph Phase["Phase 1: Measure + slim the CLI"]
-        T001["T001: design-proof stage-window mechanism"]:::pending
-        T002["T002: tests (chosen mechanism)"]:::pending
-        T003["T003: implement mechanism"]:::pending
-        T004["T004: --quiet tests"]:::pending
-        T005["T005: --quiet impl"]:::pending
+        T001["T001: design-proof stage-window mechanism"]:::completed
+        T002["T002: tests (chosen mechanism)"]:::completed
+        T003["T003: implement mechanism"]:::completed
+        T004["T004: --quiet tests"]:::completed
+        T005["T005: --quiet impl"]:::completed
         T006["T006: docs + manifest"]:::pending
         T007["T007: subagent-adapter answer"]:::pending
         T008["T008: boot read-set numbers"]:::pending
@@ -52,11 +53,11 @@ flowchart TD
 
 | Status | ID | Task | Domain | Path(s) | Done When | Notes |
 |--------|-----|------|--------|---------|-----------|-------|
-| [ ] | T001 | Design-proof the stage-window mechanism: decode the real 056 ref (`refs/harness-telemetry/2026/07/09/22583d3b…`), verify `cursor-moved` `flow_log` markers carry usable absolute `fired_at` + from/to; establish session-window clipping + monotonic guard viability; choose read-side (primary) vs write-side post-mutation emitter (fallback, full V-01 contract) | harness-cli | ref decode only (read-only) | decision + cited evidence recorded in execution.log.md; mechanism named for AC-01 | V-01; `events.ts:268-276` exclusion is clock-distortion policy |
-| [ ] | T002 | Tests first for the chosen mechanism. Read-side: rollup/report derive stage windows from clipped `flow_log`, additive `flow_stage_mechanism` value, a 056-derived fixture proves retroactive attribution; write-side: post-write emission w/ `from`/stage/status, `--next` excluded, envelope/exit unaffected on telemetry failure | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/test/**` (new) | red first, then green after T003; AC-01 | TDD; real fixtures (no mocks) |
-| [ ] | T003 | Implement the chosen mechanism | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/{rollup,report}.ts` (read-side) or `acts/flow.ts`+`capture-service.ts` (write-side) | T002 green; `harness doctor` ok; existing suite green | Key Finding 01 |
-| [ ] | T004 | Tests first for `--quiet`: mutation `data` block suppressed with flag; default output **byte-identical** without it; a non-flow verb's envelope untouched | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/test/**` (new) | red first; AC-02, AC-03 | TDD |
-| [ ] | T005 | Implement flow-local `--quiet`: tri-state argv parse (`app.ts`, mirror `jsonFlag()` :66–74), `CliIo` verbosity field (additive), gate in `summary()`/`runMutation` | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/{app.ts,output/output-port.ts,acts/flow.ts}` | T004 green | D1 — never CLI-wide |
+| [x] | T001 | Design-proof the stage-window mechanism: decode the real 056 ref (`refs/harness-telemetry/2026/07/09/22583d3b…`), verify `cursor-moved` `flow_log` markers carry usable absolute `fired_at` + from/to; establish session-window clipping + monotonic guard viability; choose read-side (primary) vs write-side post-mutation emitter (fallback, full V-01 contract) | harness-cli | ref decode only (read-only) | decision + cited evidence recorded in execution.log.md; mechanism named for AC-01 | V-01; `events.ts:268-276` exclusion is clock-distortion policy |
+| [x] | T002 | Tests first for the chosen mechanism. Read-side: rollup/report derive stage windows from clipped `flow_log`, additive `flow_stage_mechanism` value, a 056-derived fixture proves retroactive attribution; write-side: post-write emission w/ `from`/stage/status, `--next` excluded, envelope/exit unaffected on telemetry failure | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/test/**` (new) | red first, then green after T003; AC-01 | TDD; real fixtures (no mocks) |
+| [x] | T003 | Implement the chosen mechanism | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/{rollup,report}.ts` (read-side) or `acts/flow.ts`+`capture-service.ts` (write-side) | T002 green; `harness doctor` ok; existing suite green | Key Finding 01 |
+| [x] | T004 | Tests first for `--quiet`: mutation `data` block suppressed with flag; default output **byte-identical** without it; a non-flow verb's envelope untouched | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/test/**` (new) | red first; AC-02, AC-03 | TDD |
+| [x] | T005 | Implement flow-local `--quiet`: tri-state argv parse (`app.ts`, mirror `jsonFlag()` :66–74), `CliIo` verbosity field (additive), gate in `summary()`/`runMutation` | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/{app.ts,output/output-port.ts,acts/flow.ts}` | T004 green | D1 — never CLI-wide |
 | [ ] | T006 | Update `docs/how/harness-flow.md` (both changes) AND add it to `docs-manifest.json` (P12-reviewed); `npm run gen:docs` + `npm run check:docs` green | harness-cli | `/Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md`, `.../src/services/docs/docs-manifest.json` | AC-04; check:docs genuinely guards the guide | V-02 |
 | [ ] | T007 | Answer AC-11: does the claude-code telemetry adapter fold subagent turns into the parent stream, or drop them? Read the adapter; corroborate against a subagent-heavy session ref if available | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/adapters/**` (read-only) | answer + evidence in execution.log.md | feeds AC-09's delegation-confidence label |
 | [ ] | T008 | D3 evidence: quantify the guided-entry read set (bytes per forced file, both skills) and estimate what a compiled quick-card would save; record as follow-on candidate | builder skill | read-only measurement | numbers in execution.log.md; NO restructure | Non-Goal boundary |

@@ -3,12 +3,12 @@
   "kind": "flight-plan",
   "slug": "dont-apologise-fix",
   "nav": {
-    "now": "phase-1",
+    "now": "ship",
     "next": "plan",
     "intent": "Encode the environment-first posture (don't apologise — fix; dual goals; every difficulty paid forward) across builder + eng-harness-flow: 4-layer directives, discrimination test, narrowed harness-blind rule, recommendation-led retro drain with dispositions (CLI schema + fingerprint now), letter-code leak purge, excursion-node mid-flow fixes, flow-eval planted-friction scenario, telemetry sufficiency task",
     "bag": {
       "mode": "unknown",
-      "status": "active"
+      "status": "complete"
     }
   },
   "created_at": "2026-07-09T00:32:56.945Z",
@@ -391,6 +391,39 @@
           "note"
         ]
       }
+    },
+    {
+      "id": "STA-013",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-09T02:39:34.489Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-09T02:39:34.684Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-09T02:39:34.885Z",
+      "details": {
+        "from": "phase-1",
+        "to": "ship"
+      }
     }
   ],
   "nodes": [
@@ -508,14 +541,17 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /builder 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-07-09T02:39:34.684Z",
+      "ran_at": "2026-07-09T02:39:34.488Z",
+      "note": "Pushed 056-dont-apologise-fix (18 commits) + opened PR #64. CI: build-test(22/24) pass, rename-guard pass, package-smoke pending. Telemetry rebuilt+deployed+verified live (fp deterministic, generators degrade honestly at T0). Merge left PROCEED-gated per user."
     },
     {
       "id": "backpressure",
