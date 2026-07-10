@@ -123,7 +123,17 @@ describe('057 T004 — mutation envelopes under --quiet', () => {
     const fs = new FakeFs({}, {});
     const deps = fakeDeps(fs);
     await createdFlow(deps);
-    const { env, code } = await runFlow(deps, ['flow', 'status', '--quiet', '--slug', 'q', '--node', 'boot', '--to', 'in_progress']);
+    const { env, code } = await runFlow(deps, [
+      'flow',
+      'status',
+      '--quiet',
+      '--slug',
+      'q',
+      '--node',
+      'boot',
+      '--to',
+      'in_progress',
+    ]);
     // The entrypoint resolves quiet from argv into io; acts consume io.quiet.
     // Here io.quiet was NOT set (undefined) so the act itself must not re-derive
     // from argv — commander merely tolerates the flag. Full summary expected.

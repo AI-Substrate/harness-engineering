@@ -36,10 +36,10 @@ flowchart TD
         T003["T003: implement mechanism"]:::completed
         T004["T004: --quiet tests"]:::completed
         T005["T005: --quiet impl"]:::completed
-        T006["T006: docs + manifest"]:::pending
-        T007["T007: subagent-adapter answer"]:::pending
-        T008["T008: boot read-set numbers"]:::pending
-        T009["T009: baseline record"]:::pending
+        T006["T006: docs + manifest"]:::completed
+        T007["T007: subagent-adapter answer"]:::completed
+        T008["T008: boot read-set numbers"]:::completed
+        T009["T009: baseline record"]:::completed
         T010["T010: deploy + checks"]:::pending
         T001 --> T002 --> T003 --> T009
         T004 --> T005
@@ -58,10 +58,10 @@ flowchart TD
 | [x] | T003 | Implement the chosen mechanism | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/{rollup,report}.ts` (read-side) or `acts/flow.ts`+`capture-service.ts` (write-side) | T002 green; `harness doctor` ok; existing suite green | Key Finding 01 |
 | [x] | T004 | Tests first for `--quiet`: mutation `data` block suppressed with flag; default output **byte-identical** without it; a non-flow verb's envelope untouched | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/test/**` (new) | red first; AC-02, AC-03 | TDD |
 | [x] | T005 | Implement flow-local `--quiet`: tri-state argv parse (`app.ts`, mirror `jsonFlag()` :66–74), `CliIo` verbosity field (additive), gate in `summary()`/`runMutation` | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/{app.ts,output/output-port.ts,acts/flow.ts}` | T004 green | D1 — never CLI-wide |
-| [ ] | T006 | Update `docs/how/harness-flow.md` (both changes) AND add it to `docs-manifest.json` (P12-reviewed); `npm run gen:docs` + `npm run check:docs` green | harness-cli | `/Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md`, `.../src/services/docs/docs-manifest.json` | AC-04; check:docs genuinely guards the guide | V-02 |
-| [ ] | T007 | Answer AC-11: does the claude-code telemetry adapter fold subagent turns into the parent stream, or drop them? Read the adapter; corroborate against a subagent-heavy session ref if available | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/adapters/**` (read-only) | answer + evidence in execution.log.md | feeds AC-09's delegation-confidence label |
-| [ ] | T008 | D3 evidence: quantify the guided-entry read set (bytes per forced file, both skills) and estimate what a compiled quick-card would save; record as follow-on candidate | builder skill | read-only measurement | numbers in execution.log.md; NO restructure | Non-Goal boundary |
-| [ ] | T009 | Write `baseline/` record: 056 session totals (59,049 in / 182,379 out), current-run `flow_stage` mechanism counts (starvation proof), and — if T003 landed read-side — the retroactive per-stage view of 056 | plan artifacts | `/Users/jordanknight/substrate/harness-engineering/docs/plans/057-flow-token-efficiency/baseline/` | AC-05; produced via `harness telemetry report`/`insights`, not hand-computed | consume F-11 tooling |
+| [x] | T006 | Update `docs/how/harness-flow.md` (both changes) AND add it to `docs-manifest.json` (P12-reviewed); `npm run gen:docs` + `npm run check:docs` green | harness-cli | `/Users/jordanknight/substrate/harness-engineering/docs/how/harness-flow.md`, `.../src/services/docs/docs-manifest.json` | AC-04; check:docs genuinely guards the guide | V-02 |
+| [x] | T007 | Answer AC-11: does the claude-code telemetry adapter fold subagent turns into the parent stream, or drop them? Read the adapter; corroborate against a subagent-heavy session ref if available | harness-cli | `/Users/jordanknight/substrate/harness-engineering/harness/cli/src/services/telemetry/adapters/**` (read-only) | answer + evidence in execution.log.md | feeds AC-09's delegation-confidence label |
+| [x] | T008 | D3 evidence: quantify the guided-entry read set (bytes per forced file, both skills) and estimate what a compiled quick-card would save; record as follow-on candidate | builder skill | read-only measurement | numbers in execution.log.md; NO restructure | Non-Goal boundary |
+| [x] | T009 | Write `baseline/` record: 056 session totals (59,049 in / 182,379 out), current-run `flow_stage` mechanism counts (starvation proof), and — if T003 landed read-side — the retroactive per-stage view of 056 | plan artifacts | `/Users/jordanknight/substrate/harness-engineering/docs/plans/057-flow-token-efficiency/baseline/` | AC-05; produced via `harness telemetry report`/`insights`, not hand-computed | consume F-11 tooling |
 | [ ] | T010 | Deploy: `just build` (global relink); `harness checks` green; confirm the deployed binary carries the new mechanism (`harness flow --help` / a probe run) | harness-cli | repo root | P2 sessions capture under the new mechanism | deploy order: CLI first, then skill (P2) |
 
 ### Context Brief

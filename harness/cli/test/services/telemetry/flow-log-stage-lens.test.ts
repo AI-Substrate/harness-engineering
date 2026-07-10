@@ -180,7 +180,14 @@ describe('057 T002 — cursor-moved marks label stages by last-transition lookup
   it('non-cursor-moved flow_log ops (status-changed, node-created) label nothing', () => {
     const s = exportOf('e', [
       seg([
-        { t: T(0), kind: 'flow_log', op: 'status-changed', node: 'plan', from: 'assumed', to: 'done' } as Event,
+        {
+          t: T(0),
+          kind: 'flow_log',
+          op: 'status-changed',
+          node: 'plan',
+          from: 'assumed',
+          to: 'done',
+        } as Event,
         { t: T(1), kind: 'flow_log', op: 'node-created', node: 'w1', type: 'workshop' } as Event,
         turn(T(2), 10, 5),
       ]),
@@ -216,7 +223,12 @@ describe('057 T002 — mark-free sessions are unchanged (regression)', () => {
 
   it('flow-anchor-only sessions keep FlowEvent-primary bracketing untouched', () => {
     const s = exportOf('g', [
-      seg([flow(T(0), 'research'), turn(T(1), 100, 50), flow(T(2), 'phase-2'), turn(T(3), 200, 80)]),
+      seg([
+        flow(T(0), 'research'),
+        turn(T(1), 100, 50),
+        flow(T(2), 'phase-2'),
+        turn(T(3), 200, 80),
+      ]),
     ]);
     const report = buildReport([s]);
     const fs = byKey(report.rollups.flow_stage);
