@@ -32,3 +32,18 @@ Discovery (gotcha): root `package.json` has no `typecheck` script — `npm run b
 Tests first (`test/acts/flow-quiet.test.ts`, 6 tests; named mutations quiet-leaks-summary, quiet-contaminates-default): quiet io slims a mutation's `data` to `{path}`; default byte-identical (full frozen 7-key shape asserted); `flow show` untouched under quiet io; bare `--quiet` on argv tolerated by commander without act-side re-derivation; `harness instructions` envelope untouched (AC-03). Impl: `quietFlag()` tri-state in `app.ts` (mirrors `jsonFlag`), global `--quiet` option, `CliIo.quiet` (additive), gate in `runMutation` only. Test-helper fix along the way: create the built-in `harness-loop` type (flight-plan needs `--schema`). **Canonical gate 2272/2272 green. Commit `0fdf083f` (T004-05).**
 
 Discovery (gotcha, Noteworthy): running `npx vitest run` from repo ROOT sweeps `scratch/evals/**` artifact tests (11 files needing Chromium) — the canonical gate is `just test` (harness/cli-scoped). Root-run failures are environmental, not product.
+
+## T006 — docs + manifest ✅
+
+`docs/how/harness-flow.md`: new "Lean output — `--quiet`" + "Telemetry: mutations become per-stage attribution for free" sections; guide added to `docs-manifest.json` (10th entry, P12-reviewed) so `check:docs` genuinely guards it (V-02 closed). Post-commit `check:docs` GREEN; suite 2273 (+1 per-doc test). Commits `c6e2e02f` (T006) + `9eb6855e` (carried doctrine/plan artifacts).
+
+## T007 — subagent-adapter answer (AC-11) ✅ — verdict: MIXED / SEPARATE
+
+Sonnet worker, all claims path:line-cited (adapter `claude-adapter.ts:75-84, 302-309, 370-396, 419-431`; `events.ts:328-333`; `rollup.ts:227-241`; `pij-registry.ts:22-39`; `fleet-evidence.ts:182, 280-342`):
+- **Native `Agent`-tool subagents**: tokens parsed from the inline `<usage>subagent_tokens</usage>` block into a SEPARATE `subagent_tokens`/`grand_total` field — **excluded from `tokens.total`, the turn stream, and `Rollup.tokens`**. `SubagentEvent` carries name/status/duration only.
+- **pij fleet peers**: architecturally separate sessions (own `harness_session_id` + transcript), joined ONLY at fleet-evidence (`get-fleet`); the orchestrator's turn totals contain zero delegated cost — explains 056's 0-subagent-events/298-turns exactly. The `subagent` emitter is live (fires on in-transcript Agent tool_use), so zero events is a real signal, not a capture gap.
+- **Tripwire interpretation rule (feeds T2.6)**: a per-session `Rollup.tokens` UNDERCOUNTS delegation-heavy work — read delegation eras via `grand_total` (native) or `telemetry get-fleet` (pij); never compare a delegation-heavy session's turn totals against a flat one's as if commensurate.
+
+## T009 — baseline record (AC-05) ✅
+
+`baseline/baseline.md` + `baseline/sweep-2026-07/2026-07.report.json` (38 sessions, 4 measured). **Retroactivity proven live**: the 056 session's 59,049/182,379 tokens attribute to `phase-1`/implement via its pre-window cursor-moved history; mechanism mix `{flow: 2, digit: 0, unlabeled: 1, flow_log: 1}` exercises every path on real data. Cache dwarfs fresh ~365:1 month-wide (context re-reads are the raw dominant cost — session-level only per KF-06).
