@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerDoctorAct } from '../../src/acts/doctor.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
+import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
 
 function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => string } {
@@ -69,6 +70,32 @@ describe('registerDoctorAct', () => {
     expect(err()).toContain('toolchain');
     expect(err()).toContain('extensions');
     expect(out()).toContain('doctor:');
+    expect(code).toBe(0);
+  });
+
+  it('quiet JSON mode emits only extension names, statuses, and verb names', () => {
+    const { io, out } = ioFor('json');
+    const verb: HarnessVerb = {
+      name: 'demo',
+      summary: 'Verbose summary.',
+      description: 'Verbose description.',
+      options: [{ flags: '--value <value>', description: 'Verbose option.' }],
+      run: () => ({ status: 'ok' }),
+    };
+    const registry: VerbRegistry = {
+      verbs: [verb],
+      records: [
+        {
+          entryPath: '/repo/.harness/extensions/demo/extension.ts',
+          status: 'loaded',
+          verbs: [verb],
+        },
+      ],
+    };
+
+    const code = run({ ...io, quiet: true }, registry);
+    const env = JSON.parse(out());
+    expect(env.data.extensions).toEqual([{ name: 'demo', status: 'loaded', verbs: ['demo'] }]);
     expect(code).toBe(0);
   });
 });

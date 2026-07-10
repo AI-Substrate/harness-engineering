@@ -13,7 +13,7 @@ passes, and the dogfood extensions load.
 ## Boot command
 
 ```bash
-just test        # cd harness/cli && npx vitest run --coverage — the full suite (~5s warm)
+just test        # runs the harness/cli-scoped Vitest suite with coverage (~5s warm)
 ```
 
 Full loop when editing source: `just fft` (biome fix → format → test).
@@ -40,7 +40,7 @@ Every command returns one JSON envelope (`command`/`status`/`data`/`error?`/
 ## Observe method
 
 - Envelope `data` + `evidence[]` on every command (`--json`).
-- `npx vitest run --coverage` output (full suite + v8 coverage table) — run from `harness/cli/`; the include also collects `.harness/extensions/**/*.test.ts`.
+- `just test` output (the harness/cli-scoped full suite + v8 coverage table); the include also collects `.harness/extensions/**/*.test.ts`.
 - `harness doctor --json` layer report (toolchain / cli-build / extensions / instructions / record-types).
 - Dogfood worker artifacts collected by `harness validate-harness-flow --collect` (per-repo reports + ROLLUP.md).
 

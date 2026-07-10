@@ -235,7 +235,7 @@ export function buildProgram(
     .version(version, '-v, --version')
     .option('--json', 'force JSON output')
     .option('--no-json', 'force human output')
-    .option('--quiet', 'lean flow-mutation envelopes: data slims to {path} (flow verbs only)')
+    .option('--quiet', 'lean doctor diagnostics and flow-mutation envelopes')
     .option('--no-extensions', 'skip loading repo extensions (core commands only)')
     // Core commands sit under the default `Commands:` heading; each extension
     // verb overrides this with `Extensions:` (see registerVerbAct) so the two

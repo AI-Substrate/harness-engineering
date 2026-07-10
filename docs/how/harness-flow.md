@@ -23,8 +23,8 @@ diagram, the rail, the progress) is *derived* from one JSON document.
 ## The model in one minute
 
 A **flow** is a cursor-spine DAG persisted as one JSON document (`the-flow.json`
-shape). One file holds the whole journey; the rendered `.md` is a throwaway view of
-it.
+shape). One file holds the whole journey; the rendered `.md` is a generated sibling
+view, refreshed after every successful mutation.
 
 ```mermaid
 flowchart TD
@@ -35,7 +35,7 @@ flowchart TD
     nodes --> spine["<b>spine</b> — the main next[] chain"]
     nodes --> exc["<b>excursions</b> — branch_of<br/>(dotted, rejoin the spine)"]
     spine --> node["{ id, type, label, status, next[] }<br/>+ zone · command · chore · instructions[] · comments[]"]
-    root -. read by .-> render["harness flow render"]
+    root -. read by .-> render["automatic after mutation<br/>or harness flow render"]
     render -. regenerates .-> md["the-flow.md<br/><i>(derived — never hand-edited)</i>"]
 ```
 
@@ -78,7 +78,7 @@ flowchart LR
     validate -->|ok| write["atomic write<br/>(temp + rename)"]
     validate -->|issue| reject["E300<br/>nothing written"]
     write --> doc
-    doc --> render["render → markdown"]
+    write --> render["auto-render sibling .md<br/>(warn-only on failure)"]
     doc -. "event (append-only;<br/>no node re-validation)" .-> append["append to events[]<br/>→ atomic write"]
     append --> doc
 ```
@@ -87,6 +87,10 @@ flowchart LR
 > to the `events[]` log — it appends the event and writes atomically, but it does
 > **not** re-validate node/status/type shape (there's nothing structural to check).
 > Every *other* mutation runs the full validate-before-write loop above.
+
+After the JSON write succeeds, `create`, `event`, and every mutation verb refresh
+the sibling `.md` with the same bytes as `harness flow render`. A render-write
+failure prints a warning but does not undo or fail the successful JSON mutation.
 
 All verbs live under the nested `harness flow` group. Each resolves its flow by
 `--path <file>` **or** `--slug <name>` (→ `.harness/flows/<slug>.json`), mutates,
@@ -363,6 +367,10 @@ flowchart (spine + dotted excursions + 🗣 genesis bubbles + harness-seam nodes
 a `decision` fork + chore nodes in their own class + an agents subgraph) plus a
 per-node **body-log** of the `comments[]`. Output is **byte-stable** across runs and
 OS — the same flow always renders the same bytes.
+
+Successful flow mutations already write these bytes to the sibling `.md`.
+Keep `render` for manual/idempotent regeneration, stdout inspection, custom
+`--output` paths, and the read-only `--check` drift guard.
 
 ```bash
 # Print to stdout (human: raw markdown; --json: markdown rides in data.rendered):

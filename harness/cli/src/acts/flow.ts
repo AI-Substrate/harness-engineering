@@ -110,6 +110,18 @@ function summary(doc: FlowDoc, path: string): Record<string, unknown> {
   };
 }
 
+function autoRenderSibling(io: CliIo, fs: FsPort, path: string, doc: FlowDoc): void {
+  const target = `${path.replace(/\.json$/, '')}.md`;
+  try {
+    fs.mkdirp(posixDirname(target));
+    fs.writeText(target, renderFlow(doc));
+  } catch (err) {
+    io.writers.err(
+      `warning: flow state saved but auto-render failed for ${target}: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+  }
+}
+
 /** Resolve a flow file path: `--path` › `.harness/flows/<slug>.json` (workshop 001 D4). */
 function resolveFlowPath(
   opts: { path?: string; slug?: string },
@@ -191,6 +203,7 @@ export function registerFlowAct(
           svc,
         );
         if (!res.ok) return emit(io, failureEnvelope(res, deps.clock));
+        autoRenderSibling(io, svc.fs, res.path, res.doc);
         emit(
           io,
           formatOk('flow', summary(res.doc, res.path), deps.clock, {
@@ -884,6 +897,7 @@ export function registerFlowAct(
         doc.events.push(event);
         const written = writeFlowAtomic(resolved.path, repoRoot(), doc, svc);
         if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
+        autoRenderSibling(io, svc.fs, written.path, doc);
         emit(
           io,
           formatOk(
@@ -1273,6 +1287,7 @@ function runMutation(
   if (invalid !== null) return emit(io, failureEnvelope(invalid, deps.clock));
   const written = writeFlowAtomic(resolved.path, root, result.doc, svc);
   if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
+  autoRenderSibling(io, svc.fs, written.path, result.doc);
   // Plan 057 (D1/AC-02): `--quiet` slims the repeated per-mutation summary echo
   // to `{path}` — mutation verbs only; create/show/read verbs keep the frozen
   // full shape, and the default (no flag) stays byte-identical.
