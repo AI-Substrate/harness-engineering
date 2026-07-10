@@ -111,21 +111,22 @@ describe('harness flow render', () => {
   });
 
   it('--check fails (E310, exit 1) when no committed render exists, and writes nothing', async () => {
-    const deps = fakeDeps(new FakeFs());
+    const fs = new FakeFs();
+    const deps = fakeDeps(fs);
     await seedFlow(deps);
+    fs.deleteFile(SIBLING);
     const c = await runFlow(deps, ['flow', 'render', '--slug', 'demo', '--check']);
     expect(c.code).toBe(1);
     expect(c.env.error?.code).toBe(ErrorCodes.FLOW_RENDER_DRIFT);
     expect(deps.fs.exists(SIBLING)).toBe(false); // --check never writes
   });
 
-  it('--check detects drift after a mutation and leaves the committed .md UNCHANGED', async () => {
+  it('--check detects a manually drifted sibling and leaves it UNCHANGED', async () => {
     const deps = fakeDeps(new FakeFs());
     await seedFlow(deps);
-    await runFlow(deps, ['flow', 'render', '--slug', 'demo', '--output', SIBLING]);
-    const golden = deps.fs.readText(SIBLING);
-    // mutate the flow so the live render diverges from the committed golden
     await runFlow(deps, ['flow', 'status', '--slug', 'demo', '--node', 'boot', '--to', 'done']);
+    deps.fs.writeText(SIBLING, 'stale\n');
+    const golden = deps.fs.readText(SIBLING);
     const c = await runFlow(deps, ['flow', 'render', '--slug', 'demo', '--check']);
     expect(c.code).toBe(1);
     expect(c.env.error?.code).toBe(ErrorCodes.FLOW_RENDER_DRIFT);

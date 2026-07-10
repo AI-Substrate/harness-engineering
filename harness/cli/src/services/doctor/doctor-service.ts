@@ -60,6 +60,39 @@ export interface DoctorReport {
   recordTypes: RecordTypeEntry[];
 }
 
+export interface QuietDoctorExtension {
+  name: string;
+  status: ExtensionRecord['status'];
+  verbs: string[];
+}
+
+export interface QuietDoctorReport {
+  layers: Array<Pick<LayerReport, 'name' | 'ok'>>;
+  branch: string | null;
+  extensions: QuietDoctorExtension[];
+}
+
+function extensionName(entryPath: string): string {
+  const parts = toPosix(entryPath).split('/');
+  const file = parts.at(-1) ?? entryPath;
+  if (file === 'extension.ts' || file === 'extension.js') {
+    return parts.at(-2) ?? file.replace(/\.[^.]+$/, '');
+  }
+  return file.replace(/\.[^.]+$/, '');
+}
+
+function quietDoctorReport(report: DoctorReport): QuietDoctorReport {
+  return {
+    layers: report.layers.map(({ name, ok }) => ({ name, ok })),
+    branch: report.branch,
+    extensions: report.extensions.map((extension) => ({
+      name: extensionName(extension.entryPath),
+      status: extension.status,
+      verbs: extension.verbs.map((verb) => verb.name),
+    })),
+  };
+}
+
 /**
  * Dev mode (this repo, the harness's home): the toolchain that builds and checks
  * the CLI itself. `just` (recipe runner) and `biome` (lint/format) are THIS
@@ -514,18 +547,19 @@ export function buildDoctorReport(
  * `degraded` (still exit 0 — reporting succeeded) with a required next_action.
  * Doctor produces no durable evidence, so it records `{none: true}`.
  */
-export function doctorEnvelope(report: DoctorReport, clock: Clock): Envelope {
+export function doctorEnvelope(report: DoctorReport, clock: Clock, quiet = false): Envelope {
   const anyFail = report.layers.some((layer) => !layer.ok);
   const evidence = [{ label: 'doctor report', none: true }];
+  const data = quiet ? quietDoctorReport(report) : report;
   return anyFail
     ? formatDegraded(
         'doctor',
-        report,
+        data,
         'Resolve the unconfigured/failing layers below; run `harness help` for the verb map.',
         clock,
         { evidence },
       )
-    : formatOk('doctor', report, clock, { evidence });
+    : formatOk('doctor', data, clock, { evidence });
 }
 
 /** Convenience: gather + envelope in one call. */
@@ -533,8 +567,9 @@ export function runDoctor(
   deps: DoctorDeps,
   registry: VerbRegistry,
   recordRegistry?: RecordRegistry,
+  quiet = false,
 ): Envelope {
-  return doctorEnvelope(buildDoctorReport(deps, registry, recordRegistry), deps.clock);
+  return doctorEnvelope(buildDoctorReport(deps, registry, recordRegistry), deps.clock, quiet);
 }
 
 /** Render the report as human diagnostics text (each layer, the extensions, the branch). */

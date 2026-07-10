@@ -155,6 +155,8 @@ $ARGUMENTS
 
 5) Launch Parallel Subagents
 
+   Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
+
    **IMPORTANT**: Launch ALL subagents in a **single message** with multiple Task tool calls.
    This maximizes parallelism and reduces wall-clock time.
 
@@ -176,6 +178,8 @@ $ARGUMENTS
 ### Subagent U1: Upstream Plans Discovery
 
 "Discover all plans that landed in ${TARGET} since the common ancestor.
+
+tier: cheap/Sonnet-class
 
 **Input:**
 - ANCESTOR = ${ANCESTOR}
@@ -238,6 +242,8 @@ If no upstream plans found, output:
 
 "Analyze upstream plan ${PLAN_ORDINAL}-${PLAN_SLUG} to understand what it changed and why.
 
+tier: Opus-class
+
 **Input:**
 - PLAN_FOLDER = ${PLAN_FOLDER}
 - TARGET = ${TARGET}
@@ -282,6 +288,8 @@ If no upstream plans found, output:
 ### Subagent Y1: Your Changes Analyst
 
 "Analyze your branch's changes since the common ancestor.
+
+tier: Opus-class
 
 **Input:**
 - ANCESTOR = ${ANCESTOR}
@@ -329,6 +337,8 @@ git log ${ANCESTOR}..HEAD --oneline
 
 "Identify direct file-level conflicts between your changes and upstream.
 
+tier: cheap/Sonnet-class
+
 **Input:**
 - ANCESTOR = ${ANCESTOR}
 - TARGET = ${TARGET}
@@ -364,6 +374,8 @@ git merge-tree ${ANCESTOR} HEAD ${TARGET} -- ${FILE}
 ### Subagent C2: Semantic Conflict Detector
 
 "Identify semantic conflicts where the same concept/component was modified in different files.
+
+tier: Opus-class
 
 **Input:**
 - YOUR_CHANGES = [summary of your changes]
@@ -432,6 +444,8 @@ If FlowSpace unavailable: Skip Phase 2, output summary-based conflicts only.
 
 "Identify potential regressions in both directions.
 
+tier: Opus-class
+
 **Input:**
 - YOUR_CHANGES = [files and components you modified]
 - UPSTREAM_PLANS = [summary of each upstream plan]
@@ -471,6 +485,8 @@ If FlowSpace unavailable: Skip Phase 2, output summary-based conflicts only.
 ### Subagent S1: Synthesis & Ordering
 
 "Synthesize all findings and determine optimal merge order.
+
+tier: lead
 
 **Input:**
 - UPSTREAM_PLANS = [list with details]

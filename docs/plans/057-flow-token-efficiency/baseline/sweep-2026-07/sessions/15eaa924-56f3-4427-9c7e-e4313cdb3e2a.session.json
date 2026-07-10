@@ -1,0 +1,152 @@
+{
+  "schema_version": "harness.session-export/v1",
+  "identity": {
+    "harness_session_id": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a",
+    "harness": "claude-code",
+    "harness_version": null,
+    "pij_session_id": null,
+    "branch": null,
+    "models": []
+  },
+  "source": {
+    "kind": "git-ref",
+    "root": "refs/harness-telemetry/*",
+    "segment_count": 1
+  },
+  "summary": {
+    "segment_schema_versions": {
+      "1.0": 1
+    },
+    "first_timecode": "2026-07-03T02:20:01.276Z",
+    "last_timecode": "2026-07-03T02:20:01.276Z",
+    "tokens": {
+      "in": 0,
+      "out": 0,
+      "cache_read": 0,
+      "cache_create": 0,
+      "total": 0,
+      "subagent_tokens": "unknown",
+      "grand_total": "unknown"
+    },
+    "degraded": [
+      "subagent_tokens",
+      "v1_segments"
+    ]
+  },
+  "signals": {
+    "logs": {
+      "resourceLogs": [
+        {
+          "resource": {
+            "attributes": [
+              {
+                "key": "service.name",
+                "value": {
+                  "stringValue": "harness"
+                }
+              },
+              {
+                "key": "service.version",
+                "value": {
+                  "stringValue": "unknown"
+                }
+              },
+              {
+                "key": "harness.session_id",
+                "value": {
+                  "stringValue": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a"
+                }
+              },
+              {
+                "key": "harness.harness",
+                "value": {
+                  "stringValue": "claude-code"
+                }
+              },
+              {
+                "key": "harness.command",
+                "value": {
+                  "stringValue": "md-to-pdf"
+                }
+              },
+              {
+                "key": "harness.schema_version",
+                "value": {
+                  "stringValue": "1.0"
+                }
+              }
+            ]
+          },
+          "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+          "scopeLogs": [
+            {
+              "scope": {
+                "name": "harness.telemetry",
+                "version": "2.3"
+              },
+              "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+              "logRecords": []
+            }
+          ]
+        }
+      ]
+    },
+    "metrics": {
+      "resourceMetrics": [
+        {
+          "resource": {
+            "attributes": [
+              {
+                "key": "service.name",
+                "value": {
+                  "stringValue": "harness"
+                }
+              },
+              {
+                "key": "service.version",
+                "value": {
+                  "stringValue": "unknown"
+                }
+              },
+              {
+                "key": "harness.session_id",
+                "value": {
+                  "stringValue": "15eaa924-56f3-4427-9c7e-e4313cdb3e2a"
+                }
+              },
+              {
+                "key": "harness.harness",
+                "value": {
+                  "stringValue": "claude-code"
+                }
+              },
+              {
+                "key": "harness.command",
+                "value": {
+                  "stringValue": "md-to-pdf"
+                }
+              },
+              {
+                "key": "harness.schema_version",
+                "value": {
+                  "stringValue": "1.0"
+                }
+              }
+            ]
+          },
+          "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+          "scopeMetrics": [
+            {
+              "scope": {
+                "name": "harness.telemetry",
+                "version": "2.3"
+              },
+              "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+              "metrics": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

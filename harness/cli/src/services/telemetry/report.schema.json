@@ -124,11 +124,12 @@
         "flow_stage_mechanism": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Per-window labeling mechanism counts for the flow_stage lens (T1.4): flow = nav-derived FlowEvent (primary); digit = /the-flow <n> bracket (fallback); unlabeled = /the-flow call with neither.",
+          "description": "Per-window labeling mechanism counts for the flow_stage lens (T1.4 + 057 T003): flow_log = cursor-moved flow_log transition marks (last-transition lookup, richest); flow = nav-derived FlowEvent (primary); digit = /the-flow <n> bracket (fallback); unlabeled = /the-flow call with neither, or events before the first mark.",
           "properties": {
             "flow": { "type": "integer", "minimum": 0 },
             "digit": { "type": "integer", "minimum": 0 },
-            "unlabeled": { "type": "integer", "minimum": 0 }
+            "unlabeled": { "type": "integer", "minimum": 0 },
+            "flow_log": { "type": "integer", "minimum": 0 }
           }
         },
         "token_coverage": {
