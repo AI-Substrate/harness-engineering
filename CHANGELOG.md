@@ -10,6 +10,29 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.11.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.10.0...v0.11.0) (2026-07-10)
+
+
+### Features
+
+* **057:** P2 — encode token/delegation discipline (both skills) + tripwire runbook ([b7b4b83](https://github.com/AI-Substrate/harness-engineering/commit/b7b4b838009ff8374228a9886c17ffcab7cfe2c1))
+* **cli:** flow-local --quiet — mutation envelopes slim to {path} (057 T004-T005) ([0fdf083](https://github.com/AI-Substrate/harness-engineering/commit/0fdf083f61d0b0e76b26aa189c07df521506c287))
+* don't apologise — fix (environment-first posture + measurable dispositions) ([7ad1259](https://github.com/AI-Substrate/harness-engineering/commit/7ad1259594c24b67a8176ca221ce92599650335a))
+* **observe:** capture-time recurrence fingerprint (plan 056 T002) ([173e3cb](https://github.com/AI-Substrate/harness-engineering/commit/173e3cb24a69f957de8fcf3b904aa7ed243f2182))
+* **record:** retro schema 1.2 — optional fp + disposition (plan 056 T001) ([d4bbd8c](https://github.com/AI-Substrate/harness-engineering/commit/d4bbd8c220f16340d6b848da4dbc753113c527d7))
+* **telemetry:** flow_log stage-window lookup — per-stage attribution from cursor-moved marks (057 T001-T003) ([6615e48](https://github.com/AI-Substrate/harness-engineering/commit/6615e488d84bfe50aa0dbf3d9683b1d3c1bdd13a))
+* **telemetry:** observe_conversion + disposition_mix insight generators (plan 056 T005) ([d4ab395](https://github.com/AI-Substrate/harness-engineering/commit/d4ab39587d4e400d89c8133c5af8b5bf7df156da))
+* **telemetry:** observe_kind + retro artifact + disp_/kind_ counts (plan 056 T003) ([c1963cc](https://github.com/AI-Substrate/harness-engineering/commit/c1963cc005dd347ced5dc4f148e874509d8ca211))
+* **telemetry:** retro-record artifact extractor (plan 056 T004) ([a59b365](https://github.com/AI-Substrate/harness-engineering/commit/a59b365226a4ebc1711020aa10974ede5b066d2c))
+
+
+### Bug Fixes
+
+* **056:** write declined entries on pick route + verb-gate observe_kind ([1297967](https://github.com/AI-Substrate/harness-engineering/commit/1297967bdc90ce21424d49db4f1d011865ef5686))
+* **057:** FX001 flow friction batch — auto-render on mutate, doctor --quiet, root vitest scope, check:docs verdicts, link + doc hygiene ([ac6724e](https://github.com/AI-Substrate/harness-engineering/commit/ac6724e3de186567cf5e3ff76b73962fbc60f99c))
+* **057:** review P1 notes — frozen-bytes envelope regression test; narrow the guide's telemetry claim to position moves ([cbc2d83](https://github.com/AI-Substrate/harness-engineering/commit/cbc2d8366ec924bbb7a1d800cc6262f6548a5cc9))
+* **skills:** token-discipline prompt in builder + guard install pollution ([2bbda86](https://github.com/AI-Substrate/harness-engineering/commit/2bbda86ec5c0d293f51bb1de0fb7cc3d05a2c7ba))
+
 ## [0.10.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.9.2...v0.10.0) (2026-07-06)
 
 
