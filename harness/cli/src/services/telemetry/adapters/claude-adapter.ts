@@ -1,11 +1,12 @@
 import {
   commandSignatures,
   harnessSubcommand,
+  observeKindFromCommand,
   shellSignature,
   skillDigitArg,
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event } from '../events.js';
+import type { Event, HarnessEvent } from '../events.js';
 import { outcomeEvents } from '../outcome-events.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type {
@@ -399,9 +400,13 @@ export const claudeAdapter: HarnessAdapter = {
 
     // Harness sub-command events (timestamped Bash `harness …` lines).
     for (const { cmd, t } of commandObs) {
+      const observeKind = observeKindFromCommand(cmd);
       for (const sig of commandSignatures(cmd)) {
         const sub = harnessSubcommand(sig);
-        if (sub !== null) direct.push({ t, kind: 'harness', verb: sub });
+        if (sub === null) continue;
+        const hev: HarnessEvent = { t, kind: 'harness', verb: sub };
+        if (sub === 'observe' && observeKind !== null) hev.observe_kind = observeKind;
+        direct.push(hev);
       }
     }
 

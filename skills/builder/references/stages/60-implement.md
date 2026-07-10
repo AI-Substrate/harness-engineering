@@ -29,6 +29,8 @@ Throughout implementation, capture discoveries in:
 
 Log when you encounter: something unexpected, needed research, hit a trouble spot, found a gotcha, made a decision, introduced debt, or gained an insight.
 
+**Environment friction is work, not an apology (builder `SKILL.md` invariant #14).** When the environment fails or misleads you, fix it if it's small and reversible; otherwise capture it the moment it bites — `harness observe "<what>" --kind difficulty|confusion` when the harness is present, or an execution-log Discoveries row tagged `Noteworthy` as the fallback when it isn't — then keep moving. Own mistakes you fix silently; it's the hard walls and proof-gaps you pay forward, so the next agent never re-hits them.
+
 **Tag what a human must see before it ships.** Mark a Discoveries row `Deferred` when something was *consciously punted* — a skipped/blocked task, an unmet acceptance criterion, scope cut to a follow-up, a `TODO`/`FIXME`/`HACK` left in the code — and `Noteworthy` when you made a call a human might have made differently — an autonomous decision, a workaround, a new dependency, or a file touched outside the plan's Domain Manifest. The tag is the only new thing (no new file); the phase-end summary (step 5) and the downstream ship rollup both read these rows. It **never blocks** — it surfaces, so the go-decision is informed.
 
 

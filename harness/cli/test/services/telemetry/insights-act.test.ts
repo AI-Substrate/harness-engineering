@@ -132,7 +132,8 @@ describe('registerTelemetryAct — telemetry insights', () => {
 
     const doc = JSON.parse(fs.readText('/repo/out/insights.json') ?? 'null');
     expect(doc.schema_version).toBe('harness.telemetry-insights/v1');
-    expect(doc.sections).toHaveLength(7);
+    // 7 original sections + observe_conversion + disposition_mix (plan 056 T005).
+    expect(doc.sections).toHaveLength(9);
     expect(doc.discipline).toBeDefined();
     expect(fs.readText('/repo/out/index.html')?.startsWith('<!doctype html>')).toBe(true);
     // next_action documents the Phase-3 pipeline (sweep → report → insights).

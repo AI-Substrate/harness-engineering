@@ -3,7 +3,7 @@
   "$id": "https://github.com/jakkaj/tools/blob/main/docs/harness/schemas/retro.schema.json",
   "title": "Retro",
   "description": "A universal retrospective — produced by minih agents, compound skills, and other agentic workflows. One retro per run/session.",
-  "x-schema-version": "1.1",
+  "x-schema-version": "1.2",
   "type": "object",
   "required": ["schema_version", "retro_id", "agent", "started_at"],
   "additionalProperties": false,
@@ -110,6 +110,25 @@
             "description": "Global reference to another entry: <retro_id>:<entry_id>"
           },
           "description": "Optional. Cross-retro entry pointers."
+        },
+        "fp": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{12}$",
+          "description": "Optional capture-time fingerprint (schema 1.2): sha256(kind|target?|norm(description))[0:12], computed by `harness observe`. Deterministic, zero-LLM recurrence key so 'this friction keeps happening' is visible across sessions. A hash, not prose — never surfaced in telemetry (recurrence analysis runs offline over committed records)."
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "fixed-now",
+            "task",
+            "plan",
+            "diffs",
+            "command",
+            "kept",
+            "declined",
+            "deferred"
+          ],
+          "description": "Optional drain-time outcome for this entry (schema 1.2). Distinct from system.compound.status: `status` is the long-horizon lifecycle (open/encoded/wontfix/stale), `disposition` is the decision made at the retro drain. `kept` = saved, no action chosen (the default); `declined`/`deferred` entries are still written to the record so offline recurrence analysis can see what we said no to."
         },
         "system": {
           "type": "object",

@@ -103,6 +103,31 @@ describe('loadScenario — the committed md-to-pdf fixture', () => {
   });
 });
 
+describe('loadScenario — the committed planted-friction fixture (plan 056)', () => {
+  it('loads with the environment-first assertions + registered judge criteria', () => {
+    const r = loadScenario('planted-friction', diskFs, FIXTURE_SCENARIOS);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.scenario.config.slug).toBe('planted-friction');
+    // every judge criterion this scenario names is in the registry
+    for (const c of r.scenario.config.judge?.criteria ?? []) {
+      expect(Object.keys(JUDGED_CRITERIA)).toContain(c);
+    }
+    // friction→observe is a required telemetry assertion
+    expect(r.scenario.assertions.find((x) => x.id === 'A2')).toMatchObject({
+      type: 'harness-verb-ran',
+      required: true,
+      params: { verb: 'observe' },
+    });
+    // the declined + deferred content assertions (AC-04 headline) are present + required
+    const declined = r.scenario.assertions.find((x) => x.id === 'A7');
+    const deferred = r.scenario.assertions.find((x) => x.id === 'A8');
+    expect(declined).toMatchObject({ type: 'file-content-matches', required: true });
+    expect(String(declined?.params?.pattern)).toContain('declined');
+    expect(String(deferred?.params?.pattern)).toContain('deferred');
+  });
+});
+
 describe('loadScenario — malformed bundles return a descriptive error (no throw)', () => {
   it('missing scenario.json', () => {
     const r = loadScenario('x', new FakeFs(), '/s');

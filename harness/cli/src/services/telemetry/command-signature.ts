@@ -29,6 +29,8 @@
  * `harness flow nav`; `grep TOKEN src/` → `grep`; `cat /etc/passwd` → `cat`.
  */
 
+import { OBSERVE_KINDS, type ObservationKind } from './events.js';
+
 const ENV_ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*=/;
 const SUBCOMMAND = /^[a-z][a-z0-9-]*$/;
 const EXE_SUFFIX = /\.(?:exe|cmd|bat|ps1|com)$/i;
@@ -238,6 +240,24 @@ export function commandSignatures(raw: string): string[] {
 export function harnessSubcommand(signature: string): string | null {
   if (signature.startsWith('harness ')) return signature.slice('harness '.length);
   return null; // bare `harness` (help) carries no verb
+}
+
+const OBSERVE_KIND_SET = new Set<string>(OBSERVE_KINDS);
+
+/**
+ * Extract the observation kind from a raw `harness observe … --kind X` command
+ * line (plan 056, workshop D4). Returns the kind ONLY when the line is a harness
+ * `observe` invocation AND `--kind`'s value is one of the 8 closed kinds — a
+ * fixed-vocabulary token, never free text (P12/AC-15). Every other kind value, or
+ * a non-observe command, yields null. The rest of the line (the description) is
+ * never read.
+ */
+export function observeKindFromCommand(raw: string): ObservationKind | null {
+  if (typeof raw !== 'string') return null;
+  const isObserve = commandSignatures(raw).some((sig) => harnessSubcommand(sig) === 'observe');
+  if (!isObserve) return null;
+  const val = raw.match(/--kind[=\s]+([a-z-]+)/)?.[1];
+  return val !== undefined && OBSERVE_KIND_SET.has(val) ? (val as ObservationKind) : null;
 }
 
 /**

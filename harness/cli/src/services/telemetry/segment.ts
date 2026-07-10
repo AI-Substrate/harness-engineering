@@ -379,8 +379,17 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.from === 'string') ev.from = e.from;
       return ev;
     }
-    case 'harness':
-      return { ...base, kind: 'harness', verb: e.verb };
+    case 'harness': {
+      const ev: Event = { ...base, kind: 'harness', verb: e.verb };
+      // observe_kind rides ONLY on the `observe` verb (plan 056); a fixed-enum
+      // token, picked explicitly (never spread) so no free-form field can leak.
+      // Gated on the verb at the boundary: a stray observe_kind on any other
+      // verb is dropped, not serialized.
+      if (e.verb === 'observe' && typeof e.observe_kind === 'string') {
+        ev.observe_kind = e.observe_kind;
+      }
+      return ev;
+    }
     case 'checks': {
       const ev: Event = { ...base, kind: 'checks', status: e.status };
       if (e.gates !== undefined) {

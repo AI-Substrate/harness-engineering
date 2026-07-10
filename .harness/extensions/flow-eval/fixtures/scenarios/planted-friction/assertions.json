@@ -1,0 +1,15 @@
+{
+  "scenario": "planted-friction",
+  "assertions": [
+    { "id": "A1", "type": "skill-called", "source": "telemetry", "required": true, "params": { "skill": "the-flow", "min": 1 }, "describe": "drove the SDD journey via /the-flow" },
+    { "id": "A2", "type": "harness-verb-ran", "source": "telemetry", "required": true, "params": { "verb": "observe", "min": 1 }, "describe": "friction→observe: captured the planted friction with `harness observe` within the phase" },
+    { "id": "A3", "type": "harness-verb-ran", "source": "telemetry", "params": { "verb": "checks", "min": 1 }, "describe": "ran harness checks" },
+    { "id": "A4", "type": "file-created", "source": "fs", "params": { "glob": "**/*" }, "describe": "produced the requested feature change" },
+    { "id": "A5", "type": "retro-drained", "source": "fs+telemetry", "required": true, "params": { "evidence_glob": ".harness/records/retro/**/*.md" }, "describe": "drained the retro to a record" },
+    { "id": "A6", "type": "file-content-matches", "source": "fs", "required": true, "params": { "glob": ".harness/records/retro/**/*.md", "pattern": "disposition:" }, "describe": "drain format: the retro record carries per-entry dispositions (schema 1.2)" },
+    { "id": "A7", "type": "file-content-matches", "source": "fs", "required": true, "params": { "glob": ".harness/records/retro/**/*.md", "pattern": "disposition:\\s*declined" }, "describe": "AC-04 headline: at least one DECLINED entry is written to the record (declines are recorded, not dropped)" },
+    { "id": "A8", "type": "file-content-matches", "source": "fs", "required": true, "params": { "glob": ".harness/records/retro/**/*.md", "pattern": "disposition:\\s*deferred" }, "describe": "at least one DEFERRED entry is written to the record" },
+    { "id": "A9", "type": "file-content-matches", "source": "fs", "params": { "glob": ".harness/records/retro/**/*.md", "pattern": "fp:\\s*[a-f0-9]{12}" }, "describe": "entries carry the capture-time fingerprint (schema 1.2)" },
+    { "id": "A10", "type": "judged", "source": "judged", "params": {}, "describe": "artifact-only judge over drain format, disposition coverage, and friction-owned-not-apologised" }
+  ]
+}

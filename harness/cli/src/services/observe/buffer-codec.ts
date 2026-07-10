@@ -35,6 +35,8 @@ export interface ObservationEntry {
   severity?: string;
   workaround?: string;
   suggested_encoding?: string;
+  /** Capture-time recurrence fingerprint (schema 1.2, workshop D3); set by `harness observe`. */
+  fp?: string;
   /** From the nested `system.compound` block. */
   first_seen_at?: string;
 }
@@ -44,7 +46,7 @@ const ID_PATTERN = /^[A-Z]+-\d{3,}$/;
 
 /** The flat entry fields (plus first_seen_at from the nested block), any indent. */
 const FIELD_PATTERN =
-  /^\s+(kind|description|target|severity|workaround|suggested_encoding|first_seen_at):\s*(.*)$/;
+  /^\s+(kind|description|target|severity|workaround|suggested_encoding|fp|first_seen_at):\s*(.*)$/;
 
 /**
  * Serialize one entry as an append-ready YAML block — identical in shape to the
@@ -65,6 +67,7 @@ export function serializeEntry(entry: ObservationEntry): string {
   if (entry.suggested_encoding !== undefined) {
     lines.push(`  suggested_encoding: ${JSON.stringify(entry.suggested_encoding)}`);
   }
+  if (entry.fp !== undefined) lines.push(`  fp: ${entry.fp}`);
   lines.push(
     '  system:',
     '    compound:',
@@ -147,6 +150,7 @@ function parseBlock(block: string[]): ObservationEntry | null {
     ...(fields.suggested_encoding !== undefined && {
       suggested_encoding: fields.suggested_encoding,
     }),
+    ...(fields.fp !== undefined && { fp: fields.fp }),
     ...(fields.first_seen_at !== undefined && { first_seen_at: fields.first_seen_at }),
   };
 }

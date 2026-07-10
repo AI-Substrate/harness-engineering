@@ -84,7 +84,26 @@ export type ArtifactType =
   | 'backpressure'
   | 'validation'
   | 'ship-report'
-  | 'flight-plan';
+  | 'flight-plan'
+  | 'retro';
+
+/**
+ * The closed 8-kind observation vocabulary (workshop 005 § D5/D6; mirrors
+ * `observe/buffer-codec.ts` OBSERVATION_KINDS). Rides {@link HarnessEvent} as
+ * `observe_kind` only when `verb === 'observe'` (plan 056, workshop D4) — a
+ * fixed-enum token, never prose, so the conversion-by-kind query has a signal.
+ */
+export const OBSERVE_KINDS = [
+  'difficulty',
+  'magic-wand',
+  'gift',
+  'insight',
+  'coordination',
+  'improvement-suggestion',
+  'confusion',
+  'win',
+] as const;
+export type ObservationKind = (typeof OBSERVE_KINDS)[number];
 
 /**
  * The CLOSED union of `counts` keys any extractor may emit — the schema mirror of
@@ -108,6 +127,14 @@ export const ARTIFACT_COUNT_KEYS = [
   'decisions',
   'deferred',
   'deviations',
+  'disp_command',
+  'disp_declined',
+  'disp_deferred',
+  'disp_diffs',
+  'disp_fixed_now',
+  'disp_kept',
+  'disp_plan',
+  'disp_task',
   'done',
   'entries',
   'events',
@@ -124,7 +151,16 @@ export const ARTIFACT_COUNT_KEYS = [
   'gate_pass',
   'high',
   'in_progress',
+  'kind_confusion',
+  'kind_coordination',
+  'kind_difficulty',
+  'kind_gift',
+  'kind_improvement_suggestion',
+  'kind_insight',
+  'kind_magic_wand',
+  'kind_win',
   'nodes',
+  'observations',
   'open',
   'phases',
   'pr_opened',
@@ -264,6 +300,13 @@ export interface BranchEvent extends EventBase {
 export interface HarnessEvent extends EventBase {
   kind: 'harness';
   verb: string;
+  /**
+   * The observation kind (closed 8-enum) — present ONLY when `verb === 'observe'`
+   * (plan 056, workshop D4). A fixed-vocabulary token, never prose; lets the
+   * offline conversion query split friction capture by kind. Omitted for every
+   * other verb.
+   */
+  observe_kind?: ObservationKind;
 }
 
 /** A quality-gate outcome (names + verdicts only). */

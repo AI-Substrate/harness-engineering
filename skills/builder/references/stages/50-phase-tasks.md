@@ -155,6 +155,8 @@ Otherwise → **Phase Mode** (continue).
 
    ### Context Brief
 
+   **Environment-first posture** (one line, carried into the brief — builder `SKILL.md` invariant #14): environment friction is work, not an apology — fix small/reversible things, otherwise `harness observe` it (execution-log Discoveries row as the fallback when harness-less), and pay every hard wall or proof-gap forward for the next agent.
+
    **Key findings from plan**:
    - [Finding N: brief + action required]
 

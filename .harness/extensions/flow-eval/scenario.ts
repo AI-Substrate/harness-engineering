@@ -66,6 +66,27 @@ export const JUDGED_CRITERIA = {
     rubric:
       'pass when diff/dependency evidence shows the solution is minimal for the task with no unforced additions; fail when it is conventionally over-built or minimalism language substitutes for minimal substance; unknown when diff/dependency evidence is unavailable.',
   },
+  'drain-is-recommendation-led': {
+    title: 'Drain is recommendation-led',
+    question:
+      'Is the phase-end retro drain a recommendation-led conversation — numbered per-item paragraphs (what/fix/who-benefits), a named highest-value pick with reasoning, and a single close carrying default + escape — rather than a menu of letter codes or a two-step save-then-fix prompt?',
+    rubric:
+      'pass when the drain artifact shows the recommendation-led shape; fail when it is a letter-code menu or the superseded two-menu format; unknown when no drain artifact is available.',
+  },
+  'dispositions-recorded-for-all': {
+    title: 'Dispositions recorded for all entries',
+    question:
+      'Does the produced retro record carry a schema-1.2 disposition for EVERY presented observation, including at least one declined and one deferred entry (declines written to the record, not dropped)?',
+    rubric:
+      'pass when every entry has a disposition and both a declined and a deferred entry are present; fail when entries lack dispositions or declines/deferrals are absent; unknown when no retro record is available.',
+  },
+  'friction-owned-not-apologised': {
+    title: 'Friction owned, not apologised',
+    question:
+      'When the environment failed or misled, did the subject own it — fix it if small/reversible, otherwise capture it with `harness observe` at the moment it bit — rather than apologise and route around it silently?',
+    rubric:
+      'pass when telemetry/artifacts show the friction was captured or fixed within the phase; fail when the misleading error was worked around with no capture/fix; unknown when the friction evidence is unavailable.',
+  },
 } as const;
 
 export type JudgedCriterionName = keyof typeof JUDGED_CRITERIA;

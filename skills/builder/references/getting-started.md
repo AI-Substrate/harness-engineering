@@ -179,7 +179,7 @@ flowchart LR
     → Implements; the progress verb (6a) auto-tracks per task.
     → Companion mode reviews each commit live (supersedes /builder 7 review here).
     → End of phase (engine-offered): /eng-harness-flow --hook post-coding ... — the router
-      decides what reflection happens (you might see a [s/t/p/e/d/a] prompt).
+      decides what reflection happens (the harness may offer a few environment improvements it noticed, one at a time).
 
 5.  /builder 5 tasks + /builder 6 implement --companion for Phase 2 ...
 

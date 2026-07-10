@@ -144,51 +144,42 @@ harness observe --list --json
 
 All buckets by default (`--agent <slug>` narrows). Empty `observations` → **silent, no prompt, exit.** If `malformed_skipped > 0`, say so in the prompt header — deviant text is preserved on disk, and `--clear` removes only valid entries, leaving the deviant blocks in place for manual review.
 
-### Step 2 — Present the save prompt
+### Step 2 — Present the drain (recommendation-led, one conversation)
 
-One prompt at end of session, in **plain language**. **Never asks twice.** Lead with what you noticed, say plainly what saving does, recommend the safe default, and keep the power-user routes one word away. **Never print the raw `[s/t/p/e/d/a]` letter codes** — they are an internal detail, and surfacing them (or guessing what they mean) is exactly the opaque UX this prompt exists to avoid. Format:
+One conversational close at session end, in **plain language** — **never** letter codes, **never** two separate prompts. This **supersedes the plan-044 two-menu (save-then-fix) format**: it is now a single recommendation-led pass. Lead with what you noticed; walk each observation as a short **numbered paragraph** (*what happened · what would fix it · who it helps next time*); then name the **single highest-value one and why**; then close with **one sentence** carrying the safe default and the escape hatch. The `kind/target` taxonomy stays in the data, never on screen.
 
-Split the closeout into **two decisions, one at a time** — *save the notes* first, and only after that's resolved, *turn them into fixes*. Don't dump storage paths, record jargon, or every action mode into the first prompt.
-
-**Decision 1 — save the notes:**
+**Format:**
 
 ```
-💡 Before we wrap up — here are 3 things I noticed this session that slowed
-   us down or weren't proven:
+💡 Before we wrap up — 3 things slowed us down or went unproven this session.
+   Here's what I'd do about each:
 
-  1. grep on src/ took 47s               → a `just rg` recipe would fix it
-  2. searching the tree by hand, again   → a `just rg <pattern>` recipe would help
-  3. couldn't tell if the page rendered  → nothing proves it; a smoke check would
+  1. grep on src/ took 47s. A `just rg` recipe wrapping ripgrep would fix it —
+     every search after this one is instant, for you and the next agent.
+  2. Searched the tree by hand, twice. The same `just rg <pattern>` recipe covers
+     it — this is the recurring one.
+  3. Couldn't tell if the page rendered. Nothing proves it today; a smoke check
+     would, so the next person doesn't have to eyeball it.
 
-Anything we should make easier or more provable next time? For example: a clearer
-command, a faster check, a better error, a fixture, a smoke test, or a way to prove
-something we had to check by hand — or anything you had to guess because the repo
-didn't prove it. (Thought of something? Tell me — it joins the list.)
+  Highest value: the `just rg` recipe (#1/#2) — one small change that kills a
+  friction we already hit twice and will hit every session.
 
-Save these notes so they're not lost?
-  • Enter / "yes"   save all                            (recommended)
-  • "pick"          choose which ones to save
-  • "skip"          save nothing
-
+  Save these so they're not lost? Enter saves all (recommended) — or tell me which
+  to keep, fix right now, or drop, and I'll note what we decide on each.
   ▮
 ```
 
-**Decision 2 — turn saved notes into fixes** (offer *after* save/pick/skip resolves, only if anything was saved):
+**Record a disposition for EVERY presented entry — including the ones we don't act on.** Whatever the user decides, stamp each presented entry with a `disposition:` (schema 1.2, the closed 8-value set) as it is written to the record: `fixed-now | task | plan | diffs | command | kept | declined | deferred`. `kept` is the default (saved, no action chosen). **Declined and deferred entries are still written to the record** — that is the whole point: offline recurrence analysis needs to see what we said *no* to, not only what we acted on. Only the transient buffer is cleared. (`disposition` is the drain-time decision; it is distinct from `system.compound.status`, the long-horizon lifecycle.)
 
-```
-Want to turn any saved notes into fixes?
-  • "tasks"   copy-pasteable fix-tasks
-  • "plan"    a plan spec, for the bigger ones
-  • "diffs"   draft patches for you to review
-  • "command" a harness command/check — for a repeated proof-gap or recurring manual check
-  • leave them for now
-```
+**Do-it-now — for the small and reversible.** When the highest-value fix is small and reversible (a justfile line, a one-line error message, a fixture), offer to **make it now** instead of filing it. If the user accepts: do the edit, then track it as a flight-plan **excursion node** off the current phase — `harness flow insert-node --branch-of <phase-node> --type chore …` — capturing the **intent** (what we're fixing and why) up front and the **outcome** (what changed) once done, as node notes. No mini-plan ceremony. That entry's disposition is `fixed-now`.
 
-This offer is **always made, never silently skipped** — the user may decline every route, but dropping the closeout offer is the failure the loop exists to prevent. Lead each entry with the plain description + a one-line "→ what would fix it" hint — the `kind/target` taxonomy stays in the data, never on screen. The plain routes map one-to-one to the actions in Step 3: **yes / Enter** = save all · **pick** = save selected · **skip** = save nothing · **tasks** / **plan** / **diffs** / **command** = the four "take it further" routes.
+This offer is **always made, never silently skipped** — the user may decline every route, but dropping the closeout is the failure the loop exists to prevent. The routes map to Step 3 and to a disposition: **Enter/yes** = save all (`kept`) · **pick** = save selected (unpicked → `declined`) · **skip** = save nothing but still record (`declined`) · **fix now** = `fixed-now` · **tasks/plan/diffs/command** = the four take-it-further routes (dispositions `task`/`plan`/`diffs`/`command`) · **leave for now** = `deferred`.
 
 Offer **"command"** (the harness command/check route, internally the "extension" scaffold) only when at least one pending entry is a **repeated proof-gap** — a friction where you *inferred* what a command could have *proved* (targets `project-sensor` / `runtime-inspectability` / `architecture-fitness` / `security` / `schema`, or any `magic-wand` that names a check / diagnostic / command). That class wants a **first-class, discoverable verb**, not a justfile line that rots unseen (§ the "command" route). When nothing pending fits, omit the route.
 
 ### Step 3 — Route by action
+
+**Every route stamps a `disposition:` on each entry it writes** (schema 1.2 — see Step 2): the mapping is `yes`→`kept`, `pick`→`kept` (unpicked→`declined`), `skip`→`declined`, `fix now`→`fixed-now`, `tasks`→`task`, `plan`→`plan`, `diffs`→`diffs`, `command`→`command`, `leave for now`→`deferred`. Declined/deferred entries are **written to the record**, then the buffer is cleared.
 
 #### "yes" / Enter — save all (default)
 
@@ -203,7 +194,7 @@ Write the envelope into the returned **`data.path`** (the CLI owns placement + t
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.2"
 retro_id: "<ISO>-<agent>-<short-hash>"
 agent: <bucket>
 plan_id: <plan-id-or-null>
@@ -211,7 +202,10 @@ started_at: "<first entry's first_seen_at>"
 ended_at: "<now ISO UTC>"
 summary: "retro --drain session-end save (N entries)"
 entries:
-  # ... the drained entries verbatim (id/kind/description/…/system.compound)
+  # ... the drained entries verbatim (id/kind/description/…/system.compound),
+  # each carrying its capture-time `fp` (from the buffer) AND a drain-time
+  # `disposition:` — one of fixed-now|task|plan|diffs|command|kept|declined|deferred
+  # for EVERY presented entry, declined/deferred included (schema 1.2).
 system:
   compound:
     bubble_action: "all-save"
@@ -226,7 +220,7 @@ harness observe --clear
 
 #### "pick" — save selected
 
-Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
+Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Write **every presented entry** into the record (same envelope): the selected ones stamped `disposition:kept`, the **unselected presented entries stamped `disposition:declined`** — declined entries are written, not dropped (Step 2/3: recurrence analysis needs what we said *no* to). Only after the record is written is the transient buffer cleared (`harness observe --clear`).
 
 #### "tasks" — emit copy-pasteable fix descriptors
 
@@ -283,6 +277,23 @@ This route does NOT author the verb itself (that is the router's encode step) �
 3. Save the entry to the record with `system.compound.status: suggested` and `resolved_by: harness new <verb>`. Clear.
 
 Entries are saved whether or not the user runs the scaffold (the suggestion is captured regardless). The guided fill-the-handler-and-validate step is the router's to route onward — this route only surfaces that the friction is a **repeated proof-gap** and hands over the exact command.
+
+#### "fix now" — do the small, reversible fix in-flight (disposition `fixed-now`)
+
+For a fix that is **small and reversible** (a justfile line, a one-line error message, a fixture) and the user accepts the do-it-now offer: make the edit directly, then record it as a flight-plan **excursion node** off the current phase — capturing intent first, outcome after:
+
+```bash
+harness flow insert-node --branch-of <phase-node> --type chore \
+  --label "fix: <what>" --note "intent: <what we're fixing and why>"
+# … make the edit …
+harness flow status <new-node> --to done --note "outcome: <what changed + proof>"
+```
+
+Save the entry to the record with `disposition: fixed-now` and `resolved_by: <commit-or-node-ref>`. No mini-plan ceremony — the excursion node *is* the tracking. Clear.
+
+#### "skip" — record but take no action (disposition `declined`)
+
+Still write the presented entries to the record with `disposition: declined` — declines are the signal offline recurrence analysis exists to see (never a silent drop) — then clear the buffer.
 
 #### "skip" — save nothing
 

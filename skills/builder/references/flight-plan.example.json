@@ -97,7 +97,7 @@
 
     { "id": "hr2", "type": "harness-retro", "label": "Harness phase-end (post-coding seam)", "status": "done",
       "command": "/eng-harness-flow --hook post-coding --plan-dir docs/plans/001-project-setup --json", "branch_of": "p2",
-      "note": "Post-coding retro seam (one per phase, branch_of its phase) — the flow offers it at the phase-end edge; the router owns drain-vs-harvest (the user may see a [s/t/p/e/d/a] prompt).", "next": [] },
+      "note": "Post-coding retro seam (one per phase, branch_of its phase) — the flow offers it at the phase-end edge; the router owns drain-vs-harvest (the harness may offer a few environment improvements it noticed, presented conversationally).", "next": [] },
 
     { "id": "p4", "type": "phase", "phase": 4, "label": "CLI Package", "status": "known", "next": ["review-4"] },
     { "id": "review-4", "type": "review", "label": "Review: P4", "status": "known", "zone": "flight", "command": "/builder 7 review", "note": "per-phase review (--zone flight); known.", "next": ["p5"] },

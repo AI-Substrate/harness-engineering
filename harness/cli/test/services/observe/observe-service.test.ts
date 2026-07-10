@@ -13,7 +13,9 @@ import {
 import {
   captureObservation,
   clearObservations,
+  fingerprint,
   listObservations,
+  normalizeForFingerprint,
   type ObserveDeps,
 } from '../../../src/services/observe/observe-service.js';
 
@@ -619,5 +621,43 @@ describe('clearObservations — truncate what list returns, files kept (AC-7, D6
     expect(fs.readText('/repo/evil/session-buffer.md')).toContain('MW-009');
     expect(fs.writes).not.toContain('/repo/evil/session-buffer.md');
     expect(fs.readText(AGENT_BUFFER)).not.toContain('DL-001');
+  });
+});
+
+describe('fingerprint at capture (T002, workshop D3)', () => {
+  it('normalizeForFingerprint: lowercase, strip punctuation, first 8 tokens of length >=3, order preserved', () => {
+    expect(
+      normalizeForFingerprint('The CI, build!! FAILED on a Windows-runner (again) at step two now'),
+    ).toBe('the build failed windows runner again step two');
+    // punctuation-only + short tokens drop out; order is preserved (not sorted)
+    expect(normalizeForFingerprint('a I/O op — did NOT complete')).toBe('did not complete');
+  });
+
+  it('fingerprint is a deterministic 12-hex digest of kind|target?|norm(description)', () => {
+    const fp = fingerprint('difficulty', 'tooling', 'The build failed on the runner');
+    expect(fp).toMatch(/^[a-f0-9]{12}$/);
+    // same inputs → same fp (recurrence key); target participates
+    expect(fingerprint('difficulty', 'tooling', 'The build failed on the runner')).toBe(fp);
+    expect(fingerprint('difficulty', 'plan', 'The build failed on the runner')).not.toBe(fp);
+    // description that normalizes identically collapses to the same fp (recurrence)
+    expect(fingerprint('difficulty', 'tooling', 'the BUILD failed, on the runner!!')).toBe(fp);
+  });
+
+  it('capture stamps a 12-hex fp that round-trips through serialize/parse', () => {
+    const fs = configuredFs();
+    const outcome = captureObservation(
+      { description: DESC, kind: 'difficulty', target: 'tooling' },
+      depsAt(fs),
+    );
+    expect(outcome).toMatchObject({ ok: true });
+    const buffer = fs.readText(AGENT_BUFFER) ?? '';
+    expect(buffer).toMatch(/^ {2}fp: [a-f0-9]{12}$/m);
+    const parsed = parseBuffer(buffer).entries[0];
+    expect(parsed?.fp).toBe(fingerprint('difficulty', 'tooling', DESC));
+  });
+
+  it('serializeEntry omits fp when absent (1.1 entries stay clean)', () => {
+    const block = serializeEntry({ id: 'DL-001', kind: 'difficulty', description: DESC });
+    expect(block).not.toContain('fp:');
   });
 });

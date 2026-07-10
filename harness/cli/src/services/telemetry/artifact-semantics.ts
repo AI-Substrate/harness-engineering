@@ -389,12 +389,70 @@ const flightPlanExtractor: ArtifactExtractor = {
 };
 
 /**
+ * Row 23 (plan 056): retro records — the drained observation ledger. Counts the
+ * structured `entries[]` signal only: total observations, disposition mix, and
+ * kind mix. The per-entry `disposition`/`kind` tokens are closed vocabularies
+ * (schema 1.2 / workshop D2), so this stays counts-only — the description prose
+ * and the `fp` fingerprint (workshop D5: high-cardinality) never travel.
+ */
+const OBSERVE_KIND_COUNT_KEY: Record<string, ArtifactCountKey> = {
+  difficulty: 'kind_difficulty',
+  'magic-wand': 'kind_magic_wand',
+  gift: 'kind_gift',
+  insight: 'kind_insight',
+  coordination: 'kind_coordination',
+  'improvement-suggestion': 'kind_improvement_suggestion',
+  confusion: 'kind_confusion',
+  win: 'kind_win',
+};
+const DISPOSITION_COUNT_KEY: Record<string, ArtifactCountKey> = {
+  'fixed-now': 'disp_fixed_now',
+  task: 'disp_task',
+  plan: 'disp_plan',
+  diffs: 'disp_diffs',
+  command: 'disp_command',
+  kept: 'disp_kept',
+  declined: 'disp_declined',
+  deferred: 'disp_deferred',
+};
+
+/** Tally a closed-vocab per-entry field (`kind:`/`disposition:`) into its count keys. */
+function tallyEntryField(
+  content: string,
+  field: 'kind' | 'disposition',
+  keyMap: Record<string, ArtifactCountKey>,
+  counts: Counts,
+): void {
+  const re = new RegExp(`^\\s*${field}:\\s*([a-z-]+)`, 'gm');
+  const tally: Partial<Record<ArtifactCountKey, number>> = {};
+  for (const m of content.matchAll(re)) {
+    const key = keyMap[m[1] ?? ''];
+    if (key !== undefined) tally[key] = (tally[key] ?? 0) + 1;
+  }
+  for (const [k, n] of Object.entries(tally)) put(counts, k as ArtifactCountKey, n ?? 0);
+}
+
+const retroExtractor: ArtifactExtractor = {
+  type: 'retro',
+  match: (p) => /(?:^|\/)\.harness\/records\/retro\/.+\.md$/.test(p),
+  extract: (content) => {
+    const counts: Counts = {};
+    // observations = structured entry blocks (`- id: …`), the durable signal.
+    put(counts, 'observations', countOf(content, /^\s*-\s+id:/gm));
+    tallyEntryField(content, 'kind', OBSERVE_KIND_COUNT_KEY, counts);
+    tallyEntryField(content, 'disposition', DISPOSITION_COUNT_KEY, counts);
+    return { counts, enums: {} };
+  },
+};
+
+/**
  * The registry — path-first dispatch, FIRST match wins. Ordered most-specific
  * filename first so the broad `-plan.md` matcher never shadows a nested review /
  * validation / workshop file.
  */
 export const ARTIFACT_EXTRACTORS: readonly ArtifactExtractor[] = [
   flightPlanExtractor,
+  retroExtractor,
   reviewExtractor,
   validationExtractor,
   backpressureExtractor,
