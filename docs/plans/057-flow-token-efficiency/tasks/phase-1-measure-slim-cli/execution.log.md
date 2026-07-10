@@ -48,6 +48,30 @@ Sonnet worker, all claims path:line-cited (adapter `claude-adapter.ts:75-84, 302
 
 Sonnet worker, measured: builder guided-entry force-read = **118,953 B** (SKILL 20,645 + 00-routing 44,864 + coach 43,846 + flight-plan-ops 9,598); per-turn `orient` = 1,061 B human / 1,844 B JSON (~65–115× cheaper than entry — per-turn is NOT the bottleneck, validating the instructions-channel strategy). eng-harness-flow router invocation = 34–58 KB (already verb-lazy — builder's always-load of coach+flight-plan-ops is the restructuring target, not the router). Duplication: the parity block is 5,065 B ×2 (deliberate); the four same-named files across trees diverge (unquantified — a follow-on diff pass lead). Quick-card ceiling: 00-routing.md is ~47% operational (~21 KB) / ~53% on-demand — extrapolated ceiling ≈ half the 119 KB entry set, and only via genuine compression. **D3 verdict: quick-card is a plausible follow-on with a ~50–60 KB/session ceiling; correctly out of 057's scope.**
 
-## T009 — baseline record (AC-05) ✅
+## T009 — baseline record (AC-05) ✅ <!-- moved: see below -->
 
 `baseline/baseline.md` + `baseline/sweep-2026-07/2026-07.report.json` (38 sessions, 4 measured). **Retroactivity proven live**: the 056 session's 59,049/182,379 tokens attribute to `phase-1`/implement via its pre-window cursor-moved history; mechanism mix `{flow: 2, digit: 0, unlabeled: 1, flow_log: 1}` exercises every path on real data. Cache dwarfs fresh ~365:1 month-wide (context re-reads are the raw dominant cost — session-level only per KF-06).
+
+## T010 — deploy ✅ / Phase complete
+
+`just build` (global relink) → `harness --version` 0.10.0 with `--quiet` live; `harness checks`: tests/biome/typecheck/docs/flows/fixtures/doctrine-parity/skills/windows all ok; arch-check + markdown-lint `degraded` = pre-existing warn-launch items only (`ref-source.ts`/`sync-service.ts` type-only rule; 199 authored-docs findings — none introduced by this phase). Canonical suite 2273/2273. Dogfood proof: this phase's own closing flow mutations ran `--quiet` — 4 envelopes at `{path}` instead of 4×7-field blocks.
+
+### Phase-1 summary vs acceptance criteria
+
+- **AC-01 (mechanism half)**: flow_log last-transition lookup shipped, test-proven (7 tests incl. named mutations) AND proven retroactively on real July refs (mechanism `{flow:2, digit:0, unlabeled:1, flow_log:1}`); the "observed >1 stage bucket in this plan's own session" half lands at T2.7 as planned.
+- **AC-02/AC-03**: `--quiet` live, byte-identical default + non-flow envelopes (6 tests).
+- **AC-04**: guide updated + manifest-listed; `check:docs` genuinely guards it (post-commit green).
+- **AC-05**: `baseline/baseline.md` + month sweep report committed.
+- **AC-11**: answered — MIXED (native side-channel `grand_total`) / SEPARATE (pij fleet); tripwire interpretation rule recorded.
+- D3 evidence recorded (118,953B entry read-set; quick-card ceiling ≈ half, compression-required; follow-on candidate).
+
+### Deferred & Noteworthy (this phase)
+
+| Tag | Item | Where |
+|---|---|---|
+| Noteworthy | Lens coverage change: events before the first stage mark now surface as `unlabeled` instead of being silently dropped (only when marks exist) | T003, report.ts |
+| Noteworthy | `docs-manifest.json` gained a 10th entry — `harness docs` now surfaces the flow guide (P12-reviewed) | T006 |
+| Deferred | Same-named reference files diverge across the two skill trees (00-routing/coach/flight-plan-ops/getting-started) — unquantified duplication lead for the D3 follow-on | T008 |
+| Deferred | check:docs verdict ambiguity + root-vitest scratch sweep — captured to observe buffer (drain pending) | T010 |
+
+Suggested commit message: (already committed per-task: 6615e488, 0fdf083f, c6e2e02f, 9eb6855e, + baseline/deploy commits)

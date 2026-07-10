@@ -4,7 +4,7 @@
   "slug": "flow-token-efficiency",
   "nav": {
     "now": "phase-1",
-    "next": null,
+    "next": "review-1",
     "intent": "Make builder + eng-harness-flow treat every token as gold: lean writing, lean build consumption, right-model/subagent delegation, and token-efficiency as a first-class harness-improvement target — measured against real telemetry (056 run as baseline)",
     "bag": {
       "mode": "Full",
@@ -336,6 +336,54 @@
           "note"
         ]
       }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:43:13.371Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:43:13.547Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:43:13.732Z",
+      "details": {
+        "node": "observe-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:43:13.920Z",
+      "details": {
+        "from": "phase-1",
+        "to": "phase-1"
+      }
     }
   ],
   "nodes": [
@@ -400,7 +448,7 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: Measure + slim the CLI",
-      "status": "in_progress",
+      "status": "done",
       "command": "/builder 6 implement",
       "next": [
         "review-1"
@@ -411,14 +459,16 @@
         "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
       ],
-      "modified_at": "2026-07-10T02:24:15.142Z",
+      "modified_at": "2026-07-10T02:43:13.547Z",
       "comments": [
         {
           "at": "2026-07-10T02:22:03.951Z",
           "text": "P1 tasks dossier tabled (T001-T010) + validated clean by Opus subagent (1:1 traceability, all source anchors verified; 2 LOW notes in sidecar validations/phase-1-measure-slim-cli-tasks-validation.md)",
           "kind": "validation"
         }
-      ]
+      ],
+      "ran_at": "2026-07-10T02:43:13.371Z",
+      "note": "P1 complete: T001-T010 all done. flow_log stage-lookup shipped (retroactive, proven on real refs); --quiet live; docs guarded; baseline recorded; AC-11 answered (MIXED/SEPARATE); D3 numbers in. Suite 2273 green, checks degraded=pre-existing warn-tier only. Commits 6615e488..HEAD"
     },
     {
       "id": "review-1",
@@ -497,7 +547,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -512,7 +562,9 @@
         "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
         "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "modified_at": "2026-07-10T02:43:13.732Z",
+      "ran_at": "2026-07-10T02:43:13.732Z"
     },
     {
       "id": "retro-1",
