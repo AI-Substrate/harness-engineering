@@ -3,8 +3,8 @@
   "kind": "flight-plan",
   "slug": "flow-token-efficiency",
   "nav": {
-    "now": "phase-1",
-    "next": "review-1",
+    "now": "phase-2",
+    "next": "review-2",
     "intent": "Make builder + eng-harness-flow treat every token as gold: lean writing, lean build consumption, right-model/subagent delegation, and token-efficiency as a first-class harness-improvement target — measured against real telemetry (056 run as baseline)",
     "bag": {
       "mode": "Full",
@@ -384,6 +384,76 @@
         "from": "phase-1",
         "to": "phase-1"
       }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:49:46.617Z",
+      "details": {
+        "node": "review-1",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:49:46.808Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:49:46.984Z",
+      "details": {
+        "from": "phase-1",
+        "to": "review-1"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-10T03:00:55.038Z",
+      "details": {
+        "from": "review-1",
+        "to": "phase-2"
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T03:02:03.998Z",
+      "details": {
+        "node": "boot-2",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T03:09:32.229Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -474,7 +544,7 @@
       "id": "review-1",
       "type": "review",
       "label": "Review: P1",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 7 review",
       "next": [
         "phase-2"
@@ -485,7 +555,15 @@
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
-      "modified_at": "2026-07-10T02:01:58.549Z"
+      "modified_at": "2026-07-10T02:49:46.808Z",
+      "ran_at": "2026-07-10T02:49:46.616Z",
+      "comments": [
+        {
+          "at": "2026-07-10T02:49:46.808Z",
+          "text": "Cross-model review (pij gpt-5.6-sol): APPROVE_WITH_NOTES — Dim-0 mutation-proven both suites; 2 MEDIUM notes verified + fixed inline (frozen-bytes envelope test; guide claim narrowed). reviews/review.phase-1.md",
+          "kind": "validation"
+        }
+      ]
     },
     {
       "id": "ship",
@@ -615,14 +693,20 @@
         "review-2"
       ],
       "created_at": "2026-07-10T02:01:58.549Z",
-      "modified_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T03:09:32.229Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
         "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
       ],
-      "command": "/builder 6 implement"
+      "command": "/builder 6 implement",
+      "comments": [
+        {
+          "at": "2026-07-10T03:09:32.229Z",
+          "text": "Tasks dossier written (T001–T008) + validated by Opus subagent: VALIDATED, no material issues (validations/phase-2-encode-discipline-tripwire-tasks-validation.md). Key delta: lockstep test doesn't exist — T001 creates it."
+        }
+      ]
     },
     {
       "id": "review-2",
@@ -646,12 +730,12 @@
       "id": "boot-2",
       "type": "harness-boot",
       "label": "Boot check (P2)",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-07-10T02:01:58.549Z",
-      "modified_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T03:02:03.998Z",
       "branch_of": "phase-2",
       "instructions": [
         "Recommended pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -662,7 +746,8 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "ran_at": "2026-07-10T03:02:03.998Z"
     },
     {
       "id": "observe-2",
