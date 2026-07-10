@@ -109,6 +109,34 @@ describe('057 T004 — mutation envelopes under --quiet', () => {
     ]);
   });
 
+  it('default mutation stdout is BYTE-identical to the frozen envelope (review P1 note 1)', async () => {
+    // Reviewer finding (review.phase-1.md MEDIUM 1): key-set equality cannot
+    // detect field reordering, changed values, or serialization drift. This
+    // pins the exact bytes under the fixed FakeClock — any envelope change
+    // (order, value, whitespace, trailing output) goes RED here.
+    const fs = new FakeFs({}, {});
+    const deps = fakeDeps(fs);
+    await createdFlow(deps);
+    let out = '';
+    const writers: Writers = {
+      out: (t) => {
+        out += t;
+      },
+      err: () => {},
+    };
+    const io: CliIo = { mode: 'json', writers };
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c ?? 0}`);
+    }) as never);
+    await expect(
+      buildProgram('0.4.0', io, deps, EMPTY).parseAsync(['node', 'harness', ...MUTATE]),
+    ).rejects.toThrow(/^exit:/);
+    vi.restoreAllMocks();
+    expect(out).toBe(
+      '{"command":"flow","status":"ok","timestamp":"2026-06-18T00:00:00.000Z","data":{"path":"/repo/.harness/flows/q.json","slug":"q","kind":"harness-loop","now":"boot","next":null,"node_count":7,"event_count":2}}\n',
+    );
+  });
+
   it('read verbs are untouched: flow show keeps its full summary even under quiet io', async () => {
     const fs = new FakeFs({}, {});
     const deps = fakeDeps(fs);

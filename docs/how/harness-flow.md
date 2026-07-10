@@ -129,14 +129,16 @@ Scope is deliberately narrow (plan 057): mutation verbs only — `create`, `show
 `nav show`, `orient`, `rail` and every non-flow command keep their full shape, and
 without the flag output is byte-identical to before.
 
-### Telemetry: mutations become per-stage attribution for free
+### Telemetry: position moves become per-stage attribution for free
 
-Every mutation lands in the flow's append-only `events[]`, and session telemetry
-projects those entries as `flow_log` markers. Since plan 057 the report layer's
-`flow_stage` lens derives **per-stage token/time attribution** from the
-`cursor-moved` markers (stage of an event = latest transition at-or-before its
-time — retroactive over existing captures). Practical upshot: **drive position
-with `nav set --now` at every real stage change** and your sessions gain accurate
+Position transitions (`nav set --now`) and structural mutations land in the
+flow's append-only `events[]` (advisory-only writes — `nav set --next`,
+`--intent`, `nav meta set` — do not), and session telemetry projects those
+entries as `flow_log` markers. Since plan 057 the report layer's `flow_stage`
+lens derives **per-stage token/time attribution** from the `cursor-moved`
+markers (stage of an event = latest transition at-or-before its time —
+retroactive over existing captures). Practical upshot: **drive position with
+`nav set --now` at every real stage change** and your sessions gain accurate
 per-stage economics with no extra ceremony; the report's
 `provenance.flow_stage_mechanism.flow_log` count shows the mechanism at work.
 
