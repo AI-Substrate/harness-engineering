@@ -287,6 +287,24 @@ Everything a stage emits — plans, task tables, execution logs, reviews, narrat
 
 **Safety floor — never compress these.** Default-omit applies to **decorative prose only**. Must-see fields are always shown, verbatim and in full: gate verdicts, `**Status**`, the `PROCEED`/`ABORT` line, file paths, `⚠️ GAP` / failed-gate callouts, and any structured alarm a stage is told to lift. When unsure whether a line is decorative or must-see, keep it.
 
+### Model-to-task fit & delegation
+
+Match work to the cheapest tier that preserves quality; explicit user or context instructions always override the defaults.
+
+| Work | Default placement |
+|---|---|
+| Bounded chores, searches, artifact collection, git ceremony | Cheap/Sonnet-class worker |
+| Analysis, research, review, critique | Capable/Opus-class worker |
+| Judgement, design, adjudication, genuinely hard review | Lead model |
+
+Delegate when the work is bounded, independently executable, and its return can be checked from evidence. Keep it with the lead when it is a short direct action, shares a serial reasoning chain, or depends on unresolved judgement.
+
+Escalate when a worker reports material uncertainty, contradictory evidence, missing access, or a task that grew beyond its packet. A tier is a starting posture, never a substitute for reading the result.
+
+Worker packets name `tier:`, the owned question/task, allowed paths or sources, exclusions, and the return shape. Returns carry the conclusion, exact evidence pointers, material unknowns, and no duplicated context.
+
+Rationale: [`harness-foundations/rules-of-why.md`](../../../harness-foundations/rules-of-why.md) Rules 5–6 — spend inference where it changes the outcome, and move bounded work out of the lead context.
+
 ### Harness router posture
 
 Harness seams are **flow-owned** — the where/when lives in [`harness-seams.md`](./harness-seams.md), the edges in the Graph above, the *what* in the external `/eng-harness-flow` router. **Sub-skills carry no harness *orchestration* — no seam/routing/lifecycle-hook knowledge** (they are **orchestration-blind** verbs); the engine owns every seam as a print-then-offer beat at the edge. One narrow exception: a verb may `harness observe` a friction it hits at the moment it bites (execution-log note as the fallback when harness-less), since capturing friction is not orchestration (SKILL.md invariant #14). Best-effort, advisory, never gates/blocks/scores; one calm warning when not installed; envelope verdicts narrated verbatim (`healthy / SLOW / UNHEALTHY / UNAVAILABLE`); children private and never named. Full detail: `harness-seams.md`.

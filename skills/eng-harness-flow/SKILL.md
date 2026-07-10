@@ -25,6 +25,8 @@ Agents optimise for the requested task — fix the bug, add the feature, reach "
 
 Code review checks the **product**. The harness loop reviews the **process that produced** the code.
 
+**Token and model posture.** Spend tokens where they can change the outcome; delegate bounded chores to cheaper tiers, analysis/review to capable tiers, and keep judgement with the lead unless context overrides. See builder `references/00-routing.md` § Model-to-task fit & delegation and `harness-foundations/rules-of-why.md` Rules 5–6.
+
 **The loop — four beats:**
 1. **Before work** — prove the environment and check backpressure (`--hook pre-flight`, then `--hook pre-coding`).
 2. **During work** — capture friction the moment it bites: `harness observe "<what was hard or unproven>" --kind <kind>`. Fire on: a retry or backtrack · a >30s wait on a tool · a search that returned nothing where you expected matches · a failure you had to *guess* to interpret · runtime behaviour you could only *infer* (no smoke path / log / trace / health evidence) · an architecture, dependency, security, or schema constraint you *eyeballed* that a check could have proved · hidden or tribal setup · catching yourself thinking "if only there were a…".

@@ -69,9 +69,13 @@ Otherwise → **Phase Mode** (continue).
 
 2) **Prior Phase Review** (skip if Phase 1):
 
+   Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
+
    Determine all prior phases. Launch **parallel subagents** (one per prior phase) with this focused template:
 
    "Review Phase X implementation. Read:
+   tier: Opus-class
+
    - `PLAN_DIR/tasks/${PHASE_X_SLUG}/tasks.md`
    - `PLAN_DIR/tasks/${PHASE_X_SLUG}/execution.log.md`
    - Plan progress tracking for Phase X

@@ -24,6 +24,20 @@ Session-level anchors (unchanged semantics): 056 session = 59,049 fresh-in / 182
 
 This 057 build's own sessions (orchestrator + workers), captured under the same mechanism, appended here as the first *multi-stage* self-measured sample — expected: >1 stage bucket, `stage_labels_unavailable` absent, flow_log the dominant mechanism.
 
+### First "after" sample — 2026-07-10, the P2 build session itself (T007)
+
+Month sweep re-run mid-P2 (39 sessions exported), `flow_stage` rollup:
+
+| stage | semantic | windows | active time | fresh in | out |
+|---|---|---|---|---|---|
+| phase-1 | implement | 2 | 7,460s | 59,049 | 182,379 |
+| unlabeled | — | 1 | 1,341s | 1,426 | 50,726 |
+| **phase-2** | implement | 2 | 1,881s | 0\* | 0\* |
+
+`provenance.flow_stage_mechanism`: `{flow: 2, digit: 0, unlabeled: 1, flow_log: 2}` — **flow_log 1 → 2**: this session's own `nav set` moves (review-1 → phase-2, driven with `--quiet`) produced the new window with zero extra effort — the capture is ambient, exactly the AC-01 claim. >1 stage bucket present; `stage_labels_unavailable` absent.
+
+\* Token columns are 0 because this session was still open at sweep time (`token_coverage: 4 measured / 35 unmeasured` month-wide — usage lands when a session's log closes). The **stage windows and time attribution are the deterministic evidence here**; the filled token columns arrive free at the ship-time sweep and the T+3wk tripwire re-run (runbook § capture-health). Delegation note: P2's coder/reviewer are pij copilot peers — separate sessions, NOT in this claude-session rollup (P1 T007: MIXED/SEPARATE).
+
 ## Interpretation guards (V-04)
 
 Cross-journey deltas are **non-normalized** (task size confounded; three interventions land together). Capture-health (mechanism counts, marker density, token_coverage) is the deterministic evidence class; stageEconomics deltas are directional only. Delegation impact: see T007's adapter answer in the execution log before reading any subagent-heavy session's totals.

@@ -245,8 +245,12 @@ If `${PLAN_DIR}/workshops/*.md` exist → read all; they are **authoritative des
 
 ### Research Subagents (2 parallel)
 
+Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
+
 **Subagent 1 — Domain & Pattern Scout**:
 "What exists that this plan needs to know about?
+
+tier: Opus-class
 
 Check:
 1. `docs/domains/` — existing domain contracts and composition
@@ -264,6 +268,8 @@ Format per finding: Title | Impact | What exists | What to do about it"
 
 **Subagent 2 — Risk & Constraint Finder**:
 "What could go wrong or surprise the implementor?
+
+tier: Opus-class
 
 Check:
 1. API limitations, framework gotchas

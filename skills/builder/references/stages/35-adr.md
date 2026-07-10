@@ -60,10 +60,14 @@ This context feeds into Subagent 5 (Domain Impact Analyzer) and informs the ADR'
 
 ## 0a) Parallel Research Architecture
 
+Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
+
 Launch **5** specialized research subagents (single message with 5 Task tool calls):
 
 **Subagent 1: Existing ADR Scanner**
 "Find and analyze all existing ADRs in docs/adr/.
+
+tier: cheap/Sonnet-class
 
 **Tasks**:
 - List all ADR files in docs/adr/
@@ -78,6 +82,8 @@ Launch **5** specialized research subagents (single message with 5 Task tool cal
 **Subagent 2: Doctrine Mapper**
 "Read and extract constraints from doctrine files.
 
+tier: cheap/Sonnet-class
+
 **Tasks**:
 - Read docs/project-rules/constitution.md if present
 - Read docs/project-rules/{rules.md, idioms.md, architecture.md} if present
@@ -89,6 +95,8 @@ Launch **5** specialized research subagents (single message with 5 Task tool cal
 
 **Subagent 3: Decision Extractor**
 "Extract decision context from spec and clarifications.
+
+tier: Opus-class
 
 **Tasks**:
 - Read spec Summary, Goals, Risks & Assumptions, Clarifications
@@ -103,6 +111,8 @@ Launch **5** specialized research subagents (single message with 5 Task tool cal
 **Subagent 4: Alternative Analyzer**
 "Generate and analyze alternative approaches.
 
+tier: Opus-class
+
 **Tasks**:
 - Based on constraints, generate 3-5 plausible alternatives
 - For each alternative, identify pros/cons
@@ -115,6 +125,8 @@ Launch **5** specialized research subagents (single message with 5 Task tool cal
 
 **Subagent 5: Domain Impact Analyzer**
 "Analyze how this architectural decision affects domain boundaries, contracts, and the domain map.
+
+tier: Opus-class
 
 **Read**:
 - `docs/domains/registry.md` (if exists)
