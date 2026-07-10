@@ -1273,5 +1273,9 @@ function runMutation(
   if (invalid !== null) return emit(io, failureEnvelope(invalid, deps.clock));
   const written = writeFlowAtomic(resolved.path, root, result.doc, svc);
   if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
-  emit(io, formatOk('flow', summary(result.doc, written.path), deps.clock));
+  // Plan 057 (D1/AC-02): `--quiet` slims the repeated per-mutation summary echo
+  // to `{path}` — mutation verbs only; create/show/read verbs keep the frozen
+  // full shape, and the default (no flag) stays byte-identical.
+  const data = io.quiet === true ? { path: written.path } : summary(result.doc, written.path);
+  emit(io, formatOk('flow', data, deps.clock));
 }
