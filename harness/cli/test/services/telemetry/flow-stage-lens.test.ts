@@ -165,7 +165,12 @@ describe('T1.4 — digit fallback when no flow events exist', () => {
     const report = buildReport([s]);
     const fs = byKey(report.rollups.flow_stage);
     expect(Object.keys(fs).sort()).toEqual(['05', '07']);
-    expect(report.provenance.flow_stage_mechanism).toEqual({ flow: 0, digit: 2, unlabeled: 0 });
+    expect(report.provenance.flow_stage_mechanism).toEqual({
+      flow: 0,
+      digit: 2,
+      unlabeled: 0,
+      flow_log: 0,
+    });
     expect(fs['05'].semantic).toBeUndefined(); // a bare digit maps to nothing (honest)
   });
 
@@ -173,7 +178,12 @@ describe('T1.4 — digit fallback when no flow events exist', () => {
     const s = exportOf('d', [seg([theFlow(T(0)), turn(T(1), 30, 10)])]);
     const report = buildReport([s]);
     expect(Object.keys(byKey(report.rollups.flow_stage))).toEqual(['unlabeled']);
-    expect(report.provenance.flow_stage_mechanism).toEqual({ flow: 0, digit: 0, unlabeled: 1 });
+    expect(report.provenance.flow_stage_mechanism).toEqual({
+      flow: 0,
+      digit: 0,
+      unlabeled: 1,
+      flow_log: 0,
+    });
   });
 
   it('no flow rows at all when neither a flow event nor a /the-flow call exists', () => {
@@ -185,7 +195,12 @@ describe('T1.4 — digit fallback when no flow events exist', () => {
     ]);
     const report = buildReport([s]);
     expect(report.rollups.flow_stage.entries).toEqual([]);
-    expect(report.provenance.flow_stage_mechanism).toEqual({ flow: 0, digit: 0, unlabeled: 0 });
+    expect(report.provenance.flow_stage_mechanism).toEqual({
+      flow: 0,
+      digit: 0,
+      unlabeled: 0,
+      flow_log: 0,
+    });
   });
 });
 

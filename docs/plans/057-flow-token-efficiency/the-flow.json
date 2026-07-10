@@ -1,0 +1,677 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "flow-token-efficiency",
+  "nav": {
+    "now": "phase-1",
+    "next": null,
+    "intent": "Make builder + eng-harness-flow treat every token as gold: lean writing, lean build consumption, right-model/subagent delegation, and token-efficiency as a first-class harness-improvement target — measured against real telemetry (056 run as baseline)",
+    "bag": {
+      "mode": "Full",
+      "status": "active"
+    }
+  },
+  "created_at": "2026-07-10T01:41:07.130Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.10.0",
+    "branch": "057-flow-token-efficiency",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-07-10T01:41:07.130Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:41:07.141Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "flow-token-efficiency"
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:44:04.443Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:44:04.622Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:44:04.808Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "user_input"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:49:03.439Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:49:03.612Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:49:03.803Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-10T01:49:03.984Z",
+      "details": {
+        "from": "research",
+        "to": "research"
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "phase-2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "review-2",
+        "type": "review"
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "next"
+        ]
+      }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "boot-2",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "observe-2",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "retro-2",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.550Z",
+      "details": {
+        "node": "tripwire-review",
+        "type": "review"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.734Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "label"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:58.928Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:59.122Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:01:59.318Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:03:09.979Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:10:05.949Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:10:06.134Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:22:03.951Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:24:14.968Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:24:15.142Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:24:15.346Z",
+      "details": {
+        "node": "boot-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-10T02:24:15.532Z",
+      "details": {
+        "node": "boot-1",
+        "fields": [
+          "note"
+        ]
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "command": "/builder 1a explore",
+      "next": [
+        "plan"
+      ],
+      "instructions": [
+        "Explore how the relevant code works before you plan — start cheap, climb only when the evidence demands it; never jump straight to a plan.",
+        "Run /builder 1a explore \"<intent>\" — it produces research-dossier.md, a decision packet (not a transcript) with evidence links.",
+        "Done when the dossier names the core decision the plan must resolve and the findings that bound it."
+      ],
+      "modified_at": "2026-07-10T01:49:03.803Z",
+      "note": "Dossier: 13 findings, 4 historical, 4 risks. Headline: F-10 FlowEvent starvation — per-stage token attribution schema-true but capture-false; F-01 ~110-120KB boot read set; F-06 instructions[] channel proven+cheap",
+      "user_input": "get the new flow up. dogfood our new rules even before we right them. run explore. consider eng-harness-flow skill also in scope for works please. (so builder and eng-harness-flow) are in scope",
+      "ran_at": "2026-07-10T01:49:03.439Z",
+      "comments": [
+        {
+          "at": "2026-07-10T01:49:03.803Z",
+          "text": "F-10: 056 baseline is FlowEvent-starved (2 events); per-stage verification blocked until stage-transition emission exists — capture-density task likely phase-1 material",
+          "kind": "warning"
+        }
+      ]
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "done",
+      "command": "/builder 1b plan",
+      "next": [
+        "phase-1"
+      ],
+      "instructions": [
+        "Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.",
+        "Run /builder 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
+        "Done when <slug>-plan.md carries both halves and reads **Status**: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run."
+      ],
+      "modified_at": "2026-07-10T02:10:06.134Z",
+      "ran_at": "2026-07-10T02:01:58.928Z",
+      "note": "Plan v1.1.0 READY — validation V-01..V-04 (gpt-5.6-sol, NEEDS ATTENTION) verified against source and folded: T1.1 design-proof for stage-window mechanism (read-side flow_log primary), docs-manifest fix, manifest rows, tripwire two-evidence-class split. P1 now 10 tasks",
+      "comments": [
+        {
+          "at": "2026-07-10T02:03:09.979Z",
+          "text": "Cross-model validation delegated to pij peer pij-oa9v2o (copilot gpt-5.6-sol, --once) running /validate-v2 — replaces the in-window auto-run per user directive + delegation doctrine",
+          "kind": "note"
+        },
+        {
+          "at": "2026-07-10T02:10:06.134Z",
+          "text": "Cross-model verdict NEEDS ATTENTION → 4 findings folded → v1.1.0. Sidecar: validations/flow-token-efficiency-plan-validation.md",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "phase-1",
+      "type": "phase",
+      "phase": 1,
+      "label": "P1: Measure + slim the CLI",
+      "status": "in_progress",
+      "command": "/builder 6 implement",
+      "next": [
+        "review-1"
+      ],
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "modified_at": "2026-07-10T02:24:15.142Z",
+      "comments": [
+        {
+          "at": "2026-07-10T02:22:03.951Z",
+          "text": "P1 tasks dossier tabled (T001-T010) + validated clean by Opus subagent (1:1 traceability, all source anchors verified; 2 LOW notes in sidecar validations/phase-1-measure-slim-cli-tasks-validation.md)",
+          "kind": "validation"
+        }
+      ]
+    },
+    {
+      "id": "review-1",
+      "type": "review",
+      "label": "Review: P1",
+      "status": "assumed",
+      "command": "/builder 7 review",
+      "next": [
+        "phase-2"
+      ],
+      "zone": "flight",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "modified_at": "2026-07-10T02:01:58.549Z"
+    },
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "command": "/builder 8 ship",
+      "next": [],
+      "instructions": [
+        "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
+        "Run /builder 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
+        "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure survey",
+      "status": "assumed",
+      "branch_of": "plan",
+      "next": [
+        "plan"
+      ],
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "instructions": [
+        "Optional pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
+        "Run /eng-harness-flow --hook pre-coding --json — advisory output only; the plan verb does not auto-read it, so fold the findings in yourself.",
+        "Optional and skippable — never gates. Decline with a real `harness flow status backpressure --to skipped`, never a narrated skip."
+      ]
+    },
+    {
+      "id": "boot-1",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "done",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "run /eng-harness-flow --hook pre-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — read-only/advisory; narrate its envelope verbatim, never fabricate one.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status boot-1 --to skipped`."
+      ],
+      "modified_at": "2026-07-10T02:24:15.532Z",
+      "ran_at": "2026-07-10T02:24:15.346Z",
+      "note": "Satisfied by this session's real pre-flight at flow entry (boot HEALTHY: 2259 tests/4.3s, doctor ok) — same session, verdict stands"
+    },
+    {
+      "id": "observe-1",
+      "type": "observe",
+      "label": "Observe: P1",
+      "status": "assumed",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "harness observe \"<what>\" --kind <kind>",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "retro-1",
+      "type": "harness-retro",
+      "label": "Retro: P1 (drain)",
+      "status": "assumed",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "run /eng-harness-flow --hook post-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status retro-1 --to skipped`."
+      ]
+    },
+    {
+      "id": "retro-ship",
+      "type": "harness-retro",
+      "label": "Retro: ship (harvest)",
+      "status": "assumed",
+      "branch_of": "ship",
+      "next": [
+        "ship"
+      ],
+      "command": "run /eng-harness-flow --hook post-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
+        "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
+      ]
+    },
+    {
+      "id": "phase-2",
+      "type": "phase",
+      "label": "P2: Encode discipline + tripwire",
+      "status": "known",
+      "next": [
+        "review-2"
+      ],
+      "created_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T02:01:58.549Z",
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "command": "/builder 6 implement"
+    },
+    {
+      "id": "review-2",
+      "type": "review",
+      "label": "Review: P2",
+      "status": "assumed",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T02:01:58.549Z",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "zone": "flight",
+      "command": "/builder 7 review"
+    },
+    {
+      "id": "boot-2",
+      "type": "harness-boot",
+      "label": "Boot check (P2)",
+      "status": "assumed",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T02:01:58.549Z",
+      "branch_of": "phase-2",
+      "instructions": [
+        "Recommended pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — read-only/advisory; narrate its envelope verbatim, never fabricate one.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status boot-2 --to skipped`."
+      ],
+      "command": "run /eng-harness-flow --hook pre-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-2",
+      "type": "observe",
+      "label": "Observe: P2",
+      "status": "assumed",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T02:01:58.549Z",
+      "branch_of": "phase-2",
+      "instructions": [
+        "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "command": "harness observe \"<what>\" --kind <kind>",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-2",
+      "type": "harness-retro",
+      "label": "Retro: P2 (drain)",
+      "status": "assumed",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T02:01:58.549Z",
+      "branch_of": "phase-2",
+      "instructions": [
+        "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
+        "Skippable — advisory, never gates. Decline with a real `harness flow status retro-2 --to skipped`."
+      ],
+      "command": "run /eng-harness-flow --hook post-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "tripwire-review",
+      "type": "review",
+      "label": "T+3wk tripwire review (wild telemetry)",
+      "status": "assumed",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-07-10T02:01:58.549Z",
+      "modified_at": "2026-07-10T02:01:58.549Z",
+      "branch_of": "ship",
+      "instructions": [
+        "Re-entry affordance: after ~3 weeks of real wild usage, follow tripwire-runbook.md — pull post-deploy telemetry refs, diff stageEconomics + flow_stage mechanism counts against baseline/, and record a worked/partial/regressed verdict.",
+        "AC-09 owns the runbook contract; AC-11's subagent-attribution answer shapes interpretation."
+      ]
+    }
+  ]
+}
