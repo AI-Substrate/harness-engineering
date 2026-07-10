@@ -245,3 +245,13 @@ Phase 1 makes the change measurable and cheap at the CLI: stage-transition FlowE
 | FlowEvent density inflates telemetry volume | Low | Low | counts-only events, one per nav move; bounded slugs |
 | New instruction lines drift from doctrine over time | Medium | Medium | pinned by the extended lockstep test (2.1) |
 | P2 wording lands but behaviour doesn't change in the wild | Medium | High | that is exactly what AC-09's tripwire measures; decision table forces an honest verdict at T+3wk |
+
+## Fixes
+
+| ID | Created | Summary | Domain(s) | Status | Source |
+|----|---------|---------|-----------|--------|--------|
+| FX001 | 2026-07-10 | Retro-drain batch: check:docs verdict, root-vitest trap, doctor --quiet, installed-skill link, auto-render-on-mutate (drop the second render call), governance test wording | harness-cli, builder skill, repo docs | Proposed | retro 2026-07-10/001 (CONF-001, DL-002..005, DL-001-stranded) |
+
+#### FX001: flow friction fixes
+
+Retro-drain fix batch — full contract, tasks, and acceptance live in [`fixes/FX001-flow-friction-fixes.md`](fixes/FX001-flow-friction-fixes.md). Load-bearing decision: flow mutations auto-render the sibling `.md` (render verb retained, cadence's second call eliminated).
