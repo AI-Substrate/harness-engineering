@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "harness-retro-insights",
   "nav": {
-    "now": "review-2",
+    "now": "ship",
     "next": "ship",
     "intent": "a new eng-harness-flow command that reviews harness observations and retros across a plan or n-plans and reports the most valuable things to work on next to make engineering in the given repo better",
     "bag": {
@@ -503,6 +503,114 @@
         "from": "review-1",
         "to": "review-2"
       }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:40.697Z",
+      "details": {
+        "from": "review-2",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "STA-011",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:40.910Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-022",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:41.117Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-012",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:54.049Z",
+      "details": {
+        "node": "observe-1",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-013",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:54.506Z",
+      "details": {
+        "node": "observe-2",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-014",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:55.004Z",
+      "details": {
+        "node": "retro-1",
+        "from": "assumed",
+        "to": "skipped",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-015",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:55.251Z",
+      "details": {
+        "node": "retro-2",
+        "from": "assumed",
+        "to": "skipped",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-016",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-12T22:59:55.552Z",
+      "details": {
+        "node": "retro-ship",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -630,13 +738,26 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /builder 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
+      ],
+      "modified_at": "2026-07-12T22:59:41.116Z",
+      "ran_at": "2026-07-12T22:59:40.910Z",
+      "comments": [
+        {
+          "at": "2026-07-12T22:59:41.116Z",
+          "text": "Shipped: PR #66 https://github.com/AI-Substrate/harness-engineering/pull/66 (branch 058-harness-retro-insights). Telemetry flushed. Blind cross-model conformance PASS. 6 observe-buffer entries left pending for a future drain.",
+          "source": "agent",
+          "kind": "note",
+          "refs": [
+            "6b2b38dc"
+          ]
+        }
       ]
     },
     {
@@ -691,7 +812,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -708,13 +829,15 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Drained at phase end by the retro (drain) chore. Skippable — advisory, never gates.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "modified_at": "2026-07-12T22:59:54.049Z",
+      "ran_at": "2026-07-12T22:59:54.049Z"
     },
     {
       "id": "retro-1",
       "type": "harness-retro",
       "label": "Retro: P1 (drain)",
-      "status": "assumed",
+      "status": "skipped",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -728,13 +851,14 @@
         "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
         "Run /eng-harness-flow --hook post-coding --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-1 --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-12T22:59:55.004Z"
     },
     {
       "id": "retro-ship",
       "type": "harness-retro",
       "label": "Retro: ship (harvest)",
-      "status": "assumed",
+      "status": "done",
       "branch_of": "ship",
       "next": [
         "ship"
@@ -748,7 +872,9 @@
         "Recommended post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — read-only/advisory; narrate its envelope verbatim.",
         "Skippable — advisory, never gates. Decline with a real `harness flow status retro-ship --to skipped`."
-      ]
+      ],
+      "modified_at": "2026-07-12T22:59:55.552Z",
+      "ran_at": "2026-07-12T22:59:55.552Z"
     },
     {
       "id": "phase-2",
@@ -843,12 +969,12 @@
       "id": "observe-2",
       "type": "observe",
       "label": "Observe: P2",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-07-12T02:31:34.866Z",
-      "modified_at": "2026-07-12T02:31:34.866Z",
+      "modified_at": "2026-07-12T22:59:54.506Z",
       "branch_of": "phase-2",
       "instructions": [
         "Recommended mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -862,18 +988,19 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "ran_at": "2026-07-12T22:59:54.506Z"
     },
     {
       "id": "retro-2",
       "type": "harness-retro",
       "label": "Retro: P2 (drain)",
-      "status": "assumed",
+      "status": "skipped",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-07-12T02:31:34.866Z",
-      "modified_at": "2026-07-12T02:31:34.866Z",
+      "modified_at": "2026-07-12T22:59:55.250Z",
       "branch_of": "phase-2",
       "instructions": [
         "Recommended post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
