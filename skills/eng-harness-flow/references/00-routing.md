@@ -140,6 +140,7 @@ Once the required adoption rungs hold, the router crosses into the loop and disp
 | mid-build (doing work) | capture is one CLI call — `harness observe "<what>" --kind <kind>` *(silent; capture judgment lives in the `retro` verb § in-flight capture)* | one buffer entry per call |
 | phase / session end · **buffer non-empty** | `retro` verb `--drain` | buffer drained → `.retro.md` (`next_suggested: --harvest`) |
 | phase / session / plan end · **buffer empty** | `retro` verb `--harvest` | curated cross-plan view |
+| ad-hoc cross-plan analysis (`at=insights`; scope flags pass through) | `retro` verb `--harvest`, backed by `harness retro insights --json` | narrated cross-plan insights + cluster member provenance |
 | improvement chosen | route the improvement by its shape — **sensor-shaped friction (a recurring check / diagnostic / proof you kept inferring → targets `project-sensor` / `runtime-inspectability` / `architecture-fitness` / `security` / `schema`) routes to `add-extension`** (scaffold a first-class, discoverable `harness <verb>`, the encoding move proper) · a one-off convenience → retro `[e]ncode` (recipe/doc) · larger work → a fix-plan command · (harness-product friction in a consumer repo) → an upstream issue on `AI-Substrate/harness-engineering` | the encoded harness change (or the filed upstream issue) |
 
 - **Backpressure → `/grill-agent-done` (optional peer skill).** When the `backpressure` survey returns `ABSENT`/`BUILDABLE` sensors, the coach may offer `/grill-agent-done` before architect — a standalone skill in this repo (`skills/grill-agent-done/`) that interrogates and defends the definition of done one claim at a time, lining each against the right proof grade. **Not** a routed stage: the router points at it, exactly as the survey informs but never gates. Skippable; offer once.
@@ -190,6 +191,7 @@ The skill works with **no** arguments (full auto-detect), but a parent driving i
 ```
 /eng-harness-flow [--hook <name>] [at=<stage>] [--event <seam>] [--plan-dir <path>] [--spec <path>]
                   [--phase <id>] [--prompt-optional <bool>] [--repo <path>] [--json] [--hooks] [--help]
+                  [--plan <slug>...] [--agent <slug>] [--since <date>] [--kind <kind>]
 
 at=auto            (default) detect from signals A–J
 at=adopt           force the on-ramp (install / finish adoption / stamp governance); alias at=setup
@@ -198,6 +200,7 @@ at=backpressure    force the backpressure verb (post-spec seam)
 at=observe         guidance only; with --entry-* it silently runs `harness observe`
 at=retro-drain     force the retro verb --drain (phase/session end)
 at=retro-harvest   force the retro verb --harvest (plan complete)
+at=insights        route the ad-hoc cross-plan insights surface (retro harvest mode)
 at=improve         route a chosen improvement (retro [e]ncode / add-extension / fix-plan)
 
 --hook <name>      pre-flight | pre-coding | coding | post-coding | post-flight
@@ -210,6 +213,10 @@ at=improve         route a chosen improvement (retro [e]ncode / add-extension / 
 --plan-dir <path>  pin the plan the loop stage refers to (disambiguates >1 plan)
 --spec <path>      pin the spec for backpressure scoping
 --phase <id>       pin the phase for boot/retro
+--plan <slug>      insights scope: include one plan slug; repeatable
+--agent <slug>     insights scope: include one agent slug
+--since <date>     insights scope: include records at or after this ISO date
+--kind <kind>      insights scope: include one exact observation kind
 --prompt-optional  <bool>  parent owns skip-suppression for optional offers (default true)
 --repo <path>      operate on a repo other than cwd (multi-repo callers; reserved for v2)
 --json             return the routing decision as a machine-readable envelope
@@ -272,6 +279,7 @@ When a hint conflicts with the detected signals, the router resolves **determini
 | `at=backpressure` | no spec, or >1 spec and no `--spec` | `redirect` / `ambiguous` | ask for `--spec`, or route to `/plan-1b` first |
 | `at=retro-drain` | buffer empty | `noop` | "nothing to drain"; suggest `--harvest` if `.retro.md` exist |
 | `at=retro-harvest` | buffer non-empty | `redirect` | drain first; `next_suggested: --drain` then `--harvest` |
+| `at=insights` | buffer non-empty | `route` | run the read-only insights surface now; carry a drain advisory in the envelope (`buffer_pending`, `next_suggested: --drain`) but **never redirect**; pass `--plan` / `--agent` / `--since` / `--kind` through to `harness retro insights --json` |
 | `at=adopt` (or alias `at=setup`) | adoption already complete | `noop` | "harness already adopted"; suggest `at=boot` |
 | `at=auto` | >1 candidate plan, no `--plan-dir` | `ambiguous` | list plans, ask / require `--plan-dir` |
 

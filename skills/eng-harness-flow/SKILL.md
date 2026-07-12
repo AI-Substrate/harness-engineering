@@ -5,7 +5,7 @@ description: |
   pursue two goals at once: complete the requested task, AND improve the
   deterministic engineering environment future agents and teammates inherit.
   Before work: boot and check backpressure. During work: capture friction and
-  missing proof. After work: drain/harvest observations. At closeout: offer to
+  missing proof. After work: drain/harvest observations and cross-plan insights. At closeout: offer to
   encode the best lesson as a command, check, fixture, sensor, diagnostic,
   template, default, or clearer error. Advisory means the user is never blocked —
   it does NOT mean the agent may silently skip the loop. Mechanically a stateless

@@ -69,6 +69,14 @@ compaction (the buffer lives on disk):
   save what matters via \`harness record retro\` (use the returned
   \`data.path\`) → \`harness observe --clear\`.
 
+## Cross-plan retro insights
+
+Use \`harness retro insights --json\` when you need recurrence, proof-gap,
+staleness, disposition, or lifecycle-status evidence across committed retro
+records. The verb scans canonical and legacy sources, computes every number
+deterministically, carries source \`members[]\` on each cluster, reports pending
+observe-buffer entries as an advisory only, and writes nothing.
+
 ## Where briefings live
 
 Each extension is a little package: \`.harness/extensions/<name>/\` with

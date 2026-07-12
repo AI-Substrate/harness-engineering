@@ -1,0 +1,4 @@
+# Original ask — harness-retro-insights
+**Captured**: 2026-07-12T02:08:00Z  ·  **By**: /the-flow
+
+> we need a new eng-harness-flow command that reviews harness observations and retros acros a plan or n-plans and reports on most valubalbe things to work on next to make engiering in the given repo better. first read the skill, ready builder skill then read these to get a firm handle on harness concept. Read /Users/jordanknight/substrate/harness-engineering/harness-foundations/rules-of-why.md and /Users/jordanknight/github/present/presentations/harness/missing-layer-101/missing-layer-101.md and /Users/jordanknight/github/present/presentations/harness/self-improving-agents-and-back-pressure/self-improving-agents-and-back-pressure-original.md to truely understand the engineering harness concept

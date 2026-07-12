@@ -35,8 +35,8 @@ $ARGUMENTS
 #             there is nothing to "run"; you call `harness observe` directly as you work.
 # --drain     Session-end: read pending observations (all buckets), present the soft prompt,
 #             materialize saved entries into a committed record via `harness record retro`
-# --harvest   Long-horizon: scan + cluster + prioritize committed retro records; print the curated view
-# --harvest --json   Machine-readable render (for `just compound-value`, CI hooks)
+# --harvest   Long-horizon: run `harness retro insights --json`; narrate its curated view
+# --harvest --json   Machine-readable pass-through of `harness retro insights --json`
 # Plus --harvest runtime filters: --plan <slug> / --agent <slug> / --since <date> / --kind <kind>
 # Plus --harvest --prune --older-than <Nd> [--apply]   Reversible stale-retro pruning (dry-run by default)
 ```
@@ -393,32 +393,29 @@ The reader/curator side. Auto-fires at long-horizon reflection moments; runnable
 
 ### Buffer-non-empty advisory
 
-At start, run `harness observe --list --json`. Pending entries anywhere → print one line before scanning:
+Read `data.buffer_pending` from the insights envelope. Pending entries anywhere → print one line before narrating:
 
 > ℹ️ Buffer has N unbubbled entries. Consider running `--drain` first so they land in the harvest view.
 
 Then proceed anyway (harvest reads committed records; transient scratch is unrelated).
 
-### Step 1 — Scan + validate
+### Steps 1–3 — Compute once
 
-- **Canonical**: `.harness/records/retro/**/*.md` — the records `--drain` materializes (dated subdirs).
-- **Legacy (back-compat)**: `docs/harness/agents/**/*.retro.md`, then `docs/retros/*.md` (minih's old per-agent format; skip `*.legacy.md`; map blocks via workshop 005 § D9 `minihToUniversal`).
+Run exactly one deterministic command:
 
-Per file: parse the YAML frontmatter; validate against the bundled [`../retro.schema.json`](../retro.schema.json) (mirror of the frozen `docs/harness/schemas/retro.schema.json`; neither present → `⚠ retro schema not found — skipping validation`, never block). Invalid → warn with the path, skip the whole retro (no half-parse).
+```bash
+harness retro insights --json
+# Pass through any supplied scope flags verbatim:
+# --plan <slug> (repeatable) · --agent <slug> · --since <ISO> · --kind <kind>
+```
 
-### Step 2 — Dedup, version skew
+The CLI owns the canonical + legacy scan, validation, source-precedence deduplication, schema-skew accounting, clustering, stale detection, and frozen priority order. Do not rescan records, recluster entries, or re-rank rows in the skill.
 
-Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harness/records/retro/` → `docs/harness/agents/**` → `docs/retros/*`. Unknown **major** `schema_version` → `⚠ Skipped 1 retro with unsupported schema_version: <path>`; minor skew is silent.
-
-### Step 3 — Curate
-
-- **Cluster** open entries by `(kind, target)`; count, age-order (oldest `first_seen_at` first), track source agents.
-- **Stale flags** (observational, never enforced): `open` > **4 weeks** → stale; `suggested` > **2 weeks** without `resolved_by` → stale.
-- **Prioritize top-10**: recurrence (count) → severity (`blocking` > `degrading` > `annoying` > none) → back-pressure leverage (clusters indicating missing proof/sensors/evidence/architecture/security/schema checks stay legible as proof-improvement candidates — display guidance only, no gate, no score, no index) → age.
-- **Token-cost framing (the leak detector)**: a recurring cluster is **the same inference being re-paid in tokens every session until someone encodes it** into the environment. Label recurrence with that cost. Display wording only — schema, statuses, and clustering logic are unchanged.
-- Recognize proof/back-pressure candidates by targets (`project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `infra`, `tooling`), by mentions of smoke/screenshot/log/trace/health/dependency-rule/CodeQL/schema checks, and by workarounds like "read code manually" / "eyeballed". Keep original fields intact; never rewrite kinds. **The remedy for a recurring proof/sensor cluster is a first-class `harness <verb>` extension (`harness new <verb>`)** — a discoverable, runnable sensor — not a one-off recipe; surface that as the encoding for these clusters (the "command" route below).
+Use the envelope's `data.headline`, `data.sources`, `data.malformed_skipped`, `data.unsupported_versions`, and `data.sections` as the sole computed source. **Narration restates the verb's computed numbers, never computes its own.** Agent judgement may explain why a cluster matters or which encoding shape fits, but every count, date, status, rank, proof-gap signal, and recurrence claim comes from the verb.
 
 ### Step 4 — Print the view (NO on-disk writes)
+
+Render this human view as the narration template for the verb's JSON; preserve its wording and action invitation while substituting only values supplied by the envelope:
 
 ```
 🌾 Harness retro harvest — 2026-06-10T03:30:00Z
@@ -426,14 +423,15 @@ Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harn
 📚 Scanned 27 retros across 3 agents · Date range: 2026-04-10 → 2026-06-10
    Total entries: 47 (28 open, 17 encoded, 2 wontfix)
 
-📊 Open clusters (top 10 by recurrence > severity > back-pressure leverage > age):
-   1. [tooling] grep/search slowness — 4 entries across 5 sessions
-      ↻ re-paid every session since 2026-05-14 — encode it and stop paying
-   2. [proof/project-sensor] missing smoke or visual evidence — 3 entries
+📊 Open clusters (in verb-emitted rank order):
+   1. [tooling] 4 open entr(y/ies)
+      Count: 4 · first seen: 2026-05-14 · proof gap: true · repeatedly deferred: false
+   2. [proof/project-sensor] 3 open entr(y/ies)
+      Count: 3 · first seen: 2026-05-20 · proof gap: true · repeatedly deferred: true
    ...
 
-⏰ Stale (>4 weeks open): 3 entries
-✅ Recently encoded (last 7 days): 6 entries — see scratch/encode-*.diff
+⏰ Stale: DL-002 is stale (open, 32d) (n=1)
+✅ Lifecycle totals: 17 encoded · 28 open
 
 To mark a cluster, say its number plus how it landed:
 "done" (encoded) · "won't-fix" · "stale".
@@ -441,29 +439,68 @@ To mark a cluster, say its number plus how it landed:
 
 Nothing is written to disk by the harvest itself (workshop 006 § D4 KISS: no `_LEDGER.md`, no rollups — drift, git noise, and ceremony cost more than a <1s recompute). For raw browsing: `ls .harness/records/retro/` — the record dir IS the browse surface.
 
-#### `--json` (machine-readable, same computed view)
+#### `--json` (machine-readable source for the same view)
 
-Stable contract (`schema_version` semver, bump on breaking change):
+`--harvest --json` consumes the standard envelope from `harness retro insights --json`. The report contract lives under `data`:
 
 ```json
 {
-  "schema_version": "1.0.0",
-  "generated_at": "<ISO>",
-  "retros": 27,
-  "entries": { "total": 47, "open": 28, "suggested": 2, "encoded": 17,
-               "wontfix": 0, "dismissed": 0, "escalated": 0, "stale": 0 },
-  "top_clusters": [ { "kind": "difficulty", "target": "tooling", "count": 4,
-                      "oldest": "<ISO>", "representative": "<description>" } ],
-  "harness": { "maturity": "L2", "last_validation": null, "boot_ms": null, "verdict": null }
+  "command": "retro",
+  "status": "ok",
+  "data": {
+    "schema_version": "harness.retro-insights/v1",
+    "generated_at": "<ISO>",
+    "headline": {
+      "records": 27,
+      "entries": 47,
+      "plans_touched": ["<plan-slug>"],
+      "agents": ["<agent-slug>"],
+      "date_range": { "from": "<ISO>", "to": "<ISO>" },
+      "status_counts": {
+        "open": 28,
+        "suggested": 2,
+        "encoded": 17,
+        "wontfix": 0,
+        "stale": 0,
+        "other": 0
+      }
+    },
+    "sections": {
+      "top_clusters": {
+        "rows": [
+          {
+            "kind": "difficulty",
+            "target": "tooling",
+            "n": 4,
+            "proof_gap": true,
+            "proof_gap_signal": "keyword",
+            "members": [
+              {
+                "record_path": ".harness/records/retro/<date>/<record>.md",
+                "retro_id": "<retro-id>",
+                "entry_id": "DL-001",
+                "status": "open"
+              }
+            ],
+            "caveat": "<non-empty caveat>"
+          }
+        ]
+      },
+      "stale": { "rows": [] },
+      "disposition_mix_records": { "rows": [] }
+    },
+    "buffer_pending": 0
+  }
 }
 ```
 
-- `entries.*` counts by `system.compound.status` (missing status counts as `open`).
-- `top_clusters` capped at 10, same priority order as the default view.
-- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever the `harness-change` record ledger doesn't supply; no governance doc → all four `null`.
-- Empty tree → `{"retros": 0, "entries": {"total": 0, …}, "top_clusters": []}` — still valid JSON.
+- `data.headline.status_counts` carries the lifecycle totals; missing status was normalized to `open` by the verb.
+- `data.sections.top_clusters.rows` is capped at 10 in the frozen priority order; every row carries `n`, `caveat`, and `members[]` provenance.
+- `data.sections.stale.rows` and `data.sections.disposition_mix_records.rows` supply the remaining narrated sections.
+- `data.buffer_pending` is advisory and excluded from every committed-record count.
+- Empty corpus → `headline.records: 0`, `headline.entries: 0`, and empty section rows — still a valid envelope.
 
-Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harvest --json | jq …` elsewhere.
+Consume the real verb directly: `harness retro insights --json | jq …`.
 
 ### Step 5 — Action menu
 
@@ -472,6 +509,8 @@ The same save routes as the drain (keep all / pick / skip / tasks / plan / diffs
 - **"done"** (it's been encoded) → `status: encoded`; prompt for `resolved_by:` (commit hash / PR URL / diff path)
 - **"won't-fix"** → `status: wontfix`
 - **"stale"** → `status: stale`
+
+For every lifecycle op, resolve the chosen row from `data.sections.top_clusters.rows` and use each `members[].record_path` as the source-file pointer. Never repeat the corpus scan to rediscover the cluster's records.
 
 A cluster whose `target` is `harness-itself` (or that clearly points at a `harness …` command / vendored skill) in a **consumer repo** can't be resolved by a local edit — recurrence here is token cost paid every session. Offer the same **upstream issue** as the drain's § Harness-itself entries (`gh issue create --repo AI-Substrate/harness-engineering …`, or the web fallback), framing the cluster `count` as the cost. Once filed, use the issue URL as `resolved_by:` and mark it **done**. In the harness's own repo, route it to a local source fix instead.
 
