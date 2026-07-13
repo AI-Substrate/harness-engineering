@@ -10,6 +10,14 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.12.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.11.0...v0.12.0) (2026-07-13)
+
+
+### Features
+
+* **retro:** harness retro insights — cross-plan analysis verb + flow harvest surface (plan 058) ([#66](https://github.com/AI-Substrate/harness-engineering/issues/66)) ([ec5b785](https://github.com/AI-Substrate/harness-engineering/commit/ec5b78510a262f0ae4d3597b428c2846023e84bc))
+* **telemetry:** file-write event — path + change-delta for AI-authorship (plan 056) ([#62](https://github.com/AI-Substrate/harness-engineering/issues/62)) ([3fbdc32](https://github.com/AI-Substrate/harness-engineering/commit/3fbdc32e6a7ebaaec3676496996b22dad5297043))
+
 ## [0.11.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.10.0...v0.11.0) (2026-07-10)
 
 
