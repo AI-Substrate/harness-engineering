@@ -1,0 +1,2736 @@
+{
+  "schema_version": "harness.session-export/v1",
+  "identity": {
+    "harness_session_id": "08375079-813f-422d-a474-29c7bb3198db",
+    "harness": "copilot-cli",
+    "harness_version": "0.7.0",
+    "pij_session_id": "pij-1mx6yf1",
+    "branch": "feat/041-flow-conformance-eval",
+    "models": []
+  },
+  "source": {
+    "kind": "git-ref",
+    "root": "refs/harness-telemetry/*",
+    "segment_count": 4
+  },
+  "summary": {
+    "segment_schema_versions": {
+      "2.2": 4
+    },
+    "first_timecode": "2026-07-04T00:15:34.205Z",
+    "last_timecode": "2026-07-04T00:37:43.324Z",
+    "tokens": {
+      "in": 0,
+      "out": 0,
+      "cache_read": 0,
+      "cache_create": 0,
+      "total": 0,
+      "subagent_tokens": "unknown",
+      "grand_total": "unknown"
+    },
+    "degraded": [
+      "subagent_tokens"
+    ]
+  },
+  "signals": {
+    "logs": {
+      "resourceLogs": [
+        {
+          "resource": {
+            "attributes": [
+              {
+                "key": "service.name",
+                "value": {
+                  "stringValue": "harness"
+                }
+              },
+              {
+                "key": "service.version",
+                "value": {
+                  "stringValue": "0.7.0"
+                }
+              },
+              {
+                "key": "harness.session_id",
+                "value": {
+                  "stringValue": "08375079-813f-422d-a474-29c7bb3198db"
+                }
+              },
+              {
+                "key": "harness.harness",
+                "value": {
+                  "stringValue": "copilot-cli"
+                }
+              },
+              {
+                "key": "harness.command",
+                "value": {
+                  "stringValue": "checks"
+                }
+              },
+              {
+                "key": "harness.schema_version",
+                "value": {
+                  "stringValue": "2.2"
+                }
+              },
+              {
+                "key": "harness.branch",
+                "value": {
+                  "stringValue": "feat/041-flow-conformance-eval"
+                }
+              },
+              {
+                "key": "harness.env",
+                "value": {
+                  "kvlistValue": {
+                    "values": [
+                      {
+                        "key": "PIJ_HARNESS",
+                        "value": {
+                          "stringValue": "copilot"
+                        }
+                      },
+                      {
+                        "key": "PIJ_PARENT_ID",
+                        "value": {
+                          "stringValue": "pij-4s10mb"
+                        }
+                      },
+                      {
+                        "key": "PIJ_SESSION_ID",
+                        "value": {
+                          "stringValue": "pij-1mx6yf1"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+          "scopeLogs": [
+            {
+              "scope": {
+                "name": "harness.telemetry",
+                "version": "2.3"
+              },
+              "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+              "logRecords": [
+                {
+                  "timeUnixNano": "1783124134205000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "prompt"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:15:34.205Z"
+                      }
+                    },
+                    {
+                      "key": "harness.prompt.words",
+                      "value": {
+                        "intValue": "29"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124138964000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:15:38.964Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "6"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "pij"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "72"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124140906000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "prompt"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:15:40.906Z"
+                      }
+                    },
+                    {
+                      "key": "harness.prompt.words",
+                      "value": {
+                        "intValue": "7"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124146813000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "turn"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:15:46.813Z"
+                      }
+                    },
+                    {
+                      "key": "harness.turn.dur_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124162656000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "prompt"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:16:02.656Z"
+                      }
+                    },
+                    {
+                      "key": "harness.prompt.words",
+                      "value": {
+                        "intValue": "57"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124165955000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:16:05.955Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "7"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "14"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "13768"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124180140000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "prompt"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:16:20.140Z"
+                      }
+                    },
+                    {
+                      "key": "harness.prompt.words",
+                      "value": {
+                        "intValue": "40"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124188564000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:16:28.564Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "pij"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "64"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124188565000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:16:28.565Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "12"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "60"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "16087"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124274556000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:17:54.556Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "grep"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "882"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124280554000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:18:00.554Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1607"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124280554000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:18:00.554Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "glob"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "191"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124287791000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:18:07.791Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "2095"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124303086000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:18:23.086Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "glob"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "83"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124303087000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:18:23.087Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "grep"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1779"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124303087000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:18:23.087Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "4"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "13"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "4987"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124355987000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:19:15.987Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "grep"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1496"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124364912000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:19:24.912Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "10"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124364912000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:19:24.912Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "grep"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "319"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124419349000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:20:19.349Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "6"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "2485"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124458807000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:20:58.807Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "4"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "39"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "3905"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124608033000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:23:28.033Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "594"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124608033000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:23:28.033Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "19"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1474"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124645921000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:24:05.921Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "create"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "31"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124662143000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:24:22.143Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "sql"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "4"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "40"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124676380000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:24:36.380Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "4"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "32"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "124"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124792748000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:26:32.748Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "create"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "36"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124816128000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:26:56.128Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "13"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "131"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "428"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124952166000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:29:12.166Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "170"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124958514000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:29:18.514Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "34"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124961635000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:29:21.635Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "4"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "25"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1588"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783124991518000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:29:51.518Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "944"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125014714000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:30:14.714Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "18"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1109"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125147489000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:32:27.489Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "create"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "37"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125147656000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:32:27.656Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "491"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125158219000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:32:38.219Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "34"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125161771000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:32:41.771Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "71"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125168001000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:32:48.001Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "3"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "553"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125194365000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:33:14.365Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "26"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "68"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125238637000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:33:58.637Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "178"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125245332000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:05.332Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "5"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "68"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125253860000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:13.860Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "107"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125260502000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:20.502Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "sql"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "22"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125263690000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:23.690Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "335"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125267026000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:27.026Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "view"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1483"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125274930000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:34.930Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "edit"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "13"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "50"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125297971000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:34:57.971Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "7"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "38"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "1799"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125332062000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "turn"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:35:32.062Z"
+                      }
+                    },
+                    {
+                      "key": "harness.turn.dur_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125332062000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "harness"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:35:32.062Z"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t_precision",
+                      "value": {
+                        "stringValue": "anchored"
+                      }
+                    },
+                    {
+                      "key": "harness.verb",
+                      "value": {
+                        "stringValue": "checks"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125436191000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "turn"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:16.191Z"
+                      }
+                    },
+                    {
+                      "key": "harness.turn.dur_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125436191000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "harness"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:16.191Z"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t_precision",
+                      "value": {
+                        "stringValue": "anchored"
+                      }
+                    },
+                    {
+                      "key": "harness.verb",
+                      "value": {
+                        "stringValue": "arch-check"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125451756000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:31.756Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "1"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "85"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125454876000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "turn"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:34.876Z"
+                      }
+                    },
+                    {
+                      "key": "harness.turn.dur_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125454876000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "harness"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:34.876Z"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t_precision",
+                      "value": {
+                        "stringValue": "anchored"
+                      }
+                    },
+                    {
+                      "key": "harness.verb",
+                      "value": {
+                        "stringValue": "markdown-lint"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125463324000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "tools"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:43.324Z"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.name",
+                      "value": {
+                        "stringValue": "bash"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.count",
+                      "value": {
+                        "intValue": "2"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.span_s",
+                      "value": {
+                        "intValue": "8"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.signature",
+                      "value": {
+                        "stringValue": "cd"
+                      }
+                    },
+                    {
+                      "key": "harness.tool.result_tokens",
+                      "value": {
+                        "intValue": "18"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125466061000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "turn"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:46.061Z"
+                      }
+                    },
+                    {
+                      "key": "harness.turn.dur_s",
+                      "value": {
+                        "intValue": "0"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "timeUnixNano": "1783125466061000000",
+                  "severityNumber": 9,
+                  "severityText": "INFO",
+                  "attributes": [
+                    {
+                      "key": "harness.event.kind",
+                      "value": {
+                        "stringValue": "harness"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t",
+                      "value": {
+                        "stringValue": "2026-07-04T00:37:46.061Z"
+                      }
+                    },
+                    {
+                      "key": "harness.event.t_precision",
+                      "value": {
+                        "stringValue": "anchored"
+                      }
+                    },
+                    {
+                      "key": "harness.verb",
+                      "value": {
+                        "stringValue": "markdown-lint"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "metrics": {
+      "resourceMetrics": [
+        {
+          "resource": {
+            "attributes": [
+              {
+                "key": "service.name",
+                "value": {
+                  "stringValue": "harness"
+                }
+              },
+              {
+                "key": "service.version",
+                "value": {
+                  "stringValue": "0.7.0"
+                }
+              },
+              {
+                "key": "harness.session_id",
+                "value": {
+                  "stringValue": "08375079-813f-422d-a474-29c7bb3198db"
+                }
+              },
+              {
+                "key": "harness.harness",
+                "value": {
+                  "stringValue": "copilot-cli"
+                }
+              },
+              {
+                "key": "harness.command",
+                "value": {
+                  "stringValue": "checks"
+                }
+              },
+              {
+                "key": "harness.schema_version",
+                "value": {
+                  "stringValue": "2.2"
+                }
+              },
+              {
+                "key": "harness.branch",
+                "value": {
+                  "stringValue": "feat/041-flow-conformance-eval"
+                }
+              },
+              {
+                "key": "harness.env",
+                "value": {
+                  "kvlistValue": {
+                    "values": [
+                      {
+                        "key": "PIJ_HARNESS",
+                        "value": {
+                          "stringValue": "copilot"
+                        }
+                      },
+                      {
+                        "key": "PIJ_PARENT_ID",
+                        "value": {
+                          "stringValue": "pij-4s10mb"
+                        }
+                      },
+                      {
+                        "key": "PIJ_SESSION_ID",
+                        "value": {
+                          "stringValue": "pij-1mx6yf1"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+          "scopeMetrics": [
+            {
+              "scope": {
+                "name": "harness.telemetry",
+                "version": "2.3"
+              },
+              "schemaUrl": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0",
+              "metrics": [
+                {
+                  "name": "harness.session.wall_seconds",
+                  "unit": "s",
+                  "sum": {
+                    "dataPoints": [
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asDouble": 1332
+                      }
+                    ],
+                    "aggregationTemporality": 2,
+                    "isMonotonic": false
+                  }
+                },
+                {
+                  "name": "harness.session.agent_working_seconds",
+                  "unit": "s",
+                  "sum": {
+                    "dataPoints": [
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asDouble": 1300
+                      }
+                    ],
+                    "aggregationTemporality": 2,
+                    "isMonotonic": false
+                  }
+                },
+                {
+                  "name": "harness.session.human_seconds",
+                  "unit": "s",
+                  "sum": {
+                    "dataPoints": [
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asDouble": 32
+                      }
+                    ],
+                    "aggregationTemporality": 2,
+                    "isMonotonic": false
+                  }
+                },
+                {
+                  "name": "harness.session.idle_seconds",
+                  "unit": "s",
+                  "sum": {
+                    "dataPoints": [
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asDouble": 0
+                      }
+                    ],
+                    "aggregationTemporality": 2,
+                    "isMonotonic": false
+                  }
+                },
+                {
+                  "name": "harness.session.working_ratio",
+                  "unit": "1",
+                  "gauge": {
+                    "dataPoints": [
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asDouble": 0.98
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "harness.tool.calls",
+                  "unit": "{call}",
+                  "sum": {
+                    "dataPoints": [
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "34",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "bash"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "32",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "view"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "5",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "grep"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "2",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "glob"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "3",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "create"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "3",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "sql"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "startTimeUnixNano": "1783124134205000000",
+                        "timeUnixNano": "1783125466061000000",
+                        "asInt": "25",
+                        "attributes": [
+                          {
+                            "key": "harness.tool.name",
+                            "value": {
+                              "stringValue": "edit"
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    "aggregationTemporality": 2,
+                    "isMonotonic": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

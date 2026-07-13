@@ -8,6 +8,7 @@ import { registerInstructionsAct } from './acts/instructions.js';
 import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
+import { registerRetroAct } from './acts/retro.js';
 import { registerSkillsAct } from './acts/skills.js';
 import { registerTelemetryAct } from './acts/telemetry.js';
 import { registerUpdateAct } from './acts/update.js';
@@ -68,6 +69,19 @@ export function jsonFlag(argv: string[]): boolean | undefined {
     return false;
   }
   if (argv.includes('--json')) {
+    return true;
+  }
+  return undefined;
+}
+
+/**
+ * Tri-state read of the flow-local quiet flag from argv (plan 057, D1). Same
+ * resolve-once discipline as {@link jsonFlag}: the entrypoint stamps it into
+ * `CliIo.quiet`; acts never re-derive it from `program.opts()`. Absent → the
+ * default full envelope.
+ */
+export function quietFlag(argv: string[]): boolean | undefined {
+  if (argv.includes('--quiet')) {
     return true;
   }
   return undefined;
@@ -222,6 +236,7 @@ export function buildProgram(
     .version(version, '-v, --version')
     .option('--json', 'force JSON output')
     .option('--no-json', 'force human output')
+    .option('--quiet', 'lean doctor diagnostics and flow-mutation envelopes')
     .option('--no-extensions', 'skip loading repo extensions (core commands only)')
     // Core commands sit under the default `Commands:` heading; each extension
     // verb overrides this with `Extensions:` (see registerVerbAct) so the two
@@ -267,6 +282,7 @@ export function buildProgram(
   registerUpdateAct(program, io, deps, version);
   registerRecordAct(program, io, deps, recordRegistry, version);
   registerObserveAct(program, io, deps);
+  registerRetroAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
   registerTelemetryAct(program, io, {
     ...deps,
@@ -340,6 +356,8 @@ export async function main(
 
   const mode = selectMode({ json: jsonFlag(argv) }, env, isTty);
   const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
+  const quiet = quietFlag(argv);
+  if (quiet !== undefined) io.quiet = quiet;
   const port = createOutputPort(io.mode, io.writers);
 
   // Register the exit-chokepoint decorators BEFORE any exit — incl. the pre-build

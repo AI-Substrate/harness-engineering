@@ -53,7 +53,26 @@
             "create": { "type": "number", "minimum": 0, "description": "cache_create — context written to the cache." }
           }
         },
-        "sessions": { "type": "integer", "minimum": 0 }
+        "sessions": { "type": "integer", "minimum": 0 },
+        "friction": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "plan 056 (workshop D6) — friction proxies: non-zero command_exit + api_error counts (the observe→friction conversion denominator). Optional/additive.",
+          "properties": {
+            "command_errors": { "type": "integer", "minimum": 0 },
+            "api_errors": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "observe_events": { "type": "integer", "minimum": 0, "description": "plan 056 — `harness observe` invocations across the cohort (the conversion numerator)." },
+        "retro": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "plan 056 — retro-drain aggregates from `retro` artifact events. Counts-only; zero until schema-1.2 records are drained.",
+          "properties": {
+            "observations": { "type": "integer", "minimum": 0 },
+            "dispositions": { "type": "object", "additionalProperties": { "type": "integer" } }
+          }
+        }
       }
     },
     "rollups": {
@@ -105,11 +124,12 @@
         "flow_stage_mechanism": {
           "type": "object",
           "additionalProperties": true,
-          "description": "Per-window labeling mechanism counts for the flow_stage lens (T1.4): flow = nav-derived FlowEvent (primary); digit = /the-flow <n> bracket (fallback); unlabeled = /the-flow call with neither.",
+          "description": "Per-window labeling mechanism counts for the flow_stage lens (T1.4 + 057 T003): flow_log = cursor-moved flow_log transition marks (last-transition lookup, richest); flow = nav-derived FlowEvent (primary); digit = /the-flow <n> bracket (fallback); unlabeled = /the-flow call with neither, or events before the first mark.",
           "properties": {
             "flow": { "type": "integer", "minimum": 0 },
             "digit": { "type": "integer", "minimum": 0 },
-            "unlabeled": { "type": "integer", "minimum": 0 }
+            "unlabeled": { "type": "integer", "minimum": 0 },
+            "flow_log": { "type": "integer", "minimum": 0 }
           }
         },
         "token_coverage": {

@@ -988,6 +988,96 @@ function perWorkUnit(workUnits: WorkUnit[], units: Unit[]): InsightSection {
   };
 }
 
+// ── §2.4 Observe conversion + disposition mix (plan 056, workshop D6) ────────
+
+/**
+ * `observe_conversion` — the friction→observe conversion ratio: `harness observe`
+ * events ÷ friction proxies (non-zero `command_exit` + `api_error`) across the
+ * cohort. Deterministic, zero-LLM. A LOW ratio flags friction going uncaptured
+ * (tripwire TW-1: the channels aren't landing). Correlational only.
+ */
+function observeConversion(inputs: InsightInput[]): InsightSection {
+  let observes = 0;
+  let friction = 0;
+  for (const { report } of inputs) {
+    observes += report.totals.observe_events ?? 0;
+    const fr = report.totals.friction;
+    friction += (fr?.command_errors ?? 0) + (fr?.api_errors ?? 0);
+  }
+  if (observes === 0 && friction === 0) {
+    return {
+      id: 'observe_conversion',
+      title: 'Observe conversion',
+      available: false,
+      rows: [],
+      note: 'Unavailable: the cohort carries no `observe` events and no friction proxies (non-zero command_exit / api_error).',
+    };
+  }
+  const rate = friction > 0 ? Math.round((observes / friction) * 100) / 100 : null;
+  return {
+    id: 'observe_conversion',
+    title: 'Observe conversion',
+    available: true,
+    rows: [
+      makeRow({
+        claim: `friction→observe: ${observes} observe event(s) against ${friction} friction proxy(ies)`,
+        measures_used: ['harness observe events', 'command_exit(!=0) + api_error'],
+        n: friction,
+        caveat:
+          'Conversion proxy = `harness observe` invocations / friction proxies (non-zero command_exit + api_error) across the cohort. Correlational; a low ratio flags friction going uncaptured (TW-1). A zero-friction cohort shows rate=null (no denominator).',
+        values: { observes, friction, rate },
+      }),
+    ],
+  };
+}
+
+/**
+ * `disposition_mix` — the drain-outcome distribution from `retro` artifact events
+ * (schema 1.2 `disp_*` counts). A high `declined` share flags junk drain options
+ * (tripwire TW-2). Counts-only; disposition reasons never travel (workshop D5).
+ * Definitionally zero at T0 (no 1.2 records exist yet) — renders `available:false`.
+ */
+function dispositionMix(inputs: InsightInput[]): InsightSection {
+  const totals: Record<string, number> = {};
+  let observations = 0;
+  for (const { report } of inputs) {
+    const retro = report.totals.retro;
+    observations += retro?.observations ?? 0;
+    for (const [k, v] of Object.entries(retro?.dispositions ?? {})) {
+      totals[k] = (totals[k] ?? 0) + v;
+    }
+  }
+  const sum = Object.values(totals).reduce((a, b) => a + b, 0);
+  if (sum === 0) {
+    return {
+      id: 'disposition_mix',
+      title: 'Disposition mix',
+      available: false,
+      rows: [],
+      note: 'Unavailable: no retro artifact events carry dispositions in the cohort (definitionally zero until schema-1.2 records are drained).',
+    };
+  }
+  const rows = Object.entries(totals)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([k, v]) =>
+      makeRow({
+        claim: `${k.replace(/^disp_/, '')}: ${v}`,
+        measures_used: ['retro artifact events (disp_* counts)'],
+        n: v,
+        caveat:
+          'Drain-outcome mix from committed retro records (schema 1.2). A high `declined` share flags junk drain options (TW-2). Counts-only — no disposition reasons travel.',
+        values: { count: v, share: sum > 0 ? Math.round((v / sum) * 100) / 100 : null },
+      }),
+    );
+  return {
+    id: 'disposition_mix',
+    title: 'Disposition mix',
+    available: true,
+    rows,
+    note: `Dispositions recorded across ${observations} presented observation(s).`,
+  };
+}
+
 // ── Entry point ─────────────────────────────────────────────────────────────
 
 /**
@@ -1100,6 +1190,8 @@ export function buildInsights(
     outliers(units),
     perWorkUnit(workUnits, units),
     filesWritten(inputs),
+    observeConversion(inputs),
+    dispositionMix(inputs),
   ];
   const discipline = disciplinePanel(units, workUnits);
 

@@ -70,6 +70,7 @@ describe('buildProgram — composition root wiring', () => {
       'self-install',
       'record',
       'observe',
+      'retro',
       'flow',
       'telemetry',
       'instructions',

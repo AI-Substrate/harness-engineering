@@ -82,13 +82,15 @@ Name the smallest set of unanswered **material** questions (e.g. current executi
 
 ### 5) Add workers only for independent uncertainty
 
+Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation; the focused packet records the choice.
+
 Default responsibilities (use only those a real unanswered question needs):
 
 - **A · System Trace** — what currently happens and what constrains it: entry point + execution flow, key data/state transforms, dependencies + consumers, interfaces/contracts, tests + quality evidence, applicable domain boundaries.
 - **B · Institutional Memory & Risk** — what was learned before and what could break: relevant plans, execution discoveries, retros, ADRs, workshops, reviews, selective git history; prior failures, workarounds, decisions, rejected paths, unresolved debt; applicability to current code; modification hazards and contradictions.
 - **C · Independent Verification / Boundary** — add **only** when the scout exposes a genuinely separate question (a cross-domain boundary, a security-sensitive contract, migration history, a disputed interpretation).
 
-Run workers in parallel **only** when their questions are independent — never just to cut wall-clock if they'd reread the same files. Give each a focused packet: the exact question; candidate symbols/paths; domain context; selected historical candidates; the questions it owns; exclusions to prevent overlap — never a transcript of everything discovered.
+Run workers in parallel **only** when their questions are independent — never just to cut wall-clock if they'd reread the same files. Give each a focused packet: `tier: <cheap/Sonnet-class | Opus-class | lead>`; the exact question; candidate symbols/paths; domain context; selected historical candidates; the questions it owns; exclusions to prevent overlap — never a transcript of everything discovered.
 
 **Worker return contract** — each worker returns **no more than five material findings** (a ceiling, never a target):
 

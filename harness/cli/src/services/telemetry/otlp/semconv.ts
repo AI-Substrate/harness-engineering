@@ -68,6 +68,7 @@ export const A = {
   BRANCH_TO: 'harness.branch.to',
   BRANCH_FROM: 'harness.branch.from',
   VERB: 'harness.verb',
+  OBSERVE_KIND: 'harness.observe.kind',
   CHECKS_STATUS: 'harness.checks.status',
   CHECKS_GATES: 'harness.checks.gates',
   CMD_VERB: 'harness.command.verb',

@@ -488,3 +488,54 @@ describe('resolvers — 1.5 forbidden-state (safety axis, fs lane; WS003 §D8)',
     expect(await resolveAssertion(bad, ctxWith(null, worktreeFs()))).toBe('fail');
   });
 });
+
+describe('file-content-matches — glob content assertion (plan 056 T014)', () => {
+  const RECORD = [
+    'entries:',
+    '  - id: DL-001',
+    '    disposition: fixed-now',
+    '  - id: SUGG-001',
+    '    disposition: declined',
+    '  - id: MW-001',
+    '    disposition: deferred',
+    '    fp: a3f9c2d1e4b5',
+  ].join('\n');
+
+  function retroFs(body: string): FakeFs {
+    return new FakeFs(
+      { [`${WT}/.harness/records/retro/2026-07-09/001-x.md`]: body },
+      {
+        [WT]: ['.harness'],
+        [`${WT}/.harness`]: ['records'],
+        [`${WT}/.harness/records`]: ['retro'],
+        [`${WT}/.harness/records/retro`]: ['2026-07-09'],
+        [`${WT}/.harness/records/retro/2026-07-09`]: ['001-x.md'],
+      },
+    );
+  }
+
+  const GLOB = '.harness/records/retro/**/*.md';
+
+  it('passes when the pattern matches inside a glob-matched file (declined + deferred + fp)', async () => {
+    const rc = ctxWith(null, retroFs(RECORD));
+    for (const pattern of ['disposition:\\s*declined', 'disposition:\\s*deferred', 'fp:\\s*[a-f0-9]{12}']) {
+      expect(await resolveAssertion(a('file-content-matches', { glob: GLOB, pattern }, { source: 'fs' }), rc)).toBe('pass');
+    }
+  });
+
+  it('fails when no glob-matched file carries the pattern', async () => {
+    const rc = ctxWith(null, retroFs('entries:\n  - id: DL-001\n    disposition: kept\n'));
+    expect(await resolveAssertion(a('file-content-matches', { glob: GLOB, pattern: 'disposition:\\s*declined' }, { source: 'fs' }), rc)).toBe('fail');
+  });
+
+  it('fails when the glob matches nothing', async () => {
+    const rc = ctxWith(null, new FakeFs({}, { [WT]: [] }));
+    expect(await resolveAssertion(a('file-content-matches', { glob: GLOB, pattern: 'disposition:' }, { source: 'fs' }), rc)).toBe('fail');
+  });
+
+  it('still supports the exact-path form', async () => {
+    const rc = ctxWith(null, retroFs(RECORD));
+    const p = a('file-content-matches', { path: '.harness/records/retro/2026-07-09/001-x.md', pattern: 'disposition:\\s*declined' }, { source: 'fs' });
+    expect(await resolveAssertion(p, rc)).toBe('pass');
+  });
+});

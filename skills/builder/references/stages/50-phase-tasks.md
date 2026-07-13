@@ -69,9 +69,13 @@ Otherwise → **Phase Mode** (continue).
 
 2) **Prior Phase Review** (skip if Phase 1):
 
+   Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
+
    Determine all prior phases. Launch **parallel subagents** (one per prior phase) with this focused template:
 
    "Review Phase X implementation. Read:
+   tier: Opus-class
+
    - `PLAN_DIR/tasks/${PHASE_X_SLUG}/tasks.md`
    - `PLAN_DIR/tasks/${PHASE_X_SLUG}/execution.log.md`
    - Plan progress tracking for Phase X
@@ -154,6 +158,8 @@ Otherwise → **Phase Mode** (continue).
    - `Notes`: Finding references, domain constraints, etc.
 
    ### Context Brief
+
+   **Environment-first posture** (one line, carried into the brief — builder `SKILL.md` invariant #14): environment friction is work, not an apology — fix small/reversible things, otherwise `harness observe` it (execution-log Discoveries row as the fallback when harness-less), and pay every hard wall or proof-gap forward for the next agent.
 
    **Key findings from plan**:
    - [Finding N: brief + action required]

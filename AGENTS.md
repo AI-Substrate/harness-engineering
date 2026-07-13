@@ -40,6 +40,17 @@ These are deliberately asymmetric — keep them straight:
 - **NO `pre-push` checks gate.** A tracked `.githooks/pre-push` that ran `harness checks` on every push was removed because it recursed: `harness checks` auto-pushes telemetry on exit, the push re-fired the gate, and it pinned a 16-core box at load 175. **Do not re-add a push-triggered `harness checks` gate.**
 - **YES a `post-commit` telemetry flush** (`just install-hooks` → `core.hooksPath=.githooks` → `.githooks/post-commit`). It runs **only `harness telemetry sync`** — a counts-only push to `refs/harness-telemetry/*` — so each commit flushes buffered telemetry without anyone remembering to. It **cannot recurse** (no build, no tests; the telemetry push is `--no-verify`, so it triggers no hook) and **cannot block a commit** (post-commit's exit code is ignored). `harness doctor` warns when a repo is capturing telemetry but has no flush hook — run `just install-hooks` to resolve it. The `--no-verify` on the telemetry push (`exec-git-write.ts`) is **load-bearing**: it is what makes any commit/push-time flush recursion-proof.
 
+## Model-to-task fit & delegation (token discipline)
+
+Match the model to the task, and delegate chores out of the parent window. Unless the context carries overriding instructions:
+
+- **Chores → cheap model, in a subagent**: codebase searches, git commit/push ceremonies, file sweeps, grep audits, artifact collection. Two independent reasons: they clog the parent context window, and they burn an expensive model on work a cheap one does fine (Sonnet-class).
+- **Analysis / review / critique → capable model** (Opus-class), still usually in a subagent so the parent keeps its context for judgement.
+- **Judgement, design, adjudication — and reviews deemed genuinely hard → the lead/premium model.** Tier selection scales with difficulty; it never defaults to "whatever the parent is running".
+- These are suggestions the flow/agent makes, never mandates — explicit user or context instructions about model or placement always win.
+
+Rationale: small token costs compound at team scale — see `harness-foundations/rules-of-why.md` (Rules 5–6).
+
 ## Repo framing
 
 - Build a reusable, evidence-backed guide for engineering harnesses: how teams create fast, observable, repeatable development loops.
@@ -47,6 +58,8 @@ These are deliberately asymmetric — keep them straight:
 - Keep the engineering harness / agent harness distinction explicit in public content: this repo studies the project-side engineering harness, not agent runtimes themselves.
 - Distill private/raw source material into general principles, patterns, and tutorial content that can be shared safely.
 - Prefer practical, agent-readable guidance: commands, checks, examples, templates, and explicit feedback loops.
+- **Wording rule**: never use "the harness is the product / the task is the exercise" framing in docs, decks, or skill prose — audiences found it demoted the actual work. Use the softened framing from `harness-foundations/rules-of-why.md` Rule 3: every run produces two things — the work, and evidence about the environment; both matter, neither is the other's exercise.
+- **Durable guidance lives in the repo** (AGENTS.md, `harness-foundations/`, skills), never in a client-side session memory — not every agent reads Claude Code memories.
 
 ## Harness layer definitions
 

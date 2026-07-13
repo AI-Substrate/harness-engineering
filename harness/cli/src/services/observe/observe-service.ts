@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
@@ -72,6 +73,33 @@ export type ClearOutcome =
 const BUFFER_FILE = 'session-buffer.md';
 const DEFAULT_BUCKET = 'agent';
 const MIN_DESCRIPTION = 10;
+
+/**
+ * Normalize a description for fingerprinting (workshop D3): lowercase → strip
+ * punctuation → collapse whitespace → first 8 tokens of length ≥3, order
+ * preserved. Order-preserved beats sorted (too loose) and full-string (too
+ * tight); deterministic and zero-LLM.
+ */
+export function normalizeForFingerprint(description: string): string {
+  return description
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .split(/\s+/)
+    .filter((token) => token.length >= 3)
+    .slice(0, 8)
+    .join(' ');
+}
+
+/**
+ * Capture-time recurrence fingerprint (workshop D3):
+ * `fp = sha256(kind | target? | norm(description))[0:12]`. Same privacy posture
+ * as command-signature.ts — a hash is not prose. Stays OUT of telemetry
+ * (high-cardinality); recurrence analysis runs offline over committed records.
+ */
+export function fingerprint(kind: string, target: string | undefined, description: string): string {
+  const material = `${kind}|${target ?? ''}|${normalizeForFingerprint(description)}`;
+  return createHash('sha256').update(material).digest('hex').slice(0, 12);
+}
 
 /** Lowercase-kebab the raw identity; empties out rather than failing (D4). */
 function sanitizeBucket(raw: string): string {
@@ -165,6 +193,7 @@ export function captureObservation(opts: CaptureOptions, deps: ObserveDeps): Cap
     ...(opts.severity !== undefined && { severity: opts.severity }),
     ...(opts.workaround !== undefined && { workaround: opts.workaround }),
     ...(opts.suggestedEncoding !== undefined && { suggested_encoding: opts.suggestedEncoding }),
+    fp: fingerprint(kind, opts.target, description),
     first_seen_at: deps.clock.nowIso(),
   };
 

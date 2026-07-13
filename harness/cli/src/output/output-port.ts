@@ -26,6 +26,14 @@ export interface CliIo {
    * own `--help` does its own color detection and ignores this.
    */
   useColor?: boolean;
+  /**
+   * Flow-local lean output (plan 057, D1/AC-02): `true` slims the repeated
+   * flow-MUTATION `summary()` data echo down to `{path}`. Resolved ONCE by the
+   * entrypoint via `quietFlag(argv)` (same tri-state discipline as `mode`);
+   * consumed ONLY by `acts/flow.ts` `runMutation` — read verbs and non-flow
+   * commands never look at it (never a CLI-wide renderer change).
+   */
+  quiet?: boolean;
 }
 
 /**

@@ -147,6 +147,19 @@ export interface ReportTotals {
   /** Context re-reads (cache), session-level ONLY — labelled, never per-dimension. */
   cache: SessionCache;
   sessions: number;
+  /**
+   * Friction proxies (plan 056, workshop D6): non-zero `command_exit` + `api_error`
+   * counts across the cohort — the denominator of the observe→friction conversion.
+   * Optional: a report deserialized from before this field is honestly absent.
+   */
+  friction?: { command_errors: number; api_errors: number };
+  /** `harness observe` invocations across the cohort (the conversion numerator). */
+  observe_events?: number;
+  /**
+   * Retro-drain aggregates (plan 056): summed `observations` + `disp_*` counts from
+   * `retro` artifact events. Zero when no 1.2 records exist yet (T0). Counts-only.
+   */
+  retro?: { observations: number; dispositions: Record<string, number> };
 }
 
 /**
@@ -284,6 +297,16 @@ export interface FlowStageMechanism {
   flow: number;
   digit: number;
   unlabeled: number;
+  /**
+   * Windows labeled by a `cursor-moved` `flow_log` transition mark (plan 057
+   * T003, AC-01): stage(event) = latest transition at-or-before the event's `t`
+   * — a point LOOKUP over marks merged with the in-stream `flow` anchors. The
+   * lookup never re-sorts `flow_log` into gap/wall math (the rollup exclusion —
+   * events.ts clock-distortion guard — is preserved); it is also retroactive:
+   * pre-057 refs whose flight-plan history carries cursor-moves gain per-stage
+   * attribution with no recapture.
+   */
+  flow_log: number;
 }
 
 /**
@@ -374,13 +397,28 @@ interface SessionView {
   /** Sorted asc by `t`, `flow_log` markers removed (replay-only — KF gap math). */
   events: ReturnType<typeof otlpLogsToEvents>;
   rollup: ReturnType<typeof computeRollup>;
+  /**
+   * The `cursor-moved` stage-transition marks extracted BEFORE the `flow_log`
+   * filter (plan 057 T003) — `{t, to}` sorted asc. Consumed only by the
+   * flow_stage lens's last-transition LOOKUP; never re-enters the event stream.
+   */
+  cursorMarks: readonly { t: string; to: string }[];
 }
 
 function viewOf(exp: SessionExport): SessionView {
-  const events = otlpLogsToEvents(exp.signals.logs)
+  const all = otlpLogsToEvents(exp.signals.logs);
+  const cursorMarks = all
+    .filter(
+      (e): e is Extract<(typeof all)[number], { kind: 'flow_log' }> =>
+        e.kind === 'flow_log' && e.op === 'cursor-moved',
+    )
+    .filter((e) => typeof e.to === 'string' && e.to.length > 0)
+    .map((e) => ({ t: e.t, to: e.to as string }))
+    .sort((a, b) => parseIso(a.t) - parseIso(b.t));
+  const events = all
     .filter((e) => e.kind !== 'flow_log')
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
-  return { export: exp, events, rollup: computeRollup(events) };
+  return { export: exp, events, rollup: computeRollup(events), cursorMarks };
 }
 
 // ── Accumulator (mutable per-dimension row map, folded across sessions) ──────
@@ -665,16 +703,68 @@ function foldSession(
     acc.skill.addTokens(name, tok.input, tok.output);
   }
 
-  // ── flow_stage lens (T1.4): FlowEvent-PRIMARY, digit FALLBACK, unlabeled last ──
-  // Nav-derived `flow` events are the authoritative stage source (`stage` = node
-  // id); they win whenever any exist in the session. Only a session with NO flow
-  // event falls back to the `/the-flow` digit brackets, and a bracket with no
-  // leading-digit arg is `unlabeled`. Per-window mechanism counts feed provenance.
-  const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0 };
+  // ── flow_stage lens (T1.4 + 057 T003): marks-LOOKUP richest, FlowEvent-PRIMARY,
+  // digit FALLBACK, unlabeled last ──
+  // When `cursor-moved` flow_log transition marks exist (plan 057), the stage
+  // timeline is the merge of those marks with the in-stream `flow` anchors, and
+  // stage(event) = latest transition at-or-before the event's `t` (a point
+  // lookup — marks never re-enter gap/wall math, preserving the rollup's
+  // flow_log exclusion). Otherwise behavior is byte-identical to T1.4:
+  // FlowEvent-PRIMARY brackets, `/the-flow` digit FALLBACK, `unlabeled` last.
+  const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0, flow_log: 0 };
   const flowEvtIdx: number[] = [];
   for (let i = 0; i < n; i++) if (ev[i].kind === 'flow') flowEvtIdx.push(i);
 
-  if (flowEvtIdx.length > 0) {
+  if (view.cursorMarks.length > 0) {
+    // 057 T003 — merged last-transition lookup. Contiguous same-stage runs of
+    // events become windows; each window's mechanism is the SOURCE of the mark
+    // that started it (`flow_log` = cursor-moved, `flow` = in-stream anchor);
+    // events before the first mark form an honest `unlabeled` window.
+    type Mark = { tm: number; stage: string; src: 'flow' | 'flow_log' };
+    const marks: Mark[] = view.cursorMarks.map((m) => ({
+      tm: parseIso(m.t),
+      stage: m.to,
+      src: 'flow_log' as const,
+    }));
+    for (const i of flowEvtIdx) {
+      const e = ev[i] as { t: string; stage?: string };
+      if (e.stage !== undefined && e.stage.length > 0) {
+        marks.push({ tm: parseIso(e.t), stage: e.stage, src: 'flow' });
+      }
+    }
+    marks.sort((a, b) => a.tm - b.tm);
+
+    let p = -1; // last consumed mark
+    let runStart = 0;
+    let runLabel: string | null = null;
+    let runSrc: 'flow' | 'flow_log' | null = null;
+    const flushRun = (endIdx: number): void => {
+      if (endIdx <= runStart) return;
+      const label = runLabel ?? UNLABELED_STAGE;
+      acc.flow_stage.addCount(label, 1);
+      acc.flow_stage.addTime(label, activeBetween(runStart, endIdx));
+      const tok = windowTurnTokens(ev, runStart, endIdx);
+      acc.flow_stage.addTokens(label, tok.input, tok.output);
+      if (runSrc === 'flow') mechanism.flow += 1;
+      else if (runSrc === 'flow_log') mechanism.flow_log += 1;
+      else mechanism.unlabeled += 1;
+    };
+    for (let i = 0; i < n; i++) {
+      const et = parseIso(ev[i].t);
+      let advanced = false;
+      while (p + 1 < marks.length && marks[p + 1].tm <= et) {
+        p += 1;
+        advanced = true;
+      }
+      if (advanced && marks[p].stage !== runLabel) {
+        flushRun(i);
+        runStart = i;
+        runLabel = marks[p].stage;
+        runSrc = marks[p].src;
+      }
+    }
+    flushRun(n);
+  } else if (flowEvtIdx.length > 0) {
     // PRIMARY: bracket by consecutive flow events; label = the nav stage id.
     for (let m = 0; m < flowEvtIdx.length; m++) {
       const bi = flowEvtIdx[m];
@@ -837,7 +927,7 @@ export function buildReport(
   let totalCacheR = 0;
   let totalCacheC = 0;
   let totalActive = 0;
-  const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0 };
+  const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0, flow_log: 0 };
   const tokenCoverage: TokenCoverage = { measured: 0, unmeasured: 0 };
   const sessionIds: string[] = [];
   const branches: string[] = [];
@@ -848,10 +938,31 @@ export function buildReport(
   let controlTimeline: TimelineMarker[] | undefined;
   // plan 056: the file events across every included session → one authorship view.
   const fileEventsAll: SessionView['events'] = [];
+  // Plan 056 (workshop D6) — friction proxies + retro-drain aggregates. Counted
+  // straight off the ordered event stream (P12-safe: codes/verbs/closed counts only).
+  let commandErrors = 0;
+  let apiErrors = 0;
+  let observeEvents = 0;
+  let retroObservations = 0;
+  const retroDispositions: Record<string, number> = {};
 
   for (const exp of included) {
     const view = viewOf(exp);
     const sums = foldSession(view, acc);
+    for (const e of view.events) {
+      if (e.kind === 'command_exit') {
+        if (e.exit !== 0) commandErrors += 1;
+      } else if (e.kind === 'api_error') {
+        apiErrors += 1;
+      } else if (e.kind === 'harness' && e.verb === 'observe') {
+        observeEvents += 1;
+      } else if (e.kind === 'artifact' && e.artifact_type === 'retro') {
+        retroObservations += e.counts.observations ?? 0;
+        for (const [k, v] of Object.entries(e.counts)) {
+          if (k.startsWith('disp_')) retroDispositions[k] = (retroDispositions[k] ?? 0) + (v ?? 0);
+        }
+      }
+    }
     totalIn += sums.input;
     totalOut += sums.output;
     totalCacheR += sums.cacheRead;
@@ -860,6 +971,7 @@ export function buildReport(
     mechanism.flow += sums.mechanism.flow;
     mechanism.digit += sums.mechanism.digit;
     mechanism.unlabeled += sums.mechanism.unlabeled;
+    mechanism.flow_log += sums.mechanism.flow_log;
     if (sums.tokenMeasured) tokenCoverage.measured += 1;
     else tokenCoverage.unmeasured += 1;
     sessionIds.push(exp.identity.harness_session_id);
@@ -901,6 +1013,9 @@ export function buildReport(
       tokens: { input: Math.round(totalIn), output: Math.round(totalOut) },
       cache: { read: Math.round(totalCacheR), create: Math.round(totalCacheC) },
       sessions: included.length,
+      friction: { command_errors: commandErrors, api_errors: apiErrors },
+      observe_events: observeEvents,
+      retro: { observations: retroObservations, dispositions: retroDispositions },
     },
     rollups: {
       // Time-bearing lenses (skill / flow_stage) emit `time_s`; the command lenses

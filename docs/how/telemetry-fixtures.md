@@ -175,7 +175,7 @@ Only once the promoted bytes are clean, run the guards and commit:
 
 ```bash
 npm run check:telemetry-fixtures     # the goldens match the adapters (drift guard)
-cd harness/cli && npx vitest run test/services/telemetry/fixture-privacy-scan   # byte-scan is clean
+npx vitest run test/services/telemetry/fixture-privacy-scan   # byte-scan is clean (root-safe)
 git add harness/cli/test/services/telemetry/fixtures/real/<surface>/<instance>/
 git commit -m "test(telemetry): add real <surface> fixture (<instance>)"
 ```

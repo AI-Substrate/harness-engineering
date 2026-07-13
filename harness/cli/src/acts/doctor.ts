@@ -47,7 +47,7 @@ export function registerDoctorAct(
         registry,
         recordRegistry,
       );
-      const envelope = doctorEnvelope(report, clock);
+      const envelope = doctorEnvelope(report, clock, io.quiet === true);
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)

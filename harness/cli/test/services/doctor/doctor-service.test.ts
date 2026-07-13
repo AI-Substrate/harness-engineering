@@ -277,6 +277,42 @@ describe('buildDoctorReport', () => {
 });
 
 describe('doctorEnvelope', () => {
+  it('keeps the default JSON bytes unchanged and slims only the quiet extension payload', () => {
+    const clock = new FakeClock('2026-06-08T07:20:00.000Z');
+    const report = {
+      layers: [{ name: 'extensions', ok: true, detail: '1 loaded, 0 failed, 0 conflict' }],
+      branch: 'main',
+      json_env: false,
+      extensions: [
+        {
+          entryPath: '/repo/.harness/extensions/demo/extension.ts',
+          status: 'loaded' as const,
+          verbs: [
+            {
+              name: 'demo',
+              summary: 'Verbose summary.',
+              description: 'Verbose description.',
+              options: [{ flags: '--value <value>', description: 'Verbose option.' }],
+              run: () => ({ status: 'ok' as const }),
+            },
+          ],
+        },
+      ],
+      conventions: [],
+      recordTypes: [],
+    };
+
+    expect(JSON.stringify(doctorEnvelope(report, clock))).toBe(
+      '{"command":"doctor","status":"ok","timestamp":"2026-06-08T07:20:00.000Z","data":{"layers":[{"name":"extensions","ok":true,"detail":"1 loaded, 0 failed, 0 conflict"}],"branch":"main","json_env":false,"extensions":[{"entryPath":"/repo/.harness/extensions/demo/extension.ts","status":"loaded","verbs":[{"name":"demo","summary":"Verbose summary.","description":"Verbose description.","options":[{"flags":"--value <value>","description":"Verbose option."}]}]}],"conventions":[],"recordTypes":[]},"evidence":[{"label":"doctor report","none":true}]}',
+    );
+
+    expect(doctorEnvelope(report, clock, true).data).toEqual({
+      layers: [{ name: 'extensions', ok: true }],
+      branch: 'main',
+      extensions: [{ name: 'demo', status: 'loaded', verbs: ['demo'] }],
+    });
+  });
+
   it('is degraded (exit 0) when an extension failed', () => {
     const clock = new FakeClock('2026-06-08T07:20:00.000Z');
     const reg = registry([

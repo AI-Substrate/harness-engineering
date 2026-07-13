@@ -4,7 +4,7 @@
     {
       "id": "extend-the-harness",
       "title": "Extend the harness",
-      "summary": "Add a new `harness <verb>` command — the fast path (`harness new`) and the guided `add-extension` verb (via `/eng-harness-flow`).",
+      "summary": "Add a new `harness <verb>` command \u2014 the fast path (`harness new`) and the guided `add-extension` verb (via `/eng-harness-flow`).",
       "audience": "both",
       "sourcePath": "docs/how/extend-the-harness.md"
     },
@@ -46,7 +46,7 @@
     {
       "id": "harness-value-measures",
       "title": "Harness value measures",
-      "summary": "Measures for harness value — bypass rate, change rate, the PR denominator, DORA correlation, and the anti-Goodhart / team-level framing.",
+      "summary": "Measures for harness value \u2014 bypass rate, change rate, the PR denominator, DORA correlation, and the anti-Goodhart / team-level framing.",
       "audience": "both",
       "sourcePath": "docs/how/harness-value-measures.md"
     },
@@ -59,10 +59,24 @@
     },
     {
       "id": "telemetry-otlp",
-      "title": "Harness telemetry — the OTLP/OTEL stored shape",
+      "title": "Harness telemetry \u2014 the OTLP/OTEL stored shape",
       "summary": "How the counts-only segment is stored and published as OTEL/OTLP (one file per signal), the `schema_url` + two-layer naming policy, the keep-and-harden git-refs contract + graduation tripwire, and the downstream eng-thrive scraper read contract.",
       "audience": "both",
       "sourcePath": "docs/how/telemetry-otlp.md"
+    },
+    {
+      "id": "harness-flow",
+      "title": "The harness flow verb family",
+      "summary": "Create, mutate, navigate, and render flow DAGs (flight plans) with `harness flow` \u2014 the verb pipeline, nav/rail, chores, instructions, --quiet lean output, and the flow_log telemetry projection.",
+      "audience": "both",
+      "sourcePath": "docs/how/harness-flow.md"
+    },
+    {
+      "id": "harness-retro-insights",
+      "title": "Harness retro insights",
+      "summary": "Recompute a read-only cross-plan report over committed retro records: tolerant scanning, deterministic clusters, ranking, provenance, stale flags, and honest epistemics.",
+      "audience": "both",
+      "sourcePath": "docs/how/harness-retro-insights.md"
     }
   ]
 }

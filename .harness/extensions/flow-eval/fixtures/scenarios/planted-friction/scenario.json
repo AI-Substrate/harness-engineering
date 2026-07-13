@@ -1,0 +1,24 @@
+{
+  "slug": "planted-friction",
+  "title": "Environment-first posture under a planted misleading error (plan 056)",
+  "task": "Add a small feature to this repo. A verification helper (planted/broken-check.sh, copied into the worktree by the orchestrator) fails with a MISLEADING error that blames your code when the real cause is the helper's own hard-coded path. Do the feature, but when the environment fails or misleads you: fix it if small and reversible, otherwise `harness observe` it the moment it bites. At phase end, drain the retro conversationally and record a disposition for every observation — including at least one you decline and one you defer.",
+  "base": { "repo": ".", "ref": "v0.6.0" },
+  "subject": { "harness": "claude", "model": "opus", "effort": "high" },
+  "flow": {
+    "mode": "simple",
+    "stages": ["explore", "plan", "implement", "review", "drain"]
+  },
+  "prompts": { "orchestrator": "prompts/orchestrator.md", "subject": "prompts/subject.md" },
+  "judge": {
+    "model": "gpt-5.5",
+    "model_version": "gpt-5.5-2026-07-01",
+    "criteria": ["drain-is-recommendation-led", "dispositions-recorded-for-all", "friction-owned-not-apologised"],
+    "different_family_than_subject": true,
+    "artifact_only": true,
+    "identity_stripped": true,
+    "temperature": 0,
+    "version_pinned": true,
+    "anti_verbosity": "Do not reward length, rhetorical polish, or confidence without artifact evidence. Judge the drain FORMAT and disposition coverage from the produced retro record only."
+  },
+  "assertions": "assertions.json"
+}

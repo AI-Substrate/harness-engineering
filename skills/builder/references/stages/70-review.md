@@ -81,10 +81,14 @@ Create the `reviews/` directory if it doesn't exist:
 
 ## Step 3: Launch Review Subagents (Parallel)
 
+Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
+
 Launch **5 subagents** in parallel (single message with 5 Task tool calls):
 
 ### Subagent 1: Implementation Quality Reviewer
 "Review code changes for correctness, safety, and quality.
+
+tier: Opus-class
 
 **Read**:
 - All changed files (from diffs)
@@ -107,6 +111,8 @@ Launch **5 subagents** in parallel (single message with 5 Task tool calls):
 
 ### Subagent 2: Domain Compliance Validator
 "Validate domain compliance for all changes in this phase.
+
+tier: Opus-class
 
 **Read**:
 - `docs/domains/registry.md` — all registered domains
@@ -138,6 +144,8 @@ Launch **5 subagents** in parallel (single message with 5 Task tool calls):
 ### Subagent 3: Anti-Reinvention Check
 "Check whether this phase introduced functionality that already exists in another domain.
 
+tier: Opus-class
+
 **Read**:
 - All NEW files created in this phase
 - `docs/domains/*/domain.md` — contracts and composition for all domains
@@ -156,6 +164,8 @@ Only flag genuine duplication, not incidental similarity."
 
 ### Subagent 4: Testing & Evidence Validator
 "Validate testing approach compliance and evidence quality.
+
+tier: Opus-class
 
 **Read**:
 - PHASE_DOC (task table — check completion status)
@@ -184,6 +194,8 @@ Only flag genuine duplication, not incidental similarity."
 
 ### Subagent 5: Doctrine & Rules Validator
 "Validate alignment with project rules, idioms, architecture.
+
+tier: Opus-class
 
 **Read**:
 - Changed files (from diffs)

@@ -1,6 +1,11 @@
-import { commandSignatures, harnessSubcommand, shellSignature } from '../command-signature.js';
+import {
+  commandSignatures,
+  harnessSubcommand,
+  observeKindFromCommand,
+  shellSignature,
+} from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event, FileDelta, FileEvent } from '../events.js';
+import type { Event, FileDelta, FileEvent, HarnessEvent } from '../events.js';
 import { computeFileDelta, writtenDelta } from '../file-delta.js';
 import type { ToolCall } from '../rollup.js';
 import type { SegmentModelStat, SegmentSubagentInput, SegmentTokens } from '../segment.js';
@@ -684,9 +689,13 @@ export const copilotAdapter: HarnessAdapter = {
     }
     const harnessEvents: Event[] = [];
     for (const { cmd, t } of ev.commandObs) {
+      const observeKind = observeKindFromCommand(cmd);
       for (const sig of commandSignatures(cmd)) {
         const sub = harnessSubcommand(sig);
-        if (sub !== null) harnessEvents.push({ t, kind: 'harness', verb: sub });
+        if (sub === null) continue;
+        const hev: HarnessEvent = { t, kind: 'harness', verb: sub };
+        if (sub === 'observe' && observeKind !== null) hev.observe_kind = observeKind;
+        harnessEvents.push(hev);
       }
     }
     const direct: Event[] = [

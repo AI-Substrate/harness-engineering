@@ -5,7 +5,7 @@ description: |
   pursue two goals at once: complete the requested task, AND improve the
   deterministic engineering environment future agents and teammates inherit.
   Before work: boot and check backpressure. During work: capture friction and
-  missing proof. After work: drain/harvest observations. At closeout: offer to
+  missing proof. After work: drain/harvest observations and cross-plan insights. At closeout: offer to
   encode the best lesson as a command, check, fixture, sensor, diagnostic,
   template, default, or clearer error. Advisory means the user is never blocked —
   it does NOT mean the agent may silently skip the loop. Mechanically a stateless
@@ -24,6 +24,8 @@ Agents optimise for the requested task — fix the bug, add the feature, reach "
 - **Standing secondary** — reduce future inference cost and increase deterministic proof. When the repo makes you guess, retry, hand-check, remember tribal setup, read logs to find a verdict, or infer whether "done" is really done, that is harness feedback. Capture it; at closeout, offer one concrete way to move the repeated part out of tokens and into deterministic substrate — a command, check, fixture, sensor, diagnostic, template, default, or clearer error.
 
 Code review checks the **product**. The harness loop reviews the **process that produced** the code.
+
+**Token and model posture.** Spend tokens where they can change the outcome; delegate bounded chores to cheaper tiers, analysis/review to capable tiers, and keep judgement with the lead unless context overrides. See builder `references/00-routing.md` § Model-to-task fit & delegation and `harness-foundations/rules-of-why.md` Rules 5–6.
 
 **The loop — four beats:**
 1. **Before work** — prove the environment and check backpressure (`--hook pre-flight`, then `--hook pre-coding`).
@@ -118,7 +120,7 @@ Works with **no arguments** (full auto-detect); a parent driving its own flow ca
 
 ## Progressive disclosure
 
-Load **exactly one** verb module (`references/stages/<verb>.md`) when a step is taken — never read all of them up front. A module may lazily pull `references/00-routing.md` § Shared conventions when it cites one (the sanctioned exception); reading modules for verbs you are not executing is not. The verb modules are **harness-blind**: they carry no sibling names, no flow position, no lifecycle-hook self-reference, and no routing — that knowledge lives only here and in `00-routing.md`. Human-mode coaching (the rail, the narration beats, the why-table) lives only in [`references/coach.md`](./references/coach.md), never duplicated into the dispatch or the modules.
+Load **exactly one** verb module (`references/stages/<verb>.md`) when a step is taken — never read all of them up front. A module may lazily pull `references/00-routing.md` § Shared conventions when it cites one (the sanctioned exception); reading modules for verbs you are not executing is not. The verb modules are **orchestration-blind**: they carry no sibling names, no flow position, no lifecycle-hook self-reference, and no routing — that knowledge lives only here and in `00-routing.md`. (A module may still `harness observe` a friction it hits at the moment it bites — execution-log note as the fallback when harness-less — since capturing friction is not orchestration.) Human-mode coaching (the rail, the narration beats, the why-table) lives only in [`references/coach.md`](./references/coach.md), never duplicated into the dispatch or the modules.
 
 ## `--help` — synopsis (print-and-stop)
 

@@ -22,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = join(repoRoot, 'harness/cli/src/services/docs/docs-manifest.json');
 const outPath = join(repoRoot, 'harness/cli/src/services/docs/docs-content.ts');
+const check = process.argv.includes('--check');
+const before = existsSync(outPath) ? readFileSync(outPath, 'utf8') : null;
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 if (!Array.isArray(manifest.docs) || manifest.docs.length === 0) {
@@ -88,3 +90,23 @@ if (existsSync(biomeBinJs)) {
 // (prepack) where stdout is data — a stdout line here corrupts `npm pack`
 // captures, including the --json form (empirically verified, npm 11.10.0).
 console.error(`gen-docs: wrote ${rows.length} docs → ${outPath.replace(`${repoRoot}/`, '')}`);
+
+if (check) {
+  const after = readFileSync(outPath, 'utf8');
+  if (before === after) {
+    console.error('check:docs OK — no drift');
+  } else {
+    console.error('check:docs FAIL — generated docs drifted; diff follows');
+    try {
+      execFileSync('git', ['--no-pager', 'diff', '--', outPath], {
+        cwd: repoRoot,
+        stdio: 'inherit',
+      });
+    } catch (err) {
+      console.error(
+        `check:docs: unable to print git diff (${err instanceof Error ? err.message : err})`,
+      );
+    }
+    process.exitCode = 1;
+  }
+}

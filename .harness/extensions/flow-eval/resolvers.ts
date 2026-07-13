@@ -233,6 +233,30 @@ function matchGlob(fs: ResolverFs, base: string, segments: string[]): boolean {
   return matchGlob(fs, join(base, head), rest); // literal segment
 }
 
+/** Collect every path under `base` matching the remaining glob `segments` (repo-relative). */
+function globPaths(fs: ResolverFs, base: string, segments: string[], rel = ''): string[] {
+  if (segments.length === 0) return fs.exists(base) ? [rel] : [];
+  const [head, ...rest] = segments;
+  const out: string[] = [];
+  if (head === '**') {
+    out.push(...globPaths(fs, base, rest, rel)); // ** matches zero dirs
+    for (const name of fs.readdir(base)) {
+      out.push(...globPaths(fs, join(base, name), segments, rel ? `${rel}/${name}` : name));
+    }
+    return out;
+  }
+  if (head.includes('*') || head.includes('?')) {
+    const re = segToRegExp(head);
+    for (const name of fs.readdir(base)) {
+      if (re.test(name)) {
+        out.push(...globPaths(fs, join(base, name), rest, rel ? `${rel}/${name}` : name));
+      }
+    }
+    return out;
+  }
+  return globPaths(fs, join(base, head), rest, rel ? `${rel}/${head}` : head);
+}
+
 /** Resolve a `{ glob | path }` param against the worktree → does it match? */
 function fsMatch(a: Assertion, rc: ResolveContext): boolean {
   const path = strParam(a, 'path');
@@ -379,16 +403,32 @@ const fileCreated: ResolverFn = (a, rc) => bool(fsMatch(a, rc));
 const artifactExists: ResolverFn = (a, rc) => bool(fsMatch(a, rc));
 
 const fileContentMatches: ResolverFn = (a, rc) => {
-  const path = strParam(a, 'path');
   const pattern = strParam(a, 'pattern');
-  if (!path || !pattern) return 'unknown';
-  const text = rc.fs.readText(join(rc.worktree, path));
-  if (text === null) return 'fail'; // the file isn't there ⇒ content can't match
+  if (!pattern) return 'unknown';
+  let re: RegExp;
   try {
-    return bool(new RegExp(pattern).test(text));
+    re = new RegExp(pattern);
   } catch {
     return 'unknown'; // an un-compilable pattern can't be evaluated
   }
+  // A `glob` param matches the pattern against ANY file under the glob (plan 056 —
+  // for a dynamically-pathed artifact like `.harness/records/retro/**/*.md`); a
+  // `path` param is the exact-file form. glob wins when both are present.
+  const glob = strParam(a, 'glob');
+  if (glob) {
+    const paths = globPaths(rc.fs, rc.worktree, glob.split('/').filter((s) => s.length > 0));
+    if (paths.length === 0) return 'fail'; // nothing matched ⇒ content can't match
+    for (const p of paths) {
+      const text = rc.fs.readText(join(rc.worktree, p));
+      if (text !== null && re.test(text)) return 'pass';
+    }
+    return 'fail';
+  }
+  const path = strParam(a, 'path');
+  if (!path) return 'unknown';
+  const text = rc.fs.readText(join(rc.worktree, path));
+  if (text === null) return 'fail'; // the file isn't there ⇒ content can't match
+  return bool(re.test(text));
 };
 
 const commandSucceeds: ResolverFn = async (a, rc) => {

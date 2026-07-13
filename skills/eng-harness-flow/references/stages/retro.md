@@ -35,8 +35,8 @@ $ARGUMENTS
 #             there is nothing to "run"; you call `harness observe` directly as you work.
 # --drain     Session-end: read pending observations (all buckets), present the soft prompt,
 #             materialize saved entries into a committed record via `harness record retro`
-# --harvest   Long-horizon: scan + cluster + prioritize committed retro records; print the curated view
-# --harvest --json   Machine-readable render (for `just compound-value`, CI hooks)
+# --harvest   Long-horizon: run `harness retro insights --json`; narrate its curated view
+# --harvest --json   Machine-readable pass-through of `harness retro insights --json`
 # Plus --harvest runtime filters: --plan <slug> / --agent <slug> / --since <date> / --kind <kind>
 # Plus --harvest --prune --older-than <Nd> [--apply]   Reversible stale-retro pruning (dry-run by default)
 ```
@@ -144,51 +144,42 @@ harness observe --list --json
 
 All buckets by default (`--agent <slug>` narrows). Empty `observations` → **silent, no prompt, exit.** If `malformed_skipped > 0`, say so in the prompt header — deviant text is preserved on disk, and `--clear` removes only valid entries, leaving the deviant blocks in place for manual review.
 
-### Step 2 — Present the save prompt
+### Step 2 — Present the drain (recommendation-led, one conversation)
 
-One prompt at end of session, in **plain language**. **Never asks twice.** Lead with what you noticed, say plainly what saving does, recommend the safe default, and keep the power-user routes one word away. **Never print the raw `[s/t/p/e/d/a]` letter codes** — they are an internal detail, and surfacing them (or guessing what they mean) is exactly the opaque UX this prompt exists to avoid. Format:
+One conversational close at session end, in **plain language** — **never** letter codes, **never** two separate prompts. This **supersedes the plan-044 two-menu (save-then-fix) format**: it is now a single recommendation-led pass. Lead with what you noticed; walk each observation as a short **numbered paragraph** (*what happened · what would fix it · who it helps next time*); then name the **single highest-value one and why**; then close with **one sentence** carrying the safe default and the escape hatch. The `kind/target` taxonomy stays in the data, never on screen.
 
-Split the closeout into **two decisions, one at a time** — *save the notes* first, and only after that's resolved, *turn them into fixes*. Don't dump storage paths, record jargon, or every action mode into the first prompt.
-
-**Decision 1 — save the notes:**
+**Format:**
 
 ```
-💡 Before we wrap up — here are 3 things I noticed this session that slowed
-   us down or weren't proven:
+💡 Before we wrap up — 3 things slowed us down or went unproven this session.
+   Here's what I'd do about each:
 
-  1. grep on src/ took 47s               → a `just rg` recipe would fix it
-  2. searching the tree by hand, again   → a `just rg <pattern>` recipe would help
-  3. couldn't tell if the page rendered  → nothing proves it; a smoke check would
+  1. grep on src/ took 47s. A `just rg` recipe wrapping ripgrep would fix it —
+     every search after this one is instant, for you and the next agent.
+  2. Searched the tree by hand, twice. The same `just rg <pattern>` recipe covers
+     it — this is the recurring one.
+  3. Couldn't tell if the page rendered. Nothing proves it today; a smoke check
+     would, so the next person doesn't have to eyeball it.
 
-Anything we should make easier or more provable next time? For example: a clearer
-command, a faster check, a better error, a fixture, a smoke test, or a way to prove
-something we had to check by hand — or anything you had to guess because the repo
-didn't prove it. (Thought of something? Tell me — it joins the list.)
+  Highest value: the `just rg` recipe (#1/#2) — one small change that kills a
+  friction we already hit twice and will hit every session.
 
-Save these notes so they're not lost?
-  • Enter / "yes"   save all                            (recommended)
-  • "pick"          choose which ones to save
-  • "skip"          save nothing
-
+  Save these so they're not lost? Enter saves all (recommended) — or tell me which
+  to keep, fix right now, or drop, and I'll note what we decide on each.
   ▮
 ```
 
-**Decision 2 — turn saved notes into fixes** (offer *after* save/pick/skip resolves, only if anything was saved):
+**Record a disposition for EVERY presented entry — including the ones we don't act on.** Whatever the user decides, stamp each presented entry with a `disposition:` (schema 1.2, the closed 8-value set) as it is written to the record: `fixed-now | task | plan | diffs | command | kept | declined | deferred`. `kept` is the default (saved, no action chosen). **Declined and deferred entries are still written to the record** — that is the whole point: offline recurrence analysis needs to see what we said *no* to, not only what we acted on. Only the transient buffer is cleared. (`disposition` is the drain-time decision; it is distinct from `system.compound.status`, the long-horizon lifecycle.)
 
-```
-Want to turn any saved notes into fixes?
-  • "tasks"   copy-pasteable fix-tasks
-  • "plan"    a plan spec, for the bigger ones
-  • "diffs"   draft patches for you to review
-  • "command" a harness command/check — for a repeated proof-gap or recurring manual check
-  • leave them for now
-```
+**Do-it-now — for the small and reversible.** When the highest-value fix is small and reversible (a justfile line, a one-line error message, a fixture), offer to **make it now** instead of filing it. If the user accepts: do the edit, then track it as a flight-plan **excursion node** off the current phase — `harness flow insert-node --branch-of <phase-node> --type chore …` — capturing the **intent** (what we're fixing and why) up front and the **outcome** (what changed) once done, as node notes. No mini-plan ceremony. That entry's disposition is `fixed-now`.
 
-This offer is **always made, never silently skipped** — the user may decline every route, but dropping the closeout offer is the failure the loop exists to prevent. Lead each entry with the plain description + a one-line "→ what would fix it" hint — the `kind/target` taxonomy stays in the data, never on screen. The plain routes map one-to-one to the actions in Step 3: **yes / Enter** = save all · **pick** = save selected · **skip** = save nothing · **tasks** / **plan** / **diffs** / **command** = the four "take it further" routes.
+This offer is **always made, never silently skipped** — the user may decline every route, but dropping the closeout is the failure the loop exists to prevent. The routes map to Step 3 and to a disposition: **Enter/yes** = save all (`kept`) · **pick** = save selected (unpicked → `declined`) · **skip** = save nothing but still record (`declined`) · **fix now** = `fixed-now` · **tasks/plan/diffs/command** = the four take-it-further routes (dispositions `task`/`plan`/`diffs`/`command`) · **leave for now** = `deferred`.
 
 Offer **"command"** (the harness command/check route, internally the "extension" scaffold) only when at least one pending entry is a **repeated proof-gap** — a friction where you *inferred* what a command could have *proved* (targets `project-sensor` / `runtime-inspectability` / `architecture-fitness` / `security` / `schema`, or any `magic-wand` that names a check / diagnostic / command). That class wants a **first-class, discoverable verb**, not a justfile line that rots unseen (§ the "command" route). When nothing pending fits, omit the route.
 
 ### Step 3 — Route by action
+
+**Every route stamps a `disposition:` on each entry it writes** (schema 1.2 — see Step 2): the mapping is `yes`→`kept`, `pick`→`kept` (unpicked→`declined`), `skip`→`declined`, `fix now`→`fixed-now`, `tasks`→`task`, `plan`→`plan`, `diffs`→`diffs`, `command`→`command`, `leave for now`→`deferred`. Declined/deferred entries are **written to the record**, then the buffer is cleared.
 
 #### "yes" / Enter — save all (default)
 
@@ -203,7 +194,7 @@ Write the envelope into the returned **`data.path`** (the CLI owns placement + t
 
 ```yaml
 ---
-schema_version: "1.0"
+schema_version: "1.2"
 retro_id: "<ISO>-<agent>-<short-hash>"
 agent: <bucket>
 plan_id: <plan-id-or-null>
@@ -211,7 +202,10 @@ started_at: "<first entry's first_seen_at>"
 ended_at: "<now ISO UTC>"
 summary: "retro --drain session-end save (N entries)"
 entries:
-  # ... the drained entries verbatim (id/kind/description/…/system.compound)
+  # ... the drained entries verbatim (id/kind/description/…/system.compound),
+  # each carrying its capture-time `fp` (from the buffer) AND a drain-time
+  # `disposition:` — one of fixed-now|task|plan|diffs|command|kept|declined|deferred
+  # for EVERY presented entry, declined/deferred included (schema 1.2).
 system:
   compound:
     bubble_action: "all-save"
@@ -226,7 +220,7 @@ harness observe --clear
 
 #### "pick" — save selected
 
-Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Save the selected ones into the record (same envelope); the rest are dropped with the clear.
+Prompt "Which entries to save? (e.g. `1,3`, or `all`)". Write **every presented entry** into the record (same envelope): the selected ones stamped `disposition:kept`, the **unselected presented entries stamped `disposition:declined`** — declined entries are written, not dropped (Step 2/3: recurrence analysis needs what we said *no* to). Only after the record is written is the transient buffer cleared (`harness observe --clear`).
 
 #### "tasks" — emit copy-pasteable fix descriptors
 
@@ -283,6 +277,23 @@ This route does NOT author the verb itself (that is the router's encode step) �
 3. Save the entry to the record with `system.compound.status: suggested` and `resolved_by: harness new <verb>`. Clear.
 
 Entries are saved whether or not the user runs the scaffold (the suggestion is captured regardless). The guided fill-the-handler-and-validate step is the router's to route onward — this route only surfaces that the friction is a **repeated proof-gap** and hands over the exact command.
+
+#### "fix now" — do the small, reversible fix in-flight (disposition `fixed-now`)
+
+For a fix that is **small and reversible** (a justfile line, a one-line error message, a fixture) and the user accepts the do-it-now offer: make the edit directly, then record it as a flight-plan **excursion node** off the current phase — capturing intent first, outcome after:
+
+```bash
+harness flow insert-node --branch-of <phase-node> --type chore \
+  --label "fix: <what>" --note "intent: <what we're fixing and why>"
+# … make the edit …
+harness flow status <new-node> --to done --note "outcome: <what changed + proof>"
+```
+
+Save the entry to the record with `disposition: fixed-now` and `resolved_by: <commit-or-node-ref>`. No mini-plan ceremony — the excursion node *is* the tracking. Clear.
+
+#### "skip" — record but take no action (disposition `declined`)
+
+Still write the presented entries to the record with `disposition: declined` — declines are the signal offline recurrence analysis exists to see (never a silent drop) — then clear the buffer.
 
 #### "skip" — save nothing
 
@@ -382,32 +393,29 @@ The reader/curator side. Auto-fires at long-horizon reflection moments; runnable
 
 ### Buffer-non-empty advisory
 
-At start, run `harness observe --list --json`. Pending entries anywhere → print one line before scanning:
+Read `data.buffer_pending` from the insights envelope. Pending entries anywhere → print one line before narrating:
 
 > ℹ️ Buffer has N unbubbled entries. Consider running `--drain` first so they land in the harvest view.
 
 Then proceed anyway (harvest reads committed records; transient scratch is unrelated).
 
-### Step 1 — Scan + validate
+### Steps 1–3 — Compute once
 
-- **Canonical**: `.harness/records/retro/**/*.md` — the records `--drain` materializes (dated subdirs).
-- **Legacy (back-compat)**: `docs/harness/agents/**/*.retro.md`, then `docs/retros/*.md` (minih's old per-agent format; skip `*.legacy.md`; map blocks via workshop 005 § D9 `minihToUniversal`).
+Run exactly one deterministic command:
 
-Per file: parse the YAML frontmatter; validate against the bundled [`../retro.schema.json`](../retro.schema.json) (mirror of the frozen `docs/harness/schemas/retro.schema.json`; neither present → `⚠ retro schema not found — skipping validation`, never block). Invalid → warn with the path, skip the whole retro (no half-parse).
+```bash
+harness retro insights --json
+# Pass through any supplied scope flags verbatim:
+# --plan <slug> (repeatable) · --agent <slug> · --since <ISO> · --kind <kind>
+```
 
-### Step 2 — Dedup, version skew
+The CLI owns the canonical + legacy scan, validation, source-precedence deduplication, schema-skew accounting, clustering, stale detection, and frozen priority order. Do not rescan records, recluster entries, or re-rank rows in the skill.
 
-Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harness/records/retro/` → `docs/harness/agents/**` → `docs/retros/*`. Unknown **major** `schema_version` → `⚠ Skipped 1 retro with unsupported schema_version: <path>`; minor skew is silent.
-
-### Step 3 — Curate
-
-- **Cluster** open entries by `(kind, target)`; count, age-order (oldest `first_seen_at` first), track source agents.
-- **Stale flags** (observational, never enforced): `open` > **4 weeks** → stale; `suggested` > **2 weeks** without `resolved_by` → stale.
-- **Prioritize top-10**: recurrence (count) → severity (`blocking` > `degrading` > `annoying` > none) → back-pressure leverage (clusters indicating missing proof/sensors/evidence/architecture/security/schema checks stay legible as proof-improvement candidates — display guidance only, no gate, no score, no index) → age.
-- **Token-cost framing (the leak detector)**: a recurring cluster is **the same inference being re-paid in tokens every session until someone encodes it** into the environment. Label recurrence with that cost. Display wording only — schema, statuses, and clustering logic are unchanged.
-- Recognize proof/back-pressure candidates by targets (`project-sensor`, `runtime-inspectability`, `architecture-fitness`, `security`, `schema`, `infra`, `tooling`), by mentions of smoke/screenshot/log/trace/health/dependency-rule/CodeQL/schema checks, and by workarounds like "read code manually" / "eyeballed". Keep original fields intact; never rewrite kinds. **The remedy for a recurring proof/sensor cluster is a first-class `harness <verb>` extension (`harness new <verb>`)** — a discoverable, runnable sensor — not a one-off recipe; surface that as the encoding for these clusters (the "command" route below).
+Use the envelope's `data.headline`, `data.sources`, `data.malformed_skipped`, `data.unsupported_versions`, and `data.sections` as the sole computed source. **Narration restates the verb's computed numbers, never computes its own.** Agent judgement may explain why a cluster matters or which encoding shape fits, but every count, date, status, rank, proof-gap signal, and recurrence claim comes from the verb.
 
 ### Step 4 — Print the view (NO on-disk writes)
+
+Render this human view as the narration template for the verb's JSON; preserve its wording and action invitation while substituting only values supplied by the envelope:
 
 ```
 🌾 Harness retro harvest — 2026-06-10T03:30:00Z
@@ -415,14 +423,15 @@ Same `retro_id` in multiple sources → the highest-precedence copy wins: `.harn
 📚 Scanned 27 retros across 3 agents · Date range: 2026-04-10 → 2026-06-10
    Total entries: 47 (28 open, 17 encoded, 2 wontfix)
 
-📊 Open clusters (top 10 by recurrence > severity > back-pressure leverage > age):
-   1. [tooling] grep/search slowness — 4 entries across 5 sessions
-      ↻ re-paid every session since 2026-05-14 — encode it and stop paying
-   2. [proof/project-sensor] missing smoke or visual evidence — 3 entries
+📊 Open clusters (in verb-emitted rank order):
+   1. [tooling] 4 open entr(y/ies)
+      Count: 4 · first seen: 2026-05-14 · proof gap: true · repeatedly deferred: false
+   2. [proof/project-sensor] 3 open entr(y/ies)
+      Count: 3 · first seen: 2026-05-20 · proof gap: true · repeatedly deferred: true
    ...
 
-⏰ Stale (>4 weeks open): 3 entries
-✅ Recently encoded (last 7 days): 6 entries — see scratch/encode-*.diff
+⏰ Stale: DL-002 is stale (open, 32d) (n=1)
+✅ Lifecycle totals: 17 encoded · 28 open
 
 To mark a cluster, say its number plus how it landed:
 "done" (encoded) · "won't-fix" · "stale".
@@ -430,29 +439,68 @@ To mark a cluster, say its number plus how it landed:
 
 Nothing is written to disk by the harvest itself (workshop 006 § D4 KISS: no `_LEDGER.md`, no rollups — drift, git noise, and ceremony cost more than a <1s recompute). For raw browsing: `ls .harness/records/retro/` — the record dir IS the browse surface.
 
-#### `--json` (machine-readable, same computed view)
+#### `--json` (machine-readable source for the same view)
 
-Stable contract (`schema_version` semver, bump on breaking change):
+`--harvest --json` consumes the standard envelope from `harness retro insights --json`. The report contract lives under `data`:
 
 ```json
 {
-  "schema_version": "1.0.0",
-  "generated_at": "<ISO>",
-  "retros": 27,
-  "entries": { "total": 47, "open": 28, "suggested": 2, "encoded": 17,
-               "wontfix": 0, "dismissed": 0, "escalated": 0, "stale": 0 },
-  "top_clusters": [ { "kind": "difficulty", "target": "tooling", "count": 4,
-                      "oldest": "<ISO>", "representative": "<description>" } ],
-  "harness": { "maturity": "L2", "last_validation": null, "boot_ms": null, "verdict": null }
+  "command": "retro",
+  "status": "ok",
+  "data": {
+    "schema_version": "harness.retro-insights/v1",
+    "generated_at": "<ISO>",
+    "headline": {
+      "records": 27,
+      "entries": 47,
+      "plans_touched": ["<plan-slug>"],
+      "agents": ["<agent-slug>"],
+      "date_range": { "from": "<ISO>", "to": "<ISO>" },
+      "status_counts": {
+        "open": 28,
+        "suggested": 2,
+        "encoded": 17,
+        "wontfix": 0,
+        "stale": 0,
+        "other": 0
+      }
+    },
+    "sections": {
+      "top_clusters": {
+        "rows": [
+          {
+            "kind": "difficulty",
+            "target": "tooling",
+            "n": 4,
+            "proof_gap": true,
+            "proof_gap_signal": "keyword",
+            "members": [
+              {
+                "record_path": ".harness/records/retro/<date>/<record>.md",
+                "retro_id": "<retro-id>",
+                "entry_id": "DL-001",
+                "status": "open"
+              }
+            ],
+            "caveat": "<non-empty caveat>"
+          }
+        ]
+      },
+      "stale": { "rows": [] },
+      "disposition_mix_records": { "rows": [] }
+    },
+    "buffer_pending": 0
+  }
 }
 ```
 
-- `entries.*` counts by `system.compound.status` (missing status counts as `open`).
-- `top_clusters` capped at 10, same priority order as the default view.
-- `harness.maturity` from the governance doc snapshot (`.harness/engineering-harness.md`); `last_validation`/`boot_ms`/`verdict` have no live source under the read-only boot model — `null` whatever the `harness-change` record ledger doesn't supply; no governance doc → all four `null`.
-- Empty tree → `{"retros": 0, "entries": {"total": 0, …}, "top_clusters": []}` — still valid JSON.
+- `data.headline.status_counts` carries the lifecycle totals; missing status was normalized to `open` by the verb.
+- `data.sections.top_clusters.rows` is capped at 10 in the frozen priority order; every row carries `n`, `caveat`, and `members[]` provenance.
+- `data.sections.stale.rows` and `data.sections.disposition_mix_records.rows` supply the remaining narrated sections.
+- `data.buffer_pending` is advisory and excluded from every committed-record count.
+- Empty corpus → `headline.records: 0`, `headline.entries: 0`, and empty section rows — still a valid envelope.
 
-Consumed by `scripts/compound-value.sh` and `just compound-value`; pipe `--harvest --json | jq …` elsewhere.
+Consume the real verb directly: `harness retro insights --json | jq …`.
 
 ### Step 5 — Action menu
 
@@ -461,6 +509,8 @@ The same save routes as the drain (keep all / pick / skip / tasks / plan / diffs
 - **"done"** (it's been encoded) → `status: encoded`; prompt for `resolved_by:` (commit hash / PR URL / diff path)
 - **"won't-fix"** → `status: wontfix`
 - **"stale"** → `status: stale`
+
+For every lifecycle op, resolve the chosen row from `data.sections.top_clusters.rows` and use each `members[].record_path` as the source-file pointer. Never repeat the corpus scan to rediscover the cluster's records.
 
 A cluster whose `target` is `harness-itself` (or that clearly points at a `harness …` command / vendored skill) in a **consumer repo** can't be resolved by a local edit — recurrence here is token cost paid every session. Offer the same **upstream issue** as the drain's § Harness-itself entries (`gh issue create --repo AI-Substrate/harness-engineering …`, or the web fallback), framing the cluster `count` as the cost. Once filed, use the issue URL as `resolved_by:` and mark it **done**. In the harness's own repo, route it to a local source fix instead.
 
