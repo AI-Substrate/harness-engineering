@@ -33,8 +33,10 @@ import { computeRollup } from './rollup.js';
  * v2.2: `captured_env` (an allowlisted, secret-denylisted env-var snapshot).
  * v2.3 (plan 053): adds the `mark` event kind (a peer's counts-only
  * self-attestation) to the `event_stream` union — no new top-level segment field.
+ * v2.4 (plan 056): adds the `file` event kind (per-file path + change-delta from
+ * tool payloads) to the `event_stream` union — no new top-level segment field.
  */
-export const SEGMENT_SCHEMA_VERSION = '2.3';
+export const SEGMENT_SCHEMA_VERSION = '2.4';
 
 export interface SegmentTokens {
   input: number;
@@ -260,6 +262,27 @@ function relativizePath(raw: string, repoRoot: string): string {
   return abs.split('/').pop() ?? '';
 }
 
+/** The literal path a `file` event carries for an out-of-repo write (D2, plan 056). */
+export const FILE_EXTERNAL = '<external>';
+
+/**
+ * Confine a `file` event's path (plan 056 · D2). Repo-relative form when inside
+ * the repo (absolute OR relative resolved against `repoRoot` first); the literal
+ * {@link FILE_EXTERNAL} sentinel when OUTSIDE — the out-of-repo directory (and its
+ * basename) is NEVER leaked. Deliberately NOT {@link relativizePath}, which drops
+ * an out-of-repo path to its basename and would leak the filename (finding 04).
+ */
+function confineFilePath(raw: string, repoRoot: string): string {
+  const root = posixNormalize(toPosix(repoRoot));
+  const p = toPosix(raw);
+  const abs = ABSOLUTE_LOGICAL.test(p) ? posixNormalize(p) : posixNormalize(posixJoin(root, p));
+  if (isWithin(root, abs)) {
+    const rel = posixRelative(root, abs);
+    return rel === '' ? '.' : rel;
+  }
+  return FILE_EXTERNAL;
+}
+
 function dedupe(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
@@ -326,7 +349,7 @@ function num(v: unknown): number | undefined {
  * cannot reach the output. An unrecognized kind degrades to its `{ t, kind }`
  * skeleton rather than passing fields through.
  */
-export function serializeEvent(e: Event): Event {
+export function serializeEvent(e: Event, repoRoot?: string): Event {
   const base = eventBase(e);
   switch (e.kind) {
     case 'prompt':
@@ -448,6 +471,28 @@ export function serializeEvent(e: Event): Event {
       if (typeof e.plan_id === 'string' && e.plan_id.length > 0) ev.plan_id = e.plan_id;
       return ev;
     }
+    case 'file': {
+      // ALLOWLIST (plan 056): pick the path + change enum + REBUILD the delta map
+      // (never spread) — the payload text was measured in the adapter and never
+      // travels; the path is CONFINED here (repo-relative else `<external>`) so an
+      // out-of-repo write leaks nothing (AC-03/AC-04). Without repoRoot the path
+      // defaults to `<external>` (never a raw path — Fix 2 hardening). Non-finite
+      // delta values degrade to 0 (a garbage delta serializes clean).
+      const d = e.delta;
+      const ev: Event = {
+        ...base,
+        kind: 'file',
+        path: repoRoot !== undefined ? confineFilePath(e.path, repoRoot) : FILE_EXTERNAL,
+        change: e.change,
+        delta: {
+          lines_added: num(d.lines_added) ?? 0,
+          lines_removed: num(d.lines_removed) ?? 0,
+          bytes_added: num(d.bytes_added) ?? 0,
+          bytes_removed: num(d.bytes_removed) ?? 0,
+        },
+      };
+      return ev;
+    }
     case 'mark': {
       // ALLOWLIST (plan 053): pick the two shape-guarded slugs + REBUILD the counts
       // map (never spread) — `buildMarkEvent` already gated `mark_kind`/`verdict` to
@@ -480,7 +525,7 @@ export function serializeEvent(e: Event): Event {
 export function serializeSegment(input: SegmentInput, repoRoot: string): Segment {
   // v2.0: the event stream is the substrate; the rollup is DERIVED from the
   // serialized events (never taken from the caller) so it can never drift (AC-16).
-  const eventStream = (input.event_stream ?? []).map(serializeEvent);
+  const eventStream = (input.event_stream ?? []).map((e) => serializeEvent(e, repoRoot));
 
   // Headline fields — always present (identity + window + tokens/effort).
   const seg = {

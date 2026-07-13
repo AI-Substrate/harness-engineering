@@ -6,7 +6,8 @@ import {
   skillDigitArg,
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event, HarnessEvent } from '../events.js';
+import type { Event, FileEvent, HarnessEvent } from '../events.js';
+import { computeFileDelta, writtenDelta } from '../file-delta.js';
 import { outcomeEvents } from '../outcome-events.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type {
@@ -171,6 +172,9 @@ export const claudeAdapter: HarnessAdapter = {
     const tools: Record<string, number> = {};
     const written: string[] = [];
     const edited: string[] = [];
+    // v2.4 (plan 056): one `file` event per path (last-write-wins in the window),
+    // carrying a change-delta computed from the tool payload (D5 — never a read).
+    const fileEvents = new Map<string, FileEvent>();
     const userPrompts: number[] = []; // word count of each real user prompt in the window
     const compactions: SegmentCompaction[] = [];
     let thinkingBlocks = 0;
@@ -309,8 +313,31 @@ export const claudeAdapter: HarnessAdapter = {
               }
             } else if (name === 'Edit' && typeof tInput.file_path === 'string') {
               edited.push(tInput.file_path);
+              // plan 056: delta from the Edit payload (old→new), never a file read.
+              if (ts !== null) {
+                const oldStr = typeof tInput.old_string === 'string' ? tInput.old_string : '';
+                const newStr = typeof tInput.new_string === 'string' ? tInput.new_string : '';
+                fileEvents.set(tInput.file_path, {
+                  t: ts,
+                  kind: 'file',
+                  path: tInput.file_path,
+                  change: 'edited',
+                  delta: computeFileDelta(oldStr, newStr),
+                });
+              }
             } else if (name === 'Write' && typeof tInput.file_path === 'string') {
               written.push(tInput.file_path);
+              // plan 056: a Write is the whole file added (removed 0).
+              if (ts !== null) {
+                const body = typeof tInput.content === 'string' ? tInput.content : '';
+                fileEvents.set(tInput.file_path, {
+                  t: ts,
+                  kind: 'file',
+                  path: tInput.file_path,
+                  change: 'written',
+                  delta: writtenDelta(body),
+                });
+              }
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
               signature = shellSignature(tInput.command);
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
@@ -409,6 +436,10 @@ export const claudeAdapter: HarnessAdapter = {
         direct.push(hev);
       }
     }
+
+    // plan 056: append the deduped per-file write/edit events (capture-time `t`,
+    // excluded from rollup math — like artifact/mark).
+    for (const fe of fileEvents.values()) direct.push(fe);
 
     // The window carries timestamps → assemble the ordered stream; else null (honest
     // "untimed source" — the rollup is then null too, never estimated).

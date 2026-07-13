@@ -65,7 +65,7 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
   it('pins schema_version to "2.3"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('2.3');
+    expect(seg.schema_version).toBe('2.4');
   });
 
   it('headline capabilities stay present-but-null; empty v1-compat collections are OMITTED', () => {

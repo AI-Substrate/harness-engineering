@@ -23,6 +23,7 @@ import type {
   CompactionEvent,
   Event,
   EventKind,
+  FileEvent,
   FlowEvent,
   FlowLogEvent,
   HarnessEvent,
@@ -172,6 +173,19 @@ function encodeEvent(e: Event): LogRecord {
         const values: KeyValue[] = enumEntries.map(([k, v]) => kv(k, sv(v)));
         attrs.push(kv(A.ARTIFACT_ENUMS, { kvlistValue: { values } }));
       }
+      break;
+    }
+    case 'file': {
+      // path is already CONFINED by serializeEvent (repo-relative or `<external>`);
+      // the delta is integer counts only (plan 056).
+      attrs.push(
+        kv(A.FILE_PATH, sv(e.path)),
+        kv(A.FILE_CHANGE, sv(e.change)),
+        kv(A.FILE_LINES_ADDED, nv(e.delta.lines_added)),
+        kv(A.FILE_LINES_REMOVED, nv(e.delta.lines_removed)),
+        kv(A.FILE_BYTES_ADDED, nv(e.delta.bytes_added)),
+        kv(A.FILE_BYTES_REMOVED, nv(e.delta.bytes_removed)),
+      );
       break;
     }
   }
@@ -356,6 +370,21 @@ function decodeEvent(rec: LogRecord): Event {
       };
       const planId = readStr(m.get(A.ARTIFACT_PLAN_ID));
       if (planId !== undefined) ev.plan_id = planId;
+      return ev;
+    }
+    case 'file': {
+      const ev: FileEvent = {
+        ...base,
+        kind,
+        path: readStr(m.get(A.FILE_PATH)) ?? '',
+        change: (readStr(m.get(A.FILE_CHANGE)) ?? 'edited') as 'written' | 'edited',
+        delta: {
+          lines_added: readNum(m.get(A.FILE_LINES_ADDED)) ?? 0,
+          lines_removed: readNum(m.get(A.FILE_LINES_REMOVED)) ?? 0,
+          bytes_added: readNum(m.get(A.FILE_BYTES_ADDED)) ?? 0,
+          bytes_removed: readNum(m.get(A.FILE_BYTES_REMOVED)) ?? 0,
+        },
+      };
       return ev;
     }
     default:

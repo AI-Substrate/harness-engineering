@@ -47,6 +47,7 @@ export type EventKind =
   | 'model'
   | 'api_error'
   | 'artifact'
+  | 'file'
   | 'mark';
 
 /** The closed set of event kinds — the serializer + schema are kept equal to this. */
@@ -66,6 +67,7 @@ export const EVENT_KINDS: readonly EventKind[] = [
   'model',
   'api_error',
   'artifact',
+  'file',
   'mark',
 ] as const;
 
@@ -381,6 +383,45 @@ export interface ArtifactEvent extends EventBase {
 }
 
 /**
+ * The line/byte add+remove counts for one file write, computed from the tool
+ * payload the adapter already parsed (Claude `Write` content / `Edit`
+ * old→new; Copilot `apply_patch` +/- lines, `create`/`edit` body). Integers
+ * only — the payload text is NEVER retained, only measured (D4/D5, P12).
+ */
+export interface FileDelta {
+  lines_added: number;
+  lines_removed: number;
+  bytes_added: number;
+  bytes_removed: number;
+}
+
+/**
+ * A per-file write/edit record (plan 056) — WHICH file an agent authored and HOW
+ * MUCH it changed. Emitted by the path-carrying adapters (`claude`, `copilot`) at
+ * tool-parse time; the `delta` is computed FROM the tool payload (D5 — no `stat`,
+ * no file-content read).
+ *
+ * PRIVACY (AC-04, Constitution P12): the payload is a `path` + a `change` enum +
+ * integer `delta` counts. There is NO free-text field by construction — the file
+ * body is measured, never stored. The `path` is confined at serialize time:
+ * repo-relative, else the literal `<external>` sentinel (D2 — the out-of-repo
+ * directory is NEVER leaked, not even the basename).
+ *
+ * Like {@link ArtifactEvent} it carries a CAPTURE-TIME `t` (the observed write
+ * instant), so — same posture as artifact/mark — it is EXCLUDED from {@link Rollup}
+ * gap/wall/stage math; it rides `event_stream` for attribution/replay only.
+ */
+export interface FileEvent extends EventBase {
+  kind: 'file';
+  /** Path of the written/edited file — repo-relative, or the literal `<external>` for out-of-repo (confined at serialize time). */
+  path: string;
+  /** Which capture set the path came from (`Write`/`create` → written; `Edit`/`apply_patch`/`str_replace` → edited). */
+  change: 'written' | 'edited';
+  /** Integer add/remove line+byte counts, from the tool payload (never the text). */
+  delta: FileDelta;
+}
+
+/**
  * The CLOSED union of `counts` keys a {@link MarkEvent} may emit — a SUBSET of
  * {@link ARTIFACT_COUNT_KEYS} (so `segment.schema.json`'s shared `counts` object
  * already enumerates them; no schema drift). Finding-severity buckets only: a mark
@@ -436,6 +477,7 @@ export type Event =
   | ModelEvent
   | ApiErrorEvent
   | ArtifactEvent
+  | FileEvent
   | MarkEvent;
 // ── Derived rollup (recomputable from `events[]`) ──────────────────────────
 

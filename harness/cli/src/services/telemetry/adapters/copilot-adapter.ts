@@ -5,7 +5,8 @@ import {
   shellSignature,
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event, HarnessEvent } from '../events.js';
+import type { Event, FileDelta, FileEvent, HarnessEvent } from '../events.js';
+import { computeFileDelta, writtenDelta } from '../file-delta.js';
 import type { ToolCall } from '../rollup.js';
 import type { SegmentModelStat, SegmentSubagentInput, SegmentTokens } from '../segment.js';
 import type {
@@ -103,6 +104,45 @@ function parseApplyPatchPaths(patch: string): { path: string; add: boolean }[] {
     if (m === null) continue;
     const p = m[2].trim();
     if (p.length > 0) out.push({ path: p, add: m[1] === 'Add' });
+  }
+  return out;
+}
+
+const PATCH_ENCODER = new TextEncoder();
+
+/**
+ * Per-file change-delta from an `apply_patch` body (plan 056 · D5/finding 07). The
+ * `+`/`-` hunk lines are COUNTED (line + UTF-8 byte add/remove), never retained —
+ * a counts-only measure, so no file text travels (P12). Context (` `), hunk (`@@`)
+ * and `*** …` marker lines contribute nothing. One entry per `*** …File:` section.
+ */
+function parseApplyPatchDeltas(patch: string): { path: string; add: boolean; delta: FileDelta }[] {
+  const out: { path: string; add: boolean; delta: FileDelta }[] = [];
+  let cur: { path: string; add: boolean; delta: FileDelta } | null = null;
+  for (const raw of patch.split('\n')) {
+    const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(raw.trim());
+    if (header !== null) {
+      const p = header[2].trim();
+      if (p.length === 0) {
+        cur = null;
+        continue;
+      }
+      cur = {
+        path: p,
+        add: header[1] === 'Add',
+        delta: { lines_added: 0, lines_removed: 0, bytes_added: 0, bytes_removed: 0 },
+      };
+      out.push(cur);
+      continue;
+    }
+    if (cur === null || raw.startsWith('***') || raw.startsWith('@@')) continue;
+    if (raw.startsWith('+')) {
+      cur.delta.lines_added += 1;
+      cur.delta.bytes_added += PATCH_ENCODER.encode(raw.slice(1)).length;
+    } else if (raw.startsWith('-')) {
+      cur.delta.lines_removed += 1;
+      cur.delta.bytes_removed += PATCH_ENCODER.encode(raw.slice(1)).length;
+    }
   }
   return out;
 }
@@ -219,6 +259,8 @@ interface EventsView {
   turnStart: Map<string, string>;
   turnEnd: Map<string, string>;
   anyTs: boolean;
+  /** plan 056 — one `file` event per touched path (delta from the tool payload). */
+  fileEvents: FileEvent[];
 }
 
 function readEvents(content: string, fromLine: number, toLine: number): EventsView {
@@ -233,10 +275,17 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // File path by call id (F-07 / plan 052 T001): the copilot editor tools carry a
   // clean `arguments.path`; classified to written/edited post-loop via toolNameByCall.
   const pathByCall = new Map<string, string>();
+  // plan 056: the tool-call timestamp + the body fields needed to compute a
+  // change-delta, captured per call. Body text is measured (counts), NEVER stored.
+  const fileArgsByCall = new Map<
+    string,
+    { ts: string | null; file_text?: string; old_str?: string; new_str?: string }
+  >();
   // apply_patch (copilot's file-edit tool since v1.x) carries its patch as a STRING
   // `arguments` payload — the target path(s) live in the *** Add/Update/Delete File:
   // headers, not `arguments.path`. Captured raw by call id, parsed post-loop.
   const patchByCall = new Map<string, string>();
+  const patchTsByCall = new Map<string, string | null>();
   const successByCall = new Map<string, boolean>(); // execution_complete `success` → command_exit
   const completeAtByCall = new Map<string, string>(); // execution_complete ts → command_exit `t`
   // FX003: callId → its tool_result payload size (estimate), attached to the call post-loop.
@@ -309,8 +358,22 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       // read (a repo id, relativized + confined at serialize time); never the file
       // body (`file_text`/`old_str`/`new_str`), which carries free text (AC-04).
       if (callId !== null && !pathByCall.has(callId)) {
-        const p = str(asObj(data.arguments).path);
-        if (p !== null) pathByCall.set(callId, p);
+        const args = asObj(data.arguments);
+        const p = str(args.path);
+        if (p !== null) {
+          pathByCall.set(callId, p);
+          // plan 056 (D5/finding 07): read the body fields to COMPUTE COUNTS only —
+          // `file_text` (create), `old_str`/`new_str` (edit). Never retained.
+          const rec: { ts: string | null; file_text?: string; old_str?: string; new_str?: string } =
+            { ts };
+          const ft = str(args.file_text);
+          if (ft !== null) rec.file_text = ft;
+          const os = str(args.old_str);
+          if (os !== null) rec.old_str = os;
+          const ns = str(args.new_str);
+          if (ns !== null) rec.new_str = ns;
+          fileArgsByCall.set(callId, rec);
+        }
       }
       // apply_patch's `arguments` is the raw patch STRING (not an object), so the
       // `arguments.path` capture above misses it; record the patch body here and
@@ -318,7 +381,10 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       // arguments payload, so create/edit (object arguments) never land here.
       if (callId !== null && !patchByCall.has(callId)) {
         const patch = str(data.arguments);
-        if (patch !== null) patchByCall.set(callId, patch);
+        if (patch !== null) {
+          patchByCall.set(callId, patch);
+          patchTsByCall.set(callId, ts);
+        }
       }
       // The execution's outcome (AC-19): Copilot reports a `success` boolean on
       // completion (it carries no result envelope, so `checks` isn't derivable —
@@ -416,6 +482,48 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
       else edited.push(p);
     }
   }
+
+  // plan 056: one `file` event per touched path (last-write-wins), with a delta
+  // from the tool payload — `create`→writtenDelta, `edit`/`str_replace`→old→new,
+  // `apply_patch`→per-file +/- counts. Untimed calls (no ts) are skipped.
+  const fileEventsByPath = new Map<string, FileEvent>();
+  for (const [callId, p] of pathByCall) {
+    const tn = toolNameByCall.get(callId);
+    const rec = fileArgsByCall.get(callId);
+    if (rec?.ts == null) continue;
+    if (tn === 'create' || tn === 'write') {
+      fileEventsByPath.set(p, {
+        t: rec.ts,
+        kind: 'file',
+        path: p,
+        change: 'written',
+        delta: writtenDelta(rec.file_text ?? ''),
+      });
+    } else if (tn === 'edit' || tn === 'str_replace' || tn === 'str_replace_editor') {
+      fileEventsByPath.set(p, {
+        t: rec.ts,
+        kind: 'file',
+        path: p,
+        change: 'edited',
+        delta: computeFileDelta(rec.old_str ?? '', rec.new_str ?? ''),
+      });
+    }
+  }
+  for (const [callId, patch] of patchByCall) {
+    if (toolNameByCall.get(callId) !== 'apply_patch') continue;
+    const ts = patchTsByCall.get(callId);
+    if (ts == null) continue;
+    for (const { path: p, add, delta } of parseApplyPatchDeltas(patch)) {
+      fileEventsByPath.set(p, {
+        t: ts,
+        kind: 'file',
+        path: p,
+        change: add ? 'written' : 'edited',
+        delta,
+      });
+    }
+  }
+
   return {
     effort,
     tools,
@@ -434,6 +542,7 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     turnStart,
     turnEnd,
     anyTs,
+    fileEvents: [...fileEventsByPath.values()],
   };
 }
 
@@ -478,6 +587,7 @@ export const copilotAdapter: HarnessAdapter = {
             turnStart: new Map(),
             turnEnd: new Map(),
             anyTs: false,
+            fileEvents: [],
           };
 
     // --- process log: authoritative tokens + per-model, attributed to this window ---
@@ -604,6 +714,8 @@ export const copilotAdapter: HarnessAdapter = {
       ...ev.commandExits.map(
         (c): Event => ({ t: c.t, kind: 'command_exit', verb: c.verb, exit: c.exit }),
       ),
+      // plan 056: per-file write/edit events (capture-time `t`, rollup-excluded).
+      ...ev.fileEvents,
     ];
     const event_stream = ev.anyTs ? buildEventStream({ direct, toolCalls: ev.toolCalls }) : null;
 

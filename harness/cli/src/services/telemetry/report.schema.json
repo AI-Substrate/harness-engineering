@@ -147,9 +147,49 @@
       "type": "array",
       "description": "SINGLE-session reports ONLY (plan 048 Phase 2): the ordered, closed-allowlist control-marker stream the insights discipline panel + subagent section consume. Absent on cohort/aggregate reports. Each marker carries exactly one already-captured, P12-safe discriminant (a verb / status / agent slug / branch / git push|commit signature) — never args, paths, or content.",
       "items": { "$ref": "#/$defs/timelineMarker" }
+    },
+    "authorship": {
+      "$ref": "#/$defs/authorship",
+      "description": "plan 056 — per-file write/edit deltas aggregated from the `file` events across every included session ('which files did agents write, and how much'). Absent when no session carried a `file` event."
     }
   },
   "$defs": {
+    "authorship": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["files", "totals"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["path", "change", "lines_added", "lines_removed", "bytes_added", "bytes_removed", "events"],
+            "properties": {
+              "path": { "type": "string", "description": "Repo-relative path, or the literal `<external>` for an out-of-repo write (confined at serialize time — never a leaked absolute path)." },
+              "change": { "type": "string", "enum": ["written", "edited"], "description": "The most recent change kind observed for the path." },
+              "lines_added": { "type": "integer", "minimum": 0 },
+              "lines_removed": { "type": "integer", "minimum": 0 },
+              "bytes_added": { "type": "integer", "minimum": 0 },
+              "bytes_removed": { "type": "integer", "minimum": 0 },
+              "events": { "type": "integer", "minimum": 0, "description": "How many `file` events (writes/edits) touched this path." }
+            }
+          }
+        },
+        "totals": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["files", "lines_added", "lines_removed", "bytes_added", "bytes_removed"],
+          "properties": {
+            "files": { "type": "integer", "minimum": 0 },
+            "lines_added": { "type": "integer", "minimum": 0 },
+            "lines_removed": { "type": "integer", "minimum": 0 },
+            "bytes_added": { "type": "integer", "minimum": 0 },
+            "bytes_removed": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
     "timelineMarker": {
       "type": "object",
       "additionalProperties": true,

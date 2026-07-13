@@ -52,13 +52,13 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(schema.additionalProperties).toBe(false);
   });
 
-  it('pins schema_version const to "2.3"', () => {
-    expect(schema.properties.schema_version?.const).toBe('2.3');
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.3');
+  it('pins schema_version const to "2.4"', () => {
+    expect(schema.properties.schema_version?.const).toBe('2.4');
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.4');
   });
 
   it('$id tracks the schema version (no stale $id drift — companion LOW finding)', () => {
-    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.3');
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.4');
   });
 
   it('the event_stream kind enum mirrors EVENT_KINDS exactly (a new kind can never appear on one side only)', () => {
@@ -132,14 +132,14 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
 });
 
 describe('T002 — version freeze (field-set change MUST bump schema_version)', () => {
-  it('the frozen field set is paired with schema_version 2.3', () => {
+  it('the frozen field set is paired with schema_version 2.4', () => {
     // FROZEN SNAPSHOT — if you change the segment field set, you MUST bump
     // SEGMENT_SCHEMA_VERSION and update this snapshot in the same change. This
     // test makes a silent contract drift impossible. (2.1 added harness_version —
     // the producing CLI version, surfaced as OTLP service.version. 2.2 added
     // captured_env — the allowlisted, secret-denylisted env snapshot. 2.3 added the
     // `mark` event kind to the event_stream union — no new top-level field.)
-    const FROZEN_V2_3_FIELDS = [
+    const FROZEN_V2_4_FIELDS = [
       'schema_version',
       'command',
       'harness',
@@ -163,8 +163,8 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
       'thinking',
       'captured_env',
     ];
-    if (SEGMENT_SCHEMA_VERSION === '2.3') {
-      expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_3_FIELDS].sort());
+    if (SEGMENT_SCHEMA_VERSION === '2.4') {
+      expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_4_FIELDS].sort());
     }
   });
 });

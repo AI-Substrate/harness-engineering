@@ -180,14 +180,19 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
   // real `fired_at`, which can predate the window (backfilled flight-plan history).
   // `artifact` events (plan 050) likewise carry a CAPTURE-TIME `t` (the "save time"
   // snapshot stamp), not a work instant. `mark` events (plan 053 — a peer's
-  // counts-only self-attestation) are annotation with a capture-time `t` too.
-  // Excluding all three from the rollup keeps gap/wall/stage math anchored to the
-  // window's work events; a single backfilled marker, capture-time snapshot, or
-  // peer mark would otherwise re-sort to the front and fabricate a huge
-  // mis-attributed gap (and `wall_s`). They remain in `event_stream` for replay /
-  // attribution; the rollup is derived only from the timed work events.
+  // counts-only self-attestation) are annotation with a capture-time `t` too, and
+  // `file` events (plan 056 — per-file write/edit deltas) are capture-time snapshots
+  // of an authorship instant. Excluding all four from the rollup keeps gap/wall/stage
+  // math anchored to the window's work events; a single backfilled marker,
+  // capture-time snapshot, peer mark, or file write would otherwise re-sort to the
+  // front and fabricate a huge mis-attributed gap (and `wall_s`). They remain in
+  // `event_stream` for replay / attribution; the rollup is derived only from the
+  // timed work events.
   const ev = [...events]
-    .filter((e) => e.kind !== 'flow_log' && e.kind !== 'artifact' && e.kind !== 'mark')
+    .filter(
+      (e) =>
+        e.kind !== 'flow_log' && e.kind !== 'artifact' && e.kind !== 'mark' && e.kind !== 'file',
+    )
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
   let agent = 0;
@@ -274,6 +279,81 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
 
 function round(n: number): number {
   return Math.round(Number.isFinite(n) ? n : 0);
+}
+
+// ── Authorship aggregate (plan 056 · T007) ──────────────────────────────────
+
+/** Per-file authorship totals, aggregated across a session's `file` events. */
+export interface AuthorshipFile {
+  path: string;
+  /** The most recent change kind observed for the path. */
+  change: 'written' | 'edited';
+  lines_added: number;
+  lines_removed: number;
+  bytes_added: number;
+  bytes_removed: number;
+  /** How many `file` events (writes/edits) touched this path. */
+  events: number;
+}
+
+/** The "which files did agents write, and how much" view — a pure fn of the stream. */
+export interface Authorship {
+  files: AuthorshipFile[];
+  totals: {
+    files: number;
+    lines_added: number;
+    lines_removed: number;
+    bytes_added: number;
+    bytes_removed: number;
+  };
+}
+
+/**
+ * Derive the {@link Authorship} aggregate from an event stream (plan 056) — a PURE
+ * function of the `file` events, so any consumer can recompute it. Multiple
+ * writes/edits of one path fold into a single per-path row (deltas summed; the
+ * `change` reflects the latest event; `events` counts the touches). Preserves
+ * first-seen path order.
+ */
+export function computeAuthorship(events: readonly Event[]): Authorship {
+  const byPath = new Map<string, AuthorshipFile>();
+  for (const e of events) {
+    if (e.kind !== 'file') continue;
+    let f = byPath.get(e.path);
+    if (f === undefined) {
+      f = {
+        path: e.path,
+        change: e.change,
+        lines_added: 0,
+        lines_removed: 0,
+        bytes_added: 0,
+        bytes_removed: 0,
+        events: 0,
+      };
+      byPath.set(e.path, f);
+    }
+    f.change = e.change;
+    f.lines_added += e.delta.lines_added;
+    f.lines_removed += e.delta.lines_removed;
+    f.bytes_added += e.delta.bytes_added;
+    f.bytes_removed += e.delta.bytes_removed;
+    f.events += 1;
+  }
+  const files = [...byPath.values()];
+  const totals = {
+    files: files.length,
+    lines_added: 0,
+    lines_removed: 0,
+    bytes_added: 0,
+    bytes_removed: 0,
+  };
+  for (const f of files) {
+    totals.lines_added += f.lines_added;
+    totals.lines_removed += f.lines_removed;
+    totals.bytes_added += f.bytes_added;
+    totals.bytes_removed += f.bytes_removed;
+  }
+  return { files, totals };
 }
 
 function mapValues(obj: Record<string, number>, fn: (n: number) => number): Record<string, number> {

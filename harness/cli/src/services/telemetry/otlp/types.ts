@@ -14,7 +14,7 @@ export const HARNESS_SCHEMA_URL =
 /** The harness telemetry instrumentation scope. */
 export const SCOPE_NAME = 'harness.telemetry';
 /** Mirrors the internal segment schema version (kept in lockstep). */
-export const OTLP_SCOPE_VERSION = '2.3';
+export const OTLP_SCOPE_VERSION = '2.4';
 
 // ── Severity (fixed OTLP 1–24 scale; we use INFO/WARN/ERROR) ──────────────────
 export const SEV_INFO = 9;
