@@ -6,9 +6,9 @@
 > routing. Composition is the router's job.
 
 **Verb**: backpressure
-**Purpose**: Survey whether planned work can be **proven by deterministic backpressure** — build failures, type errors, tests, lint, runtime/smoke checks, boot probes, architecture checks (dependency rules, ArchUnit, Roslyn analyzers, CodeQL), schema validators, data-check scripts — rather than by agent **inference** or human **eyeballing**. The computational-control tier pulled forward to design time, so *missing* backpressure is caught and planned for **before** code is written.
-**Consumes**: `SPEC_FILE` = `docs/plans/<ordinal>-<slug>/<slug>-spec.md` (required) — its `## Acceptance Criteria`, `## Target Domains`, `## Risks & Assumptions`. Plus read-only repo signals (workspace manifests, build/task files, test/e2e signatures, CI config, analyzer/architecture configs).
-**Flags**: `--spec <path>` / `--plan <path>` (resolve the spec) — survey is idempotent; re-run any time the spec changes.
+**Purpose**: **Select the deterministic proof** for the planned work — per acceptance criterion / failure mode, the exact repo-local **paved command** (build, typecheck, test, lint, runtime/smoke check, boot probe, architecture check — dependency rules, ArchUnit, Roslyn analyzers, CodeQL — schema validator, data-check script) whose green output will show that criterion holds — rather than leaving "done" to agent **inference** or human **eyeballing**. The survey doesn't stop at *can this be proven?*; it commits to *how it will be proven*, and where no sensor exists it specifies the Phase-0 build that creates one. The computational-control tier pulled forward to design time, so missing backpressure is caught and planned for **before** code is written.
+**Consumes**: `PLAN_FILE` = `docs/plans/<ordinal>-<slug>/<slug>-plan.md` (required) — the unified document: `## Business Specification` (its `## Acceptance Criteria`, `## Target Domains`, `## Risks & Assumptions`) **plus** `## Implementation Plan` (its `#### Phase Index` when Full; a Simple plan is one phase). A legacy split folder (a `<slug>-spec.md` with no unified plan) remains readable — survey the spec and treat the work as one phase. Plus read-only repo signals (workspace manifests, build/task files, test/e2e signatures, CI config, analyzer/architecture configs).
+**Flags**: `--plan <path>` / `--spec <path>` (resolve the plan; legacy spec accepted) — survey is idempotent; re-run any time the plan changes (the artifact records the surveyed plan's full SHA-256 as its **Basis**, so a changed plan is a changed basis).
 **Produces**: one artifact — `${PLAN_DIR}/backpressure-coverage.md` (overwrite-safe). No persisted index / rollup / ledger.
 **Side effects**: none beyond writing the single artifact. Read-only against the repo.
 
@@ -41,9 +41,10 @@ A *Backpressure Check is distinct from back pressure itself*: it is an advisory,
 
 ```md
 Inputs:
-  SPEC_FILE  = `docs/plans/<ordinal>-<slug>/<slug>-spec.md`  (required)
-  PLAN_DIR   = dirname(SPEC_FILE)
+  PLAN_FILE  = `docs/plans/<ordinal>-<slug>/<slug>-plan.md`  (required; legacy fallback: `<slug>-spec.md`)
+  PLAN_DIR   = dirname(PLAN_FILE)
   OUT_FILE   = `${PLAN_DIR}/backpressure-coverage.md`
+  BASIS      = sha256(PLAN_FILE bytes) — recorded in the artifact header
   Repo signals (read-only, all optional — probe recursively across the repo root AND every workspace/package root, never root-only):
     - workspace manifests: `pnpm-workspace.yaml`, `package.json#workspaces`, `Cargo.toml [workspace]`, `go.work`, `lerna.json`, `nx.json`
     - build/task files: `justfile`, `Makefile`, `package.json` scripts, `pyproject.toml`, `Cargo.toml`, `bin/dev`, `scripts/*`
@@ -56,8 +57,9 @@ Inputs:
 
 ### PHASE 0 — Setup
 
-1. Resolve SPEC_FILE (from `--spec`/`--plan` arg, the current plan folder, or an ordinal branch). If no spec exists → there is nothing to survey against; say so and STOP. (This verb surveys against a spec; it does not invent one.)
-2. Read the spec's `## Acceptance Criteria`, `## Target Domains`, and `## Risks & Assumptions`. These are the things the work must make true — the survey's subject.
+1. Resolve PLAN_FILE (from `--plan`/`--spec` arg, the current plan folder, or an ordinal branch): prefer the unified `<slug>-plan.md`; fall back to a legacy `<slug>-spec.md` (treat the work as one phase). If neither exists → there is nothing to survey against; say so and STOP. (This verb surveys against a plan; it does not invent one.)
+2. Read the `## Acceptance Criteria`, `## Target Domains`, and `## Risks & Assumptions` — the things the work must make true — plus the `#### Phase Index` (Full) or the single implementation block (Simple/legacy → one phase): each proof selected below is mapped to the phase that makes its criterion true.
+3. Compute `BASIS = sha256(PLAN_FILE bytes)` — the artifact records it; a re-plan changes the basis, which is what triggers re-selection.
 
 ### STEP 1 — Inventory existing deterministic sensors
 
@@ -92,27 +94,36 @@ Run this signature checklist with recursive globs (`**/…`) across all roots fr
 
 #### 1c — Mine the named precedent (cheap, high-yield)
 
-If the spec (or a research dossier, if present) cites a **precedent feature** (a prior plan / component of the same shape), look at *how that precedent is tested* — its test files are a direct map of the available sensors. Following the precedent's own spec files often surfaces a nested harness immediately.
+If the plan (or a research dossier, if present) cites a **precedent feature** (a prior plan / component of the same shape), look at *how that precedent is tested* — its test files are a direct map of the available sensors. Following the precedent's own spec files often surfaces a nested harness immediately.
 
 #### 1d — Corroborate with docs + CI (optional, last)
 
 Now read `.harness/engineering-harness.md` (the canonical governance doc), CI config (`.github/workflows/*` — the de-facto PR proof gate), and recipe comments to *enrich* what 1a–1c found: boot / health / validate / smoke / doctor commands, stated maturity. **If a doc disagrees with the filesystem, the filesystem wins.**
 
-For each sensor found, capture: **name**, **command** (how to run it), the **dimension** it guards (Pattern 19: `maintainability` | `architecture-fitness` | `behaviour`), and **where it was found** (root or which package).
+For each sensor found, capture: **name**, its **paved command** — the exact repo-local invocation a teammate would run: a `justfile`/`Makefile` recipe, a manifest script (`npm run <script>`), or a repo CLI verb — the **dimension** it guards (Pattern 19: `maintainability` | `architecture-fitness` | `behaviour`), and **where it was found** (root or which package). **Never record a floating/ambient invocation** (a raw `npx …`, a hand-typed one-liner nobody paved): a sensor reachable only through an unpaved command is a **pave-target** — classify it `BUILDABLE` with "pave the command" as its Phase-0 build, not `EXISTS`.
 
 If **no signatures match after probing all roots**, record "no deterministic sensors found" *with the probe trail* (which §1b signatures were searched, across which roots) and expect certainty to trend **Weak** with a Recommended Phase 0. A missing governance doc is NOT itself evidence of absent sensors — when the doc is missing, the §1b sweep is the *only* ground truth, so run it thoroughly.
 
 ### STEP 2 — Derive this feature's experienced failure modes
 
-From the spec's acceptance criteria, target domains, and risks, enumerate the concrete ways **this specific work** could be "green but wrong" (Principle 33). Do not limit to easy-to-unit-test failures. Consider: startup/boot, integration between components, rendering/hydration, side effects, **architecture drift** (boundary/dependency-direction violations), **contract breakage**, security-sensitive boundaries, and data integrity.
+From the plan's acceptance criteria, target domains, and risks, enumerate the concrete ways **this specific work** could be "green but wrong" (Principle 33) — and map each criterion/failure mode to the phase that makes it true (Phase Index when Full; everything is phase 1 when Simple/legacy). Do not limit to easy-to-unit-test failures. Consider: startup/boot, integration between components, rendering/hydration, side effects, **architecture drift** (boundary/dependency-direction violations), **contract breakage**, security-sensitive boundaries, and data integrity.
 
-This is where the agent is encouraged to **get creative** about what *kind* of sensor each failure mode needs — anything from a one-line data-check script to a CodeQL query or a Roslyn analyzer, and everything in between.
+This is where the agent is encouraged to **get creative** about what *kind* of sensor each failure mode needs — anything from a one-line data-check script to a CodeQL query or a Roslyn analyzer, and everything in between. Sometimes the blocker isn't a missing check but that **the product exposes nothing checkable** — then the right suggestion is a **product-code affordance** that makes a sensor possible (a health endpoint, a smoke route, a testability seam). Affordances are **recommendations only**: the survey names them and their payoff; whether to touch product code is entirely the plan owner's call.
 
-### STEP 3 — Build the coverage matrix
+### STEP 3 — Build the coverage matrix and SELECT each proof
 
-One row per acceptance criterion / derived failure mode. For each, name the **deterministic sensor that would prove it** and classify:
+One row per acceptance criterion / derived failure mode. For each, **select the proof, don't just classify the gap**: the cheapest paved command that actually proves *this* criterion (a targeted spec file over "the whole suite"; a smoke route over "CI is green") —
 
-- **Status** — `EXISTS` (a current sensor from Step 1 already proves it) | `BUILDABLE` (no sensor today, but one can be specified within plan scope) | `ABSENT` (cannot be proven deterministically — legitimately inferential/human, routed to after-the-fact review, and that is fine).
+- **`RUN:`** — an `EXISTS` sensor: the verbatim paved command, runnable today.
+- **`EXTEND→RUN:`** — an `EXTEND` gap: an existing sensor covers most of it — name the **extension** (a rule added to the arch checker, a case added to a spec file, a route added to the smoke check), then the **same paved command** proves it. No new surface, no new invocation to learn; the extension rides the sensor's existing wiring (CI, habits, docs). **Prefer extending over building** — it is almost always the cheaper move and lands in a proven home.
+- **`BUILD→RUN:`** — a `BUILDABLE` gap: the Phase-0 sensor build **plus the paved command it will expose** (proposed, clearly marked — never printed as if runnable today).
+- `ABSENT` rows name their tier honestly (inferential / human-judgement) and carry **no** command — never a fake proof line.
+
+The status↔mode mapping is fixed and coherent end-to-end: `EXISTS`→`RUN:` · `EXTEND`→`EXTEND→RUN:` · `BUILDABLE`→`BUILD→RUN:` · `ABSENT`→no command. Certainty and the closing verdict both derive from these modes.
+
+Then classify each row:
+
+- **Status** — `EXISTS` (a current sensor from Step 1 already proves it) | `EXTEND` (an existing sensor proves it after a named extension — same paved command) | `BUILDABLE` (no sensor today, but one can be specified within plan scope) | `ABSENT` (cannot be proven deterministically — legitimately inferential/human, routed to after-the-fact review, and that is fine).
 - **Tier** (Pattern 18) — `computational` (deterministic check) | `inferential` (AI/eyeball review) | `human-judgement` (product/UX/taste decision).
 - **Probe trail (REQUIRED for `ABSENT`)** — every `ABSENT` row must carry a one-line record of what was searched (the §1b signatures + which workspace roots), e.g. *"globbed `**/playwright.config.*`, `**/cypress.config.*`, `**/*.spec.*` under root + `harness/` + `packages/*` — no match"*. `ABSENT` is the most consequential verdict (it routes to manual gaps + a Phase 0), so it must never be asserted without evidence of having looked. An `ABSENT` row with no probe trail is a smell — re-run the §1b sweep before trusting it. (Mirrors the evidence-before-assertion discipline. This is a *record*, not a gate — it adds no threshold and never blocks.)
 
@@ -120,29 +131,40 @@ A row being `ABSENT` / `inferential` / `human-judgement` is **not a failure** �
 
 ### STEP 4 — Advisory verdict
 
-#### Certainty rating (qualitative — NO numbers)
+#### Certainty rating (qualitative — NO numbers, derived from the Proof Plan modes)
 Rate the deterministic coverage of the **behaviour + architecture** rows (maintainability gaps and inherently-inferential rows do not drag the rating down):
-- **Strong** — every behaviour/architecture criterion has an `EXISTS` sensor.
-- **Partial** — the behaviour/architecture gaps are `BUILDABLE` (sensors don't exist yet but are specifiable).
+- **Strong** — every behaviour/architecture criterion has a selected `RUN:` proof (an `EXISTS` sensor with a paved command).
+- **Partial** — the behaviour/architecture gaps are `EXTEND→RUN:` or `BUILD→RUN:` (specified extensions or builds with the command they'll strengthen/pave — extensions being the cheaper rung).
 - **Weak** — material behaviour/architecture criteria are `ABSENT`, or no deterministic sensors were found at all.
 
 State the rating with a **one-line rationale tied to the matrix** (e.g., "3 of 4 behaviour criteria have EXISTS sensors; the 4th is BUILDABLE → Partial").
 
 #### Recommended Phase 0 (conditional — routing trigger, NOT a threshold)
-Include a **Recommended Phase 0: Establish Backpressure** table **iff** ≥1 behaviour/architecture criterion is `BUILDABLE` or `ABSENT` with no `EXISTS` sensor. **Omit** it entirely when all behaviour/architecture criteria are `EXISTS`, or when the only gaps are inferential / human-judgement / testing-doc rows.
+Include a **Recommended Phase 0: Establish Backpressure (build or extend)** table **iff** ≥1 behaviour/architecture criterion is `EXTEND`, `BUILDABLE`, or `ABSENT` with no `EXISTS` sensor. **Omit** it entirely when all behaviour/architecture criteria are `EXISTS`, or when the only gaps are inferential / human-judgement / testing-doc rows.
 
 (This is a *routing* decision about whether to print a table — not a quality bar, score, or pass/fail gate.)
 
-Each Phase 0 row specifies a sensor to build: **what to build**, **what it proves** (which criterion/failure-mode), and a suggested **form** (data-check script / dependency-direction rule / ArchUnit / Roslyn analyzer / CodeQL query / smoke route / schema check).
+Each Phase 0 row specifies a sensor to **build or extend** — **extensions ranked first** (cheaper, no new surface, lands in a proven home): **what to build/extend**, **what it proves** (which criterion/failure-mode), a suggested **form** (extension to a named existing sensor / data-check script / dependency-direction rule / ArchUnit / Roslyn analyzer / CodeQL query / smoke route / schema check), and the **paved command it strengthens or exposes** (the `EXTEND→RUN:` / `BUILD→RUN:` line the Proof Plan carries). A row may additionally *recommend* a product-code affordance that would make the sensor possible — recommendation only, never a plan edit.
 
-#### Closing suggestions (advisory — offer, then move on)
+#### The Proof Plan is the primary product (selection, not enforcement)
 
-With the matrix in hand, you can offer the user up to two plain suggestions to inform the planning conversation, then leave the call with them:
+Assemble `## Proof Plan (selected)` — per phase, the ordered list of proof lines whose green output shows that phase's criteria hold: `RUN:` lines verbatim-paved and runnable today, `EXTEND→RUN:` lines naming the extension to an existing sensor first (same paved command, made stronger), `BUILD→RUN:` lines naming their Phase-0 build first. These are the ready-to-fold *"<criterion> — done when `<paved command>` is green"* lines for whatever the plan uses to decide "done" (an acceptance criterion, a DoD item, a task) — handed to the plan's owner to fold into the re-plan, never applied by this verb. **Honesty boundary: this is selection, not enforcement** — nothing in this survey executes at phase end or guarantees the proofs are run; what binds it is the artifact + its `Basis` hash (a re-plan changes the basis, forcing re-selection against the latest plan).
 
-- **Encode it** — for a criterion backed by an `EXISTS` or `BUILDABLE` sensor, you can hand over a ready-to-paste line for whatever the plan uses to decide "done" (a spec acceptance criterion, a DoD checklist item, a task): *"<criterion> — done when `<sensor>` is green."* Whoever owns that done-concept can drop it in.
-- **Flag thin coverage** — where material behaviour/architecture criteria are `ABSENT` (or no sensors were found), you can say so plainly and rough-size what closing it would take: a single criterion line, extra work in this plan, or its own follow-up.
+#### Closing verdict (mandatory — plain language, derived from the modes)
 
-These inform the conversation — the survey writes its artifact and leaves any editing to the plan's owner.
+The survey **ends by answering its own question out loud**: *how will this work be proven done?* One short spoken block (also written into the artifact's `## Closing Verdict`), on the four-rung ladder the modes define — cheapest rung first:
+
+1. **Fully provable today** — every behaviour/architecture criterion is `RUN:`: *"This work will prove itself done: at each phase end, `<the proof lines>` green."*
+2. **Provable after extending** — the gaps are `EXTEND→RUN:`: *"Provable once `<existing sensor>` gains `<rule/case/route>` — same command, made stronger."*
+3. **Needs a new sensor** — the gaps are `BUILD→RUN:`: *"AC-x/y can't be proven today; Phase 0 builds `<sensor>`, paving `<command>`."*
+4. **Partial at best** — material `ABSENT` rows: *"I can only partially prove this deterministically — `<criteria>` remain inference/eyeball; the highest-leverage fix is `<extension/sensor>` (or, recommendation only, the product-code affordance `<X>` that would make one possible)."*
+
+Two rationale lines that belong in the verdict, not just the doctrine (harness-foundations Rules 6 and 7):
+
+- **Every `RUN:` line is a token arbitrage** — a criterion the agent will never have to *reason* about again ("is this passing?" collapses to exit code + pointed message); every `ABSENT` row is a standing inference tax the plan's owner is choosing to keep paying.
+- **The proof line is where corrections live**: *if any proof line passes but a human still says not-done, the sensor is wrong — fix the checker first, re-run it, then fix the code.* The correction becomes permanent instead of evaporating as a chat comment.
+
+Also **flag thin coverage** here when it applies — rough-size what closing it would take: a single criterion line, extra work in this plan, or its own follow-up. All of it informs the conversation — the survey writes its artifact and leaves any editing to the plan's owner.
 
 ### OUTPUT — write `${PLAN_DIR}/backpressure-coverage.md`
 
@@ -151,46 +173,63 @@ Overwrite if it exists (regeneration-safe). Use this template:
 ```markdown
 # Backpressure Coverage — <feature>
 
-**Spec**: [<slug>-spec.md](./<slug>-spec.md)
+**Plan**: [<slug>-plan.md](./<slug>-plan.md)   <!-- legacy: <slug>-spec.md -->
+**Basis (plan SHA-256)**: <full 64-hex digest of the plan file surveyed>
 **Generated**: <today>
 **Certainty**: Strong | Partial | Weak
 
 > Advisory only. Never blocks, never gates, no scores. (Advisory backpressure survey.)
+> Selection, not enforcement: nothing here executes at phase end — the proof lines
+> below are what the plan's owner folds into each criterion's "done when".
 
 ## Existing Sensors (inventory)
 
-| Sensor | Command | Dimension | Found in |
-|--------|---------|-----------|----------|
+| Sensor | Paved command | Dimension | Found in |
+|--------|---------------|-----------|----------|
 | harness smoke | `just smoke` | behaviour | `harness/` |
 | typecheck | `just typecheck` | maintainability | root |
 | (none found) | — | — | — |
 
 ## Coverage Matrix
 
-| Criterion / failure mode | Deterministic sensor | Status | Tier | Probe trail (required if ABSENT) |
-|--------------------------|----------------------|--------|------|----------------------------------|
-| <AC-1 / failure mode> | <sensor or —> | EXISTS / BUILDABLE / ABSENT | computational / inferential / human-judgement | <globs searched + roots, for ABSENT rows; — otherwise> |
+| Criterion / failure mode | Phase | Selected proof | Status | Tier | Probe trail (required if ABSENT) |
+|--------------------------|-------|----------------|--------|------|----------------------------------|
+| <AC-1 / failure mode> | <N> | RUN: `<paved command>` · EXTEND→RUN: add <rule/case/route> to <sensor> then `<same command>` · BUILD→RUN: <Phase-0 build> then `<command it paves>` · — | EXISTS / EXTEND / BUILDABLE / ABSENT | computational / inferential / human-judgement | <globs searched + roots, for ABSENT rows; — otherwise> |
+
+## Proof Plan (selected)
+
+<!-- Per phase, in order. RUN: lines are runnable today (verbatim paved commands).
+     BUILD→RUN: lines are proposed — their Phase-0 build comes first. -->
+
+### Phase <N>: <title>
+| Proves | Mode | Proof line |
+|--------|------|------------|
+| <AC-1> | RUN | `just smoke checkout` |
+| <AC-2> | EXTEND→RUN | add <rule> to <existing sensor>; then `just check-arch` |
+| <AC-3> | BUILD→RUN | Phase 0 builds <sensor>; then `just check-<name>` |
 
 ## Certainty: <Strong|Partial|Weak>
 
-<one-line rationale tied to the matrix>
+<one-line rationale tied to the Proof Plan modes>
 
-## Recommended Phase 0: Establish Backpressure
+## Recommended Phase 0: Establish Backpressure (build or extend)
 
-<!-- Include this section ONLY if the routing trigger fires; otherwise omit the whole section. -->
+<!-- Include this section ONLY if the routing trigger fires; otherwise omit the whole
+     section. Extensions ranked first. An affordance is a recommendation only. -->
 
-| Sensor to build | Proves | Suggested form |
-|-----------------|--------|----------------|
-| <sensor> | <criterion / failure mode> | data-script / dep-rule / ArchUnit / Roslyn / CodeQL / smoke / schema |
+| Sensor to build/extend | Proves | Suggested form | Paved command it strengthens/exposes |
+|------------------------|--------|----------------|--------------------------------------|
+| extend <existing sensor> | <criterion / failure mode> | extension: <rule/case/route> | `just check-arch` (same command, stronger) |
+| <new sensor> | <criterion / failure mode> | data-script / dep-rule / ArchUnit / Roslyn / CodeQL / smoke / schema | `just check-<name>` |
 
-## Suggested "done when" lines (advisory)
+## Closing Verdict
 
-<!-- Optional. Paste-ready lines the plan's owner can add to whatever decides "done"
-     (a spec acceptance criterion, a DoD item, a task). Offered, not applied. -->
+<!-- Mandatory. Plain language, derived from the modes (four-rung ladder):
+     fully provable today / provable after extending X / needs new sensor /
+     partial at best (+ affordance recommendation). Include the fix-the-checker-first
+     contract line when any RUN: proofs were selected. -->
 
-| For criterion | Suggested line | Backed by |
-|---------------|----------------|-----------|
-| <AC / failure mode> | done when `<sensor>` is green | EXISTS / BUILDABLE / thin — needs follow-up |
+<the spoken verdict, verbatim>
 ```
 
 ### How this differs from a measurability gate and from after-the-fact review (include a short note in the artifact if useful)
@@ -205,4 +244,4 @@ A missing governance doc (`.harness/engineering-harness.md`) is **not** evidence
 
 ## Exit
 
-Print the output-contract summary (✅: what was produced, where, key fields), and surface any closing suggestions from STEP 4. Picking the next harness stage is the router's job — this survey just informs the planning conversation and leaves the decision with whoever owns the plan.
+**Speak the Closing Verdict first** — the four-rung plain-language answer from STEP 4 (fully provable today / provable after extending X / needs a new sensor / partial at best, with the fix-the-checker-first contract line when `RUN:` proofs were selected). Then print the output-contract summary (✅: what was produced, where, key fields — Certainty, the Basis hash, and the Proof Plan's `RUN:`/`EXTEND→RUN:`/`BUILD→RUN:` line counts), and hand over the per-criterion *"done when `<paved command>` is green"* lines for the plan's owner to fold into the re-plan. Picking the next harness stage is the router's job — this survey just informs the planning conversation and leaves the decision with whoever owns the plan.
