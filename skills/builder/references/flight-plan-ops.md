@@ -91,6 +91,7 @@ Pass explicit `--zone` only to override a default. For the flight-plan vocabular
 
 - **Build order (single-op verbs only)**: `add-node`/`insert-node` reject forward `--next` refs — add the spine last-to-first (ship first), or add nodes then wire. **`apply` removes this wart** (plan 039): a batch resolves forward refs at the end (two-phase — materialize all nodes → wire edges → validate the final DAG once), so op order *within* a batch never matters.
 - **`set-node` can't re-parent**: it cannot set `--next` / `--branch-of`. To turn an existing spine node into an excursion, use **`mv-node`** (plan 039 — re-parents + rewires, DAG-re-checked, cycle-refused), or `insert-node --branch-of` for a fresh node. To delete + rewire, use **`remove-node`**.
+- **Never `nav set --now` past due or unreceipted chores**: before departing a node, `harness flow nav show` must return `due_chores: []` **and** — since terminal nodes leave that read — a read-only inspection of the node's anchored chores in `the-flow.json` must show every terminal chore carrying its receipt comment (`done` via a real seam attempt + receipt — a missing/unavailable router is itself a receipted attempt — or `skipped` via the human's two-call decline; exact receipt-first/status-second commands: the doctrine block in [`harness-seams.md`](./harness-seams.md)). The CLI does **not** enforce this; the engine must (builder SKILL.md invariant #12; 00-routing.md § CLI-driven cadence step 3).
 
 ## §7 — Pointer
 
