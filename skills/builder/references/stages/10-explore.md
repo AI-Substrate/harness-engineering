@@ -117,7 +117,7 @@ Emit an external-research opportunity only when repo evidence cannot answer a ma
 
 ## Dossier contract
 
-A decision packet — not a transcript or a repo inventory. **Required**: header, Answer, Evidence, Planning Handoff. Every other section is **conditional — omit it entirely when empty** (no "none found" filler, no empty headings).
+A decision packet — not a transcript or a repo inventory. **Required**: header, The Ask, Answer, Evidence, Planning Handoff. Every other section is **conditional — omit it entirely when empty** (no "none found" filler, no empty headings).
 
 ```markdown
 # Research Dossier: <topic>
@@ -127,6 +127,10 @@ A decision packet — not a transcript or a repo inventory. **Required**: header
 **Effort**: Quick | Standard | Deep | Audit
 **Tools**: FlowSpace | Standard | Mixed
 **Evidence**: <N current sources> · <N historical sources>
+
+## The Ask
+
+<2–4 plain sentences a cold reader can follow: what was asked, restated in human words — never just the query string; where the ask came from (ticket, conversation, file); and what this dossier is for. When the query is a pointer — a file path, ticket ID, or URL — resolve it into words here; the verbatim **Query** field above is traceability only.>
 
 ## Answer
 
@@ -174,6 +178,7 @@ _Omit when none is material._
 **Dossier rules**:
 
 - One evidence table — a finding appears **once** (F-NN); other sections reference its ID, never restate it.
+- **The Ask stands alone**: written for a reader with no session context. A pointer query (file path, ticket ID, URL) is resolved into human words there, never echoed — `**Query**` stays verbatim for traceability.
 - Every material claim cites an exact source (`path:line`, symbol/node, or `artifact#section`). Link to detail; don't reproduce it.
 - No routine "business purpose" unless directly evidenced and needed to answer the query.
 - Don't claim test percentages unless measured; don't infer High/Medium/Low complexity without an explicit useful basis.
@@ -199,7 +204,7 @@ This verb is read-only. After output: no code changes, no further files, no impl
 
 ## Consumer (via the artifact — the wire protocol)
 
-The **plan** verb reads `research-dossier.md` fully when present: its Answer, Evidence, Historical Evidence, Risks, Domain Impact, and Planning Handoff inform complexity, domains, constraints, and question framing. Unresolved External Research rows travel with the dossier. The dossier is the whole interface — no other coupling.
+The **plan** verb reads `research-dossier.md` fully when present: The Ask restates the question being answered; the Answer, Evidence, Historical Evidence, Risks, Domain Impact, and Planning Handoff inform complexity, domains, constraints, and question framing. Unresolved External Research rows travel with the dossier. The dossier is the whole interface — no other coupling.
 
 ## Exit
 
