@@ -295,9 +295,13 @@ describe('SensorStateStore (workshop 002 S4-S6)', () => {
 
     const written = store.write(record());
     expect(written).toMatchObject({ ok: true, value: { schema: 1 } });
-    expect(fs.writes).toEqual(['/repo/.harness/temp/sensors/state/lint-count.json.tmp-1']);
+    expect(fs.writes).toEqual([
+      '/repo/.harness/temp/sensors/state/lint-count.json.tmp-1',
+      '/repo/.harness/temp/sensors/history/lint-count.jsonl.tmp-1',
+    ]);
     expect(fs.renames).toEqual([
       '/repo/.harness/temp/sensors/state/lint-count.json.tmp-1->/repo/.harness/temp/sensors/state/lint-count.json',
+      '/repo/.harness/temp/sensors/history/lint-count.jsonl.tmp-1->/repo/.harness/temp/sensors/history/lint-count.jsonl',
     ]);
 
     clock.advance(5_000);
@@ -330,7 +334,9 @@ describe('SensorStateStore (workshop 002 S4-S6)', () => {
     });
     expect(fs.renames).toEqual([
       '/repo/.harness/temp/sensors/state/lint-count.json.tmp-101-1->/repo/.harness/temp/sensors/state/lint-count.json',
+      '/repo/.harness/temp/sensors/history/lint-count.jsonl.tmp-101-1->/repo/.harness/temp/sensors/history/lint-count.jsonl',
       '/repo/.harness/temp/sensors/state/lint-count.json.tmp-202-1->/repo/.harness/temp/sensors/state/lint-count.json',
+      '/repo/.harness/temp/sensors/history/lint-count.jsonl.tmp-202-1->/repo/.harness/temp/sensors/history/lint-count.jsonl',
     ]);
     expect(second.read('lint-count')).toMatchObject({
       ok: true,
@@ -380,6 +386,133 @@ describe('SensorStateStore (workshop 002 S4-S6)', () => {
     expect(store.read('bad')).toMatchObject({ ok: false, error: { code: 'E213' } });
     expect(store.read('malformed')).toMatchObject({ ok: false, error: { code: 'E213' } });
     expect(store.read('never-run')).toEqual({ ok: true, value: null });
+  });
+
+  it('appends ok, error, and timeout records newest-last on disk and reads newest-first', () => {
+    const fs = new FakeFs();
+    const store = new SensorStateStore({ fs, clock: new FakeClock(startedAt), repoRoot: '/repo' });
+
+    expect(store.write(record({ runId: 1 }))).toMatchObject({ ok: true });
+    expect(
+      store.write(
+        record({
+          runId: 2,
+          runStatus: 'error',
+          reading: null,
+          error: { code: 'E211', message: 'sensor crashed' },
+        }),
+      ),
+    ).toMatchObject({ ok: true });
+    expect(
+      store.write(
+        record({
+          runId: 3,
+          runStatus: 'timeout',
+          reading: null,
+          error: { code: 'E212', message: 'timed out' },
+        }),
+      ),
+    ).toMatchObject({ ok: true });
+
+    expect(store.readHistory('lint-count')).toMatchObject({
+      degraded: false,
+      note: null,
+      records: [
+        { runId: 3, runStatus: 'timeout' },
+        { runId: 2, runStatus: 'error' },
+        { runId: 1, runStatus: 'ok' },
+      ],
+    });
+    const raw = fs.readText('/repo/.harness/temp/sensors/history/lint-count.jsonl') ?? '';
+    expect(
+      raw
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line).runId),
+    ).toEqual([1, 2, 3]);
+  });
+
+  it('caps history at 50 records and trims the oldest entries', () => {
+    const store = new SensorStateStore({
+      fs: new FakeFs(),
+      clock: new FakeClock(startedAt),
+      repoRoot: '/repo',
+    });
+    for (let runId = 1; runId <= 55; runId += 1) {
+      expect(store.write(record({ runId }))).toMatchObject({ ok: true });
+    }
+    const history = store.readHistory('lint-count');
+    expect(history.records).toHaveLength(50);
+    expect(history.records.map(({ runId }) => runId)).toEqual(
+      Array.from({ length: 50 }, (_, index) => 55 - index),
+    );
+  });
+
+  it('keeps valid history when individual JSONL lines are corrupt and degrades honestly', () => {
+    const historyPath = '/repo/.harness/temp/sensors/history/lint-count.jsonl';
+    const fs = new FakeFs({
+      [historyPath]: `${JSON.stringify(record())}\nnot-json\n${JSON.stringify({ sensor: 'broken' })}\n`,
+    });
+    const store = new SensorStateStore({ fs, clock: new FakeClock(startedAt), repoRoot: '/repo' });
+
+    expect(store.readHistory('lint-count')).toMatchObject({
+      degraded: true,
+      note: expect.stringContaining('ignored 2 malformed history line(s)'),
+      records: [{ runId: 1 }],
+    });
+    expect(store.readHistory('missing')).toMatchObject({
+      degraded: true,
+      note: expect.stringContaining('history unavailable'),
+      records: [],
+    });
+  });
+
+  it('never exposes a torn history target when its atomic rename fails', () => {
+    const historyPath = '/repo/.harness/temp/sensors/history/lint-count.jsonl';
+    const old = `${JSON.stringify(record({ runId: 1 }))}\n`;
+    class HistoryRenameFailureFs extends FakeFs {
+      override rename(from: string, to: string): void {
+        if (to === historyPath) {
+          this.renames.push(`${from}->${to}`);
+          throw new Error('history rename denied');
+        }
+        super.rename(from, to);
+      }
+    }
+    const fs = new HistoryRenameFailureFs({ [historyPath]: old });
+    const store = new SensorStateStore({ fs, clock: new FakeClock(startedAt), repoRoot: '/repo' });
+
+    expect(store.write(record({ runId: 2 }))).toMatchObject({
+      ok: false,
+      error: { code: 'E214', message: expect.stringContaining('history rename denied') },
+    });
+    expect(fs.readText(historyPath)).toBe(old);
+  });
+
+  it('clearAll removes state and history but preserves the chosen snapshot', () => {
+    const fs = new FakeFs({
+      '/repo/.harness/temp/sensors/snapshot.json': '{"schema":1,"takenAt":"kept","readings":{}}\n',
+    });
+    const store = new SensorStateStore({ fs, clock: new FakeClock(startedAt), repoRoot: '/repo' });
+    expect(store.write(record())).toMatchObject({ ok: true });
+
+    expect(store.clearAll()).toEqual({ ok: true, value: { state: true, history: true } });
+    expect(store.read('lint-count')).toEqual({ ok: true, value: null });
+    expect(store.readHistory('lint-count').records).toEqual([]);
+    expect(fs.readText('/repo/.harness/temp/sensors/snapshot.json')).toContain('"takenAt":"kept"');
+    expect(fs.removedDirs).toEqual([
+      '/repo/.harness/temp/sensors/state',
+      '/repo/.harness/temp/sensors/history',
+    ]);
+  });
+
+  it('FakeFs records mtime probes and returns null for a missing path', () => {
+    const fs = new FakeFs({ '/repo/state.json': '{}' });
+    expect(fs.mtimeMs('/repo/missing.json')).toBeNull();
+    expect(fs.mtimeMs('/repo/state.json')).toBe(0);
+    fs.setMtime('/repo/state.json', 42);
+    expect(fs.mtimeMs('/repo/state.json')).toBe(42);
+    expect(fs.mtimeReads).toEqual(['/repo/missing.json', '/repo/state.json', '/repo/state.json']);
   });
 
   it('writes heartbeat atomically and computes daemon liveness without pid probing', () => {

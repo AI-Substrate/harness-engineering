@@ -9,6 +9,7 @@ import type { FileSystemWritePort, FsPort } from './fs-port.js';
  */
 export class FakeFs implements FsPort, FileSystemWritePort {
   readonly reads: string[] = [];
+  readonly mtimeReads: string[] = [];
   readonly writes: string[] = [];
   readonly mkdirs: string[] = [];
   /** Every rename as a `${from}->${to}` pair (fakes over mocks — assert on history). */
@@ -35,11 +36,18 @@ export class FakeFs implements FsPort, FileSystemWritePort {
    */
   readonly failDeletes = new Set<string>();
   private readonly madeDirs = new Set<string>();
+  private nextMtime: number;
 
   constructor(
     private readonly files: Record<string, string> = {},
     private readonly dirs: Record<string, string[]> = {},
-  ) {}
+    private readonly mtimes: Record<string, number> = {},
+  ) {
+    for (const path of Object.keys(files)) {
+      this.mtimes[path] ??= 0;
+    }
+    this.nextMtime = Math.max(0, ...Object.values(this.mtimes)) + 1;
+  }
 
   exists(path: string): boolean {
     this.reads.push(path);
@@ -49,6 +57,16 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   readText(path: string): string | null {
     this.reads.push(path);
     return this.files[path] ?? null;
+  }
+
+  mtimeMs(path: string): number | null {
+    this.mtimeReads.push(path);
+    return path in this.files || this.madeDirs.has(path) ? (this.mtimes[path] ?? 0) : null;
+  }
+
+  setMtime(path: string, value: number): void {
+    this.mtimes[path] = value;
+    this.nextMtime = Math.max(this.nextMtime, value + 1);
   }
 
   readdir(path: string): string[] {
@@ -85,6 +103,7 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   writeText(path: string, contents: string): void {
     this.writes.push(path);
     this.files[path] = contents;
+    this.mtimes[path] = this.nextMtime++;
   }
 
   rename(from: string, to: string): void {
@@ -95,7 +114,9 @@ export class FakeFs implements FsPort, FileSystemWritePort {
       throw new Error(`FakeFs.rename: source does not exist: ${from}`);
     }
     this.files[to] = contents;
+    this.mtimes[to] = this.mtimes[from] ?? this.nextMtime++;
     delete this.files[from];
+    delete this.mtimes[from];
   }
 
   deleteFile(path: string): void {
@@ -105,6 +126,7 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     }
     // Idempotent (mirrors NodeFs `rmSync({force:true})`): a missing path is a no-op.
     delete this.files[path];
+    delete this.mtimes[path];
     this.dropFromParentListing(path);
   }
 
@@ -118,6 +140,9 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     // Recursively drop every file at or under the dir (mirrors recursive rmSync).
     for (const p of Object.keys(this.files)) {
       if (p === posix || p.startsWith(prefix)) delete this.files[p];
+    }
+    for (const p of Object.keys(this.mtimes)) {
+      if (p === posix || p.startsWith(prefix)) delete this.mtimes[p];
     }
     delete this.dirs[posix];
     for (const d of [...this.madeDirs]) {

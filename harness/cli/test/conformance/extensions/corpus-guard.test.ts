@@ -19,6 +19,7 @@ const FROZEN_API_2: Readonly<Record<string, string>> = {
   'unknown-section.js': '1115ac630ff2e281cf865570c9f9636707abb0bb0150376aacae540f5df8b082',
   'manual-sensor.ts': 'c70fd818aac1511acc9db0ad8571e9934d5b4ce470b38006bf844cf841cb2d44',
   'invalid-sensor.js': '904b4a89e7b81e3902389a7c40abecc492136a0e8e4862dd1262d94f56c1ca8a',
+  'report-sensor.ts': '93f331aef688c7b666da45c24c588c9195e5f27711a8e302764e1c90b9fa15a8',
 };
 
 type CorpusReader = (name: string) => Uint8Array;

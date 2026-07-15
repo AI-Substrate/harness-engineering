@@ -8,6 +8,7 @@ import { FakeGit } from '../src/adapters/git/fake-git.js';
 import { FakeModuleLoader } from '../src/adapters/loader/fake-loader.js';
 import { FakeProcess } from '../src/adapters/process/fake-process.js';
 import {
+  asciiFlag,
   buildProgram,
   deriveCommand,
   isExtensionsDisabled,
@@ -39,6 +40,13 @@ const mkVerb = (name: string): HarnessVerb => ({
   name,
   summary: `${name} verb`,
   run: () => ({ status: 'ok' }),
+});
+
+describe('asciiFlag', () => {
+  it('resolves --ascii once from raw argv', () => {
+    expect(asciiFlag(['node', 'harness', '--ascii', 'sensors'])).toBe(true);
+    expect(asciiFlag(['node', 'harness', 'sensors'])).toBeUndefined();
+  });
 });
 
 describe('isExtensionsDisabled', () => {
@@ -147,6 +155,7 @@ describe('buildProgram — composition root wiring', () => {
     ]);
     const longs = program.options.map((o) => o.long);
     expect(longs).toContain('--json');
+    expect(longs).toContain('--ascii');
     expect(longs).toContain('--no-extensions');
     expect(program.version()).toBe('1.2.3');
   });

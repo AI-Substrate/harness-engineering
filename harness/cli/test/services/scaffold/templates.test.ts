@@ -46,8 +46,10 @@ describe('v2 scaffold templates', () => {
     expect(contents).toContain("'lint-count': {");
     expect(contents).toContain("ctx.exec('npm', ['run', 'lint-count', '--silent'])");
     expect(contents).toContain("guidance: '");
-    expect(contents).toContain("{ state: 'pass' }");
-    expect(contents).toContain("{ state: 'fail', details:");
+    expect(contents).toContain('const details = passed ?');
+    expect(contents).toContain('const report = [');
+    expect(contents).toContain("return { state: passed ? 'pass' : 'fail', details, report }");
+    expect(contents).toContain('never copy raw stdout/stderr');
     expect(contents).not.toMatch(/result\.(stdout|stderr)/);
   });
 

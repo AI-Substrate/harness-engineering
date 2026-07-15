@@ -178,6 +178,7 @@ describe('scaffoldExtension — validation and write safety', () => {
     const throwingFs: FsPort = {
       exists: () => false,
       readText: () => null,
+      mtimeMs: () => null,
       readdir: () => [],
       mkdirp: () => {
         throw new Error('EACCES');

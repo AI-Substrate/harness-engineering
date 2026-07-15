@@ -46,6 +46,13 @@ export interface SensorStateView extends SensorStateFile {
   ageMs: number;
 }
 
+/** Playback history is newest-first in memory; the JSONL file remains newest-last. */
+export interface SensorHistoryView {
+  records: SensorRunRecord[];
+  degraded: boolean;
+  note: string | null;
+}
+
 export interface SensorDaemonFile {
   schema: 1;
   pid: number;
@@ -77,6 +84,37 @@ export interface SensorServiceError {
   code: 'E213' | 'E214';
   message: string;
   next_action: string;
+}
+
+/** Shared status truth consumed by both the JSON envelope and the TUI renderer. */
+export interface SensorStatusItem {
+  name: string;
+  summary: string;
+  trigger: 'watch' | 'manual';
+  watch: string[];
+  timeoutMs: number;
+  record: SensorRunRecord | null;
+  runStatus: SensorRunStatus | null;
+  reading: SensorReading | null;
+  error: SensorRunError | null;
+  stats: SensorStats | null;
+  ageMs: number | null;
+  stale: boolean;
+  delta: number | null;
+  trend: SensorTrend;
+  guidance: string | null;
+}
+
+export interface SensorStatusData {
+  daemon: SensorDaemonView;
+  snapshot: { takenAt: string } | null;
+  sensors: SensorStatusItem[];
+  errors?: SensorServiceError[];
+}
+
+export interface SensorStatusRead {
+  data: SensorStatusData;
+  stateCount: number;
 }
 
 export type SensorServiceResult<T> =

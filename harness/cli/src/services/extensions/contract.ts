@@ -239,6 +239,8 @@ export interface SensorReading {
   threshold?: number;
   /** One author-written line, never raw command output (S12). */
   details?: string;
+  /** Optional author-written multi-line detail for JSON and drill-in views; never raw output (S12). */
+  report?: string;
   guidance?: string;
 }
 

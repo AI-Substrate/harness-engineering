@@ -963,6 +963,197 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-046",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:18:13.936Z",
+      "details": {
+        "node": "boot-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-017",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:18:14.183Z",
+      "details": {
+        "node": "boot-3",
+        "from": "assumed",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-013",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:23:05.048Z",
+      "details": {
+        "node": "workshop-3",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-047",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:23:05.257Z",
+      "details": {
+        "node": "workshop-3",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-048",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:36:48.942Z",
+      "details": {
+        "node": "workshop-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-018",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:54:57.178Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-049",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T01:54:57.383Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-050",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T02:01:13.735Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-051",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T02:11:53.579Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-052",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T02:37:12.739Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-053",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T02:48:51.088Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-054",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T03:00:30.638Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-019",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-15T03:50:23.537Z",
+      "details": {
+        "node": "review-3",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-055",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T03:50:23.779Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-056",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T08:25:34.047Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-057",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-15T08:25:34.047Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -1097,7 +1288,22 @@
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /builder 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-07-15T02:37:12.739Z",
+          "text": "Convergence notice (prime, 2026-07-15): main advanced policy-only f3f9d83c->0c2c4841 (AGENTS local-source rule). No p059 code overlap; no immediate rebase. LANDING TARGET after review-3 = 0c2c4841 (supersedes 5db62a05 as the rebase base for the full-plan land).",
+          "source": "agent",
+          "kind": "note"
+        },
+        {
+          "at": "2026-07-15T03:00:30.638Z",
+          "text": "Inherited proxy-unavailable dependency was isolated by differential proof; the differential alone never implied landing green. Human-authorized in-range FX002 normalization then restored absolute cold replay (the repository cold install now passes through the mandated proxy).",
+          "source": "agent",
+          "kind": "warning"
+        }
+      ],
+      "modified_at": "2026-07-15T08:25:34.047Z"
     },
     {
       "id": "backpressure",
@@ -1394,12 +1600,12 @@
       "id": "phase-3",
       "type": "phase",
       "label": "P3: TUI + packaging + docs",
-      "status": "known",
+      "status": "in_progress",
       "next": [
         "review-3"
       ],
       "created_at": "2026-07-14T06:00:42.968Z",
-      "modified_at": "2026-07-15T00:29:35.551Z",
+      "modified_at": "2026-07-15T08:25:34.047Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -1415,26 +1621,46 @@
           "text": "WAITING_FOR_PHASE_3_BUILD_CONFIG — no Phase 3 authority",
           "source": "agent",
           "kind": "note"
+        },
+        {
+          "at": "2026-07-15T02:01:13.735Z",
+          "text": "Build dispatched to the canonical coder after a verified canary. A duplicate-session attribution was mechanically correlated with zero reply or operation. The T001 spike was gated first with an interim go/no-go report. SFI npm constraint embedded.",
+          "source": "agent",
+          "kind": "note"
+        },
+        {
+          "at": "2026-07-15T02:11:53.579Z",
+          "text": "Prime ruling after 2x fail-closed T001: retry #2 with replace-registry-host=npmjs (default mode; 'always' was the unmandated breaker), host/redirect chain captured, allowlist = proxy + advertised MS feed/CDN hosts, npmjs/unknown = fail closed. T002-T005 released (npm-free); T006/T009 gated on T001 GO. Packet amended append-only.",
+          "source": "agent",
+          "kind": "decision"
+        },
+        {
+          "at": "2026-07-15T02:48:51.088Z",
+          "text": "T009 lock saga resolved by p061-authoritative carve-out: exactly 4 dev->devOptional flips permitted (ansi-regex 6.2.2, es-toolkit 1.47.1, get-east-asian-width 1.6.0, strip-ansi 7.2.0), proven by idempotent deterministic normalization + production-shape cold ci with Ink reachability + a non-vacuity mutation test (revert-must-fail). 14 libc removals forbidden (P2 churn class). Canonicalizer-only writes; npmjs-format URLs (portable placeholders, p061-ruled); zero internal hosts committed. Full trail in T009 execution log.",
+          "source": "agent",
+          "kind": "decision"
         }
-      ]
+      ],
+      "note": "Tasks cut (T001-T012, tasks/phase-3-tui-packaging-docs/) and VALIDATED WITH FIXES (7 findings incl. 3 HIGH: jsx config, FsPort.mtimeMs, clearAll+ProcessPort.kill). Fence notified to prime. Next: coder dispatch."
     },
     {
       "id": "review-3",
       "type": "review",
       "label": "Review: P3",
-      "status": "assumed",
+      "status": "in_progress",
       "next": [
         "ship"
       ],
       "created_at": "2026-07-14T06:00:42.968Z",
-      "modified_at": "2026-07-14T06:00:42.968Z",
+      "modified_at": "2026-07-15T03:50:23.779Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
       "zone": "flight",
-      "command": "/builder 7 review"
+      "command": "/builder 7 review",
+      "note": "Final phase review dispatched to cross-model reviewer (gpt-5.6-sol:high): Dim-0 mutation gate, D9 sweep audit, T009 lock audit, JSON/TUI parity, full-plan coherence. Build completion self-verified by orchestrator (suite 2512/2512 re-run, lock SHA match, fence checks)."
     },
     {
       "id": "boot-2",
@@ -1528,12 +1754,12 @@
       "id": "boot-3",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-07-14T06:00:42.968Z",
-      "modified_at": "2026-07-14T06:00:42.968Z",
+      "modified_at": "2026-07-15T01:18:14.183Z",
       "branch_of": "phase-3",
       "instructions": [
         "Recommended pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -1546,7 +1772,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-07-15T01:18:13.936Z",
+          "text": "decision:ran verdict:HEALTHY time:2026-07-15T01:19Z — boot(just test) green 5.5s warm (coverage 91.1% stmts), interact(doctor+instructions) ok, observe(envelope evidence) ok; 10 extensions loaded 0 failed; maturity L3. One advisory gap: telemetry-flush-hook not installed in this worktree (doctor degraded, warn class) — surfaced to human, not auto-installed (machine-global git state).",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-07-15T01:18:14.183Z"
     },
     {
       "id": "observe-3",
@@ -1613,6 +1848,27 @@
         {
           "at": "2026-07-14T19:48:36.271Z",
           "text": "Approved (Contract Ready), decisions S1-S13: SensorDecl/SensorReading (incl. skip state, private-consumer evidence) + narrow SensorRunContext; runStatus ok|error|timeout separation; state/<name>.json record+stats one-atomic-file; daemon.json 5s/15s heartbeat; snapshot.json GITIGNORED (closes spine E5); picomatch selected (closes E3 matcher half); E210-E217 block; scheduler constants (1s quiescence, dedup hash, stale-queue-of-one, 30s default timeout); S13 reader paths degraded-never-unconfigured (exit-2 trap, private-consumer dlg-0003-fix1)"
+        }
+      ]
+    },
+    {
+      "id": "workshop-3",
+      "type": "workshop",
+      "label": "Workshop 003: Sensors TUI design",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-07-15T01:23:05.048Z",
+      "modified_at": "2026-07-15T01:36:48.942Z",
+      "branch_of": "plan",
+      "note": "docs/plans/059-typed-extensions-sensors/workshops/003-sensors-tui-design.md — D1-D7 settled (table+detail layout, glyphs, keys, reading.report field, history/<name>.jsonl playback ring); Q1 playback meaning OPEN pending operator confirm",
+      "comments": [
+        {
+          "at": "2026-07-15T01:36:48.942Z",
+          "text": "Operator approved the design ('looks good'); confirmed Ink as the TUI lib; asked for a small SENSORS ascii wordmark + slick-but-restrained polish, and Perplexity research on TUI traps. Workshop updated: D8 banner+polish, D9 14-rule trap ruleset (alt-screen/raw-mode restore, NO_COLOR glyph fallback fixing a color-only defect, single-width glyphs, memoized rows, resize tiers, ESM-only ink import). Q1 playback RESOLVED = run-history scrub. Status: Approved, Implementation Ready.",
+          "source": "user",
+          "kind": "decision"
         }
       ]
     }

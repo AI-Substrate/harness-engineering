@@ -9,6 +9,7 @@ import {
   realpathSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -24,6 +25,14 @@ export class NodeFs implements FsPort, FileSystemWritePort {
   readText(path: string): string | null {
     try {
       return readFileSync(path, 'utf8');
+    } catch {
+      return null;
+    }
+  }
+
+  mtimeMs(path: string): number | null {
+    try {
+      return statSync(path).mtimeMs;
     } catch {
       return null;
     }

@@ -92,6 +92,22 @@ describe('frozen api-2 extension corpus', () => {
     ]);
   });
 
+  it('passes an authored multi-line report through v2 validation and normalization', async () => {
+    const registry = await load('report-sensor.ts');
+    expect(registry.records[0]?.status).toBe('loaded');
+    const reading = await registry.sensors[0]?.declaration.run({
+      cwd: '/repo',
+      exec: async () => {
+        throw new Error('fixture does not execute child commands');
+      },
+    });
+    expect(reading).toMatchObject({
+      state: 'pass',
+      details: '80.7% branch coverage (target 80%)',
+      report: 'Statements: 91.1%\nBranches: 80.7%\nUncovered: scheduler.ts:118-124',
+    });
+  });
+
   it('rejects an appended invalid sensor fixture with E216', async () => {
     const registry = await load('invalid-sensor.js');
     expect(registry.records[0]).toMatchObject({ status: 'failed', code: 'E216' });

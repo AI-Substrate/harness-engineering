@@ -6,6 +6,7 @@ import { accumulateStats } from './stats.js';
 import type {
   SensorDaemonFile,
   SensorDaemonView,
+  SensorHistoryView,
   SensorRunRecord,
   SensorServiceError,
   SensorServiceResult,
@@ -14,6 +15,7 @@ import type {
 } from './types.js';
 
 const LIVENESS_MS = 15_000;
+export const SENSOR_HISTORY_LIMIT = 50;
 
 export interface SensorStateStoreDeps {
   fs: FsPort;
@@ -49,32 +51,37 @@ function object(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function validStateFile(value: unknown): value is SensorStateFile {
-  if (!object(value) || value.schema !== 1 || !object(value.record) || !object(value.stats)) {
-    return false;
-  }
-  const record = value.record;
-  const stats = value.stats;
-  const runStatus = record.runStatus;
-  const reading = record.reading;
+function validRecord(value: unknown): value is SensorRunRecord {
+  if (!object(value)) return false;
+  const runStatus = value.runStatus;
+  const reading = value.reading;
   const readingValid =
     runStatus === 'ok' &&
     object(reading) &&
     ['pass', 'warn', 'fail', 'skip'].includes(String(reading.state));
   const failureValid =
-    (runStatus === 'error' || runStatus === 'timeout') && reading === null && object(record.error);
+    (runStatus === 'error' || runStatus === 'timeout') && reading === null && object(value.error);
   return (
-    typeof record.sensor === 'string' &&
-    typeof record.runId === 'number' &&
-    Number.isInteger(record.runId) &&
+    typeof value.sensor === 'string' &&
+    typeof value.runId === 'number' &&
+    Number.isInteger(value.runId) &&
     (readingValid || failureValid) &&
-    typeof record.startedAt === 'string' &&
-    Number.isFinite(Date.parse(record.startedAt)) &&
-    typeof record.wallclockMs === 'number' &&
-    Number.isFinite(record.wallclockMs) &&
-    ['watch', 'manual-run', 'check'].includes(String(record.trigger)) &&
-    typeof record.stale === 'boolean' &&
-    (record.lastTriggerHash === null || typeof record.lastTriggerHash === 'string') &&
+    typeof value.startedAt === 'string' &&
+    Number.isFinite(Date.parse(value.startedAt)) &&
+    typeof value.wallclockMs === 'number' &&
+    Number.isFinite(value.wallclockMs) &&
+    ['watch', 'manual-run', 'check'].includes(String(value.trigger)) &&
+    typeof value.stale === 'boolean' &&
+    (value.lastTriggerHash === null || typeof value.lastTriggerHash === 'string')
+  );
+}
+
+function validStateFile(value: unknown): value is SensorStateFile {
+  if (!object(value) || value.schema !== 1 || !validRecord(value.record) || !object(value.stats)) {
+    return false;
+  }
+  const stats = value.stats;
+  return (
     typeof stats.runCount === 'number' &&
     Number.isInteger(stats.runCount) &&
     typeof stats.lastRunAt === 'string' &&
@@ -86,6 +93,26 @@ function validStateFile(value: unknown): value is SensorStateFile {
     typeof stats.failStreak === 'number' &&
     Number.isInteger(stats.failStreak)
   );
+}
+
+function parseHistory(raw: string, path: string): SensorHistoryView {
+  const records: SensorRunRecord[] = [];
+  let invalidLines = 0;
+  for (const line of raw.split('\n')) {
+    if (line.trim() === '') continue;
+    try {
+      const value: unknown = JSON.parse(line);
+      if (validRecord(value)) records.push(value);
+      else invalidLines += 1;
+    } catch {
+      invalidLines += 1;
+    }
+  }
+  return {
+    records: records.reverse(),
+    degraded: invalidLines > 0,
+    note: invalidLines > 0 ? `${path}: ignored ${invalidLines} malformed history line(s)` : null,
+  };
 }
 
 function parseState(raw: string, path: string): SensorServiceResult<SensorStateFile> {
@@ -131,10 +158,12 @@ function parseDaemon(raw: string, path: string): SensorServiceResult<SensorDaemo
 export class SensorStateStore {
   private readonly root: string;
   private readonly stateDir: string;
+  private readonly historyDir: string;
 
   constructor(private readonly deps: SensorStateStoreDeps) {
     this.root = posixJoin(deps.repoRoot, '.harness/temp/sensors');
     this.stateDir = posixJoin(this.root, 'state');
+    this.historyDir = posixJoin(this.root, 'history');
   }
 
   private statePath(name: string): string {
@@ -156,9 +185,50 @@ export class SensorStateStore {
       this.deps.fs.mkdirp(this.stateDir);
       this.deps.fs.writeText(temp, `${JSON.stringify(value, null, 2)}\n`);
       this.deps.fs.rename(temp, target);
-      return { ok: true, value };
     } catch (error) {
       return { ok: false, error: writeFailure(target, error) };
+    }
+
+    const historyTarget = posixJoin(this.historyDir, `${record.sensor}.jsonl`);
+    const historyTemp = this.deps.writerId
+      ? `${historyTarget}.tmp-${this.deps.writerId}-${record.runId}`
+      : `${historyTarget}.tmp-${record.runId}`;
+    try {
+      const raw = this.deps.fs.readText(historyTarget);
+      const existing = raw === null ? [] : [...parseHistory(raw, historyTarget).records].reverse();
+      const retained = [...existing, record].slice(-SENSOR_HISTORY_LIMIT);
+      this.deps.fs.mkdirp(this.historyDir);
+      this.deps.fs.writeText(
+        historyTemp,
+        `${retained.map((entry) => JSON.stringify(entry)).join('\n')}\n`,
+      );
+      this.deps.fs.rename(historyTemp, historyTarget);
+    } catch (error) {
+      return { ok: false, error: writeFailure(historyTarget, error) };
+    }
+    return { ok: true, value };
+  }
+
+  readHistory(name: string): SensorHistoryView {
+    const path = posixJoin(this.historyDir, `${name}.jsonl`);
+    const raw = this.deps.fs.readText(path);
+    if (raw === null) {
+      return {
+        records: [],
+        degraded: true,
+        note: `${path}: history unavailable`,
+      };
+    }
+    return parseHistory(raw, path);
+  }
+
+  clearAll(): SensorServiceResult<{ state: true; history: true }> {
+    try {
+      this.deps.fs.removeDir(this.stateDir);
+      this.deps.fs.removeDir(this.historyDir);
+      return { ok: true, value: { state: true, history: true } };
+    } catch (error) {
+      return { ok: false, error: writeFailure(this.root, error) };
     }
   }
 

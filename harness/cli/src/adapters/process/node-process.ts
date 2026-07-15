@@ -20,4 +20,13 @@ export class NodeProcess implements ProcessPort {
   nodeVersion(): string {
     return process.versions.node;
   }
+
+  kill(pid: number, signal: 'SIGTERM'): boolean {
+    try {
+      process.kill(pid, signal);
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }

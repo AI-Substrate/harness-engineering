@@ -108,10 +108,14 @@ export default defineExtension({
       guidance: 'Define or fix \`npm run ${name}\`, then run \`harness sensors run ${name}\` again.',
       async run(ctx) {
         const result = await ctx.exec('npm', ['run', '${name}', '--silent']);
-        // Persist an authored one-liner only — never copy raw stdout/stderr into a reading.
-        return result.code === 0
-          ? { state: 'pass' }
-          : { state: 'fail', details: '${name} command reported problems' };
+        const passed = result.code === 0;
+        // Author both fields from bounded facts — never copy raw stdout/stderr into a reading (S12).
+        const details = passed ? '${name} command passed' : '${name} command reported problems';
+        const report = [
+          'Command: npm run ${name}',
+          \`Exit code: \${result.code}\`,
+        ].join('\\n');
+        return { state: passed ? 'pass' : 'fail', details, report };
       },
     },
   },

@@ -37,6 +37,7 @@ import {
   type CliIo,
   createOutputPort,
   processWriters,
+  resolveInteractive,
   selectMode,
   type Writers,
 } from './output/output-port.js';
@@ -89,6 +90,11 @@ export function quietFlag(argv: string[]): boolean | undefined {
     return true;
   }
   return undefined;
+}
+
+/** Resolve the TUI-only ASCII degradation flag once from raw argv. */
+export function asciiFlag(argv: string[]): boolean | undefined {
+  return argv.includes('--ascii') ? true : undefined;
 }
 
 /**
@@ -248,6 +254,7 @@ export function buildProgram(
     .option('--json', 'force JSON output')
     .option('--no-json', 'force human output')
     .option('--quiet', 'lean doctor diagnostics and flow-mutation envelopes')
+    .option('--ascii', 'use ASCII borders and shape-distinct sensor status glyphs')
     .option('--no-extensions', 'skip loading repo extensions (core commands only)')
     // Core commands sit under the default `Commands:` heading; each extension
     // verb overrides this with `Extensions:` (see registerVerbAct) so the two
@@ -305,6 +312,7 @@ export function buildProgram(
       hash: new NodeHash(),
       proc: deps.proc,
       watcher: new NodeWatcher(),
+      terminal: { stdin: process.stdin, stdout: process.stdout, stderr: process.stderr },
     },
     registry,
     { version, pid: process.pid },
@@ -384,9 +392,16 @@ export async function main(
   const clock = deps.clock;
 
   const mode = selectMode({ json: jsonFlag(argv) }, env, isTty);
-  const io: CliIo = { mode, writers, useColor: resolveUseColor({ mode, isTty, env }) };
+  const io: CliIo = {
+    mode,
+    writers,
+    interactive: resolveInteractive(isTty, env),
+    useColor: resolveUseColor({ mode, isTty, env }),
+  };
   const quiet = quietFlag(argv);
   if (quiet !== undefined) io.quiet = quiet;
+  const ascii = asciiFlag(argv);
+  if (ascii !== undefined) io.ascii = ascii;
   const port = createOutputPort(io.mode, io.writers);
 
   // Register the exit-chokepoint decorators BEFORE any exit — incl. the pre-build
