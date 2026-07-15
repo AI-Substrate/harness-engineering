@@ -8,7 +8,7 @@ function nonEmptyString(value: unknown): value is string {
 }
 
 /** Field-level issues for a verb's declared positional args (empty = well-formed). */
-function argShapeIssues(args: unknown): string[] {
+function argShapeIssues(args: unknown, allowVariadic = false): string[] {
   if (args === undefined) {
     return [];
   }
@@ -28,7 +28,7 @@ function argShapeIssues(args: unknown): string[] {
     }
     // Variadic positionals (`<files...>`) would hand commander an array, breaking
     // the `ctx.args: Record<string, string | undefined>` contract — reject in v1.
-    if (name.includes('...')) {
+    if (!allowVariadic && name.includes('...')) {
       issues.push(`arg '${name}' is variadic; variadic args are not supported (v1)`);
     }
   });
@@ -95,6 +95,35 @@ export function isVerbShaped(value: unknown): value is HarnessVerb {
   return verbShapeIssues(value).length === 0;
 }
 
+function v2NormalizedVerbShapeIssues(value: unknown): string[] {
+  if (value === null || typeof value !== 'object') return ['not an object'];
+  const verb = value as Partial<HarnessVerb> & { subverbs?: unknown };
+  const issues: string[] = [];
+  if (!nonEmptyString(verb.name)) issues.push('missing or empty name');
+  if (!nonEmptyString(verb.summary)) issues.push('missing or empty summary');
+  if (typeof verb.run !== 'function') issues.push('missing run() handler');
+  issues.push(...argShapeIssues(verb.args, true));
+  issues.push(...optionShapeIssues(verb.options));
+  if (verb.subverbs !== undefined) {
+    if (!Array.isArray(verb.subverbs)) {
+      issues.push('subverbs must be an array');
+    } else {
+      verb.subverbs.forEach((subverb, index) => {
+        for (const problem of v2NormalizedVerbShapeIssues(subverb)) {
+          issues.push(`subverb #${index}: ${problem}`);
+        }
+      });
+    }
+  }
+  return issues;
+}
+
+function isV2NormalizedVerb(value: unknown): boolean {
+  return (
+    value !== null && typeof value === 'object' && ('hasOwnRun' in value || 'subverbs' in value)
+  );
+}
+
 /**
  * Validate the assembled verb registry shape **before use** — the open-keyed
  * registry pre-flight (plan D3). Every verb needs a non-empty
@@ -108,7 +137,10 @@ export function validateVerbRegistry(verbs: readonly HarnessVerb[], clock: Clock
 
   verbs.forEach((verb, index) => {
     const label = nonEmptyString(verb?.name) ? verb.name : `#${index}`;
-    for (const problem of verbShapeIssues(verb)) {
+    const shapeIssues = isV2NormalizedVerb(verb)
+      ? v2NormalizedVerbShapeIssues(verb)
+      : verbShapeIssues(verb);
+    for (const problem of shapeIssues) {
       issues.push({ verb: label, problem });
     }
     if (nonEmptyString(verb?.name)) {

@@ -7,44 +7,27 @@ import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import { ErrorCodes } from '../../src/output/error-codes.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 
-/*
-Test Doc:
-- Why: `harness new` is a CORE act; it must turn the scaffold-service outcome into the canonical
-  Envelope (ok → exit 0; error → exit 1) and inject the real ports, with no business logic.
-- Contract: `new <name> [--wrap <cmd>] [--js] [--force]` → ok envelope with
-  data.{path,verb,variant,instructionsPath} on success (folder form since plan 014 AC-8: entry +
-  starter instructions.md; there is NO --flat flag); error envelope (E15x/E108) with next_action
-  on failure; never throws to the user.
-- Quality Contribution: pins the act/envelope/exit wiring with fakes (P3).
-*/
-
 function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => string } {
-  let o = '';
-  let e = '';
+  let stdout = '';
+  let stderr = '';
   const writers: Writers = {
-    out: (t) => {
-      o += t;
-    },
-    err: (t) => {
-      e += t;
-    },
+    out: (text) => (stdout += text),
+    err: (text) => (stderr += text),
   };
-  return { io: { mode, writers }, out: () => o, err: () => e };
+  return { io: { mode, writers }, out: () => stdout, err: () => stderr };
 }
 
 function depsWith(fs: FakeFs) {
   return { fs, proc: new FakeProcess({}, '/repo'), clock: new FakeClock() };
 }
 
-describe('registerNewAct', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+describe('registerNewAct — v2-only minting surface', () => {
+  afterEach(() => vi.restoreAllMocks());
 
   function run(args: string[], io: CliIo, fs: FakeFs): number {
     let code = -1;
-    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
-      code = c ?? 0;
+    vi.spyOn(process, 'exit').mockImplementation(((value?: number) => {
+      code = value ?? 0;
       throw new Error(`exit:${code}`);
     }) as never);
     const program = new Command().name('harness');
@@ -53,110 +36,101 @@ describe('registerNewAct', () => {
     return code;
   }
 
-  it('scaffolds <name>/extension.ts + instructions.md and emits an ok envelope (exit 0) with both paths', () => {
+  it('emits the default v2-ts package and actionable envelope', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs();
-    const code = run(['greet'], io, fs);
-    const env = JSON.parse(out());
-    expect(env.command).toBe('new');
-    expect(env.status).toBe('ok');
-    expect(env.data).toMatchObject({
-      path: '.harness/extensions/greet/extension.ts',
-      instructionsPath: '.harness/extensions/greet/instructions.md',
-      verb: 'greet',
-      variant: 'minimal-ts',
+    expect(run(['greet'], io, fs)).toBe(0);
+    expect(JSON.parse(out())).toMatchObject({
+      command: 'new',
+      status: 'ok',
+      data: {
+        path: '.harness/extensions/greet/extension.ts',
+        instructionsPath: '.harness/extensions/greet/instructions.md',
+        verb: 'greet',
+        variant: 'v2-ts',
+      },
     });
-    expect(fs.writes).toContain('/repo/.harness/extensions/greet/extension.ts');
-    expect(fs.writes).toContain('/repo/.harness/extensions/greet/instructions.md');
-    expect(code).toBe(0);
+    expect(JSON.parse(out()).next_action).toContain('implement run()');
   });
 
-  it('exposes no --flat flag (the flat layout is retired, plan 014 AC-8)', () => {
+  it('offers --sub/--wrap/--js/--sensor and no retired v1/flat flags', () => {
     const { io } = ioFor('json');
-    vi.spyOn(process, 'exit').mockImplementation((() => {
-      throw new Error('exit');
-    }) as never);
     const program = new Command().name('harness').exitOverride();
     registerNewAct(program, io, depsWith(new FakeFs()));
-    const newCmd = program.commands.find((c) => c.name() === 'new');
-    expect(newCmd?.options.map((o) => o.long)).not.toContain('--flat');
+    const flags = program.commands
+      .find((command) => command.name() === 'new')
+      ?.options.map((option) => option.long);
+    expect(flags).toEqual(
+      expect.arrayContaining(['--sub', '--wrap', '--js', '--sensor', '--force']),
+    );
+    expect(flags).not.toEqual(expect.arrayContaining(['--record', '--flat', '--legacy']));
   });
 
-  it('--js scaffolds a .js file', () => {
-    const { io, out } = ioFor('json');
-    const code = run(['greet', '--js'], io, new FakeFs());
-    expect(JSON.parse(out()).data.path).toBe('.harness/extensions/greet/extension.js');
-    expect(code).toBe(0);
-  });
-
-  it('--wrap emits the wrap variant', () => {
-    const { io, out } = ioFor('json');
-    const code = run(['test', '--wrap', 'npm test'], io, new FakeFs());
-    const env = JSON.parse(out());
-    expect(env.data.variant).toBe('wrap-ts');
-    // wrap scaffolds already have a working run() — next_action must NOT say "implement run()" (MH-003)
-    expect(env.next_action).not.toContain('implement run()');
-    expect(env.next_action).toContain('harness test');
-    expect(code).toBe(0);
-  });
-
-  it('a minimal stub tells the author to implement run()', () => {
-    const { io, out } = ioFor('json');
-    const code = run(['greet'], io, new FakeFs());
-    expect(JSON.parse(out()).next_action).toContain('implement run()');
-    expect(code).toBe(0);
-  });
-
-  it('a reserved name is rejected (E151, exit 1) and writes nothing', () => {
+  it('--sub parses comma-separated names into v2-sub-ts', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs();
-    const code = run(['help'], io, fs);
-    const env = JSON.parse(out());
-    expect(env.status).toBe('error');
-    expect(env.error.code).toBe(ErrorCodes.SCAFFOLD_NAME_RESERVED);
-    expect(env.next_action.length).toBeGreaterThan(0);
-    expect(fs.writes).toEqual([]);
-    expect(code).toBe(1);
+    expect(run(['db', '--sub', 'reset,seed'], io, fs)).toBe(0);
+    expect(JSON.parse(out()).data.variant).toBe('v2-sub-ts');
+    expect(JSON.parse(out()).next_action).toContain('harness db --help');
+    const source = fs.readText('/repo/.harness/extensions/db/extension.ts') ?? '';
+    expect(source).toContain("'reset': {");
+    expect(source).toContain("'seed': {");
   });
 
-  it('--record scaffolds a record-type stub and points at `harness record <name>`', () => {
+  it('--wrap emits a working bounded v2 wrapper', () => {
+    const { io, out } = ioFor('json');
+    expect(run(['test', '--wrap', 'npm test'], io, new FakeFs())).toBe(0);
+    expect(JSON.parse(out()).data.variant).toBe('v2-wrap-ts');
+    expect(JSON.parse(out()).next_action).not.toContain('implement run()');
+  });
+
+  it('--sensor emits a runnable typed sensor variant', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs();
-    const code = run(['dev-survey', '--record'], io, fs);
-    const env = JSON.parse(out());
-    expect(env.status).toBe('ok');
-    expect(env.data).toMatchObject({
-      path: '.harness/extensions/dev-survey/extension.ts',
-      verb: 'dev-survey',
-      variant: 'record-ts',
+    expect(run(['lint-count', '--sensor'], io, fs)).toBe(0);
+    expect(JSON.parse(out()).data.variant).toBe('v2-sensor-ts');
+    expect(JSON.parse(out()).next_action).toContain('harness sensors run lint-count');
+    expect(fs.readText('/repo/.harness/extensions/lint-count/extension.ts')).toContain(
+      'sensors: {',
+    );
+  });
+
+  it('--js emits the v2 bare-literal variant', () => {
+    const { io, out } = ioFor('json');
+    expect(run(['seed', '--js'], io, new FakeFs())).toBe(0);
+    expect(JSON.parse(out()).data).toMatchObject({
+      variant: 'v2-js',
+      path: '.harness/extensions/seed/extension.js',
     });
-    expect(env.next_action).toContain('harness record dev-survey');
-    expect(fs.writes).toContain('/repo/.harness/extensions/dev-survey/extension.ts');
-    expect(code).toBe(0);
   });
 
-  it('`new record` is rejected as a reserved name (E151)', () => {
+  it('maps invalid combinations to E108 without writing', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs();
-    const code = run(['record'], io, fs);
-    expect(JSON.parse(out()).error.code).toBe(ErrorCodes.SCAFFOLD_NAME_RESERVED);
+    expect(run(['db', '--sensor', '--wrap', 'npm test'], io, fs)).toBe(1);
+    expect(JSON.parse(out()).error.code).toBe(ErrorCodes.INVALID_ARGS);
     expect(fs.writes).toEqual([]);
-    expect(code).toBe(1);
   });
 
-  it('an existing file without --force is rejected (E152, exit 1)', () => {
-    const { io, out } = ioFor('json');
-    const fs = new FakeFs({ '/repo/.harness/extensions/greet/extension.ts': '// existing' });
-    const code = run(['greet'], io, fs);
-    expect(JSON.parse(out()).error.code).toBe(ErrorCodes.SCAFFOLD_FILE_EXISTS);
-    expect(code).toBe(1);
+  it('maps reserved/existing names to the stable scaffold errors', () => {
+    const reservedIo = ioFor('json');
+    const reservedFs = new FakeFs();
+    expect(run(['help'], reservedIo.io, reservedFs)).toBe(1);
+    expect(JSON.parse(reservedIo.out()).error.code).toBe(ErrorCodes.SCAFFOLD_NAME_RESERVED);
+
+    vi.restoreAllMocks();
+    const existingIo = ioFor('json');
+    const existingFs = new FakeFs({
+      '/repo/.harness/extensions/greet/extension.ts': '// existing',
+    });
+    expect(run(['greet'], existingIo.io, existingFs)).toBe(1);
+    expect(JSON.parse(existingIo.out()).error.code).toBe(ErrorCodes.SCAFFOLD_FILE_EXISTS);
   });
 
-  it('human mode prints a friendly Created line and exits 0', () => {
+  it('human mode prints both created paths', () => {
     const { io, out } = ioFor('human');
-    const code = run(['greet'], io, new FakeFs());
+    expect(run(['greet'], io, new FakeFs())).toBe(0);
     expect(out()).toContain('Created .harness/extensions/greet/extension.ts');
     expect(out()).toContain('.harness/extensions/greet/instructions.md');
-    expect(code).toBe(0);
   });
 });

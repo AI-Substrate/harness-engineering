@@ -12,7 +12,17 @@ import {
   formatUnconfigured,
 } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import type { Evidence, HarnessVerb, VerbContext, VerbResult } from './contract.js';
+import type {
+  CustomRegistryItem,
+  Evidence,
+  HarnessVerb,
+  StepFinishOptions,
+  StepReport,
+  StepRunner,
+  V2VerbContext,
+  VerbContext,
+  VerbResult,
+} from './contract.js';
 
 /** The ports the composition root injects to build a per-invocation `VerbContext`. */
 export interface VerbContextDeps {
@@ -34,6 +44,80 @@ export interface VerbInvocation {
   options: Record<string, unknown>;
 }
 
+/** Parsed v2 invocation; only this path permits commander variadic arrays. */
+export interface V2VerbInvocation {
+  cwd: string;
+  args: Record<string, string | string[] | undefined>;
+  options: Record<string, unknown>;
+}
+
+class StepFailure extends Error {
+  constructor(
+    message: string,
+    readonly details?: unknown,
+  ) {
+    super(message);
+  }
+}
+
+function elapsedMs(clock: Clock, startedAt: number): number {
+  return Math.max(0, Date.parse(clock.nowIso()) - startedAt);
+}
+
+/** Kernel-owned timing + failure aggregation, backed only by the injected clock. */
+function createStepRunner(clock: Clock): StepRunner {
+  const reports: StepReport[] = [];
+  return {
+    async run<T>(name: string, fn: () => T | Promise<T>): Promise<T | undefined> {
+      const startedAt = Date.parse(clock.nowIso());
+      try {
+        const value = await fn();
+        reports.push({
+          name,
+          status: 'passed',
+          mark: '✅',
+          durationMs: elapsedMs(clock, startedAt),
+        });
+        return value;
+      } catch (error) {
+        const failure = error instanceof StepFailure ? error : undefined;
+        reports.push({
+          name,
+          status: 'failed',
+          mark: '❌',
+          durationMs: elapsedMs(clock, startedAt),
+          message: failure?.message ?? (error instanceof Error ? error.message : String(error)),
+          ...((failure?.details ?? undefined) !== undefined && { details: failure?.details }),
+        });
+        return undefined;
+      }
+    },
+    fail(message: string, details?: unknown): never {
+      throw new StepFailure(message, details);
+    },
+    finish(options: StepFinishOptions = {}): VerbResult {
+      const passed = reports.filter((step) => step.status === 'passed').length;
+      const failed = reports.length - passed;
+      const rollup = {
+        steps: reports.map((step) => ({ ...step })),
+        passed,
+        failed,
+        summary: `✅ ${passed} passed · ❌ ${failed} failed`,
+      };
+      if (failed === 0) return { status: 'ok', data: rollup };
+      return {
+        status: 'error',
+        error: {
+          code: options.errorCode ?? ErrorCodes.EXTENSION_RUNTIME_ERROR,
+          message: `${failed} of ${reports.length} step(s) failed.`,
+          details: rollup,
+        },
+        next_action: options.next_action ?? 'Review the failed steps, fix them, and retry.',
+      };
+    },
+  };
+}
+
 /**
  * Build the `VerbContext` an author's handler receives. Surfaces the injected
  * ports (read-mostly) + envelope-helper closures so a verb never imports the
@@ -46,13 +130,18 @@ export function buildVerbContext(deps: VerbContextDeps, invocation: VerbInvocati
     args: invocation.args,
     options: invocation.options,
     exec: (command, args = [], opts) =>
-      deps.exec.run(command, args, { cwd: opts?.cwd ?? invocation.cwd }),
+      deps.exec.run(command, args, {
+        cwd: opts?.cwd ?? invocation.cwd,
+        ...(opts?.timeoutMs !== undefined && { timeoutMs: opts.timeoutMs }),
+        ...(opts?.env !== undefined && { env: opts.env }),
+      }),
     fs: deps.fs,
     ...(deps.fsWrite && { fsWrite: deps.fsWrite }),
     ...(deps.background && { background: deps.background }),
     env: deps.env,
     git: deps.git,
     clock: deps.clock,
+    steps: () => createStepRunner(deps.clock),
     ok: <T>(data: T, opts?: { evidence?: Evidence[]; next_action?: string }): VerbResult => ({
       status: 'ok',
       data,
@@ -80,6 +169,27 @@ export function buildVerbContext(deps: VerbContextDeps, invocation: VerbInvocati
       next_action: opts?.next_action ?? message,
     }),
   };
+}
+
+/**
+ * Build the additive v2 context without widening the published v1 invocation or
+ * args types. All capabilities are identical; only the positional map differs.
+ */
+export function buildV2VerbContext(
+  deps: VerbContextDeps,
+  invocation: V2VerbInvocation,
+  customItems: readonly CustomRegistryItem[] = [],
+): V2VerbContext {
+  const context = buildVerbContext(deps, {
+    cwd: invocation.cwd,
+    args: {},
+    options: invocation.options,
+  }) as unknown as V2VerbContext;
+  context.args = invocation.args;
+  context.registry = {
+    items: (type) => customItems.filter((item) => item.type === type).map((item) => ({ ...item })),
+  };
+  return context;
 }
 
 /** Treat empty/whitespace-only strings as absent so a blank value can't satisfy P5. */
@@ -163,4 +273,13 @@ export async function runVerb(
       },
     );
   }
+}
+
+/** V2-typed sibling of {@link runVerb}; runtime isolation/finalization is identical. */
+export async function runV2Verb(
+  verb: HarnessVerb,
+  ctx: V2VerbContext,
+  clock: Clock,
+): Promise<Envelope> {
+  return runVerb(verb, ctx as unknown as VerbContext, clock);
 }

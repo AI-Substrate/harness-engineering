@@ -359,6 +359,25 @@ describe('renderDoctorText', () => {
     expect(text).toContain('hello');
     expect(text).toContain('branch:');
   });
+
+  it('renders authoring format and non-failing v2 loader info explicitly', () => {
+    const reg = registry([
+      {
+        entryPath: '/repo/.harness/extensions/sample/extension.ts',
+        status: 'loaded',
+        verbs: [mkVerb('sample')],
+        format: 'v2 (api 2)',
+        sensors: [{ name: 'lint', summary: 'Lint status' }],
+        customItems: [{ type: 'migration', name: 'users', summary: 'Migrate users' }],
+        info: ['verbs.sample.futureField: unknown field tolerated (doctor info)'],
+      },
+    ]);
+    const text = renderDoctorText(buildDoctorReport(deps(), reg));
+    expect(text).toContain('format: v2 (api 2)');
+    expect(text).toContain('lint (sensor)');
+    expect(text).toContain('migration.users (custom)');
+    expect(text).toContain('verbs.sample.futureField');
+  });
 });
 
 describe('package-convention validation (plan 014 D2)', () => {

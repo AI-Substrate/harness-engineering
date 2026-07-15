@@ -51,7 +51,8 @@
   },
   "dependencies": {
     "commander": "^15.0.0",
-    "jiti": "2.7.0"
+    "jiti": "2.7.0",
+    "picomatch": "^4.0.5"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",

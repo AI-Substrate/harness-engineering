@@ -72,6 +72,7 @@ describe('buildProgram — composition root wiring', () => {
       'observe',
       'retro',
       'flow',
+      'sensors',
       'telemetry',
       'instructions',
       'hello',

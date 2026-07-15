@@ -15,7 +15,15 @@ export interface ExecResult {
   ok: boolean;
 }
 
+export interface ExecOptions {
+  cwd: string;
+  /** Hard deadline. The adapter sends SIGKILL and resolves with code 124. */
+  timeoutMs?: number;
+  /** Overlay on the inherited process environment; `undefined` removes a key. */
+  env?: Record<string, string | undefined>;
+}
+
 export interface ExecPort {
-  /** Spawn `command args` in `opts.cwd` (no shell), capturing code/stdout/stderr. */
-  run(command: string, args: string[], opts: { cwd: string }): Promise<ExecResult>;
+  /** Spawn `command args` with no shell, capturing code/stdout/stderr. */
+  run(command: string, args: string[], opts: ExecOptions): Promise<ExecResult>;
 }

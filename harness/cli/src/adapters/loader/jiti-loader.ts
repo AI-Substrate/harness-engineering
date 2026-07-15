@@ -1,8 +1,15 @@
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createJiti } from 'jiti';
 import type { ModuleLoaderPort } from './module-loader-port.js';
 
 const TS_FILE = /\.(ts|tsx)$/;
+const CONTRACT_SPECIFIER = '@ai-substrate/engineering-harness/contract';
+const CONTRACT_MODULE = fileURLToPath(
+  new URL(
+    `../../services/extensions/contract.${import.meta.url.endsWith('.ts') ? 'ts' : 'js'}`,
+    import.meta.url,
+  ),
+);
 
 /**
  * Real module loader — the ONLY place `jiti` is imported.
@@ -18,7 +25,12 @@ export class JitiLoader implements ModuleLoaderPort {
 
   private getJiti(): ReturnType<typeof createJiti> {
     if (!this.jiti) {
-      this.jiti = createJiti(import.meta.url, { moduleCache: false });
+      this.jiti = createJiti(import.meta.url, {
+        moduleCache: false,
+        // Consumer repos need no package/self-link: TS extensions always resolve
+        // the public factory to THIS running core's contract module.
+        alias: { [CONTRACT_SPECIFIER]: CONTRACT_MODULE },
+      });
     }
     return this.jiti;
   }

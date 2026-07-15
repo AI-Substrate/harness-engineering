@@ -62,6 +62,80 @@ describe('buildVerbContext', () => {
     expect(exec.calls[0]?.cwd).toBe('/other');
   });
 
+  it('ctx.exec forwards timeout and environment options through the port', async () => {
+    const exec = new FakeExec();
+    const ctx = buildVerbContext(deps({ exec }), { cwd: '/repo', args: {}, options: {} });
+    await ctx.exec('node', ['task.js'], {
+      timeoutMs: 500,
+      env: { FEATURE_FLAG: '1', REMOVE_ME: undefined },
+    });
+    expect(exec.calls[0]).toEqual({
+      command: 'node',
+      args: ['task.js'],
+      cwd: '/repo',
+      timeoutMs: 500,
+      env: { FEATURE_FLAG: '1', REMOVE_ME: undefined },
+    });
+  });
+
+  it('ctx.steps times every step and aggregates fail() without aborting the run', async () => {
+    const clock = new FakeClock('2026-07-14T00:00:00.000Z');
+    const ctx = buildVerbContext(deps({ clock }), { cwd: '/repo', args: {}, options: {} });
+    const steps = ctx.steps?.();
+    expect(steps).toBeDefined();
+    if (steps === undefined) throw new Error('steps capability missing');
+
+    await steps.run('migrate', () => clock.advance(25));
+    await steps.run('seed', () => {
+      clock.advance(10);
+      steps.fail('seed command failed', { code: 7 });
+    });
+    await steps.run('verify', async () => {
+      await clock.sleep(5);
+      return 'verified';
+    });
+
+    const result = steps.finish({
+      errorCode: 'E_DB_RESET',
+      next_action: 'Fix the seed and run db reset again.',
+    });
+    expect(result).toMatchObject({
+      status: 'error',
+      error: {
+        code: 'E_DB_RESET',
+        details: {
+          passed: 2,
+          failed: 1,
+          summary: '✅ 2 passed · ❌ 1 failed',
+          steps: [
+            { name: 'migrate', status: 'passed', mark: '✅', durationMs: 25 },
+            {
+              name: 'seed',
+              status: 'failed',
+              mark: '❌',
+              durationMs: 10,
+              message: 'seed command failed',
+              details: { code: 7 },
+            },
+            { name: 'verify', status: 'passed', mark: '✅', durationMs: 5 },
+          ],
+        },
+      },
+      next_action: 'Fix the seed and run db reset again.',
+    });
+  });
+
+  it('ctx.steps finish returns an ok rollup when every step passes', async () => {
+    const ctx = buildVerbContext(deps(), { cwd: '/repo', args: {}, options: {} });
+    const steps = ctx.steps?.();
+    if (steps === undefined) throw new Error('steps capability missing');
+    await steps.run('ready', () => true);
+    expect(steps.finish()).toMatchObject({
+      status: 'ok',
+      data: { passed: 1, failed: 0, summary: '✅ 1 passed · ❌ 0 failed' },
+    });
+  });
+
   it('ctx.fs/env/git read through the injected ports', () => {
     const fs = new FakeFs({ '/repo/x': 'hi' }, { '/repo': ['x'] });
     const git = new FakeGit({ isRepo: true, branch: 'main' });

@@ -114,7 +114,7 @@ describe('`harness new` — scaffold then load end-to-end via real jiti', () => 
     // Wrap a command guaranteed to exist + succeed (`node --version`).
     const scaffold = await runIn(deps, EMPTY, ['new', 'ver', '--wrap', 'node --version']);
     expect(scaffold.code).toBe(0);
-    expect(JSON.parse(scaffold.out).data.variant).toBe('wrap-ts');
+    expect(JSON.parse(scaffold.out).data.variant).toBe('v2-wrap-ts');
 
     const registry = await buildVerbRegistry(
       discoverExtensions(deps.fs, deps.proc).candidates,
@@ -127,5 +127,65 @@ describe('`harness new` — scaffold then load end-to-end via real jiti', () => 
     expect(env.status).toBe('ok');
     expect(env.data.command).toBe('node --version');
     expect(invoked.code).toBe(0);
+  });
+
+  it('scaffolds structural subverbs that load and mount immediately', async () => {
+    workdir = mkdtempSync(join(tmpdir(), 'harness-new-sub-'));
+    const deps = realDeps(workdir);
+    const scaffold = await runIn(deps, EMPTY, ['new', 'db', '--sub', 'reset,seed']);
+    expect(scaffold.code).toBe(0);
+    expect(JSON.parse(scaffold.out).data.variant).toBe('v2-sub-ts');
+
+    const registry = await buildVerbRegistry(
+      discoverExtensions(deps.fs, deps.proc).candidates,
+      new JitiLoader(),
+    );
+    expect(registry.records[0]).toMatchObject({ status: 'loaded', format: 'v2 (api 2)' });
+    expect(registry.verbs[0]?.subverbs?.map((subverb) => subverb.name)).toEqual(['reset', 'seed']);
+
+    const invoked = await runIn(deps, registry, ['db', 'reset']);
+    expect(JSON.parse(invoked.out)).toMatchObject({ command: 'db', status: 'unconfigured' });
+    expect(invoked.code).toBe(2);
+  });
+
+  it('scaffolds a sensor that registers and runs through the real sensor act', async () => {
+    workdir = mkdtempSync(join(tmpdir(), 'harness-new-sensor-'));
+    const deps = realDeps(workdir);
+    const scaffold = await runIn(deps, EMPTY, ['new', 'lint-count', '--sensor']);
+    expect(scaffold.code).toBe(0);
+    expect(JSON.parse(scaffold.out).data.variant).toBe('v2-sensor-ts');
+
+    const registry = await buildVerbRegistry(
+      discoverExtensions(deps.fs, deps.proc).candidates,
+      new JitiLoader(),
+    );
+    expect(registry.records[0]).toMatchObject({ status: 'loaded', format: 'v2 (api 2)' });
+    expect(registry.sensors?.map((sensor) => sensor.name)).toEqual(['lint-count']);
+    expect(registry.verbs).toEqual([]);
+
+    const invoked = await runIn(deps, registry, ['sensors', 'run', 'lint-count']);
+    expect(JSON.parse(invoked.out)).toMatchObject({
+      command: 'sensors',
+      status: 'ok',
+      data: { record: { runStatus: 'ok', reading: { state: 'fail' } } },
+    });
+    expect(invoked.code).toBe(0);
+    expect(deps.fs.exists(join(workdir, '.harness/temp/sensors/state/lint-count.json'))).toBe(true);
+  });
+
+  it('scaffolds a plain-JS bare literal that loads without a factory import', async () => {
+    workdir = mkdtempSync(join(tmpdir(), 'harness-new-js-'));
+    const deps = realDeps(workdir);
+    deps.fs.writeText(join(workdir, 'package.json'), '{"type":"module"}\n');
+    const scaffold = await runIn(deps, EMPTY, ['new', 'seed', '--js']);
+    expect(scaffold.code).toBe(0);
+    expect(JSON.parse(scaffold.out).data.variant).toBe('v2-js');
+
+    const registry = await buildVerbRegistry(
+      discoverExtensions(deps.fs, deps.proc).candidates,
+      new JitiLoader(),
+    );
+    expect(registry.records[0]).toMatchObject({ status: 'loaded', format: 'v2 (api 2)' });
+    expect(registry.verbs.map((verb) => verb.name)).toContain('seed');
   });
 });

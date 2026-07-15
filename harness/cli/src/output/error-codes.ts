@@ -25,6 +25,10 @@ export const ErrorCodes = {
   INSTRUCTIONS_UNREADABLE: 'E145',
   /** `harness observe`: a bucket's session buffer exists but could not be read (never silent data loss). */
   OBSERVE_BUFFER_UNREADABLE: 'E146',
+  /** A v2 extension declares an api newer than this core can normalize. */
+  EXTENSION_API_ABOVE_CORE: 'E147',
+  /** A v2 extension declares an unknown top-level section (typo or newer vocabulary). */
+  EXTENSION_UNKNOWN_SECTION: 'E148',
   /** `harness new`: the requested verb name fails the name rules (empty, spaces, separators, etc.). */
   SCAFFOLD_INVALID_NAME: 'E150',
   /** `harness new`: the requested name is reserved by a core command (`help`/`doctor`/`new`). */
@@ -53,6 +57,23 @@ export const ErrorCodes = {
   UPDATE_NPM_MISSING: 'E203',
   /** `harness update --pin`: the requested version is not published in the registry. */
   UPDATE_VERSION_NOT_FOUND: 'E204',
+  // --- `harness sensors` family (plan 059; E210–E217 are the complete Phase 2 block) ---
+  /** A requested sensor is not registered. */
+  SENSOR_NOT_FOUND: 'E210',
+  /** A sensor run threw or rejected. */
+  SENSOR_RUN_FAILED: 'E211',
+  /** A sensor exceeded its hard timeout. */
+  SENSOR_TIMEOUT: 'E212',
+  /** Persisted sensor state is unparseable or has an unsupported schema. */
+  SENSOR_STATE_UNREADABLE: 'E213',
+  /** Atomic sensor state write failed. */
+  SENSOR_STATE_WRITE_FAILED: 'E214',
+  /** `sensors check` found failing, crashed, or timed-out sensors. */
+  SENSORS_CHECK_FAILED: 'E215',
+  /** A sensor declaration violates the api-2 contract. */
+  SENSOR_DECL_INVALID: 'E216',
+  /** Two extensions declared the same flat sensor name. */
+  SENSOR_NAME_CONFLICT: 'E217',
   // --- `harness flow` family (plan 024; additive — E300–E309 reserved, all free) ---
   /** `harness flow`: a flow document failed schema validation (shape/required fields/enum), or an invalid `--template` was supplied. */
   FLOW_SCHEMA_INVALID: 'E300',

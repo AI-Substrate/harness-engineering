@@ -64,6 +64,8 @@ export interface QuietDoctorExtension {
   name: string;
   status: ExtensionRecord['status'];
   verbs: string[];
+  /** Present for registries built by the v2-aware loader. */
+  format?: string;
 }
 
 export interface QuietDoctorReport {
@@ -89,6 +91,7 @@ function quietDoctorReport(report: DoctorReport): QuietDoctorReport {
       name: extensionName(extension.entryPath),
       status: extension.status,
       verbs: extension.verbs.map((verb) => verb.name),
+      ...(extension.format !== undefined && { format: extension.format }),
     })),
   };
 }
@@ -582,9 +585,22 @@ export function renderDoctorText(report: DoctorReport): string {
         const mark = ext.status === 'loaded' ? '•' : '✗';
         const verbNames = ext.verbs.map((v) => v.name);
         const recordNames = (ext.recordTypes ?? []).map((t) => `${t.type} (record)`);
-        const names = [...verbNames, ...recordNames].join(', ') || '(none)';
+        const sensorNames = (ext.sensors ?? []).map((sensor) => `${sensor.name} (sensor)`);
+        const customNames = (ext.customItems ?? []).map(
+          (item) => `${item.type}.${item.name} (custom)`,
+        );
+        const names =
+          [...verbNames, ...recordNames, ...sensorNames, ...customNames].join(', ') || '(none)';
         const suffix = ext.error ? ` — ${ext.error}` : '';
-        lines.push(`    ${mark} ${names} [${ext.status}]  ${ext.entryPath}${suffix}`);
+        lines.push(
+          `    ${mark} ${names} [${ext.status}]  format: ${ext.format ?? 'v1'}  ${ext.entryPath}${suffix}`,
+        );
+        for (const info of ext.info ?? []) {
+          lines.push(`      ℹ ${info}`);
+        }
+        if (ext.next_action) {
+          lines.push(`      → ${ext.next_action}`);
+        }
         // Both comparison sides in POSIX space (plan 017 — no partial-normalization mismatch).
         const complaint = report.conventions.find((c) => posixDirname(ext.entryPath) === c.folder);
         if (complaint && ext.status === 'loaded') {

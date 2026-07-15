@@ -1,159 +1,91 @@
 import { describe, expect, it } from 'vitest';
 import {
-  minimalJs,
-  minimalTs,
   renderStarter,
+  starterInstructions,
   toIdentifier,
-  wrapJs,
-  wrapTs,
+  v2Js,
+  v2SensorTs,
+  v2SubTs,
+  v2Ts,
+  v2WrapTs,
 } from '../../../src/services/scaffold/templates.js';
 
-/*
-Test Doc:
-- Why: the scaffolded file IS the product of `harness new`; plan 006 workshop §4 fixes its
-  exact contents so authoring starts from a valid, loadable file. These tests pin that output
-  byte-for-byte so drift is caught immediately.
-- Contract: the template builders emit the workshop §4a–4d text verbatim, camelCasing the verb
-  name into a valid const identifier (Finding 03).
-- Quality Contribution: turns "what should the stub look like?" into an assertion, not prose.
-*/
-
-const MINIMAL_TS_GREET = `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
-
-const greet: HarnessVerb = {
-  name: 'greet',
-  summary: 'TODO: one-line summary of what \`harness greet\` does.',
-  // options: [{ flags: '--example <value>', description: 'an example flag' }],
-  run(ctx) {
-    // TODO: implement this verb. Until you do, it honestly reports "not built yet".
-    return ctx.unconfigured('Implement run() in .harness/extensions/greet/extension.ts');
-  },
-};
-
-export default greet;
-`;
-
-const WRAP_TS_TEST = `import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
-
-const test: HarnessVerb = {
-  name: 'test',
-  summary: 'Wraps \`npm test\`.',
-  async run(ctx) {
-    const started = Date.now();
-    const r = await ctx.exec('npm', ['test']);
-    const durationMs = Date.now() - started;
-    const tail = r.stdout.trimEnd().split('\\n').slice(-20).join('\\n');
-    return r.ok
-      ? ctx.ok({ command: 'npm test', durationMs, stdout: tail })
-      : ctx.error('E1', \`npm test failed (exit \${r.code})\`, {
-          details: r.stderr,
-          next_action: 'Fix the failure above, then re-run \`harness test\`.',
-        });
-  },
-};
-
-export default test;
-`;
-
-const MINIMAL_JS_GREET = `/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
-const greet = {
-  name: 'greet',
-  summary: 'TODO: one-line summary of what \`harness greet\` does.',
-  run(ctx) {
-    // TODO: implement this verb.
-    return ctx.unconfigured('Implement run() in .harness/extensions/greet/extension.js');
-  },
-};
-
-export default greet;
-`;
-
-const WRAP_JS_TEST = `/** @type {import('@ai-substrate/engineering-harness/contract').HarnessVerb} */
-const test = {
-  name: 'test',
-  summary: 'Wraps \`npm test\`.',
-  async run(ctx) {
-    const started = Date.now();
-    const r = await ctx.exec('npm', ['test']);
-    const durationMs = Date.now() - started;
-    const tail = r.stdout.trimEnd().split('\\n').slice(-20).join('\\n');
-    return r.ok
-      ? ctx.ok({ command: 'npm test', durationMs, stdout: tail })
-      : ctx.error('E1', \`npm test failed (exit \${r.code})\`, {
-          details: r.stderr,
-          next_action: 'Fix the failure above, then re-run \`harness test\`.',
-        });
-  },
-};
-
-export default test;
-`;
-
-describe('scaffold templates', () => {
-  it('toIdentifier camelCases a kebab verb name into a valid const identifier', () => {
-    expect(toIdentifier('greet')).toBe('greet');
-    expect(toIdentifier('ci-smoke')).toBe('ciSmoke');
-    expect(toIdentifier('a-b-c')).toBe('aBC');
+describe('v2 scaffold templates', () => {
+  it('converts kebab names to identifiers for downstream template utilities', () => {
+    expect(toIdentifier('ci-smoke-2')).toBe('ciSmoke2');
   });
 
-  it('minimalTs emits the workshop §4a starter verbatim', () => {
-    expect(minimalTs('greet')).toBe(MINIMAL_TS_GREET);
+  it('emits the default TypeScript factory form without stamping api', () => {
+    const contents = v2Ts('greet');
+    expect(contents).toContain('import { defineExtension }');
+    expect(contents).toContain('export default defineExtension({');
+    expect(contents).toContain("name: 'greet'");
+    expect(contents).not.toMatch(/\bapi:/);
+    expect(contents).toContain('ctx.unconfigured');
   });
 
-  it('wrapTs emits the workshop §4b starter verbatim (command split into exec argv)', () => {
-    expect(wrapTs('test', 'npm test')).toBe(WRAP_TS_TEST);
+  it('emits real structural subverbs with no hand-written dispatch', () => {
+    const contents = v2SubTs('db', ['reset', 'seed']);
+    expect(contents).toContain('sub: {');
+    expect(contents).toContain("'reset': {");
+    expect(contents).toContain("'seed': {");
+    expect(contents).not.toMatch(/switch\s*\(/);
+    expect(contents).not.toContain('ctx.args.verb');
   });
 
-  it('minimalJs emits the workshop §4c starter verbatim (JSDoc, no runtime import)', () => {
-    expect(minimalJs('greet')).toBe(MINIMAL_JS_GREET);
+  it('emits a bounded TypeScript wrapper through ctx.exec', () => {
+    const contents = v2WrapTs('test', 'npm run test');
+    expect(contents).toContain("ctx.exec('npm', ['run', 'test'], { timeoutMs: 120_000 })");
+    expect(contents).toContain("ctx.error('E_WRAP_FAILED'");
+    expect(contents).not.toContain('Date.now');
   });
 
-  it('wrapJs emits the workshop §4d starter verbatim (JSDoc header + wrap body + .js path)', () => {
-    expect(wrapJs('test', 'npm test')).toBe(WRAP_JS_TEST);
-    // and the dispatcher returns the same bytes for the wrap-js variant
-    expect(renderStarter({ name: 'test', js: true, wrap: 'npm test' }).contents).toBe(WRAP_JS_TEST);
+  it('emits a typed sensor that maps command exit code without persisting raw output', () => {
+    const contents = v2SensorTs('lint-count');
+    expect(contents).toContain('sensors: {');
+    expect(contents).toContain("'lint-count': {");
+    expect(contents).toContain("ctx.exec('npm', ['run', 'lint-count', '--silent'])");
+    expect(contents).toContain("guidance: '");
+    expect(contents).toContain("{ state: 'pass' }");
+    expect(contents).toContain("{ state: 'fail', details:");
+    expect(contents).not.toMatch(/result\.(stdout|stderr)/);
   });
 
-  it('wrap splits multi-token commands and camelCases the identifier', () => {
-    const out = wrapTs('ci-smoke', 'just ci-smoke');
-    expect(out).toContain('const ciSmoke: HarnessVerb');
-    expect(out).toContain("await ctx.exec('just', ['ci-smoke'])");
-    expect(out).toContain('re-run `harness ci-smoke`');
+  it('emits plain JS as the sanctioned bare literal with no runtime import', () => {
+    const contents = v2Js('seed');
+    expect(contents).toContain("kind: 'extension'");
+    expect(contents).toContain('.ExtensionDefinition}');
+    expect(contents).not.toContain('defineExtension(');
+    expect(contents).not.toMatch(/^import\s/m);
   });
 
-  it('renderStarter picks the variant + extension from flags', () => {
-    expect(renderStarter({ name: 'greet', js: false })).toMatchObject({
-      variant: 'minimal-ts',
+  it('selects exactly the five v2 variants', () => {
+    expect(renderStarter({ name: 'a', js: false })).toMatchObject({
+      variant: 'v2-ts',
       ext: 'ts',
     });
-    expect(renderStarter({ name: 'greet', js: true })).toMatchObject({
-      variant: 'minimal-js',
+    expect(renderStarter({ name: 'a', js: false, sub: ['one'] })).toMatchObject({
+      variant: 'v2-sub-ts',
+      ext: 'ts',
+    });
+    expect(renderStarter({ name: 'a', js: false, wrap: 'npm test' })).toMatchObject({
+      variant: 'v2-wrap-ts',
+      ext: 'ts',
+    });
+    expect(renderStarter({ name: 'a', js: true })).toMatchObject({
+      variant: 'v2-js',
       ext: 'js',
     });
-    expect(renderStarter({ name: 'test', js: false, wrap: 'npm test' })).toMatchObject({
-      variant: 'wrap-ts',
-      ext: 'ts',
-    });
-    expect(renderStarter({ name: 'test', js: true, wrap: 'npm test' })).toMatchObject({
-      variant: 'wrap-js',
-      ext: 'js',
-    });
-    // --record wins over --wrap/--js: a record-type stub is always a TS file.
-    expect(renderStarter({ name: 'dev-survey', js: true, wrap: 'x', record: true })).toMatchObject({
-      variant: 'record-ts',
+    expect(renderStarter({ name: 'a', js: false, sensor: true })).toMatchObject({
+      variant: 'v2-sensor-ts',
       ext: 'ts',
     });
   });
 
-  it('the record-ts starter exports a HarnessRecordType with the 4 fields', () => {
-    const contents = renderStarter({ name: 'dev-survey', js: false, record: true }).contents;
-    expect(contents).toContain(
-      "import type { HarnessRecordType } from '@ai-substrate/engineering-harness/contract'",
-    );
-    expect(contents).toContain("kind: 'record'");
-    expect(contents).toContain("type: 'dev-survey'");
-    expect(contents).toContain('description:');
-    expect(contents).toContain('template:');
-    expect(contents).toContain('export default');
+  it('keeps the package instructions focused on the calling agent', () => {
+    const contents = starterInstructions('greet');
+    expect(contents).toContain('harness greet');
+    expect(contents).toMatch(/calling agent/i);
+    expect(contents).toMatch(/judg(e|ment)/i);
   });
 });

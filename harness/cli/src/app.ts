@@ -9,10 +9,12 @@ import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerRetroAct } from './acts/retro.js';
+import { registerSensorsAct } from './acts/sensors.js';
 import { registerSkillsAct } from './acts/skills.js';
 import { registerTelemetryAct } from './acts/telemetry.js';
 import { registerUpdateAct } from './acts/update.js';
 import { registerVerbAct, type VerbActDeps } from './acts/verb.js';
+import { registerV2VerbAct } from './acts/verb-v2.js';
 import type { Clock } from './adapters/clock/clock-port.js';
 import { SystemClock } from './adapters/clock/system-clock.js';
 import { NodeDb } from './adapters/db/node-db.js';
@@ -23,9 +25,11 @@ import { NodeFs } from './adapters/fs/node-fs.js';
 import { ExecGit } from './adapters/git/exec-git.js';
 import { ExecGitRead } from './adapters/git/exec-git-read.js';
 import { ExecGitWrite } from './adapters/git/exec-git-write.js';
+import { NodeHash } from './adapters/hash/node-hash.js';
 import { JitiLoader } from './adapters/loader/jiti-loader.js';
 import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
 import { NodeProcess } from './adapters/process/node-process.js';
+import { NodeWatcher } from './adapters/watcher/node-watcher.js';
 import { type Envelope, formatError, formatOk } from './output/envelope.js';
 import { ErrorCodes } from './output/error-codes.js';
 import { exitWithEnvelope, setBannerDecorator } from './output/exit.js';
@@ -209,7 +213,14 @@ export async function loadRegistry(
   loader: ModuleLoaderPort,
 ): Promise<ExtensionRegistry> {
   if (isExtensionsDisabled(argv, env)) {
-    return { verbs: [], recordTypes: [], records: [] };
+    return {
+      verbs: [],
+      recordTypes: [],
+      sensors: [],
+      customItems: [],
+      records: [],
+      extensions: [],
+    };
   }
   const discovery = discoverExtensions(deps.fs, deps.proc);
   return buildExtensionRegistry(discovery.candidates, loader, {
@@ -284,6 +295,20 @@ export function buildProgram(
   registerObserveAct(program, io, deps);
   registerRetroAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
+  registerSensorsAct(
+    program,
+    io,
+    {
+      fs: deps.fs,
+      clock: deps.clock,
+      exec: deps.exec,
+      hash: new NodeHash(),
+      proc: deps.proc,
+      watcher: new NodeWatcher(),
+    },
+    registry,
+    { version, pid: process.pid },
+  );
   registerTelemetryAct(program, io, {
     ...deps,
     gitWrite: deps.gitWrite ?? new ExecGitWrite(),
@@ -291,7 +316,11 @@ export function buildProgram(
   });
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
-    registerVerbAct(program, verb, deps, io);
+    if (verb.hasOwnRun !== undefined || (verb.subverbs?.length ?? 0) > 0) {
+      registerV2VerbAct(program, verb, deps, io, registry.customItems ?? []);
+    } else {
+      registerVerbAct(program, verb, deps, io);
+    }
   }
 
   // Bare `harness` (no subcommand) prints an orientation envelope.

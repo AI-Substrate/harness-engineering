@@ -20,13 +20,16 @@ export interface NewActDeps {
  * at running/reviewing it instead. A minimal stub genuinely needs implementing.
  */
 function nextActionFor(variant: string, path: string, verb: string): string {
-  if (variant === 'record-ts') {
-    return `Edit the template body in ${path}, then run \`harness record ${verb}\`. \`harness doctor\` confirms it loaded.`;
+  if (variant === 'v2-wrap-ts') {
+    return `Run \`harness ${verb}\` to try it (run() already wraps your command); edit ${path} to tweak. \`harness doctor\` confirms it loaded.`;
   }
-  const isWrap = variant.startsWith('wrap');
-  return isWrap
-    ? `Run \`harness ${verb}\` to try it (run() already wraps your command); edit ${path} to tweak. \`harness doctor\` confirms it loaded.`
-    : `Edit ${path} to implement run(), then run \`harness ${verb}\`. \`harness doctor\` confirms it loaded.`;
+  if (variant === 'v2-sub-ts') {
+    return `Edit the subverb run() stubs in ${path}, then run \`harness ${verb} --help\`. \`harness doctor\` confirms it loaded.`;
+  }
+  if (variant === 'v2-sensor-ts') {
+    return `Run \`harness sensors run ${verb}\` to try it; edit ${path} to set the command, watch globs, and guidance. \`harness doctor\` confirms it loaded.`;
+  }
+  return `Edit ${path} to implement run(), then run \`harness ${verb}\`. \`harness doctor\` confirms it loaded.`;
 }
 
 /**
@@ -42,18 +45,26 @@ export function registerNewAct(program: Command, io: CliIo, deps: NewActDeps): v
     .description(
       'Scaffold a new extension package into .harness/extensions/<name>/ (entry + instructions.md)',
     )
-    .argument('<name>', 'verb name (lowercase, hyphenated — becomes `harness <name>`)')
+    .argument('<name>', 'extension item name (lowercase, hyphenated)')
+    .option('--sub <names>', 'comma-separated nested subverbs, e.g. --sub reset,seed')
     .option('--wrap <command>', 'wrap a real repo command, e.g. --wrap "npm test"')
-    .option('--js', 'emit a plain .js starter (JSDoc contract, no TypeScript)')
-    .option(
-      '--record',
-      'scaffold a record-type extension (`harness record <name>`) instead of a verb',
-    )
+    .option('--js', 'emit a plain .js bare-literal starter (no runtime import)')
+    .option('--sensor', 'emit a typed command-wrapper sensor starter')
     .option('--force', 'overwrite an existing extension file')
     .action(
-      (name: string, opts: { wrap?: string; js?: boolean; record?: boolean; force?: boolean }) => {
+      (
+        name: string,
+        opts: { sub?: string; wrap?: string; js?: boolean; sensor?: boolean; force?: boolean },
+      ) => {
         const outcome = scaffoldExtension(
-          { name, wrap: opts.wrap, js: opts.js, record: opts.record, force: opts.force },
+          {
+            name,
+            sub: opts.sub?.split(',').map((subverb) => subverb.trim()),
+            wrap: opts.wrap,
+            js: opts.js,
+            sensor: opts.sensor,
+            force: opts.force,
+          },
           { fs: deps.fs, proc: deps.proc },
         );
         const envelope = outcome.ok

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeExec } from '../../../src/adapters/exec/fake-exec.js';
 import { NodeExec } from '../../../src/adapters/exec/node-exec.js';
 
@@ -33,6 +34,27 @@ describe('FakeExec', () => {
     ]);
   });
 
+  it('kills a scripted hung child at the timeout using the fake clock', async () => {
+    const clock = new FakeClock('2026-07-14T00:00:00.000Z');
+    const exec = new FakeExec({ 'sleep forever': { code: 0, hang: true } }, clock);
+    const result = await exec.run('sleep', ['forever'], {
+      cwd: '/repo',
+      timeoutMs: 250,
+      env: { HARNESS_TEST_TOKEN: 'visible' },
+    });
+
+    expect(result).toMatchObject({ code: 124, ok: false });
+    expect(result.stderr).toContain('SIGKILL');
+    expect(clock.sleeps).toEqual([250]);
+    expect(exec.kills).toEqual([
+      { command: 'sleep', args: ['forever'], signal: 'SIGKILL', timeoutMs: 250 },
+    ]);
+    expect(exec.calls[0]).toMatchObject({
+      timeoutMs: 250,
+      env: { HARNESS_TEST_TOKEN: 'visible' },
+    });
+  });
+
   it('defaults an unscripted command to a benign success (absent is not an error)', async () => {
     const exec = new FakeExec();
     const result = await exec.run('echo', ['hi'], { cwd: '/repo' });
@@ -50,6 +72,26 @@ describe('NodeExec', () => {
     expect(result.code).toBe(0);
     expect(result.ok).toBe(true);
     expect(result.stdout).toBe('hi');
+  });
+
+  it('overlays environment values for the child', async () => {
+    const exec = new NodeExec();
+    const result = await exec.run(
+      'node',
+      ['-e', 'process.stdout.write(process.env.HARNESS_EXEC_OVERLAY ?? "missing")'],
+      { cwd: process.cwd(), env: { HARNESS_EXEC_OVERLAY: 'present' } },
+    );
+    expect(result).toMatchObject({ code: 0, ok: true, stdout: 'present' });
+  });
+
+  it('kills a real hung child at the deadline and returns 124', async () => {
+    const exec = new NodeExec();
+    const result = await exec.run('node', ['-e', 'setInterval(() => {}, 1000)'], {
+      cwd: process.cwd(),
+      timeoutMs: 100,
+    });
+    expect(result).toMatchObject({ code: 124, ok: false });
+    expect(result.stderr).toContain('SIGKILL');
   });
 
   it('reflects a non-zero exit as a failure (ok=false)', async () => {
