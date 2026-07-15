@@ -139,6 +139,23 @@ Rate the deterministic coverage of the **behaviour + architecture** rows (mainta
 
 State the rating with a **one-line rationale tied to the matrix** (e.g., "3 of 4 behaviour criteria have EXISTS sensors; the 4th is BUILDABLE → Partial").
 
+#### Counts and the next-move lookup (per-task decision aids — never a score)
+
+Alongside the qualitative rating, emit the **mode-mix counts** over the behaviour + architecture rows — `<n> RUN · <n> EXTEND · <n> BUILD · <n> ABSENT` — transparent, task-local tallies. **No scalar, no percentage, no threshold** is ever derived from them (the 🟢 advisory invariant stands): counts *describe* this task's mix; they never grade it.
+
+Then read the **next-move lookup** — a deterministic table, so "what do I do with this?" is a read, not a judgement. The decision is owned by **this task's mix**, never by a global or ad-hoc score:
+
+| This task's mix | Recommended next move (advisory) |
+|---|---|
+| all `RUN` | start building — the proofs already exist |
+| any `EXTEND` gaps | propose the extension(s) first — the cheapest move, landing in a proven home |
+| any `BUILD` gaps on risk-linked criteria (named in the plan's Risks) | propose Phase 0 before feature code |
+| material `ABSENT` on behaviour/architecture | **decision pause** — put it to the human plainly: proceed as-is, accept the standing inference tax, or build the check/affordance. A recommendation the human may override, never a plan gate |
+
+**Gap ordering (ordinal only).** When several gaps exist, order which to close first deterministically: ① gaps tied to a named plan Risk; ② architecture > behaviour > maintainability; ③ extend before build. An ordering, not a score — there is nothing to pass or fail.
+
+The closing verdict and its `In summary:` cite the table's recommended move **for this task**.
+
 #### Recommended Phase 0 (conditional — routing trigger, NOT a threshold)
 Include a **Recommended Phase 0: Establish Backpressure (build or extend)** table **iff** ≥1 behaviour/architecture criterion is `EXTEND`, `BUILDABLE`, or `ABSENT` with no `EXISTS` sensor. **Omit** it entirely when all behaviour/architecture criteria are `EXISTS`, or when the only gaps are inferential / human-judgement / testing-doc rows.
 
@@ -150,19 +167,19 @@ Each Phase 0 row specifies a sensor to **build or extend** — **extensions rank
 
 Assemble `## Proof Plan (selected)` — per phase, the ordered list of proof lines whose green output shows that phase's criteria hold: `RUN:` lines verbatim-paved and runnable today, `EXTEND→RUN:` lines naming the extension to an existing sensor first (same paved command, made stronger), `BUILD→RUN:` lines naming their Phase-0 build first. These are the ready-to-fold *"<criterion> — done when `<paved command>` is green"* lines for whatever the plan uses to decide "done" (an acceptance criterion, a DoD item, a task) — handed to the plan's owner to fold into the re-plan, never applied by this verb. **Honesty boundary: this is selection, not enforcement** — nothing in this survey executes at phase end or guarantees the proofs are run; what binds it is the artifact + its `Basis` hash (a re-plan changes the basis, forcing re-selection against the latest plan).
 
-#### Closing verdict (mandatory — plain language, derived from the modes)
+#### Closing verdict (mandatory — plain human register, derived from the modes)
 
-The survey **ends by answering its own question out loud**: *how will this work be proven done?* One short spoken block (also written into the artifact's `## Closing Verdict`), on the four-rung ladder the modes define — cheapest rung first:
+The survey **ends by answering its own question out loud**: *how will we know this work is actually done?* One short spoken block (also written into the artifact's `## Closing Verdict`), written the way a **principal engineer explains to a less experienced one, assuming zero context**. The register contract:
 
-1. **Fully provable today** — every behaviour/architecture criterion is `RUN:`: *"This work will prove itself done: at each phase end, `<the proof lines>` green."*
-2. **Provable after extending** — the gaps are `EXTEND→RUN:`: *"Provable once `<existing sensor>` gains `<rule/case/route>` — same command, made stronger."*
-3. **Needs a new sensor** — the gaps are `BUILD→RUN:`: *"AC-x/y can't be proven today; Phase 0 builds `<sensor>`, paving `<command>`."*
-4. **Partial at best** — material `ABSENT` rows: *"I can only partially prove this deterministically — `<criteria>` remain inference/eyeball; the highest-leverage fix is `<extension/sensor>` (or, recommendation only, the product-code affordance `<X>` that would make one possible)."*
-
-Two rationale lines that belong in the verdict, not just the doctrine (harness-foundations Rules 6 and 7):
-
-- **Every `RUN:` line is a token arbitrage** — a criterion the agent will never have to *reason* about again ("is this passing?" collapses to exit code + pointed message); every `ABSENT` row is a standing inference tax the plan's owner is choosing to keep paying.
-- **The proof line is where corrections live**: *if any proof line passes but a human still says not-done, the sensor is wrong — fix the checker first, re-run it, then fix the code.* The correction becomes permanent instead of evaporating as a chat comment.
+- **Plain labels only.** Never speak bare ids or internals (`AC-6`, `basis_sha256`, `EXTEND→RUN`) — name each promise in words ("the pricing-tier boundary rules"), with the id in parentheses at most. The modes and hashes stay in the artifact's tables; the spoken block *translates* them.
+- **Say what was already done vs what needs the human's OK — as two explicit beats.** *"One thing I already did, automatically: …"* (e.g. wrote the how-to-prove-it commands into the coverage artifact) and *"One thing I'd like your OK on: …"* (e.g. update the plan so tasks inherit the proofs). Silence is neither acceptance nor decline, so the ask ends with a real question.
+- **One breath of *why* per beat.** Each proposed beat carries its reason, briefly: commands-not-opinions (*"when these pass, those promises are kept — no judgement calls"*); written-where-the-work-lives (*"whoever picks this up later sees it, even after this conversation is gone"*); and fix-the-checker-first (*"if the checks pass but a human says it's not done, the checks are wrong — we fix them first, then the code, and that mistake can never slip through again"*). These are harness-foundations Rules 6 and 7, spoken plainly.
+- **The verdict rides the four-rung ladder** the modes define, cheapest rung first — and **commands never overclaim the whole outcome**: certainty rates only the machine-checkable rows, so a Strong rating can coexist with a decision only a human can make. Say *"the work is done"* **only when no inferential / human-judgement row remains**; otherwise name that remaining human call plainly, in the same breath:
+  1. **Fully provable today** (all `RUN:`) — *"When these commands pass, every machine-checkable promise in this plan is kept."* Add either *"— and nothing here needs a human judgement call, so green genuinely means done"* **or** *"— <the remaining call, e.g. whether the pricing page feels right> still needs your eyes; no command can judge that."*
+  2. **Provable after extending** (`EXTEND→RUN:` gaps) — *"I'd like your OK to teach our existing <checker> <rule> — the same command everyone already runs, made smarter; once it lands, <that promise> becomes machine-checked too."*
+  3. **Needs a new check** (`BUILD→RUN:` gaps) — *"<These promises> have no check yet. I'd like your OK to add a task that builds <check>, paving `<command>` — then they're covered."* (A proposed action, never a presumed plan edit.)
+  4. **Partial at best** (material `ABSENT`) — *"Some of this can only be judged by people. Here's the highest-leverage check that would shrink that — or (a recommendation only, your call) the small product change that would make such a check possible."*
+- **Always end with `In summary:`** — two or three plain sentences repeating the honest split: **what the commands will prove**, **what human judgement remains** (named, or explicitly "none"), **the recommended next move for this task** (from the next-move lookup — counts, never a score), and **exactly which approval is being requested**.
 
 Also **flag thin coverage** here when it applies — rough-size what closing it would take: a single criterion line, extra work in this plan, or its own follow-up. All of it informs the conversation — the survey writes its artifact and leaves any editing to the plan's owner.
 
@@ -210,6 +227,9 @@ Overwrite if it exists (regeneration-safe). Use this template:
 
 ## Certainty: <Strong|Partial|Weak>
 
+Counts (behaviour/architecture rows): <n> RUN · <n> EXTEND · <n> BUILD · <n> ABSENT
+Recommended next move (per-task lookup, advisory): <the table's move for this mix>
+
 <one-line rationale tied to the Proof Plan modes>
 
 ## Recommended Phase 0: Establish Backpressure (build or extend)
@@ -224,12 +244,18 @@ Overwrite if it exists (regeneration-safe). Use this template:
 
 ## Closing Verdict
 
-<!-- Mandatory. Plain language, derived from the modes (four-rung ladder):
-     fully provable today / provable after extending X / needs new sensor /
-     partial at best (+ affordance recommendation). Include the fix-the-checker-first
-     contract line when any RUN: proofs were selected. -->
+<!-- Mandatory. Plain human register (STEP 4 contract): plain labels, never bare
+     ids/internals; "one thing I already did" vs "one thing I'd like your OK on";
+     one breath of why per beat; four-rung ladder (fully provable today / provable
+     after extending X / needs new check / partial at best + affordance
+     recommendation); fix-the-checker-first line when any RUN: proofs selected;
+     commands never overclaim — "done" only when no human-judgement row remains,
+     else the remaining human call is named; rungs 2/3 ASK ("I'd like your OK
+     to extend/build…"), never presume a plan edit; MUST end with "In summary:"
+     (2–3 plain sentences: what commands prove · what human judgement remains ·
+     exactly which approval is requested). -->
 
-<the spoken verdict, verbatim>
+<the spoken verdict, verbatim, ending with its "In summary:">
 ```
 
 ### How this differs from a measurability gate and from after-the-fact review (include a short note in the artifact if useful)
@@ -244,4 +270,4 @@ A missing governance doc (`.harness/engineering-harness.md`) is **not** evidence
 
 ## Exit
 
-**Speak the Closing Verdict first** — the four-rung plain-language answer from STEP 4 (fully provable today / provable after extending X / needs a new sensor / partial at best, with the fix-the-checker-first contract line when `RUN:` proofs were selected). Then print the output-contract summary (✅: what was produced, where, key fields — Certainty, the Basis hash, and the Proof Plan's `RUN:`/`EXTEND→RUN:`/`BUILD→RUN:` line counts), and hand over the per-criterion *"done when `<paved command>` is green"* lines for the plan's owner to fold into the re-plan. Picking the next harness stage is the router's job — this survey just informs the planning conversation and leaves the decision with whoever owns the plan.
+**Speak the Closing Verdict first, in the plain human register STEP 4 defines** — plain labels, the did-vs-needs-your-OK split, one breath of why per beat, the four-rung answer (fully provable today / provable after extending X / needs a new check / partial at best, with the fix-the-checker-first line when `RUN:` proofs were selected), **ending with `In summary:`**. Then print the output-contract summary (✅: what was produced, where, key fields — Certainty, the Basis hash, the mode-mix counts `<n> RUN · <n> EXTEND · <n> BUILD · <n> ABSENT`, and the next-move lookup's recommendation for this task), and hand over the per-criterion *"done when `<paved command>` is green"* lines for the plan's owner to fold into the re-plan. Picking the next harness stage is the router's job — this survey just informs the planning conversation and leaves the decision with whoever owns the plan.
