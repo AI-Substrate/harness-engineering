@@ -11,6 +11,12 @@ This repository is **two things at once** — keep them distinct (the full versi
 
 Other repos are **consumers**: they install the CLI + skills, and *their* harness substrate (`.harness/extensions/`, governance doc, fixtures) lives in *their* tree — not here.
 
+### Skills installs are local-source only (ruling, 2026-07-15)
+
+Skill **content** installed onto this machine always comes from the tracked working-tree `skills/` directory, via the packaged→staged local path: `just install-skills-from-source` → `harness skills install --source packaged` → `resolvePackagedSkillsDir()` (`harness/cli/src/services/skills/skills-service.ts`) stages *this checkout's* `skills/` into a temp dir and installs from that path. Content is **never** fetched from a registry or proxy — do not add an install path that does.
+
+The one remaining network touch is the installer **tool**: the recipe shells out to `npx skills@latest` (Vercel's installer), re-fetched from the registry each run. This is a **temporary bootstrap defect owned by p061, not an allowed exception** — it must be replaced with exact local/pinned, fail-closed tooling. Until then, do not read the `@latest` fetch as precedent for pulling anything else at install time.
+
 ### Where the SDD / the-flow skills live (NOT this repo)
 
 `the-flow` and the rest of the SDD pipeline skills are **authored in a different repo**:
