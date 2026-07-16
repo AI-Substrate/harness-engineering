@@ -13,7 +13,7 @@ import {
   runDoctor,
 } from '../../../src/services/doctor/doctor-service.js';
 import type { ExtensionRecord, HarnessVerb } from '../../../src/services/extensions/contract.js';
-import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
+import type { RegisteredSensor, VerbRegistry } from '../../../src/services/extensions/registry.js';
 import { buildRecordRegistry, coreRecordTypes } from '../../../src/services/record/registry.js';
 
 const ALL_TOOLS = { node: '/usr/bin/node', just: '/usr/bin/just', biome: '/usr/bin/biome' };
@@ -692,5 +692,91 @@ describe('telemetry-flush-hook check (plan 038 follow-up — the deterministic f
     expect(layer?.ok).toBe(false);
     expect(layer?.next_action).toContain('post-commit');
     expect(layer?.next_action).not.toContain('just install-hooks');
+  });
+});
+
+describe('sensor-watcher check (plan 059 follow-up — the live-scanner nudge)', () => {
+  /*
+  Test Doc:
+  - Why: sensors only stay fresh while the headless watcher runs and heartbeats. A repo that
+    registered sensors but has no running watcher would silently serve stale/absent readings;
+    doctor must surface that at session start with the three usage instructions a caller needs —
+    start+restart the watcher, how an agent reads sensors, how a human views them (field-requested
+    2026-07-16). NEVER runs a sensor (P7); reuses SensorStateStore.readDaemon so the liveness
+    definition can't drift from the watcher's own.
+  - Contract: sensors registered + no live heartbeat → sensor-watcher !ok (degraded, exit 0) with a
+    next_action naming `harness sensors watch`, restart-after-extension, `harness sensors --json`,
+    and the interactive TUI; a live heartbeat (<15s) → ok naming the pid; zero sensors → ok, quiet.
+  */
+  const DAEMON = '/repo/.harness/temp/sensors/daemon.json';
+  const mkSensor = (name: string): RegisteredSensor => ({
+    name,
+    extension: name,
+    entryPath: `/repo/.harness/extensions/${name}/extension.ts`,
+    declaration: { summary: `${name} sensor`, run: () => ({ state: 'pass' as const }) },
+  });
+  const withSensors = (...names: string[]): VerbRegistry => ({
+    verbs: [],
+    records: [],
+    sensors: names.map(mkSensor),
+  });
+  const daemonFile = (heartbeatAt: string): string =>
+    JSON.stringify({
+      schema: 1,
+      pid: 4242,
+      startedAt: '2026-06-08T07:00:00.000Z',
+      heartbeatAt,
+      version: '0.12.0',
+    });
+  const layer = (r: ReturnType<typeof buildDoctorReport>) =>
+    r.layers.find((l) => l.name === 'sensor-watcher');
+
+  it('sensors registered but watcher not running → degraded with the three usage instructions (exit 0)', () => {
+    const report = buildDoctorReport(deps(), withSensors('tests', 'lint'));
+    const l = layer(report);
+    expect(l?.ok).toBe(false);
+    expect(l?.detail).toContain('2 sensor(s) registered');
+    expect(l?.detail).toContain('not running');
+    // a) start the watcher + WHEN to restart it (adding/changing an extension)
+    expect(l?.next_action).toContain('harness sensors watch');
+    expect(l?.next_action).toMatch(/restart/i);
+    expect(l?.next_action).toMatch(/extension|sensor/i);
+    // b) how an agent reads sensors
+    expect(l?.next_action).toContain('harness sensors --json');
+    // c) how a human views sensors
+    expect(l?.next_action).toContain('interactive TUI');
+    const env = doctorEnvelope(report, new FakeClock('2026-06-08T07:20:00.000Z'));
+    expect(env.status).toBe('degraded');
+    expect(exitCodeFor(env)).toBe(0);
+  });
+
+  it('sensors registered AND a live heartbeat (within 15s) → ok, names the running pid', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, [DAEMON]: daemonFile('2026-06-08T07:19:55.000Z') });
+    const report = buildDoctorReport(deps({ fs }), withSensors('tests'));
+    const l = layer(report);
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toContain('running');
+    expect(l?.detail).toContain('4242');
+  });
+
+  it('a stale heartbeat (older than the 15s liveness window) reads as not running → degraded', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, [DAEMON]: daemonFile('2026-06-08T07:00:00.000Z') });
+    const report = buildDoctorReport(deps({ fs }), withSensors('tests'));
+    expect(layer(report)?.ok).toBe(false);
+  });
+
+  it('no sensors registered → ok, stays quiet (the feature does not apply to this repo)', () => {
+    const report = buildDoctorReport(deps(), EMPTY);
+    const l = layer(report);
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toMatch(/no sensors/i);
+    expect(l?.next_action).toBeUndefined();
+    expect(doctorEnvelope(report, new FakeClock('2026-06-08T07:20:00.000Z')).status).toBe('ok');
+  });
+
+  it('renders the sensor-watcher row + prescription in the text view (P7)', () => {
+    const text = renderDoctorText(buildDoctorReport(deps(), withSensors('tests')));
+    expect(text).toContain('sensor-watcher');
+    expect(text).toContain('harness sensors watch');
   });
 });

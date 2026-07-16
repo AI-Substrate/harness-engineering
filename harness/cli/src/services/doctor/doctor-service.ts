@@ -8,6 +8,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
+import { SensorStateStore } from '../sensors/state-store.js';
 import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 
@@ -412,6 +413,63 @@ function checkQualityGate(registry: VerbRegistry): LayerReport {
 }
 
 /**
+ * Sensor-watcher liveness (plan 059 follow-up, field-requested 2026-07-16). When a
+ * repo registers sensors, the live picture only stays fresh while the headless
+ * watcher runs and publishes a heartbeat to `.harness/temp/sensors/daemon.json`
+ * (the 15s liveness window is owned by {@link SensorStateStore.readDaemon}, reused
+ * here so this row can never drift from the watcher's own definition of "running").
+ * A repo WITH sensors but NO running watcher is reported degraded (advisory, exit 0
+ * — the harness never gates) with the three things a caller needs: how to run the
+ * watcher (and WHEN to restart it — the watch set is read once at startup, so a
+ * newly added extension/sensor is invisible until a restart), how an AGENT reads
+ * sensors, and how a HUMAN views them. A repo with no sensors registered stays ok
+ * (no nag) — the same "don't pester a repo the feature doesn't apply to" posture as
+ * the quality-gate and telemetry-flush rows. NEVER runs a sensor (P7) — a pure
+ * heartbeat-file read through the injected fs/clock ports.
+ */
+function checkSensorWatcher(
+  fs: FsPort,
+  clock: Clock,
+  proc: ProcessPort,
+  registry: VerbRegistry,
+): LayerReport {
+  const name = 'sensor-watcher';
+  const sensorCount = (registry.sensors ?? []).length;
+  if (sensorCount === 0) {
+    return {
+      name,
+      ok: true,
+      detail:
+        'no sensors registered — watcher not needed (scaffold one with `harness new <name> --sensor`)',
+    };
+  }
+  // repoRoot matches the sensors act (deps.proc.cwd()) so this reads the exact
+  // heartbeat file the watcher writes.
+  const daemon = new SensorStateStore({ fs, clock, repoRoot: proc.cwd() }).readDaemon();
+  if (daemon.ok && daemon.value.running) {
+    return {
+      name,
+      ok: true,
+      detail: `watch scanner running (pid ${daemon.value.pid}, since ${daemon.value.since}) — ${sensorCount} sensor(s) live`,
+    };
+  }
+  return {
+    name,
+    ok: false,
+    detail:
+      `${sensorCount} sensor(s) registered but the watch scanner is not running (no live heartbeat) — ` +
+      'readings will be stale or absent until it runs',
+    next_action:
+      'Start the watch scanner so sensors keep measuring: `harness sensors watch` (run it in the ' +
+      'background — e.g. via your task runner or `harness sensors watch &` — and RESTART it after ' +
+      'adding or changing an extension/sensor, since the watch set is read once at startup). ' +
+      'An agent reads the results with `harness sensors --json` (machine-readable status of every ' +
+      'sensor; or `harness sensors check` for a one-shot run that exits non-zero on failures, for CI). ' +
+      'A human views them live with `harness sensors` (the interactive TUI).',
+  };
+}
+
+/**
  * The core agent briefing ships baked into the CLI, so this row is always
  * present and always ok (plan 014 D2) — it exists to make the briefing channel
  * discoverable from doctor output.
@@ -536,6 +594,7 @@ export function buildDoctorReport(
     checkVersionSkew(deps.fs, deps.runningVersion),
     checkExtensions(registry, conventions),
     checkQualityGate(registry),
+    checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
     checkCoreInstructions(),
     checkRecordTypes(recordTypes),
