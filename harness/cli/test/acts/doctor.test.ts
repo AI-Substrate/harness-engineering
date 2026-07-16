@@ -51,6 +51,7 @@ describe('registerDoctorAct', () => {
       'version-skew',
       'extensions',
       'quality-gate',
+      'sensor-watcher',
       'telemetry-flush-hook',
       'instructions',
       'record-types',

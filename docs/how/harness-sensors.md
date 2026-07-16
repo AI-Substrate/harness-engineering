@@ -162,6 +162,18 @@ An unknown name is an argument fault (E210), and unreadable or unwritable scratc
 state uses E213/E214. These operational errors are distinct from a valid failing
 reading.
 
+### `harness doctor` surfaces a stopped watcher
+
+Once a repo registers sensors, their readings are only fresh while the watcher is
+running and publishing its heartbeat. To keep that discoverable, `harness doctor`
+adds a `sensor-watcher` layer: with sensors registered but no live heartbeat it
+reports `degraded` (advisory, exit 0 — the harness never gates) and its
+`next_action` spells out the three usual moves — start the watcher with
+`harness sensors watch` (in the background, and **restart it after adding or
+changing an extension or sensor**, since the watch set is read once at startup),
+read the results as an agent with `harness sensors --json`, and view them as a
+human with `harness sensors`. A repo with no sensors registered stays quiet.
+
 ## Interactive TUI
 
 Run the bare command in an interactive terminal:
