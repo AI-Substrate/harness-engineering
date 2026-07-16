@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import type { ExtensionRecord, HarnessVerb } from '../../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
+import type { NormalizedVerb } from '../../../src/services/extensions/v2/types.js';
 import {
   buildHelp,
   helpEmptyHint,
@@ -20,7 +21,7 @@ const loadedRecord = (name: string): ExtensionRecord => ({
   verbs: [mkVerb(name)],
 });
 
-function registry(verbs: HarnessVerb[], records: ExtensionRecord[]): VerbRegistry {
+function registry(verbs: NormalizedVerb[], records: ExtensionRecord[]): VerbRegistry {
   return { verbs, records };
 }
 
@@ -48,6 +49,37 @@ describe('buildHelp', () => {
     expect(JSON.stringify(content)).not.toContain('BUILTIN_SLOTS');
     expect(content.extensions.installed).toBe(2);
     expect(Object.keys(content.exit_codes).sort()).toEqual(['0', '1', '2']);
+  });
+
+  it('exposes the normalized subverb tree to agents', () => {
+    const db: NormalizedVerb = {
+      name: 'db',
+      summary: 'Database',
+      run: () => ({ status: 'unconfigured', next_action: 'pick one' }),
+      hasOwnRun: false,
+      subverbs: [
+        { name: 'reset', summary: 'Reset database', run: () => ({ status: 'ok' }) },
+        { name: 'seed', summary: 'Seed database', run: () => ({ status: 'ok' }) },
+      ],
+    };
+    const content = buildHelp(
+      registry(
+        [db],
+        [
+          {
+            entryPath: '/repo/.harness/extensions/db/extension.ts',
+            status: 'loaded',
+            verbs: [db],
+          },
+        ],
+      ),
+      new FakeFs(),
+    );
+    expect(content.verbs[0]?.subverbs).toEqual([
+      { name: 'reset', summary: 'Reset database' },
+      { name: 'seed', summary: 'Seed database' },
+    ]);
+    expect(renderHelpText(content)).toContain('db reset');
   });
 
   it('carries agents_start_here pointing at `harness instructions` (plan 014 AC-4)', () => {

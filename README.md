@@ -29,6 +29,47 @@ For this, point your agent at a **capable model** — a recent Claude Opus or GP
 
 Prefer to drive it by hand? Follow **[01 · Quick Start](docs/guide/01-quick-start.md)** — install the CLI and skills yourself and reach a green boot.
 
+## Live repository sensors
+
+The newer harness workflow gives repositories typed, deterministic **sensors**:
+small measurements that persist readings, trends, run history, and guidance while
+you work. Agents read the stable surface with `harness sensors --json`; humans run
+`harness sensors` in a terminal for the lazy-loaded live table and drill-in
+playback. Both render the same scratch state, so supervision and automation cannot
+drift into separate truths.
+
+Sensors stay advisory during ordinary work. Use `harness sensors check` only when
+you deliberately want fail/error/timeout readings to block CI. Repositories author
+sensors under API-2 extensions or start with `harness new <name> --sensor`.
+See [Harness sensors](docs/how/harness-sensors.md) for the contract, keys, glyphs,
+JSON shape, and degraded modes. Contributors and agents should also follow
+[AGENTS.md's one-truth/two-views rule](AGENTS.md#sensors-one-truth-two-views).
+
+### This repo's own sensors
+
+The dogfood extension `.harness/extensions/repo-sensors/` ships these 12 real
+signals; each watch entry is repository-relative:
+
+| Sensor | Measures | Watch globs |
+|--------|----------|-------------|
+| `tests` | Full Vitest suite with coverage | `harness/cli/src/**/*.{ts,tsx}`, `harness/cli/test/**/*.ts`, `.harness/extensions/**/*.{ts,tsx,js,mjs,cjs}`, `harness/cli/vitest.config.ts`, `package.json`, `package-lock.json` |
+| `skills-check` | Agent Skills frontmatter validity | `skills/**/*.md`, `.harness/extensions/skills-check/**/*.ts` |
+| `typecheck` | CLI TypeScript with no emit | `harness/cli/src/**/*.{ts,tsx}`, `harness/cli/tsconfig.json`, `package.json`, `package-lock.json` |
+| `lint` | Read-only Biome check | `harness/cli/**/*.{ts,tsx,json}`, `biome.json`, `package.json`, `package-lock.json` |
+| `arch-check` | Dependency-cruiser architecture rules | `harness/cli/src/**/*.{ts,tsx}`, `.dependency-cruiser.cjs`, `.harness/extensions/arch-check/**/*.ts` |
+| `docs-drift` | Generated CLI docs against curated sources | `docs/**/*.md`, `harness/cli/src/services/docs/**/*.{ts,json}`, `scripts/gen-docs.mjs` |
+| `flows-drift` | Generated flow schemas/templates/fixtures | `docs/plans/**/*.md`, `harness/cli/src/services/flow/**/*.{ts,json}`, `scripts/gen-flows.mjs`, `scripts/flow-fixtures.mjs` |
+| `doctrine-parity` | Harness chore/seam doctrine mirror | `skills/eng-harness-flow/SKILL.md`, `scripts/doctrine-parity.mjs` |
+| `windows-check` | Cross-platform extension-source hazards | `.harness/extensions/**/*.{ts,js,mjs,cjs}` |
+| `coverage-branch` | Independent branch-coverage run; higher is better, target 80% | same six globs as `tests` |
+| `todo-debt` | Tracked debt-marker count; lower is better, target 20 | `harness/cli/src/**/*.{ts,tsx}`, `harness/cli/test/**/*.ts`, `.harness/extensions/**/*.{ts,tsx,js,mjs,cjs}`, `skills/**/*.md`, `scripts/**/*.{ts,js,mjs,cjs}`, `docs/**/*.md`, `*.md` |
+| `lock-hygiene` | Internal/proxy/signed URLs in the lock; target zero | `package.json`, `package-lock.json` |
+
+Sensors are short-feedback instruments: target seconds, tolerate up to about
+2–3 minutes, never longer. The 30-second default timeout is the paved path and
+raising a sensor beyond 180 seconds is a design smell. **If your sensor needs 20
+minutes, it isn't a sensor.** Long work belongs in CI or a verb.
+
 ## Documentation
 
 New to the harness? Start with the **[adopter's guide](docs/guide/)** — a read-in-order path from zero to a green boot, on through operating, growing, and maintaining the harness. No prior context needed; written to read cleanly in the GitHub UI.
@@ -39,6 +80,7 @@ New to the harness? Start with the **[adopter's guide](docs/guide/)** — a read
 | **Understand the idea** | [02 · What Is an Engineering Harness?](docs/guide/02-what-is-an-engineering-harness.md) · [03 · The Harness Loop](docs/guide/03-the-harness-loop.md) |
 | **See the visual intro** | [the deck](https://ai-substrate.github.io/harness-engineering/) (press `P` to present) · [the layers, one page](https://ai-substrate.github.io/harness-engineering/layers.html) |
 | **Install the CLI or skills** | [INSTALL.md](./INSTALL.md) · [`harness/cli/README.md`](harness/cli/README.md) · [`skills/README.md`](skills/README.md) |
+| **Author and operate sensors** | [Harness sensors](docs/how/harness-sensors.md) — JSON for agents, live TUI for humans |
 | **Read the thesis** | [`harness-foundations/`](harness-foundations/) — [first principles](harness-foundations/first-principles.md) · [patterns that work](harness-foundations/patterns-that-work.md) |
 | **Contribute to this repo** | [`AGENTS.md`](./AGENTS.md) — this repo is the harness's own home |
 

@@ -8,6 +8,7 @@ import { FakeGit } from '../src/adapters/git/fake-git.js';
 import { FakeModuleLoader } from '../src/adapters/loader/fake-loader.js';
 import { FakeProcess } from '../src/adapters/process/fake-process.js';
 import {
+  asciiFlag,
   buildProgram,
   deriveCommand,
   isExtensionsDisabled,
@@ -39,6 +40,13 @@ const mkVerb = (name: string): HarnessVerb => ({
   name,
   summary: `${name} verb`,
   run: () => ({ status: 'ok' }),
+});
+
+describe('asciiFlag', () => {
+  it('resolves --ascii once from raw argv', () => {
+    expect(asciiFlag(['node', 'harness', '--ascii', 'sensors'])).toBe(true);
+    expect(asciiFlag(['node', 'harness', 'sensors'])).toBeUndefined();
+  });
 });
 
 describe('isExtensionsDisabled', () => {
@@ -122,7 +130,7 @@ describe('loadRegistry', () => {
 });
 
 describe('buildProgram — composition root wiring', () => {
-  it('registers help, doctor, init, new, docs, skills, one command per registry verb, and the --no-extensions option', () => {
+  it('registers core commands including sensors, registry verbs, and --no-extensions', () => {
     const registry = { verbs: [mkVerb('hello'), mkVerb('build')], records: [] };
     const program = buildProgram('1.2.3', io, deps(), registry);
     const names = program.commands.map((c) => c.name());
@@ -139,6 +147,7 @@ describe('buildProgram — composition root wiring', () => {
       'observe',
       'retro',
       'flow',
+      'sensors',
       'telemetry',
       'instructions',
       'hello',
@@ -146,11 +155,12 @@ describe('buildProgram — composition root wiring', () => {
     ]);
     const longs = program.options.map((o) => o.long);
     expect(longs).toContain('--json');
+    expect(longs).toContain('--ascii');
     expect(longs).toContain('--no-extensions');
     expect(program.version()).toBe('1.2.3');
   });
 
-  it('registers core help/doctor/init/new/docs/skills/update/self-install/record/instructions even with an empty registry', () => {
+  it('registers every core command including sensors even with an empty registry', () => {
     const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
     expect(program.commands.map((c) => c.name())).toEqual([
       'help',
@@ -165,6 +175,7 @@ describe('buildProgram — composition root wiring', () => {
       'observe',
       'retro',
       'flow',
+      'sensors',
       'telemetry',
       'instructions',
     ]);

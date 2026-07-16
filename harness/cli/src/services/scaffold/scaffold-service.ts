@@ -3,7 +3,12 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { RESERVED_NAMES } from '../extensions/registry.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
-import { renderStarter, type ScaffoldVariant, starterInstructions } from './templates.js';
+import {
+  renderStarter,
+  type ScaffoldVariant,
+  starterInstructions,
+  starterSensorInstructions,
+} from './templates.js';
 
 /**
  * Scaffold a new extension PACKAGE for `harness new` (plan 006; folder form
@@ -20,10 +25,9 @@ const EXTENSIONS_DIR = ['.harness', 'extensions'] as const;
 // Hyphen-separated alphanumeric segments — no trailing/doubled hyphens, since
 // the name is now also a directory name (companion F002).
 const NAME_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
-// A --wrap value is embedded verbatim into the generated file. v1 supports a
-// simple `cmd arg arg` line only; reject anything that could break the emitted
-// JS (quotes, backticks, `$`, backslash, shell operators) rather than write
-// invalid code (F002). Quoting/operators are a documented v1 non-goal.
+// A --wrap value is embedded verbatim into the generated file. The scaffold
+// accepts a simple `cmd arg arg` line only; reject anything that could break the
+// emitted source (quotes, backticks, `$`, backslash, shell operators).
 const SAFE_WRAP_PATTERN = /^[\w\-./:= ]+$/;
 
 export interface ScaffoldOptions {
@@ -31,8 +35,10 @@ export interface ScaffoldOptions {
   wrap?: string;
   js?: boolean;
   force?: boolean;
-  /** Scaffold a record-type extension (`kind:'record'`) instead of a verb. */
-  record?: boolean;
+  /** Emit one typed command-wrapper sensor instead of a verb. */
+  sensor?: boolean;
+  /** Real one-level child commands for the top-level verb. */
+  sub?: string[];
 }
 
 export type ScaffoldOutcome =
@@ -51,7 +57,7 @@ export function scaffoldExtension(
   opts: ScaffoldOptions,
   deps: { fs: FsPort; proc: ProcessPort },
 ): ScaffoldOutcome {
-  const { name, wrap, js = false, force = false, record = false } = opts;
+  const { name, wrap, js = false, force = false, sensor = false, sub = [] } = opts;
   const { fs, proc } = deps;
 
   if (!NAME_PATTERN.test(name)) {
@@ -68,16 +74,12 @@ export function scaffoldExtension(
     return {
       ok: false,
       code: ErrorCodes.SCAFFOLD_NAME_RESERVED,
-      message: `'${name}' is a reserved core command and cannot be an extension verb.`,
+      message: `'${name}' is a reserved core command and cannot be an extension item.`,
       next_action: `Choose a different verb name (reserved: ${[...RESERVED_NAMES].join(', ')}).`,
     };
   }
 
-  if (
-    !record &&
-    wrap !== undefined &&
-    (wrap.trim().length === 0 || !SAFE_WRAP_PATTERN.test(wrap))
-  ) {
+  if (wrap !== undefined && (wrap.trim().length === 0 || !SAFE_WRAP_PATTERN.test(wrap))) {
     return {
       ok: false,
       code: ErrorCodes.INVALID_ARGS,
@@ -87,7 +89,47 @@ export function scaffoldExtension(
     };
   }
 
-  const { contents, variant, ext } = renderStarter({ name, js, wrap, record });
+  const invalidSub = sub.find((subverb) => !NAME_PATTERN.test(subverb));
+  if (invalidSub !== undefined || new Set(sub).size !== sub.length || sub.includes('help')) {
+    return {
+      ok: false,
+      code: ErrorCodes.INVALID_ARGS,
+      message:
+        invalidSub !== undefined
+          ? `Invalid subverb name: ${JSON.stringify(invalidSub)}`
+          : sub.includes('help')
+            ? "Subverb 'help' is reserved for command help."
+            : 'Duplicate subverb names are not allowed.',
+      next_action: 'Use unique lowercase, hyphenated subverb names, e.g. `--sub reset,seed`.',
+    };
+  }
+
+  if (sensor && (sub.length > 0 || wrap !== undefined || js)) {
+    return {
+      ok: false,
+      code: ErrorCodes.INVALID_ARGS,
+      message: '`--sensor` cannot be combined with `--sub`, `--wrap`, or `--js`.',
+      next_action: 'Choose the sensor scaffold or one verb scaffold form.',
+    };
+  }
+  if (sub.length > 0 && (wrap !== undefined || js)) {
+    return {
+      ok: false,
+      code: ErrorCodes.INVALID_ARGS,
+      message: '`--sub` cannot be combined with `--wrap` or `--js`.',
+      next_action: 'Choose one scaffold form: --sub, --wrap, or --js.',
+    };
+  }
+  if (js && wrap !== undefined) {
+    return {
+      ok: false,
+      code: ErrorCodes.INVALID_ARGS,
+      message: '`--js` cannot be combined with `--wrap`.',
+      next_action: 'Choose `--js` for a bare-literal stub or `--wrap` for a TypeScript wrapper.',
+    };
+  }
+
+  const { contents, variant, ext } = renderStarter({ name, js, sensor, wrap, sub });
   // Folder form (plan 014 AC-8): every variant lands at <name>/extension.<ext>
   // (the `.record.ts` filename convention is retired — routing is by `kind`).
   const fileName = `extension.${ext}`;
@@ -111,7 +153,10 @@ export function scaffoldExtension(
     fs.writeText(fileAbs, contents);
     // Never clobber an authored briefing — --force replaces code, not judgment.
     if (!fs.exists(instructionsAbs)) {
-      fs.writeText(instructionsAbs, starterInstructions(name));
+      fs.writeText(
+        instructionsAbs,
+        sensor ? starterSensorInstructions(name) : starterInstructions(name),
+      );
     }
   } catch (err) {
     return {

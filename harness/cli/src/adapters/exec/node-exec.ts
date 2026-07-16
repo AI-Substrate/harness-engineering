@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import type { ExecPort, ExecResult } from './exec-port.js';
+import type { ExecOptions, ExecPort, ExecResult } from './exec-port.js';
 import { resolveSpawn } from './windows-command.js';
 
 /**
@@ -14,16 +14,26 @@ import { resolveSpawn } from './windows-command.js';
  * resolved as code 127 rather than rejecting the promise.
  */
 export class NodeExec implements ExecPort {
-  run(command: string, args: string[], opts: { cwd: string }): Promise<ExecResult> {
+  run(command: string, args: string[], opts: ExecOptions): Promise<ExecResult> {
     return new Promise((resolve) => {
       let stdout = '';
       let stderr = '';
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (result: ExecResult): void => {
+        if (settled) return;
+        settled = true;
+        if (timer !== undefined) clearTimeout(timer);
+        resolve(result);
+      };
+
       try {
         const spec = resolveSpawn(command, args, opts.cwd);
         const child = spawn(spec.command, spec.args, {
           cwd: opts.cwd,
           shell: false,
           windowsVerbatimArguments: spec.windowsVerbatimArguments ?? false,
+          ...(opts.env !== undefined && { env: { ...process.env, ...opts.env } }),
         });
         child.stdout?.on('data', (chunk) => {
           stdout += chunk.toString();
@@ -32,15 +42,28 @@ export class NodeExec implements ExecPort {
           stderr += chunk.toString();
         });
         child.on('error', (err) => {
-          resolve({ code: 127, stdout, stderr: stderr + String(err.message ?? err), ok: false });
+          finish({ code: 127, stdout, stderr: stderr + String(err.message ?? err), ok: false });
         });
         child.on('close', (code) => {
           const exitCode = code ?? 1;
-          resolve({ code: exitCode, stdout, stderr, ok: exitCode === 0 });
+          finish({ code: exitCode, stdout, stderr, ok: exitCode === 0 });
         });
+        if (opts.timeoutMs !== undefined) {
+          const timeoutMs = Math.max(0, opts.timeoutMs);
+          timer = setTimeout(() => {
+            child.kill('SIGKILL');
+            const timeoutMessage = `Command timed out after ${timeoutMs}ms and was killed with SIGKILL.`;
+            finish({
+              code: 124,
+              stdout,
+              stderr: stderr.length > 0 ? `${stderr}\n${timeoutMessage}` : timeoutMessage,
+              ok: false,
+            });
+          }, timeoutMs);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        resolve({ code: 127, stdout, stderr: stderr + message, ok: false });
+        finish({ code: 127, stdout, stderr: stderr + message, ok: false });
       }
     });
   }

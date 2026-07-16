@@ -29,13 +29,19 @@ export type VerbInstructionsOutcome =
  * extensions share their folder's single file for free. `null` = unknown verb.
  */
 export function instructionsPathFor(verbName: string, registry: VerbRegistry): string | null {
-  const record = registry.records.find((r) => r.verbs.some((v) => v.name === verbName));
-  if (record === undefined) {
-    return null;
-  }
+  const normalized = registry.extensions?.find((extension) =>
+    extension.verbs.some((verb) => verb.name === verbName),
+  );
+  // Directly-constructed pre-v2 test registries have no normalized provenance;
+  // production registries always take the first branch.
+  const entryPath =
+    normalized?.entryPath ??
+    registry.records.find((record) => record.verbs.some((verb) => verb.name === verbName))
+      ?.entryPath;
+  if (entryPath === undefined) return null;
   // entryPath is POSIX from discovery (plan 017) — derive in POSIX space so the
   // surfaced briefing path stays forward-slash on every OS.
-  return posixJoin(posixDirname(record.entryPath), 'instructions.md');
+  return posixJoin(posixDirname(entryPath), 'instructions.md');
 }
 
 /**

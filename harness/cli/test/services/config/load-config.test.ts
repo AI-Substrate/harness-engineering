@@ -3,6 +3,7 @@ import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { exitCodeFor } from '../../../src/output/exit.js';
 import { validateVerbRegistry } from '../../../src/services/config/load-config.js';
 import type { HarnessVerb } from '../../../src/services/extensions/contract.js';
+import type { NormalizedVerb } from '../../../src/services/extensions/v2/types.js';
 
 const clock = () => new FakeClock('2026-06-08T07:20:00.000Z');
 
@@ -68,6 +69,18 @@ describe('validateVerbRegistry', () => {
     expect(env.status).toBe('error');
     const details = env.error?.details as Array<{ problem: string }>;
     expect(details.some((d) => d.problem.includes('variadic'))).toBe(true);
+  });
+
+  it('accepts variadics only on the normalized v2 path', () => {
+    const variadic: NormalizedVerb = {
+      name: 'files',
+      summary: 'Files',
+      run: () => ({ status: 'ok' }),
+      hasOwnRun: true,
+      subverbs: [],
+      args: [{ name: '<files...>', description: 'files' }],
+    };
+    expect(validateVerbRegistry([variadic], clock()).status).toBe('ok');
   });
 
   it('rejects malformed args/options shapes before they reach commander', () => {

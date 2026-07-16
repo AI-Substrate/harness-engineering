@@ -10,6 +10,8 @@ export interface VerbSummary {
   status: 'loaded';
   /** True when the verb's extension folder carries an `instructions.md` briefing (plan 014 AC-4). */
   has_instructions: boolean;
+  /** Structural v2 children, omitted for leaf/v1 verbs to preserve the v1 payload. */
+  subverbs?: Array<{ name: string; summary: string }>;
 }
 
 /** The full help payload — human-rendered as text, JSON-rendered as an envelope `data`. */
@@ -28,7 +30,7 @@ const PURPOSE =
   "The agent-friendly front door to this repo's engineering harness. " +
   'Verbs are owned by extensions: each is a little package at `./.harness/extensions/<name>/` ' +
   '(entry `extension.ts`, briefing `instructions.md`) and becomes a `harness <verb>` command. ' +
-  '`help`, `doctor`, `new`, `docs`, `skills`, `record`, and `instructions` are always available.';
+  '`help`, `doctor`, `new`, `docs`, `skills`, `record`, `sensors`, and `instructions` are always available.';
 
 const AGENTS_START_HERE =
   'npx harness instructions — the agent briefing (then `harness instructions <verb>` per verb)';
@@ -87,6 +89,12 @@ export function buildHelp(registry: VerbRegistry, fs: FsPort): HelpContent {
         summary: verb.summary,
         status: 'loaded' as const,
         has_instructions: briefingPath !== null && fs.exists(briefingPath),
+        ...((verb.subverbs?.length ?? 0) > 0 && {
+          subverbs: verb.subverbs?.map((subverb) => ({
+            name: subverb.name,
+            summary: subverb.summary,
+          })),
+        }),
       };
     }),
     extensions: { installed, failed, conflicts },
@@ -123,6 +131,9 @@ export function renderHelpText(content: HelpContent, useColor = false): string {
     `  new <name>          ${c.dim('scaffold a new extension into ./.harness/extensions/<name>/')}`,
   );
   lines.push(`  docs [id]           ${c.dim('list the bundled docs, or print one by id')}`);
+  lines.push(
+    `  sensors             ${c.dim('inspect, run, watch, snapshot, or check typed sensors')}`,
+  );
   lines.push('', c.extHeading('Extensions:'));
   if (content.verbs.length === 0) {
     lines.push('  (no extensions installed yet)');
@@ -130,6 +141,9 @@ export function renderHelpText(content: HelpContent, useColor = false): string {
   for (const verb of content.verbs) {
     const briefing = verb.has_instructions ? ' 📖' : '';
     lines.push(`  ${verb.name.padEnd(18)}${c.dim(verb.summary)}${briefing}`);
+    for (const subverb of verb.subverbs ?? []) {
+      lines.push(`    ${`${verb.name} ${subverb.name}`.padEnd(16)}${c.dim(subverb.summary)}`);
+    }
   }
   const { failed, conflicts } = content.extensions;
   if (failed > 0 || conflicts > 0) {

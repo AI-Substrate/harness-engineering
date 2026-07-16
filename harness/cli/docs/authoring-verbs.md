@@ -1,4 +1,9 @@
-# Authoring a harness verb
+# Authoring a harness verb (v1 — still supported)
+
+> **Compatibility contract:** v1 extensions remain supported indefinitely and
+> keep their existing behavior. `harness new` now emits the v2 extension shape;
+> use [Authoring extensions v2](../../../docs/how/authoring-extensions-v2.md) for
+> new work. This page remains the authoritative contract for existing v1 verbs.
 
 A **harness extension** is a TypeScript (or JavaScript) file in your repo's
 `.harness/extensions/<name>/` package folder whose entry default-exports one or more **verbs**. Each
@@ -8,10 +13,10 @@ options, structured Envelope output, and exit code.
 > The core ships no built-in verbs. Everything you can run beyond `help`,
 > `doctor`, `new`, and `docs` is something an extension contributed.
 
-> **Start here:** the fastest way to create one is `harness new <name>` — it
-> scaffolds a loadable stub for you (see [`docs/how/extend-the-harness.md`](../../../docs/how/extend-the-harness.md)).
-> Add `--wrap "<command>"` to wrap a real repo command, or `--js` for a plain-JS
-> starter. This page documents the contract that scaffolded file follows.
+> **Starting new work?** Run `harness new <name>` for a v2 factory scaffold
+> (or `--sub`, `--wrap`, or `--js`) and follow the
+> [v2 guide](../../../docs/how/authoring-extensions-v2.md). This v1 page is for
+> maintaining or understanding old exports; no migration is required.
 
 ## 1. Where extensions live
 
@@ -89,13 +94,18 @@ interface VerbContext {
   options: Record<string, unknown>;              // parsed flags, by camelCased name
 
   // Wrap a REAL repo command (the point of a verb — "wrap, don't rebuild"):
-  exec(command: string, args?: string[], opts?: { cwd?: string }): Promise<ExecResult>;
+  exec(command: string, args?: string[], opts?: {
+    cwd?: string;
+    timeoutMs?: number;                            // SIGKILL at deadline; code 124
+    env?: Record<string, string | undefined>;      // overlay on inherited env
+  }): Promise<ExecResult>;
   //   → { code, stdout, stderr, ok }   (cwd defaults to ctx.cwd; never throws)
 
   fs:   { exists(p): boolean; readText(p): string | null; readdir(p): string[] };
   env:  { get(name): string | undefined };
   git:  { isRepo(): boolean; currentBranch(): string | null };
   clock:{ nowIso(): string };
+  steps?: () => StepRunner;                        // additive; feature-detect
 
   // Envelope helpers — one of these is your return value:
   ok<T>(data: T, opts?): VerbResult;                            // → exit 0
@@ -175,6 +185,7 @@ harness help            # lists the verbs your extensions contributed
 harness <verb> --help   # the commander-generated usage for one verb
 ```
 
-The fastest way to get a starter is `harness new <name>` (see
-[`docs/how/extend-the-harness.md`](../../../docs/how/extend-the-harness.md)).
-Copyable static starters also live in [`../examples/extensions/`](../examples/extensions/).
+For new extensions, use `harness new <name>` and the
+[Authoring extensions v2](../../../docs/how/authoring-extensions-v2.md) guide.
+Copyable v1 examples remain in [`../examples/extensions/`](../examples/extensions/)
+for maintenance and compatibility testing.

@@ -20,6 +20,14 @@ export interface CliIo {
   mode: OutputMode;
   writers: Writers;
   /**
+   * Whether this invocation may attach an interactive renderer. The entrypoint
+   * resolves `stdout.isTTY && TERM !== 'dumb'` once; acts never inspect process streams.
+   * Optional only for legacy injected call sites, where omission means false.
+   */
+  interactive?: boolean;
+  /** Force the sensors TUI's ASCII borders and shape-distinct glyph set. */
+  ascii?: boolean;
+  /**
    * Whether the hand-rolled `harness help` renderer should emit ANSI color.
    * Resolved ONCE by the entrypoint (human + interactive TTY, minus NO_COLOR);
    * optional so test call sites that omit it default to plain text. Commander's
@@ -61,6 +69,10 @@ export const processWriters: Writers = {
  *   2. HARNESS_JSON=1 env (CI, where TTY detection is unreliable)
  *   3. TTY detection: piped (!isTty) => json, interactive => human
  */
+export function resolveInteractive(isTty: boolean, env: NodeJS.ProcessEnv): boolean {
+  return isTty && env.TERM !== 'dumb';
+}
+
 export function selectMode(
   flags: { json?: boolean },
   env: NodeJS.ProcessEnv,

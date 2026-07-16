@@ -11,6 +11,8 @@ export interface FsPort {
   exists(path: string): boolean;
   /** File contents as UTF-8, or null if missing/unreadable (never throws). */
   readText(path: string): string | null;
+  /** Last-modified epoch milliseconds, or null if missing/unreadable (never throws). */
+  mtimeMs(path: string): number | null;
   /** Entry names directly inside a directory, or `[]` if missing/unreadable (never throws). */
   readdir(path: string): string[];
   /** Recursively create a directory (no-op if it already exists). For the scaffolder. */

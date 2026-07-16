@@ -29,6 +29,15 @@ describe('FakeFs', () => {
     expect(fs.reads).toContain('missing');
   });
 
+  it('records mtime probes and returns null for a missing path', () => {
+    const fs = new FakeFs({ '/repo/state.json': '{}' });
+    expect(fs.mtimeMs('/repo/state.json')).toBe(0);
+    expect(fs.mtimeMs('/repo/missing.json')).toBeNull();
+    fs.setMtime('/repo/state.json', 42);
+    expect(fs.mtimeMs('/repo/state.json')).toBe(42);
+    expect(fs.mtimeReads).toEqual(['/repo/state.json', '/repo/missing.json', '/repo/state.json']);
+  });
+
   it('readdir returns seeded entry names and records the probed dir', () => {
     /*
     Test Doc:
@@ -318,6 +327,12 @@ describe('NodeFs', () => {
     const fs = new NodeFs();
     expect(fs.exists('definitely/not/here.xyz')).toBe(false);
     expect(fs.readText('definitely/not/here.xyz')).toBeNull();
+  });
+
+  it('returns a finite mtime for a real file and null for a missing path', () => {
+    const fs = new NodeFs();
+    expect(fs.mtimeMs(join(CLI_ROOT, 'tsconfig.json'))).toEqual(expect.any(Number));
+    expect(fs.mtimeMs(join(CLI_ROOT, 'definitely-not-here.xyz'))).toBeNull();
   });
 
   it('readdir lists a real directory and returns [] for a missing one (no throw)', () => {

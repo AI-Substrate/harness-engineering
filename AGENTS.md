@@ -39,6 +39,40 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
 
+## Sensors: one truth, two views
+
+This repo declares its fast development signals in `.harness/extensions/repo-sensors/`.
+Both human and agent surfaces read the same persisted state; they are two renderers,
+not two implementations.
+
+- **Human view:** on a supported TTY with Ink available, bare
+  `node harness/cli/bin/harness.js sensors` opens the live TUI. Use `1`–`9` to
+  rerun a row, `a` to rerun all sensors (history-preserving), arrows to select,
+  `enter` for detail, `←`/`→` for history playback, `s` for a trend snapshot,
+  `c` to clear and rerun, `w` to detach, and `q`, `q` to stop the watcher and
+  quit. Status glyphs separate a failing
+  reading from a crashed/timed-out sensor; Trend compares the current score with
+  the working-session snapshot.
+- **Agent view:** agents never parse TUI output. Read
+  `node harness/cli/bin/harness.js sensors --json` for the same readings,
+  guidance, trends, and actionable `next_action`. Use `sensors check` only when
+  an explicit CI-style gate should map fail/error/timeout to a non-zero exit.
+  Run-all defaults to bounded concurrency 4; use `sensors check --concurrency 1`
+  when CI needs uncontended per-sensor wallclocks. Run the headless watcher
+  through the agent environment's
+  `ctx.background.spawnDetached` capability, using `node` plus the local
+  `harness/cli/bin/harness.js sensors watch` arguments—not a shell wrapper.
+- **Branch semantics:** `--json` always selects JSON, and non-TTY output uses the
+  JSON path. A supported TTY with Ink uses the TUI. Missing Ink or an unsupported
+  terminal takes the honest degraded fallback path; do not claim every TTY is
+  guaranteed a TUI or forbidden from receiving JSON-shaped fallback output.
+
+Sensors are short-feedback instruments, not batch jobs: target seconds, tolerate
+up to about 2–3 minutes, never longer. The default 30-second hard kill is the
+paved path; a timeout above 180 seconds is a design smell. **If your sensor needs
+20 minutes, it isn't a sensor.** See [the sensors guide](docs/how/harness-sensors.md)
+for the shipped set, authoring rules, and watch globs.
+
 ### Git hooks: NO pre-push gate, YES a post-commit telemetry flush
 
 These are deliberately asymmetric — keep them straight:

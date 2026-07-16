@@ -16,4 +16,6 @@ export interface ProcessPort {
    * with `FakeProcess` and never reads the global directly.
    */
   nodeVersion(): string;
+  /** Send the bounded watcher-stop signal; false means the pid is already gone/unreachable. */
+  kill(pid: number, signal: 'SIGTERM'): boolean;
 }

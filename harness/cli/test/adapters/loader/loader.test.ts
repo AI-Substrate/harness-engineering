@@ -42,6 +42,16 @@ describe('JitiLoader (real jiti smoke)', () => {
     expect(mod).toEqual({ name: 'enum-sample', color: 'red' });
   });
 
+  it('aliases the public contract specifier to this core for a .ts factory extension', async () => {
+    const loader = new JitiLoader();
+    const mod = await loader.load(join(here, 'fixtures', 'factory-default.ts'));
+    expect(mod).toMatchObject({
+      kind: 'extension',
+      name: 'factory-default',
+      description: 'aliased',
+    });
+  });
+
   it('loads a .js fixture default export via the native-import fast path', async () => {
     const loader = new JitiLoader();
     const mod = await loader.load(join(here, 'fixtures', 'plain.js'));

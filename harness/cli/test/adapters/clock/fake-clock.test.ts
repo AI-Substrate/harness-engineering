@@ -37,13 +37,13 @@ describe('FakeClock', () => {
     expect(clock.nowIso()).toBe('2027-01-01T00:00:00.000Z');
   });
 
-  it('sleep() records the request, advances the clock, and resolves immediately (plan 031)', async () => {
+  it('sleep() records, then advances and resolves on the next event-loop turn (plan 031)', async () => {
     /*
     Test Doc:
     - Why: poll loops (the dogfood verbs' run-id capture) must sleep via ctx so they
       stay deterministic on ubuntu — no real timers, no wall-clock flake (plan 031).
-    - Contract: FakeClock.sleep(ms) pushes ms to sleeps[], moves the instant forward by
-      ms (so an interleaved nowIso sees time pass), and resolves with no real delay.
+    - Contract: FakeClock.sleep(ms) pushes ms to sleeps[], then advances by ms and
+      resolves on the next event-loop turn, after runnable microtasks, with no real timer delay.
     - Worked Example: sleep(300) then sleep(700) → sleeps=[300,700], clock advanced 1000ms.
     */
     const clock = new FakeClock('2026-06-08T07:20:00.000Z');
