@@ -4,18 +4,13 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { Event } from './events.js';
-import { otlpLogsToEvents, segmentToOtlpLogs } from './otlp/logs.js';
-import { rollupToOtlpMetrics } from './otlp/metrics.js';
 import {
-  RES_BRANCH,
-  RES_COMMAND,
-  RES_ENV,
-  RES_HARNESS,
-  RES_SCHEMA_VERSION,
-  RES_SERVICE_VERSION,
-  RES_SESSION,
-} from './otlp/semconv.js';
-import { type AnyValue, attrMap, type LogsData, type MetricsData, readStr } from './otlp/types.js';
+  otlpLogsToEvents,
+  reconstructSegmentFromOtlpLogs,
+  segmentToOtlpLogs,
+} from './otlp/logs.js';
+import { rollupToOtlpMetrics } from './otlp/metrics.js';
+import type { LogsData, MetricsData } from './otlp/types.js';
 import { ROLLED_LOGS_NAME, splitJsonl } from './rolled-shard.js';
 import { computeRollup, parseIso } from './rollup.js';
 import type { Segment, SegmentModelStat, SegmentTokens } from './segment.js';
@@ -228,16 +223,6 @@ function modelsFromEvents(events: readonly Event[]): Record<string, SegmentModel
   return models;
 }
 
-/** Rebuild the allowlisted env snapshot from the `harness.env` kvlist resource attribute. */
-function envFromKvlist(attr: AnyValue | undefined): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const { key, value } of attr?.kvlistValue?.values ?? []) {
-    const s = readStr(value);
-    if (s !== undefined) out[key] = s;
-  }
-  return out;
-}
-
 /**
  * Reconstruct one seq's {@link SeqRead} from a committed OTLP **logs** blob when
  * there is NO `<seq>.json` — the canonical committed-shard shape (`sync-service`
@@ -254,28 +239,13 @@ function reconstructFromLogs(logsRaw: string): SeqRead | null {
   } catch {
     return null; // a corrupt logs blob is skipped, never fatal
   }
-  const events = otlpLogsToEvents(logs);
-  const m = attrMap(logs.resourceLogs?.[0]?.resource?.attributes);
-  const branch = readStr(m.get(RES_BRANCH));
-  const rollup = events.length > 0 ? computeRollup(events) : null;
-  const seg: Segment = {
-    schema_version: readStr(m.get(RES_SCHEMA_VERSION)) ?? 'unknown',
-    command: readStr(m.get(RES_COMMAND)) ?? 'session',
-    harness: readStr(m.get(RES_HARNESS)) ?? 'unknown',
-    harness_version: readStr(m.get(RES_SERVICE_VERSION)) ?? 'unknown',
-    harness_session_id: readStr(m.get(RES_SESSION)) ?? '',
-    timecode: events[0]?.t ?? '',
-    window: { since: 'session-start', from: 0, to: 0 },
-    branch: branch ?? null,
-    tokens: tokensFromRollup(rollup?.tokens ?? null),
-    effort: null,
-    event_stream: events,
-    rollup,
-  };
+  const reconstructed = reconstructSegmentFromOtlpLogs(logs);
+  if (!reconstructed.ok) return null;
+  const seg = reconstructed.segment;
+  const events = seg.event_stream;
+  seg.tokens = tokensFromRollup(seg.rollup?.tokens ?? null);
   const models = modelsFromEvents(events);
   if (Object.keys(models).length > 0) seg.models = models;
-  const capturedEnv = envFromKvlist(m.get(RES_ENV));
-  if (Object.keys(capturedEnv).length > 0) seg.captured_env = capturedEnv;
   return { seg, events };
 }
 

@@ -1,4 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  mkdirSync,
+  mkdtempSync,
+  openSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -285,6 +294,56 @@ describe('FakeFs', () => {
     expect(fs.readText('/t/s/1.json')).toBe('a'); // and the file survives the failed delete
   });
 
+  it('normalizes bundle target aliases to one deterministic native-style identity', () => {
+    const fs = new FakeFs();
+    const aliases = ['pull', './pull', '/cwd/pull', 'pull/', '.\\pull'];
+    expect(new Set(aliases.map((target) => fs.normalizeBundleTargetIdentity(target)))).toEqual(
+      new Set(['/cwd/pull']),
+    );
+    expect(fs.normalizeBundleTargetIdentity('C:\\Work\\out\\..\\pull\\')).toBe('C:/Work/pull');
+    expect(fs.normalizeBundleTargetIdentity('C:/Work/other')).not.toBe(
+      fs.normalizeBundleTargetIdentity('C:/Work/pull'),
+    );
+  });
+
+  it('supports byte/no-follow/sibling-temp/exclusive-directory bundle operations', () => {
+    const fs = new FakeFs();
+    fs.writeBytes('/out.tmp/blobs/a.blob', Uint8Array.from([0, 255]));
+    fs.writeText('/out.tmp/bundle.json', '{}\n');
+    expect(fs.readBytesNoFollow('/out.tmp/blobs/a.blob')).toEqual(Uint8Array.from([0, 255]));
+    expect(fs.listRegularFilesNoFollow('/out.tmp')).toEqual(['blobs/a.blob', 'bundle.json']);
+
+    const sibling = fs.createSiblingTempDir('/exports/pull', 'tmp-');
+    expect(sibling.startsWith('/exports/')).toBe(true);
+    fs.writeText(`${sibling}/bundle.json`, '{}\n');
+    fs.publishDirectoryExclusive(sibling, '/exports/pull', 'pull-lock');
+    expect(fs.readText('/exports/pull/bundle.json')).toBe('{}\n');
+    expect(() => fs.publishDirectoryExclusive('/missing', '/exports/pull', 'pull-lock')).toThrow();
+
+    fs.nonRegularPaths.add('/exports/pull/bundle.json');
+    expect(fs.readBytesNoFollow('/exports/pull/bundle.json')).toBeNull();
+    expect(fs.listRegularFilesNoFollow('/exports/pull')).toBeNull();
+  });
+
+  it('exclusive bundle locks preserve another writer and release this writer after post-lock failure', () => {
+    const fs = new FakeFs();
+    const firstTemp = fs.createSiblingTempDir('/exports/pull', 'first-');
+    fs.writeText(`${firstTemp}/bundle.json`, '{}\n');
+    fs.heldBundleLocks.add('shared-lock');
+    expect(() => fs.publishDirectoryExclusive(firstTemp, '/exports/pull', 'shared-lock')).toThrow();
+    expect(fs.heldBundleLocks.has('shared-lock')).toBe(true);
+    expect(fs.exists(firstTemp)).toBe(true);
+
+    fs.heldBundleLocks.delete('shared-lock');
+    fs.failDirectoryPublishAfterLock = true;
+    expect(() => fs.publishDirectoryExclusive(firstTemp, '/exports/pull', 'shared-lock')).toThrow(
+      /post-lock failure/,
+    );
+    expect(fs.heldBundleLocks.has('shared-lock')).toBe(false);
+    expect(fs.exists(firstTemp)).toBe(true);
+    expect(fs.exists('/exports/pull')).toBe(false);
+  });
+
   it('removeDir recursively drops a subtree, records, and clears it from the parent listing (T007)', () => {
     /*
     Test Doc:
@@ -502,6 +561,68 @@ describe('NodeFs', () => {
       expect(fs.exists(f)).toBe(false);
       // Idempotent: deleting the now-missing path does not throw.
       expect(() => fs.deleteFile(f)).not.toThrow();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('normalizes real bundle target aliases through native path resolution', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-bundle-normalize-'));
+    try {
+      const expected = join(base, 'pull');
+      expect(fs.normalizeBundleTargetIdentity(expected)).toBe(expected);
+      expect(fs.normalizeBundleTargetIdentity(join(base, '.', 'pull'))).toBe(expected);
+      expect(fs.normalizeBundleTargetIdentity(`${expected}/`)).toBe(expected);
+      expect(fs.normalizeBundleTargetIdentity(join(base, 'nested', '..', 'pull'))).toBe(expected);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('publishes byte-exact sibling directories without following target symlinks', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-bundle-fs-'));
+    try {
+      const target = join(base, 'pull');
+      const sibling = fs.createSiblingTempDir(target, 'tmp-');
+      fs.mkdirp(join(sibling, 'blobs'));
+      fs.writeBytes(join(sibling, 'blobs', 'a.blob'), Uint8Array.from([0, 255]));
+      fs.writeText(join(sibling, 'bundle.json'), '{}\n');
+      expect(fs.listRegularFilesNoFollow(sibling)).toEqual(['blobs/a.blob', 'bundle.json']);
+      fs.publishDirectoryExclusive(sibling, target, 'pull-lock');
+      expect(fs.readBytesNoFollow(join(target, 'blobs', 'a.blob'))).toEqual(
+        Uint8Array.from([0, 255]),
+      );
+
+      const outside = join(base, 'outside');
+      writeFileSync(outside, 'outside');
+      symlinkSync(outside, join(target, 'link'));
+      expect(fs.listRegularFilesNoFollow(target)).toBeNull();
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  it('does not remove a pre-held real writer lock and removes its own lock after success', () => {
+    const fs = new NodeFs();
+    const base = mkdtempSync(join(tmpdir(), 'harness-bundle-lock-'));
+    try {
+      const target = join(base, 'pull');
+      const sibling = fs.createSiblingTempDir(target, 'tmp-');
+      fs.writeText(join(sibling, 'bundle.json'), '{}\n');
+      const lock = join(base, '.shared-lock.lock');
+      const owner = openSync(lock, 'wx');
+      expect(() => fs.publishDirectoryExclusive(sibling, target, 'shared-lock')).toThrow();
+      expect(fs.exists(lock)).toBe(true);
+      expect(fs.exists(sibling)).toBe(true);
+      expect(fs.exists(target)).toBe(false);
+      closeSync(owner);
+      unlinkSync(lock);
+
+      fs.publishDirectoryExclusive(sibling, target, 'shared-lock');
+      expect(fs.exists(target)).toBe(true);
+      expect(fs.exists(lock)).toBe(false);
     } finally {
       rmSync(base, { recursive: true, force: true });
     }

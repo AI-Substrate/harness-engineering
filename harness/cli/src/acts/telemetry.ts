@@ -4,8 +4,10 @@ import type { EnvPort } from '../adapters/env/env-port.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
 import type { GitReadPort, ShardBlob } from '../adapters/git/git-read-port.js';
 import { type GitWritePort, TELEMETRY_REF_GLOB } from '../adapters/git/git-write-port.js';
+import type { RemoteTelemetryGitPort } from '../adapters/git/remote-telemetry-git-port.js';
+import type { HashPort } from '../adapters/hash/hash-port.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
-import { formatError, formatOk, formatUnconfigured } from '../output/envelope.js';
+import { formatDegraded, formatError, formatOk, formatUnconfigured } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
@@ -16,13 +18,25 @@ import { getFleetEvidence } from '../services/telemetry/fleet-evidence.js';
 import { buildInsights, type InsightInput } from '../services/telemetry/insights.js';
 import { runMark } from '../services/telemetry/mark.js';
 import { otlpLogsToEvents } from '../services/telemetry/otlp/logs.js';
+import {
+  parseRemoteRepositories,
+  parseRemoteSelector,
+  type RawRemoteSelector,
+} from '../services/telemetry/remote-input.js';
+import {
+  listPublishedTelemetry,
+  pullPublishedTelemetry,
+  type RemoteServiceFailure,
+} from '../services/telemetry/remote-telemetry-service.js';
 import { renderInsights } from '../services/telemetry/render/insights-html.js';
 import { type ReportColumn, renderReports } from '../services/telemetry/render/report-html.js';
 import {
   buildReport,
+  buildReportFromInputs,
   type ReportFilter,
   type ReportSortKey,
   type TelemetryReport,
+  type TelemetryReportInput,
 } from '../services/telemetry/report.js';
 import { getSessionEvidence } from '../services/telemetry/session-evidence.js';
 import { combineSession, type SessionExport } from '../services/telemetry/session-export.js';
@@ -38,6 +52,7 @@ import {
   type SweepRefInput,
 } from '../services/telemetry/sweep.js';
 import { syncTelemetry } from '../services/telemetry/sync-service.js';
+import { readTelemetryBundle } from '../services/telemetry/telemetry-bundle-reader.js';
 
 /** The ports the `telemetry` act injects into the sync service (a subset of VerbActDeps). */
 export interface TelemetryActDeps {
@@ -53,6 +68,77 @@ export interface TelemetryActDeps {
    * the git-ref source, so the git-ref branch fails honestly when it is not wired.
    */
   gitRead?: GitReadPort;
+  /** Dedicated arbitrary-remote published telemetry reader (P060). */
+  remoteGit?: RemoteTelemetryGitPort;
+  /** P059 SHA-256 port consumed for repository keys and bundle integrity. */
+  hash?: HashPort;
+}
+
+interface RemoteCommandOptions extends RawRemoteSelector {
+  repo: string[];
+  repoFile: string[];
+  out?: string;
+}
+
+function collectOption(value: string, previous: string[]): string[] {
+  return [...previous, value];
+}
+
+function remoteError(failure: RemoteServiceFailure): {
+  code: string;
+  message: string;
+  next: string;
+} {
+  switch (failure.kind) {
+    case 'transport':
+      return {
+        code: ErrorCodes.REMOTE_TELEMETRY_TRANSPORT_FAILED,
+        message: failure.message,
+        next: 'Check remote reachability and ambient Git authentication, then retry.',
+      };
+    case 'invalid_telemetry':
+      return {
+        code: ErrorCodes.REMOTE_TELEMETRY_INVALID,
+        message: failure.message,
+        next: 'Inspect or republish the named repository telemetry ref; unsafe bytes were not copied.',
+      };
+    case 'namespace_moved':
+      return {
+        code: ErrorCodes.REMOTE_TELEMETRY_MOVED,
+        message: failure.message,
+        next: 'The remote moved repeatedly; wait for publication to settle, then retry.',
+      };
+    case 'endpoint_unknown':
+      return {
+        code: ErrorCodes.REMOTE_TELEMETRY_ENDPOINT_UNKNOWN,
+        message: failure.message,
+        next: 'Pass full product commit OIDs reachable from every selected repository.',
+      };
+    case 'range_diverged':
+      return {
+        code: ErrorCodes.REMOTE_TELEMETRY_RANGE_DIVERGED,
+        message: failure.message,
+        next: 'Choose a product start commit that is an ancestor of the end commit.',
+      };
+    case 'session_not_found':
+      return {
+        code: ErrorCodes.REMOTE_TELEMETRY_SESSION_NOT_FOUND,
+        message: 'the exact session was not published by any requested repository',
+        next: 'Run `harness telemetry ls --repo <url>` and choose an exact terminal session id.',
+      };
+    case 'bundle_conflict':
+      return {
+        code: ErrorCodes.TELEMETRY_BUNDLE_CONFLICT,
+        message: 'the exact output folder already contains different or unmanaged entries',
+        next: 'Choose an absent folder, or reuse the unchanged folder produced by the same pull.',
+      };
+    case 'bundle_write':
+      return {
+        code: ErrorCodes.TELEMETRY_BUNDLE_WRITE_FAILED,
+        message: 'the telemetry bundle could not be published atomically',
+        next: 'Check parent-directory permissions and concurrent writers, then retry safely.',
+      };
+  }
 }
 
 const SESSION_FILE_SUFFIX = '.session.json';
@@ -398,12 +484,10 @@ function filterFromOptions(o: ReportOptions, cwd: string): ReportFilter {
   if (harness) filter.harness = harness;
   if (model) filter.model = model;
   if (branch) filter.branch = branch;
-  // P12: `--filter-repo` is echoed verbatim into the committed report JSON
-  // (`filter.repo` + `provenance.repos`) and inline-embedded into the HTML, so a
-  // path-like value must be home-stripped exactly like `source_paths` — otherwise
-  // `--filter-repo /Users/<name>/private/repo` leaks an absolute home path into a
-  // publishable artifact. Repo is echo-only (not applied by matchesFilter), so this
-  // never changes which sessions are included.
+  // P12: `--filter-repo` is embedded in report JSON/HTML, so path-like values are
+  // home-stripped. The report service applies this facet to repository-tagged
+  // bundle inputs; legacy SessionExport-only inputs have no repository identity,
+  // so the same value remains an honest echo-only declaration for that branch.
   if (repo) filter.repo = repo.map((r) => sanitizeInputPath(r, cwd));
   if (o.from !== undefined) filter.date_from = o.from;
   if (o.to !== undefined) filter.date_to = o.to;
@@ -496,6 +580,214 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
     .description(
       'Telemetry — flush counts-only segments to dated refs (`sync`) and read a pij session’s evidence (`get`)',
     );
+
+  const remotePort = (label: 'ls' | 'pull'): OutputPort =>
+    io.mode === 'json'
+      ? createOutputPort('json', io.writers)
+      : {
+          emit: (envelope) => {
+            if (envelope.status === 'error') {
+              io.writers.err(
+                `harness telemetry ${label}: ${envelope.error?.message ?? 'failed'}\n`,
+              );
+              if (envelope.next_action) io.writers.err(`  → ${envelope.next_action}\n`);
+              return;
+            }
+            const data = envelope.data as {
+              rows?: unknown[];
+              sessions?: number;
+              refs?: number;
+              out?: string;
+              written?: boolean;
+              reused?: boolean;
+            };
+            if (label === 'ls') {
+              io.writers.out(
+                `telemetry ls: ${data.rows?.length ?? 0} session(s)${envelope.status === 'degraded' ? ' (degraded)' : ''}\n`,
+              );
+            } else {
+              io.writers.out(
+                `telemetry pull: ${data.sessions ?? 0} session(s), ${data.refs ?? 0} ref(s) → ${data.out ?? ''} (${data.reused ? 'reused' : data.written ? 'written' : 'unchanged'})${envelope.status === 'degraded' ? ' (degraded)' : ''}\n`,
+              );
+            }
+          },
+        };
+
+  const invalidRemote = (message: string, label: 'ls' | 'pull'): void => {
+    exitWithEnvelope(
+      formatError('telemetry', ErrorCodes.INVALID_ARGS, message, deps.clock, {
+        next_action: `Run \`harness telemetry ${label} --help\` and pass only explicit network repositories plus one valid selector family.`,
+      }),
+      remotePort(label),
+    );
+  };
+
+  telemetry
+    .command('ls')
+    .description('Inventory sessions published under explicit remote refs/harness-telemetry/**')
+    .option('--repo <url>', 'Network Git repository URL (repeatable)', collectOption, [])
+    .option('--repo-file <path>', 'UTF-8 file of repository URLs (repeatable)', collectOption, [])
+    .option('--session <id>', 'Exact terminal telemetry session id')
+    .option('--from-date <YYYY-MM-DD>', 'Inclusive published ref start date')
+    .option('--to-date <YYYY-MM-DD>', 'Inclusive published ref end date')
+    .option('--from-commit <full-oid>', 'Inclusive product commit start')
+    .option('--to-commit <full-oid>', 'Inclusive product commit end')
+    .action(async (options: RemoteCommandOptions) => {
+      if (deps.hash === undefined || deps.remoteGit === undefined) {
+        exitWithEnvelope(
+          formatError(
+            'telemetry',
+            ErrorCodes.UNKNOWN,
+            'remote telemetry dependencies are unavailable in this context',
+            deps.clock,
+            { next_action: 'Invoke through the Harness CLI composition root.' },
+          ),
+          remotePort('ls'),
+        );
+        return;
+      }
+      const repositories = parseRemoteRepositories(
+        {
+          repos: options.repo ?? [],
+          repoFiles: (options.repoFile ?? []).map((path) => ({
+            path,
+            bytes: deps.fs.readBytesNoFollow(path),
+          })),
+        },
+        deps.hash,
+      );
+      if (!repositories.ok) {
+        invalidRemote(repositories.message, 'ls');
+        return;
+      }
+      const selector = parseRemoteSelector('ls', options);
+      if (!selector.ok) {
+        invalidRemote(selector.message, 'ls');
+        return;
+      }
+      const result = await listPublishedTelemetry(
+        { repositories: repositories.repositories, selector: selector.selector },
+        { git: deps.remoteGit, fs: deps.fs, hash: deps.hash },
+      );
+      if (!result.ok) {
+        const mapped = remoteError(result);
+        exitWithEnvelope(
+          formatError('telemetry', mapped.code, mapped.message, deps.clock, {
+            next_action: mapped.next,
+          }),
+          remotePort('ls'),
+        );
+        return;
+      }
+      const data = {
+        rows: result.rows,
+        completeness: result.completeness,
+        gaps: result.gaps,
+        errors: result.errors,
+        effects: result.effects,
+      };
+      const envelope =
+        result.status === 'degraded'
+          ? formatDegraded(
+              'telemetry',
+              data,
+              'Review the named gaps/repository errors before treating the inventory as complete.',
+              deps.clock,
+              { evidence: [{ label: 'remote inventory', none: true }] },
+            )
+          : formatOk('telemetry', data, deps.clock, {
+              evidence: [{ label: 'remote inventory', none: true }],
+              next_action:
+                'Choose an exact session or inclusive date/product-commit range to pull.',
+            });
+      exitWithEnvelope(envelope, remotePort('ls'));
+    });
+
+  telemetry
+    .command('pull')
+    .description(
+      'Pull complete selected published sessions into one deterministic exact-folder bundle',
+    )
+    .option('--repo <url>', 'Network Git repository URL (repeatable)', collectOption, [])
+    .option('--repo-file <path>', 'UTF-8 file of repository URLs (repeatable)', collectOption, [])
+    .option('--session <id>', 'Exact terminal telemetry session id')
+    .option('--from-date <YYYY-MM-DD>', 'Inclusive published ref start date')
+    .option('--to-date <YYYY-MM-DD>', 'Inclusive published ref end date')
+    .option('--from-commit <full-oid>', 'Inclusive product commit start')
+    .option('--to-commit <full-oid>', 'Inclusive product commit end')
+    .requiredOption('--out <exact-folder>', 'Exact absent-or-identical output folder')
+    .action(async (options: RemoteCommandOptions) => {
+      if (deps.hash === undefined || deps.remoteGit === undefined) {
+        exitWithEnvelope(
+          formatError(
+            'telemetry',
+            ErrorCodes.UNKNOWN,
+            'remote telemetry dependencies are unavailable in this context',
+            deps.clock,
+            { next_action: 'Invoke through the Harness CLI composition root.' },
+          ),
+          remotePort('pull'),
+        );
+        return;
+      }
+      const repositories = parseRemoteRepositories(
+        {
+          repos: options.repo ?? [],
+          repoFiles: (options.repoFile ?? []).map((path) => ({
+            path,
+            bytes: deps.fs.readBytesNoFollow(path),
+          })),
+        },
+        deps.hash,
+      );
+      if (!repositories.ok) {
+        invalidRemote(repositories.message, 'pull');
+        return;
+      }
+      const selector = parseRemoteSelector('pull', options);
+      if (!selector.ok || selector.selector === null || options.out === undefined) {
+        invalidRemote(
+          selector.ok ? 'pull requires --out and exactly one selector' : selector.message,
+          'pull',
+        );
+        return;
+      }
+      const result = await pullPublishedTelemetry(
+        {
+          repositories: repositories.repositories,
+          selector: selector.selector,
+          out: options.out,
+        },
+        { git: deps.remoteGit, fs: deps.fs, hash: deps.hash },
+      );
+      if (!result.ok) {
+        const mapped = remoteError(result);
+        exitWithEnvelope(
+          formatError('telemetry', mapped.code, mapped.message, deps.clock, {
+            next_action: mapped.next,
+          }),
+          remotePort('pull'),
+        );
+        return;
+      }
+      const data = { ...result.data, effects: result.effects };
+      const evidence = [{ label: 'telemetry pull bundle', path: `${result.data.out}/bundle.json` }];
+      const envelope =
+        result.status === 'degraded'
+          ? formatDegraded(
+              'telemetry',
+              data,
+              'The valid bundle preserves all selected bytes; review selection/data gaps before analysis.',
+              deps.clock,
+              { evidence },
+            )
+          : formatOk('telemetry', data, deps.clock, {
+              evidence,
+              next_action:
+                'Run `harness telemetry report <bundle-folder>` to analyze the verified bundle.',
+            });
+      exitWithEnvelope(envelope, remotePort('pull'));
+    });
 
   telemetry
     .command('sync')
@@ -1004,7 +1296,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
     .option('--filter-branch <b,…>', 'Only sessions on these branches')
     .option(
       '--filter-repo <r,…>',
-      'Echoed into report.filter (repo is not a v1 session facet — not applied)',
+      'Applied only to bundle origins; mixed inputs retain every legacy SessionExport (echo-only)',
     )
     .option('--from <iso>', 'Only sessions whose activity reaches on/after this instant')
     .option('--to <iso>', 'Only sessions whose activity starts on/before this instant')
@@ -1014,8 +1306,69 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
     .action((paths: string[], options: ReportOptions) => {
       const files = sweepSessionFiles(deps.fs, paths);
       const { exports, skipped } = readExports(deps.fs, files);
+      const bundleInputs: TelemetryReportInput[] = [];
+      const bundleSelectionGaps: Array<{
+        repositoryKey: string;
+        repository: string;
+        sessionId: string;
+        reason: string;
+      }> = [];
+      let bundleFound = false;
+      for (const path of paths) {
+        const candidate = path.replace(/\\/g, '/').endsWith('bundle.json')
+          ? path
+          : posixJoin(path, 'bundle.json');
+        if (deps.fs.readBytesNoFollow(candidate) === null) continue;
+        bundleFound = true;
+        if (deps.hash === undefined) {
+          exitWithEnvelope(
+            formatError(
+              'telemetry',
+              ErrorCodes.UNKNOWN,
+              'bundle verification hash dependency is unavailable',
+              deps.clock,
+              { next_action: 'Invoke through the Harness CLI composition root.' },
+            ),
+            io.mode === 'json'
+              ? createOutputPort('json', io.writers)
+              : { emit: (e) => io.writers.err(`harness telemetry report: ${e.error?.message}\n`) },
+          );
+          return;
+        }
+        const bundle = readTelemetryBundle(path, { fs: deps.fs, hash: deps.hash });
+        if (!bundle.ok) {
+          exitWithEnvelope(
+            formatError(
+              'telemetry',
+              ErrorCodes.REMOTE_TELEMETRY_INVALID,
+              'telemetry pull bundle schema, path set, or integrity verification failed',
+              deps.clock,
+              {
+                next_action:
+                  'Re-run `harness telemetry pull` into an absent folder; do not edit bundle bytes.',
+              },
+            ),
+            io.mode === 'json'
+              ? createOutputPort('json', io.writers)
+              : { emit: (e) => io.writers.err(`harness telemetry report: ${e.error?.message}\n`) },
+          );
+          return;
+        }
+        bundleInputs.push(...bundle.inputs);
+        const repositoryByKey = new Map(
+          bundle.repositories.map((repository) => [repository.key, repository.identity]),
+        );
+        bundleSelectionGaps.push(
+          ...bundle.selection.gaps.map((gap) => ({
+            repositoryKey: gap.repository_key,
+            repository: repositoryByKey.get(gap.repository_key) as string,
+            sessionId: gap.session_id ?? 'unknown',
+            reason: gap.reason,
+          })),
+        );
+      }
 
-      if (exports.length === 0) {
+      if (exports.length === 0 && !bundleFound) {
         const envelope = formatError(
           'telemetry',
           ErrorCodes.UNKNOWN,
@@ -1043,13 +1396,35 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
 
       const filter = filterFromOptions(options, deps.proc.cwd());
       const top = options.top !== undefined ? Number.parseInt(options.top, 10) : undefined;
-      const report = buildReport(exports, {
+      const reportOptions = {
         filter,
         sort: sortKey(options.sort),
         ...(top !== undefined && Number.isFinite(top) ? { top } : {}),
         sourcePaths: paths.map((p) => sanitizeInputPath(p, deps.proc.cwd())),
         generatedAt: deps.clock.nowIso(),
-      });
+      };
+      const report = bundleFound
+        ? buildReportFromInputs(
+            [
+              ...exports.map<TelemetryReportInput>((exp, index) => ({
+                origin: 'legacy',
+                kind: 'full',
+                repositoryKey: `legacy-${index}`,
+                repository: 'local-session-export',
+                sessionId: exp.identity.harness_session_id,
+                sessionExport: exp,
+                coverage: {
+                  events: { state: 'full', count: otlpLogsToEvents(exp.signals.logs).length },
+                  measurements: { state: 'unavailable', count: null },
+                  gaps: ['measurements_unavailable'],
+                },
+                gaps: ['measurements_unavailable'],
+              })),
+              ...bundleInputs,
+            ],
+            { ...reportOptions, selectionGaps: bundleSelectionGaps },
+          )
+        : buildReport(exports, reportOptions);
       const reportJson = `${JSON.stringify(report, null, 2)}\n`;
 
       // `--out foo.json` = data-only single file; otherwise a folder (json + co-located HTML).

@@ -6,6 +6,7 @@ import { FakeGitRead } from '../../../src/adapters/git/fake-git-read.js';
 import { FakeGitWrite } from '../../../src/adapters/git/fake-git-write.js';
 import { telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
+import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
 import {
   parseManifest,
   ROLLED_LOGS_NAME,
@@ -13,6 +14,7 @@ import {
   ROLLED_METRICS_NAME,
   splitJsonl,
 } from '../../../src/services/telemetry/rolled-shard.js';
+import { serializeSegment } from '../../../src/services/telemetry/segment.js';
 import { type SyncDeps, syncTelemetry } from '../../../src/services/telemetry/sync-service.js';
 
 /**
@@ -32,12 +34,16 @@ const REPO = '/repo';
 const TEL = '/repo/.harness/temp/telemetry';
 
 /** A counts-only buffer segment (pretty-printed, as capture writes it). */
-function seg(plans: string[], opts: { command?: string; timecode?: string } = {}): string {
+function seg(
+  plans: string[],
+  opts: { command?: string; timecode?: string; productCommit?: string } = {},
+): string {
   return `${JSON.stringify(
     {
       command: opts.command ?? 'flow',
       timecode: opts.timecode ?? '2026-03-23T10:00:00.000Z',
       plans_touched: plans,
+      ...(opts.productCommit !== undefined && { product_commit: opts.productCommit }),
     },
     null,
     2,
@@ -150,6 +156,62 @@ describe('syncTelemetry — rolled one-ref-per-session-at-start-date (plan 049)'
     expect(r2.segments).toBe(0);
     expect(git.commits).toHaveLength(2); // no new commit
     expect(git.pushed).toHaveLength(2); // no new push (nothing past the watermark)
+  });
+
+  it('carries a stable prior+new product-commit union in rollup/v1 manifest key order', () => {
+    const files: Record<string, string> = {};
+    const names: string[] = [];
+    seqTriple(files, names, 'sessA', 1, ['x']);
+    files[`${TEL}/sessA/1.json`] = seg(['x'], { productCommit: 'a'.repeat(40) });
+    const { deps, fs, git } = makeDeps(files, { [TEL]: ['sessA'], [`${TEL}/sessA`]: names });
+
+    expect(syncTelemetry(deps).ok).toBe(true);
+    expect(latestManifest(git)?.product_commits).toEqual(['a'.repeat(40)]);
+
+    fs.writeText(`${TEL}/sessA/2.json`, seg(['x'], { productCommit: 'b'.repeat(40) }));
+    fs.writeText(`${TEL}/sessA/2.logs.jsonl`, logsBlob(2));
+    fs.writeText(`${TEL}/sessA/2.metrics.jsonl`, metricsBlob(2));
+    names.push('2.json', '2.logs.jsonl', '2.metrics.jsonl');
+    expect(syncTelemetry(deps).ok).toBe(true);
+    expect(latestManifest(git)?.product_commits).toEqual(['a'.repeat(40), 'b'.repeat(40)]);
+    expect(Object.keys(JSON.parse(latestBlob(git, ROLLED_MANIFEST_NAME) ?? '{}'))).toEqual([
+      'format',
+      'session',
+      'start_date',
+      'max_seq',
+      'product_commits',
+    ]);
+  });
+
+  it('migration derives manifest provenance from canonical per-segment Logs when the prior aggregate is absent', () => {
+    const session = 'sess-migration-product';
+    const oid = 'c'.repeat(40);
+    const ref = telemetryRefFor('2026/03/20', session);
+    const segment = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: session,
+        timecode: '2026-03-20T10:00:00.000Z',
+        window: { since: 'session-start', from: 0, to: 1 },
+        branch: 'main',
+        product_commit: oid,
+        event_stream: [],
+      },
+      REPO,
+    );
+    const logs = `${JSON.stringify(segmentToOtlpLogs(segment))}\n`;
+    const gitRead = new FakeGitRead().seedHistory(ref, [
+      [
+        { name: '1.logs.jsonl', content: logs },
+        { name: '1.metrics.jsonl', content: metricsBlob(1) },
+      ],
+    ]);
+    const git = new FakeGitWrite().seedRemoteTelemetryRefs([ref]);
+    const { deps } = makeDeps({}, {}, { git, gitRead });
+
+    expect(syncTelemetry(deps).ok).toBe(true);
+    expect(latestManifest(git)?.product_commits).toEqual([oid]);
   });
 
   it('AC-01: a multi-day session lives at ONE ref, keyed at its START date', () => {

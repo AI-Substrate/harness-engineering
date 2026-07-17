@@ -33,6 +33,7 @@
  */
 
 import { otlpLogsToEvents } from './otlp/logs.js';
+import type { PublishedDataCoverage } from './published-telemetry.js';
 import {
   type Authorship,
   classifyGap,
@@ -121,10 +122,9 @@ export interface ReportFilter {
   model?: string[];
   branch?: string[];
   /**
-   * Echoed for self-description only — NOT applied. A `SessionExport` carries no
-   * repo facet in v1; repo-granular narrowing is Phase 3 / workshop 004 (central
-   * storage keyed by repo path). Kept so a `--filter-repo` report is honest about
-   * intent without pretending it filtered.
+   * Applied by {@link buildReportFromInputs} when inputs carry repository identity.
+   * Echo-only in {@link buildReport}'s legacy SessionExport branch, whose v1
+   * contract has no repository facet.
    */
   repo?: string[];
   date_from?: string;
@@ -175,6 +175,39 @@ export interface ReportAttribution {
 }
 
 /** Rendered at the BOTTOM of the HTML — exactly what the numbers are made of. */
+export interface ReportFieldCoverage {
+  available: number;
+  unavailable: number;
+  excluded: number;
+}
+
+export interface ReportInputCoverage {
+  accepted_sessions: number;
+  event_substrate_sessions: number;
+  kinds: { full: number; partial: number; identity_only: number };
+  fields: { events: ReportFieldCoverage; measurements: ReportFieldCoverage };
+  repositories: Array<{ key: string; identity: string; sessions: number }>;
+  gaps: string[];
+}
+
+export interface EvidenceMeasure {
+  state: 'measured' | 'unavailable';
+  value: number | null;
+  contributors: number;
+}
+
+export interface TelemetryReportInput {
+  /** Explicit provenance: repository filtering applies only to `bundle`. */
+  origin: 'legacy' | 'bundle';
+  kind: 'full' | 'partial' | 'identity-only';
+  repositoryKey: string;
+  repository: string;
+  sessionId: string;
+  sessionExport: SessionExport | null;
+  coverage: PublishedDataCoverage;
+  gaps: string[];
+}
+
 export interface ReportProvenance {
   date_range: { from: string; to: string };
   repos: string[];
@@ -191,6 +224,8 @@ export interface ReportProvenance {
   flow_stage_mechanism: FlowStageMechanism;
   /** Sessions with real token data vs a declared token gap (T1.6 / AC-04). */
   token_coverage: TokenCoverage;
+  /** Present only for bundle-derived full/partial/identity inputs. */
+  input_coverage?: ReportInputCoverage;
 }
 
 export interface TelemetryReport {
@@ -222,10 +257,12 @@ export interface TelemetryReport {
    * session. Absent when no session carried a `file` event (older captures).
    */
   authorship?: Authorship;
+  /** Present only for bundle-derived evidence; measured zero requires a contributor. */
+  evidence_totals?: { events: EvidenceMeasure; measurements: EvidenceMeasure };
 }
 
 export interface BuildReportOptions {
-  /** Facets to narrow by (applied to `harness`/`model`/`branch`/date; `repo` echoed only). */
+  /** Facets to narrow by; `repo` applies to tagged bundle inputs and is echo-only for legacy exports. */
   filter?: ReportFilter;
   /** Row ordering per rollup. Default `'tokens'`. */
   sort?: ReportSortKey;
@@ -863,7 +900,7 @@ function windowTurnTokens(
 
 // ── Filtering ───────────────────────────────────────────────────────────────
 
-/** Does this export pass the applied facets (`harness`/`model`/`branch`/date)? `repo` is echo-only. */
+/** Legacy SessionExport facets; `repo` is echo-only here because v1 exports carry no repo identity. */
 export function matchesFilter(exp: SessionExport, filter: ReportFilter | undefined): boolean {
   if (filter === undefined) return true;
   const id = exp.identity;
@@ -901,8 +938,9 @@ function uniquePush(list: string[], value: string | null | undefined): void {
 }
 
 /**
- * Roll up 1..N `SessionExport`s into one `TelemetryReport`. Applies `opts.filter`
- * (echoing the facets into `report.filter`), folds every matching session's event
+ * Roll up 1..N legacy `SessionExport`s into one `TelemetryReport`. Applies every
+ * available facet and echoes `repo` without filtering because this input contract
+ * has no repository identity; folds every matching session's event
  * stream into the five dimensions, and estimates time/tokens with the declared
  * attribution. Deterministic and pure.
  */
@@ -1061,4 +1099,155 @@ export function buildReport(
     ...(controlTimeline !== undefined ? { control_timeline: controlTimeline } : {}),
     ...(fileEventsAll.length > 0 ? { authorship: computeAuthorship(fileEventsAll) } : {}),
   };
+}
+
+export interface BuildReportFromInputsOptions extends BuildReportOptions {
+  selectionGaps?: Array<{
+    repositoryKey: string;
+    repository: string;
+    sessionId: string;
+    reason: string;
+  }>;
+}
+
+/**
+ * Mixed-input additive adapter. Repository filters apply before every calculation
+ * only to explicit `bundle` origins; `legacy` origins have no repository identity
+ * and remain included with the repo facet echoed. Full inputs still use the
+ * established builder; weaker bundle inputs
+ * contribute only explicit evidence/coverage and never receive a synthetic
+ * SessionExport or fabricated numeric/event value.
+ */
+export function buildReportFromInputs(
+  inputs: TelemetryReportInput[],
+  opts: BuildReportFromInputsOptions = {},
+): TelemetryReport {
+  const filter = opts.filter ?? {};
+  const requestedUnknownFacets = [
+    ...(filter.harness?.length ? ['harness'] : []),
+    ...(filter.model?.length ? ['model'] : []),
+    ...(filter.branch?.length ? ['branch'] : []),
+    ...(filter.date_from !== undefined || filter.date_to !== undefined ? ['date'] : []),
+  ];
+  const decisions = inputs.map((input) => {
+    const repoMatch =
+      input.origin === 'legacy' ||
+      !filter.repo?.length ||
+      filter.repo.includes(input.repositoryKey) ||
+      filter.repo.includes(input.repository);
+    if (!repoMatch) return { input, include: false, reason: 'filter_excluded' } as const;
+    if (input.kind !== 'full' || input.sessionExport === null) {
+      return requestedUnknownFacets.length === 0
+        ? ({ input, include: true } as const)
+        : ({
+            input,
+            include: false,
+            reason: `filter_evidence_unavailable:${requestedUnknownFacets.join(',')}`,
+          } as const);
+    }
+    return matchesFilter(input.sessionExport, filter)
+      ? ({ input, include: true } as const)
+      : ({ input, include: false, reason: 'filter_excluded' } as const);
+  });
+  const included = decisions
+    .filter((decision) => decision.include)
+    .map((decision) => decision.input);
+  const excluded = decisions.filter((decision) => !decision.include);
+  const fullExports = included.flatMap((input) =>
+    input.kind === 'full' && input.sessionExport !== null ? [input.sessionExport] : [],
+  );
+  const report = buildReport(fullExports, opts);
+  const selectionGaps = (opts.selectionGaps ?? []).filter(
+    (gap) =>
+      !filter.repo?.length ||
+      filter.repo.includes(gap.repositoryKey) ||
+      filter.repo.includes(gap.repository),
+  );
+  const repositoryCounts = new Map<string, { identity: string; sessions: number }>();
+  for (const input of included) {
+    if (input.origin === 'legacy') continue;
+    const prior = repositoryCounts.get(input.repositoryKey) ?? {
+      identity: input.repository,
+      sessions: 0,
+    };
+    prior.sessions += 1;
+    repositoryCounts.set(input.repositoryKey, prior);
+  }
+  for (const gap of selectionGaps) {
+    if (!repositoryCounts.has(gap.repositoryKey)) {
+      repositoryCounts.set(gap.repositoryKey, { identity: gap.repository, sessions: 0 });
+    }
+  }
+  const eventsAvailable = included.filter((input) => input.coverage.events.count !== null);
+  const measurementsAvailable = included.filter(
+    (input) => input.coverage.measurements.count !== null,
+  );
+  const gaps = [
+    ...selectionGaps.map((gap) => `${gap.repositoryKey}:${gap.sessionId}:${gap.reason}`),
+    ...included.flatMap((input) =>
+      input.gaps.map(
+        (gap) =>
+          `${input.origin === 'bundle' ? input.repositoryKey : 'legacy'}:${input.sessionId}:${gap}`,
+      ),
+    ),
+    ...excluded.map(
+      (decision) =>
+        `${decision.input.origin === 'bundle' ? decision.input.repositoryKey : 'legacy'}:${decision.input.sessionId}:${decision.reason}`,
+    ),
+  ].sort();
+  const coverage: ReportInputCoverage = {
+    accepted_sessions: included.length,
+    event_substrate_sessions: eventsAvailable.length,
+    kinds: {
+      full: included.filter((input) => input.kind === 'full').length,
+      partial: included.filter((input) => input.kind === 'partial').length,
+      identity_only: included.filter((input) => input.kind === 'identity-only').length,
+    },
+    fields: {
+      events: {
+        available: eventsAvailable.length,
+        unavailable: included.length - eventsAvailable.length,
+        excluded: excluded.length,
+      },
+      measurements: {
+        available: measurementsAvailable.length,
+        unavailable: included.length - measurementsAvailable.length,
+        excluded: excluded.length,
+      },
+    },
+    repositories: [...repositoryCounts.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, value]) => ({ key, identity: value.identity, sessions: value.sessions })),
+    gaps,
+  };
+  const measure = (
+    available: TelemetryReportInput[],
+    read: (input: TelemetryReportInput) => number | null,
+  ): EvidenceMeasure =>
+    available.length === 0
+      ? { state: 'unavailable', value: null, contributors: 0 }
+      : {
+          state: 'measured',
+          value: available.reduce((sum, input) => sum + (read(input) ?? 0), 0),
+          contributors: available.length,
+        };
+
+  report.scope = {
+    session_count: included.length,
+    single: included.length === 1,
+    session_ids: included.map((input) => input.sessionId).slice(0, opts.sessionIdCap ?? 200),
+  };
+  report.provenance.session_count = included.length;
+  report.provenance.repos = [
+    ...new Set([
+      ...included.flatMap((input) => (input.origin === 'bundle' ? [input.repository] : [])),
+      ...selectionGaps.map((gap) => gap.repository),
+    ]),
+  ];
+  report.provenance.input_coverage = coverage;
+  report.evidence_totals = {
+    events: measure(eventsAvailable, (input) => input.coverage.events.count),
+    measurements: measure(measurementsAvailable, (input) => input.coverage.measurements.count),
+  };
+  return report;
 }

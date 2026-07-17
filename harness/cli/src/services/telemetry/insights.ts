@@ -377,6 +377,15 @@ function stageMechanismCaveat(reports: InsightInput[]): string {
 }
 
 function stageEconomics(reports: InsightInput[], units: Unit[]): InsightSection {
+  if (reports.length === 0) {
+    return {
+      id: 'stage_economics',
+      title: 'Stage economics',
+      available: false,
+      rows: [],
+      note: 'Unavailable: no input carries event-substrate evidence for stage calculations.',
+    };
+  }
   const byStage = aggregateDimension(
     reports,
     (r) => r.rollups.flow_stage,
@@ -451,6 +460,15 @@ function stageEconomics(reports: InsightInput[], units: Unit[]): InsightSection 
 // ── §2 Skill breakdown ──────────────────────────────────────────────────────
 
 function skillBreakdown(reports: InsightInput[]): InsightSection {
+  if (reports.length === 0) {
+    return {
+      id: 'skill_breakdown',
+      title: 'Skill breakdown',
+      available: false,
+      rows: [],
+      note: 'Unavailable: no input carries event-substrate evidence for skill calculations.',
+    };
+  }
   const bySkill = aggregateDimension(
     reports,
     (r) => r.rollups.skill,
@@ -491,6 +509,15 @@ function skillBreakdown(reports: InsightInput[]): InsightSection {
 // ── §3 Bash commands ────────────────────────────────────────────────────────
 
 function bashCommands(reports: InsightInput[]): InsightSection {
+  if (reports.length === 0) {
+    return {
+      id: 'bash_commands',
+      title: 'Bash commands',
+      available: false,
+      rows: [],
+      note: 'Unavailable: no input carries event-substrate evidence for command calculations.',
+    };
+  }
   const byCmd = aggregateDimension(
     reports,
     (r) => r.rollups.bash_command,
@@ -1172,32 +1199,86 @@ function filesWritten(inputs: InsightInput[]): InsightSection {
   return section;
 }
 
+function evidenceCoverage(inputs: InsightInput[]): InsightSection | null {
+  const covered = inputs.filter((input) => input.report.provenance.input_coverage !== undefined);
+  if (covered.length === 0) return null;
+  const rows = (['events', 'measurements'] as const).map((field) => {
+    let available = 0;
+    let unavailable = 0;
+    let excluded = 0;
+    let contributors = 0;
+    let value = 0;
+    for (const { report } of covered) {
+      const current = report.provenance.input_coverage?.fields[field];
+      const measure = report.evidence_totals?.[field];
+      available += current?.available ?? 0;
+      unavailable += current?.unavailable ?? 0;
+      excluded += current?.excluded ?? 0;
+      contributors += measure?.contributors ?? 0;
+      if (measure?.state === 'measured') value += measure.value ?? 0;
+    }
+    const total = available + unavailable + excluded;
+    const measured = contributors > 0;
+    return makeRow({
+      claim: measured
+        ? `${field}: ${contributors}/${total} contributor(s); measured value ${value}`
+        : `${field}: unavailable — 0/${total} contributors`,
+      measures_used: [`provenance.input_coverage.fields.${field}`, `evidence_totals.${field}`],
+      n: contributors,
+      caveat: `${unavailable}/${total} unavailable and ${excluded}/${total} excluded; a zero value is measured only when contributors > 0.`,
+      values: {
+        field,
+        contributors,
+        total,
+        unavailable,
+        excluded,
+        value: measured ? value : null,
+      },
+    });
+  });
+  const gaps = covered.flatMap((input) => input.report.provenance.input_coverage?.gaps ?? []);
+  return {
+    id: 'evidence_coverage',
+    title: 'Evidence coverage',
+    available: true,
+    rows,
+    note:
+      gaps.length === 0 ? 'Selection/data gaps: none.' : `Selection/data gaps: ${gaps.join(', ')}`,
+  };
+}
+
 export function buildInsights(
   inputs: InsightInput[],
   opts: BuildInsightsOptions = {},
 ): InsightsDocument {
-  const singles = inputs.filter((i) => i.report.scope.single);
-  const aggregates = inputs.filter((i) => !i.report.scope.single);
+  const analyticInputs = inputs.filter((input) => {
+    const coverage = input.report.provenance.input_coverage;
+    return coverage === undefined || coverage.fields.events.available > 0;
+  });
+  const singles = analyticInputs.filter((i) => i.report.scope.single);
+  const aggregates = analyticInputs.filter((i) => !i.report.scope.single);
   const units = singles.map(unitOf);
   const workUnits = groupWorkUnits(units);
 
   const sections: InsightSection[] = [
-    stageEconomics(inputs, units),
-    skillBreakdown(inputs),
-    bashCommands(inputs),
+    stageEconomics(analyticInputs, units),
+    skillBreakdown(analyticInputs),
+    bashCommands(analyticInputs),
     subagents(units),
     activeWallRatio(units),
     outliers(units),
     perWorkUnit(workUnits, units),
-    filesWritten(inputs),
-    observeConversion(inputs),
-    dispositionMix(inputs),
+    filesWritten(analyticInputs),
+    observeConversion(analyticInputs),
+    dispositionMix(analyticInputs),
   ];
+  const evidence = evidenceCoverage(inputs);
+  if (evidence !== null) sections.push(evidence);
   const discipline = disciplinePanel(units, workUnits);
 
   const mapVersions = new Set<string>();
   const coverage: TokenCoverage = { measured: 0, unmeasured: 0 };
-  for (const { report } of inputs) {
+  for (const { report } of analyticInputs) {
     mapVersions.add(report.provenance.flow_stage_map_version);
     coverage.measured += report.provenance.token_coverage.measured;
     coverage.unmeasured += report.provenance.token_coverage.unmeasured;

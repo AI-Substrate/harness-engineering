@@ -62,10 +62,37 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
   });
 
-  it('pins schema_version to "2.3"', () => {
+  it('pins schema_version to "2.5"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('2.4');
+    expect(seg.schema_version).toBe('2.5');
+  });
+
+  it.each([
+    ['command', { command: 'q'.repeat(64) }],
+    ['harness', { harness: 'shell' }],
+    ['harness_version', { harness_version: 'release-candidate' }],
+    ['harness_session_id', { harness_session_id: `AIza${'a'.repeat(35)}` }],
+    ['timecode', { timecode: 'yesterday' }],
+    ['branch', { branch: '/absolute/private' }],
+  ])('fails closed on an invalid required %s role', (_name, override) => {
+    expect(() => serializeSegment({ ...baseInput(), ...override }, REPO)).toThrow(
+      'invalid segment identity',
+    );
+  });
+
+  it.each([
+    'codex',
+    'future-harness',
+    'acme-harness-9000',
+  ])('accepts the closed source-proven Segment harness form %s without widening PIJ_HARNESS', (harness) => {
+    expect(() => serializeSegment({ ...baseInput(), harness }, REPO)).not.toThrow();
+  });
+
+  it('accepts an empty harness session id as explicit unavailable identity', () => {
+    expect(
+      serializeSegment({ ...baseInput(), harness_session_id: '' }, REPO).harness_session_id,
+    ).toBe('');
   });
 
   it('headline capabilities stay present-but-null; empty v1-compat collections are OMITTED', () => {
@@ -232,14 +259,55 @@ describe('T001 — v1-compat view: prompt array + grouped subagents', () => {
   });
 });
 
-describe('v2.2 — captured_env (allowlisted env snapshot)', () => {
-  it('emits captured_env when present, with keys in sorted order', () => {
+describe('v2.5 — captured_env finite current contract', () => {
+  const CURRENT_ENV = {
+    PIJ_SESSION_ID: 'pij-static-mockingbird',
+    PIJ_PARENT_ID: 'pij-thirsty-panda',
+    PIJ_HARNESS: 'pi',
+    PIJ_ROLE: 'coder',
+    PIJ_ANNOUNCE_TO: 'pij-thirsty-panda',
+    PIJ_SPAWN_ID: 'spawn-0007',
+    PIJ_SPAWN_MODEL: 'github-copilot/gpt-5.6-sol:xhigh',
+    PIJ_SPAWN_EFFORT: 'xhigh',
+  };
+
+  it('emits only the eight valid current keys in sorted order', () => {
     const seg = serializeSegment(
-      { ...baseInput(), captured_env: { PIJ_ROLE: 'coder', PIJ_ID: 'orch-7' } },
+      {
+        ...baseInput(),
+        captured_env: {
+          ...CURRENT_ENV,
+          PIJ_ID: 'legacy-only',
+          PIJ_STATUS_KEY: 'status/9',
+          PIJ_PANE_ID: '%7',
+          PIJ_UNKNOWN: 'safe-looking',
+          PIJ_SPAWN_TASK: 'private task text',
+        },
+      },
       REPO,
     ) as Record<string, unknown>;
-    expect(seg.captured_env).toEqual({ PIJ_ID: 'orch-7', PIJ_ROLE: 'coder' });
-    expect(Object.keys(seg.captured_env as object)).toEqual(['PIJ_ID', 'PIJ_ROLE']); // sorted
+    expect(seg.captured_env).toEqual(Object.fromEntries(Object.entries(CURRENT_ENV).sort()));
+    expect(Object.keys(seg.captured_env as object)).toEqual(Object.keys(CURRENT_ENV).sort());
+  });
+
+  it('drops wrong per-key and credential-shaped values at the serializer boundary', () => {
+    const seg = serializeSegment(
+      {
+        ...baseInput(),
+        captured_env: {
+          PIJ_SESSION_ID: `sk_live_${'a'.repeat(32)}`,
+          PIJ_PARENT_ID: `AIza${'b'.repeat(35)}`,
+          PIJ_HARNESS: 'shell',
+          PIJ_ROLE: 'admin',
+          PIJ_ANNOUNCE_TO: 'announce-not-a-pij-id',
+          PIJ_SPAWN_ID: 'q'.repeat(64),
+          PIJ_SPAWN_MODEL: `provider/${'x'.repeat(64)}`,
+          PIJ_SPAWN_EFFORT: 'ultra',
+        },
+      },
+      REPO,
+    );
+    expect(seg.captured_env).toBeUndefined();
   });
 
   it('omits captured_env entirely when empty (the dominant host case)', () => {
@@ -252,11 +320,11 @@ describe('v2.2 — captured_env (allowlisted env snapshot)', () => {
     expect('captured_env' in b).toBe(false);
   });
 
-  it('projects captured_env to a single harness.env kvlist resource attribute', () => {
+  it('projects the finite captured_env to one harness.env kvlist resource attribute', () => {
     const seg = serializeSegment(
       {
         ...baseInput(),
-        captured_env: { PIJ_ID: 'orch-7', PIJ_ROLE: 'coder' },
+        captured_env: CURRENT_ENV,
         event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }],
       },
       REPO,
@@ -264,10 +332,7 @@ describe('v2.2 — captured_env (allowlisted env snapshot)', () => {
     const attrs = attrMap(segmentToOtlpLogs(seg).resourceLogs[0].resource.attributes);
     const env = attrs.get(RES_ENV);
     const pairs = (env?.kvlistValue?.values ?? []).map((v) => [v.key, v.value.stringValue]);
-    expect(pairs).toEqual([
-      ['PIJ_ID', 'orch-7'],
-      ['PIJ_ROLE', 'coder'],
-    ]);
+    expect(pairs).toEqual(Object.entries(CURRENT_ENV).sort(([a], [b]) => a.localeCompare(b)));
   });
 
   it('omits harness.env when no env was captured (no empty attr)', () => {

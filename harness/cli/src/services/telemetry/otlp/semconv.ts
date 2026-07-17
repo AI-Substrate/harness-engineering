@@ -30,6 +30,8 @@ export const RES_HARNESS = 'harness.harness';
 export const RES_COMMAND = 'harness.command';
 export const RES_BRANCH = 'harness.branch';
 export const RES_SCHEMA_VERSION = 'harness.schema_version';
+/** Segment-2.5 optional product HEAD provenance; forbidden on older wire versions. */
+export const RES_PRODUCT_COMMIT = 'harness.product.commit';
 /**
  * The allowlisted env snapshot (segment `captured_env`) → ONE kvlist-valued
  * resource attribute (name → value), not N dynamic keys — so the frozen

@@ -8,6 +8,7 @@ import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import { buildProgram, commanderErrorEnvelope } from '../../src/app.js';
+import { ErrorCodes } from '../../src/output/error-codes.js';
 import type { CliIo, Writers } from '../../src/output/output-port.js';
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 
@@ -43,6 +44,36 @@ describe('commanderErrorEnvelope', () => {
   it('maps an unexpected throw (no commander code) to E100 — no stack trace leaks', () => {
     const env = commanderErrorEnvelope({ message: 'boom' }, clock());
     expect(env?.error?.code).toBe('E100');
+  });
+});
+
+describe('P060 remote telemetry error allocation (T001 RED)', () => {
+  it('owns E220–E227 exactly once without moving neighboring allocations', () => {
+    expect({
+      REMOTE_TELEMETRY_TRANSPORT_FAILED: ErrorCodes.REMOTE_TELEMETRY_TRANSPORT_FAILED,
+      REMOTE_TELEMETRY_SESSION_NOT_FOUND: ErrorCodes.REMOTE_TELEMETRY_SESSION_NOT_FOUND,
+      REMOTE_TELEMETRY_INVALID: ErrorCodes.REMOTE_TELEMETRY_INVALID,
+      REMOTE_TELEMETRY_MOVED: ErrorCodes.REMOTE_TELEMETRY_MOVED,
+      REMOTE_TELEMETRY_ENDPOINT_UNKNOWN: ErrorCodes.REMOTE_TELEMETRY_ENDPOINT_UNKNOWN,
+      REMOTE_TELEMETRY_RANGE_DIVERGED: ErrorCodes.REMOTE_TELEMETRY_RANGE_DIVERGED,
+      TELEMETRY_BUNDLE_CONFLICT: ErrorCodes.TELEMETRY_BUNDLE_CONFLICT,
+      TELEMETRY_BUNDLE_WRITE_FAILED: ErrorCodes.TELEMETRY_BUNDLE_WRITE_FAILED,
+    }).toEqual({
+      REMOTE_TELEMETRY_TRANSPORT_FAILED: 'E220',
+      REMOTE_TELEMETRY_SESSION_NOT_FOUND: 'E221',
+      REMOTE_TELEMETRY_INVALID: 'E222',
+      REMOTE_TELEMETRY_MOVED: 'E223',
+      REMOTE_TELEMETRY_ENDPOINT_UNKNOWN: 'E224',
+      REMOTE_TELEMETRY_RANGE_DIVERGED: 'E225',
+      TELEMETRY_BUNDLE_CONFLICT: 'E226',
+      TELEMETRY_BUNDLE_WRITE_FAILED: 'E227',
+    });
+    expect(ErrorCodes.SENSOR_NAME_CONFLICT).toBe('E217');
+    expect(ErrorCodes.FLOW_SCHEMA_INVALID).toBe('E300');
+    const values = Object.values(ErrorCodes);
+    for (const code of ['E220', 'E221', 'E222', 'E223', 'E224', 'E225', 'E226', 'E227']) {
+      expect(values.filter((value) => value === code)).toHaveLength(1);
+    }
   });
 });
 

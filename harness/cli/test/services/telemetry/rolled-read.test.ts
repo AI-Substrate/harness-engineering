@@ -16,11 +16,13 @@ import { rollupToOtlpMetrics } from '../../../src/services/telemetry/otlp/metric
 import type { TelemetryReport } from '../../../src/services/telemetry/report.js';
 import {
   concatJsonl,
+  parseManifest,
   ROLLED_LOGS_NAME,
   ROLLED_MANIFEST_NAME,
   ROLLED_METRICS_NAME,
   ROLLUP_FORMAT,
   serializeManifest,
+  verifyProductCommitCoverage,
 } from '../../../src/services/telemetry/rolled-shard.js';
 import { serializeSegment } from '../../../src/services/telemetry/segment.js';
 import {
@@ -119,6 +121,69 @@ const EV1: Event[] = [
 const EV2: Event[] = [
   { t: '2026-07-01T09:02:00Z', kind: 'turn', dur_s: 20, in: 200, out: 80 } as Event,
 ];
+
+describe('rollup/v1 product provenance agreement', () => {
+  const a = 'a'.repeat(40);
+  const b = 'b'.repeat(40);
+  const manifest = (productCommits?: string[]) =>
+    parseManifest(
+      serializeManifest({
+        format: ROLLUP_FORMAT,
+        session: SID,
+        start_date: '2026/07/01',
+        max_seq: 2,
+        ...(productCommits !== undefined && { product_commits: productCommits }),
+      }),
+    );
+
+  it('classifies known, partial, and unavailable without fabricating an empty known set', () => {
+    expect(verifyProductCommitCoverage(manifest([a, b]), [a, b, a])).toEqual({
+      ok: true,
+      state: 'known',
+      productCommits: [a, b],
+    });
+    expect(verifyProductCommitCoverage(manifest([a]), [a, null])).toEqual({
+      ok: true,
+      state: 'partial',
+      productCommits: [a],
+    });
+    expect(verifyProductCommitCoverage(manifest(), [null, undefined])).toEqual({
+      ok: true,
+      state: 'unavailable',
+      productCommits: null,
+    });
+  });
+
+  it('fails closed when the manifest aggregate is missing or contradicts segment proof', () => {
+    expect(verifyProductCommitCoverage(manifest(), [a])).toEqual({
+      ok: false,
+      reason: 'product_commit_contradiction',
+    });
+    expect(verifyProductCommitCoverage(manifest([b]), [a])).toEqual({
+      ok: false,
+      reason: 'product_commit_contradiction',
+    });
+    expect(verifyProductCommitCoverage(manifest([a]), ['not-an-oid'])).toEqual({
+      ok: false,
+      reason: 'product_commit_contradiction',
+    });
+  });
+
+  it('dedupes valid manifest OIDs stably and rejects an explicit empty availability list', () => {
+    expect(manifest([a, a, b])?.product_commits).toEqual([a, b]);
+    expect(
+      parseManifest(
+        JSON.stringify({
+          format: ROLLUP_FORMAT,
+          session: SID,
+          start_date: '2026/07/01',
+          max_seq: 2,
+          product_commits: [],
+        }),
+      ),
+    ).toBeNull();
+  });
+});
 
 describe('combineSession — dual-shape reads (plan 049 T003, AC-08)', () => {
   it('reconstructs a rolled ref identically to a legacy per-seq ref (parity)', () => {

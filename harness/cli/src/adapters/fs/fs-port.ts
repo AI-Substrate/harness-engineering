@@ -11,6 +11,10 @@ export interface FsPort {
   exists(path: string): boolean;
   /** File contents as UTF-8, or null if missing/unreadable (never throws). */
   readText(path: string): string | null;
+  /** Raw regular-file bytes without following symlinks, or null for missing/non-regular input. */
+  readBytesNoFollow(path: string): Uint8Array | null;
+  /** Sorted POSIX-relative regular files, or null if root contains a symlink/non-regular entry. */
+  listRegularFilesNoFollow(root: string): string[] | null;
   /** Last-modified epoch milliseconds, or null if missing/unreadable (never throws). */
   mtimeMs(path: string): number | null;
   /** Entry names directly inside a directory, or `[]` if missing/unreadable (never throws). */
@@ -19,6 +23,14 @@ export interface FsPort {
   mkdirp(path: string): void;
   /** Write UTF-8 text to a path, overwriting. Caller ensures the parent dir exists (mkdirp). */
   writeText(path: string, contents: string): void;
+  /** Write raw bytes exactly. Caller ensures the parent directory exists. */
+  writeBytes(path: string, contents: Uint8Array): void;
+  /** Canonical native absolute identity for a bundle target; path aliases converge. */
+  normalizeBundleTargetIdentity(target: string): string;
+  /** Create a unique sibling temp directory on the target filesystem. */
+  createSiblingTempDir(target: string, prefix: string): string;
+  /** Publish a sibling temp directory only when target and the parent-local lock are absent. */
+  publishDirectoryExclusive(temp: string, target: string, lockKey: string): void;
   /**
    * Atomically move `from` → `to`, replacing any existing file at `to` (the
    * commit half of a temp-write + rename). Throws on failure (callers map it to
@@ -71,6 +83,20 @@ export interface FsPort {
  * `NodeFs` implements this alongside {@link FsPort}; tests use `FakeFs`, which
  * records an ops log instead of touching disk.
  */
+export type BundleFsPort = Pick<
+  FsPort,
+  | 'exists'
+  | 'readBytesNoFollow'
+  | 'listRegularFilesNoFollow'
+  | 'normalizeBundleTargetIdentity'
+  | 'createSiblingTempDir'
+  | 'mkdirp'
+  | 'writeBytes'
+  | 'writeText'
+  | 'publishDirectoryExclusive'
+  | 'removeDir'
+>;
+
 export interface FileSystemWritePort {
   /** Write UTF-8 text to a path, overwriting. Caller ensures the parent dir exists (mkdirp). */
   writeText(path: string, contents: string): void;

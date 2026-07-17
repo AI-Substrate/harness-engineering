@@ -5,10 +5,11 @@ is **stored and published as OTEL/OTLP** — one file per signal, directly
 ingestible by any OTEL collector with zero translation — while still storing
 locally and reconstructing the full session timeline.
 
-> **Supplant, not bolt-on.** The internal typed event/rollup model is unchanged;
-> only the *stored output shape* is OTLP. Nothing has shipped externally, so there
-> is no back-compat layer — the serializer, the schema + freeze test, and the
-> downstream scraper move in lockstep (plan 038).
+> **Versioned additive contract.** The internal typed event/rollup model is
+> unchanged; only the stored output shape is OTLP. Already-published Segment 2.4 /
+> OTLP v0.1 records remain readable and byte-identical. Current Segment 2.5 / OTLP
+> v0.2 adds optional per-segment product-commit resource metadata; the schema and
+> freeze tests pin both versions.
 
 ---
 
@@ -62,10 +63,12 @@ naming is split into two deliberate layers:
    `schema_url`, so a semconv rename can never reach the data the timeline is
    rebuilt from.
 
-- **`schema_url`** (pinned on both Resource and Scope):
-  `https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0`
-- **Scope**: `name = harness.telemetry`, `version = 2.0` (kept in lockstep with the
-  segment schema version).
+- **Current `schema_url`** (pinned on both Resource and Scope):
+  `https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0`.
+- **Current Scope**: `name = harness.telemetry`, `version = 2.5` (kept in
+  lockstep with Segment 2.5).
+- **Legacy identity**: Segment 2.4 records retain schema URL `.../v0.1.0` and
+  scope version `2.4`; they never gain the new attribute during serialization.
 - The complete attribute vocabulary is frozen in
   `harness/cli/src/services/telemetry/otlp/harness-otlp.schema.json` and pinned
   key-set-equal to the single mapping module (`otlp/semconv.ts`) by a freeze test —
@@ -80,7 +83,11 @@ ISO string's format/precision. So each event also carries its exact kind under
 guarantee: **the OTLP Logs round-trip to the exact `event_stream`**, and the
 rollup is recomputed for free (`rollup = computeRollup(event_stream)`) — proven by
 a round-trip deep-equal over the real sampled-session corpus (`expected-otlp-*`
-goldens, drift-checked by `npm run check:telemetry-fixtures`).
+goldens, drift-checked by `npm run check:telemetry-fixtures`). Segment 2.5 also
+carries optional `harness.product.commit` on the Resource, so even a Logs record
+with no events round-trips its exact product HEAD. A product attribute on a
+pre-2.5 record, an invalid OID, or a JSON/Logs disagreement fails strict published
+retrieval.
 
 ---
 
@@ -94,7 +101,7 @@ refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>
   └─ orphan commit, rewritten every sync; tree (flat):
        session.logs.jsonl      (every seq's OTLP Logs record, concatenated seq-ordered)
        session.metrics.jsonl   (every seq's OTLP Metrics record, seq-ordered)
-       manifest.json           ({format, session, start_date, max_seq})
+       manifest.json           ({format, session, start_date, max_seq, product_commits?})
        <seq>.json              (loose fallback — only for a seq with no OTLP pair)
 ```
 
@@ -118,6 +125,15 @@ refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>
   still force-re-pushed** — a local ref-tree match alone does not prove the remote
   received it, so the buffer is never consumed without re-delivering. The existence
   check is a **local** ref-tree peel, never a remote fetch.
+- **Product provenance.** New Segment 2.5 Logs resources carry optional
+  `harness.product.commit`; rollup-v1 `manifest.product_commits` is the stable
+  prior/new aggregate and must agree with per-segment Logs/loose records. Missing
+  legacy provenance remains unavailable or partial—never inferred from telemetry
+  ancestry, dates, Metrics values, or current remote HEAD.
+- **Metrics metadata, measures frozen.** Segment 2.5 Metrics share the v0.2 resource,
+  schema, scope, and optional product attribute. Metric names, units, datapoints,
+  values, temporality, and interpretation remain unchanged. Stored v0.1 Metrics
+  bytes are never rewritten.
 - **Partial / legacy fallback.** If a `<seq>` has no OTLP pair (a pre-spool buffer
   entry, or a crash *between* the two atomic spool writes), the full segment
   `<seq>.json` is carried loose in the tree instead — the reconstruction oracle, so

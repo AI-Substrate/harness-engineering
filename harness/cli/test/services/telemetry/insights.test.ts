@@ -471,6 +471,40 @@ describe('§1/§2.3 — D-B era/mechanism coverage declaration', () => {
 
 // ── provenance (2.4 seeds) ──────────────────────────────────────────────────
 
+describe('bundle evidence denominators and unavailable gaps', () => {
+  it('adds one coverage section and suppresses numeric sections when no event evidence exists', () => {
+    const report = mkReport({ single: false });
+    report.provenance.input_coverage = {
+      accepted_sessions: 2,
+      event_substrate_sessions: 0,
+      kinds: { full: 0, partial: 1, identity_only: 1 },
+      fields: {
+        events: { available: 0, unavailable: 2, excluded: 0 },
+        measurements: { available: 1, unavailable: 1, excluded: 0 },
+      },
+      repositories: [{ key: 'repo-a', identity: 'https://example.com/a', sessions: 2 }],
+      gaps: ['repo-a:identity:events_unavailable'],
+    };
+    report.evidence_totals = {
+      events: { state: 'unavailable', value: null, contributors: 0 },
+      measurements: { state: 'measured', value: 0, contributors: 1 },
+    };
+    const doc = buildInsights([input(report, 'bundle')]);
+    const evidence = sectionById(doc, 'evidence_coverage');
+    expect(evidence.available).toBe(true);
+    expect(evidence.rows.find((row) => row.values.field === 'events')?.values).toMatchObject({
+      contributors: 0,
+      total: 2,
+      unavailable: 2,
+      excluded: 0,
+      value: null,
+    });
+    expect(evidence.note).toContain('repo-a:identity:events_unavailable');
+    expect(sectionById(doc, 'stage_economics')).toMatchObject({ available: false, rows: [] });
+    expect(JSON.stringify(doc)).not.toContain('no activity');
+  });
+});
+
 describe('provenance', () => {
   it('records input reports, single/aggregate split, n-threshold, keying rule and declared caveats', () => {
     const doc = buildInsights(

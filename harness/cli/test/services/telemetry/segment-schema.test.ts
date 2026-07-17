@@ -29,7 +29,14 @@ const schema = JSON.parse(readFileSync(SCHEMA_PATH, 'utf8')) as {
   type: string;
   additionalProperties: boolean;
   required: string[];
-  properties: Record<string, { const?: string }>;
+  properties: Record<
+    string,
+    {
+      const?: string;
+      additionalProperties?: boolean;
+      properties?: Record<string, { pattern?: string; enum?: string[] }>;
+    }
+  >;
 };
 
 const REPO = '/repo';
@@ -52,13 +59,63 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(schema.additionalProperties).toBe(false);
   });
 
-  it('pins schema_version const to "2.4"', () => {
-    expect(schema.properties.schema_version?.const).toBe('2.4');
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.4');
+  it('pins schema_version const to "2.5"', () => {
+    expect(schema.properties.schema_version?.const).toBe('2.5');
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.5');
+  });
+
+  it('closes current captured_env to the exact eight Segment-2.5 keys', () => {
+    const capturedEnv = schema.properties.captured_env;
+    expect(capturedEnv?.additionalProperties).toBe(false);
+    expect(Object.keys(capturedEnv?.properties ?? {}).sort()).toEqual(
+      [
+        'PIJ_SESSION_ID',
+        'PIJ_PARENT_ID',
+        'PIJ_HARNESS',
+        'PIJ_ROLE',
+        'PIJ_ANNOUNCE_TO',
+        'PIJ_SPAWN_ID',
+        'PIJ_SPAWN_MODEL',
+        'PIJ_SPAWN_EFFORT',
+      ].sort(),
+    );
+  });
+
+  it('pins positive current-env schema grammars rather than credential-prefix exclusions', () => {
+    const properties = schema.properties.captured_env?.properties ?? {};
+    const accepts = (key: string, value: string): boolean => {
+      const contract = properties[key];
+      if (contract?.enum !== undefined) return contract.enum.includes(value);
+      return contract?.pattern !== undefined && new RegExp(contract.pattern).test(value);
+    };
+    const valid = {
+      PIJ_SESSION_ID: 'pij-static-mockingbird',
+      PIJ_PARENT_ID: 'pij-thirsty-panda',
+      PIJ_HARNESS: 'pi',
+      PIJ_ROLE: 'coder',
+      PIJ_ANNOUNCE_TO: 'pij-thirsty-panda',
+      PIJ_SPAWN_ID: 'spawn-0007',
+      PIJ_SPAWN_MODEL: 'github-copilot/gpt-5.6-sol:xhigh',
+      PIJ_SPAWN_EFFORT: 'xhigh',
+    };
+    for (const [key, value] of Object.entries(valid)) expect(accepts(key, value), key).toBe(true);
+
+    const invalid = {
+      PIJ_SESSION_ID: 'session-not-pij',
+      PIJ_PARENT_ID: `sk_live_${'a'.repeat(32)}`,
+      PIJ_HARNESS: 'shell',
+      PIJ_ROLE: 'admin',
+      PIJ_ANNOUNCE_TO: `AIza${'b'.repeat(35)}`,
+      PIJ_SPAWN_ID: 'correlation-0007',
+      PIJ_SPAWN_MODEL: `provider/${'x'.repeat(64)}`,
+      PIJ_SPAWN_EFFORT: 'ultra',
+    };
+    for (const [key, value] of Object.entries(invalid))
+      expect(accepts(key, value), key).toBe(false);
   });
 
   it('$id tracks the schema version (no stale $id drift — companion LOW finding)', () => {
-    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.4');
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.5');
   });
 
   it('the event_stream kind enum mirrors EVENT_KINDS exactly (a new kind can never appear on one side only)', () => {
@@ -115,7 +172,8 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
         local_commands: 1,
       },
       thinking: { blocks: 7 },
-      captured_env: { PIJ_ID: 'orch-7' },
+      captured_env: { PIJ_SESSION_ID: 'pij-golden', PIJ_ROLE: 'coder' },
+      product_commit: 'A'.repeat(40),
       // a non-empty stream ⇒ event_stream populated + rollup derived (both present)
       event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }],
     };
@@ -128,18 +186,14 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
     // capability fields stay non-null here because the golden populates them
     expect(seg.tokens).not.toBeNull();
     expect(seg.thinking).not.toBeNull();
+    expect(seg.product_commit).toBe('a'.repeat(40));
   });
 });
 
 describe('T002 — version freeze (field-set change MUST bump schema_version)', () => {
-  it('the frozen field set is paired with schema_version 2.4', () => {
-    // FROZEN SNAPSHOT — if you change the segment field set, you MUST bump
-    // SEGMENT_SCHEMA_VERSION and update this snapshot in the same change. This
-    // test makes a silent contract drift impossible. (2.1 added harness_version —
-    // the producing CLI version, surfaced as OTLP service.version. 2.2 added
-    // captured_env — the allowlisted, secret-denylisted env snapshot. 2.3 added the
-    // `mark` event kind to the event_stream union — no new top-level field.)
-    const FROZEN_V2_4_FIELDS = [
+  it('the frozen field set is paired with schema_version 2.5', () => {
+    // FROZEN SNAPSHOT — 2.5 adds optional product_commit; required keys stay fixed.
+    const FROZEN_V2_5_FIELDS = [
       'schema_version',
       'command',
       'harness',
@@ -162,9 +216,27 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
       'events',
       'thinking',
       'captured_env',
+      'product_commit',
     ];
-    if (SEGMENT_SCHEMA_VERSION === '2.4') {
-      expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_4_FIELDS].sort());
-    }
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.5');
+    expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_5_FIELDS].sort());
+    expect(SEGMENT_REQUIRED_KEYS).not.toContain('product_commit');
+  });
+
+  it('omits unavailable/invalid provenance and accepts both 40- and 64-hex OIDs', () => {
+    const base: SegmentInput = {
+      command: 'flow',
+      harness: 'claude-code',
+      harness_session_id: 's',
+      timecode: '2026-07-16T00:00:00Z',
+      window: { since: 'session-start', from: 0, to: 1 },
+      branch: null,
+    };
+    expect(
+      serializeSegment({ ...base, product_commit: 'not-an-oid' }, REPO).product_commit,
+    ).toBeUndefined();
+    expect(serializeSegment({ ...base, product_commit: 'B'.repeat(64) }, REPO).product_commit).toBe(
+      'b'.repeat(64),
+    );
   });
 });

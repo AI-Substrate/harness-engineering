@@ -15,20 +15,17 @@
  *   - test/services/telemetry/real-capture.e2e.test.ts        (claude · copilot-cli · cursor)
  *   - test/services/telemetry/copilot-vscode-sqlite.int.test.ts (copilot-vscode SQL round-trip)
  *
- * both of which mint their golden (+ `invariants.json`) under `REGEN_GOLDEN=1`. This
- * script is the single entry point that drives them — so there is NO second copy of
- * the per-surface segment builders to drift out of sync (the very hazard AC-07 exists
- * to guard against). It deliberately reuses the suites rather than re-importing
- * `dist/` and duplicating the builders (incl. the sqlite dance); see the Phase 3
- * execution log for the decision record.
+ * These suites own the raw-to-current construction once, so there is NO second copy
+ * of the per-surface builders to drift out of sync (the hazard AC-07 exists to guard
+ * against). The committed Segment-2.4/OTLP-v0.1 outputs are now frozen compatibility
+ * evidence: the suites compare current 2.5/v0.2 output after projecting only approved
+ * versioned metadata.
  *
- *   default   regenerate every golden + `invariants.json` (runs the suites with
- *             `REGEN_GOLDEN=1`, which writes then asserts — so it always passes).
- *   --check   re-derive each segment and assert it matches the committed golden /
- *             invariants (runs the suites plainly; their deep-equal assertions exit
- *             non-zero on ANY drift). This is the half `check:telemetry-fixtures`
- *             wires into CI. Goldens are machine-independent by construction (the
- *             scrub normalizes every machine path/identity token), so the check is
+ *   default   fail closed: legacy corpus regeneration is permanently disabled.
+ *   --check   re-derive current output and compare it with the frozen Segment/OTLP
+ *             corpus plus invariants. This is what `check:telemetry-fixtures` wires
+ *             into CI. Goldens are machine-independent by construction (the scrub
+ *             normalizes every machine path/identity token), so the check is
  *             deterministic across machines.
  *
  * Both modes first ENUMERATE every committed `fixtures/real/<surface>/<instance>/`
@@ -49,6 +46,13 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const cliDir = join(repoRoot, 'harness/cli');
 const vitestEntry = join(repoRoot, 'node_modules/vitest/vitest.mjs');
 const check = process.argv.includes('--check');
+
+if (!check) {
+  console.error(
+    'telemetry-fixtures: legacy Segment-2.4/OTLP-v0.1 goldens are frozen; regeneration is disabled. Run `npm run check:telemetry-fixtures` to verify compatibility.',
+  );
+  process.exit(1);
+}
 
 // The two golden suites that own ALL four surfaces' raw→segment construction.
 const SUITES = [
@@ -121,14 +125,13 @@ if (uncovered.length > 0) {
   for (const u of uncovered) console.error(`  - ${u.surface}/${u.instance}`);
   console.error(
     'Each instance needs `expected-segment.json` + `expected-otlp-logs.jsonl` + ' +
-      '`expected-otlp-metrics.jsonl` AND a golden-suite case that loads it ' +
-      '(regenerate via `npm run gen:telemetry-fixtures`), or remove the orphan dir.',
+      '`expected-otlp-metrics.jsonl` AND a golden-suite case that loads it; ' +
+      'legacy corpus additions require a separately reviewed versioned migration.',
   );
   process.exit(1);
 }
 
 const env = { ...process.env };
-if (!check) env.REGEN_GOLDEN = '1';
 
 try {
   // cwd = harness/cli so vitest.config.ts + the suite-relative paths resolve.
@@ -139,14 +142,12 @@ try {
   });
 } catch {
   console.error(
-    check
-      ? 'telemetry-fixtures: DRIFT — a committed golden no longer matches its re-derived segment. Re-run `npm run gen:telemetry-fixtures` and commit the result.'
-      : 'telemetry-fixtures: regeneration failed (see the vitest output above).',
+    'telemetry-fixtures: DRIFT — current output is not compatible with the frozen Segment-2.4/OTLP-v0.1 corpus. Fix the current compatibility behavior; do not rewrite the legacy goldens.',
   );
   process.exit(1);
 }
 
 console.error(
-  `telemetry-fixtures: ${check ? 'checked' : 'regenerated'} ${SUITES.length} golden suite(s); ` +
+  `telemetry-fixtures: checked ${SUITES.length} frozen compatibility suite(s); ` +
     `${listInstances().length} committed instance(s) all covered.`,
 );

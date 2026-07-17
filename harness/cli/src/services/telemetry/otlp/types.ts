@@ -8,13 +8,29 @@
  */
 
 // ── Pinned schema identity (the churn insulator — WS-A FN / research A3) ──────
-/** OUR telemetry attribute schema. Bump on a `harness.*` field-set change. */
-export const HARNESS_SCHEMA_URL =
+/** Immutable Segment-2.4 wire identity retained for already-published records. */
+export const LEGACY_HARNESS_SCHEMA_URL =
   'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0';
+export const LEGACY_OTLP_SCOPE_VERSION = '2.4';
+/** Current Segment-2.5 wire identity (adds optional harness.product.commit). */
+export const HARNESS_SCHEMA_URL =
+  'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0';
 /** The harness telemetry instrumentation scope. */
 export const SCOPE_NAME = 'harness.telemetry';
-/** Mirrors the internal segment schema version (kept in lockstep). */
-export const OTLP_SCOPE_VERSION = '2.4';
+/** Mirrors the current internal segment schema version (kept in lockstep). */
+export const OTLP_SCOPE_VERSION = '2.5';
+
+export interface OtlpSchemaIdentity {
+  schemaUrl: string;
+  scopeVersion: string;
+}
+
+/** Version-aware wire selection: only Segment 2.5 uses the additive v0.2 contract. */
+export function schemaIdentityForSegmentVersion(version: string): OtlpSchemaIdentity {
+  return version === '2.5'
+    ? { schemaUrl: HARNESS_SCHEMA_URL, scopeVersion: OTLP_SCOPE_VERSION }
+    : { schemaUrl: LEGACY_HARNESS_SCHEMA_URL, scopeVersion: LEGACY_OTLP_SCOPE_VERSION };
+}
 
 // ── Severity (fixed OTLP 1–24 scale; we use INFO/WARN/ERROR) ──────────────────
 export const SEV_INFO = 9;

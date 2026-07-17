@@ -8,10 +8,12 @@ import type { Event } from '../../../src/services/telemetry/events.js';
 import { otlpLogsToEvents } from '../../../src/services/telemetry/otlp/logs.js';
 import {
   buildReport,
+  buildReportFromInputs,
   matchesFilter,
   REPORT_DIMENSIONS,
   type Rollup,
   TELEMETRY_REPORT_SCHEMA_VERSION,
+  type TelemetryReportInput,
 } from '../../../src/services/telemetry/report.js';
 import { computeRollup } from '../../../src/services/telemetry/rollup.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
@@ -634,6 +636,260 @@ describe('envelope basics', () => {
     expect(report.provenance.generated_at).toBe('2026-07-01T00:00:00Z');
     expect(report.provenance.source_paths).toEqual(['./sessions']);
     expect(report.attribution.bash_command_key).toBe('shell-command-signature-or-tool-name');
+  });
+});
+
+describe('bundle-derived full/partial/identity report inputs', () => {
+  const fullInput = (
+    repositoryKey: string,
+    repository: string,
+    exp: SessionExport,
+  ): TelemetryReportInput => ({
+    origin: 'bundle',
+    kind: 'full',
+    repositoryKey,
+    repository,
+    sessionId: exp.identity.harness_session_id,
+    sessionExport: exp,
+    coverage: {
+      events: { state: 'full', count: otlpLogsToEvents(exp.signals.logs).length },
+      measurements: { state: 'complete', count: 0 },
+      gaps: [],
+    },
+    gaps: [],
+  });
+
+  it('a full bundle input preserves the established report equation and adds named coverage only', () => {
+    const exp = exportOf('bundle-full', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 2, out: 3 }]),
+    ]);
+    const direct = buildReport([exp], { generatedAt: '2026-07-16T00:00:00Z' });
+    const bundled = buildReportFromInputs([fullInput('repo-a', 'https://example.com/a', exp)], {
+      generatedAt: '2026-07-16T00:00:00Z',
+    });
+    expect(bundled.totals).toEqual(direct.totals);
+    expect(bundled.rollups).toEqual(direct.rollups);
+    expect(bundled.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 1,
+      kinds: { full: 1, partial: 0, identity_only: 0 },
+    });
+    expect(JSON.stringify(direct)).not.toContain('input_coverage');
+  });
+
+  it('partial measured zero contributes evidence with a denominator; identity-only adds scope only', () => {
+    const inputs: TelemetryReportInput[] = [
+      {
+        origin: 'bundle',
+        kind: 'partial',
+        repositoryKey: 'repo-a',
+        repository: 'https://example.com/a',
+        sessionId: 'same',
+        sessionExport: null,
+        coverage: {
+          events: { state: 'unavailable', count: null },
+          measurements: { state: 'complete', count: 0 },
+          gaps: ['events_unavailable'],
+        },
+        gaps: ['events_unavailable'],
+      },
+      {
+        origin: 'bundle',
+        kind: 'identity-only',
+        repositoryKey: 'repo-b',
+        repository: 'https://example.com/b',
+        sessionId: 'same',
+        sessionExport: null,
+        coverage: {
+          events: { state: 'unavailable', count: null },
+          measurements: { state: 'unavailable', count: null },
+          gaps: ['events_unavailable', 'measurements_unavailable'],
+        },
+        gaps: ['events_unavailable', 'measurements_unavailable'],
+      },
+    ];
+    const report = buildReportFromInputs(inputs);
+    expect(report.scope).toMatchObject({ session_count: 2, session_ids: ['same', 'same'] });
+    expect(report.totals.sessions).toBe(0); // event-substrate subtotal only
+    expect(report.evidence_totals).toEqual({
+      events: { state: 'unavailable', value: null, contributors: 0 },
+      measurements: { state: 'measured', value: 0, contributors: 1 },
+    });
+    expect(report.provenance.input_coverage?.repositories).toHaveLength(2);
+  });
+
+  it('filters the input union before scope, repositories, coverage, gaps, and numeric aggregation', () => {
+    const claude = exportOf('claude-filter', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 2, out: 3 }], {
+        harness: 'claude-code',
+      }),
+    ]);
+    const copilot = exportOf('copilot-filter', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 5, out: 7 }], {
+        harness: 'copilot-cli',
+      }),
+    ]);
+    const report = buildReportFromInputs(
+      [
+        fullInput('repo-a', 'https://example.com/a', claude),
+        fullInput('repo-b', 'https://example.com/b', copilot),
+      ],
+      { filter: { harness: ['copilot-cli'] } },
+    );
+    expect(report.scope).toMatchObject({ session_count: 1, session_ids: ['copilot-filter'] });
+    expect(report.totals.tokens).toEqual({ input: 5, output: 7 });
+    expect(report.provenance.harnesses).toEqual(['copilot-cli']);
+    expect(report.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 1,
+      fields: {
+        events: { available: 1, unavailable: 0, excluded: 1 },
+        measurements: { available: 1, unavailable: 0, excluded: 1 },
+      },
+      repositories: [{ key: 'repo-b', identity: 'https://example.com/b', sessions: 1 }],
+    });
+    expect(report.evidence_totals?.events.contributors).toBe(1);
+  });
+
+  it('excludes weaker evidence when a requested facet is unavailable and declares the exclusion gap', () => {
+    const report = buildReportFromInputs(
+      [
+        {
+          origin: 'bundle',
+          kind: 'partial',
+          repositoryKey: 'repo-a',
+          repository: 'https://example.com/a',
+          sessionId: 'unknown-harness',
+          sessionExport: null,
+          coverage: {
+            events: { state: 'unavailable', count: null },
+            measurements: { state: 'complete', count: 0 },
+            gaps: ['events_unavailable'],
+          },
+          gaps: ['events_unavailable'],
+        },
+      ],
+      { filter: { harness: ['claude-code'] } },
+    );
+    expect(report.scope.session_count).toBe(0);
+    expect(report.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 0,
+      fields: {
+        events: { available: 0, unavailable: 0, excluded: 1 },
+        measurements: { available: 0, unavailable: 0, excluded: 1 },
+      },
+    });
+    expect(report.provenance.input_coverage?.gaps).toContain(
+      'repo-a:unknown-harness:filter_evidence_unavailable:harness',
+    );
+  });
+
+  it('keeps every legacy input while applying repo filters only to bundle origins in a mixed cohort', () => {
+    const legacy = exportOf('legacy-kept', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 2, out: 3 }]),
+    ]);
+    const matching = exportOf('bundle-kept', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 5, out: 7 }]),
+    ]);
+    const excluded = exportOf('bundle-excluded', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 11, out: 13 }]),
+    ]);
+    const report = buildReportFromInputs(
+      [
+        {
+          origin: 'legacy',
+          kind: 'full',
+          repositoryKey: 'legacy-pseudo',
+          repository: 'local-session-export',
+          sessionId: 'legacy-kept',
+          sessionExport: legacy,
+          coverage: {
+            events: { state: 'full', count: 1 },
+            measurements: { state: 'unavailable', count: null },
+            gaps: ['measurements_unavailable'],
+          },
+          gaps: ['measurements_unavailable'],
+        },
+        fullInput('repo-a', 'https://example.com/a', matching),
+        fullInput('repo-b', 'https://example.com/b', excluded),
+      ],
+      { filter: { repo: ['repo-a'] } },
+    );
+    expect(report.scope).toMatchObject({
+      session_count: 2,
+      session_ids: ['legacy-kept', 'bundle-kept'],
+    });
+    expect(report.totals.tokens).toEqual({ input: 7, output: 10 });
+    expect(report.provenance.repos).toEqual(['https://example.com/a']);
+    expect(report.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 2,
+      kinds: { full: 2, partial: 0, identity_only: 0 },
+      repositories: [{ key: 'repo-a', identity: 'https://example.com/a', sessions: 1 }],
+      fields: {
+        events: { available: 2, unavailable: 0, excluded: 1 },
+        measurements: { available: 1, unavailable: 1, excluded: 1 },
+      },
+    });
+  });
+
+  it('same-id full sessions from different repositories remain separate contributors', () => {
+    const exp = exportOf('same', [
+      seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 1, out: 1 }]),
+    ]);
+    const report = buildReportFromInputs([
+      fullInput('repo-a', 'https://example.com/a', exp),
+      fullInput('repo-b', 'https://example.com/b', exp),
+    ]);
+    expect(report.scope.session_count).toBe(2);
+    expect(report.scope.session_ids).toEqual(['same', 'same']);
+    expect(report.totals.tokens).toEqual({ input: 2, output: 2 });
+  });
+
+  it('an unresolved partial empty selection is coverage-only, never an affirmative zero cohort', () => {
+    const report = buildReportFromInputs([], {
+      selectionGaps: [
+        {
+          repositoryKey: 'repo-a',
+          repository: 'https://example.com/a',
+          sessionId: 'unknown',
+          reason: 'date_provenance_unavailable',
+        },
+      ],
+    });
+    expect(report.scope.session_count).toBe(0);
+    expect(report.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 0,
+      gaps: ['repo-a:unknown:date_provenance_unavailable'],
+    });
+    expect(report.evidence_totals?.events.state).toBe('unavailable');
+  });
+
+  it.each([
+    ['repository key', 'repo-a'],
+    ['canonical identity', 'https://example.com/a'],
+  ])('retains an unresolved-only repository gap matched directly by %s', (_name, requested) => {
+    const report = buildReportFromInputs([], {
+      filter: { repo: [requested] },
+      selectionGaps: [
+        {
+          repositoryKey: 'repo-a',
+          repository: 'https://example.com/a',
+          sessionId: 'unknown',
+          reason: 'date_provenance_unavailable',
+        },
+        {
+          repositoryKey: 'repo-b',
+          repository: 'https://example.com/b',
+          sessionId: 'other',
+          reason: 'date_provenance_unavailable',
+        },
+      ],
+    });
+    expect(report.scope.session_count).toBe(0);
+    expect(report.provenance.repos).toEqual(['https://example.com/a']);
+    expect(report.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 0,
+      repositories: [{ key: 'repo-a', identity: 'https://example.com/a', sessions: 0 }],
+      gaps: ['repo-a:unknown:date_provenance_unavailable'],
+    });
   });
 });
 

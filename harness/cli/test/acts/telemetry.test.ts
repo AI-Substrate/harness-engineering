@@ -5,13 +5,17 @@ import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeGitWrite } from '../../src/adapters/git/fake-git-write.js';
+import { FakeRemoteTelemetryGit } from '../../src/adapters/git/fake-remote-telemetry-git.js';
 import { telemetryRefFor } from '../../src/adapters/git/git-write-port.js';
+import { FakeHash } from '../../src/adapters/hash/fake-hash.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 import type { Event } from '../../src/services/telemetry/events.js';
 import { segmentToOtlpLogs } from '../../src/services/telemetry/otlp/logs.js';
+import { buildReport, buildReportFromInputs } from '../../src/services/telemetry/report.js';
 import { serializeSegment } from '../../src/services/telemetry/segment.js';
 import type { SessionExport } from '../../src/services/telemetry/session-export.js';
+import { buildTelemetryBundle } from '../../src/services/telemetry/telemetry-bundle.js';
 
 /** The single shard the buffered fixture flushes to (one session, one capture date). */
 const TELEMETRY_REF = telemetryRefFor('2026/06/23', 'sessA');
@@ -426,6 +430,312 @@ Test Doc:
   + path-leak assertions.
 */
 
+describe('registerTelemetryAct — remote telemetry grammar (P060 T001 RED)', () => {
+  function registeredTelemetry(): Command {
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, ioFor('json').io, {
+      fs: new FakeFs(),
+      proc: new FakeProcess({}, '/not-a-repository'),
+      clock: new FakeClock('2026-06-23T11:00:00.000Z'),
+      env: new FakeEnv(),
+      gitWrite: new FakeGitWrite(),
+    });
+    const telemetry = program.commands.find((command) => command.name() === 'telemetry');
+    expect(telemetry).toBeDefined();
+    return telemetry as Command;
+  }
+
+  it('registers exactly one ls and one pull subcommand with no positional arguments', () => {
+    const telemetry = registeredTelemetry();
+    expect(telemetry.commands.filter((command) => command.name() === 'ls')).toHaveLength(1);
+    expect(telemetry.commands.filter((command) => command.name() === 'pull')).toHaveLength(1);
+    expect(
+      telemetry.commands.find((command) => command.name() === 'ls')?.registeredArguments,
+    ).toEqual([]);
+    expect(
+      telemetry.commands.find((command) => command.name() === 'pull')?.registeredArguments,
+    ).toEqual([]);
+  });
+
+  it('pins ls help to repeatable repositories plus zero-or-one selector family', () => {
+    const ls = registeredTelemetry().commands.find((command) => command.name() === 'ls');
+    expect(ls).toBeDefined();
+    const help = (ls as Command).helpInformation();
+    expect(help).toContain('Usage: harness telemetry ls [options]');
+    for (const option of [
+      '--repo <url>',
+      '--repo-file <path>',
+      '--session <id>',
+      '--from-date <YYYY-MM-DD>',
+      '--to-date <YYYY-MM-DD>',
+      '--from-commit <full-oid>',
+      '--to-commit <full-oid>',
+    ]) {
+      expect(help).toContain(option);
+    }
+    for (const rejected of ['--pij', '--agent', '--source', '--offline', '--refresh', '--out']) {
+      expect(help).not.toContain(rejected);
+    }
+  });
+
+  it('pins pull help to repeatable repositories, one required selector family, and exact --out', () => {
+    const pull = registeredTelemetry().commands.find((command) => command.name() === 'pull');
+    expect(pull).toBeDefined();
+    const help = (pull as Command).helpInformation();
+    expect(help).toContain('Usage: harness telemetry pull [options]');
+    for (const option of [
+      '--repo <url>',
+      '--repo-file <path>',
+      '--session <id>',
+      '--from-date <YYYY-MM-DD>',
+      '--to-date <YYYY-MM-DD>',
+      '--from-commit <full-oid>',
+      '--to-commit <full-oid>',
+      '--out <exact-folder>',
+    ]) {
+      expect(help).toContain(option);
+    }
+    for (const rejected of ['--pij', '--agent', '--source', '--offline', '--refresh']) {
+      expect(help).not.toContain(rejected);
+    }
+  });
+});
+
+describe('registerTelemetryAct — remote telemetry envelopes', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  async function runRemote(
+    args: string[],
+    mode: OutputMode,
+    git = new FakeRemoteTelemetryGit(),
+    fs = new FakeFs(),
+    env = new FakeEnv(),
+    cwd = '/not-a-repository',
+  ): Promise<{ code: number; out: string; fs: FakeFs; git: FakeRemoteTelemetryGit }> {
+    let code = -1;
+    const ioState = ioFor(mode);
+    vi.spyOn(process, 'exit').mockImplementation(((value?: number) => {
+      code = value ?? 0;
+      throw new Error(`exit:${code}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, ioState.io, {
+      fs,
+      proc: new FakeProcess({}, cwd),
+      clock: new FakeClock('2026-07-16T00:00:00.000Z'),
+      env,
+      gitWrite: new FakeGitWrite(),
+      remoteGit: git,
+      hash: new FakeHash(),
+    });
+    await expect(program.parseAsync(['node', 'harness', 'telemetry', ...args])).rejects.toThrow(
+      /^exit:/,
+    );
+    return { code, out: ioState.out(), fs, git };
+  }
+
+  it.each([
+    ['ls', '--pij', 'pij-local'],
+    ['ls', '--agent', 'agent-local'],
+    ['ls', '--source', 'local'],
+    ['ls', '--offline', undefined],
+    ['ls', '--refresh', undefined],
+    ['pull', '--pij', 'pij-local'],
+    ['pull', '--agent', 'agent-local'],
+    ['pull', '--source', 'local'],
+    ['pull', '--offline', undefined],
+    ['pull', '--refresh', undefined],
+  ] as const)('rejects former runtime flag %s %s before effects', async (verb, flag, value) => {
+    const args = [verb, '--repo', 'https://example.com/team/repo.git'];
+    if (verb === 'pull') args.push('--session', 's', '--out', '/exports/former');
+    args.push(flag);
+    if (value !== undefined) args.push(value);
+    const result = await runRemote(args, 'json');
+    expect(result.code).toBe(1);
+    expect(result.git.calls).toEqual([]);
+    expect(result.fs.writes).toEqual([]);
+  });
+
+  it('invalid repository grammar is E108 before network or output writes', async () => {
+    const result = await runRemote(['ls', '--repo', '../local'], 'json');
+    const envelope = JSON.parse(result.out);
+    expect(envelope).toMatchObject({ status: 'error', error: { code: 'E108' } });
+    expect(result.git.calls).toEqual([]);
+    expect(result.fs.writes).toEqual([]);
+    expect(result.code).toBe(1);
+  });
+
+  it('is independent of poisoned local origin/ref/buffer/vendor/PIJ state and never falls back', async () => {
+    const poisonPaths = [
+      '/poison/.git/config',
+      '/poison/.git/refs/harness-telemetry/local',
+      '/poison/.harness/temp/telemetry/session/1.json',
+      '/home/.config/Cursor/User/globalStorage/vendor/session.json',
+      '/home/.pij/pij-local/state.json',
+    ];
+    const poisonFiles = Object.fromEntries(poisonPaths.map((path) => [path, 'poison']));
+    const poisonEnv = new FakeEnv(
+      {
+        PIJ_SESSION_ID: 'pij-local',
+        PIJ_PARENT_ID: 'pij-parent',
+        HARNESS_TELEMETRY_DIR: '/poison/.harness/temp/telemetry',
+      },
+      '/home',
+    );
+    const cleanGit = new FakeRemoteTelemetryGit();
+    const poisonedGit = new FakeRemoteTelemetryGit();
+    const clean = await runRemote(
+      ['ls', '--repo', 'https://example.com/team/repo.git'],
+      'json',
+      cleanGit,
+      new FakeFs(),
+    );
+    const poisonedFs = new FakeFs(poisonFiles);
+    const poisoned = await runRemote(
+      ['ls', '--repo', 'https://example.com/team/repo.git'],
+      'json',
+      poisonedGit,
+      poisonedFs,
+      poisonEnv,
+      '/poison',
+    );
+    expect(poisoned.out).toBe(clean.out);
+    expect(poisonedGit.calls).toEqual(cleanGit.calls);
+    expect(poisonedFs.reads.some((path) => poisonPaths.includes(path))).toBe(false);
+    expect(poisonedFs.writes.some((path) => poisonPaths.includes(path))).toBe(false);
+    expect(poisonEnv.gets).toEqual([]);
+    expect(poisonEnv.homeCalls).toBe(0);
+
+    const failedGit = new FakeRemoteTelemetryGit({
+      advertisement: {
+        ok: false,
+        kind: 'transport',
+        message: 'safe remote failure',
+        repositoryKey: 'repo-failed00000000',
+      },
+    });
+    const failedFs = new FakeFs(poisonFiles);
+    const failed = await runRemote(
+      [
+        'pull',
+        '--repo',
+        'https://example.com/team/repo.git',
+        '--session',
+        's',
+        '--out',
+        '/exports/no-fallback',
+      ],
+      'json',
+      failedGit,
+      failedFs,
+      poisonEnv,
+      '/poison',
+    );
+    expect(JSON.parse(failed.out)).toMatchObject({
+      status: 'error',
+      error: { code: 'E220' },
+    });
+    expect(failedGit.calls.map((call) => call.kind)).toEqual(['advertise']);
+    expect(failedFs.exists('/exports/no-fallback')).toBe(false);
+    expect(failedFs.reads.some((path) => poisonPaths.includes(path))).toBe(false);
+  });
+
+  it('ls empty is ok in JSON and text with no durable output', async () => {
+    const json = await runRemote(['ls', '--repo', 'https://example.com/team/repo.git'], 'json');
+    expect(JSON.parse(json.out)).toMatchObject({
+      status: 'ok',
+      data: { rows: [], completeness: 'complete' },
+      evidence: [{ label: 'remote inventory', none: true }],
+    });
+    expect(json.fs.writes).toEqual([]);
+
+    const text = await runRemote(['ls', '--repo', 'https://example.com/team/repo.git'], 'text');
+    expect(text.out).toContain('telemetry ls: 0 session(s)');
+  });
+
+  it('a complete zero-match date pull publishes a valid empty bundle and reports effects', async () => {
+    const result = await runRemote(
+      [
+        'pull',
+        '--repo',
+        'https://example.com/team/repo.git',
+        '--from-date',
+        '2026-07-01',
+        '--to-date',
+        '2026-07-02',
+        '--out',
+        '/exports/empty',
+      ],
+      'json',
+    );
+    const envelope = JSON.parse(result.out);
+    expect(envelope).toMatchObject({
+      status: 'ok',
+      data: {
+        sessions: 0,
+        completeness: 'complete',
+        written: true,
+        effects: { callerRepositoryMutated: false },
+      },
+      evidence: [{ label: 'telemetry pull bundle', path: '/exports/empty/bundle.json' }],
+    });
+    expect(result.fs.readText('/exports/empty/bundle.json')).toContain(
+      'harness.telemetry-pull-bundle/v1',
+    );
+  });
+
+  it('feeds a verified complete-empty bundle through the existing report command', async () => {
+    const pulled = await runRemote(
+      [
+        'pull',
+        '--repo',
+        'https://example.com/team/repo.git',
+        '--from-date',
+        '2026-07-01',
+        '--to-date',
+        '2026-07-02',
+        '--out',
+        '/exports/empty-report',
+      ],
+      'json',
+    );
+    const reported = await runRemote(
+      ['report', '/exports/empty-report', '--out', '/reports/empty.json'],
+      'json',
+      new FakeRemoteTelemetryGit(),
+      pulled.fs,
+    );
+    expect(JSON.parse(reported.out)).toMatchObject({ status: 'ok', data: { sessions: 0 } });
+    const report = JSON.parse(reported.fs.readText('/reports/empty.json') as string);
+    expect(report.provenance.input_coverage).toMatchObject({ accepted_sessions: 0, gaps: [] });
+    expect(report.evidence_totals.events).toEqual({
+      state: 'unavailable',
+      value: null,
+      contributors: 0,
+    });
+  });
+
+  it('maps conclusive exact absence to E221', async () => {
+    const result = await runRemote(
+      [
+        'pull',
+        '--repo',
+        'https://example.com/team/repo.git',
+        '--session',
+        'absent',
+        '--out',
+        '/exports/none',
+      ],
+      'json',
+    );
+    expect(JSON.parse(result.out)).toMatchObject({
+      status: 'error',
+      error: { code: 'E221' },
+    });
+    expect(result.fs.exists('/exports/none')).toBe(false);
+  });
+});
+
 describe('registerTelemetryAct — telemetry report / report-render', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -444,6 +754,7 @@ describe('registerTelemetryAct — telemetry report / report-render', () => {
       clock: new FakeClock('2026-06-24T09:00:00.000Z'),
       env: new FakeEnv(),
       gitWrite: new FakeGitWrite(),
+      hash: new FakeHash(),
     });
     expect(() => program.parse(['node', 'harness', 'telemetry', ...args])).toThrow(/^exit:/);
     return code;
@@ -511,6 +822,145 @@ describe('registerTelemetryAct — telemetry report / report-render', () => {
       { '/data': ['a.session.json', 'nested'], '/data/nested': ['b.session.json'] },
     );
   }
+
+  it('documents --filter-repo as applied to bundle inputs and echo-only for legacy exports', () => {
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, ioFor('json').io, {
+      fs: new FakeFs(),
+      proc: new FakeProcess({}, '/repo'),
+      clock: new FakeClock('2026-06-24T09:00:00.000Z'),
+      env: new FakeEnv(),
+      gitWrite: new FakeGitWrite(),
+    });
+    const telemetry = program.commands.find((command) => command.name() === 'telemetry');
+    const report = telemetry?.commands.find((command) => command.name() === 'report');
+    const help = (report?.helpInformation() ?? '').replace(/\s+/g, ' ');
+    expect(help).toContain('Applied only to bundle origins');
+    expect(help).toContain('mixed inputs retain every legacy SessionExport');
+    expect(help).toContain('echo-only');
+  });
+
+  it('applies repo filtering to tagged bundle inputs but only echoes it for legacy exports', () => {
+    const expA = JSON.parse(
+      exportJson('sA', 'claude-code', 'claude-opus-4-8', [bashEv('2026-06-24T09:00:01Z')]),
+    ) as SessionExport;
+    const expB = JSON.parse(
+      exportJson('sB', 'copilot-cli', 'gpt-5.5', [bashEv('2026-06-24T09:00:02Z')]),
+    ) as SessionExport;
+    const filter = { repo: ['repo-a'] };
+    const legacy = buildReport([expA, expB], { filter });
+    expect(legacy.scope.session_count).toBe(2);
+    expect(legacy.filter.repo).toEqual(['repo-a']);
+
+    const coverage = {
+      events: { state: 'full' as const, count: 1 },
+      measurements: { state: 'unavailable' as const, count: null },
+      gaps: ['measurements_unavailable' as const],
+    };
+    const tagged = buildReportFromInputs(
+      [
+        {
+          origin: 'bundle',
+          kind: 'full',
+          repositoryKey: 'repo-a',
+          repository: 'https://example.com/a',
+          sessionId: 'sA',
+          sessionExport: expA,
+          coverage,
+          gaps: [],
+        },
+        {
+          origin: 'bundle',
+          kind: 'full',
+          repositoryKey: 'repo-b',
+          repository: 'https://example.com/b',
+          sessionId: 'sB',
+          sessionExport: expB,
+          coverage,
+          gaps: [],
+        },
+      ],
+      { filter },
+    );
+    expect(tagged.scope.session_count).toBe(1);
+    expect(tagged.scope.session_ids).toEqual(['sA']);
+    expect(tagged.provenance.input_coverage?.accepted_sessions).toBe(1);
+  });
+
+  it('keeps a legacy export in the real mixed-input act path under --filter-repo', () => {
+    const hash = new FakeHash();
+    const url = 'https://example.com/team/repo';
+    const key = `repo-${hash.sha256Hex(url).slice(0, 16)}`;
+    const bundle = buildTelemetryBundle(
+      {
+        selector: { kind: 'date', from: '2026-07-01', to: '2026-07-02' },
+        completeness: 'complete',
+        selectionGaps: [],
+        sessions: [],
+        repositorySnapshots: [{ key, identity: url, advertisedRefs: 0, selectedRefs: 0 }],
+      },
+      hash,
+    );
+    const fs = new FakeFs(
+      {
+        '/data/a.session.json': exportJson('legacy-kept', 'claude-code', 'claude-opus-4-8', [
+          bashEv('2026-06-24T09:00:01Z'),
+        ]),
+      },
+      { '/data': ['a.session.json'], '/bundle': ['bundle.json'] },
+    );
+    for (const file of bundle.files) fs.writeBytes(`/bundle/${file.path}`, file.bytes);
+    const { io } = ioFor('json');
+    run(['report', '/data', '/bundle', '--out', '/r/mixed.json', '--filter-repo', key], io, fs);
+    const report = JSON.parse(fs.readText('/r/mixed.json') as string);
+    expect(report.scope).toMatchObject({ session_count: 1, session_ids: ['legacy-kept'] });
+    expect(report.filter.repo).toEqual([key]);
+    expect(report.provenance.input_coverage).toMatchObject({
+      accepted_sessions: 1,
+      repositories: [],
+    });
+  });
+
+  it('keeps unresolved-only bundle gaps through the real act when filtering by key or identity', () => {
+    const hash = new FakeHash();
+    const url = 'https://example.com/team/unresolved';
+    const key = `repo-${hash.sha256Hex(url).slice(0, 16)}`;
+    const bundle = buildTelemetryBundle(
+      {
+        selector: { kind: 'date', from: '2026-07-01', to: '2026-07-02' },
+        completeness: 'partial',
+        selectionGaps: [
+          {
+            repositoryKey: key,
+            sessionId: 'unresolved',
+            ref: 'refs/harness-telemetry/not/a/date/unresolved',
+            reason: 'date_provenance_unavailable',
+          },
+        ],
+        sessions: [],
+        repositorySnapshots: [{ key, identity: url, advertisedRefs: 1, selectedRefs: 0 }],
+      },
+      hash,
+    );
+
+    for (const [index, requested] of [key, url].entries()) {
+      const fs = new FakeFs({}, { '/bundle': ['bundle.json'] });
+      for (const file of bundle.files) fs.writeBytes(`/bundle/${file.path}`, file.bytes);
+      run(
+        ['report', '/bundle', '--out', `/r/unresolved-${index}.json`, '--filter-repo', requested],
+        ioFor('json').io,
+        fs,
+      );
+      const report = JSON.parse(fs.readText(`/r/unresolved-${index}.json`) as string);
+      expect(report.scope.session_count).toBe(0);
+      expect(report.provenance.repos).toEqual([url]);
+      expect(report.provenance.input_coverage).toMatchObject({
+        accepted_sessions: 0,
+        repositories: [{ key, identity: url, sessions: 0 }],
+        gaps: [`${key}:unresolved:date_provenance_unavailable`],
+      });
+    }
+  });
 
   it('sweeps *.session.json recursively → report.json + self-contained index.html; evidence lists both', () => {
     const { io, out } = ioFor('json');

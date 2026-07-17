@@ -1,13 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { Event } from '../../../../src/services/telemetry/events.js';
+import { EVENT_KINDS, type Event } from '../../../../src/services/telemetry/events.js';
 import {
+  LOG_EVENT_DEFINITIONS,
   otlpLogsToEvents,
+  reconstructSegmentFromOtlpLogs,
   segmentToOtlpLogs,
+  validateLogRecordContract,
 } from '../../../../src/services/telemetry/otlp/logs.js';
 import {
   HARNESS_SCHEMA_URL,
+  LEGACY_HARNESS_SCHEMA_URL,
+  LEGACY_OTLP_SCOPE_VERSION,
   OTLP_SCOPE_VERSION,
 } from '../../../../src/services/telemetry/otlp/types.js';
 import { computeRollup } from '../../../../src/services/telemetry/rollup.js';
@@ -68,14 +73,17 @@ describe('schema_url pinning + version lockstep (T006)', () => {
   const seg = loadGolden(FIXTURES[0]);
   const logs = segmentToOtlpLogs(seg);
 
-  it('pins HARNESS_SCHEMA_URL on both Resource and Scope', () => {
+  it('keeps immutable Segment-2.4 fixtures on the v0.1/scope-2.4 wire', () => {
     const rl = logs.resourceLogs[0];
-    expect(rl.schemaUrl).toBe(HARNESS_SCHEMA_URL);
-    expect(rl.scopeLogs[0].schemaUrl).toBe(HARNESS_SCHEMA_URL);
+    expect(rl.schemaUrl).toBe(LEGACY_HARNESS_SCHEMA_URL);
+    expect(rl.scopeLogs[0].schemaUrl).toBe(LEGACY_HARNESS_SCHEMA_URL);
+    expect(rl.scopeLogs[0].scope?.version).toBe(LEGACY_OTLP_SCOPE_VERSION);
   });
 
-  it('keeps the OTLP scope version in lockstep with the segment schema version', () => {
+  it('keeps the current OTLP scope version in lockstep with the producer schema version', () => {
+    expect(HARNESS_SCHEMA_URL).toContain('/v0.2.0');
     expect(OTLP_SCOPE_VERSION).toBe(SEGMENT_SCHEMA_VERSION);
+    expect(OTLP_SCOPE_VERSION).toBe('2.5');
   });
 });
 
@@ -145,9 +153,102 @@ const ALL_KINDS: Event[] = [
     enums: { verdict: 'APPROVE' },
     size: { lines: 42, bytes: 1234 },
   },
+  {
+    t: '2026-06-27T00:00:16Z',
+    kind: 'file',
+    path: 'src/x.ts',
+    change: 'edited',
+    delta: { lines_added: 2, lines_removed: 1, bytes_added: 20, bytes_removed: 10 },
+  },
+  {
+    t: '2026-06-27T00:00:17Z',
+    kind: 'mark',
+    mark_kind: 'review',
+    counts: { findings: 1 },
+    verdict: 'pass',
+  },
 ];
 
-describe('all-15-kind reconstruction symmetry (companion F002)', () => {
+describe('Segment-2.5 product provenance reconstruction', () => {
+  const productCommit = 'a'.repeat(40);
+  const current = serializeSegment(
+    {
+      command: 'flow',
+      harness: 'claude-code',
+      harness_session_id: 'product-provenance',
+      timecode: '2026-07-16T00:00:00Z',
+      window: { since: 'session-start', from: 0, to: 1 },
+      branch: 'main',
+      product_commit: productCommit,
+      event_stream: [],
+    },
+    '/repo',
+  );
+
+  it('round-trips the exact OID even when the event list is empty', () => {
+    const logs = segmentToOtlpLogs(current);
+    expect(logs.resourceLogs[0].schemaUrl).toBe(HARNESS_SCHEMA_URL);
+    expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({
+      ok: true,
+      segment: {
+        schema_version: '2.5',
+        product_commit: productCommit,
+        event_stream: [],
+      },
+    });
+  });
+
+  it('rejects a product attribute on a pre-2.5/v0.1 record', () => {
+    const legacy = segmentToOtlpLogs(loadGolden(FIXTURES[0]));
+    legacy.resourceLogs[0].resource?.attributes.push({
+      key: 'harness.product.commit',
+      value: { stringValue: productCommit },
+    });
+    expect(reconstructSegmentFromOtlpLogs(legacy)).toMatchObject({ ok: false });
+  });
+
+  it('rejects an invalid OID/version/schema identity pairing', () => {
+    const logs = segmentToOtlpLogs(current);
+    const attr = logs.resourceLogs[0].resource?.attributes.find(
+      (entry) => entry.key === 'harness.product.commit',
+    );
+    if (attr) attr.value = { stringValue: 'not-an-oid' };
+    expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({ ok: false });
+  });
+
+  it.each([
+    ['service.version fixture grammar', 'service.version', 'release-candidate'],
+    ['closed harness vocabulary', 'harness.harness', 'shell'],
+    ['command verb grammar', 'harness.command', 'q'.repeat(64)],
+    ['session identifier grammar', 'harness.session_id', `AIza${'a'.repeat(35)}`],
+  ])('rejects unsafe reconstructed %s before returning a Segment', (_name, key, unsafe) => {
+    const logs = segmentToOtlpLogs(current);
+    const attr = logs.resourceLogs[0].resource?.attributes.find((entry) => entry.key === key);
+    if (attr === undefined) throw new Error(`missing ${key}`);
+    attr.value = { stringValue: unsafe };
+    expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({ ok: false });
+  });
+
+  it('rejects a malformed current env entry during OTLP reconstruction', () => {
+    const logs = segmentToOtlpLogs(current);
+    logs.resourceLogs[0].resource?.attributes.push({
+      key: 'harness.env',
+      value: {
+        kvlistValue: {
+          values: [
+            {
+              key: 'PIJ_SESSION_ID',
+              value: { stringValue: `sk_live_${'a'.repeat(32)}` },
+            },
+          ],
+        },
+      },
+    });
+    expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({ ok: false });
+  });
+});
+
+describe('all-kind reconstruction symmetry and producer-owned Logs contract', () => {
   const input: SegmentInput = {
     command: 'flow',
     harness: 'claude-code',
@@ -159,12 +260,50 @@ describe('all-15-kind reconstruction symmetry (companion F002)', () => {
   };
   const seg = serializeSegment(input, '/repo');
 
-  it('exercises all 15 event kinds', () => {
-    expect(new Set(seg.event_stream.map((e) => e.kind)).size).toBe(15);
+  it('the producer-owned definition table is complete and unique for EVENT_KINDS', () => {
+    expect(LOG_EVENT_DEFINITIONS.map((definition) => definition.kind).sort()).toEqual(
+      [...EVENT_KINDS].sort(),
+    );
+    expect(new Set(LOG_EVENT_DEFINITIONS.map((definition) => definition.kind)).size).toBe(
+      LOG_EVENT_DEFINITIONS.length,
+    );
+    const byKind = new Map(
+      LOG_EVENT_DEFINITIONS.map((definition) => [definition.kind, definition]),
+    );
+    expect(
+      byKind.get('prompt')?.attributes.find((attribute) => attribute.key === 'harness.prompt.words')
+        ?.required,
+    ).toBe(true);
+    expect(
+      byKind
+        .get('api_error')
+        ?.attributes.find((attribute) => attribute.key === 'harness.api_error.signature')?.required,
+    ).toBe(false);
+    expect(
+      byKind.get('flow')?.attributes.find((attribute) => attribute.key === 'harness.flow.status')
+        ?.values,
+    ).toContain('active');
+  });
+
+  it('exercises every event kind', () => {
+    expect(new Set(seg.event_stream.map((e) => e.kind))).toEqual(new Set(EVENT_KINDS));
   });
 
   it('every kind round-trips byte-faithfully through OTLP', () => {
     expect(otlpLogsToEvents(segmentToOtlpLogs(seg))).toEqual(seg.event_stream);
+  });
+
+  it('the shared record validator rejects observed time and envelope/event mismatch directly', () => {
+    for (const record of segmentToOtlpLogs(seg).resourceLogs[0].scopeLogs[0].logRecords) {
+      expect(validateLogRecordContract(record)).toBe(true);
+      expect(validateLogRecordContract({ ...record, timeUnixNano: '1' })).toBe(false);
+      expect(
+        validateLogRecordContract({
+          ...record,
+          observedTimeUnixNano: record.timeUnixNano,
+        }),
+      ).toBe(false);
+    }
   });
 
   it('rollup recomputes from the all-kind reconstruction', () => {

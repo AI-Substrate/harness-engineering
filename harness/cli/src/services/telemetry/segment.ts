@@ -35,8 +35,206 @@ import { computeRollup } from './rollup.js';
  * self-attestation) to the `event_stream` union — no new top-level segment field.
  * v2.4 (plan 056): adds the `file` event kind (per-file path + change-delta from
  * tool payloads) to the `event_stream` union — no new top-level segment field.
+ * v2.5 (plan 060): adds optional product_commit (the product HEAD observed for
+ * this activity window); old 2.4 records remain readable.
  */
-export const SEGMENT_SCHEMA_VERSION = '2.4';
+export const SEGMENT_SCHEMA_VERSION = '2.5';
+
+/** Exact Segment-2.5 pij environment vocabulary. The producer never glob-captures `PIJ_*`. */
+export const CURRENT_CAPTURED_ENV_KEYS = [
+  'PIJ_SESSION_ID',
+  'PIJ_PARENT_ID',
+  'PIJ_HARNESS',
+  'PIJ_ROLE',
+  'PIJ_ANNOUNCE_TO',
+  'PIJ_SPAWN_ID',
+  'PIJ_SPAWN_MODEL',
+  'PIJ_SPAWN_EFFORT',
+] as const;
+
+/** Finite Segment-2.4 compatibility union; it does not widen the current producer. */
+export const LEGACY_CAPTURED_ENV_KEYS = [
+  ...CURRENT_CAPTURED_ENV_KEYS,
+  'PIJ_ID',
+  'PIJ_STATUS_KEY',
+  'PIJ_PANE_ID',
+] as const;
+
+export const PIJ_EFFORT_VALUES = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh'] as const;
+export const PIJ_HARNESS_VALUES = [
+  'pi',
+  'pij',
+  'claude',
+  'claude-code',
+  'copilot',
+  'copilot-cli',
+  'copilot-vscode',
+  'cursor',
+  'cursor-agent',
+  'minih',
+] as const;
+export const PIJ_ROLE_VALUES = [
+  'coder',
+  'reviewer',
+  'orchestrator',
+  'worker',
+  'parent',
+  'child',
+  'planner',
+  'researcher',
+  'validator',
+  'implementer',
+  'lead',
+  'peer',
+  'context-owner',
+] as const;
+
+const PIJ_CURRENT_ID_VALUE = /^pij-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const PIJ_SPAWN_ID_VALUE = /^spawn-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const PIJ_STATUS_VALUE = /^status\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const PIJ_PANE_VALUE = /^%[0-9]{1,10}$/;
+const TELEMETRY_ATOM = /^[A-Za-z0-9][A-Za-z0-9._:@+-]*$/;
+const TELEMETRY_COMMAND = /^[a-z][a-z0-9]*(?:[ -][a-z0-9][a-z0-9-]*){0,3}$/;
+const TELEMETRY_SEMVER =
+  /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/;
+const TELEMETRY_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TELEMETRY_ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const TELEMETRY_RELATIVE_PATH =
+  /^(?![A-Za-z]:[\\/])(?![\\/])(?!.*\\)(?!.*(?:^|\/)\.\.?(?:\/|$))[A-Za-z0-9._@+<>-]+(?:\/[A-Za-z0-9._@+<>-]+)*$/;
+
+/** Shared defense-in-depth detector for every string admitted to published telemetry. */
+export function isCredentialShaped(value: string): boolean {
+  return [
+    /-----BEGIN(?: [A-Z]+)* PRIVATE KEY-----/i,
+    /\bBearer\s+[A-Za-z0-9._~+/-]{8,}/i,
+    /(?:password|passwd|passphrase|credential|secret|token|api[_-]?key|access[_-]?key|session[_-]?token)\s*[:=]\s*\S+/i,
+    /\bgh[pousr]_[A-Za-z0-9]{20,}\b/i,
+    /\bgithub_pat_[A-Za-z0-9_]{20,}\b/i,
+    /\b(?:AKIA|ASIA|AIDA|AROA|AIPA|ANPA|ANVA)[A-Z0-9]{16}\b/,
+    /\b(?:sk-(?:proj-)?|xox[baprs]-|glpat-|npm_|pypi-)[A-Za-z0-9_-]{20,}\b/i,
+    /\b(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{16,}\b/i,
+    /\bAIza[A-Za-z0-9_-]{20,}\b/,
+    /\bya29\.[A-Za-z0-9_-]{20,}\b/i,
+    /\beyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/,
+  ].some((pattern) => pattern.test(value));
+}
+
+function isLowEntropyAtom(value: string, maxLength: number): boolean {
+  if (value.length === 0 || value.length > maxLength || !TELEMETRY_ATOM.test(value)) return false;
+  return /[._:@+-]/.test(value) || value.length <= 32;
+}
+
+/** Conservative extension-value grammar: low-entropy identifier or confined relative path. */
+export function isTelemetryExtensionString(value: string): boolean {
+  if (isCredentialShaped(value) || value.length > 256) return false;
+  if (!value.includes('/')) return isLowEntropyAtom(value, 64);
+  return (
+    TELEMETRY_RELATIVE_PATH.test(value) &&
+    value.split('/').every((part) => isLowEntropyAtom(part, 64))
+  );
+}
+
+export function isTelemetryHarness(value: string): boolean {
+  return (
+    !isCredentialShaped(value) &&
+    ((PIJ_HARNESS_VALUES as readonly string[]).includes(value) ||
+      value === 'codex' ||
+      value === 'future-harness' ||
+      /^acme-harness-[1-9]\d{0,7}$/.test(value))
+  );
+}
+
+export function isTelemetryCommand(value: string): boolean {
+  return (
+    !isCredentialShaped(value) &&
+    value.length <= 64 &&
+    TELEMETRY_COMMAND.test(value) &&
+    value.split(' ').every((part) => isLowEntropyAtom(part, 32))
+  );
+}
+
+export function isTelemetryServiceVersion(value: string): boolean {
+  return (
+    !isCredentialShaped(value) &&
+    (value === 'unknown' ||
+      value === 'test' ||
+      value === 'fixture' ||
+      /^fixture-[a-z0-9][a-z0-9-]{0,31}$/.test(value) ||
+      TELEMETRY_SEMVER.test(value))
+  );
+}
+
+export function isTelemetrySessionId(value: string): boolean {
+  return (
+    value === '' ||
+    (!isCredentialShaped(value) && (TELEMETRY_UUID.test(value) || isLowEntropyAtom(value, 128)))
+  );
+}
+
+export function isTelemetryModel(value: string): boolean {
+  if (isCredentialShaped(value) || value.length > 192) return false;
+  const [model, effort, extra] = value.split(':');
+  if (
+    extra !== undefined ||
+    (effort !== undefined && !(PIJ_EFFORT_VALUES as readonly string[]).includes(effort))
+  ) {
+    return false;
+  }
+  const parts = model.split('/');
+  return parts.length <= 2 && parts.every((part) => isLowEntropyAtom(part, 96));
+}
+
+export function isTelemetrySignature(value: string): boolean {
+  return (
+    !isCredentialShaped(value) &&
+    value.length <= 128 &&
+    value.split(' ').length <= 4 &&
+    value.split(' ').every((part) => isLowEntropyAtom(part, 48))
+  );
+}
+
+export function isTelemetryRelativePath(value: string): boolean {
+  return !isCredentialShaped(value) && value.length <= 1024 && TELEMETRY_RELATIVE_PATH.test(value);
+}
+
+export function isTelemetryTime(value: string): boolean {
+  if (!TELEMETRY_ISO_TIME.test(value)) return false;
+  const parsed = new Date(value);
+  const canonical = value.includes('.') ? value : value.replace('Z', '.000Z');
+  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString() === canonical;
+}
+
+/** Version-aware key and value grammar shared by capture, serializer, OTLP and strict reads. */
+export function isCapturedEnvEntry(name: string, value: string, version: '2.4' | '2.5'): boolean {
+  const allowed =
+    version === '2.5'
+      ? (CURRENT_CAPTURED_ENV_KEYS as readonly string[])
+      : (LEGACY_CAPTURED_ENV_KEYS as readonly string[]);
+  if (!allowed.includes(name) || isCredentialShaped(value)) return false;
+  switch (name) {
+    case 'PIJ_SESSION_ID':
+    case 'PIJ_PARENT_ID':
+    case 'PIJ_ANNOUNCE_TO':
+    case 'PIJ_ID':
+      return PIJ_CURRENT_ID_VALUE.test(value);
+    case 'PIJ_HARNESS':
+      return (PIJ_HARNESS_VALUES as readonly string[]).includes(value);
+    case 'PIJ_ROLE':
+      return (PIJ_ROLE_VALUES as readonly string[]).includes(value);
+    case 'PIJ_SPAWN_ID':
+      return PIJ_SPAWN_ID_VALUE.test(value);
+    case 'PIJ_SPAWN_MODEL':
+      return value.includes('/') && isTelemetryModel(value);
+    case 'PIJ_SPAWN_EFFORT':
+      return (PIJ_EFFORT_VALUES as readonly string[]).includes(value);
+    case 'PIJ_STATUS_KEY':
+      return PIJ_STATUS_VALUE.test(value);
+    case 'PIJ_PANE_ID':
+      return PIJ_PANE_VALUE.test(value);
+    default:
+      return false;
+  }
+}
 
 export interface SegmentTokens {
   input: number;
@@ -157,6 +355,8 @@ export interface Segment {
    * value is never free-form prompt/content. Omitted when nothing matched.
    */
   captured_env?: Record<string, string>;
+  /** v2.5 — lowercase full product Git OID observed during this activity window. */
+  product_commit?: string;
 }
 
 /**
@@ -188,6 +388,7 @@ export const SEGMENT_FIELD_KEYS = [
   'events',
   'thinking',
   'captured_env',
+  'product_commit',
 ] as const;
 
 /**
@@ -237,6 +438,8 @@ export interface SegmentInput {
   captured_env?: Record<string, string>;
   /** v2.0 — the ordered event stream an adapter emits; serialized via the per-kind allowlist. */
   event_stream?: readonly Event[];
+  /** v2.5 — optional product HEAD; invalid values are omitted, never echoed. */
+  product_commit?: string | null;
 }
 
 const ABSOLUTE_LOGICAL = /^([A-Za-z]:)?\//;
@@ -523,6 +726,18 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
  * output. File paths are relativized; `plans_touched` is deduped.
  */
 export function serializeSegment(input: SegmentInput, repoRoot: string): Segment {
+  const harnessVersion = input.harness_version ?? 'unknown';
+  if (
+    !isTelemetryCommand(input.command) ||
+    !isTelemetryHarness(input.harness) ||
+    !isTelemetryServiceVersion(harnessVersion) ||
+    !isTelemetrySessionId(input.harness_session_id) ||
+    !isTelemetryTime(input.timecode) ||
+    (input.branch !== null && !isTelemetryRelativePath(input.branch))
+  ) {
+    throw new Error('invalid segment identity');
+  }
+
   // v2.0: the event stream is the substrate; the rollup is DERIVED from the
   // serialized events (never taken from the caller) so it can never drift (AC-16).
   const eventStream = (input.event_stream ?? []).map((e) => serializeEvent(e, repoRoot));
@@ -534,7 +749,7 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     harness: input.harness,
     // Always present (required): defaults to 'unknown' if a caller omits it, so a
     // segment is never schema-invalid; the live composition root always supplies it.
-    harness_version: input.harness_version ?? 'unknown',
+    harness_version: harnessVersion,
     harness_session_id: input.harness_session_id,
     timecode: input.timecode,
     window: {
@@ -576,15 +791,20 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     seg.events = { compactions, api_errors: apiErrors, local_commands: localCommands };
   }
   if (input.thinking != null) seg.thinking = input.thinking;
-  // v2.2 — the allowlisted env snapshot the caller already filtered (glob +
-  // secret denylist). Omitted when empty (the dominant case). Copied (never the
-  // caller's object) and re-keyed in sorted order for byte-stable goldens.
+  // v2.5 — re-validate the exact finite current pij contract at the serializer
+  // boundary. Capture is not trusted to have filtered it correctly.
   const capturedEnv = input.captured_env ?? {};
-  const envKeys = Object.keys(capturedEnv).sort();
+  const envKeys = Object.keys(capturedEnv)
+    .filter((key) => isCapturedEnvEntry(key, capturedEnv[key], '2.5'))
+    .sort();
   if (envKeys.length > 0) {
     const out: Record<string, string> = {};
-    for (const k of envKeys) out[k] = capturedEnv[k];
+    for (const key of envKeys) out[key] = capturedEnv[key];
     seg.captured_env = out;
+  }
+  const productCommit = input.product_commit?.toLowerCase();
+  if (productCommit !== undefined && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(productCommit)) {
+    seg.product_commit = productCommit;
   }
 
   // v2.0 substrate — always present (the event stream; the rollup it derives).

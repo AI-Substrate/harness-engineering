@@ -133,66 +133,65 @@ describe('T005 — detectHarness (innermost wins)', () => {
   });
 });
 
-describe('v2.2 — selectCapturedEnv (allowlist glob + secret denylist)', () => {
-  it('captures names matching a glob (PIJ_*), ignoring everything else', () => {
-    const env = new FakeEnv({
-      PIJ_ID: 'orch-7',
-      PIJ_ROLE: 'coder',
-      HOME: '/home/u',
-      PATH: '/usr/bin',
-      CLAUDE_CODE_SESSION_ID: 'cl-1',
-    });
-    expect(selectCapturedEnv(env)).toEqual({ PIJ_ID: 'orch-7', PIJ_ROLE: 'coder' });
+describe('v2.5 — selectCapturedEnv finite pij contract', () => {
+  const CURRENT_ENV = {
+    PIJ_SESSION_ID: 'pij-static-mockingbird',
+    PIJ_PARENT_ID: 'pij-thirsty-panda',
+    PIJ_HARNESS: 'pi',
+    PIJ_ROLE: 'coder',
+    PIJ_ANNOUNCE_TO: 'pij-thirsty-panda',
+    PIJ_SPAWN_ID: 'spawn-0007',
+    PIJ_SPAWN_MODEL: 'github-copilot/gpt-5.6-sol:xhigh',
+    PIJ_SPAWN_EFFORT: 'xhigh',
+  };
+
+  it('captures exactly the eight current keys with their per-key safe grammars', () => {
+    expect(
+      selectCapturedEnv(
+        new FakeEnv({
+          ...CURRENT_ENV,
+          HOME: '/home/u',
+          PIJ_ID: 'legacy-id',
+          PIJ_STATUS_KEY: 'status/9',
+          PIJ_PANE_ID: '%7',
+          PIJ_UNKNOWN: 'safe-looking',
+          PIJ_SPAWN_TASK: 'fix the bug then run tests',
+        }),
+      ),
+    ).toEqual(CURRENT_ENV);
   });
 
-  it('drops genuine credential-shaped names even when a glob selected them', () => {
+  it('drops wrong per-key values rather than serializing arbitrary PIJ content', () => {
     const env = new FakeEnv({
-      PIJ_ID: 'orch-7',
-      PIJ_TOKEN: 'gho_shouldNeverLand',
-      PIJ_API_KEY: 'sk-nope',
-      PIJ_SECRET_KEY: 'akia-nope',
-      PIJ_PASSWORD: 'hunter2',
-      PIJ_AUTH: 'nope',
-      PIJ_SESSION_TOKEN: 'sess-secret-nope',
+      PIJ_SESSION_ID: 'session-not-a-current-pij-id',
+      PIJ_PARENT_ID: 'parent-not-a-current-pij-id',
+      PIJ_HARNESS: 'not-a-harness',
+      PIJ_ROLE: 'not-a-role',
+      PIJ_ANNOUNCE_TO: 'line one\nline two',
+      PIJ_SPAWN_ID: 'correlation-not-a-spawn-id',
+      PIJ_SPAWN_MODEL: 'model-without-provider',
+      PIJ_SPAWN_EFFORT: 'ultra',
     });
-    expect(selectCapturedEnv(env)).toEqual({ PIJ_ID: 'orch-7' });
+    expect(selectCapturedEnv(env)).toEqual({});
   });
 
-  it('KEEPS benign correlation handles — SESSION_ID / STATUS_KEY are ids, not secrets', () => {
-    // The pij seam injects exactly these; the tuned denylist must not eat them
-    // (a bare SESSION/KEY substring would). This is the "pij flows through" case.
-    const env = new FakeEnv({
-      PIJ_SESSION_ID: 'pij-sess-9',
-      PIJ_STATUS_KEY: 'status/9',
-      PIJ_ROLE: 'coder',
-      PIJ_PANE_ID: '%7',
-    });
-    expect(selectCapturedEnv(env)).toEqual({
-      PIJ_SESSION_ID: 'pij-sess-9',
-      PIJ_STATUS_KEY: 'status/9',
-      PIJ_ROLE: 'coder',
-      PIJ_PANE_ID: '%7',
-    });
-  });
-
-  it('drops content-bearing names (a prompt/task value is content, not a count — P12)', () => {
-    // PIJ_SPAWN_TASK carries the colleague's full task prompt — the live-probe leak.
-    const env = new FakeEnv({
-      PIJ_SESSION_ID: 'pij-9',
-      PIJ_SPAWN_TASK: 'fix the bug in foo.ts then run the tests',
-      PIJ_PROMPT: 'do the thing',
-      PIJ_COMMAND: 'harness doctor',
-    });
-    expect(selectCapturedEnv(env)).toEqual({ PIJ_SESSION_ID: 'pij-9' });
-  });
-
-  it('drops free-form-shaped VALUES name-agnostically (multi-line or over-long)', () => {
-    const env = new FakeEnv({
-      PIJ_ID: 'orch-7',
-      PIJ_BLOB: 'line one\nline two\nline three', // multi-line ⇒ content
-      PIJ_LONG: 'x'.repeat(300), // over the 256 cap ⇒ content/payload
-    });
-    expect(selectCapturedEnv(env)).toEqual({ PIJ_ID: 'orch-7' });
+  it.each([
+    `ghp_${'a'.repeat(36)}`,
+    `github_pat_${'a'.repeat(48)}`,
+    `AKIA${'A'.repeat(16)}`,
+    `ASIA${'B'.repeat(16)}`,
+    `sk-proj-${'c'.repeat(32)}`,
+    `sk_live_${'c'.repeat(32)}`,
+    `AIza${'d'.repeat(35)}`,
+    'q'.repeat(64),
+    'Bearer abcdefghijklmnopqrstuvwxyz',
+    'password=hunter2',
+    '-----BEGIN PRIVATE KEY-----',
+  ])('drops credential-shaped values from an otherwise allowed key', (credential) => {
+    const { PIJ_SPAWN_ID: _omitted, ...expected } = CURRENT_ENV;
+    expect(selectCapturedEnv(new FakeEnv({ ...CURRENT_ENV, PIJ_SPAWN_ID: credential }))).toEqual(
+      expected,
+    );
   });
 
   it('returns empty when nothing matches (the dominant host case → field omitted)', () => {
@@ -339,6 +338,27 @@ describe('T005 — captureTelemetry happy path', () => {
     expect(JSON.parse(metrics as string)).toHaveProperty('resourceMetrics');
   });
 
+  it('resolves product HEAD only after activity is known and carries it into both OTLP sidecars', () => {
+    const { d, fs } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'sessProduct' },
+      adapters: [testAdapter('claude-code', 1, { tools: { Bash: 1 } })],
+    });
+    const git = new FakeGit({
+      isRepo: true,
+      branch: 'main',
+      remoteUrl: 'github.com/x/y',
+      currentCommit: 'A'.repeat(40),
+    });
+    d.git = git;
+    captureTelemetry(d);
+
+    expect(readWrittenSegment(fs, 'sessProduct')?.product_commit).toBe('a'.repeat(40));
+    expect(git.calls.indexOf('currentCommit')).toBeGreaterThan(git.calls.indexOf('currentBranch'));
+    for (const name of ['1.logs.jsonl', '1.metrics.jsonl']) {
+      expect(fs.readText(`${TEL}/sessProduct/${name}`)).toContain('harness.product.commit');
+    }
+  });
+
   it('no real adapter (null-default) + a branch switch (activity) → schema-valid all-null segment is written', () => {
     // Keeps exercising the nullDefaultAdapter fallback (adapters: []). A seeded prior
     // branch differs from FakeGit's '034-x', so the branch switch surfaces a branch
@@ -414,6 +434,7 @@ describe('T005 — designed edge no-ops (C3)', () => {
     // FIX-1: an empty window + empty event stream is read-only plumbing — write nothing.
     expect(readWrittenSegment(fs, 'sessE')).toBeNull();
     expect(fs.readText(`${TEL}/sessE.cursor`)).toBe('100'); // cursor already at the watermark — safe
+    expect((d.git as FakeGit).calls).not.toContain('currentCommit');
   });
 
   it('corrupt cursor → reset to session-start', () => {

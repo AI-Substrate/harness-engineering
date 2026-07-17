@@ -192,6 +192,120 @@ describe('T009 — render validation: N reports → N columns, inline data, keys
     expect(rg1.count).toBe(12); // same key, both columns → the HTML aligns them into one row
   });
 
+  it('preserves the legacy no-coverage render path byte-for-byte', () => {
+    expect(renderReports(cols)).toBe(embedReports(REPORT_TEMPLATE_HTML, cols));
+  });
+
+  it('bundle coverage renders N-of-M, unavailable evidence, and gaps without zero/no-activity claims', () => {
+    const report = mkReport({
+      sessionId: 'bundle',
+      harness: 'claude-code',
+      bash: {},
+      harnessCmd: {},
+      time_s: 0,
+    });
+    report.scope = { session_count: 2, single: false, session_ids: ['partial', 'identity'] };
+    report.provenance.session_count = 2;
+    report.provenance.input_coverage = {
+      accepted_sessions: 2,
+      event_substrate_sessions: 0,
+      kinds: { full: 0, partial: 1, identity_only: 1 },
+      fields: {
+        events: { available: 0, unavailable: 2, excluded: 0 },
+        measurements: { available: 1, unavailable: 1, excluded: 0 },
+      },
+      repositories: [{ key: 'repo-a', identity: 'https://example.com/a', sessions: 2 }],
+      gaps: ['repo-a:identity:events_unavailable'],
+    };
+    report.evidence_totals = {
+      events: { state: 'unavailable', value: null, contributors: 0 },
+      measurements: { state: 'measured', value: 0, contributors: 1 },
+    };
+    const html = renderReports([{ label: 'bundle', report }]);
+    expect(html).toContain('Evidence coverage');
+    expect(html).toContain('Events: unavailable (0 of 2 contributors)');
+    expect(html).toContain('Measurements: measured zero (1 of 2 contributors)');
+    expect(html).toContain('repo-a:identity:events_unavailable');
+    expect(html).not.toContain('function renderTotals');
+    expect(html).not.toContain('var DIMS');
+    expect(html).not.toMatch(/0 session\(s\)|no [^<\n]* activity/i);
+    expect(html).not.toMatch(/display\s*:\s*none/i);
+  });
+
+  it('coverage mode retains analytics only when event-substrate contributors exist', () => {
+    const report = mkReport({
+      sessionId: 'mixed',
+      harness: 'claude-code',
+      bash: { rg: 2 },
+      harnessCmd: {},
+      time_s: 0,
+    });
+    report.provenance.input_coverage = {
+      accepted_sessions: 2,
+      event_substrate_sessions: 1,
+      kinds: { full: 1, partial: 0, identity_only: 1 },
+      fields: {
+        events: { available: 1, unavailable: 1, excluded: 0 },
+        measurements: { available: 1, unavailable: 1, excluded: 0 },
+      },
+      repositories: [{ key: 'repo-a', identity: 'https://example.com/a', sessions: 2 }],
+      gaps: ['repo-a:identity:events_unavailable'],
+    };
+    report.evidence_totals = {
+      events: { state: 'measured', value: 2, contributors: 1 },
+      measurements: { state: 'measured', value: 0, contributors: 1 },
+    };
+    const html = renderReports([{ label: 'mixed', report }]);
+    expect(html).toContain('class="bundle-analytics"');
+    expect(html).toContain('rg');
+    expect(html).toContain('2×');
+    expect(html).not.toMatch(/no [^<\n]* activity/i);
+  });
+
+  it('coverage mode keeps every mixed legacy and bundle column visibly analytic', () => {
+    const bundle = mkReport({
+      sessionId: 'bundle-mixed',
+      harness: 'claude-code',
+      bash: { rg: 2 },
+      harnessCmd: {},
+    });
+    bundle.provenance.input_coverage = {
+      accepted_sessions: 1,
+      event_substrate_sessions: 1,
+      kinds: { full: 1, partial: 0, identity_only: 0 },
+      fields: {
+        events: { available: 1, unavailable: 0, excluded: 0 },
+        measurements: { available: 1, unavailable: 0, excluded: 0 },
+      },
+      repositories: [{ key: 'repo-a', identity: 'https://example.com/a', sessions: 1 }],
+      gaps: [],
+    };
+    bundle.evidence_totals = {
+      events: { state: 'measured', value: 2, contributors: 1 },
+      measurements: { state: 'measured', value: 0, contributors: 1 },
+    };
+    const legacy = mkReport({
+      sessionId: 'legacy-mixed',
+      harness: 'copilot-cli',
+      bash: { git: 3 },
+      harnessCmd: { doctor: 1 },
+    });
+    const html = renderReports([
+      { label: 'bundle column', report: bundle },
+      { label: 'legacy column', report: legacy },
+    ]);
+    const main = /<main id="root">([\s\S]*?)<\/main>/.exec(html)?.[1] ?? '';
+    expect(main).toContain('bundle column');
+    expect(main).toContain('legacy column');
+    expect(main).toContain('rg');
+    expect(main).toContain('git');
+    expect(main).toContain('doctor');
+    expect(html.match(/class="report-column"/g) ?? []).toHaveLength(2);
+    expect(html).not.toContain('function renderTotals');
+    expect(html).not.toContain('var DIMS');
+    expect(main).not.toMatch(/no [^<\n]* activity/i);
+  });
+
   it('N=1 renders a single column (session save path)', () => {
     const html = renderReports([cols[0]]);
     expect(html.match(/class="report-column"/g) ?? []).toHaveLength(1);

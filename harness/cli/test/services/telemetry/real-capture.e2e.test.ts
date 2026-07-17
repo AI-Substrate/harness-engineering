@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeDb } from '../../../src/adapters/db/fake-db.js';
@@ -21,7 +21,7 @@ import {
 } from '../../../src/services/telemetry/adapters/cursor-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
-import { registerOtlpGoldens } from './otlp-golden.js';
+import { expectCurrentSegmentMatchesLegacy, registerOtlpGoldens } from './otlp-golden.js';
 
 /**
  * T008 (plan 1.7 · AC-01) — drive the REAL scrubbed claude fixture through
@@ -35,8 +35,9 @@ import { registerOtlpGoldens } from './otlp-golden.js';
  * (companion F002): REGEN mints it from the segment, a human reviews it, the test
  * asserts the live segment matches it — no values duplicated as test constants.
  *
- * Regenerate with: `REGEN_GOLDEN=1 vitest run real-capture.e2e` (writes both the
- * golden and invariants.json that the T007 byte-scan also covers).
+ * Segment-2.4/OTLP-v0.1 goldens and invariants are frozen compatibility
+ * evidence. Regeneration is deliberately disabled; current output is projected
+ * only across the approved Segment-2.5/OTLP-v0.2 metadata delta.
  */
 
 const REPO = '/home/dev/repo'; // matches the scrubbed fixture's rebased paths
@@ -111,14 +112,9 @@ describe('real claude fixture → segment (AC-01)', () => {
   const seg = segment();
   registerOtlpGoldens(seg, GOLDEN); // T005 — mint/assert the OTLP goldens beside the segment
 
-  if (process.env.REGEN_GOLDEN) {
-    writeFileSync(GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
-    writeFileSync(INVARIANTS, `${JSON.stringify(invariantsOf(seg), null, 2)}\n`);
-  }
-
-  it('matches the committed golden segment', () => {
+  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
     const expected = JSON.parse(readFileSync(GOLDEN, 'utf8'));
-    expect(seg).toEqual(expected);
+    expectCurrentSegmentMatchesLegacy(seg, expected);
   });
 
   it('matches the committed (human-reviewed) invariants.json', () => {
@@ -239,13 +235,8 @@ describe('real copilot-cli fixture → segment (AC-03)', () => {
   const seg = copilotSegment();
   registerOtlpGoldens(seg, CO_GOLDEN); // T005
 
-  if (process.env.REGEN_GOLDEN) {
-    writeFileSync(CO_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
-    writeFileSync(CO_INVARIANTS, `${JSON.stringify(coInvariantsOf(seg), null, 2)}\n`);
-  }
-
-  it('matches the committed golden segment', () => {
-    expect(seg).toEqual(JSON.parse(readFileSync(CO_GOLDEN, 'utf8')));
+  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+    expectCurrentSegmentMatchesLegacy(seg, JSON.parse(readFileSync(CO_GOLDEN, 'utf8')));
   });
 
   it('matches the committed (human-reviewed) invariants.json', () => {
@@ -369,13 +360,8 @@ describe('real cursor fixture → segment via transcript↔bubble join (AC-05)',
   const seg = cursorSegment();
   registerOtlpGoldens(seg, CUR_GOLDEN); // T005
 
-  if (process.env.REGEN_GOLDEN) {
-    writeFileSync(CUR_GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
-    writeFileSync(CUR_INVARIANTS, `${JSON.stringify(curInvariantsOf(seg), null, 2)}\n`);
-  }
-
-  it('matches the committed golden segment', () => {
-    expect(seg).toEqual(JSON.parse(readFileSync(CUR_GOLDEN, 'utf8')));
+  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+    expectCurrentSegmentMatchesLegacy(seg, JSON.parse(readFileSync(CUR_GOLDEN, 'utf8')));
   });
 
   it('matches the committed (human-reviewed) invariants.json', () => {

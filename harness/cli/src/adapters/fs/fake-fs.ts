@@ -35,6 +35,19 @@ export class FakeFs implements FsPort, FileSystemWritePort {
    * real I/O error so a caller's error-swallowing (the T007 prune) is provable.
    */
   readonly failDeletes = new Set<string>();
+  /** Paths modelled as symlinks/devices for no-follow bundle checks. */
+  readonly nonRegularPaths = new Set<string>();
+  /** Created sibling temp directories, in order. */
+  readonly siblingTemps: string[] = [];
+  /** Exclusive directory publish attempts. */
+  readonly publishedDirectories: Array<{ temp: string; target: string; lockKey: string }> = [];
+  /** Force the exclusive publish operation to throw before lock acquisition. */
+  failDirectoryPublish = false;
+  /** Force a failure after this writer acquires the lock; its finally must release ownership. */
+  failDirectoryPublishAfterLock = false;
+  /** Observable cooperating-writer lock state for ownership/cleanup contract tests. */
+  readonly heldBundleLocks = new Set<string>();
+  private readonly byteFiles = new Map<string, Uint8Array>();
   private readonly madeDirs = new Set<string>();
   private nextMtime: number;
 
@@ -51,17 +64,48 @@ export class FakeFs implements FsPort, FileSystemWritePort {
 
   exists(path: string): boolean {
     this.reads.push(path);
-    return path in this.files || this.madeDirs.has(path);
+    return path in this.files || this.byteFiles.has(path) || this.madeDirs.has(path);
   }
 
   readText(path: string): string | null {
     this.reads.push(path);
-    return this.files[path] ?? null;
+    if (path in this.files) return this.files[path] ?? null;
+    const bytes = this.byteFiles.get(path);
+    return bytes === undefined ? null : new TextDecoder().decode(bytes);
+  }
+
+  readBytesNoFollow(path: string): Uint8Array | null {
+    this.reads.push(path);
+    if (this.nonRegularPaths.has(path)) return null;
+    const bytes = this.byteFiles.get(path);
+    if (bytes !== undefined) return Uint8Array.from(bytes);
+    const text = this.files[path];
+    return text === undefined ? null : new TextEncoder().encode(text);
+  }
+
+  listRegularFilesNoFollow(root: string): string[] | null {
+    this.reads.push(root);
+    const normalized = root.replace(/\\/g, '/').replace(/\/+$/, '');
+    const prefix = `${normalized}/`;
+    if ([...this.nonRegularPaths].some((path) => path === normalized || path.startsWith(prefix))) {
+      return null;
+    }
+    const paths = new Set([...Object.keys(this.files), ...this.byteFiles.keys()]);
+    const out = [...paths]
+      .map((path) => path.replace(/\\/g, '/'))
+      .filter((path) => path.startsWith(prefix))
+      .map((path) => path.slice(prefix.length))
+      .filter((path) => path.length > 0)
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    const exists = this.madeDirs.has(normalized) || out.length > 0;
+    return exists ? out : null;
   }
 
   mtimeMs(path: string): number | null {
     this.mtimeReads.push(path);
-    return path in this.files || this.madeDirs.has(path) ? (this.mtimes[path] ?? 0) : null;
+    return path in this.files || this.byteFiles.has(path) || this.madeDirs.has(path)
+      ? (this.mtimes[path] ?? 0)
+      : null;
   }
 
   setMtime(path: string, value: number): void {
@@ -103,7 +147,96 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   writeText(path: string, contents: string): void {
     this.writes.push(path);
     this.files[path] = contents;
+    this.byteFiles.delete(path);
     this.mtimes[path] = this.nextMtime++;
+  }
+
+  writeBytes(path: string, contents: Uint8Array): void {
+    this.writes.push(path);
+    this.byteFiles.set(path, Uint8Array.from(contents));
+    delete this.files[path];
+    this.mtimes[path] = this.nextMtime++;
+  }
+
+  normalizeBundleTargetIdentity(target: string): string {
+    const shaped = target.replace(/\\/g, '/').replace(/\/+$/, '');
+    const drive = /^([A-Za-z]):(?:\/|$)/.exec(shaped);
+    const absolute = drive !== null || shaped.startsWith('/');
+    const source = absolute ? shaped : `/cwd/${shaped}`;
+    const prefix =
+      drive !== null ? `${drive[1]?.toUpperCase()}:` : source.startsWith('//') ? '//' : '';
+    const body = drive !== null ? source.slice(2) : source;
+    const parts: string[] = [];
+    for (const part of body.split('/')) {
+      if (part === '' || part === '.') continue;
+      if (part === '..') {
+        parts.pop();
+        continue;
+      }
+      parts.push(part);
+    }
+    if (prefix === '//') return `//${parts.join('/')}`;
+    if (prefix !== '') return `${prefix}/${parts.join('/')}`;
+    return `/${parts.join('/')}`;
+  }
+
+  createSiblingTempDir(target: string, prefix: string): string {
+    const normalized = target.replace(/\\/g, '/').replace(/\/+$/, '');
+    const slash = normalized.lastIndexOf('/');
+    const parent = slash < 0 ? '.' : normalized.slice(0, slash) || '/';
+    const name = slash < 0 ? normalized : normalized.slice(slash + 1);
+    this.mkdirp(parent);
+    const temp =
+      `${parent === '/' ? '' : parent}/.${name}.${prefix}${this.siblingTemps.length}` || '/';
+    this.siblingTemps.push(temp);
+    this.mkdirp(temp);
+    return temp;
+  }
+
+  publishDirectoryExclusive(temp: string, target: string, lockKey: string): void {
+    this.publishedDirectories.push({ temp, target, lockKey });
+    if (this.failDirectoryPublish || this.heldBundleLocks.has(lockKey)) {
+      throw new Error('FakeFs.publishDirectoryExclusive: forced failure');
+    }
+    if (this.exists(target)) throw new Error('FakeFs.publishDirectoryExclusive: target exists');
+    if (
+      !this.madeDirs.has(temp) &&
+      ![...Object.keys(this.files), ...this.byteFiles.keys()].some((path) =>
+        path.startsWith(`${temp}/`),
+      )
+    ) {
+      throw new Error('FakeFs.publishDirectoryExclusive: temp missing');
+    }
+    this.heldBundleLocks.add(lockKey);
+    try {
+      if (this.failDirectoryPublishAfterLock) {
+        throw new Error('FakeFs.publishDirectoryExclusive: forced post-lock failure');
+      }
+      const prefix = `${temp.replace(/\/+$/, '')}/`;
+      const targetPrefix = `${target.replace(/\/+$/, '')}/`;
+      for (const path of Object.keys(this.files)) {
+        if (!path.startsWith(prefix)) continue;
+        const moved = `${targetPrefix}${path.slice(prefix.length)}`;
+        this.files[moved] = this.files[path] as string;
+        delete this.files[path];
+      }
+      for (const [path, bytes] of [...this.byteFiles]) {
+        if (!path.startsWith(prefix)) continue;
+        const moved = `${targetPrefix}${path.slice(prefix.length)}`;
+        this.byteFiles.set(moved, bytes);
+        this.byteFiles.delete(path);
+      }
+      for (const dir of [...this.madeDirs]) {
+        if (dir === temp || dir.startsWith(prefix)) {
+          const moved = dir === temp ? target : `${targetPrefix}${dir.slice(prefix.length)}`;
+          this.madeDirs.add(moved);
+          this.madeDirs.delete(dir);
+        }
+      }
+      this.madeDirs.add(target);
+    } finally {
+      this.heldBundleLocks.delete(lockKey);
+    }
   }
 
   rename(from: string, to: string): void {
@@ -126,6 +259,8 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     }
     // Idempotent (mirrors NodeFs `rmSync({force:true})`): a missing path is a no-op.
     delete this.files[path];
+    this.byteFiles.delete(path);
+    this.nonRegularPaths.delete(path);
     delete this.mtimes[path];
     this.dropFromParentListing(path);
   }
@@ -140,6 +275,12 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     // Recursively drop every file at or under the dir (mirrors recursive rmSync).
     for (const p of Object.keys(this.files)) {
       if (p === posix || p.startsWith(prefix)) delete this.files[p];
+    }
+    for (const p of [...this.byteFiles.keys()]) {
+      if (p === posix || p.startsWith(prefix)) this.byteFiles.delete(p);
+    }
+    for (const p of [...this.nonRegularPaths]) {
+      if (p === posix || p.startsWith(prefix)) this.nonRegularPaths.delete(p);
     }
     for (const p of Object.keys(this.mtimes)) {
       if (p === posix || p.startsWith(prefix)) delete this.mtimes[p];
