@@ -11,6 +11,8 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { KILL_SWITCH_ENV } from './capture-service.js';
 import { readFlushed, telemetryDir } from './cursor.js';
+import { reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
+import type { LogsData } from './otlp/types.js';
 import {
   buildRolledEntries,
   type LooseBlob,
@@ -217,12 +219,43 @@ interface SessionMaterial {
   looseJson: LooseBlob[];
   /** The highest buffer seq NUMBER present (the manifest watermark / advance target). */
   maxSeq: number;
+  /** Stable known product OIDs carried by per-segment logs/loose JSON or prior manifest. */
+  productCommits: string[];
   /** Deduped plan links across the whole session. */
   plans: Set<string>;
   /** The date of the lowest-seq parseable segment (start-date candidate). */
   lowestDate: string | null;
   /** The NEWEST (max) parseable segment timecode (ISO) — the age-out reference (T007). */
   newestTimecode: string | null;
+}
+
+const PRODUCT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
+function productCommitsFromMaterial(
+  logsLines: readonly string[],
+  looseJson: readonly LooseBlob[],
+): string[] {
+  const out: string[] = [];
+  const add = (value: unknown): void => {
+    if (typeof value === 'string' && PRODUCT_OID.test(value) && !out.includes(value))
+      out.push(value);
+  };
+  for (const line of logsLines) {
+    try {
+      const result = reconstructSegmentFromOtlpLogs(JSON.parse(line) as LogsData);
+      if (result.ok) add(result.segment.product_commit);
+    } catch {
+      // A malformed line is handled by the strict remote reader; local sync preserves bytes.
+    }
+  }
+  for (const loose of looseJson) {
+    try {
+      add((JSON.parse(loose.content) as Partial<Segment>).product_commit);
+    } catch {
+      // Preserve corrupt fallback bytes without inventing provenance.
+    }
+  }
+  return out;
 }
 
 /** The `<seq>` of every `<seq>.json` in a session dir, ascending. */
@@ -251,6 +284,7 @@ function readSessionMaterial(
   const metricsLines: string[] = [];
   const looseJson: LooseBlob[] = [];
   const plans = new Set<string>();
+  const productCommits: string[] = [];
   let maxSeq = 0;
   let lowestDate: string | null = null;
   let newestTimecode: string | null = null;
@@ -263,6 +297,14 @@ function readSessionMaterial(
     try {
       const parsed = JSON.parse(json) as Segment;
       for (const p of parsed.plans_touched ?? []) plans.add(p);
+      const productCommit = parsed.product_commit;
+      if (
+        typeof productCommit === 'string' &&
+        PRODUCT_OID.test(productCommit) &&
+        !productCommits.includes(productCommit)
+      ) {
+        productCommits.push(productCommit);
+      }
       if (lowestDate === null) {
         const d = refDatePath(parsed.timecode);
         if (d !== UNDATED) lowestDate = d;
@@ -288,7 +330,16 @@ function readSessionMaterial(
       looseJson.push({ name: `${seq}.json`, content: json });
     }
   }
-  return { logsLines, metricsLines, looseJson, maxSeq, plans, lowestDate, newestTimecode };
+  return {
+    logsLines,
+    metricsLines,
+    looseJson,
+    maxSeq,
+    productCommits,
+    plans,
+    lowestDate,
+    newestTimecode,
+  };
 }
 
 /**
@@ -347,18 +398,25 @@ function readRolledRef(git: GitWritePort, ref: string): SessionMaterial | null {
   let logsLines: string[] = [];
   let metricsLines: string[] = [];
   const looseJson: LooseBlob[] = [];
+  let manifestProductCommits: string[] | undefined;
   let maxSeq = 0;
   for (const b of blobs) {
     if (b.name === ROLLED_LOGS_NAME) logsLines = splitJsonl(b.content);
     else if (b.name === ROLLED_METRICS_NAME) metricsLines = splitJsonl(b.content);
-    else if (b.name === ROLLED_MANIFEST_NAME) maxSeq = parseManifest(b.content)?.max_seq ?? 0;
-    else if (/^\d+\.json$/.test(b.name)) looseJson.push({ name: b.name, content: b.content });
+    else if (b.name === ROLLED_MANIFEST_NAME) {
+      const manifest = parseManifest(b.content);
+      maxSeq = manifest?.max_seq ?? 0;
+      manifestProductCommits = manifest?.product_commits;
+    } else if (/^\d+\.json$/.test(b.name)) {
+      looseJson.push({ name: b.name, content: b.content });
+    }
   }
   return {
     logsLines,
     metricsLines,
     looseJson,
     maxSeq,
+    productCommits: manifestProductCommits ?? productCommitsFromMaterial(logsLines, looseJson),
     plans: new Set(),
     lowestDate: null,
     newestTimecode: null,
@@ -484,6 +542,9 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
         ...bufferMat.looseJson,
       ],
       maxSeq: Math.max(refMaxSeq, bufferMat.maxSeq),
+      productCommits: [
+        ...new Set([...(refState?.productCommits ?? []), ...bufferMat.productCommits]),
+      ],
       plans: bufferMat.plans,
       lowestDate: bufferMat.lowestDate,
       newestTimecode: bufferMat.newestTimecode,
@@ -560,6 +621,7 @@ function flushSession(
     metricsLines: material.metricsLines,
     looseJson: material.looseJson,
     maxSeq: material.maxSeq,
+    productCommits: material.productCommits,
   });
 
   if (deps.git.refTree(ref) === treeSha) {
@@ -868,12 +930,19 @@ function unionSessionMaterial(
   gitRead: GitReadPort,
   oldRefs: readonly string[],
   rolledRefs: readonly string[],
-): { logsLines: string[]; metricsLines: string[]; looseJson: LooseBlob[]; maxSeq: number } {
+): {
+  logsLines: string[];
+  metricsLines: string[];
+  looseJson: LooseBlob[];
+  maxSeq: number;
+  productCommits: string[];
+} {
   const logsBySeq = new Map<number, string>();
   const metricsBySeq = new Map<number, string>();
   const jsonBySeq = new Map<number, string>();
   const extraLogs: string[] = [];
   const extraMetrics: string[] = [];
+  const manifestProductCommits: string[] = [];
   let maxSeq = 0;
 
   // Old-shape refs: walk EVERY commit's tree (recovers clobbered non-tip segments).
@@ -907,7 +976,12 @@ function unionSessionMaterial(
       else if (b.name === ROLLED_METRICS_NAME) extraMetrics.push(...splitJsonl(b.content));
       else if (b.name === ROLLED_MANIFEST_NAME) {
         const m = parseManifest(b.content);
-        if (m) maxSeq = Math.max(maxSeq, m.max_seq);
+        if (m) {
+          maxSeq = Math.max(maxSeq, m.max_seq);
+          for (const oid of m.product_commits ?? []) {
+            if (!manifestProductCommits.includes(oid)) manifestProductCommits.push(oid);
+          }
+        }
       } else {
         const mJson = /^(\d+)\.json$/.exec(b.name);
         if (mJson) {
@@ -925,7 +999,14 @@ function unionSessionMaterial(
     .filter((s) => !logsBySeq.has(s)) // a seq with a logs record is carried there, not loose
     .sort((a, b) => a - b)
     .map((s) => ({ name: `${s}.json`, content: jsonBySeq.get(s) as string }));
-  return { logsLines, metricsLines, looseJson, maxSeq };
+  const derivedProductCommits = productCommitsFromMaterial(logsLines, looseJson);
+  return {
+    logsLines,
+    metricsLines,
+    looseJson,
+    maxSeq,
+    productCommits: [...new Set([...manifestProductCommits, ...derivedProductCommits])],
+  };
 }
 
 /** A map's values in ascending-key order. */
@@ -957,7 +1038,13 @@ function writeMigratedRoll(
   target: string,
   session: string,
   startDate: string,
-  material: { logsLines: string[]; metricsLines: string[]; looseJson: LooseBlob[]; maxSeq: number },
+  material: {
+    logsLines: string[];
+    metricsLines: string[];
+    looseJson: LooseBlob[];
+    maxSeq: number;
+    productCommits: string[];
+  },
 ): { treeSha: string; ourCommit: string | null } {
   const { treeSha } = buildRolledEntries(deps.git, {
     session,
@@ -966,6 +1053,7 @@ function writeMigratedRoll(
     metricsLines: material.metricsLines,
     looseJson: material.looseJson,
     maxSeq: material.maxSeq,
+    productCommits: material.productCommits,
   });
   const forcedSpec = `+${target}:${target}`;
   const message = `telemetry: migrate roll — ${startDate}/${session}\n`;

@@ -10,6 +10,7 @@ import {
   RES_COMMAND,
   RES_ENV,
   RES_HARNESS,
+  RES_PRODUCT_COMMIT,
   RES_SCHEMA_VERSION,
   RES_SERVICE,
   RES_SERVICE_VERSION,
@@ -27,6 +28,9 @@ export function resourceAttrs(seg: Segment): KeyValue[] {
     kv(RES_SCHEMA_VERSION, sv(seg.schema_version)),
   ];
   if (seg.branch !== null) attrs.push(kv(RES_BRANCH, sv(seg.branch)));
+  if (seg.schema_version === '2.5' && seg.product_commit !== undefined) {
+    attrs.push(kv(RES_PRODUCT_COMMIT, sv(seg.product_commit)));
+  }
   // The allowlisted env snapshot → ONE kvlist attribute (omitted when absent/empty),
   // so the resource attribute key set stays closed even as var names vary.
   const env = seg.captured_env;

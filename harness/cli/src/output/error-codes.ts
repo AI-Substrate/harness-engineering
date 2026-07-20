@@ -74,6 +74,23 @@ export const ErrorCodes = {
   SENSOR_DECL_INVALID: 'E216',
   /** Two extensions declared the same flat sensor name. */
   SENSOR_NAME_CONFLICT: 'E217',
+  // --- `harness telemetry ls|pull` (P060; E220–E227 complete allocation) ---
+  /** Required remote advertisement/fetch/auth/protocol/timeout/product-graph transport failure. */
+  REMOTE_TELEMETRY_TRANSPORT_FAILED: 'E220',
+  /** Conclusive exact-session absence after every repository advertised successfully. */
+  REMOTE_TELEMETRY_SESSION_NOT_FOUND: 'E221',
+  /** Selected telemetry history/tree/blob/schema/privacy/provenance is malformed or unsupported. */
+  REMOTE_TELEMETRY_INVALID: 'E222',
+  /** The remote telemetry namespace moved twice while establishing a verified snapshot. */
+  REMOTE_TELEMETRY_MOVED: 'E223',
+  /** A product commit endpoint is unknown, unreachable, or not a commit. */
+  REMOTE_TELEMETRY_ENDPOINT_UNKNOWN: 'E224',
+  /** Product start is not an ancestor of product end. */
+  REMOTE_TELEMETRY_RANGE_DIVERGED: 'E225',
+  /** Exact bundle target exists with a differing, extra, missing, or non-regular entry. */
+  TELEMETRY_BUNDLE_CONFLICT: 'E226',
+  /** Bundle temp/write/hash/lock/publish/cleanup failed. */
+  TELEMETRY_BUNDLE_WRITE_FAILED: 'E227',
   // --- `harness flow` family (plan 024; additive — E300–E309 reserved, all free) ---
   /** `harness flow`: a flow document failed schema validation (shape/required fields/enum), or an invalid `--template` was supplied. */
   FLOW_SCHEMA_INVALID: 'E300',

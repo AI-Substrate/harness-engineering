@@ -12,50 +12,80 @@
  * round-trip is byte-faithful and `computeRollup` of the result equals the
  * stored rollup.
  */
-import type {
-  ApiErrorEvent,
-  ArtifactEvent,
-  ArtifactType,
-  BranchEvent,
-  ChecksEvent,
-  ChecksStatus,
-  CommandExitEvent,
-  CompactionEvent,
-  Event,
-  EventKind,
-  FileEvent,
-  FlowEvent,
-  FlowLogEvent,
-  HarnessEvent,
-  ModelEvent,
-  ObservationKind,
-  PromptEvent,
-  SkillEvent,
-  SkillStatus,
-  SubagentEvent,
-  ToolsEvent,
-  TPrecision,
-  TurnEvent,
+import {
+  type ApiErrorEvent,
+  ARTIFACT_COUNT_KEYS,
+  ARTIFACT_ENUM_KEYS,
+  type ArtifactEvent,
+  type ArtifactType,
+  type BranchEvent,
+  type ChecksEvent,
+  type ChecksStatus,
+  type CommandExitEvent,
+  type CompactionEvent,
+  type Event,
+  type EventKind,
+  type FileEvent,
+  type FlowEvent,
+  type FlowLogEvent,
+  type HarnessEvent,
+  MARK_COUNT_KEYS,
+  type ModelEvent,
+  type ObservationKind,
+  type PromptEvent,
+  type SkillEvent,
+  type SkillStatus,
+  type SubagentEvent,
+  type ToolsEvent,
+  type TPrecision,
+  type TurnEvent,
 } from '../events.js';
-import type { Segment } from '../segment.js';
+import { computeRollup } from '../rollup.js';
+import {
+  isCapturedEnvEntry,
+  isTelemetryCommand,
+  isTelemetryExtensionString,
+  isTelemetryHarness,
+  isTelemetryModel,
+  isTelemetryRelativePath,
+  isTelemetryServiceVersion,
+  isTelemetrySessionId,
+  isTelemetrySignature,
+  isTelemetryTime,
+  PIJ_EFFORT_VALUES,
+  type Segment,
+} from '../segment.js';
 import { resourceAttrs } from './resource.js';
-import { A, GENAI_INPUT_TOKENS, GENAI_MODEL, GENAI_OUTPUT_TOKENS } from './semconv.js';
+import {
+  A,
+  GENAI_INPUT_TOKENS,
+  GENAI_MODEL,
+  GENAI_OUTPUT_TOKENS,
+  RES_BRANCH,
+  RES_COMMAND,
+  RES_ENV,
+  RES_HARNESS,
+  RES_PRODUCT_COMMIT,
+  RES_SCHEMA_VERSION,
+  RES_SERVICE,
+  RES_SERVICE_VERSION,
+  RES_SESSION,
+} from './semconv.js';
 import {
   type AnyValue,
   attrMap,
-  HARNESS_SCHEMA_URL,
   type KeyValue,
   kv,
   type LogRecord,
   type LogsData,
   nv,
-  OTLP_SCOPE_VERSION,
   readNum,
   readStr,
   SCOPE_NAME,
   SEV_ERROR,
   SEV_INFO,
   SEV_WARN,
+  schemaIdentityForSegmentVersion,
   severityText,
   sv,
 } from './types.js';
@@ -64,6 +94,454 @@ import {
 function toNanos(iso: string): string {
   const ms = Date.parse(iso);
   return Number.isFinite(ms) ? String(BigInt(Math.round(ms)) * 1_000_000n) : '0';
+}
+
+export type LogAttributeKind = 'string' | 'int' | 'number' | 'kv-string' | 'kv-int';
+export type LogStringRole =
+  | 'event-kind'
+  | 'time'
+  | 'identifier'
+  | 'model'
+  | 'signature'
+  | 'path'
+  | 'command'
+  | 'slug';
+export type LogKvRole = 'gates' | 'artifact-counts' | 'artifact-enums' | 'mark-counts';
+
+export interface LogAttributeDefinition {
+  key: string;
+  kind: LogAttributeKind;
+  required: boolean;
+  values?: readonly string[];
+  min?: number;
+  max?: number;
+  role?: LogStringRole;
+  kvRole?: LogKvRole;
+}
+
+export interface LogEventDefinition {
+  kind: EventKind;
+  attributes: readonly LogAttributeDefinition[];
+  severityNumbers: readonly number[];
+}
+
+const MARK_KIND = 'harness.mark.kind';
+const MARK_COUNTS = 'harness.mark.counts';
+const MARK_VERDICT = 'harness.mark.verdict';
+const T_PRECISION_VALUES = ['exact', 'anchored', 'interpolated', 'interval'] as const;
+const OBSERVE_KIND_VALUES = [
+  'difficulty',
+  'magic-wand',
+  'gift',
+  'insight',
+  'coordination',
+  'improvement-suggestion',
+  'confusion',
+  'win',
+] as const;
+const ARTIFACT_TYPE_VALUES = [
+  'review',
+  'plan',
+  'workshop',
+  'dossier',
+  'tasks',
+  'execution-log',
+  'backpressure',
+  'validation',
+  'ship-report',
+  'flight-plan',
+  'retro',
+] as const;
+
+const requiredString = (
+  key: string,
+  role: LogStringRole,
+  values?: readonly string[],
+): LogAttributeDefinition => ({
+  key,
+  kind: 'string',
+  required: true,
+  role,
+  ...(values && { values }),
+});
+const optionalString = (
+  key: string,
+  role: LogStringRole,
+  values?: readonly string[],
+): LogAttributeDefinition => ({
+  key,
+  kind: 'string',
+  required: false,
+  role,
+  ...(values && { values }),
+});
+const requiredInt = (key: string, min = 0, max?: number): LogAttributeDefinition => ({
+  key,
+  kind: 'int',
+  required: true,
+  min,
+  ...(max !== undefined && { max }),
+});
+const optionalInt = (key: string, min = 0, max?: number): LogAttributeDefinition => ({
+  key,
+  kind: 'int',
+  required: false,
+  min,
+  ...(max !== undefined && { max }),
+});
+const requiredNumber = (key: string, min = 0, max?: number): LogAttributeDefinition => ({
+  key,
+  kind: 'number',
+  required: true,
+  min,
+  ...(max !== undefined && { max }),
+});
+const optionalNumber = (key: string, min = 0, max?: number): LogAttributeDefinition => ({
+  key,
+  kind: 'number',
+  required: false,
+  min,
+  ...(max !== undefined && { max }),
+});
+const optionalKv = (
+  key: string,
+  kind: 'kv-string' | 'kv-int',
+  kvRole: LogKvRole,
+): LogAttributeDefinition => ({
+  key,
+  kind,
+  required: false,
+  kvRole,
+});
+const requiredKv = (
+  key: string,
+  kind: 'kv-string' | 'kv-int',
+  kvRole: LogKvRole,
+): LogAttributeDefinition => ({
+  key,
+  kind,
+  required: true,
+  kvRole,
+});
+const defineEvent = (
+  kind: EventKind,
+  attributes: readonly LogAttributeDefinition[],
+  severityNumbers: readonly number[] = [SEV_INFO],
+): LogEventDefinition => ({
+  kind,
+  severityNumbers,
+  attributes: [
+    requiredString(A.KIND, 'event-kind', [kind]),
+    requiredString(A.T, 'time'),
+    optionalString(A.T_PRECISION, 'identifier', T_PRECISION_VALUES),
+    ...attributes,
+  ],
+});
+
+/** Complete producer-owned Logs vocabulary, consumed by encoding and strict reading. */
+export const LOG_EVENT_DEFINITIONS: readonly LogEventDefinition[] = [
+  defineEvent('prompt', [requiredInt(A.PROMPT_WORDS)]),
+  defineEvent('turn', [
+    requiredNumber(A.TURN_DUR_S),
+    optionalInt(GENAI_INPUT_TOKENS),
+    optionalInt(GENAI_OUTPUT_TOKENS),
+    optionalInt(A.CACHE_READ),
+    optionalInt(A.CACHE_CREATE),
+    optionalString(GENAI_MODEL, 'model'),
+  ]),
+  defineEvent('tools', [
+    requiredString(A.TOOL_NAME, 'identifier'),
+    requiredInt(A.TOOL_COUNT),
+    requiredNumber(A.TOOL_SPAN_S),
+    optionalString(A.TOOL_SIG, 'signature'),
+    optionalInt(A.TOOL_RESULT_TOKENS),
+  ]),
+  defineEvent('skill', [
+    requiredString(A.SKILL_NAME, 'identifier'),
+    requiredString(A.SKILL_STATUS, 'identifier', [
+      'completed',
+      'abandoned',
+      'superseded',
+      'active',
+    ]),
+    optionalNumber(A.SKILL_DUR_S),
+    optionalString(A.SKILL_ARG, 'identifier'),
+  ]),
+  defineEvent('flow', [
+    requiredString(A.FLOW_NAME, 'identifier'),
+    requiredString(A.FLOW_STAGE, 'identifier'),
+    requiredString(A.FLOW_STATUS, 'identifier', ['done', 'blocked', 'in_progress', 'active']),
+    optionalString(A.FLOW_FROM, 'identifier'),
+  ]),
+  defineEvent('flow_log', [
+    requiredString(A.FLOWLOG_OP, 'identifier'),
+    optionalString(A.FLOWLOG_NODE, 'identifier'),
+    optionalString(A.FLOWLOG_FROM, 'identifier'),
+    optionalString(A.FLOWLOG_TO, 'identifier'),
+    optionalString(A.FLOWLOG_TYPE, 'identifier'),
+    optionalString(A.FLOWLOG_EDGE_OP, 'identifier'),
+  ]),
+  defineEvent('branch', [
+    requiredString(A.BRANCH_TO, 'path'),
+    optionalString(A.BRANCH_FROM, 'path'),
+  ]),
+  defineEvent('harness', [
+    requiredString(A.VERB, 'command'),
+    optionalString(A.OBSERVE_KIND, 'identifier', OBSERVE_KIND_VALUES),
+  ]),
+  defineEvent(
+    'checks',
+    [
+      requiredString(A.CHECKS_STATUS, 'identifier', ['ok', 'degraded', 'error']),
+      optionalKv(A.CHECKS_GATES, 'kv-string', 'gates'),
+    ],
+    [SEV_INFO, SEV_WARN, SEV_ERROR],
+  ),
+  defineEvent(
+    'command_exit',
+    [
+      requiredString(A.CMD_VERB, 'command'),
+      requiredInt(A.CMD_EXIT, 0, 255),
+      optionalString(A.CMD_STATUS, 'identifier', ['ok', 'degraded', 'error', 'fatal']),
+    ],
+    [SEV_INFO, SEV_ERROR],
+  ),
+  defineEvent('subagent', [
+    requiredString(A.SUBAGENT_NAME, 'identifier'),
+    requiredString(A.SUBAGENT_STATUS, 'identifier', ['completed', 'active']),
+    optionalNumber(A.SUBAGENT_DUR_S),
+  ]),
+  defineEvent('compaction', []),
+  defineEvent('model', [
+    requiredString(GENAI_MODEL, 'model'),
+    optionalString(A.EFFORT, 'identifier', PIJ_EFFORT_VALUES),
+  ]),
+  defineEvent('api_error', [optionalString(A.API_ERROR_SIG, 'signature')], [SEV_ERROR]),
+  defineEvent('artifact', [
+    requiredString(A.ARTIFACT_TYPE, 'identifier', ARTIFACT_TYPE_VALUES),
+    requiredString(A.ARTIFACT_PATH, 'path'),
+    requiredString(A.ARTIFACT_CHANGE, 'identifier', ['written', 'edited']),
+    requiredInt(A.ARTIFACT_SIZE_LINES),
+    requiredInt(A.ARTIFACT_SIZE_BYTES),
+    optionalString(A.ARTIFACT_PLAN_ID, 'identifier'),
+    optionalKv(A.ARTIFACT_COUNTS, 'kv-int', 'artifact-counts'),
+    optionalKv(A.ARTIFACT_ENUMS, 'kv-string', 'artifact-enums'),
+  ]),
+  defineEvent('file', [
+    requiredString(A.FILE_PATH, 'path'),
+    requiredString(A.FILE_CHANGE, 'identifier', ['written', 'edited']),
+    requiredInt(A.FILE_LINES_ADDED),
+    requiredInt(A.FILE_LINES_REMOVED),
+    requiredInt(A.FILE_BYTES_ADDED),
+    requiredInt(A.FILE_BYTES_REMOVED),
+  ]),
+  defineEvent('mark', [
+    requiredString(MARK_KIND, 'slug'),
+    requiredKv(MARK_COUNTS, 'kv-int', 'mark-counts'),
+    optionalString(MARK_VERDICT, 'slug'),
+  ]),
+];
+
+export const LOG_EVENT_DEFINITION_BY_KIND: ReadonlyMap<string, LogEventDefinition> = new Map(
+  LOG_EVENT_DEFINITIONS.map((definition) => [definition.kind, definition]),
+);
+
+const ARTIFACT_ENUM_VALUES: Readonly<Record<string, ReadonlySet<string>>> = {
+  verdict: new Set([
+    'APPROVE',
+    'APPROVE_WITH_NOTES',
+    'FIX_REQUIRED',
+    'NEEDS_ATTENTION',
+    'VALIDATED',
+    'VALIDATED_WITH_FIXES',
+    'other',
+  ]),
+  mode: new Set(['SIMPLE', 'FULL', 'other']),
+  status: new Set(['READY', 'DRAFT', 'other']),
+  target_proof: new Set([
+    'CONTRACT_READY',
+    'PREFERRED_DIRECTION',
+    'DIRECTIONAL',
+    'EXPLORATORY',
+    'other',
+  ]),
+  current_proof: new Set([
+    'CONTRACT_READY',
+    'PREFERRED_DIRECTION',
+    'DIRECTIONAL',
+    'EXPLORATORY',
+    'other',
+  ]),
+  certainty: new Set(['FULL', 'PARTIAL', 'NONE', 'COMPLETE', 'other']),
+  pr_state: new Set(['OPEN', 'MERGED', 'CLOSED', 'DRAFT', 'other']),
+};
+const GATE_STATUS_VALUES = new Set(['ok', 'degraded', 'error', 'fail', 'timeout', 'skipped', 'na']);
+
+function exactAnyValue(value: AnyValue, key: keyof AnyValue): boolean {
+  return Object.keys(value).length === 1 && key in value;
+}
+
+function validStringRole(role: LogStringRole | undefined, value: string): boolean {
+  switch (role) {
+    case 'event-kind':
+      return LOG_EVENT_DEFINITION_BY_KIND.has(value);
+    case 'time':
+      return isTelemetryTime(value);
+    case 'model':
+      return isTelemetryModel(value);
+    case 'signature':
+      return isTelemetrySignature(value);
+    case 'path':
+      return isTelemetryRelativePath(value);
+    case 'command':
+      return isTelemetryCommand(value);
+    case 'slug':
+      return /^[a-z][a-z0-9-]{0,31}$/.test(value);
+    default:
+      return isTelemetryExtensionString(value);
+  }
+}
+
+function validKvEntry(role: LogKvRole | undefined, key: string, value: AnyValue): boolean {
+  if (!isTelemetryExtensionString(key)) return false;
+  if (role === 'artifact-counts' && !(ARTIFACT_COUNT_KEYS as readonly string[]).includes(key)) {
+    return false;
+  }
+  if (role === 'mark-counts' && !(MARK_COUNT_KEYS as readonly string[]).includes(key)) return false;
+  if (role === 'artifact-enums') {
+    const text = exactAnyValue(value, 'stringValue') ? value.stringValue : undefined;
+    return (
+      (ARTIFACT_ENUM_KEYS as readonly string[]).includes(key) &&
+      typeof text === 'string' &&
+      (ARTIFACT_ENUM_VALUES[key]?.has(text) ?? false)
+    );
+  }
+  if (role === 'gates') {
+    const text = exactAnyValue(value, 'stringValue') ? value.stringValue : undefined;
+    return typeof text === 'string' && GATE_STATUS_VALUES.has(text);
+  }
+  if (exactAnyValue(value, 'intValue')) {
+    return typeof value.intValue === 'string' && /^(?:0|[1-9]\d*)$/.test(value.intValue);
+  }
+  return (
+    exactAnyValue(value, 'stringValue') &&
+    typeof value.stringValue === 'string' &&
+    isTelemetryExtensionString(value.stringValue)
+  );
+}
+
+export function validateLogAttributeValue(
+  definition: LogAttributeDefinition,
+  value: AnyValue,
+): boolean {
+  if (definition.kind === 'string') {
+    if (!exactAnyValue(value, 'stringValue') || typeof value.stringValue !== 'string') return false;
+    return (
+      validStringRole(definition.role, value.stringValue) &&
+      (definition.values === undefined || definition.values.includes(value.stringValue))
+    );
+  }
+  if (definition.kind === 'int' || definition.kind === 'number') {
+    let number: number;
+    if (exactAnyValue(value, 'intValue') && typeof value.intValue === 'string') {
+      if (!/^(?:0|[1-9]\d*)$/.test(value.intValue)) return false;
+      number = Number(value.intValue);
+      if (!Number.isSafeInteger(number)) return false;
+    } else if (
+      definition.kind === 'number' &&
+      exactAnyValue(value, 'doubleValue') &&
+      typeof value.doubleValue === 'number' &&
+      Number.isFinite(value.doubleValue)
+    ) {
+      number = value.doubleValue;
+    } else {
+      return false;
+    }
+    return (
+      (definition.min === undefined || number >= definition.min) &&
+      (definition.max === undefined || number <= definition.max)
+    );
+  }
+  if (!exactAnyValue(value, 'kvlistValue') || value.kvlistValue === undefined) return false;
+  const seen = new Set<string>();
+  for (const entry of value.kvlistValue.values) {
+    if (seen.has(entry.key) || !validKvEntry(definition.kvRole, entry.key, entry.value))
+      return false;
+    if (definition.kind === 'kv-string' && !exactAnyValue(entry.value, 'stringValue')) return false;
+    if (definition.kind === 'kv-int' && !exactAnyValue(entry.value, 'intValue')) return false;
+    seen.add(entry.key);
+  }
+  return true;
+}
+
+export function validateLogEventAttributes(attributes: readonly KeyValue[]): boolean {
+  const byKey = new Map<string, AnyValue>();
+  for (const attribute of attributes) {
+    if (byKey.has(attribute.key)) return false;
+    byKey.set(attribute.key, attribute.value);
+  }
+  const kindValue = byKey.get(A.KIND);
+  const kind =
+    kindValue !== undefined && exactAnyValue(kindValue, 'stringValue')
+      ? kindValue.stringValue
+      : undefined;
+  const definition = typeof kind === 'string' ? LOG_EVENT_DEFINITION_BY_KIND.get(kind) : undefined;
+  if (definition === undefined) return false;
+  const allowed = new Map(definition.attributes.map((attribute) => [attribute.key, attribute]));
+  if ([...byKey.keys()].some((key) => !allowed.has(key))) return false;
+  for (const attribute of definition.attributes) {
+    const value = byKey.get(attribute.key);
+    if (value === undefined) {
+      if (attribute.required) return false;
+      continue;
+    }
+    if (!validateLogAttributeValue(attribute, value)) return false;
+  }
+  const observe = byKey.get(A.OBSERVE_KIND);
+  const verb = byKey.get(A.VERB);
+  if (observe !== undefined && verb?.stringValue !== 'observe') return false;
+  return true;
+}
+
+function expectedSeverity(
+  kind: string,
+  attributes: ReadonlyMap<string, AnyValue>,
+): number | undefined {
+  if (kind === 'checks') {
+    const status = readStr(attributes.get(A.CHECKS_STATUS));
+    return status === 'ok' ? SEV_INFO : status === 'degraded' ? SEV_WARN : SEV_ERROR;
+  }
+  if (kind === 'command_exit') {
+    const exit = readNum(attributes.get(A.CMD_EXIT));
+    return exit === undefined ? undefined : exit === 0 ? SEV_INFO : SEV_ERROR;
+  }
+  const definition = LOG_EVENT_DEFINITION_BY_KIND.get(kind);
+  return definition?.severityNumbers.length === 1 ? definition.severityNumbers[0] : undefined;
+}
+
+export function validateLogRecordContract(record: LogRecord): boolean {
+  if (
+    record.attributes === undefined ||
+    typeof record.timeUnixNano !== 'string' ||
+    !/^(?:0|[1-9]\d*)$/.test(record.timeUnixNano) ||
+    Object.hasOwn(record, 'observedTimeUnixNano') ||
+    typeof record.severityNumber !== 'number' ||
+    typeof record.severityText !== 'string' ||
+    !validateLogEventAttributes(record.attributes)
+  ) {
+    return false;
+  }
+  const attributeMap = attrMap(record.attributes);
+  const kind = readStr(attributeMap.get(A.KIND));
+  const eventTime = readStr(attributeMap.get(A.T));
+  const severity = kind === undefined ? undefined : expectedSeverity(kind, attributeMap);
+  return (
+    eventTime !== undefined &&
+    record.timeUnixNano === toNanos(eventTime) &&
+    severity !== undefined &&
+    record.severityNumber === severity &&
+    record.severityText === severityText(severity)
+  );
 }
 
 function encodeEvent(e: Event): LogRecord {
@@ -188,14 +666,30 @@ function encodeEvent(e: Event): LogRecord {
       );
       break;
     }
+    case 'mark': {
+      attrs.push(kv(MARK_KIND, sv(e.mark_kind)));
+      attrs.push(
+        kv(MARK_COUNTS, {
+          kvlistValue: {
+            values: Object.entries(e.counts).map(([key, value]) => kv(key, nv(value))),
+          },
+        }),
+      );
+      if (e.verdict !== undefined) attrs.push(kv(MARK_VERDICT, sv(e.verdict)));
+      break;
+    }
   }
 
-  return {
+  const record: LogRecord = {
     timeUnixNano: toNanos(e.t),
     severityNumber: sev,
     severityText: severityText(sev),
     attributes: attrs,
   };
+  if (!validateLogRecordContract(record)) {
+    throw new Error(`invalid producer log event: ${e.kind}`);
+  }
+  return record;
 }
 
 /** Rebuild the shared `{ t, t_precision? }` base of a serialized event. */
@@ -387,22 +881,134 @@ function decodeEvent(rec: LogRecord): Event {
       };
       return ev;
     }
+    case 'mark': {
+      const counts: Record<string, number> = {};
+      for (const entry of m.get(MARK_COUNTS)?.kvlistValue?.values ?? []) {
+        counts[entry.key] = readNum(entry.value) ?? 0;
+      }
+      const ev: Event = {
+        ...base,
+        kind,
+        mark_kind: readStr(m.get(MARK_KIND)) ?? '',
+        counts,
+      };
+      const verdict = readStr(m.get(MARK_VERDICT));
+      if (verdict !== undefined) ev.verdict = verdict;
+      return ev;
+    }
     default:
       return { ...base, kind } as Event;
   }
 }
 
-/** Serialize a segment's `event_stream` to one `ResourceLogs` (OTLP Logs). */
+export type OtlpSegmentReconstruction =
+  | { ok: true; segment: Segment }
+  | {
+      ok: false;
+      reason: 'missing_resource' | 'schema_identity' | 'product_commit' | 'unsafe_resource';
+    };
+
+/**
+ * Typed logs-rooted Segment reconstruction shared by session export and strict
+ * published retrieval. It validates the 2.4/v0.1 vs 2.5/v0.2 pairing and keeps
+ * product provenance even when the event list is empty.
+ */
+export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentReconstruction {
+  const resourceLogs = logs.resourceLogs?.[0];
+  const scopeLogs = resourceLogs?.scopeLogs?.[0];
+  if (resourceLogs === undefined || scopeLogs === undefined) {
+    return { ok: false, reason: 'missing_resource' };
+  }
+  const attrs = attrMap(resourceLogs.resource?.attributes);
+  const schemaVersion = readStr(attrs.get(RES_SCHEMA_VERSION)) ?? 'unknown';
+  const service = readStr(attrs.get(RES_SERVICE));
+  const serviceVersion = readStr(attrs.get(RES_SERVICE_VERSION));
+  const sessionId = readStr(attrs.get(RES_SESSION));
+  const harness = readStr(attrs.get(RES_HARNESS));
+  const command = readStr(attrs.get(RES_COMMAND));
+  const branch = readStr(attrs.get(RES_BRANCH));
+  if (
+    (schemaVersion !== '2.4' && schemaVersion !== '2.5') ||
+    service !== 'harness' ||
+    serviceVersion === undefined ||
+    !isTelemetryServiceVersion(serviceVersion) ||
+    sessionId === undefined ||
+    !isTelemetrySessionId(sessionId) ||
+    harness === undefined ||
+    !isTelemetryHarness(harness) ||
+    command === undefined ||
+    !isTelemetryCommand(command) ||
+    (branch !== undefined && !isTelemetryRelativePath(branch))
+  ) {
+    return { ok: false, reason: 'unsafe_resource' };
+  }
+  const identity = schemaIdentityForSegmentVersion(schemaVersion);
+  if (
+    resourceLogs.schemaUrl !== identity.schemaUrl ||
+    scopeLogs.schemaUrl !== identity.schemaUrl ||
+    scopeLogs.scope?.name !== SCOPE_NAME ||
+    scopeLogs.scope?.version !== identity.scopeVersion
+  ) {
+    return { ok: false, reason: 'schema_identity' };
+  }
+
+  const productCommit = readStr(attrs.get(RES_PRODUCT_COMMIT));
+  if (
+    (productCommit !== undefined && schemaVersion !== '2.5') ||
+    (productCommit !== undefined && !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(productCommit))
+  ) {
+    return { ok: false, reason: 'product_commit' };
+  }
+
+  const envPairs = attrs.get(RES_ENV)?.kvlistValue?.values ?? [];
+  const envKeys = new Set<string>();
+  for (const { key, value } of envPairs) {
+    const text = readStr(value);
+    if (envKeys.has(key) || text === undefined || !isCapturedEnvEntry(key, text, schemaVersion)) {
+      return { ok: false, reason: 'unsafe_resource' };
+    }
+    envKeys.add(key);
+  }
+
+  const events = otlpLogsToEvents(logs);
+  const segment: Segment = {
+    schema_version: schemaVersion,
+    command,
+    harness,
+    harness_version: serviceVersion,
+    harness_session_id: sessionId,
+    timecode: events[0]?.t ?? '',
+    window: { since: 'session-start', from: 0, to: 0 },
+    branch: branch ?? null,
+    tokens: null,
+    effort: null,
+    event_stream: events,
+    rollup: events.length > 0 ? computeRollup(events) : null,
+  };
+  if (productCommit !== undefined) segment.product_commit = productCommit;
+  if (envPairs.length > 0) {
+    segment.captured_env = Object.fromEntries(
+      envPairs.flatMap(({ key, value }) => {
+        const text = readStr(value);
+        return text === undefined ? [] : [[key, text]];
+      }),
+    );
+  }
+  return { ok: true, segment };
+}
+
+/** Serialize a segment's `event_stream` to one version-aware `ResourceLogs`. */
 export function segmentToOtlpLogs(seg: Segment): LogsData {
+  const identity = schemaIdentityForSegmentVersion(seg.schema_version);
   return {
     resourceLogs: [
       {
         resource: { attributes: resourceAttrs(seg) },
-        schemaUrl: HARNESS_SCHEMA_URL,
+        schemaUrl: identity.schemaUrl,
         scopeLogs: [
           {
-            scope: { name: SCOPE_NAME, version: OTLP_SCOPE_VERSION },
-            schemaUrl: HARNESS_SCHEMA_URL,
+            scope: { name: SCOPE_NAME, version: identity.scopeVersion },
+            schemaUrl: identity.schemaUrl,
             logRecords: seg.event_stream.map(encodeEvent),
           },
         ],

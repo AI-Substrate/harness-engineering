@@ -9,6 +9,8 @@ export interface GitPort {
   isRepo(): boolean;
   /** Current branch name, or null if not a repo / detached HEAD. */
   currentBranch(): string | null;
+  /** Current product HEAD commit, or null for unborn/no-repo/invalid output. Detached HEAD is valid. */
+  currentCommit(): string | null;
   /**
    * The `origin` remote URL — the provenance header's `repo` join key. `null`
    * when there is no `origin` remote (or not a repo). `origin`-only by design:

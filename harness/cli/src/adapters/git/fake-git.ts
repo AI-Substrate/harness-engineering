@@ -11,6 +11,7 @@ export class FakeGit implements GitPort {
     private readonly state: {
       isRepo?: boolean;
       branch?: string | null;
+      currentCommit?: string | null;
       remoteUrl?: string | null;
     } = {},
   ) {}
@@ -23,6 +24,12 @@ export class FakeGit implements GitPort {
   currentBranch(): string | null {
     this.calls.push('currentBranch');
     return this.state.branch ?? null;
+  }
+
+  currentCommit(): string | null {
+    this.calls.push('currentCommit');
+    const value = this.state.currentCommit?.toLowerCase() ?? null;
+    return value !== null && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value) ? value : null;
   }
 
   remoteUrl(): string | null {

@@ -13,6 +13,7 @@ import {
   RES_COMMAND,
   RES_ENV,
   RES_HARNESS,
+  RES_PRODUCT_COMMIT,
   RES_SCHEMA_VERSION,
   RES_SERVICE,
   RES_SERVICE_VERSION,
@@ -69,6 +70,7 @@ describe('T014 — harness.* OTLP attribute contract freeze', () => {
         RES_BRANCH,
         RES_SCHEMA_VERSION,
         RES_ENV,
+        RES_PRODUCT_COMMIT,
       ].sort(),
     );
   });
@@ -88,13 +90,14 @@ describe('T014 — harness.* OTLP attribute contract freeze', () => {
   it('pins schema_url + scope_version in lockstep with the serializer', () => {
     expect(contract.schema_url).toBe(HARNESS_SCHEMA_URL);
     expect(contract.scope_version).toBe(OTLP_SCOPE_VERSION);
-    expect(OTLP_SCOPE_VERSION).toBe('2.4');
+    expect(HARNESS_SCHEMA_URL).toContain('/v0.2.0');
+    expect(OTLP_SCOPE_VERSION).toBe('2.5');
   });
 
   it('quarantine holds: harness_attributes are all harness.*, genai_attributes all gen_ai.*, set is closed', () => {
     for (const a of contract.harness_attributes) expect(a.startsWith('harness.')).toBe(true);
     for (const a of contract.genai_attributes) expect(a.startsWith('gen_ai.')).toBe(true);
     expect(contract.additionalAttributes).toBe(false); // closed set (no smuggled attrs)
-    expect(contract.$id).toContain('2.4'); // $id tracks the scope version
+    expect(contract.$id).toContain('2.5'); // $id tracks the scope version
   });
 });

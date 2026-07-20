@@ -18,6 +18,15 @@ privacy / offline guarantees.
 > keep-and-harden ref contract, and the downstream read contract live in
 > [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md).
 
+> **Remote retrospective retrieval.** `harness telemetry ls` inventories
+> counts-only sessions published under explicit repositories'
+> `refs/harness-telemetry/**`; `harness telemetry pull` writes selected complete
+> sessions into one deterministic, integrity-verifiable bundle that the existing
+> `telemetry report` command can read. See
+> [Pull published telemetry from remote repositories](./telemetry-pull.md) for
+> repository inputs, selectors, bundle fields, fidelity/gaps, privacy, and
+> troubleshooting.
+
 ---
 
 ## The model in one minute

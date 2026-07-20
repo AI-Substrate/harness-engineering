@@ -38,6 +38,8 @@ import { flowEventFromFlightPlan } from './flow-nav.js';
 import { segmentToOtlpLogs } from './otlp/logs.js';
 import { rollupToOtlpMetrics } from './otlp/metrics.js';
 import {
+  CURRENT_CAPTURED_ENV_KEYS,
+  isCapturedEnvEntry,
   type Segment,
   type SegmentInput,
   type SegmentWindow,
@@ -121,7 +123,7 @@ export function detectHarness(env: EnvPort): DetectedHarness | null {
  * (not env/config-driven): widening what telemetry records is then a reviewed
  * code change, fully auditable in git. Empty on most hosts → the field is omitted.
  */
-export const ENV_CAPTURE_GLOBS: readonly string[] = ['PIJ_*'];
+export const ENV_CAPTURE_GLOBS: readonly string[] = [...CURRENT_CAPTURED_ENV_KEYS];
 
 /**
  * Secret-shaped key-NAME guard, applied AFTER the globs: a name matching this is
@@ -161,32 +163,17 @@ export const ENV_CAPTURE_CONTENT_DENY =
  */
 export const ENV_VALUE_MAX_LEN = 256;
 
-function envNameMatches(name: string, glob: string): boolean {
-  return glob.endsWith('*') ? name.startsWith(glob.slice(0, -1)) : name === glob;
-}
-
-/** A value is id/flag-shaped (capturable) iff single-line and within the length cap. */
-function isIdShapedValue(v: string): boolean {
-  return v.length <= ENV_VALUE_MAX_LEN && !/[\r\n]/.test(v);
-}
-
 /**
- * Select the allowlisted, non-secret, non-content env vars for a segment's
- * `captured_env`. Pure over the injected env port: enumerate → keep names
- * matching ANY glob → drop secret-shaped names → drop content-bearing names →
- * drop free-form-shaped values (multi-line / over-long) → return a NEW object.
- * Empty when nothing matches (the serializer then omits the field). The
- * serializer re-sorts keys, so order here is irrelevant.
+ * Select only the exact Segment-2.5 pij environment vocabulary. Every value is
+ * checked by its own grammar plus the shared credential detector; unknown and
+ * historical-only keys are ignored before they can reach the serializer.
  */
 export function selectCapturedEnv(env: EnvPort): Record<string, string> {
   const all = env.entries();
   const out: Record<string, string> = {};
-  for (const name of Object.keys(all)) {
-    if (!ENV_CAPTURE_GLOBS.some((g) => envNameMatches(name, g))) continue;
-    if (ENV_CAPTURE_DENY.test(name)) continue;
-    if (ENV_CAPTURE_CONTENT_DENY.test(name)) continue;
-    if (!isIdShapedValue(all[name])) continue;
-    out[name] = all[name];
+  for (const name of CURRENT_CAPTURED_ENV_KEYS) {
+    const value = all[name];
+    if (value !== undefined && isCapturedEnvEntry(name, value, '2.5')) out[name] = value;
   }
   return out;
 }
@@ -689,6 +676,11 @@ function captureUnsafe(deps: CaptureDeps): void {
     }
     return;
   }
+
+  // Product provenance is resolved only after activity is known. Detached HEAD is
+  // valid; unborn/no-repo/invalid output stays unavailable and is omitted.
+  const productCommit = deps.git?.currentCommit() ?? null;
+  if (productCommit !== null) segment.product_commit = productCommit;
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).

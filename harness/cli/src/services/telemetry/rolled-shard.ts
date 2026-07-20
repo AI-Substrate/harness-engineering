@@ -35,6 +35,8 @@ export interface RollManifest {
   start_date: string;
   /** The highest buffer seq folded into this tree (the idempotency watermark). */
   max_seq: number;
+  /** Stable known product OID union; omitted when no segment carries provenance. */
+  product_commits?: string[];
 }
 
 /** The minimal git write surface the rolled-tree builder needs (P2: no `node:*`). */
@@ -62,6 +64,8 @@ export interface RolledSpec {
   looseJson: LooseBlob[];
   /** The highest seq included (the manifest watermark). */
   maxSeq: number;
+  /** Stable prior+new known product OID union. */
+  productCommits?: readonly string[];
 }
 
 /** Serialize the manifest with a STABLE key order (byte-deterministic across runs). */
@@ -71,6 +75,9 @@ export function serializeManifest(m: RollManifest): string {
     session: m.session,
     start_date: m.start_date,
     max_seq: m.max_seq,
+    ...(m.product_commits !== undefined && m.product_commits.length > 0
+      ? { product_commits: m.product_commits }
+      : {}),
   })}\n`;
 }
 
@@ -80,15 +87,82 @@ export function parseManifest(raw: string | null | undefined): RollManifest | nu
   try {
     const o = JSON.parse(raw) as Partial<RollManifest>;
     if (o.format !== ROLLUP_FORMAT || typeof o.session !== 'string') return null;
+    const commits = o.product_commits;
+    if (
+      commits !== undefined &&
+      (!Array.isArray(commits) ||
+        commits.length === 0 ||
+        commits.some(
+          (oid) => typeof oid !== 'string' || !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(oid),
+        ))
+    ) {
+      return null;
+    }
     return {
       format: ROLLUP_FORMAT,
       session: o.session,
       start_date: typeof o.start_date === 'string' ? o.start_date : '',
       max_seq: typeof o.max_seq === 'number' ? o.max_seq : 0,
+      ...(commits !== undefined && { product_commits: [...new Set(commits)] }),
     };
   } catch {
     return null;
   }
+}
+
+export type ProductCommitCoverage =
+  | {
+      ok: true;
+      state: 'known' | 'partial' | 'unavailable';
+      productCommits: string[] | null;
+    }
+  | { ok: false; reason: 'product_commit_contradiction' };
+
+/**
+ * Strict aggregate/per-segment agreement used by remote published readers. The
+ * manifest is an index only: known segment OIDs remain the proof, while any absent,
+ * invalid, or contradictory aggregate fails closed for the caller to map to E222.
+ */
+export function verifyProductCommitCoverage(
+  manifest: RollManifest | null,
+  segmentProductCommits: readonly (string | null | undefined)[],
+): ProductCommitCoverage {
+  const known: string[] = [];
+  let missing = false;
+  for (const value of segmentProductCommits) {
+    if (value === null || value === undefined) {
+      missing = true;
+      continue;
+    }
+    if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(value)) {
+      return { ok: false, reason: 'product_commit_contradiction' };
+    }
+    if (!known.includes(value)) known.push(value);
+  }
+
+  const indexed = manifest?.product_commits;
+  if (known.length === 0) {
+    return indexed === undefined
+      ? { ok: true, state: 'unavailable', productCommits: null }
+      : { ok: false, reason: 'product_commit_contradiction' };
+  }
+  if (manifest === null) {
+    return {
+      ok: true,
+      state: missing ? 'partial' : 'known',
+      productCommits: known,
+    };
+  }
+  if (indexed === undefined) return { ok: false, reason: 'product_commit_contradiction' };
+  const knownSet = new Set(known);
+  if (indexed.length !== knownSet.size || indexed.some((oid) => !knownSet.has(oid))) {
+    return { ok: false, reason: 'product_commit_contradiction' };
+  }
+  return {
+    ok: true,
+    state: missing ? 'partial' : 'known',
+    productCommits: [...indexed],
+  };
 }
 
 /**
@@ -131,11 +205,19 @@ export function buildRolledEntries(
   )) {
     add(j.name, j.content);
   }
+  const productCommits = [
+    ...new Set(
+      (spec.productCommits ?? [])
+        .map((oid) => oid.toLowerCase())
+        .filter((oid) => /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(oid)),
+    ),
+  ];
   const manifest: RollManifest = {
     format: ROLLUP_FORMAT,
     session: spec.session,
     start_date: spec.startDate,
     max_seq: spec.maxSeq,
+    ...(productCommits.length > 0 && { product_commits: productCommits }),
   };
   add(ROLLED_MANIFEST_NAME, serializeManifest(manifest));
   return { entries, treeSha: git.mktree(entries), manifest };

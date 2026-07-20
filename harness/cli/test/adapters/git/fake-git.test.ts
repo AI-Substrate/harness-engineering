@@ -1,3 +1,7 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ExecGit } from '../../../src/adapters/git/exec-git.js';
 import { FakeGit } from '../../../src/adapters/git/fake-git.js';
@@ -22,6 +26,14 @@ describe('FakeGit', () => {
     const git = new FakeGit();
     expect(git.isRepo()).toBe(false);
     expect(git.currentBranch()).toBeNull();
+  });
+
+  it('returns a normalized seeded current commit and records the call', () => {
+    const git = new FakeGit({ currentCommit: 'A'.repeat(40) });
+    expect(git.currentCommit()).toBe('a'.repeat(40));
+    expect(git.calls).toEqual(['currentCommit']);
+    expect(new FakeGit({ currentCommit: 'not-an-oid' }).currentCommit()).toBeNull();
+    expect(new FakeGit().currentCommit()).toBeNull();
   });
 
   it('returns the seeded remoteUrl (→ provenance `repo`), null when unseeded, and records the call', () => {
@@ -51,6 +63,33 @@ describe('ExecGit', () => {
     expect(git.isRepo()).toBe(true);
     const branch = git.currentBranch();
     expect(branch === null || typeof branch === 'string').toBe(true);
+  });
+
+  it('reports the current product commit as a lowercase full OID', () => {
+    expect(new ExecGit().currentCommit()).toMatch(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/);
+  });
+
+  it('handles no-repo, unborn, and detached repositories without guessing provenance', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'harness-current-commit-'));
+    const git = (cwd: string, args: string[]): string =>
+      execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+    try {
+      expect(new ExecGit(dir).currentCommit()).toBeNull();
+
+      git(dir, ['init', '-q']);
+      expect(new ExecGit(dir).currentCommit()).toBeNull();
+
+      git(dir, ['config', 'user.name', 'Harness Test']);
+      git(dir, ['config', 'user.email', 'harness@example.invalid']);
+      writeFileSync(join(dir, 'a.txt'), 'a\n');
+      git(dir, ['add', 'a.txt']);
+      git(dir, ['commit', '-qm', 'seed']);
+      const oid = git(dir, ['rev-parse', 'HEAD']).toLowerCase();
+      git(dir, ['checkout', '-q', '--detach', oid]);
+      expect(new ExecGit(dir).currentCommit()).toBe(oid);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('reports the origin remote URL as a string, or null when there is none', () => {

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.4.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.5.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -20,7 +20,7 @@
     "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "2.4" },
+    "schema_version": { "type": "string", "const": "2.5" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
     "harness_version": { "type": "string" },
@@ -140,8 +140,23 @@
     },
     "captured_env": {
       "type": "object",
-      "description": "v2.2 — allowlisted env-var snapshot (name → value) selected by a code-constant glob set and filtered by a secret-shaped name denylist at capture. Omitted when empty.",
-      "additionalProperties": { "type": "string" }
+      "description": "v2.5 — finite pij environment snapshot. Exactly eight current keys, each with a context-specific identifier/enum/model grammar. Unknown, legacy-only, content, SPAWN_TASK, and credential-shaped values are excluded before serialization.",
+      "additionalProperties": false,
+      "properties": {
+        "PIJ_SESSION_ID": { "type": "string", "pattern": "^pij-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$" },
+        "PIJ_PARENT_ID": { "type": "string", "pattern": "^pij-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$" },
+        "PIJ_HARNESS": { "enum": ["pi", "pij", "claude", "claude-code", "copilot", "copilot-cli", "copilot-vscode", "cursor", "cursor-agent", "minih"] },
+        "PIJ_ROLE": { "enum": ["coder", "reviewer", "orchestrator", "worker", "parent", "child", "planner", "researcher", "validator", "implementer", "lead", "peer", "context-owner"] },
+        "PIJ_ANNOUNCE_TO": { "type": "string", "pattern": "^pij-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$" },
+        "PIJ_SPAWN_ID": { "type": "string", "pattern": "^spawn-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$" },
+        "PIJ_SPAWN_MODEL": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,31}/[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+){1,15}(?::(?:off|minimal|low|medium|high|xhigh))?$" },
+        "PIJ_SPAWN_EFFORT": { "enum": ["off", "minimal", "low", "medium", "high", "xhigh"] }
+      }
+    },
+    "product_commit": {
+      "type": "string",
+      "description": "v2.5 — optional lowercase full product HEAD OID observed during this activity window.",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
     },
     "event_stream": {
       "type": "array",

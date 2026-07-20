@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -13,7 +13,7 @@ import {
 } from '../../../src/services/telemetry/adapters/copilot-vscode-adapter.js';
 import type { HarnessContext } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
-import { registerOtlpGoldens } from './otlp-golden.js';
+import { expectCurrentSegmentMatchesLegacy, registerOtlpGoldens } from './otlp-golden.js';
 
 /**
  * T008 (plan 2.4 · AC-04 · Finding 05) — the copilot-vscode SQL ROUND-TRIP.
@@ -37,8 +37,8 @@ import { registerOtlpGoldens } from './otlp-golden.js';
  * not a tautology — a drift in either side would break the deep-equal below.
  *
  * Tests MAY use `node:*` directly (the throwaway-db build) — only the SERVICES
- * stay ports-only (P2). Regenerate the golden with:
- *   `REGEN_GOLDEN=1 vitest run copilot-vscode-sqlite.int`
+ * stay ports-only (P2). The Segment-2.4/OTLP-v0.1 goldens are frozen; current
+ * output is projected only across the approved 2.5/v0.2 metadata delta.
  */
 
 const require = createRequire(import.meta.url);
@@ -150,16 +150,12 @@ describe('real copilot-vscode fixture → segment via SQL round-trip (AC-04)', (
   const { seg, sessionId } = buildSegment();
   registerOtlpGoldens(seg, GOLDEN); // T005 — mint/assert the OTLP goldens beside the segment
 
-  if (process.env.REGEN_GOLDEN) {
-    writeFileSync(GOLDEN, `${JSON.stringify(seg, null, 2)}\n`);
-  }
-
   it('resolves the fixture session id by cwd through the real adapter SQL', () => {
     expect(sessionId).toBe(rows.sessions[0]?.id);
   });
 
-  it('matches the committed golden segment', () => {
-    expect(seg).toEqual(JSON.parse(readFileSync(GOLDEN, 'utf8')));
+  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+    expectCurrentSegmentMatchesLegacy(seg, JSON.parse(readFileSync(GOLDEN, 'utf8')));
   });
 
   it('round-trips the projected word counts back through real TURNS_SQL', () => {

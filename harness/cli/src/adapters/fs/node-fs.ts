@@ -1,19 +1,23 @@
 import {
+  closeSync,
   copyFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readdirSync,
   readFileSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, isAbsolute, join, relative, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import type { FileSystemWritePort, FsPort } from './fs-port.js';
 
 /** Real filesystem — the only place `node:fs` is touched. */
@@ -25,6 +29,39 @@ export class NodeFs implements FsPort, FileSystemWritePort {
   readText(path: string): string | null {
     try {
       return readFileSync(path, 'utf8');
+    } catch {
+      return null;
+    }
+  }
+
+  readBytesNoFollow(path: string): Uint8Array | null {
+    try {
+      const stat = lstatSync(path);
+      return stat.isFile() && !stat.isSymbolicLink() ? Uint8Array.from(readFileSync(path)) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  listRegularFilesNoFollow(root: string): string[] | null {
+    try {
+      const rootStat = lstatSync(root);
+      if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return null;
+      const out: string[] = [];
+      const walk = (dir: string): boolean => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          const path = join(dir, entry.name);
+          if (entry.isSymbolicLink()) return false;
+          if (entry.isDirectory()) {
+            if (!walk(path)) return false;
+          } else if (entry.isFile()) {
+            out.push(relative(root, path).split(sep).join('/'));
+          } else return false;
+        }
+        return true;
+      };
+      if (!walk(root)) return null;
+      return out.sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)));
     } catch {
       return null;
     }
@@ -52,6 +89,37 @@ export class NodeFs implements FsPort, FileSystemWritePort {
 
   writeText(path: string, contents: string): void {
     writeFileSync(path, contents, 'utf8');
+  }
+
+  writeBytes(path: string, contents: Uint8Array): void {
+    writeFileSync(path, contents);
+  }
+
+  normalizeBundleTargetIdentity(target: string): string {
+    return resolve(target);
+  }
+
+  createSiblingTempDir(target: string, prefix: string): string {
+    const parent = dirname(target);
+    mkdirSync(parent, { recursive: true });
+    return mkdtempSync(join(parent, `.${basename(target)}.${prefix}`));
+  }
+
+  publishDirectoryExclusive(temp: string, target: string, lockKey: string): void {
+    const parent = dirname(target);
+    mkdirSync(parent, { recursive: true });
+    const lock = join(parent, `.${lockKey}.lock`);
+    let descriptor: number | null = null;
+    try {
+      descriptor = openSync(lock, 'wx');
+      if (existsSync(target)) throw new Error('bundle target exists');
+      renameSync(temp, target);
+    } finally {
+      if (descriptor !== null) {
+        closeSync(descriptor);
+        unlinkSync(lock);
+      }
+    }
   }
 
   rename(from: string, to: string): void {

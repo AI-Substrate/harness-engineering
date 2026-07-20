@@ -69,7 +69,162 @@ export function embedReports(template: string, columns: readonly ReportColumn[])
   return template.replace('</body>', `${blocks}\n</body>`);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function evidenceLine(
+  label: string,
+  field: { available: number; unavailable: number; excluded: number },
+  measure: { state: 'measured' | 'unavailable'; value: number | null; contributors: number },
+): string {
+  const total = field.available + field.unavailable + field.excluded;
+  const state =
+    measure.state === 'unavailable'
+      ? 'unavailable'
+      : measure.value === 0
+        ? 'measured zero'
+        : `${measure.value ?? 0} observed`;
+  const exclusions = field.excluded > 0 ? `; ${field.excluded} excluded by filters` : '';
+  return `${label}: ${state} (${measure.contributors} of ${total} contributors${exclusions})`;
+}
+
+function bundleCoverageBlock(column: ReportColumn): string {
+  const coverage = column.report.provenance.input_coverage;
+  const evidence = column.report.evidence_totals;
+  if (coverage === undefined) return '';
+  if (evidence === undefined) {
+    return [
+      '<section class="bundle-coverage" aria-label="Bundle evidence coverage">',
+      `<h2>Evidence coverage — ${escapeHtml(column.label)}</h2>`,
+      '<p>Coverage evidence unavailable.</p>',
+      '</section>',
+    ].join('');
+  }
+  const total =
+    coverage.fields.events.available +
+    coverage.fields.events.unavailable +
+    coverage.fields.events.excluded;
+  const gaps =
+    coverage.gaps.length === 0
+      ? '<li>Gaps: none</li>'
+      : `<li>Gaps: ${coverage.gaps.map(escapeHtml).join(', ')}</li>`;
+  return [
+    '<section class="bundle-coverage" aria-label="Bundle evidence coverage">',
+    `<h2>Evidence coverage — ${escapeHtml(column.label)}</h2>`,
+    `<p>Sessions: ${coverage.accepted_sessions} accepted of ${total} considered.</p>`,
+    '<ul>',
+    `<li>${evidenceLine('Events', coverage.fields.events, evidence.events)}</li>`,
+    `<li>${evidenceLine('Measurements', coverage.fields.measurements, evidence.measurements)}</li>`,
+    gaps,
+    '</ul>',
+    '</section>',
+  ].join('');
+}
+
+const BUNDLE_DIMENSIONS = [
+  ['harness_command', 'Harness command'],
+  ['flow_stage', 'Flow stage'],
+  ['skill', 'Skill'],
+  ['tool', 'Tool'],
+  ['bash_command', 'Bash command'],
+] as const;
+
+function analyticDimensions(column: ReportColumn): string {
+  return BUNDLE_DIMENSIONS.flatMap(([key, label]) => {
+    const rollup = column.report.rollups[key];
+    if (rollup.entries.length === 0) return [];
+    const items = rollup.entries
+      .map((entry) => {
+        const time = entry.time_s === undefined ? '' : ` · ${formatDuration(entry.time_s)}`;
+        return `<li><b>${escapeHtml(entry.key)}</b>: ${entry.count}× · ${formatTokens(
+          entry.tokens.input,
+        )} sent · ${formatTokens(entry.tokens.output)} received${time}</li>`;
+      })
+      .join('');
+    return [`<section class="bundle-dimension"><h3>${label}</h3><ul>${items}</ul></section>`];
+  }).join('');
+}
+
+function bundleAnalyticsBlock(column: ReportColumn): string {
+  const coverage = column.report.provenance.input_coverage;
+  const evidence = column.report.evidence_totals;
+  if (
+    coverage === undefined ||
+    evidence === undefined ||
+    coverage.fields.events.available === 0 ||
+    evidence.events.state === 'unavailable'
+  ) {
+    return '';
+  }
+  const dimensions = analyticDimensions(column);
+  return [
+    '<section class="bundle-analytics" aria-label="Event-substrate analytics">',
+    `<h2>Event-substrate analytics — ${escapeHtml(column.label)}</h2>`,
+    `<p>${evidence.events.contributors} of ${
+      coverage.fields.events.available +
+      coverage.fields.events.unavailable +
+      coverage.fields.events.excluded
+    } sessions contribute event evidence.</p>`,
+    dimensions,
+    '</section>',
+  ].join('');
+}
+
+function legacyAnalyticsBlock(column: ReportColumn): string {
+  const totals = column.report.totals;
+  return [
+    '<section class="legacy-analytics" aria-label="Legacy SessionExport analytics">',
+    `<h2>Legacy export analytics — ${escapeHtml(column.label)}</h2>`,
+    `<p>${totals.sessions} session(s) · ${formatDuration(totals.time_s)} · ${formatTokens(
+      totals.tokens.input,
+    )} sent · ${formatTokens(totals.tokens.output)} received.</p>`,
+    analyticDimensions(column),
+    '</section>',
+  ].join('');
+}
+
+interface CoverageDisplayColumn {
+  column: ReportColumn;
+  coverage: string;
+  analytics: string;
+}
+
+/** Pure final-page model: coverage mode always contains one visible entry per input column. */
+function coverageDisplayModel(columns: readonly ReportColumn[]): CoverageDisplayColumn[] {
+  return columns.map((column) => {
+    const isBundle = column.report.provenance.input_coverage !== undefined;
+    return {
+      column,
+      coverage: isBundle ? bundleCoverageBlock(column) : '',
+      analytics: isBundle ? bundleAnalyticsBlock(column) : legacyAnalyticsBlock(column),
+    };
+  });
+}
+
+function withoutLegacyRuntime(template: string): string {
+  const start = template.indexOf('<script>\n(function () {');
+  if (start < 0) return template;
+  const close = template.indexOf('</script>', start);
+  if (close < 0) return template;
+  return `${template.slice(0, start)}${template.slice(close + '</script>'.length)}`;
+}
+
 /** Render the shipped template with the given columns embedded → self-contained HTML. */
 export function renderReports(columns: readonly ReportColumn[]): string {
-  return embedReports(REPORT_TEMPLATE_HTML, columns);
+  if (!columns.some((column) => column.report.provenance.input_coverage !== undefined)) {
+    return embedReports(REPORT_TEMPLATE_HTML, columns);
+  }
+  const body = coverageDisplayModel(columns)
+    .flatMap((display) => [display.coverage, display.analytics])
+    .filter((block) => block.length > 0)
+    .join('\n');
+  const bundleTemplate = withoutLegacyRuntime(REPORT_TEMPLATE_HTML)
+    .replace('<span class="sub" id="head-sub"></span>', '<span class="sub">bundle evidence</span>')
+    .replace('<main id="root"></main>', `<main id="root">${body}</main>`);
+  return embedReports(bundleTemplate, columns);
 }

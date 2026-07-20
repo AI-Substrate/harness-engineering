@@ -25,6 +25,7 @@ import { NodeFs } from './adapters/fs/node-fs.js';
 import { ExecGit } from './adapters/git/exec-git.js';
 import { ExecGitRead } from './adapters/git/exec-git-read.js';
 import { ExecGitWrite } from './adapters/git/exec-git-write.js';
+import { ExecRemoteTelemetryGit } from './adapters/git/exec-remote-telemetry-git.js';
 import { NodeHash } from './adapters/hash/node-hash.js';
 import { JitiLoader } from './adapters/loader/jiti-loader.js';
 import type { ModuleLoaderPort } from './adapters/loader/module-loader-port.js';
@@ -321,6 +322,8 @@ export function buildProgram(
     ...deps,
     gitWrite: deps.gitWrite ?? new ExecGitWrite(),
     gitRead: new ExecGitRead(),
+    remoteGit: new ExecRemoteTelemetryGit(),
+    hash: new NodeHash(),
   });
   registerInstructionsAct(program, io, { fs: deps.fs, clock: deps.clock }, registry);
   for (const verb of registry.verbs) {
