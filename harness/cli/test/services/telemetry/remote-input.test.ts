@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FakeHash } from '../../../src/adapters/hash/fake-hash.js';
 import type { HashPort } from '../../../src/adapters/hash/hash-port.js';
 import {
+  canonicalizeRemoteRepository,
   parseRemoteRepositories,
   parseRemoteSelector,
   type RepositoryFileInput,
@@ -21,6 +22,43 @@ function file(path: string, contents: string | Uint8Array | null): RepositoryFil
     path,
     bytes: typeof contents === 'string' ? utf8(contents) : contents,
   };
+}
+
+function generatedCredentialUsernames(): Array<{ label: string; value: string }> {
+  return [
+    { label: 'GitHub classic shape', value: `${['g', 'h', 'p'].join('')}_${'A'.repeat(20)}` },
+    {
+      label: 'GitHub fine-grained shape',
+      value: `${['github', 'pat'].join('_')}_${'B'.repeat(20)}`,
+    },
+    { label: 'AWS access-key shape', value: `${['A', 'K', 'I', 'A'].join('')}${'C'.repeat(16)}` },
+    {
+      label: 'provider API-key shape',
+      value: `${['s', 'k'].join('')}_${['li', 've'].join('')}_${'D'.repeat(16)}`,
+    },
+    { label: 'Google API-key shape', value: `${['AI', 'za'].join('')}${'E'.repeat(20)}` },
+  ];
+}
+
+function percentEncodeEveryByte(value: string): string {
+  return [...new TextEncoder().encode(value)]
+    .map((byte) => `%${byte.toString(16).padStart(2, '0')}`)
+    .join('');
+}
+
+function generatedEncodedUsernames(): Array<{ label: string; value: string }> {
+  const direct = generatedCredentialUsernames()[0]?.value ?? '';
+  const bearer = `${['Bear', 'er'].join('')} ${'F'.repeat(12)}`;
+  const assignment = `${['to', 'ken'].join('')}=${'G'.repeat(12)}`;
+  const privateKey = [['-----BEGIN', 'PRIVATE', 'KEY-----'].join(' '), 'H'].join('');
+  return [
+    { label: 'encoded safe username', value: percentEncodeEveryByte('deploy-user') },
+    { label: 'encoded credential shape', value: percentEncodeEveryByte(direct) },
+    { label: 'encoded bearer shape', value: percentEncodeEveryByte(bearer) },
+    { label: 'encoded assignment shape', value: percentEncodeEveryByte(assignment) },
+    { label: 'encoded private-key shape', value: percentEncodeEveryByte(privateKey) },
+    { label: 'malformed percent escape', value: 'user%2' },
+  ];
 }
 
 describe('remote repository inputs', () => {
@@ -51,6 +89,77 @@ describe('remote repository inputs', () => {
         'git://example.com/Team/Three',
       ]),
     );
+  });
+
+  it('preserves no username and bounded non-secret URL/scp usernames', () => {
+    const safe = [
+      'https://example.com/team/repo.git',
+      'https://git@example.com/team/repo.git',
+      'ssh://git@example.com/team/repo.git',
+      'git@example.com:team/repo.git',
+      'https://deploy@example.com/team/repo.git',
+      'deploy-user@example.com:team/repo.git',
+      'https://user.name@example.com/team/repo.git',
+      'user_name@example.com:team/repo.git',
+      `https://${'a'.repeat(64)}@example.com/team/repo.git`,
+    ];
+    for (const repository of safe) {
+      expect(canonicalizeRemoteRepository(repository) !== null).toBe(true);
+    }
+  });
+
+  it.each(generatedCredentialUsernames())('rejects generated URL credential username: $label', ({
+    value,
+  }) => {
+    const rejected =
+      canonicalizeRemoteRepository(`https://${value}@example.com/team/repo.git`) === null;
+    expect(rejected).toBe(true);
+  });
+
+  it.each(generatedCredentialUsernames())('rejects generated scp credential username: $label', ({
+    value,
+  }) => {
+    const rejected = canonicalizeRemoteRepository(`${value}@example.com:team/repo.git`) === null;
+    expect(rejected).toBe(true);
+  });
+
+  it.each(generatedEncodedUsernames())('rejects percent-bearing URL username: $label', ({
+    value,
+  }) => {
+    const rejected =
+      canonicalizeRemoteRepository(`https://${value}@example.com/team/repo.git`) === null;
+    expect(rejected).toBe(true);
+  });
+
+  it.each([
+    ['overlength URL username', `https://${'a'.repeat(65)}@example.com/team/repo.git`],
+    ['overlength scp username', `${'a'.repeat(65)}@example.com:team/repo.git`],
+    ['URL punctuation outside the closed grammar', 'https://user!name@example.com/team/repo.git'],
+    ['URL control character', 'https://user\u0001name@example.com/team/repo.git'],
+  ])('rejects invalid username grammar: %s', (_label, repository) => {
+    expect(canonicalizeRemoteRepository(repository) === null).toBe(true);
+  });
+
+  it('uses static E108 without retaining a rejected generated username', () => {
+    const username = generatedCredentialUsernames()[0]?.value ?? '';
+    const result = parseRemoteRepositories(
+      { repos: [`https://${username}@example.com/team/repo.git`], repoFiles: [] },
+      new FakeHash(),
+    );
+    const summary = result.ok
+      ? { ok: true }
+      : {
+          ok: false,
+          code: result.code,
+          staticMessage: result.message === 'repository must be a safe network Git URL',
+          rawEcho: result.message.includes(username),
+        };
+    expect(summary).toEqual({
+      ok: false,
+      code: 'E108',
+      staticMessage: true,
+      rawEcho: false,
+    });
   });
 
   it.each([

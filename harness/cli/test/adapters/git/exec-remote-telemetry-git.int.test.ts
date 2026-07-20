@@ -1,8 +1,18 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
-import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { devNull, tmpdir } from 'node:os';
+import { basename, dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
@@ -495,6 +505,1052 @@ function callerRepositoryState(cwd: string): Record<string, string> {
   };
 }
 
+const HTTPS_CREDENTIAL_PROBE_URL = 'https://127.0.0.1:1/private.git';
+const HTTPS_CREDENTIAL_PROBE_REPOSITORY: RemoteRepository = {
+  key: 'repo-credential000000000',
+  identity: HTTPS_CREDENTIAL_PROBE_URL,
+  transportUrl: HTTPS_CREDENTIAL_PROBE_URL,
+};
+const CREDENTIAL_QUERY_REGEX = '^credential(\\..+)?\\.(helper|username|usehttppath)$';
+
+interface ObservedGitCommand {
+  readonly args: readonly string[];
+  readonly env: Readonly<NodeJS.ProcessEnv> | undefined;
+}
+
+function credentialTempDirectories(): string[] {
+  return readdirSync(tmpdir())
+    .filter((name) => name.startsWith('harness-git-credential-'))
+    .sort();
+}
+
+async function withProcessEnvironment<T>(
+  values: Readonly<Record<string, string | undefined>>,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const before = Object.fromEntries(
+    Object.keys(values).map((name) => [name, process.env[name]]),
+  ) as Record<string, string | undefined>;
+  for (const [name, value] of Object.entries(values)) {
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
+  try {
+    return await operation();
+  } finally {
+    for (const [name, value] of Object.entries(before)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+}
+
+function addGitConfig(file: string, key: string, value: string): void {
+  execFileSync('git', ['config', '--file', file, '--add', key, value], {
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+}
+
+function credentialRecord(key: string, value: string): Buffer {
+  return Buffer.concat([Buffer.from(`${key}\n${value}`, 'utf8'), Buffer.of(0)]);
+}
+
+function injectedCredentialQuery(stdout: Uint8Array, code = 0, stopped = null) {
+  return async () => ({ ok: code === 0 && stopped === null, code, stdout, stopped });
+}
+
+const NEGATIVE_CREDENTIAL_QUERY_CASES: ReadonlyArray<{
+  readonly label: string;
+  readonly stdout: Uint8Array;
+}> = [
+  { label: 'missing terminal NUL', stdout: Buffer.from('credential.helper\nhelper') },
+  {
+    label: 'empty framed record',
+    stdout: Buffer.concat([credentialRecord('credential.helper', 'helper'), Buffer.of(0)]),
+  },
+  {
+    label: 'invalid UTF-8',
+    stdout: Buffer.concat([Buffer.from('credential.helper\n'), Buffer.of(0xff, 0)]),
+  },
+  { label: 'key control', stdout: credentialRecord('credential.helper\t', 'helper') },
+  { label: 'value control', stdout: credentialRecord('credential.helper', 'helper\targ') },
+  { label: 'forbidden key', stdout: credentialRecord('credential.password', 'not-admitted') },
+  {
+    label: 'malformed authority subsection',
+    stdout: credentialRecord('credential.https://[legacy-broken.helper', 'x'),
+  },
+  {
+    label: 'URL subsection cap',
+    stdout: credentialRecord(`credential.https://${'a'.repeat(2_001)}.helper`, 'x'),
+  },
+  { label: 'invalid useHttpPath', stdout: credentialRecord('credential.usehttppath', 'TRUE') },
+  { label: 'empty username', stdout: credentialRecord('credential.username', '') },
+  {
+    label: 'username cap',
+    stdout: credentialRecord('credential.username', 'u'.repeat(1_025)),
+  },
+  {
+    label: 'helper cap',
+    stdout: credentialRecord('credential.helper', 'h'.repeat(8_193)),
+  },
+  {
+    label: 'entry count cap',
+    stdout: Buffer.concat(
+      Array.from({ length: 65 }, (_, index) =>
+        credentialRecord('credential.helper', `helper-${index}`),
+      ),
+    ),
+  },
+  { label: 'discovery output cap', stdout: Buffer.alloc(65_537, 0x61) },
+];
+
+describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', () => {
+  it('preserves helper chain/reset/include/order/scoped fields and excludes forbidden config', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-'));
+    const globalConfig = join(root, '.gitconfig');
+    const includedConfig = join(root, 'included credentials.gitconfig');
+    const beforeTemps = credentialTempDirectories();
+    let sanitizedPath: string | undefined;
+    let sanitizedBytes: Buffer | undefined;
+    const observed: ObservedGitCommand[] = [];
+    try {
+      addGitConfig(globalConfig, 'credential.helper', 'alpha helper --one');
+      addGitConfig(globalConfig, 'credential.helper', '');
+      addGitConfig(globalConfig, 'include.path', includedConfig);
+      addGitConfig(globalConfig, 'credential.helper', 'omega helper');
+      addGitConfig(globalConfig, 'credential.helper', 'omega helper');
+      addGitConfig(
+        includedConfig,
+        'credential.https://match.example.invalid.helper',
+        '!gh auth git-credential',
+      );
+      addGitConfig(
+        includedConfig,
+        'credential.https://match.example.invalid.username',
+        'operator-name',
+      );
+      addGitConfig(includedConfig, 'credential.https://match.example.invalid.useHttpPath', 'true');
+      addGitConfig(includedConfig, 'credential.https://match.example.invalid.useHttpPath', 'false');
+      addGitConfig(includedConfig, 'credential.https://match.example.invalid.password', 'hidden');
+      addGitConfig(includedConfig, 'credential.oauthRefreshToken', 'hidden-oauth');
+      addGitConfig(includedConfig, 'credential.provider', 'hidden-provider');
+      addGitConfig(includedConfig, 'credential.authority', 'hidden-authority');
+      addGitConfig(includedConfig, 'credential.arbitrary', 'hidden-arbitrary');
+      addGitConfig(includedConfig, 'http.extraHeader', 'Authorization: hidden');
+      addGitConfig(includedConfig, 'url.ssh://git@example.invalid/.insteadOf', 'https://');
+
+      const result = await withProcessEnvironment(
+        {
+          HOME: root,
+          USERPROFILE: root,
+          XDG_CONFIG_HOME: join(root, 'xdg config'),
+          GIT_CONFIG_GLOBAL: join(root, 'must-not-be-inherited'),
+          GIT_CONFIG_COUNT: '1',
+          GIT_CONFIG_KEY_0: 'credential.helper',
+          GIT_CONFIG_VALUE_0: 'must-not-be-inherited',
+        },
+        async () =>
+          await new ExecRemoteTelemetryGit({
+            timeoutMs: 1_000,
+            onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+              observed.push({ args: [...args], env });
+              const fileIndex = args.indexOf('--file');
+              if (fileIndex >= 0 && args.includes('--add')) sanitizedPath = args[fileIndex + 1];
+              if (args.includes('ls-remote') && sanitizedPath !== undefined) {
+                sanitizedBytes = readFileSync(sanitizedPath);
+              }
+            },
+          }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY),
+      );
+
+      expect(result).toMatchObject({ ok: false, kind: 'transport' });
+      const discovery = observed.filter((item) => item.args.includes('--get-regexp'));
+      expect(discovery).toHaveLength(1);
+      expect(discovery[0]?.args).toEqual([
+        'config',
+        '--global',
+        '--includes',
+        '--null',
+        '--get-regexp',
+        CREDENTIAL_QUERY_REGEX,
+      ]);
+      const writers = observed
+        .filter((item) => item.args.includes('--file') && item.args.includes('--add'))
+        .map((item) => item.args.slice(-2));
+      expect(writers).toEqual([
+        ['credential.helper', 'alpha helper --one'],
+        ['credential.helper', ''],
+        ['credential.helper', 'omega helper'],
+        ['credential.helper', 'omega helper'],
+        ['credential.https://match.example.invalid.helper', '!gh auth git-credential'],
+        ['credential.https://match.example.invalid.username', 'operator-name'],
+        ['credential.https://match.example.invalid.usehttppath', 'true'],
+        ['credential.https://match.example.invalid.usehttppath', 'false'],
+      ]);
+      expect(sanitizedBytes).toBeDefined();
+      const materialized = sanitizedBytes?.toString('utf8') ?? '';
+      expect(materialized).not.toContain('hidden');
+      expect(materialized).not.toContain('extraHeader');
+      expect(materialized).not.toContain('oauth');
+      expect(materialized).not.toContain('provider');
+      expect(materialized).not.toContain('authority');
+      expect(materialized).not.toContain('arbitrary');
+      expect(materialized).not.toContain('insteadOf');
+      expect(materialized).not.toContain('must-not-be-inherited');
+      expect(sanitizedPath).toBeDefined();
+      expect(existsSync(sanitizedPath as string)).toBe(false);
+      expect(credentialTempDirectories()).toEqual(beforeTemps);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('materializes URL scopes without matching them so real Git selects only the applicable helper', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-scope-'));
+    const globalConfig = join(root, '.gitconfig');
+    const markerMatch = join(root, 'matched');
+    const markerOther = join(root, 'other');
+    const secretFile = join(root, 'helper-secret');
+    const matchingHelper = join(root, 'matching-helper.sh');
+    const otherHelper = join(root, 'other-helper.sh');
+    const sentinel = 'fixture-secret-never-public';
+    let sanitizedPath: string | undefined;
+    let sanitizedBytesDuringNetwork: Buffer | undefined;
+    let fillOutput = '';
+    try {
+      writeFileSync(secretFile, `${sentinel}\n`);
+      writeFileSync(
+        matchingHelper,
+        `#!/bin/sh\nprintf matched > ${JSON.stringify(markerMatch)}\nprintf 'username=matched-user\\npassword='\ncat ${JSON.stringify(secretFile)}\n`,
+      );
+      writeFileSync(
+        otherHelper,
+        `#!/bin/sh\nprintf other > ${JSON.stringify(markerOther)}\nprintf 'username=other-user\\npassword=other\\n'\n`,
+      );
+      chmodSync(matchingHelper, 0o700);
+      chmodSync(otherHelper, 0o700);
+      addGitConfig(
+        globalConfig,
+        'credential.https://match.example.invalid.helper',
+        `!${matchingHelper}`,
+      );
+      addGitConfig(
+        globalConfig,
+        'credential.https://other.example.invalid.helper',
+        `!${otherHelper}`,
+      );
+
+      await withProcessEnvironment(
+        { HOME: root, USERPROFILE: root, XDG_CONFIG_HOME: join(root, 'xdg') },
+        async () => {
+          await new ExecRemoteTelemetryGit({
+            timeoutMs: 1_000,
+            onGitCommand: (args: readonly string[]) => {
+              const fileIndex = args.indexOf('--file');
+              if (fileIndex >= 0 && args.includes('--add')) sanitizedPath = args[fileIndex + 1];
+              if (args.includes('ls-remote') && sanitizedPath !== undefined) {
+                sanitizedBytesDuringNetwork = readFileSync(sanitizedPath);
+                fillOutput = execFileSync('git', ['credential', 'fill'], {
+                  input: 'protocol=https\nhost=match.example.invalid\n\n',
+                  encoding: 'utf8',
+                  env: {
+                    PATH: process.env.PATH,
+                    HOME: root,
+                    GIT_CONFIG_GLOBAL: sanitizedPath,
+                    GIT_CONFIG_NOSYSTEM: '1',
+                    GIT_TERMINAL_PROMPT: '0',
+                  },
+                });
+              }
+            },
+          }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+        },
+      );
+      expect(fillOutput).toContain('username=matched-user');
+      expect(fillOutput).toContain(`password=${sentinel}`);
+      expect(existsSync(markerMatch)).toBe(true);
+      expect(existsSync(markerOther)).toBe(false);
+      expect(sanitizedBytesDuringNetwork?.toString('utf8')).not.toContain(sentinel);
+      expect(existsSync(sanitizedPath as string)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts no matching entries and still creates an empty operation-scoped config', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-empty-'));
+    const globalConfig = join(root, '.gitconfig');
+    let sanitizedPath: string | undefined;
+    let bytesDuringNetwork: Buffer | undefined;
+    try {
+      addGitConfig(globalConfig, 'core.editor', 'must-not-be-copied');
+      await withProcessEnvironment(
+        { HOME: root, USERPROFILE: root, XDG_CONFIG_HOME: join(root, 'xdg') },
+        async () => {
+          await new ExecRemoteTelemetryGit({
+            timeoutMs: 1_000,
+            onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+              const fileIndex = args.indexOf('--file');
+              if (fileIndex >= 0) sanitizedPath = args[fileIndex + 1];
+              if (args.includes('ls-remote')) {
+                sanitizedPath ??= env?.GIT_CONFIG_GLOBAL;
+                const configPath = sanitizedPath;
+                if (configPath !== undefined) bytesDuringNetwork = readFileSync(configPath);
+              }
+            },
+          }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+        },
+      );
+      expect(sanitizedPath).toBeDefined();
+      expect(bytesDuringNetwork).toEqual(Buffer.alloc(0));
+      expect(existsSync(sanitizedPath as string)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts the exact helper, username, URL-subsection, and 64-entry boundaries', async () => {
+    const subsectionPrefix = 'https://example.invalid/';
+    const subsection = `${subsectionPrefix}${'p'.repeat(2_000 - subsectionPrefix.length)}`;
+    const boundaryOutputs = [
+      Buffer.concat([
+        credentialRecord('credential.helper', 'h'.repeat(8_192)),
+        credentialRecord('credential.username', 'u'.repeat(1_024)),
+        credentialRecord('credential.usehttppath', 'false'),
+        credentialRecord(`credential.${subsection}.helper`, 'scoped'),
+      ]),
+      Buffer.concat(
+        Array.from({ length: 64 }, (_, index) =>
+          credentialRecord('credential.helper', `helper-${index}`),
+        ),
+      ),
+    ];
+    for (const [caseIndex, stdout] of boundaryOutputs.entries()) {
+      const beforeTemps = credentialTempDirectories();
+      let writerCommands = 0;
+      let networkCommands = 0;
+      const result = await new ExecRemoteTelemetryGit({
+        timeoutMs: 1_000,
+        credentialConfigQuery: injectedCredentialQuery(stdout),
+        onGitCommand: (args: readonly string[]) => {
+          if (args.includes('--file') && args.includes('--add')) writerCommands += 1;
+          if (args.includes('ls-remote')) networkCommands += 1;
+        },
+      }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+      expect(result).toMatchObject({ ok: false, message: 'remote telemetry advertisement failed' });
+      expect(writerCommands).toBe(caseIndex === 0 ? 4 : 64);
+      expect(networkCommands).toBe(1);
+      expect(credentialTempDirectories()).toEqual(beforeTemps);
+    }
+  });
+
+  it.each(
+    NEGATIVE_CREDENTIAL_QUERY_CASES,
+  )('rejects $label before network and restores credential temp state', async ({ stdout }) => {
+    const beforeTemps = credentialTempDirectories();
+    let queries = 0;
+    let networkCommands = 0;
+    const result = await new ExecRemoteTelemetryGit({
+      timeoutMs: 1_000,
+      credentialConfigQuery: async () => {
+        queries += 1;
+        return await injectedCredentialQuery(stdout)();
+      },
+      onGitCommand: (args: readonly string[]) => {
+        if (args.includes('ls-remote')) networkCommands += 1;
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(result).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(queries).toBe(1);
+    expect(networkCommands).toBe(0);
+    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    for (const { label, stdout: privateBytes } of NEGATIVE_CREDENTIAL_QUERY_CASES) {
+      expect(JSON.stringify(result)).not.toContain(label);
+      expect(JSON.stringify(result)).not.toContain(Buffer.from(privateBytes).toString('utf8'));
+    }
+  });
+});
+
+describe('ExecRemoteTelemetryGit — HTTPS credential subsection correction RED', () => {
+  const exerciseQuery = async (stdout: Uint8Array) => {
+    const beforeTemps = credentialTempDirectories();
+    const writers: string[][] = [];
+    let networkCommands = 0;
+    let sanitizedPath: string | undefined;
+    let sanitizedBytes: Buffer | undefined;
+    const result = await new ExecRemoteTelemetryGit({
+      timeoutMs: 1_000,
+      credentialConfigQuery: injectedCredentialQuery(stdout),
+      onGitCommand: (args: readonly string[]) => {
+        const fileIndex = args.indexOf('--file');
+        if (fileIndex >= 0 && args.includes('--add')) {
+          sanitizedPath = args[fileIndex + 1];
+          writers.push(args.slice(-2) as string[]);
+        }
+        if (args.includes('ls-remote')) {
+          networkCommands += 1;
+          if (sanitizedPath !== undefined) sanitizedBytes = readFileSync(sanitizedPath);
+        }
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    return { beforeTemps, writers, networkCommands, result, sanitizedBytes };
+  };
+
+  it.each([
+    {
+      label: 'configured username under an scp-style scope',
+      subsection: 'account@example.invalid:tenant/project',
+      field: 'username',
+      value: 'synthetic-operator',
+    },
+    {
+      label: 'helper under a provider-style scope',
+      subsection: 'provider:tenant/project',
+      field: 'helper',
+      value: 'synthetic-helper',
+    },
+    {
+      label: 'safe punctuation, Unicode letters, and spaces',
+      subsection: 'provider.example:tenant/path@region-name_value α β',
+      field: 'username',
+      value: 'synthetic-user',
+    },
+    {
+      label: 'the exact opaque subsection byte bound',
+      subsection: `provider-${'p'.repeat(1_991)}`,
+      field: 'helper',
+      value: 'bounded-helper',
+    },
+  ])('admits $label without matching applicability', async ({ subsection, field, value }) => {
+    const key = `credential.${subsection}.${field}`;
+    const observed = await exerciseQuery(credentialRecord(key, value));
+    expect(observed.result).toMatchObject({
+      ok: false,
+      message: 'remote telemetry advertisement failed',
+    });
+    expect(observed.writers).toEqual([[key, value]]);
+    expect(observed.networkCommands).toBe(1);
+    expect(observed.sanitizedBytes?.byteLength).toBeGreaterThan(0);
+    expect(JSON.stringify(observed.result)).not.toContain(subsection);
+    expect(JSON.stringify(observed.result)).not.toContain(value);
+    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+  });
+
+  it('preserves provider records, an empty reset, and the following helper chain in query order', async () => {
+    const subsection = 'provider:tenant/project';
+    const records = [
+      ['credential.helper', 'first-helper'],
+      [`credential.${subsection}.username`, 'synthetic-user'],
+      [`credential.${subsection}.helper`, ''],
+      [`credential.${subsection}.helper`, 'second-helper'],
+      ['credential.helper', 'final-helper'],
+    ] as const;
+    const observed = await exerciseQuery(
+      Buffer.concat(records.map(([key, value]) => credentialRecord(key, value))),
+    );
+    expect(observed.result).toMatchObject({
+      ok: false,
+      message: 'remote telemetry advertisement failed',
+    });
+    expect(observed.writers).toEqual(records.map(([key, value]) => [key, value]));
+    expect(observed.networkCommands).toBe(1);
+    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+  });
+
+  it.each([
+    'https://example.invalid',
+    'https://example.invalid:8443/team/path',
+    'custom://example.invalid/team/path',
+  ])('retains prior strict host-bearing URL admission for %s', async (subsection) => {
+    const key = `credential.${subsection}.helper`;
+    const observed = await exerciseQuery(credentialRecord(key, 'url-helper'));
+    expect(observed.writers).toEqual([[key, 'url-helper']]);
+    expect(observed.networkCommands).toBe(1);
+    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+  });
+
+  it('keeps an unrelated opaque helper private and lets Git decide it is not applicable', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-credential-correction-unrelated-'));
+    const marker = join(root, 'unexpected-helper-execution');
+    const helper = join(root, 'synthetic-helper.sh');
+    const subsection = 'provider:unrelated/project';
+    const key = `credential.${subsection}.helper`;
+    const beforeTemps = credentialTempDirectories();
+    let sanitizedPath: string | undefined;
+    let sanitizedBytes: Buffer | undefined;
+    let networkArgs: readonly string[] = [];
+    try {
+      writeFileSync(
+        helper,
+        `#!/bin/sh\nprintf invoked > ${JSON.stringify(marker)}\nprintf 'username=synthetic\\npassword=synthetic\\n'\n`,
+      );
+      chmodSync(helper, 0o700);
+      const result = await new ExecRemoteTelemetryGit({
+        timeoutMs: 1_000,
+        credentialConfigQuery: injectedCredentialQuery(credentialRecord(key, `!${helper}`)),
+        onGitCommand: (args: readonly string[]) => {
+          const fileIndex = args.indexOf('--file');
+          if (fileIndex >= 0 && args.includes('--add')) sanitizedPath = args[fileIndex + 1];
+          if (args.includes('ls-remote') && sanitizedPath !== undefined) {
+            networkArgs = [...args];
+            sanitizedBytes = readFileSync(sanitizedPath);
+            try {
+              execFileSync('git', ['credential', 'fill'], {
+                input: 'protocol=https\nhost=match.example.invalid\n\n',
+                encoding: 'utf8',
+                env: {
+                  PATH: process.env.PATH,
+                  GIT_CONFIG_GLOBAL: sanitizedPath,
+                  GIT_CONFIG_NOSYSTEM: '1',
+                  GIT_TERMINAL_PROMPT: '0',
+                },
+                stdio: ['pipe', 'pipe', 'pipe'],
+              });
+            } catch {
+              // A nonmatching private scope leaves credential fill unsatisfied.
+            }
+          }
+        },
+      }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+      expect(result).toMatchObject({ ok: false, message: 'remote telemetry advertisement failed' });
+      expect(sanitizedBytes?.byteLength).toBeGreaterThan(0);
+      expect(networkArgs.join('\n')).not.toContain(subsection);
+      expect(networkArgs.join('\n')).not.toContain(helper);
+      expect(JSON.stringify(result)).not.toContain(subsection);
+      expect(JSON.stringify(result)).not.toContain(helper);
+      expect(existsSync(marker)).toBe(false);
+      expect(existsSync(sanitizedPath as string)).toBe(false);
+      expect(credentialTempDirectories()).toEqual(beforeTemps);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    { label: 'empty subsection', stdout: credentialRecord('credential..helper', 'x') },
+    { label: 'C0 control', stdout: credentialRecord('credential.provider\u0001scope.helper', 'x') },
+    { label: 'C1 control', stdout: credentialRecord('credential.provider\u0085scope.helper', 'x') },
+    {
+      label: 'DEL control',
+      stdout: credentialRecord('credential.provider\u007fscope.helper', 'x'),
+    },
+    {
+      label: 'bidi format control',
+      stdout: credentialRecord('credential.provider\u202escope.helper', 'x'),
+    },
+    {
+      label: 'zero-width format control',
+      stdout: credentialRecord('credential.provider\u200bscope.helper', 'x'),
+    },
+    {
+      label: 'line separator',
+      stdout: credentialRecord('credential.provider\u2028scope.helper', 'x'),
+    },
+    {
+      label: 'paragraph separator',
+      stdout: credentialRecord('credential.provider\u2029scope.helper', 'x'),
+    },
+    {
+      label: 'invalid UTF-8',
+      stdout: Buffer.concat([
+        Buffer.from('credential.provider.scope.helper\n'),
+        Buffer.of(0xff, 0),
+      ]),
+    },
+    {
+      label: 'opaque subsection overflow',
+      stdout: credentialRecord(`credential.${'p'.repeat(2_001)}.helper`, 'x'),
+    },
+    {
+      label: 'host-bearing URL password',
+      stdout: credentialRecord('credential.https://user:password@example.invalid.helper', 'x'),
+    },
+    {
+      label: 'host-bearing URL query',
+      stdout: credentialRecord('credential.https://example.invalid/path?query=value.helper', 'x'),
+    },
+    {
+      label: 'host-bearing URL fragment',
+      stdout: credentialRecord('credential.https://example.invalid/path#fragment.helper', 'x'),
+    },
+    {
+      label: 'malformed RFC authority',
+      stdout: credentialRecord('credential.https://[broken.helper', 'x'),
+    },
+    {
+      label: 'forbidden terminal field',
+      stdout: credentialRecord('credential.provider:scope.password', 'x'),
+    },
+    {
+      label: 'entry count overflow',
+      stdout: Buffer.concat(
+        Array.from({ length: 65 }, (_, index) =>
+          credentialRecord('credential.helper', `helper-${index}`),
+        ),
+      ),
+    },
+  ])('rejects $label before materialization or network', async ({ stdout }) => {
+    const observed = await exerciseQuery(stdout);
+    expect(observed.result).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(observed.writers).toHaveLength(0);
+    expect(observed.networkCommands).toBe(0);
+    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+  });
+});
+
+describe('repair RED 5 — scoped and unscoped credential value Unicode controls', () => {
+  const exerciseValueQuery = async (stdout: Uint8Array) => {
+    const beforeTemps = credentialTempDirectories();
+    let writerCommands = 0;
+    let networkCommands = 0;
+    const result = await new ExecRemoteTelemetryGit({
+      timeoutMs: 1_000,
+      credentialConfigQuery: injectedCredentialQuery(stdout),
+      onGitCommand: (args: readonly string[]) => {
+        if (args.includes('--file') && args.includes('--add')) writerCommands += 1;
+        if (args.includes('ls-remote')) networkCommands += 1;
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    return { beforeTemps, writerCommands, networkCommands, result };
+  };
+
+  const valueControlCases = [
+    ['C1', '\u0085'],
+    ['bidi format', '\u202e'],
+    ['zero-width format', '\u200b'],
+    ['line separator', '\u2028'],
+    ['paragraph separator', '\u2029'],
+  ].flatMap(([label, control]) =>
+    [
+      ['unscoped helper', 'credential.helper'],
+      ['unscoped username', 'credential.username'],
+      ['scoped helper', 'credential.provider:tenant/project.helper'],
+      ['scoped username', 'credential.provider:tenant/project.username'],
+    ].map(([scope, key]) => ({ label: `${scope} ${label}`, key, value: `safe${control}value` })),
+  );
+
+  it.each(valueControlCases)('rejects $label before writer/network and without echo', async ({
+    key,
+    value,
+  }) => {
+    const observed = await exerciseValueQuery(credentialRecord(key, value));
+    expect(observed.result).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(observed.writerCommands).toBe(0);
+    expect(observed.networkCommands).toBe(0);
+    expect(JSON.stringify(observed.result)).not.toContain(value);
+    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+  });
+
+  it('preserves safe Unicode/spaces, empty helper reset, and exact lowercase bool', async () => {
+    const records = [
+      ['credential.helper', '!synthetic-helper α --flag value'],
+      ['credential.username', 'synthetic α user'],
+      ['credential.provider:tenant/project.helper', 'scoped helper β'],
+      ['credential.provider:tenant/project.username', 'scoped β user'],
+      ['credential.helper', ''],
+      ['credential.usehttppath', 'true'],
+    ] as const;
+    const observed = await exerciseValueQuery(
+      Buffer.concat(records.map(([key, value]) => credentialRecord(key, value))),
+    );
+    expect(observed.result).toMatchObject({
+      ok: false,
+      message: 'remote telemetry advertisement failed',
+    });
+    expect(observed.writerCommands).toBe(records.length);
+    expect(observed.networkCommands).toBe(1);
+    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+  });
+});
+
+describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () => {
+  it('uses private 0700/0600 materialization, HTTPS-only network env, and complete cleanup', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-b-'));
+    const globalConfig = join(root, '.gitconfig');
+    const helperFile = join(root, 'trusted helper command');
+    const sentinelSecret = 'fixture-helper-secret-never-exposed';
+    const beforeCredentialTemps = credentialTempDirectories();
+    const beforeHead = git(process.cwd(), ['rev-parse', 'HEAD']);
+    const beforeIndex = git(process.cwd(), ['write-tree']);
+    const beforeStatus = git(process.cwd(), ['status', '--porcelain=v1']);
+    let sanitizedPath: string | undefined;
+    let privateDirectoryMode: number | undefined;
+    let privateFileMode: number | undefined;
+    let sanitizedBytes: Buffer | undefined;
+    let network: ObservedGitCommand | undefined;
+    const observed: ObservedGitCommand[] = [];
+    try {
+      writeFileSync(helperFile, `private test material: ${sentinelSecret}\n`);
+      addGitConfig(globalConfig, 'credential.helper', `!${helperFile}`);
+      addGitConfig(globalConfig, 'credential.username', 'private-test-user');
+      const poison = {
+        GIT_DIR: join(root, 'hostile.git'),
+        GIT_WORK_TREE: join(root, 'hostile-worktree'),
+        GIT_INDEX_FILE: join(root, 'hostile-index'),
+        GIT_OBJECT_DIRECTORY: join(root, 'hostile-objects'),
+        GIT_ALTERNATE_OBJECT_DIRECTORIES: join(root, 'hostile-alternates'),
+        GIT_COMMON_DIR: join(root, 'hostile-common'),
+        GIT_CONFIG: join(root, 'hostile-config'),
+        GIT_CONFIG_GLOBAL: join(root, 'hostile-global'),
+        GIT_CONFIG_COUNT: '1',
+        GIT_CONFIG_KEY_0: 'http.extraHeader',
+        GIT_CONFIG_VALUE_0: 'Authorization: forbidden',
+        GIT_NAMESPACE: 'hostile-namespace',
+        GIT_REPLACE_REF_BASE: 'refs/hostile/',
+        GIT_SHALLOW_FILE: join(root, 'hostile-shallow'),
+        GIT_ASKPASS: join(root, 'hostile-askpass'),
+        SSH_ASKPASS: join(root, 'hostile-ssh-askpass'),
+        GIT_SSH_COMMAND: 'hostile-ssh-command',
+      };
+      const result = await withProcessEnvironment(
+        {
+          HOME: root,
+          USERPROFILE: root,
+          XDG_CONFIG_HOME: join(root, 'xdg'),
+          ...poison,
+        },
+        async () =>
+          await new ExecRemoteTelemetryGit({
+            timeoutMs: 1_000,
+            onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+              const item = { args: [...args], env };
+              observed.push(item);
+              const fileIndex = args.indexOf('--file');
+              if (fileIndex >= 0 && args.includes('--add')) sanitizedPath = args[fileIndex + 1];
+              if (args.includes('ls-remote')) {
+                network = item;
+                if (sanitizedPath !== undefined) {
+                  sanitizedBytes = readFileSync(sanitizedPath);
+                  privateDirectoryMode = statSync(dirname(sanitizedPath)).mode & 0o777;
+                  privateFileMode = statSync(sanitizedPath).mode & 0o777;
+                }
+              }
+            },
+          }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY),
+      );
+
+      expect(result).toMatchObject({ ok: false, kind: 'transport' });
+      expect(sanitizedPath).toBeDefined();
+      if (process.platform !== 'win32') {
+        expect(privateDirectoryMode).toBe(0o700);
+        expect(privateFileMode).toBe(0o600);
+      }
+      expect(sanitizedBytes?.toString('utf8')).toContain('credential');
+      expect(sanitizedBytes?.toString('utf8')).not.toContain(sentinelSecret);
+      expect(network?.args).toContain('credential.interactive=false');
+      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(sanitizedPath);
+      expect(network?.env).toMatchObject({
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_TERMINAL_PROMPT: '0',
+        GCM_INTERACTIVE: 'never',
+      });
+      expect(network?.args.join('\n')).not.toContain('private-test-user');
+      expect(network?.args.join('\n')).not.toContain(helperFile);
+      expect(Object.values(network?.env ?? {}).join('\n')).not.toContain('private-test-user');
+      expect(Object.values(network?.env ?? {}).join('\n')).not.toContain(sentinelSecret);
+      expect(JSON.stringify(result)).not.toContain('private-test-user');
+      expect(JSON.stringify(result)).not.toContain(helperFile);
+      expect(JSON.stringify(result)).not.toContain(sentinelSecret);
+      const discovery = observed.find((item) => item.args.includes('--get-regexp'));
+      for (const name of Object.keys(poison)) expect(discovery?.env?.[name]).toBeUndefined();
+      for (const name of [
+        'GIT_DIR',
+        'GIT_WORK_TREE',
+        'GIT_INDEX_FILE',
+        'GIT_OBJECT_DIRECTORY',
+        'GIT_COMMON_DIR',
+        'GIT_CONFIG_COUNT',
+        'GIT_CONFIG_KEY_0',
+        'GIT_CONFIG_VALUE_0',
+        'GIT_NAMESPACE',
+        'GIT_REPLACE_REF_BASE',
+        'GIT_SHALLOW_FILE',
+        'GIT_ASKPASS',
+        'SSH_ASKPASS',
+        'GIT_SSH_COMMAND',
+      ]) {
+        expect(network?.env?.[name]).toBeUndefined();
+      }
+      expect(existsSync(sanitizedPath as string)).toBe(false);
+      expect(credentialTempDirectories()).toEqual(beforeCredentialTemps);
+      expect(git(process.cwd(), ['rev-parse', 'HEAD'])).toBe(beforeHead);
+      expect(git(process.cwd(), ['write-tree'])).toBe(beforeIndex);
+      expect(git(process.cwd(), ['status', '--porcelain=v1'])).toBe(beforeStatus);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('never resolves or materializes credentials for SSH, scp-like SSH, or git transport', async () => {
+    const beforeTemps = credentialTempDirectories();
+    let queries = 0;
+    const targets: RemoteRepository[] = [
+      {
+        key: 'repo-ssh00000000000000',
+        identity: 'ssh://127.0.0.1:1/private.git',
+        transportUrl: 'ssh://127.0.0.1:1/private.git',
+      },
+      {
+        key: 'repo-scp00000000000000',
+        identity: 'git@127.0.0.1:private.git',
+        transportUrl: 'git@127.0.0.1:private.git',
+      },
+      {
+        key: 'repo-git00000000000000',
+        identity: 'git://127.0.0.1:1/private.git',
+        transportUrl: 'git://127.0.0.1:1/private.git',
+      },
+    ];
+    for (const repository of targets) {
+      let network: ObservedGitCommand | undefined;
+      await new ExecRemoteTelemetryGit({
+        timeoutMs: 25,
+        credentialConfigQuery: async () => {
+          queries += 1;
+          return await injectedCredentialQuery(Buffer.alloc(0), 1)();
+        },
+        onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+          if (args.includes('ls-remote')) network = { args: [...args], env };
+        },
+      }).advertiseTelemetryRefs(repository);
+      expect(network?.args).not.toContain('credential.interactive=false');
+      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(devNull);
+    }
+    expect(queries).toBe(0);
+    expect(credentialTempDirectories()).toEqual(beforeTemps);
+  });
+
+  it.each([
+    {
+      label: 'query nonzero',
+      query: injectedCredentialQuery(Buffer.from('private query output'), 2),
+    },
+    {
+      label: 'query timeout',
+      query: injectedCredentialQuery(Buffer.alloc(0), null as unknown as number, 'timeout'),
+    },
+    {
+      label: 'query throw',
+      query: async () => {
+        throw new Error('private query throw');
+      },
+    },
+  ])('maps $label to one static pre-network failure and no residue', async ({ query }) => {
+    const beforeTemps = credentialTempDirectories();
+    let networkCommands = 0;
+    const result = await new ExecRemoteTelemetryGit({
+      timeoutMs: 1_000,
+      credentialConfigQuery: query,
+      onGitCommand: (args: readonly string[]) => {
+        if (args.includes('ls-remote')) networkCommands += 1;
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(result).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(networkCommands).toBe(0);
+    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    expect(JSON.stringify(result)).not.toContain('private query');
+  });
+
+  it('enforces the shared preparation deadline and maps private creation failure before network', async () => {
+    const beforeTemps = credentialTempDirectories();
+    const ticks = [0, 30_001];
+    let deadlineNetworkCommands = 0;
+    const deadlineFailure = await new ExecRemoteTelemetryGit({
+      nowMs: () => ticks.shift() ?? 30_001,
+      credentialConfigQuery: injectedCredentialQuery(Buffer.alloc(0)),
+      onGitCommand: (args: readonly string[]) => {
+        if (args.includes('ls-remote')) deadlineNetworkCommands += 1;
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(deadlineFailure).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(deadlineNetworkCommands).toBe(0);
+
+    const root = mkdtempSync(join(tmpdir(), 'harness-credential-create-failure-'));
+    const privateMissingRoot = join(root, 'missing parent');
+    let creationNetworkCommands = 0;
+    try {
+      const creationFailure = await new ExecRemoteTelemetryGit({
+        temporaryRoot: privateMissingRoot,
+        credentialConfigQuery: injectedCredentialQuery(Buffer.alloc(0)),
+        onGitCommand: (args: readonly string[]) => {
+          if (args.includes('ls-remote')) creationNetworkCommands += 1;
+        },
+      }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+      expect(creationFailure).toEqual({
+        ok: false,
+        kind: 'transport',
+        message: 'HTTPS credential configuration failed',
+        repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+      });
+      expect(JSON.stringify(creationFailure)).not.toContain(privateMissingRoot);
+      expect(creationNetworkCommands).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+    expect(credentialTempDirectories()).toEqual(beforeTemps);
+  });
+
+  it('cleans partial materialization failure before network without exposing writer input', async () => {
+    const beforeTemps = credentialTempDirectories();
+    const privateHelper = '!private helper command';
+    const stdout = Buffer.concat([
+      credentialRecord('credential.helper', 'first-helper'),
+      credentialRecord('credential.helper', privateHelper),
+    ]);
+    let writers = 0;
+    let networkCommands = 0;
+    const result = await new ExecRemoteTelemetryGit({
+      timeoutMs: 1_000,
+      credentialConfigQuery: injectedCredentialQuery(stdout),
+      onGitCommand: (args: readonly string[]) => {
+        if (args.includes('--file') && args.includes('--add') && ++writers === 2) {
+          throw new Error(privateHelper);
+        }
+        if (args.includes('ls-remote')) networkCommands += 1;
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(result).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(writers).toBe(2);
+    expect(networkCommands).toBe(0);
+    expect(JSON.stringify(result)).not.toContain(privateHelper);
+    expect(credentialTempDirectories()).toEqual(beforeTemps);
+  });
+
+  it('honors an HTTPS-only injected lease and maps resolver/cleanup failures statically', async () => {
+    const makeLease = (cleanup: () => void) => {
+      const root = mkdtempSync(join(tmpdir(), 'harness-injected-credential-'));
+      const configPath = join(root, 'credentials.gitconfig');
+      writeFileSync(configPath, '', { mode: 0o600 });
+      return { root, configPath, lease: { ok: true as const, configPath, cleanup } };
+    };
+
+    let cleanupCalls = 0;
+    const first = makeLease(() => {
+      cleanupCalls += 1;
+    });
+    try {
+      let networkConfig: string | undefined;
+      const result = await new ExecRemoteTelemetryGit({
+        timeoutMs: 1_000,
+        resolveHttpsCredentialConfig: async () => first.lease,
+        onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+          if (args.includes('ls-remote')) networkConfig = env?.GIT_CONFIG_GLOBAL;
+        },
+      }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+      expect(result).toMatchObject({ ok: false, message: 'remote telemetry advertisement failed' });
+      expect(networkConfig).toBe(first.configPath);
+      expect(cleanupCalls).toBe(1);
+    } finally {
+      rmSync(first.root, { recursive: true, force: true });
+    }
+
+    const second = makeLease(() => {
+      throw new Error('private cleanup path');
+    });
+    try {
+      const cleanupFailure = await new ExecRemoteTelemetryGit({
+        timeoutMs: 1_000,
+        resolveHttpsCredentialConfig: async () => second.lease,
+      }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+      expect(cleanupFailure).toEqual({
+        ok: false,
+        kind: 'transport',
+        message: 'HTTPS credential cleanup failed',
+        repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+      });
+      expect(JSON.stringify(cleanupFailure)).not.toContain(second.configPath);
+    } finally {
+      rmSync(second.root, { recursive: true, force: true });
+    }
+
+    let networkCommands = 0;
+    const resolverFailure = await new ExecRemoteTelemetryGit({
+      resolveHttpsCredentialConfig: async () => ({
+        ok: false as const,
+        kind: 'transport' as const,
+        message: 'HTTPS credential configuration failed',
+        repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+      }),
+      onGitCommand: (args: readonly string[]) => {
+        if (args.includes('ls-remote')) networkCommands += 1;
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(resolverFailure).toMatchObject({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+    });
+    expect(networkCommands).toBe(0);
+
+    const thrownFailure = await new ExecRemoteTelemetryGit({
+      resolveHttpsCredentialConfig: async () => {
+        throw new Error('private resolver throw');
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(thrownFailure).toEqual({
+      ok: false,
+      kind: 'transport',
+      message: 'HTTPS credential configuration failed',
+      repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
+    });
+    expect(JSON.stringify(thrownFailure)).not.toContain('private resolver');
+  });
+
+  it('keeps a Windows-shaped private config path one environment value and out of argv/output', async () => {
+    const shapedPath = 'C:\\Private Git Config\\Agent One\\credentials.gitconfig';
+    let cleanupCalls = 0;
+    let network: ObservedGitCommand | undefined;
+    const result = await new ExecRemoteTelemetryGit({
+      timeoutMs: 1_000,
+      resolveHttpsCredentialConfig: async () => ({
+        ok: true as const,
+        configPath: shapedPath,
+        cleanup: () => {
+          cleanupCalls += 1;
+        },
+      }),
+      onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+        if (args.includes('ls-remote')) network = { args: [...args], env };
+      },
+    }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+    expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(shapedPath);
+    expect(network?.args).not.toContain(shapedPath);
+    expect(network?.args.every((arg) => typeof arg === 'string')).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(shapedPath);
+    expect(cleanupCalls).toBe(1);
+  });
+});
+
 describe('ExecRemoteTelemetryGit — real network-served Git', () => {
   let root: string;
   let work: string;
@@ -807,6 +1863,65 @@ describe('ExecRemoteTelemetryGit — real network-served Git', () => {
     expect(fetchArgv.join(' ')).not.toContain('refs/heads/main');
     expect(fetchArgv.join(' ')).not.toContain('refs/tags/unrelated-product-tag');
   }, 20_000);
+
+  it('reuses one injected HTTPS lease within each successful public operation', async () => {
+    const beforeTemps = credentialTempDirectories();
+    const httpsIdentityOverLoopback: RemoteRepository = {
+      ...repository,
+      identity: 'https://fixture.example.invalid/private.git',
+    };
+    const leasePaths: string[] = [];
+    const networkConfigPaths: string[] = [];
+    let cleanupCalls = 0;
+    const adapter = new ExecRemoteTelemetryGit({
+      resolveHttpsCredentialConfig: async () => {
+        const privateRoot = mkdtempSync(join(tmpdir(), 'harness-git-credential-'));
+        const configPath = join(privateRoot, 'credentials.gitconfig');
+        writeFileSync(configPath, '', { mode: 0o600 });
+        leasePaths.push(configPath);
+        return {
+          ok: true,
+          configPath,
+          cleanup: () => {
+            cleanupCalls += 1;
+            rmSync(privateRoot, { recursive: true, force: true });
+          },
+        };
+      },
+      onGitCommand: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => {
+        if (args.includes('ls-remote') || args.includes('fetch')) {
+          const path = env?.GIT_CONFIG_GLOBAL;
+          if (path !== undefined) networkConfigPaths.push(path);
+        }
+      },
+    });
+
+    const advertisement = await adapter.advertiseTelemetryRefs(httpsIdentityOverLoopback);
+    expect(advertisement.ok).toBe(true);
+    if (!advertisement.ok) return;
+    const loaded = await adapter.loadVerifiedTelemetrySnapshot({
+      repository: httpsIdentityOverLoopback,
+      advertisedRefs: advertisement.refs,
+      candidateRefs: [advertisement.refs[0]],
+    });
+    expect(loaded.ok).toBe(true);
+    const product = await adapter.resolveProductCommitInterval({
+      repository: httpsIdentityOverLoopback,
+      from: productStart,
+      to: productEnd,
+      candidates: [],
+    });
+    expect(product.ok).toBe(true);
+
+    expect(leasePaths).toHaveLength(3);
+    expect(new Set(leasePaths).size).toBe(3);
+    expect(cleanupCalls).toBe(3);
+    expect(networkConfigPaths[0]).toBe(leasePaths[0]);
+    expect(networkConfigPaths.filter((path) => path === leasePaths[1])).toHaveLength(2);
+    expect(networkConfigPaths.filter((path) => path === leasePaths[2]).length).toBeGreaterThan(1);
+    expect(networkConfigPaths.every((path) => leasePaths.includes(path))).toBe(true);
+    expect(credentialTempDirectories()).toEqual(beforeTemps);
+  }, 30_000);
 
   it('detects whole-namespace movement so the service can restart the complete transaction', async () => {
     let next = '';

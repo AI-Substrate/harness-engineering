@@ -15,10 +15,10 @@ import type { AnyValue, KeyValue, LogRecord, LogsData, NumberDataPoint } from '.
 import { compareUnsignedUtf8, type SelectableTelemetrySession } from './remote-selection.js';
 import {
   type ProductCommitCoverage,
-  parseManifest,
   ROLLED_LOGS_NAME,
   ROLLED_MANIFEST_NAME,
   ROLLED_METRICS_NAME,
+  ROLLUP_FORMAT,
   type RollManifest,
   splitJsonl,
   verifyProductCommitCoverage,
@@ -98,6 +98,7 @@ export type PublishedTelemetryDecodeResult =
   | { ok: false; reason: 'malformed_or_unsafe' };
 
 const FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+const REMOTE_MANIFEST_FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i;
 const SAFE_PATH =
   /^(?:manifest\.json|session\.(?:logs|metrics)\.jsonl|\d+\.(?:json|logs\.jsonl|metrics\.jsonl))$/;
 const SAFE_UNKNOWN_KEY = /^[A-Za-z0-9_.-]{1,64}$/;
@@ -397,6 +398,19 @@ function hasExactKeys(
 
 const SAFE_IDENTIFIER = /^[A-Za-z0-9_.:@+/{}-]{1,256}$/;
 const DECIMAL_INTEGER = /^(?:0|[1-9]\d*)$/;
+const UINT64_MAX = '18446744073709551615';
+
+function canonicalUint64(value: string): boolean {
+  return (
+    DECIMAL_INTEGER.test(value) &&
+    value.length <= UINT64_MAX.length &&
+    (value.length < UINT64_MAX.length || value <= UINT64_MAX)
+  );
+}
+
+function compareUint64(a: string, b: string): number {
+  return a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
+}
 const SCHEMA_URLS = {
   '2.4': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0',
   '2.5': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0',
@@ -1134,9 +1148,9 @@ function validDataPoint(value: unknown, definition: MetricDefinition): boolean {
     ) ||
     typeof point.startTimeUnixNano !== 'string' ||
     typeof point.timeUnixNano !== 'string' ||
-    !DECIMAL_INTEGER.test(point.startTimeUnixNano) ||
-    !DECIMAL_INTEGER.test(point.timeUnixNano) ||
-    Number(point.startTimeUnixNano) > Number(point.timeUnixNano) ||
+    !canonicalUint64(point.startTimeUnixNano) ||
+    !canonicalUint64(point.timeUnixNano) ||
+    compareUint64(point.startTimeUnixNano, point.timeUnixNano) > 0 ||
     Number('asInt' in point) + Number('asDouble' in point) !== 1 ||
     !validMetricAttributes(point.attributes, definition)
   ) {
@@ -1217,6 +1231,8 @@ function validMetrics(value: unknown): boolean {
     return false;
   }
   const names = new Set<string>();
+  let sharedStart: string | undefined;
+  let sharedEnd: string | undefined;
   for (const metric of scopeMetrics.metrics) {
     const item = record(metric);
     if (
@@ -1228,6 +1244,108 @@ function validMetrics(value: unknown): boolean {
       return false;
     }
     names.add(item.name);
+    const contract = METRIC_DEFINITION_BY_NAME.get(item.name);
+    const data = contract === undefined ? null : record(item[contract.kind]);
+    if (data === null || !Array.isArray(data.dataPoints)) return false;
+    for (const value of data.dataPoints) {
+      const point = record(value);
+      if (
+        point === null ||
+        typeof point.startTimeUnixNano !== 'string' ||
+        typeof point.timeUnixNano !== 'string'
+      ) {
+        return false;
+      }
+      if (sharedStart === undefined) {
+        sharedStart = point.startTimeUnixNano;
+        sharedEnd = point.timeUnixNano;
+      } else if (point.startTimeUnixNano !== sharedStart || point.timeUnixNano !== sharedEnd) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+interface ExactTimeBounds {
+  start: string;
+  end: string;
+}
+
+function metricDocumentBounds(value: unknown): ExactTimeBounds | null {
+  const root = record(value);
+  const resourceMetrics = root?.resourceMetrics;
+  if (!Array.isArray(resourceMetrics) || resourceMetrics.length === 0) return null;
+  const resourceMetric = record(resourceMetrics[0]);
+  const scopeMetrics = Array.isArray(resourceMetric?.scopeMetrics)
+    ? record(resourceMetric.scopeMetrics[0])
+    : null;
+  if (!Array.isArray(scopeMetrics?.metrics)) return null;
+  for (const value of scopeMetrics.metrics) {
+    const metric = record(value);
+    const contract =
+      typeof metric?.name === 'string' ? METRIC_DEFINITION_BY_NAME.get(metric.name) : undefined;
+    const data = contract === undefined ? null : record(metric?.[contract.kind]);
+    const point = Array.isArray(data?.dataPoints) ? record(data.dataPoints[0]) : null;
+    if (typeof point?.startTimeUnixNano === 'string' && typeof point.timeUnixNano === 'string') {
+      return { start: point.startTimeUnixNano, end: point.timeUnixNano };
+    }
+  }
+  return null;
+}
+
+function logsDocumentBounds(value: unknown): ExactTimeBounds | null {
+  const reconstructed = reconstructSegmentFromOtlpLogs(value as LogsData);
+  if (!reconstructed.ok) return null;
+  const nanos = reconstructed.segment.event_stream
+    .filter((event) => event.kind !== 'flow_log')
+    .map((event) => String(BigInt(Math.round(Date.parse(event.t))) * 1_000_000n));
+  if (nanos.length === 0) return null;
+  let start = nanos[0] as string;
+  let end = start;
+  for (const value of nanos.slice(1)) {
+    if (compareUint64(value, start) < 0) start = value;
+    if (compareUint64(value, end) > 0) end = value;
+  }
+  return { start, end };
+}
+
+function parsedDocuments(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [value];
+}
+
+function pairedDocumentsHaveExactBounds(logs: unknown, metrics: unknown): boolean {
+  const logDocuments = parsedDocuments(logs);
+  const metricDocuments = parsedDocuments(metrics);
+  return (
+    logDocuments.length === metricDocuments.length &&
+    logDocuments.every((document, index) => {
+      const expected = logsDocumentBounds(document);
+      const actual = metricDocumentBounds(metricDocuments[index]);
+      return expected === null
+        ? actual === null
+        : actual !== null && actual.start === expected.start && actual.end === expected.end;
+    })
+  );
+}
+
+function validPairedSignalBounds(parsedByPath: ReadonlyMap<string, unknown>): boolean {
+  const canonicalLogs = parsedByPath.get(ROLLED_LOGS_NAME);
+  const canonicalMetrics = parsedByPath.get(ROLLED_METRICS_NAME);
+  if (
+    canonicalLogs !== undefined &&
+    canonicalMetrics !== undefined &&
+    !pairedDocumentsHaveExactBounds(canonicalLogs, canonicalMetrics)
+  ) {
+    return false;
+  }
+  for (const path of parsedByPath.keys()) {
+    const match = /^(\d+)\.logs\.jsonl$/.exec(path);
+    if (match === null) continue;
+    const metrics = parsedByPath.get(`${match[1]}.metrics.jsonl`);
+    if (metrics !== undefined && !pairedDocumentsHaveExactBounds(parsedByPath.get(path), metrics)) {
+      return false;
+    }
   }
   return true;
 }
@@ -1246,6 +1364,40 @@ function manifestDate(value: string): string | null {
   const date = `${match[1]}-${match[2]}-${match[3]}`;
   const parsed = new Date(`${date}T00:00:00.000Z`);
   return Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== date ? null : date;
+}
+
+function strictRemoteManifest(value: unknown, expectedSession: string): RollManifest | null {
+  const manifest = record(value);
+  if (
+    manifest === null ||
+    !hasExactKeys(manifest, ['format', 'session', 'start_date', 'max_seq'], ['product_commits']) ||
+    manifest.format !== ROLLUP_FORMAT ||
+    manifest.session !== expectedSession ||
+    typeof manifest.session !== 'string' ||
+    !isTelemetrySessionId(manifest.session) ||
+    typeof manifest.start_date !== 'string' ||
+    (manifest.start_date !== '0000/00/00' && manifestDate(manifest.start_date) === null) ||
+    !nonNegativeInteger(manifest.max_seq)
+  ) {
+    return null;
+  }
+  const productCommits = manifest.product_commits;
+  if (productCommits === undefined) return manifest as unknown as RollManifest;
+  if (
+    !Array.isArray(productCommits) ||
+    productCommits.length === 0 ||
+    productCommits.some(
+      (oid) =>
+        typeof oid !== 'string' || !REMOTE_MANIFEST_FULL_OID.test(oid) || oid !== oid.toLowerCase(),
+    ) ||
+    new Set(productCommits).size !== productCommits.length ||
+    productCommits.some(
+      (oid) => typeof oid !== 'string' || oid.length !== productCommits[0]?.length,
+    )
+  ) {
+    return null;
+  }
+  return manifest as unknown as RollManifest;
 }
 
 function countMeasurements(value: unknown): number {
@@ -1300,7 +1452,10 @@ function eventCount(session: SessionExport): number {
   );
 }
 
-function evidenceForRef(ref: RemoteTelemetryRefSnapshot): PublishedRefEvidence | null {
+function evidenceForRef(
+  ref: RemoteTelemetryRefSnapshot,
+  validatedManifest: RollManifest | null,
+): PublishedRefEvidence | null {
   const textByPath = new Map<string, string>();
   for (const commit of ref.history) {
     for (const entry of commit.entries) {
@@ -1325,10 +1480,7 @@ function evidenceForRef(ref: RemoteTelemetryRefSnapshot): PublishedRefEvidence |
           ? 'legacy-history'
           : 'identity-only';
 
-  const manifests = paths
-    .filter((path) => path === ROLLED_MANIFEST_NAME)
-    .map((path) => parseManifest(textByPath.get(path) as string))
-    .filter((manifest): manifest is RollManifest => manifest !== null);
+  const manifests = validatedManifest === null ? [] : [validatedManifest];
   const segmentProducts: Array<string | null> = [];
   const canonicalLogs = textByPath.get(ROLLED_LOGS_NAME);
   let canonicalSegments = 0;
@@ -1396,6 +1548,7 @@ export function decodePublishedTelemetrySession(
 interface PerRefFiles {
   textByPath: Map<string, string>;
   parsedByPath: Map<string, unknown>;
+  manifest: RollManifest | null;
 }
 
 interface SegmentClaim {
@@ -1457,6 +1610,7 @@ function decodeUnsafe(input: PublishedTelemetrySessionInput): PublishedTelemetry
     }
     const textByPath = new Map<string, string>();
     const parsedByPath = new Map<string, unknown>();
+    let refManifest: RollManifest | null = null;
     for (const commit of ref.history) {
       if (!FULL_OID.test(commit.oid) || commit.parents.some((parent) => !FULL_OID.test(parent))) {
         return { ok: false, reason: 'malformed_or_unsafe' };
@@ -1491,11 +1645,12 @@ function decodeUnsafe(input: PublishedTelemetrySessionInput): PublishedTelemetry
         }
         const firstForRef = !textByPath.has(entry.path);
         if (entry.path === ROLLED_MANIFEST_NAME) {
-          const manifest = parseManifest(text.startsWith('\ufeff') ? text.slice(1) : text);
-          if (manifest === null || manifest.session !== input.group.sessionId) {
-            return { ok: false, reason: 'malformed_or_unsafe' };
+          const manifest = strictRemoteManifest(values[0], input.group.sessionId);
+          if (manifest === null) return { ok: false, reason: 'malformed_or_unsafe' };
+          if (firstForRef) {
+            manifests.push(manifest);
+            refManifest = manifest;
           }
-          if (firstForRef) manifests.push(manifest);
           const knownManifestDate = manifestDate(manifest.start_date);
           if (
             firstForRef &&
@@ -1524,6 +1679,9 @@ function decodeUnsafe(input: PublishedTelemetrySessionInput): PublishedTelemetry
         }
       }
     }
+    if (!validPairedSignalBounds(parsedByPath)) {
+      return { ok: false, reason: 'malformed_or_unsafe' };
+    }
     for (const [path, parsed] of parsedByPath) {
       if (!path.endsWith('.metrics.jsonl')) continue;
       const values = Array.isArray(parsed) ? parsed : [parsed];
@@ -1535,10 +1693,12 @@ function decodeUnsafe(input: PublishedTelemetrySessionInput): PublishedTelemetry
         );
       }
     }
-    refFiles.push({ textByPath, parsedByPath });
+    refFiles.push({ textByPath, parsedByPath, manifest: refManifest });
   }
 
-  const refEvidence = orderedRefs.map(evidenceForRef);
+  const refEvidence = orderedRefs.map((ref, index) =>
+    evidenceForRef(ref, refFiles[index]?.manifest ?? null),
+  );
   if (refEvidence.some((evidence) => evidence === null)) {
     return { ok: false, reason: 'malformed_or_unsafe' };
   }

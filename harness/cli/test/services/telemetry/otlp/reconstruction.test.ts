@@ -14,6 +14,10 @@ import {
   LEGACY_HARNESS_SCHEMA_URL,
   LEGACY_OTLP_SCOPE_VERSION,
   OTLP_SCOPE_VERSION,
+  SEV_ERROR,
+  SEV_INFO,
+  SEV_WARN,
+  severityText,
 } from '../../../../src/services/telemetry/otlp/types.js';
 import { computeRollup } from '../../../../src/services/telemetry/rollup.js';
 import {
@@ -313,5 +317,138 @@ describe('all-kind reconstruction symmetry and producer-owned Logs contract', ()
 
   it('emitted logs pass OTLP conformance', () => {
     expect(conformLogs(segmentToOtlpLogs(seg))).toEqual({ ok: true });
+  });
+});
+
+function recordForSeverity(event: Event) {
+  const segment = serializeSegment(
+    {
+      command: 'flow',
+      harness: 'claude-code',
+      harness_session_id: 'severity-contract',
+      timecode: event.t,
+      window: { since: 'session-start', from: 0, to: 1 },
+      branch: 'main',
+      event_stream: [event],
+    },
+    '/repo',
+  );
+  const record = segmentToOtlpLogs(segment).resourceLogs[0].scopeLogs[0].logRecords[0];
+  if (record === undefined) throw new Error('missing severity fixture record');
+  return structuredClone(record);
+}
+
+function withSeverity(record: ReturnType<typeof recordForSeverity>, severity: number) {
+  return { ...record, severityNumber: severity, severityText: severityText(severity) };
+}
+
+describe('repair RED 3 — exact dependent and fixed Logs severity', () => {
+  it.each([
+    ['ok', SEV_INFO],
+    ['degraded', SEV_WARN],
+    ['error', SEV_ERROR],
+  ] as const)('binds checks %s to its exact producer severity', (status, expected) => {
+    const record = recordForSeverity({
+      t: '2026-07-18T00:00:00Z',
+      kind: 'checks',
+      status,
+      gates: { tests: 'ok' },
+    });
+    expect(record.severityNumber).toBe(expected);
+    expect(validateLogRecordContract(record)).toBe(true);
+    for (const contradictory of [SEV_INFO, SEV_WARN, SEV_ERROR].filter(
+      (severity) => severity !== expected,
+    )) {
+      expect(validateLogRecordContract(withSeverity(record, contradictory))).toBe(false);
+    }
+  });
+
+  it.each([
+    [0, SEV_INFO],
+    [1, SEV_ERROR],
+    [255, SEV_ERROR],
+  ] as const)('binds command exit %s to its exact producer severity', (exit, expected) => {
+    const record = recordForSeverity({
+      t: '2026-07-18T00:00:01Z',
+      kind: 'command_exit',
+      verb: 'checks',
+      exit,
+      status: exit === 0 ? 'ok' : 'error',
+    });
+    expect(record.severityNumber).toBe(expected);
+    expect(validateLogRecordContract(record)).toBe(true);
+    const contradictory = expected === SEV_INFO ? SEV_ERROR : SEV_INFO;
+    expect(validateLogRecordContract(withSeverity(record, contradictory))).toBe(false);
+  });
+
+  it('keeps every fixed-severity family exact', () => {
+    for (const event of ALL_KINDS.filter(
+      (candidate) => candidate.kind !== 'checks' && candidate.kind !== 'command_exit',
+    )) {
+      const record = recordForSeverity(event);
+      const expected = event.kind === 'api_error' ? SEV_ERROR : SEV_INFO;
+      expect(record.severityNumber, event.kind).toBe(expected);
+      expect(validateLogRecordContract(record), event.kind).toBe(true);
+      const contradictory = expected === SEV_INFO ? SEV_ERROR : SEV_INFO;
+      expect(
+        validateLogRecordContract(withSeverity(record, contradictory)),
+        `${event.kind} contradictory severity`,
+      ).toBe(false);
+    }
+  });
+
+  it('rejects numeric/text mismatch independently', () => {
+    const record = recordForSeverity({
+      t: '2026-07-18T00:00:02Z',
+      kind: 'checks',
+      status: 'ok',
+    });
+    expect(
+      validateLogRecordContract({
+        ...record,
+        severityNumber: SEV_ERROR,
+        severityText: severityText(SEV_INFO),
+      }),
+    ).toBe(false);
+    expect(validateLogRecordContract({ ...record, severityText: severityText(SEV_ERROR) })).toBe(
+      false,
+    );
+  });
+
+  it('rejects missing or wrong dependent attributes and accepts encoder/reconstruction output', () => {
+    const logs = segmentToOtlpLogs(
+      serializeSegment(
+        {
+          command: 'flow',
+          harness: 'claude-code',
+          harness_session_id: 'severity-roundtrip',
+          timecode: '2026-07-18T00:00:03Z',
+          window: { since: 'session-start', from: 0, to: 2 },
+          branch: 'main',
+          event_stream: [
+            { t: '2026-07-18T00:00:03Z', kind: 'checks', status: 'degraded' },
+            {
+              t: '2026-07-18T00:00:04Z',
+              kind: 'command_exit',
+              verb: 'checks',
+              exit: 1,
+            },
+          ],
+        },
+        '/repo',
+      ),
+    );
+    for (const record of logs.resourceLogs[0].scopeLogs[0].logRecords) {
+      expect(validateLogRecordContract(record)).toBe(true);
+    }
+    expect(reconstructSegmentFromOtlpLogs(logs).ok).toBe(true);
+
+    for (const index of [0, 1]) {
+      const record = structuredClone(logs.resourceLogs[0].scopeLogs[0].logRecords[index]);
+      if (record === undefined) throw new Error('missing dependent fixture record');
+      const dependentKey = index === 0 ? 'harness.checks.status' : 'harness.command.exit';
+      record.attributes = record.attributes.filter((attribute) => attribute.key !== dependentKey);
+      expect(validateLogRecordContract(record)).toBe(false);
+    }
   });
 });

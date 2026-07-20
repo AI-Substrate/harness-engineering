@@ -449,7 +449,8 @@ function readUnsafe(path: string, deps: TelemetryBundleReaderDeps): ReadTelemetr
       !nonNegativeInteger(repositoryRow.advertised_ref_count) ||
       !nonNegativeInteger(repositoryRow.selected_ref_count) ||
       repositoryRow.selected_ref_count > repositoryRow.advertised_ref_count ||
-      !Array.isArray(repositoryRow.sessions)
+      !Array.isArray(repositoryRow.sessions) ||
+      repositoryRow.selected_ref_count < repositoryRow.sessions.length
     ) {
       return { ok: false, reason: 'invalid_bundle' };
     }
@@ -474,6 +475,7 @@ function readUnsafe(path: string, deps: TelemetryBundleReaderDeps): ReadTelemetr
         !['full', 'partial', 'identity-only'].includes(sessionRow.fidelity as string) ||
         !validCoverage(sessionRow.coverage) ||
         !Array.isArray(sessionRow.refs) ||
+        sessionRow.refs.length === 0 ||
         !Array.isArray(sessionRow.gaps) ||
         sessionRow.gaps.some((gap) => !validSelectionGap(gap)) ||
         new Set(

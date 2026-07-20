@@ -1,5 +1,13 @@
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import {
+  chmodSync,
+  closeSync,
+  mkdtempSync,
+  openSync,
+  readdirSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { devNull, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
@@ -20,6 +28,17 @@ const FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const TELEMETRY_NAMESPACE = 'refs/harness-telemetry/*';
 const SAFE_TELEMETRY_PATH =
   /^(?:manifest\.json|session\.(?:logs|metrics)\.jsonl|\d+\.(?:json|logs\.jsonl|metrics\.jsonl))$/;
+const CREDENTIAL_QUERY_REGEX = '^credential(\\..+)?\\.(helper|username|usehttppath)$';
+const CREDENTIAL_PREPARATION_TIMEOUT_MS = 30_000;
+const CREDENTIAL_DISCOVERY_OUTPUT_BYTES = 65_536;
+const CREDENTIAL_ENTRY_COUNT = 64;
+const CREDENTIAL_TOTAL_BYTES = 65_536;
+const CREDENTIAL_KEY_BYTES = 2_048;
+const CREDENTIAL_URL_SUBSECTION_BYTES = 2_000;
+const CREDENTIAL_HELPER_BYTES = 8_192;
+const CREDENTIAL_USERNAME_BYTES = 1_024;
+const CREDENTIAL_TEMP_PREFIX = 'harness-git-credential-';
+const CREDENTIAL_CONFIG_NAME = 'credentials.gitconfig';
 
 const SAFE_INHERITED_ENV = [
   'PATH',
@@ -54,7 +73,28 @@ const SAFE_INHERITED_ENV = [
   'CURL_CA_BUNDLE',
 ] as const;
 
-function safeGitEnvironment(): NodeJS.ProcessEnv {
+const SAFE_CREDENTIAL_CONFIG_ENV = [
+  'PATH',
+  'Path',
+  'PATHEXT',
+  'SYSTEMROOT',
+  'SystemRoot',
+  'WINDIR',
+  'COMSPEC',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'HOME',
+  'USERPROFILE',
+  'USER',
+  'LOGNAME',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'XDG_CONFIG_HOME',
+] as const;
+
+function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_INHERITED_ENV) {
     const value = process.env[name];
@@ -64,15 +104,44 @@ function safeGitEnvironment(): NodeJS.ProcessEnv {
     ...inherited,
     GIT_TERMINAL_PROMPT: '0',
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: devNull,
+    GIT_CONFIG_GLOBAL: credentialConfigPath ?? devNull,
     GIT_OPTIONAL_LOCKS: '0',
     GIT_PROTOCOL_FROM_USER: '0',
     GIT_ALLOW_PROTOCOL: 'https:ssh:git',
+    ...(credentialConfigPath === undefined ? {} : { GCM_INTERACTIVE: 'never' }),
+  };
+}
+
+function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessEnv {
+  const inherited: NodeJS.ProcessEnv = {};
+  for (const name of SAFE_CREDENTIAL_CONFIG_ENV) {
+    const value = process.env[name];
+    if (value !== undefined) inherited[name] = value;
+  }
+  return {
+    ...inherited,
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_TERMINAL_PROMPT: '0',
+    GCM_INTERACTIVE: 'never',
+    ...(materializing ? { GIT_CONFIG_GLOBAL: devNull } : {}),
   };
 }
 
 function inDisposableStore(store: string, args: readonly string[]): string[] {
   return [`--git-dir=${store}`, ...args];
+}
+
+export interface HttpsCredentialConfigQueryResult {
+  readonly ok: boolean;
+  readonly code: number | null;
+  readonly stdout: Uint8Array;
+  readonly stopped: 'timeout' | 'output_cap' | null;
+}
+
+export interface HttpsCredentialConfigLease {
+  readonly ok: true;
+  readonly configPath: string;
+  readonly cleanup: () => void | Promise<void>;
 }
 
 export interface ExecRemoteTelemetryGitLimits {
@@ -82,8 +151,14 @@ export interface ExecRemoteTelemetryGitLimits {
   maxProductObjectBytes?: number;
   maxCommandOutputBytes?: number;
   maxCandidates?: number;
-  /** Test evidence hook: receives the exact argv array passed to `git`. */
-  onGitCommand?: (args: readonly string[]) => void;
+  /** Test evidence hook: receives exact argv and the child environment. */
+  onGitCommand?: (args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => void;
+  /** HTTPS-only parser seam for malformed/bounded query output proof. */
+  credentialConfigQuery?: () => Promise<HttpsCredentialConfigQueryResult>;
+  /** HTTPS-only operation-lease seam for lifecycle and shaped-path proof. */
+  resolveHttpsCredentialConfig?: (
+    repository: RemoteRepository,
+  ) => Promise<HttpsCredentialConfigLease | RemoteTelemetryFailure>;
   /** Test evidence hook: allows a real namespace move immediately before verification. */
   beforePostFetchAdvertisement?: () => void | Promise<void>;
   /** Test evidence hook for safe cleanup-failure behavior. */
@@ -154,6 +229,85 @@ function hasControlCharacter(value: string): boolean {
   return false;
 }
 
+function hasCredentialValueControl(value: string): boolean {
+  return /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(value);
+}
+
+interface CredentialConfigEntry {
+  readonly key: string;
+  readonly value: string;
+}
+
+function validCredentialSubsection(value: string): boolean {
+  if (
+    value.length === 0 ||
+    Buffer.byteLength(value, 'utf8') > CREDENTIAL_URL_SUBSECTION_BYTES ||
+    /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(value)
+  ) {
+    return false;
+  }
+  try {
+    const url = new URL(value);
+    if (url.hostname.length === 0) return true;
+    return (
+      url.protocol.length > 1 &&
+      url.password.length === 0 &&
+      url.search.length === 0 &&
+      url.hash.length === 0
+    );
+  } catch {
+    return !/^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(value);
+  }
+}
+
+function parseCredentialConfig(bytes: Uint8Array): CredentialConfigEntry[] | null {
+  const buffer = Buffer.from(bytes);
+  if (buffer.byteLength > CREDENTIAL_DISCOVERY_OUTPUT_BYTES) return null;
+  if (buffer.byteLength === 0) return [];
+  const entries: CredentialConfigEntry[] = [];
+  let totalBytes = 0;
+  let start = 0;
+  while (start < buffer.byteLength) {
+    const end = buffer.indexOf(0, start);
+    if (end < 0 || end === start) return null;
+    const record = decodeUtf8(buffer.subarray(start, end));
+    if (record === null) return null;
+    const separator = record.indexOf('\n');
+    if (separator <= 0) return null;
+    const key = record.slice(0, separator);
+    const value = record.slice(separator + 1);
+    if (hasControlCharacter(key) || hasControlCharacter(value)) return null;
+    const keyBytes = Buffer.byteLength(key, 'utf8');
+    const valueBytes = Buffer.byteLength(value, 'utf8');
+    if (keyBytes > CREDENTIAL_KEY_BYTES) return null;
+
+    let field: 'helper' | 'username' | 'usehttppath';
+    if (/^credential\.(?:helper|username|usehttppath)$/.test(key)) {
+      field = key.slice('credential.'.length) as typeof field;
+    } else {
+      const scoped = /^credential\.(.+)\.(helper|username|usehttppath)$/.exec(key);
+      if (scoped === null || !validCredentialSubsection(scoped[1] as string)) return null;
+      field = scoped[2] as typeof field;
+    }
+    if ((field === 'helper' || field === 'username') && hasCredentialValueControl(value)) {
+      return null;
+    }
+    if (field === 'helper') {
+      if (valueBytes > CREDENTIAL_HELPER_BYTES) return null;
+    } else if (field === 'username') {
+      if (value.length === 0 || valueBytes > CREDENTIAL_USERNAME_BYTES) return null;
+    } else if (value !== 'true' && value !== 'false') {
+      return null;
+    }
+    totalBytes += keyBytes + valueBytes;
+    if (totalBytes > CREDENTIAL_TOTAL_BYTES || entries.length >= CREDENTIAL_ENTRY_COUNT)
+      return null;
+    entries.push({ key, value });
+    start = end + 1;
+  }
+  return start === buffer.byteLength ? entries : null;
+}
+
 function unsignedText(a: string, b: string): number {
   return Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'));
 }
@@ -165,7 +319,17 @@ function unsignedText(a: string, b: string): number {
  */
 export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
   private readonly limits: ResolvedLimits;
-  private readonly onGitCommand: ((args: readonly string[]) => void) | undefined;
+  private readonly onGitCommand:
+    | ((args: readonly string[], env?: Readonly<NodeJS.ProcessEnv>) => void)
+    | undefined;
+  private readonly credentialConfigQuery:
+    | (() => Promise<HttpsCredentialConfigQueryResult>)
+    | undefined;
+  private readonly resolveHttpsCredentialConfigOverride:
+    | ((
+        repository: RemoteRepository,
+      ) => Promise<HttpsCredentialConfigLease | RemoteTelemetryFailure>)
+    | undefined;
   private readonly beforePostFetchAdvertisement: (() => void | Promise<void>) | undefined;
   private readonly removeStore: (path: string) => void;
   private readonly temporaryRoot: string;
@@ -175,6 +339,8 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
 
   constructor(limits: ExecRemoteTelemetryGitLimits = {}) {
     this.onGitCommand = limits.onGitCommand;
+    this.credentialConfigQuery = limits.credentialConfigQuery;
+    this.resolveHttpsCredentialConfigOverride = limits.resolveHttpsCredentialConfig;
     this.beforePostFetchAdvertisement = limits.beforePostFetchAdvertisement;
     this.removeStore =
       limits.removeStore ?? ((path) => rmSync(path, { recursive: true, force: true }));
@@ -193,10 +359,24 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
   }
 
   async advertiseTelemetryRefs(repository: RemoteRepository): Promise<RemoteAdvertisementResult> {
+    return await this.withHttpsCredentialConfig(
+      repository,
+      async (credentialConfigPath) =>
+        await this.advertiseTelemetryRefsWithConfig(repository, credentialConfigPath),
+    );
+  }
+
+  private async advertiseTelemetryRefsWithConfig(
+    repository: RemoteRepository,
+    credentialConfigPath?: string,
+  ): Promise<RemoteAdvertisementResult> {
     const result = await this.runGit(
       ['ls-remote', '--refs', repository.transportUrl, TELEMETRY_NAMESPACE],
       tmpdir(),
       this.limits.timeoutMs,
+      undefined,
+      undefined,
+      credentialConfigPath,
     );
     if (!result.ok) {
       return failure(repository.key, 'transport', 'remote telemetry advertisement failed');
@@ -246,10 +426,15 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
         'telemetry snapshot candidates were invalid',
       );
     }
-    return await this.snapshotAttempt(
+    return await this.withHttpsCredentialConfig(
       request.repository,
-      request.advertisedRefs,
-      request.candidateRefs,
+      async (credentialConfigPath) =>
+        await this.snapshotAttempt(
+          request.repository,
+          request.advertisedRefs,
+          request.candidateRefs,
+          credentialConfigPath,
+        ),
     );
   }
 
@@ -267,6 +452,17 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
       return failure(request.repository.key, 'endpoint_unknown', 'product endpoint is unavailable');
     }
 
+    return await this.withHttpsCredentialConfig(
+      request.repository,
+      async (credentialConfigPath) =>
+        await this.resolveProductCommitIntervalWithConfig(request, credentialConfigPath),
+    );
+  }
+
+  private async resolveProductCommitIntervalWithConfig(
+    request: CommitRangeRequest,
+    credentialConfigPath?: string,
+  ): Promise<ProductCommitIntervalResult> {
     const deadline = this.nowMs() + this.limits.productTimeoutMs;
     let store: string;
     try {
@@ -296,6 +492,7 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
         Math.min(commandLimitMs, remainingMs),
         objectRoot,
         objectCap,
+        args[0] === 'fetch' ? credentialConfigPath : undefined,
       );
     };
     return await this.withStoreCleanup(
@@ -431,6 +628,7 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
     repository: RemoteRepository,
     advertisedRefs: readonly AdvertisedTelemetryRef[],
     candidateRefs: readonly AdvertisedTelemetryRef[],
+    credentialConfigPath?: string,
   ): Promise<TelemetrySnapshotResult> {
     let store: string;
     try {
@@ -465,6 +663,7 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
           this.limits.timeoutMs,
           join(store, 'objects'),
           this.limits.maxTelemetryObjectBytes,
+          credentialConfigPath,
         );
         if (
           !fetched.ok ||
@@ -490,7 +689,7 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
         } catch {
           return failure(repository.key, 'transport', 'telemetry snapshot verification failed');
         }
-        const after = await this.advertiseTelemetryRefs(repository);
+        const after = await this.advertiseTelemetryRefsWithConfig(repository, credentialConfigPath);
         if (!after.ok) return after;
         if (
           after.refs.length !== advertisedRefs.length ||
@@ -542,6 +741,127 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
         };
       },
     );
+  }
+
+  private async withHttpsCredentialConfig<T>(
+    repository: RemoteRepository,
+    operation: (credentialConfigPath?: string) => Promise<T>,
+  ): Promise<T | RemoteTelemetryFailure> {
+    if (!repository.identity.startsWith('https://')) return await operation(undefined);
+
+    let resolved: HttpsCredentialConfigLease | RemoteTelemetryFailure;
+    try {
+      resolved =
+        this.resolveHttpsCredentialConfigOverride === undefined
+          ? await this.resolveHttpsCredentialConfig(repository)
+          : await this.resolveHttpsCredentialConfigOverride(repository);
+    } catch {
+      return failure(repository.key, 'transport', 'HTTPS credential configuration failed');
+    }
+    if (!resolved.ok) return resolved;
+
+    let value: T | RemoteTelemetryFailure;
+    try {
+      value = await operation(resolved.configPath);
+    } catch {
+      value = failure(repository.key, 'transport', 'HTTPS Git operation failed');
+    }
+    try {
+      await resolved.cleanup();
+    } catch {
+      return failure(repository.key, 'transport', 'HTTPS credential cleanup failed');
+    }
+    return value;
+  }
+
+  private async resolveHttpsCredentialConfig(
+    repository: RemoteRepository,
+  ): Promise<HttpsCredentialConfigLease | RemoteTelemetryFailure> {
+    const configurationFailure = (): RemoteTelemetryFailure =>
+      failure(repository.key, 'transport', 'HTTPS credential configuration failed');
+    const cleanupFailure = (): RemoteTelemetryFailure =>
+      failure(repository.key, 'transport', 'HTTPS credential cleanup failed');
+    const deadline = this.nowMs() + CREDENTIAL_PREPARATION_TIMEOUT_MS;
+    let query: HttpsCredentialConfigQueryResult;
+    try {
+      if (this.credentialConfigQuery !== undefined) {
+        query = await this.credentialConfigQuery();
+      } else {
+        const remainingMs = deadline - this.nowMs();
+        if (remainingMs <= 0) return configurationFailure();
+        const result = await this.runGitCommand(
+          ['config', '--global', '--includes', '--null', '--get-regexp', CREDENTIAL_QUERY_REGEX],
+          tmpdir(),
+          remainingMs,
+          safeCredentialConfigEnvironment(),
+          CREDENTIAL_DISCOVERY_OUTPUT_BYTES,
+        );
+        query = {
+          ok: result.ok,
+          code: result.code,
+          stdout: result.stdout,
+          stopped:
+            result.stopped === null
+              ? null
+              : result.stopped === 'timeout'
+                ? 'timeout'
+                : 'output_cap',
+        };
+      }
+    } catch {
+      return configurationFailure();
+    }
+
+    const queryBytes = Buffer.from(query.stdout);
+    const noMatches = query.code === 1 && queryBytes.byteLength === 0 && query.stopped === null;
+    if (
+      queryBytes.byteLength > CREDENTIAL_DISCOVERY_OUTPUT_BYTES ||
+      query.stopped !== null ||
+      (!query.ok && !noMatches)
+    ) {
+      return configurationFailure();
+    }
+    const entries = parseCredentialConfig(queryBytes);
+    if (entries === null || deadline - this.nowMs() <= 0) return configurationFailure();
+
+    let directory: string | undefined;
+    const removePartial = (): boolean => {
+      if (directory === undefined) return true;
+      try {
+        rmSync(directory, { recursive: true, force: true });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    try {
+      directory = mkdtempSync(join(this.temporaryRoot, CREDENTIAL_TEMP_PREFIX));
+      if (process.platform !== 'win32') chmodSync(directory, 0o700);
+      const configPath = join(directory, CREDENTIAL_CONFIG_NAME);
+      const descriptor = openSync(configPath, 'wx', 0o600);
+      closeSync(descriptor);
+      for (const entry of entries) {
+        const remainingMs = deadline - this.nowMs();
+        if (remainingMs <= 0) {
+          return removePartial() ? configurationFailure() : cleanupFailure();
+        }
+        const written = await this.runGitCommand(
+          ['config', '--file', configPath, '--add', entry.key, entry.value],
+          directory,
+          remainingMs,
+          safeCredentialConfigEnvironment(true),
+          CREDENTIAL_DISCOVERY_OUTPUT_BYTES,
+        );
+        if (!written.ok) return removePartial() ? configurationFailure() : cleanupFailure();
+      }
+      return {
+        ok: true,
+        configPath,
+        cleanup: () => rmSync(directory as string, { recursive: true, force: true }),
+      };
+    } catch {
+      return removePartial() ? configurationFailure() : cleanupFailure();
+    }
   }
 
   private async withStoreCleanup<T>(
@@ -680,22 +1000,56 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
     timeoutMs: number,
     objectRoot?: string,
     objectCap?: number,
+    credentialConfigPath?: string,
+  ): Promise<GitResult> {
+    const command = [
+      '-c',
+      `core.hooksPath=${this.hooksPath(cwd)}`,
+      '-c',
+      'protocol.version=2',
+      ...(credentialConfigPath === undefined ? [] : ['-c', 'credential.interactive=false']),
+      ...args,
+    ];
+    return await this.runGitCommand(
+      command,
+      cwd,
+      timeoutMs,
+      safeGitEnvironment(credentialConfigPath),
+      this.limits.maxCommandOutputBytes,
+      objectRoot,
+      objectCap,
+    );
+  }
+
+  private async runGitCommand(
+    command: readonly string[],
+    cwd: string,
+    timeoutMs: number,
+    env: Readonly<NodeJS.ProcessEnv>,
+    maxOutputBytes: number,
+    objectRoot?: string,
+    objectCap?: number,
   ): Promise<GitResult> {
     return await new Promise((resolve) => {
-      const command = [
-        '-c',
-        `core.hooksPath=${this.hooksPath(cwd)}`,
-        '-c',
-        'protocol.version=2',
-        ...args,
-      ];
-      this.onGitCommand?.(command);
-      const child = spawn('git', command, {
-        cwd,
-        shell: false,
-        env: safeGitEnvironment(),
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
+      let child: ReturnType<typeof spawn>;
+      try {
+        this.onGitCommand?.(command, env);
+        child = spawn('git', command, {
+          cwd,
+          shell: false,
+          env,
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } catch {
+        resolve({
+          ok: false,
+          code: null,
+          stdout: Buffer.alloc(0),
+          stderr: Buffer.alloc(0),
+          stopped: null,
+        });
+        return;
+      }
       const stdout: Buffer[] = [];
       const stderr: Buffer[] = [];
       let outputBytes = 0;
@@ -709,7 +1063,7 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
         (target: Buffer[]) =>
         (chunk: Buffer): void => {
           outputBytes += chunk.length;
-          if (outputBytes > this.limits.maxCommandOutputBytes) {
+          if (outputBytes > maxOutputBytes) {
             stop('output_cap');
             return;
           }
@@ -717,7 +1071,7 @@ export class ExecRemoteTelemetryGit implements RemoteTelemetryGitPort {
         };
       child.stdout?.on('data', collect(stdout));
       child.stderr?.on('data', collect(stderr));
-      const timeout = setTimeout(() => stop('timeout'), timeoutMs);
+      const timeout = setTimeout(() => stop('timeout'), Math.max(0, timeoutMs));
       const monitor =
         objectRoot !== undefined && objectCap !== undefined
           ? setInterval(() => {

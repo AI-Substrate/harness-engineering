@@ -54,6 +54,15 @@ function seg(plans: string[]): string {
   )}\n`;
 }
 
+function generatedRemoteCredentialUsernames(): string[] {
+  return [
+    `${['g', 'h', 'p'].join('')}_${'A'.repeat(20)}`,
+    `${['github', 'pat'].join('_')}_${'B'.repeat(20)}`,
+    `${['A', 'K', 'I', 'A'].join('')}${'C'.repeat(16)}`,
+    `${['s', 'k'].join('')}_${['li', 've'].join('')}_${'D'.repeat(16)}`,
+  ];
+}
+
 describe('registerTelemetryAct — telemetry sync', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -511,9 +520,16 @@ describe('registerTelemetryAct — remote telemetry envelopes', () => {
     fs = new FakeFs(),
     env = new FakeEnv(),
     cwd = '/not-a-repository',
-  ): Promise<{ code: number; out: string; fs: FakeFs; git: FakeRemoteTelemetryGit }> {
+  ): Promise<{
+    code: number;
+    out: string;
+    fs: FakeFs;
+    git: FakeRemoteTelemetryGit;
+    hash: FakeHash;
+  }> {
     let code = -1;
     const ioState = ioFor(mode);
+    const hash = new FakeHash();
     vi.spyOn(process, 'exit').mockImplementation(((value?: number) => {
       code = value ?? 0;
       throw new Error(`exit:${code}`);
@@ -526,12 +542,12 @@ describe('registerTelemetryAct — remote telemetry envelopes', () => {
       env,
       gitWrite: new FakeGitWrite(),
       remoteGit: git,
-      hash: new FakeHash(),
+      hash,
     });
     await expect(program.parseAsync(['node', 'harness', 'telemetry', ...args])).rejects.toThrow(
       /^exit:/,
     );
-    return { code, out: ioState.out(), fs, git };
+    return { code, out: ioState.out(), fs, git, hash };
   }
 
   it.each([
@@ -563,6 +579,52 @@ describe('registerTelemetryAct — remote telemetry envelopes', () => {
     expect(result.git.calls).toEqual([]);
     expect(result.fs.writes).toEqual([]);
     expect(result.code).toBe(1);
+  });
+
+  it.each([
+    { label: 'ls URL credential username', verb: 'ls', form: 'url', shape: 0 },
+    { label: 'ls scp credential username', verb: 'ls', form: 'scp', shape: 1 },
+    { label: 'pull URL credential username', verb: 'pull', form: 'url', shape: 2 },
+    { label: 'pull scp credential username', verb: 'pull', form: 'scp', shape: 3 },
+  ] as const)('rejects $label with E108 before Git, hash, or filesystem effects', async (testCase) => {
+    const username = generatedRemoteCredentialUsernames()[testCase.shape] ?? '';
+    const repository =
+      testCase.form === 'url'
+        ? `https://${username}@example.com/team/repo.git`
+        : `${username}@example.com:team/repo.git`;
+    const output = `/exports/rejected-${testCase.shape}`;
+    const args =
+      testCase.verb === 'ls'
+        ? ['ls', '--repo', repository]
+        : ['pull', '--repo', repository, '--session', 's', '--out', output];
+    const result = await runRemote(args, 'json');
+    const envelope = JSON.parse(result.out);
+
+    expect({
+      status: envelope.status,
+      code: envelope.error?.code ?? null,
+      exit: result.code,
+      gitCalls: result.git.calls.length,
+      hashCalls: result.hash.calls.length,
+      writes: result.fs.writes.length,
+      mkdirs: result.fs.mkdirs.length,
+      siblingTemps: result.fs.siblingTemps.length,
+      publishes: result.fs.publishedDirectories.length,
+      outputExists: result.fs.exists(output),
+      rawEcho: result.out.includes(username),
+    }).toEqual({
+      status: 'error',
+      code: 'E108',
+      exit: 1,
+      gitCalls: 0,
+      hashCalls: 0,
+      writes: 0,
+      mkdirs: 0,
+      siblingTemps: 0,
+      publishes: 0,
+      outputExists: false,
+      rawEcho: false,
+    });
   });
 
   it('is independent of poisoned local origin/ref/buffer/vendor/PIJ state and never falls back', async () => {

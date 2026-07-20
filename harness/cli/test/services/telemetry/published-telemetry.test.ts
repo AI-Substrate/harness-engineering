@@ -1100,3 +1100,341 @@ describe('published tree/privacy validation', () => {
     expect(new TextDecoder('utf-8', { ignoreBOM: true }).decode(decoded.blobs[0]?.bytes)).toBe(raw);
   });
 });
+
+function rawManifest(_sessionId: string, value: Record<string, unknown>): RemoteTelemetryBlob {
+  return blob('manifest.json', `${JSON.stringify(value)}\n`);
+}
+
+function baseRemoteManifest(sessionId: string): Record<string, unknown> {
+  return {
+    format: ROLLUP_FORMAT,
+    session: sessionId,
+    start_date: '2026/07/16',
+    max_seq: 1,
+  };
+}
+
+function expectUnsafeWithoutRawSession(result: ReturnType<typeof decodePublishedTelemetrySession>) {
+  expect(result).toEqual({ ok: false, reason: 'malformed_or_unsafe' });
+  expect('session' in result).toBe(false);
+}
+
+describe('repair RED 1 — strict remote manifest safety and raw non-retention', () => {
+  it('accepts real dates and preserves a valid nonlexical first-seen product order', () => {
+    const sessionId = 'manifest-order';
+    const products = [oid('b'), oid('a')];
+    const manifest = {
+      ...baseRemoteManifest(sessionId),
+      max_seq: 2,
+      product_commits: products,
+    };
+    const decoded = expectOk(
+      decodePublishedTelemetrySession(
+        input(sessionId, [
+          rawManifest(sessionId, manifest),
+          blob('1.json', segmentText(sessionId, products[0])),
+          blob('2.json', segmentText(sessionId, products[1])),
+        ]),
+      ),
+    );
+    expect(decoded.product).toEqual({ state: 'known', commits: products });
+  });
+
+  it('accepts only the exact unavailable-date sentinel without fabricating a date conflict', () => {
+    const sessionId = 'manifest-date-unavailable';
+    const decoded = expectOk(
+      decodePublishedTelemetrySession(
+        input(sessionId, [
+          rawManifest(sessionId, {
+            ...baseRemoteManifest(sessionId),
+            start_date: '0000/00/00',
+          }),
+        ]),
+      ),
+    );
+    expect(decoded.gaps).not.toContain('manifest_date_conflict');
+    expect(decoded.blobs).toHaveLength(1);
+  });
+
+  it.each([
+    ['free prose date', { start_date: 'private prose must never be retained' }],
+    ['near-sentinel date', { start_date: '0000/00/01' }],
+    ['partial-zero date', { start_date: '2026/00/16' }],
+    ['impossible date', { start_date: '2026/02/30' }],
+    ['non-leap February 29', { start_date: '2025/02/29' }],
+    ['month overflow', { start_date: '2026/13/01' }],
+    ['day overflow', { start_date: '2026/01/32' }],
+    ['wrong format type', { format: 7 }],
+    ['wrong session type', { session: 7 }],
+    ['wrong date type', { start_date: 7 }],
+    ['wrong max type', { max_seq: '1' }],
+    ['negative max', { max_seq: -1 }],
+    ['fractional max', { max_seq: 1.5 }],
+    ['unsafe max', { max_seq: Number.MAX_SAFE_INTEGER + 1 }],
+    ['empty product set', { product_commits: [] }],
+    ['uppercase product', { product_commits: [oid('A')] }],
+    ['malformed product', { product_commits: ['not-an-oid'] }],
+    ['duplicate product', { product_commits: [oid('a'), oid('a')] }],
+    ['mixed-width products', { product_commits: [oid('a'), 'b'.repeat(64)] }],
+    ['extra known-looking key', { branch: 'main' }],
+    ['extra unknown key', { additional: true }],
+    ['mismatched session', { session: 'other-session' }],
+    ['unsafe session', { session: '../unsafe-session' }],
+  ] as Array<
+    [string, Record<string, unknown>]
+  >)('rejects %s before raw retention', (_name, patch) => {
+    const sessionId = 'manifest-negative';
+    const result = decodePublishedTelemetrySession(
+      input(sessionId, [rawManifest(sessionId, { ...baseRemoteManifest(sessionId), ...patch })]),
+    );
+    expectUnsafeWithoutRawSession(result);
+  });
+
+  it.each([
+    ['uppercase', [oid('A')], [oid('a')]],
+    ['duplicate', [oid('a'), oid('a')], [oid('a')]],
+    ['mixed-width', [oid('a'), 'b'.repeat(64)], [oid('a'), 'b'.repeat(64)]],
+  ])('rejects a %s product list even when segment provenance would otherwise agree', (_name, manifestProducts, segmentProducts) => {
+    const sessionId = 'manifest-product-negative';
+    const entries = [
+      rawManifest(sessionId, {
+        ...baseRemoteManifest(sessionId),
+        max_seq: segmentProducts.length,
+        product_commits: manifestProducts,
+      }),
+      ...segmentProducts.map((product, index) =>
+        blob(`${index + 1}.json`, segmentText(sessionId, product)),
+      ),
+    ];
+    expectUnsafeWithoutRawSession(decodePublishedTelemetrySession(input(sessionId, entries)));
+  });
+
+  it('validates a malformed historical manifest even when the tip manifest is valid', () => {
+    const sessionId = 'manifest-history';
+    const current = input(sessionId, [rawManifest(sessionId, baseRemoteManifest(sessionId))]);
+    const tip = current.refs[0];
+    if (tip === undefined) throw new Error('missing fixture ref');
+    const historical: PublishedTelemetrySessionInput = {
+      ...current,
+      refs: [
+        {
+          ...tip,
+          history: [
+            ...tip.history,
+            {
+              oid: oid('d'),
+              parents: [],
+              entries: [
+                rawManifest(sessionId, {
+                  ...baseRemoteManifest(sessionId),
+                  start_date: 'historical private prose',
+                }),
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expectUnsafeWithoutRawSession(decodePublishedTelemetrySession(historical));
+  });
+});
+
+type MutableMetricPoint = {
+  startTimeUnixNano: string;
+  timeUnixNano: string;
+};
+type MutableMetric = {
+  sum?: { dataPoints: MutableMetricPoint[] };
+  gauge?: { dataPoints: MutableMetricPoint[] };
+};
+type MutableMetrics = {
+  resourceMetrics: Array<{
+    scopeMetrics: Array<{ metrics: MutableMetric[] }>;
+  }>;
+};
+
+function mutableMetrics(sessionId: string): MutableMetrics {
+  return JSON.parse(
+    JSON.stringify(rollupToOtlpMetrics(JSON.parse(segmentText(sessionId)))),
+  ) as MutableMetrics;
+}
+
+function metricGroups(value: MutableMetrics): MutableMetricPoint[][] {
+  return (value.resourceMetrics[0]?.scopeMetrics[0]?.metrics ?? []).map(
+    (metric) => (metric.sum ?? metric.gauge)?.dataPoints ?? [],
+  );
+}
+
+function allMetricPoints(value: MutableMetrics): MutableMetricPoint[] {
+  return metricGroups(value).flat();
+}
+
+function setMetricPair(value: MutableMetrics, start: string, end: string): void {
+  for (const point of allMetricPoints(value)) {
+    point.startTimeUnixNano = start;
+    point.timeUnixNano = end;
+  }
+}
+
+function decodeMetrics(sessionId: string, value: MutableMetrics) {
+  return decodePublishedTelemetrySession(
+    input(sessionId, [blob('session.metrics.jsonl', JSON.stringify(value))]),
+  );
+}
+
+describe('repair RED 4 — exact uint64 and cross-point/cross-signal time bounds', () => {
+  it.each([
+    ['uint64 max', '18446744073709551615', '18446744073709551615', true],
+    ['uint64 max plus one', '18446744073709551616', '18446744073709551616', false],
+    ['21 digits', '100000000000000000000', '100000000000000000000', false],
+    ['leading zero', '01', '01', false],
+    ['plus sign', '+1', '+1', false],
+    ['minus sign', '-1', '-1', false],
+    ['exponent', '1e3', '1e3', false],
+    ['fraction', '1.5', '1.5', false],
+    ['equal', '1750000000000000000', '1750000000000000000', true],
+    ['ordered', '1750000000000000000', '1750000000000000001', true],
+    ['adjacent reversed', '1750000000000000001', '1750000000000000000', false],
+  ] as const)('%s obeys canonical uint64 and exact ordering', (_name, start, end, valid) => {
+    const sessionId = 'metric-uint64';
+    const metrics = mutableMetrics(sessionId);
+    setMetricPair(metrics, start, end);
+    const result = decodeMetrics(sessionId, metrics);
+    if (valid) expect(result.ok).toBe(true);
+    else expectUnsafeWithoutRawSession(result);
+  });
+
+  it('rejects one differing point start and one differing point end', () => {
+    for (const field of ['startTimeUnixNano', 'timeUnixNano'] as const) {
+      const sessionId = `metric-point-${field}`;
+      const metrics = mutableMetrics(sessionId);
+      setMetricPair(metrics, '1750000000000000000', '1750000000000000010');
+      const points = allMetricPoints(metrics);
+      if (points.length < 2) throw new Error('fixture requires multiple metric points');
+      points[1][field] =
+        field === 'startTimeUnixNano' ? '1750000000000000001' : '1750000000000000009';
+      expectUnsafeWithoutRawSession(decodeMetrics(sessionId, metrics));
+    }
+  });
+
+  it('rejects a differing pair across metrics', () => {
+    const sessionId = 'metric-cross-family';
+    const metrics = mutableMetrics(sessionId);
+    setMetricPair(metrics, '1750000000000000000', '1750000000000000010');
+    const groups = metricGroups(metrics).filter((points) => points.length > 0);
+    if (groups.length < 2) throw new Error('fixture requires multiple metric families');
+    for (const point of groups[1]) {
+      point.startTimeUnixNano = '1750000000000000001';
+      point.timeUnixNano = '1750000000000000011';
+    }
+    expectUnsafeWithoutRawSession(decodeMetrics(sessionId, metrics));
+  });
+
+  it.each(['start', 'end'] as const)('binds paired Metrics %s to non-flow Logs bounds', (edge) => {
+    const sessionId = `metric-paired-${edge}`;
+    const entries = canonicalBlobs(sessionId);
+    const metricsEntry = entries.find((entry) => entry.path === 'session.metrics.jsonl');
+    if (metricsEntry === undefined) throw new Error('missing metrics fixture');
+    const metrics = JSON.parse(new TextDecoder().decode(metricsEntry.bytes)) as MutableMetrics;
+    const first = allMetricPoints(metrics)[0];
+    if (first === undefined) throw new Error('missing metric point');
+    const start = BigInt(first.startTimeUnixNano);
+    const end = BigInt(first.timeUnixNano);
+    setMetricPair(
+      metrics,
+      edge === 'start' ? String(start - 1n) : String(start),
+      edge === 'end' ? String(end + 1n) : String(end),
+    );
+    metricsEntry.bytes = encoder.encode(JSON.stringify(metrics));
+    expectUnsafeWithoutRawSession(decodePublishedTelemetrySession(input(sessionId, entries)));
+  });
+
+  it('excludes flow_log from producer bounds and accepts the exact non-flow minimum/maximum', () => {
+    const sessionId = 'metric-flow-log-bounds';
+    const segment = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: sessionId,
+        timecode: '2026-07-16T10:00:00.000Z',
+        window: { since: 'session-start', from: 0, to: 3 },
+        branch: 'main',
+        event_stream: [
+          { t: '2026-07-16T09:59:59.000Z', kind: 'flow_log', op: 'before' },
+          { t: '2026-07-16T10:00:00.000Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
+          { t: '2026-07-16T10:00:01.000Z', kind: 'flow_log', op: 'after' },
+        ],
+      },
+      '/repo',
+    );
+    const logs = segmentToOtlpLogs(segment);
+    const metrics = rollupToOtlpMetrics(segment) as MutableMetrics;
+    const expected = String(BigInt(Date.parse('2026-07-16T10:00:00.000Z')) * 1_000_000n);
+    expect(new Set(allMetricPoints(metrics).map((point) => point.startTimeUnixNano))).toEqual(
+      new Set([expected]),
+    );
+    expect(new Set(allMetricPoints(metrics).map((point) => point.timeUnixNano))).toEqual(
+      new Set([expected]),
+    );
+    expectOk(
+      decodePublishedTelemetrySession(
+        input(sessionId, [
+          blob('session.logs.jsonl', JSON.stringify(logs)),
+          blob('session.metrics.jsonl', JSON.stringify(metrics)),
+        ]),
+      ),
+    );
+  });
+
+  it('rejects nonempty Metrics when paired Logs have no non-flow evidence', () => {
+    const sessionId = 'metric-empty-mismatch';
+    const emptySegment = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: sessionId,
+        timecode: '2026-07-16T10:00:00.000Z',
+        window: { since: 'session-start', from: 0, to: 0 },
+        branch: 'main',
+        event_stream: [],
+      },
+      '/repo',
+    );
+    const nonemptyMetrics = mutableMetrics(sessionId);
+    expectUnsafeWithoutRawSession(
+      decodePublishedTelemetrySession(
+        input(sessionId, [
+          blob('session.logs.jsonl', JSON.stringify(segmentToOtlpLogs(emptySegment))),
+          blob('session.metrics.jsonl', JSON.stringify(nonemptyMetrics)),
+        ]),
+      ),
+    );
+  });
+
+  it('keeps empty/null-rollup pairs and metrics-only exact bounds valid', () => {
+    const sessionId = 'metric-empty';
+    const emptySegment = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: sessionId,
+        timecode: '2026-07-16T10:00:00.000Z',
+        window: { since: 'session-start', from: 0, to: 0 },
+        branch: 'main',
+        event_stream: [],
+      },
+      '/repo',
+    );
+    expectOk(
+      decodePublishedTelemetrySession(
+        input(sessionId, [
+          blob('session.logs.jsonl', JSON.stringify(segmentToOtlpLogs(emptySegment))),
+          blob('session.metrics.jsonl', JSON.stringify(rollupToOtlpMetrics(emptySegment))),
+        ]),
+      ),
+    );
+    const metricsOnly = mutableMetrics('metric-only-exact');
+    setMetricPair(metricsOnly, '0', '18446744073709551615');
+    expect(decodeMetrics('metric-only-exact', metricsOnly).ok).toBe(true);
+  });
+});

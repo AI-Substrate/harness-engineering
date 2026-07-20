@@ -16,9 +16,10 @@ Prerequisites:
 Git children receive an explicit safe environment rather than the caller's full
 environment. Harness preserves required platform paths, standard proxy variables,
 and SSH-agent sockets; strips repository/worktree/index/object/config/namespace/
-replacement/shallow/askpass/SSH-command redirects; disables global/system Git
-configuration and terminal prompts; and never accepts a password or token in an
-argument.
+replacement/shallow/askpass/SSH-command redirects; disables system and arbitrary
+global Git configuration; disables terminal prompts; and never accepts a password
+or token in an argument. HTTPS operations admit only the credential-helper settings
+described below.
 
 ## Repository inputs
 
@@ -43,11 +44,53 @@ ssh://git@example.com/acme/beta.git
 ```
 
 Accepted network forms are `https://`, `ssh://`, `git://`, and scp-like SSH such
-as `git@example.com:acme/alpha.git`. Local paths, relative paths, `file://`, Git
-remote-helper commands, query strings, fragments, and password-bearing URLs are
-rejected before Git runs. Equivalent inputs are canonicalized and deduplicated;
-HTTPS, SSH, and `git://` remain distinct identities because they may authenticate
-differently.
+as `git@example.com:acme/alpha.git`. Public HTTPS requires no username. When a URL
+or scp form names one, Harness accepts only a bounded 1–64 character non-secret
+identifier using letters, digits, `.`, `_`, or `-`; examples include `git` and
+deploy-style usernames. Credential-shaped usernames, every percent-encoded
+username, password-bearing URLs, query strings, and fragments are rejected before
+Git, identity hashing, inventory rows, bundles, reports, or output. Local paths,
+relative paths, `file://`, and Git remote-helper commands are rejected at the same
+boundary. Harness never accepts a password or token in a repository argument;
+HTTPS credential helpers are the supported private-authentication path. Equivalent
+inputs are canonicalized and deduplicated; HTTPS, SSH, and `git://` remain distinct
+identities because they may authenticate differently.
+
+### HTTPS credential helpers
+
+For each HTTPS operation, Harness asks Git for only the bounded closed set of
+unscoped and scoped global `credential.helper`, `credential.username`, and
+`credential.useHttpPath` records reached through global includes. It copies every
+accepted record—not only an already-matching one—in its original query/include
+order into a private, sanitized Git config. Harness admits a scope only when it is
+either a strict host-bearing URL without a password, query, or fragment, or a
+bounded Unicode-safe opaque provider/scp-style identity. Unsafe host URLs and
+malformed `scheme://` authority text reject rather than falling through. Harness
+does not interpret or match either form: Git alone applies scope matching,
+helper-chain order, and empty-helper reset semantics. No other global setting is
+copied: URL rewrites, HTTP headers, core and hooks settings, SSH commands, include
+directives, password/token/provider terminal fields, and unrelated credential keys
+remain disabled.
+
+A configured helper is user-trusted authentication code. This includes a bounded
+`!command` helper. The helper or keychain communicates directly with Git; Harness
+does not receive, read, cache, serialize, log, or publish the username/password or
+token returned by the helper. A configured non-secret username may exist in the
+private sanitized config, but no credential secret is stored by Harness or placed
+in Git argv or public output.
+
+The sanitized config belongs to one advertisement, snapshot, or product-metadata
+operation and is never cached across calls or retries. On platforms with POSIX mode
+support, its directory is mode `0700` and its exclusively created file is mode
+`0600`. Both are removed after success, failure, timeout, malformed config, helper
+failure, or partial setup. Cleanup failure is a typed transport failure and never
+echoes the private path. HTTPS also sets `credential.interactive=false`,
+`GCM_INTERACTIVE=never`, and `GIT_TERMINAL_PROMPT=0`, so missing or failing helpers
+fail closed instead of prompting.
+
+SSH, scp-like SSH, and `git://` skip credential-config discovery and
+materialization. They retain the isolated null global config; SSH-agent forwarding
+and behavior are unchanged.
 
 ## List published sessions
 

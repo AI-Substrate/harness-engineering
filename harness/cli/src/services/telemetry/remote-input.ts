@@ -1,5 +1,6 @@
 import type { RemoteRepository } from '../../adapters/git/remote-telemetry-git-port.js';
 import type { HashPort } from '../../adapters/hash/hash-port.js';
+import { isCredentialShaped } from './segment.js';
 
 export interface RepositoryFileInput {
   /** Used only for safe diagnostics; file contents are never echoed. */
@@ -39,6 +40,7 @@ export type RemoteSelectorParseResult =
 const invalid = (message: string): RemoteInputError => ({ ok: false, code: 'E108', message });
 
 const SAFE_SESSION = /^[A-Za-z0-9._-]{1,256}$/;
+const SAFE_REMOTE_USERNAME = /^[A-Za-z0-9._-]{1,64}$/;
 const FULL_OID = /^(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
 const SCP_LIKE = /^(?:([A-Za-z0-9._-]+)@)?([A-Za-z0-9.-]+):(.+)$/;
 
@@ -48,6 +50,11 @@ function hasControlCharacter(value: string): boolean {
     if (code <= 0x1f || code === 0x7f) return true;
   }
   return false;
+}
+
+function validRemoteUsername(value: string, allowEmpty = false): boolean {
+  if (value.length === 0) return allowEmpty;
+  return SAFE_REMOTE_USERNAME.test(value) && !isCredentialShaped(value);
 }
 
 function normalizePath(path: string): string | null {
@@ -68,7 +75,7 @@ function canonicalizeUri(raw: string): string | null {
   const scheme = parsed.protocol.toLowerCase();
   if (scheme !== 'https:' && scheme !== 'ssh:' && scheme !== 'git:') return null;
   if (parsed.search.length > 0 || parsed.hash.length > 0 || parsed.password.length > 0) return null;
-  if (parsed.hostname.length === 0) return null;
+  if (parsed.hostname.length === 0 || !validRemoteUsername(parsed.username, true)) return null;
   if (/\s/u.test(raw) || hasControlCharacter(raw)) return null;
 
   const host = parsed.hostname.toLowerCase();
@@ -96,7 +103,14 @@ export function canonicalizeRemoteRepository(raw: string): string | null {
   const scp = SCP_LIKE.exec(value);
   if (scp === null) return null;
   const [, user, rawHost, rawPath] = scp;
-  if (rawHost.length === 0 || rawPath.length === 0 || rawPath.startsWith('/')) return null;
+  if (
+    (user !== undefined && !validRemoteUsername(user)) ||
+    rawHost.length === 0 ||
+    rawPath.length === 0 ||
+    rawPath.startsWith('/')
+  ) {
+    return null;
+  }
   if (
     rawPath.includes(':') ||
     rawPath.includes('@') ||

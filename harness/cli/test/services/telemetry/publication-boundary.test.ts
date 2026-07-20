@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
  * Plan 047 Phase 3 · T001 — the publication-boundary privacy scan (AC-11 · Constitution
@@ -41,17 +41,88 @@ interface Artifact {
   content: string;
 }
 
+interface GitOperationCounts {
+  inventory: number;
+  checkIgnore: number;
+}
+
+interface PublicationGitOperations {
+  readonly counts: GitOperationCounts;
+  resetCounts(): void;
+  committableFiles(): string[];
+  ignoredPaths(paths: readonly string[]): Set<string>;
+}
+
+function createPublicationGitOperations(): PublicationGitOperations {
+  const counts: GitOperationCounts = { inventory: 0, checkIgnore: 0 };
+  let cachedCommittableFiles: readonly string[] | undefined;
+
+  return {
+    counts,
+    resetCounts() {
+      counts.inventory = 0;
+      counts.checkIgnore = 0;
+      cachedCommittableFiles = undefined;
+    },
+    committableFiles() {
+      if (cachedCommittableFiles === undefined) {
+        counts.inventory += 1;
+        const result = spawnSync('git', ['ls-files', '-co', '--exclude-standard'], {
+          cwd: REPO_ROOT,
+          encoding: 'utf8',
+          maxBuffer: 64 * 1024 * 1024,
+        });
+        cachedCommittableFiles = Object.freeze(
+          result.stdout
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0),
+        );
+      }
+      return [...cachedCommittableFiles];
+    },
+    ignoredPaths(paths) {
+      counts.checkIgnore += 1;
+      const inputPaths = new Set(paths);
+      if (inputPaths.size !== paths.length) {
+        throw new Error('check-ignore input paths must be unique');
+      }
+
+      const result = spawnSync('git', ['check-ignore', '-z', '--stdin'], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        input: `${paths.join('\0')}\0`,
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      if (result.error !== undefined) throw result.error;
+      if (result.signal !== null) {
+        throw new Error(`check-ignore terminated by signal ${result.signal}`);
+      }
+      if (result.status !== 0) {
+        throw new Error(`check-ignore exited with status ${String(result.status)}`);
+      }
+      if (result.stdout.length === 0 || !result.stdout.endsWith('\0')) {
+        throw new Error('check-ignore returned malformed NUL framing');
+      }
+
+      const ignored = new Set<string>();
+      for (const path of result.stdout.slice(0, -1).split('\0')) {
+        if (path.length === 0) throw new Error('check-ignore returned an empty path');
+        if (!inputPaths.has(path))
+          throw new Error(`check-ignore returned unexpected path: ${path}`);
+        if (ignored.has(path)) throw new Error(`check-ignore returned duplicate path: ${path}`);
+        ignored.add(path);
+      }
+      return ignored;
+    },
+  };
+}
+
+const gitOperations = createPublicationGitOperations();
+
 /** Every file git would consider committable (tracked OR untracked-not-ignored). */
-function committableFiles(): string[] {
-  const r = spawnSync('git', ['ls-files', '-co', '--exclude-standard'], {
-    cwd: REPO_ROOT,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  return r.stdout
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+function committableFiles(operations: PublicationGitOperations = gitOperations): string[] {
+  return operations.committableFiles();
 }
 
 function read(rel: string): Artifact {
@@ -59,8 +130,8 @@ function read(rel: string): Artifact {
 }
 
 /** The committed 047 DATA artifacts — saved leaves + the central-layout fixtures. */
-function dataArtifacts(): Artifact[] {
-  return committableFiles()
+function dataArtifacts(operations: PublicationGitOperations = gitOperations): Artifact[] {
+  return committableFiles(operations)
     .filter(
       (p) =>
         /\.session\.json$/.test(p) ||
@@ -72,8 +143,8 @@ function dataArtifacts(): Artifact[] {
 }
 
 /** Every tracked 047 artifact incl. docs + the render surface (the widest publish set). */
-function all047Artifacts(): Artifact[] {
-  return committableFiles()
+function all047Artifacts(operations: PublicationGitOperations = gitOperations): Artifact[] {
+  return committableFiles(operations)
     .filter(
       (p) =>
         /^docs\/how\/telemetry.*\.md$/.test(p) ||
@@ -135,18 +206,41 @@ describe('publication boundary — no REAL machine path in ANY tracked 047 artif
 });
 
 describe('publication boundary — the `*.log` gitignore trap is dodged (T001, KF-07)', () => {
-  function isIgnored(rel: string): boolean {
-    return spawnSync('git', ['check-ignore', '-q', rel], { cwd: REPO_ROOT }).status === 0;
-  }
+  const ignoredControl = 'docs/how/telemetry-reports.log';
+  let artifactPaths: string[];
+  let ignoredPaths: Set<string>;
+
+  beforeAll(() => {
+    artifactPaths = all047Artifacts().map((artifact) => artifact.path);
+    ignoredPaths = gitOperations.ignoredPaths([...artifactPaths, ignoredControl]);
+  });
 
   it('no committed 047 artifact is caught by the `*.log` rule', () => {
-    for (const a of all047Artifacts()) expect(isIgnored(a.path)).toBe(false);
+    expect(artifactPaths.filter((path) => ignoredPaths.has(path))).toEqual([]);
   });
 
   it('CONTROL: a `*.log` name IS trapped (proving the check is live)', () => {
     // A hypothetical mis-named report leaf would vanish — this is the trap the
     // docs/report filenames deliberately dodge.
-    expect(isIgnored('docs/how/telemetry-reports.log')).toBe(true);
+    expect(ignoredPaths.has(ignoredControl)).toBe(true);
+  });
+
+  it('uses exactly one inventory child and one check-ignore child for an owning scan', () => {
+    const operations = createPublicationGitOperations();
+    operations.resetCounts();
+
+    const firstDataArtifacts = dataArtifacts(operations);
+    const secondDataArtifacts = dataArtifacts(operations);
+    const firstAll047Artifacts = all047Artifacts(operations);
+    const secondAll047Artifacts = all047Artifacts(operations);
+    expect(firstDataArtifacts).toEqual(secondDataArtifacts);
+    expect(firstAll047Artifacts).toEqual(secondAll047Artifacts);
+
+    const ownedArtifactPaths = firstAll047Artifacts.map((artifact) => artifact.path);
+    const ownedIgnoredPaths = operations.ignoredPaths([...ownedArtifactPaths, ignoredControl]);
+    expect(ownedArtifactPaths.filter((path) => ownedIgnoredPaths.has(path))).toEqual([]);
+    expect(ownedIgnoredPaths.has(ignoredControl)).toBe(true);
+    expect(operations.counts).toEqual({ inventory: 1, checkIgnore: 1 });
   });
 });
 

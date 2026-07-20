@@ -1157,6 +1157,13 @@ export function buildReportFromInputs(
     input.kind === 'full' && input.sessionExport !== null ? [input.sessionExport] : [],
   );
   const report = buildReport(fullExports, opts);
+  const finalCohortOwnsControlTimeline =
+    included.length === 1 &&
+    included[0].kind === 'full' &&
+    included[0].sessionExport !== null &&
+    fullExports.length === 1 &&
+    fullExports[0] === included[0].sessionExport;
+  if (!finalCohortOwnsControlTimeline) delete report.control_timeline;
   const selectionGaps = (opts.selectionGaps ?? []).filter(
     (gap) =>
       !filter.repo?.length ||

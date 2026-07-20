@@ -659,6 +659,141 @@ describe('bundle-derived full/partial/identity report inputs', () => {
     gaps: [],
   });
 
+  const weakInput = (
+    kind: 'partial' | 'identity-only',
+    repositoryKey: string,
+    repository: string,
+    sessionId: string,
+  ): TelemetryReportInput => ({
+    origin: 'bundle',
+    kind,
+    repositoryKey,
+    repository,
+    sessionId,
+    sessionExport: null,
+    coverage:
+      kind === 'partial'
+        ? {
+            events: { state: 'unavailable', count: null },
+            measurements: { state: 'complete', count: 0 },
+            gaps: ['events_unavailable'],
+          }
+        : {
+            events: { state: 'unavailable', count: null },
+            measurements: { state: 'unavailable', count: null },
+            gaps: ['events_unavailable', 'measurements_unavailable'],
+          },
+    gaps:
+      kind === 'partial'
+        ? ['events_unavailable']
+        : ['events_unavailable', 'measurements_unavailable'],
+  });
+
+  const timelineExport = (sessionId: string): SessionExport =>
+    exportOf(sessionId, [
+      seg(
+        [
+          { t: '2026-06-29T00:00:01Z', kind: 'harness', verb: 'checks' },
+          { t: '2026-06-29T00:00:02Z', kind: 'checks', status: 'ok' },
+        ],
+        { harness_session_id: sessionId },
+      ),
+    ]);
+
+  it('AR-01 full + identity-only across repositories omits the single-full control timeline', () => {
+    const exp = timelineExport('full-with-identity');
+    const report = buildReportFromInputs([
+      fullInput('repo-a', 'https://example.com/a', exp),
+      weakInput('identity-only', 'repo-b', 'https://example.com/b', 'identity-only'),
+    ]);
+    expect(report.scope).toEqual({
+      session_count: 2,
+      single: false,
+      session_ids: ['full-with-identity', 'identity-only'],
+    });
+    expect(report.control_timeline).toBeUndefined();
+  });
+
+  it('AR-01 full + partial omits the single-full control timeline', () => {
+    const exp = timelineExport('full-with-partial');
+    const report = buildReportFromInputs([
+      fullInput('repo-a', 'https://example.com/a', exp),
+      weakInput('partial', 'repo-b', 'https://example.com/b', 'partial'),
+    ]);
+    expect(report.scope).toEqual({
+      session_count: 2,
+      single: false,
+      session_ids: ['full-with-partial', 'partial'],
+    });
+    expect(report.control_timeline).toBeUndefined();
+  });
+
+  it('AR-01 two full inputs omit a per-session control timeline', () => {
+    const report = buildReportFromInputs([
+      fullInput('repo-a', 'https://example.com/a', timelineExport('full-a')),
+      fullInput('repo-b', 'https://example.com/b', timelineExport('full-b')),
+    ]);
+    expect(report.scope).toMatchObject({ session_count: 2, single: false });
+    expect(report.control_timeline).toBeUndefined();
+  });
+
+  it('AR-01 identity-only + partial inputs never synthesize a control timeline', () => {
+    const report = buildReportFromInputs([
+      weakInput('identity-only', 'repo-a', 'https://example.com/a', 'identity-only'),
+      weakInput('partial', 'repo-b', 'https://example.com/b', 'partial'),
+    ]);
+    expect(report.scope).toMatchObject({ session_count: 2, single: false });
+    expect(report.control_timeline).toBeUndefined();
+  });
+
+  it('AR-01 filtering a larger set to one full input retains its exact established timeline', () => {
+    const selected = timelineExport('selected-full');
+    const expected = buildReport([selected]).control_timeline;
+    const report = buildReportFromInputs(
+      [
+        fullInput('repo-a', 'https://example.com/a', selected),
+        fullInput('repo-b', 'https://example.com/b', timelineExport('excluded-full')),
+        weakInput('identity-only', 'repo-c', 'https://example.com/c', 'excluded-identity'),
+      ],
+      { filter: { repo: ['repo-a'] } },
+    );
+    expect(report.scope).toEqual({
+      session_count: 1,
+      single: true,
+      session_ids: ['selected-full'],
+    });
+    expect(expected).toHaveLength(2);
+    expect(report.control_timeline).toEqual(expected);
+  });
+
+  it('AR-01 filtering to one weak input emits no control timeline', () => {
+    const report = buildReportFromInputs(
+      [
+        fullInput('repo-a', 'https://example.com/a', timelineExport('excluded-full')),
+        weakInput('identity-only', 'repo-b', 'https://example.com/b', 'selected-identity'),
+      ],
+      { filter: { repo: ['repo-b'] } },
+    );
+    expect(report.scope).toEqual({
+      session_count: 1,
+      single: true,
+      session_ids: ['selected-identity'],
+    });
+    expect(report.control_timeline).toBeUndefined();
+  });
+
+  it('AR-01 legacy and bundle single-full inputs preserve the exact timeline shape', () => {
+    const exp = timelineExport('single-full');
+    const expected = [
+      { kind: 'harness', key: 'checks', t: '2026-06-29T00:00:01Z' },
+      { kind: 'checks', key: 'ok', t: '2026-06-29T00:00:02Z' },
+    ];
+    expect(buildReport([exp]).control_timeline).toEqual(expected);
+    expect(
+      buildReportFromInputs([fullInput('repo-a', 'https://example.com/a', exp)]).control_timeline,
+    ).toEqual(expected);
+  });
+
   it('a full bundle input preserves the established report equation and adds named coverage only', () => {
     const exp = exportOf('bundle-full', [
       seg([{ t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 2, out: 3 }]),

@@ -705,3 +705,168 @@ describe('telemetry pull bundle reader', () => {
     }
   });
 });
+
+function materializeZeroRefGhost() {
+  const value = materialize();
+  const manifest = JSON.parse(value.bundle.bundleJson) as Record<string, unknown>;
+  const selection = objectAt(manifest, 'selection');
+  const repository = objectAt(manifest, 'provenance', 'repositories', 0);
+  const session = objectAt(manifest, 'provenance', 'repositories', 0, 'sessions', 0);
+  const integrity = objectAt(manifest, 'integrity');
+  for (const row of integrity.blobs as Array<{ path: string }>) {
+    value.fs.deleteFile(`/bundle/${row.path}`);
+  }
+  integrity.blobs = [];
+  repository.selected_ref_count = 0;
+  selection.matched_refs = 0;
+  session.fidelity = 'identity-only';
+  session.refs = [];
+  session.gaps = [];
+  session.coverage = {
+    events: 'unavailable',
+    measurements: 'unavailable',
+    gaps: [
+      { field: 'events', reason: 'identity_only', refs: [] },
+      { field: 'measurements', reason: 'identity_only', refs: [] },
+    ],
+  };
+  value.fs.writeText('/bundle/bundle.json', `${JSON.stringify(manifest, null, 2)}\n`);
+  return { ...value, manifest, selection, repository, session };
+}
+
+describe('repair RED 2 — ref-backed selected sessions and count closure', () => {
+  it.each([
+    'identity-only',
+    'full',
+    'partial',
+  ] as const)('rejects a selected zero-ref %s ghost with zero report inputs', (fidelity) => {
+    const value = materializeZeroRefGhost();
+    value.session.fidelity = fidelity;
+    value.fs.writeText('/bundle/bundle.json', `${JSON.stringify(value.manifest, null, 2)}\n`);
+    const read = readTelemetryBundle('/bundle', value);
+    expect(read).toEqual({ ok: false, reason: 'invalid_bundle' });
+    expect('inputs' in read).toBe(false);
+  });
+
+  it('rejects zero-ref forged coverage and session gaps', () => {
+    const forgedCoverage = materializeZeroRefGhost();
+    forgedCoverage.session.coverage = { events: 'full', measurements: 'complete', gaps: [] };
+    forgedCoverage.fs.writeText(
+      '/bundle/bundle.json',
+      `${JSON.stringify(forgedCoverage.manifest, null, 2)}\n`,
+    );
+    expect(readTelemetryBundle('/bundle', forgedCoverage)).toEqual({
+      ok: false,
+      reason: 'invalid_bundle',
+    });
+
+    const forgedGap = materializeZeroRefGhost();
+    forgedGap.session.gaps = [
+      {
+        repository_key: REPOSITORY_KEY,
+        session_id: 'session-1',
+        ref: null,
+        reason: 'duplicate_session_identity',
+      },
+    ];
+    forgedGap.fs.writeText(
+      '/bundle/bundle.json',
+      `${JSON.stringify(forgedGap.manifest, null, 2)}\n`,
+    );
+    expect(readTelemetryBundle('/bundle', forgedGap)).toEqual({
+      ok: false,
+      reason: 'invalid_bundle',
+    });
+  });
+
+  it.each([
+    ['matched sessions', 'matched_sessions', 0],
+    ['matched refs', 'matched_refs', 0],
+    ['matched repositories', 'matched_repositories', 0],
+  ] as const)('rejects a %s disagreement', (_name, field, count) => {
+    const value = materialize();
+    const manifest = JSON.parse(value.bundle.bundleJson) as Record<string, unknown>;
+    objectAt(manifest, 'selection')[field] = count;
+    value.fs.writeText('/bundle/bundle.json', `${JSON.stringify(manifest, null, 2)}\n`);
+    expect(readTelemetryBundle('/bundle', value)).toEqual({
+      ok: false,
+      reason: 'invalid_bundle',
+    });
+  });
+
+  it('rejects repository selected-ref count disagreement from the actual ref sum', () => {
+    const value = materialize();
+    const manifest = JSON.parse(value.bundle.bundleJson) as Record<string, unknown>;
+    const repository = objectAt(manifest, 'provenance', 'repositories', 0);
+    repository.advertised_ref_count = 2;
+    repository.selected_ref_count = 2;
+    value.fs.writeText('/bundle/bundle.json', `${JSON.stringify(manifest, null, 2)}\n`);
+    expect(readTelemetryBundle('/bundle', value)).toEqual({
+      ok: false,
+      reason: 'invalid_bundle',
+    });
+  });
+
+  it('rejects two selected sessions sharing one declared selected-ref count', () => {
+    const value = materializeZeroRefGhost();
+    const second = structuredClone(value.session);
+    second.session_id = 'session-2';
+    (value.repository.sessions as unknown[]).push(second);
+    value.repository.selected_ref_count = 1;
+    value.selection.matched_sessions = 2;
+    value.selection.matched_refs = 1;
+    value.fs.writeText('/bundle/bundle.json', `${JSON.stringify(value.manifest, null, 2)}\n`);
+    expect(readTelemetryBundle('/bundle', value)).toEqual({
+      ok: false,
+      reason: 'invalid_bundle',
+    });
+  });
+
+  it('rejects an advertised ref whose commit history is empty', () => {
+    const value = materialize();
+    const manifest = JSON.parse(value.bundle.bundleJson) as Record<string, unknown>;
+    objectAt(manifest, 'provenance', 'repositories', 0, 'sessions', 0, 'refs', 0).commits = [];
+    value.fs.writeText('/bundle/bundle.json', `${JSON.stringify(manifest, null, 2)}\n`);
+    expect(readTelemetryBundle('/bundle', value)).toEqual({
+      ok: false,
+      reason: 'invalid_bundle',
+    });
+  });
+
+  it('preserves genuine complete and unresolved partial repository-level empty selections', () => {
+    for (const completeness of ['complete', 'partial'] as const) {
+      const hash = new FakeHash();
+      const bundle = buildTelemetryBundle(
+        {
+          selector: { kind: 'date', from: '2026-07-01', to: '2026-07-02' },
+          completeness,
+          selectionGaps:
+            completeness === 'partial'
+              ? [
+                  {
+                    repositoryKey: REPOSITORY_KEY,
+                    sessionId: 'unknown',
+                    ref: 'refs/harness-telemetry/not/a/date/unknown',
+                    reason: 'date_provenance_unavailable',
+                  },
+                ]
+              : [],
+          sessions: [],
+          repositorySnapshots: [
+            {
+              key: REPOSITORY_KEY,
+              identity: REPOSITORY_URL,
+              advertisedRefs: completeness === 'partial' ? 1 : 0,
+              selectedRefs: 0,
+            },
+          ],
+        },
+        hash,
+      );
+      const fs = new FakeFs();
+      expect(publishTelemetryBundle(bundle, '/repair-empty', { fs, hash }).ok).toBe(true);
+      const read = readTelemetryBundle('/repair-empty', { fs, hash });
+      expect(read).toMatchObject({ ok: true, inputs: [], selection: { completeness } });
+    }
+  });
+});

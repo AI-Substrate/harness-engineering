@@ -1320,3 +1320,185 @@ The focused cluster passed 10 files and 313/313 tests. The full regression passe
 Two validation-wrapper count expectations were stale, without changing the underlying results. After an already-green 17/17 full process legitimately emitted 28 operations, its wrapper expected 20. After an already-green 313/313 focused process, its wrapper expected 312. The envelope expectations were corrected for subsequent observation where applicable; no source or product change and no result fabrication occurred.
 
 The frozen corpus, templates, package, lock, index, cached state, and final path identities remained exact, and no additional product path appeared. AC-25 zero-context documentation comprehension remains pending Jordan. Native Windows remains unrun; shaped and static proof is green. No commit, push, PR, merge, release, deploy, real remote telemetry, or other outward action occurred.
+
+## Private HTTPS credential-helper restoration
+
+Live use reopened the documented non-interactive HTTPS authentication promise. The adapter now discovers only the allowed global credential-helper, configured-username, and HTTP-path settings for HTTPS. It preserves Git's helper order, empty resets, includes, and URL matching by materializing the accepted entries through Git into one private operation-scoped config. Arbitrary global and system configuration remains disabled. SSH, scp-like SSH, and `git://` skip this path and retain the isolated null global config.
+
+Harness does not receive helper-produced credentials. Helpers communicate directly with Git; network argv and public results contain no helper value, configured username, secret, private config path, or raw child error. HTTPS prompts are disabled. The private directory/file is mode-protected where supported and is removed after success, failure, timeout, malformed input, partial setup, helper failure, or thrown error; cleanup failure is a static typed transport result.
+
+The implementation was test-first. The initial nested-directory RED command stopped before collection because that directory has no package manifest; the corrected root command selected 17 discovery/parser/order/bounds cases, all of which failed for the absent feature. A separately added lease/environment/cleanup cluster selected eight cases, all of which failed for the absent feature before source changed. After the smallest adapter-local implementation, the discovery cluster first passed 16/17; the remaining empty-config case had incorrectly tried to learn a path from a writer command that correctly does not exist for zero entries. The test was corrected to observe the HTTPS child's private global-config environment value, then passed 17/17. The lease cluster passed 8/8. A fresh shared-deadline case failed once by reaching the network after an injected deadline expiry, then passed after the adapter added the missing post-query deadline check.
+
+The strengthened credential matrix passed 27/27. The complete real-Git integration file first passed 42/42 and then 45/45 after exact-boundary, operation-lease reuse, and deadline/creation cases were added. The wider adapter/privacy/telemetry cluster passed 313/313. An attempted nonexistent root `typecheck` script stopped before compilation; the repository's direct TypeScript command then passed. Biome reported formatting-only changes in the two authorized code/test paths, applied them there, and the subsequent focused Biome and TypeScript checks passed.
+
+The guide now explains the HTTPS trust and isolation boundary. The existing docs generator changed only the generated docs mirror; at that point the changed set was exactly the adapter, its existing integration test, the guide, and the generated mirror. Full regression, remaining static/composite gates, and safe live HTTPS/SSH controls are not claimed by this entry and remain mandatory before completion. No package, lock, workflow, app, public port, service, fixture corpus, template, or flow state changed. No commit, push, or reviewer launch occurred.
+
+## HTTPS credential-subsection correction
+
+The first authorized live HTTPS inventory failed closed in the credential parser before private materialization, helper invocation, advertisement, or network. The allowed query itself was bounded; the defect was a URL-only scope classifier rejecting legitimate non-host provider/scp-style metadata. No helper or transport behavior was changed to correct that parser boundary.
+
+A fresh synthetic correction cluster was added before source changed. It selected 25 tests: 19 existing strict URL and negative cases passed, while six provider/scp admission, order, and private-applicability cases failed with the expected pre-materialization configuration result. The smallest source correction retained strict host-bearing URL admission, added a nonempty 2,000-byte Unicode-safe opaque fallback, rejected Unicode control/format/line/paragraph categories, and made malformed `scheme://` authority text terminal rather than eligible for fallback. Harness preserves exact accepted keys, query/include order, and values; Git alone owns applicability, reset, helper-chain, and execution semantics.
+
+The correction cluster then passed 25/25. Six bounded mutation probes independently removed or weakened the Unicode guard, byte and empty bounds, opaque fallback, host-URL safety, and malformed-authority rejection; every probe produced its named focused failure and the source was restored byte-for-byte. One probe-harness transform initially matched no source and stopped before its test; exact current text was used for the remaining probes after restoration was verified.
+
+The prior credential matrix first passed 26/27 because one old synthetic negative described a non-URL scope that the corrected contract intentionally admits. That stale expectation was replaced with malformed authority syntax, after which the prior matrix passed 27/27 and the complete real-Git integration file passed 70/70. The guide now states that the bounded closed-field set contains unscoped and scoped records reached through includes, not only already-matching URL scopes, while arbitrary global configuration and helper-produced secrets remain outside Harness.
+
+Only the existing adapter, integration test, guide, generated docs mirror, and this append-only log are changed. Full regression, static/publication/composite gates, frozen invariants, and the single stop-on-failure live sequence are not claimed by this entry and remain mandatory. AC-25 zero-context authentication-documentation comprehension is pending Jordan. No reviewer, commit, push, merge, release, deploy, check bypass, or telemetry-ref publication occurred.
+
+## Strict claimed-data closure repair
+
+Five distinct test groups ran while all four production sources still matched their frozen baselines. Remote-manifest safety selected 26 tests and exposed 15 current-behavior failures. Ref-backed bundle identity selected 10 tests and exposed the zero-ref ghost. Logs severity selected nine tests and exposed six dependent contradictions. Exact time bounds selected 17 tests and exposed seven uint64, cross-point, and paired-signal failures. Credential values selected 21 tests and exposed all 20 scoped/unscoped Unicode-control cases. The groups otherwise passed 11, nine, three, 10, and one existing/positive controls respectively.
+
+The smallest production repairs then closed the five findings:
+
+- remote manifests now require exact keys, format, selected session, a real date or the exact unavailable-date sentinel, a safe nonnegative sequence, and an optional nonempty lowercase unique same-width product list in stable first-seen order before evidence or raw admission; the local migration parser remains unchanged;
+- every selected bundle session is backed by at least one strict ref with history, and selected/matched repository, session, and ref counts close over actual ref-backed evidence while genuine repository-level empty selections remain valid;
+- Logs severity number and text now derive exactly from validated checks status, command exit, or the fixed producer family;
+- Metrics times now use canonical bounded uint64 decimals and exact ordering, all points and metric families share one pair, and paired Logs bind that pair to the earliest/latest non-flow event while preserving empty and metrics-only semantics; and
+- scoped and unscoped helper/username values reject Unicode control, format, line-separator, and paragraph-separator categories before writer or network access, while safe Unicode, spaces, empty helper reset, and exact booleans remain valid.
+
+Owning GREEN results were 26/26, 10/10, 9/9, 17/17, and 21/21. Additional guard refinements raised the final owning counts to 29 manifest tests, 11 bundle tests, and 18 time tests. The complete four-file owner set passed 303/303.
+
+Thirty-nine valid serialized mutations produced named behavioral failures and exact restoration: 10 manifest/raw-admission guards, five ref/count guards, nine severity guards, nine exact-time guards, and six credential-value guards. Nonmatching transforms, an upstream-masked fixture, a redundant simple branch removal, and a producer-invalidating collection variant were restored and not counted; their corrected replacements produced behavioral RED.
+
+One preliminary fence checker compared the eight-path HEAD diff with the 69-path main diff and stopped on its own wrong count; the corrected fence check passed with all production baselines exact. The first bundle count fixture used the already-invalid zero-ref ghost and was retargeted to an otherwise-valid bundle before count mutations were accepted. Two guessed npm typecheck invocations stopped before a compiler ran because the nested directory has no manifest and the root has no such script; the established direct local TypeScript command then found one narrowing issue, which was corrected without behavior change and passed.
+
+The final full regression, static/publication/composite gates, frozen identities, and exactly one stop-on-failure HTTPS inventory are not claimed by this entry and remain mandatory. No guide, generated documentation, producer, schema, bundle format/publisher, package, lock, workflow, app, port, corpus, fixture, template, or tenth repair path changed. Native Windows remains unrun; shaped/static proof is still required. No reviewer action, commit, push, merge, release, deploy, check bypass, or telemetry-ref publication occurred.
+
+### Single post-gate live control
+
+After every local blocking gate passed, exactly one private HTTPS exact-session inventory exited zero with status `ok`, one full-fidelity row, one selected ref, caller mutation false, and disposable cleanup true. Its stderr was empty, the caller Git state and ambient store inventory were exact before and after, and credential, fixture-root, and daemon residue remained zero. The evidence envelope stayed in ignored private scratch and contained no host path, helper/config residue, credential assignment, or authorization material. No retry, fallback, pull, report, reuse, SSH, malformed-session control, or second live command followed.
+
+## Publication-boundary process-budget repair and final acceptance
+
+### Preserved prior evidence and contradictions
+
+This repair does not erase or relabel the blocking history. The dlg-0017 telemetry-disabled composite timed out in the publication boundary. The first dlg-0018 composite stopped on a different real-Git timeout together with a Biome error; the unavailable/truncated composite diagnostic remains a stop rather than inferred evidence. Step1A retained the full exact2 diagnostic and used formatter-only recovery. The later real-Git three-run and two full-suite sequences passed, but dlg-0018 composite2 again timed out in the unchanged publication-boundary assertion.
+
+AR-01 history also remains explicit: its invalid initial RED is non-evidence, its replacement RED is the owning evidence, and its source, serialized mutation/restoration results, and regressions are not substituted by this publication repair. The frozen report source remained SHA-256 `f2ff5953016103164832f97b6c87fdfec9a4be170dea513ca06188240505459e`; the formatter-only exact2 report test remained SHA-256 `a6c787e5a20bdd474064d331b0019e2ef944f826762f5a3eae65e29f69593b8c` through acceptance.
+
+### Publication RED, implementation, and GREEN
+
+The first nested-directory npm launch exited 254 before test collection because that directory has no package manifest; it is disclosed as non-evidence. The authorized root replacement RED selected 11 tests: the prior 10 semantic tests passed, and only the new owning process-budget test failed. Its owned operation observed four complete inventory children and 94 per-path check-ignore children against the required one and one. The run completed in 4.00 seconds without a timeout, syntax, fixture, or semantic failure.
+
+The test-only repair caches one immutable committable-file inventory per fresh local operation and replaces per-path ignore fan-out with one `git check-ignore -z --stdin` batch containing every selected artifact plus the synthetic control. It rejects spawn errors, signals, nonzero status, malformed NUL framing, duplicate or unexpected output, a missing control, or any selected artifact reported ignored. The owning test resets and drives its own operation, so its counts do not depend on declaration order or another test.
+
+The already-installed formatter changed only the publication test, and the exact-path read-only check passed. The sole implementation GREEN passed 11/11 in 1.04 seconds with owned counts exactly one inventory and one check-ignore child. The fixed 5,000 ms timeout, artifact predicates, no-selected-artifact-ignored assertion, and synthetic-control non-vacuity assertion remained unchanged.
+
+### Serialized publication mutations
+
+Each accepted mutation ran alone and was restored before the next:
+
+1. bypassing the inventory cache produced owned counts four inventory / one check-ignore and failed only the budget assertion; restoration GREEN passed;
+2. restoring per-path check-ignore fan-out produced one inventory / 94 check-ignore and failed only the budget assertion; restoration GREEN passed;
+3. omitting the synthetic control made strict batched check-ignore exit nonzero before the CONTROL body, proving status/control non-vacuity; exact restoration returned the full file to SHA-256 `891f1c3f7de550cf5d64878740330d9228ed386b5c71a142f391bad1cf677517` and 11/11 GREEN; and
+4. injecting the first real selected artifact into the parsed ignored set failed only the no-artifact-ignored assertion; restoration GREEN passed.
+
+The first mutation-3 focus expression selected zero tests and exited green. It is preserved as non-evidence, was not counted, and was not treated as a mutation result. No historical post-mutation-2 source hash had been recorded, so none is claimed. Recovery first proved the exact `891f1c3f7de550cf5d64878740330d9228ed386b5c71a142f391bad1cf677517` / 12,063-byte / `100644` baseline and reenacted 11/11 GREEN in 973 ms; the literal CONTROL selector then produced the owning strict-status RED, followed by exact restoration and 11/11 GREEN in 1.06 seconds.
+
+### Final ordered acceptance
+
+```text
+publication run 1: exit 0 — 11/11, 979 ms
+publication run 2: exit 0 — 11/11, 970 ms
+publication run 3: exit 0 — 11/11, 1.00 s
+frozen report test: exit 0 — 48/48, 836 ms
+report/HTML/insights regression: exit 0 — 3 files, 88/88, 844 ms
+full regression: exit 0 — 221 files, 2,990/2,990, 30.64 s
+telemetry-disabled composite: exit 0 — 41.165 s
+```
+
+Every composite blocking gate was `ok`: tests, Biome, TypeScript, docs/flows/telemetry/doctrine drift checks, skills, and shaped Windows. The unchanged warn-launch baseline remained visible: two architecture warnings and 199 Markdown findings. Telemetry was disabled for the composite, so no capture, sync, or other outward action occurred.
+
+Only the publication test changed during RED/GREEN/mutations. The report source and report test stayed frozen. This execution log received this single append only after the composite passed. No timeout, assertion, artifact-set, product behavior, coverage, concurrency, configuration, global runner, fixture, package, lock, schema, renderer, or insights change was made. No retry substituted for a failed acceptance gate. No reviewer launch, commit, push, PR, merge, release, deploy, telemetry publication, bypass, or unrelated cleanup occurred.
+
+## R1 exact6 credential-shaped repository username repair (dlg-0023)
+
+### Test-first closure
+
+All synthetic credential shapes were assembled at runtime from harmless fragments. No generated
+value was persisted in source, test output, documentation, or this evidence.
+
+- **RED A — parser boundary:** the unchanged source selected 38 tests: 20 expected failures and
+  18 passes. URL and scp credential-shaped usernames, percent-bearing or malformed encoded
+  usernames, overlength or grammar-invalid usernames, and static E108 behavior were the only
+  failing contract cases. Safe no-username, `git`, deploy-style, dotted, underscored, and bounded
+  alphanumeric usernames remained accepted. No generated value appeared in output.
+- **RED B — act/effect boundary:** the unchanged source selected 48 tests: four expected failures
+  and 44 passes. Both `ls` URL/scp cases reached one identity hash and one Git consultation;
+  both `pull` URL/scp cases did the same and returned E221 instead of E108. All four had zero
+  filesystem writes and no raw-value echo.
+- **Smallest repair:** imported the existing read-only shared credential-shape guard, added one
+  internal 1–64 character `[A-Za-z0-9._-]+` username validator, and applied it to URL and scp
+  forms before canonical identity construction. Every percent-bearing URL username fails closed.
+  The existing generic no-echo E108 family remains unchanged.
+- **Owner GREEN:** parser 38/38, act 48/48, then both together 86/86.
+- **Documentation:** the authored guide now distinguishes bounded non-secret usernames from
+  rejected credential-shaped or encoded user-info and names HTTPS credential helpers as the
+  private-auth path. The existing generator changed only the generated docs mirror.
+
+### Serialized mutation proof
+
+Each mutation used an out-of-repository byte backup and an exit-trap restore. Every completed
+restore matched repaired source SHA-256
+`bc642c785309df816a25d30469c766503d30f3a81954bdbb3ab4c332312710ba`, Git blob
+`355309040feef44b69ede0c42583c64495958d18`, 9,129 bytes, mode `100644`.
+
+1. Remove the URL credential-shape guard: 6 failed / 32 passed; exact restore; parser 38/38.
+2. Remove the scp credential-shape guard: 5 failed / 33 passed; exact restore; parser 38/38.
+3. Admit percent-bearing or encoded URL usernames: 6 failed / 32 passed; exact restore;
+   parser 38/38.
+4. Remove username length and positive grammar: 3 failed / 35 passed; exact restore;
+   parser 38/38.
+5. Hash before input rejection: the four act zero-effect cases failed / 44 passed because each
+   observed one premature hash while E108, zero Git, zero writes, and no echo otherwise held;
+   exact restore; act 48/48.
+6. Echo a rejected username in E108: 1 failed / 37 passed; the privacy assertion reported only
+   `staticMessage=false` and `rawEcho=true`, never the generated value. The exit trap restored
+   the source.
+
+**Control interruption:** Panda requested a status-only stop after mutation 6 RED and trap
+restoration, before the separate restore check and owner GREEN. No product failure occurred.
+Prime then verified the exact repaired source identity above and authorized one recovery parser
+run, which passed 38/38. No mutation or earlier RED was repeated.
+
+### Ordered acceptance
+
+- post-mutation owners: 2 files / 86 tests passed;
+- affected remote-input, CLI, error, and effect cluster: 4 files / 105 tests passed;
+- local-only HTTPS credential and real-Git integration: 1 file / 91 tests passed;
+- full regression: 221 files / 3,016 tests passed; coverage was 88.37% statements, 78.24%
+  branches, 90.86% functions, and 91.09% lines;
+- TypeScript passed; Biome checked 408 files with no fixes;
+- docs and flow drift passed, including five flow fixtures;
+- telemetry compatibility fixtures passed 20/20 with all four committed instances covered;
+- no-direct-node-I/O passed 1/1; publication boundary passed 11/11;
+- skills check passed 8 skills with zero findings; shaped Windows checked 24 files with zero
+  findings; scoped telemetry-pull Markdown had zero errors;
+- architecture retained the unchanged two warn-only `services-ports-type-only` findings;
+  repository-wide Markdown retained the unchanged 199 warn-launch findings;
+- the telemetry-disabled composite completed in 38.848 seconds with every blocking gate `ok`.
+
+The frozen 83,001-byte execution-log prefix remained exact at SHA-256
+`b2283a6bdf314f7f6e1ea65ddec6e3846fa67b3b0407c35e81f7ad94e9198858`. Lines 3–4 retain their
+intentional two-space Markdown hard breaks; they are accepted immutable baseline, not whitespace
+findings, and were not normalized.
+
+### Pre-log controls and identities
+
+- Herring's first bounded temporary-index reconstruction reached `git diff --cached` exit 128
+  with stderr suppressed. It had no repository effect and is non-evidence; it was not presented
+  as a candidate scan.
+- Prime's first scan stopped on an overbroad generic `pij-*` regex matching legitimate synthetic
+  test identifiers. It ran zero tests, zero live commands, and zero writes, and is non-evidence.
+- Prime accepted the corrected pre-log scan: final70-prelog identity `405873d6`, canonical rows
+  `3a01da98`, binary diff `3021104e`, path-set `b9da21f2`, count 70; exact6 rows `317b1e17`,
+  path-set `cc25e809`, count 6.
+- The same corrected scan proved product set 70, private-artifact exclusion, HEAD/index identity,
+  protected package/lock/template surfaces, repair-added whitespace cleanliness, and zero
+  generated-credential or private-value hits.
+
+No live network command, seventh product path, Segment guard edit, generated secret echo,
+contract weakening, reviewer contact, commit, push, merge, release, deploy, publication, bypass,
+or unrelated cleanup occurred. Prime owns the sole final identity and publication scan; no test
+or live command follows this append.

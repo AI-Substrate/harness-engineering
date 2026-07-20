@@ -503,6 +503,22 @@ export function validateLogEventAttributes(attributes: readonly KeyValue[]): boo
   return true;
 }
 
+function expectedSeverity(
+  kind: string,
+  attributes: ReadonlyMap<string, AnyValue>,
+): number | undefined {
+  if (kind === 'checks') {
+    const status = readStr(attributes.get(A.CHECKS_STATUS));
+    return status === 'ok' ? SEV_INFO : status === 'degraded' ? SEV_WARN : SEV_ERROR;
+  }
+  if (kind === 'command_exit') {
+    const exit = readNum(attributes.get(A.CMD_EXIT));
+    return exit === undefined ? undefined : exit === 0 ? SEV_INFO : SEV_ERROR;
+  }
+  const definition = LOG_EVENT_DEFINITION_BY_KIND.get(kind);
+  return definition?.severityNumbers.length === 1 ? definition.severityNumbers[0] : undefined;
+}
+
 export function validateLogRecordContract(record: LogRecord): boolean {
   if (
     record.attributes === undefined ||
@@ -518,12 +534,13 @@ export function validateLogRecordContract(record: LogRecord): boolean {
   const attributeMap = attrMap(record.attributes);
   const kind = readStr(attributeMap.get(A.KIND));
   const eventTime = readStr(attributeMap.get(A.T));
-  const definition = kind === undefined ? undefined : LOG_EVENT_DEFINITION_BY_KIND.get(kind);
+  const severity = kind === undefined ? undefined : expectedSeverity(kind, attributeMap);
   return (
     eventTime !== undefined &&
     record.timeUnixNano === toNanos(eventTime) &&
-    definition?.severityNumbers.includes(record.severityNumber) === true &&
-    record.severityText === severityText(record.severityNumber)
+    severity !== undefined &&
+    record.severityNumber === severity &&
+    record.severityText === severityText(severity)
   );
 }
 
