@@ -1,6 +1,6 @@
 # Systemic Telemetry Repair — Token Recovery
 **Mode**: Full
-**Plan Version**: 1.0.0
+**Plan Version**: 1.0.1
 **Created**: 2026-07-21
 **Status**: READY
 **Spec source**: unified (this file)
@@ -11,7 +11,7 @@
 
 📚 Incorporates findings from `research-dossier.md` and the official-source boundary in `research/official-claude-session-storage.md`.
 
-The dossier proved a non-vacuous private oracle: five opaque Copilot cases have vendor token evidence while their matched durable Harness refs are token-dark, and two standard-Claude cases are measured durable-ref controls. P060 has since landed on `main` at `562a2255fc8c470aabd068ee6198d41e2d45ead8`; this plan was source-revalidated read-only against that tree while the atomic planning artifact remains on base `81a806c1f918091a15d54cc70af2c4a410d51485`.
+The dossier proved a non-vacuous private oracle: five opaque Copilot cases have vendor token evidence while their matched durable Harness refs are token-dark, and two standard-Claude cases are measured durable-ref controls. P060 landed on `main` at `562a2255fc8c470aabd068ee6198d41e2d45ead8`; the atomic Plan was committed as `26f4eb094100471ad8feb806098c2c4b25e18230` and converged by merge `c3ec0cef2dbd42b8c5058df8db176f143e2187bd`. The converged `harness/cli`, `docs/how`, and `docs/project-rules` trees are byte-identical to landed main562, so the original source findings remain current.
 
 ### Summary
 
@@ -36,6 +36,7 @@ Repair token evidence end to end without broadening into every telemetry defect.
 - PIJ death-notice freshness, timestamping, or deduplication.
 - A selected-root global transcript filename scan.
 - Any product special case for the excluded machine-local alternate Claude configuration.
+- P060 remote telemetry `ls`/`pull`, bundle integrity, repository selection, and `RemoteTelemetryGitPort` behavior; P063 preserves those landed contracts while modifying shared telemetry act surfaces only for token coverage.
 - Any implementation task for the deferred systemic defects above.
 
 ### Target Domains
@@ -67,9 +68,9 @@ The repository has no initialized `docs/domains/` registry; these are the consti
 - **Score**: CS-5 (epic)
 - **Breakdown**: S=2, I=2, D=2, N=1, F=2, T=2 (sum 11)
 - **Confidence**: 0.88
-- **Assumptions**: authorized corpus identities remain frozen; current event structures match the dossier's allowlisted observations; P060's landed main is the convergence target.
+- **Assumptions**: authorized corpus identities remain frozen; current event structures match the dossier's allowlisted observations; converged merge `c3ec0cef2dbd42b8c5058df8db176f143e2187bd` remains the downstream source baseline.
 - **Dependencies**: existing ports/fakes, segment/OTLP/ref substrate, public envelope contract, authorized private replay access under a later born-closed execution packet.
-- **Risks**: additive event/schema drift, cumulative/final double counting, source precedence masking, private evidence leakage, base divergence.
+- **Risks**: additive event/schema drift, cumulative/final double counting, source precedence masking, private evidence leakage, post-convergence source drift.
 - **Phases**: three—the minimum that separates capture contracts, durable/public consumption, and real replay plus fixture promotion.
 
 ### Acceptance Criteria
@@ -93,7 +94,7 @@ The repository has no initialized `docs/domains/` registry; these are the consti
 | Claude session IDs collide across candidate project keys | Wrong transcript read | Exact bounded candidates, metadata-first confinement, exactly-one-match rule, typed ambiguity. |
 | Ref lookup cannot prove a PIJ↔Harness join after teardown | Wrong identity inference | Consume only durable captured joins; return unavailable when absent; adopted-seat producer repair remains follow-on. |
 | Private replay bytes leak into tracked artifacts or validation | Publication breach | Orchestrator-owned private replay, opaque case IDs, no raw validator context, sanitizer + byte scan + manual review. |
-| P060 landed changes overlap acts/docs/Git ports | Stale phase paths or contracts | Finish atomic Plan on base81, then converge to main562 and re-run source/path/gate validation before any downstream stage. |
+| P060 landed changes share acts/docs/Git surfaces | Remote telemetry regression | Converged product paths are byte-identical to main562; retain P060 remote grammar/envelope/integrity tests while adding token behavior. |
 
 ### Open Questions
 
@@ -117,6 +118,7 @@ None. Jordan resolved the only blocking security choice in this session: “1 is
 - **Coverage — Jordan**: state plus closed evidence reason; cause remains unknown unless authoritative; P063 applies this only to token coverage/source availability.
 - **Locator — Jordan**: “1 is fine, its rare occurance” → selected standard root with explicit bounded current/main/common-repo known-worktree candidates; no global scan.
 - **Convergence — Jordan**: complete the atomic Plan on base81, then converge/revalidate against landed main562 before any workshop, tasks, or implementation.
+- **Convergence evidence — o-prime**: Plan-only commit `26f4eb094100471ad8feb806098c2c4b25e18230` was merged with exact main562 as `c3ec0cef2dbd42b8c5058df8db176f143e2187bd`; no rebase, stash, or autostash; source/path/privacy revalidation is clean.
 
 ## Planning Seam
 
@@ -265,9 +267,9 @@ The implementation introduces one typed token-evidence vocabulary across capture
 | 2.1 | Write failing durable-read, field-merge, compatibility, and public-status tests before reader changes | repo-engineering-substrate | Tests reproduce post-prune loss, empty-ref masking, partial-as-zero, and false-ok envelopes; scalar source compatibility is pinned | AC-03–AC-05 |
 | 2.2 | Add typed token evidence to session evidence/export/ref reconstruction | harness-cli | Live and whole-session ref paths use the same reducer; post-prune reads preserve measured fields; absent joins/fields return closed reasons and `cause: unknown` | Per findings 03, 05, 06 |
 | 2.3 | Replace orphan/location-first fleet selection with per-field quality merging | harness-cli | Every rostered lane evaluates complementary live/ref/ledger evidence; measured fields beat empty fields; unlike observations never add; scalar source projection is deterministic | Per finding 04 |
-| 2.4 | Propagate coverage state/reason through schemas, reports, HTML, sweep, and telemetry acts | harness-cli | Complete=`measured`; partial=`partial`; zero=`unavailable`; partial/unavailable command envelopes are degraded with `next_action`; no false zero/ok | AC-05 |
+| 2.4 | Propagate coverage state/reason through schemas, reports, HTML, sweep, and telemetry acts | harness-cli | Complete=`measured`; partial=`partial`; zero=`unavailable`; partial/unavailable command envelopes are degraded with `next_action`; no false zero/ok; P060 remote `ls`/`pull` grammar and envelopes remain unchanged | AC-05 |
 | 2.5 | Update existing telemetry, reports, and fixture guides and regenerate their CLI projection | repo-engineering-substrate | Guides document bounded locator, typed precedence, post-sync reads, per-field provenance, compatibility projection, coverage reasons, and real-before-sanitized proof | Documentation strategy |
-| 2.6 | Run focused session/ref/fleet/report/act/schema/privacy tests | repo-engineering-substrate | Phase 2 tests pass; established fleet golden, standard-Claude controls, envelope schema, and counts-only publication remain green | AC-03–AC-05, AC-08 |
+| 2.6 | Run focused session/ref/fleet/report/act/schema/privacy tests | repo-engineering-substrate | Phase 2 tests pass; established fleet golden, standard-Claude controls, P060 remote telemetry grammar/envelopes/integrity, envelope schema, and counts-only publication remain green | AC-03–AC-05, AC-08 |
 
 #### Phase 3: Real Replay and CI Fixture Promotion
 
@@ -312,4 +314,4 @@ The implementation introduces one typed token-evidence vocabulary across capture
 | Compatibility consumers depend on scalar source or old token totals | Medium | High | Retain deterministic scalar projection; additive field map; golden and act tests. |
 | Durable PIJ join absent after teardown | Medium | Medium | Use only captured durable join; typed unavailable; producer expansion explicitly deferred. |
 | Raw corpus reaches a tracked/validator context | Low | Critical | Opaque IDs only, private orchestrator replay, no raw validator input, sanitizer + byte-scan + manual review. |
-| Base81 plan paths drift from main562 after P060 | High | High | Mandatory post-return convergence and full plan/source/gate revalidation before any downstream stage. |
+| Converged source moves after revalidation | Medium | High | Pin implementation intake to merge `c3ec0cef2dbd42b8c5058df8db176f143e2187bd`; any newer base requires another source/path/gate revalidation before downstream work. |

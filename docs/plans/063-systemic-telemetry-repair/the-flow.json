@@ -237,6 +237,18 @@
         "from": "research",
         "to": "plan"
       }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-21T05:28:57.302Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -275,13 +287,13 @@
         "Run /builder 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
         "Done when <slug>-plan.md carries both halves and reads **Status**: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run."
       ],
-      "note": "Token-recovery-first Full Plan: READY, validate-v2 VALIDATED WITH FIXES, three phases, eight acceptance criteria.",
+      "note": "Converged merge c3ec0cef: token-recovery Full Plan v1.0.1 remains READY; adaptive validation VALIDATED WITH FIXES; three phases, eight acceptance criteria; P060 remote contracts preserved.",
       "artifacts": [
         "docs/plans/063-systemic-telemetry-repair/systemic-telemetry-repair-plan.md",
         "docs/plans/063-systemic-telemetry-repair/validations/systemic-telemetry-repair-plan-validation.md",
         "docs/plans/063-systemic-telemetry-repair/research/official-claude-session-storage.md"
       ],
-      "modified_at": "2026-07-21T05:22:34.043Z",
+      "modified_at": "2026-07-21T05:28:57.302Z",
       "ran_at": "2026-07-21T05:22:34.043Z"
     },
     {
