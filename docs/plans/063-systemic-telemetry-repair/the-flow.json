@@ -249,6 +249,71 @@
           "note"
         ]
       }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-21T08:31:03.341Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-21T08:31:10.495Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-07-21T08:31:24.496Z",
+      "details": {
+        "node": "backpressure",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-21T08:37:08.592Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-07-21T08:37:23.253Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -314,7 +379,12 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
       ],
-      "modified_at": "2026-07-21T05:21:52.139Z"
+      "modified_at": "2026-07-21T08:37:23.253Z",
+      "note": "Phase 1 tasks prepared and sanitized validation passed with fixes: T001-T012, real RED before product edits, TDD order enforced, implementation blocked on separate human GO and born-closed replay packet.",
+      "artifacts": [
+        "docs/plans/063-systemic-telemetry-repair/tasks/phase-1-safe-capture-and-typed-usage/tasks.md",
+        "docs/plans/063-systemic-telemetry-repair/validations/phase-1-safe-capture-and-typed-usage-tasks-validation.md"
+      ]
     },
     {
       "id": "review-1",
@@ -350,7 +420,7 @@
       "id": "backpressure",
       "type": "backpressure",
       "label": "Backpressure survey",
-      "status": "known",
+      "status": "done",
       "branch_of": "plan",
       "next": [
         "plan"
@@ -366,7 +436,27 @@
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>\" THEN harness flow status --path <flow-path> --node backpressure --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node backpressure --to skipped; never a narrated skip.",
         "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
         "Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:unavailable reason:<…> time:<…>\" THEN harness flow status --path <flow-path> --node backpressure --to done — a completed attempt, not a skip."
-      ]
+      ],
+      "note": "REAL pre-coding survey complete: Certainty Partial; 2 RUN, 8 EXTEND, 1 BUILD, 0 material ABSENT; born-closed private replay sensor required before product code.",
+      "artifacts": [
+        "docs/plans/063-systemic-telemetry-repair/backpressure-coverage.md"
+      ],
+      "modified_at": "2026-07-21T08:37:08.591Z",
+      "comments": [
+        {
+          "at": "2026-07-21T08:31:10.495Z",
+          "text": "decision:route verdict:Partial time:2026-07-21T08:30:49Z basis_sha256:d8a6dcde37ad956466fee3dc8ffec2aa88015dc2ac194f6d406d686f361742bb artifact_sha256:ffb3796342f889409f3d9d0bae900b1f8e7b96ea8f46b64ef69595cb088361c0 modes:2-RUN,8-EXTEND,1-BUILD,0-ABSENT",
+          "source": "agent",
+          "kind": "validation"
+        },
+        {
+          "at": "2026-07-21T08:37:08.591Z",
+          "text": "decision:receipt-amendment verdict:Partial time:2026-07-21T08:37:00Z basis_sha256:d8a6dcde37ad956466fee3dc8ffec2aa88015dc2ac194f6d406d686f361742bb artifact_sha256:d1995091ec6285512d73505934985dc2828c19842ac6e98d319549898163da6f supersedes_artifact_sha256:ffb3796342f889409f3d9d0bae900b1f8e7b96ea8f46b64ef69595cb088361c0 reason:removed-unpaved-private-replay-command",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-07-21T08:31:24.496Z"
     },
     {
       "id": "boot-1",
