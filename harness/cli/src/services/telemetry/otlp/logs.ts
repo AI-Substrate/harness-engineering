@@ -39,6 +39,9 @@ import {
   type ToolsEvent,
   type TPrecision,
   type TurnEvent,
+  USAGE_OBSERVATION_KINDS,
+  type UsageEvent,
+  type UsageObservationKind,
 } from '../events.js';
 import { computeRollup } from '../rollup.js';
 import {
@@ -248,6 +251,14 @@ export const LOG_EVENT_DEFINITIONS: readonly LogEventDefinition[] = [
     optionalInt(A.CACHE_READ),
     optionalInt(A.CACHE_CREATE),
     optionalString(GENAI_MODEL, 'model'),
+  ]),
+  defineEvent('usage', [
+    requiredString(A.USAGE_OBSERVATION_KIND, 'identifier', USAGE_OBSERVATION_KINDS),
+    optionalInt(GENAI_INPUT_TOKENS),
+    optionalInt(GENAI_OUTPUT_TOKENS),
+    optionalInt(A.CACHE_READ),
+    optionalInt(A.CACHE_CREATE),
+    optionalInt(A.USAGE_NANO_AIU),
   ]),
   defineEvent('tools', [
     requiredString(A.TOOL_NAME, 'identifier'),
@@ -497,6 +508,14 @@ export function validateLogEventAttributes(attributes: readonly KeyValue[]): boo
     }
     if (!validateLogAttributeValue(attribute, value)) return false;
   }
+  if (
+    kind === 'usage' &&
+    ![GENAI_INPUT_TOKENS, GENAI_OUTPUT_TOKENS, A.CACHE_READ, A.CACHE_CREATE, A.USAGE_NANO_AIU].some(
+      (key) => byKey.has(key),
+    )
+  ) {
+    return false;
+  }
   const observe = byKey.get(A.OBSERVE_KIND);
   const verb = byKey.get(A.VERB);
   if (observe !== undefined && verb?.stringValue !== 'observe') return false;
@@ -560,6 +579,14 @@ function encodeEvent(e: Event): LogRecord {
       if (e.cache_read !== undefined) attrs.push(kv(A.CACHE_READ, nv(e.cache_read)));
       if (e.cache_create !== undefined) attrs.push(kv(A.CACHE_CREATE, nv(e.cache_create)));
       if (e.model !== undefined) attrs.push(kv(GENAI_MODEL, sv(e.model)));
+      break;
+    case 'usage':
+      attrs.push(kv(A.USAGE_OBSERVATION_KIND, sv(e.observation_kind)));
+      if (e.in !== undefined) attrs.push(kv(GENAI_INPUT_TOKENS, nv(e.in)));
+      if (e.out !== undefined) attrs.push(kv(GENAI_OUTPUT_TOKENS, nv(e.out)));
+      if (e.cache_read !== undefined) attrs.push(kv(A.CACHE_READ, nv(e.cache_read)));
+      if (e.cache_create !== undefined) attrs.push(kv(A.CACHE_CREATE, nv(e.cache_create)));
+      if (e.nano_aiu !== undefined) attrs.push(kv(A.USAGE_NANO_AIU, nv(e.nano_aiu)));
       break;
     case 'tools':
       attrs.push(
@@ -720,6 +747,24 @@ function decodeEvent(rec: LogRecord): Event {
       if (cr !== undefined) ev.cache_read = cr;
       if (cc !== undefined) ev.cache_create = cc;
       if (model !== undefined) ev.model = model;
+      return ev;
+    }
+    case 'usage': {
+      const ev: UsageEvent = {
+        ...base,
+        kind,
+        observation_kind: (readStr(m.get(A.USAGE_OBSERVATION_KIND)) ?? '') as UsageObservationKind,
+      };
+      const i = readNum(m.get(GENAI_INPUT_TOKENS));
+      const o = readNum(m.get(GENAI_OUTPUT_TOKENS));
+      const cr = readNum(m.get(A.CACHE_READ));
+      const cc = readNum(m.get(A.CACHE_CREATE));
+      const nanoAiu = readNum(m.get(A.USAGE_NANO_AIU));
+      if (i !== undefined) ev.in = i;
+      if (o !== undefined) ev.out = o;
+      if (cr !== undefined) ev.cache_read = cr;
+      if (cc !== undefined) ev.cache_create = cc;
+      if (nanoAiu !== undefined) ev.nano_aiu = nanoAiu;
       return ev;
     }
     case 'tools': {
@@ -910,8 +955,8 @@ export type OtlpSegmentReconstruction =
 
 /**
  * Typed logs-rooted Segment reconstruction shared by session export and strict
- * published retrieval. It validates the 2.4/v0.1 vs 2.5/v0.2 pairing and keeps
- * product provenance even when the event list is empty.
+ * published retrieval. It validates legacy 2.4/v0.1 and current schema identity
+ * pairings while keeping product provenance even when the event list is empty.
  */
 export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentReconstruction {
   const resourceLogs = logs.resourceLogs?.[0];
@@ -922,13 +967,19 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
   const attrs = attrMap(resourceLogs.resource?.attributes);
   const schemaVersion = readStr(attrs.get(RES_SCHEMA_VERSION)) ?? 'unknown';
   const service = readStr(attrs.get(RES_SERVICE));
+  if (
+    !Array.isArray(scopeLogs.logRecords) ||
+    !scopeLogs.logRecords.every((record) => validateLogRecordContract(record))
+  ) {
+    return { ok: false, reason: 'unsafe_resource' };
+  }
   const serviceVersion = readStr(attrs.get(RES_SERVICE_VERSION));
   const sessionId = readStr(attrs.get(RES_SESSION));
   const harness = readStr(attrs.get(RES_HARNESS));
   const command = readStr(attrs.get(RES_COMMAND));
   const branch = readStr(attrs.get(RES_BRANCH));
   if (
-    (schemaVersion !== '2.4' && schemaVersion !== '2.5') ||
+    (schemaVersion !== '2.4' && schemaVersion !== '2.5' && schemaVersion !== '2.6') ||
     service !== 'harness' ||
     serviceVersion === undefined ||
     !isTelemetryServiceVersion(serviceVersion) ||
@@ -951,10 +1002,19 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
   ) {
     return { ok: false, reason: 'schema_identity' };
   }
+  if (
+    schemaVersion !== '2.6' &&
+    scopeLogs.logRecords.some((record) => {
+      const kind = readStr(attrMap(record.attributes).get(A.KIND));
+      return kind === 'usage';
+    })
+  ) {
+    return { ok: false, reason: 'unsafe_resource' };
+  }
 
   const productCommit = readStr(attrs.get(RES_PRODUCT_COMMIT));
   if (
-    (productCommit !== undefined && schemaVersion !== '2.5') ||
+    (productCommit !== undefined && schemaVersion === '2.4') ||
     (productCommit !== undefined && !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(productCommit))
   ) {
     return { ok: false, reason: 'product_commit' };
@@ -1000,10 +1060,11 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
 /** Serialize a segment's `event_stream` to one version-aware `ResourceLogs`. */
 export function segmentToOtlpLogs(seg: Segment): LogsData {
   const identity = schemaIdentityForSegmentVersion(seg.schema_version);
+  const attributes = resourceAttrs(seg);
   return {
     resourceLogs: [
       {
-        resource: { attributes: resourceAttrs(seg) },
+        resource: { attributes },
         schemaUrl: identity.schemaUrl,
         scopeLogs: [
           {

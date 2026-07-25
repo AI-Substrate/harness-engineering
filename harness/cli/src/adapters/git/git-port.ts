@@ -17,4 +17,15 @@ export interface GitPort {
    * it's the conventional canonical remote and keeps the join key stable.
    */
   remoteUrl(): string | null;
+  /**
+   * Absolute roots from `git worktree list --porcelain -z`, deduped in
+   * first-seen order. Discovery is bounded and fail-closed: callers never
+   * receive a truncated or guessed candidate set.
+   */
+  knownWorktreeRoots(maxCandidates: number):
+    | { status: 'ok'; roots: readonly string[] }
+    | {
+        status: 'unavailable';
+        reason: 'not-a-repository' | 'malformed' | 'too-many';
+      };
 }

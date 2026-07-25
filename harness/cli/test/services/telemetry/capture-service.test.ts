@@ -11,6 +11,7 @@ import { copilotVscodeAdapter } from '../../../src/services/telemetry/adapters/c
 import type {
   HarnessAdapter,
   HarnessCapabilities,
+  HarnessSource,
 } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import {
   type CaptureDeps,
@@ -130,6 +131,125 @@ describe('T005 — detectHarness (innermost wins)', () => {
 
   it('returns null when no harness env is present (zero-harness)', () => {
     expect(detectHarness(new FakeEnv({}))).toBeNull();
+  });
+});
+
+describe('P063 T004 — standard Claude locator inputs are composed once', () => {
+  function emptyCapabilities(): HarnessCapabilities {
+    return {
+      harness_session_id: null,
+      tokens: null,
+      models: null,
+      effort: null,
+      skills: null,
+      tools: null,
+      user_prompts: null,
+      subagents: null,
+      files: null,
+      compactions: null,
+      api_errors: null,
+      local_commands: null,
+      thinking: null,
+      event_stream: null,
+    };
+  }
+
+  function recordingClaudeAdapter(seen: HarnessSource[]): HarnessAdapter {
+    return {
+      harness: 'claude-code',
+      handles: (id) => id === 'claude-code',
+      currentPosition(source) {
+        seen.push(source);
+        return 0;
+      },
+      extract(context) {
+        seen.push(context);
+        return emptyCapabilities();
+      },
+    };
+  }
+
+  it('passes one shared generic selected-root/current/main/common/worktree input to both adapter calls', () => {
+    const seen: HarnessSource[] = [];
+    const git = new FakeGit({
+      isRepo: true,
+      branch: null,
+      worktreeRoots: [REPO, '/repo/main', '/repo/common', '/repo/worktrees/feature', REPO],
+    });
+    const { d } = deps({
+      env: {
+        CLAUDE_CODE_SESSION_ID: 'claude-session',
+        CLAUDE_CONFIG_DIR: '/selected/standard-claude',
+      },
+      adapters: [recordingClaudeAdapter(seen)],
+    });
+    d.git = git;
+
+    captureTelemetry(d);
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0]?.standardClaude).toBe(seen[1]?.standardClaude);
+    expect(seen[0]?.standardClaude).toEqual({
+      configRoot: '/selected/standard-claude',
+      projectRoots: [REPO, '/repo/main', '/repo/common', '/repo/worktrees/feature'],
+    });
+    expect(seen[0]?.sessionId).toBe('claude-session');
+    expect(git.calls.filter((call) => call.startsWith('knownWorktreeRoots:'))).toEqual([
+      'knownWorktreeRoots:32',
+    ]);
+  });
+
+  it('derives the default standard root from the injected home and still bounds Git discovery', () => {
+    const seen: HarnessSource[] = [];
+    const git = new FakeGit({ isRepo: true, branch: null, worktreeRoots: [] });
+    const { d } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'claude-session' },
+      adapters: [recordingClaudeAdapter(seen)],
+    });
+    d.env = new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'claude-session' }, '/home/standard-user');
+    d.git = git;
+
+    captureTelemetry(d);
+
+    expect(seen[0]?.standardClaude).toEqual({
+      configRoot: '/home/standard-user/.claude',
+      projectRoots: [REPO],
+    });
+    expect(git.calls.filter((call) => call.startsWith('knownWorktreeRoots:'))).toEqual([
+      'knownWorktreeRoots:32',
+    ]);
+  });
+
+  // ── finding 05: failed discovery must not take `cwd` down with it ───────────────
+  for (const failure of ['not-a-repository', 'malformed', 'too-many'] as const) {
+    it(`keeps cwd as a candidate when worktree discovery fails (${failure})`, () => {
+      const seen: HarnessSource[] = [];
+      const { d } = deps({
+        env: { CLAUDE_CODE_SESSION_ID: 'claude-session' },
+        adapters: [recordingClaudeAdapter(seen)],
+      });
+      d.git = new FakeGit({ isRepo: true, branch: null, worktreeFailure: failure });
+
+      captureTelemetry(d);
+
+      // `cwd` needs no discovery to be known and is exactly where Claude Code keys the
+      // project dir. Dropping it turned a readable transcript into a false
+      // `unavailable` and zeroed a real session's tokens for that capture.
+      expect(seen[0]?.standardClaude?.projectRoots).toEqual([REPO]);
+    });
+  }
+
+  it('keeps cwd as a candidate when there is no Git port at all', () => {
+    const seen: HarnessSource[] = [];
+    const { d } = deps({
+      env: { CLAUDE_CODE_SESSION_ID: 'claude-session' },
+      adapters: [recordingClaudeAdapter(seen)],
+    });
+    d.git = undefined;
+
+    captureTelemetry(d);
+
+    expect(seen[0]?.standardClaude?.projectRoots).toEqual([REPO]);
   });
 });
 

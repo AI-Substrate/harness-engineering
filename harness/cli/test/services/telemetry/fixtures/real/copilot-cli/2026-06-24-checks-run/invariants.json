@@ -1,7 +1,7 @@
 {
-  "token_grand_total": 86611,
-  "token_total": 86611,
-  "token_output": 539,
+  "token_grand_total": 86507,
+  "token_total": 86507,
+  "token_output": 435,
   "models": [
     "claude-opus-4.8"
   ],
@@ -11,6 +11,24 @@
   "tools": {
     "bash": 1
   },
-  "event_count": 6,
+  "usage_observations": [
+    {
+      "observation_kind": "message_output",
+      "out": 349
+    },
+    {
+      "observation_kind": "message_output",
+      "out": 86
+    },
+    {
+      "observation_kind": "final_shutdown",
+      "in": 4,
+      "out": 435,
+      "cache_read": 40183,
+      "cache_create": 45885,
+      "nano_aiu": 31776775000
+    }
+  ],
+  "event_count": 9,
   "event_stream_present": true
 }

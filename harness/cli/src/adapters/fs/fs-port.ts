@@ -11,6 +11,36 @@ export interface FsPort {
   exists(path: string): boolean;
   /** File contents as UTF-8, or null if missing/unreadable (never throws). */
   readText(path: string): string | null;
+  /**
+   * Inspect one path without following symlinks. `root` is the explicit
+   * confinement boundary; resolved candidates outside it fail closed. The byte
+   * ceiling is checked from metadata before a caller may allocate or read content.
+   */
+  probeRegularFileNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ):
+    | { status: 'ok'; bytes: number }
+    | {
+        status: 'unavailable';
+        reason: 'missing' | 'symlink' | 'non-file' | 'oversize' | 'io-error';
+      };
+  /**
+   * Read one bounded regular file as UTF-8 within `root`, without following the
+   * final component. The implementation repeats confinement and metadata checks
+   * against the opened handle.
+   */
+  readTextFileNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ):
+    | { status: 'ok'; bytes: number; text: string }
+    | {
+        status: 'unavailable';
+        reason: 'missing' | 'symlink' | 'non-file' | 'oversize' | 'io-error';
+      };
   /** Raw regular-file bytes without following symlinks, or null for missing/non-regular input. */
   readBytesNoFollow(path: string): Uint8Array | null;
   /** Sorted POSIX-relative regular files, or null if root contains a symlink/non-regular entry. */

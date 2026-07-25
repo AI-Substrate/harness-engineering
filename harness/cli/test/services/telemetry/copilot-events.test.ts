@@ -377,3 +377,123 @@ describe('copilotAdapter — command_exit from the success flag (T5.7, AC-19)', 
     );
   });
 });
+
+function eventTokenDetails(
+  input: number,
+  output: number,
+  cacheRead: number,
+  cacheWrite: number,
+): Record<string, { tokenCount: number }> {
+  return {
+    input: { tokenCount: input },
+    output: { tokenCount: output },
+    cache_read: { tokenCount: cacheRead },
+    cache_write: { tokenCount: cacheWrite },
+  };
+}
+
+function typedUsageContext(records: readonly Record<string, unknown>[]): HarnessContext {
+  const content = records.map((record) => JSON.stringify(record)).join('\n');
+  return {
+    env: new FakeEnv({ COPILOT_AGENT_SESSION_ID: SESSION }, HOME),
+    fs: new FakeFs({ [copilotEventsPath(HOME, SESSION)]: content }, { [copilotLogsDir(HOME)]: [] }),
+    repoRoot: REPO,
+    harness: 'copilot-cli',
+    window: { since: 'session-start', from: 0, to: records.length },
+  };
+}
+
+describe('P063 T007 — typed usage event ordering and non-addition', () => {
+  const records = [
+    {
+      type: 'assistant.message',
+      timestamp: '2026-07-20T11:00:01Z',
+      data: { outputTokens: 10, content: 'PRIVATE_ONE' },
+    },
+    {
+      type: 'assistant.message',
+      timestamp: '2026-07-20T11:00:02Z',
+      data: { outputTokens: 20, content: 'PRIVATE_TWO' },
+    },
+    {
+      type: 'session.usage_checkpoint',
+      timestamp: '2026-07-20T11:00:03Z',
+      data: { totalNanoAiu: 400, tokenDetails: eventTokenDetails(80, 100, 40, 20) },
+    },
+    {
+      type: 'session.compaction',
+      timestamp: '2026-07-20T11:00:04Z',
+      data: { tokenDetails: eventTokenDetails(3, 7, 2, 1), summary: 'PRIVATE_COMPACTION' },
+    },
+  ];
+  const caps = copilotAdapter.extract(typedUsageContext(records));
+  const usage = (caps.event_stream ?? []).filter(
+    (event) => (event as { kind: string }).kind === 'usage',
+  ) as Array<Record<string, unknown>>;
+
+  it('keeps distinct observations in source order', () => {
+    expect(usage.map((event) => event.observation_kind)).toEqual([
+      'message_output',
+      'message_output',
+      'cumulative_checkpoint',
+      'partial_compaction',
+    ]);
+    expect(usage.map((event) => event.t)).toEqual([
+      '2026-07-20T11:00:01Z',
+      '2026-07-20T11:00:02Z',
+      '2026-07-20T11:00:03Z',
+      '2026-07-20T11:00:04Z',
+    ]);
+  });
+
+  it('does not project a cumulative checkpoint into additive per-window tokens', () => {
+    expect(caps.tokens).toBeNull();
+  });
+
+  it('keeps free text out of each typed usage event', () => {
+    const json = JSON.stringify(usage);
+    expect(json).not.toContain('PRIVATE_ONE');
+    expect(json).not.toContain('PRIVATE_TWO');
+    expect(json).not.toContain('PRIVATE_COMPACTION');
+  });
+
+  it('keeps message-only evidence in the typed event stream without fabricating scalar totals', () => {
+    const messagesOnly = copilotAdapter.extract(
+      typedUsageContext([
+        {
+          type: 'assistant.message',
+          timestamp: '2026-07-20T11:01:01Z',
+          data: { outputTokens: 10 },
+        },
+        {
+          type: 'assistant.message',
+          timestamp: '2026-07-20T11:01:02Z',
+          data: { outputTokens: 20 },
+        },
+      ]),
+    );
+    expect(messagesOnly.tokens).toBeNull();
+    expect(messagesOnly.event_stream?.filter((event) => event.kind === 'usage')).toHaveLength(2);
+  });
+
+  it('projects only final shutdown into the scalar compatibility field', () => {
+    const final = copilotAdapter.extract(
+      typedUsageContext([
+        {
+          type: 'session.shutdown',
+          timestamp: '2026-07-20T11:02:00Z',
+          data: { totalNanoAiu: 5, tokenDetails: eventTokenDetails(11, 22, 33, 44) },
+        },
+      ]),
+    );
+    expect(final.tokens).toEqual({
+      input: 11,
+      output: 22,
+      cache_read: 33,
+      cache_create: 44,
+      total: 110,
+      subagent_tokens: 0,
+      grand_total: 110,
+    });
+  });
+});

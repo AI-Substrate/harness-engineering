@@ -1,0 +1,52 @@
+{
+  "copilot": {
+    "final_after_checkpoint": [
+      {
+        "type": "session.usage_checkpoint",
+        "timestamp": "2026-01-02T03:04:05Z",
+        "data": {
+          "totalNanoAiu": 5,
+          "tokenDetails": {
+            "input": { "tokenCount": 1 },
+            "output": { "tokenCount": 2 },
+            "cache_read": { "tokenCount": 3 },
+            "cache_write": { "tokenCount": 4 }
+          }
+        }
+      },
+      {
+        "type": "session.shutdown",
+        "timestamp": "2026-01-02T03:04:06Z",
+        "data": {
+          "totalNanoAiu": 55,
+          "tokenDetails": {
+            "input": { "tokenCount": 11 },
+            "output": { "tokenCount": 22 },
+            "cache_read": { "tokenCount": 33 },
+            "cache_write": { "tokenCount": 44 }
+          }
+        }
+      }
+    ],
+    "checkpoint_nano_only": [
+      {
+        "type": "session.usage_checkpoint",
+        "timestamp": "2026-01-02T03:05:00Z",
+        "data": { "totalNanoAiu": 7 }
+      }
+    ]
+  },
+  "durable_ref": {
+    "session": "fixture-durable-control",
+    "measured": {
+      "time": "2026-01-02T03:06:00Z",
+      "input": 13,
+      "output": 17,
+      "cache_read": 19,
+      "cache_create": 23
+    },
+    "missing": {
+      "time": "2026-01-02T03:07:00Z"
+    }
+  }
+}

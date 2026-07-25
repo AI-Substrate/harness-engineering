@@ -15,7 +15,7 @@ import {
 } from '../../../src/services/telemetry/published-telemetry.js';
 import type { SelectableTelemetrySession } from '../../../src/services/telemetry/remote-selection.js';
 import { ROLLUP_FORMAT, serializeManifest } from '../../../src/services/telemetry/rolled-shard.js';
-import { serializeSegment } from '../../../src/services/telemetry/segment.js';
+import { type Segment, serializeSegment } from '../../../src/services/telemetry/segment.js';
 
 const encoder = new TextEncoder();
 const repo: RemoteRepository = {
@@ -41,7 +41,19 @@ function segmentText(sessionId: string, productCommit?: string, events = true): 
         branch: 'main',
         ...(productCommit !== undefined && { product_commit: productCommit }),
         event_stream: events
-          ? [{ t: '2026-07-16T10:00:00.000Z', kind: 'turn', dur_s: 1, in: 2, out: 3 }]
+          ? [
+              { t: '2026-07-16T10:00:00.000Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
+              {
+                t: '2026-07-16T10:00:00.000Z',
+                kind: 'usage',
+                observation_kind: 'final_shutdown',
+                in: 2,
+                out: 3,
+                cache_read: 0,
+                cache_create: 0,
+                nano_aiu: 5,
+              },
+            ]
           : [],
       },
       '/repo',
@@ -131,7 +143,7 @@ function multiRefInput(
 }
 
 function expectOk(result: ReturnType<typeof decodePublishedTelemetrySession>) {
-  expect(result.ok).toBe(true);
+  expect(result.ok, result.ok ? undefined : result.reason).toBe(true);
   if (!result.ok) throw new Error(result.reason);
   return result.session;
 }
@@ -681,6 +693,9 @@ describe('published tree/privacy validation', () => {
 
     const legacy = JSON.parse(segmentText('legacy-env')) as Record<string, unknown>;
     legacy.schema_version = '2.4';
+    legacy.event_stream = (legacy.event_stream as Array<{ kind: string }>).filter(
+      (event) => event.kind !== 'usage',
+    );
     legacy.captured_env = {
       ...(current.captured_env as Record<string, string>),
       PIJ_ID: 'pij-legacy',
@@ -695,9 +710,9 @@ describe('published tree/privacy validation', () => {
   });
 
   it.each([
-    ['current rejects legacy extra', '2.5', { PIJ_ID: 'pij-legacy' }],
-    ['current rejects SPAWN_TASK', '2.5', { PIJ_SPAWN_TASK: 'safe-looking-task' }],
-    ['current rejects unknown', '2.5', { PIJ_UNKNOWN: 'safe-looking' }],
+    ['current rejects legacy extra', '2.6', { PIJ_ID: 'pij-legacy' }],
+    ['current rejects SPAWN_TASK', '2.6', { PIJ_SPAWN_TASK: 'safe-looking-task' }],
+    ['current rejects unknown', '2.6', { PIJ_UNKNOWN: 'safe-looking' }],
     ['legacy rejects unknown', '2.4', { PIJ_UNKNOWN: 'safe-looking' }],
     ['legacy rejects SPAWN_TASK', '2.4', { PIJ_SPAWN_TASK: 'safe-looking-task' }],
   ])('%s before raw admission', (_name, version, capturedEnv) => {
@@ -724,7 +739,7 @@ describe('published tree/privacy validation', () => {
     ['PIJ_PANE_ID', 'pane-7'],
   ])('rejects wrong captured-env grammar for %s', (key, unsafe) => {
     const value = JSON.parse(segmentText(`bad-${key}`)) as Record<string, unknown>;
-    value.schema_version = key === 'PIJ_STATUS_KEY' || key === 'PIJ_PANE_ID' ? '2.4' : '2.5';
+    value.schema_version = key === 'PIJ_STATUS_KEY' || key === 'PIJ_PANE_ID' ? '2.4' : '2.6';
     value.captured_env = { [key]: unsafe };
     const result = decodePublishedTelemetrySession(
       input(`bad-${key}`, [blob('1.json', JSON.stringify(value))]),
@@ -915,6 +930,45 @@ describe('published tree/privacy validation', () => {
     ).toEqual({ ok: false, reason: 'malformed_or_unsafe' });
   });
 
+  it('accepts Segment-2.5/v0.2 predecessors without admitting 2.6 usage fields', () => {
+    const predecessor = JSON.parse(segmentText('predecessor')) as Segment;
+    predecessor.schema_version = '2.5';
+    predecessor.event_stream = predecessor.event_stream.filter((event) => event.kind !== 'usage');
+    expectOk(
+      decodePublishedTelemetrySession(
+        input('predecessor', [blob('1.json', JSON.stringify(predecessor))]),
+      ),
+    );
+    expectOk(
+      decodePublishedTelemetrySession(
+        input('predecessor', [
+          blob('session.logs.jsonl', `${JSON.stringify(segmentToOtlpLogs(predecessor))}\n`),
+          blob('session.metrics.jsonl', `${JSON.stringify(rollupToOtlpMetrics(predecessor))}\n`),
+        ]),
+      ),
+    );
+
+    const widened = structuredClone(predecessor);
+    widened.event_stream.push({
+      t: '2026-07-16T10:00:00.000Z',
+      kind: 'usage',
+      observation_kind: 'final_shutdown',
+      out: 1,
+    });
+    expect(
+      decodePublishedTelemetrySession(
+        input('predecessor', [blob('1.json', JSON.stringify(widened))]),
+      ),
+    ).toEqual({ ok: false, reason: 'malformed_or_unsafe' });
+    expect(
+      decodePublishedTelemetrySession(
+        input('predecessor', [
+          blob('session.logs.jsonl', `${JSON.stringify(segmentToOtlpLogs(widened))}\n`),
+        ]),
+      ),
+    ).toEqual({ ok: false, reason: 'malformed_or_unsafe' });
+  });
+
   it('round-trips the complete current Logs event-attribute vocabulary', () => {
     const t = '2026-07-16T10:00:00.000Z';
     const segment = serializeSegment(
@@ -929,6 +983,16 @@ describe('published tree/privacy validation', () => {
         event_stream: [
           { t, kind: 'prompt', words: 1 },
           { t, kind: 'turn', dur_s: 1, in: 2, out: 3, cache_read: 4, cache_create: 5, model: 'm' },
+          {
+            t,
+            kind: 'usage',
+            observation_kind: 'final_shutdown',
+            in: 2,
+            out: 3,
+            cache_read: 4,
+            cache_create: 5,
+            nano_aiu: 6,
+          },
           {
             t,
             kind: 'tools',

@@ -169,6 +169,28 @@ describe('T009 — render validation: N reports → N columns, inline data, keys
     expect(html.startsWith('<!doctype html>')).toBe(true);
   });
 
+  it('dispatches measured, partial, and unavailable token coverage in the template', () => {
+    expect(REPORT_TEMPLATE_HTML).toContain('coverage.partial');
+    expect(REPORT_TEMPLATE_HTML).toContain('coverage.unavailable');
+    expect(REPORT_TEMPLATE_HTML).toContain('coverage.reasons');
+  });
+
+  it('embeds a partial coverage reason beside the coverage-aware renderer', () => {
+    const report = structuredClone(cols[0].report);
+    report.provenance.token_coverage = {
+      measured: 0,
+      partial: 1,
+      unavailable: 0,
+      unmeasured: 1,
+      reasons: { partial_observation: 1 },
+      causes: { unknown: 1 },
+    };
+    const html = renderReports([{ label: 'partial', report }]);
+
+    expect(html).toContain('partial_observation');
+    expect(html).toContain('coverageLabel');
+  });
+
   it('embeds the actual report data inline (labels + keys are present in the page)', () => {
     const html = renderReports(cols);
     expect(html).toContain('Opus 4.8');

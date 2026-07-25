@@ -205,6 +205,15 @@ check is deterministic across machines and in CI.
 
 ---
 
+## Real replay before token fixtures
+
+Token semantics are first proven against authorized immutable real sessions under
+a born-closed execution packet. Only after the real RED→GREEN replay may a minimal
+sanitized structural fixture be derived. Synthetic fixtures never substitute for
+that replay. Promotion still requires the byte scan and the non-skippable manual
+review of the exact public bytes.
+
+
 ## See also
 
 - `.harness/extensions/telemetry-fixtures/instructions.md` — the `capture-fixtures` verb reference.

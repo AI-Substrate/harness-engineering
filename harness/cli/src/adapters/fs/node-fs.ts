@@ -1,14 +1,17 @@
 import {
   closeSync,
+  constants,
   copyFileSync,
   cpSync,
   existsSync,
+  fstatSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   openSync,
   readdirSync,
   readFileSync,
+  readSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -22,6 +25,13 @@ import type { FileSystemWritePort, FsPort } from './fs-port.js';
 
 /** Real filesystem — the only place `node:fs` is touched. */
 export class NodeFs implements FsPort, FileSystemWritePort {
+  constructor(
+    private readonly noFollowFlag: number | null = typeof constants.O_NOFOLLOW === 'number'
+      ? constants.O_NOFOLLOW
+      : null,
+    private readonly beforeConfinedOpen: (() => void) | null = null,
+  ) {}
+
   exists(path: string): boolean {
     return existsSync(path);
   }
@@ -32,6 +42,134 @@ export class NodeFs implements FsPort, FileSystemWritePort {
     } catch {
       return null;
     }
+  }
+
+  private confinedRegularFile(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ):
+    | { status: 'ok'; path: string; root: string; bytes: number; dev: number; ino: number }
+    | {
+        status: 'unavailable';
+        reason: 'missing' | 'symlink' | 'non-file' | 'oversize' | 'io-error';
+      } {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
+      return { status: 'unavailable', reason: 'oversize' };
+    }
+    try {
+      const lexicalRoot = resolve(root);
+      const lexicalPath = resolve(path);
+      const lexicalRelative = relative(lexicalRoot, lexicalPath);
+      if (
+        lexicalRelative === '..' ||
+        lexicalRelative.startsWith(`..${sep}`) ||
+        isAbsolute(lexicalRelative)
+      ) {
+        return { status: 'unavailable', reason: 'symlink' };
+      }
+      let component = lexicalRoot;
+      for (const part of lexicalRelative.split(sep).filter((value) => value.length > 0)) {
+        component = join(component, part);
+        if (lstatSync(component).isSymbolicLink()) {
+          return { status: 'unavailable', reason: 'symlink' };
+        }
+      }
+
+      const realRoot = realpathSync(root);
+      const realPath = realpathSync(path);
+      const fromRoot = relative(realRoot, realPath);
+      if (fromRoot === '..' || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
+        return { status: 'unavailable', reason: 'symlink' };
+      }
+
+      const stat = statSync(realPath);
+      if (!stat.isFile()) return { status: 'unavailable', reason: 'non-file' };
+      if (stat.size > maxBytes) return { status: 'unavailable', reason: 'oversize' };
+      return {
+        status: 'ok',
+        path: realPath,
+        root: realRoot,
+        bytes: stat.size,
+        dev: stat.dev,
+        ino: stat.ino,
+      };
+    } catch (error) {
+      return { status: 'unavailable', reason: this.noFollowFailure(error) };
+    }
+  }
+
+  probeRegularFileNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ): ReturnType<FsPort['probeRegularFileNoFollow']> {
+    const confined = this.confinedRegularFile(root, path, maxBytes);
+    return confined.status === 'ok' ? { status: 'ok', bytes: confined.bytes } : confined;
+  }
+
+  readTextFileNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ): ReturnType<FsPort['readTextFileNoFollow']> {
+    const confined = this.confinedRegularFile(root, path, maxBytes);
+    if (confined.status === 'unavailable') return confined;
+
+    const noFollow = this.noFollowFlag;
+    if (noFollow === null) return { status: 'unavailable', reason: 'io-error' };
+    const nonBlock = typeof constants.O_NONBLOCK === 'number' ? constants.O_NONBLOCK : 0;
+
+    let descriptor: number | null = null;
+    try {
+      this.beforeConfinedOpen?.();
+      descriptor = openSync(confined.path, constants.O_RDONLY | noFollow | nonBlock);
+      const opened = fstatSync(descriptor);
+      if (!opened.isFile()) return { status: 'unavailable', reason: 'non-file' };
+      if (opened.size > maxBytes) return { status: 'unavailable', reason: 'oversize' };
+
+      const afterOpen = this.confinedRegularFile(root, path, maxBytes);
+      if (afterOpen.status === 'unavailable') return afterOpen;
+      if (
+        afterOpen.path !== confined.path ||
+        afterOpen.root !== confined.root ||
+        afterOpen.dev !== confined.dev ||
+        afterOpen.ino !== confined.ino ||
+        afterOpen.dev !== opened.dev ||
+        afterOpen.ino !== opened.ino
+      ) {
+        return { status: 'unavailable', reason: 'io-error' };
+      }
+
+      const contents = Buffer.allocUnsafe(opened.size);
+      let offset = 0;
+      while (offset < opened.size) {
+        const count = readSync(descriptor, contents, offset, opened.size - offset, offset);
+        if (count === 0) break;
+        offset += count;
+      }
+      const sentinel = Buffer.allocUnsafe(1);
+      if (readSync(descriptor, sentinel, 0, 1, offset) !== 0) {
+        return { status: 'unavailable', reason: 'io-error' };
+      }
+      return {
+        status: 'ok',
+        bytes: offset,
+        text: contents.subarray(0, offset).toString('utf8'),
+      };
+    } catch (error) {
+      return { status: 'unavailable', reason: this.noFollowFailure(error) };
+    } finally {
+      if (descriptor !== null) closeSync(descriptor);
+    }
+  }
+
+  private noFollowFailure(error: unknown): 'missing' | 'symlink' | 'non-file' | 'io-error' {
+    const code = (error as { code?: unknown } | null)?.code;
+    if (code === 'ENOENT') return 'missing';
+    if (code === 'ELOOP' || code === 'EMLINK') return 'symlink';
+    if (code === 'EISDIR') return 'non-file';
+    return 'io-error';
   }
 
   readBytesNoFollow(path: string): Uint8Array | null {

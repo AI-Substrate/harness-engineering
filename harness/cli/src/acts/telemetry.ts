@@ -12,7 +12,7 @@ import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { posixDirname, posixJoin } from '../services/shared/posix-path.js';
-import { telemetryDir } from '../services/telemetry/cursor.js';
+import { readFlushed, sanitizeSessionId, telemetryDir } from '../services/telemetry/cursor.js';
 import type { MarkCountKey } from '../services/telemetry/events.js';
 import { getFleetEvidence } from '../services/telemetry/fleet-evidence.js';
 import { buildInsights, type InsightInput } from '../services/telemetry/insights.js';
@@ -38,6 +38,11 @@ import {
   type TelemetryReport,
   type TelemetryReportInput,
 } from '../services/telemetry/report.js';
+import {
+  parseManifest,
+  ROLLED_LOGS_NAME,
+  ROLLED_MANIFEST_NAME,
+} from '../services/telemetry/rolled-shard.js';
 import { getSessionEvidence } from '../services/telemetry/session-evidence.js';
 import { combineSession, type SessionExport } from '../services/telemetry/session-export.js';
 import {
@@ -175,18 +180,44 @@ function seqOfShardName(name: string): number | null {
  * temp `<seq>.json` win (its identity/tokens leak into a "git-ref" export). So every
  * temp `<seq>.{json,logs.jsonl,metrics.jsonl}` whose `<seq>` the git-ref set owns is
  * DROPPED — git-ref wins for any seq it has; temp fills only the seqs git-ref lacks.
+ *
+ * A ROLLED ref (plan 049 — the shape sync publishes today) carries the whole session in
+ * ONE `session.logs.jsonl` whose name holds no seq, so seq-by-filename saw an EMPTY
+ * git-ref seq set and shadowed nothing (R2-03). If the prune then lagged — a kill or a
+ * failed delete between the ref push and the buffer cleanup — the same seq was read
+ * twice, from the rolled lines AND the surviving temp `<seq>.json`, and the doubled
+ * total was reported `measured`. The rolled manifest's `max_seq` is the ref's own
+ * statement of which seqs it owns, so it becomes the shadow floor.
  */
-function shardCombineFs(blobs: ShardBlob[], sessionDir: string, base?: CombineFs): CombineFs {
+function shardCombineFs(
+  blobs: ShardBlob[],
+  sessionDir: string,
+  base?: CombineFs,
+  /**
+   * Fallback shadow floor for a rolled ref whose manifest could not be read — the
+   * local `<session>.flushed` watermark, which only ever advances after a successful
+   * push and so is never ahead of the ref's contents.
+   */
+  flushedWatermark?: number,
+): CombineFs {
   const byName = new Map(blobs.map((b) => [b.name, b.content] as const));
   const gitRefSeqs = new Set<number>();
   for (const b of blobs) {
     const seq = seqOfShardName(b.name);
     if (seq !== null) gitRefSeqs.add(seq);
   }
+  // Every seq up to and including the rolled watermark is inside the rolled blob. `null`
+  // ⇒ the legacy per-seq shape, where the filename set above is already exact.
+  const rolled = byName.has(ROLLED_LOGS_NAME);
+  const manifestMaxSeq = rolled
+    ? (parseManifest(byName.get(ROLLED_MANIFEST_NAME))?.max_seq ?? null)
+    : null;
+  const rolledMaxSeq = rolled ? (manifestMaxSeq ?? flushedWatermark ?? null) : null;
   // A temp file is shadowed when git-ref owns its <seq> — never surfaced from temp.
   const tempShadowed = (name: string): boolean => {
     const seq = seqOfShardName(name);
-    return seq !== null && gitRefSeqs.has(seq);
+    if (seq === null) return false;
+    return gitRefSeqs.has(seq) || (rolledMaxSeq !== null && seq <= rolledMaxSeq);
   };
   const nameIn = (p: string): string | null => {
     const norm = p.replace(/\\/g, '/');
@@ -226,8 +257,16 @@ function combineSessionFromGitRef(
   deps: TelemetryActDeps,
 ): SessionExport {
   const blobs = readSessionShards(gitRead, sessionId);
-  const sessionDir = posixJoin(telemetryDir(deps.proc.cwd()), sessionId);
-  const fs = shardCombineFs(blobs, sessionDir, auto ? deps.fs : undefined);
+  const telDir = telemetryDir(deps.proc.cwd());
+  const sessionDir = posixJoin(telDir, sessionId);
+  const fs = shardCombineFs(
+    blobs,
+    sessionDir,
+    auto ? deps.fs : undefined,
+    auto
+      ? readFlushed(deps.fs, posixJoin(telDir, `${sanitizeSessionId(sessionId)}.flushed`))
+      : undefined,
+  );
   const gitBacked = !auto || blobs.length > 0;
   return combineSession(
     sessionId,
@@ -971,7 +1010,12 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
     .action(async (pijSessionId: string, options: { worktree?: string }) => {
       const evidence = await getSessionEvidence(
         pijSessionId,
-        { fs: deps.fs, env: deps.env, proc: deps.proc },
+        {
+          fs: deps.fs,
+          env: deps.env,
+          proc: deps.proc,
+          ...(deps.gitRead ? { gitRead: deps.gitRead } : {}),
+        },
         options.worktree ? { worktree: options.worktree } : undefined,
       );
 
@@ -1000,10 +1044,18 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         return;
       }
 
-      const envelope = formatOk('telemetry', evidence, deps.clock, {
-        next_action:
-          'Counts-only evidence derived from the session event stream; the conformance scorer consumes it as its telemetry lane.',
-      });
+      const envelope =
+        evidence.token_evidence.coverage === 'measured'
+          ? formatOk('telemetry', evidence, deps.clock, {
+              next_action:
+                'Counts-only evidence derived from the session event stream; the conformance scorer consumes it as its telemetry lane.',
+            })
+          : formatDegraded(
+              'telemetry',
+              evidence,
+              `Token coverage is ${evidence.token_evidence.coverage} (${evidence.token_evidence.reason ?? 'source_unavailable'}; cause: ${evidence.token_evidence.cause}). Sync or complete the missing token fields, then retry.`,
+              deps.clock,
+            );
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)
@@ -1070,10 +1122,20 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         return;
       }
 
-      const envelope = formatOk('telemetry', fleet, deps.clock, {
-        next_action:
-          'Fleet evidence merged per lane (precedence live → ref → ledger): live temp segments, then rostered members recovered from their vendor ledgers (copilot session.shutdown AIC, codex rollout tokens). Cost is a lower bound; unresolved lanes are counted unmeasured, never zero-filled.',
-      });
+      const fleetIncomplete =
+        fleet.orphans.length > 0 ||
+        fleet.sessions.some((lane) => lane.token_evidence.coverage !== 'measured');
+      const envelope = fleetIncomplete
+        ? formatDegraded(
+            'telemetry',
+            fleet,
+            'One or more fleet lanes have partial/unavailable token evidence or an unresolved identity. Inspect sessions[].token_evidence and orphans, then sync or recover the named lane.',
+            deps.clock,
+          )
+        : formatOk('telemetry', fleet, deps.clock, {
+            next_action:
+              'Fleet evidence merged per field across live, ref, and ledger sources; scalar source/totals are compatibility projections.',
+          });
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)
@@ -1114,15 +1176,15 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
     .argument('<session-id>', 'The harness session id (the telemetry buffer subdir) to combine')
     .option(
       '--source <source>',
-      'Where to read from: temp (local buffer) | git-ref (committed shards) | auto (git-ref shadows temp)',
-      'temp',
+      'Where to read from: auto (git-ref shadows temp, default) | temp (local buffer) | git-ref (committed shards)',
+      'auto',
     )
     .option(
       '--out <path>',
       'Output path for the .session.json (default: <session-id>.session.json)',
     )
     .option('--no-html', 'Suppress the co-produced self-contained HTML view (default: on)')
-    .action((sessionId: string, options: { source: string; out?: string; html: boolean }) => {
+    .action((sessionId: string, options: { source: string; out?: string; html: boolean }, cmd) => {
       const source = options.source;
       const saveErrorPort = (): OutputPort =>
         io.mode === 'json'
@@ -1151,7 +1213,16 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
       }
 
       let exp: SessionExport;
-      if (source === 'temp') {
+      // `auto` is the DEFAULT (finding 02): a mid-session sync prunes the buffer, so a
+      // pure-temp read returns only the delta since the last commit. When the read port
+      // is absent, a DEFAULTED auto degrades to temp — combineSession then marks the
+      // read partial (`flushed_segments_unreadable`) if the session was flushed, so the
+      // subset can never pass as whole. An EXPLICIT --source auto still errors.
+      const explicitSource = cmd.getOptionValueSource('source') !== 'default';
+      if (
+        source === 'temp' ||
+        (source === 'auto' && deps.gitRead === undefined && !explicitSource)
+      ) {
         exp = combineSession(sessionId, { fs: deps.fs, proc: deps.proc, env: deps.env });
       } else {
         // git-ref | auto both need the read port; it is composition-root-injected.
@@ -1235,24 +1306,30 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         evidence.push({ label: 'session view', path: htmlOut });
       }
 
-      const envelope = formatOk(
-        'telemetry',
-        {
-          session_id: sessionId,
-          segment_count: exp.source.segment_count,
-          schema_versions: exp.summary.segment_schema_versions,
-          degraded: exp.summary.degraded,
-          out: outPath,
-          html: htmlOut ?? null,
-          totals,
-        },
-        deps.clock,
-        {
-          evidence,
-          next_action:
-            'A schema-valid SessionExport (combined OTel) + its self-contained HTML view. Roll many up with `harness telemetry report`.',
-        },
-      );
+      const envelopeData = {
+        session_id: sessionId,
+        segment_count: exp.source.segment_count,
+        schema_versions: exp.summary.segment_schema_versions,
+        degraded: exp.summary.degraded,
+        token_evidence: exp.summary.token_evidence,
+        out: outPath,
+        html: htmlOut ?? null,
+        totals,
+      };
+      const envelope =
+        exp.summary.token_evidence.coverage === 'measured'
+          ? formatOk('telemetry', envelopeData, deps.clock, {
+              evidence,
+              next_action:
+                'A schema-valid SessionExport (combined OTel) + its self-contained HTML view. Roll many up with `harness telemetry report`.',
+            })
+          : formatDegraded(
+              'telemetry',
+              envelopeData,
+              `Token coverage is ${exp.summary.token_evidence.coverage} (${exp.summary.token_evidence.reason ?? 'source_unavailable'}). Run or sync a session with complete typed usage; inspect token_evidence.fields for unavailable buckets.`,
+              deps.clock,
+              { evidence },
+            );
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)
@@ -1458,26 +1535,34 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         }
       }
 
-      const envelope = formatOk(
-        'telemetry',
-        {
-          sessions: report.scope.session_count,
-          single: report.scope.single,
-          skipped,
-          filter: report.filter,
-          totals: report.totals,
-          out: jsonPath,
-          html: htmlPath ?? null,
-          columns,
-        },
-        deps.clock,
-        {
-          evidence,
-          next_action: htmlPath
-            ? 'Open the index.html under file:// (self-contained). Add more pre-filtered reports to the folder + `report-render` to compare.'
-            : 'A schema-valid TelemetryReport. Render it with `harness telemetry report-render <folder>`.',
-        },
-      );
+      const reportIncomplete =
+        report.provenance.token_coverage.partial > 0 ||
+        report.provenance.token_coverage.unavailable > 0;
+      const reportData = {
+        sessions: report.scope.session_count,
+        single: report.scope.single,
+        skipped,
+        filter: report.filter,
+        totals: report.totals,
+        token_coverage: report.provenance.token_coverage,
+        out: jsonPath,
+        html: htmlPath ?? null,
+        columns,
+      };
+      const envelope = reportIncomplete
+        ? formatDegraded(
+            'telemetry',
+            reportData,
+            'Report token coverage is partial/unavailable. Inspect provenance.token_coverage reasons and regenerate missing session evidence.',
+            deps.clock,
+            { evidence },
+          )
+        : formatOk('telemetry', reportData, deps.clock, {
+            evidence,
+            next_action: htmlPath
+              ? 'Open the index.html under file:// (self-contained). Add more pre-filtered reports to the folder + `report-render` to compare.'
+              : 'A schema-valid TelemetryReport. Render it with `harness telemetry report-render <folder>`.',
+          });
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)
@@ -1788,26 +1873,33 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
       // Persist the cache LAST so a re-sweep skips the unchanged sessions.
       deps.fs.writeText(cachePath, `${JSON.stringify(nextSweepCache(plan), null, 2)}\n`);
 
-      const envelope = formatOk(
-        'telemetry',
-        {
-          month: options.month,
-          sessions: report.scope.session_count,
-          exported,
-          reused,
-          empty,
-          token_coverage: report.provenance.token_coverage,
-          out: jsonPath,
-          html: htmlPath ?? null,
-        },
-        deps.clock,
-        {
-          evidence,
-          next_action: htmlPath
-            ? 'Open the index.html under file:// (self-contained). Re-run to refresh; unchanged sessions are cache-skipped.'
-            : 'A schema-valid month TelemetryReport. Render it with `harness telemetry report-render <folder>`.',
-        },
-      );
+      const sweepData = {
+        month: options.month,
+        sessions: report.scope.session_count,
+        exported,
+        reused,
+        empty,
+        token_coverage: report.provenance.token_coverage,
+        out: jsonPath,
+        html: htmlPath ?? null,
+      };
+      const sweepIncomplete =
+        report.provenance.token_coverage.partial > 0 ||
+        report.provenance.token_coverage.unavailable > 0;
+      const envelope = sweepIncomplete
+        ? formatDegraded(
+            'telemetry',
+            sweepData,
+            'Monthly token coverage is partial/unavailable. Inspect token_coverage reasons and recover or resync the affected sessions.',
+            deps.clock,
+            { evidence },
+          )
+        : formatOk('telemetry', sweepData, deps.clock, {
+            evidence,
+            next_action: htmlPath
+              ? 'Open the index.html under file:// (self-contained). Re-run to refresh; unchanged sessions are cache-skipped.'
+              : 'A schema-valid month TelemetryReport. Render it with `harness telemetry report-render <folder>`.',
+          });
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)

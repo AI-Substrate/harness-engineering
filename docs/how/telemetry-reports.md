@@ -201,6 +201,22 @@ The counts-only floor extends to every **tracked** artifact this pipeline emits:
 
 ---
 
+## Reading token coverage
+
+`SessionExport.summary.token_evidence` and fleet lanes expose additive per-field
+evidence. Read `coverage` before scalar totals:
+
+- `measured` — all primary token buckets are present;
+- `partial` — some buckets are measured and absent buckets remain `null`;
+- `unavailable` — no measured token bucket exists.
+
+Partial and unavailable session-save results use a `degraded` envelope with a
+closed reason and `next_action`; they never report a false zero/ok. Reports count
+measured, partial, and unavailable sessions in `provenance.token_coverage` while
+retaining `unmeasured` for compatibility. HTML and sweep output consume the same
+report object, so coverage cannot diverge between JSON and rendered views.
+
+
 ## See also
 
 - [Harness telemetry](./telemetry.md) — the capture preamble, the buffer, sync, and

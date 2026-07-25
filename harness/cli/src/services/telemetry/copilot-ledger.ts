@@ -1,5 +1,8 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
+import type { UsageObservationKind } from './events.js';
+import { isTelemetryTime } from './segment.js';
+import { normalizeUsageObservation, type UsageObservation } from './usage-observation.js';
 
 /**
  * Copilot shutdown-ledger reader (plan 052 · T003 — dossier F-01). Copilot lanes
@@ -22,10 +25,10 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
 
 /** Per-bucket token counts from `session.shutdown` `tokenDetails` (cache_write → cache_create). */
 export interface CopilotTokenBuckets {
-  input: number;
-  output: number;
-  cache_read: number;
-  cache_create: number;
+  input?: number;
+  output?: number;
+  cache_read?: number;
+  cache_create?: number;
 }
 
 /** `codeChanges` reduced to counts — the file COUNT, not the paths (privacy). */
@@ -65,9 +68,92 @@ function obj(v: unknown): Record<string, unknown> {
   return v !== null && typeof v === 'object' ? (v as Record<string, unknown>) : {};
 }
 
-/** `tokenDetails.<bucket>.tokenCount` as an integer (0 when absent). */
-function bucket(details: Record<string, unknown>, key: string): number {
-  return num(obj(details[key]).tokenCount) ?? 0;
+function nonNegativeInteger(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : undefined;
+}
+
+function typedBucket(
+  details: Record<string, unknown>,
+  key: string,
+): { present: boolean; value?: number } | null {
+  if (!(key in details)) return { present: false };
+  const value = nonNegativeInteger(obj(details[key]).tokenCount);
+  return value === undefined ? null : { present: true, value };
+}
+
+function usageObservation(
+  event: Record<string, unknown>,
+  observationKind: UsageObservationKind,
+): UsageObservation | null {
+  const t =
+    typeof event.timestamp === 'string'
+      ? event.timestamp
+      : typeof event.ts === 'string'
+        ? event.ts
+        : typeof event.time === 'string'
+          ? event.time
+          : null;
+  if (t === null || !isTelemetryTime(t)) return null;
+  const data = obj(event.data);
+  const observation: Record<string, unknown> = { t, observation_kind: observationKind };
+
+  if (observationKind === 'message_output') {
+    if (!('outputTokens' in data)) return null;
+    const output = nonNegativeInteger(data.outputTokens);
+    if (output === undefined) return null;
+    observation.output = output;
+    return normalizeUsageObservation(observation);
+  }
+
+  const details = obj(data.tokenDetails);
+  const mappings = [
+    ['input', 'input'],
+    ['output', 'output'],
+    ['cache_read', 'cache_read'],
+    ['cache_write', 'cache_create'],
+  ] as const;
+  for (const [sourceKey, targetKey] of mappings) {
+    const parsed = typedBucket(details, sourceKey);
+    if (parsed === null) return null;
+    if (parsed.present) observation[targetKey] = parsed.value;
+  }
+  if ('totalNanoAiu' in data) {
+    const nanoAiu = nonNegativeInteger(data.totalNanoAiu);
+    if (nanoAiu === undefined) return null;
+    observation.nano_aiu = nanoAiu;
+  }
+  return normalizeUsageObservation(observation);
+}
+
+/** Extract only closed, counts-only usage observations from Copilot events JSONL. */
+export function extractCopilotUsageObservations(eventsJsonl: string): UsageObservation[] {
+  const observations: UsageObservation[] = [];
+  for (const line of eventsJsonl.split('\n')) {
+    const text = line.trim();
+    if (text === '') continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      continue;
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+    const event = parsed as Record<string, unknown>;
+    const observationKind: UsageObservationKind | null =
+      event.type === 'assistant.message'
+        ? 'message_output'
+        : event.type === 'session.usage_checkpoint'
+          ? 'cumulative_checkpoint'
+          : event.type === 'session.compaction'
+            ? 'partial_compaction'
+            : event.type === 'session.shutdown'
+              ? 'final_shutdown'
+              : null;
+    if (observationKind === null) continue;
+    const observation = usageObservation(event, observationKind);
+    if (observation !== null) observations.push(observation);
+  }
+  return observations;
 }
 
 /**
@@ -93,17 +179,30 @@ export function extractCopilotLedger(eventsJsonl: string): CopilotLedger {
   if (nano === null) return UNMEASURED; // no headline billing → honestly unmeasured
 
   const details = obj(data.tokenDetails);
+  const input = typedBucket(details, 'input');
+  const output = typedBucket(details, 'output');
+  const cacheRead = typedBucket(details, 'cache_read');
+  const cacheCreate = typedBucket(details, 'cache_write');
+  const buckets = [input, output, cacheRead, cacheCreate];
+  const tokenBuckets =
+    buckets.some((entry) => entry === null) || !buckets.some((entry) => entry?.present)
+      ? null
+      : {
+          ...(input?.present && input.value !== undefined ? { input: input.value } : {}),
+          ...(output?.present && output.value !== undefined ? { output: output.value } : {}),
+          ...(cacheRead?.present && cacheRead.value !== undefined
+            ? { cache_read: cacheRead.value }
+            : {}),
+          ...(cacheCreate?.present && cacheCreate.value !== undefined
+            ? { cache_create: cacheCreate.value }
+            : {}),
+        };
   const cc = obj(data.codeChanges);
   const filesModified = Array.isArray(cc.filesModified) ? cc.filesModified.length : 0;
   return {
     measured: true,
     nano_aiu: nano,
-    token_buckets: {
-      input: bucket(details, 'input'),
-      output: bucket(details, 'output'),
-      cache_read: bucket(details, 'cache_read'),
-      cache_create: bucket(details, 'cache_write'),
-    },
+    token_buckets: tokenBuckets,
     api_duration_ms: num(data.totalApiDurationMs),
     code_changes: {
       files_modified: filesModified,

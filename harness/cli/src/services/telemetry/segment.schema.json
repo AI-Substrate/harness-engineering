@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.5.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.6.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -20,7 +20,7 @@
     "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "2.5" },
+    "schema_version": { "type": "string", "const": "2.6" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
     "harness_version": { "type": "string" },
@@ -172,6 +172,7 @@
             "enum": [
               "prompt",
               "turn",
+              "usage",
               "tools",
               "skill",
               "flow",
@@ -189,12 +190,22 @@
               "mark"
             ]
           },
+          "observation_kind": {
+            "type": "string",
+            "enum": [
+              "message_output",
+              "cumulative_checkpoint",
+              "partial_compaction",
+              "final_shutdown"
+            ]
+          },
           "words": { "type": "integer" },
           "dur_s": { "type": "integer" },
-          "in": { "type": "integer" },
-          "out": { "type": "integer" },
-          "cache_read": { "type": "integer" },
-          "cache_create": { "type": "integer" },
+          "in": { "type": "integer", "minimum": 0 },
+          "out": { "type": "integer", "minimum": 0 },
+          "cache_read": { "type": "integer", "minimum": 0 },
+          "cache_create": { "type": "integer", "minimum": 0 },
+          "nano_aiu": { "type": "integer", "minimum": 0 },
           "model": { "type": "string" },
           "name": { "type": "string" },
           "count": { "type": "integer" },
@@ -381,7 +392,33 @@
               "bytes": { "type": "integer" }
             }
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": ["kind"],
+              "properties": { "kind": { "const": "usage" } }
+            },
+            "then": {
+              "required": ["observation_kind"],
+              "anyOf": [
+                { "required": ["in"] },
+                { "required": ["out"] },
+                { "required": ["cache_read"] },
+                { "required": ["cache_create"] },
+                { "required": ["nano_aiu"] }
+              ]
+            },
+            "else": {
+              "not": {
+                "anyOf": [
+                  { "required": ["observation_kind"] },
+                  { "required": ["nano_aiu"] }
+                ]
+              }
+            }
+          }
+        ]
       }
     },
     "rollup": {

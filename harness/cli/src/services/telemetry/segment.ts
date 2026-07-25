@@ -5,8 +5,9 @@ import {
   posixRelative,
   toPosix,
 } from '../shared/posix-path.js';
-import type { Event, Rollup, TPrecision } from './events.js';
+import type { Event, Rollup, TPrecision, UsageEvent } from './events.js';
 import { computeRollup } from './rollup.js';
+import { normalizeUsageObservation, type UsageObservation } from './usage-observation.js';
 
 /**
  * The `segment` — the normalized, **counts-only** per-session telemetry record
@@ -38,9 +39,9 @@ import { computeRollup } from './rollup.js';
  * v2.5 (plan 060): adds optional product_commit (the product HEAD observed for
  * this activity window); old 2.4 records remain readable.
  */
-export const SEGMENT_SCHEMA_VERSION = '2.5';
+export const SEGMENT_SCHEMA_VERSION = '2.6';
 
-/** Exact Segment-2.5 pij environment vocabulary. The producer never glob-captures `PIJ_*`. */
+/** Exact Segment-2.6 pij environment vocabulary. The producer never glob-captures `PIJ_*`. */
 export const CURRENT_CAPTURED_ENV_KEYS = [
   'PIJ_SESSION_ID',
   'PIJ_PARENT_ID',
@@ -205,11 +206,15 @@ export function isTelemetryTime(value: string): boolean {
 }
 
 /** Version-aware key and value grammar shared by capture, serializer, OTLP and strict reads. */
-export function isCapturedEnvEntry(name: string, value: string, version: '2.4' | '2.5'): boolean {
+export function isCapturedEnvEntry(
+  name: string,
+  value: string,
+  version: '2.4' | '2.5' | '2.6',
+): boolean {
   const allowed =
-    version === '2.5'
-      ? (CURRENT_CAPTURED_ENV_KEYS as readonly string[])
-      : (LEGACY_CAPTURED_ENV_KEYS as readonly string[]);
+    version === '2.4'
+      ? (LEGACY_CAPTURED_ENV_KEYS as readonly string[])
+      : (CURRENT_CAPTURED_ENV_KEYS as readonly string[]);
   if (!allowed.includes(name) || isCredentialShaped(value)) return false;
   switch (name) {
     case 'PIJ_SESSION_ID':
@@ -332,6 +337,12 @@ export interface Segment {
   window: SegmentWindow;
   branch: string | null;
   tokens: SegmentTokens | null;
+  /**
+   * WHY `tokens` is null, when the harness could say precisely — a closed adapter
+   * reason (finding 07). OMITTED when tokens resolved or the harness cannot say.
+   * Diagnostic only: it never contributes a count.
+   */
+  token_unavailable_reason?: string;
   effort: string | null;
   /** v2.0 — the ordered timestamped event stream (the substrate; counts are derived). Always present. */
   event_stream: Event[];
@@ -424,6 +435,8 @@ export interface SegmentInput {
   window: SegmentWindow;
   branch: string | null;
   tokens?: SegmentTokens | null;
+  /** The adapter's closed reason for absent tokens (finding 07); omitted when none. */
+  token_unavailable_reason?: string | null;
   models?: Record<string, SegmentModelStat>;
   effort?: string | null;
   skills?: Record<string, number>;
@@ -568,6 +581,30 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
       if (cr !== undefined) ev.cache_read = cr;
       if (cc !== undefined) ev.cache_create = cc;
       if (typeof e.model === 'string') ev.model = e.model;
+      return ev;
+    }
+    case 'usage': {
+      const candidate: UsageObservation = {
+        t: e.t,
+        observation_kind: e.observation_kind,
+      };
+      if (e.in !== undefined) candidate.input = e.in;
+      if (e.out !== undefined) candidate.output = e.out;
+      if (e.cache_read !== undefined) candidate.cache_read = e.cache_read;
+      if (e.cache_create !== undefined) candidate.cache_create = e.cache_create;
+      if (e.nano_aiu !== undefined) candidate.nano_aiu = e.nano_aiu;
+      const observation = normalizeUsageObservation(candidate);
+      if (observation === null) throw new Error('invalid usage observation');
+      const ev: UsageEvent = {
+        ...base,
+        kind: 'usage',
+        observation_kind: observation.observation_kind,
+      };
+      if (observation.input !== undefined) ev.in = observation.input;
+      if (observation.output !== undefined) ev.out = observation.output;
+      if (observation.cache_read !== undefined) ev.cache_read = observation.cache_read;
+      if (observation.cache_create !== undefined) ev.cache_create = observation.cache_create;
+      if (observation.nano_aiu !== undefined) ev.nano_aiu = observation.nano_aiu;
       return ev;
     }
     case 'tools': {
@@ -719,6 +756,379 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
   }
 }
 
+/** Fail-closed decoder for loose on-disk Segment JSON used by every reader. */
+export function decodeSegment(value: unknown): Segment | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.schema_version !== 'string') return null;
+  const currentVersion =
+    raw.schema_version === '2.4' || raw.schema_version === '2.5' || raw.schema_version === '2.6';
+  const intermediateVersion =
+    raw.schema_version === '2.0' ||
+    raw.schema_version === '2.1' ||
+    raw.schema_version === '2.2' ||
+    raw.schema_version === '2.3';
+  const legacyVersion = raw.schema_version === '1.1';
+  if (!currentVersion && !intermediateVersion && !legacyVersion) return null;
+  if (legacyVersion) {
+    const allowed = new Set([
+      'schema_version',
+      'command',
+      'harness',
+      'harness_session_id',
+      'timecode',
+      'window',
+      'branch',
+      'tokens',
+      'skills',
+      'tools',
+      'harness_commands',
+      'models',
+    ]);
+    if (Object.keys(raw).some((key) => !allowed.has(key))) return null;
+    if (
+      typeof raw.command !== 'string' ||
+      !isTelemetryCommand(raw.command) ||
+      typeof raw.harness !== 'string' ||
+      !isTelemetryHarness(raw.harness) ||
+      typeof raw.harness_session_id !== 'string' ||
+      !isTelemetrySessionId(raw.harness_session_id) ||
+      typeof raw.timecode !== 'string' ||
+      !isTelemetryTime(raw.timecode) ||
+      (raw.branch !== null &&
+        (typeof raw.branch !== 'string' || !isTelemetryRelativePath(raw.branch))) ||
+      raw.window === null ||
+      typeof raw.window !== 'object' ||
+      Array.isArray(raw.window)
+    ) {
+      return null;
+    }
+    const window = raw.window as Record<string, unknown>;
+    if (
+      typeof window.since !== 'string' ||
+      !isTelemetryExtensionString(window.since) ||
+      !Number.isSafeInteger(window.from) ||
+      (window.from as number) < 0 ||
+      !Number.isSafeInteger(window.to) ||
+      (window.to as number) < (window.from as number)
+    ) {
+      return null;
+    }
+    for (const field of ['skills', 'tools', 'harness_commands'] as const) {
+      const counts = raw[field];
+      if (counts === undefined) continue;
+      if (counts === null || typeof counts !== 'object' || Array.isArray(counts)) return null;
+      for (const [key, count] of Object.entries(counts)) {
+        if (
+          !isTelemetryExtensionString(key) ||
+          !Number.isSafeInteger(count) ||
+          (count as number) < 0
+        ) {
+          return null;
+        }
+      }
+    }
+    if (raw.models !== undefined) {
+      if (raw.models === null || typeof raw.models !== 'object' || Array.isArray(raw.models)) {
+        return null;
+      }
+      for (const [model, stat] of Object.entries(raw.models)) {
+        if (
+          !isTelemetryModel(model) ||
+          stat === null ||
+          typeof stat !== 'object' ||
+          Array.isArray(stat)
+        ) {
+          return null;
+        }
+        const values = stat as Record<string, unknown>;
+        if (
+          !Number.isSafeInteger(values.turns) ||
+          (values.turns as number) < 0 ||
+          !Number.isSafeInteger(values.output_tokens) ||
+          (values.output_tokens as number) < 0
+        ) {
+          return null;
+        }
+      }
+    }
+  }
+  if (intermediateVersion) {
+    const allowed = new Set([
+      'schema_version',
+      'command',
+      'harness',
+      'harness_version',
+      'harness_session_id',
+      'timecode',
+      'window',
+      'branch',
+      'tokens',
+      'effort',
+      'event_stream',
+      'rollup',
+      'models',
+      'skills',
+      'tools',
+      'user_prompts',
+      'captured_env',
+    ]);
+    if (Object.keys(raw).some((key) => !allowed.has(key))) return null;
+    if (
+      typeof raw.command !== 'string' ||
+      !isTelemetryCommand(raw.command) ||
+      typeof raw.harness !== 'string' ||
+      !isTelemetryExtensionString(raw.harness) ||
+      (raw.harness_version !== undefined &&
+        (typeof raw.harness_version !== 'string' ||
+          !isTelemetryServiceVersion(raw.harness_version))) ||
+      (raw.schema_version !== '2.0' && raw.harness_version === undefined) ||
+      typeof raw.harness_session_id !== 'string' ||
+      !isTelemetrySessionId(raw.harness_session_id) ||
+      typeof raw.timecode !== 'string' ||
+      !isTelemetryTime(raw.timecode) ||
+      (raw.branch !== null &&
+        (typeof raw.branch !== 'string' || !isTelemetryRelativePath(raw.branch))) ||
+      (raw.effort !== undefined &&
+        raw.effort !== null &&
+        (typeof raw.effort !== 'string' || !isTelemetryExtensionString(raw.effort))) ||
+      !Array.isArray(raw.event_stream)
+    ) {
+      return null;
+    }
+    if (raw.window !== undefined) {
+      if (raw.window === null || typeof raw.window !== 'object' || Array.isArray(raw.window)) {
+        return null;
+      }
+      const window = raw.window as Record<string, unknown>;
+      if (
+        typeof window.since !== 'string' ||
+        !isTelemetryExtensionString(window.since) ||
+        !Number.isSafeInteger(window.from) ||
+        (window.from as number) < 0 ||
+        !Number.isSafeInteger(window.to) ||
+        (window.to as number) < (window.from as number)
+      ) {
+        return null;
+      }
+    }
+    for (const field of ['skills', 'tools'] as const) {
+      const counts = raw[field];
+      if (counts === undefined) continue;
+      if (counts === null || typeof counts !== 'object' || Array.isArray(counts)) return null;
+      for (const [key, count] of Object.entries(counts)) {
+        if (
+          !isTelemetryExtensionString(key) ||
+          !Number.isSafeInteger(count) ||
+          (count as number) < 0
+        ) {
+          return null;
+        }
+      }
+    }
+    if (
+      raw.user_prompts !== undefined &&
+      (!Array.isArray(raw.user_prompts) ||
+        raw.user_prompts.some((count) => !Number.isSafeInteger(count) || count < 0))
+    ) {
+      return null;
+    }
+    if (raw.captured_env !== undefined) {
+      if (
+        raw.captured_env === null ||
+        typeof raw.captured_env !== 'object' ||
+        Array.isArray(raw.captured_env)
+      ) {
+        return null;
+      }
+      for (const [key, entry] of Object.entries(raw.captured_env)) {
+        if (typeof entry !== 'string' || !isCapturedEnvEntry(key, entry, '2.5')) return null;
+      }
+    }
+    if (raw.models !== undefined) {
+      if (raw.models === null || typeof raw.models !== 'object' || Array.isArray(raw.models)) {
+        return null;
+      }
+      for (const [model, stat] of Object.entries(raw.models)) {
+        if (
+          !isTelemetryModel(model) ||
+          stat === null ||
+          typeof stat !== 'object' ||
+          Array.isArray(stat)
+        ) {
+          return null;
+        }
+        const values = stat as Record<string, unknown>;
+        if (
+          !Number.isSafeInteger(values.turns) ||
+          (values.turns as number) < 0 ||
+          !Number.isSafeInteger(values.output_tokens) ||
+          (values.output_tokens as number) < 0
+        ) {
+          return null;
+        }
+      }
+    }
+  }
+  if (currentVersion) {
+    const allowed = new Set<string>(SEGMENT_FIELD_KEYS);
+    if (Object.keys(raw).some((key) => !allowed.has(key))) return null;
+    if (SEGMENT_REQUIRED_KEYS.some((key) => !(key in raw))) return null;
+    if (
+      typeof raw.command !== 'string' ||
+      !isTelemetryCommand(raw.command) ||
+      typeof raw.harness !== 'string' ||
+      !isTelemetryHarness(raw.harness) ||
+      typeof raw.harness_version !== 'string' ||
+      !isTelemetryServiceVersion(raw.harness_version) ||
+      typeof raw.harness_session_id !== 'string' ||
+      !isTelemetrySessionId(raw.harness_session_id) ||
+      typeof raw.timecode !== 'string' ||
+      !isTelemetryTime(raw.timecode) ||
+      (raw.branch !== null &&
+        (typeof raw.branch !== 'string' || !isTelemetryRelativePath(raw.branch))) ||
+      (raw.effort !== null &&
+        (typeof raw.effort !== 'string' || !isTelemetryExtensionString(raw.effort)))
+    ) {
+      return null;
+    }
+    if (raw.window === null || typeof raw.window !== 'object' || Array.isArray(raw.window)) {
+      return null;
+    }
+    const window = raw.window as Record<string, unknown>;
+    if (
+      typeof window.since !== 'string' ||
+      !isTelemetryExtensionString(window.since) ||
+      !Number.isSafeInteger(window.from) ||
+      (window.from as number) < 0 ||
+      !Number.isSafeInteger(window.to) ||
+      (window.to as number) < (window.from as number)
+    ) {
+      return null;
+    }
+    if (raw.captured_env !== undefined) {
+      if (
+        raw.captured_env === null ||
+        typeof raw.captured_env !== 'object' ||
+        Array.isArray(raw.captured_env)
+      ) {
+        return null;
+      }
+      for (const [key, entry] of Object.entries(raw.captured_env)) {
+        if (
+          typeof entry !== 'string' ||
+          !isCapturedEnvEntry(key, entry, raw.schema_version as '2.4' | '2.5' | '2.6')
+        ) {
+          return null;
+        }
+      }
+    }
+    if (
+      raw.product_commit !== undefined &&
+      (raw.schema_version === '2.4' ||
+        typeof raw.product_commit !== 'string' ||
+        !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(raw.product_commit))
+    ) {
+      return null;
+    }
+    if (raw.models !== undefined) {
+      if (raw.models === null || typeof raw.models !== 'object' || Array.isArray(raw.models)) {
+        return null;
+      }
+      for (const [model, stat] of Object.entries(raw.models)) {
+        if (
+          !isTelemetryModel(model) ||
+          stat === null ||
+          typeof stat !== 'object' ||
+          Array.isArray(stat)
+        ) {
+          return null;
+        }
+        const values = stat as Record<string, unknown>;
+        if (
+          !Number.isSafeInteger(values.turns) ||
+          (values.turns as number) < 0 ||
+          !Number.isSafeInteger(values.output_tokens) ||
+          (values.output_tokens as number) < 0
+        ) {
+          return null;
+        }
+      }
+    }
+  }
+
+  let eventStream: Event[] | undefined;
+  if (raw.event_stream !== undefined) {
+    if (!Array.isArray(raw.event_stream)) return null;
+    eventStream = [];
+    for (const candidate of raw.event_stream) {
+      if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate))
+        return null;
+      const source = candidate as Record<string, unknown>;
+      if (
+        source.kind === 'file' &&
+        (typeof source.path !== 'string' || !isTelemetryRelativePath(source.path))
+      ) {
+        return null;
+      }
+      let serialized: Event;
+      try {
+        serialized = serializeEvent(candidate as Event, '/');
+      } catch {
+        return null;
+      }
+      if (
+        !isTelemetryTime(serialized.t) ||
+        JSON.stringify(serialized) !== JSON.stringify(candidate)
+      ) {
+        return null;
+      }
+      eventStream.push(serialized);
+    }
+    if (raw.schema_version !== '2.6' && eventStream.some((event) => event.kind === 'usage')) {
+      return null;
+    }
+  }
+
+  if (raw.tokens !== null) {
+    if (raw.tokens === undefined || typeof raw.tokens !== 'object' || Array.isArray(raw.tokens)) {
+      return null;
+    }
+    const tokens = raw.tokens as Record<string, unknown>;
+    const tokenKeys = [
+      'input',
+      'output',
+      'cache_create',
+      'cache_read',
+      'total',
+      'subagent_tokens',
+      'grand_total',
+    ] as const;
+    if (
+      Object.keys(tokens).length !== tokenKeys.length ||
+      tokenKeys.some((key) => !Number.isSafeInteger(tokens[key]) || (tokens[key] as number) < 0)
+    ) {
+      return null;
+    }
+    const total =
+      (tokens.input as number) +
+      (tokens.output as number) +
+      (tokens.cache_create as number) +
+      (tokens.cache_read as number);
+    if (
+      tokens.total !== total ||
+      tokens.grand_total !== total + (tokens.subagent_tokens as number)
+    ) {
+      return null;
+    }
+  }
+
+  return {
+    ...raw,
+    ...(eventStream === undefined ? {} : { event_stream: eventStream }),
+  } as unknown as Segment;
+}
+
 /**
  * Serialize a capture input into a clean counts-only {@link Segment}. ALLOWLIST
  * BY CONSTRUCTION: every field is picked explicitly — the input is never spread —
@@ -759,6 +1169,11 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
     },
     branch: input.branch,
     tokens: input.tokens ?? null,
+    ...(input.tokens == null &&
+    typeof input.token_unavailable_reason === 'string' &&
+    input.token_unavailable_reason.length > 0
+      ? { token_unavailable_reason: input.token_unavailable_reason }
+      : {}),
     effort: input.effort ?? null,
   } as Segment;
 

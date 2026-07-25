@@ -371,6 +371,56 @@ describe('FakeFs', () => {
   });
 });
 
+describe('FakeFs — bounded no-follow text reads (P063 T003)', () => {
+  it('probes metadata before reading regular-file content and measures UTF-8 bytes', () => {
+    const path = '/config/projects/-repo/session.jsonl';
+    const fs = new FakeFs({ [path]: 'é\n' });
+
+    expect(fs.readTextFileNoFollow('/config', path, 3)).toEqual({
+      status: 'ok',
+      bytes: 3,
+      text: 'é\n',
+    });
+    expect(fs.noFollowOps).toEqual([
+      { op: 'probe', path, maxBytes: 3 },
+      { op: 'read', path, maxBytes: 3 },
+    ]);
+  });
+
+  it('refuses oversize content from metadata without recording a content read', () => {
+    const path = '/config/projects/-repo/oversize.jsonl';
+    const fs = new FakeFs({ [path]: '12345' });
+
+    expect(fs.readTextFileNoFollow('/config', path, 4)).toEqual({
+      status: 'unavailable',
+      reason: 'oversize',
+    });
+    expect(fs.noFollowOps).toEqual([{ op: 'probe', path, maxBytes: 4 }]);
+  });
+
+  it('returns closed typed failures for missing, symlink, and non-file paths', () => {
+    const missing = '/config/missing.jsonl';
+    const symlink = '/config/link.jsonl';
+    const nonFile = '/config/projects';
+    const fs = new FakeFs({ [symlink]: '{}\n', [nonFile]: '{}\n' });
+    fs.symlinkPaths.add(symlink);
+    fs.nonRegularPaths.add(nonFile);
+
+    expect(fs.probeRegularFileNoFollow('/config', missing, 16)).toEqual({
+      status: 'unavailable',
+      reason: 'missing',
+    });
+    expect(fs.probeRegularFileNoFollow('/config', symlink, 16)).toEqual({
+      status: 'unavailable',
+      reason: 'symlink',
+    });
+    expect(fs.probeRegularFileNoFollow('/config', nonFile, 16)).toEqual({
+      status: 'unavailable',
+      reason: 'non-file',
+    });
+  });
+});
+
 describe('NodeFs', () => {
   // Resolve real-tree probes from THIS file's location, not cwd — the suite must
   // read true from any invocation directory (plan 014 orchestrator retro OH-001).

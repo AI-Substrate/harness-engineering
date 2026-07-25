@@ -38,7 +38,7 @@ import { expectCurrentSegmentMatchesLegacy, registerOtlpGoldens } from './otlp-g
  *
  * Tests MAY use `node:*` directly (the throwaway-db build) — only the SERVICES
  * stay ports-only (P2). The Segment-2.4/OTLP-v0.1 goldens are frozen; current
- * output is projected only across the approved 2.5/v0.2 metadata delta.
+ * output is projected only across the approved 2.6/v0.3 metadata and usage delta.
  */
 
 const require = createRequire(import.meta.url);
@@ -154,7 +154,7 @@ describe('real copilot-vscode fixture → segment via SQL round-trip (AC-04)', (
     expect(sessionId).toBe(rows.sessions[0]?.id);
   });
 
-  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+  it('matches the frozen Segment-2.4 golden modulo approved 2.6 metadata and usage', () => {
     expectCurrentSegmentMatchesLegacy(seg, JSON.parse(readFileSync(GOLDEN, 'utf8')));
   });
 

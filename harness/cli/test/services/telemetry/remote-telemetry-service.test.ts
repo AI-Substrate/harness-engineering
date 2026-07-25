@@ -38,7 +38,19 @@ function fixture(repo: RemoteRepository, session = 'session-1', product = oid('a
       window: { since: 'session-start', from: 0, to: 1 },
       branch: 'main',
       product_commit: product,
-      event_stream: [{ t: '2026-07-16T00:00:00.000Z', kind: 'turn', dur_s: 1, in: 1, out: 1 }],
+      event_stream: [
+        { t: '2026-07-16T00:00:00.000Z', kind: 'turn', dur_s: 1, in: 1, out: 1 },
+        {
+          t: '2026-07-16T00:00:00.000Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          in: 1,
+          out: 1,
+          cache_read: 0,
+          cache_create: 0,
+          nano_aiu: 2,
+        },
+      ],
     },
     '/repo',
   );
@@ -112,7 +124,19 @@ function partialGraphFixture(repo: RemoteRepository) {
       window: { since: 'last-command', from: 1, to: 2 },
       branch: 'main',
       product_commit: unavailable,
-      event_stream: [{ t: '2026-07-16T00:00:01.000Z', kind: 'turn', dur_s: 1, in: 2, out: 2 }],
+      event_stream: [
+        { t: '2026-07-16T00:00:01.000Z', kind: 'turn', dur_s: 1, in: 2, out: 2 },
+        {
+          t: '2026-07-16T00:00:01.000Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          in: 2,
+          out: 2,
+          cache_read: 0,
+          cache_create: 0,
+          nano_aiu: 4,
+        },
+      ],
     },
     '/repo',
   );
