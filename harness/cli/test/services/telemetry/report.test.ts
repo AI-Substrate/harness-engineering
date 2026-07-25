@@ -218,6 +218,69 @@ describe('T003 — cross-session (N>1) sums the SAME key into ONE entry (re-aggr
     const actual = buildReport([e1, e2]).totals.time_s;
     expect(Math.abs(actual - expectedActive)).toBeLessThanOrEqual(1);
   });
+
+  it('uses the authoritative typed session total when turn token fields are absent', () => {
+    const exp = exportOf('typed', [
+      seg([
+        { t: '2026-06-29T00:00:01Z', kind: 'usage', observation_kind: 'message_output', out: 5 },
+      ]),
+      seg([
+        {
+          t: '2026-06-29T00:00:02Z',
+          kind: 'usage',
+          observation_kind: 'cumulative_checkpoint',
+          in: 10,
+          out: 20,
+          cache_read: 30,
+          cache_create: 40,
+        },
+      ]),
+      seg([
+        {
+          t: '2026-06-29T00:00:03Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          in: 11,
+          out: 22,
+          cache_read: 33,
+          cache_create: 44,
+        },
+      ]),
+    ]);
+
+    expect(buildReport([exp]).totals).toMatchObject({
+      tokens: { input: 11, output: 22 },
+      cache: { read: 33, create: 44 },
+    });
+  });
+
+  it('keeps a partial typed session unmeasured instead of folding stale turns', () => {
+    const exp = exportOf('partial-typed', [
+      seg([
+        { t: '2026-06-29T00:00:01Z', kind: 'turn', dur_s: 1, in: 900, out: 99 },
+        {
+          t: '2026-06-29T00:00:02Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          out: 22,
+        },
+      ]),
+    ]);
+    const report = buildReport([exp]);
+
+    expect(report.totals).toMatchObject({
+      tokens: { input: 0, output: 22 },
+      cache: { read: 0, create: 0 },
+    });
+    expect(report.provenance.token_coverage).toEqual({
+      measured: 0,
+      partial: 1,
+      unavailable: 0,
+      unmeasured: 1,
+      reasons: { partial_observation: 1 },
+      causes: { unknown: 1 },
+    });
+  });
 });
 
 // ── FX002-4 — flow_stage brackets consecutive /the-flow skill calls ──────────

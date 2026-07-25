@@ -223,7 +223,7 @@ the public repository must not receive those source bytes. Use this stricter ord
 
 The real replay is the oracle; the minimized fixture is the durable CI guard. A
 synthetic fixture alone cannot substitute for the real replay, and replay GREEN does
-not waive the binding manual review. The P063 token-recovery fixture follows this
+not waive the non-skippable manual review of the exact public bytes. The P063 token-recovery fixture follows this
 pattern: final-over-checkpoint precedence, billing-only checkpoint partiality, and
 post-prune measured fields under honest aggregate partial coverage.
 

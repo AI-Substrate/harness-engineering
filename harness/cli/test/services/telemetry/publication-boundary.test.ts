@@ -4,6 +4,8 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
+import type { Event } from '../../../src/services/telemetry/events.js';
+import { serializeEvent } from '../../../src/services/telemetry/segment.js';
 
 /**
  * Plan 047 Phase 3 · T001 — the publication-boundary privacy scan (AC-11 · Constitution
@@ -287,5 +289,40 @@ describe('publication boundary — the 047 read/export/render path reads no iden
     // silently pass while gutting attribution.
     expect(writeAdapter).toContain('user.email');
     expect(writeAdapter).toContain("'config'");
+  });
+});
+
+describe('P063 T008 — typed usage publication stays counts-only', () => {
+  const numericUsage = {
+    t: '2026-07-20T14:00:00Z',
+    kind: 'usage',
+    observation_kind: 'final_shutdown',
+    in: 10,
+    out: 20,
+    cache_read: 30,
+    cache_create: 40,
+    nano_aiu: 50,
+  };
+
+  it('publishes only the closed observation enum and present numeric buckets', () => {
+    expect(serializeEvent(numericUsage as unknown as Event)).toEqual(numericUsage);
+  });
+
+  it.each([
+    ['content', 'PRIVATE_FREE_TEXT'],
+    ['path', '/Users/private/repository'],
+    ['identity', 'person@example.test'],
+    ['session_id', 'PRIVATE_SESSION_ID'],
+    ['model_footer', 'PRIVATE_MODEL_FOOTER'],
+  ] as const)('drops planted %s from the serialized usage event', (field, planted) => {
+    const tainted = {
+      ...numericUsage,
+      [field]: planted,
+      payload: { [field]: planted },
+    } as unknown as Event;
+    const serialized = serializeEvent(tainted);
+
+    expect(serialized).toEqual(numericUsage);
+    expect(JSON.stringify(serialized)).not.toContain(planted);
   });
 });

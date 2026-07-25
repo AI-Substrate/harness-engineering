@@ -484,6 +484,7 @@ function buildInput(
     window,
     branch: branch.current,
     tokens: caps.tokens ?? null,
+    token_unavailable_reason: caps.token_unavailable_reason ?? null,
     models: caps.models ?? {},
     effort: caps.effort ?? null,
     skills: caps.skills ?? {},
@@ -592,16 +593,42 @@ function captureUnsafe(deps: CaptureDeps): void {
     if (sessionId === null) return;
     detected = { harness: detected.harness, sessionId };
   }
+  const standardClaude =
+    detected.harness === 'claude-code'
+      ? (() => {
+          const selectedRoot = deps.env.get('CLAUDE_CONFIG_DIR');
+          const home = deps.env.home();
+          const configRoot =
+            selectedRoot !== undefined && selectedRoot.length > 0
+              ? toPosix(selectedRoot)
+              : home !== undefined
+                ? posixJoin(toPosix(home), '.claude')
+                : '';
+          const discovered = deps.git?.knownWorktreeRoots(32);
+          // `cwd` is the FLOOR, never conditional on discovery (finding 05). Git can
+          // fail transiently, the repo can exceed the worktree cap (`too-many`),
+          // porcelain can drift (`malformed`), or the harness can run outside a repo —
+          // and every one of those used to empty the candidate set and report a
+          // perfectly readable transcript as `unavailable`. cwd needs no discovery, is
+          // where Claude Code keys the project dir, and passes exactly the same
+          // absolute/traversal checks in `locateAt` as any discovered root.
+          const projectRoots = [
+            ...new Set([
+              cwd,
+              ...(discovered?.status === 'ok' ? discovered.roots.map((root) => toPosix(root)) : []),
+            ]),
+          ];
+          return { configRoot, projectRoots };
+        })()
+      : undefined;
   const source: HarnessSource = {
     env: deps.env,
     fs: deps.fs,
     db: deps.db,
     repoRoot: cwd,
     harness: detected.harness,
-    // Thread the ONCE-resolved session id (for copilot-vscode it was just resolved
-    // from the store above; for env-keyed harnesses it's the env value) so adapters
-    // read it instead of re-querying a mutable source — single source of truth.
     sessionId: detected.sessionId,
+    ...(standardClaude !== undefined ? { standardClaude } : {}),
   };
   const adapter: HarnessAdapter =
     (deps.adapters ?? []).find((a) => a.handles(detected.harness)) ?? nullDefaultAdapter;

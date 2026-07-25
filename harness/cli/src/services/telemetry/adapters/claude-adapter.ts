@@ -16,7 +16,7 @@ import type {
   SegmentSubagentInput,
   SegmentTokens,
 } from '../segment.js';
-import type { HarnessAdapter, HarnessCapabilities, HarnessContext } from './harness-adapter.js';
+import type { HarnessAdapter, HarnessCapabilities, HarnessSource } from './harness-adapter.js';
 
 /**
  * The Claude Code capability adapter (plan 034, Phase 2 · T003 — AC-02/04/12).
@@ -78,11 +78,160 @@ export function claudeTranscriptPath(home: string, repoRoot: string, sessionId: 
   return `${home}/.claude/projects/${mangled}/${sessionId}.jsonl`;
 }
 
-function resolveTranscript(ctx: HarnessContext): string | null {
-  const home = ctx.env.home();
-  const sessionId = ctx.env.get('CLAUDE_CODE_SESSION_ID');
-  if (home === undefined || sessionId === undefined || sessionId.length === 0) return null;
-  return ctx.fs.readText(claudeTranscriptPath(home, ctx.repoRoot, sessionId));
+export type ClaudeTranscriptUnavailableReason =
+  | 'zero'
+  | 'multiple'
+  | 'unresolved'
+  | 'traversal'
+  | 'symlink'
+  | 'non-file'
+  | 'oversize'
+  | 'malformed'
+  | 'ambiguity';
+
+export type ClaudeTranscriptResolution =
+  | { status: 'found'; path: string; content: string }
+  | { status: 'unavailable'; reason: ClaudeTranscriptUnavailableReason };
+
+const MAX_CLAUDE_TRANSCRIPT_BYTES = 128 * 1024 * 1024;
+const MAX_CLAUDE_PROJECT_CANDIDATES = 33;
+const claudeResolutionCache = new WeakMap<
+  NonNullable<HarnessSource['standardClaude']>,
+  ClaudeTranscriptResolution
+>();
+
+function unavailable(reason: ClaudeTranscriptUnavailableReason): ClaudeTranscriptResolution {
+  return { status: 'unavailable', reason };
+}
+
+function isAbsolutePath(path: string): boolean {
+  return path.startsWith('/') || /^[A-Za-z]:[\\/]/.test(path) || path.startsWith('\\\\');
+}
+
+function hasTraversal(path: string): boolean {
+  return path.includes('\0') || path.split(/[\\/]/).some((part) => part === '..');
+}
+
+function candidatePath(configRoot: string, projectRoot: string, sessionId: string): string {
+  const projectKey = projectRoot.replace(/[^A-Za-z0-9]/g, '-');
+  return `${configRoot.replace(/[\\/]+$/, '')}/projects/${projectKey}/${sessionId}.jsonl`;
+}
+
+function locationFor(src: HarnessSource): NonNullable<HarnessSource['standardClaude']> | null {
+  if (src.standardClaude !== undefined) return src.standardClaude;
+  const selectedRoot = src.env.get('CLAUDE_CONFIG_DIR');
+  const home = src.env.home();
+  const configRoot =
+    selectedRoot !== undefined && selectedRoot.length > 0
+      ? selectedRoot
+      : home !== undefined
+        ? `${home}/.claude`
+        : null;
+  return configRoot === null ? null : { configRoot, projectRoots: [src.repoRoot] };
+}
+
+function locateAt(
+  src: HarnessSource,
+  location: NonNullable<HarnessSource['standardClaude']>,
+): ClaudeTranscriptResolution {
+  const sessionId =
+    src.sessionId !== undefined && src.sessionId.length > 0
+      ? src.sessionId
+      : src.env.get('CLAUDE_CODE_SESSION_ID');
+  if (sessionId === undefined || sessionId.length === 0 || location.projectRoots.length === 0) {
+    return unavailable('unresolved');
+  }
+  if (
+    sessionId === '.' ||
+    sessionId === '..' ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(sessionId) ||
+    !isAbsolutePath(location.configRoot) ||
+    hasTraversal(location.configRoot)
+  ) {
+    return unavailable('traversal');
+  }
+
+  const distinctRoots = [...new Set(location.projectRoots)];
+  if (distinctRoots.length > MAX_CLAUDE_PROJECT_CANDIDATES) {
+    return unavailable('ambiguity');
+  }
+  // Distinct roots can mangle to the SAME candidate path (`/repo/wt-a_x` and
+  // `/repo/wt-a-x` both become `-repo-wt-a-x`). That names one transcript, byte for
+  // byte, whichever root produced it — so it is one candidate, not an ambiguity
+  // (finding 10). Genuine ambiguity is two DIFFERENT paths that both exist, which the
+  // `matches.length > 1` check below still catches.
+  const seen = new Set<string>();
+  const candidates: string[] = [];
+  for (const root of distinctRoots) {
+    if (!isAbsolutePath(root) || hasTraversal(root)) return unavailable('traversal');
+    const path = candidatePath(location.configRoot, root, sessionId);
+    if (seen.has(path)) continue;
+    seen.add(path);
+    candidates.push(path);
+  }
+
+  const matches: string[] = [];
+  const rejected = new Set<ClaudeTranscriptUnavailableReason>();
+  for (const path of candidates) {
+    const probe = src.fs.probeRegularFileNoFollow(
+      location.configRoot,
+      path,
+      MAX_CLAUDE_TRANSCRIPT_BYTES,
+    );
+    if (probe.status === 'ok') {
+      matches.push(path);
+    } else if (probe.reason !== 'missing') {
+      rejected.add(probe.reason === 'io-error' ? 'unresolved' : probe.reason);
+    }
+  }
+
+  if (rejected.size > 0) {
+    if (rejected.size === 1 && matches.length === 0) {
+      return unavailable([...rejected][0] as ClaudeTranscriptUnavailableReason);
+    }
+    return unavailable('ambiguity');
+  }
+  if (matches.length === 0) return unavailable('zero');
+  if (matches.length > 1) return unavailable('multiple');
+
+  const path = matches[0] as string;
+  const read = src.fs.readTextFileNoFollow(location.configRoot, path, MAX_CLAUDE_TRANSCRIPT_BYTES);
+  if (read.status === 'unavailable') {
+    if (read.reason === 'missing' || read.reason === 'io-error') return unavailable('unresolved');
+    return unavailable(read.reason);
+  }
+  const lines = nonEmptyLines(read.text);
+  const hasJsonObject = lines.some((line) => {
+    try {
+      const parsed: unknown = JSON.parse(line);
+      return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+    } catch {
+      return false;
+    }
+  });
+  return hasJsonObject ? { status: 'found', path, content: read.text } : unavailable('malformed');
+}
+
+/** Resolve one transcript from explicit bounded candidates only. */
+export function locateClaudeTranscript(src: HarnessSource): ClaudeTranscriptResolution {
+  const location = locationFor(src);
+  return location === null ? unavailable('unresolved') : locateAt(src, location);
+}
+
+function resolveClaudeTranscript(src: HarnessSource): ClaudeTranscriptResolution {
+  const location = locationFor(src);
+  if (location === null) return unavailable('unresolved');
+  if (src.standardClaude === undefined) return locateAt(src, location);
+  const cached = claudeResolutionCache.get(src.standardClaude);
+  if (cached !== undefined) return cached;
+  const resolution = locateAt(src, location);
+  claudeResolutionCache.set(src.standardClaude, resolution);
+  return resolution;
+}
+
+/** `nullCaps` plus the closed reason the locator already computed (finding 07). */
+function blindCaps(reason: ClaudeTranscriptUnavailableReason | null): HarnessCapabilities {
+  return reason === null ? nullCaps : { ...nullCaps, token_unavailable_reason: reason };
 }
 
 function increment(map: Record<string, number>, key: string): void {
@@ -140,22 +289,22 @@ export const claudeAdapter: HarnessAdapter = {
   handles: (harnessId) => harnessId === 'claude-code',
 
   currentPosition(src) {
-    const home = src.env.home();
-    const sessionId = src.env.get('CLAUDE_CODE_SESSION_ID');
-    if (home === undefined || sessionId === undefined || sessionId.length === 0) return null;
-    const content = src.fs.readText(claudeTranscriptPath(home, src.repoRoot, sessionId));
-    if (content === null) return null;
-    return nonEmptyLines(content).length;
+    const resolution = resolveClaudeTranscript(src);
+    return resolution.status === 'found' ? nonEmptyLines(resolution.content).length : null;
   },
 
   extract(ctx) {
-    const content = resolveTranscript(ctx);
+    const resolution = resolveClaudeTranscript(ctx);
+    const content = resolution.status === 'found' ? resolution.content : null;
     // No source → pure all-null (M6 / companion F001: effort must NOT leak when
-    // there is no windowed data, so it is read only after the source is present).
-    if (content === null) return nullCaps;
+    // there is no windowed data, so it is read only after the source is present),
+    // but carry WHY so the loss is diagnosable (finding 07).
+    if (content === null) {
+      return blindCaps(resolution.status === 'unavailable' ? resolution.reason : null);
+    }
 
     const lines = nonEmptyLines(content).slice(ctx.window.from, ctx.window.to);
-    if (lines.length === 0) return nullCaps; // empty window → all-null
+    if (lines.length === 0) return nullCaps; // empty window → all-null (a real read)
 
     const effort = ctx.env.get('CLAUDE_EFFORT') ?? null;
 

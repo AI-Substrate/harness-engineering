@@ -36,7 +36,19 @@ function published() {
       window: { since: 'session-start', from: 0, to: 1 },
       branch: 'main',
       product_commit: product,
-      event_stream: [{ t: '2026-07-16T00:00:00.000Z', kind: 'turn', dur_s: 1, in: 2, out: 3 }],
+      event_stream: [
+        { t: '2026-07-16T00:00:00.000Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
+        {
+          t: '2026-07-16T00:00:00.000Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          in: 2,
+          out: 3,
+          cache_read: 0,
+          cache_create: 0,
+          nano_aiu: 5,
+        },
+      ],
     },
     '/repo',
   );

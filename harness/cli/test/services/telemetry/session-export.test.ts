@@ -5,7 +5,11 @@ import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
-import { otlpLogsToEvents, segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
+import {
+  otlpLogsToEvents,
+  reconstructSegmentFromOtlpLogs,
+  segmentToOtlpLogs,
+} from '../../../src/services/telemetry/otlp/logs.js';
 import { computeRollup } from '../../../src/services/telemetry/rollup.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
@@ -113,6 +117,222 @@ describe('T002 — combineSession: merge a session into one SessionExport (temp 
     expect(Object.values(exp.summary.segment_schema_versions).reduce((s, n) => s + n, 0)).toBe(1);
     expect(exp.signals.logs.resourceLogs).toHaveLength(1);
   });
+
+  it('reduces typed usage across segments before projecting one session total', () => {
+    const tokenShape = (input: number, output: number, cacheRead: number, cacheCreate: number) => {
+      const total = input + output + cacheRead + cacheCreate;
+      return {
+        input,
+        output,
+        cache_read: cacheRead,
+        cache_create: cacheCreate,
+        total,
+        subagent_tokens: 0,
+        grand_total: total,
+      };
+    };
+    const segments = [
+      seg(
+        [{ t: '2026-06-29T00:00:01Z', kind: 'usage', observation_kind: 'message_output', out: 5 }],
+        { tokens: tokenShape(0, 5, 0, 0) },
+      ),
+      seg(
+        [
+          {
+            t: '2026-06-29T00:00:02Z',
+            kind: 'usage',
+            observation_kind: 'cumulative_checkpoint',
+            in: 10,
+            out: 20,
+            cache_read: 30,
+            cache_create: 40,
+          },
+        ],
+        { tokens: tokenShape(10, 20, 30, 40) },
+      ),
+      seg(
+        [
+          {
+            t: '2026-06-29T00:00:03Z',
+            kind: 'usage',
+            observation_kind: 'final_shutdown',
+            in: 11,
+            out: 22,
+            cache_read: 33,
+            cache_create: 44,
+          },
+        ],
+        { tokens: tokenShape(11, 22, 33, 44) },
+      ),
+    ];
+    const { files, dirs } = layout('/work', 'typed-session', segments);
+
+    expect(
+      combineSession('typed-session', makeDeps(files, dirs), { root: '/work' }).summary.tokens,
+    ).toEqual({
+      in: 11,
+      out: 22,
+      cache_read: 33,
+      cache_create: 44,
+      total: 110,
+      subagent_tokens: 0,
+      grand_total: 110,
+    });
+    expect(
+      combineSession('typed-session', makeDeps(files, dirs), { root: '/work' }).summary
+        .token_evidence,
+    ).toMatchObject({
+      coverage: 'measured',
+      source: 'live',
+      reason: null,
+      fields: {
+        input: { value: 11, source: 'live', coverage: 'measured' },
+        output: { value: 22, source: 'live', coverage: 'measured' },
+      },
+    });
+  });
+
+  it('emits merged typed usage under the current 2.6 wire identity', () => {
+    const predecessor = seg([turn('2026-06-29T00:00:01Z', 1)]);
+    predecessor.schema_version = '2.5';
+    const current = seg([
+      {
+        t: '2026-06-29T00:00:02Z',
+        kind: 'usage',
+        observation_kind: 'final_shutdown',
+        in: 11,
+        out: 22,
+        cache_read: 33,
+        cache_create: 44,
+      },
+    ]);
+    const { files, dirs } = layout('/work', 'mixed-version', [predecessor, current]);
+    const exp = combineSession('mixed-version', makeDeps(files, dirs), { root: '/work' });
+    const reconstructed = reconstructSegmentFromOtlpLogs(exp.signals.logs);
+
+    expect(reconstructed).toMatchObject({ ok: true, segment: { schema_version: '2.6' } });
+  });
+
+  it('does not fall back to stale scalar tokens when typed evidence is partial', () => {
+    const stale = {
+      input: 900,
+      output: 99,
+      cache_read: 0,
+      cache_create: 0,
+      total: 999,
+      subagent_tokens: 0,
+      grand_total: 999,
+    };
+    const segment = seg(
+      [
+        {
+          t: '2026-06-29T00:00:02Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          out: 22,
+        },
+      ],
+      { tokens: stale },
+    );
+    const { files, dirs } = layout('/work', 'partial-typed', [segment]);
+    const exp = combineSession('partial-typed', makeDeps(files, dirs), { root: '/work' });
+
+    expect(exp.summary.tokens).toEqual({
+      in: null,
+      out: 22,
+      cache_read: null,
+      cache_create: null,
+      total: null,
+      subagent_tokens: 'unknown',
+      grand_total: 'unknown',
+    });
+    expect(exp.summary.degraded).toContain('typed_usage_partial');
+    expect(exp.summary.token_evidence).toMatchObject({
+      coverage: 'partial',
+      source: 'live',
+      reason: 'partial_observation',
+      fields: {
+        input: { value: null, coverage: 'unavailable', reason: 'field_absent' },
+        output: { value: 22, coverage: 'measured', source: 'live' },
+      },
+    });
+  });
+
+  it('skips malformed loose event streams without throwing', () => {
+    const { files, dirs } = layout('/work', 'malformed-loose', [
+      {
+        schema_version: '2.6',
+        tokens: null,
+        event_stream: [{ t: 'not-a-time', kind: 'usage', out: 1 }],
+      },
+    ]);
+
+    expect(() =>
+      combineSession('malformed-loose', makeDeps(files, dirs), { root: '/work' }),
+    ).not.toThrow();
+    expect(
+      combineSession('malformed-loose', makeDeps(files, dirs), { root: '/work' }).source
+        .segment_count,
+    ).toBe(0);
+  });
+
+  it('rejects typed usage in a loose predecessor segment', () => {
+    const predecessor = seg([
+      {
+        t: '2026-06-29T00:00:02Z',
+        kind: 'usage',
+        observation_kind: 'final_shutdown',
+        in: 11,
+        out: 22,
+        cache_read: 33,
+        cache_create: 44,
+      },
+    ]);
+    predecessor.schema_version = '2.5';
+    const { files, dirs } = layout('/work', 'predecessor-loose', [predecessor]);
+
+    expect(
+      combineSession('predecessor-loose', makeDeps(files, dirs), { root: '/work' }).source
+        .segment_count,
+    ).toBe(0);
+  });
+
+  it('rejects private or malformed loose segment identity fields before publication', () => {
+    const unsafe = seg([]);
+    unsafe.command = '/Users/private/secret';
+    unsafe.harness = 'PRIVATE_HARNESS';
+    unsafe.branch = '/Users/private/repository';
+    unsafe.captured_env = { PIJ_SESSION_ID: 'password=PRIVATE_SECRET' };
+    const unknownVersion = seg([]);
+    unknownVersion.schema_version = '9.9-private';
+    unknownVersion.captured_env = { PIJ_SESSION_ID: 'password=UNKNOWN_PRIVATE_SECRET' };
+    const unsafe20 = seg([]);
+    unsafe20.schema_version = '2.0';
+    unsafe20.harness_version = 'PRIVATE_SECRET';
+    const unsafeTokens = seg([]);
+    unsafeTokens.tokens = {
+      input: 'PRIVATE_TOKEN_TEXT',
+      output: 1,
+      cache_read: 2,
+      cache_create: 3,
+      total: 6,
+      subagent_tokens: 0,
+      grand_total: 6,
+    } as unknown as Segment['tokens'];
+    const { files, dirs } = layout('/work', 'unsafe-identity', [
+      unsafe,
+      unknownVersion,
+      unsafe20,
+      unsafeTokens,
+    ]);
+    const exp = combineSession('unsafe-identity', makeDeps(files, dirs), { root: '/work' });
+
+    expect(exp.source.segment_count).toBe(0);
+    expect(JSON.stringify(exp)).not.toContain('/Users/private');
+    expect(JSON.stringify(exp)).not.toContain('PRIVATE_SECRET');
+    expect(JSON.stringify(exp)).not.toContain('UNKNOWN_PRIVATE_SECRET');
+    expect(JSON.stringify(exp)).not.toContain('PRIVATE_TOKEN_TEXT');
+  });
 });
 
 describe('T004 — round-trip non-vacuity: Logs are the lossless substrate', () => {
@@ -137,6 +357,32 @@ describe('T004 — round-trip non-vacuity: Logs are the lossless substrate', () 
     const mutated = events.map((e, i) => (i === 0 ? { ...e, in: 999 } : e));
     expect(reconstructed).not.toEqual(mutated);
     expect(computeRollup(mutated).tokens?.in).not.toBe(150);
+  });
+
+  it('skips a logs-only shard with a malformed typed usage record', () => {
+    const usage = {
+      t: '2026-06-29T00:00:05Z',
+      kind: 'usage',
+      observation_kind: 'final_shutdown',
+      out: 1,
+    } as Event;
+    const logs = segmentToOtlpLogs(seg([usage]));
+    const record = logs.resourceLogs[0].scopeLogs[0].logRecords[0];
+    record.attributes = record.attributes?.filter(
+      (attribute) => attribute.key !== 'harness.usage.observation_kind',
+    );
+    const logsPath = `${tel('/work')}/sessX/0.logs.jsonl`;
+    const exp = combineSession(
+      'sessX',
+      makeDeps(
+        { [logsPath]: JSON.stringify(logs) },
+        { [`${tel('/work')}/sessX`]: ['0.logs.jsonl'] },
+      ),
+      { root: '/work' },
+    );
+
+    expect(exp.source.segment_count).toBe(0);
+    expect(otlpLogsToEvents(exp.signals.logs)).toEqual([]);
   });
 });
 

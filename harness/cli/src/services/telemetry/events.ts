@@ -13,6 +13,25 @@
  * reach the output.
  */
 
+export const USAGE_OBSERVATION_KINDS = [
+  'message_output',
+  'cumulative_checkpoint',
+  'partial_compaction',
+  'final_shutdown',
+] as const;
+
+export type UsageObservationKind = (typeof USAGE_OBSERVATION_KINDS)[number];
+
+export const USAGE_BUCKET_KEYS = [
+  'input',
+  'output',
+  'cache_read',
+  'cache_create',
+  'nano_aiu',
+] as const;
+
+export type UsageBucketKey = (typeof USAGE_BUCKET_KEYS)[number];
+
 /** RFC3339 UTC instant, e.g. `2026-06-24T09:00:41Z`. */
 export type Iso = string;
 
@@ -34,6 +53,7 @@ export type ChecksStatus = 'ok' | 'degraded' | 'error';
 export type EventKind =
   | 'prompt'
   | 'turn'
+  | 'usage'
   | 'tools'
   | 'skill'
   | 'flow'
@@ -54,6 +74,7 @@ export type EventKind =
 export const EVENT_KINDS: readonly EventKind[] = [
   'prompt',
   'turn',
+  'usage',
   'tools',
   'skill',
   'flow',
@@ -213,6 +234,17 @@ export interface TurnEvent extends EventBase {
   cache_read?: number;
   cache_create?: number;
   model?: string;
+}
+
+/** Counts-only usage evidence; unlike observation kinds are never additive. */
+export interface UsageEvent extends EventBase {
+  kind: 'usage';
+  observation_kind: UsageObservationKind;
+  in?: number;
+  out?: number;
+  cache_read?: number;
+  cache_create?: number;
+  nano_aiu?: number;
 }
 
 /** A collapsed run of tool calls (the burst rule, §4.2). `name:"mixed"` = heterogeneous. */
@@ -464,6 +496,7 @@ export interface MarkEvent extends EventBase {
 export type Event =
   | PromptEvent
   | TurnEvent
+  | UsageEvent
   | ToolsEvent
   | SkillEvent
   | FlowEvent

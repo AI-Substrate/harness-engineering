@@ -43,6 +43,8 @@ import {
   parseIso,
 } from './rollup.js';
 import type { SessionExport } from './session-export.js';
+import type { TokenEvidenceReason } from './token-evidence.js';
+import { completeUsageTokens, reduceUsageEvents } from './usage-observation.js';
 
 export const TELEMETRY_REPORT_SCHEMA_VERSION = 'harness.telemetry-report/v1' as const;
 
@@ -355,6 +357,10 @@ export interface FlowStageMechanism {
 export interface TokenCoverage {
   measured: number;
   unmeasured: number;
+  partial: number;
+  unavailable: number;
+  reasons: Partial<Record<TokenEvidenceReason, number>>;
+  causes: { unknown: number };
 }
 
 /**
@@ -665,31 +671,33 @@ function foldSession(
     }
   }
 
-  // Session token sums (non-cache in/out + cache buckets, from turns). `tokenMeasured`
-  // records whether ANY turn carried a real token field — so a v2.0-era thin shard
-  // (turns with no usage attrs) is DECLARED as a token gap, never counted as a
-  // measured zero (T1.6 / AC-04: no fabricated tokens).
+  // Session token totals prefer the authoritative typed observation stream.
+  // Legacy turn fields remain the fallback for predecessor segments.
   const turnIdx: number[] = [];
   for (let i = 0; i < n; i++) if (ev[i].kind === 'turn') turnIdx.push(i);
-  let sessionIn = 0;
-  let sessionOut = 0;
-  let sessionCr = 0;
-  let sessionCc = 0;
-  let tokenMeasured = false;
-  for (const ti of turnIdx) {
-    const t = ev[ti] as { in?: number; out?: number; cache_read?: number; cache_create?: number };
-    if (
-      typeof t.in === 'number' ||
-      typeof t.out === 'number' ||
-      typeof t.cache_read === 'number' ||
-      typeof t.cache_create === 'number'
-    ) {
-      tokenMeasured = true;
+  const usageObservation = reduceUsageEvents(ev);
+  const typedUsage = completeUsageTokens(usageObservation);
+  let sessionIn = typedUsage?.input ?? usageObservation?.input ?? 0;
+  let sessionOut = typedUsage?.output ?? usageObservation?.output ?? 0;
+  let sessionCr = typedUsage?.cache_read ?? usageObservation?.cache_read ?? 0;
+  let sessionCc = typedUsage?.cache_create ?? usageObservation?.cache_create ?? 0;
+  let tokenMeasured = typedUsage !== null;
+  if (usageObservation === null) {
+    for (const ti of turnIdx) {
+      const t = ev[ti] as { in?: number; out?: number; cache_read?: number; cache_create?: number };
+      if (
+        typeof t.in === 'number' ||
+        typeof t.out === 'number' ||
+        typeof t.cache_read === 'number' ||
+        typeof t.cache_create === 'number'
+      ) {
+        tokenMeasured = true;
+      }
+      sessionIn += t.in ?? 0;
+      sessionOut += t.out ?? 0;
+      sessionCr += t.cache_read ?? 0;
+      sessionCc += t.cache_create ?? 0;
     }
-    sessionIn += t.in ?? 0;
-    sessionOut += t.out ?? 0;
-    sessionCr += t.cache_read ?? 0;
-    sessionCc += t.cache_create ?? 0;
   }
 
   // ── Command tokens: launching-out (even) + following-in (byte-weighted) ──
@@ -966,7 +974,14 @@ export function buildReport(
   let totalCacheC = 0;
   let totalActive = 0;
   const mechanism: FlowStageMechanism = { flow: 0, digit: 0, unlabeled: 0, flow_log: 0 };
-  const tokenCoverage: TokenCoverage = { measured: 0, unmeasured: 0 };
+  const tokenCoverage: TokenCoverage = {
+    measured: 0,
+    partial: 0,
+    unavailable: 0,
+    unmeasured: 0,
+    reasons: {},
+    causes: { unknown: 0 },
+  };
   const sessionIds: string[] = [];
   const branches: string[] = [];
   const harnesses: string[] = [];
@@ -1010,8 +1025,21 @@ export function buildReport(
     mechanism.digit += sums.mechanism.digit;
     mechanism.unlabeled += sums.mechanism.unlabeled;
     mechanism.flow_log += sums.mechanism.flow_log;
-    if (sums.tokenMeasured) tokenCoverage.measured += 1;
-    else tokenCoverage.unmeasured += 1;
+    const coverage = exp.summary.token_evidence?.coverage;
+    if (coverage === 'measured' || (coverage === undefined && sums.tokenMeasured)) {
+      tokenCoverage.measured += 1;
+    } else if (coverage === 'partial') {
+      tokenCoverage.partial += 1;
+      tokenCoverage.unmeasured += 1;
+    } else {
+      tokenCoverage.unavailable += 1;
+      tokenCoverage.unmeasured += 1;
+    }
+    const evidenceReason = exp.summary.token_evidence?.reason;
+    if (evidenceReason !== null && evidenceReason !== undefined) {
+      tokenCoverage.reasons[evidenceReason] = (tokenCoverage.reasons[evidenceReason] ?? 0) + 1;
+    }
+    if (exp.summary.token_evidence !== undefined) tokenCoverage.causes.unknown += 1;
     sessionIds.push(exp.identity.harness_session_id);
     uniquePush(branches, exp.identity.branch);
     uniquePush(harnesses, exp.identity.harness);

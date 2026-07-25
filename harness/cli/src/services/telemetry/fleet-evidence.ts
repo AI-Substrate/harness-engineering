@@ -8,12 +8,22 @@ import { type RefLane, readRefLanes } from './ref-source.js';
 import type { Segment } from './segment.js';
 import {
   candidateRoots,
+  durableSegments,
   fold,
-  readSegments,
+  readBufferedSegments,
   type SessionEvidence,
   type SessionEvidenceDeps,
   type SessionEvidenceOpts,
+  turnBuckets,
 } from './session-evidence.js';
+import { type TokenEvidence, transcriptEvidenceReason } from './token-evidence.js';
+import {
+  completeUsageTokens,
+  mergeTokenEvidence,
+  reduceUsageEvents,
+  tokenEvidenceFromLegacyTokens,
+  tokenEvidenceFromObservation,
+} from './usage-observation.js';
 
 /**
  * `getFleetEvidence` (plan 051 · T002) — the read-side FLEET join. Given a root
@@ -181,6 +191,7 @@ export interface FleetLane {
   cost_measured: boolean;
   /** This lane's cost (fleet-layer — `SessionEvidence` carries no tokens). `{0,0}` when unmeasured. */
   tokens: FleetLaneTokens;
+  token_evidence: TokenEvidence;
   /** Where this lane resolved from: `live` → `ref` → `ledger` (plan 052 · T007). */
   source: FleetLaneSource;
   /** Recovered billing units (AIC / token buckets); omitted when none (dossier F-10). */
@@ -385,19 +396,101 @@ function joinKeys(
   };
 }
 
-/** Sum a lane's cost across its segments; `measured` is true iff any segment had non-null tokens. */
-function laneTokens(segs: readonly Segment[]): { tokens: FleetLaneTokens; measured: boolean } {
-  let grand = 0;
-  let output = 0;
-  let measured = false;
-  for (const seg of segs) {
-    if (seg.tokens != null) {
-      measured = true;
-      grand += seg.tokens.grand_total ?? 0;
-      output += seg.tokens.output ?? 0;
-    }
+/** Resolve typed usage once per lane; legacy segment totals are fallback-only. */
+function laneTokens(
+  segs: readonly Segment[],
+  refRecovered?: ReadonlySet<Segment>,
+): {
+  tokens: FleetLaneTokens;
+  measured: boolean;
+  token_evidence: TokenEvidence;
+} {
+  // `?? []` matches this file's own convention two functions later: a pre-v2.0 buffered
+  // segment has no `event_stream`, and one stale file used to throw here, be swallowed
+  // by `getFleetEvidence`'s catch, and null the ENTIRE fleet read (finding 08).
+  const observation = reduceUsageEvents(segs.flatMap((seg) => seg.event_stream ?? []));
+  if (observation !== null) {
+    const usage = completeUsageTokens(observation);
+    return {
+      tokens:
+        usage === null
+          ? { grand_total: 0, output: observation.output ?? 0 }
+          : { grand_total: usage.total, output: usage.output },
+      measured: usage !== null,
+      token_evidence: tokenEvidenceFromObservation(observation, 'live'),
+    };
   }
-  return { tokens: { grand_total: grand, output }, measured };
+
+  let grand = 0;
+  let input = 0;
+  let output = 0;
+  let cacheRead = 0;
+  let cacheCreate = 0;
+  let measured = false;
+  let missing = false;
+  for (const seg of segs) {
+    // A REF-RECOVERED segment carries its buckets on the turn events, not in a scalar
+    // `tokens` projection (the OTLP round trip drops it) — the same fallback the session
+    // reader applies, but gated on PROVENANCE. Without it a post-prune fleet lane counted
+    // every recovered segment as missing and reported the unflushed delta alone, so the
+    // durable union tier 1 had just built could not state its own total (finding 02 ·
+    // R3-01). A LIVE segment with null tokens is a different animal wearing the same
+    // clothes — a genuinely unmeasured lane, never turn-summed into a false total (AC-02).
+    const buckets = seg.tokens ?? (refRecovered?.has(seg) === true ? turnBuckets(seg) : null);
+    if (buckets === null) {
+      missing = true;
+      continue;
+    }
+    measured = true;
+    grand +=
+      seg.tokens?.grand_total ??
+      buckets.input + buckets.output + buckets.cache_read + buckets.cache_create;
+    input += buckets.input;
+    output += buckets.output;
+    cacheRead += buckets.cache_read;
+    cacheCreate += buckets.cache_create;
+  }
+  const tokenEvidence = tokenEvidenceFromLegacyTokens(
+    measured ? { input, output, cache_read: cacheRead, cache_create: cacheCreate } : null,
+    'live',
+  );
+  if (measured && missing) {
+    tokenEvidence.coverage = 'partial';
+    tokenEvidence.reason = 'source_unavailable';
+  }
+  if (tokenEvidence.coverage === 'unavailable') {
+    const declared = segs
+      .map((seg) => transcriptEvidenceReason(seg.token_unavailable_reason))
+      .find((reason) => reason !== null);
+    if (declared != null) tokenEvidence.reason = declared;
+  }
+  return {
+    tokens: { grand_total: grand, output },
+    measured: measured && !missing,
+    token_evidence: tokenEvidence,
+  };
+}
+
+function applyTokenEvidence(lane: FleetLane, tokenEvidence: TokenEvidence): void {
+  lane.token_evidence = tokenEvidence;
+  const fields = tokenEvidence.fields;
+  const complete = tokenEvidence.coverage === 'measured';
+  const ledgerTotal = lane.billing?.token_buckets?.total;
+  const preserveLedgerTotal = !complete && typeof ledgerTotal === 'number';
+  lane.cost_measured = complete || preserveLedgerTotal;
+  lane.tokens = complete
+    ? {
+        grand_total:
+          (fields.input.value ?? 0) +
+          (fields.output.value ?? 0) +
+          (fields.cache_read.value ?? 0) +
+          (fields.cache_create.value ?? 0),
+        output: fields.output.value ?? 0,
+      }
+    : preserveLedgerTotal
+      ? { grand_total: ledgerTotal, output: lane.tokens.output }
+      : { grand_total: 0, output: fields.output.value ?? 0 };
+  if (tokenEvidence.source !== null) lane.source = tokenEvidence.source;
 }
 
 /**
@@ -730,11 +823,15 @@ function unionSeconds(intervals: ReadonlyArray<{ min: number; max: number }>): n
  * Build the {@link FleetEvidence} from an already-read segment list (pure). Returns
  * `null` when no segment joins to this root — so the caller can try the next
  * candidate buffer root. Exported for direct fixture-driven unit tests (no ports).
+ *
+ * `refRecovered` names which of `segments` came from the committed ref (see
+ * {@link DurableSegments.refRecovered}); omitting it reads every segment as live.
  */
 export function buildFleetEvidence(
   rootPijId: string,
   segments: readonly Segment[],
   roster: FleetRoster | null,
+  refRecovered?: ReadonlySet<Segment>,
 ): FleetEvidence | null {
   // Group joinable segments by pij session id — keep only the orchestrator lane
   // (sid == root) and its direct children (parent == root); depth-1 by contract.
@@ -758,7 +855,7 @@ export function buildFleetEvidence(
   for (const m of roster?.members ?? []) if (!roleOf.has(m.pij_id)) roleOf.set(m.pij_id, m.role);
 
   const buildLane = (sid: string, segs: Segment[]): FleetLane => {
-    const { tokens, measured } = laneTokens(segs);
+    const { tokens, measured, token_evidence } = laneTokens(segs, refRecovered);
     const evidence = fold(sid, segs);
     return {
       pij_id: sid,
@@ -767,6 +864,7 @@ export function buildFleetEvidence(
       model: laneModel(segs),
       cost_measured: measured,
       tokens,
+      token_evidence,
       source: 'live',
       evidence,
       semantics: laneSemantics(segs),
@@ -897,17 +995,34 @@ export function buildLedgerLane(
     if (raw === null) return null; // no side-channel FILE → honest orphan
     const led = extractCopilotLedger(raw);
     if (!led.measured || led.nano_aiu === null) {
-      return degradedLedgerLane(pijId, role, 'copilot', desc); // present but malformed → unmeasured lane
+      return degradedLedgerLane(pijId, role, 'copilot', desc);
     }
-    const b = led.token_buckets ?? { input: 0, output: 0, cache_read: 0, cache_create: 0 };
-    const grand = b.input + b.output + b.cache_read + b.cache_create;
+    if (led.token_buckets === null) {
+      const lane = degradedLedgerLane(pijId, role, 'copilot', desc);
+      lane.billing = { nano_aiu: led.nano_aiu };
+      return lane;
+    }
+    const b = led.token_buckets;
+    const grand = (b.input ?? 0) + (b.output ?? 0) + (b.cache_read ?? 0) + (b.cache_create ?? 0);
     return {
       pij_id: pijId,
       role,
       harness: 'copilot',
       model: desc.model,
       cost_measured: true,
-      tokens: { grand_total: grand, output: b.output },
+      tokens: { grand_total: grand, output: b.output ?? 0 },
+      token_evidence: tokenEvidenceFromObservation(
+        {
+          t: '1970-01-01T00:00:00.000Z',
+          observation_kind: 'final_shutdown',
+          ...(b.input === undefined ? {} : { input: b.input }),
+          ...(b.output === undefined ? {} : { output: b.output }),
+          ...(b.cache_read === undefined ? {} : { cache_read: b.cache_read }),
+          ...(b.cache_create === undefined ? {} : { cache_create: b.cache_create }),
+          nano_aiu: led.nano_aiu,
+        },
+        'ledger',
+      ),
       source: 'ledger',
       billing: { nano_aiu: led.nano_aiu, token_buckets: { ...b } },
       evidence: ledgerEvidence(pijId, desc.harness_session_id, 'copilot'),
@@ -925,20 +1040,37 @@ export function buildLedgerLane(
       return degradedLedgerLane(pijId, role, 'codex', desc); // present but malformed → unmeasured lane
     }
     const b = led.token_buckets;
+    const hasBuckets =
+      b.input !== null || b.output !== null || b.cached !== null || b.reasoning !== null;
+    const observation = {
+      t: '1970-01-01T00:00:00.000Z',
+      observation_kind: 'final_shutdown' as const,
+      ...(b.input === null ? {} : { input: Math.max(b.input - (b.cached ?? 0), 0) }),
+      ...(b.output === null ? {} : { output: b.output }),
+      ...(b.cached === null ? {} : { cache_read: b.cached }),
+      // NO synthesized `cache_create` (finding 09): codex reports input/cached/output/
+      // reasoning and has no cache-write concept, so the bucket is ABSENT, not zero.
+      // The lane is honestly `partial` rather than `measured` on an invented number.
+    };
+    const codexEvidence = tokenEvidenceFromObservation(hasBuckets ? observation : null, 'ledger');
+    if (codexEvidence.coverage === 'partial' && codexEvidence.reason === 'partial_observation') {
+      codexEvidence.reason = 'vendor_field_absent';
+    }
     return {
       pij_id: pijId,
       role,
       harness: 'codex',
       model: desc.model,
       cost_measured: true,
-      tokens: { grand_total: b.total, output: b.output },
+      tokens: { grand_total: b.total, output: b.output ?? 0 },
+      token_evidence: codexEvidence,
       source: 'ledger',
       billing: {
         token_buckets: {
-          input: b.input,
-          output: b.output,
-          cached: b.cached,
-          reasoning: b.reasoning,
+          ...(b.input === null ? {} : { input: b.input }),
+          ...(b.output === null ? {} : { output: b.output }),
+          ...(b.cached === null ? {} : { cached: b.cached }),
+          ...(b.reasoning === null ? {} : { reasoning: b.reasoning }),
           total: b.total,
         },
       },
@@ -969,6 +1101,7 @@ function degradedLedgerLane(
     model: desc.model,
     cost_measured: false,
     tokens: { grand_total: 0, output: 0 },
+    token_evidence: tokenEvidenceFromObservation(null, 'ledger'),
     source: 'ledger',
     evidence: ledgerEvidence(pijId, desc.harness_session_id, harness),
     semantics: blindLaneSemantics(),
@@ -1036,6 +1169,7 @@ function buildRefLane(
     model: desc.model,
     cost_measured: ref.measured,
     tokens: ref.tokens,
+    token_evidence: ref.token_evidence,
     source: 'ref',
     evidence: ledgerEvidence(pijId, desc.harness_session_id, desc.harness ?? 'unknown'),
     // The ref reader (T005) recovers COST only, not the artifact event stream, so a
@@ -1052,6 +1186,9 @@ function buildRefLane(
  * into `sessions` (source `ref`/`ledger`) and dropped from `orphans`; children are
  * re-sorted by descending cost with the orchestrator first. Cost/segment totals are
  * recomputed; time is untouched. Mutates `fleet` in place.
+ *
+ * `liveUnionComplete` reports whether tier 1's durable union succeeded — see the ref
+ * candidate's redundancy rule in the merge loop below (R3-01).
  */
 function enrichOrphans(
   fleet: FleetEvidence,
@@ -1059,6 +1196,7 @@ function enrichOrphans(
   registry: PijRegistry,
   refLanes: Map<string, RefLane>,
   deps: SessionEvidenceDeps,
+  liveUnionComplete: boolean,
 ): void {
   const roleOf = new Map(roster.members.map((m) => [m.pij_id, m.role] as const));
   const memberOf = new Map(roster.members.map((m) => [m.pij_id, m] as const));
@@ -1085,15 +1223,42 @@ function enrichOrphans(
     if (lane !== null) resolved.push(lane);
     else remaining.push(pijId);
   }
-  if (resolved.length === 0) return;
+  if (resolved.length > 0) {
+    const orch = fleet.sessions.find((lane) => lane.pij_id === fleet.root_pij_id) ?? null;
+    const children = [
+      ...fleet.sessions.filter((lane) => lane.pij_id !== fleet.root_pij_id),
+      ...resolved,
+    ].sort(
+      (a, b) => b.tokens.grand_total - a.tokens.grand_total || a.pij_id.localeCompare(b.pij_id),
+    );
+    fleet.sessions = orch ? [orch, ...children] : children;
+    fleet.orphans = remaining.sort();
+  }
 
-  const orch = fleet.sessions.find((l) => l.pij_id === fleet.root_pij_id) ?? null;
-  const children = [
-    ...fleet.sessions.filter((l) => l.pij_id !== fleet.root_pij_id),
-    ...resolved,
-  ].sort((a, b) => b.tokens.grand_total - a.tokens.grand_total || a.pij_id.localeCompare(b.pij_id));
-  fleet.sessions = orch ? [orch, ...children] : children;
-  fleet.orphans = remaining.sort();
+  for (const lane of fleet.sessions) {
+    const member = memberOf.get(lane.pij_id);
+    const desc = registry.by_pij.get(lane.pij_id) ?? (member ? rosterDescriptor(member) : null);
+    if (desc === null) continue;
+    const candidates: TokenEvidence[] = [lane.token_evidence];
+    const ref = desc.harness_session_id ? refLanes.get(desc.harness_session_id) : undefined;
+    // A LIVE lane whose tier-1 durable union succeeded already CONTAINS this ref's
+    // segments — `durableSegments` unions the ref-recovered flushed half with the
+    // buffer's unflushed delta — so the same-session ref candidate is redundant by
+    // construction, and for a still-running session it is a strict PREFIX. Stamped
+    // `session_total` (scope 3) that prefix outranked the fuller union (scope 2) and
+    // the lane silently reported the flushed half as the whole session (R3-01). The
+    // ref still stands alone for ref-RESOLVED lanes (plan 052 · AC-06), and still
+    // participates whenever the union could not be completed.
+    const refRedundant = liveUnionComplete && lane.source === 'live';
+    if (ref !== undefined && !refRedundant) candidates.push(ref.token_evidence);
+    const ledger =
+      lane.source === 'ledger' ? null : buildLedgerLane(lane.pij_id, lane.role, desc, deps);
+    if (ledger !== null) {
+      candidates.push(ledger.token_evidence);
+      if (lane.billing === undefined && ledger.billing !== undefined) lane.billing = ledger.billing;
+    }
+    applyTokenEvidence(lane, mergeTokenEvidence(candidates));
+  }
   recomputeCostAndSegments(fleet);
 }
 
@@ -1121,9 +1286,27 @@ export async function getFleetEvidence(
 
     // Tier 1 — live temp buffer (the FIRST candidate root that yields a lane).
     let live: FleetEvidence | null = null;
+    /** Did the durable union behind the live lanes complete? (R3-01, read below.) */
+    let liveUnionComplete = false;
     for (const telDir of candidateRoots(rootPijId, deps, opts)) {
-      const built = buildFleetEvidence(rootPijId, readSegments(deps.fs, telDir), roster);
+      // Undo any mid-session prune first: a live lane whose buffer was flushed holds
+      // only the delta since the last commit, and reporting that as the lane total is
+      // the same silent under-report the session reader had (finding 02).
+      const buffered = readBufferedSegments(deps.fs, telDir);
+      const { segments, flushedUnreachable, refRecovered } = durableSegments(buffered, telDir, {
+        fs: deps.fs,
+        ...(opts?.gitRead ? { gitRead: opts.gitRead } : {}),
+      });
+      const built = buildFleetEvidence(rootPijId, segments, roster, new Set(refRecovered));
       if (built !== null) {
+        if (flushedUnreachable) {
+          for (const lane of built.sessions) {
+            if (lane.token_evidence.coverage === 'unavailable') continue;
+            lane.token_evidence.coverage = 'partial';
+            lane.token_evidence.reason = 'flushed_segments_unreadable';
+          }
+        }
+        liveUnionComplete = !flushedUnreachable;
         live = built;
         break;
       }
@@ -1142,7 +1325,7 @@ export async function getFleetEvidence(
       // the ONLY join left once `pij close` has deleted the descriptors.
       const rosterHasJoinKeys = roster.members.some((m) => m.harness_session_id !== null);
       if (registry.available || refLanes.size > 0 || rosterHasJoinKeys) {
-        enrichOrphans(fleet, roster, registry, refLanes, deps);
+        enrichOrphans(fleet, roster, registry, refLanes, deps, liveUnionComplete);
       }
     }
 

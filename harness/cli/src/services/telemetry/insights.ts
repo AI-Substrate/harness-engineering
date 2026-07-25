@@ -1277,11 +1277,25 @@ export function buildInsights(
   const discipline = disciplinePanel(units, workUnits);
 
   const mapVersions = new Set<string>();
-  const coverage: TokenCoverage = { measured: 0, unmeasured: 0 };
+  const coverage: TokenCoverage = {
+    measured: 0,
+    partial: 0,
+    unavailable: 0,
+    unmeasured: 0,
+    reasons: {},
+    causes: { unknown: 0 },
+  };
   for (const { report } of analyticInputs) {
     mapVersions.add(report.provenance.flow_stage_map_version);
     coverage.measured += report.provenance.token_coverage.measured;
     coverage.unmeasured += report.provenance.token_coverage.unmeasured;
+    coverage.partial += report.provenance.token_coverage.partial ?? 0;
+    coverage.unavailable += report.provenance.token_coverage.unavailable ?? 0;
+    for (const [reason, count] of Object.entries(report.provenance.token_coverage.reasons ?? {})) {
+      const key = reason as keyof typeof coverage.reasons;
+      coverage.reasons[key] = (coverage.reasons[key] ?? 0) + (count ?? 0);
+    }
+    coverage.causes.unknown += report.provenance.token_coverage.causes?.unknown ?? 0;
   }
 
   const provenance: InsightsProvenance = {

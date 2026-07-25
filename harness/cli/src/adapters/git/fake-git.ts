@@ -13,6 +13,8 @@ export class FakeGit implements GitPort {
       branch?: string | null;
       currentCommit?: string | null;
       remoteUrl?: string | null;
+      worktreeRoots?: readonly string[];
+      worktreeFailure?: 'not-a-repository' | 'malformed' | 'too-many';
     } = {},
   ) {}
 
@@ -35,5 +37,17 @@ export class FakeGit implements GitPort {
   remoteUrl(): string | null {
     this.calls.push('remoteUrl');
     return this.state.remoteUrl ?? null;
+  }
+
+  knownWorktreeRoots(maxCandidates: number): ReturnType<GitPort['knownWorktreeRoots']> {
+    this.calls.push(`knownWorktreeRoots:${maxCandidates}`);
+    if (this.state.worktreeFailure !== undefined) {
+      return { status: 'unavailable', reason: this.state.worktreeFailure };
+    }
+    const roots = [...new Set(this.state.worktreeRoots ?? [])];
+    if (!Number.isSafeInteger(maxCandidates) || maxCandidates < 1 || roots.length > maxCandidates) {
+      return { status: 'unavailable', reason: 'too-many' };
+    }
+    return { status: 'ok', roots };
   }
 }

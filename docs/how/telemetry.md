@@ -647,6 +647,23 @@ absent the field is `null`, never estimated.
   flow-pair) is the design intent but is **not yet proven live** — treat read-only
   peers as semantically blind until a measured fleet demonstrates otherwise.
 
+## Token evidence after sync and prune
+
+Typed usage is preserved as per-field evidence for `input`, `output`,
+`cache_read`, `cache_create`, and `nano_aiu`. Each field carries its value,
+source (`live`, `ref`, or `ledger`), observation kind, coverage, and a closed
+reason when unavailable. Readers reduce a whole session once: final shutdown,
+then cumulative checkpoint, then distinct message outputs, then partial
+compaction. Unlike kinds are never added.
+
+Aggregate coverage is `measured` only when all four token buckets are known,
+`partial` when at least one is known, and `unavailable` when none is known.
+`cause` remains `unknown` unless an authoritative producer supplies it. Scalar
+totals and `source` remain compatibility projections; per-field evidence is the
+authoritative surface. A synced ref with empty fields cannot mask measured vendor
+evidence, and pruning the local buffer does not remove ref-backed measurements.
+
+
 ## See also
 
 - [Harness value measures](./harness-value-measures.md) — how the `segment`

@@ -37,6 +37,16 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   readonly failDeletes = new Set<string>();
   /** Paths modelled as symlinks/devices for no-follow bundle checks. */
   readonly nonRegularPaths = new Set<string>();
+  /** Paths modelled specifically as symlinks for typed no-follow failures. */
+  readonly symlinkPaths = new Set<string>();
+  /** Optional metadata sizes, used to model oversize without content allocation. */
+  readonly reportedSizes = new Map<string, number>();
+  /** Ordered bounded-read operations (metadata before content). */
+  readonly noFollowOps: Array<{
+    op: 'probe' | 'read';
+    path: string;
+    maxBytes: number;
+  }> = [];
   /** Created sibling temp directories, in order. */
   readonly siblingTemps: string[] = [];
   /** Exclusive directory publish attempts. */
@@ -72,6 +82,54 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     if (path in this.files) return this.files[path] ?? null;
     const bytes = this.byteFiles.get(path);
     return bytes === undefined ? null : new TextDecoder().decode(bytes);
+  }
+
+  probeRegularFileNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ): ReturnType<FsPort['probeRegularFileNoFollow']> {
+    this.noFollowOps.push({ op: 'probe', path, maxBytes });
+    const normalizedRoot = root.replace(/\\/g, '/').replace(/\/+$/, '');
+    const normalizedPath = path.replace(/\\/g, '/');
+    if (normalizedPath !== normalizedRoot && !normalizedPath.startsWith(`${normalizedRoot}/`)) {
+      return { status: 'unavailable', reason: 'symlink' };
+    }
+    const bytes = this.byteFiles.get(path);
+    const text = this.files[path];
+    if (bytes === undefined && text === undefined) {
+      return { status: 'unavailable', reason: 'missing' };
+    }
+    if (this.symlinkPaths.has(path)) {
+      return { status: 'unavailable', reason: 'symlink' };
+    }
+    if (this.nonRegularPaths.has(path)) {
+      return { status: 'unavailable', reason: 'non-file' };
+    }
+    const size =
+      this.reportedSizes.get(path) ??
+      (bytes !== undefined ? bytes.byteLength : Buffer.byteLength(text as string, 'utf8'));
+    if (!Number.isSafeInteger(size) || size < 0) {
+      return { status: 'unavailable', reason: 'io-error' };
+    }
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || size > maxBytes) {
+      return { status: 'unavailable', reason: 'oversize' };
+    }
+    return { status: 'ok', bytes: size };
+  }
+
+  readTextFileNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ): ReturnType<FsPort['readTextFileNoFollow']> {
+    const probe = this.probeRegularFileNoFollow(root, path, maxBytes);
+    if (probe.status === 'unavailable') return probe;
+    this.noFollowOps.push({ op: 'read', path, maxBytes });
+    const bytes = this.byteFiles.get(path);
+    const text = bytes === undefined ? this.files[path] : new TextDecoder().decode(bytes);
+    if (text === undefined) return { status: 'unavailable', reason: 'missing' };
+    return { status: 'ok', bytes: probe.bytes, text };
   }
 
   readBytesNoFollow(path: string): Uint8Array | null {

@@ -1,10 +1,18 @@
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
+import type { GitReadPort } from '../../adapters/git/git-read-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { ChecksStatus } from './events.js';
+import { readRefLanes, readRefSegments } from './ref-source.js';
 import type { Segment } from './segment.js';
+import { type TokenEvidence, transcriptEvidenceReason } from './token-evidence.js';
+import {
+  reduceUsageEvents,
+  tokenEvidenceFromLegacyTokens,
+  tokenEvidenceFromObservation,
+} from './usage-observation.js';
 
 /**
  * `getSessionEvidence` (plan 041 Phase 1) — the deterministic read-by-session
@@ -54,6 +62,8 @@ export interface SessionEvidence {
   harness: string;
   /** Number of telemetry segments joined into this evidence. */
   segments: number;
+  /** Per-field token evidence; authoritative over compatibility totals. */
+  token_evidence: TokenEvidence;
   /** Skill name → run count (derived from `skill` events). */
   skills: Record<string, number>;
   /** Distinct skill names in first-seen order across the joined segments. */
@@ -98,6 +108,7 @@ export interface SessionEvidenceDeps {
   fs: EvidenceFs;
   env: Pick<EnvPort, 'home'>;
   proc: Pick<ProcessPort, 'cwd'>;
+  gitRead?: GitReadPort;
 }
 
 /** Options for {@link getSessionEvidence} — the documented public surface (plan 041 contract). */
@@ -173,7 +184,26 @@ export function locateSession(
  * lane (plan 051 · T002).
  */
 export function readSegments(fs: EvidenceFs, telDir: string): Segment[] {
-  const out: Segment[] = [];
+  return readBufferedSegments(fs, telDir).map((entry) => entry.seg);
+}
+
+/** One buffered segment plus the coordinates the durability union needs. */
+export interface BufferedSegment {
+  seg: Segment;
+  /** The buffer subdir name — the harness session id. */
+  session: string;
+  /** The `<seq>.json` ordinal, compared against the `<session>.flushed` watermark. */
+  seq: number;
+}
+
+/**
+ * {@link readSegments} with each segment's buffer coordinates retained, so a reader can
+ * tell the UNFLUSHED delta (seq > watermark) from seqs the prune has not got to yet
+ * (seq <= watermark, whose bytes the committed ref already owns). Same scan, same
+ * fail-safe skips.
+ */
+export function readBufferedSegments(fs: EvidenceFs, telDir: string): BufferedSegment[] {
+  const out: BufferedSegment[] = [];
   const subs = fs
     .readdir(telDir)
     .filter((n) => !n.includes('.'))
@@ -190,13 +220,60 @@ export function readSegments(fs: EvidenceFs, telDir: string): Segment[] {
       const raw = fs.readText(posixJoin(subDir, f.name));
       if (raw === null) continue;
       try {
-        out.push(JSON.parse(raw) as Segment);
+        out.push({ seg: JSON.parse(raw) as Segment, session: sub, seq: f.seq });
       } catch {
         // a corrupt buffer file is skipped, never fatal (fail-safe; AC-03)
       }
     }
   }
   return out;
+}
+
+/**
+ * The `<session>.flushed` high-water seq — how much of this session the sync has
+ * already pushed to its ref and the prune is entitled to delete. `0` when absent
+ * (nothing flushed yet) or unreadable.
+ */
+export function readFlushedWatermark(fs: EvidenceFs, telDir: string, session: string): number {
+  const raw = fs.readText(posixJoin(telDir, `${session}.flushed`));
+  if (raw === null) return 0;
+  const parsed = Number.parseInt(raw.trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+/**
+ * One segment's token buckets summed off its TURN events, or `null` when no turn event
+ * carries any.
+ *
+ * A segment recovered from its committed ref has NO scalar `tokens` projection — the
+ * OTLP round trip carries the buckets on the turn events instead — so any legacy
+ * (pre-typed-usage) fold that reads only `seg.tokens` counts every ref-recovered
+ * segment as MISSING and drops the whole flushed half of a post-prune union
+ * (finding 02). Exported so the fleet's lane fold applies the same rule as the session
+ * reader: two readers, one number for one session (R3-01).
+ */
+export function turnBuckets(
+  segment: Segment,
+): { input: number; output: number; cache_read: number; cache_create: number } | null {
+  const sum = { input: 0, output: 0, cache_read: 0, cache_create: 0 };
+  let present = false;
+  for (const event of segment.event_stream ?? []) {
+    if (event.kind !== 'turn') continue;
+    if (
+      event.in === undefined &&
+      event.out === undefined &&
+      event.cache_read === undefined &&
+      event.cache_create === undefined
+    ) {
+      continue;
+    }
+    present = true;
+    sum.input += event.in ?? 0;
+    sum.output += event.out ?? 0;
+    sum.cache_read += event.cache_read ?? 0;
+    sum.cache_create += event.cache_create ?? 0;
+  }
+  return present ? sum : null;
 }
 
 /**
@@ -278,6 +355,47 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
     gaps.push('skill_name_capture');
   }
 
+  const usageObservation = reduceUsageEvents(
+    segments.flatMap((segment) => segment.event_stream ?? []),
+  );
+  let legacyMeasured = false;
+  let legacyMissing = false;
+  const legacy = { input: 0, output: 0, cache_read: 0, cache_create: 0 };
+  if (usageObservation === null) {
+    for (const segment of segments) {
+      // A segment recovered from its committed ref has no scalar `tokens` projection
+      // (the OTLP round trip carries the buckets on the turn events instead), so fall
+      // back to the turn sums — the same measured data `ref-source` already trusts.
+      // Without this a post-prune union would drop the whole flushed half (finding 02).
+      const buckets = segment.tokens ?? turnBuckets(segment);
+      if (buckets === null) {
+        legacyMissing = true;
+        continue;
+      }
+      legacyMeasured = true;
+      legacy.input += buckets.input;
+      legacy.output += buckets.output;
+      legacy.cache_read += buckets.cache_read;
+      legacy.cache_create += buckets.cache_create;
+    }
+  }
+  const tokenEvidence =
+    usageObservation !== null
+      ? tokenEvidenceFromObservation(usageObservation, 'live')
+      : tokenEvidenceFromLegacyTokens(legacyMeasured ? legacy : null, 'live');
+  if (usageObservation === null && legacyMeasured && legacyMissing) {
+    tokenEvidence.coverage = 'partial';
+    tokenEvidence.reason = 'source_unavailable';
+  }
+  // Finding 07: when the harness said WHY it could not read tokens, say so instead of
+  // the generic `no_observation` — that is the difference between a diagnosable silent
+  // zero and one that persists.
+  if (tokenEvidence.coverage === 'unavailable') {
+    const declared = segments
+      .map((segment) => transcriptEvidenceReason(segment.token_unavailable_reason))
+      .find((reason) => reason !== null);
+    if (declared != null) tokenEvidence.reason = declared;
+  }
   return {
     pij_session_id: pijSessionId,
     // The matched segments all belong to this pij session; take the first one's
@@ -287,6 +405,7 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
       segments.find((s) => (s.harness_session_id ?? '').length > 0)?.harness_session_id ?? null,
     harness: segments[0]?.harness ?? 'unknown',
     segments: segments.length,
+    token_evidence: tokenEvidence,
     skills,
     skill_order: skillOrder,
     files: { written, edited },
@@ -303,6 +422,93 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
 }
 
 /**
+ * Fold a buffer match into evidence that still speaks for the WHOLE session after a
+ * mid-session sync/prune (finding 02).
+ *
+ * The post-commit flush hook syncs and prunes constantly, so the buffer usually holds
+ * only the delta captured SINCE the last commit. Folding that alone reported the subset
+ * as fully `measured` — a silent under-report that scales with how early the first
+ * commit lands. Recovery is the union `sync` itself performs: the committed ref's
+ * segments (the flushed truth) ++ the buffer's unflushed delta, folded ONCE so unlike
+ * observation kinds are never added. Seqs at or below the watermark are dropped from
+ * the buffer side — the ref already owns those bytes, so a lagging prune cannot
+ * double-count them (ref shadows temp).
+ *
+ * When the flushed half cannot be reached (no git read port, or no ref for this
+ * session) the values that remain are real but partial, and say so with
+ * `flushed_segments_unreadable` rather than passing as measured.
+ */
+export interface DurableSegments {
+  /** The whole session: committed ref segments ++ the buffer's unflushed delta. */
+  segments: Segment[];
+  /** `true` when a prune happened but the flushed half could not be recovered. */
+  flushedUnreachable: boolean;
+  /**
+   * The subset of `segments` recovered FROM THE REF — the flushed half, by identity.
+   * Provenance a consumer cannot recover from content: an OTLP round trip strips a
+   * segment's scalar `tokens` projection, and a live segment that never had one is a
+   * genuinely unmeasured lane (AC-02). Same shape, opposite meaning (R3-01).
+   */
+  refRecovered: readonly Segment[];
+}
+
+/**
+ * Reconstruct the WHOLE session behind a buffer read, undoing the mid-session prune.
+ * Shared by the session reader and the fleet's live lanes so both answer the same
+ * number for the same session.
+ */
+export function durableSegments(
+  buffered: readonly BufferedSegment[],
+  telDir: string,
+  deps: Pick<SessionEvidenceDeps, 'fs' | 'gitRead'>,
+): DurableSegments {
+  const sessions = [...new Set(buffered.map((e) => e.session))];
+  const watermarks = new Map(
+    sessions.map((s) => [s, readFlushedWatermark(deps.fs, telDir, s)] as const),
+  );
+  const pruned = sessions.filter((s) => (watermarks.get(s) ?? 0) > 0);
+  if (pruned.length === 0) {
+    return { segments: buffered.map((e) => e.seg), flushedUnreachable: false, refRecovered: [] };
+  }
+
+  const refSegments =
+    deps.gitRead === undefined ? new Map<string, Segment[]>() : readRefSegments(deps.gitRead);
+  const flushed = pruned.flatMap((s) => refSegments.get(s) ?? []);
+  if (flushed.length === 0) {
+    return { segments: buffered.map((e) => e.seg), flushedUnreachable: true, refRecovered: [] };
+  }
+  // Seqs at/below the watermark are already owned by the ref — drop them from the
+  // buffer side so a lagging prune cannot double-count (ref shadows temp). The save
+  // path enforces the same rule through the ROLLED MANIFEST's `max_seq` (with this
+  // watermark as its fallback), not through this file: two readers, one rule, two
+  // different statements of which seqs the ref owns.
+  const unflushed = buffered.filter((e) => e.seq > (watermarks.get(e.session) ?? 0));
+  return {
+    segments: [...flushed, ...unflushed.map((e) => e.seg)],
+    flushedUnreachable: false,
+    refRecovered: flushed,
+  };
+}
+
+function foldDurable(
+  pijSessionId: string,
+  matched: readonly BufferedSegment[],
+  telDir: string,
+  deps: SessionEvidenceDeps,
+): SessionEvidence {
+  const { segments, flushedUnreachable } = durableSegments(matched, telDir, deps);
+  const evidence = fold(
+    pijSessionId,
+    segments.filter((s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId),
+  );
+  if (flushedUnreachable && evidence.token_evidence.coverage !== 'unavailable') {
+    evidence.token_evidence.coverage = 'partial';
+    evidence.token_evidence.reason = 'flushed_segments_unreadable';
+  }
+  return evidence;
+}
+
+/**
  * Read + join + fold a pij session's telemetry into normalized {@link SessionEvidence},
  * or `null` when no segment carries this pij id. Scans the candidate buffer roots
  * (worktree → pij folder → cwd) and uses the FIRST that yields a match — the
@@ -316,10 +522,22 @@ export async function getSessionEvidence(
 ): Promise<SessionEvidence | null> {
   try {
     for (const telDir of candidateRoots(pijSessionId, deps, opts)) {
-      const matched = readSegments(deps.fs, telDir).filter(
-        (s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
+      const matched = readBufferedSegments(deps.fs, telDir).filter(
+        (e) => e.seg.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
       );
-      if (matched.length > 0) return fold(pijSessionId, matched);
+      if (matched.length > 0) return foldDurable(pijSessionId, matched, telDir, deps);
+    }
+    if (deps.gitRead !== undefined) {
+      const ref = [...readRefLanes(deps.gitRead).values()].find(
+        (lane) => lane.pij_session_id === pijSessionId,
+      );
+      if (ref !== undefined) {
+        const evidence = fold(pijSessionId, []);
+        evidence.harness_session_id = ref.harness_session_id;
+        evidence.segments = ref.segments;
+        evidence.token_evidence = ref.token_evidence;
+        return evidence;
+      }
     }
     return null;
   } catch {

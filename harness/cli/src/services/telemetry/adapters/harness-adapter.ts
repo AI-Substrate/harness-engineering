@@ -44,12 +44,18 @@ export interface HarnessSource {
    * The resolved session id for THIS capture, threaded by the capture core so an
    * adapter never re-derives it from a mutable source. For env-keyed harnesses
    * it's the session-id env var; for VS Code Copilot Chat it's the ONCE-resolved
-   * cwd→latest-session lookup. Threading it (rather than re-querying per read)
-   * keeps every read in a single capture keyed to the SAME session — no drift
-   * under concurrent same-repo windows. Optional only so direct `HarnessSource`
-   * literals (tests) need not supply it; the capture core always sets it.
+   * cwd→latest-session lookup.
    */
   sessionId?: string;
+  /**
+   * Standard Claude's selected config root and the complete bounded set of
+   * explicit Git worktree roots for this capture. The object identity is shared
+   * by position and extraction so the adapter can memoize one safe resolution.
+   */
+  standardClaude?: {
+    readonly configRoot: string;
+    readonly projectRoots: readonly string[];
+  };
 }
 
 /** Read-only context an adapter extracts counts from (a source + the computed window). */
@@ -66,6 +72,13 @@ export interface HarnessContext extends HarnessSource {
 export interface HarnessCapabilities {
   harness_session_id?: string | null;
   tokens?: SegmentTokens | null;
+  /**
+   * WHY tokens are absent, when the harness can say precisely (finding 07). A bare
+   * `tokens: null` renders as the generic `no_observation` on every surface, so a
+   * token-blind session could only be diagnosed by source-diving. Adapters that
+   * resolve a transcript set the closed reason they already computed.
+   */
+  token_unavailable_reason?: string | null;
   models?: Record<string, SegmentModelStat> | null;
   effort?: string | null;
   skills?: Record<string, number> | null;

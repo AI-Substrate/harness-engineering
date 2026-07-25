@@ -17,6 +17,7 @@ import {
   SEV_ERROR,
   SEV_INFO,
   SEV_WARN,
+  schemaIdentityForSegmentVersion,
   severityText,
 } from '../../../../src/services/telemetry/otlp/types.js';
 import { computeRollup } from '../../../../src/services/telemetry/rollup.js';
@@ -85,15 +86,15 @@ describe('schema_url pinning + version lockstep (T006)', () => {
   });
 
   it('keeps the current OTLP scope version in lockstep with the producer schema version', () => {
-    expect(HARNESS_SCHEMA_URL).toContain('/v0.2.0');
+    expect(HARNESS_SCHEMA_URL).toContain('/v0.3.0');
     expect(OTLP_SCOPE_VERSION).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(OTLP_SCOPE_VERSION).toBe('2.5');
+    expect(OTLP_SCOPE_VERSION).toBe('2.6');
   });
 });
 
 /**
  * Companion finding F002 (run …ab81): the real-fixture round-trips only exercise
- * the event kinds those sessions happened to contain. This drives ALL 15 kinds
+ * the event kinds those sessions happened to contain. This drives ALL 18 kinds
  * (with their optional fields + a `t_precision` + `checks.gates` + artifact
  * `counts`/`enums` kvlists) through serializeSegment → OTLP → reconstruct, so
  * encode/decode symmetry is proven for every kind, not just the ones a fixture
@@ -171,9 +172,19 @@ const ALL_KINDS: Event[] = [
     counts: { findings: 1 },
     verdict: 'pass',
   },
+  {
+    t: '2026-06-27T00:00:18Z',
+    kind: 'usage',
+    observation_kind: 'cumulative_checkpoint',
+    in: 101,
+    out: 202,
+    cache_read: 303,
+    cache_create: 404,
+    nano_aiu: 505,
+  } as unknown as Event,
 ];
 
-describe('Segment-2.5 product provenance reconstruction', () => {
+describe('Segment-2.6 product provenance reconstruction', () => {
   const productCommit = 'a'.repeat(40);
   const current = serializeSegment(
     {
@@ -195,14 +206,14 @@ describe('Segment-2.5 product provenance reconstruction', () => {
     expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({
       ok: true,
       segment: {
-        schema_version: '2.5',
+        schema_version: '2.6',
         product_commit: productCommit,
         event_stream: [],
       },
     });
   });
 
-  it('rejects a product attribute on a pre-2.5/v0.1 record', () => {
+  it('rejects a product attribute on a pre-2.6/v0.1 record', () => {
     const legacy = segmentToOtlpLogs(loadGolden(FIXTURES[0]));
     legacy.resourceLogs[0].resource?.attributes.push({
       key: 'harness.product.commit',
@@ -263,6 +274,56 @@ describe('all-kind reconstruction symmetry and producer-owned Logs contract', ()
     event_stream: ALL_KINDS,
   };
   const seg = serializeSegment(input, '/repo');
+
+  const usageRecord = (logs: ReturnType<typeof segmentToOtlpLogs>) => {
+    const record = logs.resourceLogs[0].scopeLogs[0].logRecords.find((candidate) =>
+      candidate.attributes?.some(
+        (attribute) =>
+          attribute.key === 'harness.event.kind' && attribute.value.stringValue === 'usage',
+      ),
+    );
+    if (record === undefined) throw new Error('missing usage record');
+    return record;
+  };
+
+  it('rejects malformed usage records before logs-only reconstruction', () => {
+    const missingKind = segmentToOtlpLogs(seg);
+    const missingRecord = usageRecord(missingKind);
+    missingRecord.attributes = missingRecord.attributes?.filter(
+      (attribute) => attribute.key !== 'harness.usage.observation_kind',
+    );
+    expect(reconstructSegmentFromOtlpLogs(missingKind)).toMatchObject({ ok: false });
+
+    const unknownKind = segmentToOtlpLogs(seg);
+    const kindAttribute = usageRecord(unknownKind).attributes?.find(
+      (attribute) => attribute.key === 'harness.usage.observation_kind',
+    );
+    if (kindAttribute === undefined) throw new Error('missing observation kind');
+    kindAttribute.value = { stringValue: 'unknown' };
+    expect(reconstructSegmentFromOtlpLogs(unknownKind)).toMatchObject({ ok: false });
+
+    const bucketless = segmentToOtlpLogs(seg);
+    const bucketKeys = new Set([
+      'gen_ai.usage.input_tokens',
+      'gen_ai.usage.output_tokens',
+      'harness.usage.cache_read',
+      'harness.usage.cache_create',
+      'harness.usage.nano_aiu',
+    ]);
+    const bucketlessRecord = usageRecord(bucketless);
+    bucketlessRecord.attributes = bucketlessRecord.attributes?.filter(
+      (attribute) => !bucketKeys.has(attribute.key),
+    );
+    expect(reconstructSegmentFromOtlpLogs(bucketless)).toMatchObject({ ok: false });
+
+    const malformedBucket = segmentToOtlpLogs(seg);
+    const bucketAttribute = usageRecord(malformedBucket).attributes?.find(
+      (attribute) => attribute.key === 'gen_ai.usage.output_tokens',
+    );
+    if (bucketAttribute === undefined) throw new Error('missing usage bucket');
+    bucketAttribute.value = { stringValue: 'not-an-integer' };
+    expect(reconstructSegmentFromOtlpLogs(malformedBucket)).toMatchObject({ ok: false });
+  });
 
   it('the producer-owned definition table is complete and unique for EVENT_KINDS', () => {
     expect(LOG_EVENT_DEFINITIONS.map((definition) => definition.kind).sort()).toEqual(
@@ -450,5 +511,77 @@ describe('repair RED 3 — exact dependent and fixed Logs severity', () => {
       record.attributes = record.attributes.filter((attribute) => attribute.key !== dependentKey);
       expect(validateLogRecordContract(record)).toBe(false);
     }
+  });
+});
+
+describe('P063 T008 — typed usage OTLP reconstruction', () => {
+  const usageEvents = [
+    {
+      t: '2026-07-20T12:00:01Z',
+      kind: 'usage',
+      observation_kind: 'message_output',
+      out: 17,
+    },
+    {
+      t: '2026-07-20T12:00:02Z',
+      kind: 'usage',
+      observation_kind: 'final_shutdown',
+      in: 20,
+      out: 30,
+      cache_read: 40,
+      cache_create: 50,
+      nano_aiu: 60,
+    },
+  ] as unknown as Event[];
+  const segment = serializeSegment(
+    {
+      command: 'capture',
+      harness: 'copilot-cli',
+      harness_session_id: 'typed-usage-roundtrip',
+      timecode: '2026-07-20T12:00:03Z',
+      window: { since: 'session-start', from: 0, to: usageEvents.length },
+      branch: null,
+      event_stream: usageEvents,
+    },
+    '/repo',
+  );
+
+  it('preserves observation kind and every present numeric bucket byte-semantically', () => {
+    const logs = segmentToOtlpLogs(segment);
+    expect(otlpLogsToEvents(logs)).toEqual(segment.event_stream);
+    expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({
+      ok: true,
+      segment: { event_stream: segment.event_stream },
+    });
+  });
+
+  it('keeps absent optional buckets absent after encode/decode', () => {
+    const reconstructed = otlpLogsToEvents(segmentToOtlpLogs(segment));
+    expect(reconstructed[0]).toEqual({
+      t: '2026-07-20T12:00:01Z',
+      kind: 'usage',
+      observation_kind: 'message_output',
+      out: 17,
+    });
+  });
+
+  it('emits a conformant closed Logs envelope for typed usage', () => {
+    expect(conformLogs(segmentToOtlpLogs(segment))).toEqual({ ok: true });
+  });
+
+  it('rejects typed usage under the Segment-2.5 wire identity', () => {
+    const logs = segmentToOtlpLogs(segment);
+    const identity = schemaIdentityForSegmentVersion('2.5');
+    const schemaVersion = logs.resourceLogs[0].resource?.attributes.find(
+      (attribute) => attribute.key === 'harness.schema_version',
+    );
+    if (schemaVersion === undefined) throw new Error('missing schema version');
+    schemaVersion.value = { stringValue: '2.5' };
+    logs.resourceLogs[0].schemaUrl = identity.schemaUrl;
+    logs.resourceLogs[0].scopeLogs[0].schemaUrl = identity.schemaUrl;
+    if (logs.resourceLogs[0].scopeLogs[0].scope === undefined) throw new Error('missing scope');
+    logs.resourceLogs[0].scopeLogs[0].scope.version = identity.scopeVersion;
+
+    expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({ ok: false });
   });
 });

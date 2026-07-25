@@ -3,8 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
+import { FakeGitRead } from '../../../src/adapters/git/fake-git-read.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
+import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 import {
@@ -159,6 +161,15 @@ describe('getSessionEvidence — fold plan-037 fixtures into normalized evidence
     expect(ev.compactions).toBe(0);
     // subagent_tokens is a known 0 here → NOT a gap; plans_touched absent → gap
     expect(ev.gaps).toEqual(['plans_touched']);
+    expect(ev.token_evidence).toMatchObject({
+      coverage: 'measured',
+      source: 'live',
+      fields: {
+        input: { value: CLAUDE.tokens?.input, source: 'live' },
+        cache_read: { value: CLAUDE.tokens?.cache_read, source: 'live' },
+        cache_create: { value: CLAUDE.tokens?.cache_create, source: 'live' },
+      },
+    });
   });
 
   it('parses the copilot-cli golden: harness verb + tool counts', async () => {
@@ -290,6 +301,43 @@ describe('getSessionEvidence — fold plan-037 fixtures into normalized evidence
     expect(ev.gaps).toEqual(['subagent_tokens']); // plans present in seg0 → only the tokens gap
   });
 
+  it('recovers typed token evidence from a whole-session ref after local prune', async () => {
+    const segment = synthetic(
+      'pij-pruned',
+      [
+        {
+          t: '2026-06-29T00:00:01Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          in: 10,
+          out: 20,
+          cache_read: 30,
+          cache_create: 40,
+        },
+      ],
+      { harness_session_id: 'hs-pruned', tokens: null },
+    );
+    const gitRead = new FakeGitRead({
+      'refs/harness-telemetry/2026/06/29/hs-pruned': [
+        {
+          name: 'session.logs.jsonl',
+          content: `${JSON.stringify(segmentToOtlpLogs(segment))}\n`,
+        },
+      ],
+    });
+    const { deps } = makeDeps({});
+
+    const evidence = await getSessionEvidence('pij-pruned', { ...deps, gitRead });
+    expect(evidence).toMatchObject({
+      harness_session_id: 'hs-pruned',
+      segments: 1,
+      token_evidence: {
+        coverage: 'measured',
+        source: 'ref',
+        fields: { output: { value: 20, source: 'ref' } },
+      },
+    });
+  });
   it('returns null for an unknown pij session (fail-safe, never throws)', async () => {
     const { files, dirs } = layout('/wt', [{ sub: 's', segments: [tag(CLAUDE, 'pij-a')] }]);
     const { deps } = makeDeps({ files, dirs });

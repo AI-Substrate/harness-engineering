@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
@@ -18,8 +18,8 @@ import { cursorPathFor, readCursor, telemetryDir } from '../../../src/services/t
  * capture path. NOT a wall-clock threshold (grill-agent-done reshaped that). The
  * honest, buildable guarantee (the Claude adapter reads the whole transcript via
  * a port with no range read — M1) is:
- *   1. bounded read-COUNT — the transcript is read a small constant number of
- *      times per capture (currentPosition + extract = 2), never O(history); and
+ *   1. bounded no-follow locator I/O — one candidate is probed and read once per
+ *      capture resolution, then shared by currentPosition + extract; and
  *   2. cursor-incremental PARSE — a repeat capture with no new lines re-counts
  *      nothing (the cursor window bounds what is parsed).
  * Plus the AC-06 PR-invisibility guard: every write lands under the gitignored
@@ -61,13 +61,14 @@ function captureDeps(fs: FakeFs): CaptureDeps {
 }
 
 describe('capture path — structural perf sensor (plan 034 Phase 3 · M-K6)', () => {
-  it('reads the transcript a bounded constant (2: currentPosition + extract), never O(history)', () => {
+  it('resolves one transcript with bounded no-follow I/O shared by position + extract', () => {
     const fs = seededFs();
-    const spy = vi.spyOn(fs, 'readText');
     captureTelemetry(captureDeps(fs));
-    const transcriptReads = spy.mock.calls.filter(([p]) => p === TRANSCRIPT_PATH).length;
-    // M-K6.1: the M1 debt is exactly two whole-file reads — bounded, not per-line.
-    expect(transcriptReads).toBe(2);
+    const transcriptOps = fs.noFollowOps.filter(({ path }) => path === TRANSCRIPT_PATH);
+    // One candidate probe plus readTextFileNoFollow's race-safe re-probe + read.
+    expect(transcriptOps.map(({ op }) => op)).toEqual(['probe', 'probe', 'read']);
+    expect(new Set(transcriptOps.map(({ maxBytes }) => maxBytes)).size).toBe(1);
+    expect(fs.reads.filter((path) => path === TRANSCRIPT_PATH)).toEqual([]);
   });
 
   it('is cursor-incremental: a repeat capture with no new lines re-counts nothing (M-K6.2)', () => {

@@ -37,7 +37,7 @@ import { expectCurrentSegmentMatchesLegacy, registerOtlpGoldens } from './otlp-g
  *
  * Segment-2.4/OTLP-v0.1 goldens and invariants are frozen compatibility
  * evidence. Regeneration is deliberately disabled; current output is projected
- * only across the approved Segment-2.5/OTLP-v0.2 metadata delta.
+ * only across the approved Segment-2.6/OTLP-v0.3 metadata delta.
  */
 
 const REPO = '/home/dev/repo'; // matches the scrubbed fixture's rebased paths
@@ -112,7 +112,7 @@ describe('real claude fixture → segment (AC-01)', () => {
   const seg = segment();
   registerOtlpGoldens(seg, GOLDEN); // T005 — mint/assert the OTLP goldens beside the segment
 
-  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+  it('matches the frozen Segment-2.4 golden modulo approved 2.6 metadata and usage', () => {
     const expected = JSON.parse(readFileSync(GOLDEN, 'utf8'));
     expectCurrentSegmentMatchesLegacy(seg, expected);
   });
@@ -226,6 +226,9 @@ function coInvariantsOf(seg: ReturnType<typeof copilotSegment>) {
     models: Object.keys(seg.models ?? {}).sort(),
     user_prompts: seg.user_prompts ?? [],
     tools: seg.tools ?? {},
+    usage_observations: seg.event_stream
+      .filter((event) => event.kind === 'usage')
+      .map(({ t: _t, kind: _kind, ...observation }) => observation),
     event_count: seg.event_stream.length,
     event_stream_present: seg.event_stream.length > 0,
   };
@@ -235,7 +238,7 @@ describe('real copilot-cli fixture → segment (AC-03)', () => {
   const seg = copilotSegment();
   registerOtlpGoldens(seg, CO_GOLDEN); // T005
 
-  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+  it('matches the frozen Segment-2.4 golden modulo approved 2.6 metadata and usage', () => {
     expectCurrentSegmentMatchesLegacy(seg, JSON.parse(readFileSync(CO_GOLDEN, 'utf8')));
   });
 
@@ -360,7 +363,7 @@ describe('real cursor fixture → segment via transcript↔bubble join (AC-05)',
   const seg = cursorSegment();
   registerOtlpGoldens(seg, CUR_GOLDEN); // T005
 
-  it('matches the frozen Segment-2.4 golden modulo approved 2.5 metadata', () => {
+  it('matches the frozen Segment-2.4 golden modulo approved 2.6 metadata and usage', () => {
     expectCurrentSegmentMatchesLegacy(seg, JSON.parse(readFileSync(CUR_GOLDEN, 'utf8')));
   });
 

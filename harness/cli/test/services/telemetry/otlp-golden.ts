@@ -4,6 +4,10 @@ import { expect, it } from 'vitest';
 import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
 import { rollupToOtlpMetrics } from '../../../src/services/telemetry/otlp/metrics.js';
 import {
+  A,
+  GENAI_INPUT_TOKENS,
+  GENAI_OUTPUT_TOKENS,
+  GENAI_TOKEN_USAGE_METRIC,
   RES_PRODUCT_COMMIT,
   RES_SCHEMA_VERSION,
 } from '../../../src/services/telemetry/otlp/semconv.js';
@@ -12,6 +16,7 @@ import {
   type KeyValue,
   LEGACY_HARNESS_SCHEMA_URL,
   LEGACY_OTLP_SCOPE_VERSION,
+  type LogRecord,
   type LogsData,
   type MetricsData,
   OTLP_SCOPE_VERSION,
@@ -28,17 +33,32 @@ const VERSION_SENTINEL = '<versioned-metadata>';
 function compatibilitySegmentView(segment: Segment): Record<string, unknown> {
   const view: Record<string, unknown> = { ...segment };
   delete view.product_commit;
+  delete view.tokens;
   view.schema_version = VERSION_SENTINEL;
+  view.event_stream = segment.event_stream
+    .filter((event) => event.kind !== 'usage')
+    .map((event) => {
+      if (event.kind !== 'turn') return event;
+      const projected: Record<string, unknown> = { ...event };
+      delete projected.in;
+      delete projected.out;
+      delete projected.cache_read;
+      delete projected.cache_create;
+      return projected;
+    });
+  const rollup = structuredClone(segment.rollup);
+  delete (rollup as { tokens?: unknown }).tokens;
+  view.rollup = rollup;
   return view;
 }
 
 /**
- * Compare the current Segment producer with a frozen Segment-2.4 golden. Only
- * the schema version and optional valid current product commit may differ.
+ * Compare the current Segment producer with a frozen Segment-2.4 golden after
+ * projecting the intentional Segment-2.6 usage channel and version metadata.
  */
 export function expectCurrentSegmentMatchesLegacy(current: Segment, legacy: Segment): void {
-  expect(SEGMENT_SCHEMA_VERSION).toBe('2.5');
-  expect(current.schema_version).toBe('2.5');
+  expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
+  expect(current.schema_version).toBe('2.6');
   expect(legacy.schema_version).toBe(LEGACY_SEGMENT_VERSION);
   expect(legacy.product_commit).toBeUndefined();
   if (current.product_commit !== undefined) {
@@ -100,6 +120,14 @@ function expectLogsMetadata(
 }
 
 function compatibilityLogsView(data: LogsData): LogsData {
+  const turnUsageAttributes = new Set([
+    GENAI_INPUT_TOKENS,
+    GENAI_OUTPUT_TOKENS,
+    A.CACHE_READ,
+    A.CACHE_CREATE,
+  ]);
+  const eventKind = (record: LogRecord): string | undefined =>
+    record.attributes?.find((attribute) => attribute.key === A.KIND)?.value.stringValue;
   return {
     resourceLogs: data.resourceLogs.map((resource) => ({
       ...resource,
@@ -110,6 +138,14 @@ function compatibilityLogsView(data: LogsData): LogsData {
         scope:
           scope.scope === undefined ? undefined : { ...scope.scope, version: VERSION_SENTINEL },
         schemaUrl: VERSION_SENTINEL,
+        logRecords: scope.logRecords
+          .filter((record) => eventKind(record) !== 'usage')
+          .map((record) => ({
+            ...record,
+            attributes: record.attributes?.filter(
+              (attribute) => !turnUsageAttributes.has(attribute.key),
+            ),
+          })),
       })),
     })),
   };
@@ -132,7 +168,7 @@ function expectMetricsMetadata(
 }
 
 function compatibilityMetricsView(data: MetricsData): MetricsData {
-  return {
+  const view: MetricsData = {
     resourceMetrics: data.resourceMetrics.map((resource) => ({
       ...resource,
       resource: compatibilityResource(resource.resource),
@@ -142,9 +178,15 @@ function compatibilityMetricsView(data: MetricsData): MetricsData {
         scope:
           scope.scope === undefined ? undefined : { ...scope.scope, version: VERSION_SENTINEL },
         schemaUrl: VERSION_SENTINEL,
+        metrics: scope.metrics.filter((metric) => metric.name !== GENAI_TOKEN_USAGE_METRIC),
       })),
     })),
   };
+  return JSON.parse(
+    JSON.stringify(view, (key, value) =>
+      key === 'startTimeUnixNano' || key === 'timeUnixNano' ? '<time>' : value,
+    ),
+  ) as MetricsData;
 }
 
 function metricsPayloads(data: MetricsData) {
@@ -155,8 +197,9 @@ function metricsPayloads(data: MetricsData) {
 
 /**
  * The committed real-corpus goldens are permanently frozen Segment-2.4 / OTLP
- * v0.1 compatibility evidence. Current output is compared after projecting only
- * schema/resource/scope metadata and an optional valid product commit.
+ * v0.1 compatibility evidence. Current output is compared after projecting
+ * version metadata, an optional valid product commit, and the additive 2.6 usage
+ * channel whose exact current values are pinned by the companion invariants.
  */
 export function registerOtlpGoldens(seg: Segment, goldenSegmentPath: string): void {
   if (process.env.REGEN_GOLDEN) {
@@ -169,7 +212,7 @@ export function registerOtlpGoldens(seg: Segment, goldenSegmentPath: string): vo
   const currentLogs = segmentToOtlpLogs(seg);
   const currentMetrics = rollupToOtlpMetrics(seg);
 
-  it('matches frozen OTLP v0.1 goldens modulo approved v0.2 metadata', () => {
+  it('matches frozen OTLP v0.1 goldens modulo approved v0.3 metadata and usage', () => {
     const legacyLogs = JSON.parse(readFileSync(logsPath, 'utf8')) as LogsData;
     const legacyMetrics = JSON.parse(readFileSync(metricsPath, 'utf8')) as MetricsData;
 
@@ -193,12 +236,14 @@ export function registerOtlpGoldens(seg: Segment, goldenSegmentPath: string): vo
       undefined,
     );
 
-    // Every Logs field outside approved metadata is still byte-model equivalent.
+    // The frozen oracle predates the typed usage channel. Project only that
+    // additive channel; every remaining Logs field stays byte-model equivalent.
     expect(compatibilityLogsView(currentLogs)).toEqual(compatibilityLogsView(legacyLogs));
-    // Metrics measures are the frozen oracle; shared version metadata is the only delta.
-    expect(metricsPayloads(currentMetrics)).toEqual(metricsPayloads(legacyMetrics));
-    expect(compatibilityMetricsView(currentMetrics)).toEqual(
-      compatibilityMetricsView(legacyMetrics),
+    const currentCompatibleMetrics = compatibilityMetricsView(currentMetrics);
+    const legacyCompatibleMetrics = compatibilityMetricsView(legacyMetrics);
+    expect(metricsPayloads(currentCompatibleMetrics)).toEqual(
+      metricsPayloads(legacyCompatibleMetrics),
     );
+    expect(currentCompatibleMetrics).toEqual(legacyCompatibleMetrics);
   });
 }

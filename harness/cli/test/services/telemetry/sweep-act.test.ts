@@ -141,12 +141,22 @@ describe('telemetry sweep --month — act wiring (T1.6)', () => {
   });
 
   it('AC-04: a v2.0 thin shard is DECLARED as a token gap, never fabricated', () => {
-    const { io } = ioFor('json');
+    const { io, out } = ioFor('json');
     const fs = new FakeFs();
     runSweep(['--month', '2026-07', '--out', '/out'], io, fs, bothSessions());
+    const envelope = JSON.parse(out());
+    expect(envelope.status).toBe('degraded');
+    expect(envelope.next_action).toContain('partial/unavailable');
     const report = readReport(fs, '/out/2026-07.report.json');
     // MUTATION v2.0-shard-fabricates-tokens: counting the thin shard as measured ⇒ RED.
-    expect(report.provenance.token_coverage).toEqual({ measured: 1, unmeasured: 1 });
+    expect(report.provenance.token_coverage).toEqual({
+      measured: 1,
+      partial: 0,
+      unavailable: 1,
+      unmeasured: 1,
+      reasons: { no_observation: 1 },
+      causes: { unknown: 2 },
+    });
     // Sweeping ONLY the thin session proves no fabricated tokens (measured 0, totals 0).
     const only20 = new FakeGitRead({
       [telemetryRefFor(DATE, V20_SID)]: committedShard(V20_SID, V20_EVENTS),
@@ -154,7 +164,14 @@ describe('telemetry sweep --month — act wiring (T1.6)', () => {
     const fs2 = new FakeFs();
     runSweep(['--month', '2026-07', '--out', '/out2', '--no-html'], ioFor('json').io, fs2, only20);
     const r2 = readReport(fs2, '/out2/2026-07.report.json');
-    expect(r2.provenance.token_coverage).toEqual({ measured: 0, unmeasured: 1 });
+    expect(r2.provenance.token_coverage).toEqual({
+      measured: 0,
+      partial: 0,
+      unavailable: 1,
+      unmeasured: 1,
+      reasons: { no_observation: 1 },
+      causes: { unknown: 1 },
+    });
     expect(r2.totals.tokens).toEqual({ input: 0, output: 0 });
   });
 

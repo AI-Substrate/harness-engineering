@@ -62,10 +62,10 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
     for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
   });
 
-  it('pins schema_version to "2.5"', () => {
+  it('pins schema_version to "2.6"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('2.5');
+    expect(seg.schema_version).toBe('2.6');
   });
 
   it.each([
@@ -259,7 +259,7 @@ describe('T001 — v1-compat view: prompt array + grouped subagents', () => {
   });
 });
 
-describe('v2.5 — captured_env finite current contract', () => {
+describe('v2.6 — captured_env finite current contract', () => {
   const CURRENT_ENV = {
     PIJ_SESSION_ID: 'pij-static-mockingbird',
     PIJ_PARENT_ID: 'pij-thirsty-panda',
