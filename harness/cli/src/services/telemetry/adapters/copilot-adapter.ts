@@ -4,11 +4,13 @@ import {
   observeKindFromCommand,
   shellSignature,
 } from '../command-signature.js';
+import { extractCopilotUsageObservations } from '../copilot-ledger.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event, FileDelta, FileEvent, HarnessEvent } from '../events.js';
+import type { Event, FileDelta, FileEvent, HarnessEvent, UsageEvent } from '../events.js';
 import { computeFileDelta, writtenDelta } from '../file-delta.js';
 import type { ToolCall } from '../rollup.js';
 import type { SegmentModelStat, SegmentSubagentInput, SegmentTokens } from '../segment.js';
+import { reduceUsageObservations, type UsageObservation } from '../usage-observation.js';
 import type {
   HarnessAdapter,
   HarnessCapabilities,
@@ -233,6 +235,44 @@ const nullCaps: HarnessCapabilities = {
   event_stream: null,
 };
 
+function segmentTokensFromUsage(observation: UsageObservation | null): SegmentTokens | null {
+  if (
+    observation === null ||
+    observation.observation_kind !== 'final_shutdown' ||
+    observation.input === undefined ||
+    observation.output === undefined ||
+    observation.cache_create === undefined ||
+    observation.cache_read === undefined
+  ) {
+    return null;
+  }
+  const total =
+    observation.input + observation.output + observation.cache_create + observation.cache_read;
+  return {
+    input: observation.input,
+    output: observation.output,
+    cache_create: observation.cache_create,
+    cache_read: observation.cache_read,
+    total,
+    subagent_tokens: 0,
+    grand_total: total,
+  };
+}
+
+function usageEvent(observation: UsageObservation): UsageEvent {
+  const event: UsageEvent = {
+    t: observation.t,
+    kind: 'usage',
+    observation_kind: observation.observation_kind,
+  };
+  if (observation.input !== undefined) event.in = observation.input;
+  if (observation.output !== undefined) event.out = observation.output;
+  if (observation.cache_read !== undefined) event.cache_read = observation.cache_read;
+  if (observation.cache_create !== undefined) event.cache_create = observation.cache_create;
+  if (observation.nano_aiu !== undefined) event.nano_aiu = observation.nano_aiu;
+  return event;
+}
+
 /** Counts-only view of one `events.jsonl`, sliced to the command's window. */
 interface EventsView {
   effort: string | null;
@@ -261,11 +301,15 @@ interface EventsView {
   anyTs: boolean;
   /** plan 056 — one `file` event per touched path (delta from the tool payload). */
   fileEvents: FileEvent[];
+  usageObservations: UsageObservation[];
 }
 
 function readEvents(content: string, fromLine: number, toLine: number): EventsView {
   const lines = nonEmptyLines(content);
   const anyInteractionId = lines.some((l) => str(asObj(parseLine(l)?.data).interactionId) !== null);
+  const usageObservations = extractCopilotUsageObservations(
+    lines.slice(fromLine, toLine).join('\n'),
+  );
 
   let effort: string | null = null;
   const toolNameByCall = new Map<string, string>(); // dedupe a tool execution by its call id
@@ -543,6 +587,7 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     turnEnd,
     anyTs,
     fileEvents: [...fileEventsByPath.values()],
+    usageObservations,
   };
 }
 
@@ -588,15 +633,17 @@ export const copilotAdapter: HarnessAdapter = {
             turnEnd: new Map(),
             anyTs: false,
             fileEvents: [],
+            usageObservations: [],
           };
 
-    // --- process log: authoritative tokens + per-model, attributed to this window ---
+    // --- process log: compatibility tokens + per-model, attributed to this window ---
     let input = 0;
     let output = 0;
     let cacheRead = 0;
     let cacheCreate = 0;
     let usageCount = 0;
     let effort = ev.effort;
+    const hasTypedUsage = ev.usageObservations.length > 0;
     const models: Record<string, SegmentModelStat> = {};
     // Per-interaction token totals → attached to that interaction's turn event so
     // Σ(turn tokens) == the v1 aggregate (AC-16, when interactions are present).
@@ -652,8 +699,37 @@ export const copilotAdapter: HarnessAdapter = {
       }
     }
 
-    let tokens: SegmentTokens | null = null;
-    if (usageCount > 0) {
+    // Finding 06: an output-only `assistant.message` used to suppress the process log
+    // entirely, turning input/cache_read/cache_create — which the log MEASURED — into
+    // `field_absent` until a graceful shutdown a killed lane never gets. The log's
+    // `assistant_usage` records are window-scoped message-level measurements of the
+    // SAME messages, so they may not be added to the typed output; they are folded in
+    // as a complementary `message_output` observation carrying ONLY the buckets the
+    // typed reduction is missing. Per-field recovery, never a sum of two views.
+    if (hasTypedUsage && usageCount > 0) {
+      const typed = reduceUsageObservations(ev.usageObservations);
+      const complement: UsageObservation = {
+        t: ev.usageObservations[ev.usageObservations.length - 1]?.t ?? '',
+        observation_kind: 'message_output',
+      };
+      let addsAnything = false;
+      const missing: Array<['input' | 'cache_read' | 'cache_create', number]> = [
+        ['input', input],
+        ['cache_read', cacheRead],
+        ['cache_create', cacheCreate],
+      ];
+      for (const [key, value] of missing) {
+        if (typed?.[key] !== undefined || value === 0) continue;
+        complement[key] = value;
+        addsAnything = true;
+      }
+      if (addsAnything && complement.t.length > 0) ev.usageObservations.push(complement);
+    }
+
+    let tokens: SegmentTokens | null = segmentTokensFromUsage(
+      reduceUsageObservations(ev.usageObservations),
+    );
+    if (!hasTypedUsage && usageCount > 0) {
       const total = input + output + cacheCreate + cacheRead;
       tokens = {
         input,
@@ -677,7 +753,7 @@ export const copilotAdapter: HarnessAdapter = {
       const end = ev.turnEnd.get(iid);
       const durS = end ? Math.max(0, Math.round((Date.parse(end) - Date.parse(start)) / 1000)) : 0;
       const turn: Event = { t: start, kind: 'turn', dur_s: durS };
-      const tok = perIid.get(iid);
+      const tok = hasTypedUsage ? undefined : perIid.get(iid);
       if (tok !== undefined) {
         turn.in = tok.in;
         turn.out = tok.out;
@@ -707,6 +783,7 @@ export const copilotAdapter: HarnessAdapter = {
             : { t: m.t, kind: 'model', model: m.model },
       ),
       ...turnEvents,
+      ...ev.usageObservations.map(usageEvent),
       ...ev.subagentEvts.map(
         (s): Event => ({ t: s.t, kind: 'subagent', name: s.name, status: 'completed' }),
       ),

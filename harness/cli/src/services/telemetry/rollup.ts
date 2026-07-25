@@ -12,6 +12,11 @@
  */
 
 import type { Event, Rollup, SkillStatus } from './events.js';
+import {
+  completeUsageTokens,
+  reduceUsageObservations,
+  type UsageObservation,
+} from './usage-observation.js';
 
 /** A gap before a prompt longer than this = the human walked away (idle), not thinking. */
 export const IDLE_CAP_S = 300;
@@ -178,20 +183,18 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
   const idleCap = opts.idleCapS ?? IDLE_CAP_S;
   // `flow_log` events are PURE REPLAY MARKERS (plan 035) — they carry their own
   // real `fired_at`, which can predate the window (backfilled flight-plan history).
-  // `artifact` events (plan 050) likewise carry a CAPTURE-TIME `t` (the "save time"
-  // snapshot stamp), not a work instant. `mark` events (plan 053 — a peer's
-  // counts-only self-attestation) are annotation with a capture-time `t` too, and
-  // `file` events (plan 056 — per-file write/edit deltas) are capture-time snapshots
-  // of an authorship instant. Excluding all four from the rollup keeps gap/wall/stage
-  // math anchored to the window's work events; a single backfilled marker,
-  // capture-time snapshot, peer mark, or file write would otherwise re-sort to the
-  // front and fabricate a huge mis-attributed gap (and `wall_s`). They remain in
-  // `event_stream` for replay / attribution; the rollup is derived only from the
-  // timed work events.
+  // `artifact`, `mark`, `file`, and `usage` events likewise carry observation or
+  // capture timestamps rather than work instants. Excluding them keeps gap/wall/
+  // stage math anchored to the window's work events. They remain in event_stream;
+  // usage is reduced separately below with kind-aware precedence.
   const ev = [...events]
     .filter(
       (e) =>
-        e.kind !== 'flow_log' && e.kind !== 'artifact' && e.kind !== 'mark' && e.kind !== 'file',
+        e.kind !== 'flow_log' &&
+        e.kind !== 'artifact' &&
+        e.kind !== 'mark' &&
+        e.kind !== 'file' &&
+        e.kind !== 'usage',
     )
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
@@ -228,6 +231,21 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
   const exits: Record<string, number> = {};
   let checks: string | undefined;
 
+  const usageObservations: UsageObservation[] = [];
+  for (const event of events) {
+    if (event.kind !== 'usage') continue;
+    const observation: UsageObservation = {
+      t: event.t,
+      observation_kind: event.observation_kind,
+    };
+    if (event.in !== undefined) observation.input = event.in;
+    if (event.out !== undefined) observation.output = event.out;
+    if (event.cache_read !== undefined) observation.cache_read = event.cache_read;
+    if (event.cache_create !== undefined) observation.cache_create = event.cache_create;
+    if (event.nano_aiu !== undefined) observation.nano_aiu = event.nano_aiu;
+    usageObservations.push(observation);
+  }
+
   for (const e of ev) {
     if (e.kind === 'turn') {
       if (typeof e.in === 'number') {
@@ -258,6 +276,23 @@ export function computeRollup(events: readonly Event[], opts: RollupOptions = {}
       checks = e.status;
     } else if (e.kind === 'command_exit') {
       exits[e.verb] = e.exit;
+    }
+  }
+  const usageObservation = reduceUsageObservations(usageObservations);
+  if (usageObservation !== null) {
+    const usage = completeUsageTokens(usageObservation);
+    if (usage === null) {
+      tokens.in = 0;
+      tokens.out = 0;
+      tokens.cache_read = 0;
+      tokens.cache_create = 0;
+      hasTokens = false;
+    } else {
+      tokens.in = usage.input;
+      tokens.out = usage.output;
+      tokens.cache_read = usage.cache_read;
+      tokens.cache_create = usage.cache_create;
+      hasTokens = true;
     }
   }
 

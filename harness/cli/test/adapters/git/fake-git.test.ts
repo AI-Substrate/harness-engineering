@@ -54,6 +54,39 @@ describe('FakeGit', () => {
   });
 });
 
+describe('FakeGit — bounded known-worktree roots (P063 T003)', () => {
+  it('dedupes roots in stable first-seen order and records one bounded query', () => {
+    const git = new FakeGit({
+      worktreeRoots: ['/repo/main', '/repo/worktrees/b', '/repo/main', '/repo/worktrees/a'],
+    });
+
+    expect(git.knownWorktreeRoots(3)).toEqual({
+      status: 'ok',
+      roots: ['/repo/main', '/repo/worktrees/b', '/repo/worktrees/a'],
+    });
+    expect(git.calls).toEqual(['knownWorktreeRoots:3']);
+  });
+
+  it('fails closed when the unique-root bound is exceeded instead of truncating', () => {
+    const git = new FakeGit({
+      worktreeRoots: ['/repo/main', '/repo/worktrees/a', '/repo/worktrees/b'],
+    });
+
+    expect(git.knownWorktreeRoots(2)).toEqual({
+      status: 'unavailable',
+      reason: 'too-many',
+    });
+  });
+
+  it('models malformed porcelain as a typed unavailable result', () => {
+    const git = new FakeGit({ worktreeFailure: 'malformed' });
+    expect(git.knownWorktreeRoots(8)).toEqual({
+      status: 'unavailable',
+      reason: 'malformed',
+    });
+  });
+});
+
 describe('ExecGit', () => {
   it('reports the real repo as a work tree with a string-or-null branch', () => {
     // This suite runs inside the project's own git repo. currentBranch() is

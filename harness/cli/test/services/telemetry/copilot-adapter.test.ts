@@ -9,6 +9,10 @@ import {
 } from '../../../src/services/telemetry/adapters/copilot-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
+import {
+  reduceUsageEvents,
+  tokenEvidenceFromObservation,
+} from '../../../src/services/telemetry/usage-observation.js';
 
 /**
  * T005 (plan 2.4 · AC-03, AC-04) — the Copilot adapter, proven against sanitized
@@ -305,5 +309,219 @@ describe('copilotAdapter.extract — apply_patch file capture (copilot v1.x file
       written: ['reviews/review.phase-1.md'],
       edited: ['src/existing.ts'],
     });
+  });
+});
+
+function currentTokenDetails(
+  input: number,
+  output: number,
+  cacheRead: number,
+  cacheWrite: number,
+): Record<string, { tokenCount: number }> {
+  return {
+    input: { tokenCount: input },
+    output: { tokenCount: output },
+    cache_read: { tokenCount: cacheRead },
+    cache_write: { tokenCount: cacheWrite },
+  };
+}
+
+const CURRENT_USAGE_EVENTS = [
+  { type: 'session.start', timestamp: '2026-07-20T10:00:00Z', data: {} },
+  {
+    type: 'assistant.message',
+    timestamp: '2026-07-20T10:00:01Z',
+    data: {
+      outputTokens: 11,
+      content: 'PRIVATE_MESSAGE_TEXT',
+      identity: 'person@example.test',
+    },
+  },
+  {
+    type: 'session.usage_checkpoint',
+    timestamp: '2026-07-20T10:00:02Z',
+    data: { totalNanoAiu: 200, tokenDetails: currentTokenDetails(20, 30, 4, 5) },
+  },
+  {
+    type: 'session.compaction',
+    timestamp: '2026-07-20T10:00:03Z',
+    data: { tokenDetails: currentTokenDetails(6, 7, 8, 9), summary: 'PRIVATE_SUMMARY' },
+  },
+  {
+    type: 'session.shutdown',
+    timestamp: '2026-07-20T10:00:04Z',
+    data: {
+      totalNanoAiu: 500,
+      tokenDetails: currentTokenDetails(40, 50, 60, 70),
+      cwd: '/Users/private/repository',
+      sessionOwner: 'PRIVATE_IDENTITY',
+    },
+  },
+]
+  .map((event) => JSON.stringify(event))
+  .join('\n');
+
+function currentUsageFs(withProcessLog = false): FakeFs {
+  const files: Record<string, string> = {
+    [copilotEventsPath(HOME, SESSION)]: CURRENT_USAGE_EVENTS,
+  };
+  const entries: string[] = [];
+  if (withProcessLog) {
+    files[`${copilotLogsDir(HOME)}/${LOG_NAME}`] = PROCLOG;
+    entries.push(LOG_NAME);
+  }
+  return new FakeFs(files, { [copilotLogsDir(HOME)]: entries });
+}
+
+describe('P063 T007 — current typed usage beats obsolete process-log-only extraction', () => {
+  it('extracts final-authoritative tokens when no process log exists', () => {
+    const caps = copilotAdapter.extract({ ...source(currentUsageFs()), window: WINDOW });
+    expect(caps.tokens).toEqual({
+      input: 40,
+      output: 50,
+      cache_create: 70,
+      cache_read: 60,
+      total: 220,
+      subagent_tokens: 0,
+      grand_total: 220,
+    });
+  });
+
+  it('does not add or prefer process-log compatibility when typed final evidence exists', () => {
+    const caps = copilotAdapter.extract({ ...source(currentUsageFs(true)), window: WINDOW });
+    expect(caps.tokens).toMatchObject({
+      input: 40,
+      output: 50,
+      cache_create: 70,
+      cache_read: 60,
+      total: 220,
+    });
+  });
+
+  it('emits every typed observation distinctly and in source order', () => {
+    const caps = copilotAdapter.extract({ ...source(currentUsageFs()), window: WINDOW });
+    const usage = (caps.event_stream ?? []).filter(
+      (event) => (event as { kind: string }).kind === 'usage',
+    ) as Array<Record<string, unknown>>;
+
+    expect(usage).toEqual([
+      {
+        t: '2026-07-20T10:00:01Z',
+        kind: 'usage',
+        observation_kind: 'message_output',
+        out: 11,
+      },
+      {
+        t: '2026-07-20T10:00:02Z',
+        kind: 'usage',
+        observation_kind: 'cumulative_checkpoint',
+        in: 20,
+        out: 30,
+        cache_read: 4,
+        cache_create: 5,
+        nano_aiu: 200,
+      },
+      {
+        t: '2026-07-20T10:00:03Z',
+        kind: 'usage',
+        observation_kind: 'partial_compaction',
+        in: 6,
+        out: 7,
+        cache_read: 8,
+        cache_create: 9,
+      },
+      {
+        t: '2026-07-20T10:00:04Z',
+        kind: 'usage',
+        observation_kind: 'final_shutdown',
+        in: 40,
+        out: 50,
+        cache_read: 60,
+        cache_create: 70,
+        nano_aiu: 500,
+      },
+    ]);
+  });
+
+  it('publishes only numeric usage fields, never source prose, paths, or identity', () => {
+    const caps = copilotAdapter.extract({ ...source(currentUsageFs()), window: WINDOW });
+    const segment = serializeSegment(
+      {
+        command: 'capture',
+        harness: 'copilot-cli',
+        harness_session_id: SESSION,
+        timecode: '2026-07-20T10:00:05Z',
+        window: WINDOW,
+        branch: null,
+        tokens: caps.tokens,
+        event_stream: caps.event_stream ?? [],
+      },
+      REPO,
+    );
+    const json = JSON.stringify(segment);
+    expect(json).not.toContain('PRIVATE_MESSAGE_TEXT');
+    expect(json).not.toContain('PRIVATE_SUMMARY');
+    expect(json).not.toContain('/Users/private');
+    expect(json).not.toContain('person@example.test');
+    expect(json).not.toContain('PRIVATE_IDENTITY');
+  });
+});
+
+// ── finding 06: an output-only typed observation must not bury measured buckets ────
+describe('P063 finding 06 — typed usage suppression must not discard process-log buckets', () => {
+  /**
+   * The killed-copilot-lane shape. The window's events.jsonl holds ONE
+   * `assistant.message` (output only), so `hasTypedUsage` was true and the four-bucket
+   * `assistant_usage` sums were gated off entirely: `tokens` went null and
+   * input/cache_read/cache_create became `field_absent` until a graceful
+   * `final_shutdown` — which a killed lane never gets, making the loss permanent.
+   */
+  const OUTPUT_ONLY_EVENTS = [
+    { type: 'session.start', timestamp: '2026-07-20T10:00:00Z', data: {} },
+    {
+      type: 'assistant.message',
+      timestamp: '2026-07-20T10:00:01Z',
+      data: { outputTokens: 95, content: 'PRIVATE', identity: 'person@example.test' },
+    },
+  ]
+    .map((event) => JSON.stringify(event))
+    .join('\n');
+
+  function fs(): FakeFs {
+    return new FakeFs(
+      {
+        [copilotEventsPath(HOME, SESSION)]: OUTPUT_ONLY_EVENTS,
+        [`${copilotLogsDir(HOME)}/${LOG_NAME}`]: PROCLOG,
+      },
+      { [copilotLogsDir(HOME)]: [LOG_NAME] },
+    );
+  }
+
+  it('recovers input/cache from the process log while the typed output stays authoritative', () => {
+    const caps = copilotAdapter.extract({ ...source(fs()), window: WINDOW });
+    const evidence = tokenEvidenceFromObservation(
+      reduceUsageEvents(caps.event_stream ?? []),
+      'live',
+    );
+
+    // The process log measured input 120 / cache_read 40 / cache_create 5 for this
+    // session. Those are real numbers; reporting them absent was a false `unavailable`.
+    expect(evidence.fields.input).toMatchObject({ value: 120, coverage: 'measured' });
+    expect(evidence.fields.cache_read).toMatchObject({ value: 40, coverage: 'measured' });
+    expect(evidence.fields.cache_create).toMatchObject({ value: 5, coverage: 'measured' });
+    // NOT 95 + 95: the typed observation owns `output`; the process log counts the SAME
+    // messages, so its output is a second view and must never be added to it.
+    expect(evidence.fields.output).toMatchObject({ value: 95, coverage: 'measured' });
+  });
+
+  it('adds nothing when the typed observations already carry every bucket', () => {
+    const caps = copilotAdapter.extract({ ...source(currentUsageFs(true)), window: WINDOW });
+    const evidence = tokenEvidenceFromObservation(
+      reduceUsageEvents(caps.event_stream ?? []),
+      'live',
+    );
+    // The graceful final still wins outright — the process log does not perturb it.
+    expect(evidence.fields.input).toMatchObject({ value: 40 });
+    expect(evidence.fields.output).toMatchObject({ value: 50 });
   });
 });

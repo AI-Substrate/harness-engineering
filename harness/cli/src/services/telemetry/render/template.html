@@ -139,11 +139,15 @@
     cols.forEach(function (col, i) {
       var t = col.report.totals || { tokens: {} };
       var tok = t.tokens || {};
+      var coverage = (col.report.provenance || {}).token_coverage || {};
+      var coverageState = (coverage.partial || 0) > 0 ? "partial" : (coverage.unavailable || 0) > 0 ? "unavailable" : "measured";
+      var reasons = Object.keys(coverage.reasons || {}).filter(function (key) { return coverage.reasons[key] > 0; }).join(", ");
+      var coverageLabel = coverageState === "measured" ? "" : " · " + coverageState + (reasons ? " (" + reasons + ")" : "");
       html += '<div class="card"><div class="label">' + esc(labelFor(col, i)) + "</div>" +
         '<div class="metrics">' +
         "<div><b>" + (t.sessions || 0) + "</b> session(s)</div>" +
         "<div><b>" + fmtDur(t.time_s) + "</b> active time</div>" +
-        "<div><b>" + fmtTok(tok.input || 0) + "</b> sent · <b>" + fmtTok(tok.output || 0) + "</b> received</div>" +
+        "<div><b>" + fmtTok(tok.input || 0) + "</b> sent · <b>" + fmtTok(tok.output || 0) + "</b> received" + coverageLabel + "</div>" +
         "</div></div>";
     });
     return html + "</div>";

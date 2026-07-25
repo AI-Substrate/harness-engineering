@@ -4,6 +4,7 @@ import type {
 } from '../../adapters/git/remote-telemetry-git-port.js';
 import { posixJoin } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
+import { USAGE_OBSERVATION_KINDS } from './events.js';
 import { reconstructSegmentFromOtlpLogs, validateLogRecordContract } from './otlp/logs.js';
 import {
   METRIC_DEFINITION_BY_NAME,
@@ -170,6 +171,8 @@ const KNOWN_KEYS = new Set<string>([
   'out',
   'cache_read',
   'cache_create',
+  'observation_kind',
+  'nano_aiu',
   'words',
   'span_s',
   'status',
@@ -414,7 +417,9 @@ function compareUint64(a: string, b: string): number {
 const SCHEMA_URLS = {
   '2.4': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0',
   '2.5': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0',
+  '2.6': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.3.0',
 } as const;
+type PublishedSegmentVersion = keyof typeof SCHEMA_URLS;
 const EVENT_KINDS = new Set([
   'api_error',
   'compaction',
@@ -424,11 +429,14 @@ const EVENT_KINDS = new Set([
   'subagent',
   'tool',
   'turn',
+  'usage',
 ]);
 
 function safeKnownString(key: string | null, value: string): boolean {
   if (!safeString(value, false)) return false;
-  if (key === 'schema_version') return value === '2.4' || value === '2.5';
+  if (key === 'schema_version') {
+    return value === '2.4' || value === '2.5' || value === '2.6';
+  }
   if (key === 'product_commit') return FULL_OID.test(value) && value === value.toLowerCase();
   if (key === 'timecode' || key === 't') return isTelemetryTime(value);
   if (key === 'kind') return EVENT_KINDS.has(value);
@@ -486,6 +494,7 @@ function validNumericMap(value: unknown): boolean {
 const SEGMENT_EVENT_KINDS = new Set([
   'prompt',
   'turn',
+  'usage',
   'tools',
   'skill',
   'flow',
@@ -556,7 +565,7 @@ const EVENT_NUMBER_KEYS = new Set([
   'result_tokens',
 ]);
 
-function validEvent(value: unknown): boolean {
+function validEvent(value: unknown, version: PublishedSegmentVersion): boolean {
   const event = record(value);
   if (
     event === null ||
@@ -567,6 +576,21 @@ function validEvent(value: unknown): boolean {
   ) {
     return false;
   }
+
+  if (event.kind === 'usage') {
+    const buckets = ['in', 'out', 'cache_read', 'cache_create', 'nano_aiu'] as const;
+    return (
+      version === '2.6' &&
+      hasExactKeys(event, ['t', 'kind', 'observation_kind'], ['t_precision', ...buckets]) &&
+      typeof event.observation_kind === 'string' &&
+      (USAGE_OBSERVATION_KINDS as readonly string[]).includes(event.observation_kind) &&
+      buckets.some((key) => key in event) &&
+      buckets.every((key) => !(key in event) || nonNegativeInteger(event[key])) &&
+      (event.t_precision === undefined ||
+        (typeof event.t_precision === 'string' && T_PRECISION_VALUES.has(event.t_precision)))
+    );
+  }
+
   for (const [key, child] of Object.entries(event)) {
     if (key === 't' || key === 'kind') continue;
     if (key === 't_precision') {
@@ -713,10 +737,14 @@ function validRollup(value: unknown): boolean {
   );
 }
 
-function validSegmentKnownField(key: string, value: unknown, version: '2.4' | '2.5'): boolean {
+function validSegmentKnownField(
+  key: string,
+  value: unknown,
+  version: PublishedSegmentVersion,
+): boolean {
   switch (key) {
     case 'schema_version':
-      return value === '2.4' || value === '2.5';
+      return value === '2.4' || value === '2.5' || value === '2.6';
     case 'command':
       return typeof value === 'string' && isTelemetryCommand(value);
     case 'harness':
@@ -760,7 +788,7 @@ function validSegmentKnownField(key: string, value: unknown, version: '2.4' | '2
           new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh']).has(value))
       );
     case 'event_stream':
-      return Array.isArray(value) && value.every(validEvent);
+      return Array.isArray(value) && value.every((event) => validEvent(event, version));
     case 'rollup':
       return validRollup(value);
     case 'models': {
@@ -868,7 +896,12 @@ function validSegmentKnownField(key: string, value: unknown, version: '2.4' | '2
 
 function validSegment(value: unknown): boolean {
   const segment = record(value);
-  if (segment === null || (segment.schema_version !== '2.4' && segment.schema_version !== '2.5')) {
+  if (
+    segment === null ||
+    (segment.schema_version !== '2.4' &&
+      segment.schema_version !== '2.5' &&
+      segment.schema_version !== '2.6')
+  ) {
     return false;
   }
   const required = [
@@ -886,7 +919,7 @@ function validSegment(value: unknown): boolean {
     'rollup',
   ];
   if (required.some((key) => !(key in segment))) return false;
-  if (segment.product_commit !== undefined && segment.schema_version !== '2.5') return false;
+  if (segment.product_commit !== undefined && segment.schema_version === '2.4') return false;
   for (const [key, child] of Object.entries(segment)) {
     if ((SEGMENT_FIELD_KEYS as readonly string[]).includes(key)) {
       if (!validSegmentKnownField(key, child, segment.schema_version)) return false;
@@ -985,7 +1018,7 @@ function requiredResourceString(
 
 function validResourceEnv(
   value: Record<string, unknown> | undefined,
-  version: '2.4' | '2.5',
+  version: PublishedSegmentVersion,
 ): boolean {
   if (value === undefined) return true;
   const kvlist = record(value.kvlistValue);
@@ -1012,7 +1045,7 @@ function validResourceEnv(
   });
 }
 
-function resourceVersion(value: unknown): '2.4' | '2.5' | null {
+function resourceVersion(value: unknown): PublishedSegmentVersion | null {
   const resource = record(value);
   if (resource === null || !hasExactKeys(resource, ['attributes'])) return null;
   const list = attributes(resource.attributes, true);
@@ -1046,7 +1079,7 @@ function resourceVersion(value: unknown): '2.4' | '2.5' | null {
     !isTelemetryHarness(harness) ||
     command === null ||
     !isTelemetryCommand(command) ||
-    (version !== '2.4' && version !== '2.5')
+    (version !== '2.4' && version !== '2.5' && version !== '2.6')
   ) {
     return null;
   }
@@ -1058,13 +1091,13 @@ function resourceVersion(value: unknown): '2.4' | '2.5' | null {
   const commitValue = map.get('harness.product.commit');
   if (commitValue !== undefined) {
     const commit = requiredResourceString(map, 'harness.product.commit');
-    if (version !== '2.5' || commit === null || !FULL_OID.test(commit)) return null;
+    if (version === '2.4' || commit === null || !FULL_OID.test(commit)) return null;
   }
   if (!validResourceEnv(map.get('harness.env'), version)) return null;
   return version;
 }
 
-function validScope(value: unknown, version: '2.4' | '2.5'): boolean {
+function validScope(value: unknown, version: PublishedSegmentVersion): boolean {
   const scope = record(value);
   return (
     scope !== null &&
@@ -1115,6 +1148,9 @@ function validLogs(value: unknown): boolean {
     }
     const attributeList = attributes(log.attributes, true);
     if (attributeList === null) return false;
+    const eventKind = attributeList.find((item) => item.key === 'harness.event.kind')?.value
+      .stringValue;
+    if (version !== '2.6' && eventKind === 'usage') return false;
     const recordValue: LogRecord = {
       timeUnixNano: log.timeUnixNano,
       severityNumber: log.severityNumber,

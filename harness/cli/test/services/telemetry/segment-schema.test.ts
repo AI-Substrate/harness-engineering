@@ -59,12 +59,12 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(schema.additionalProperties).toBe(false);
   });
 
-  it('pins schema_version const to "2.5"', () => {
-    expect(schema.properties.schema_version?.const).toBe('2.5');
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.5');
+  it('pins schema_version const to "2.6"', () => {
+    expect(schema.properties.schema_version?.const).toBe('2.6');
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
   });
 
-  it('closes current captured_env to the exact eight Segment-2.5 keys', () => {
+  it('closes current captured_env to the exact eight Segment-2.6 keys', () => {
     const capturedEnv = schema.properties.captured_env;
     expect(capturedEnv?.additionalProperties).toBe(false);
     expect(Object.keys(capturedEnv?.properties ?? {}).sort()).toEqual(
@@ -115,7 +115,7 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
   });
 
   it('$id tracks the schema version (no stale $id drift — companion LOW finding)', () => {
-    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.5');
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.6');
   });
 
   it('the event_stream kind enum mirrors EVENT_KINDS exactly (a new kind can never appear on one side only)', () => {
@@ -191,9 +191,9 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
 });
 
 describe('T002 — version freeze (field-set change MUST bump schema_version)', () => {
-  it('the frozen field set is paired with schema_version 2.5', () => {
-    // FROZEN SNAPSHOT — 2.5 adds optional product_commit; required keys stay fixed.
-    const FROZEN_V2_5_FIELDS = [
+  it('the frozen field set is paired with schema_version 2.6', () => {
+    // FROZEN SNAPSHOT — 2.6 adds optional product_commit; required keys stay fixed.
+    const FROZEN_V2_6_FIELDS = [
       'schema_version',
       'command',
       'harness',
@@ -218,8 +218,8 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
       'captured_env',
       'product_commit',
     ];
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.5');
-    expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_5_FIELDS].sort());
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
+    expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_6_FIELDS].sort());
     expect(SEGMENT_REQUIRED_KEYS).not.toContain('product_commit');
   });
 
@@ -238,5 +238,77 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
     expect(serializeSegment({ ...base, product_commit: 'B'.repeat(64) }, REPO).product_commit).toBe(
       'b'.repeat(64),
     );
+  });
+});
+
+const USAGE_OBSERVATION_KINDS = [
+  'message_output',
+  'cumulative_checkpoint',
+  'partial_compaction',
+  'final_shutdown',
+] as const;
+
+type RequiredKeys = { required: string[] };
+type UsageConditionalRule = {
+  if: { properties: { kind: { const: string } } };
+  then: RequiredKeys & { anyOf: RequiredKeys[] };
+  else: { not: { anyOf: RequiredKeys[] } };
+};
+
+describe('P063 T008 — closed typed usage event schema', () => {
+  const items = (
+    schema.properties.event_stream as unknown as {
+      items: {
+        additionalProperties: boolean;
+        required: string[];
+        properties: Record<
+          string,
+          { type?: string; enum?: string[]; minimum?: number; additionalProperties?: boolean }
+        >;
+        allOf: UsageConditionalRule[];
+      };
+    }
+  ).items;
+  const usageRule = items.allOf[0];
+  const hasRequired = (event: Record<string, unknown>, shape: RequiredKeys): boolean =>
+    shape.required.every((key) => key in event);
+  const acceptsUsageRule = (event: Record<string, unknown>): boolean =>
+    event.kind === usageRule.if.properties.kind.const
+      ? hasRequired(event, usageRule.then) &&
+        usageRule.then.anyOf.some((shape) => hasRequired(event, shape))
+      : !usageRule.else.not.anyOf.some((shape) => hasRequired(event, shape));
+
+  it('adds one closed usage event kind and one closed observation-kind enum', () => {
+    expect(items.properties.kind?.enum).toContain('usage');
+    expect(items.properties.observation_kind?.enum).toEqual([...USAGE_OBSERVATION_KINDS]);
+    expect(items.additionalProperties).toBe(false);
+  });
+
+  it('keeps every usage bucket numeric, non-negative, and optional', () => {
+    for (const field of ['in', 'out', 'cache_read', 'cache_create', 'nano_aiu']) {
+      expect(items.properties[field], field).toMatchObject({ type: 'integer', minimum: 0 });
+      expect(items.required, field).not.toContain(field);
+    }
+  });
+
+  it('rejects malformed usage shapes and usage-only fields on other events', () => {
+    expect(acceptsUsageRule({ t: '0', kind: 'usage' })).toBe(false);
+    expect(acceptsUsageRule({ t: '0', kind: 'usage', observation_kind: 'final_shutdown' })).toBe(
+      false,
+    );
+    expect(
+      acceptsUsageRule({ t: '0', kind: 'usage', observation_kind: 'final_shutdown', out: 1 }),
+    ).toBe(true);
+    expect(acceptsUsageRule({ t: '0', kind: 'turn', observation_kind: 'final_shutdown' })).toBe(
+      false,
+    );
+    expect(acceptsUsageRule({ t: '0', kind: 'turn', nano_aiu: 1 })).toBe(false);
+    expect(acceptsUsageRule({ t: '0', kind: 'turn', in: 1, out: 1 })).toBe(true);
+  });
+
+  it('advances the closed wire version for the additive usage kind', () => {
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
+    expect(schema.properties.schema_version?.const).toBe('2.6');
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.6');
   });
 });

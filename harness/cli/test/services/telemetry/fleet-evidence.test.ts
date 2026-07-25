@@ -7,6 +7,7 @@ import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import {
   buildFleetEvidence,
+  buildLedgerLane,
   type FleetRoster,
   getFleetEvidence,
   parseRoster,
@@ -184,6 +185,80 @@ describe('buildFleetEvidence — env-tree join, cost + time totals (D2/D3)', () 
     expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
   });
 
+  it('reduces typed usage once across a live lane instead of summing snapshots', () => {
+    const segments = [
+      seg({
+        sid: ROOT,
+        tokens: tok(5, 5),
+        events: [
+          { t: '2026-07-04T00:00:01Z', kind: 'usage', observation_kind: 'message_output', out: 5 },
+        ],
+      }),
+      seg({
+        sid: ROOT,
+        tokens: tok(100, 20),
+        events: [
+          {
+            t: '2026-07-04T00:00:02Z',
+            kind: 'usage',
+            observation_kind: 'cumulative_checkpoint',
+            in: 10,
+            out: 20,
+            cache_read: 30,
+            cache_create: 40,
+          },
+        ],
+      }),
+      seg({
+        sid: ROOT,
+        tokens: tok(110, 22),
+        events: [
+          {
+            t: '2026-07-04T00:00:03Z',
+            kind: 'usage',
+            observation_kind: 'final_shutdown',
+            in: 11,
+            out: 22,
+            cache_read: 33,
+            cache_create: 44,
+          },
+        ],
+      }),
+    ];
+    const fleet = buildFleetEvidence(ROOT, segments, null);
+
+    expect(fleet?.sessions[0]).toMatchObject({
+      cost_measured: true,
+      tokens: { grand_total: 110, output: 22 },
+    });
+    expect(fleet?.totals.cost).toMatchObject({ grand_total: 110, output: 22 });
+  });
+
+  it('does not let stale segment totals replace partial typed evidence', () => {
+    const fleet = buildFleetEvidence(
+      ROOT,
+      [
+        seg({
+          sid: ROOT,
+          tokens: tok(999, 99),
+          events: [
+            {
+              t: '2026-07-04T00:00:03Z',
+              kind: 'usage',
+              observation_kind: 'final_shutdown',
+              out: 22,
+            },
+          ],
+        }),
+      ],
+      null,
+    );
+
+    expect(fleet?.sessions[0]).toMatchObject({
+      cost_measured: false,
+      tokens: { grand_total: 0, output: 22 },
+    });
+  });
   it('carries per-lane harness/model/role fields (AC-01 surface)', () => {
     const fleet = buildFleetEvidence(ROOT, threeLaneSegments(), null);
     if (fleet === null) throw new Error('expected a fleet');
@@ -493,5 +568,140 @@ describe('AC-07 — fleet-export.schema.json is closed (un-enumerated key fails)
       ['orphans', 'root_pij_id', 'scope', 'sessions', 'totals', 'unrostered'].sort(),
     );
     expect(FLEET_SCHEMA.additionalProperties).toBe(false);
+  });
+});
+
+describe('P063 Phase 2 — billing-only ledger lanes', () => {
+  const deps = (files: Record<string, string>): SessionEvidenceDeps => ({
+    fs: new FakeFs(files),
+    env: new FakeEnv({}, '/home/u'),
+    proc: new FakeProcess({}, '/repo'),
+  });
+
+  it('preserves a total-only Codex headline without fabricating measured buckets', () => {
+    const path = '/rollout.jsonl';
+    const raw = JSON.stringify({
+      type: 'token_count',
+      payload: { info: { total_token_usage: { total_tokens: 999 } } },
+    });
+    const lane = buildLedgerLane(
+      'pij-codex',
+      'validator',
+      {
+        harness: 'codex',
+        harness_session_id: 'hs-codex',
+        transcript_path: path,
+        model: null,
+      } as never,
+      deps({ [path]: raw }),
+    );
+
+    expect(lane).toMatchObject({
+      cost_measured: true,
+      tokens: { grand_total: 999, output: 0 },
+      token_evidence: { coverage: 'unavailable', source: null },
+      billing: { token_buckets: { total: 999 } },
+    });
+  });
+
+  it('does not stamp a measured cache_create:0 the codex rollout never reported', () => {
+    // Finding 09: codex reports input/cached/output/reasoning and has no cache-write
+    // concept. Synthesizing a measured 0 is a zero-without-evidence, and it flipped the
+    // lane to `measured` on the strength of a number nobody observed.
+    const path = '/rollout.jsonl';
+    const raw = JSON.stringify({
+      type: 'token_count',
+      payload: {
+        info: {
+          total_token_usage: {
+            input_tokens: 100,
+            cached_input_tokens: 40,
+            output_tokens: 20,
+            total_tokens: 120,
+          },
+        },
+      },
+    });
+    const lane = buildLedgerLane(
+      'pij-codex',
+      'validator',
+      {
+        harness: 'codex',
+        harness_session_id: 'hs-codex',
+        transcript_path: path,
+        model: null,
+      } as never,
+      deps({ [path]: raw }),
+    );
+
+    expect(lane?.token_evidence.fields.cache_create).toMatchObject({
+      value: null,
+      coverage: 'unavailable',
+    });
+    // The buckets codex DID report stay measured; only the invented one goes away.
+    expect(lane?.token_evidence.fields.output).toMatchObject({ value: 20, coverage: 'measured' });
+    expect(lane?.token_evidence.coverage).toBe('partial');
+    expect(lane?.token_evidence.reason).toBe('vendor_field_absent');
+  });
+
+  it('keeps nano-AIU billing while token buckets remain unavailable', () => {
+    const path = '/home/u/.copilot/session-state/hs-copilot/events.jsonl';
+    const raw = JSON.stringify({
+      type: 'session.shutdown',
+      data: { totalNanoAiu: 123 },
+    });
+    const lane = buildLedgerLane(
+      'pij-copilot',
+      'coder',
+      {
+        harness: 'copilot',
+        harness_session_id: 'hs-copilot',
+        transcript_path: null,
+        model: null,
+      } as never,
+      deps({ [path]: raw }),
+    );
+
+    expect(lane).toMatchObject({
+      cost_measured: false,
+      token_evidence: { coverage: 'unavailable', source: null },
+      billing: { nano_aiu: 123 },
+    });
+  });
+});
+
+// ── finding 08: one stale v1 segment must not collapse the whole fleet read ───────
+describe('P063 finding 08 — a pre-v2.0 buffered segment degrades, it does not throw', () => {
+  it('survives a segment with no event_stream instead of nulling every lane', async () => {
+    const v1 = {
+      command: 'flow',
+      timecode: '2026-07-04T00:00:00Z',
+      captured_env: { PIJ_SESSION_ID: ROOT, PIJ_HARNESS: 'claude' },
+      tokens: {
+        input: 10,
+        output: 5,
+        cache_read: 0,
+        cache_create: 0,
+        total: 15,
+        subagent_tokens: 0,
+        grand_total: 15,
+      },
+    };
+    const repo = '/repo';
+    const fs = new FakeFs(
+      { [`${tel(repo)}/a/0.json`]: JSON.stringify(v1) },
+      { [tel(repo)]: ['a'], [`${tel(repo)}/a`]: ['0.json'] },
+    );
+    const fleet = await getFleetEvidence(ROOT, {
+      fs,
+      env: new FakeEnv({}, HOME),
+      proc: new FakeProcess({}, repo),
+    });
+
+    // Before the fix `segs.flatMap((seg) => seg.event_stream)` threw on the absent
+    // array, `getFleetEvidence`'s catch swallowed it, and the ENTIRE fleet read
+    // returned null — every lane lost because of one stale file.
+    expect(fleet).not.toBeNull();
+    expect(fleet?.sessions.map((l) => l.pij_id)).toContain(ROOT);
   });
 });

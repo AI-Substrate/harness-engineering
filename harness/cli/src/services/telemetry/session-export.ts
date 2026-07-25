@@ -4,16 +4,25 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { Event } from './events.js';
-import {
-  otlpLogsToEvents,
-  reconstructSegmentFromOtlpLogs,
-  segmentToOtlpLogs,
-} from './otlp/logs.js';
+import { reconstructSegmentFromOtlpLogs, segmentToOtlpLogs } from './otlp/logs.js';
 import { rollupToOtlpMetrics } from './otlp/metrics.js';
 import type { LogsData, MetricsData } from './otlp/types.js';
 import { ROLLED_LOGS_NAME, splitJsonl } from './rolled-shard.js';
 import { computeRollup, parseIso } from './rollup.js';
-import type { Segment, SegmentModelStat, SegmentTokens } from './segment.js';
+import {
+  decodeSegment,
+  type Segment,
+  type SegmentModelStat,
+  type SegmentTokens,
+} from './segment.js';
+import { readFlushedWatermark } from './session-evidence.js';
+import type { TokenEvidence } from './token-evidence.js';
+import {
+  completeUsageTokens,
+  reduceUsageEvents,
+  tokenEvidenceFromLegacyTokens,
+  tokenEvidenceFromObservation,
+} from './usage-observation.js';
 
 /**
  * `SessionExport` (plan 047 Phase 1) — a thin, validatable envelope wrapping ONE
@@ -22,7 +31,7 @@ import type { Segment, SegmentModelStat, SegmentTokens } from './segment.js';
  * STILL OTEL, ONE FILE (workshop 001): `signals.logs`/`signals.metrics` are OTLP
  * payloads. The load-bearing rule — **Logs are the lossless substrate, metrics are
  * derived** (KF-02/KF-03): everything is unified through the EVENT STREAM. Per seq
- * the events come from (in priority) a `<seq>.logs.jsonl` companion (`otlpLogsToEvents`)
+ * the events come from (in priority) a strictly reconstructed `<seq>.logs.jsonl` companion
  * → the segment's own `event_stream` → a v1 (no-`event_stream`) segment normalized
  * to a minimal stream (T007). The merged events then regenerate ONE `resourceLogs`
  * (via {@link segmentToOtlpLogs}) and ONE `resourceMetrics` (via {@link rollupToOtlpMetrics}
@@ -51,11 +60,11 @@ export interface SessionExportSource {
 }
 
 export interface SessionExportTokens {
-  in: number;
-  out: number;
-  cache_read: number;
-  cache_create: number;
-  total: number;
+  in: number | null;
+  out: number | null;
+  cache_read: number | null;
+  cache_create: number | null;
+  total: number | null;
   /** "unknown" (never 0) when any segment's subagent tokens were unknown (AC-10). */
   subagent_tokens: number | 'unknown';
   grand_total: number | 'unknown';
@@ -67,6 +76,7 @@ export interface SessionExportSummary {
   first_timecode: string | null;
   last_timecode: string | null;
   tokens: SessionExportTokens;
+  token_evidence: TokenEvidence;
   /** Field names absent/unknown across the session, surfaced honestly (AC-10). */
   degraded: string[];
 }
@@ -172,9 +182,12 @@ function hasEventStream(seg: Segment): boolean {
 function eventsForSeq(seg: Segment, companionLogsRaw: string | null): Event[] {
   if (companionLogsRaw !== null) {
     try {
-      return otlpLogsToEvents(JSON.parse(companionLogsRaw) as LogsData);
+      const reconstructed = reconstructSegmentFromOtlpLogs(
+        JSON.parse(companionLogsRaw) as LogsData,
+      );
+      if (reconstructed.ok) return reconstructed.segment.event_stream;
     } catch {
-      // fall through to the segment
+      // fall through to the strictly decoded segment
     }
   }
   if (hasEventStream(seg)) return [...seg.event_stream];
@@ -227,7 +240,7 @@ function modelsFromEvents(events: readonly Event[]): Record<string, SegmentModel
  * Reconstruct one seq's {@link SeqRead} from a committed OTLP **logs** blob when
  * there is NO `<seq>.json` — the canonical committed-shard shape (`sync-service`
  * publishes `<seq>.logs.jsonl` + `<seq>.metrics.jsonl` and keeps the json LOCAL).
- * Events come from {@link otlpLogsToEvents} (lossless inverse); identity + tokens +
+ * Events come from strict OTLP reconstruction; identity + tokens +
  * models are lifted from the `harness.*` resource attributes + the event stream, so
  * a logs-only shard yields a NON-empty, identity-bearing segment (not `segment_count:0`).
  * Never throws — a corrupt blob is skipped.
@@ -296,12 +309,14 @@ function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
     if (jsonSeqs.has(seq)) {
       const raw = fs.readText(posixJoin(sessionDir, `${seq}.json`));
       if (raw === null) continue;
-      let seg: Segment;
+      let parsed: unknown;
       try {
-        seg = JSON.parse(raw) as Segment;
+        parsed = JSON.parse(raw);
       } catch {
         continue; // a corrupt buffer file is skipped, never fatal
       }
+      const seg = decodeSegment(parsed);
+      if (seg === null) continue;
       const companion = fs.readText(posixJoin(sessionDir, `${seq}.logs.jsonl`));
       out.push({ seg, events: eventsForSeq(seg, companion) });
     } else {
@@ -346,10 +361,47 @@ function buildIdentity(sessionId: string, reads: readonly SeqRead[]): SessionExp
 }
 
 /** Sum session token totals; subagent tokens degrade to "unknown" (never 0) if any are unknown. */
-function buildTokens(reads: readonly SeqRead[]): {
+function buildTokens(
+  reads: readonly SeqRead[],
+  events: readonly Event[],
+  source: 'live' | 'ref',
+): {
   tokens: SessionExportTokens;
+  token_evidence: TokenEvidence;
   degraded: string[];
 } {
+  const observation = reduceUsageEvents(events);
+  if (observation !== null) {
+    const usage = completeUsageTokens(observation);
+    if (usage === null) {
+      return {
+        tokens: {
+          in: observation.input ?? null,
+          out: observation.output ?? null,
+          cache_read: observation.cache_read ?? null,
+          cache_create: observation.cache_create ?? null,
+          total: null,
+          subagent_tokens: 'unknown',
+          grand_total: 'unknown',
+        },
+        token_evidence: tokenEvidenceFromObservation(observation, source),
+        degraded: ['typed_usage_partial'],
+      };
+    }
+    return {
+      tokens: {
+        in: usage.input,
+        out: usage.output,
+        cache_read: usage.cache_read,
+        cache_create: usage.cache_create,
+        total: usage.total,
+        subagent_tokens: 0,
+        grand_total: usage.total,
+      },
+      token_evidence: tokenEvidenceFromObservation(observation, source),
+      degraded: [],
+    };
+  }
   let inTok = 0;
   let out = 0;
   let cacheRead = 0;
@@ -372,6 +424,21 @@ function buildTokens(reads: readonly SeqRead[]): {
   const total = inTok + out + cacheRead + cacheCreate;
   const degraded: string[] = [];
   if (!subagentKnown) degraded.push('subagent_tokens');
+  const anyLegacyTokens = reads.some(({ seg }) => seg.tokens !== null);
+  const tokenEvidence = tokenEvidenceFromLegacyTokens(
+    anyLegacyTokens
+      ? { input: inTok, output: out, cache_read: cacheRead, cache_create: cacheCreate }
+      : null,
+    source,
+    // Only a committed ref combine is whole-session by construction. A temp combine is a
+    // sum of capture windows and can never contain the shutdown tail, so it must not
+    // outrank a vendor final (R2-01).
+    { wholeSession: source === 'ref' },
+  );
+  if (anyLegacyTokens && reads.some(({ seg }) => seg.tokens === null)) {
+    tokenEvidence.coverage = 'partial';
+    tokenEvidence.reason = 'source_unavailable';
+  }
   return {
     tokens: {
       in: inTok,
@@ -382,6 +449,7 @@ function buildTokens(reads: readonly SeqRead[]): {
       subagent_tokens: subagentKnown ? subagent : 'unknown',
       grand_total: subagentKnown ? total + subagent : 'unknown',
     },
+    token_evidence: tokenEvidence,
     degraded,
   };
 }
@@ -423,12 +491,33 @@ export function combineSession(
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
   const identity = buildIdentity(sessionId, reads);
-  const { tokens, degraded } = buildTokens(reads);
+  const { tokens, token_evidence, degraded } = buildTokens(
+    reads,
+    allEvents,
+    opts?.kind === 'git-ref' ? 'ref' : 'live',
+  );
+  const sessionSchemaVersion = allEvents.some((event) => event.kind === 'usage')
+    ? '2.6'
+    : (reads[0]?.seg.schema_version ?? 'unknown');
   if (hasV1) degraded.push('v1_segments');
+
+  // A pure-temp read of a session the sync has already flushed sees only the delta
+  // since the last commit — the prune deleted the rest (finding 02). The committed ref
+  // still has it, so say the read is partial and point at `--source auto`, rather than
+  // letting a post-commit subset pass as the whole session. `git-ref`/`auto` reads
+  // already carry the flushed bytes and are exempt.
+  if (opts?.kind !== 'git-ref') {
+    const watermark = readFlushedWatermark(deps.fs, telDir, sessionId);
+    if (watermark > 0 && token_evidence.coverage !== 'unavailable') {
+      token_evidence.coverage = 'partial';
+      token_evidence.reason = 'flushed_segments_unreadable';
+      degraded.push('pruned_buffer');
+    }
+  }
 
   // A synthetic session-level segment: forward-regenerate ONE logs + ONE metrics.
   const sessionSeg: Segment = {
-    schema_version: reads[0]?.seg.schema_version ?? 'unknown',
+    schema_version: sessionSchemaVersion,
     command: reads[0]?.seg.command ?? 'session',
     harness: identity.harness,
     harness_version: identity.harness_version ?? 'unknown',
@@ -441,7 +530,9 @@ export function combineSession(
     event_stream: allEvents,
     rollup: allEvents.length > 0 ? computeRollup(allEvents) : null,
   };
-  if (reads[0]?.seg.captured_env) sessionSeg.captured_env = reads[0].seg.captured_env;
+  if (reads[0]?.seg.captured_env && reads[0].seg.schema_version === sessionSchemaVersion) {
+    sessionSeg.captured_env = reads[0].seg.captured_env;
+  }
 
   return {
     schema_version: SESSION_EXPORT_SCHEMA_VERSION,
@@ -456,6 +547,7 @@ export function combineSession(
       first_timecode: firstTc,
       last_timecode: lastTc,
       tokens,
+      token_evidence,
       degraded,
     },
     signals: {

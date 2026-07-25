@@ -164,16 +164,21 @@ The implementation introduces one typed token-evidence vocabulary across capture
 | `harness/cli/src/services/telemetry/adapters/claude-adapter.ts` | harness-cli | internal | Metadata-first, bounded, exactly-one standard transcript locator. |
 | `harness/cli/src/services/telemetry/adapters/copilot-adapter.ts` | harness-cli | internal | Parse current event records instead of obsolete process-log-only usage. |
 | `harness/cli/src/services/telemetry/copilot-ledger.ts` | harness-cli | internal | Parse final shutdown and non-final typed vendor observations defensively. |
-| `harness/cli/src/services/telemetry/usage-observation.ts` | harness-cli | internal | Single kind-specific reducer, coverage state/reason vocabulary, and evidence-quality ordering. |
+| `harness/cli/src/services/telemetry/usage-observation.ts` | harness-cli | internal | Normalize/reduce observations and apply evidence-quality ordering. |
 | `harness/cli/src/services/telemetry/events.ts` | harness-cli | contract | Add counts-only typed usage events to the closed event union. |
+| `harness/cli/src/services/telemetry/token-evidence.ts` | harness-cli | contract | Own the closed per-field source/coverage/reason vocabulary exposed by public readers. |
+| `harness/cli/src/services/telemetry/rollup.ts` | harness-cli | internal | Derive compatibility token rollups from the closed typed event contract. |
 | `harness/cli/src/services/telemetry/segment.ts` | harness-cli | contract | Serialize typed usage evidence without zero-filling absent fields. |
 | `harness/cli/src/services/telemetry/segment.schema.json` | harness-cli | contract | Validate the additive usage event shape and closed enums. |
 | `harness/cli/src/services/telemetry/otlp/semconv.ts` | harness-cli | contract | Assign closed OTLP attributes for typed usage evidence. |
+| `harness/cli/src/services/telemetry/otlp/types.ts` | harness-cli | contract | Define immutable 2.4/2.5 wire identities and the current 2.6 typed-usage identity. |
+| `harness/cli/src/services/telemetry/otlp/resource.ts` | harness-cli | internal | Project schema-versioned resource attributes shared by logs and metrics. |
 | `harness/cli/src/services/telemetry/otlp/logs.ts` | harness-cli | internal | Losslessly encode/decode usage observations through published refs. |
 | `harness/cli/src/services/telemetry/otlp/harness-otlp.schema.json` | harness-cli | contract | Keep stored OTLP shape closed and schema-valid. |
 | `harness/cli/src/services/telemetry/session-evidence.ts` | harness-cli | contract | Return tokens, field evidence, source coverage, and closed reasons from live/ref/vendor tiers. |
 | `harness/cli/src/services/telemetry/session-export.ts` | harness-cli | contract | Resolve session tokens from typed evidence without absent→zero conversion. |
 | `harness/cli/src/services/telemetry/session-export.schema.json` | harness-cli | contract | Publish additive token coverage/evidence while preserving old fields. |
+| `harness/cli/src/services/telemetry/published-telemetry.ts` | harness-cli | contract | Strictly validate published predecessor/current identities and the closed usage vocabulary. |
 | `harness/cli/src/services/telemetry/ref-source.ts` | harness-cli | internal | Reconstruct typed usage and token coverage from whole-session refs. |
 | `harness/cli/src/services/telemetry/fleet-evidence.ts` | harness-cli | contract | Merge live/ref/ledger per field for every lane, not orphans only. |
 | `harness/cli/src/services/telemetry/fleet-export.schema.json` | harness-cli | contract | Close the additive per-field evidence map and compatibility source. |
@@ -203,6 +208,9 @@ The implementation introduces one typed token-evidence vocabulary across capture
 | `harness/cli/test/services/telemetry/fleet-evidence.test.ts` | repo-engineering-substrate | internal | Per-field source quality and compatibility projection. |
 | `harness/cli/test/services/telemetry/fleet-golden-051.test.ts` | repo-engineering-substrate | internal | Preserve established fleet semantics outside token enrichment. |
 | `harness/cli/test/services/telemetry/report.test.ts` | repo-engineering-substrate | internal | Aggregate measured/partial/unavailable coverage. |
+| `harness/cli/test/services/telemetry/token-evidence.test.ts` | repo-engineering-substrate | internal | Per-field partiality, complementary merge, and scalar-source compatibility. |
+| `harness/cli/test/services/telemetry/remote-telemetry-service.test.ts` | repo-engineering-substrate | internal | Preserve P060 remote grammar/envelope behavior under additive evidence. |
+| `harness/cli/test/services/telemetry/telemetry-bundle-reader.test.ts` | repo-engineering-substrate | internal | Preserve strict bundle reads and predecessor/current evidence compatibility. |
 | `harness/cli/test/services/telemetry/report-html.test.ts` | repo-engineering-substrate | internal | Human rendering of degraded token state. |
 | `harness/cli/test/services/telemetry/sweep-act.test.ts` | repo-engineering-substrate | internal | Multi-session coverage propagation. |
 | `harness/cli/test/acts/telemetry.test.ts` | repo-engineering-substrate | internal | Canonical degraded envelopes and next actions. |

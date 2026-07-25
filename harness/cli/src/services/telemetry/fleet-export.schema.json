@@ -2,111 +2,231 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/fleet-export/v1",
   "title": "FleetEvidence",
-  "description": "The read-side FLEET join (plan 051 · T003): N per-session SessionEvidence objects merged into one fleet unit with honest cost/time totals (workshop D2/D3). CLOSED and counts-only (AC-07, Constitution P12): `additionalProperties: false` on every fixed-shape object so a stray/un-enumerated key FAILS validation; the only open maps are count histograms (skills/tools/harness_verbs), whose VALUES are pinned to integers. Carries ids (pij ids, file paths, skill/tool/verb names, roles), counts, and closed enums only — never prose, message text, or free-form strings.",
+  "description": "The read-side FLEET join (plan 051 \u00b7 T003): N per-session SessionEvidence objects merged into one fleet unit with honest cost/time totals (workshop D2/D3). CLOSED and counts-only (AC-07, Constitution P12): `additionalProperties: false` on every fixed-shape object so a stray/un-enumerated key FAILS validation; the only open maps are count histograms (skills/tools/harness_verbs), whose VALUES are pinned to integers. Carries ids (pij ids, file paths, skill/tool/verb names, roles), counts, and closed enums only \u2014 never prose, message text, or free-form strings.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["root_pij_id", "scope", "sessions", "orphans", "unrostered", "totals"],
+  "required": [
+    "root_pij_id",
+    "scope",
+    "sessions",
+    "orphans",
+    "unrostered",
+    "totals"
+  ],
   "properties": {
-    "root_pij_id": { "type": "string", "description": "The orchestrator (root pij id) this fleet was joined on." },
+    "root_pij_id": {
+      "type": "string",
+      "description": "The orchestrator (root pij id) this fleet was joined on."
+    },
     "scope": {
       "type": "string",
-      "enum": ["env-tree", "roster", "explicit"],
-      "description": "How membership was scoped — env-tree superset, roster-scoped run, or an explicit id list (D1)."
+      "enum": [
+        "env-tree",
+        "roster",
+        "explicit"
+      ],
+      "description": "How membership was scoped \u2014 env-tree superset, roster-scoped run, or an explicit id list (D1)."
     },
     "sessions": {
       "type": "array",
-      "description": "One lane per session — orchestrator first (when present), then children by descending cost.",
-      "items": { "$ref": "#/$defs/fleetLane" }
+      "description": "One lane per session \u2014 orchestrator first (when present), then children by descending cost.",
+      "items": {
+        "$ref": "#/$defs/fleetLane"
+      }
     },
     "orphans": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Rostered pij ids with no env-tree match (D1 diff); empty without a roster."
     },
     "unrostered": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Env-tree children absent from the roster (D1 diff); empty without a roster."
     },
     "totals": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cost", "time", "segments"],
+      "required": [
+        "cost",
+        "time",
+        "segments"
+      ],
       "properties": {
         "cost": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["grand_total", "output", "measured_lanes", "unmeasured_lanes"],
-          "description": "A LOWER BOUND over MEASURED lanes — unmeasured (copilot-null, F-07) lanes are excluded, never zero-filled, and counted loudly (AC-02).",
+          "required": [
+            "grand_total",
+            "output",
+            "measured_lanes",
+            "unmeasured_lanes"
+          ],
+          "description": "A LOWER BOUND over MEASURED lanes \u2014 unmeasured (copilot-null, F-07) lanes are excluded, never zero-filled, and counted loudly (AC-02).",
           "properties": {
-            "grand_total": { "type": "integer", "minimum": 0 },
-            "output": { "type": "integer", "minimum": 0 },
-            "measured_lanes": { "type": "integer", "minimum": 0 },
-            "unmeasured_lanes": { "type": "integer", "minimum": 0 }
+            "grand_total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "measured_lanes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmeasured_lanes": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "time": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["wall_clock_s", "active_s"],
+          "required": [
+            "wall_clock_s",
+            "active_s"
+          ],
           "description": "From OTLP/event timestamps (AC-03). wall_clock = union of lane spans; active = sum; parallelism = active/wall. null when no lane had a span.",
           "properties": {
-            "wall_clock_s": { "type": ["integer", "null"], "minimum": 0 },
-            "active_s": { "type": ["integer", "null"], "minimum": 0 }
+            "wall_clock_s": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "active_s": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
           }
         },
-        "segments": { "type": "integer", "minimum": 0, "description": "Total segments merged across all lanes." }
+        "segments": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total segments merged across all lanes."
+        }
       }
     },
-    "semantics": { "$ref": "#/$defs/fleetSemantics" }
+    "semantics": {
+      "$ref": "#/$defs/fleetSemantics"
+    }
   },
   "$defs": {
     "fleetLane": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pij_id", "role", "harness", "model", "cost_measured", "tokens", "source", "evidence", "semantics"],
+      "required": [
+        "pij_id",
+        "role",
+        "harness",
+        "model",
+        "cost_measured",
+        "tokens",
+        "source",
+        "evidence",
+        "semantics"
+      ],
       "properties": {
-        "pij_id": { "type": "string", "description": "The child's own pij id (captured_env.PIJ_SESSION_ID) — the join key." },
-        "role": { "type": ["string", "null"], "description": "Role from the roster when scoped (coder/reviewer/…), else null." },
-        "harness": { "type": "string", "description": "pij harness label (claude | copilot | codex | pi) or the segment harness." },
-        "model": { "type": ["string", "null"], "description": "First model name seen across the lane, or null." },
-        "cost_measured": { "type": "boolean", "description": "false ⇒ a tokens:null (copilot) lane with no ledger, excluded from totals (never zero-filled)." },
+        "pij_id": {
+          "type": "string",
+          "description": "The child's own pij id (captured_env.PIJ_SESSION_ID) \u2014 the join key."
+        },
+        "role": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Role from the roster when scoped (coder/reviewer/\u2026), else null."
+        },
+        "harness": {
+          "type": "string",
+          "description": "pij harness label (claude | copilot | codex | pi) or the segment harness."
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "First model name seen across the lane, or null."
+        },
+        "cost_measured": {
+          "type": "boolean",
+          "description": "false \u21d2 a tokens:null (copilot) lane with no ledger, excluded from totals (never zero-filled)."
+        },
         "tokens": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["grand_total", "output"],
-          "description": "Per-lane cost (fleet-layer — SessionEvidence carries no tokens). {0,0} on an unmeasured lane.",
+          "required": [
+            "grand_total",
+            "output"
+          ],
+          "description": "Per-lane cost (fleet-layer \u2014 SessionEvidence carries no tokens). {0,0} on an unmeasured lane.",
           "properties": {
-            "grand_total": { "type": "integer", "minimum": 0 },
-            "output": { "type": "integer", "minimum": 0 }
+            "grand_total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output": {
+              "type": "integer",
+              "minimum": 0
+            }
           }
         },
         "source": {
           "type": "string",
-          "enum": ["live", "ref", "ledger"],
-          "description": "Where the lane resolved from, in precedence order: live temp buffer → synced ref rollup → vendor side-channel ledger (plan 052 · T007)."
+          "enum": [
+            "live",
+            "ref",
+            "ledger"
+          ],
+          "description": "Where the lane resolved from, in precedence order: live temp buffer \u2192 synced ref rollup \u2192 vendor side-channel ledger (plan 052 \u00b7 T007)."
         },
         "billing": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Recovered billing units (dossier F-10) — the authoritative cost unit, distinct from the raw token grand_total. Omitted on a live claude lane. ids/counts only (P12).",
+          "description": "Recovered billing units (dossier F-10) \u2014 the authoritative cost unit, distinct from the raw token grand_total. Omitted on a live claude lane. ids/counts only (P12).",
           "properties": {
-            "nano_aiu": { "type": "integer", "minimum": 0, "description": "Copilot billing unit — nano-AIU (AIC ×1e9); AIC = nano_aiu/1e9. Integer, lossless." },
+            "nano_aiu": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Copilot billing unit \u2014 nano-AIU (AIC \u00d71e9); AIC = nano_aiu/1e9. Integer, lossless."
+            },
             "token_buckets": {
               "type": "object",
-              "additionalProperties": { "type": "integer", "minimum": 0 },
+              "additionalProperties": {
+                "type": "integer",
+                "minimum": 0
+              },
               "description": "Token buckets by name (histogram; keys open, values integer counts)."
             }
           }
         },
-        "evidence": { "$ref": "#/$defs/sessionEvidence" },
-        "semantics": { "$ref": "#/$defs/laneSemantics" }
+        "evidence": {
+          "$ref": "#/$defs/sessionEvidence"
+        },
+        "semantics": {
+          "$ref": "#/$defs/laneSemantics"
+        },
+        "token_evidence": {
+          "$ref": "#/$defs/tokenEvidence"
+        }
       }
     },
     "sessionEvidence": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The existing per-session evidence object, unchanged (session-evidence.ts) — counts/ids/enums derived from the event stream.",
+      "description": "The existing per-session evidence object, unchanged (session-evidence.ts) \u2014 counts/ids/enums derived from the event stream.",
       "required": [
         "pij_session_id",
         "harness_session_id",
@@ -124,115 +244,270 @@
         "duration_s"
       ],
       "properties": {
-        "pij_session_id": { "type": "string" },
-        "harness_session_id": { "type": ["string", "null"] },
-        "harness": { "type": "string" },
-        "segments": { "type": "integer", "minimum": 0 },
+        "pij_session_id": {
+          "type": "string"
+        },
+        "harness_session_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "harness": {
+          "type": "string"
+        },
+        "segments": {
+          "type": "integer",
+          "minimum": 0
+        },
         "skills": {
           "type": "object",
-          "additionalProperties": { "type": "integer", "minimum": 0 },
-          "description": "skill name → run count (histogram; keys open, values integer counts)."
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "skill name \u2192 run count (histogram; keys open, values integer counts)."
         },
-        "skill_order": { "type": "array", "items": { "type": "string" } },
+        "skill_order": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "files": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["written", "edited"],
+          "required": [
+            "written",
+            "edited"
+          ],
           "properties": {
-            "written": { "type": "array", "items": { "type": "string" } },
-            "edited": { "type": "array", "items": { "type": "string" } }
+            "written": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "edited": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         },
-        "flow_seams": { "type": "array", "items": { "type": "string" } },
+        "flow_seams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "harness_verbs": {
           "type": "object",
-          "additionalProperties": { "type": "integer", "minimum": 0 },
-          "description": "harness verb → invocation count (histogram)."
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "harness verb \u2192 invocation count (histogram)."
         },
         "checks": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["status"],
-            "properties": { "status": { "type": "string", "enum": ["ok", "degraded", "error"] } }
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "degraded",
+                  "error"
+                ]
+              }
+            }
           }
         },
-        "compactions": { "type": "integer", "minimum": 0 },
+        "compactions": {
+          "type": "integer",
+          "minimum": 0
+        },
         "tools": {
           "type": "object",
-          "additionalProperties": { "type": "integer", "minimum": 0 },
-          "description": "tool name → total invocation count (histogram)."
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "tool name \u2192 total invocation count (histogram)."
         },
-        "gaps": { "type": "array", "items": { "type": "string" } },
-        "duration_s": { "type": ["integer", "null"], "minimum": 0 }
+        "gaps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "duration_s": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "token_evidence": {
+          "$ref": "#/$defs/tokenEvidence"
+        }
       }
     },
     "semanticFindings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["critical", "high", "med", "low"],
-      "description": "Review findings by severity — counts only.",
+      "required": [
+        "critical",
+        "high",
+        "med",
+        "low"
+      ],
+      "description": "Review findings by severity \u2014 counts only.",
       "properties": {
-        "critical": { "type": "integer", "minimum": 0 },
-        "high": { "type": "integer", "minimum": 0 },
-        "med": { "type": "integer", "minimum": 0 },
-        "low": { "type": "integer", "minimum": 0 }
+        "critical": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "high": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "med": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "low": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "verdictPath": {
       "type": "array",
-      "description": "Review verdict path — closed vocabulary (the plan-050 extractor gates values; `other` is its fallback). No free text.",
+      "description": "Review verdict path \u2014 closed vocabulary (the plan-050 extractor gates values; `other` is its fallback). No free text.",
       "items": {
         "type": "string",
-        "enum": ["APPROVE", "APPROVE_WITH_NOTES", "FIX_REQUIRED", "NEEDS_ATTENTION", "other"]
+        "enum": [
+          "APPROVE",
+          "APPROVE_WITH_NOTES",
+          "FIX_REQUIRED",
+          "NEEDS_ATTENTION",
+          "other"
+        ]
       }
     },
     "laneSemantics": {
       "type": "object",
       "additionalProperties": false,
-      "description": "One lane's semantic (quality/process) rollup (plan 052 · T009), aggregated from its artifact events + flow-stage timing. HONESTY: a blind lane is `semantics_measured:false` and OMITS every dimension — never a `0`; each dimension is present only when its artifact type was captured (counts/enums only, P12).",
-      "required": ["semantics_measured", "artifact_events"],
+      "description": "One lane's semantic (quality/process) rollup (plan 052 \u00b7 T009), aggregated from its artifact events + flow-stage timing. HONESTY: a blind lane is `semantics_measured:false` and OMITS every dimension \u2014 never a `0`; each dimension is present only when its artifact type was captured (counts/enums only, P12).",
+      "required": [
+        "semantics_measured",
+        "artifact_events"
+      ],
       "properties": {
-        "semantics_measured": { "type": "boolean", "description": "false ⇒ a blind lane (no artifact/flow-stage capture); every dimension below is then ABSENT, never 0." },
-        "artifact_events": { "type": "integer", "minimum": 0, "description": "How many artifact events the lane carried (0 on a blind lane)." },
-        "findings": { "$ref": "#/$defs/semanticFindings" },
-        "verdicts": { "$ref": "#/$defs/verdictPath" },
-        "fix_cycles": { "type": "integer", "minimum": 0, "description": "FIX_REQUIRED→APPROVE transitions in the verdict path." },
-        "plan_phases": { "type": "integer", "minimum": 0 },
-        "plan_cs": { "type": ["integer", "null"], "minimum": 0 },
-        "workshop_decisions": { "type": "integer", "minimum": 0 },
-        "nodes": { "type": "integer", "minimum": 0 },
-        "nodes_done": { "type": "integer", "minimum": 0 },
-        "chores_done": { "type": "integer", "minimum": 0 },
-        "chores_todo": { "type": "integer", "minimum": 0 },
+        "semantics_measured": {
+          "type": "boolean",
+          "description": "false \u21d2 a blind lane (no artifact/flow-stage capture); every dimension below is then ABSENT, never 0."
+        },
+        "artifact_events": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many artifact events the lane carried (0 on a blind lane)."
+        },
+        "findings": {
+          "$ref": "#/$defs/semanticFindings"
+        },
+        "verdicts": {
+          "$ref": "#/$defs/verdictPath"
+        },
+        "fix_cycles": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "FIX_REQUIRED\u2192APPROVE transitions in the verdict path."
+        },
+        "plan_phases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan_cs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "workshop_decisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodes_done": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chores_done": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chores_todo": {
+          "type": "integer",
+          "minimum": 0
+        },
         "flow_stage_time_s": {
           "type": "object",
-          "additionalProperties": { "type": "number", "minimum": 0 },
-          "description": "flow stage → seconds (histogram; keys open, values non-negative)."
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "flow stage \u2192 seconds (histogram; keys open, values non-negative)."
         },
-        "mark": { "$ref": "#/$defs/laneMark" }
+        "mark": {
+          "$ref": "#/$defs/laneMark"
+        }
       }
     },
     "laneMark": {
       "type": "object",
       "additionalProperties": false,
-      "description": "A lane's peer self-attestation rollup (plan 053), aggregated from its `mark` events (`harness telemetry mark`). This is what puts a read-only reviewer's verdict on its OWN lane. Slugs are shape-guarded; counts only (P12) — no prose.",
-      "required": ["marks", "kinds"],
+      "description": "A lane's peer self-attestation rollup (plan 053), aggregated from its `mark` events (`harness telemetry mark`). This is what puts a read-only reviewer's verdict on its OWN lane. Slugs are shape-guarded; counts only (P12) \u2014 no prose.",
+      "required": [
+        "marks",
+        "kinds"
+      ],
       "properties": {
-        "marks": { "type": "integer", "minimum": 0, "description": "How many mark events the lane carried." },
+        "marks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many mark events the lane carried."
+        },
         "kinds": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Distinct mark category slugs (`mark_kind`), sorted."
         },
-        "verdicts": { "$ref": "#/$defs/markVerdictPath" },
-        "findings": { "$ref": "#/$defs/semanticFindings" }
+        "verdicts": {
+          "$ref": "#/$defs/markVerdictPath"
+        },
+        "findings": {
+          "$ref": "#/$defs/semanticFindings"
+        }
       }
     },
     "markVerdictPath": {
       "type": "array",
-      "description": "plan 053 — a lane's ordered, consecutive-deduped mark verdict slugs. Shape-guarded identifiers (`^[a-z][a-z0-9-]{0,31}$`), NOT the uppercase artifact verdict vocabulary — a peer chooses its own verdict slug. No free text.",
+      "description": "plan 053 \u2014 a lane's ordered, consecutive-deduped mark verdict slugs. Shape-guarded identifiers (`^[a-z][a-z0-9-]{0,31}$`), NOT the uppercase artifact verdict vocabulary \u2014 a peer chooses its own verdict slug. No free text.",
       "items": {
         "type": "string",
         "pattern": "^[a-z][a-z0-9-]{0,31}$"
@@ -241,25 +516,239 @@
     "fleetSemantics": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The fleet-level semantic rollup with honest per-lane COVERAGE flags (plan 052 · T009). measured/blind lane counts are always present; each aggregate dimension is present only when ≥1 measured lane carried it (OMISSION-not-zero, same contract as a lane).",
-      "required": ["measured_lanes", "blind_lanes"],
+      "description": "The fleet-level semantic rollup with honest per-lane COVERAGE flags (plan 052 \u00b7 T009). measured/blind lane counts are always present; each aggregate dimension is present only when \u22651 measured lane carried it (OMISSION-not-zero, same contract as a lane).",
+      "required": [
+        "measured_lanes",
+        "blind_lanes"
+      ],
       "properties": {
-        "measured_lanes": { "type": "integer", "minimum": 0 },
-        "blind_lanes": { "type": "integer", "minimum": 0 },
-        "findings": { "$ref": "#/$defs/semanticFindings" },
-        "verdicts": { "$ref": "#/$defs/verdictPath" },
-        "fix_cycles": { "type": "integer", "minimum": 0 },
-        "plan_phases": { "type": "integer", "minimum": 0 },
-        "plan_cs": { "type": ["integer", "null"], "minimum": 0 },
-        "workshop_decisions": { "type": "integer", "minimum": 0 },
-        "nodes": { "type": "integer", "minimum": 0 },
-        "nodes_done": { "type": "integer", "minimum": 0 },
-        "chores_done": { "type": "integer", "minimum": 0 },
-        "chores_todo": { "type": "integer", "minimum": 0 },
+        "measured_lanes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blind_lanes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "findings": {
+          "$ref": "#/$defs/semanticFindings"
+        },
+        "verdicts": {
+          "$ref": "#/$defs/verdictPath"
+        },
+        "fix_cycles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan_phases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "plan_cs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "workshop_decisions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodes_done": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chores_done": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "chores_todo": {
+          "type": "integer",
+          "minimum": 0
+        },
         "flow_stage_time_s": {
           "type": "object",
-          "additionalProperties": { "type": "number", "minimum": 0 },
-          "description": "flow stage → seconds, summed across measured lanes."
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": "flow stage \u2192 seconds, summed across measured lanes."
+        }
+      }
+    },
+    "tokenFieldEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source",
+        "observation_kind",
+        "coverage",
+        "reason"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "live",
+            "ref",
+            "ledger",
+            null
+          ]
+        },
+        "observation_kind": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "message_output",
+            "cumulative_checkpoint",
+            "partial_compaction",
+            "final_shutdown",
+            "session_total",
+            null
+          ]
+        },
+        "coverage": {
+          "type": "string",
+          "enum": [
+            "measured",
+            "unavailable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "no_observation",
+            "field_absent",
+            "partial_observation",
+            "identity_unavailable",
+            "source_unavailable",
+            "flushed_segments_unreadable",
+            "post_checkpoint_tail",
+            "mixed_observation_kinds",
+            "vendor_field_absent",
+            "transcript_zero",
+            "transcript_multiple",
+            "transcript_unresolved",
+            "transcript_traversal",
+            "transcript_symlink",
+            "transcript_non_file",
+            "transcript_oversize",
+            "transcript_malformed",
+            "transcript_ambiguity",
+            null
+          ]
+        }
+      }
+    },
+    "tokenEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "coverage",
+        "reason",
+        "cause",
+        "source",
+        "fields"
+      ],
+      "properties": {
+        "coverage": {
+          "type": "string",
+          "enum": [
+            "measured",
+            "partial",
+            "unavailable"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "no_observation",
+            "field_absent",
+            "partial_observation",
+            "identity_unavailable",
+            "source_unavailable",
+            "flushed_segments_unreadable",
+            "post_checkpoint_tail",
+            "mixed_observation_kinds",
+            "vendor_field_absent",
+            "transcript_zero",
+            "transcript_multiple",
+            "transcript_unresolved",
+            "transcript_traversal",
+            "transcript_symlink",
+            "transcript_non_file",
+            "transcript_oversize",
+            "transcript_malformed",
+            "transcript_ambiguity",
+            null
+          ]
+        },
+        "cause": {
+          "const": "unknown"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "live",
+            "ref",
+            "ledger",
+            null
+          ]
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "input",
+            "output",
+            "cache_read",
+            "cache_create",
+            "nano_aiu"
+          ],
+          "properties": {
+            "input": {
+              "$ref": "#/$defs/tokenFieldEvidence"
+            },
+            "output": {
+              "$ref": "#/$defs/tokenFieldEvidence"
+            },
+            "cache_read": {
+              "$ref": "#/$defs/tokenFieldEvidence"
+            },
+            "cache_create": {
+              "$ref": "#/$defs/tokenFieldEvidence"
+            },
+            "nano_aiu": {
+              "$ref": "#/$defs/tokenFieldEvidence"
+            }
+          }
         }
       }
     }

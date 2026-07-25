@@ -380,3 +380,104 @@ describe('T014 — the rollup → OTLP Metrics datapoint attributes stay in the 
     for (const k of attrKeys) expect(frozen, `attr "${k}" must be a frozen name`).toContain(k);
   });
 });
+
+function usageEvent(
+  t: string,
+  observationKind:
+    | 'message_output'
+    | 'cumulative_checkpoint'
+    | 'partial_compaction'
+    | 'final_shutdown',
+  buckets: { in: number; out: number; cache_read: number; cache_create: number },
+): Event {
+  return {
+    t,
+    kind: 'usage',
+    observation_kind: observationKind,
+    ...buckets,
+  } as unknown as Event;
+}
+
+describe('P063 T008 — usage rollup precedence and non-addition', () => {
+  const messageOne = usageEvent('2026-07-20T13:00:01Z', 'message_output', {
+    in: 1,
+    out: 10,
+    cache_read: 2,
+    cache_create: 3,
+  });
+  const messageTwo = usageEvent('2026-07-20T13:00:02Z', 'message_output', {
+    in: 4,
+    out: 20,
+    cache_read: 5,
+    cache_create: 6,
+  });
+  const checkpoint = usageEvent('2026-07-20T13:00:03Z', 'cumulative_checkpoint', {
+    in: 80,
+    out: 100,
+    cache_read: 40,
+    cache_create: 20,
+  });
+  const compaction = usageEvent('2026-07-20T13:00:04Z', 'partial_compaction', {
+    in: 3,
+    out: 7,
+    cache_read: 2,
+    cache_create: 1,
+  });
+  const final = usageEvent('2026-07-20T13:00:05Z', 'final_shutdown', {
+    in: 200,
+    out: 300,
+    cache_read: 400,
+    cache_create: 500,
+  });
+
+  it('aggregates message observations only with the same kind', () => {
+    expect(computeRollup([messageOne, messageTwo]).tokens).toEqual({
+      in: 5,
+      out: 30,
+      cache_read: 7,
+      cache_create: 9,
+    });
+  });
+
+  it('selects a cumulative checkpoint without adding messages or partial compaction', () => {
+    expect(computeRollup([messageOne, messageTwo, checkpoint, compaction]).tokens).toEqual({
+      in: 80,
+      out: 100,
+      cache_read: 40,
+      cache_create: 20,
+    });
+  });
+
+  it('makes the valid final authoritative over turns and every other observation kind', () => {
+    const turn = {
+      t: '2026-07-20T13:00:00Z',
+      kind: 'turn',
+      dur_s: 1,
+      in: 999,
+      out: 999,
+      cache_read: 999,
+      cache_create: 999,
+    } as Event;
+    expect(
+      computeRollup([turn, messageOne, messageTwo, checkpoint, compaction, final]).tokens,
+    ).toEqual({ in: 200, out: 300, cache_read: 400, cache_create: 500 });
+  });
+
+  it('does not zero-fill absent buckets on a partial message observation', () => {
+    const partial = {
+      t: '2026-07-20T13:00:06Z',
+      kind: 'usage',
+      observation_kind: 'message_output',
+      out: 30,
+    } as Event;
+
+    expect(computeRollup([partial]).tokens).toBeNull();
+  });
+  it('keeps observation timestamps out of activity gap math', () => {
+    const work: Event[] = [
+      { t: '2026-07-20T13:00:00Z', kind: 'prompt', words: 1 },
+      { t: '2026-07-20T13:00:10Z', kind: 'turn', dur_s: 10 },
+    ];
+    expect(computeRollup([...work, final]).activity).toEqual(computeRollup(work).activity);
+  });
+});

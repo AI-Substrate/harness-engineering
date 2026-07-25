@@ -5,8 +5,13 @@ import {
   aicFromNano,
   copilotSessionEventsPath,
   extractCopilotLedger,
+  extractCopilotUsageObservations,
   readCopilotLedger,
 } from '../../../src/services/telemetry/copilot-ledger.js';
+import {
+  reduceUsageObservations,
+  type UsageObservation,
+} from '../../../src/services/telemetry/usage-observation.js';
 
 /**
  * Plan 052 · T003 — the Copilot shutdown-ledger reader (dossier F-01). Proven
@@ -46,8 +51,8 @@ describe('extractCopilotLedger — real scrubbed shutdown fixtures (F-01)', () =
     const led = extractCopilotLedger(REVIEWER);
     expect(led.nano_aiu).toBe(298534500000);
     expect(Number(aicFromNano(led.nano_aiu)?.toFixed(1))).toBe(298.5);
-    // reviewer shutdown carried no cache_write bucket → 0 (never guessed).
-    expect(led.token_buckets?.cache_create).toBe(0);
+    // reviewer shutdown carried no cache_write bucket → absent, never guessed zero.
+    expect(led.token_buckets?.cache_create).toBeUndefined();
   });
 
   it('premium_requests is carried but is LEGACY, never billing (F-10)', () => {
@@ -89,5 +94,211 @@ describe('readCopilotLedger — ports read (F-01)', () => {
   it('missing home / missing file → unmeasured (never throws)', () => {
     expect(readCopilotLedger(new FakeFs({}), undefined, 'x').measured).toBe(false);
     expect(readCopilotLedger(new FakeFs({}), HOME, 'absent').measured).toBe(false);
+  });
+});
+
+function typedTokenDetails(
+  input: number,
+  output: number,
+  cacheRead: number,
+  cacheWrite: number,
+): Record<string, { tokenCount: number }> {
+  return {
+    input: { tokenCount: input },
+    output: { tokenCount: output },
+    cache_read: { tokenCount: cacheRead },
+    cache_write: { tokenCount: cacheWrite },
+  };
+}
+
+function usageJsonl(records: readonly Record<string, unknown>[]): string {
+  return records.map((record) => JSON.stringify(record)).join('\n');
+}
+
+describe('P063 T007 — typed Copilot usage parsing', () => {
+  it('parses message output, cumulative checkpoint, partial compaction, and final shutdown distinctly', () => {
+    const content = usageJsonl([
+      {
+        type: 'assistant.message',
+        timestamp: '2026-07-20T10:00:01Z',
+        data: {
+          outputTokens: 11,
+          content: 'PRIVATE_MESSAGE_TEXT',
+          identity: 'person@example.test',
+        },
+      },
+      {
+        type: 'session.usage_checkpoint',
+        timestamp: '2026-07-20T10:00:02Z',
+        data: { totalNanoAiu: 200, tokenDetails: typedTokenDetails(20, 30, 4, 5) },
+      },
+      {
+        type: 'session.compaction',
+        timestamp: '2026-07-20T10:00:03Z',
+        data: { tokenDetails: typedTokenDetails(6, 7, 8, 9), summary: 'PRIVATE_SUMMARY' },
+      },
+      {
+        type: 'session.shutdown',
+        timestamp: '2026-07-20T10:00:04Z',
+        data: {
+          totalNanoAiu: 500,
+          tokenDetails: typedTokenDetails(40, 50, 60, 70),
+          cwd: '/Users/private/repository',
+        },
+      },
+    ]);
+
+    expect(extractCopilotUsageObservations(content)).toEqual([
+      {
+        t: '2026-07-20T10:00:01Z',
+        observation_kind: 'message_output',
+        output: 11,
+      },
+      {
+        t: '2026-07-20T10:00:02Z',
+        observation_kind: 'cumulative_checkpoint',
+        input: 20,
+        output: 30,
+        cache_read: 4,
+        cache_create: 5,
+        nano_aiu: 200,
+      },
+      {
+        t: '2026-07-20T10:00:03Z',
+        observation_kind: 'partial_compaction',
+        input: 6,
+        output: 7,
+        cache_read: 8,
+        cache_create: 9,
+      },
+      {
+        t: '2026-07-20T10:00:04Z',
+        observation_kind: 'final_shutdown',
+        input: 40,
+        output: 50,
+        cache_read: 60,
+        cache_create: 70,
+        nano_aiu: 500,
+      },
+    ]);
+  });
+
+  it('skips malformed and unknown records without guessing zero or throwing', () => {
+    const content = [
+      '{not json',
+      JSON.stringify(null),
+      JSON.stringify([]),
+      JSON.stringify(42),
+      JSON.stringify({
+        type: 'session.shutdown',
+        timestamp: 'not-a-time',
+        data: { tokenDetails: typedTokenDetails(1, 2, 3, 4) },
+      }),
+      JSON.stringify({
+        type: 'assistant.message',
+        timestamp: '2026-07-20T10:00:01Z',
+        data: { outputTokens: '11' },
+      }),
+      JSON.stringify({
+        type: 'session.shutdown',
+        timestamp: '2026-07-20T10:00:02Z',
+        data: { tokenDetails: { output: { tokenCount: -1 } } },
+      }),
+      JSON.stringify({
+        type: 'session.unknown_usage',
+        timestamp: '2026-07-20T10:00:03Z',
+        data: { outputTokens: 999 },
+      }),
+    ].join('\n');
+
+    expect(extractCopilotUsageObservations(content)).toEqual([]);
+  });
+});
+
+describe('P063 T007 — kind-specific usage reduction', () => {
+  it('aggregates message outputs only with message outputs', () => {
+    const observations: UsageObservation[] = [
+      { t: '2026-07-20T10:00:01Z', observation_kind: 'message_output', output: 10 },
+      { t: '2026-07-20T10:00:02Z', observation_kind: 'message_output', output: 20 },
+    ];
+
+    expect(reduceUsageObservations(observations)).toEqual({
+      t: '2026-07-20T10:00:02Z',
+      observation_kind: 'message_output',
+      output: 30,
+    });
+  });
+
+  it('keeps distinct message records even when timestamp and counts are identical', () => {
+    const observations: UsageObservation[] = [
+      { t: '2026-07-20T10:00:01Z', observation_kind: 'message_output', output: 10 },
+      { t: '2026-07-20T10:00:01Z', observation_kind: 'message_output', output: 10 },
+    ];
+
+    expect(reduceUsageObservations(observations)).toEqual({
+      t: '2026-07-20T10:00:01Z',
+      observation_kind: 'message_output',
+      output: 20,
+    });
+  });
+
+  it('selects the latest valid cumulative or partial observation instead of adding snapshots', () => {
+    const checkpoints: UsageObservation[] = [
+      {
+        t: '2026-07-20T10:00:01Z',
+        observation_kind: 'cumulative_checkpoint',
+        input: 50,
+        output: 60,
+      },
+      {
+        t: '2026-07-20T10:00:02Z',
+        observation_kind: 'cumulative_checkpoint',
+        input: 70,
+        output: 80,
+      },
+    ];
+    const compactions: UsageObservation[] = [
+      { t: '2026-07-20T10:00:03Z', observation_kind: 'partial_compaction', output: 7 },
+      { t: '2026-07-20T10:00:04Z', observation_kind: 'partial_compaction', output: 9 },
+    ];
+
+    expect(reduceUsageObservations(checkpoints)).toEqual(checkpoints[1]);
+    expect(reduceUsageObservations(compactions)).toEqual(compactions[1]);
+  });
+
+  it('makes a valid final authoritative and ignores an invalid final without adding unlike kinds', () => {
+    const checkpoint: UsageObservation = {
+      t: '2026-07-20T10:00:01Z',
+      observation_kind: 'cumulative_checkpoint',
+      input: 100,
+      output: 200,
+    };
+    const final: UsageObservation = {
+      t: '2026-07-20T10:00:02Z',
+      observation_kind: 'final_shutdown',
+      output: 7,
+    };
+    const invalidFinal = {
+      t: '2026-07-20T10:00:03Z',
+      observation_kind: 'final_shutdown',
+      output: Number.NaN,
+    } as UsageObservation;
+
+    // The final is authoritative for the buckets it CARRIES (output), and stays the
+    // reduction's kind. Finding 04 changed what happens to the buckets it does NOT
+    // carry: `input` is no longer reported unavailable while the checkpoint plainly
+    // measured it — it is recovered, tagged with the kind it really came from, and the
+    // set is declared mixed so nothing claims to be one coherent snapshot.
+    expect(reduceUsageObservations([checkpoint, final])).toEqual({
+      t: final.t,
+      observation_kind: 'final_shutdown',
+      output: 7,
+      input: 100,
+      field_kinds: { input: 'cumulative_checkpoint', output: 'final_shutdown' },
+    });
+    // Still never ADDED: output is the final's 7, not 200 + 7.
+    expect(reduceUsageObservations([checkpoint, final])?.output).toBe(7);
+    expect(reduceUsageObservations([checkpoint, invalidFinal])).toEqual(checkpoint);
+    expect(reduceUsageObservations([])).toBeNull();
   });
 });

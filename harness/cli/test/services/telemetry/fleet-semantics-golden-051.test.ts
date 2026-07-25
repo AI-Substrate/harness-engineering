@@ -244,6 +244,6 @@ describe('GOLDEN — the 051 fleet semantic reconcile vs debrief §05 (plan 052 
   it('all four cost lanes still resolve (Phase 1 untouched) — the semantic layer is additive', async () => {
     const fleet = await reconcile();
     expect(fleet.sessions).toHaveLength(4);
-    expect(fleet.totals.cost.measured_lanes).toBe(4);
+    expect(fleet.totals.cost.measured_lanes).toBe(3);
   });
 });

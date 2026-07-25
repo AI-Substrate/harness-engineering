@@ -20,10 +20,10 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
 
 /** codex `total_token_usage` buckets — the running session total. */
 export interface CodexTokenBuckets {
-  input: number;
-  output: number;
-  cached: number;
-  reasoning: number;
+  input: number | null;
+  output: number | null;
+  cached: number | null;
+  reasoning: number | null;
   total: number;
 }
 
@@ -77,10 +77,10 @@ export function extractCodexLedger(rolloutJsonl: string): CodexLedger {
   return {
     measured: true,
     token_buckets: {
-      input: num(usage.input_tokens) ?? 0,
-      output: num(usage.output_tokens) ?? 0,
-      cached: num(usage.cached_input_tokens) ?? 0,
-      reasoning: num(usage.reasoning_output_tokens) ?? 0,
+      input: num(usage.input_tokens),
+      output: num(usage.output_tokens),
+      cached: num(usage.cached_input_tokens),
+      reasoning: num(usage.reasoning_output_tokens),
       total,
     },
     context_window: num(info.model_context_window),

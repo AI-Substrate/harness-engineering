@@ -190,6 +190,19 @@ describe('registerTelemetryAct — telemetry get', () => {
     });
   }
 
+  function partialEvidenceSeg(pijId: string): string {
+    const segment = JSON.parse(evidenceSeg(pijId)) as Record<string, unknown>;
+    segment.event_stream = [
+      {
+        t: '2026-06-23T11:00:01.000Z',
+        kind: 'usage',
+        observation_kind: 'final_shutdown',
+        out: 22,
+      },
+    ];
+    return JSON.stringify(segment);
+  }
+
   /** Drive the ASYNC `get` action through `parseAsync`; the mocked exit throw becomes the rejection. */
   async function runGet(
     args: string[],
@@ -242,6 +255,20 @@ describe('registerTelemetryAct — telemetry get', () => {
     expect(code).toBe(0);
   });
 
+  it('partial token evidence returns a degraded get envelope', async () => {
+    const fs = new FakeFs(
+      { [`${TEL}/sessA/0.json`]: partialEvidenceSeg('pij-partial') },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['0.json'] },
+    );
+    const { io, out } = ioFor('json');
+    const code = await runGet(['get', 'pij-partial'], io, fs);
+    const env = JSON.parse(out());
+
+    expect(env.status).toBe('degraded');
+    expect(env.data.token_evidence).toMatchObject({ coverage: 'partial', cause: 'unknown' });
+    expect(env.next_action).toContain('Token coverage is partial');
+    expect(code).toBe(0);
+  });
   it('unknown id → error envelope (E100, exit 1)', async () => {
     const { io, out } = ioFor('json');
     const code = await runGet(['get', 'pij-absent'], io, getBufferFs('pij-get'));
@@ -272,6 +299,68 @@ describe('registerTelemetryAct — telemetry get', () => {
     const code = await runGet(['get', 'pij-get'], io, getBufferFs('pij-get'));
     expect(out()).toContain('telemetry get: 1 segment(s)');
     expect(out()).toContain('1 tool(s)');
+    expect(code).toBe(0);
+  });
+});
+
+describe('registerTelemetryAct — telemetry get-fleet coverage', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('returns degraded when a joined lane has partial token evidence', async () => {
+    const root = 'pij-root';
+    const child = 'pij-child';
+    const segment = {
+      schema_version: '2.6',
+      command: 'flow',
+      harness: 'copilot-cli',
+      harness_version: 'test',
+      harness_session_id: 'hs-child',
+      timecode: '2026-07-23T00:00:00.000Z',
+      window: { since: 'session-start', from: 0, to: 1 },
+      branch: null,
+      tokens: null,
+      effort: null,
+      event_stream: [
+        {
+          t: '2026-07-23T00:00:00.000Z',
+          kind: 'usage',
+          observation_kind: 'final_shutdown',
+          out: 22,
+        },
+      ],
+      rollup: null,
+      captured_env: {
+        PIJ_SESSION_ID: child,
+        PIJ_PARENT_ID: root,
+        PIJ_HARNESS: 'copilot',
+      },
+    };
+    const fs = new FakeFs(
+      { [`${TEL}/hs-child/0.json`]: JSON.stringify(segment) },
+      { [TEL]: ['hs-child'], [`${TEL}/hs-child`]: ['0.json'] },
+    );
+    const { io, out } = ioFor('json');
+    let code = -1;
+    vi.spyOn(process, 'exit').mockImplementation(((value?: number) => {
+      code = value ?? 0;
+      throw new Error(`exit:${code}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, io, {
+      fs,
+      proc: new FakeProcess({}, '/repo'),
+      clock: new FakeClock('2026-07-23T00:00:01.000Z'),
+      env: new FakeEnv(),
+      gitWrite: new FakeGitWrite(),
+    });
+
+    await expect(
+      program.parseAsync(['node', 'harness', 'telemetry', 'get-fleet', root]),
+    ).rejects.toThrow(/^exit:/);
+    const envelope = JSON.parse(out());
+    expect(envelope.status).toBe('degraded');
+    expect(envelope.data.sessions[0].token_evidence).toMatchObject({ coverage: 'partial' });
+    expect(envelope.next_action).toContain('partial/unavailable');
     expect(code).toBe(0);
   });
 });
@@ -345,6 +434,25 @@ describe('registerTelemetryAct — telemetry session save', () => {
     );
   }
 
+  function partialSaveBufferFs(): FakeFs {
+    const partial = JSON.parse(saveSeg()) as Record<string, unknown>;
+    partial.schema_version = '2.6';
+    partial.window = { since: 'session-start', from: 0, to: 1 };
+    partial.effort = null;
+    partial.event_stream = [
+      {
+        t: '2026-06-23T11:00:01.000Z',
+        kind: 'usage',
+        observation_kind: 'final_shutdown',
+        out: 20,
+      },
+    ];
+    return new FakeFs(
+      { [`${TEL}/sessSave/0.json`]: JSON.stringify(partial) },
+      { [TEL]: ['sessSave'], [`${TEL}/sessSave`]: ['0.json'] },
+    );
+  }
+
   it('valid session → ok envelope (exit 0), evidence[<out> + <html>], and a schema-valid file on disk', () => {
     const { io, out } = ioFor('json');
     const fs = saveBufferFs();
@@ -387,6 +495,24 @@ describe('registerTelemetryAct — telemetry session save', () => {
     expect(code).toBe(0);
   });
 
+  it('partial token coverage returns a degraded envelope with a next action', () => {
+    const { io, out } = ioFor('json');
+    const code = runSave(
+      ['save', 'sessSave', '--out', '/out/partial.session.json', '--no-html'],
+      io,
+      partialSaveBufferFs(),
+    );
+    const env = JSON.parse(out());
+
+    expect(env.status).toBe('degraded');
+    expect(env.data.token_evidence).toMatchObject({
+      coverage: 'partial',
+      reason: 'partial_observation',
+      cause: 'unknown',
+    });
+    expect(env.next_action).toContain('token_evidence.fields');
+    expect(code).toBe(0);
+  });
   it('--no-html suppresses the co-produced view (only the .session.json is written)', () => {
     const { io, out } = ioFor('json');
     const fs = saveBufferFs();
@@ -415,6 +541,19 @@ describe('registerTelemetryAct — telemetry session save', () => {
     const env = JSON.parse(out());
     expect(env.status).toBe('error');
     expect(env.error.message).toContain('git-ref');
+    expect(code).toBe(1);
+  });
+
+  it('an EXPLICIT --source auto with no git read port → honest error (never a silent temp read)', () => {
+    // R2-04. `auto` is the default, and a DEFAULTED auto degrades to temp on purpose
+    // (combineSession then marks a flushed session partial). But an operator who TYPED
+    // `--source auto` asked for the union; answering with a temp subset would be the
+    // silent under-report finding 02 exists to kill. The two paths must stay distinct.
+    const { io, out } = ioFor('json');
+    const code = runSave(['save', 'sessSave', '--source', 'auto'], io, saveBufferFs());
+    const env = JSON.parse(out());
+    expect(env.status).toBe('error');
+    expect(env.error.message).toContain('auto');
     expect(code).toBe(1);
   });
 
@@ -1029,7 +1168,7 @@ describe('registerTelemetryAct — telemetry report / report-render', () => {
     const fs = sessionsFs();
     const code = run(['report', '/data', '--out', '/r'], io, fs);
     const env = JSON.parse(out());
-    expect(env.status).toBe('ok');
+    expect(env.status).toBe('degraded');
     expect(env.data.sessions).toBe(2);
     expect(env.data.single).toBe(false);
     expect(env.evidence).toEqual([

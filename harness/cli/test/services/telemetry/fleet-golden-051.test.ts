@@ -109,7 +109,10 @@ const ROSTER = JSON.stringify({
  * string REPLACES it — modelling a malformed one), so the fix-001 negatives can flip
  * one lane's ledger without rebuilding the whole roster.
  */
-function goldenDeps(overrides?: Record<string, string | null>): SessionEvidenceDeps {
+function goldenDeps(
+  overrides?: Record<string, string | null>,
+  dirOverrides?: Record<string, string[]>,
+): SessionEvidenceDeps {
   const seg = orchestratorSegment();
   const files: Record<string, string> = {
     // roster
@@ -138,6 +141,7 @@ function goldenDeps(overrides?: Record<string, string | null>): SessionEvidenceD
     if (content === null) delete files[path];
     else files[path] = content;
   }
+  for (const [path, entries] of Object.entries(dirOverrides ?? {})) dirs[path] = entries;
   return {
     fs: new FakeFs(files, dirs),
     env: new FakeEnv({}, HOME),
@@ -216,10 +220,10 @@ describe('GOLDEN — the real 051 fleet resolves 4/4 lanes (plan 052 · T007 · 
     expect(orch.evidence.segments).toBe(1);
   });
 
-  it('all four lanes are cost_measured — the debrief gap is closed (AC-01)', async () => {
+  it('classifies three complete lanes and one honest partial lane', async () => {
     const fleet = await golden();
-    expect(fleet.totals.cost.measured_lanes).toBe(4);
-    expect(fleet.totals.cost.unmeasured_lanes).toBe(0);
+    expect(fleet.totals.cost.measured_lanes).toBe(3);
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
   });
 
   it('the golden fleet validates clean against the closed schema (source + billing)', async () => {
@@ -290,6 +294,67 @@ describe('AC-06 — a flushed lane resolves via its ref rollup (source: ref) bef
   });
 });
 
+// ── finding 01: a live message-only window must not mask the ledger's final ───────
+describe('finding 01 — a live message_output window never masks an authoritative ledger final', () => {
+  /**
+   * The normal copilot fleet shape, composed end-to-end. The coder is BOTH live (its
+   * capture window is in the buffer) and ledgered (its `session.shutdown` exists).
+   * Capture runs on harness commands and the shutdown is written after the last one,
+   * so the live window structurally holds only message-kind observations while the
+   * ledger holds the session's authoritative final. Ranking source above kind picked
+   * `output` from the 100-token live window instead of the ledger's 139,800 and still
+   * reported the lane `measured` — a ~139k silent under-report per lane.
+   */
+  function coderLiveWindow(): Segment {
+    return serializeSegment(
+      {
+        command: 'flow',
+        harness: 'copilot',
+        harness_session_id: CODER_SID,
+        timecode: '2026-07-04T05:00:00Z',
+        window: { since: 'session-start', from: 0, to: 1 },
+        branch: null,
+        tokens: null,
+        event_stream: [
+          {
+            t: '2026-07-04T05:00:00Z',
+            kind: 'usage',
+            observation_kind: 'message_output',
+            out: 100,
+          },
+        ] as Event[],
+        captured_env: {
+          PIJ_SESSION_ID: CODER_PIJ,
+          PIJ_PARENT_ID: ROOT,
+          PIJ_HARNESS: 'copilot',
+        },
+      } as SegmentInput,
+      REPO,
+    );
+  }
+
+  it('takes every token field from the ledger final, not the live window', async () => {
+    const deps = goldenDeps(
+      { [`${tel(REPO)}/coder/0.json`]: JSON.stringify(coderLiveWindow()) },
+      { [tel(REPO)]: ['orch', 'coder'], [`${tel(REPO)}/coder`]: ['0.json'] },
+    );
+    const fleet = await getFleetEvidence(ROOT, deps, { rosterPath: `${REPO}/roster.json` });
+    if (fleet === null) throw new Error('expected a fleet');
+    const coder = laneByRole(fleet, 'coder');
+
+    for (const key of ['input', 'output', 'cache_read', 'cache_create'] as const) {
+      expect(coder.token_evidence.fields[key].observation_kind).toBe('final_shutdown');
+      expect(coder.token_evidence.fields[key].source).toBe('ledger');
+    }
+    // The real coder shutdown numbers — the live 100 must not appear anywhere.
+    expect(coder.token_evidence.fields.output.value).toBe(139800);
+    expect(coder.token_evidence.fields.input.value).toBe(16009);
+    expect(coder.token_evidence.fields.cache_read.value).toBe(19952600);
+    expect(coder.token_evidence.fields.cache_create.value).toBe(620359);
+    expect(coder.token_evidence.coverage).toBe('measured');
+  });
+});
+
 // ── fix-001: a malformed side channel degrades the lane, it does not vanish ───────
 describe('fix-001 — a malformed side-channel ledger degrades to an unmeasured lane (honesty invariant)', () => {
   // A `session.shutdown` that is PRESENT but carries no numeric `totalNanoAiu` — the
@@ -326,8 +391,8 @@ describe('fix-001 — a malformed side-channel ledger degrades to an unmeasured 
     expect(fleet.sessions).toHaveLength(4);
 
     // …and COUNTED as an unmeasured lane so the accounting stays honest (F1).
-    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
-    expect(fleet.totals.cost.measured_lanes).toBe(3);
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(2);
+    expect(fleet.totals.cost.measured_lanes).toBe(2);
 
     // still a clean, closed-schema fleet (the degraded lane validates).
     expect(closedViolations(FLEET_SCHEMA, fleet, FLEET_SCHEMA)).toEqual([]);
@@ -347,7 +412,7 @@ describe('fix-001 — a malformed side-channel ledger degrades to an unmeasured 
     expect(validator?.cost_measured).toBe(false);
     expect(validator?.tokens).toEqual({ grand_total: 0, output: 0 });
     expect(fleet.orphans).not.toContain(VALIDATOR_PIJ);
-    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(2);
     expect(closedViolations(FLEET_SCHEMA, fleet, FLEET_SCHEMA)).toEqual([]);
   });
 
@@ -361,8 +426,8 @@ describe('fix-001 — a malformed side-channel ledger degrades to an unmeasured 
     expect(fleet.sessions.find((l) => l.pij_id === CODER_PIJ)).toBeUndefined();
     expect(fleet.orphans).toContain(CODER_PIJ);
     expect(fleet.sessions).toHaveLength(3);
-    expect(fleet.totals.cost.unmeasured_lanes).toBe(0);
-    expect(fleet.totals.cost.measured_lanes).toBe(3);
+    expect(fleet.totals.cost.unmeasured_lanes).toBe(1);
+    expect(fleet.totals.cost.measured_lanes).toBe(2);
   });
 });
 
