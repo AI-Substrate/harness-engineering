@@ -163,6 +163,9 @@ agents/*/runs/
 # flow-pair run ledger (per-run prompts/diffs/ledger — local orchestration state)
 .flow-pair/
 
+# pij prime government — local orchestration state, never committed.
+/government/
+
 # Harness scratch buffer — crash-resilient agent working notes (.harness/ itself is committed;
 # only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).
 .harness/temp/
@@ -209,3 +212,6 @@ docs/retros/validate-harness-flow.md
 # artifact is review.*.md (tracked); the computed diff is not. Ignore it anywhere it lands
 # (Simple-Mode `*/reviews/` and Full-Mode `tasks/*/reviews/` both).
 _computed.diff
+
+# serena tooling cache — local MCP index, large and regenerable.
+.serena/

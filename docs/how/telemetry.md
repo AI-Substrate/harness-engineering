@@ -293,6 +293,17 @@ side-channel, a **`billing`** block (`nano_aiu` and/or `token_buckets`):
   making the member vanish. A rostered member with **no resolvable source at all** is
   instead an `orphan` (below), not a zero-filled lane. Fleet cost is still an honest
   **lower bound**.
+- **Token evidence** — precedence is evaluated **per field**, not per lane. A
+  measured vendor field can supplement an empty ref; complementary live/ref/ledger
+  fields merge without adding unlike observation kinds. `source` remains the
+  deterministic compatibility projection, while `token_evidence.fields.*` records
+  each value's source, observation kind, coverage, and reason. Aggregate coverage
+  can honestly be `partial` even when some fields are measured—for example, after
+  prune a ref may preserve measured token fields while another shard has no usage.
+  `partial` therefore does not mean "discard the values"; absent fields remain
+  unavailable and are never converted to measured zero. A billing-only Copilot
+  checkpoint can likewise preserve measured `nano_aiu` while aggregate primary-token
+  coverage stays unavailable.
 - **Time** — `totals.time.wall_clock_s` is the **union** of the lanes' event-time
   spans; `active_s` is their **sum**; `active/wall` is the parallelism ratio. Both
   come from `event_stream[].t` timestamps (the segment `window` is an event index,

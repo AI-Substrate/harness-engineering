@@ -1,5 +1,5 @@
 - Assume friction will happen.
-- Give the repo one focal operating surface: CLI.
+- Give the repo one focal operating surface: CLI or make file or justfile. Make sure it's well known and all agents know to use it. 
 - Instruct the agent to use the CLI, not guess around it.
 - Strive to make the system push back deterministically.
 - Use Backpressure Check as an advisory look at whether the current scoped work has enough deterministic sensors.
@@ -9,4 +9,4 @@
 - Encode the chosen fix into the harness.
 - Repeat.
 
-[CLI focal point + required agent use] + [deterministic sensors] + [advisory Backpressure Check] + [friction capture] + [human-selected harness improvements] = engineering harness nucleus.
+\[CLI focal point + required agent use\] + \[deterministic sensors\] + \[advisory Backpressure Check\] + \[friction capture\] + \[human-selected harness improvements\] = engineering harness nucleus.

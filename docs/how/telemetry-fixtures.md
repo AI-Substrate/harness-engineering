@@ -205,6 +205,30 @@ check is deterministic across machines and in CI.
 
 ---
 
+## Minimized regression fixtures derived from private replay
+
+Some bugs require authorized private evidence to establish the real behavior, but
+the public repository must not receive those source bytes. Use this stricter order:
+
+1. run the born-closed real replay and obtain GREEN;
+2. identify only the structural/numeric event shapes that changed the verdict;
+3. hand-author the smallest synthetic fixture with neutral timestamps, identifiers,
+   and small invented numbers—never copy raw records, real totals, paths, prose,
+   payloads, footers, or person data;
+4. add a behavior assertion plus a mutation that fails when the plausible bug is
+   reintroduced;
+5. run the fixture drift, byte-scan, publication-boundary, focused, and repository
+   gates;
+6. manually read every promoted byte before commit.
+
+The real replay is the oracle; the minimized fixture is the durable CI guard. A
+synthetic fixture alone cannot substitute for the real replay, and replay GREEN does
+not waive the binding manual review. The P063 token-recovery fixture follows this
+pattern: final-over-checkpoint precedence, billing-only checkpoint partiality, and
+post-prune measured fields under honest aggregate partial coverage.
+
+---
+
 ## See also
 
 - `.harness/extensions/telemetry-fixtures/instructions.md` — the `capture-fixtures` verb reference.

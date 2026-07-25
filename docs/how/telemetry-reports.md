@@ -121,6 +121,19 @@ cumulative metrics.
 | `attribution` | How to read the numbers — `tokens`/`time` method, the `exact[]` counts, declared `notes[]` |
 | `provenance` | Rendered at the bottom of the HTML: date range, repos, branches, harnesses, models, authoritative `session_count`, `source_paths`, `generated_at` |
 
+### Reading token coverage
+
+Token state is carried independently from the headline value. The public session,
+fleet, report, sweep, and HTML surfaces use `measured`, `partial`, or `unavailable`
+plus a closed reason. `partial` can contain real measured fields: a durable ref can
+retain token values after the live buffer is pruned while honestly reporting that
+another shard lacked usage. Consumers must render those present fields and their
+per-field sources; they must not replace the whole lane with zero or label it fully
+measured. When primary token coverage is unavailable but a billing field such as
+`nano_aiu` is measured, the command remains degraded and reports the gap rather than
+claiming a complete token total. Report JSON and HTML expose the coverage/reason
+distribution so a zero-coverage cohort is visible, not mistaken for no activity.
+
 #### The five rollup dimensions
 
 | Dimension | Lens |
