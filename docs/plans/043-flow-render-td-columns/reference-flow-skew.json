@@ -16,7 +16,7 @@
     "record_kind": "flow",
     "harness_version": "0.5.0",
     "branch": "schema-migration",
-    "repo": "https://github.com/MYOB-Technology/Huxley-Harness.git",
+    "repo": "https://github.com/example-org/example-harness.git",
     "created_at": "2026-06-29T07:29:11.872Z",
     "agent": "the-flow",
     "plan_id": null
@@ -590,7 +590,7 @@
       "comments": [
         {
           "at": "2026-06-29T09:15:26.069Z",
-          "text": "Committed+pushed 8575345 to schema-migration (jakkaj-myob token)",
+          "text": "Committed+pushed 8575345 to schema-migration (repository credential)",
           "kind": "note"
         }
       ]
