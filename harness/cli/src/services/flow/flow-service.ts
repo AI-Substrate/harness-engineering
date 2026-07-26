@@ -32,6 +32,17 @@ export const SCHEMAS_DIR = '.harness/schemas/flows';
 const FLOW_RECORD_KIND = 'flow';
 /** Flow-type name rule (lowercase, hyphenated) — mirrors the scaffold name discipline. */
 const TYPE_NAME_RE = /^[a-z][a-z0-9-]*$/;
+/**
+ * The env var `provenance.plan_id` falls back to when `--plan-id` is omitted (089). The same
+ * var is resolved by the telemetry capture path; there is deliberately NO sibling constant for
+ * `HARNESS_AGENT` — `provenance.agent` stays explicit-only (see `createFlow`).
+ */
+const PLAN_ID_ENV = 'HARNESS_PLAN_ID';
+
+/** An env value, treating unset/blank/whitespace-only alike as absent → `null` (never `''`). */
+function envOrNull(value: string | undefined): string | null {
+  return value !== undefined && value.trim().length > 0 ? value : null;
+}
 
 export interface FlowServiceDeps {
   fs: FsPort;
@@ -184,9 +195,13 @@ export interface CreateFlowOptions {
   templatePath?: string;
   /** `--bare` — root-only, copy no template nodes. */
   bare?: boolean;
-  /** `--agent` — stamp `provenance.agent` (D-06 fix); wins over `HARNESS_AGENT`. */
+  /**
+   * `--agent` — stamp `provenance.agent` (D-06 fix). **The only source**: there is deliberately
+   * NO `HARNESS_AGENT` fallback (026 AC-5 / companion HIGH — the env carries the model name in
+   * an agent runtime and it would surface in the rail title). Omitted → `null`.
+   */
   agent?: string;
-  /** `--plan-id` — stamp `provenance.plan_id`; wins over `HARNESS_PLAN_ID`. */
+  /** `--plan-id` — stamp `provenance.plan_id`; wins over the `HARNESS_PLAN_ID` fallback (089). */
   planId?: string;
   /** `--title` — an explicit rail-title label (the rail prefers it over the slug). */
   title?: string;
@@ -283,12 +298,18 @@ export function createFlow(
     branch: deps.git.currentBranch(),
     repo: deps.git.remoteUrl(),
     created_at: createdAt,
-    // Explicit-only (AC-5; companion HIGH): omitted → null (the rail then uses the slug
-    // fallback). The flow's agent identity is set by whoever CREATES it (the-flow passes
-    // `--agent the-flow`) — NOT inherited from the model-runtime env, which would leak the
-    // model name (e.g. `claude-opus`) into the rail title.
+    // `agent` is EXPLICIT-ONLY (026 AC-5; companion HIGH): omitted → null (the rail then uses
+    // the slug fallback). The flow's agent identity is set by whoever CREATES it (the-flow
+    // passes `--agent the-flow`) — NOT inherited from the model-runtime env, which would leak
+    // the model name (e.g. `claude-opus`) into the rail title. Do not add an env fallback here.
     agent: opts.agent ?? null,
-    plan_id: opts.planId ?? null,
+    // `plan_id` DOES fall back to the env (089) — the deliberate asymmetry with `agent` above.
+    // It is an OPAQUE plan identifier, never an identity: it has no rail-title surface, so none
+    // of the model-name leak that motivated the companion HIGH applies. Honouring it restores
+    // the CLI's own documented interface and matches the telemetry capture path, which already
+    // resolves the same var — letting an orchestrator label every flow it creates via the
+    // environment, with no knowledge of that orchestrator anywhere in the harness.
+    plan_id: opts.planId ?? envOrNull(deps.env.get(PLAN_ID_ENV)),
   };
 
   const ids = new Set(template.nodes.map((n) => n.id));
