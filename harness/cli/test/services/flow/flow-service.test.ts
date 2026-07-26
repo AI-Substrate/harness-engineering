@@ -36,6 +36,7 @@ const REPO = '/repo';
 function deps(
   files: Record<string, string> = {},
   dirs: Record<string, string[]> = {},
+  envOverrides: Record<string, string> = {},
 ): {
   d: FlowServiceDeps;
   fs: FakeFs;
@@ -52,6 +53,7 @@ function deps(
     env: new FakeEnv({
       HARNESS_AGENT: 'claude-opus',
       HARNESS_PLAN_ID: '024-first-class-flow-system',
+      ...envOverrides,
     }),
   };
   return { d, fs };
@@ -386,9 +388,46 @@ describe('T011 — create --agent/--plan-id/--title stamp provenance + title (D-
     );
     expect(res.ok).toBe(true);
     if (res.ok) {
-      // env must NOT leak into provenance — that would put the model name in the rail title
+      // `agent` stays EXPLICIT-ONLY: $HARNESS_AGENT must NOT leak into provenance — it
+      // carries the MODEL name in an agent runtime and would land in the rail title
+      // (plan 026 C5, companion HIGH). This half of AC-5 is unchanged.
       expect(res.doc.provenance.agent).toBeNull();
-      expect(res.doc.provenance.plan_id).toBeNull();
+    }
+  });
+
+  // Plan 089: the plan_id HALF of 026's explicit-only rule is deliberately relaxed.
+  // Rationale: `HARNESS_PLAN_ID` is an OPAQUE plan identifier, not an identity — it has no
+  // rail-title surface and therefore none of the model-name leak that motivated the companion
+  // HIGH. The telemetry capture path already honours the same var, so ignoring it here was an
+  // inconsistency in the CLI's own documented interface. `agent` is untouched (test above).
+  it('without --plan-id, provenance.plan_id FALLS BACK to $HARNESS_PLAN_ID (089; agent still does not)', () => {
+    const { d } = deps(); // env has HARNESS_AGENT=claude-opus + HARNESS_PLAN_ID=024-…
+    const res = createFlow(
+      { type: 'harness-loop', slug: 'planned-by-env', repoRoot: REPO, harnessVersion: '0.4.0' },
+      d,
+    );
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.doc.provenance.plan_id).toBe('024-first-class-flow-system');
+      // the asymmetry is the point — one var is honoured, the other is still refused
+      expect(res.doc.provenance.agent).toBeNull();
+    }
+  });
+
+  it('treats an empty or whitespace-only $HARNESS_PLAN_ID as unset (→ null, never "")', () => {
+    for (const raw of ['', '   ']) {
+      const { d } = deps({}, {}, { HARNESS_PLAN_ID: raw });
+      const res = createFlow(
+        {
+          type: 'harness-loop',
+          slug: `blank-${raw.length}`,
+          repoRoot: REPO,
+          harnessVersion: '0.4.0',
+        },
+        d,
+      );
+      expect(res.ok).toBe(true);
+      if (res.ok) expect(res.doc.provenance.plan_id).toBeNull();
     }
   });
 });

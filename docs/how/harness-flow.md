@@ -60,6 +60,27 @@ flowchart TD
 Every timestamp is ISO-8601 UTC from the injected clock; durations are derived at
 read time, never stored.
 
+### Provenance — and the deliberate `agent` / `plan_id` asymmetry
+
+`provenance` is `{ record_kind, harness_version, branch, repo, created_at, agent, plan_id }`,
+stamped **once** at `create` and never rewritten. `branch`/`repo` come from git; the last two are
+supplied by the caller, **and they resolve differently on purpose**:
+
+| key | `--flag` | env fallback | omitted → |
+|---|---|---|---|
+| `agent` | `--agent <name>` | **none, by design** | `null` (the rail falls back to `--title`, then the slug) |
+| `plan_id` | `--plan-id <id>` | `$HARNESS_PLAN_ID` | `null` |
+
+- **`agent` is explicit-only.** It is the rail-title source, and in an agent runtime
+  `$HARNESS_AGENT` commonly carries the *model* name — inheriting it would render a flow as
+  `[claude-opus]`. An env fallback here was removed as a HIGH review finding (plan 026 C5) and a
+  regression test guards it. **Do not re-add it.**
+- **`plan_id` honours `$HARNESS_PLAN_ID`** (plan 089). It is an opaque plan identifier with no
+  rail-title surface, so the leak above doesn't apply, and the telemetry capture path already
+  resolves the same var. This lets an orchestrator label every flow created inside a session
+  purely through the environment — the harness needs no knowledge of that orchestrator, and no
+  skill or template has to pass the flag. A blank or whitespace-only value counts as unset.
+
 ---
 
 ## The verb pipeline
@@ -98,7 +119,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 
 | Verb | What it does |
 |------|--------------|
-| `create <type> --slug <s>` | Instantiate a flow from its type's template (root identity + provenance stamped). `--bare` for root-only; `--schema`/`--template` to override; `--agent <name>` + `--plan-id <id>` stamp provenance (the rail-title source); `--title <t>` sets an explicit rail label. The template's `nodes[]` are copied **verbatim** (all fields — `next[]`/`branch_of`/`chore`/`instructions[]`), so a template may carry a complete **seed**, not just a bare spine (see § Seed templates). |
+| `create <type> --slug <s>` | Instantiate a flow from its type's template (root identity + provenance stamped). `--bare` for root-only; `--schema`/`--template` to override; `--agent <name>` + `--plan-id <id>` stamp provenance (the rail-title source); `--title <t>` sets an explicit rail label. **`--plan-id` falls back to `$HARNESS_PLAN_ID`; `--agent` has no env fallback** (§ Provenance). The template's `nodes[]` are copied **verbatim** (all fields — `next[]`/`branch_of`/`chore`/`instructions[]`), so a template may carry a complete **seed**, not just a bare spine (see § Seed templates). |
 | `new <type>` | Scaffold a custom flow-type **schema overlay** into `.harness/schemas/flows/<type>.schema.json`. |
 | `show` | Read a flow and print its summary envelope. |
 | `list` | Discover flows under `.harness/flows/` (or `--dir`). |

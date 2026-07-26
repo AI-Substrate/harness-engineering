@@ -168,9 +168,9 @@ export function registerFlowAct(
     .option('--bare', 'root-only — copy no template nodes')
     .option(
       '--agent <name>',
-      'stamp provenance.agent (the rail-title source); wins over $HARNESS_AGENT',
+      'stamp provenance.agent (the rail-title source); the only source — no env fallback',
     )
-    .option('--plan-id <id>', 'stamp provenance.plan_id; wins over $HARNESS_PLAN_ID')
+    .option('--plan-id <id>', 'stamp provenance.plan_id; else $HARNESS_PLAN_ID')
     .option('--title <title>', 'an explicit rail-title label (preferred over the slug)')
     .action(
       (
