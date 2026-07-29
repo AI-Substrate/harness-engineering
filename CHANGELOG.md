@@ -10,6 +10,25 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.13.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.12.0...v0.13.0) (2026-07-29)
+
+
+### Features
+
+* add remote telemetry retrieval ([#73](https://github.com/AI-Substrate/harness-engineering/issues/73)) ([562a225](https://github.com/AI-Substrate/harness-engineering/commit/562a2255fc8c470aabd068ee6198d41e2d45ead8))
+* **builder:** add The Ask to research dossiers ([f3f9d83](https://github.com/AI-Substrate/harness-engineering/commit/f3f9d83c5f87c86b3ab257cc5a316fb6b4916fad))
+* **doctor:** warn when the sensor watch scanner is not running ([#72](https://github.com/AI-Substrate/harness-engineering/issues/72)) ([81a806c](https://github.com/AI-Substrate/harness-engineering/commit/81a806c1f918091a15d54cc70af2c4a410d51485))
+* **eng-harness-flow:** backpressure survey selects the proof, not just the gap ([8eba012](https://github.com/AI-Substrate/harness-engineering/commit/8eba01201f3c2cab7dd9765d94798eba970200cf))
+* **eng-harness-flow:** survey speaks human, never overclaims, decides per-task by counts not scores ([5db62a0](https://github.com/AI-Substrate/harness-engineering/commit/5db62a055bee7b3b3d55f69e93f4238477a84edf))
+* **sensors:** typed harness extensions + `harness sensors` (TUI + agent JSON) ([#71](https://github.com/AI-Substrate/harness-engineering/issues/71)) ([132e074](https://github.com/AI-Substrate/harness-engineering/commit/132e0749fbf132e8cbcd526586f52848fec686b9))
+
+
+### Bug Fixes
+
+* **flow:** honour $HARNESS_PLAN_ID for provenance.plan_id; agent stays explicit-only ([#81](https://github.com/AI-Substrate/harness-engineering/issues/81)) ([2253f8c](https://github.com/AI-Substrate/harness-engineering/commit/2253f8c7da26ff1697fb8b55e5fec30b997617e8))
+* **skills:** harness seams are mandatory-for-agent, receipted, deadlock-free (field failure: missed seams) ([95ba6fa](https://github.com/AI-Substrate/harness-engineering/commit/95ba6fa7538d97def30bb3a4fff5afd8586d4fc3))
+* **telemetry:** repair token evidence end to end (plan 063) ([#80](https://github.com/AI-Substrate/harness-engineering/issues/80)) ([88ca480](https://github.com/AI-Substrate/harness-engineering/commit/88ca4808b671c2b97049af5bb52dadba6f899bb1))
+
 ## [0.12.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.11.0...v0.12.0) (2026-07-13)
 
 
