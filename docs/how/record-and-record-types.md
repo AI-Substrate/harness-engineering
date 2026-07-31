@@ -195,16 +195,28 @@ const devSurvey: HarnessRecordType = {
 export default devSurvey;
 ```
 
-### Fast path: `harness new <name> --record`
+### Where it goes
 
 ```bash
-$ harness new dev-survey --record
-# → .harness/extensions/dev-survey.record.ts  (a loadable record-type stub)
+.harness/extensions/dev-survey/extension.ts   # ← the file above, as the default export
 ```
 
+The **directory form is required**. A flat `.harness/extensions/dev-survey.record.ts`
+is rejected (`E143` — *"Move the extension into `.harness/extensions/<name>/extension.ts`,
+then retry."*), and there is **no scaffold flag** — `harness new … --record` was retired, so
+create the directory and file yourself. (`harness new` has no record variant; see
+[extend the harness](./extend-the-harness.md#fast-path-harness-new).)
+
 Edit the template body, then `harness record dev-survey` works and `harness
-doctor` shows it under record-types. (Routing is by the `kind:'record'` field —
-the `.record.ts` suffix is just a human hint.)
+doctor` shows it under record-types. Routing is by the `kind:'record'` field —
+the filename carries no meaning.
+
+> **If your new type doesn't appear, check `harness doctor` — not `harness
+> record --list`.** A rejected extension (wrong layout, load failure) is
+> **silent** in `record --list`: it reports `status:"ok"` with just the core
+> types and says nothing about the file it skipped. `harness doctor` is where
+> the reason surfaces (`E143` for a flat file, `E140` for a load failure), named
+> against the offending path.
 
 ### Core vs extension
 
