@@ -189,8 +189,10 @@ This is why a fresh install is minimal — almost no features, just the will to 
 harness new <name>                     # minimal stub, loadable immediately, honestly reports "unconfigured"
 harness new <name> --wrap "<command>"  # wraps an existing repo command (build/test/seed) as-is
 harness new <name> --sensor            # scaffolds a sensor (§10)
-harness new <name> --record           # a record-type extension instead of a verb
+harness new <name> --sub reset,seed    # scaffolds a verb with nested subverbs
 ```
+
+Record-type extensions have no scaffold flag — author `.harness/extensions/<name>/extension.ts` directly (§ records).
 
 Every variant also writes a starter `instructions.md`. The guided path is the `add-extension` verb reached via the harness flow skill. Trust model: extensions are arbitrary code with full Node privileges — the same repo-trusted model as ESLint or Vite plugins; a broken extension is isolated rather than taking down the CLI, and `--no-extensions` / `HARNESS_NO_EXTENSIONS=1` skips them entirely. Deep reference: [`docs/how/extend-the-harness.md`](../docs/how/extend-the-harness.md).
 

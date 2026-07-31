@@ -93,9 +93,14 @@ honestly reports `unconfigured` ("not built yet") until you implement it.
 harness new <name>                       # minimal TypeScript stub
 harness new <name> --wrap "<command>"    # a stub that wraps a real repo command
 harness new <name> --js                  # a plain-JavaScript stub (JSDoc contract)
-harness new <name> --record              # a record-type extension instead of a verb
+harness new <name> --sub reset,seed      # a stub with nested subverbs
+harness new <name> --sensor              # a typed command-wrapper sensor stub
 harness new <name> --force               # overwrite an existing entry file
 ```
+
+> **Record types have no scaffold flag.** `--record` was retired; author a
+> record-type extension by hand — see
+> [record and record types](./record-and-record-types.md#author-a-new-record-type).
 
 ### What gets created, and where
 
@@ -104,7 +109,8 @@ harness new <name> --force               # overwrite an existing entry file
 | `harness new greet` | `.harness/extensions/greet/extension.ts` | minimal stub → `ctx.unconfigured(...)` |
 | `harness new greet --js` | `.harness/extensions/greet/extension.js` | minimal stub, JSDoc contract, no runtime import |
 | `harness new test --wrap "npm test"` | `.harness/extensions/test/extension.ts` | wraps `npm test` via `ctx.exec('npm', ['test'])` |
-| `harness new survey --record` | `.harness/extensions/survey/extension.ts` | a `kind:'record'` HarnessRecordType stub |
+| `harness new db --sub reset,seed` | `.harness/extensions/db/extension.ts` | a verb with nested `reset`/`seed` subverb stubs |
+| `harness new lint-speed --sensor` | `.harness/extensions/lint-speed/extension.ts` | a typed command-wrapper sensor stub |
 
 Every variant ALSO writes a starter `.harness/extensions/<name>/instructions.md`
 (a guided TODO addressed to the calling agent). `--force` replaces the entry
