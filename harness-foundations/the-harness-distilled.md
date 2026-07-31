@@ -170,8 +170,8 @@ The CLI is the front door, not the whole house: the harness also comprises fixtu
 
 The shipped harness follows a **core + extensions** model:
 
-- **Core** — installed via `npx`, centrally upgradeable. Ships only the built-ins: `help`, `doctor`, `instructions`, `new`, `docs`, `skills`, `record`. New core capability can ship to every repo later.
-- **Extensions** — per-repo, discovered at runtime from `.harness/extensions/`. **Every other command is an extension.** Each is a little package: a folder containing `extension.ts` (default-exports a verb → `harness <verb>`) and `instructions.md` (both required), plus any free-form internals. Each loaded extension becomes a top-level command with its own `--help`, options, structured output, and exit code.
+- **Core** — installed via `npx`, centrally upgradeable. Ships the built-in command set (`help`, `doctor`, `instructions`, `new`, `docs`, `skills`, `record`) plus the core machinery that surfaces what extensions declare — such as the `sensors` command family (§10). New core capability can ship to every repo later.
+- **Extensions** — per-repo, discovered at runtime from `.harness/extensions/`. Commands beyond the core come from extensions. Each is a little package: a folder containing a supported entry (`extension.ts` by default; `extension.js`, `index.*`, or a `package.json` `harness.extensions[]` manifest also resolve) and `instructions.md` (required), plus any free-form internals. An extension may contribute **verbs**, **record types**, or **sensors** (§10); each verb declaration becomes a top-level `harness <verb>` command with its own `--help`, options, structured output, and exit code.
 
 This is why a fresh install is minimal — almost no features, just the will to take the shape the environment needs — and why no two harnesses end up identical while every repo shares the same concept and base skills.
 
@@ -192,11 +192,11 @@ harness new <name> --sensor            # scaffolds a sensor (§10)
 harness new <name> --record           # a record-type extension instead of a verb
 ```
 
-Every variant also writes a starter `instructions.md`. The guided path is the `add-extension` verb reached via the harness flow skill. Deep reference: [`docs/how/extend-the-harness.md`](../docs/how/extend-the-harness.md).
+Every variant also writes a starter `instructions.md`. The guided path is the `add-extension` verb reached via the harness flow skill. Trust model: extensions are arbitrary code with full Node privileges — the same repo-trusted model as ESLint or Vite plugins; a broken extension is isolated rather than taking down the CLI, and `--no-extensions` / `HARNESS_NO_EXTENSIONS=1` skips them entirely. Deep reference: [`docs/how/extend-the-harness.md`](../docs/how/extend-the-harness.md).
 
 ## 10. Sensors and the sensor watcher
 
-**Sensors** are cheap, deterministic measurements that continuously report repository health — the *continuous* form of the backpressure in §6, running ambiently against the working tree so drift is caught while work happens, not at PR time. They are declared inside extensions.
+**Sensors** are cheap, deterministic measurements that report repository health — backpressure (§6) in its standing form, with readings that guide work while it happens. Watch-enabled sensors run ambiently: the watcher re-runs them whenever files matching their globs change. Sensors without watch globs, or declared `trigger: 'manual'`, run only on explicit invocation. They are declared inside extensions.
 
 Contract essentials:
 
@@ -205,11 +205,11 @@ Contract essentials:
 - **Whether the sensor ran is separate from what it found.** A crashed or timed-out sensor is mechanically distinct from a valid failing reading — a crash never masquerades as a failing measurement.
 - Sensors are short-feedback instruments, not batch jobs: target seconds, tolerate 2–3 minutes at most. **If a sensor needs 20 minutes, it isn't a sensor** — that work belongs in CI or a verb.
 
-**Advisory by default, gate only on request.** Readings guide the human or agent; nothing blocks. The single exception is explicit: `harness sensors check` runs every sensor once CI-style and maps failing readings to a non-zero exit. `run`, `watch`, and the viewers stay advisory always.
+**Advisory by default, gate only on request.** Readings guide the human or agent; nothing blocks. The single exception is explicit: `harness sensors check` runs every sensor once CI-style and exits non-zero for fail, error, or timeout outcomes (`warn` and `skip` never fail it). `run`, `watch`, and the viewers stay advisory always.
 
-**The sensor watcher** — `harness sensors watch` — is the daemon that keeps readings fresh: it watches each sensor's globs, re-runs the sensor when matching files change, isolates individual failures, and publishes a heartbeat. The watch set is read once at startup, so **restart the watcher after adding or changing a sensor**. If sensors are registered but no heartbeat is live, `harness doctor` surfaces a `sensor-watcher` layer as degraded (advisory, exit 0) and names the next actions.
+**The sensor watcher** — `harness sensors watch` — is the foreground watcher that keeps readings fresh (launch it detached via the environment's process capability when it should outlive the terminal): it watches each sensor's globs, re-runs the sensor when matching files change, isolates individual failures, and publishes a heartbeat. The watch set is read once at startup, so **restart the watcher after adding or changing a sensor**. If sensors are registered but no heartbeat is live, `harness doctor` surfaces a `sensor-watcher` layer as degraded (advisory, exit 0) and names the next actions.
 
-**One truth, two views**: the same state files drive an interactive TUI (`harness sensors` on a TTY — per-sensor detail, re-runs, history scrubbing) for humans, and a compact JSON envelope (`harness sensors --json`) for agents, pipes, and CI. `harness sensors run <name>` runs one sensor; `harness sensors snapshot` stores a working-session baseline so subsequent readings carry a trend (better / steady / worse). Deep reference: [`docs/how/harness-sensors.md`](../docs/how/harness-sensors.md).
+**One truth, two views**: the same state files drive an interactive TUI for humans (`harness sensors` on a supported TTY with the optional Ink/React packages present — per-sensor detail, re-runs, history scrubbing; without them the same data is served as a degraded JSON envelope), and a compact JSON envelope (`harness sensors --json`, which always wins) for agents, pipes, and CI. `harness sensors run <name>` runs one sensor; `harness sensors snapshot` stores a working-session baseline so subsequent readings carry a trend (better / steady / worse). Deep reference: [`docs/how/harness-sensors.md`](../docs/how/harness-sensors.md).
 
 ## 11. Harnessability
 
