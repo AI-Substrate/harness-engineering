@@ -2,6 +2,7 @@ import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
+import { scanTelemetryBuffer } from './buffer-reader.js';
 import { telemetryDir } from './cursor.js';
 import type { ChecksStatus } from './events.js';
 import type { Segment } from './segment.js';
@@ -173,30 +174,7 @@ export function locateSession(
  * lane (plan 051 · T002).
  */
 export function readSegments(fs: EvidenceFs, telDir: string): Segment[] {
-  const out: Segment[] = [];
-  const subs = fs
-    .readdir(telDir)
-    .filter((n) => !n.includes('.'))
-    .sort();
-  for (const sub of subs) {
-    const subDir = posixJoin(telDir, sub);
-    const seqs = fs
-      .readdir(subDir)
-      .map((n) => /^(\d+)\.json$/.exec(n))
-      .filter((m): m is RegExpExecArray => m !== null)
-      .map((m) => ({ name: m[0], seq: Number.parseInt(m[1], 10) }))
-      .sort((a, b) => a.seq - b.seq);
-    for (const f of seqs) {
-      const raw = fs.readText(posixJoin(subDir, f.name));
-      if (raw === null) continue;
-      try {
-        out.push(JSON.parse(raw) as Segment);
-      } catch {
-        // a corrupt buffer file is skipped, never fatal (fail-safe; AC-03)
-      }
-    }
-  }
-  return out;
+  return scanTelemetryBuffer(fs, telDir).segments;
 }
 
 /**

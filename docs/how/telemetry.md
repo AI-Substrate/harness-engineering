@@ -451,6 +451,58 @@ harness telemetry mark --kind review --verdict approve
 harness telemetry get-fleet <root-pij-id> --json    # → sessions[].semantics.mark
 ```
 
+## Summarizing the local buffer — `harness telemetry summary`
+
+Use the read-only summary when you need a quick view of the telemetry currently
+retained under `.harness/temp/telemetry`:
+
+```bash
+harness telemetry summary
+harness telemetry summary --json
+```
+
+The command scans every numeric `<seq>.json` segment in every local session
+directory. It reports the total recognized event count, counts in the closed
+`EVENT_KINDS` order, and one ascending `YYYY-MM-DD` entry per **UTC** calendar
+day with its total and per-kind counts. Timestamp offsets are converted to their
+UTC instant before grouping.
+
+This is a summary of the **whole retained local buffer**, not only telemetry
+that is pending sync. It never writes a cursor or watermark, prunes a segment,
+reads or writes a git ref, or triggers `telemetry sync`. The capture preamble
+explicitly excludes this command, so invoking the summary does not create a
+segment of its own. An absent buffer is a successful zero summary.
+
+Malformed segment JSON and unrecognized event kinds are skipped without hiding
+the omission: the result includes scanned-session, counted/skipped-segment,
+counted/skipped-event, and undated-event diagnostics. A recognized event with
+an invalid timestamp still contributes to its global kind count, but not to a
+day bucket.
+
+Human mode prints deterministic `by kind` and `by UTC day` sections. JSON mode
+returns the same data in the standard successful `telemetry` envelope:
+
+```json
+{
+  "data": {
+    "source": ".harness/temp/telemetry",
+    "sessions_scanned": 2,
+    "segments_counted": 5,
+    "segments_skipped": 0,
+    "events_counted": 42,
+    "events_skipped": 0,
+    "undated_events": 0,
+    "by_kind": { "prompt": 4, "turn": 8 },
+    "by_day": [
+      {
+        "day": "2026-08-03",
+        "total": 42,
+        "by_kind": { "prompt": 4, "turn": 8 }
+      }
+    ]
+  }
+}
+```
 
 ## Syncing — `harness telemetry sync`
 

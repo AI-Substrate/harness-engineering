@@ -120,7 +120,9 @@ export function deriveCommand(argv: string[]): string {
 /**
  * Whether the kernel preamble should fire telemetry capture for this argv
  * (plan 034 Phase 3). Display-only invocations are excluded: `-h`/`--help`/
- * `-v`/`--version`, or the `help` subcommand.
+ * `-v`/`--version`, or the `help` subcommand. The read-only
+ * `telemetry summary` command is also excluded so observing the buffer does not
+ * create a new segment or advance a capture cursor.
  *
  * This is an argv-SHAPE scan, NOT a semantic "is this display-only?" check
  * (mirrors {@link jsonFlag} / {@link isExtensionsDisabled}). The only display-only
@@ -138,7 +140,9 @@ export function shouldCaptureForArgv(argv: string[]): boolean {
   ) {
     return false;
   }
-  return deriveCommand(argv) !== 'help';
+  const positionals = argv.slice(2).filter((token) => !token.startsWith('-'));
+  if (positionals[0] === 'telemetry' && positionals[1] === 'summary') return false;
+  return positionals[0] !== 'help';
 }
 
 /**

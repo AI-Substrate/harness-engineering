@@ -4,6 +4,7 @@ import { registerTelemetryAct } from '../../src/acts/telemetry.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
+import { FakeGitRead } from '../../src/adapters/git/fake-git-read.js';
 import { FakeGitWrite } from '../../src/adapters/git/fake-git-write.js';
 import { telemetryRefFor } from '../../src/adapters/git/git-write-port.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
@@ -133,6 +134,106 @@ describe('registerTelemetryAct — telemetry sync', () => {
     const code = run(['sync'], io, bufferedFs(), new FakeGitWrite());
     expect(out()).toContain('telemetry sync: flushed 2 segment(s)');
     expect(code).toBe(0);
+  });
+});
+
+describe('registerTelemetryAct — telemetry summary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function runSummary(
+    io: CliIo,
+    fs: FakeFs,
+    gitRead = new FakeGitRead(),
+    gitWrite = new FakeGitWrite(),
+  ): { code: number; gitRead: FakeGitRead; gitWrite: FakeGitWrite } {
+    let code = -1;
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      code = c ?? 0;
+      throw new Error(`exit:${code}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, io, {
+      fs,
+      proc: new FakeProcess({}, '/repo'),
+      clock: new FakeClock('2026-07-01T12:00:00.000Z'),
+      env: new FakeEnv(),
+      gitRead,
+      gitWrite,
+    });
+    expect(() => program.parse(['node', 'harness', 'telemetry', 'summary'])).toThrow(/^exit:/);
+    return { code, gitRead, gitWrite };
+  }
+
+  function summaryFs(): FakeFs {
+    return new FakeFs(
+      {
+        [`${TEL}/sessA/1.json`]: JSON.stringify({
+          event_stream: [
+            { t: '2026-07-01T10:00:00Z', kind: 'prompt', words: 2 },
+            { t: '2026-07-02T10:00:00Z', kind: 'tools', name: 'Bash', count: 1 },
+          ],
+        }),
+      },
+      { [TEL]: ['sessA'], [`${TEL}/sessA`]: ['1.json'] },
+    );
+  }
+
+  it('returns the complete summary in one successful JSON envelope', () => {
+    const { io, out } = ioFor('json');
+    const result = runSummary(io, summaryFs());
+    const envelope = JSON.parse(out());
+
+    expect(envelope).toMatchObject({
+      command: 'telemetry',
+      status: 'ok',
+      data: {
+        source: '.harness/temp/telemetry',
+        sessions_scanned: 1,
+        segments_counted: 1,
+        events_counted: 2,
+        by_kind: { prompt: 1, tools: 1 },
+        by_day: [
+          { day: '2026-07-01', total: 1 },
+          { day: '2026-07-02', total: 1 },
+        ],
+      },
+    });
+    expect(out().trim().split('\n')).toHaveLength(1);
+    expect(result.code).toBe(0);
+    expect(result.gitRead.calls).toEqual([]);
+    expect(result.gitWrite.calls).toEqual([]);
+  });
+
+  it('prints deterministic human sections and diagnostics', () => {
+    const fs = summaryFs();
+    const { io, out } = ioFor('text');
+    const result = runSummary(io, fs);
+
+    expect(out()).toContain('telemetry summary: 2 event(s) across 1 session(s), 1 segment(s)');
+    expect(out()).toContain('by kind:\n  prompt: 1\n  tools: 1');
+    expect(out()).toContain('by UTC day:\n  2026-07-01: 1 (prompt 1)');
+    expect(result.code).toBe(0);
+    expect(fs.writes).toEqual([]);
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+    expect(fs.removedDirs).toEqual([]);
+  });
+
+  it('treats an absent buffer as a successful empty summary', () => {
+    const { io, out } = ioFor('json');
+    const result = runSummary(io, new FakeFs());
+    const envelope = JSON.parse(out());
+
+    expect(envelope.status).toBe('ok');
+    expect(envelope.data).toMatchObject({
+      sessions_scanned: 0,
+      segments_counted: 0,
+      events_counted: 0,
+      by_day: [],
+    });
+    expect(result.code).toBe(0);
   });
 });
 

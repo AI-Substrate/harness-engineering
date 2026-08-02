@@ -27,6 +27,10 @@ import {
 import { getSessionEvidence } from '../services/telemetry/session-evidence.js';
 import { combineSession, type SessionExport } from '../services/telemetry/session-export.js';
 import {
+  summarizeTelemetryBuffer,
+  type TelemetryBufferSummary,
+} from '../services/telemetry/summary.js';
+import {
   fingerprintBlobs,
   nextSweepCache,
   parseMonth,
@@ -479,6 +483,39 @@ function readSweepCache(fs: ReportFs, path: string): SweepCache {
   }
 }
 
+function renderTelemetrySummary(summary: TelemetryBufferSummary): string {
+  const lines = [
+    `telemetry summary: ${summary.events_counted} event(s) across ${summary.sessions_scanned} session(s), ${summary.segments_counted} segment(s)`,
+    'by kind:',
+  ];
+  const kinds = Object.entries(summary.by_kind).filter(([, count]) => count > 0);
+  if (kinds.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const [kind, count] of kinds) lines.push(`  ${kind}: ${count}`);
+  }
+
+  lines.push('by UTC day:');
+  if (summary.by_day.length === 0) {
+    lines.push('  (none)');
+  } else {
+    for (const day of summary.by_day) {
+      const counts = Object.entries(day.by_kind)
+        .filter(([, count]) => count > 0)
+        .map(([kind, count]) => `${kind} ${count}`)
+        .join(', ');
+      lines.push(`  ${day.day}: ${day.total}${counts ? ` (${counts})` : ''}`);
+    }
+  }
+
+  if (summary.segments_skipped > 0 || summary.events_skipped > 0 || summary.undated_events > 0) {
+    lines.push(
+      `diagnostics: ${summary.segments_skipped} skipped segment(s), ${summary.events_skipped} skipped event(s), ${summary.undated_events} undated event(s)`,
+    );
+  }
+  return `${lines.join('\n')}\n`;
+}
+
 /**
  * Register the `telemetry` command family (plan 034 Phase 4). A CORE command
  * (reserved, like `flow`/`record`/`observe`) mirroring the `flow` family shape.
@@ -494,8 +531,30 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
   const telemetry = program
     .command('telemetry')
     .description(
-      'Telemetry — flush counts-only segments to dated refs (`sync`) and read a pij session’s evidence (`get`)',
+      'Telemetry — summarize the local buffer, flush counts-only segments to refs, and read session evidence',
     );
+
+  telemetry
+    .command('summary')
+    .description('Count events in the local telemetry buffer by kind and UTC day (read-only)')
+    .action(() => {
+      const summary = summarizeTelemetryBuffer({ fs: deps.fs, proc: deps.proc });
+      const envelope = formatOk('telemetry', summary, deps.clock, {
+        next_action:
+          summary.events_counted === 0
+            ? 'No buffered telemetry events found.'
+            : 'This is the retained local buffer; run `harness telemetry sync` to publish buffered telemetry.',
+      });
+      const port: OutputPort =
+        io.mode === 'json'
+          ? createOutputPort('json', io.writers)
+          : {
+              emit: () => {
+                io.writers.out(renderTelemetrySummary(summary));
+              },
+            };
+      exitWithEnvelope(envelope, port);
+    });
 
   telemetry
     .command('sync')

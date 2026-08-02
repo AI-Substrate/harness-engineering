@@ -67,8 +67,8 @@ describe('deriveCommand (telemetry label — plan 034 Phase 3)', () => {
   });
 });
 
-describe('shouldCaptureForArgv (display-only exclusion — plan 034 Phase 3)', () => {
-  it('excludes help/version flags and the help subcommand, captures everything else', () => {
+describe('shouldCaptureForArgv (read-only/display exclusion — plan 034 Phase 3)', () => {
+  it('excludes help/version and telemetry summary, captures mutating/working commands', () => {
     // display-only → excluded
     expect(shouldCaptureForArgv(['node', 'harness', '--help'])).toBe(false);
     expect(shouldCaptureForArgv(['node', 'harness', '-h'])).toBe(false);
@@ -76,8 +76,11 @@ describe('shouldCaptureForArgv (display-only exclusion — plan 034 Phase 3)', (
     expect(shouldCaptureForArgv(['node', 'harness', '-v'])).toBe(false);
     expect(shouldCaptureForArgv(['node', 'harness', 'help'])).toBe(false);
     expect(shouldCaptureForArgv(['node', 'harness', 'doctor', '--help'])).toBe(false); // -h anywhere
+    expect(shouldCaptureForArgv(['node', 'harness', 'telemetry', 'summary'])).toBe(false);
+    expect(shouldCaptureForArgv(['node', 'harness', '--json', 'telemetry', 'summary'])).toBe(false);
     // real commands → captured (incl. bare and an unknown verb)
     expect(shouldCaptureForArgv(['node', 'harness', 'doctor'])).toBe(true);
+    expect(shouldCaptureForArgv(['node', 'harness', 'telemetry', 'sync'])).toBe(true);
     expect(shouldCaptureForArgv(['node', 'harness'])).toBe(true);
     expect(shouldCaptureForArgv(['node', 'harness', 'bogus'])).toBe(true); // unknown captures by design
   });
@@ -340,6 +343,12 @@ describe('main — telemetry capture preamble (plan 034 Phase 3)', () => {
   ])('does NOT capture for display-only argv: harness %s', async (flag) => {
     const calls: CaptureDeps[] = [];
     await runMain(['node', 'harness', flag], (d) => calls.push(d));
+    expect(calls).toHaveLength(0);
+  });
+
+  it('does NOT capture telemetry summary, preserving its read-only buffer contract', async () => {
+    const calls: CaptureDeps[] = [];
+    await runMain(['node', 'harness', 'telemetry', 'summary'], (d) => calls.push(d));
     expect(calls).toHaveLength(0);
   });
 
