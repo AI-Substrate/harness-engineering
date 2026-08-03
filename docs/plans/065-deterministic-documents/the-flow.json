@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "deterministic-documents",
   "nav": {
-    "now": "review-1",
+    "now": "phase-3",
     "next": null,
     "intent": "start new flow, get flow spine in please, then proceed to explore phase. then we go to workshops — Deterministic Documents (dd) per initial-brief.md",
     "bag": {
@@ -806,6 +806,164 @@
         "from": "assumed",
         "to": "done"
       }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T10:47:57.391Z",
+      "details": {
+        "from": "review-1",
+        "to": "phase-2"
+      }
+    },
+    {
+      "id": "STA-014",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T10:47:57.665Z",
+      "details": {
+        "node": "phase-2",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-019",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T10:50:26.021Z",
+      "details": {
+        "node": "boot-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-015",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T10:50:26.297Z",
+      "details": {
+        "node": "boot-2",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-020",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:38.080Z",
+      "details": {
+        "node": "observe-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-016",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:38.366Z",
+      "details": {
+        "node": "observe-2",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-021",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:38.654Z",
+      "details": {
+        "node": "retro-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-017",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:38.937Z",
+      "details": {
+        "node": "retro-2",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-022",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:51.114Z",
+      "details": {
+        "node": "phase-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-018",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:51.419Z",
+      "details": {
+        "node": "phase-2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-023",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:51.727Z",
+      "details": {
+        "node": "review-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-019",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:19:52.015Z",
+      "details": {
+        "node": "review-2",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:20:00.063Z",
+      "details": {
+        "from": "phase-2",
+        "to": "phase-3"
+      }
     }
   ],
   "nodes": [
@@ -1153,12 +1311,12 @@
       "id": "phase-2",
       "type": "phase",
       "label": "P2: Schema layer & docs",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-2"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T12:19:51.419Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -1166,35 +1324,53 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T12:19:51.114Z",
+          "text": "T001-T009 all [x]. Commits 51997c73+c79ef8d7 (body), 9514a75d (fix1: F001 depth cap removed per D14 + beyond-cap fixture; cwd pin), 4312fd72 (fix2: F002 dd-owned NodeSchemaFs errno-split + symlink-loop tests + act-level wiring row). Proof: slice 53 green P3/P4-absent; dd+acts 153/153 from BOTH sanctioned cwds; sweep 388/388; arch 2=baseline; pkg.json exactly the two granted lines (prime-verified); check:dd-docs drift gate proven both ways",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T12:19:51.419Z"
     },
     {
       "id": "review-2",
       "type": "review",
       "label": "Review: P2",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T12:19:52.015Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
-      "zone": "flight"
+      "zone": "flight",
+      "comments": [
+        {
+          "at": "2026-08-03T12:19:51.727Z",
+          "text": "verdict:APPROVE (0 findings) by pij-respective-rhinoceros (gpt-5.6-terra xhigh) after 2 FIX rounds; mutations 5/5 caught (precedence inversion, shadow drop, stray-enum skip, error-swallow, NodeFs re-wire/phantom-E412). Both HIGHs real: F001 unruled MAX_SCAN_DEPTH=8 vs D14; F002 error-to-[] adapter defeating loud-failure trade, proven by live symlink-loop probe. Report: .harness/temp/pair-p2/review-p2.md",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T12:19:52.015Z"
     },
     {
       "id": "boot-2",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T10:50:26.297Z",
       "branch_of": "phase-2",
       "instructions": [
         "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -1206,18 +1382,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T10:50:26.021Z",
+          "text": "verdict:HEALTHY boot:just-test full suite green 10:46Z (3250+ tests incl. dd 53) doctor:degraded 8/10 (known non-blocking: sensor-watcher heartbeat off, telemetry post-commit hook uninstalled in worktree — both standing gaps, fenced) time:2026-08-03T10:48Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T10:50:26.297Z"
     },
     {
       "id": "observe-2",
       "type": "observe",
       "label": "Observe: P2",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T12:19:38.366Z",
       "branch_of": "phase-2",
       "instructions": [
         "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -1230,18 +1415,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T12:19:38.080Z",
+          "text": "decision:satisfied 11 real captures this phase (PM+coder shared buffer), pointers: .harness/temp/agent/session-buffer.md drained 2026-08-03T12:19:22Z (cleared:11); exemplar capture DL-010/fp:77f4275a5c2e (contract-vs-implementation, review F002)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T12:19:38.366Z"
     },
     {
       "id": "retro-2",
       "type": "harness-retro",
       "label": "Retro: P2 (drain)",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-2"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T12:19:38.937Z",
       "branch_of": "phase-2",
       "instructions": [
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
@@ -1251,7 +1445,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T12:19:38.654Z",
+          "text": "decision:drained time:2026-08-03T12:19:22Z record:.harness/records/retro/2026-08-03/002-065-dd-phase-2.md entries:8 (consolidated from 11) dispositions: 4 fixed-now/encoded, 2 plan (P5: proof-ceiling + valuesShape A3), 2 kept; buffer cleared (11)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T12:19:38.937Z"
     },
     {
       "id": "phase-3",
