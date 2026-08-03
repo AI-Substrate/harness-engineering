@@ -220,6 +220,13 @@ graph LR
 | 5 | Exemplar, plan verb & checks join | substrate + harness-cli | Plans-as-dd end-to-end, `plan` core act, checks/doctor/sensor integration, docs/how | Phases 3+4 | solo (fan-in) | exemplar corpus, `acts/plan.ts`, app.ts+registry (plan), checks extension, repo-sensors extension, doctor-service, root package.json build script, `docs/how/harness-dd.md` |
 | 6 | Flow-spine gating (terminal) | flow spine | `dd_link` + refusal gate (`--force`) + orient/rail/render surfacing + basis drift warning | Phase 5 | solo (last, per ruling) | `services/flow/**`, `acts/flow.ts`, `flow-renderer.ts`, flow schema + gen, `docs/how/harness-flow.md` |
 
+| 7 | Graph map (post-ship addition) | harness-cli | `dd graph map <address>` — item-scoped, bidirectional, bounded transitive link view with `--json` and an ASCII tree | Phase 4 | solo pair | `services/dd/links/**`, `acts/dd/graph.ts` |
+
+*(Phase 7 was requested by Jordan after the plan shipped as PR #87. It is additive:
+bare `dd graph` and `dd links` keep byte-identical behaviour, and the surface
+grant is recorded in `dd-surface.md` as a P7 PM renegotiation. Dossier:
+`tasks/phase-7-graph-map/tasks.md`.)*
+
 *(Fan-out contract for the PM: P3 and P4 run as parallel `/pij` coder+reviewer pairs, each confined to its fence, coding against the interfaces P1+P2 froze (act stubs with final signatures, E-codes with final names, schema resolver API). Each fence's slice suite must go green with the sibling phase absent — the per-fence proof lines live in `backpressure-coverage.md`. Phases 1, 2, 5, 6 are single-writer.)*
 
 #### Phase 1: dd-core foundations
