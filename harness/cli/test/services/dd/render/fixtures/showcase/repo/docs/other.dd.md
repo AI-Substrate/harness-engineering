@@ -3,7 +3,9 @@
 
 **Schema**: render/showcase · **Source**: other.dd.json · **Sections**: 2
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -17,7 +19,9 @@
 | budget | — |
 | coverage | — |
 
-## tasks
+<a id="tasks"></a>
+
+## Tasks
 
 | id | title | state | note | spent | tags | done | upstream |
 | --- | --- | --- | --- | --- | --- | --- | --- |

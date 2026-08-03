@@ -91,6 +91,47 @@ schema that omits it falls back to the id, so no existing schema breaks) and
 should be declared in the schema, not the document — the title is a property of
 the section *kind*, the same place `gate_terminal` lives.
 
+### Status: DONE (Jordan, 2026-08-04 — "define them in schemas so they auto generate, but also allow agents to name them custom")
+
+Shipped as a **three-tier** title, rather than the two fields the note first
+proposed — the extra tier is the auto-derivation, which means no schema has to
+change to stop looking machine-generated:
+
+1. the **document's** `sections[].title` — an author naming this one section;
+2. the **schema's** `sections.<name>.title` — every document of that kind, free;
+3. **derived** from the section name — `non_goals` → "Non goals".
+
+No `section_id` field was added, and deliberately so: `name` already *was* the
+id, so adding a second identifier would have created two things to keep in sync
+for no gain. The fix was to stop `name` doing the *display* job, not to rename it.
+
+**The anchor problem the note warned about is solved by an explicit anchor.**
+Every section now emits `<a id="<slug of name>"></a>` above its heading, so the
+address is stated rather than inferred from heading text. `#non-goals` resolves
+identically whether the heading reads "Non goals", "Non-goals", or "What we are
+deliberately not doing" — proven by a test that renders all three tiers and
+asserts one anchor, plus that the three renders genuinely differ (so the
+assertion cannot pass by them being identical).
+
+It is emitted **unconditionally**, not only when the derived slug would differ.
+An address that exists sometimes is worse than one that always exists, and it
+must not depend on a coincidence between a heading's words and a section's key.
+Cost measured: zero markdown-lint findings (199 before, 199 after — generated
+`.dd.md` files are outside the lint scope).
+
+**Touched:** `core/model.ts` (both interfaces), `core/parse.ts` (document tier),
+`schema/declarations.ts` (schema tier), `render/renderer.ts` (precedence +
+anchor). The `declarations.ts` change is the **same allow-list that silently
+dropped `valuesShape` in OD-8** — a section key absent from that constructor is
+discarded without a word, so it now carries a comment saying so.
+
+**Five mutations, all caught** — and the first run of them found a hole: the
+renderer-side test for the schema tier hands `renderDd` a hand-built
+`ResolvedDdSchema` and never runs the schema parser, so deleting the parser's
+allow-list entry left it green. The parser tiers are now pinned in
+`schema/declarations.test.ts` and `core/parse.test.ts` instead, and the
+renderer test carries a comment saying exactly what it does *not* prove.
+
 ---
 
 ---
@@ -239,14 +280,106 @@ round since it is the same precedence chain.
 
 ---
 
+## FU-5 — A task's explicit `state` is never reconciled against its evidence (DEFECT — open)
+
+Found by `pij-solid-parrotfish` while documenting derived state; **independently
+reproduced here**.
+
+`docs/how/harness-dd.md` says task state is derived and "nothing is
+self-reported". It is not true as written. A task may carry an explicit
+`state` that flatly contradicts the evidence it points at, and validation is
+silent:
+
+```json
+{ "id": "tk-0001", "state": "checked", "done": "#evidence/tk-0001" }
+{ "tk-0001": [ { "id": "dw-0001", "state": "unchecked" } ] }
+```
+
+`harness dd validate` → **`ok`, 0 errors, 0 warnings.** The render then places
+the two side by side in the same row:
+
+```
+| tk-0001 | claims done | [x] checked | … | [ ] 0/1 [tk-0001](#tk-0001) |
+```
+
+So the *summary* is genuinely derived, but an explicit `state` field sits
+beside it unreconciled — and the honest reading is that a document can assert
+"done" over evidence that says otherwise, which is precisely the failure dd
+exists to prevent.
+
+**Three possible resolutions, needs a ruling:** refuse the disagreement at
+validate time (an ERROR); report it as a WARN; or keep both and make the docs
+state plainly that an explicit state is a *claim* while the summary is the
+*proof*, and that the reader should trust the summary. Whichever is chosen, the
+documentation claim must change — it currently promises reconciliation that does
+not happen.
+
+**Method note worth keeping:** my first reproduction probe was malformed and
+failed on an unrelated missing required field, which reads as "cannot
+reproduce". A probe that cannot see the thing it is testing returns an artifact
+of itself. The peer's probe was the better one.
+
+## FU-6 — `dd doctor --path` does not sweep into a `sweep_exclude` directory (DEFECT — open, reported not reproduced)
+
+Reported by `pij-solid-parrotfish`; **I have not independently reproduced this
+one.** The old guide says pointing `--path` inside an excluded directory sweeps
+it anyway. Observed: a `sweep_exclude: true` probe was *discovered* but still
+reported `swept=0`, while a direct `dd validate` on the same file failed it as
+expected. Only the positional `.harness/temp` scan skip appears to yield to an
+inside path.
+
+The documented contract — "the sweep's exclusion is never honoured by a direct
+invocation" — holds for `validate` but not for `doctor --path`.
+
+## FU-7 — `verify-basis` addresses are repo-root-anchored, not relative to `--update` (DOC DEFECT — open, reported not reproduced)
+
+Reported by `pij-solid-parrotfish`; **not independently reproduced here.** The
+guide's example, `verify-basis "log.dd.json#entries" --update plan.dd.json`,
+reads as though the address resolves relative to the document being updated.
+Source and live command both anchor CLI addresses at the repository root, so a
+nested document needs its full repo-relative address. The example works only
+because both files happen to sit at the root.
+
+Same family as FU-4: an address whose anchor is not where the reader assumes.
+
+## FU-8 — `dd doctor` sweeps gitignored directories (minor — open)
+
+Noticed while verifying FU-2: a peer's throwaway probe under `scratch/` (which
+is gitignored at `.gitignore:151`) turned the repo-wide `dd doctor` from
+`ok 0/0` into `degraded 0/1`. The probe was a deliberate missing-adapter case,
+so the finding itself was correct — but it is not part of the repository.
+
+`dd doctor` backs a gate in `just checks`, so anything a developer leaves in an
+ignored scratch directory changes their local gate result. CI is unaffected (a
+fresh checkout has no scratch), which makes it worse rather than better: it is a
+local-only discrepancy, the kind that gets diagnosed twice before someone
+realises the tree is the difference.
+
+Fix shape: have the sweep honour `.gitignore`, or at minimum skip the same way
+it already skips `node_modules` / `.git` / `dist` / `coverage`
+(`schema/model.ts` `SCAN_SKIP_DIRS`). Low priority, one line, but it costs
+someone an afternoon exactly once.
+
+---
+
 ## Status
 
-**FU-1 and FU-3 are done** (implemented, mutation-proven, exemplar regenerated).
-**FU-2 and FU-4 are noted and unresolved** — FU-2 because Jordan asked for a
-note, FU-4 because it changes a containment boundary and wants review.
+| id | what | kind | state |
+| --- | --- | --- | --- |
+| FU-1 | checkbox state marks `[x] [ ] [-] [~]` | taste | **done** — mutation-proven |
+| FU-2 | section titles, three-tier, anchor pinned to name | taste | **done** — 5 mutations |
+| FU-3 | array-of-link cells rendered as plain text | defect | **done** — mutation-proven |
+| FU-4 | `repoRoot` is `cwd`, so `<gitroot>` is wrong | defect | **open, unowned** |
+| FU-4a | `dd schema list` has no doc-folder root | defect | open, same round as FU-4 |
+| FU-5 | explicit task `state` never reconciled with evidence | defect | open — needs a ruling |
+| FU-6 | `doctor --path` inside an excluded directory | defect | open — not reproduced here |
+| FU-7 | `verify-basis` address anchoring vs docs | doc defect | open — not reproduced here |
 
-All four are **post-ship on PR #87**. FU-1/FU-2 are taste; FU-3/FU-4 are
-defects, and FU-4 is a defect in what already shipped.
+All of these are **post-ship on PR #87**. FU-4 was assigned to
+`pij-straight-araminta`, which was then closed before writing anything, so it is
+**unowned**; I am stood off `acts/dd/build.ts` and `acts/dd/shared.ts` until the
+prime lifts that in writing.
 
-`bp-0902` stays `unchecked` until Jordan reads the regenerated exemplar and
-rules on FU-2/FU-4.
+`bp-0902` stays `unchecked` pending Jordan's read of the regenerated exemplar.
+FU-5 is the one that most deserves his attention — it is the only open item that
+touches whether dd's central claim ("nothing is self-reported") is true.

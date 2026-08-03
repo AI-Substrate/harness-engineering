@@ -3,7 +3,9 @@
 
 **Schema**: builder/execution-log · **Source**: execution-log.dd.json · **Sections**: 2
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -11,7 +13,9 @@
 | plan | [meta](plan.dd.md#meta) |
 | phase | ph-0002 |
 
-## entries
+<a id="entries"></a>
+
+## Entries
 
 | id | at | text | links |
 | --- | --- | --- | --- |

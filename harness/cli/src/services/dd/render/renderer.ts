@@ -56,6 +56,50 @@ function basename(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
+/**
+ * The human heading for a section, in precedence order:
+ *
+ *  1. the DOCUMENT's own `title` — an author naming this one section;
+ *  2. the SCHEMA's `title` for that section — every document of this kind, free;
+ *  3. derived from the section name — `non_goals` becomes "Non goals".
+ *
+ * The derivation exists so that a schema which declares nothing still renders
+ * headings a human wants to read, rather than the raw machine key. It is
+ * deliberately conservative: separators become spaces and the first letter is
+ * capitalised, nothing else. It will never produce "Non-goals" or "Acceptance
+ * Criteria" — a schema that wants those says so, which is what tier 2 is for.
+ */
+export function sectionTitle(section: DdSection, schema: ResolvedDdSchema): string {
+  const declared = section.title ?? schema.sections?.[section.name]?.title;
+  if (declared !== undefined && declared.trim().length > 0) return declared;
+  return deriveSectionTitle(section.name);
+}
+
+function deriveSectionTitle(name: string): string {
+  const words = name.replace(/[_-]+/g, ' ').trim();
+  if (words.length === 0) return name;
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/**
+ * An EXPLICIT anchor carrying the section's identity, emitted immediately above
+ * its heading.
+ *
+ * Without this the address would be whatever slug the markdown renderer happens
+ * to derive from the heading TEXT — so renaming "tasks" to "Work items" would
+ * silently move `#tasks` and break every inbound link, with `dd doctor`
+ * reporting the wreckage afterwards. Pinning the anchor to the section NAME is
+ * what lets a title be freely editable: display changes, address does not.
+ *
+ * It is emitted unconditionally rather than only when the derived slug differs.
+ * An address that exists sometimes is worse than one that always exists — the
+ * guarantee is the point, and it must not depend on a coincidence between a
+ * heading's words and a section's key.
+ */
+function sectionAnchor(name: string): string {
+  return `<a id="${headingSlug(name)}"></a>`;
+}
+
 /** GitHub-style heading slug — the only anchor form, per workshop-001 § Anchors. */
 export function headingSlug(text: string): string {
   return text
@@ -447,7 +491,9 @@ export function renderDd(doc: DdDoc, resolved: DdRenderContext): string {
   ];
 
   for (const section of doc.sections) {
-    blocks.push(`## ${section.name}\n\n${renderSectionBody(section, deps)}`);
+    blocks.push(
+      `${sectionAnchor(section.name)}\n\n## ${sectionTitle(section, resolved.schema)}\n\n${renderSectionBody(section, deps)}`,
+    );
   }
 
   if (doc.references.length > 0) {
@@ -456,7 +502,9 @@ export function renderDd(doc: DdDoc, resolved: DdRenderContext): string {
       escapeCell(reference.sha),
       reference.mode,
     ]);
-    blocks.push(`## references\n\n${renderTable(['path', 'sha', 'mode'], rows)}`);
+    blocks.push(
+      `${sectionAnchor('references')}\n\n## References\n\n${renderTable(['path', 'sha', 'mode'], rows)}`,
+    );
   }
 
   return `${blocks.join('\n\n')}\n`;

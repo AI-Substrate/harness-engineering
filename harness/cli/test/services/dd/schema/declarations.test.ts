@@ -169,6 +169,40 @@ describe('dd schema declarations', () => {
     expect(shape?.valuesShape?.items?.fields?.state?.type).toBe('state');
   });
 
+  // FU-2, and the SAME allow-list as valuesShape above — the section-level
+  // constructor is a second, separate allow-list from the shape one, so a new
+  // section key drops just as silently. Proven here rather than in the renderer
+  // suite because that suite hands `renderDd` a hand-built ResolvedDdSchema and
+  // never runs this parser at all: a renderer-side assertion cannot see this
+  // regression, and a mutation run is what exposed that.
+  it('carries a section title through to the resolved schema', () => {
+    const result = parse({
+      dd_schema: 1,
+      sections: {
+        non_goals: { title: 'Non-goals', shape: { type: 'array', items: { type: 'string' } } },
+      },
+    });
+    // Asserted separately: a `result.ok ? … : undefined` ternary reports a parse
+    // FAILURE as an absent title, which reads like a dropped key and hides the
+    // real cause. (It did exactly that here — the first draft used an `array`
+    // shape with no `items`, which is itself invalid.)
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.declaration.schema.sections.non_goals?.title).toBe('Non-goals');
+  });
+
+  it('refuses a section title that is not a non-empty string', () => {
+    for (const title of [42, '', '   ']) {
+      const result = parse({
+        dd_schema: 1,
+        sections: {
+          non_goals: { title, shape: { type: 'array', items: { type: 'string' } } },
+        },
+      });
+      expect(result.ok).toBe(false);
+      expect(firstIssue(result).message).toContain('section title must be a non-empty string');
+    }
+  });
+
   it('rejects valuesShape on a non-object type', () => {
     const result = parse({
       dd_schema: 1,

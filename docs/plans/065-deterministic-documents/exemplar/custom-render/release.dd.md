@@ -3,7 +3,9 @@
 
 **Schema**: release/gate · **Source**: release.dd.json · **Sections**: 3
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -16,7 +18,9 @@
 | summary | A release gate authored as a deterministic document.<br>The schema, its adapters and this file all live in one folder — nothing here resolves through the repository root. |
 | plan | [ph-0005](../plan.dd.md#phases) |
 
-## gates
+<a id="gates"></a>
+
+## Gates
 
 | id | claim | state | surface | budget | artifact | trend | note | receipt | evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -26,7 +30,9 @@
 | gt-0104 | Every how-to page renders its own worked example rather than describing one. | [ ] rejected | docs | **4h** | 94 KiB | ▁▃▃▆█ 12 | three pages still describe a corpus instead of shipping it | — | [ac-0801](../plan.dd.md#acceptance-criteria) |
 | gt-0105 | The upgrade path from 0.13.x is proven on a real checkout, not reasoned about. | [ ] pending | cli | **0m** | 0 B | _(no data)_ | not started — this row is what an honest unstarted gate looks like | — | — |
 
-## sign_offs
+<a id="sign-offs"></a>
+
+## Sign-offs
 
 ### gt-0101
 

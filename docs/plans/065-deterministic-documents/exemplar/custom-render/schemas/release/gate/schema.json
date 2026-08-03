@@ -50,6 +50,7 @@
       }
     },
     "sign_offs": {
+      "title": "Sign-offs",
       "shape": {
         "type": "object",
         "valuesShape": {

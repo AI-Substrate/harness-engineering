@@ -71,6 +71,7 @@
       }
     },
     "non_goals": {
+      "title": "Non-goals",
       "shape": {
         "type": "array",
         "items": {

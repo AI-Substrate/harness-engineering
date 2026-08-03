@@ -3,7 +3,9 @@
 
 **Schema**: builder/plan · **Source**: plan.dd.json · **Sections**: 5
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -16,18 +18,24 @@
 | backpressure | [~] 3/5 [rows](backpressure.dd.md#rows) |
 | log | [entries](execution-log.dd.md#entries) |
 
-## goals
+<a id="goals"></a>
+
+## Goals
 
 - Make a plan's acceptance criteria addressable, so a criterion can be cited from anywhere instead of quoted.
 - Compute a phase's progress from its tasks' evidence rather than from a hand-maintained summary line.
 - Give every done-when assertion its own state and its own proof link, so five claims can never share one tick.
 
-## non_goals
+<a id="non-goals"></a>
+
+## Non-goals
 
 - Replacing markdown. The .dd.md sibling beside each .dd.json is what a human reads; it is generated, never authored.
 - A workflow engine. dd stores and checks structure; deciding what to do next stays with the flow spine.
 
-## acceptance_criteria
+<a id="acceptance-criteria"></a>
+
+## Acceptance criteria
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -36,7 +44,9 @@
 | ac-0901 | A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq. | [ ] unchecked | This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it. | — | [bp-0901](backpressure.dd.md#rows) | [lg-0901](execution-log.dd.md#entries) |
 | ac-1201 | dep-cruiser rules and an architecture test prove services/dd/core/** imports no output/, no acts, and no node-* adapters. | [x] checked | — | — | [bp-1201](backpressure.dd.md#rows) | [lg-1201](execution-log.dd.md#entries) |
 
-## phases
+<a id="phases"></a>
+
+## Phases
 
 | id | title | brief | state | note | receipt | depends_on | tasks |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -47,7 +57,9 @@
 | ph-0005 | Exemplar, plan verb & checks join | This corpus, the `harness plan` act, and the integration join that puts dd health inside the repository's own quality gate. | [ ] unchecked | — | — | ph-0003, ph-0004 | — |
 | ph-0006 | Flow-spine gating | The flow spine becomes dd's first gating consumer: a nav move off a gated node refuses, and --force is the defended, recorded override. | [ ] unchecked | — | — | ph-0005 | — |
 
-## references
+<a id="references"></a>
+
+## References
 
 | path | sha | mode |
 | --- | --- | --- |

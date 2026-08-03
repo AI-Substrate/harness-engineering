@@ -283,6 +283,17 @@ function parseSections(raw: unknown, ctx: ParseContext): Record<string, DdSectio
       fail(ctx, 'package-invalid', `${location}.required`, 'section required must be boolean');
       return null;
     }
+    // Display-only, but parsed strictly: a non-string `title` is refused rather
+    // than dropped. This construction is an ALLOW-LIST — a key absent here is
+    // silently discarded, which is exactly how `valuesShape` was lost once
+    // before (OD-8). Any new section-level key must be added in both places.
+    if (
+      declaration.title !== undefined &&
+      (typeof declaration.title !== 'string' || declaration.title.trim().length === 0)
+    ) {
+      fail(ctx, 'package-invalid', `${location}.title`, 'section title must be a non-empty string');
+      return null;
+    }
     const shape = parseShape(declaration.shape, `${location}.shape`, ctx);
     if (!shape) {
       if (declaration.shape === undefined) {
@@ -292,6 +303,8 @@ function parseSections(raw: unknown, ctx: ParseContext): Record<string, DdSectio
     }
     sections[name] = {
       ...(declaration.required === true && { required: true }),
+      ...(typeof declaration.title === 'string' &&
+        declaration.title.trim().length > 0 && { title: declaration.title }),
       shape,
     };
   }

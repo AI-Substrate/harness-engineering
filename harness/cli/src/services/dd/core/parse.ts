@@ -77,8 +77,19 @@ function parseSections(raw: unknown, failures: DdFailure[]): DdSection[] {
     if (!('value' in entry)) {
       failures.push(failure(`${location}.value`, 'section value is required'));
     }
+    // A document-level `title` is display-only and optional. A non-string is a
+    // failure rather than a silent drop: an author who typed one meant it, and
+    // quietly falling back to the derived heading would hide the mistake.
+    const title = entry.title;
+    if (title !== undefined && (typeof title !== 'string' || title.trim().length === 0)) {
+      failures.push(failure(`${location}.title`, 'section title must be a non-empty string'));
+    }
     if (typeof name === 'string' && name.trim().length > 0 && 'value' in entry) {
-      sections.push({ name, value: entry.value });
+      sections.push({
+        name,
+        ...(typeof title === 'string' && title.trim().length > 0 && { title }),
+        value: entry.value,
+      });
     }
   });
   return sections;

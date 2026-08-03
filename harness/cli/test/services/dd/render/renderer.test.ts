@@ -211,6 +211,60 @@ describe('renderDd — render rules', () => {
     expect(output).toContain('| dw-1 | [-] blocked | no proof |');
   });
 
+  it('titles a section by document, then schema, then derivation from its name', () => {
+    // Tier 3 — nothing declared anywhere: the machine key becomes a heading a
+    // human wants to read, so a schema gets decent headings for free.
+    expect(renderSections([{ name: 'non_goals', value: ['a'] }])).toContain('## Non goals');
+    expect(renderSections([{ name: 'acceptance_criteria', value: [] }])).toContain(
+      '## Acceptance criteria',
+    );
+
+    // Tier 2 — the SCHEMA names it, so every document of this kind inherits it.
+    // NOTE: this proves the renderer READS a schema title; it does NOT prove the
+    // schema parser carries one, because `renderSections` hands renderDd a
+    // hand-built ResolvedDdSchema and never runs that parser. Deleting the
+    // parser's allow-list entry leaves this assertion green — a mutation run
+    // showed exactly that. The parser side is pinned in
+    // test/services/dd/schema/declarations.test.ts instead.
+    expect(
+      renderSections([{ name: 'non_goals', value: ['a'] }], {
+        sections: { non_goals: { shape: { type: 'array' }, title: 'Non-goals' } },
+      }),
+    ).toContain('## Non-goals');
+
+    // Tier 1 — the DOCUMENT overrides its schema for this one section.
+    expect(
+      renderSections(
+        [{ name: 'non_goals', title: 'What we are deliberately not doing', value: [] }],
+        {
+          sections: { non_goals: { shape: { type: 'array' }, title: 'Non-goals' } },
+        },
+      ),
+    ).toContain('## What we are deliberately not doing');
+  });
+
+  it('keeps a section address pinned to its NAME however the title is written', () => {
+    // The load-bearing invariant of FU-2. A title is display; the anchor is
+    // identity. If the address were derived from the heading TEXT, retitling a
+    // section would silently move `#non-goals` and strand every inbound link —
+    // so the explicit anchor must read the same for all three tiers.
+    const derived = renderSections([{ name: 'non_goals', value: [] }]);
+    const schemaTitled = renderSections([{ name: 'non_goals', value: [] }], {
+      sections: { non_goals: { shape: { type: 'array' }, title: 'Non-goals' } },
+    });
+    const docTitled = renderSections([
+      { name: 'non_goals', title: 'Wildly different words', value: [] },
+    ]);
+
+    for (const output of [derived, schemaTitled, docTitled]) {
+      expect(output).toContain('<a id="non-goals"></a>');
+    }
+    // ...and the headings really are different, so the assertion above is not
+    // passing merely because all three rendered identically.
+    expect(schemaTitled).not.toEqual(derived);
+    expect(docTitled).not.toEqual(schemaTitled);
+  });
+
   it('renders every address in an array-of-link cell as a real link, declared or inferred', () => {
     // The execution-log shape: one row, many outbound addresses. A cell that
     // holds a LIST of addresses must be as clickable as a cell that holds one —

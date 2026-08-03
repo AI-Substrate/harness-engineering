@@ -3,7 +3,9 @@
 
 **Schema**: render/adapters · **Source**: adapters.dd.json · **Sections**: 1
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |

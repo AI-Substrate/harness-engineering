@@ -14,9 +14,18 @@ export interface DdReference {
   mode: DdReferenceMode;
 }
 
-/** One schema-named, addressable slot in a document's flat section list. */
+/**
+ * One schema-named, addressable slot in a document's flat section list.
+ *
+ * `name` is the IDENTITY: it is what addresses resolve against and what the
+ * rendered anchor is derived from, so it is stable and machine-facing.
+ * `title` is DISPLAY ONLY — the heading a human reads. Retitling a section must
+ * never move its address, which is why the two are separate fields rather than
+ * one identifier doing both jobs.
+ */
 export interface DdSection {
   name: string;
+  title?: string;
   value: unknown;
 }
 
@@ -81,6 +90,14 @@ export interface DdShape {
 
 export interface DdSectionSchema {
   required?: boolean;
+  /**
+   * The human heading for this section, when the auto-derived one is not good
+   * enough (`non_goals` derives "Non goals"; a schema may prefer "Non-goals").
+   * Declared on the SCHEMA because a title is a property of the section KIND —
+   * the same place `gate_terminal` lives — so every document using the schema
+   * gets it for free. A document may still override per-section.
+   */
+  title?: string;
   shape: DdShape;
 }
 

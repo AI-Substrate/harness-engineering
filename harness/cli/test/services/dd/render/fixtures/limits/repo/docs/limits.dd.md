@@ -3,7 +3,9 @@
 
 **Schema**: render/limits · **Source**: limits.dd.json · **Sections**: 1
 
-## rows
+<a id="rows"></a>
+
+## Rows
 
 | id | config | trail |
 | --- | --- | --- |

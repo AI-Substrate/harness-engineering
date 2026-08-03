@@ -75,4 +75,41 @@ describe('dd-core parse', () => {
       ]),
     );
   });
+
+  // FU-2 tier 1. Proven HERE and not in the renderer suite: that suite builds
+  // DdSection objects by hand and never runs this parser, so a `title` dropped
+  // on the way in would still render there. Same blind spot the schema-side
+  // title has, in the other parser.
+  it('carries an optional document-level section title, and refuses a malformed one', () => {
+    const parsed = parse({
+      dd: { schema: 'test/plan' },
+      sections: [{ name: 'non_goals', title: 'What we are not doing', value: [] }],
+      references: [],
+    });
+    expect(Array.isArray(parsed)).toBe(false);
+    expect((parsed as DdDoc).sections[0]?.title).toBe('What we are not doing');
+
+    // Absent stays absent — the renderer's derivation tier depends on this being
+    // undefined rather than an empty string.
+    const bare = parse({
+      dd: { schema: 'test/plan' },
+      sections: [{ name: 'non_goals', value: [] }],
+      references: [],
+    });
+    expect((bare as DdDoc).sections[0]?.title).toBeUndefined();
+
+    for (const title of [42, '', '  ']) {
+      expect(
+        failures(
+          parse({
+            dd: { schema: 'test/plan' },
+            sections: [{ name: 'non_goals', title, value: [] }],
+            references: [],
+          }),
+        ),
+      ).toEqual(
+        expect.arrayContaining([expect.objectContaining({ location: '$.sections[0].title' })]),
+      );
+    }
+  });
 });

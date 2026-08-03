@@ -3,7 +3,9 @@
 
 **Schema**: render/showcase · **Source**: showcase.dd.json · **Sections**: 5
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -17,12 +19,16 @@
 | budget | **2h 15m** |
 | coverage | [~] 3/5 [tk-a1b2](#tk-a1b2) |
 
-## goals
+<a id="goals"></a>
+
+## Goals
 
 - Prove the banner, the heading anchors, and the visible ids.
 - Prove a `pipe | inside` text survives a table cell.
 
-## tasks
+<a id="tasks"></a>
+
+## Tasks
 
 | id | title | state | note | spent | tags | done | upstream | risk |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -30,7 +36,9 @@
 | tk-b2c3 | Prove drift | [x] checked | landed | — | — | [x] 2/2 [tk-b2c3](#tk-b2c3) | [tk-z9y8](../docs/other.dd.md#tasks) | — |
 | tk-c3d4 | Hold the gate | [-] blocked | waiting on P4 | — | — | [ ] 0/1 [tk-c3d4](#tk-c3d4) | — | high |
 
-## evidence
+<a id="evidence"></a>
+
+## Evidence
 
 ### tk-a1b2
 
@@ -55,13 +63,17 @@
 | --- | --- | --- | --- |
 | dw-8888 | gate refuses | [-] blocked | P6 owns it |
 
-## notes
+<a id="notes"></a>
+
+## Notes
 
 Free text renders as a block, not a table.
 
 Blank lines are preserved.
 
-## references
+<a id="references"></a>
+
+## References
 
 | path | sha | mode |
 | --- | --- | --- |

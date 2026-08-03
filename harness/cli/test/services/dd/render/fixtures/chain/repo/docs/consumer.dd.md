@@ -3,18 +3,24 @@
 
 **Schema**: render/chain · **Source**: consumer.dd.json · **Sections**: 2
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
 | title | Chain consumer |
 | upstream | [~] 2/3 [items](source.dd.md#items) |
 
-## items
+<a id="items"></a>
+
+## Items
 
 _No entries._
 
-## references
+<a id="references"></a>
+
+## References
 
 | path | sha | mode |
 | --- | --- | --- |

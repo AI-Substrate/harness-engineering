@@ -3,7 +3,9 @@
 
 **Schema**: builder/plan · **Source**: tasks.dd.json · **Sections**: 3
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -16,7 +18,9 @@
 | backpressure | [rows](../../backpressure.dd.md#rows) |
 | log | [entries](../../execution-log.dd.md#entries) |
 
-## tasks
+<a id="tasks"></a>
+
+## Tasks
 
 | id | title | domain | phase | state | note | receipt | done |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -30,7 +34,9 @@
 | tk-0208 | Leaf rulings recorded before their consumers land | harness-cli | ph-0002 | [x] checked | — | — | [x] 1/1 [tk-0208](#tk-0208) |
 | tk-0209 | Validation and proof: slice suite, full suite, architecture baseline, recorded live run | harness-cli | ph-0002 | [x] checked | — | — | [x] 4/4 [tk-0209](#tk-0209) |
 
-## evidence
+<a id="evidence"></a>
+
+## Evidence
 
 ### tk-0201
 
@@ -103,7 +109,9 @@
 | dw-0293 | The architecture baseline is unmoved: dd adds no new violation. | [x] checked | [lg-1201](../../execution-log.dd.md#entries) | — | [bp-1201](../../backpressure.dd.md#rows) | — |
 | dw-0294 | The repository-root invocation of the suite is exercised by the quality gate, not merely sanctioned by a config file. | [x] human-skipped | — | The gap is real and named: two sanctioned invocations disagreed and only one ran. The waiver is visible here forever rather than dissolving into a passing suite. | — | Recorded in the phase-2 log: "left to the retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round". |
 
-## references
+<a id="references"></a>
+
+## References
 
 | path | sha | mode |
 | --- | --- | --- |

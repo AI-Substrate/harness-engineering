@@ -3,7 +3,9 @@
 
 **Schema**: builder/backpressure · **Source**: backpressure.dd.json · **Sections**: 3
 
-## meta
+<a id="meta"></a>
+
+## Meta
 
 | Field | Value |
 | --- | --- |
@@ -12,7 +14,9 @@
 | basis_sha | — |
 | certainty | Partial |
 
-## rows
+<a id="rows"></a>
+
+## Rows
 
 | id | criterion | phase | mode | tier | proof | state | note | receipt | probe |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -22,7 +26,9 @@
 | bp-1201 | dd-core stays a pure library: no envelope vocabulary, no act imports, no Node adapters. | ph-0001 | EXTEND | computational | Dependency-cruiser rule sets plus an architecture test that reads the import graph — a boundary a reviewer cannot forget to check. | [x] checked | — | — | harness arch-check --json |
 | bp-0902 | The exemplar uses dd primitives cleverly and renders well for a human reader. | ph-0005 | ABSENT | human-judgement | No machine proves taste. This row exists so the judgement is visible as an open item rather than assumed — a human reads the rendered siblings and says yes or no. | [ ] unchecked | Deliberately human-judgement tier: the standing constraint is a person's call, and pretending otherwise would be the dishonest kind of green. | — | — |
 
-## sensors
+<a id="sensors"></a>
+
+## Sensors
 
 | id | name | command | dimension | found_in |
 | --- | --- | --- | --- | --- |
