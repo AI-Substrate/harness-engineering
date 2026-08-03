@@ -698,7 +698,7 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
   it('the two-channel legend drops `🧰 chore` from the colour row and adds a Badges row (AC-05)', () => {
     const out = renderFlow(doc([{ id: 'a', type: 'phase', label: 'A', status: 'done', next: [] }]));
     expect(out).toContain(
-      '**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).',
+      '**Legend** — colour = type/status: 🟩 done · 🟢 in-progress · 🟥 blocked · 🟦 known · ⬜ assumed · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker · 🟧 current (you are here). Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped) · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).',
     );
     expect(out).not.toContain('🧰 chore (upkeep)'); // chore is no longer a colour
   });

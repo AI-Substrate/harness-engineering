@@ -381,7 +381,126 @@ rail --chores hide       [ ◐─□ ]   [ ◐ Build ]                (chore nam
 
 ---
 
-## Rendering — `harness flow render`
+## The dd gate — `dd_link`, the one place a flow refuses
+
+Chores never gate (above). The **dd gate** does — it is the flow spine's single
+mechanical refusal, and it exists because the alternative did not work: an agent
+reads a warning as optional, which it sometimes is, so the design makes an agent
+**defend** the position by reaching for `--force` rather than silently waving past.
+(workshop-002 Ruling 1.)
+
+The whole feature is **opt-in through one field**. A node without `dd_link` behaves
+exactly as it did before the gate existed — nothing resolved, nothing evaluated,
+nothing refused, byte-identical output.
+
+```jsonc
+{
+  "id": "phase-2", "type": "phase", "label": "Phase 2", "status": "in_progress",
+  "dd_link": {
+    "address": "docs/plans/065/tasks/phase-2/tasks.dd.json#tasks", // what must be complete
+    "gate": true                                                   // default; false = surface only
+  }
+}
+```
+
+Wire it with `apply --ops` (it round-trips through `add`, `insert`, `upsert` and `set`):
+
+```bash
+echo '[{"op":"set","id":"phase-2","dd_link":{"address":"tasks.dd.json#tasks"}}]' \
+  | harness flow apply --path <flow> --ops -
+```
+
+### What the gate actually asks
+
+**Departure is the completion claim**, so the gate evaluates on the node you are
+LEAVING, not the one you are entering:
+
+```bash
+harness flow nav set --now review     # evaluates the gate on the CURRENT node
+```
+
+It resolves the address through dd, then asks whether every item there is in a
+**gate-terminal** state. The terminal set is the *schema's* to declare — the
+built-in completion enum's default is `checked ∪ human-skipped ∪ na`, and a schema
+that declares its own enum with its own `gate_terminal` changes what "complete"
+means for the documents that use it. `unchecked` and `blocked` hold.
+
+The evaluation is always **live**. Nothing cached decides anything: ticking the
+last box in the linked document opens the gate on the very next command, and
+un-ticking one closes it again.
+
+### When it refuses
+
+```console
+$ harness flow nav set --path .harness/flows/walk.json --now backpressure
+E440  node "boot" gates on "docs/tasks.dd.json#tasks": 2 of 3 items are not
+      complete (dw-0002 (unchecked), dw-0003 (blocked)).
+→ Complete or state the listed items in …/docs/tasks.dd.json (gate-terminal
+  states: checked, human-skipped, na), then retry. If departing anyway is the
+  human's decision, re-run with --force to record a defended override.
+  Nothing was written.
+```
+
+Every outstanding item is named, with the state it is in — `blocked` and
+`unchecked` send you to two different places. **Nothing is written** on a refusal:
+the cursor does not move and the file is untouched.
+
+| Code | Means |
+|---|---|
+| `E440` | the gate holds — items are not complete |
+| `E441` | the address resolves to nothing (missing document, unknown section) |
+| `E442` | the target's schema could not be resolved |
+| `E449` | the `dd_link` carries no address |
+
+### `--force` — the defended override
+
+`--force` is the override lever of last resort. **An agent may not pass it on its
+own judgment**; `human-skipped` or `na` on the individual *items* are the
+legitimate ways a gate passes without the work being done.
+
+Forcing never produces a clean success. The envelope comes back **`degraded`**,
+carrying the etiquette line as its `next_action`, and a `dd-gate-override` event
+lands in the flow's event log naming the node, the address, and exactly which items
+were outstanding — so the decision can be answered for later.
+
+### Seeing it — `orient`, the rail, the render
+
+```console
+$ harness flow orient --path <flow>
+[walk] ◇─◇─…  ⚑ gate: Boot ⛨ 1/3
+
+▶ Boot (boot)  run /eng-harness-flow --hook pre-flight
+  dd gate: docs/tasks.dd.json#tasks  1/3 ✕ holds
+    ■ dw-0001 (checked)
+    □ dw-0002 (unchecked)
+    □ dw-0003 (blocked)
+```
+
+`orient` resolves the address **live** and shows every item — complete ones
+included, so the count has a denominator. The rail carries a `⚑ gate:` callout for
+a gate at the cursor, and the rendered `.md` badges the node `⛨<terminal>/<total>`.
+
+The render's badge is the one surface that reads a **stored** value: `renderFlow`
+is a pure `FlowDoc → markdown` function with no filesystem, so a successful gated
+departure records what it computed onto the node (`dd_link.reading`, plus the
+target's digest in `dd_link.basis_sha`). That record is display only — it is never
+consulted to decide anything.
+
+### Basis drift — information, never a refusal
+
+`basis_sha` is what makes the stored reading honest. When the linked document has
+moved since the reading was taken, `orient` says so:
+
+```console
+    ⚠ basis drift: …/docs/tasks.dd.json moved since this gate was last recorded
+      recorded 7ccf159af9ef… → actual da38aed1897b…
+```
+
+Drift **never** blocks anything. It reports that the recorded half is stale — the
+gate above it was already recomputed against the current file, so the verdict you
+are reading is the true one either way.
+
+
 
 `render` turns a flow into a deterministic markdown document: a `mermaid`
 flowchart (spine + dotted excursions + 🗣 genesis bubbles + harness-seam nodes +

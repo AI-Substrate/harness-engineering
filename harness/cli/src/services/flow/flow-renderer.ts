@@ -105,6 +105,30 @@ const choreMarker = (importance: string | undefined): string =>
 const choreStatusGlyph = (status: string | undefined): string =>
   status === 'done' ? ' ✓' : status === 'skipped' ? ' ✕' : '';
 
+/**
+ * The dd-gate badge for a node carrying a `dd_link` (plan 065 P6 T005).
+ *
+ * `⛨` (the shield) reads as "guarded" and does not collide with any glyph already
+ * in the badge channel. The mark is the RECORDED reading and nothing else — the
+ * renderer resolves no addresses, loads no documents and consults no schema, so it
+ * stays a pure `FlowDoc → markdown` function exactly as it was. A link that has
+ * never been evaluated renders the bare shield; an evaluated one carries its
+ * `terminal/total` count and a ` ✓` when the gate was open.
+ *
+ * A non-gating link (`gate: false`) is still badged: the node genuinely does point
+ * at that document, and hiding the fact would make the diagram less true than the
+ * data. The gating/not-gating distinction belongs to `orient`, which has the room
+ * to say it in words.
+ */
+function ddGateBadge(node: FlowNode): string | null {
+  const link = node.dd_link;
+  if (link === undefined || typeof link.address !== 'string') return null;
+  const reading = link.reading;
+  if (reading === undefined) return '⛨';
+  const tick = reading.status === 'complete' ? ' ✓' : '';
+  return `⛨${reading.terminal}/${reading.total}${tick}`;
+}
+
 /** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
 export type Zone = 'preflight' | 'flight' | 'postflight';
 const ZONES: ReadonlySet<string> = new Set<string>(['preflight', 'flight', 'postflight']);
@@ -176,7 +200,8 @@ const LEGEND =
   ' · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker' +
   ' · 🟧 current (you are here).' +
   ' Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore' +
-  ' (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped).';
+  ' (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped)' +
+  ' · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).';
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -289,6 +314,8 @@ function nodeLabel(node: FlowNode): string {
   if (instructions > 0) badges.push(`📝${instructions}`);
   if (node.chore !== undefined)
     badges.push(`🧰${choreMarker(node.chore.importance)}${choreStatusGlyph(node.status)}`);
+  const gate = ddGateBadge(node);
+  if (gate !== null) badges.push(gate);
   return badges.length > 0 ? `${base} ${badges.join(' ')}` : base;
 }
 
@@ -683,12 +710,44 @@ export function renderRailLine(doc: FlowDoc, mode: ChoreRailMode = 'collapse'): 
   const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
   const line = `[${railTitle(doc)}] ${renderRailBody(nodes, mode)}`;
   const due = dueChores(doc);
-  if (due.length === 0) return line;
+  const gate = railGateCallout(doc);
+  if (due.length === 0) return `${line}${gate}`;
   // Each due chore carries its `🧰`+importance marker (D5 rail parity) so the text
   // surface signals chore-ness + how strongly it's advised; the `, ` join is kept.
   return `${line}  ⚑ due: ${due
     .map((c) => `${escapeMd(c.label)} 🧰${choreMarker(c.importance)}`)
-    .join(', ')}`;
+    .join(', ')}${gate}`;
+}
+
+/**
+ * The `⚑ gate:` rail segment for a GATING `dd_link` at `nav.now` (plan 065 P6 T005).
+ *
+ * It flags the node the cursor is standing on, because that is the node whose gate
+ * is about to refuse a departure — a gate three nodes away is not yet anyone's
+ * problem, and putting every gated node on a one-line rail would drown the signal
+ * the callout exists to carry.
+ *
+ * Like every other rail segment this is PURE: it reports the recorded reading, and
+ * says `not yet evaluated` rather than resolving an address to find out. An
+ * un-gating link (`gate: false`) never appears here — it cannot stop anything.
+ * No gate at the cursor ⇒ the empty string, so the line stays byte-identical to
+ * what it was before this existed.
+ */
+function railGateCallout(doc: FlowDoc): string {
+  const now = doc.nav?.now;
+  if (typeof now !== 'string' || now.length === 0) return '';
+  const node = (Array.isArray(doc.nodes) ? doc.nodes : []).find((n) => n.id === now);
+  const link = node?.dd_link;
+  if (node === undefined || link === undefined || link.gate === false) return '';
+  if (typeof link.address !== 'string' || link.address.length === 0) return '';
+  const reading = link.reading;
+  const state =
+    reading === undefined
+      ? 'not yet evaluated'
+      : reading.status === 'complete'
+        ? `${reading.terminal}/${reading.total} ✓`
+        : `${reading.terminal}/${reading.total}`;
+  return `  ⚑ gate: ${escapeMd(node.label ?? node.id)} ⛨ ${state}`;
 }
 
 /** The embedded rail line for the rendered `.md` — the shared zoned body, labelled. */

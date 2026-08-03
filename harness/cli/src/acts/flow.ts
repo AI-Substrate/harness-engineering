@@ -4,16 +4,28 @@ import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
 import type { GitPort } from '../adapters/git/git-port.js';
+import { NodeHash } from '../adapters/hash/node-hash.js';
 import type { ProcessPort } from '../adapters/process/process-port.js';
-import { type Envelope, formatError, formatOk } from '../output/envelope.js';
+import { type Envelope, formatDegraded, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { emitRawAndExit, exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
+import { MemoizingDocLoader } from '../services/dd/links/index.js';
+import { ConventionSchemaResolver } from '../services/dd/schema/index.js';
+import {
+  type DdGateDeps,
+  type DdGateDrift,
+  type DdGateResult,
+  ddGateDrift,
+  evaluateDdGate,
+} from '../services/flow/flow-dd-gate.js';
 import {
   buildCustomEvent,
   buildManualEvent,
   type Chore,
+  type DdLink,
   type FlowDoc,
+  type FlowNode,
 } from '../services/flow/flow-events.js';
 import {
   addComment,
@@ -23,6 +35,7 @@ import {
   getMeta,
   insertNode,
   listChores,
+  type MutationNotice,
   type MutationResult,
   mvNode,
   navShow,
@@ -59,6 +72,7 @@ import {
   resolveInRepo,
   toPosix,
 } from '../services/shared/posix-path.js';
+import { FsDocLoader } from './dd/shared.js';
 
 /** The ports the `flow` act injects into the flow service (a subset of VerbActDeps). */
 export interface FlowActDeps {
@@ -74,6 +88,49 @@ function failureEnvelope(outcome: FlowFailure, clock: Clock): Envelope {
   return formatError('flow', outcome.code, outcome.message, clock, {
     next_action: outcome.next_action,
   });
+}
+
+/**
+ * Compose the dd adapters the gate needs (plan 065 P6).
+ *
+ * This is the act layer doing its one job — being the composition root — and it
+ * deliberately reuses `dd`'s own `FsDocLoader`/`ConventionSchemaResolver` rather
+ * than growing a flow-shaped copy of each. A second document loader would be a
+ * second answer to "what is a readable dd document", and the two would drift.
+ *
+ * Everything filesystem-shaped comes from the INJECTED `FsPort`, which satisfies
+ * dd's `SchemaFs` structurally. The dd verbs wire `NodeSchemaFs` instead, because
+ * they must tell "I could not look" from "I found nothing" and report `E416`; this
+ * path need not, because both answers end the same way — a gate that cannot resolve
+ * its schema REFUSES (`E442`) rather than guessing a verdict. Taking the port back
+ * buys the flow act something worth more here: it is drivable with fakes.
+ *
+ * `tracked` is `null` on purpose: dd's link layer uses it to WARN about targets
+ * outside version control, which is a repository-hygiene question the doctor
+ * already asks. A gate refuses on completion, not on tracking, and buying that
+ * answer would cost a `git ls-files` on every nav move.
+ */
+function ddGateDeps(repoRoot: string, deps: FlowActDeps): DdGateDeps {
+  const home = deps.env.home();
+  return {
+    schemaResolver: new ConventionSchemaResolver({
+      fs: deps.fs,
+      repoRoot,
+      ...(home !== undefined && { home: toPosix(home) }),
+    }),
+    docLoader: new MemoizingDocLoader(new FsDocLoader(deps.fs, new NodeHash(), null)),
+  };
+}
+
+/** The `GateEvaluator` seam `setNow` consumes — one live evaluation per link. */
+function gateEvaluator(
+  repoRoot: string,
+  deps: FlowActDeps,
+): { evaluate: (link: DdLink) => DdGateResult } {
+  const gateDeps = ddGateDeps(repoRoot, deps);
+  return {
+    evaluate: (link: DdLink) => evaluateDdGate(link, gateDeps, { repoRoot, fromPath: null }),
+  };
 }
 
 /**
@@ -287,6 +344,10 @@ export function registerFlowAct(
     .option('--next <node>', 'set the advisory next node')
     .option('--clear-next', 'clear the advisory next (→ null)')
     .option('--intent <text>', 'set the leg intent')
+    .option(
+      '--force',
+      'depart a node whose dd gate is unsatisfied — a DEFENDED override, recorded in the event log (an agent may not pass this on its own judgment)',
+    )
     .action(
       (opts: {
         path?: string;
@@ -295,6 +356,7 @@ export function registerFlowAct(
         next?: string;
         clearNext?: boolean;
         intent?: string;
+        force?: boolean;
       }) => {
         if (
           opts.now === undefined &&
@@ -317,12 +379,16 @@ export function registerFlowAct(
             ),
           );
         }
-        const clk = { clock: deps.clock };
+        const clk = { clock: deps.clock, gate: gateEvaluator(repoRoot(), deps) };
         runMutation(io, deps, opts, (doc) => {
           let r: MutationResult = { ok: true, doc };
+          // The gate notice must survive the later setters: a forced departure is
+          // still a forced departure when the same command also set --intent.
+          let notice: MutationNotice | undefined;
           if (opts.now !== undefined) {
-            r = setNow(r.doc, opts.now, clk);
+            r = setNow(r.doc, opts.now, clk, { force: opts.force === true });
             if (!r.ok) return r;
+            notice = r.notice;
           }
           if (opts.clearNext === true) {
             r = setNext(r.doc, null, clk);
@@ -335,7 +401,7 @@ export function registerFlowAct(
             r = setIntent(r.doc, opts.intent, clk);
             if (!r.ok) return r;
           }
-          return r;
+          return notice === undefined ? r : { ...r, notice };
         });
       },
     );
@@ -481,7 +547,10 @@ export function registerFlowAct(
       if (!resolved.ok) return emit(orientIo, failureEnvelope(needPath(), deps.clock));
       const read = readFlowDoc(resolved.path, svc);
       if (!read.ok) return emit(orientIo, failureEnvelope(read, deps.clock));
-      const view = orientView(read.doc);
+      const view = orientView(read.doc, {
+        deps: ddGateDeps(repoRoot(), deps),
+        repoRoot: repoRoot(),
+      });
       // Robustness: a SET nav.now that doesn't resolve to a node in nodes[] is a
       // corrupt/inconsistent flow — error (E305, the missing-NODE case; the
       // missing-FILE case is E301) rather than silently returning ok + node:null. A
@@ -1160,6 +1229,96 @@ interface OrientView {
   rail: string;
   node: { id: string; label: string; command: string | null; instructions: string[] } | null;
   chores: OrientChore[];
+  /** The dd gate at `nav.now`, when the node carries a `dd_link` (plan 065 P6). */
+  dd_gate?: OrientGate;
+}
+
+/** One gate item in the `orient` read — an item id plus its per-item pip. */
+interface OrientGateItem {
+  id: string;
+  state: string;
+  pip: string;
+}
+
+/** The `orient` dd-gate block: what is linked, whether it gates, and every item. */
+interface OrientGate {
+  address: string;
+  /** Whether departure from this node is actually gated on it. */
+  gates: boolean;
+  status: 'complete' | 'incomplete' | 'unevaluable';
+  terminal: number;
+  total: number;
+  /** Absolute path of the resolved target, or `null` when it did not resolve. */
+  path: string | null;
+  /** Every item, in document order — complete AND incomplete (see below). */
+  items: OrientGateItem[];
+  /** Why the gate could not be evaluated; absent when it could. */
+  problem?: string;
+  /** A stale recorded basis — INFORMATION, never a refusal (workshop-001). */
+  drift?: DdGateDrift;
+}
+
+/**
+ * The per-item pip for the orient gate block (T005): `■` gate-terminal · `□` not.
+ *
+ * It mirrors the chore pips deliberately — a reader who has learned one square
+ * alphabet on this surface has learned the other. `orient` shows ALL items rather
+ * than only the outstanding ones for the same reason it shows completed chores:
+ * "3 of 7" with four visible ticks is a progress read; four bare names is a
+ * to-do list that has lost its denominator.
+ */
+function gatePip(terminal: boolean): string {
+  return terminal ? '■' : '□';
+}
+
+/**
+ * Compose the `orient` dd-gate block by evaluating the link LIVE.
+ *
+ * `orient` is a read, so it could have shown the recorded reading for free. It
+ * does not: `orient` is the surface a weak model consults to decide what to do
+ * next, and answering that question from a cache is how an agent ends up working
+ * against a document that moved half an hour ago. The recorded reading exists for
+ * the pure renderer, which genuinely cannot resolve anything; `orient` can, so it
+ * does — and it separately reports basis drift, which is the honest signal that
+ * the RECORDED half has gone stale.
+ */
+function orientGate(node: FlowNode, deps: DdGateDeps, repoRoot: string): OrientGate | undefined {
+  const link = node.dd_link;
+  if (link === undefined || typeof link.address !== 'string' || link.address.length === 0) {
+    return undefined;
+  }
+  const options = { repoRoot, fromPath: null };
+  const result = evaluateDdGate(link, deps, options);
+  const drift = ddGateDrift(link, deps, options);
+  const gates = link.gate !== false;
+  if (!result.ok) {
+    return {
+      address: link.address,
+      gates,
+      status: 'unevaluable',
+      terminal: 0,
+      total: 0,
+      path: null,
+      items: [],
+      problem: result.message,
+      ...(drift !== null && { drift }),
+    };
+  }
+  const items: OrientGateItem[] = result.items.map((item) => ({
+    id: item.id,
+    state: item.state,
+    pip: gatePip(item.terminal),
+  }));
+  return {
+    address: result.address,
+    gates,
+    status: result.complete ? 'complete' : 'incomplete',
+    terminal: result.terminal,
+    total: result.total,
+    path: result.path,
+    items,
+    ...(drift !== null && { drift }),
+  };
 }
 
 /**
@@ -1172,14 +1331,18 @@ interface OrientView {
  * `nav.now` ALSO yields `node: null` HERE, but the orient ACTION treats that as a
  * corrupt flow and errors (E305) — it does NOT degrade to `node: null` downstream.
  */
-function orientView(doc: FlowDoc): OrientView {
+function orientView(doc: FlowDoc, gate?: { deps: DdGateDeps; repoRoot: string }): OrientView {
   const now = doc.nav?.now;
   const nowId = typeof now === 'string' && now.length > 0 ? now : null;
   const node = nowId !== null ? doc.nodes.find((n) => n.id === nowId) : undefined;
   const chores = nowId !== null ? listChores(doc, nowId) : [];
+  const ddGate =
+    node !== undefined && gate !== undefined
+      ? orientGate(node, gate.deps, gate.repoRoot)
+      : undefined;
   return {
     now: nowId,
-    rail: renderRailLine(doc),
+    rail: renderRailLine(railDoc(doc, node, ddGate)),
     node:
       node === undefined
         ? null
@@ -1190,7 +1353,40 @@ function orientView(doc: FlowDoc): OrientView {
             instructions: Array.isArray(node.instructions) ? node.instructions : [],
           },
     chores: chores.map((c) => ({ ...c, pip: chorePip(c) })),
+    ...(ddGate !== undefined && { dd_gate: ddGate }),
   };
+}
+
+/**
+ * The document `orient` rails from — the real one, with the CURRENT node's gate
+ * reading replaced by what orient just computed live.
+ *
+ * Without this, one `orient` prints two answers to the same question: the rail
+ * reports the RECORDED reading (`⛨ not yet evaluated` on a link nobody has
+ * departed through yet) directly above a block that has just resolved the address
+ * and found `1/3 ✕ holds`. Both halves are individually correct and the pair is
+ * unreadable. The renderer stays pure and stays the single owner of the rail's
+ * shape; it is simply handed the fresher document — which is what the reader
+ * already believed they were looking at.
+ */
+function railDoc(doc: FlowDoc, node: FlowNode | undefined, gate: OrientGate | undefined): FlowDoc {
+  if (node === undefined || gate === undefined || gate.status === 'unevaluable') return doc;
+  const link = node.dd_link;
+  if (link === undefined) return doc;
+  const live: FlowNode = {
+    ...node,
+    dd_link: {
+      ...link,
+      reading: {
+        status: gate.status,
+        terminal: gate.terminal,
+        total: gate.total,
+        incomplete: gate.items.filter((i) => i.pip !== '■').map((i) => i.id),
+        at: '',
+      },
+    },
+  };
+  return { ...doc, nodes: doc.nodes.map((n) => (n.id === node.id ? live : n)) };
 }
 
 /**
@@ -1215,7 +1411,44 @@ function renderOrient(view: OrientView): string {
     lines.push('  Chores:');
     for (const c of view.chores) lines.push(`    ${c.pip} ${c.label}`);
   }
+  if (view.dd_gate !== undefined) lines.push(...renderOrientGate(view.dd_gate));
   return lines.join('\n');
+}
+
+/**
+ * The human `orient` dd-gate block (T005 / AC-11).
+ *
+ * Ordered by what a reader needs first: the verdict, then the items that produced
+ * it, then the drift warning. Drift is printed LAST and as a warning rather than
+ * an error because it changes what you should trust, not what you are allowed to
+ * do — the gate above it has already been computed live against the current file.
+ */
+function renderOrientGate(gate: OrientGate): string[] {
+  const lines: string[] = [];
+  const verb = gate.gates ? 'gate' : 'link (not gating)';
+  if (gate.status === 'unevaluable') {
+    lines.push(`  dd ${verb}: ${gate.address}`, `    ! could not evaluate — ${gate.problem ?? ''}`);
+  } else {
+    const mark = gate.status === 'complete' ? '✓ open' : '✕ holds';
+    lines.push(`  dd ${verb}: ${gate.address}  ${gate.terminal}/${gate.total} ${mark}`);
+    for (const item of gate.items) lines.push(`    ${item.pip} ${item.id} (${item.state})`);
+  }
+  if (gate.drift !== undefined) {
+    // Short shas for the human line, full ones in `--json`. Two 64-character
+    // digests on one terminal row is a wall a reader skips; the first twelve
+    // characters are what anyone actually compares, and the exact values are one
+    // `--json` away for anything that needs them.
+    lines.push(
+      `    ⚠ basis drift: ${gate.drift.path} moved since this gate was last recorded`,
+      `      recorded ${short(gate.drift.recorded)} → actual ${short(gate.drift.actual)}`,
+    );
+  }
+  return lines;
+}
+
+/** First twelve characters of a digest — enough to compare, short enough to read. */
+function short(sha: string): string {
+  return sha.length > 12 ? `${sha.slice(0, 12)}…` : sha;
 }
 
 /** Human-readable `harness flow chores` table (JSON mode rides the envelope instead). */
@@ -1292,5 +1525,19 @@ function runMutation(
   // to `{path}` — mutation verbs only; create/show/read verbs keep the frozen
   // full shape, and the default (no flag) stays byte-identical.
   const data = io.quiet === true ? { path: written.path } : summary(result.doc, written.path);
+  // A forced dd-gate override succeeded, but never as a clean `ok` (workshop-002):
+  // the degraded envelope's REQUIRED next_action is what states whose decision the
+  // override had to be.
+  if (result.notice !== undefined) {
+    return emit(
+      io,
+      formatDegraded(
+        'flow',
+        { ...data, ...result.notice.data },
+        result.notice.next_action,
+        deps.clock,
+      ),
+    );
+  }
   emit(io, formatOk('flow', data, deps.clock));
 }

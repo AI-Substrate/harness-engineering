@@ -78,6 +78,73 @@ export interface Chore {
   importance: string;
 }
 
+/**
+ * The last COMPUTED gate reading, recorded on the node at gate-evaluation time
+ * (plan 065 P6 T005).
+ *
+ * It exists for exactly one reason: the flow renderer is PURE — it takes a
+ * `FlowDoc` and returns markdown, with no filesystem, no schema resolution and no
+ * dd document loading. A gate badge that had to resolve an address at render time
+ * would make the renderer an I/O consumer, so the reading is stored where the
+ * renderer can already see it.
+ *
+ * **It is display/record only, and never gate truth** (PM ruling, 2026-08-04).
+ * The gate RE-EVALUATES live on every mutation: a recorded `complete` must not let
+ * a now-incomplete gate pass, and a recorded `incomplete` must not block a
+ * now-complete departure. Read this to SHOW what was last computed; never to
+ * DECIDE. `basis_sha` is its honesty check — when the target document has moved
+ * since `at`, `orient` says so instead of trusting the cache.
+ */
+export interface DdLinkReading {
+  /** Whether every collected item was gate-terminal at `at`. */
+  status: 'complete' | 'incomplete';
+  /** How many items were gate-terminal. */
+  terminal: number;
+  /** How many items were collected in total. */
+  total: number;
+  /** The ids of the items that were NOT gate-terminal, in document order. */
+  incomplete: string[];
+  /** ISO-8601 UTC instant the reading was computed (Clock.nowIso()). */
+  at: string;
+}
+
+/**
+ * A node's link to the dd document section whose completion it gates on (plan 065
+ * P6; workshop-002 Ruling 1, AC-10/AC-11).
+ *
+ * **Opt-in, absolutely.** A node WITHOUT `dd_link` behaves exactly as it did
+ * before this field existed — no resolution, no evaluation, no refusal, no new
+ * event, byte-identical output. That is the whole mitigation for putting the
+ * repo's first mechanical gate into the machinery every existing flow already
+ * runs on, and it is regression-pinned by test.
+ *
+ * Two authored keys and two machine-recorded ones:
+ *   - AUTHORED: `address` (the dd address whose items must be gate-terminal) and
+ *     `gate` (whether that link actually gates departure, or is a plain reference).
+ *   - RECORDED: `basis_sha` + `reading`, both written by the gate evaluation and
+ *     never by hand.
+ */
+export interface DdLink {
+  /** The dd address this node gates on, e.g. `tasks/phase-2/tasks.dd.json#tasks`. */
+  address: string;
+  /**
+   * Whether departure from this node is GATED on that address being complete.
+   * Absent is treated as `true`: a node that carries a link to its evidence and
+   * says nothing else means the link to gate — declaring `gate: false` is how an
+   * author keeps the address as a plain, surfaced reference.
+   */
+  gate?: boolean;
+  /** The target document's content sha recorded at the last gate evaluation. */
+  basis_sha?: string;
+  /** The last computed reading — display/record only (see {@link DdLinkReading}). */
+  reading?: DdLinkReading;
+}
+
+/** Whether a link gates departure — absent `gate` means gated (see {@link DdLink}). */
+export function ddLinkGates(link: DdLink | undefined): link is DdLink {
+  return link !== undefined && link.gate !== false;
+}
+
 /** A single flow node. Overlays add/constrain the `type`/`status` vocabularies. */
 export interface FlowNode {
   id: string;
@@ -108,6 +175,11 @@ export interface FlowNode {
   command?: string;
   /** Orthogonal chore marker (Phase 4) — presence flags the node as upkeep. */
   chore?: Chore;
+  /**
+   * The dd document section whose completion gates departure from this node
+   * (plan 065 P6). ABSENT ⇒ zero behaviour change — the opt-in contract.
+   */
+  dd_link?: DdLink;
   /** Tolerated pass-through fields (agents/output/error/note/…) round-trip. */
   [key: string]: unknown;
 }

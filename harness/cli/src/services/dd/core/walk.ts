@@ -122,6 +122,14 @@ export function validateWalk(
       const ledgerEntry = current.doc.references.find(
         (reference) => resolveAddressFile(current.path, reference.path) === targetPath,
       );
+      // Basis staleness is WARN, and stays WARN wherever it is asked (plan 065 P6
+      // T004 / dossier § Rulings, A1 residual). A recorded basis that no longer
+      // matches means the reader's conclusions about that target were computed
+      // against a file that has since moved — which is information, not a verdict.
+      // The flow spine's dd gate consumes the same rule through `verify-basis`:
+      // drift surfaces at `orient` as a warning and NEVER refuses a departure,
+      // because the gate itself is recomputed live against the current file and has
+      // already answered the question drift would only cast doubt on.
       if (ledgerEntry && ledgerEntry.sha !== loaded.sha) {
         issues.push(
           finding(
