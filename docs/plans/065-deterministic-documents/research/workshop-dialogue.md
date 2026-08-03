@@ -1,3 +1,10 @@
+> **FROZEN PROVENANCE — verbatim as authored, not maintained.**
+> This file records what was said or found at the time it was written. Its terminology,
+> shapes, and decisions are **as-written and may not be current** — later rulings supersede
+> without editing this file. The authoritative, maintained record of decisions and open
+> items is `workshop-notes.md`. Consistency sweeps should **skip this file by design**:
+> a stale-looking term here is correct, not a defect.
+
 # 065 — Workshop dialogue record (Jordan ↔ silkworm, 2026-08-03)
 
 Verbatim-where-quoted record of the concept Q&A that produced decisions D1–D11 and open items W1–W9 in `../workshop-notes.md`. Jordan's words are quoted as typed (including typos); agent positions are summarised. Sequence is chronological.

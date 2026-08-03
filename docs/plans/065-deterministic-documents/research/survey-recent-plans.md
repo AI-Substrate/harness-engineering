@@ -1,3 +1,10 @@
+> **FROZEN PROVENANCE — verbatim as authored, not maintained.**
+> This file records what was said or found at the time it was written. Its terminology,
+> shapes, and decisions are **as-written and may not be current** — later rulings supersede
+> without editing this file. The authoritative, maintained record of decisions and open
+> items is `workshop-notes.md`. Consistency sweeps should **skip this file by design**:
+> a stale-looking term here is correct, not a defect.
+
 # Survey: requirement→proof→receipt carriage in recent SDD plans
 
 > Produced 2026-08-03 by an Opus 5 subagent, commissioned as design input for plan 065 ("we are going to be making more changes to how the flow spine carries requirements deterministically"). Preserved verbatim below (minor formatting only). Scope: 7 recent plans, excluding 063 which was reviewed separately in-session.

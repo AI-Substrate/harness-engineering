@@ -1,3 +1,10 @@
+> **FROZEN PROVENANCE — verbatim as authored, not maintained.**
+> This file records what was said or found at the time it was written. Its terminology,
+> shapes, and decisions are **as-written and may not be current** — later rulings supersede
+> without editing this file. The authoritative, maintained record of decisions and open
+> items is `workshop-notes.md`. Consistency sweeps should **skip this file by design**:
+> a stale-looking term here is correct, not a defect.
+
 # Thinker deliverable — DD core concept & section primitives
 
 > Opus 5 subagent deliverable, 2026-08-03, commissioned for plan 065. Preserved verbatim (agent meta-preamble removed). NOTE (parent context): written before workshop decisions D2/D4 — its `complete: bool` + inline-evidence examples were superseded by the state-enum + signpost-links design; its id-derivation, integrity-envelope, and include/record proposals fed sections 02–04 of the infographic and W6/W9.

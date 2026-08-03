@@ -14,6 +14,15 @@ A **Deterministic Document** is a document stored as validated data: a `.dd.json
 4. **`exemplar-plans-as-dd.md`** — the first exemplar implementation target: composing a *plan* as a DD, phases in focus, grounded in real plan 063. Includes the schema sketch and the W10 question it surfaced.
 5. **`research/`** — full provenance: `workshop-dialogue.md` (verbatim Jordan rulings in sequence), `survey-recent-plans.md` (7-plan backpressure/spine survey + the reproducible 54-file "no requirement-like structured keys" scan), and four `thinker-*.md` deep-dives (core primitives, linking/composition, verbs/lifecycle, flow integration — each annotated where later rulings superseded them).
 
+## Living vs. frozen — the other split that matters
+
+The plan folder has two halves, and a sweep must treat them differently:
+
+- **Living** (must track every ruling): `workshop-notes.md`, `pm-handover.md`, `dd-infographic.html`, `exemplar-plans-as-dd.md`.
+- **Frozen provenance** (must NOT be updated): `initial-brief.md` and everything under `research/`. Each carries a banner saying so. Their terminology and shapes are as-written; a stale-looking term there is correct, not a defect.
+
+Why it's marked rather than remembered: after a ruling lands, someone sweeps the corpus for contradictions, and the frozen half will look wrong every single time. The banner lets the sweep scope itself instead of re-deciding file by file. Two defects of exactly this class have already been caught here — a doc that was true when written and became false when something else was ruled — so sweep by **concept**, not by label: searching the W-item number misses any doc that asserts a superseded model without naming it.
+
 ## Decisions vs. open items — the split that matters
 
 - **Ruled (D1–D14)**: write posture (validated file, not CLI-mediated store), AC rows as signposts with `pressure`/`proven_by` links, execution-log-as-DD (append-only), states-not-booleans, spine links-never-copies, graph tooling first-class, portability (lib inside harness now; standalone CLI out of scope; concepts are the contract), transactional rename, contributors-manifest vs basis-pin (two hash ledgers, opposite refresh rules), source-only links with computed reverse lookup, ids only where state/linkability demands them, two-graphs-one-bridge.

@@ -1,3 +1,10 @@
+> **FROZEN PROVENANCE — verbatim as authored, not maintained.**
+> This file records what was said or found at the time it was written. Its terminology,
+> shapes, and decisions are **as-written and may not be current** — later rulings supersede
+> without editing this file. The authoritative, maintained record of decisions and open
+> items is `workshop-notes.md`. Consistency sweeps should **skip this file by design**:
+> a stale-looking term here is correct, not a defect.
+
 # Thinker deliverable — how the-flow uses DDs
 
 > Opus 5 subagent deliverable, 2026-08-03, plan 065. Preserved with technical content intact. Grounded in the real 063 flight plan, `flow-mutations.ts` (`NavShow`, `dueChores` line 100), `acts/flow.ts` (`orientView` ~1141–1220), and builder SKILL.md invariants #4/#12. NOTE (parent context): written before D4 (state enum) — its boolean-tick framing is superseded; its before/after node shapes, completion mechanic, gate-semantics split, and §4 kill-list fed infographic section 09 directly.

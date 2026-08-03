@@ -1,3 +1,10 @@
+> **FROZEN PROVENANCE — verbatim as authored, not maintained.**
+> This file records what was said or found at the time it was written. Its terminology,
+> shapes, and decisions are **as-written and may not be current** — later rulings supersede
+> without editing this file. The authoritative, maintained record of decisions and open
+> items is `workshop-notes.md`. Consistency sweeps should **skip this file by design**:
+> a stale-looking term here is correct, not a defect.
+
 # Thinker deliverable — `harness dd` verb surface & document lifecycle
 
 > Opus 5 subagent deliverable, 2026-08-03, plan 065. Preserved with technical content intact. Grounded in the real `harness flow` implementation (`harness/cli/src/acts/flow.ts`, `services/flow/flow-mutations.ts`, `services/flow/flow-renderer.ts`) and the core contract (`output/{envelope,exit,error-codes}.ts`, `services/extensions/contract.ts`). **P** = proposed name; **B** = named in the brief. NOTE (parent context): written before D1 (hand-editable posture — its "never an editor touching JSON" line is superseded; the CLI is the *paved* writer, not the only one) and before W7/W8 (`dd build`, validate radius) and D8 (`rename-section`).

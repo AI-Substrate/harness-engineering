@@ -1,3 +1,10 @@
+> **FROZEN PROVENANCE — verbatim as authored, not maintained.**
+> This file records what was said or found at the time it was written. Its terminology,
+> shapes, and decisions are **as-written and may not be current** — later rulings supersede
+> without editing this file. The authoritative, maintained record of decisions and open
+> items is `workshop-notes.md`. Consistency sweeps should **skip this file by design**:
+> a stale-looking term here is correct, not a defect.
+
 # Thinker deliverable — Composition and linking between DDs
 
 > Opus 5 subagent deliverable, 2026-08-03, plan 065. Preserved with technical content intact (meta-preamble removed). Syntax marked **[proposed]** is the thinker's proposal — the brief fixes semantics, not notation; the addressing grammar is workshop W9's to lock. Its transclusion/basis split became D9; its derived-index reasoning became D11's grounding.
