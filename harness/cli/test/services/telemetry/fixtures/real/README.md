@@ -15,7 +15,10 @@ fixtures/real/<surface>/<instance>/
                          #   claude        → raw.jsonl
                          #   copilot-cli   → raw.events.jsonl + raw.process.log
                          #   copilot-vscode→ raw.rows.json   (extracted rows, no message text)
-                         #   cursor        → raw.jsonl + raw.rows.json
+                         #   cursor        → raw.jsonl [+ raw.rows.json]
+                         #                   (the bubble rows exist only for IDE
+                         #                    sessions; a headless CLI conversation
+                         #                    has none — see 2026-08-03-applypatch-textstat)
   expected-segment.json  # the committed GOLDEN: adapter.extract → serializeSegment output
   invariants.json        # the hand-pinned, human-reviewed invariants (the per-instance
                          #   source of truth — real-capture.e2e.test.ts asserts against it)

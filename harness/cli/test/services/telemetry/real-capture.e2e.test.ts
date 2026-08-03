@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeDb } from '../../../src/adapters/db/fake-db.js';
@@ -20,7 +21,10 @@ import {
   cursorTranscriptPath,
 } from '../../../src/services/telemetry/adapters/cursor-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
+import { segmentToOtlpLogs } from '../../../src/services/telemetry/otlp/logs.js';
+import { rollupToOtlpMetrics } from '../../../src/services/telemetry/otlp/metrics.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
+import { conformLogs, conformMetrics } from '../../conformance/otlp-conformance.js';
 import { expectCurrentSegmentMatchesLegacy, registerOtlpGoldens } from './otlp-golden.js';
 
 /**
@@ -382,6 +386,195 @@ describe('real cursor fixture → segment via transcript↔bubble join (AC-05)',
     for (const e of seg.event_stream) {
       expect(e.t_precision).toBe('anchored');
       expect(Number.isNaN(Date.parse(e.t))).toBe(false);
+    }
+  });
+});
+
+// ── cursor · plan 066 (ApplyPatch file deltas, HEADLESS) ─────────────────────
+// The corpus had no cursor EDITING session, so the ApplyPatch → `file` event path
+// shipped without real-corpus drift cover. This instance closes that: a real
+// headless `cursor-agent` conversation that built a small demo toolkit with 9
+// `ApplyPatch` calls (6 `Add File:` → `written`, 3 `Update File:` → `edited`).
+//
+// Headless means NO IDE bubbles exist for the conversation, so there is no
+// `raw.rows.json` and no FakeDb: the transcript is untimed AND unanchored, and the
+// adapter stamps every file event with the capture wall-clock at
+// `t_precision:'interval'` ("within this window") instead of fabricating a time or
+// dropping the event. That `interval` branch is what this fixture guards.
+//
+// Unlike the four frozen Segment-2.4/OTLP-v0.1 instances above, this instance is
+// minted at the CURRENT schema, so its goldens are compared EXACTLY (no
+// compatibility projection). Re-mint after an intentional adapter change with:
+//   REGEN_066_GOLDEN=1 npx vitest run test/services/telemetry/real-capture.e2e.test.ts
+// then re-review the diff before committing (goldens are derived, never hand-edited).
+const AP_DIR = 'cursor/2026-08-03-applypatch-textstat';
+const AP_CONV = '1a501a09-236c-4378-9138-f196a8958aa9';
+const AP_CAPTURED_AT = '2026-08-03T22:30:00.000Z'; // pinned synthetic capture wall-clock
+const AP_FIXTURE_DIR = fileURLToPath(new URL(`./fixtures/real/${AP_DIR}`, import.meta.url));
+const AP_TRANSCRIPT = readFileSync(join(AP_FIXTURE_DIR, 'raw.jsonl'), 'utf8');
+const AP_TRANSCRIPTS_DIR = `${HOME}/.cursor/projects/home-dev-repo/agent-transcripts`;
+const AP_LINES = AP_TRANSCRIPT.split('\n').filter((l) => l.trim().length > 0).length;
+const apWindow = { since: 'session-start', from: 0, to: AP_LINES } as const;
+
+function applyPatchSegment() {
+  const fs = new FakeFs({
+    [cursorTranscriptPath(AP_TRANSCRIPTS_DIR, AP_CONV)]: AP_TRANSCRIPT,
+  });
+  const env = new FakeEnv(
+    { [CURSOR_SESSION_ENV]: AP_CONV, [CURSOR_TRANSCRIPTS_ENV]: AP_TRANSCRIPTS_DIR },
+    HOME,
+  );
+  // NO `db`: a headless CLI conversation has no `cursorDiskKV` bubbles at all.
+  const caps = cursorAdapter.extract({
+    env,
+    fs,
+    repoRoot: REPO,
+    harness: 'cursor-agent',
+    window: apWindow,
+    capturedAt: AP_CAPTURED_AT,
+  });
+  const input: SegmentInput = {
+    command: 'flow',
+    harness: 'cursor-agent',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
+    harness_session_id: AP_CONV,
+    timecode: '2026-08-03T22:30:00Z',
+    window: apWindow,
+    branch: null,
+    tokens: caps.tokens,
+    models: caps.models ?? {},
+    effort: caps.effort,
+    skills: caps.skills ?? {},
+    tools: caps.tools ?? {},
+    user_prompts: caps.user_prompts ?? [],
+    subagents: caps.subagents ?? [],
+    files: caps.files ?? { written: [], edited: [] },
+    plans_touched: [],
+    events: {
+      compactions: caps.compactions ?? [],
+      api_errors: caps.api_errors ?? 0,
+      local_commands: caps.local_commands ?? 0,
+    },
+    thinking: caps.thinking,
+    event_stream: caps.event_stream ?? undefined,
+  };
+  return serializeSegment(input, REPO);
+}
+
+/** The self-describing invariants block — minted from the segment, human-reviewed, committed. */
+function apInvariantsOf(seg: ReturnType<typeof applyPatchSegment>) {
+  return {
+    tokens: seg.tokens, // null — Cursor keeps consumption server-side
+    models: Object.keys(seg.models ?? {}).sort(), // [] — headless: no bubbles, no model
+    user_prompts: seg.user_prompts ?? [],
+    tools: seg.tools ?? {},
+    files: seg.files,
+    file_deltas: seg.event_stream
+      .filter((e) => e.kind === 'file')
+      .map((e) => ({ path: e.path, change: e.change, ...e.delta })),
+    event_count: seg.event_stream.length,
+    event_stream_present: seg.event_stream.length > 0,
+    timestamps: 'interval', // untimed transcript + NO bubble anchor → capture-window stamp
+  };
+}
+
+const apSeg = applyPatchSegment();
+const apLogs = segmentToOtlpLogs(apSeg);
+const apMetrics = rollupToOtlpMetrics(apSeg);
+
+if (process.env.REGEN_066_GOLDEN) {
+  // This instance is NOT part of the frozen Segment-2.4 corpus, so its derived
+  // goldens stay regenerable (see the header note); the frozen instances above are
+  // untouched by this branch.
+  writeFileSync(
+    join(AP_FIXTURE_DIR, 'expected-segment.json'),
+    `${JSON.stringify(apSeg, null, 2)}\n`,
+  );
+  writeFileSync(
+    join(AP_FIXTURE_DIR, 'invariants.json'),
+    `${JSON.stringify(apInvariantsOf(apSeg), null, 2)}\n`,
+  );
+  writeFileSync(join(AP_FIXTURE_DIR, 'expected-otlp-logs.jsonl'), `${JSON.stringify(apLogs)}\n`);
+  writeFileSync(
+    join(AP_FIXTURE_DIR, 'expected-otlp-metrics.jsonl'),
+    `${JSON.stringify(apMetrics)}\n`,
+  );
+}
+
+describe('real cursor ApplyPatch fixture → segment (plan 066)', () => {
+  it('matches the committed expected-segment.json golden EXACTLY', () => {
+    expect(apSeg).toEqual(
+      JSON.parse(readFileSync(join(AP_FIXTURE_DIR, 'expected-segment.json'), 'utf8')),
+    );
+  });
+
+  it('matches the committed (human-reviewed) invariants.json', () => {
+    expect(apInvariantsOf(apSeg)).toEqual(
+      JSON.parse(readFileSync(join(AP_FIXTURE_DIR, 'invariants.json'), 'utf8')),
+    );
+  });
+
+  it('matches the committed OTLP logs/metrics goldens, and both conform to the OTLP protos', () => {
+    expect(conformLogs(apLogs)).toEqual({ ok: true });
+    expect(conformMetrics(apMetrics)).toEqual({ ok: true });
+    expect(apLogs).toEqual(
+      JSON.parse(readFileSync(join(AP_FIXTURE_DIR, 'expected-otlp-logs.jsonl'), 'utf8')),
+    );
+    expect(apMetrics).toEqual(
+      JSON.parse(readFileSync(join(AP_FIXTURE_DIR, 'expected-otlp-metrics.jsonl'), 'utf8')),
+    );
+  });
+
+  it('extracts 9 ApplyPatch file events — 6 written + 3 edits over 2 files (the plan-066 payload)', () => {
+    // MUTATION: dropping the ApplyPatch branch in cursor-adapter (or narrowing the
+    // event-stream gate back to `anyTs`) empties this list → RED.
+    const files = apSeg.event_stream.filter((e) => e.kind === 'file');
+    expect(files).toHaveLength(9);
+    expect(files.filter((e) => e.change === 'written')).toHaveLength(6);
+    expect(files.filter((e) => e.change === 'edited')).toHaveLength(3);
+    // The path lists dedupe: 3 edit events land on only 2 distinct files.
+    expect(apSeg.files).toEqual({
+      written: [
+        'demo/textstat/lib.mjs',
+        'demo/textstat/lib.test.mjs',
+        'demo/textstat/cli.mjs',
+        'demo/textstat/fixtures/welcome.txt',
+        'demo/textstat/fixtures/unicode.txt',
+        'demo/textstat/README.md',
+      ],
+      edited: ['demo/textstat/lib.test.mjs', 'demo/textstat/cli.mjs'],
+    });
+    // Real per-file counts read off the real V4A patch bodies.
+    expect(files[0]).toMatchObject({
+      path: 'demo/textstat/lib.mjs',
+      change: 'written',
+      delta: { lines_added: 72, lines_removed: 0, bytes_added: 1809, bytes_removed: 0 },
+    });
+  });
+
+  it('stamps INTERVAL precision at the capture wall-clock (headless: no bubble anchor)', () => {
+    // The whole stream is file events — no bubbles means no prompt/turn/tools events.
+    expect(apSeg.event_stream.length).toBeGreaterThan(0);
+    for (const e of apSeg.event_stream) {
+      expect(e.kind).toBe('file');
+      expect(e.t_precision).toBe('interval');
+      expect(e.t).toBe(AP_CAPTURED_AT);
+    }
+    // ...yet the untimed capabilities still land (counts don't need timestamps).
+    expect(apSeg.tools.ApplyPatch).toBe(9);
+    expect(apSeg.tokens).toBeNull(); // never estimated
+    expect(apSeg.models).toBeUndefined(); // headless → no bubbles → no model, not a guess
+  });
+
+  it('confines every file path to repo-relative form — no absolute path survives', () => {
+    // The raw transcript's patch headers are ABSOLUTE in-repo paths; confinement
+    // happens at serialize time (AC-04).
+    for (const e of apSeg.event_stream.filter((e) => e.kind === 'file')) {
+      expect(e.path.startsWith('/')).toBe(false);
+      expect(e.path).not.toBe('<external>');
+    }
+    for (const p of [...apSeg.files.written, ...apSeg.files.edited]) {
+      expect(p.startsWith('/')).toBe(false);
     }
   });
 });
