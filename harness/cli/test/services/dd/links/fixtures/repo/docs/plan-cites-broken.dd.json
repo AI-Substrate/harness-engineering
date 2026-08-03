@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-2b3c", "brief": "Cites a doc that is broken on its own terms" }] },
+    { "name": "citations", "value": [{ "id": "ct-8b9c", "cite": "broken-neighbour.dd.json#entries/ev-9a1b" }] }
+  ],
+  "references": [{ "path": "broken-neighbour.dd.json", "sha": "sha-broken-neighbour", "mode": "live" }]
+}

@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-3c4d", "brief": "Names a section the target schema does not declare" }] },
+    { "name": "citations", "value": [{ "id": "ct-9c0d", "cite": "evidence.dd.json#nosuchsection" }] }
+  ],
+  "references": []
+}

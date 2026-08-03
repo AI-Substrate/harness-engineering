@@ -1,0 +1,21 @@
+{
+  "name": "links/evidence",
+  "sections": {
+    "entries": {
+      "required": true,
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "state"],
+          "fields": {
+            "id": { "type": "string" },
+            "state": { "type": "state" },
+            "note": { "type": "text" },
+            "receipt": { "type": "text" }
+          }
+        }
+      }
+    }
+  }
+}

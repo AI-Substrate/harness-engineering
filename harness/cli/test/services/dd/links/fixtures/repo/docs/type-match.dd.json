@@ -1,0 +1,18 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-a9b0",
+          "brief": "The good twin: its evidence column points at an evidence section",
+          "tasks": [
+            { "id": "tk-b0c1", "title": "Right target type", "state": "unchecked", "evidence": "evidence.dd.json#entries" }
+          ]
+        }
+      ]
+    }
+  ],
+  "references": []
+}

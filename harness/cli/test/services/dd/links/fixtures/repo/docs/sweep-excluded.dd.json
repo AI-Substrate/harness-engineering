@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1", "sweep_exclude": true },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-d6e7", "brief": "Known-bad on purpose: skipped by the sweep, never by direct invocation" }] },
+    { "name": "citations", "value": [{ "id": "ct-96a7", "cite": "evidence.dd.json#nosuchsection" }] }
+  ],
+  "references": []
+}

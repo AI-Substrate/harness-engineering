@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-7081", "brief": "Bare-# addresses resolve against their own document" }] },
+    { "name": "citations", "value": [{ "id": "ct-3041", "cite": "#phases/ph-7081/brief" }] }
+  ],
+  "references": []
+}

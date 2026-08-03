@@ -1,0 +1,13 @@
+{
+  "dd": { "schema": "links/evidence", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "entries",
+      "value": [
+        { "id": "ev-5e6f", "state": "checked", "note": "the address resolved" },
+        { "id": "ev-6f70", "state": "unchecked" }
+      ]
+    }
+  ],
+  "references": []
+}

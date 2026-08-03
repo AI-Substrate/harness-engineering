@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-b4c5", "brief": "Records the current basis of its target" }] },
+    { "name": "citations", "value": [{ "id": "ct-7485", "cite": "evidence.dd.json#entries" }] }
+  ],
+  "references": [{ "path": "evidence.dd.json", "sha": "sha-evidence", "mode": "pinned" }]
+}

@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-a3b4", "brief": "A document that cites itself by path" }] },
+    { "name": "citations", "value": [{ "id": "ct-6374", "cite": "self-cycle.dd.json#phases/ph-a3b4" }] }
+  ],
+  "references": [{ "path": "self-cycle.dd.json", "sha": "sha-self-cycle", "mode": "live" }]
+}
