@@ -25,6 +25,7 @@ describe('dd schema fixture corpus', () => {
       'custom-enum',
       'deep-scan',
       'duplicate-in-root',
+      'exemplar',
       'invalid-enum',
       'malformed-package',
       'precedence-chain',

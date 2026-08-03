@@ -1,0 +1,68 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure coverage \u2014 deterministic documents",
+        "plan": "plan.dd.json#meta",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-11c2",
+          "criterion": "Every issue class catches its known-bad fixture",
+          "phase": "ph-1f00",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "state": "checked",
+          "proof": "npx vitest run test/services/dd"
+        },
+        {
+          "id": "bp-4e01",
+          "criterion": "Schema resolution precedence + clash/shadow diagnostics",
+          "phase": "ph-2a10",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "state": "checked",
+          "proof": "npx vitest run test/services/dd/schema"
+        },
+        {
+          "id": "bp-77b3",
+          "criterion": "The exemplar uses primitives cleverly and reads well",
+          "phase": "ph-2a10",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "state": "na",
+          "note": "judgement row by design \u2014 no glob applies",
+          "proof": "human review against the workshop shapes"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "bp-9001",
+          "name": "full unit/arch suite",
+          "command": "just test",
+          "dimension": "behaviour + architecture",
+          "found_in": "root recipe"
+        },
+        {
+          "id": "bp-9002",
+          "name": "dependency-cruiser rules",
+          "command": "harness arch-check",
+          "dimension": "architecture-fitness",
+          "found_in": ".dependency-cruiser.cjs"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

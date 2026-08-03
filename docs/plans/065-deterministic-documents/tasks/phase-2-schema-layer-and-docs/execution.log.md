@@ -157,3 +157,156 @@ rather than ignored — the first version silently accepted `"fields": 3` on a s
 the corpus caught it.
 
 **Evidence**: `declarations.test.ts` (16 cases) + the resolver suite's declaration group.
+
+## T004 — `dd validate` flipped live (the OD-2 handoff)
+
+`src/acts/dd/validate.ts` — real resolver + P1 engine + depth walk. The frozen signature and the
+`--depth` option string are byte-identical; only the body changed.
+
+**Where the adapters come from.** `DdActDeps` carries only a `Clock`, and both it (`acts/dd/shared.ts`)
+and the registration site (`acts/dd/index.ts`) are P1 files outside this fence. Rather than
+renegotiate a shared type, the act constructs its own `NodeFs`/`NodeProcess`/`NodeEnv`/`NodeExec`/
+`NodeHash` — the exact precedent `acts/doctor.ts` already sets. The heavy logic stayed in
+`services/dd/schema/**`, which is injected and fake-tested, so nothing was traded away for it.
+
+**`FsDocLoader`** supplies the walk's documents. `tracked` comes from ONE `git ls-files -z`
+snapshot taken before the walk: calling every readable file "tracked" would have silently
+suppressed the untracked-target WARN, and a per-document `git` call would have made depth
+quadratic. A non-repo yields a null set — "this host has no tracking concept", not "everything
+happens to be tracked". The live run proved the distinction: the exemplar reported 13
+`address-target-untracked` WARNs while uncommitted and zero after `git add`.
+
+**Exit mapping** is T008(c): clean ⇒ `ok`/0, WARN-only ⇒ `degraded`/0, any ERROR ⇒ `error`/1 with
+the first ERROR's mapped E-code; `data.issues[]` always carries every finding with its class,
+severity, location, owner and code. Issue class → E-code is an act-level table of P1 allocations
+only — Phase 2 adds no codes.
+
+**OD-1 honoured**: mode is always `direct`, so `sweep_exclude` and the fixture-path exclusion
+(the doctor's) never apply here. Pointing the verb at a known-bad fixture still fails, which is
+asserted rather than asserted-about.
+
+## T005 — `dd schema list` / `show`
+
+`src/acts/dd/schema.ts`. Paths are shown ALWAYS, in both verbs — a schema you cannot locate is a
+schema you cannot trust — along with the in-file description, the resolved root, the shadow chain
+with each loser's path, the section shapes, every declared enum, and the schema's gate-terminal
+set. An absent qualified name is `E410`; a broken package keeps its row in `list` with the reason
+it failed, because a schema that vanishes from a listing is worse than one that reports why it
+is unusable.
+
+`list` is `degraded` (exit 0) when a package fails to load or a shadow exists — the listing is
+still complete and correct — and `error` only when a discovery root itself could not be scanned,
+where nothing can be listed at all. Human mode renders a real listing; JSON mode is the envelope.
+
+## T006 — Exemplar `builder/*` packages
+
+`.dd/schemas/builder/{plan,backpressure,execution-log}/schema.json` (OD-4; `git check-ignore`
+re-verified: not ignored).
+
+`builder/plan` carries D2's link columns on AC rows — `pressure` → `builder/backpressure/section/rows`,
+`proven_by` → `builder/execution-log/section/entries` — and the same pair on every evidence entry.
+Each task row links to ITS own evidence list via `done` → `builder/plan/section/evidence`.
+
+**One shape changed under live proof.** Modelling the per-task evidence list as an array entry
+whose `id` IS the owning task id produced `E404 duplicate-id` from a real `dd validate` run — ids
+are unique per FILE across all sections, and the task row already owns that id. Workshop-002's
+own ASCII shows `tk-9f2a:` as a **key**, so `evidence` is an object keyed by task id: no
+collision, address `#evidence/tk-1a2b` unchanged, per-task ownership intact, minted list ids
+still rejected. Ratified by the PM (fence note: `DdShape` is P1's and was not touched).
+
+The residual cost is recorded as Noteworthy below and parked as residual A3.
+
+## T007 — Baked docs (D15) + drift scripts
+
+Two docs, compiled INTO the CLI so an agent holding the binary holds the documentation:
+`dd-overview` (envelope, ids/addresses, the state table and gate, resolution precedence, the CLI,
+jq recipes) and `how-to-add-a-schema` (a worked package with a custom enum + `gate_terminal`, the
+`human-skipped` receipt convention, and a complete `(value, ctx) => string` adapter sample).
+
+`scripts/gen-dd-docs.mjs` mirrors `gen-docs.mjs` exactly — `JSON.stringify` escaping, biome
+normalisation, stderr-only logging — and `scripts/check-dd-docs.mjs` calls it in-process rather
+than re-spawning node, so there is one implementation of the rules and nothing to drift between
+them. Root `package.json` gained exactly the two granted script entries (`gen:dd-docs`,
+`check:dd-docs`) and nothing else; `build`, `prepare`, and every dependency block are untouched.
+
+Two leaf details worth recording:
+
+- **The generated module carries its own biome suppression.** The baked prose quotes real
+  TypeScript, so `${…}` appears inside string literals and trips
+  `lint/suspicious/noTemplateCurlyInString`. The repo's precedent for this is a `biome.json`
+  override (as `services/docs/docs-content.ts` has), but `biome.json` is outside this fence — so
+  the generator emits a `biome-ignore-all` header instead. That is arguably the better shape
+  anyway: the escape hatch is scoped to exactly one file and travels with the generator that
+  creates it, rather than accumulating in a central override list.
+- **Drift is proven in both directions**: `npm run check:dd-docs` exits 0 clean, and exits 1 with
+  a diff when a source `.md` is edited without regenerating (verified by injecting a line and
+  restoring it).
+
+## T009 — Validation & proof
+
+| Proof line | Result |
+|---|---|
+| `npx vitest run test/services/dd/schema test/services/dd/docs` (**with P3/P4 absent**) | **53 passed** / 5 files |
+| P1 suites still green — `npx vitest run test/services/dd test/acts/dd-surface.test.ts test/acts/dd.test.ts` | **136 passed** / 15 files |
+| `test/acts/dd-live.test.ts` (act bodies end-to-end) | **11 passed** |
+| Full `just test` | **3354 passed / 3355** — one pre-existing failure, see Deferred below |
+| `harness arch-check` | **2 violations = baseline 2** (both pre-existing telemetry `services-ports-type-only`; dd adds none) |
+| `npx biome check harness/cli` | clean, 462 files, 0 warnings |
+| `npm run check:dd-docs` | OK — no drift (and exits 1 on injected drift) |
+
+### Recorded live run
+
+```
+$ node harness/cli/bin/harness.js dd validate <fixtures>/exemplar/plan.dd.json --json
+{"status":"ok","schema":"builder/plan","depth":3,"counts":{"error":0,"warn":0}}            exit 0
+
+$ … dd validate <fixtures>/chain/repo/docs/a.dd.json --depth 2 --json
+depth2: ok                                                                                 exit 0
+$ … dd validate <fixtures>/chain/repo/docs/a.dd.json --depth 3 --json
+depth3: error E408  owner=d.dd.json                                                        exit 1
+   ^ the 3-hop corpus: depth 3 reaches the bad document, depth 2 does not, and the finding
+     is owned by the file that must change — four hops from the one the command named.
+
+$ … dd schema list --json
+ok
+  builder/backpressure  | gitroot | .dd/schemas/builder/backpressure/schema.json
+  builder/execution-log | gitroot | .dd/schemas/builder/execution-log/schema.json
+  builder/plan          | gitroot | .dd/schemas/builder/plan/schema.json
+  roots: ['gitroot', 'harness', 'home']
+
+$ … dd schema show builder/plan --json
+ok | gate_terminal: ['checked','human-skipped','na']
+   | sections: ['meta','goals','non_goals','acceptance_criteria','phases','tasks','evidence']
+   | enums: ['plan_status','complexity']
+
+$ … dd schema show builder/nope --json        → error E410                                 exit 1
+$ … dd docs list --json                       → ok ['dd-overview','how-to-add-a-schema']    exit 0
+$ … dd docs get how-to-add-a-schema --json    → ok "How to add a schema (and an adapter)" (5597 bytes)
+$ … dd docs get nope --json                   → error E419                                  exit 1
+```
+
+The eight remaining P3/P4 stubs were re-run unchanged and still exit 2 `unconfigured` naming
+their owning phase; `dd-surface.test.ts` (15 tests) and the E400–E449 enumeration are untouched
+and green — the freeze holds.
+
+---
+
+## Deferred & Noteworthy (this phase)
+
+| Tag | What | Why a human should see it |
+|---|---|---|
+| **Deferred** | Full `just test` is 3354/3355: `test/integration/docs.test.ts` "streams the full markdown byte-for-byte" times out at vitest's **default 5000 ms**. Not dd, and not new. | Root cause measured: **every harness CLI invocation costs ~4 s, and it is telemetry capture** — `dd docs list --json --no-extensions` 3.93 s vs **0.09 s** with `HARNESS_NO_TELEMETRY=1`; `harness --version` (which skips the capture path) 0.26 s. That test spawns the real dist CLI, so a 4 s command under a 5 s timeout is permanently ~1 s from red; it passes standalone at 4.0 s and fails under full-suite load. Its **sibling test in the same file already carries an explicit `}, 120_000)`** — the same wall was hit once before and only half-fixed. The file is outside this fence; captured via `harness observe --kind difficulty`. |
+| **Noteworthy** | `evidence` is a dynamic-key map, so dd-core cannot validate INSIDE it — dw entries' states are not enum-checked. | `DdShape` has `fields`/`items` but no "every value of this map has shape X". `deriveState` still walks the raw values, so **the gate is unaffected**; only shape/enum validation of the entries is lost. An additive `DdShape.valuesShape` would close it — P1's file, so not taken here. Parked as residual A3 and captured as `--kind magic-wand`. |
+| **Noteworthy** | The P2 fence listed source paths but not `test/acts/dd.test.ts`, whose stub-enumeration table necessarily reddens when a stub goes live. | Resolved by PM fence amendment 1 before any edit. This is **DL-002 recurring one phase later**: a fence for "fill the stub bodies" work must name the tests that assert the stub behaviour, not just the `src/` paths. Captured as `--kind difficulty`. |
+| **Noteworthy** | `GIT_CONFIG_COUNT`/`KEY_0`/`VALUE_0`/`KEY_1`/`VALUE_1` exported into the agent shell make `test/adapters/git/exec-remote-telemetry-git.int.test.ts` fail its `beforeAll` with `fatal: not in a git directory`. | 91/91 green under `env -u …`. **DL-003 recurring verbatim** — second phase to lose time to it, so the fix belongs in the harness (a vitest setup that neutralises `GIT_CONFIG_*` for git-touching suites), not in each coder's memory. Captured as `--kind difficulty`. |
+| **Noteworthy** | The act constructs its own Node adapters instead of taking them from `DdActDeps`. | `DdActDeps` (`acts/dd/shared.ts`) and the registration site are P1 files outside the fence, and `acts/doctor.ts` sets the precedent. P3/P4 will hit the same wall for `dd build`/`dd doctor`; widening `DdActDeps` once, in a phase that owns those files, would be tidier than three repeats. |
+
+No `TODO`/`FIXME`/`HACK` markers were introduced. No task was skipped or blocked.
+
+## Phase complete
+
+All nine tasks `[x]`. Phase 2 delivers: deep-scan schema resolution with D14 precedence, loud
+clash/shadow diagnostics, declarable enums with their own `gate_terminal` sets flowing into both
+the validate engine and `deriveState`, the five Phase-2 command bodies live (the OD-2 handoff
+closed), three exemplar `builder/*` packages, and the D15 baked docs with a two-way drift gate.
+The frozen surface is unchanged: no command, positional, option, or E-code moved.

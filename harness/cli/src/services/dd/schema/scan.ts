@@ -7,8 +7,8 @@ import {
   type SchemaFs,
   type SchemaHit,
   type SchemaIssue,
-  schemaIssue,
   type SchemaRoot,
+  schemaIssue,
 } from './model.js';
 
 export interface RootScan {
@@ -98,6 +98,8 @@ export function scanRoot(fs: SchemaFs, root: SchemaRoot): RootScan {
     return { root, hits: [], issues };
   }
 
-  hits.sort((a, b) => (a.name === b.name ? a.path.localeCompare(b.path) : a.name.localeCompare(b.name)));
+  hits.sort((a, b) =>
+    a.name === b.name ? a.path.localeCompare(b.path) : a.name.localeCompare(b.name),
+  );
   return { root, hits, issues };
 }

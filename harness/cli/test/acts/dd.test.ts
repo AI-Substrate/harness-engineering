@@ -85,11 +85,6 @@ describe('harness dd act surface', () => {
   });
 
   it.each([
-    [['dd', 'validate', 'doc.dd.json'], 'Phase 2: Schema layer & baked docs'],
-    [['dd', 'schema', 'list'], 'Phase 2: Schema layer & baked docs'],
-    [['dd', 'schema', 'show', 'builder/plan'], 'Phase 2: Schema layer & baked docs'],
-    [['dd', 'docs', 'list'], 'Phase 2: Schema layer & baked docs'],
-    [['dd', 'docs', 'get', 'how-to'], 'Phase 2: Schema layer & baked docs'],
     [['dd', 'build', 'doc.dd.json'], 'Phase 3: Render, adapters & freshness'],
     [['dd', 'address', 'generate', 'phases/ph-a1b2'], 'Phase 4: Links, ledger & doctor'],
     [['dd', 'address', 'validate', '#phases/ph-a1b2'], 'Phase 4: Links, ledger & doctor'],
@@ -107,5 +102,73 @@ describe('harness dd act surface', () => {
     expect(result.envelope.status).toBe('unconfigured');
     expect(result.envelope.next_action).toContain(owner);
     expect(result.envelope.data).toEqual({ owner_phase: owner });
+  });
+
+  // Phase 2 filled these five bodies (the OD-2 handoff), so they are no longer
+  // stubs: each must now answer with real behaviour and the T008(c) exit mapping.
+  it('dd validate runs live against a real document', async () => {
+    const result = await runDd([
+      'dd',
+      'validate',
+      'test/services/dd/schema/fixtures/chain/repo/docs/a.dd.json',
+      '--depth',
+      '0',
+    ]);
+    expect(result.code).toBe(0);
+    expect(result.envelope.status).toBe('ok');
+    expect(result.envelope.data).toMatchObject({
+      schema: 'builder/plan',
+      depth: 0,
+      counts: { error: 0, warn: 0 },
+    });
+  });
+
+  it('dd validate maps an ERROR-class finding to error/exit 1 with a frozen code', async () => {
+    const result = await runDd([
+      'dd',
+      'validate',
+      'test/services/dd/schema/fixtures/chain/repo/docs/d.dd.json',
+      '--depth',
+      '0',
+    ]);
+    expect(result.code).toBe(1);
+    expect(result.envelope.status).toBe('error');
+    expect(result.envelope.error?.code).toBe('E408');
+  });
+
+  it('dd schema list resolves live and always reports the roots it searched', async () => {
+    const result = await runDd(['dd', 'schema', 'list']);
+    expect(result.code).toBe(0);
+    expect(['ok', 'degraded']).toContain(result.envelope.status);
+    const data = result.envelope.data as { roots: { kind: string }[] };
+    expect(data.roots.map((root) => root.kind)).toEqual(
+      expect.arrayContaining(['gitroot', 'harness']),
+    );
+  });
+
+  it('dd schema show reports an absent qualified name as E410', async () => {
+    const result = await runDd(['dd', 'schema', 'show', 'builder/no-such-schema-p2']);
+    expect(result.code).toBe(1);
+    expect(result.envelope.status).toBe('error');
+    expect(result.envelope.error?.code).toBe('E410');
+  });
+
+  it('dd docs list enumerates the baked corpus', async () => {
+    const result = await runDd(['dd', 'docs', 'list']);
+    expect(result.code).toBe(0);
+    expect(result.envelope.status).toBe('ok');
+    const data = result.envelope.data as { docs: { id: string; summary: string }[] };
+    expect(data.docs.map((doc) => doc.id)).toEqual(['dd-overview', 'how-to-add-a-schema']);
+    for (const doc of data.docs) expect(doc.summary.length).toBeGreaterThan(20);
+  });
+
+  it('dd docs get returns one baked doc, and E419 for an unknown id', async () => {
+    const found = await runDd(['dd', 'docs', 'get', 'how-to-add-a-schema']);
+    expect(found.code).toBe(0);
+    expect((found.envelope.data as { content: string }).content).toContain('How to add a schema');
+
+    const missing = await runDd(['dd', 'docs', 'get', 'not-a-doc']);
+    expect(missing.code).toBe(1);
+    expect(missing.envelope.error?.code).toBe('E419');
   });
 });

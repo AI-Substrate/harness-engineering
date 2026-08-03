@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { validateDocument } from '../../../../src/services/dd/core/validate.js';
+import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import {
   ConventionSchemaResolver,
   deriveSchemaState,
 } from '../../../../src/services/dd/schema/resolve.js';
-import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { fixtureDocFrom } from './helpers.js';
 import { loadSchemaWorld } from './world.js';
 
@@ -169,13 +169,20 @@ describe('dd schema resolution — declarations flow through to the engine', () 
     ]);
 
     const doc = fixtureDocFrom(world, 'custom-enum/repo/docs/review.dd.json');
-    expect(validateDocument(doc, world.doc('review.dd.json'), resolver, world.repoRoot)).toEqual([]);
+    expect(validateDocument(doc, world.doc('review.dd.json'), resolver, world.repoRoot)).toEqual(
+      [],
+    );
   });
 
   it('a value outside the declared enum is an ERROR through the real resolver', () => {
     const { world, resolver } = resolverFor('custom-enum');
     const doc = fixtureDocFrom(world, 'custom-enum/repo/docs/review-bad-value.dd.json');
-    const issues = validateDocument(doc, world.doc('review-bad-value.dd.json'), resolver, world.repoRoot);
+    const issues = validateDocument(
+      doc,
+      world.doc('review-bad-value.dd.json'),
+      resolver,
+      world.repoRoot,
+    );
     expect(issues.map((issue) => issue.class)).toEqual(['enum-invalid']);
     expect(issues[0]?.message).toContain('draft, in-review, approved, waived');
   });
@@ -221,9 +228,12 @@ describe('dd schema resolution — declarations flow through to the engine', () 
 
     const unresolvable = fixtureDocFrom(world, 'single-root/repo/docs/unknown-schema.dd.json');
     expect(
-      validateDocument(unresolvable, world.doc('unknown-schema.dd.json'), resolver, world.repoRoot).map(
-        (issue) => issue.class,
-      ),
+      validateDocument(
+        unresolvable,
+        world.doc('unknown-schema.dd.json'),
+        resolver,
+        world.repoRoot,
+      ).map((issue) => issue.class),
     ).toEqual(['schema-unresolvable']);
   });
 });

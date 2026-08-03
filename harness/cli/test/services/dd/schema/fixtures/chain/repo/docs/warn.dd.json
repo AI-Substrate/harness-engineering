@@ -1,0 +1,24 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "warn only"
+      }
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-1a2b",
+          "state": "checked",
+          "link": "/absolute/elsewhere.dd.json#meta"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

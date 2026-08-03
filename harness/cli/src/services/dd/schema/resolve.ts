@@ -1,18 +1,18 @@
+import { posixDirname, posixJoin, toPosix } from '../../shared/posix-path.js';
 import { type DdDerivedState, deriveState } from '../core/derive.js';
 import type { DdSection } from '../core/model.js';
 import type { SchemaResolveResult, SchemaResolver } from '../core/validate.js';
-import { posixDirname, posixJoin, toPosix } from '../../shared/posix-path.js';
 import { type DeclarationResult, parseSchemaDeclaration } from './declarations.js';
 import {
   type SchemaFs,
   type SchemaHit,
   type SchemaIssue,
-  schemaIssue,
   type SchemaListEntry,
   type SchemaListing,
   type SchemaRecord,
   type SchemaResolution,
   type SchemaRoot,
+  schemaIssue,
 } from './model.js';
 import { isQualifiedName, type RootScan, scanRoot } from './scan.js';
 
@@ -106,7 +106,9 @@ export class ConventionSchemaResolver implements SchemaResolver {
     const matches: SchemaHit[] = [];
     for (const root of this.rootsFor(fromPath)) {
       const scan = this.scanFor(root);
-      issues.push(...scan.issues.filter((issue) => issue.schema === undefined || issue.schema === schemaRef));
+      issues.push(
+        ...scan.issues.filter((issue) => issue.schema === undefined || issue.schema === schemaRef),
+      );
       const hits = scan.hits.filter((hit) => hit.name === schemaRef);
       if (hits.length > 1) {
         issues.push(conflictIssue(hits));
@@ -188,7 +190,9 @@ export class ConventionSchemaResolver implements SchemaResolver {
       candidates.push({ kind: 'home', path: posixJoin(toPosix(this.options.home), '.dd') });
     }
     const seen = new Set<string>();
-    return candidates.filter((root) => (seen.has(root.path) ? false : seen.add(root.path) !== null));
+    return candidates.filter((root) =>
+      seen.has(root.path) ? false : seen.add(root.path) !== null,
+    );
   }
 
   private scanFor(root: SchemaRoot): RootScan {

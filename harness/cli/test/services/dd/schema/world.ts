@@ -54,3 +54,21 @@ export function loadSchemaWorld(caseName: string): SchemaWorld {
 
 /** Absolute POSIX path of the fixture corpus root — for the real-fs live proofs. */
 export const FIXTURE_ROOT = FIXTURES.replaceAll('\\', '/').replace(/\/$/, '');
+
+/** Absolute POSIX path of the repository root, derived from this file, never from cwd. */
+export const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url))
+  .replaceAll('\\', '/')
+  .replace(/\/$/, '');
+
+/**
+ * Seed a `FakeFs` from one or more REAL directories — the same trick as
+ * `loadSchemaWorld`, widened so a test can read the repository's own committed
+ * `.dd/schemas/**` packages. A change to a shipped exemplar schema therefore
+ * reddens the suite, which is the whole point of pinning them.
+ */
+export function loadTrees(...dirs: string[]): SchemaFs {
+  const files: Record<string, string> = {};
+  const treeDirs: Record<string, string[]> = {};
+  for (const dir of dirs) walk(dir.replace(/\/$/, ''), files, treeDirs);
+  return new FakeFs(files, treeDirs);
+}

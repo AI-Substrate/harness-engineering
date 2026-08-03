@@ -45,13 +45,22 @@ describe('dd schema declarations', () => {
     [{ description: 'no version', sections: MINIMAL.sections }, '$.dd_schema'],
     [{ dd_schema: 1, sections: {} }, '$.sections'],
     [{ dd_schema: 1, sections: { body: {} } }, '$.sections.body.shape'],
-    [{ dd_schema: 1, sections: { body: { shape: { type: 'array' } } } }, '$.sections.body.shape.items'],
     [
-      { dd_schema: 1, sections: { body: { shape: { type: 'object', required: ['x'], fields: {} } } } },
+      { dd_schema: 1, sections: { body: { shape: { type: 'array' } } } },
+      '$.sections.body.shape.items',
+    ],
+    [
+      {
+        dd_schema: 1,
+        sections: { body: { shape: { type: 'object', required: ['x'], fields: {} } } },
+      },
       '$.sections.body.shape.required',
     ],
     [
-      { dd_schema: 1, sections: { body: { shape: { type: 'string', fields: { a: { type: 'int' } } } } } },
+      {
+        dd_schema: 1,
+        sections: { body: { shape: { type: 'string', fields: { a: { type: 'int' } } } } },
+      },
       '$.sections.body.shape.fields',
     ],
     [{ dd_schema: 1, description: 5, sections: MINIMAL.sections }, '$.description'],
@@ -85,7 +94,11 @@ describe('dd schema declarations', () => {
       dd_schema: 1,
       sections: { tasks: { shape: { type: 'object', fields: { state: { type: 'state' } } } } },
     });
-    expect(result.ok && result.declaration.gateTerminal).toEqual(['checked', 'human-skipped', 'na']);
+    expect(result.ok && result.declaration.gateTerminal).toEqual([
+      'checked',
+      'human-skipped',
+      'na',
+    ]);
   });
 
   it('lets one declared enum move the terminal set for the whole schema', () => {

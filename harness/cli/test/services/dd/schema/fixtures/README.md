@@ -49,3 +49,8 @@ end-to-end proof runs against the same files on real disk.
   completion state the custom enum does not declare.
 - **`chain/`** — `a → b → c → d` one link per hop, with `d` carrying an ERROR-class issue.
   Proves `--depth 2` and `--depth 3` differ: depth 3 reaches `d`, depth 2 does not.
+- **`exemplar/`** — a real `plan.dd.json` + `backpressure.dd.json` + `execution-log.dd.json`
+  trio validated against the repository's **own** committed `.dd/schemas/builder/*` packages
+  (not a fixture copy), so a change to a shipped exemplar schema reddens the suite. It pins the
+  workshop-002 shapes: D2's `pressure`/`proven_by` link columns on AC rows, one evidence list
+  per task **keyed by the owning task id**, and a `human-skipped` entry carrying its receipt.

@@ -3,9 +3,9 @@ import type { DdEnumSchema, DdSectionSchema, DdShape, ResolvedDdSchema } from '.
 import { isRecord } from '../core/value.js';
 import {
   type SchemaIssue,
-  schemaIssue,
-  SUPPORTED_SCHEMA_VERSION,
   type SchemaSeverity,
+  SUPPORTED_SCHEMA_VERSION,
+  schemaIssue,
 } from './model.js';
 
 export interface SchemaDeclaration {
@@ -126,7 +126,12 @@ function parseShape(raw: unknown, location: string, ctx: ParseContext): DdShape 
   if (raw.values !== undefined) {
     const values = stringArray(raw.values);
     if (!values) {
-      fail(ctx, 'enum-invalid', `${location}.values`, 'values must be a non-empty array of strings');
+      fail(
+        ctx,
+        'enum-invalid',
+        `${location}.values`,
+        'values must be a non-empty array of strings',
+      );
       return null;
     }
     shape.values = values;
@@ -151,7 +156,12 @@ function parseShape(raw: unknown, location: string, ctx: ParseContext): DdShape 
   }
   if (raw.allowAdditional !== undefined) {
     if (typeof raw.allowAdditional !== 'boolean') {
-      fail(ctx, 'package-invalid', `${location}.allowAdditional`, 'allowAdditional must be boolean');
+      fail(
+        ctx,
+        'package-invalid',
+        `${location}.allowAdditional`,
+        'allowAdditional must be boolean',
+      );
       return null;
     }
     shape.allowAdditional = raw.allowAdditional;
@@ -180,7 +190,12 @@ function parseShape(raw: unknown, location: string, ctx: ParseContext): DdShape 
     }
     shape.items = items;
   } else if (raw.items !== undefined) {
-    fail(ctx, 'package-invalid', `${location}.items`, `items is only meaningful on an array, not "${type}"`);
+    fail(
+      ctx,
+      'package-invalid',
+      `${location}.items`,
+      `items is only meaningful on an array, not "${type}"`,
+    );
     return null;
   }
 
@@ -239,10 +254,7 @@ function parseShape(raw: unknown, location: string, ctx: ParseContext): DdShape 
   return shape;
 }
 
-function parseSections(
-  raw: unknown,
-  ctx: ParseContext,
-): Record<string, DdSectionSchema> | null {
+function parseSections(raw: unknown, ctx: ParseContext): Record<string, DdSectionSchema> | null {
   if (!isRecord(raw)) {
     fail(ctx, 'package-invalid', '$.sections', 'sections must be an object of section names');
     return null;
@@ -313,11 +325,7 @@ function resolveGateTerminal(ctx: ParseContext): readonly string[] {
  * `name` comes from the folder path, never the file (T008 ruling a) — a copied
  * package cannot misreport its own identity.
  */
-export function parseSchemaDeclaration(
-  raw: string,
-  name: string,
-  path: string,
-): DeclarationResult {
+export function parseSchemaDeclaration(raw: string, name: string, path: string): DeclarationResult {
   const ctx: ParseContext = { name, path, issues: [], enums: {}, stateBindings: [] };
 
   let parsed: unknown;

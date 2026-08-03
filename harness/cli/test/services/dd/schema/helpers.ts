@@ -1,5 +1,5 @@
-import { parse } from '../../../../src/services/dd/core/parse.js';
 import type { DdDoc } from '../../../../src/services/dd/core/model.js';
+import { parse } from '../../../../src/services/dd/core/parse.js';
 import type { SchemaWorld } from './world.js';
 import { FIXTURE_ROOT } from './world.js';
 
