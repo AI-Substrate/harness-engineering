@@ -221,7 +221,213 @@ as the fence requires: implemented and fake-tested here, wired nowhere.
 all four classes provoked, and the showcase golden re-rendered through the real `duration.ts`
 rather than the renderer suite's fake, so no golden rests on a fake.
 
+---
 
+## T003 — `dd build` (the one frozen body)
+
+**Status**: complete. `src/acts/dd/build.ts` + `test/acts/dd-build.test.ts`.
+
+Signature untouched: `command('build <path>')` + `.option('--check'…)`, exactly as `dd-surface.md`
+froze it and `dd-surface.test.ts` greps for. No option added, no E-code moved.
+
+Composition follows the dd house pattern — the act is its own composition root (`acts/doctor.ts`
+precedent, followed by `dd validate`): `NodeSchemaFs` for reads, `NodeFs` for the one write,
+`JitiLoader` for adapters, `NodeHash` for basis hashing, `ConventionSchemaResolver` for the schema.
+Every structured failure becomes an E-code **here**, never in `services/dd/render`.
+
+**`--check` never writes** — proven by a test that snapshots the sibling's bytes around the call,
+not merely by reading the code. An **absent** sibling is drift too: committed markdown is just as
+wrong when it is missing as when it is stale.
+
+**Containment**: a document outside the repo root is `E429` rather than a write to an arbitrary
+path. The sibling always lands beside its source, and `build` must not become a way to write
+anywhere on the disk.
+
+`autoRegenerateSibling` ships the "auto-regen after every mutating dd verb" half (plan 3.2) as a
+shared export, so a mutating verb cannot drift from what `dd build` itself produces. It warns to
+stderr and returns — a verb that already changed state is never rolled back over a stale view.
+
+> **Deferred — no call site yet.** Every dd verb shipped through P3 is read-only, so
+> `autoRegenerateSibling` is exported and proven but wired nowhere. Phase 4's re-verification verb
+> (a RESERVED row, mutation semantics its leaf call) is the first candidate and should call this
+> rather than re-derive the render path. Flagged rather than silently left as dead code.
+
+---
+
+## T005 — Live-ledger refresh & the watcher library
+
+**Status**: complete. `src/services/dd/render/refresh.ts` + `test/services/dd/render/refresh.test.ts`.
+
+### The ruling that shaped it: refresh updates the VIEW, not the document
+
+`dd build` recomputes what a `live` entry promises and **does not rewrite the `.dd.json`**. Two
+reasons:
+
+1. A build that dirties its own input can never have a stable `--check` — every run would produce
+   drift against the file it just changed, and the gate would be worthless.
+2. Staleness already has owners: `dd validate` reports `basis-stale` (P1) and `verify-basis`
+   adjudicates a pinned one (P4). A third answer here would give an operator two sources of truth
+   for one question.
+
+So the refresh's visible effect is the **derived summary** — a row saying `◐ 2/3` about a list that
+lives in another file — which is exactly what workshop-001 meant by "auto-refreshes at render;
+view freshness". A basis that has moved is *reported* (`refreshed_bases` in the envelope), never
+silently corrected and never treated as a failure.
+
+**The ledger is the opt-in.** Only files carrying a `live` entry are read, so a document declares
+what it transcludes instead of dragging in every link it happens to mention. `pinned` entries are
+untouched — they are P4's.
+
+### The watcher is a library, and the content hash is the contract
+
+`DdWatcherPort` is the smallest thing that can be true: "tell me which paths changed". No daemon,
+no scheduler, no sensor declaration — P5 owns those (Opus F11: watch globs are snapshotted at
+scheduler construction, so the declaration cannot live here).
+
+The load-bearing part is that **a change is only a change when the bytes hash differently from the
+last hash this subscription saw.** Real watchers fire on mtime touches, editors' atomic-rename
+dances, and debounce flushes; if any of those triggered a rebuild, a save-with-no-edit would
+rewrite files and the drift gate would churn forever. Hashing on our side makes *any* watcher
+honest rather than requiring a particular one. A deletion is forgotten rather than recorded, so
+recreating a file counts as a change.
+
+Depth-1 revalidate-on-save stays **deferred with W7**: this regenerates views, it does not re-run
+validation.
+
+**Evidence**: 13 tests, including the end-to-end that matters — a temp copy of the chain fixture, a
+fake watcher, and `autoRegenerateSibling` as the injected `regenerate`, proving that editing a
+transcluded source moves the consumer's markdown from `◐ 2/3` to `◆ 3/3` **through the real CLI
+path**, not a re-derivation of it. Also proven: the same-content event that rebuilds nothing, the
+failed regeneration that becomes a WARN instead of a silence, and a watcher that refuses to
+subscribe at all returning an inert (not absent) subscription.
+
+---
+
+## T007 — Validation & proof
+
+### Slice green with Phase 4 absent
+
+```
+$ cd harness/cli && npx vitest run test/services/dd/render
+ ✓ fixture-corpus.test.ts (5)  ✓ renderer-purity.test.ts (5)
+ ✓ renderer.test.ts (14)       ✓ adapters.test.ts (9)        ✓ refresh.test.ts (13)
+ Test Files 5 passed (5)   Tests 46 passed (46)
+```
+
+P4 is **live in this shared worktree**, so "absent" could not be proven by deleting it — and a
+one-off deletion would only have proven it for one run. Instead the claim is proven the way it
+stays true: two import-reachability tests in `renderer-purity.test.ts` assert that
+`src/services/dd/render/**` transitively reaches **no** `services/dd/{links,doctor}` module, and
+that the slice suite itself imports none either. What a slice cannot reach, its presence or absence
+cannot change — and that proof survives every future run, which a `rm -rf` would not.
+
+### The freeze holds
+
+```
+$ npx vitest run test/services/dd test/acts/dd-surface.test.ts test/acts/dd.test.ts \
+    test/acts/dd-live.test.ts test/acts/dd-schema-fs.test.ts test/acts/dd-build.test.ts test/architecture
+ Test Files 34 passed (34)   Tests 299 passed (299)
+```
+
+`dd-surface.test.ts` is untouched and green: no frozen signature, option, or E-code moved.
+
+### Both cwds
+
+```
+$ cd harness/cli && npx vitest run test/services/dd/render test/acts/dd-build.test.ts test/acts/dd.test.ts
+ Test Files 7 passed (7)   Tests 74 passed (74)
+
+$ cd <repo root> && npx vitest run --root harness/cli test/services/dd/render test/acts/dd-build.test.ts test/acts/dd.test.ts
+ Test Files 7 passed (7)   Tests 74 passed (74)
+```
+
+The second run is the meaningful one: `--root` moves vitest's root but **not** `process.cwd()`, so
+every act-driving test ran with the repo root as its process cwd — the exact skew the P2 lesson
+warned about.
+
+### Baselines
+
+| Gate | Baseline | Measured after P3 |
+|---|---|---|
+| `harness arch-check` | 2 | **2** (the identical `services-ports-type-only` pair in telemetry) |
+| `harness markdown-lint` | 199 | **199** (197 markdownlint + 1 links + 1 mermaid) |
+| biome, P3 paths only | clean | clean (18 files, no fixes) |
+
+The golden `.dd.md` fixtures do not move markdown-lint: it examines 109 authored docs, and the
+corpus lives under `harness/cli/test/**`.
+
+### `just test` — honest result, and a pre-existing red
+
+```
+$ cd harness/cli && just test
+ Test Files  1 failed | 258 passed (259)
+ Tests  3509 passed | 18 skipped (3527)      <- zero failed TESTS
+```
+
+**Every test passes.** The one failed *file* is
+`test/adapters/git/exec-remote-telemetry-git.int.test.ts`, which fails in `beforeAll` with
+`git config uploadpack.allowFilter true -> fatal: not in a git directory`, then throws in `afterAll`
+on an undefined `daemonManager`.
+
+It is **not** P3's: the file contains zero `dd` references, and it **fails identically when run
+alone**, with no other phase's tests loaded — so it is environment-dependent (it wants a
+git-daemon-capable setup), not a regression. Captured as a difficulty (`harness observe`): a suite
+that cannot self-skip when its prerequisites are absent makes "full `just test` green" unusable as
+a completion proof on this machine, and costs every coder a cycle proving the red is not theirs.
+The honest signal is **0 failed tests + 1 known-red file**.
+
+### Live transcript
+
+```
+### 1. clean document — the committed sibling IS the render
+$ node harness/cli/bin/harness.js dd build docs/showcase.dd.json --check --json
+{ "command": "dd build", "status": "ok",
+  "data": { "schema": "render/showcase", "bytes": 2075, "adapter_warnings": [],
+            "refreshed_bases": [ { "path": ".../other.dd.json", "recorded": "sha-other", ... } ] } }
+   -> a moved live basis is REPORTED, not a degradation: the view is still correct.
+
+### 2. hand-edited sibling — byte drift (AC-03)
+$ node harness/cli/bin/harness.js dd build docs/drift.dd.json --check --json
+status: error   error: "E422"  ".../drift.dd.md drifted from the render of .../drift.dd.json"
+next_action: Regenerate with `harness dd build docs/drift.dd.json` and commit the result.
+
+### 3. regenerate, then re-check
+--- before (hand-edited tail) ---
+| tk-0002 | second, and a human typed this straight into the generated file | ◆ checked |
+A hand-added paragraph the generator would never emit.
+$ node harness/cli/bin/harness.js dd build docs/drift.dd.json --json
+status: ok | evidence: rendered markdown
+--- after (regenerated tail) ---
+| tk-0001 | first | ◆ checked |
+| tk-0002 | second | ◇ unchecked |
+$ node harness/cli/bin/harness.js dd build docs/drift.dd.json --check ; echo $?
+0
+   -> AC-03's whole hand-edit path, end to end: detected, regenerated, clean.
+
+### 4. broken adapters — degraded, exit 0, every failure named (AC-04)
+$ node harness/cli/bin/harness.js dd build docs/adapters.dd.json --check --json
+status: degraded
+  E424 broken     adapter-load-failed
+  E423 missing    adapter-not-found
+  E424 shapeless  adapter-load-failed
+  E425 boom       adapter-runtime-failed
+  E426 numeric    adapter-output-invalid
+exit=0
+   -> loud (W1 rule 5) but never fatal (W1 rule 4).
+```
+
+### Acceptance criteria
+
+| AC | Status | Where |
+|---|---|---|
+| AC-03 Render + hand-edit path | met | goldens byte-exact; drift fixture caught by `--check` (E422) and regenerated by `build`; live transcript §2-3; derived-state summaries (`◐ 3/5`) in the showcase golden |
+| AC-04 Adapters | met | all four failure classes provoked through the REAL jiti loader; honest fallback rendered; every issue in the envelope; transcript §4 |
+| AC-06 (live half) | met | `refreshLiveReferences` + the watch→CLI end-to-end moving a consumer from `◐ 2/3` to `◆ 3/3` |
+| AC-13 (consumed) | met | renderer consumes P1 `deriveState`; cross-file summaries precomputed by refresh |
+
+---
+
+## Discoveries & Learnings
 
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
