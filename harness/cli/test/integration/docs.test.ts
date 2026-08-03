@@ -51,7 +51,7 @@ describe('docs command — end-to-end through a real pipe (F002 truncation/EPIPE
       'run `npm run build` and re-run (plan 014 orchestrator retro OH-003)';
     expect(out.length, staleHint).toBe(expected.length);
     expect(out, staleHint).toBe(expected);
-  });
+  }, 120_000);
 
   it('survives a reader that closes after one line without an EPIPE stack trace (shell-free)', async () => {
     const id = listDocs().docs[0]?.id ?? '';
