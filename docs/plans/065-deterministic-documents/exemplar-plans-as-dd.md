@@ -23,7 +23,9 @@ There is also a hand-maintained **Phase Index** table that duplicates the phase 
     - `proven_by` → entries in the execution-log DD (append-only, per D3).
 - The **Phase Index stops being hand-maintained** — it is exactly the kind of view `dd build` derives from the phase sections, so it can never drift from them.
 
-## Schema sketch (shape illustrative; grammar is W9's to lock)
+## Schema sketch (shape illustrative; **W9 is now locked — notation below predates it**)
+
+> **Amendment (2026-08-03, post-W9)**: the link-target notation in this sketch (`section@backpressure.dd`, `row@self#…`) predates the locked grammar — real addresses are `path.dd.json#section/instance-id/part` per `workshops/001-w9-addressing.md`, link columns are typed as shape paths, and a phase is ONE section instance with a schema-declared shape (brief + tasks), not a sibling group. The plan pass regenerates this exemplar in the locked notation; until then read shapes here, not syntax.
 
 Per **D14**, this schema does not live inside the plan document. It is a named package —
 `builder/plan` — resolved from `.dd/schemas/builder/plan/`; the plan's `.dd.json` only

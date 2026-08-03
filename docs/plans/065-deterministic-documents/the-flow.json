@@ -64,6 +64,28 @@
         "from": "research",
         "to": "plan"
       }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:01:20.448Z",
+      "details": {
+        "node": "workshop-w9-addressing",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:01:20.709Z",
+      "details": {
+        "node": "workshop-w9-addressing",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -253,6 +275,26 @@
         "Post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
         "Run /eng-harness-flow --hook post-flight --json — a REAL invocation; narrate its envelope verbatim.",
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-ship --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-ship --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-ship --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-ship --to skipped."
+      ]
+    },
+    {
+      "id": "workshop-w9-addressing",
+      "type": "workshop",
+      "label": "W9: Addressing grammar",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-03T08:01:20.447Z",
+      "modified_at": "2026-08-03T08:01:20.709Z",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-03T08:01:20.709Z",
+          "text": "W9 locked in session: #-grammar, alternating name/id descent, minted per-kind ids, per-doc references ledger (live|pinned), WARN posture, heading-only anchors, no rename machinery (D8 superseded), address tooling, checks OOTB. Record: workshops/001-w9-addressing.md",
+          "source": "user",
+          "kind": "decision"
+        }
       ]
     }
   ]
