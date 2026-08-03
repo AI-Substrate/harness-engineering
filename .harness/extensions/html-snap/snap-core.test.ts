@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { checkStructure } from './html-structure.js';
 import {
   CHROME_CANDIDATES,
   chromeArgs,
@@ -133,5 +135,34 @@ describe('verifyOutput — an empty render is an ERROR, never a pass (known-bad)
   });
   it('a real render passes', () => {
     expect(verifyOutput({ exists: true, bytes: 250_000 }).ok).toBe(true);
+  });
+});
+
+describe('checkStructure — screenshots cannot see these; the parser must (known-bad)', () => {
+  const fixture = (name: string): string =>
+    readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
+
+  it('the eaten-gt + unclosed-figure fixture FAILS (the 065 freeze defect class)', () => {
+    const problems = checkStructure(fixture('bad-nesting.html'));
+    expect(problems.length).toBeGreaterThan(0);
+    expect(problems.some((p) => p.kind === 'eaten-gt')).toBe(true);
+    // the unclosed figure surfaces when </body> closes over it
+    expect(problems.some((p) => p.kind === 'mismatched-close' && p.detail.includes('<figure'))).toBe(true);
+  });
+
+  it('the good fixture passes clean', () => {
+    expect(checkStructure(fixture('good.html'))).toEqual([]);
+  });
+
+  it('well-formed nesting with voids, self-closing svg, comments and script passes', () => {
+    const ok = '<!doctype html><html><head><meta charset="utf-8"><script>if (1<2) {}</script></head>' +
+      '<body><!-- c --><svg><path d="M0 0"/><rect x="1"/></svg><div><br><img src="x"></div></body></html>';
+    expect(checkStructure(ok)).toEqual([]);
+  });
+
+  it('a mismatched close is reported with the line it closes over', () => {
+    const bad = '<div>\n<section>\n</div>';
+    const problems = checkStructure(bad);
+    expect(problems.some((p) => p.kind === 'mismatched-close' && p.detail.includes('<section'))).toBe(true);
   });
 });

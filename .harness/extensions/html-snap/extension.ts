@@ -1,4 +1,5 @@
 import type { HarnessVerb } from '@ai-substrate/engineering-harness/contract';
+import { checkStructure } from './html-structure.js';
 import {
   chromeArgs,
   cropArgs,
@@ -47,6 +48,7 @@ const htmlSnap: HarnessVerb = {
     { flags: '--crop-height <px>', description: 'crop height (0 = no crop)', defaultValue: '0' },
     { flags: '--slices <n>', description: 'split the page into N even bands (exclusive with crop)', defaultValue: '0' },
     { flags: '--delay-ms <ms>', description: 'virtual-time budget before capture', defaultValue: '1200' },
+    { flags: '--structure', description: 'parse the HTML instead of rendering it: verify tag nesting (browsers error-recover broken markup, so screenshots CANNOT catch this)' },
   ],
   async run(ctx) {
     try {
@@ -61,6 +63,21 @@ const htmlSnap: HarnessVerb = {
         return ctx.error('HTML_SNAP_FILE_MISSING', `--file not found: ${file}`, {
           next_action: `Check the path (resolved against ${ctx.cwd}); pass an existing .html file.`,
         });
+      }
+
+      if (ctx.options.structure) {
+        const html = ctx.fs.readText(abs);
+        if (html === null) {
+          return ctx.error('HTML_SNAP_FILE_MISSING', `could not read ${abs}`, { next_action: 'Check the file is readable.' });
+        }
+        const found = checkStructure(html);
+        if (found.length > 0) {
+          return ctx.error('HTML_SNAP_STRUCTURE', `${found.length} structural problem(s) — the browser will silently repair these, so renders LOOK fine while the markup is broken`, {
+            details: found.slice(0, 20),
+            next_action: `Fix the first problem first (line ${found[0].line}: ${found[0].detail}) — later ones are often cascade.`,
+          });
+        }
+        return ctx.ok({ file: abs, structure: 'clean', checked: 'tag nesting, eaten-gt, stray/mismatched closes' });
       }
 
       const p: SnapParams = {

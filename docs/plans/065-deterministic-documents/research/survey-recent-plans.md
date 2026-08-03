@@ -129,3 +129,37 @@ Three markdown mechanisms carry AC→task binding, all unparsed by any tool: (i)
 6. **Retire `assumed` as the default for un-run chores, or split it.** Three of seven plans have `assumed` chore nodes that never ran and left no record; 059's `skipped`+reason is the shape that actually informs a resuming agent. Whatever the requirement layer does, it should never inherit a status whose meaning is "we don't know whether this happened".
 
 > Note (parent-session context): observation 1's `requirements[]`-in-the-spine shape was **superseded** by the brief/workshop direction — requirements live in DDs and the spine links by stable address (D5). Observations 2–6 fed directly into the DD design (proof links, receipt discipline, basis hashing → content-SHA + pins, completeness gates → doctor, `assumed` retirement → state vocabulary W2).
+
+
+---
+
+## Reproduction addendum — the "54 files, no requirement field" claim (2026-08-03)
+
+The infographic's baseline claim ("counted across 54 of those workflow files: not one carries any field saying what the work must achieve") was originally supported piecewise (schema reading + nine inspected spines above; a 54-file scan in `thinker-flow-integration.md` covered `basis_sha256` only). Recorded here so the claim is reproducible from this corpus, per the final validation's finding 4.
+
+Command (run 2026-08-03 from the s065 worktree root, branch `s065/deterministic-documents`; identical result from the main checkout):
+
+```bash
+python3 -c "
+import json,glob
+files=sorted(glob.glob('docs/plans/*/the-flow.json'))
+hits=[]
+KEYS=('requirement','criteri','acceptance','proof','ac_','dd_link')
+for f in files:
+    d=json.load(open(f))
+    ks=set(d.keys())
+    for n in d.get('nodes',[]): ks|=set(n.keys())
+    bad=[k for k in ks if any(t in k.lower() for t in KEYS)]
+    if bad: hits.append((f,bad))
+print('files scanned:', len(files)); print('files with requirement-like structured keys:', len(hits))
+"
+```
+
+Output, verbatim:
+
+```
+files scanned: 54
+files with requirement-like structured keys: 0
+```
+
+Every top-level and node-level key across all 54 flight-plan files was tested against the substrings `requirement / criteri / acceptance / proof / ac_ / dd_link`; zero matches. (A validator's independent scan reported 55 files in its environment; this corpus, at this commit, contains 54 — the number the page states is the number this command returns here.)

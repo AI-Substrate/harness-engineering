@@ -23,6 +23,10 @@ harness html-snap --file page.html --width 500 --page-height 16000 --slices 10  
 harness html-snap --file page.html --offset 3200 --crop-height 1200 --out /tmp/beat2.png
 ```
 
+## Structure mode — because screenshots cannot prove markup
+
+`harness html-snap --file page.html --structure` parses instead of rendering: tag nesting, eaten-`>` open tags (an attribute area that swallowed a close tag), stray/mismatched closes, unclosed-at-EOF. **Browsers error-recover all of these** — the page renders fine, every screenshot passes — so after ANY scripted/programmatic HTML edit, run `--structure` BEFORE trusting a visual pass. A screenshot proves the page looks right; only a parse proves it is right. (Learned live: the 065 freeze forensics found ~790 lines nested in an unclosed `<figure>` behind a green visual sweep.)
+
 ## Environment
 
 - `HTML_SNAP_CHROME` — explicit browser binary. If set and missing, the verb **errors rather than falling back** (a forced path that silently falls back is a skip that looks like a pass).
@@ -39,6 +43,7 @@ Run before first trust, per governance: a control that has only seen good input 
 | `--offset 99000 --crop-height 900` (page 14000) | `error HTML_SNAP_BAD_ARGS` naming the overflow | live envelope below |
 | `HTML_SNAP_CHROME=/nonexistent/chrome` | `error HTML_SNAP_CHROME_MISSING`, **no fallback** | live envelope below |
 | Unit suite (`snap-core.test.ts`) | ladder, validation, crop argv, empty-render verdicts RED/GREEN | `npx vitest run` (extensions sweep) |
+| `fixtures/bad-nesting.html --structure` | `error HTML_SNAP_STRUCTURE` (eaten-gt + figure closed-over) | live envelope 2026-08-03 |
 
 Live proof run (2026-08-03, macOS, worktree s065, harness 0.13.0 root dist):
 

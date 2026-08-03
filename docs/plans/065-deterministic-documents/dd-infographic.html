@@ -419,11 +419,12 @@
         <div class="b3grid">
           <div class="doc fx pop" style="--s:.04;--d:.10">
             <div class="d-title">the address</div>
-            <div class="jrow" style="white-space:normal;overflow:visible;color:var(--blue)">plan.dd.json<br>#plan-phase-ac.phase-2<br>/row:ac-4b1c</div>
+            <div class="jrow" style="white-space:normal;overflow:visible;color:var(--blue)">plan.dd.json<br>#plan-phase-ac.phase-2</div>
+            <div class="jrow" style="white-space:normal;overflow:visible;color:#7189a0;font-size:10px">a whole section — the workflow links at this level (D5)</div>
           </div>
           <div class="arrwrap" style="padding:0 8px;width:120px">
             <div class="arrbar fx growx" style="--s:.26;--d:.12"></div>
-            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible"style-fix-3b</div>
+            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible;white-space:normal">read by — the link lives on <b>their</b> side</div>
             <div class="arrbar fx growx" style="--s:.52;--d:.12;background:#46586c;margin-top:26px"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
@@ -435,7 +436,7 @@
             <div class="doc fx rv" style="--s:.62;--d:.10">
               <div class="d-title">the tooling</div>
               <div class="jrow">dd doctor · resolves + drift-checks every edge</div>
-              <div class="jrow">dd links · who points at this row?</div>
+              <div class="jrow">dd links · who points at this section?</div>
             </div>
           </div>
         </div>
@@ -445,7 +446,7 @@
     <!-- BEAT 4 -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 4</span><h3>The check becomes a gate</h3></div>
-      <p class="b-cap">Here is the payoff of the checklist being <b>data</b>: other software can read it and <b>rely on it</b>. A workflow system, for example, can point one of its steps at the plan’s checklist and simply refuse to move to the next step while items are still open. When the last item is checked — with its proof attached — the gate opens on its own. Nobody has to <i>remember</i> to update the plan anymore: the workflow won’t move on until the plan says the work is done.</p>
+      <p class="b-cap">Here is the payoff of the checklist being <b>data</b>: other software can read it and <b>rely on it</b>. A workflow system, for example, can point one of its steps at the plan’s checklist and hold the step while items are still open — it always <i>knows</i>; how hard it should <i>refuse</i> is a deliberate, still-open question. When the last item is checked — with its proof attached — the gate opens on its own. Nobody has to <i>remember</i> to update the plan anymore: the workflow won’t move on until the plan says the work is done.</p>
       <figure class="scene" data-beat="b4" data-dur="4200">
         <div class="b4grid">
           <div class="doc fx rv" style="--s:.02;--d:.10">
@@ -723,7 +724,8 @@ Let a signed-out shopper complete checkout…
 <pre class="md" style="margin:10px 0;padding:10px 14px;font-size:11.5px;line-height:1.8">type: <span class="h">plan-phase-ac</span>   name: <span class="h">"Phase 2"</span>
         └──────── slug + join ────────┘
    id: <span class="ok">plan-phase-ac.phase-2</span>
- full: <span class="ok">plan.dd.json#plan-phase-ac.phase-2/row:ac-4b1c</span></pre>
+ full: <span class="ok">plan.dd.json#plan-phase-ac.phase-2/row:ac-4b1c</span>
+ <span class="gen">(exact syntax illustrative — the grammar is workshop W9’s to lock)</span></pre>
 <p>The same phase carries the <b>same id in every plan file in the repo, forever</b> — semantic, greppable, and predictable <i>before the file even exists</i>, which matters more than it sounds. A workflow step can be written to point at “phase 2’s criteria” of a plan nobody has authored yet, and the checker will report that address as pointing at nothing, instead of the pointer silently meaning nothing at all.</p>
         <p style="margin-top:8px">Renaming changes the address — so renaming is a <b>first-class operation</b>: <code>dd rename-section</code> recomputes the id and rewrites every inbound link across the repo in one transaction <span class="num-col">(decided · D8)</span>.</p>
       </div>
@@ -854,7 +856,7 @@ Let a signed-out shopper complete checkout…
 
     <div class="callout rev" style="margin-top:24px">
       <span class="mini">How drift is “announced” — it isn’t</span>
-      Nothing pushes a notification. The fingerprint just makes drift <b>computable</b>, and the things that already run at useful moments will say so: the repo-wide checker, which runs alongside the project’s other checks, so CI fails on a stale citation exactly like a failing test; the agent’s start-of-turn status readout, where a criterion whose cited proof has drifted prints as <code>checked (stale)</code>; and the renderer, which puts a visible marker beside the link in the generated markdown. Same trust model as a checksum on a download: verified at the moment of use, which is the only moment that matters.
+      Nothing pushes a notification. The fingerprint just makes drift <b>computable</b>, and the things that already run at useful moments will say so: the repo-wide checker, which runs alongside the project’s other checks, so a stale citation surfaces in CI as a warning (a broken link fails outright — whether staleness should also fail is undecided); the agent’s start-of-turn status readout, where a criterion whose cited proof has drifted prints as <code>checked (stale)</code>; and the renderer, which puts a visible marker beside the link in the generated markdown. Same trust model as a checksum on a download: verified at the moment of use, which is the only moment that matters.
     </div>
   </div>
 </section>
@@ -1048,7 +1050,7 @@ Let a signed-out shopper complete checkout…
       <div class="card rev d1">
         <span class="tag gold">GATE DOCTRINE</span>
         <h3>Binds the agent, never the human</h3>
-        <p><b>Warn</b> if a linked document is itself invalid — somebody else’s broken file should not strand you where you are. <b>Refuse to let the workflow advance</b> while items are still open or blocked; that is the same rule the existing routine-task check already applies. The human keeps the override, always: an item can be marked <code>human-skipped</code> — only by a person, only with their reason recorded — which lets the work move on while leaving the skip <b>permanently visible to anyone who asks</b>.</p>
+        <p><b>Warn</b> if a linked document is itself invalid — somebody else’s broken file should not strand you where you are. <b>Decided:</b> the count of open and blocked items is computed and surfaced every turn — nothing unmet can be invisible. <b>Open (W2/W8):</b> whether the tooling hard-refuses to advance, or the agent is bound by doctrine alone. The human keeps the override, always: an item can be marked <code>human-skipped</code> with the reason recorded, leaving the skip <b>permanently visible to anyone who asks</b>. Who may set that state — human-only, or delegated — is an open ruling (W2).</p>
         <p style="margin-top:8px;font-size:12.5px;color:var(--ink-soft)">Honesty note: today that refusal is a rule the agent is <i>told</i> to follow, not something the CLI enforces — an agent could ignore it. Deterministic documents do not claim to fix that. What they fix is <b>knowing</b>: an unmet criterion stops being invisible, because the count of what is still open is computed and printed at the start of every turn. How hard the refusal should bite stays a separate, deliberate question.</p>
       </div>
     </div>
