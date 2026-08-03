@@ -1,0 +1,16 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-abcd",
+          "title": "Valid minted id",
+          "state": "checked"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

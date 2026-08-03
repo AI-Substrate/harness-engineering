@@ -1,5 +1,6 @@
 import { DEFAULT_GATE_TERMINAL_STATES } from './constants.js';
 import type { DdSection } from './model.js';
+import { isRecord } from './value.js';
 
 export interface DdDerivedState {
   complete: boolean;
@@ -27,27 +28,24 @@ interface StateEntry {
   state: string;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function collectStateEntries(value: unknown, entries: StateEntry[]): void {
+function collectStateEntries(value: unknown, entries: StateEntry[], location: string): void {
   if (Array.isArray(value)) {
-    for (const entry of value) {
-      collectStateEntries(entry, entries);
+    for (const [index, entry] of value.entries()) {
+      collectStateEntries(entry, entries, `${location}[${index}]`);
     }
     return;
   }
   if (!isRecord(value)) return;
   if (typeof value.state === 'string') {
     entries.push({
-      id: typeof value.id === 'string' ? value.id : `entry-${entries.length + 1}`,
+      id: typeof value.id === 'string' ? value.id : location,
       state: value.state,
     });
-    return;
   }
-  for (const entry of Object.values(value)) {
-    collectStateEntries(entry, entries);
+  for (const [field, entry] of Object.entries(value)) {
+    if (field !== 'id' && field !== 'state') {
+      collectStateEntries(entry, entries, `${location}.${field}`);
+    }
   }
 }
 
@@ -57,7 +55,7 @@ export function deriveState(
   gateTerminal: readonly string[] = DEFAULT_GATE_TERMINAL_STATES,
 ): DdDerivedState {
   const entries: StateEntry[] = [];
-  collectStateEntries(section.value, entries);
+  collectStateEntries(section.value, entries, `$.sections[${section.name}].value`);
   const terminalSet = new Set(gateTerminal);
   const incomplete = entries
     .filter((entry) => !terminalSet.has(entry.state))

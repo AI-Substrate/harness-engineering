@@ -22,6 +22,7 @@ function expectIssue(
 describe('dd-core depth-zero validation', () => {
   it.each([
     ['invalid/duplicate-id.dd.json', 'duplicate-id'],
+    ['invalid/malformed-minted-id.dd.json', 'id-invalid'],
     ['invalid/malformed-address.dd.json', 'address-malformed'],
     ['invalid/unresolvable-schema.dd.json', 'schema-unresolvable'],
     ['invalid/blocked-note-missing.dd.json', 'state-note-required'],
@@ -35,6 +36,7 @@ describe('dd-core depth-zero validation', () => {
 
   it.each([
     'valid/base.dd.json',
+    'valid/minted-id.dd.json',
     'valid/state-notes.dd.json',
     'valid/custom-enum.dd.json',
   ])('%s has no ERROR findings', (relative) => {
@@ -97,5 +99,33 @@ describe('dd-core depth-zero validation', () => {
       }),
     };
     expect(validateDocument(doc, '/repo/custom.dd.json', customResolver, '/repo')).toEqual([]);
+  });
+
+  it('applies note rules when a state is the section value', () => {
+    const doc: DdDoc = {
+      dd: { schema: 'test/direct-state' },
+      sections: [{ name: 'status', value: 'blocked' }],
+      references: [],
+    };
+    const directStateResolver = {
+      resolve: () => ({
+        ok: true as const,
+        schema: {
+          name: 'test/direct-state',
+          sections: { status: { shape: { type: 'state' } } },
+        },
+      }),
+    };
+    expect(
+      validateDocument(doc, '/repo/direct-state.dd.json', directStateResolver, '/repo'),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          class: 'state-note-required',
+          severity: 'ERROR',
+          location: '$.sections[status].value.note',
+        }),
+      ]),
+    );
   });
 });

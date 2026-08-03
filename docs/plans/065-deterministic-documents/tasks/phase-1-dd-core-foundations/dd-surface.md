@@ -46,6 +46,7 @@ string.
 | `dd doctor` scope/options | RESERVED — Phase 4 leaf decision. Options may be added; command name and zero frozen positionals may not change. |
 | `dd graph` emit/scope options | RESERVED — Phase 4 leaf decision. Options may be added; command name and zero frozen positionals may not change. |
 | `dd link verify-basis` explicit re-verification mutation semantics | RESERVED — Phase 4 leaf decision. Read-only `<address> --sha <sha>` remains frozen; any mutation option is additive only. |
+| `dd address validate --resolve` segment classification | RESERVED — Phase 4 resolves optional instance ids versus shape-part names against the schema. P1 parser `kind` values are positional hints only; the frozen command and option do not change. |
 
 ## Error allocation
 

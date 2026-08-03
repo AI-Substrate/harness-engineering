@@ -7,10 +7,7 @@ import type {
   DdReferenceMode,
   DdSection,
 } from './model.js';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from './value.js';
 
 function failure(location: string, message: string): DdFailure {
   return { class: 'document-invalid', location, message };
@@ -23,6 +20,15 @@ function parseInput(input: string | unknown): unknown | DdFailure[] {
   } catch {
     return [{ class: 'json-invalid', location: '$', message: 'document is not valid JSON' }];
   }
+}
+
+function isFailure(value: unknown): value is DdFailure {
+  return (
+    isRecord(value) &&
+    (value.class === 'json-invalid' || value.class === 'document-invalid') &&
+    typeof value.location === 'string' &&
+    typeof value.message === 'string'
+  );
 }
 
 function parseHeader(raw: unknown, failures: DdFailure[]): DdHeader | undefined {
@@ -120,8 +126,8 @@ function parseReferences(raw: unknown, failures: DdFailure[]): DdReference[] {
 /** Parse a JSON string or unknown value into the dd envelope; never performs schema validation. */
 export function parse(input: string | unknown): DdDoc | DdFailure[] {
   const parsed = parseInput(input);
-  if (Array.isArray(parsed) && parsed.every((entry) => isRecord(entry) && 'class' in entry)) {
-    return parsed as DdFailure[];
+  if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(isFailure)) {
+    return parsed;
   }
   if (!isRecord(parsed)) {
     return [failure('$', 'document must be an object')];

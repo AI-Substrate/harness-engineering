@@ -50,6 +50,36 @@ describe('dd-core derived state', () => {
     expect(deriveState(section, ['verified']).incomplete).toEqual(['dw-b2c3']);
   });
 
+  it('continues through nested state-bearing evidence', () => {
+    const section: DdSection = {
+      name: 'evidence',
+      value: [
+        {
+          id: 'dw-a1b2',
+          state: 'checked',
+          subtasks: [{ id: 'dw-b2c3', state: 'unchecked' }],
+        },
+      ],
+    };
+    expect(deriveState(section)).toEqual({
+      complete: false,
+      status: 'incomplete',
+      terminal: 1,
+      total: 2,
+      incomplete: ['dw-b2c3'],
+    });
+  });
+
+  it('uses a stable location when a state-bearing entry has no id', () => {
+    const section: DdSection = {
+      name: 'evidence',
+      value: {
+        review: { state: 'unchecked' },
+      },
+    };
+    expect(deriveState(section).incomplete).toEqual(['$.sections[evidence].value.review']);
+  });
+
   it('rolls task evidence from a second file through phase and plan', () => {
     const plan = fixtureDoc('derive/plan.dd.json');
     const tasks = fixtureDoc('derive/tasks.dd.json');

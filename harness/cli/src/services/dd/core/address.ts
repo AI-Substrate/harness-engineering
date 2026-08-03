@@ -25,7 +25,10 @@ export function isAddressFailure(result: DdAddress | DdAddressFailure): result i
   return 'class' in result;
 }
 
-/** Parse the locked `file#name/id/name/id...` grammar without resolving any target. */
+/**
+ * Parse the locked `file#name/id/name/id...` grammar without resolving any target.
+ * Segment kinds are positional hints until P4 resolves optional ids against a schema.
+ */
 export function parseAddress(raw: string): DdAddress | DdAddressFailure {
   if (raw.includes('@')) return malformed('"@" is reserved and is not part of the v1 grammar');
   const boundary = raw.indexOf('#');
@@ -56,7 +59,7 @@ export function formatAddress(address: DdAddress): string {
   return `${address.file ?? ''}#${address.segments.map((segment) => segment.value).join('/')}`;
 }
 
-function normalizeFilePath(raw: string): string {
+export function normalizeFilePath(raw: string): string {
   const withPosixSeparators = raw.replaceAll('\\', '/');
   const absolute = withPosixSeparators.startsWith('/');
   const stack: string[] = [];

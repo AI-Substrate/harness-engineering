@@ -9,6 +9,7 @@ filesystem.
 | Invalid fixture | Expected issue class | Good twin |
 |---|---|---|
 | `invalid/duplicate-id.dd.json` | `duplicate-id` | `valid/base.dd.json` |
+| `invalid/malformed-minted-id.dd.json` | `id-invalid` | `valid/minted-id.dd.json` |
 | `invalid/malformed-address.dd.json` | `address-malformed` | `valid/base.dd.json` |
 | `invalid/unresolvable-schema.dd.json` | `schema-unresolvable` | `valid/base.dd.json` |
 | `invalid/blocked-note-missing.dd.json` | `state-note-required` | `valid/state-notes.dd.json` |
@@ -36,4 +37,3 @@ filesystem.
 - `graph/cycle-a.dd.json` <-> `cycle-b.dd.json` proves visited-set termination.
 - `excluded/sweep-excluded.dd.json` carries `dd.sweep_exclude: true`; direct
   validation still checks it.
-

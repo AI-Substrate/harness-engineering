@@ -23,7 +23,8 @@ describe('dd fixture corpus', () => {
       expect(() => JSON.parse(readFileSync(`${FIXTURES}${file}`, 'utf8'))).not.toThrow();
     }
 
-    expect(files.filter((file) => file.startsWith('invalid/'))).toHaveLength(8);
+    expect(files.filter((file) => file.startsWith('invalid/'))).toHaveLength(9);
+    expect(files).toContain('valid/minted-id.dd.json');
     for (const file of [
       'warn/absolute-path.dd.json',
       'warn/non-posix-path.dd.json',
@@ -43,6 +44,7 @@ describe('dd fixture corpus', () => {
     const readme = readFileSync(`${FIXTURES}README.md`, 'utf8');
     for (const issueClass of [
       'duplicate-id',
+      'id-invalid',
       'address-malformed',
       'schema-unresolvable',
       'state-note-required',

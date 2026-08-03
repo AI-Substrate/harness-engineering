@@ -15,36 +15,86 @@ function source(name: string): string {
 }
 
 const SURFACE = [
-  ['validate', "command('validate <path>')", '`dd validate <path> [--depth <n>] [--json]`'],
-  ['schema', "command('list')", '`dd schema list [--json]`'],
-  ['schema', "command('show <name>')", '`dd schema show <name> [--json]`'],
-  ['docs', "command('list')", '`dd docs list [--json]`'],
-  ['docs', "command('get <id>')", '`dd docs get <id> [--json]`'],
-  ['build', "command('build <path>')", '`dd build <path> [--check] [--json]`'],
-  [
-    'address',
-    "command('generate <interior>')",
-    '`dd address generate <interior> [--path <path>] [--json]`',
-  ],
-  [
-    'address',
-    "command('validate <address>')",
-    '`dd address validate <address> [--resolve] [--json]`',
-  ],
-  ['link', "command('resolve <address>')", '`dd link resolve <address> [--json]`'],
-  [
-    'link',
-    "command('verify-basis <address>')",
-    '`dd link verify-basis <address> --sha <sha> [--json]`',
-  ],
-  ['links', "command('links <target>')", '`dd links <target> [--json]`'],
-  ['graph', "command('graph')", '`dd graph [--json]`'],
-  ['doctor', "command('doctor')", '`dd doctor [--json]`'],
+  {
+    file: 'validate',
+    codeNeedles: [
+      "command('validate <path>')",
+      ".option('--depth <n>', 'outbound traversal depth (0 = this document only)', '3')",
+    ],
+    manifestNeedle: '`dd validate <path> [--depth <n>] [--json]`',
+  },
+  {
+    file: 'schema',
+    codeNeedles: ["command('list')"],
+    manifestNeedle: '`dd schema list [--json]`',
+  },
+  {
+    file: 'schema',
+    codeNeedles: ["command('show <name>')"],
+    manifestNeedle: '`dd schema show <name> [--json]`',
+  },
+  {
+    file: 'docs',
+    codeNeedles: ["command('list')"],
+    manifestNeedle: '`dd docs list [--json]`',
+  },
+  {
+    file: 'docs',
+    codeNeedles: ["command('get <id>')"],
+    manifestNeedle: '`dd docs get <id> [--json]`',
+  },
+  {
+    file: 'build',
+    codeNeedles: ["command('build <path>')", ".option('--check'"],
+    manifestNeedle: '`dd build <path> [--check] [--json]`',
+  },
+  {
+    file: 'address',
+    codeNeedles: ["command('generate <interior>')", ".option('--path <path>'"],
+    manifestNeedle: '`dd address generate <interior> [--path <path>] [--json]`',
+  },
+  {
+    file: 'address',
+    codeNeedles: ["command('validate <address>')", ".option('--resolve'"],
+    manifestNeedle: '`dd address validate <address> [--resolve] [--json]`',
+  },
+  {
+    file: 'link',
+    codeNeedles: ["command('resolve <address>')"],
+    manifestNeedle: '`dd link resolve <address> [--json]`',
+  },
+  {
+    file: 'link',
+    codeNeedles: ["command('verify-basis <address>')", ".requiredOption('--sha <sha>'"],
+    manifestNeedle: '`dd link verify-basis <address> --sha <sha> [--json]`',
+  },
+  {
+    file: 'links',
+    codeNeedles: ["command('links <target>')"],
+    manifestNeedle: '`dd links <target> [--json]`',
+  },
+  {
+    file: 'graph',
+    codeNeedles: ["command('graph')"],
+    manifestNeedle: '`dd graph [--json]`',
+  },
+  {
+    file: 'doctor',
+    codeNeedles: ["command('doctor')"],
+    manifestNeedle: '`dd doctor [--json]`',
+  },
 ] as const;
 
 describe('dd frozen surface manifest', () => {
-  it.each(SURFACE)('%s source and manifest both carry %s', (file, codeNeedle, manifestNeedle) => {
-    expect(source(file)).toContain(codeNeedle);
+  it.each(SURFACE)('$file source and manifest carry the complete frozen signature', ({
+    file,
+    codeNeedles,
+    manifestNeedle,
+  }) => {
+    const actSource = source(file);
+    for (const codeNeedle of codeNeedles) {
+      expect(actSource).toContain(codeNeedle);
+    }
     expect(MANIFEST).toContain(manifestNeedle);
   });
 
@@ -62,5 +112,6 @@ describe('dd frozen surface manifest', () => {
     expect(MANIFEST).toContain(
       '`dd link verify-basis` explicit re-verification mutation semantics',
     );
+    expect(MANIFEST).toContain('`dd address validate --resolve` segment classification');
   });
 });

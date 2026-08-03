@@ -1,6 +1,7 @@
-import { isAddressFailure, parseAddress } from './address.js';
+import { isAddressFailure, normalizeFilePath, parseAddress } from './address.js';
 import { COMPLETION_STATES, ID_PREFIXES, MINTED_ID_PATTERN } from './constants.js';
 import type { DdDoc, DdShape, ResolvedDdSchema } from './model.js';
+import { isRecord } from './value.js';
 
 export type DdSeverity = 'ERROR' | 'WARN';
 
@@ -15,6 +16,7 @@ export type DdIssueClass =
   | 'duplicate-id'
   | 'enum-invalid'
   | 'human-skipped-receipt-required'
+  | 'id-invalid'
   | 'link-type-mismatch'
   | 'schema-shape'
   | 'schema-unresolvable'
@@ -52,10 +54,6 @@ interface ValidationContext {
   issues: DdIssue[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
 function addIssue(
   ctx: Pick<ValidationContext, 'issues' | 'path'>,
   issueClass: DdIssueClass,
@@ -66,40 +64,21 @@ function addIssue(
   ctx.issues.push({ class: issueClass, severity, location, message, owner: ctx.path });
 }
 
-function normalizePath(raw: string): string {
-  const posix = raw.replaceAll('\\', '/');
-  const absolute = posix.startsWith('/');
-  const stack: string[] = [];
-  for (const part of posix.split('/')) {
-    if (part.length === 0 || part === '.') continue;
-    if (part === '..') {
-      if (stack.length > 0 && stack.at(-1) !== '..') {
-        stack.pop();
-      } else if (!absolute) {
-        stack.push(part);
-      }
-    } else {
-      stack.push(part);
-    }
-  }
-  return `${absolute ? '/' : ''}${stack.join('/')}`;
-}
-
 function dirname(path: string): string {
-  const normalized = normalizePath(path);
+  const normalized = normalizeFilePath(path);
   const boundary = normalized.lastIndexOf('/');
   return boundary <= 0 ? (normalized.startsWith('/') ? '/' : '.') : normalized.slice(0, boundary);
 }
 
 export function resolveAddressFile(fromPath: string, target: string): string {
   const posixTarget = target.replaceAll('\\', '/');
-  if (posixTarget.startsWith('/')) return normalizePath(posixTarget);
-  return normalizePath(`${dirname(fromPath)}/${posixTarget}`);
+  if (posixTarget.startsWith('/')) return normalizeFilePath(posixTarget);
+  return normalizeFilePath(`${dirname(fromPath)}/${posixTarget}`);
 }
 
 export function isPathWithinRepo(path: string, root: string): boolean {
-  const normalizedPath = normalizePath(path);
-  const normalizedRoot = normalizePath(root).replace(/\/+$/, '');
+  const normalizedPath = normalizeFilePath(path);
+  const normalizedRoot = normalizeFilePath(root).replace(/\/+$/, '');
   return normalizedPath === normalizedRoot || normalizedPath.startsWith(`${normalizedRoot}/`);
 }
 
@@ -242,6 +221,7 @@ function validateShape(
   shape: DdShape,
   location: string,
   ctx: ValidationContext,
+  stateOwnedByObject = false,
 ): void {
   switch (shape.type) {
     case 'array':
@@ -273,7 +253,15 @@ function validateShape(
         }
       }
       for (const [field, fieldShape] of Object.entries(shape.fields ?? {})) {
-        if (field in value) validateShape(value[field], fieldShape, `${location}.${field}`, ctx);
+        if (field in value) {
+          validateShape(
+            value[field],
+            fieldShape,
+            `${location}.${field}`,
+            ctx,
+            fieldShape.type === 'state',
+          );
+        }
       }
       if (shape.allowAdditional === false && shape.fields) {
         for (const field of Object.keys(value)) {
@@ -322,6 +310,8 @@ function validateShape(
           location,
           `value "${String(value)}" is not in ${values?.join(', ') ?? 'the declared enum'}`,
         );
+      } else if (shape.type === 'state' && !stateOwnedByObject) {
+        validateStateNotes({ state: value }, location, ctx);
       }
       return;
     }
@@ -361,7 +351,7 @@ function validateIds(doc: DdDoc, ctx: ValidationContext): void {
       if (ID_PREFIXES.some((prefix) => id.startsWith(prefix)) && !MINTED_ID_PATTERN.test(id)) {
         addIssue(
           ctx,
-          'schema-shape',
+          'id-invalid',
           'ERROR',
           idLocation,
           `minted id "${id}" must use a registered prefix and exactly four lowercase hex digits`,

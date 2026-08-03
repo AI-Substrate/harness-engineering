@@ -43,6 +43,17 @@ describe('dd-core parse', () => {
     ]);
   });
 
+  it('does not accept arbitrary class-bearing arrays as parser failures', () => {
+    const result = failures(parse([{ class: 'garbage', location: '$', message: 'not a failure' }]));
+    expect(result).toEqual([
+      {
+        class: 'document-invalid',
+        location: '$',
+        message: 'document must be an object',
+      },
+    ]);
+  });
+
   it('collects document-shape failures with precise locations', () => {
     const result = failures(
       parse({

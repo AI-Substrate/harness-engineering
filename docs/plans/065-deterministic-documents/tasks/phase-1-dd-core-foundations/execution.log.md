@@ -137,22 +137,47 @@
 | 2026-08-03 | T001 | Noteworthy | The ruled exclusion prose says `**/test/fixtures/**`, while the fenced corpus must live at `test/services/dd/fixtures/**`. | The core exclusion predicate will recognize fixture directories nested anywhere under `test/`, preserving the intended corpus exclusion without moving outside the fence. | `tasks.md` T001/T005 |
 | 2026-08-03 | Phase | Noteworthy | The agent environment injects `safe.bareRepository=explicit` via `GIT_CONFIG_COUNT`, breaking the suite's implicit bare-repo fixture; unrestricted parallelism also pushed the unrelated docs pipe test over its 5-second timeout. | Captured as harness observation `DL-003`; full proof removed only the injected Git config entries and set `VITEST_MAX_WORKERS=4`, leaving the exact `just test` recipe/test set/coverage unchanged. | Full-suite proof below |
 
+## Review remediation
+
+| Finding | Judgment | Resolution |
+|---|---|---|
+| F001 | Applied | The surface test now pins every frozen option and the `--depth` default. Deleting the depth option fails the manifest test. |
+| F002 | Applied | All three dependency-cruiser boundaries use transitive reachability; the architecture test walks the source graph. The review's `sensors/snapshot` mutation now fails the test and reports `dd-core-never-imports-output`. |
+| F003 | Applied | Malformed minted ids emit `id-invalid`; a dedicated bad fixture and good twin protect E403's distinct class. |
+| F004 | Applied | Derived-state collection continues below state-bearing parents, so nested incomplete evidence holds the rollup. |
+| F005 | Applied | Address normalization and link resolution share `normalizeFilePath`. |
+| F006 | Documented at owning leaf | `dd-surface.md` records P1 segment kinds as positional hints; Phase 4 owns schema-resolved optional-id versus shape-part classification. |
+| F007 | Applied | Parser failure arrays now require a known failure class plus string location/message; arbitrary class-bearing arrays are rejected as documents. |
+| F008 | Applied | Direct `state` section values now receive the same note/receipt rules as object-wrapped state entries. |
+| F009 | Documented | `basis-stale` is a validate-side WARN; Phase 6 owns promotion to gate failure `E443 DD_GATE_BASIS_STALE`. |
+| F010 | Applied | `isRecord` moved to one dd-core helper used by parse, validate, and derive. |
+| F011 | Documented at owning phase | Missing schema parts and collection ids remain Phase 4 semantic resolution work under `E430 DD_LINK_UNRESOLVED`; P1 performs lexical address validation only. |
+| F012 | Applied | State entries without ids use their structural location instead of positional `entry-N` labels. |
+
 ## Phase-complete proof
 
 - Required slice: `cd harness/cli && npx vitest run test/services/dd` — 8 files /
-  47 tests passed.
+  53 tests passed.
 - Changed-surface suite: dd services/acts/manifest/architecture plus authorized
-  composition-root and error-table expectations — 14 files / 113 tests passed.
+  composition-root and error-table expectations — 14 files / 120 tests passed.
 - Architecture: `harness arch-check` exited 0 with exactly the standing 2
   unrelated `services-ports-type-only` warnings and zero dd-core violations.
+- Mutation proof: deleting `dd validate --depth` failed the frozen-surface test;
+  adding `derive.ts -> sensors/snapshot.ts -> output/error-codes.ts` failed the
+  transitive architecture test and produced a `dd-core-never-imports-output`
+  violation in `arch-check`.
 - Local build: `npx tsc -p harness/cli/tsconfig.json` passed.
 - CLI surface: `node harness/cli/bin/harness.js dd --help` showed validate,
   schema, docs, build, address, link, links, graph, and doctor; act tests prove
   all 13 leaves return `unconfigured`/exit 2 with the owning phase.
 - Full suite:
   `env -u GIT_CONFIG_COUNT -u GIT_CONFIG_KEY_0 -u GIT_CONFIG_VALUE_0 -u GIT_CONFIG_KEY_1 -u GIT_CONFIG_VALUE_1 VITEST_MAX_WORKERS=4 just test`
-  — 238 files / 3,274 tests passed; coverage 88.67% statements, 79.12% branches,
-  91.46% functions, 91.24% lines.
+  — 238 files / 3,282 tests passed; coverage 88.7% statements, 79.17% branches,
+  91.45% functions, 91.27% lines.
+- Composite gate: the same bounded environment with `just checks` exited 0;
+  tests, Biome, typecheck, docs/flows/telemetry/doctrine drift guards,
+  skills-check, and all hard gates passed. Only the repository's standing
+  warn-launch findings remained.
 - Formatting: `just fix` passed with no remaining findings.
 - Task closure: T001-T010 are all `[x]`; no `TODO`/`FIXME`/`HACK` markers were
   introduced.
