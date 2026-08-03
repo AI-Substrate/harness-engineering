@@ -31,3 +31,14 @@ Captured from the Jordan ↔ silkworm concept Q&A, 2026-08-03. Source of intent:
 - ~~W5 — Link basis pins~~ — **resolved as D9** (role-determined: transclusions float live under the contributors ledger; citations pin a basis, drift surfaces via doctor/orient/render, never auto-refreshed).
 - **W6 — Schema-in-file depth**: fully inline JSON Schema per file vs inline instance structure + named doc-type rules. Thinker recommendation: the latter. Not yet ruled on.
 - **W9 — Addressing workshop (Jordan: "we should get a good solid workshop done on addressing when ready")**: the full address grammar as a first-class design surface — canonical syntax (`path#section-id/kind:element-id`, compact string vs object form, normalization on write); section-id derivation rules (slugging, case/whitespace/punctuation normalization, singleton reduction, uniqueness-within-file); element-id minting (prefix conventions, length, collision scope); rename/alias semantics interplay (D8 tombstones); how addresses map to `.dd.md` anchors (GitHub heading anchors vs opt-in HTML row anchors); address stability guarantees a consumer may rely on; reserved room for a future cross-repo scheme. Addressing is load-bearing for everything (links, spine dd-links, build/validate walks, reverse index) — deserves its own session before the plan locks the grammar.
+
+
+## Validation lessons (recorded 2026-08-03, from the infographic's own review cycle)
+
+One artifact, three instruments, each blind to the others' defect class — worth carrying into DD's design, since DD proposes exactly these tiers:
+
+1. **Structure** — a parse check caught an eaten `>` and ~790 lines nested in an unclosed `<figure>`. It cannot see meaning.
+2. **Appearance** — headless-render screenshots caught overlaps and clipping. They could not see the structural break at all, because the browser silently error-recovers broken markup (and they manufactured two false defects of their own: sips center-crop at offset 0; the 500px window floor).
+3. **Semantics** — a human who knows the model caught a diagram edge asserting a FALSE relationship (`implements ac-4b1c` drawn into the execution log when that row lives in the plan). It rendered perfectly, parsed perfectly, and was wrong. Neither machine tier could ever have flagged it.
+
+Mapping to DD: `dd validate` is tier 1, renders are tier 2 — and the design should stay honest that tier 3 (does the content say something TRUE?) remains review by someone who knows the model. Deterministic documents make tiers 1–2 cheap and mechanical precisely so human attention can be spent on tier 3.
