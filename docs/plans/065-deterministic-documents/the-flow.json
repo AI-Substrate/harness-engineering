@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "deterministic-documents",
   "nav": {
-    "now": "plan",
+    "now": "phase-1",
     "next": null,
     "intent": "start new flow, get flow spine in please, then proceed to explore phase. then we go to workshops — Deterministic Documents (dd) per initial-brief.md",
     "bag": {
@@ -615,6 +615,87 @@
         "from": "known",
         "to": "done"
       }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:46:53.577Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:46:53.841Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:47:33.695Z",
+      "details": {
+        "node": "boot-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:47:33.960Z",
+      "details": {
+        "node": "boot-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-031",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:57:52.644Z",
+      "details": {
+        "node": "backpressure-e1318b51944a",
+        "type": "backpressure"
+      }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:57:52.930Z",
+      "details": {
+        "node": "backpressure-e1318b51944a",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:57:53.214Z",
+      "details": {
+        "node": "backpressure-e1318b51944a",
+        "from": "known",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -667,7 +748,7 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: dd-core foundations",
-      "status": "known",
+      "status": "in_progress",
       "command": "/builder 6 implement",
       "next": [
         "review-1"
@@ -680,7 +761,7 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
       ],
-      "modified_at": "2026-08-03T09:26:50.972Z"
+      "modified_at": "2026-08-03T09:46:53.840Z"
     },
     {
       "id": "review-1",
@@ -748,7 +829,7 @@
       "id": "boot-1",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "known",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -764,7 +845,17 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-1 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-1 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-1 --to skipped."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T09:47:33.695Z",
+          "text": "verdict:HEALTHY boot:just-test 3189/3189 green ~24s interact:CLI envelopes ok observe:doctor 9/10 layers ok (known telemetry-hook gap, fenced) time:2026-08-03T18:55+10:00",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-03T09:47:33.960Z",
+      "ran_at": "2026-08-03T09:47:33.960Z"
     },
     {
       "id": "observe-1",
@@ -1450,6 +1541,27 @@
         }
       ],
       "ran_at": "2026-08-03T09:42:38.062Z"
+    },
+    {
+      "id": "backpressure-e1318b51944a",
+      "type": "backpressure",
+      "label": "Backpressure survey (re-basis v1.1.1 task 6.6)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-03T09:57:52.643Z",
+      "modified_at": "2026-08-03T09:57:53.214Z",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-03T09:57:52.930Z",
+          "text": "decision:re-receipt reason:plan v1.1.1 adds 6.6 dog-food task; coverage rows added (deterministic e2e in just test + inference findings note) basis_sha256:e1318b51944ac6f51fd2a5ac49cbbd05b5d2f047cde07f5d925277b356f98c0a time:2026-08-03T09:58Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T09:57:53.214Z"
     }
   ]
 }
