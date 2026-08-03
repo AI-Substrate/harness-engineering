@@ -320,6 +320,7 @@ graph LR
 | 6.3 | Basis recording + drift: store target-doc sha at gate evaluation; orient warns via `verify-basis` on drift | flow spine | AC-11 drift half green | workshop 001 |
 | 6.4 | Surfacing: orient dd-gate block (all items, per-item pips); rail `⚑` gate callout; renderer node badge (state stored on node — renderer stays pure) | flow spine | AC-11 surfacing green | F-12 |
 | 6.5 | `docs/how/harness-flow.md` gate section + full gate-matrix suite | flow spine | Docs updated; `npx vitest run test/services/flow test/acts/flow` then full `just test` green | fence proof |
+| 6.6 | **Live dog-food, two lenses** (Jordan, 2026-08-03): in temp dirs, scaffold real flows wired to real dd docs through the new SDK (`dd_link` end-to-end) and prove the linkages from multiple angles — (a) *deterministic*: an integration suite that drives the actual CLIs in a temp sandbox (scaffold → link → gate refuses → `--force` records → upstream doc edit → `verify-basis` flags drift → orient/rail surface it); (b) *inference*: the implementing agent OPERATES the flows it built — walks orient/rail/gate as a user would and writes a short findings note (confusions, sharp edges, anything a test can't see) into the execution log, each friction also `harness observe`d | flow spine | Temp-dir integration suite green in `just test`; findings note present in execution.log.md with ≥1 real observation (or an explicit "none found" defended) | the exemplar-usage bar applied to flows themselves; temp dirs only — never a tracked fixture flow |
 
 ### Acceptance Coverage Map
 
@@ -334,8 +335,8 @@ graph LR
 | AC-07 | 1.4 (depth), 4.5 (doctor ∞ + severity mapping), 5.3 (checks + shipped layer) | 4.5 cyclic fixture + 5.5 recorded checks run |
 | AC-08 | 2.4, 2.5, **5.3** (build/checks wiring) | 5.5 (`harness checks` incl. drift gate) |
 | AC-09 | 5.1, 5.2 | 5.5 recorded end-to-end run |
-| AC-10 | 6.1, 6.2 | 6.5 gate-matrix suite |
-| AC-11 | 6.3, 6.4 | 6.5 suite |
+| AC-10 | 6.1, 6.2 | 6.5 gate-matrix suite + 6.6 temp-dir e2e |
+| AC-11 | 6.3, 6.4 | 6.5 suite + 6.6 temp-dir e2e |
 | AC-12 | 1.6 | arch test in CI |
 | AC-13 | 1.8 | 1.8 cross-file fixtures; consumed by 3.1 + 6.2 |
 | AC-14 | 4.4 | 4.4 fixture-corpus tests |
