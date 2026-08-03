@@ -478,7 +478,7 @@
     <!-- BEAT 5 -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 5</span><h3>Then it compounds</h3></div>
-      <p class="b-cap">Once criteria are data with addresses, everything can hang off them: <b>what must prove them</b> (backpressure links, pinned so drift warns), <b>what did prove them</b> (append-only execution-log receipts), whole-graph integrity (<code>dd doctor</code> in <code>checks</code>), and one-read context packets (<code>dd build</code>). The rest of this page is that story in full.</p>
+      <p class="b-cap">Because every item has an address, other documents can attach to it — and a small web grows around one checklist. One document records <b>how each item is meant to be proven</b> (the test to run). Another keeps a running log of <b>what actually happened</b> when it was proven. The task list points in too. Notice that none of them copy the checklist — they all just <b>point at it</b>. And because every one of these connections is data, a tool can walk the whole web and tell you the moment any part of it is broken, missing, or out of date. The rest of this page tells that story in full.</p>
       <figure class="scene" data-beat="b5" data-dur="4400">
         <div style="overflow-x:auto"><svg viewBox="0 0 980 344" style="min-width:760px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
           <defs>
@@ -504,21 +504,21 @@
             <text x="34" y="178" font-size="9.5" fill="#b9d4e4">phase-2 · nav gate</text>
           </g>
           <path class="edge fx" pathLength="1" d="M 172 167 L 266 167" stroke="#1f4e79" stroke-width="1.7" marker-end="url(#t-b)" style="--s:.24;--d:.10"/>
-          <text class="fx rv" style="--s:.28;--d:.08" x="180" y="156" font-size="9.5" fill="#1f4e79">transcludes · live</text>
+          <text class="fx rv" style="--s:.28;--d:.08" x="180" y="156" font-size="9.5" fill="#1f4e79">shows it, live</text>
 
           <!-- out-link 1: pressure -->
           <path class="edge fx" pathLength="1" d="M 514 146 C 580 130, 596 84, 646 66" stroke="#c2491d" stroke-width="1.7" marker-end="url(#t-v)" style="--s:.36;--d:.10"/>
-          <text class="fx rv" style="--s:.40;--d:.08" x="540" y="104" font-size="9.5" fill="#c2491d">pressure · pinned @5d10ab77</text>
+          <text class="fx rv" style="--s:.40;--d:.08" x="540" y="104" font-size="9.5" fill="#c2491d">how it must be proven</text>
           <g class="fx pop" style="--s:.46;--d:.10">
             <rect x="648" y="28" width="264" height="66" fill="#fbfdff" stroke="#c2491d" stroke-width="1.5"/>
             <text x="664" y="52" font-size="11.5" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
             <text x="664" y="70" font-size="9.5" fill="#46586c">row bp-2e88 · BUILD→RUN · harness check idempotency</text>
-            <text x="664" y="84" font-size="9" fill="#7189a0">two links in — one from the plan, one from tasks</text>
+            <text x="664" y="84" font-size="9" fill="#7189a0">pointed at from two places — the plan and the task list</text>
           </g>
 
           <!-- out-link 2: discharge -->
           <path class="edge fx" pathLength="1" d="M 514 186 L 646 186" stroke="#2e7d4f" stroke-width="1.7" marker-end="url(#t-g)" style="--s:.56;--d:.10"/>
-          <text class="fx rv" style="--s:.60;--d:.08" x="536" y="176" font-size="9.5" fill="#2e7d4f">discharge · receipt</text>
+          <text class="fx rv" style="--s:.60;--d:.08" x="536" y="176" font-size="9.5" fill="#2e7d4f">what actually happened</text>
           <g class="fx pop" style="--s:.64;--d:.10">
             <rect x="648" y="152" width="264" height="62" fill="#fbfdff" stroke="#2e7d4f" stroke-width="1.5"/>
             <text x="664" y="176" font-size="11.5" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
@@ -532,9 +532,9 @@
             <text x="664" y="308" font-size="9.5" fill="#46586c">done-when dw-31c0 · implements ac-4b1c</text>
           </g>
           <path class="edge fx" pathLength="1" d="M 700 264 C 620 220, 616 128, 646 78" stroke="#46586c" stroke-width="1.5" stroke-dasharray="1" marker-end="url(#t-k)" style="--s:.82;--d:.10"/>
-          <text class="fx rv" style="--s:.86;--d:.08" x="560" y="236" font-size="9.5" fill="#46586c">proof · links in from tasks too</text>
+          <text class="fx rv" style="--s:.86;--d:.08" x="560" y="236" font-size="9.5" fill="#46586c">the task list points here too</text>
         </svg></div>
-        <p class="punch fx rv" style="--s:.92;--d:.08">Out-links are authored where they live. In-links are derived — <span style="font-family:var(--mono);font-style:normal;font-size:13px">dd links</span> answers “who points at me” in one read.</p>
+        <p class="punch fx rv" style="--s:.92;--d:.08">You write a link where it belongs; the tooling finds every link pointing back. “Who depends on this?” becomes one command.</p>
       </figure>
     </div>
 
@@ -836,7 +836,7 @@ Let a signed-out shopper complete checkout…
           <text x="252" y="62" fill="#1f4e79">transcludes · live · gate all-complete</text>
 
           <line x1="610" y1="60" x2="738" y2="60" stroke="#c2491d" stroke-width="1.6" marker-end="url(#arrV)"/>
-          <text x="622" y="50" fill="#c2491d">pressure · pinned @5d10ab77</text>
+          <text x="622" y="50" fill="#c2491d">how it must be proven</text>
 
           <line x1="512" y1="114" x2="512" y2="218" stroke="#2e7d4f" stroke-width="1.6" marker-end="url(#arrG)"/>
           <text x="522" y="170" fill="#2e7d4f">discharge · el-0042</text>
