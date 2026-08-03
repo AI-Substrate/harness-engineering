@@ -55,6 +55,15 @@ export function exitDdStub(
  * one finding had two codes depending on which verb reported it. One exported
  * map, one answer (P5 T004).
  *
+ * The collapse arbitrates exactly ONE class — `address-path-escape`, where the
+ * specific code was ruled the winner. Every other class keeps the code its
+ * general consumers already gave it: `link-scan-failed` stays
+ * `DD_LINK_SCAN_FAILED`, NOT the doctor's `DD_DOCTOR_SCAN_FAILED`, because a
+ * class code says what went wrong and must not change with the verb that reports
+ * it. `dd doctor` still answers a failed sweep with `DD_DOCTOR_SCAN_FAILED` —
+ * that is its ENVELOPE code, hardcoded at its own exit site, so the sweep needs
+ * no override in this table (P5 review F002).
+ *
  * TypeScript's exhaustive `Record` is the guard that matters: a new issue class
  * cannot be added to any dd layer without this map failing to compile.
  */
@@ -74,7 +83,7 @@ export const DD_ISSUE_CODES: Record<DdIssueClass | DdLinkIssueClass, string> = {
   'enum-invalid': ErrorCodes.DD_ENUM_INVALID,
   'human-skipped-receipt-required': ErrorCodes.DD_HUMAN_SKIP_RECEIPT_REQUIRED,
   'id-invalid': ErrorCodes.DD_ID_INVALID,
-  'link-scan-failed': ErrorCodes.DD_DOCTOR_SCAN_FAILED,
+  'link-scan-failed': ErrorCodes.DD_LINK_SCAN_FAILED,
   'link-scan-incomplete': ErrorCodes.DD_LINK_SCAN_FAILED,
   'link-type-mismatch': ErrorCodes.DD_LINK_TYPE_MISMATCH,
   'link-unresolved': ErrorCodes.DD_LINK_UNRESOLVED,

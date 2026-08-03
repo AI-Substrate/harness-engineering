@@ -132,4 +132,60 @@ describe('OD-8 valuesShape — dynamic-key map interiors', () => {
       expect.objectContaining({ class: 'schema-shape', location: '$.sections[meta].value.stray' }),
     ]);
   });
+
+  it('lets valuesShape WIN over allowAdditional:false, and still validates the interior', () => {
+    // The ratified semantics, in the one combination that discriminates them:
+    // `allowAdditional: false` means "closed" only where no valuesShape exists.
+    // Declaring both says "a map with some named members" — so an unmatched key
+    // is measured against the shape, not rejected for existing. The closed branch
+    // winning here would reject exactly the keys valuesShape was added to
+    // validate, making the feature unreachable on its own documents (review F001).
+    const both: ResolvedDdSchema = {
+      name: 'test/both',
+      sections: {
+        rows: {
+          shape: {
+            type: 'object',
+            allowAdditional: false,
+            fields: { owner: { type: 'string' } },
+            valuesShape: {
+              type: 'object',
+              required: ['note'],
+              fields: { note: { type: 'string' } },
+            },
+          },
+        },
+      },
+    };
+    const resolveBoth = { resolve: () => ({ ok: true as const, schema: both }) };
+
+    // A well-formed unmatched key is ACCEPTED — not reported as undeclared.
+    expect(
+      validateDocument(
+        {
+          dd: { schema: 'test/both' },
+          sections: [{ name: 'rows', value: { owner: 'jordan', 'row-a': { note: 'ok' } } }],
+          references: [],
+        },
+        '/repo/both.dd.json',
+        resolveBoth,
+        '/repo',
+      ),
+    ).toEqual([]);
+
+    // And it is still MEASURED: the same key with a bad interior fails on the
+    // interior, at the interior's location — never with "not declared by the schema".
+    expect(
+      validateDocument(
+        {
+          dd: { schema: 'test/both' },
+          sections: [{ name: 'rows', value: { owner: 'jordan', 'row-a': { wrong: 'x' } } }],
+          references: [],
+        },
+        '/repo/both.dd.json',
+        resolveBoth,
+        '/repo',
+      ).map((issue) => ({ class: issue.class, location: issue.location })),
+    ).toEqual([{ class: 'schema-shape', location: '$.sections[rows].value.row-a.note' }]);
+  });
 });

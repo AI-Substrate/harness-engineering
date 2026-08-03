@@ -273,7 +273,23 @@ function validateShape(
           );
         }
       }
-      if (shape.allowAdditional === false && shape.fields) {
+      if (shape.valuesShape) {
+        // OD-8: keys the schema cannot name in advance are SHAPED, not forbidden.
+        // `fields` still wins per key, so a map may declare fixed members and a
+        // shape for the rest without either half surprising the other.
+        //
+        // This branch is FIRST on purpose, and the order IS the ratified contract:
+        // `allowAdditional: false` keeps its meaning only where no `valuesShape`
+        // exists. A schema declaring both is saying "this is a map with some named
+        // members", and the shape is the specific instruction; letting the closed
+        // branch win would reject exactly the keys `valuesShape` was added to
+        // validate, making the feature unreachable on its own documents.
+        const valuesShape = shape.valuesShape;
+        for (const [key, entry] of Object.entries(value)) {
+          if (shape.fields && key in shape.fields) continue;
+          validateShape(entry, valuesShape, `${location}.${key}`, ctx);
+        }
+      } else if (shape.allowAdditional === false && shape.fields) {
         for (const field of Object.keys(value)) {
           if (!(field in shape.fields)) {
             addIssue(
@@ -284,15 +300,6 @@ function validateShape(
               `field "${field}" is not declared by the schema`,
             );
           }
-        }
-      } else if (shape.valuesShape) {
-        // OD-8: keys the schema cannot name in advance are SHAPED, not forbidden.
-        // `fields` still wins per key, so a map may declare fixed members and a
-        // shape for the rest without either half surprising the other.
-        const valuesShape = shape.valuesShape;
-        for (const [key, entry] of Object.entries(value)) {
-          if (shape.fields && key in shape.fields) continue;
-          validateShape(entry, valuesShape, `${location}.${key}`, ctx);
         }
       }
       validateStateNotes(value, location, ctx);

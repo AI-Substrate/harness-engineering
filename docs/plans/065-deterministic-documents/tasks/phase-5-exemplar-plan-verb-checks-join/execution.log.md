@@ -653,7 +653,7 @@ from now on, so it cannot quietly rot again.
 |---|---|---|
 | **Deferred** | **The "clever use of primitives" bar is a HUMAN call and is deliberately unresolved.** | Jordan's standing constraint on plans-as-exemplar is a judgement, and the corpus says so about itself: `bp-0902` is an `unchecked` **human-judgement** row reading "the exemplar uses dd primitives cleverly and renders well for a human reader", with the proof column recording that no machine proves taste. Read `exemplar/plan.dd.md` and `exemplar/tasks/phase-2/tasks.dd.md` — the rendered siblings are the artifacts — then set that row. This is the one thing in the phase that ships unresolved on purpose. |
 | **Deferred** | `ac-0901` in the exemplar is `unchecked`. | The corpus is that criterion's own subject, and the machine half is now green (validate / `--check` / doctor / jq, all above). It stays unchecked because the human half is `bp-0902`. |
-| **Noteworthy** | **The E-code for `address-path-escape` changed in `dd validate`**: `E405` → `E430`. | The three duplicated maps had already drifted; collapsing them forced one winner and the specific code won (PM-confirmed). Both codes are inside the frozen block so no surface moved, but this is a real behaviour change to a filled body — flagged for the reviewer to re-derive rather than take on trust. |
+| **Noteworthy** | **The E-code for `address-path-escape` changed in `dd validate`**: `E405` → `E433`. | The three duplicated maps had already drifted; collapsing them forced one winner and the specific code won (PM-confirmed). Both codes are inside the frozen block so no surface moved, but this is a real behaviour change to a filled body — flagged for the reviewer to re-derive rather than take on trust. The map is now asserted by value in `test/acts/dd-issue-codes.test.ts`, so the record and the artifact cannot drift apart again. |
 | **Noteworthy** | OD-8 landed in **five** files, not the three ratified. | `schema/declarations.ts` (the parser's allow-list would have silently dropped the ratified key — a no-op grant) and `links/resolver.ts` (a dynamic-key map was unsteppable, which broke workshop-002 Ruling 3 outright) were both found by reading implementations, proposed, and separately granted before landing. Neither was in the original scope because neither was knowable from the contracts. |
 | **Noteworthy** | `createLinkContext`, `codedLinkIssues`, `nextActionFor`, `FsDocLoader` and `trackedPaths` MOVED from `acts/dd/link.ts` to `acts/dd/shared.ts`. | A pure relocation with no logic change, and it touched three files outside the original fence (`links.ts`, `graph.ts`, `address.ts` — import redirects only, granted). Without it, wiring `autoRegenerateSibling` would have pushed arch-check from 2 violations to 4 by dragging `graph`/`links` across a boundary P3/P4 were split along. |
 | **Noteworthy** | `SCAN_SKIP_PATHS` is a **semantic decision shipped as a constant**. | `.harness/temp` is now invisible to the sweep. It is matched by position rather than by name (a real `temp/` directory elsewhere is still scanned — two fixtures pin that), and it yields to an explicit root. If a future repo puts real dd documents under `.harness/temp`, this is the line that hides them. |
@@ -679,3 +679,31 @@ its standing numbers — the improvement is the retro follow-in, not a weakened 
 Four observations captured live: DL-001 (the four-phase `GIT_CONFIG_*` host defect), DL-002 (gitignored
 scratch shaping a gate — the third member of a general class), WIN-001 (dog-fooding beat fixtures),
 MW-001 (the renderer could take a map's declared `valuesShape` as its column order).
+
+---
+
+## Review round 1 — five findings, all fixed
+
+Reviewer `pij-classical-yime` returned **FIX** (`.harness/temp/pair-p5/review-p5.md`): 4 MEDIUM, 1 LOW.
+Three of the five are the same species — **the implementation drifted from a ruling that had already
+been cited in this very log**. That is the sharper lesson than any individual bug: a ratified contract
+is not self-enforcing, and prose recording it is not a test.
+
+| ID | What was wrong | Fix | The proof that discriminates it |
+|---|---|---|---|
+| **F001** | `validate.ts` let `allowAdditional: false` beat `valuesShape`, so an object declaring both rejected every unmatched key instead of shaping it — the exact inverse of the ratified OD-8 semantics. | The `valuesShape` branch now runs FIRST; `allowAdditional: false` keeps its meaning only where no `valuesShape` exists, which is what was ratified. | `values-shape.test.ts` — a new row drives the ONE combination that discriminates the two orders: a well-formed unmatched key is accepted, and a malformed one fails **on its interior**, never as "not declared". Mutation: restore the old precedence → that row alone fails, the other 9 pass. |
+| **F002** | The map collapse silently moved `link-scan-failed` from `E436` to the doctor's `E439` for **every** consumer (`dd link`, `dd links`, `dd graph`, `dd address`). Only `address-path-escape` had been ruled. | Restored to `DD_LINK_SCAN_FAILED` (E436). No doctor-local override: `dd doctor` already answers a failed sweep with `DD_DOCTOR_SCAN_FAILED` as its **envelope** code, hardcoded at its own exit site — a class code says what went wrong, an envelope code says which verb could not finish. | New `test/acts/dd-issue-codes.test.ts` pins all 19 class→code pairs **by value**. Mutation: put E439 back → the map assertion names it. |
+| **F003** | `planResolver()` dropped the `~/.dd` root, so `plan validate` failed on a schema `dd validate` resolves happily. Worse, `planDocuments()` answered an unresolvable schema with a **smaller document set**, letting `plan render --check` report green without opening a single task file. | `home` is carried on `PlanContext` and passed to every resolver the act builds. `planDocuments` now returns a discriminated result and `plan render` exits `E401` on failure — a check that cannot check must say so, not check less. | A second live suite whose corpus has **no repo-local schema at all** — the only `builder/plan` lives under a temp `HOME`, so the home root is load-bearing and a regression cannot pass by finding the schema elsewhere. Three mutations, three distinct failures (drop `home` → 2 rows; silently narrow → the loud-failure row). |
+| **F004** | `startsWith('/')` treated `C:/…` as relative, re-anchoring a Windows drive root below the repo for both the plan target and `--dir`. | `resolveInRepo()` — which already knows drive roots and UNC — for both. | Two rows assert the un-re-anchored path survives (and that the error message does **not** contain the repo root). Mutation: restore `startsWith` → both fail. |
+| **F005** | The closeout recorded the path-escape change as `E405 → E430`. The map says `E433`; `E430` is `DD_LINK_UNRESOLVED`, a different code entirely. | Record corrected in the log and in `tasks.md`. | The mapping assertion added for F002 is also F005's fix: the arbitration is now pinned by an artifact, so the record and the code cannot drift apart again. This is the P3 lesson paid properly — evidence records must match artifacts, and the way to guarantee that is to make the artifact assert. |
+
+**Renderer bytes unaffected, asserted rather than claimed**: `plan render docs/plans/065-deterministic-documents/exemplar --check` → `ok`, **4 documents, 0 drifted**, and `plan validate` on the same corpus → 0 ERROR / 0 WARN, across the change.
+
+**Baselines held.** `harness checks` **degraded/exit 0**; `tests:ok`, `typecheck:ok`, `dd doctor:ok`,
+`check:dd-docs:ok`, `root-invocation-smoke:ok`; the warn-launch trio unmoved at arch-check **2**,
+markdown **199**, windows **6**. No gate was weakened and no rule severity touched.
+
+**Untouched, per the standing riders**: `dd-surface.test.ts`, the E-code enumeration
+(`test/services/dd/error-codes.test.ts`, `test/output/error-codes.test.ts`), `.dependency-cruiser.cjs`,
+and the frozen surface doc. The new mapping assertion is a **separate** file precisely so the frozen
+enumeration stays untouched while the arbitration still gets a proof.

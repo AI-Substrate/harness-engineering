@@ -251,4 +251,99 @@ describe('harness plan — live over a real corpus', () => {
     expect(bad.code).toBe(1);
     expect(bad.envelope.error?.code).toBe('E108');
   });
+
+  it('does not re-anchor a drive-rooted target below the repository', async () => {
+    // `C:/…` is already root-anchored; treating it as relative silently rewrites
+    // a Windows path into an in-repo one, and the error then names a location the
+    // caller never asked about (review F004). `resolveInRepo` knows the difference.
+    const drive = await run(['plan', 'validate', 'C:/elsewhere/plan']);
+    expect(drive.code).toBe(1);
+    expect(drive.envelope.error?.message).toContain('C:/elsewhere/plan/plan.dd.json');
+    expect(drive.envelope.error?.message).not.toContain(repo);
+  });
+
+  it('does not re-anchor a drive-rooted --dir below the repository', async () => {
+    const created = await run(['plan', 'new', 'drive-rooted', '--phase', 'X', '--dir', 'C:/out']);
+    // The FOLDER the act computed is the assertion; where a POSIX host then puts
+    // that string is the OS's business, not this act's.
+    expect((created.envelope.data as { folder: string }).folder).toBe('C:/out/drive-rooted');
+  });
+});
+
+/**
+ * The `~/.dd` root, which `plan` dropped and every other dd verb searches.
+ *
+ * The corpus here has NO repo-local schema package on purpose: the only copy of
+ * `builder/plan` lives under a temp HOME. That makes the home root load-bearing,
+ * so a regression cannot pass by finding the schema somewhere else (review F003).
+ */
+describe('harness plan — the ~/.dd root', () => {
+  let repo = '';
+  let home = '';
+  let previousCwd = '';
+  let previousHome: string | undefined;
+
+  beforeAll(async () => {
+    repo = mkdtempSync(join(tmpdir(), 'harness-plan-home-repo-'));
+    home = mkdtempSync(join(tmpdir(), 'harness-plan-home-'));
+    const schemaPath = join(home, '.dd/schemas/builder/plan/schema.json');
+    mkdirSync(dirname(schemaPath), { recursive: true });
+    writeFileSync(schemaPath, REAL_SCHEMA, 'utf8');
+
+    previousCwd = process.cwd();
+    previousHome = process.env.HOME;
+    process.env.HOME = home;
+    process.chdir(repo);
+    await run(['plan', 'new', 'home-schema', '--phase', 'One', '--phase', 'Two']);
+  });
+
+  afterAll(() => {
+    process.chdir(previousCwd);
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    rmSync(repo, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    process.env.HOME = home;
+    process.chdir(repo);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('validates a plan whose schema resolves only from ~/.dd', async () => {
+    const validated = await run(['plan', 'validate', 'docs/plans/home-schema']);
+    expect(validated.code).toBe(0);
+    expect((validated.envelope.data as { counts: { error: number } }).counts.error).toBe(0);
+  });
+
+  it('renders the WHOLE plan from a home-resolved schema, not just the plan document', async () => {
+    // The bug this pins was not a crash: with the home root missing, the document
+    // set silently narrowed to `plan.dd.json` and `--check` reported green while
+    // never looking at a task file. Three documents, or the check checked nothing.
+    const checked = await run(['plan', 'render', 'docs/plans/home-schema', '--check']);
+    expect(checked.code).toBe(0);
+    expect(checked.envelope.data).toMatchObject({ drifted: [] });
+    expect((checked.envelope.data as { documents: string[] }).documents).toHaveLength(3);
+  });
+
+  it('FAILS LOUDLY when the schema resolves from nowhere, instead of checking less', async () => {
+    // An EMPTY home rather than an absent one: unsetting HOME falls back to the
+    // real `os.homedir()`, which would make this test's verdict depend on whose
+    // machine it ran on.
+    const barren = mkdtempSync(join(tmpdir(), 'harness-plan-barren-home-'));
+    process.env.HOME = barren;
+    try {
+      const orphaned = await run(['plan', 'render', 'docs/plans/home-schema', '--check']);
+      expect(orphaned.code).toBe(1);
+      expect(orphaned.envelope.error?.code).toBe('E401');
+      expect(orphaned.envelope.error?.message).toContain('builder/plan');
+    } finally {
+      process.env.HOME = home;
+      rmSync(barren, { recursive: true, force: true });
+    }
+  });
 });

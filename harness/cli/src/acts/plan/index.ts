@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { SystemClock } from '../../adapters/clock/system-clock.js';
+import { NodeEnv } from '../../adapters/env/node-env.js';
 import { NodeExec } from '../../adapters/exec/node-exec.js';
 import { NodeFs } from '../../adapters/fs/node-fs.js';
 import { NodeHash } from '../../adapters/hash/node-hash.js';
@@ -18,8 +19,15 @@ import {
   resolveAddressFile,
 } from '../../services/dd/core/validate.js';
 import { validateWalk } from '../../services/dd/core/walk.js';
+import type { SchemaIssue } from '../../services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
-import { isWithin, posixDirname, posixJoin, toPosix } from '../../services/shared/posix-path.js';
+import {
+  isWithin,
+  posixDirname,
+  posixJoin,
+  resolveInRepo,
+  toPosix,
+} from '../../services/shared/posix-path.js';
 import { renderDocument } from '../dd/build.js';
 import { NodeSchemaFs } from '../dd/schema-fs.js';
 import { DD_ISSUE_CODES, type DdActDeps, FsDocLoader, trackedPaths } from '../dd/shared.js';
@@ -35,14 +43,18 @@ interface PlanContext {
   clock: Clock;
   port: ReturnType<typeof createOutputPort>;
   repoRoot: string;
+  /** Absolute POSIX home, or undefined when the host cannot resolve one. */
+  home: string | undefined;
   fs: NodeSchemaFs;
 }
 
 function context(io: CliIo, deps: DdActDeps): PlanContext {
+  const home = new NodeEnv().home();
   return {
     clock: deps.clock ?? new SystemClock(),
     port: createOutputPort(io.mode, io.writers),
     repoRoot: toPosix(new NodeProcess().cwd()),
+    home: home === undefined ? undefined : toPosix(home),
     fs: new NodeSchemaFs(),
   };
 }
@@ -52,10 +64,12 @@ function context(io: CliIo, deps: DdActDeps): PlanContext {
  *
  * A plan is a folder of documents, so `harness plan validate docs/plans/065-x` is
  * the way a person thinks about it; naming `plan.dd.json` explicitly still works
- * because that is what the path resolves to either way.
+ * because that is what the path resolves to either way. `resolveInRepo` does the
+ * anchoring, so a Windows drive root (`C:/…`) or a UNC path is recognised as
+ * already-absolute instead of being re-anchored below the repo.
  */
 function resolvePlanDocument(target: string, repoRoot: string): string {
-  const absolute = target.startsWith('/') ? toPosix(target) : posixJoin(repoRoot, toPosix(target));
+  const absolute = resolveInRepo(target, repoRoot);
   if (absolute.endsWith('.dd.json')) return absolute;
   return posixJoin(absolute, 'plan.dd.json');
 }
@@ -65,24 +79,52 @@ function resolvePlanDocument(target: string, repoRoot: string): string {
  * to. The set comes from the plan's own declared links — a task file that nothing
  * points at is not part of the plan, and one that is reached is, whatever it is
  * called or wherever it sits.
+ *
+ * A schema that will not resolve is a FAILURE, never a smaller set. Narrowing to
+ * the plan document alone would let `plan render --check` report green while
+ * never looking at a single task-file sibling — the exact shape of a check that
+ * passes by not checking (P5 review F003).
  */
-function planDocuments(doc: DdDoc, path: string, repoRoot: string, schemaName: string): string[] {
-  const resolver = planResolver(repoRoot);
-  const resolved = resolver.resolve(schemaName, path);
-  if (!resolved.ok) return [path];
+type PlanDocumentSet =
+  | { ok: true; documents: string[] }
+  | { ok: false; schema: string; message: string; issues: SchemaIssue[] };
+
+function planDocuments(ctx: PlanContext, doc: DdDoc, path: string): PlanDocumentSet {
+  const resolution = planResolver(ctx).resolveDetailed(doc.dd.schema, path);
+  const record = resolution.record;
+  if (!record) {
+    const blocking = resolution.issues.find((issue) => issue.severity === 'ERROR');
+    return {
+      ok: false,
+      schema: doc.dd.schema,
+      message: blocking?.message ?? `schema not found: ${doc.dd.schema}`,
+      issues: resolution.issues,
+    };
+  }
   const documents = [path];
-  for (const cell of collectLinkCells(doc, resolved.schema)) {
+  for (const cell of collectLinkCells(doc, record.schema)) {
     const address = parseAddress(cell.raw);
     if (isAddressFailure(address) || address.file === null) continue;
     const target = resolveAddressFile(path, address.file);
-    if (!target.endsWith('.dd.json') || !isWithin(repoRoot, target)) continue;
+    if (!target.endsWith('.dd.json') || !isWithin(ctx.repoRoot, target)) continue;
     if (!documents.includes(target)) documents.push(target);
   }
-  return documents;
+  return { ok: true, documents };
 }
 
-function planResolver(repoRoot: string): ConventionSchemaResolver {
-  return new ConventionSchemaResolver({ fs: new NodeSchemaFs(), repoRoot });
+/**
+ * The same four roots every other dd verb searches — including `~/.dd`.
+ *
+ * Dropping `home` here made `plan validate` fail on a schema `dd validate`
+ * resolves happily, which is the worst kind of difference: the composition
+ * disagreeing with the thing it composes (P5 review F003).
+ */
+function planResolver(ctx: PlanContext): ConventionSchemaResolver {
+  return new ConventionSchemaResolver({
+    fs: ctx.fs,
+    repoRoot: ctx.repoRoot,
+    ...(ctx.home !== undefined && { home: ctx.home }),
+  });
 }
 
 function readPlan(
@@ -155,10 +197,7 @@ function registerNewCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
       }
 
       const parent = opts.dir ?? DEFAULT_PLANS_DIR;
-      const folder = posixJoin(
-        parent.startsWith('/') ? toPosix(parent) : posixJoin(ctx.repoRoot, toPosix(parent)),
-        slug,
-      );
+      const folder = posixJoin(resolveInRepo(parent, ctx.repoRoot), slug);
       const scaffold = buildPlanScaffold({
         slug,
         ...(opts.title !== undefined && { title: opts.title }),
@@ -284,7 +323,7 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
       const issues: Array<DdIssue & { code: string }> = validateWalk(
         doc,
         path,
-        { schemaResolver: planResolver(ctx.repoRoot), docLoader: loader },
+        { schemaResolver: planResolver(ctx), docLoader: loader },
         { repoRoot: ctx.repoRoot, depth, mode: 'direct' },
       ).map((issue) => ({ ...issue, code: DD_ISSUE_CODES[issue.class] }));
 
@@ -336,7 +375,24 @@ function registerRenderCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
       const ctx = context(io, deps);
       const path = resolvePlanDocument(target, ctx.repoRoot);
       const { doc } = readPlan(ctx, 'plan render', path);
-      const documents = planDocuments(doc, path, ctx.repoRoot, doc.dd.schema);
+      const documentSet = planDocuments(ctx, doc, path);
+      if (!documentSet.ok) {
+        exitWithEnvelope(
+          formatError(
+            'plan render',
+            ErrorCodes.DD_SCHEMA_UNRESOLVABLE,
+            `the plan's schema does not resolve, so the set of documents it owns cannot be determined: ${documentSet.message}`,
+            ctx.clock,
+            {
+              details: { path, schema: documentSet.schema, issues: documentSet.issues },
+              next_action:
+                'Run `harness dd schema list` to see which schemas resolve from here, then re-run. (Rendering only the plan document would report green without checking a single task file.)',
+            },
+          ),
+          ctx.port,
+        );
+      }
+      const documents = documentSet.documents;
 
       const fs = new NodeFs();
       const rendered: string[] = [];
