@@ -265,7 +265,23 @@ export function buildProgram(
     .configureHelp(helpStyleConfig())
     .exitOverride();
 
-  const recordRegistry = buildRecordRegistry(coreRecordTypes, registry.recordTypes ?? []);
+  // ALWAYS WARN, NEVER HIDE (s064): a file the loader rejected, or a record type it
+  // dropped for a name collision, must not vanish silently from `record --list`.
+  // `failed` is type-unknown by nature (it never loaded, so what it declared is
+  // unknowable); a `conflict` is only a record concern when it shadowed a record
+  // type, so verb-only conflicts are deliberately excluded. `doctor` owns the WHY.
+  const withheldExtensions = (registry.records ?? [])
+    .filter(
+      (record) =>
+        record.status === 'failed' ||
+        (record.status === 'conflict' && (record.recordShadows?.length ?? 0) > 0),
+    )
+    .map((record) => ({ entryPath: record.entryPath }));
+  const recordRegistry = buildRecordRegistry(
+    coreRecordTypes,
+    registry.recordTypes ?? [],
+    withheldExtensions,
+  );
 
   // Cross-cutting: register the exit-chokepoint decorators ONCE so every
   // command's exit surfaces (a) a known update and (b) telemetry housekeeping for

@@ -31,12 +31,25 @@ export interface RecordTypeConflict {
   shadows: 'core' | 'extension';
 }
 
+/**
+ * An extension file the loader refused to load at all (unsupported layout `E143`,
+ * load/shape failure `E140`). Deliberately carries ONLY the path: what it *would*
+ * have declared is unknowable precisely because it never loaded, so this cannot
+ * honestly claim it was a record type. `doctor` owns the reason; this exists so
+ * `record --list` can say "something was skipped" instead of nothing at all.
+ */
+export interface SkippedExtension {
+  entryPath: string;
+}
+
 /** The merged record-type surface (core ∪ extension) + the conflicts `doctor` reports. */
 export interface RecordRegistry {
   /** Accepted types, deterministic order: core first, then de-conflicted extensions. */
   types: RecordTypeEntry[];
   /** Extension types skipped because their `type` was already claimed (never fatal). */
   conflicts: RecordTypeConflict[];
+  /** Extension files that never loaded — surfaced so a listing never reads clean while hiding a rejection. */
+  skipped: SkippedExtension[];
 }
 
 /** The core-bundled record types — always present, even under `--no-extensions`. */
@@ -84,6 +97,7 @@ export function recordTypeShapeIssues(value: unknown): string[] {
 export function buildRecordRegistry(
   core: readonly HarnessRecordType[] = coreRecordTypes,
   extension: readonly ExtensionRecordType[] = [],
+  skipped: readonly SkippedExtension[] = [],
 ): RecordRegistry {
   const types: RecordTypeEntry[] = [];
   const conflicts: RecordTypeConflict[] = [];
@@ -117,5 +131,5 @@ export function buildRecordRegistry(
     });
   }
 
-  return { types, conflicts };
+  return { types, conflicts, skipped: [...skipped] };
 }
