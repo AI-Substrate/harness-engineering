@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "deterministic-documents",
   "nav": {
-    "now": "phase-3",
+    "now": "phase-5",
     "next": null,
     "intent": "start new flow, get flow spine in please, then proceed to explore phase. then we go to workshops — Deterministic Documents (dd) per initial-brief.md",
     "bag": {
@@ -964,6 +964,280 @@
         "from": "phase-2",
         "to": "phase-3"
       }
+    },
+    {
+      "id": "UPD-024",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:22:52.587Z",
+      "details": {
+        "node": "boot-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-020",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T12:22:52.859Z",
+      "details": {
+        "node": "boot-3",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-025",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:18.550Z",
+      "details": {
+        "node": "observe-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-021",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:18.874Z",
+      "details": {
+        "node": "observe-3",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-026",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:19.167Z",
+      "details": {
+        "node": "retro-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-022",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:19.454Z",
+      "details": {
+        "node": "retro-3",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-027",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:31.930Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-023",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:32.225Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-028",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:32.525Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-024",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:32.819Z",
+      "details": {
+        "node": "review-3",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:33.102Z",
+      "details": {
+        "from": "phase-3",
+        "to": "phase-4"
+      }
+    },
+    {
+      "id": "UPD-029",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:44.002Z",
+      "details": {
+        "node": "boot-4",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-025",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:44.294Z",
+      "details": {
+        "node": "boot-4",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-030",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:44.595Z",
+      "details": {
+        "node": "observe-4",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-026",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:44.895Z",
+      "details": {
+        "node": "observe-4",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-031",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:45.200Z",
+      "details": {
+        "node": "retro-4",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-027",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:45.486Z",
+      "details": {
+        "node": "retro-4",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-032",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:58.960Z",
+      "details": {
+        "node": "phase-4",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-028",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:59.241Z",
+      "details": {
+        "node": "phase-4",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-033",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:59.533Z",
+      "details": {
+        "node": "review-4",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-029",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:07:59.829Z",
+      "details": {
+        "node": "review-4",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T15:08:00.122Z",
+      "details": {
+        "from": "phase-4",
+        "to": "phase-5"
+      }
     }
   ],
   "nodes": [
@@ -1460,12 +1734,12 @@
       "id": "phase-3",
       "type": "phase",
       "label": "P3: Render & adapters",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-3"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:32.225Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -1473,35 +1747,53 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:31.929Z",
+          "text": "T001-T007 all [x]. Coder pij-artificial-guan (opus5 xhigh). Commits d865563c, 44dc52db, 324df512 (depcruise window), 958f08f4 (dd.test.ts window), 3f84f7fb, 1784a041 + fix 24da7883. Proof: slice 46 green P4-absent-by-reachability; 299 dd tests; both cwds; arch 2 unmoved (before/after recorded per prime rider); goldens caught 4 real renderer bugs pre-review; AC-03 hand-edit path + AC-04 five adapter classes live-proven",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:32.225Z"
     },
     {
       "id": "review-3",
       "type": "review",
       "label": "Review: P3",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:32.819Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
-      "zone": "flight"
+      "zone": "flight",
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:32.525Z",
+          "text": "verdict:PASS (after 1 FIX round — 2 findings, honesty-class: execution-log universal provenance claim vs history + 4 unrecorded golden adjudications; fixed with per-file truth table, RECONSTRUCTED labels, declared unrecoverable, coder self-corrected D4) mutations:3/3 reviewer:pij-neutral-python (gpt-5.6-terra xhigh) report:.harness/temp/pair-p3/review-p3.md",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:32.819Z"
     },
     {
       "id": "boot-3",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T12:22:52.859Z",
       "branch_of": "phase-3",
       "instructions": [
         "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -1513,18 +1805,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T12:22:52.587Z",
+          "text": "verdict:HEALTHY boot:just test full suite green exit 0 (incl. dd 153 + granted docs.test.ts timeout — the P2-era flake path now passes under load) time:2026-08-03T12:28Z; doctor gaps unchanged from boot-2 (sensor-watcher heartbeat, telemetry post-commit hook in worktree — standing, fenced)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T12:22:52.859Z"
     },
     {
       "id": "observe-3",
       "type": "observe",
       "label": "Observe: P3",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:18.874Z",
       "branch_of": "phase-3",
       "instructions": [
         "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -1537,18 +1838,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:18.550Z",
+          "text": "decision:satisfied real captures from both P3 pair seats (guan: CONF-001 per-row fixture roots, DL-002 add -N gap, 4 golden-caught defects D1-D4; PM: spawn-limbo/canary/citation) drained 2026-08-03T15:08Z; buffer race noted (DL-005) — 3 PM entries re-captured before drain",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:18.874Z"
     },
     {
       "id": "retro-3",
       "type": "harness-retro",
       "label": "Retro: P3 (drain)",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:19.454Z",
       "branch_of": "phase-3",
       "instructions": [
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
@@ -1558,18 +1868,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:19.167Z",
+          "text": "decision:drained time:2026-08-03T15:08Z record:.harness/records/retro/2026-08-03/003-065-dd-phases-3-4.md (combined P3||P4 drain — shared buffer, shared process lessons) entries:10",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:19.454Z"
     },
     {
       "id": "phase-4",
       "type": "phase",
       "label": "P4: Links, ledger & doctor",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-4"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:59.241Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -1577,35 +1896,53 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:58.960Z",
+          "text": "T001-T008 all [x]. Coder pij-interested-albatross (opus5 xhigh, revived mid-fix after a CLI wedge — copilot --resume, zero context loss). Commits c20f643e, 48a45c08 (dd.test.ts window), 6b383f9b (depcruise window), 7f7ec42f + fix bbee25c1. Proof: slice 98 green P3-absent; 303 dd suites; both cwds; arch 2 before/after x2 (prime-verified vs main); four RESERVED rows exercised against manifest dd5e0c3f; live transcripts: address round-trip, fresh->stale->--update->fresh, doctor cyclic 4.4s + OD-1 sweep/direct pairing",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:59.241Z"
     },
     {
       "id": "review-4",
       "type": "review",
       "label": "Review: P4",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-5"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:59.829Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
-      "zone": "flight"
+      "zone": "flight",
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:59.532Z",
+          "text": "verdict:APPROVE (after 1 FIX round — 2 HIGH, both real: tripwire denominated on loaded-not-scheduled paths => false E439; --path root-set scoping leaked into interior+adapter-gap passes => radius-inf violated) mutations:3/3 + coder self-reversion 2+2 reviewer:pij-clever-tyrannosaurus (gpt-5.6-terra xhigh) report:.harness/temp/pair-p4/review-p4.md",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:59.829Z"
     },
     {
       "id": "boot-4",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:44.294Z",
       "branch_of": "phase-4",
       "instructions": [
         "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -1617,18 +1954,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:44.002Z",
+          "text": "verdict:HEALTHY boot:just test 3532/3532 green exit 0 at P3+P4 fan-in tree (post-fix, incl. previously-flaky docs stream + git integration suites) time:2026-08-03T15:06Z; doctor gaps unchanged (standing, fenced)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:44.294Z"
     },
     {
       "id": "observe-4",
       "type": "observe",
       "label": "Observe: P4",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:44.895Z",
       "branch_of": "phase-4",
       "instructions": [
         "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -1641,18 +1987,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:44.595Z",
+          "text": "decision:satisfied real captures from both P4 pair seats (albatross: DL-003 add -N, DL-004 coverage collision, DL-005 just-test env, WIN-001 shape-directed classification; PM: buffer race, revive win) drained 2026-08-03T15:08Z into the combined record",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:44.895Z"
     },
     {
       "id": "retro-4",
       "type": "harness-retro",
       "label": "Retro: P4 (drain)",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-4"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T15:07:45.486Z",
       "branch_of": "phase-4",
       "instructions": [
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
@@ -1662,7 +2017,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T15:07:45.200Z",
+          "text": "decision:drained time:2026-08-03T15:08Z record:.harness/records/retro/2026-08-03/003-065-dd-phases-3-4.md (combined P3||P4 drain) entries:10 dispositions: 2 fixed-now/encoded, 2 plan (P5), 6 kept; buffer cleared (10)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T15:07:45.486Z"
     },
     {
       "id": "phase-5",
