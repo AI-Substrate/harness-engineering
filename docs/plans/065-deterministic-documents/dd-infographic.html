@@ -9,11 +9,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#f6f3ec;
-    --paper-2:#efeadf;
-    --ink:#1c1f24;
-    --ink-soft:#4a5058;
-    --rule:#d8d2c4;
+    --paper:#eef3f8;
+    --paper-2:#e2eaf2;
+    --ink:#16273a;
+    --ink-soft:#46586c;
+    --rule:#c9d6e2;
     --bp:#0d2440;          /* blueprint field */
     --bp-2:#123057;
     --line:#8fd4ea;        /* blueprint linework */
@@ -29,7 +29,11 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
   body{
-    background:var(--paper);
+    background:
+      linear-gradient(rgba(31,78,121,.035) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(31,78,121,.035) 1px,transparent 1px),
+      var(--paper);
+    background-size:26px 26px,26px 26px,auto;
     color:var(--ink);
     font-family:var(--sans);
     font-size:16px;line-height:1.6;
@@ -112,10 +116,10 @@
   @media(max-width:880px){.sign3{grid-template-columns:1fr}.sign3 .sign-mid{padding:14px 0}}
 
   .card{
-    border:1px solid var(--rule);background:#fffdf8;padding:20px 22px;position:relative;
+    border:1px solid var(--rule);background:#fbfdff;padding:20px 22px;position:relative;
     transition:transform .25s ease, box-shadow .25s ease;
   }
-  .card:hover{transform:translateY(-2px);box-shadow:0 10px 26px -18px #1c1f2466}
+  .card:hover{transform:translateY(-2px);box-shadow:0 10px 26px -18px #16273a66}
   .card h3{font-family:var(--disp);font-size:19px;font-weight:600;margin-bottom:8px}
   .card p{font-size:14px;color:var(--ink-soft)}
   .card p b, .card li b{color:var(--ink)}
@@ -127,8 +131,8 @@
 
   /* code blocks */
   pre.code{
-    background:#101418;color:#d7dde3;font-family:var(--mono);font-size:12.5px;line-height:1.66;
-    padding:18px 20px;overflow-x:auto;border:1px solid #2a3138;position:relative;
+    background:#0e1c2e;color:#d7dde3;font-family:var(--mono);font-size:12.5px;line-height:1.66;
+    padding:18px 20px;overflow-x:auto;border:1px solid #24405e;position:relative;
   }
   pre.code .lbl{
     position:absolute;top:0;right:0;background:#1d242b;color:#7c8894;font-size:10px;
@@ -143,15 +147,15 @@
   .lk{color:#e8c8ff}     /* link values */
 
   pre.md{
-    background:#fffdf8;border:1px solid var(--rule);color:var(--ink);
+    background:#fbfdff;border:1px solid var(--rule);color:var(--ink);
     font-family:var(--mono);font-size:12.5px;line-height:1.66;padding:18px 20px;overflow-x:auto;position:relative;
   }
-  pre.md .lbl{position:absolute;top:0;right:0;background:var(--paper-2);color:#8a8371;font-size:10px;letter-spacing:.18em;padding:4px 10px;text-transform:uppercase}
+  pre.md .lbl{position:absolute;top:0;right:0;background:var(--paper-2);color:#7189a0;font-size:10px;letter-spacing:.18em;padding:4px 10px;text-transform:uppercase}
   pre.md .gen{color:#9a927e;font-style:italic}
   pre.md .h{color:var(--blue);font-weight:600}
   pre.md .ok{color:var(--green)} pre.md .no{color:var(--verm)} pre.md .hu{color:var(--gold)}
 
-  table.spec{width:100%;border-collapse:collapse;font-size:13.5px;background:#fffdf8}
+  table.spec{width:100%;border-collapse:collapse;font-size:13.5px;background:#fbfdff}
   table.spec th{
     text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
     color:var(--ink-soft);border-bottom:2px solid var(--ink);padding:8px 10px;
@@ -164,7 +168,7 @@
   .num-col{font-family:var(--mono);color:var(--verm);font-size:12px}
 
   .callout{
-    border-left:4px solid var(--blue);background:#fffdf8;border-top:1px solid var(--rule);
+    border-left:4px solid var(--blue);background:#fbfdff;border-top:1px solid var(--rule);
     border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
     padding:16px 20px;font-size:14.5px;margin:22px 0;
   }
@@ -176,7 +180,7 @@
 
   .flowline{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:26px 0}
   .flowstep{
-    flex:1;min-width:140px;border:1px solid var(--rule);background:#fffdf8;padding:14px 14px 12px;position:relative;
+    flex:1;min-width:140px;border:1px solid var(--rule);background:#fbfdff;padding:14px 14px 12px;position:relative;
   }
   .flowstep + .flowstep{margin-left:-1px}
   .flowstep .fs-n{font-family:var(--mono);font-size:10px;color:var(--verm);letter-spacing:.2em}
@@ -223,16 +227,16 @@
   .beat h3{font-family:var(--disp);font-size:clamp(20px,2.6vw,27px);font-weight:600}
   .beat .b-cap{font-size:14.5px;color:var(--ink-soft);max-width:76ch;margin:6px 0 16px}
   .beat .b-cap b{color:var(--ink)}
-  .scene{border:1px solid var(--rule);background:#fffdf8;padding:26px 22px;overflow:hidden}
+  .scene{border:1px solid var(--rule);background:#fbfdff;padding:26px 22px;overflow:hidden}
   .scene .punch{font-family:var(--disp);font-style:italic;font-size:16px;color:var(--ink);margin-top:18px;text-align:center}
 
-  .doc{border:1px solid var(--rule);background:#fff;box-shadow:0 5px 0 #1c1f2410, 0 16px 26px -20px #1c1f2440;padding:14px 16px;min-width:0}
+  .doc{border:1px solid var(--rule);background:#fff;box-shadow:0 5px 0 #16273a10, 0 16px 26px -20px #16273a40;padding:14px 16px;min-width:0}
   .doc .d-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .tbar{height:7px;background:var(--paper-2);margin:6px 0;border-radius:2px}
-  .codemini{background:#101418;border-radius:2px;padding:7px 10px;margin:8px 0}
-  .codemini .tbar{background:#2a3138;margin:5px 0}
+  .codemini{background:#0e1c2e;border-radius:2px;padding:7px 10px;margin:8px 0}
+  .codemini .tbar{background:#24405e;margin:5px 0}
   .acrow{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;padding:6px 2px;border-top:1px dashed var(--rule);min-width:0}
-  .acrow .cbx{width:15px;height:15px;border:1.5px solid #9aa2ab;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff}
+  .acrow .cbx{width:15px;height:15px;border:1.5px solid #93a5b7;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff}
   .acrow .cbx .tick{color:var(--green);font-weight:700;font-size:12px}
   .acrow .lbl2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .remember{border-left:3px solid var(--verm);background:#c2491d0d;padding:10px 13px;font-size:13px;color:#8a3413;margin-top:14px;line-height:1.55}
@@ -243,7 +247,7 @@
   .jrow .jk{color:var(--blue)} .jrow .jv{color:#5c7a3f} .jrow .je{color:var(--verm)}
   .navrail{display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 0}
   .navnode{font-family:var(--mono);font-size:11.5px;border:1.5px solid var(--ink);padding:7px 12px;background:#fff;display:flex;gap:8px;align-items:center;white-space:nowrap}
-  .navnode.dim{border-color:#b9b2a2;color:#8a8371}
+  .navnode.dim{border-color:#a4b8ca;color:#7189a0}
   .navdot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
   .scene svg .fx{transform-box:fill-box;transform-origin:center}
   .scene svg .edge{fill:none;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--w,0))}
@@ -266,10 +270,10 @@
 
   .statebar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 6px}
   .state{
-    font-family:var(--mono);font-size:12px;padding:7px 13px;border:1.5px solid;display:flex;align-items:center;gap:8px;background:#fffdf8;
+    font-family:var(--mono);font-size:12px;padding:7px 13px;border:1.5px solid;display:flex;align-items:center;gap:8px;background:#fbfdff;
   }
   .state small{font-family:var(--sans);font-size:11px;color:var(--ink-soft);letter-spacing:0}
-  .st-un{border-color:#9aa2ab;color:#57606a}
+  .st-un{border-color:#93a5b7;color:#57606a}
   .st-ck{border-color:var(--green);color:var(--green)}
   .st-bl{border-color:var(--verm);color:var(--verm)}
   .st-hs{border-color:var(--gold);color:var(--gold)}
@@ -414,7 +418,7 @@
           <div class="arrwrap" style="padding:0 8px;width:120px">
             <div class="arrbar fx growx" style="--s:.26;--d:.12"></div>
             <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible">consumed by</div>
-            <div class="arrbar fx growx" style="--s:.52;--d:.12;background:#4a5058;margin-top:26px"></div>
+            <div class="arrbar fx growx" style="--s:.52;--d:.12;background:#46586c;margin-top:26px"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
             <div class="doc fx rv" style="--s:.36;--d:.10;border-color:var(--blue)">
@@ -457,13 +461,13 @@
             <div class="jrow fx io" style="--s:.56;--d:.08;--s2:.78;--d2:.10;text-align:center;color:var(--green);overflow:visible">tick travels the link</div>
           </div>
           <div class="navrail">
-            <div class="jrow" style="text-align:center;color:#8a8371;overflow:visible;margin-bottom:6px">a workflow · reading the checklist</div>
-            <div class="navnode fx rv" style="--s:.10;--d:.10"><span class="navdot fx io" style="--s:.10;--d:.06;--s2:.80;--d2:.08"></span>step: build <span class="jrow" style="color:#8a8371">current</span></div>
+            <div class="jrow" style="text-align:center;color:#7189a0;overflow:visible;margin-bottom:6px">a workflow · reading the checklist</div>
+            <div class="navnode fx rv" style="--s:.10;--d:.10"><span class="navdot fx io" style="--s:.10;--d:.06;--s2:.80;--d2:.08"></span>step: build <span class="jrow" style="color:#7189a0">current</span></div>
             <div style="position:relative;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center">
-              <div style="width:2px;height:44px;background:#d8d2c4;position:absolute"></div>
+              <div style="width:2px;height:44px;background:#c9d6e2;position:absolute"></div>
               <div class="fx growyr" style="--s:.68;--d:.14;width:4px;height:44px;background:var(--verm);position:absolute"></div>
-              <span class="chipnote fx io" style="--s:.16;--d:.08;--s2:.66;--d2:.08;color:var(--verm);background:#fffdf8;position:relative">held: 1 item open</span>
-              <span class="chipnote fx rv" style="--s:.82;--d:.10;color:var(--green);background:#fffdf8;position:relative">open: all items proven</span>
+              <span class="chipnote fx io" style="--s:.16;--d:.08;--s2:.66;--d2:.08;color:var(--verm);background:#fbfdff;position:relative">held: 1 item open</span>
+              <span class="chipnote fx rv" style="--s:.82;--d:.10;color:var(--green);background:#fbfdff;position:relative">open: all items proven</span>
             </div>
             <div class="navnode dim"><span class="navdot fx pop" style="--s:.84;--d:.10"></span>step: review</div>
           </div>
@@ -482,14 +486,14 @@
             <marker id="t-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f4e79"/></marker>
             <marker id="t-v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2491d"/></marker>
             <marker id="t-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d4f"/></marker>
-            <marker id="t-k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4a5058"/></marker>
+            <marker id="t-k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#46586c"/></marker>
           </defs>
 
           <!-- ROOT: the AC section -->
           <g class="fx pop" style="--s:.04;--d:.10">
-            <rect x="268" y="118" width="246" height="96" fill="#fffdf8" stroke="#1f4e79" stroke-width="2"/>
+            <rect x="268" y="118" width="246" height="96" fill="#fbfdff" stroke="#1f4e79" stroke-width="2"/>
             <text x="284" y="142" font-size="12" font-weight="600" fill="#1f4e79">plan.dd.json</text>
-            <text x="284" y="160" font-size="10" fill="#4a5058">#plan-phase-ac.phase-2</text>
+            <text x="284" y="160" font-size="10" fill="#46586c">#plan-phase-ac.phase-2</text>
             <text x="284" y="181" font-size="10.5" fill="#2e7d4f">✓ ac-4b1c · declined card</text>
             <text x="284" y="198" font-size="10.5" fill="#57606a">□ ac-9d02 · no double-charge</text>
           </g>
@@ -507,29 +511,29 @@
           <path class="edge fx" pathLength="1" d="M 514 146 C 580 130, 596 84, 646 66" stroke="#c2491d" stroke-width="1.7" marker-end="url(#t-v)" style="--s:.36;--d:.10"/>
           <text class="fx rv" style="--s:.40;--d:.08" x="540" y="104" font-size="9.5" fill="#c2491d">pressure · pinned @5d10ab77</text>
           <g class="fx pop" style="--s:.46;--d:.10">
-            <rect x="648" y="28" width="264" height="66" fill="#fffdf8" stroke="#c2491d" stroke-width="1.5"/>
+            <rect x="648" y="28" width="264" height="66" fill="#fbfdff" stroke="#c2491d" stroke-width="1.5"/>
             <text x="664" y="52" font-size="11.5" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
-            <text x="664" y="70" font-size="9.5" fill="#4a5058">row bp-2e88 · BUILD→RUN · harness check idempotency</text>
-            <text x="664" y="84" font-size="9" fill="#8a8371">two links in — one from the plan, one from tasks</text>
+            <text x="664" y="70" font-size="9.5" fill="#46586c">row bp-2e88 · BUILD→RUN · harness check idempotency</text>
+            <text x="664" y="84" font-size="9" fill="#7189a0">two links in — one from the plan, one from tasks</text>
           </g>
 
           <!-- out-link 2: discharge -->
           <path class="edge fx" pathLength="1" d="M 514 186 L 646 186" stroke="#2e7d4f" stroke-width="1.7" marker-end="url(#t-g)" style="--s:.56;--d:.10"/>
           <text class="fx rv" style="--s:.60;--d:.08" x="536" y="176" font-size="9.5" fill="#2e7d4f">discharge · receipt</text>
           <g class="fx pop" style="--s:.64;--d:.10">
-            <rect x="648" y="152" width="264" height="62" fill="#fffdf8" stroke="#2e7d4f" stroke-width="1.5"/>
+            <rect x="648" y="152" width="264" height="62" fill="#fbfdff" stroke="#2e7d4f" stroke-width="1.5"/>
             <text x="664" y="176" font-size="11.5" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
-            <text x="664" y="194" font-size="9.5" fill="#4a5058">entry el-0042 · cmd exit:0 · append-only</text>
+            <text x="664" y="194" font-size="9.5" fill="#46586c">entry el-0042 · cmd exit:0 · append-only</text>
           </g>
 
           <!-- second inbound to backpressure: from tasks -->
           <g class="fx rv" style="--s:.74;--d:.10">
-            <rect x="648" y="266" width="264" height="58" fill="#fffdf8" stroke="#4a5058" stroke-width="1.5" stroke-dasharray="5 4"/>
-            <text x="664" y="290" font-size="11.5" font-weight="600" fill="#4a5058">tasks.dd.json</text>
-            <text x="664" y="308" font-size="9.5" fill="#4a5058">done-when dw-31c0 · implements ac-4b1c</text>
+            <rect x="648" y="266" width="264" height="58" fill="#fbfdff" stroke="#46586c" stroke-width="1.5" stroke-dasharray="5 4"/>
+            <text x="664" y="290" font-size="11.5" font-weight="600" fill="#46586c">tasks.dd.json</text>
+            <text x="664" y="308" font-size="9.5" fill="#46586c">done-when dw-31c0 · implements ac-4b1c</text>
           </g>
-          <path class="edge fx" pathLength="1" d="M 700 264 C 620 220, 616 128, 646 78" stroke="#4a5058" stroke-width="1.5" stroke-dasharray="1" marker-end="url(#t-k)" style="--s:.82;--d:.10"/>
-          <text class="fx rv" style="--s:.86;--d:.08" x="560" y="236" font-size="9.5" fill="#4a5058">proof · links in from tasks too</text>
+          <path class="edge fx" pathLength="1" d="M 700 264 C 620 220, 616 128, 646 78" stroke="#46586c" stroke-width="1.5" stroke-dasharray="1" marker-end="url(#t-k)" style="--s:.82;--d:.10"/>
+          <text class="fx rv" style="--s:.86;--d:.08" x="560" y="236" font-size="9.5" fill="#46586c">proof · links in from tasks too</text>
         </svg></div>
         <p class="punch fx rv" style="--s:.92;--d:.08">Out-links are authored where they live. In-links are derived — <span style="font-family:var(--mono);font-style:normal;font-size:13px">dd links</span> answers “who points at me” in one read.</p>
       </figure>
@@ -733,7 +737,7 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="sign-mid" style="display:flex;flex-direction:column;justify-content:center;padding:0 14px;font-family:var(--mono);font-size:11px;color:var(--verm);text-align:center;letter-spacing:.1em">
         <span>◀ pressure</span>
-        <span style="margin:10px 0;border:1px solid var(--rule);background:#fffdf8;color:var(--ink);padding:10px 12px;font-size:12px;line-height:1.7">
+        <span style="margin:10px 0;border:1px solid var(--rule);background:#fbfdff;color:var(--ink);padding:10px 12px;font-size:12px;line-height:1.7">
           <b style="color:var(--green)">✓ ac-4b1c</b><br>
           “Declined card returns a<br>typed error, cart preserved”<br>
           <span style="color:var(--ink-soft)">note: suite green at 3f9a10c</span>
@@ -792,7 +796,7 @@ Let a signed-out shopper complete checkout…
     <div class="sec-head"><span class="sec-num">07</span><h2>The graph, and the verbs that walk it</h2></div>
     <p class="sec-sub">Typed links turn a plan folder into a small, well-formed graph. Drawn for one feature — and note where the authority sits versus where the data sits.</p>
 
-    <div class="rev" style="border:1px solid var(--rule);background:#fffdf8;padding:26px 18px;overflow-x:auto">
+    <div class="rev" style="border:1px solid var(--rule);background:#fbfdff;padding:26px 18px;overflow-x:auto">
       <svg viewBox="0 0 980 330" style="min-width:760px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
         <defs>
           <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -804,28 +808,28 @@ Let a signed-out shopper complete checkout…
         </defs>
         <!-- nodes -->
         <g>
-          <rect x="40" y="40" width="200" height="74" fill="#fffdf8" stroke="#1c1f24" stroke-width="1.5"/>
-          <text x="58" y="68" font-size="13" font-weight="600" fill="#1c1f24">the-flow.json</text>
-          <text x="58" y="88" font-size="10.5" fill="#4a5058">spine · node phase-2</text>
+          <rect x="40" y="40" width="200" height="74" fill="#fbfdff" stroke="#16273a" stroke-width="1.5"/>
+          <text x="58" y="68" font-size="13" font-weight="600" fill="#16273a">the-flow.json</text>
+          <text x="58" y="88" font-size="10.5" fill="#46586c">spine · node phase-2</text>
           <text x="58" y="102" font-size="10" fill="#a8720d">owns NO rows — a lens</text>
 
-          <rect x="390" y="30" width="220" height="84" fill="#fffdf8" stroke="#1f4e79" stroke-width="2"/>
+          <rect x="390" y="30" width="220" height="84" fill="#fbfdff" stroke="#1f4e79" stroke-width="2"/>
           <text x="408" y="58" font-size="13" font-weight="600" fill="#1f4e79">plan.dd.json</text>
-          <text x="408" y="78" font-size="10.5" fill="#4a5058">criteria owner</text>
-          <text x="408" y="92" font-size="10" fill="#4a5058">plan-phase-ac.phase-2 · ac-4b1c</text>
+          <text x="408" y="78" font-size="10.5" fill="#46586c">criteria owner</text>
+          <text x="408" y="92" font-size="10" fill="#46586c">plan-phase-ac.phase-2 · ac-4b1c</text>
 
-          <rect x="740" y="30" width="210" height="84" fill="#fffdf8" stroke="#c2491d" stroke-width="1.5"/>
+          <rect x="740" y="30" width="210" height="84" fill="#fbfdff" stroke="#c2491d" stroke-width="1.5"/>
           <text x="758" y="58" font-size="13" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
-          <text x="758" y="78" font-size="10.5" fill="#4a5058">evidence owner · bp-7f3a</text>
-          <text x="758" y="92" font-size="10" fill="#4a5058">pointed at · points at nothing</text>
+          <text x="758" y="78" font-size="10.5" fill="#46586c">evidence owner · bp-7f3a</text>
+          <text x="758" y="92" font-size="10" fill="#46586c">pointed at · points at nothing</text>
 
-          <rect x="390" y="220" width="220" height="74" fill="#fffdf8" stroke="#2e7d4f" stroke-width="1.5"/>
+          <rect x="390" y="220" width="220" height="74" fill="#fbfdff" stroke="#2e7d4f" stroke-width="1.5"/>
           <text x="408" y="248" font-size="13" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
-          <text x="408" y="268" font-size="10.5" fill="#4a5058">append-only · el-0042</text>
+          <text x="408" y="268" font-size="10.5" fill="#46586c">append-only · el-0042</text>
 
-          <rect x="740" y="220" width="210" height="74" fill="#fffdf8" stroke="#4a5058" stroke-width="1.5" stroke-dasharray="5 4"/>
-          <text x="758" y="248" font-size="13" font-weight="600" fill="#4a5058">tasks.dd.json</text>
-          <text x="758" y="268" font-size="10.5" fill="#4a5058">done-when → implements / proof</text>
+          <rect x="740" y="220" width="210" height="74" fill="#fbfdff" stroke="#46586c" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="758" y="248" font-size="13" font-weight="600" fill="#46586c">tasks.dd.json</text>
+          <text x="758" y="268" font-size="10.5" fill="#46586c">done-when → implements / proof</text>
         </g>
         <!-- edges -->
         <g font-size="10">
@@ -838,10 +842,10 @@ Let a signed-out shopper complete checkout…
           <line x1="512" y1="114" x2="512" y2="218" stroke="#2e7d4f" stroke-width="1.6" marker-end="url(#arrG)"/>
           <text x="522" y="170" fill="#2e7d4f">discharge · el-0042</text>
 
-          <line x1="740" y1="250" x2="612" y2="250" stroke="#4a5058" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
-          <text x="640" y="240" fill="#4a5058">implements ac-4b1c</text>
-          <line x1="800" y1="220" x2="800" y2="116" stroke="#4a5058" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
-          <text x="808" y="176" fill="#4a5058">proof bp-7f3a</text>
+          <line x1="740" y1="250" x2="612" y2="250" stroke="#46586c" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
+          <text x="640" y="240" fill="#46586c">implements ac-4b1c</text>
+          <line x1="800" y1="220" x2="800" y2="116" stroke="#46586c" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
+          <text x="808" y="176" fill="#46586c">proof bp-7f3a</text>
         </g>
       </svg>
       <p style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:10px;text-align:center">the node with the most authority in the workflow holds the least data</p>
