@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +39,30 @@ const FLOW_SRC = join(SRC, 'services', 'flow');
 /** The act is a flow consumer too — it composes dd's adapters as the composition root. */
 const ACT_CONSUMER = join(SRC, 'acts', 'flow.ts');
 const DEPCRUISE_CONFIG = join(CLI_ROOT, '..', '..', '.dependency-cruiser.cjs');
+
+/** The shape this test reads out of the config — not depcruise's full schema. */
+interface DepcruiseConfig {
+  options?: { tsPreCompilationDeps?: boolean };
+  forbidden: Array<{
+    name?: string;
+    from?: { path?: string };
+    to?: { path?: string; pathNot?: string };
+  }>;
+}
+
+/**
+ * The config as depcruise receives it: REQUIRED and evaluated, never read as text.
+ *
+ * A text assertion cannot tell a live setting from a commented-out one — the
+ * substring survives inside the comment — so it goes green on precisely the edit
+ * that breaks the thing it guards. Requiring the module asks the same question the
+ * tool asks. Cache-busted so a mutation mid-run is actually re-read.
+ */
+function requireConfig(): DepcruiseConfig {
+  const req = createRequire(import.meta.url);
+  delete req.cache[req.resolve(DEPCRUISE_CONFIG)];
+  return req(DEPCRUISE_CONFIG) as DepcruiseConfig;
+}
 
 /** The dd service tree — the boundary's subject, matching the depcruise rule's `to.path`. */
 const DD_SERVICE = join(SRC, 'services', 'dd');
@@ -250,19 +275,48 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     expect(items.map((i) => i.state)).toEqual(['done', 'blocked', 'unchecked']);
   });
 
-  it('the depcruise rule and this test still agree on the boundary', () => {
-    // Two controls, one contract. If one is widened without the other, the boundary
-    // develops a seam that only one of them enforces — which is exactly how F008
-    // happened. This is the cheap tie between them.
-    const config = readFileSync(DEPCRUISE_CONFIG, 'utf8');
-    const start = config.indexOf("name: 'flow-consumes-dd-sdk-only'");
-    expect(start).toBeGreaterThan(-1);
-    const rule = config.slice(start, config.indexOf('    {', start + 1));
-    expect(rule).toContain('services/dd/(links|schema)/index');
-    expect(rule).toContain('acts/flow'); // the act consumer is in scope
-    // Without this option depcruise analyses the TRANSPILED graph, where every
-    // `import type` has already been erased — every rule in the file silently
-    // exempts type-only edges. It is load-bearing for this boundary.
-    expect(config).toContain('tsPreCompilationDeps: true');
+  it('the depcruise config is asserted as EVALUATED, never as text', () => {
+    // Two controls, one contract — and the tie between them has to be read the way
+    // depcruise reads it. The first version of this test substring-matched the raw
+    // `.cjs`, which meant COMMENTING OUT the option kept the substring alive inside
+    // the comment: the test stayed green while depcruise silently went back to
+    // erasing every type-only edge. That is a probe that defeats itself, the third
+    // time this phase has met that class (DL-006, DL-007) and the reason this one
+    // requires the module and asserts the object depcruise is actually handed.
+    const config = requireConfig();
+
+    // Without this, depcruise analyses the TRANSPILED graph, where TypeScript has
+    // already erased every `import type` — so EVERY rule in the file silently
+    // exempts type-only edges, not merely this one. It is load-bearing.
+    expect(config.options?.tsPreCompilationDeps).toBe(true);
+
+    const rule = config.forbidden.find((r) => r.name === 'flow-consumes-dd-sdk-only');
+    expect(rule).toBeDefined();
+    // The boundary itself, from the parsed rule rather than from prose about it.
+    expect(rule?.to?.path).toBe('^harness/cli/src/services/dd');
+    expect(rule?.to?.pathNot).toBe('^harness/cli/src/services/dd/(links|schema)/index\\.ts$');
+    expect(rule?.from?.path).toBe('^harness/cli/src/(services/flow|acts/flow\\.ts$)');
+  });
+
+  it("the rule's own regexes accept the permitted modules and reject an internal", () => {
+    // The final tie: run the config's ACTUAL patterns over the ACTUAL paths, so the
+    // two controls cannot drift into disagreeing about the same file. A `pathNot`
+    // typo that quietly exempted all of `services/dd` would pass every assertion
+    // above and fail here.
+    const rule = requireConfig().forbidden.find((r) => r.name === 'flow-consumes-dd-sdk-only');
+    const inScope = (p: string) => new RegExp(rule?.from?.path ?? '$^').test(p);
+    const forbidden = (p: string) =>
+      new RegExp(rule?.to?.path ?? '$^').test(p) && !new RegExp(rule?.to?.pathNot ?? '$^').test(p);
+
+    expect(inScope('harness/cli/src/services/flow/flow-dd-gate.ts')).toBe(true);
+    expect(inScope('harness/cli/src/services/flow/sub/nested.ts')).toBe(true);
+    expect(inScope('harness/cli/src/acts/flow.ts')).toBe(true);
+    expect(inScope('harness/cli/src/acts/dd/link.ts')).toBe(false);
+
+    expect(forbidden('harness/cli/src/services/dd/core/model.ts')).toBe(true);
+    expect(forbidden('harness/cli/src/services/dd/schema/resolve.ts')).toBe(true);
+    expect(forbidden('harness/cli/src/services/dd/links/index.ts')).toBe(false);
+    expect(forbidden('harness/cli/src/services/dd/schema/index.ts')).toBe(false);
+    expect(forbidden('harness/cli/src/acts/dd/shared.ts')).toBe(false); // not the dd SERVICE
   });
 });
