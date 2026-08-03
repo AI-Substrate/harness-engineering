@@ -4,7 +4,7 @@
   "slug": "deterministic-documents",
   "nav": {
     "now": "plan",
-    "next": "plan",
+    "next": null,
     "intent": "start new flow, get flow spine in please, then proceed to explore phase. then we go to workshops — Deterministic Documents (dd) per initial-brief.md",
     "bag": {
       "mode": "unknown",
@@ -130,6 +130,458 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:43:00.759Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:15:20.967Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "in_progress"
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:15:21.225Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:18:31.764Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:18:32.029Z",
+      "details": {
+        "node": "backpressure",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "NOD-004",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:26.913Z",
+      "details": {
+        "node": "backpressure-ff67c2cc6391",
+        "type": "backpressure"
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:27.192Z",
+      "details": {
+        "node": "backpressure-ff67c2cc6391",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:27.461Z",
+      "details": {
+        "node": "backpressure-ff67c2cc6391",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "NOD-005",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "phase-2",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-006",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "review-2",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-007",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "boot-2",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-008",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "observe-2",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-009",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "retro-2",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-010",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "phase-3",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-011",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "review-3",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-012",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "boot-3",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-013",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "observe-3",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-014",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "retro-3",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-015",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "phase-4",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-016",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "review-4",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-017",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "boot-4",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-018",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "observe-4",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-019",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "retro-4",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-020",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "phase-5",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-021",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "review-5",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-022",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "boot-5",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-023",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "observe-5",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-024",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "retro-5",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-025",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "phase-6",
+        "type": "phase"
+      }
+    },
+    {
+      "id": "NOD-026",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "review-6",
+        "type": "review"
+      }
+    },
+    {
+      "id": "NOD-027",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "boot-6",
+        "type": "harness-boot",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-028",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "observe-6",
+        "type": "observe",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "NOD-029",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "retro-6",
+        "type": "harness-retro",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "next"
+        ]
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:50.972Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "label"
+        ]
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:55.828Z",
+      "details": {
+        "node": "plan",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T09:26:56.098Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -155,7 +607,7 @@
       "id": "plan",
       "type": "plan",
       "label": "Plan",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 1b plan",
       "next": [
         "phase-1"
@@ -164,13 +616,24 @@
         "Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.",
         "Run /builder 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
         "Done when <slug>-plan.md carries both halves and reads **Status**: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T08:43:00.759Z",
+          "text": "Phase-design directive (Jordan): multi-phase, designed for fan-out/fan-in — some phases run parallel via multiple /pij worker coders in this repo (koala PMs them + their reviewers), converge for a join phase, fan back out as the dependency graph allows. Plan must state per-phase parallelizability + file-surface fences explicitly.",
+          "source": "user",
+          "kind": "decision"
+        }
+      ],
+      "modified_at": "2026-08-03T09:26:56.098Z",
+      "note": "Plan v1.1.0 READY (Opus-validated, 17 findings folded); spine expanded to 6 phases + reviews + chore trios (39 nodes)",
+      "ran_at": "2026-08-03T09:26:55.828Z"
     },
     {
       "id": "phase-1",
       "type": "phase",
       "phase": 1,
-      "label": "P1: Implementation",
+      "label": "P1: dd-core foundations",
       "status": "known",
       "command": "/builder 6 implement",
       "next": [
@@ -183,7 +646,8 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "modified_at": "2026-08-03T09:26:50.972Z"
     },
     {
       "id": "review-1",
@@ -192,14 +656,15 @@
       "status": "assumed",
       "command": "/builder 7 review",
       "next": [
-        "ship"
+        "phase-2"
       ],
       "zone": "flight",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
-      ]
+      ],
+      "modified_at": "2026-08-03T09:26:50.972Z"
     },
     {
       "id": "ship",
@@ -218,7 +683,7 @@
       "id": "backpressure",
       "type": "backpressure",
       "label": "Backpressure survey",
-      "status": "known",
+      "status": "done",
       "branch_of": "plan",
       "next": [
         "plan"
@@ -234,7 +699,17 @@
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>\" THEN harness flow status --path <flow-path> --node backpressure --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node backpressure --to skipped; never a narrated skip.",
         "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
         "Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:unavailable reason:<…> time:<…>\" THEN harness flow status --path <flow-path> --node backpressure --to done — a completed attempt, not a skip."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T09:18:31.764Z",
+          "text": "verdict:Partial counts:1RUN/13EXTEND/0BUILD/0ABSENT next-move:extensions-already-in-plan-tasks artifact:backpressure-coverage.md basis_sha256:d61b05502cee5d5eda79c9ff2f416b2723ea15e34b0da225c9ff58aac03bfc6d time:2026-08-03T17:20+10:00",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-03T09:18:32.029Z",
+      "ran_at": "2026-08-03T09:18:32.029Z"
     },
     {
       "id": "boot-1",
@@ -380,6 +855,547 @@
           "kind": "decision"
         }
       ]
+    },
+    {
+      "id": "backpressure-ff67c2cc6391",
+      "type": "backpressure",
+      "label": "Backpressure survey (re-basis v1.1.0)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-03T09:26:26.913Z",
+      "modified_at": "2026-08-03T09:26:27.461Z",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-03T09:26:27.192Z",
+          "text": "verdict:Partial counts:1RUN/16EXTEND/0BUILD/0ABSENT re-selected against plan v1.1.0 post-Opus-validation (graph P1→P2→(P3∥P4)→P5→P6; +AC-13/14/15 rows) artifact:backpressure-coverage.md basis_sha256:ff67c2cc63914c3c5d329e070918c7960499533839f698423de5c7cef0aceb6c time:2026-08-03T17:55+10:00",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T09:26:27.461Z"
+    },
+    {
+      "id": "phase-2",
+      "type": "phase",
+      "label": "P2: Schema layer & docs",
+      "status": "known",
+      "next": [
+        "review-2"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "review-2",
+      "type": "review",
+      "label": "Review: P2",
+      "status": "assumed",
+      "next": [
+        "phase-3"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "zone": "flight"
+    },
+    {
+      "id": "boot-2",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "known",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-2",
+      "instructions": [
+        "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — a REAL invocation; narrate its envelope verbatim, never fabricate one. A manual `harness boot` (or any prior evidence) never satisfies this seam.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-2 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-2 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-2 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-2 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-2",
+      "type": "observe",
+      "label": "Observe: P2",
+      "status": "known",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-2",
+      "instructions": [
+        "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, never a narrated one, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-2 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-2 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-2 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-2 --to skipped.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-2",
+      "type": "harness-retro",
+      "label": "Retro: P2 (drain)",
+      "status": "known",
+      "next": [
+        "phase-2"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-2",
+      "instructions": [
+        "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
+        "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-2 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-2 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-2 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-2 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "phase-3",
+      "type": "phase",
+      "label": "P3: Render & adapters",
+      "status": "known",
+      "next": [
+        "review-3"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "review-3",
+      "type": "review",
+      "label": "Review: P3",
+      "status": "assumed",
+      "next": [
+        "phase-4"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "zone": "flight"
+    },
+    {
+      "id": "boot-3",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "known",
+      "next": [
+        "phase-3"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-3",
+      "instructions": [
+        "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — a REAL invocation; narrate its envelope verbatim, never fabricate one. A manual `harness boot` (or any prior evidence) never satisfies this seam.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-3 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-3 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-3 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-3 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-3",
+      "type": "observe",
+      "label": "Observe: P3",
+      "status": "known",
+      "next": [
+        "phase-3"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-3",
+      "instructions": [
+        "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, never a narrated one, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-3 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-3 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-3 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-3 --to skipped.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-3",
+      "type": "harness-retro",
+      "label": "Retro: P3 (drain)",
+      "status": "known",
+      "next": [
+        "phase-3"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-3",
+      "instructions": [
+        "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
+        "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-3 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-3 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-3 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-3 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "phase-4",
+      "type": "phase",
+      "label": "P4: Links, ledger & doctor",
+      "status": "known",
+      "next": [
+        "review-4"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "review-4",
+      "type": "review",
+      "label": "Review: P4",
+      "status": "assumed",
+      "next": [
+        "phase-5"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "zone": "flight"
+    },
+    {
+      "id": "boot-4",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "known",
+      "next": [
+        "phase-4"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-4",
+      "instructions": [
+        "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — a REAL invocation; narrate its envelope verbatim, never fabricate one. A manual `harness boot` (or any prior evidence) never satisfies this seam.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-4 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-4 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-4 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-4 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-4",
+      "type": "observe",
+      "label": "Observe: P4",
+      "status": "known",
+      "next": [
+        "phase-4"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-4",
+      "instructions": [
+        "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, never a narrated one, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-4 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-4 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-4 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-4 --to skipped.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-4",
+      "type": "harness-retro",
+      "label": "Retro: P4 (drain)",
+      "status": "known",
+      "next": [
+        "phase-4"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-4",
+      "instructions": [
+        "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
+        "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-4 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-4 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-4 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-4 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "phase-5",
+      "type": "phase",
+      "label": "P5: Exemplar & checks join",
+      "status": "known",
+      "next": [
+        "review-5"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "review-5",
+      "type": "review",
+      "label": "Review: P5",
+      "status": "assumed",
+      "next": [
+        "phase-6"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "zone": "flight"
+    },
+    {
+      "id": "boot-5",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "known",
+      "next": [
+        "phase-5"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-5",
+      "instructions": [
+        "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — a REAL invocation; narrate its envelope verbatim, never fabricate one. A manual `harness boot` (or any prior evidence) never satisfies this seam.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-5 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-5 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-5 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-5 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-5",
+      "type": "observe",
+      "label": "Observe: P5",
+      "status": "known",
+      "next": [
+        "phase-5"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-5",
+      "instructions": [
+        "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, never a narrated one, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-5 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-5 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-5 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-5 --to skipped.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-5",
+      "type": "harness-retro",
+      "label": "Retro: P5 (drain)",
+      "status": "known",
+      "next": [
+        "phase-5"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-5",
+      "instructions": [
+        "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
+        "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-5 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-5 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-5 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-5 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "phase-6",
+      "type": "phase",
+      "label": "P6: Flow-spine gating",
+      "status": "known",
+      "next": [
+        "review-6"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "review-6",
+      "type": "review",
+      "label": "Review: P6",
+      "status": "assumed",
+      "next": [
+        "ship"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
+        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "zone": "flight"
+    },
+    {
+      "id": "boot-6",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "known",
+      "next": [
+        "phase-6"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-6",
+      "instructions": [
+        "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — a REAL invocation; narrate its envelope verbatim, never fabricate one. A manual `harness boot` (or any prior evidence) never satisfies this seam.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-6 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-6 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-6 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-6 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "observe-6",
+      "type": "observe",
+      "label": "Observe: P6",
+      "status": "known",
+      "next": [
+        "phase-6"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-6",
+      "instructions": [
+        "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, never a narrated one, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-6 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-6 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-6 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-6 --to skipped.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
+    },
+    {
+      "id": "retro-6",
+      "type": "harness-retro",
+      "label": "Retro: P6 (drain)",
+      "status": "known",
+      "next": [
+        "phase-6"
+      ],
+      "created_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T09:26:50.972Z",
+      "branch_of": "phase-6",
+      "instructions": [
+        "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
+        "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-6 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-6 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-6 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-6 --to skipped."
+      ],
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      }
     }
   ]
 }
