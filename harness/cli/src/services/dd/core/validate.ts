@@ -201,6 +201,16 @@ function collectShapeLinks(
         collectShapeLinks(value[field], fieldShape, `${location}.${field}`, links);
       }
     }
+    // OD-8: a dynamic-key map's interiors carry real link cells too — an evidence
+    // entry's `proven_by`/`pressure` is the linkage the design exists to make
+    // navigable, and leaving it uncollected would strand it outside the walk.
+    const valuesShape = shape.valuesShape;
+    if (valuesShape) {
+      for (const [key, entry] of Object.entries(value)) {
+        if (shape.fields && key in shape.fields) continue;
+        collectShapeLinks(entry, valuesShape, `${location}.${key}`, links);
+      }
+    }
   }
 }
 
@@ -274,6 +284,15 @@ function validateShape(
               `field "${field}" is not declared by the schema`,
             );
           }
+        }
+      } else if (shape.valuesShape) {
+        // OD-8: keys the schema cannot name in advance are SHAPED, not forbidden.
+        // `fields` still wins per key, so a map may declare fixed members and a
+        // shape for the rest without either half surprising the other.
+        const valuesShape = shape.valuesShape;
+        for (const [key, entry] of Object.entries(value)) {
+          if (shape.fields && key in shape.fields) continue;
+          validateShape(entry, valuesShape, `${location}.${key}`, ctx);
         }
       }
       validateStateNotes(value, location, ctx);

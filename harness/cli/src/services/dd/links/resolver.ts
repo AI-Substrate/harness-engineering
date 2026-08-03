@@ -95,14 +95,23 @@ function descend(
       continue;
     }
     if (shape?.type === 'object') {
-      const fieldShape = shape.fields?.[value];
+      // A declared field wins per key; `valuesShape` (OD-8) covers the keys a
+      // schema cannot name in advance. Without the fallback a dynamic-key map is
+      // unsteppable, which would strand workshop-002 Ruling 3's whole design —
+      // `done -> #evidence/<task-id>`, an evidence list addressed by its owning
+      // task's explicit id.
+      const declaredField = shape.fields?.[value];
+      const fieldShape = declaredField ?? shape.valuesShape;
       if (!fieldShape) {
         return fail('part-unknown', `"${trailOf(trail)}" declares no part "${value}"`);
       }
       if (!isRecord(cursor.value) || !(value in cursor.value)) {
         return fail('part-unknown', `the document carries no "${value}" at "${trailOf(trail)}"`);
       }
-      trail.push({ value, kind: 'part' });
+      // A map entry reached by its own id is an INSTANCE, exactly as an array
+      // member found by id is — the kind is what the segment turned out to be
+      // against shape and data, never where it sat in the address.
+      trail.push({ value, kind: declaredField ? 'part' : 'instance' });
       cursor = { value: cursor.value[value], shape: fieldShape };
       continue;
     }

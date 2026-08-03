@@ -1,0 +1,131 @@
+{
+  "dd": { "schema": "builder/plan" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Deterministic documents (dd)",
+        "slug": "deterministic-documents",
+        "ordinal": 65,
+        "status": "in-progress",
+        "complexity": "CS-5",
+        "summary": "A plan authored as a deterministic document. Every claim below is a row with its own id, its own state, and its own outbound proof — so \"is this plan done?\" is a query, not a reading.",
+        "backpressure": "backpressure.dd.json#rows",
+        "log": "execution-log.dd.json#entries"
+      }
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Make a plan's acceptance criteria addressable, so a criterion can be cited from anywhere instead of quoted.",
+        "Compute a phase's progress from its tasks' evidence rather than from a hand-maintained summary line.",
+        "Give every done-when assertion its own state and its own proof link, so five claims can never share one tick."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Replacing markdown. The .dd.md sibling beside each .dd.json is what a human reads; it is generated, never authored.",
+        "A workflow engine. dd stores and checks structure; deciding what to do next stays with the flow spine."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0201",
+          "claim": "A schema named `builder/plan` resolves doc-folder -> <gitroot>/.dd -> .harness/.dd -> ~/.dd with deep scan, and every shadowed duplicate is reported with its path.",
+          "state": "checked",
+          "pressure": "backpressure.dd.json#rows/bp-0201",
+          "proven_by": "execution-log.dd.json#entries/lg-0201"
+        },
+        {
+          "id": "ac-0801",
+          "claim": "`dd docs list` enumerates the baked docs with descriptions and `dd docs get how-to-add-a-schema` returns the worked schema+adapter guide, with a drift gate that fails when the committed module stops matching its sources.",
+          "state": "checked",
+          "pressure": "backpressure.dd.json#rows/bp-0801",
+          "proven_by": "execution-log.dd.json#entries/lg-0801"
+        },
+        {
+          "id": "ac-0901",
+          "claim": "A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq.",
+          "state": "unchecked",
+          "note": "This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it.",
+          "pressure": "backpressure.dd.json#rows/bp-0901",
+          "proven_by": "execution-log.dd.json#entries/lg-0901"
+        },
+        {
+          "id": "ac-1201",
+          "claim": "dep-cruiser rules and an architecture test prove services/dd/core/** imports no output/, no acts, and no node-* adapters.",
+          "state": "checked",
+          "pressure": "backpressure.dd.json#rows/bp-1201",
+          "proven_by": "execution-log.dd.json#entries/lg-1201"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-0001",
+          "title": "dd-core foundations",
+          "brief": "Document model, address grammar, validate engine with depth, derived state, the error space, every act stub, and the machine-enforced isolation boundary.",
+          "state": "checked"
+        },
+        {
+          "id": "ph-0002",
+          "title": "Schema layer & baked docs",
+          "brief": "Convention-based schema resolution with shadow reporting, custom enums with their own gate-terminal sets, and the baked `dd docs` corpus with its drift gate.",
+          "state": "checked",
+          "depends_on": ["ph-0001"],
+          "tasks": "tasks/phase-2/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-0003",
+          "title": "Render, adapters & freshness",
+          "brief": "The .dd.json to .dd.md pipeline with derived-state summaries, custom-type adapters that degrade loudly, and live-ledger refresh at render.",
+          "state": "checked",
+          "depends_on": ["ph-0002"]
+        },
+        {
+          "id": "ph-0004",
+          "title": "Links, ledger & doctor",
+          "brief": "Resolver engine, address and link tooling, the pinned ledger with verify-basis, and the doctor sweep at infinite radius with loop breakers.",
+          "state": "checked",
+          "depends_on": ["ph-0002"]
+        },
+        {
+          "id": "ph-0005",
+          "title": "Exemplar, plan verb & checks join",
+          "brief": "This corpus, the `harness plan` act, and the integration join that puts dd health inside the repository's own quality gate.",
+          "state": "unchecked",
+          "depends_on": ["ph-0003", "ph-0004"]
+        },
+        {
+          "id": "ph-0006",
+          "title": "Flow-spine gating",
+          "brief": "The flow spine becomes dd's first gating consumer: a nav move off a gated node refuses, and --force is the defended, recorded override.",
+          "state": "unchecked",
+          "depends_on": ["ph-0005"]
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "path": "tasks/phase-2/tasks.dd.json",
+      "sha": "7ecec970543db1f5523bedf52714d63ed3d194434c48948827f9eeed775c4f3c",
+      "mode": "live"
+    },
+    {
+      "path": "backpressure.dd.json",
+      "sha": "edfd3f50cdfca662d01ea838984688b865333415cf495635a07a1e095ae76526",
+      "mode": "live"
+    },
+    {
+      "path": "execution-log.dd.json",
+      "sha": "59be498a8d7ba8374a995658da81c295dc069a78399e0649453e254d0c336975",
+      "mode": "pinned"
+    }
+  ]
+}

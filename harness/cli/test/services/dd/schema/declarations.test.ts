@@ -142,4 +142,48 @@ describe('dd schema declarations', () => {
     expect(result.ok).toBe(false);
     expect(firstIssue(result).class).toBe('enum-invalid');
   });
+
+  // OD-8. The parser builds each shape key-by-key, so a key it does not read is
+  // silently DROPPED — a ratified declaration that never reaches the validator is
+  // the same failure class as P2's F002 silence. These two rows prove the drop is
+  // gone: the key survives the parse, and a misplaced one is a loud package error.
+  it('carries valuesShape through to the validator', () => {
+    const result = parse({
+      dd_schema: 1,
+      sections: {
+        evidence: {
+          shape: {
+            type: 'object',
+            allowAdditional: true,
+            fields: {},
+            valuesShape: {
+              type: 'array',
+              items: { type: 'object', required: ['state'], fields: { state: { type: 'state' } } },
+            },
+          },
+        },
+      },
+    });
+    const shape = result.ok ? result.declaration.schema.sections.evidence?.shape : undefined;
+    expect(shape?.valuesShape?.type).toBe('array');
+    expect(shape?.valuesShape?.items?.fields?.state?.type).toBe('state');
+  });
+
+  it('rejects valuesShape on a non-object type', () => {
+    const result = parse({
+      dd_schema: 1,
+      sections: { body: { shape: { type: 'string', valuesShape: { type: 'string' } } } },
+    });
+    expect(result.ok).toBe(false);
+    expect(firstIssue(result).message).toContain('valuesShape is only meaningful on an object');
+  });
+
+  it('rejects a malformed valuesShape', () => {
+    const result = parse({
+      dd_schema: 1,
+      sections: { evidence: { shape: { type: 'object', valuesShape: { type: 'array' } } } },
+    });
+    expect(result.ok).toBe(false);
+    expect(firstIssue(result).class).toBe('package-invalid');
+  });
 });

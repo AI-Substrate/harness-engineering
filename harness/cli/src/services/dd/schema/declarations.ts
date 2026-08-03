@@ -237,8 +237,16 @@ function parseShape(raw: unknown, location: string, ctx: ParseContext): DdShape 
         return null;
       }
     }
+    // OD-8: the shape for keys a schema cannot name in advance (an evidence
+    // section is one list per task id). Parsed recursively like `items`, so a
+    // map interior is a first-class shape rather than an unvalidated hole.
+    if (raw.valuesShape !== undefined) {
+      const valuesShape = parseShape(raw.valuesShape, `${location}.valuesShape`, ctx);
+      if (!valuesShape) return null;
+      shape.valuesShape = valuesShape;
+    }
   } else {
-    for (const key of ['fields', 'required'] as const) {
+    for (const key of ['fields', 'required', 'valuesShape'] as const) {
       if (raw[key] !== undefined) {
         fail(
           ctx,

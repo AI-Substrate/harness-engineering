@@ -202,7 +202,43 @@
       "shape": {
         "type": "object",
         "allowAdditional": true,
-        "fields": {}
+        "fields": {},
+        "valuesShape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "assertion",
+              "state"
+            ],
+            "fields": {
+              "id": {
+                "type": "string"
+              },
+              "assertion": {
+                "type": "text"
+              },
+              "state": {
+                "type": "state"
+              },
+              "note": {
+                "type": "string"
+              },
+              "receipt": {
+                "type": "string"
+              },
+              "proven_by": {
+                "type": "link",
+                "target": "builder/execution-log/section/entries"
+              },
+              "pressure": {
+                "type": "link",
+                "target": "builder/backpressure/section/rows"
+              }
+            }
+          }
+        }
       }
     }
   }

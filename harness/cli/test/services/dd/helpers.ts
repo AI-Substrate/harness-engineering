@@ -24,10 +24,21 @@ export const TEST_SCHEMA = JSON.parse(
   fixtureText('schemas/test-plan.schema.json'),
 ) as ResolvedDdSchema;
 
+/**
+ * The OD-8 twin of {@link TEST_SCHEMA}: a schema whose `evidence` section declares
+ * `valuesShape`, so a dynamic-key map's interiors are shaped rather than opaque.
+ * Kept separate so every pre-OD-8 expectation keyed on `test/plan` stays exactly
+ * as it was — the regression pin lives in the corpus, not only in an assertion.
+ */
+export const EVIDENCE_SCHEMA = JSON.parse(
+  fixtureText('schemas/test-evidence.schema.json'),
+) as ResolvedDdSchema;
+
+const FIXTURE_SCHEMAS: readonly ResolvedDdSchema[] = [TEST_SCHEMA, EVIDENCE_SCHEMA];
+
 export class FixtureSchemaResolver implements SchemaResolver {
   resolve(schemaRef: string): SchemaResolveResult {
-    return schemaRef === TEST_SCHEMA.name
-      ? { ok: true, schema: TEST_SCHEMA }
-      : { ok: false, message: `schema not found: ${schemaRef}` };
+    const schema = FIXTURE_SCHEMAS.find((candidate) => candidate.name === schemaRef);
+    return schema ? { ok: true, schema } : { ok: false, message: `schema not found: ${schemaRef}` };
   }
 }

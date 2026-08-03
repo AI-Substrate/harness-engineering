@@ -1,0 +1,27 @@
+{
+  "dd": { "schema": "links/plan" },
+  "sections": [
+    { "name": "preamble", "value": "A plan whose evidence lists are keyed by their owning task's id." },
+    { "name": "meta", "value": { "owner": "harness" } },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-1a2b",
+          "brief": "One phase, one evidence list per task.",
+          "tasks": [{ "id": "tk-3c4d", "title": "Wire it", "state": "unchecked" }]
+        }
+      ]
+    },
+    {
+      "name": "evidence",
+      "value": {
+        "tk-3c4d": [
+          { "id": "dw-11c2", "state": "checked", "proof": "evidence.dd.json#entries" },
+          { "id": "dw-4e01", "state": "unchecked" }
+        ]
+      }
+    },
+    { "name": "opaque", "value": { "tk-3c4d": [{ "id": "dw-9999", "state": "checked" }] } }
+  ]
+}

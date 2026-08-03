@@ -53,6 +53,28 @@
           "fields": { "id": { "type": "string" }, "cite": { "type": "link" } }
         }
       }
+    },
+    "evidence": {
+      "shape": {
+        "type": "object",
+        "allowAdditional": true,
+        "fields": {},
+        "valuesShape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "state"],
+            "fields": {
+              "id": { "type": "string" },
+              "state": { "type": "state" },
+              "proof": { "type": "link", "target": "links/evidence/section/entries" }
+            }
+          }
+        }
+      }
+    },
+    "opaque": {
+      "shape": { "type": "object", "allowAdditional": true, "fields": {} }
     }
   }
 }

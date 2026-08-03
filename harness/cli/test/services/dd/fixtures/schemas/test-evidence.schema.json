@@ -1,0 +1,61 @@
+{
+  "name": "test/evidence-plan",
+  "sections": {
+    "tasks": {
+      "required": true,
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "state"],
+          "fields": {
+            "id": { "type": "string" },
+            "title": { "type": "text" },
+            "state": { "type": "state" },
+            "done": { "type": "link" }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "shape": {
+        "type": "object",
+        "allowAdditional": true,
+        "fields": {},
+        "valuesShape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "assertion", "state"],
+            "fields": {
+              "id": { "type": "string" },
+              "assertion": { "type": "text" },
+              "state": { "type": "state" },
+              "note": { "type": "string" },
+              "receipt": { "type": "string" },
+              "proven_by": {
+                "type": "link",
+                "target": "test/evidence-plan/section/tasks"
+              }
+            }
+          }
+        }
+      }
+    },
+    "mixed": {
+      "shape": {
+        "type": "object",
+        "fields": {
+          "owner": { "type": "string" }
+        },
+        "valuesShape": {
+          "type": "object",
+          "required": ["state"],
+          "fields": {
+            "state": { "type": "state" }
+          }
+        }
+      }
+    }
+  }
+}

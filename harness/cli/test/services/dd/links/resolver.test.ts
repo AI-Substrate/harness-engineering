@@ -166,3 +166,51 @@ describe('dd links resolver — every unresolved reason', () => {
     });
   });
 });
+
+/**
+ * OD-8 companion. A dynamic-key map has no declared field per key, so before the
+ * `valuesShape` fallback every one of these addresses failed `part-unknown` — and
+ * with it workshop-002 Ruling 3's whole design, where a task row links to its own
+ * evidence list by the task's explicit id. The exemplar corpus found it.
+ */
+describe('dd links resolver — dynamic-key map interiors (OD-8)', () => {
+  const MAP = docPath('docs/map-entries.dd.json');
+
+  it('steps into a map entry addressed by its explicit id', () => {
+    const result = resolve('map-entries.dd.json#evidence/tk-3c4d');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.target.kind).toBe('instance');
+    expect(result.target.segments.map((segment) => segment.kind)).toEqual(['section', 'instance']);
+    expect(Array.isArray(result.target.value)).toBe(true);
+  });
+
+  it('descends two hops, through the map entry into one of its rows', () => {
+    const result = resolve('map-entries.dd.json#evidence/tk-3c4d/dw-11c2');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.target.segments.map((segment) => segment.kind)).toEqual([
+      'section',
+      'instance',
+      'instance',
+    ]);
+    expect(result.target.value).toMatchObject({ id: 'dw-11c2', state: 'checked' });
+  });
+
+  it('still requires the key to be present in the DATA, not merely shaped', () => {
+    const result = resolve('map-entries.dd.json#evidence/tk-absent', MAP);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues[0]?.reason).toBe('part-unknown');
+  });
+
+  it('REGRESSION PIN: a map WITHOUT valuesShape stays unsteppable', () => {
+    // `opaque` declares no fields and no valuesShape. The data is identical to
+    // `evidence`, so only the schema can be the difference — which is the point.
+    const result = resolve('map-entries.dd.json#opaque/tk-3c4d', MAP);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.issues[0]?.reason).toBe('part-unknown');
+    expect(result.issues[0]?.message).toContain('declares no part');
+  });
+});

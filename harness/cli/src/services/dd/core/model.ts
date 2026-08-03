@@ -64,6 +64,19 @@ export interface DdShape {
   target?: string;
   gate_terminal?: readonly string[];
   allowAdditional?: boolean;
+  /**
+   * For `type: 'object'` — the shape every value of a DYNAMIC-KEY map must
+   * satisfy (OD-8). Declared `fields` still win per key; `valuesShape` covers the
+   * keys a schema cannot name in advance, which is what an evidence section is:
+   * one list per task id (workshop-002 Ruling 3).
+   *
+   * Without it a map interior is invisible to the validator while remaining fully
+   * visible to `deriveState`, which collects `state` structurally — so a typo'd
+   * state, or `human-skipped` with no receipt, would silently move a computed
+   * gate. When `valuesShape` is declared, unmatched keys are SHAPED rather than
+   * forbidden, so `allowAdditional: false` keeps its meaning only in its absence.
+   */
+  valuesShape?: DdShape;
 }
 
 export interface DdSectionSchema {

@@ -1,0 +1,22 @@
+{
+  "dd": { "schema": "test/evidence-plan" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [{ "id": "tk-1a2b", "title": "Wire the capture path", "state": "unchecked" }]
+    },
+    {
+      "name": "evidence",
+      "value": {
+        "tk-1a2b": [
+          {
+            "id": "dw-11c2",
+            "assertion": "capture fires on commit",
+            "state": "checked",
+            "proven_by": "#evidence/tk-1a2b"
+          }
+        ]
+      }
+    }
+  ]
+}
