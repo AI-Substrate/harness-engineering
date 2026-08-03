@@ -202,6 +202,55 @@
   .footer p{font-size:13.5px;max-width:76ch}
   .footer .fine{margin-top:30px;font-family:var(--mono);font-size:11px;color:#7ea0b8;letter-spacing:.08em}
 
+
+  /* ---------- beat engine (fx) — one --p per scene, windows as data ---------- */
+  html,body{overflow-anchor:none}
+  [data-beat]{--p:0}
+  [data-beat].settled{--p:1 !important}
+  .fx{--w:clamp(0, calc((var(--p,0) - var(--s,0)) / var(--d,.2)), 1)}
+  .fx.rv{opacity:var(--w);translate:0 calc((1 - var(--w))*14px)}
+  .fx.pop{opacity:var(--w);scale:calc(.6 + .4*var(--w))}
+  .fx.stamp{opacity:var(--w);scale:calc(1.9 - .9*var(--w));rotate:-3deg}
+  .fx.fly{opacity:var(--w);translate:calc((1 - var(--w))*var(--fx,0px)) calc((1 - var(--w))*var(--fy,0px))}
+  .fx.growx{transform-origin:left center;scale:var(--w) 1}
+  .fx.growyr{transform-origin:top center;scale:1 calc(1 - var(--w))}
+  .fx.tw{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;width:calc(var(--w)*var(--ch,20)*1ch)}
+  .fx.io{opacity:calc(var(--w) * (1 - clamp(0, calc((var(--p,0) - var(--s2,2)) / var(--d2,.05)), 1)))}
+
+  .beat{margin:56px 0 10px}
+  .beat .b-head{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+  .beat .b-num{font-family:var(--mono);font-size:11px;color:var(--verm);letter-spacing:.22em;border:1px solid var(--verm);padding:3px 9px;flex:none}
+  .beat h3{font-family:var(--disp);font-size:clamp(20px,2.6vw,27px);font-weight:600}
+  .beat .b-cap{font-size:14.5px;color:var(--ink-soft);max-width:76ch;margin:6px 0 16px}
+  .beat .b-cap b{color:var(--ink)}
+  .scene{border:1px solid var(--rule);background:#fffdf8;padding:26px 22px;overflow:hidden}
+  .scene .punch{font-family:var(--disp);font-style:italic;font-size:16px;color:var(--ink);margin-top:18px;text-align:center}
+
+  .doc{border:1px solid var(--rule);background:#fff;box-shadow:0 5px 0 #1c1f2410, 0 16px 26px -20px #1c1f2440;padding:14px 16px;min-width:0}
+  .doc .d-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--ink-soft);text-transform:uppercase;margin-bottom:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tbar{height:7px;background:var(--paper-2);margin:6px 0;border-radius:2px}
+  .codemini{background:#101418;border-radius:2px;padding:7px 10px;margin:8px 0}
+  .codemini .tbar{background:#2a3138;margin:5px 0}
+  .acrow{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;padding:6px 2px;border-top:1px dashed var(--rule);min-width:0}
+  .acrow .cbx{width:15px;height:15px;border:1.5px solid #9aa2ab;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff}
+  .acrow .cbx .tick{color:var(--green);font-weight:700;font-size:12px}
+  .acrow .lbl2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .remember{border-left:3px solid var(--verm);background:#c2491d0d;padding:10px 13px;font-size:13px;color:#8a3413;margin-top:14px;line-height:1.55}
+  .chipnote{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;padding:3px 8px;border:1px solid;display:inline-block}
+  .arrbar{height:2px;background:var(--blue);position:relative}
+  .arrbar::after{content:"";position:absolute;right:-1px;top:-4.5px;border:5px solid transparent;border-left-color:var(--blue)}
+  .jrow{font-family:var(--mono);font-size:11.5px;padding:3px 0;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .jrow .jk{color:var(--blue)} .jrow .jv{color:#5c7a3f} .jrow .je{color:var(--verm)}
+  .navrail{display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 0}
+  .navnode{font-family:var(--mono);font-size:11.5px;border:1.5px solid var(--ink);padding:7px 12px;background:#fff;display:flex;gap:8px;align-items:center;white-space:nowrap}
+  .navnode.dim{border-color:#b9b2a2;color:#8a8371}
+  .navdot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
+  .b2grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .b3grid{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:center}
+  .b4grid{display:grid;grid-template-columns:1.25fr auto .9fr;gap:0;align-items:center}
+  @media(max-width:880px){.b2grid,.b3grid,.b4grid{grid-template-columns:1fr}.b3grid .arrwrap,.b4grid .arrwrap{transform:rotate(90deg);margin:10px auto;max-width:80px}}
+  .b2grid>*,.b3grid>*,.b4grid>*{min-width:0}
+
   /* entrance reveals — from AND backwards fill (fadein gotcha) */
   .rev{animation:rise .7s ease backwards}
   @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -248,144 +297,175 @@
   </div>
 </header>
 
-<!-- ======================= 00 THE HOOK ======================= -->
+<!-- ======================= 00 DD INTRO — THE BEATS ======================= -->
 <section class="panel" id="hook" style="padding-top:56px">
   <div class="wrap">
-    <div class="sec-head"><span class="sec-num">00</span><h2>Old way, new way</h2></div>
-    <p class="sec-sub" style="font-size:17px"><b>Checklists that can’t lie. Links that know when they break. Documents a machine can walk.</b> Same acceptance criterion, two lives:</p>
+    <div class="sec-head"><span class="sec-num">00</span><h2>The idea, built up from nothing</h2></div>
+    <p class="sec-sub" style="font-size:16.5px">Five steps — from the plan you already write, to a checkbox that can hold an agent at a gate. Scroll; each scene plays once and settles.</p>
 
-    <div class="grid2" style="margin-bottom:26px">
-      <div class="rev">
-<pre class="md" style="border-color:#c9c2b2;filter:saturate(.6)"><span class="lbl" style="color:#c2491d">THE OLD WAY · markdown</span><span class="h">### Acceptance Criteria</span>
-
-3. <b>**n**</b> — write outside repo emits `&lt;external&gt;`
-     <span class="no">← id lost to a typo: now unnameable,
-       unprovable — and it shipped</span>
-
-- [ ] handles declined cards
-     <span class="no">← who ticked this? when? on what
-       evidence? shipped still unticked</span>
-
-see the backpressure survey for proof
-     <span class="no">← which survey? against WHICH version?
-       it changed. nothing noticed</span></pre>
-        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:8px">Structure lives in the reader’s head · state has no owner · references are hopes. Every failure annotated here was <b>found in this repo</b>, shipped.</p>
-      </div>
-      <div class="rev d1">
-<pre class="code"><span class="lbl" style="background:#1d3a2b;color:#8fd4b0">THE DD WAY · data + generated view</span>{ <span class="k">"id"</span>: <span class="s">"ac-4b1c"</span>,
-    <span class="c">← born once, linkable forever</span>
-  <span class="k">"criterion"</span>: <span class="s">"declined card → typed error"</span>,
-  <span class="k">"state"</span>: <span class="b">"checked"</span>,
-    <span class="c">← a state, not a checkbox: unchecked ·
-      checked · blocked · human-skipped</span>
-  <span class="k">"pressure"</span>:  { <span class="k">"target"</span>: <span class="lk">"…#row:bp-7f3a"</span>,
-                 <span class="k">"basis"</span>: <span class="s">"5d10ab77"</span> },
-    <span class="c">← what proves it, pinned — drift warns</span>
-  <span class="k">"discharge"</span>: { <span class="k">"target"</span>: <span class="lk">"…#entry:el-0042"</span> } }
-    <span class="c">← how it was proven, receipted</span></pre>
-        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:8px">Validated on every edit · unevidenced ticks are <b>unexpressible</b> · the markdown beside it regenerates and can’t disagree. The whole wiring, live:</p>
-      </div>
+    <!-- BEAT 1 -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 1</span><h3>Imagine a plan</h3></div>
+      <p class="b-cap">Text blocks, some code, and a table of acceptance criteria with checkboxes. The agent does the work… then checks off the plan. And there it is: <b>the agent has to remember to do this.</b> Nothing prompts the tick, nothing verifies it, nothing notices when it never happens.</p>
+      <figure class="scene" data-beat="b1" data-dur="3400" style="max-width:640px;margin:0 auto">
+        <div class="doc fx rv" style="--s:.02;--d:.14">
+          <div class="d-title">checkout-plan.md · a normal plan</div>
+          <div class="tbar fx growx" style="--s:.10;--d:.10;width:88%"></div>
+          <div class="tbar fx growx" style="--s:.14;--d:.10;width:70%"></div>
+          <div class="codemini fx rv" style="--s:.20;--d:.10">
+            <div class="tbar fx growx" style="--s:.24;--d:.08;width:60%"></div>
+            <div class="tbar fx growx" style="--s:.27;--d:.08;width:42%"></div>
+          </div>
+          <div class="acrow fx rv" style="--s:.34;--d:.08;border-top:none">
+            <span class="cbx"><span class="tick fx stamp" style="--s:.52;--d:.06">✓</span></span>
+            <span class="lbl2">guest checkout completes, no account written</span>
+          </div>
+          <div class="acrow fx rv" style="--s:.40;--d:.08">
+            <span class="cbx"><span class="tick fx stamp" style="--s:.62;--d:.06">✓</span></span>
+            <span class="lbl2">declined card returns a typed error</span>
+          </div>
+          <div class="acrow fx rv" style="--s:.46;--d:.08">
+            <span class="cbx"></span>
+            <span class="lbl2">no double-charge on capture retry</span>
+          </div>
+        </div>
+        <div class="remember fx rv" style="--s:.76;--d:.12">
+          <b>…and the third one?</b> The work happened. The tick didn’t. The plan now quietly disagrees with reality — and nothing in the system can tell.
+        </div>
+      </figure>
     </div>
 
-    <div class="rev" style="border:1px solid var(--rule);background:#fffdf8;padding:22px 14px 10px;overflow-x:auto">
-      <svg viewBox="0 0 1000 360" style="min-width:820px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
-        <defs>
-          <marker id="ha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f4e79"/></marker>
-          <marker id="hv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2491d"/></marker>
-          <marker id="hg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d4f"/></marker>
-        </defs>
-
-        <!-- THE FLOW node -->
-        <g>
-          <rect x="20" y="96" width="188" height="96" fill="#0d2440" stroke="#123057" stroke-width="1.5"/>
-          <text x="36" y="122" font-size="12" font-weight="600" fill="#8fd4ea">the-flow · phase-2</text>
-          <text x="36" y="142" font-size="10" fill="#b9d4e4">“what do I owe here?”</text>
-          <text x="36" y="160" font-size="10" fill="#b9d4e4">criteria: 1 of 2 open</text>
-          <text x="36" y="178" font-size="10" fill="#d9b26a">nav: holding departure</text>
-        </g>
-
-        <!-- PLAN doc -->
-        <g>
-          <rect x="330" y="60" width="330" height="168" fill="#fffdf8" stroke="#1f4e79" stroke-width="2"/>
-          <text x="348" y="86" font-size="12" font-weight="600" fill="#1f4e79">plan.dd.json · acceptance criteria</text>
-          <line x1="348" y1="96" x2="642" y2="96" stroke="#d8d2c4"/>
-          <!-- row 1: checked -->
-          <text x="348" y="120" font-size="11" fill="#2e7d4f">✓ ac-4b1c</text>
-          <text x="428" y="120" font-size="10" fill="#1c1f24">declined card → typed error</text>
-          <!-- row 2: open, ticks periodically -->
-          <g>
-            <text x="348" y="152" font-size="11" fill="#57606a">
-              □ ac-9d02
-              <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;.55;.6;.9;1" dur="9s" repeatCount="indefinite"/>
-            </text>
-            <text x="348" y="152" font-size="11" fill="#2e7d4f" opacity="0">
-              ✓ ac-9d02
-              <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.55;.6;.9;1" dur="9s" repeatCount="indefinite"/>
-            </text>
-          </g>
-          <text x="428" y="152" font-size="10" fill="#1c1f24">no double-charge on retry</text>
-          <text x="348" y="184" font-size="9.5" fill="#4a5058">each row: id · state · note · two links →</text>
-          <text x="348" y="206" font-size="9.5" fill="#8a8371">plan.dd.md regenerates on every edit</text>
-        </g>
-
-        <!-- BACKPRESSURE doc -->
-        <g>
-          <rect x="770" y="40" width="212" height="118" fill="#fffdf8" stroke="#c2491d" stroke-width="1.5"/>
-          <text x="786" y="66" font-size="12" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
-          <text x="786" y="88" font-size="10" fill="#1c1f24">bp-2e88 · BUILD→RUN</text>
-          <text x="786" y="104" font-size="10" fill="#1c1f24">harness check idempotency</text>
-          <text x="786" y="126" font-size="9.5" fill="#4a5058">what must be proven &amp; how</text>
-          <g>
-            <rect x="786" y="134" width="118" height="16" fill="#c2491d12" stroke="#c2491d55"/>
-            <text x="792" y="146" font-size="9" fill="#c2491d">pin @5d10ab77
-              <animate attributeName="opacity" values="1;1;.35;1;1" dur="6s" repeatCount="indefinite"/>
-            </text>
-          </g>
-        </g>
-
-        <!-- LOG doc -->
-        <g>
-          <rect x="770" y="220" width="212" height="108" fill="#fffdf8" stroke="#2e7d4f" stroke-width="1.5"/>
-          <text x="786" y="246" font-size="12" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
-          <text x="786" y="268" font-size="10" fill="#1c1f24">el-0042 · cmd exit:0 · 41 passed</text>
-          <text x="786" y="284" font-size="10" fill="#1c1f24">el-0043 · appended ⤵</text>
-          <text x="786" y="306" font-size="9.5" fill="#4a5058">append-only · how it was proven</text>
-        </g>
-
-        <!-- edges -->
-        <path id="e-window" d="M 208 144 L 328 144" stroke="#1f4e79" stroke-width="1.6" fill="none" marker-end="url(#ha)"/>
-        <text x="222" y="134" font-size="9.5" fill="#1f4e79">window · live</text>
-
-        <path id="e-press" d="M 660 112 L 768 100" stroke="#c2491d" stroke-width="1.6" fill="none" marker-end="url(#hv)"/>
-        <text x="668" y="94" font-size="9.5" fill="#c2491d">pressure · pinned</text>
-
-        <path id="e-disch" d="M 660 152 L 768 262" stroke="#2e7d4f" stroke-width="1.6" fill="none" marker-end="url(#hg)"/>
-        <text x="664" y="212" font-size="9.5" fill="#2e7d4f">discharge · receipt</text>
-
-        <!-- traveling pulses -->
-        <circle r="3.5" fill="#1f4e79"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#e-window"/></animateMotion></circle>
-        <circle r="3.5" fill="#c2491d"><animateMotion dur="4s" begin="1s" repeatCount="indefinite"><mpath href="#e-press"/></animateMotion></circle>
-        <circle r="3.5" fill="#2e7d4f"><animateMotion dur="4s" begin="2.2s" repeatCount="indefinite"><mpath href="#e-disch"/></animateMotion></circle>
-
-        <!-- caption -->
-        <text x="36" y="330" font-size="10.5" fill="#4a5058">the spine holds a pointer, never a copy · the AC row signposts its proof both ways · every edge is typed, resolvable, and checked by `dd doctor`</text>
-      </svg>
+    <!-- BEAT 2 -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 2</span><h3>Give the document a schema</h3></div>
+      <p class="b-cap">In a deterministic document, each section declares a schema. You fill in the <b>data</b> — and the list you read is <b>generated</b> from it. Same reading experience; but now the checkbox is a field, the columns are typed, and validation can refuse nonsense.</p>
+      <figure class="scene" data-beat="b2" data-dur="3600">
+        <div class="b2grid">
+          <div class="doc fx rv" style="--s:.02;--d:.12">
+            <div class="d-title">plan.dd.json · the data
+              <span class="chipnote fx stamp" style="--s:.22;--d:.07;color:var(--blue)">schema: plan / acceptance-criteria</span>
+            </div>
+            <div class="jrow fx rv" style="--s:.32;--d:.08">{ <span class="jk">"id"</span>: <span class="jv">"ac-4b1c"</span>, <span class="jk">"state"</span>: <span class="jv">"checked"</span>,</div>
+            <div class="jrow fx rv" style="--s:.36;--d:.08">&nbsp;&nbsp;<span class="jk">"criterion"</span>: <span class="jv">"guest checkout…"</span> }</div>
+            <div class="jrow fx rv" style="--s:.42;--d:.08">{ <span class="jk">"id"</span>: <span class="jv">"ac-9d02"</span>, <span class="jk">"state"</span>: <span class="jv">"unchecked"</span>,</div>
+            <div class="jrow fx rv" style="--s:.46;--d:.08">&nbsp;&nbsp;<span class="jk">"criterion"</span>: <span class="jv">"no double-charge…"</span> }</div>
+            <div class="jrow fx rv" style="--s:.56;--d:.08"><span class="je">"state": "done"</span> → <span class="chipnote" style="color:var(--verm)">refused: not in enum</span></div>
+          </div>
+          <div class="doc fx rv" style="--s:.30;--d:.12">
+            <div class="d-title">plan.dd.md · generated — never hand-edited</div>
+            <div class="acrow fx fly" style="--s:.50;--d:.10;--fx:-34px;border-top:none">
+              <span class="cbx"><span class="tick">✓</span></span>
+              <span class="lbl2">guest checkout completes…</span>
+            </div>
+            <div class="acrow fx fly" style="--s:.58;--d:.10;--fx:-34px">
+              <span class="cbx"></span>
+              <span class="lbl2">no double-charge on capture retry</span>
+            </div>
+            <div style="margin-top:12px"><span class="chipnote fx stamp" style="--s:.82;--d:.07;color:var(--green)">dd validate ✓ — every tick has an owner, a time, a reason</span></div>
+          </div>
+        </div>
+      </figure>
     </div>
 
-    <div class="grid3" style="margin-top:22px">
-      <div class="card rev"><span class="tag blue">YOU CAN</span><h3>Address anything</h3>
-        <p><code>plan.dd.json#plan-phase-ac.phase-2/row:ac-4b1c</code> — sections have the same id in every file, rows keep theirs for life. If it can be named, it can be linked; if it can be linked, it never gets copied.</p></div>
-      <div class="card rev d1"><span class="tag blue">YOU CAN</span><h3>Link tables to tables</h3>
-        <p>A column of type <b>link</b> declares what it must point at (“a backpressure evidence row”) and how many (“exactly one”). The schema enforces the wiring — an AC without a named proof won’t validate.</p></div>
-      <div class="card rev d2"><span class="tag blue">YOU CAN</span><h3>Gate real workflows</h3>
-        <p>The flow spine reads completion <i>through</i> the link: nav holds departure while criteria sit open, and a human override becomes a recorded, queryable state — never a silent shrug.</p></div>
-      <div class="card rev"><span class="tag blue">YOU CAN</span><h3>Catch silent drift</h3>
-        <p>Citations pin what they cited (a content hash). When the evidence changes under you, doctor, orient, and the render all surface it — <code>checked (stale)</code>, not quietly wrong.</p></div>
-      <div class="card rev d1"><span class="tag blue">YOU CAN</span><h3>Compose the graph</h3>
-        <p><code>dd build plan.dd.json --depth 2</code> — one artifact with the criteria, their prescriptions, and their receipts resolved in. An agent’s context packet in a single read, with honest frontier warnings.</p></div>
-      <div class="card rev d2"><span class="tag blue">YOU CAN</span><h3>Trust the markdown</h3>
-        <p>The <code>.dd.md</code> beside every doc is regenerated on each edit — including cascades when a document it displays changes. The view can be verified against the truth, so it can’t rot.</p></div>
+    <!-- BEAT 3 -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 3</span><h3>Everything has an address</h3></div>
+      <p class="b-cap">Because sections and rows are data, each one has a <b>stable address</b>. So an acceptance-criteria section can be linked — to another document, or to a <b>phase in a plan</b>. Links are values that resolve, not prose that hopes.</p>
+      <figure class="scene" data-beat="b3" data-dur="3600">
+        <div class="b3grid">
+          <div class="doc fx rv" style="--s:.02;--d:.12">
+            <div class="d-title">plan.dd.json</div>
+            <div class="acrow" style="border-top:none">
+              <span class="cbx"><span class="tick">✓</span></span>
+              <span class="lbl2">declined card returns a typed error</span>
+            </div>
+            <div class="jrow" style="margin-top:8px;white-space:normal;overflow:visible">
+              <span class="fx tw" style="--s:.18;--d:.28;--ch:46;color:var(--blue)">#plan-phase-ac.phase-2/row:ac-4b1c</span><span class="cursor" style="background:var(--blue);height:12px"></span>
+            </div>
+          </div>
+          <div class="arrwrap" style="padding:0 8px;width:120px">
+            <div class="jrow fx rv" style="--s:.52;--d:.08;text-align:center;color:var(--blue);overflow:visible">links to</div>
+            <div class="arrbar fx growx" style="--s:.55;--d:.14"></div>
+          </div>
+          <div class="doc fx pop" style="--s:.72;--d:.12;border-color:var(--blue)">
+            <div class="d-title">the-flow.json · spine</div>
+            <div class="navnode"><span class="navdot"></span>phase-2 · implement</div>
+            <div class="jrow" style="margin-top:8px"><span class="jk">"dd_link"</span>: <span class="jv">"plan.dd.json#…phase-2"</span></div>
+          </div>
+        </div>
+      </figure>
     </div>
+
+    <!-- BEAT 4 -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 4</span><h3>The check becomes a gate</h3></div>
+      <p class="b-cap">Work the plan; check things off <b>in the document</b>. Each check surfaces as a <b>deterministic gate in the flow’s nav</b> — the agent cannot leave the node until the linked criteria are satisfied. Ticking the knowledge doc drives the workflow doc.</p>
+      <figure class="scene" data-beat="b4" data-dur="4200">
+        <div class="b4grid">
+          <div class="doc fx rv" style="--s:.02;--d:.10">
+            <div class="d-title">plan.dd.json · phase-2 criteria</div>
+            <div class="acrow" style="border-top:none">
+              <span class="cbx"><span class="tick">✓</span></span><span class="lbl2">guest checkout completes</span>
+            </div>
+            <div class="acrow">
+              <span class="cbx"><span class="tick">✓</span></span><span class="lbl2">declined card → typed error</span>
+            </div>
+            <div class="acrow">
+              <span class="cbx"><span class="tick fx stamp" style="--s:.48;--d:.07">✓</span></span>
+              <span class="lbl2">no double-charge on retry</span>
+              <span class="chipnote fx io" style="--s:.40;--d:.06;--s2:.58;--d2:.08;color:var(--green)">just test-retry ✓</span>
+            </div>
+          </div>
+          <div class="arrwrap" style="padding:0 10px;width:130px">
+            <div class="arrbar fx growx" style="--s:.56;--d:.10;background:var(--green)"></div>
+            <div class="jrow fx io" style="--s:.56;--d:.08;--s2:.78;--d2:.10;text-align:center;color:var(--green);overflow:visible">tick travels the link</div>
+          </div>
+          <div class="navrail">
+            <div class="navnode fx rv" style="--s:.10;--d:.10"><span class="navdot fx io" style="--s:.10;--d:.06;--s2:.80;--d2:.08"></span>phase-2 <span class="jrow" style="color:#8a8371">now</span></div>
+            <div style="position:relative;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <div style="width:2px;height:44px;background:#d8d2c4;position:absolute"></div>
+              <div class="fx growyr" style="--s:.68;--d:.14;width:4px;height:44px;background:var(--verm);position:absolute"></div>
+              <span class="chipnote fx io" style="--s:.16;--d:.08;--s2:.66;--d2:.08;color:var(--verm);background:#fffdf8;position:relative">gate: 1 open</span>
+              <span class="chipnote fx rv" style="--s:.82;--d:.10;color:var(--green);background:#fffdf8;position:relative">gate: clear</span>
+            </div>
+            <div class="navnode dim"><span class="navdot fx pop" style="--s:.84;--d:.10"></span>review-2</div>
+          </div>
+        </div>
+        <p class="punch fx rv" style="--s:.88;--d:.10">Knowledge and workflow — separate, but linked.</p>
+      </figure>
+    </div>
+
+    <!-- BEAT 5 -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 5</span><h3>Then it compounds</h3></div>
+      <p class="b-cap">Once criteria are data with addresses, everything can hang off them: <b>what must prove them</b> (backpressure links, pinned so drift warns), <b>what did prove them</b> (append-only execution-log receipts), whole-graph integrity (<code>dd doctor</code> in <code>checks</code>), and one-read context packets (<code>dd build</code>). The rest of this page is that story in full.</p>
+      <figure class="scene" data-beat="b5" data-dur="3800" style="max-width:760px;margin:0 auto">
+        <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap">
+          <div class="doc fx pop" style="--s:.05;--d:.12;border-color:var(--blue);z-index:2">
+            <div class="d-title" style="margin:0">plan.dd.json · ac-4b1c ✓</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div class="arrbar fx growx" style="--s:.28;--d:.10;flex:1;background:var(--verm)"></div>
+            <div class="doc fx pop" style="--s:.38;--d:.10;border-color:var(--verm)"><div class="d-title" style="margin:0">backpressure · pin @5d10ab77</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div class="arrbar fx growx" style="--s:.46;--d:.10;flex:1;background:var(--green)"></div>
+            <div class="doc fx pop" style="--s:.56;--d:.10;border-color:var(--green)"><div class="d-title" style="margin:0">execution-log · el-0042</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div class="arrbar fx growx" style="--s:.62;--d:.10;flex:1"></div>
+            <div class="doc fx pop" style="--s:.70;--d:.10"><div class="d-title" style="margin:0">dd doctor · every edge checked</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div class="arrbar fx growx" style="--s:.76;--d:.10;flex:1"></div>
+            <div class="doc fx pop" style="--s:.84;--d:.10"><div class="d-title" style="margin:0">dd build · depth-2 context packet</div></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
   </div>
 </section>
 
@@ -947,5 +1027,38 @@ Let a signed-out shopper complete checkout…
   </div>
 </footer>
 
+<script>
+(function(){
+  var REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var beats = {};
+  document.querySelectorAll('[data-beat]').forEach(function(el){
+    beats[el.getAttribute('data-beat')] = { el:el, dur:parseInt(el.getAttribute('data-dur')||'3200',10), p:0, played:false, pending:false, raf:null };
+  });
+  function setP(b,v){ b.p=v; b.el.style.setProperty('--p', String(v)); }
+  if (REDUCED){ Object.keys(beats).forEach(function(id){ beats[id].el.classList.add('settled'); }); return; }
+  function ease(t){ return 1 - Math.pow(1-t,3); }
+  function tween(id){ var b=beats[id]; if(!b || b.played) return; b.played=true; var t0=performance.now();
+    (function step(now){ var t=Math.min(1,(now-t0)/b.dur); setP(b, ease(t)); if(t<1) b.raf=requestAnimationFrame(step); })(t0); }
+  /* re-arm: opacity/transform state only — never geometry (scroll-trap rules) */
+  function rearm(b){ if(!b.played && b.p===0) return; if(b.raf){ cancelAnimationFrame(b.raf); b.raf=null; } b.played=false; b.pending=false; b.el.classList.remove('settled'); setP(b,0); }
+  var entryIO = new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting) tween(e.target.getAttribute('data-beat')); }); }, {threshold:.35});
+  var exitIO = new IntersectionObserver(function(es){ es.forEach(function(e){
+    var b = beats[e.target.getAttribute('data-beat')]; if(!b) return;
+    if (e.isIntersecting){ b.pending=false; return; }
+    if (e.boundingClientRect.top >= innerHeight) rearm(b);   /* exited below: weightless */
+    else b.pending = true;                                    /* exited above: wait for upward intent */
+  }); }, {threshold:0});
+  Object.keys(beats).forEach(function(id){ entryIO.observe(beats[id].el); exitIO.observe(beats[id].el); });
+  var lastY = scrollY;
+  addEventListener('scroll', function(){ var dir = scrollY - lastY; lastY = scrollY;
+    if (dir < 0) Object.keys(beats).forEach(function(id){ var b = beats[id];
+      if (b.pending && b.el.getBoundingClientRect().bottom <= 0) rearm(b); });
+  }, {passive:true});
+  /* determinism hook for headless snaps + future presenter driving */
+  window.deck = { list:function(){return Object.keys(beats);},
+    seek:function(id,pv){ var b=beats[id]; if(b){ if(b.raf){cancelAnimationFrame(b.raf); b.raf=null;} b.played=true; setP(b, Math.max(0,Math.min(1,pv))); } },
+    settle:function(id){ var b=beats[id]; if(b){ b.el.classList.add('settled'); b.played=true; } } };
+})();
+</script>
 </body>
 </html>
