@@ -77,7 +77,7 @@
     content:"DEFINITION";position:absolute;top:-9px;left:16px;background:var(--bp);
     padding:0 8px;font-size:10px;letter-spacing:.3em;color:var(--line);
   }
-  .stamp{
+  .hstamp{
     position:absolute;right:0;top:8px;border:2px solid var(--line-dim);color:var(--line);
     font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;padding:8px 12px;text-transform:uppercase;
     transform:rotate(4deg);opacity:.85;animation:stampSway 7s ease-in-out infinite alternate;
@@ -283,7 +283,7 @@
 <!-- ======================= HERO ======================= -->
 <header class="hero">
   <div class="hero-inner">
-    <div class="stamp rev d3">S065 · CONCEPT BRIEFING<br>PLAN 065 · DRAFT FOR ALIGNMENT</div>
+    <div class="hstamp rev d3">S065 · CONCEPT BRIEFING<br>PLAN 065 · DRAFT FOR ALIGNMENT</div>
     <div class="kicker rev">AI SUBSTRATE PRESENTS</div>
     <h1 class="rev d1">Deterministic<br><em>Documents</em></h1>
     <p class="tagline rev d2">A new way to write documents that <strong>machines can verify</strong> and <strong>humans can read</strong> — where the markdown is a view, the data is the truth, and every claim is an address.<span class="cursor"></span></p>
@@ -372,8 +372,8 @@
     <!-- BEAT 3 -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 3</span><h3>Everything has an address</h3></div>
-      <p class="b-cap">Because sections and rows are data, each one has a <b>stable address</b>. So an acceptance-criteria section can be linked — to another document, or to a <b>phase in a plan</b>. Links are values that resolve, not prose that hopes.</p>
-      <figure class="scene" data-beat="b3" data-dur="3600">
+      <p class="b-cap">Because sections and rows are data, each one has a <b>stable address</b>. So a row in one document can link to a row in <b>another file</b> — as a JSON value with a relative path, not prose that hopes. Here the AC names the backpressure evidence that must prove it:</p>
+      <figure class="scene" data-beat="b3" data-dur="3800">
         <div class="b3grid">
           <div class="doc fx rv" style="--s:.02;--d:.12">
             <div class="d-title">plan.dd.json</div>
@@ -382,17 +382,51 @@
               <span class="lbl2">declined card returns a typed error</span>
             </div>
             <div class="jrow" style="margin-top:8px;white-space:normal;overflow:visible">
-              <span class="fx tw" style="--s:.18;--d:.28;--ch:46;color:var(--blue)">#plan-phase-ac.phase-2/row:ac-4b1c</span><span class="cursor" style="background:var(--blue);height:12px"></span>
+              <span class="jk">"pressure"</span>: { <span class="jk">"target"</span>:
+            </div>
+            <div class="jrow" style="white-space:normal;overflow:visible">
+              &nbsp;&nbsp;<span class="fx tw" style="--s:.16;--d:.30;--ch:44;color:var(--blue)">"./backpressure.dd.json#evidence/row:bp-7f3a"</span><span class="cursor" style="background:var(--blue);height:12px"></span> }
             </div>
           </div>
           <div class="arrwrap" style="padding:0 8px;width:120px">
-            <div class="jrow fx rv" style="--s:.52;--d:.08;text-align:center;color:var(--blue);overflow:visible">links to</div>
-            <div class="arrbar fx growx" style="--s:.55;--d:.14"></div>
+            <div class="jrow fx rv" style="--s:.50;--d:.08;text-align:center;color:var(--blue);overflow:visible">resolves to</div>
+            <div class="arrbar fx growx" style="--s:.53;--d:.14"></div>
           </div>
-          <div class="doc fx pop" style="--s:.72;--d:.12;border-color:var(--blue)">
-            <div class="d-title">the-flow.json · spine</div>
-            <div class="navnode"><span class="navdot"></span>phase-2 · implement</div>
-            <div class="jrow" style="margin-top:8px"><span class="jk">"dd_link"</span>: <span class="jv">"plan.dd.json#…phase-2"</span></div>
+          <div class="doc fx pop" style="--s:.70;--d:.12;border-color:var(--verm)">
+            <div class="d-title">backpressure.dd.json · another file</div>
+            <div class="jrow"><span class="jk">row</span> <span class="jv">bp-7f3a</span> · RUN · strong</div>
+            <div class="jrow"><span class="jk">paved</span>: <span class="jv">npm test -- decline-path</span></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <!-- BEAT 3B -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 3B</span><h3>…and not just documents</h3></div>
+      <p class="b-cap">Anything that speaks the address grammar can bind to the knowledge. The <b>navigation flow</b> is the first consumer: a spine node carries one <code>dd_link</code> to the AC section — and the tooling reads the same addresses to check every edge.</p>
+      <figure class="scene" data-beat="b3b" data-dur="3600">
+        <div class="b3grid">
+          <div class="doc fx pop" style="--s:.04;--d:.10">
+            <div class="d-title">the address</div>
+            <div class="jrow" style="white-space:normal;overflow:visible;color:var(--blue)">plan.dd.json<br>#plan-phase-ac.phase-2<br>/row:ac-4b1c</div>
+          </div>
+          <div class="arrwrap" style="padding:0 8px;width:120px">
+            <div class="arrbar fx growx" style="--s:.26;--d:.12"></div>
+            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible">consumed by</div>
+            <div class="arrbar fx growx" style="--s:.52;--d:.12;background:#4a5058;margin-top:26px"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+            <div class="doc fx rv" style="--s:.36;--d:.10;border-color:var(--blue)">
+              <div class="d-title">the-flow.json · spine</div>
+              <div class="navnode"><span class="navdot"></span>phase-2 · implement</div>
+              <div class="jrow" style="margin-top:6px"><span class="jk">"dd_link"</span>: <span class="jv">"plan.dd.json#…phase-2"</span>, <span class="jk">"gate"</span>: <span class="jv">"all-complete"</span></div>
+            </div>
+            <div class="doc fx rv" style="--s:.62;--d:.10">
+              <div class="d-title">the tooling</div>
+              <div class="jrow">dd doctor · resolves + drift-checks every edge</div>
+              <div class="jrow">dd links · who points at this row?</div>
+            </div>
           </div>
         </div>
       </figure>
@@ -401,11 +435,11 @@
     <!-- BEAT 4 -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 4</span><h3>The check becomes a gate</h3></div>
-      <p class="b-cap">Work the plan; check things off <b>in the document</b>. Each check surfaces as a <b>deterministic gate in the flow’s nav</b> — the agent cannot leave the node until the linked criteria are satisfied. Ticking the knowledge doc drives the workflow doc.</p>
+      <p class="b-cap">Here is the payoff of the checklist being <b>data</b>: other software can read it and <b>rely on it</b>. A workflow system, for example, can point one of its steps at the plan’s checklist and simply refuse to move to the next step while items are still open. When the last item is checked — with its proof attached — the gate opens on its own. Nobody has to <i>remember</i> to update the plan anymore: the workflow literally cannot move on until the plan says the work is done.</p>
       <figure class="scene" data-beat="b4" data-dur="4200">
         <div class="b4grid">
           <div class="doc fx rv" style="--s:.02;--d:.10">
-            <div class="d-title">plan.dd.json · phase-2 criteria</div>
+            <div class="d-title">the plan · its checklist (knowledge)</div>
             <div class="acrow" style="border-top:none">
               <span class="cbx"><span class="tick">✓</span></span><span class="lbl2">guest checkout completes</span>
             </div>
@@ -423,14 +457,15 @@
             <div class="jrow fx io" style="--s:.56;--d:.08;--s2:.78;--d2:.10;text-align:center;color:var(--green);overflow:visible">tick travels the link</div>
           </div>
           <div class="navrail">
-            <div class="navnode fx rv" style="--s:.10;--d:.10"><span class="navdot fx io" style="--s:.10;--d:.06;--s2:.80;--d2:.08"></span>phase-2 <span class="jrow" style="color:#8a8371">now</span></div>
+            <div class="jrow" style="text-align:center;color:#8a8371;overflow:visible;margin-bottom:6px">a workflow · reading the checklist</div>
+            <div class="navnode fx rv" style="--s:.10;--d:.10"><span class="navdot fx io" style="--s:.10;--d:.06;--s2:.80;--d2:.08"></span>step: build <span class="jrow" style="color:#8a8371">current</span></div>
             <div style="position:relative;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center">
               <div style="width:2px;height:44px;background:#d8d2c4;position:absolute"></div>
               <div class="fx growyr" style="--s:.68;--d:.14;width:4px;height:44px;background:var(--verm);position:absolute"></div>
-              <span class="chipnote fx io" style="--s:.16;--d:.08;--s2:.66;--d2:.08;color:var(--verm);background:#fffdf8;position:relative">gate: 1 open</span>
-              <span class="chipnote fx rv" style="--s:.82;--d:.10;color:var(--green);background:#fffdf8;position:relative">gate: clear</span>
+              <span class="chipnote fx io" style="--s:.16;--d:.08;--s2:.66;--d2:.08;color:var(--verm);background:#fffdf8;position:relative">held: 1 item open</span>
+              <span class="chipnote fx rv" style="--s:.82;--d:.10;color:var(--green);background:#fffdf8;position:relative">open: all items proven</span>
             </div>
-            <div class="navnode dim"><span class="navdot fx pop" style="--s:.84;--d:.10"></span>review-2</div>
+            <div class="navnode dim"><span class="navdot fx pop" style="--s:.84;--d:.10"></span>step: review</div>
           </div>
         </div>
         <p class="punch fx rv" style="--s:.88;--d:.10">Knowledge and workflow — separate, but linked.</p>
