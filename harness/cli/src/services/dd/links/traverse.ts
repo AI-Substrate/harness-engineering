@@ -85,9 +85,7 @@ export function traverseCorpus(
     const result = deps.docLoader.load(path);
     if (!result.ok) {
       if (seedSet.has(path)) {
-        issues.push(
-          linkIssue('link-scan-incomplete', 'WARN', path, result.message, path),
-        );
+        issues.push(linkIssue('link-scan-incomplete', 'WARN', path, result.message, path));
       }
       continue;
     }
@@ -146,4 +144,33 @@ export function traverseCorpus(
   }
 
   return { nodes, edges, issues, visited: [...visited] };
+}
+
+/**
+ * Every document reachable from one seed, over an already-built edge list.
+ *
+ * This is how the doctor avoids re-walking a component once per document in it:
+ * a walk rooted anywhere in a component already covers the whole component, so
+ * the remaining seeds are skipped. Pure graph work — no I/O, and the same
+ * visited-set discipline as the traversal, because the corpus really does
+ * contain cycles.
+ */
+export function reachableFrom(seed: string, edges: readonly DdLinkEdge[]): Set<string> {
+  const outgoing = new Map<string, string[]>();
+  for (const edge of edges) {
+    if (edge.to === null) continue;
+    outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
+  }
+  const reached = new Set<string>([seed]);
+  const queue = [seed];
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined) break;
+    for (const next of outgoing.get(current) ?? []) {
+      if (reached.has(next)) continue;
+      reached.add(next);
+      queue.push(next);
+    }
+  }
+  return reached;
 }

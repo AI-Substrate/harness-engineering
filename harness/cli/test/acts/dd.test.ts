@@ -103,16 +103,6 @@ describe('harness dd act surface', () => {
 
   it.each([
     [['dd', 'build', 'doc.dd.json'], 'Phase 3: Render, adapters & freshness'],
-    [['dd', 'address', 'generate', 'phases/ph-a1b2'], 'Phase 4: Links, ledger & doctor'],
-    [['dd', 'address', 'validate', '#phases/ph-a1b2'], 'Phase 4: Links, ledger & doctor'],
-    [['dd', 'link', 'resolve', '#phases/ph-a1b2'], 'Phase 4: Links, ledger & doctor'],
-    [
-      ['dd', 'link', 'verify-basis', '#phases/ph-a1b2', '--sha', 'abc123'],
-      'Phase 4: Links, ledger & doctor',
-    ],
-    [['dd', 'links', '#phases/ph-a1b2'], 'Phase 4: Links, ledger & doctor'],
-    [['dd', 'graph'], 'Phase 4: Links, ledger & doctor'],
-    [['dd', 'doctor'], 'Phase 4: Links, ledger & doctor'],
   ] as const)('%j exits 2 unconfigured naming %s', async (argv, owner) => {
     const result = await runDd([...argv]);
     expect(result.code).toBe(2);
@@ -187,5 +177,91 @@ describe('harness dd act surface', () => {
     const missing = await runDd(['dd', 'docs', 'get', 'not-a-doc']);
     expect(missing.code).toBe(1);
     expect(missing.envelope.error?.code).toBe('E419');
+  });
+
+  // Phase 4 filled these seven bodies. The end-to-end behaviour lives in
+  // `dd-links-live.test.ts` (a real corpus in a temp directory); what these rows
+  // hold is the act surface itself — that each command answers, and answers with
+  // the frozen exit contract.
+  it('dd address generate returns the canonical bare-# form', async () => {
+    const result = await runDd(['dd', 'address', 'generate', 'phases/ph-a1b2']);
+    expect(result.code).toBe(0);
+    expect(result.envelope.status).toBe('ok');
+    expect(result.envelope.data).toMatchObject({
+      address: '#phases/ph-a1b2',
+      form: 'bare',
+      segments: ['phases', 'ph-a1b2'],
+    });
+  });
+
+  it('dd address validate checks syntax, and says it has not classified anything', async () => {
+    const result = await runDd(['dd', 'address', 'validate', '#phases/ph-a1b2']);
+    expect(result.code).toBe(0);
+    expect(result.envelope.data).toMatchObject({ classified: false, form: 'bare' });
+
+    const malformed = await runDd(['dd', 'address', 'validate', 'no-hash-here']);
+    expect(malformed.code).toBe(1);
+    expect(malformed.envelope.error?.code).toBe('E405');
+  });
+
+  it('dd link resolve refuses to invent a base document for a bare-# address', async () => {
+    const result = await runDd(['dd', 'link', 'resolve', '#phases/ph-a1b2']);
+    expect(result.code).toBe(1);
+    expect(result.envelope.error?.code).toBe('E430');
+    expect(result.envelope.next_action).toContain('<path>#<interior>');
+  });
+
+  it('dd link verify-basis resolves before it compares', async () => {
+    const result = await runDd([
+      'dd',
+      'link',
+      'verify-basis',
+      '#phases/ph-a1b2',
+      '--sha',
+      'abc123',
+    ]);
+    expect(result.code).toBe(1);
+    expect(result.envelope.error?.code).toBe('E430');
+  });
+
+  it('dd links reports a named document even when the sweep excludes it (OD-1)', async () => {
+    const result = await runDd([
+      'dd',
+      'links',
+      'test/services/dd/schema/fixtures/chain/repo/docs/b.dd.json',
+    ]);
+    expect(result.code).toBe(0);
+    const data = result.envelope.data as {
+      counts: { inbound: number; outbound: number };
+      outbound: { address: string }[];
+    };
+    // Named on the command line, so its own edges are reported…
+    expect(data.outbound.map((edge) => edge.address)).toEqual(['c.dd.json#meta']);
+    // …while the inbound scan is a sweep, which skips fixture paths — so the
+    // citer in the same folder is deliberately not counted.
+    expect(data.counts.inbound).toBe(0);
+  });
+
+  it('dd graph emits mermaid directly, with no renderer in the path', async () => {
+    const result = await runDd(['dd', 'graph']);
+    expect(result.code).toBe(0);
+    const mermaid = (result.envelope.data as { mermaid: string }).mermaid;
+    expect(mermaid.startsWith('flowchart LR\n')).toBe(true);
+  });
+
+  it('dd doctor sweeps this package clean, because every dd doc in it is a fixture', async () => {
+    const result = await runDd(['dd', 'doctor']);
+    expect(result.code).toBe(0);
+    expect(result.envelope.status).toBe('ok');
+    const data = result.envelope.data as {
+      discovered: number;
+      swept: number;
+      counts: { error: number; warn: number };
+    };
+    // AC-15 in miniature: the corpus is discovered and then excluded, so a
+    // repository can keep known-bad documents committed and still run green.
+    expect(data.discovered).toBeGreaterThan(0);
+    expect(data.swept).toBe(0);
+    expect(data.counts).toEqual({ error: 0, warn: 0 });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { DD_SUFFIX, scanCorpus } from '../../../../src/services/dd/links/scan.js';
+import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { FixtureFs, REPO } from './helpers.js';
 
 describe('dd links corpus scan', () => {

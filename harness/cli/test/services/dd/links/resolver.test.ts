@@ -72,9 +72,7 @@ describe('dd links resolver — targets', () => {
     if (!result.ok) return;
     expect(result.target.form).toBe('bare');
     expect(result.target.path).toBe(from);
-    expect(result.target.value).toBe(
-      'Bare-# addresses resolve against their own document',
-    );
+    expect(result.target.value).toBe('Bare-# addresses resolve against their own document');
   });
 
   it('resolves relative file parts against the containing document, across folders', () => {

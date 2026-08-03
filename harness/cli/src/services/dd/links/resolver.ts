@@ -1,9 +1,14 @@
-import { formatAddress, isAddressFailure, normalizeAddress, parseAddress } from '../core/address.js';
+import { resolveInRepo } from '../../shared/posix-path.js';
+import {
+  formatAddress,
+  isAddressFailure,
+  normalizeAddress,
+  parseAddress,
+} from '../core/address.js';
 import type { DdDoc, DdShape, ResolvedDdSchema } from '../core/model.js';
 import { isPathWithinRepo, resolveAddressFile, type SchemaResolver } from '../core/validate.js';
 import { isRecord } from '../core/value.js';
 import type { DocLoader } from '../core/walk.js';
-import { resolveInRepo } from '../../shared/posix-path.js';
 import {
   type DdLinkIssue,
   type DdLinkResolution,
@@ -62,10 +67,7 @@ function descend(
 
   const declaration = schema.sections[first];
   if (!declaration) {
-    return fail(
-      'section-unknown',
-      `schema "${schema.name}" declares no section "${first}"`,
-    );
+    return fail('section-unknown', `schema "${schema.name}" declares no section "${first}"`);
   }
   const section = doc.sections.find((candidate) => candidate.name === first);
   if (!section) {
@@ -79,11 +81,12 @@ function descend(
     const shape = cursor.shape;
     if (shape?.type === 'array') {
       if (!Array.isArray(cursor.value)) {
-        return fail('not-a-container', `"${value}" descends into a non-array at "${trailOf(trail)}"`);
+        return fail(
+          'not-a-container',
+          `"${value}" descends into a non-array at "${trailOf(trail)}"`,
+        );
       }
-      const entry = cursor.value.find(
-        (candidate) => isRecord(candidate) && candidate.id === value,
-      );
+      const entry = cursor.value.find((candidate) => isRecord(candidate) && candidate.id === value);
       if (entry === undefined) {
         return fail('id-not-found', `no entry with id "${value}" in "${trailOf(trail)}"`);
       }
