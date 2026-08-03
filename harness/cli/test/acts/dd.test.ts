@@ -101,18 +101,10 @@ describe('harness dd act surface', () => {
     expect(RESERVED_NAMES.has('dd')).toBe(true);
   });
 
-  it.each([
-    [['dd', 'build', 'doc.dd.json'], 'Phase 3: Render, adapters & freshness'],
-  ] as const)('%j exits 2 unconfigured naming %s', async (argv, owner) => {
-    const result = await runDd([...argv]);
-    expect(result.code).toBe(2);
-    expect(result.envelope.status).toBe('unconfigured');
-    expect(result.envelope.next_action).toContain(owner);
-    expect(result.envelope.data).toEqual({ owner_phase: owner });
-  });
-
-  // Phase 2 filled these five bodies (the OD-2 handoff), so they are no longer
-  // stubs: each must now answer with real behaviour and the T008(c) exit mapping.
+  // Every stub row is gone: Phase 2 filled five bodies, Phase 4 seven, and Phase 3
+  // the last one (`dd build`), so the `unconfigured` table has no rows left to
+  // assert and was removed with them. Each verb below must now answer with real
+  // behaviour and its phase's exit mapping.
   it('dd validate runs live against a real document', async () => {
     const result = await runDd([
       'dd',
@@ -177,6 +169,22 @@ describe('harness dd act surface', () => {
     const missing = await runDd(['dd', 'docs', 'get', 'not-a-doc']);
     expect(missing.code).toBe(1);
     expect(missing.envelope.error?.code).toBe('E419');
+  });
+
+  // Phase 3 filled this one body. The end-to-end behaviour lives in
+  // `dd-build.test.ts` (drift, writing, adapters, refresh, the mutating-verb seam);
+  // what this row holds is the act surface itself — that `build` answers, and
+  // answers with the T006(b) exit mapping.
+  it('dd build checks a rendered sibling for drift without writing', async () => {
+    // This suite pins cwd to the CLI package, but a dd document resolves its
+    // schema from ITS OWN repo root — and the render fixtures are real repo
+    // shapes, with `.dd/schemas` at the fixture's root rather than inside `docs/`.
+    // So this row enters that root; the describe's afterEach restores cwd either way.
+    process.chdir(`${CLI_ROOT}test/services/dd/render/fixtures/limits/repo`);
+    const result = await runDd(['dd', 'build', 'docs/limits.dd.json', '--check']);
+    expect(result.code).toBe(0);
+    expect(result.envelope.status).toBe('ok');
+    expect(result.envelope.data).toMatchObject({ schema: 'render/limits', drift: false });
   });
 
   // Phase 4 filled these seven bodies. The end-to-end behaviour lives in
