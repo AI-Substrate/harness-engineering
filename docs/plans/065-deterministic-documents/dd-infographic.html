@@ -251,8 +251,41 @@
 <!-- ======================= 00 THE HOOK ======================= -->
 <section class="panel" id="hook" style="padding-top:56px">
   <div class="wrap">
-    <div class="sec-head"><span class="sec-num">00</span><h2>In thirty seconds</h2></div>
-    <p class="sec-sub" style="font-size:17px"><b>Checklists that can’t lie. Links that know when they break. Documents a machine can walk.</b> One live example — a plan’s acceptance criterion, wired into everything that proves it:</p>
+    <div class="sec-head"><span class="sec-num">00</span><h2>Old way, new way</h2></div>
+    <p class="sec-sub" style="font-size:17px"><b>Checklists that can’t lie. Links that know when they break. Documents a machine can walk.</b> Same acceptance criterion, two lives:</p>
+
+    <div class="grid2" style="margin-bottom:26px">
+      <div class="rev">
+<pre class="md" style="border-color:#c9c2b2;filter:saturate(.6)"><span class="lbl" style="color:#c2491d">THE OLD WAY · markdown</span><span class="h">### Acceptance Criteria</span>
+
+3. <b>**n**</b> — write outside repo emits `&lt;external&gt;`
+     <span class="no">← id lost to a typo: now unnameable,
+       unprovable — and it shipped</span>
+
+- [ ] handles declined cards
+     <span class="no">← who ticked this? when? on what
+       evidence? shipped still unticked</span>
+
+see the backpressure survey for proof
+     <span class="no">← which survey? against WHICH version?
+       it changed. nothing noticed</span></pre>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:8px">Structure lives in the reader’s head · state has no owner · references are hopes. Every failure annotated here was <b>found in this repo</b>, shipped.</p>
+      </div>
+      <div class="rev d1">
+<pre class="code"><span class="lbl" style="background:#1d3a2b;color:#8fd4b0">THE DD WAY · data + generated view</span>{ <span class="k">"id"</span>: <span class="s">"ac-4b1c"</span>,
+    <span class="c">← born once, linkable forever</span>
+  <span class="k">"criterion"</span>: <span class="s">"declined card → typed error"</span>,
+  <span class="k">"state"</span>: <span class="b">"checked"</span>,
+    <span class="c">← a state, not a checkbox: unchecked ·
+      checked · blocked · human-skipped</span>
+  <span class="k">"pressure"</span>:  { <span class="k">"target"</span>: <span class="lk">"…#row:bp-7f3a"</span>,
+                 <span class="k">"basis"</span>: <span class="s">"5d10ab77"</span> },
+    <span class="c">← what proves it, pinned — drift warns</span>
+  <span class="k">"discharge"</span>: { <span class="k">"target"</span>: <span class="lk">"…#entry:el-0042"</span> } }
+    <span class="c">← how it was proven, receipted</span></pre>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:8px">Validated on every edit · unevidenced ticks are <b>unexpressible</b> · the markdown beside it regenerates and can’t disagree. The whole wiring, live:</p>
+      </div>
+    </div>
 
     <div class="rev" style="border:1px solid var(--rule);background:#fffdf8;padding:22px 14px 10px;overflow-x:auto">
       <svg viewBox="0 0 1000 360" style="min-width:820px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
@@ -401,23 +434,27 @@
   <span class="k">"meta"</span>: {
     <span class="k">"title"</span>: <span class="s">"Checkout flow — guest payment"</span>,
     <span class="k">"edited_at"</span>: <span class="s">"2026-08-03T04:12:55Z"</span>,
-    <span class="k">"content_sha256"</span>: <span class="s">"9c4e21b8…"</span>,                <span class="c">← hash of sections only</span>
-    <span class="k">"contributors"</span>: [                              <span class="c">← what fed the render (§6)</span>
+    <span class="k">"content_sha256"</span>: <span class="s">"9c4e21b8…"</span>,  <span class="c">← hash of sections only</span>
+    <span class="k">"contributors"</span>: [        <span class="c">← what fed the render (§6)</span>
       { <span class="k">"path"</span>: <span class="s">"./backpressure.dd.json"</span>, <span class="k">"sha"</span>: <span class="s">"5d10ab77"</span> }
     ]
   },
   <span class="k">"sections"</span>: [
     { <span class="k">"id"</span>: <span class="s">"plan-objective"</span>, <span class="k">"primitive"</span>: <span class="s">"free-text"</span>,
       <span class="k">"body"</span>: <span class="s">"Let a signed-out shopper complete checkout…"</span> },
-    { <span class="k">"id"</span>: <span class="hl"><span class="s">"plan-phase-ac.phase-2"</span></span>,                <span class="c">← stable address (§3)</span>
+    { <span class="k">"id"</span>: <span class="hl"><span class="s">"plan-phase-ac.phase-2"</span></span>,  <span class="c">← stable address (§3)</span>
       <span class="k">"primitive"</span>: <span class="s">"completable-table"</span>,
       <span class="k">"rows"</span>: [
-        { <span class="k">"id"</span>: <span class="hl"><span class="s">"ac-4b1c"</span></span>,                          <span class="c">← born-once id (§3)</span>
-          <span class="k">"criterion"</span>: <span class="s">"Declined card returns a typed error, cart preserved"</span>,
-          <span class="k">"state"</span>: <span class="b">"checked"</span>,                       <span class="c">← a state, not a boolean (§4)</span>
+        { <span class="k">"id"</span>: <span class="hl"><span class="s">"ac-4b1c"</span></span>,          <span class="c">← born-once id (§3)</span>
+          <span class="k">"criterion"</span>: <span class="s">"Declined card returns a
+                        typed error, cart preserved"</span>,
+          <span class="k">"state"</span>: <span class="b">"checked"</span>,       <span class="c">← a state, not a boolean (§4)</span>
           <span class="k">"note"</span>: <span class="s">"decline-path suite green at 3f9a10c"</span>,
-          <span class="k">"pressure"</span>:  { <span class="k">"target"</span>: <span class="lk">"./backpressure.dd.json#table:evidence/row:bp-7f3a"</span>, <span class="k">"basis"</span>: <span class="s">"5d10ab77"</span> },
-          <span class="k">"discharge"</span>: { <span class="k">"target"</span>: <span class="lk">"./execution-log.dd.json#log:entries/entry:el-0042"</span> } }
+          <span class="k">"pressure"</span>:  { <span class="k">"target"</span>: <span class="lk">"./backpressure.dd.json
+                           #table:evidence/row:bp-7f3a"</span>,
+                         <span class="k">"basis"</span>:  <span class="s">"5d10ab77"</span> },
+          <span class="k">"discharge"</span>: { <span class="k">"target"</span>: <span class="lk">"./execution-log.dd.json
+                           #log:entries/entry:el-0042"</span> } }
       ] }
   ]
 }</pre>
@@ -819,15 +856,20 @@ Let a signed-out shopper complete checkout…
 
     <div class="grid2" style="margin-top:24px">
       <div class="rev">
-<pre class="code"><span class="lbl">layering — separate lib inside harness, for now</span>  <span class="c">┌──────────────────────────────────────────────┐</span>
-  <span class="k">consumers</span>      harness verbs (dd·plan·flow) │ standalone CLI <span class="c">(OOS)</span> │ your system
-  <span class="c">├──────────────────────────────────────────────┤</span>
-  <span class="k">doc-type pkgs</span>  plan · backpressure · execution-log · <span class="c">(adr · retro · …)</span>
-  <span class="c">├──────────────────────────────────────────────┤</span>
-  <span class="k">dd-core</span>        schema · ids · sha · links · render · walk
-  <span class="c">├──────────────────────────────────────────────┤</span>
-  <span class="k">ports</span>          fs · clock · hash   <span class="c">← injected; no node:* imports,</span>
-  <span class="c">└──────────────────────  enforced by the existing arch-check ─┘</span></pre>
+<pre class="code"><span class="lbl">layering — separate lib inside harness, for now</span>  <span class="c">┌────────────────────────────────────┐</span>
+  <span class="k">consumers</span>     harness verbs (dd·plan·flow)
+                │ standalone CLI <span class="c">(OOS)</span>
+                │ your system
+  <span class="c">├────────────────────────────────────┤</span>
+  <span class="k">doc-type pkgs</span> plan · backpressure ·
+                execution-log · <span class="c">(adr · …)</span>
+  <span class="c">├────────────────────────────────────┤</span>
+  <span class="k">dd-core</span>       schema · ids · sha ·
+                links · render · walk
+  <span class="c">├────────────────────────────────────┤</span>
+  <span class="k">ports</span>         fs · clock · hash
+    <span class="c">← injected; no node:* imports —</span>
+  <span class="c">└─── enforced by the existing arch-check ┘</span></pre>
         <p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px">dd-core imports nothing from harness — no envelopes, no error codes, no CLI plumbing. It lives <b>inside</b> the harness repo for now (no premature split; the concepts are the contract), but the boundary is real from day one, so extraction later is a move, not a rewrite.</p>
       </div>
       <div class="rev d1">
