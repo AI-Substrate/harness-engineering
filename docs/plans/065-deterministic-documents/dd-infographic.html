@@ -245,6 +245,8 @@
   .navnode{font-family:var(--mono);font-size:11.5px;border:1.5px solid var(--ink);padding:7px 12px;background:#fff;display:flex;gap:8px;align-items:center;white-space:nowrap}
   .navnode.dim{border-color:#b9b2a2;color:#8a8371}
   .navdot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex:none}
+  .scene svg .fx{transform-box:fill-box;transform-origin:center}
+  .scene svg .edge{fill:none;stroke-dasharray:1;stroke-dashoffset:calc(1 - var(--w,0))}
   .b2grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   .b3grid{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:center}
   .b4grid{display:grid;grid-template-columns:1.25fr auto .9fr;gap:0;align-items:center}
@@ -439,30 +441,62 @@
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 5</span><h3>Then it compounds</h3></div>
       <p class="b-cap">Once criteria are data with addresses, everything can hang off them: <b>what must prove them</b> (backpressure links, pinned so drift warns), <b>what did prove them</b> (append-only execution-log receipts), whole-graph integrity (<code>dd doctor</code> in <code>checks</code>), and one-read context packets (<code>dd build</code>). The rest of this page is that story in full.</p>
-      <figure class="scene" data-beat="b5" data-dur="3800" style="max-width:760px;margin:0 auto">
-        <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap">
-          <div class="doc fx pop" style="--s:.05;--d:.12;border-color:var(--blue);z-index:2">
-            <div class="d-title" style="margin:0">plan.dd.json · ac-4b1c ✓</div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <div class="arrbar fx growx" style="--s:.28;--d:.10;flex:1;background:var(--verm)"></div>
-            <div class="doc fx pop" style="--s:.38;--d:.10;border-color:var(--verm)"><div class="d-title" style="margin:0">backpressure · pin @5d10ab77</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <div class="arrbar fx growx" style="--s:.46;--d:.10;flex:1;background:var(--green)"></div>
-            <div class="doc fx pop" style="--s:.56;--d:.10;border-color:var(--green)"><div class="d-title" style="margin:0">execution-log · el-0042</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <div class="arrbar fx growx" style="--s:.62;--d:.10;flex:1"></div>
-            <div class="doc fx pop" style="--s:.70;--d:.10"><div class="d-title" style="margin:0">dd doctor · every edge checked</div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <div class="arrbar fx growx" style="--s:.76;--d:.10;flex:1"></div>
-            <div class="doc fx pop" style="--s:.84;--d:.10"><div class="d-title" style="margin:0">dd build · depth-2 context packet</div></div>
-          </div>
-        </div>
+      <figure class="scene" data-beat="b5" data-dur="4400">
+        <div style="overflow-x:auto"><svg viewBox="0 0 980 344" style="min-width:760px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
+          <defs>
+            <marker id="t-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f4e79"/></marker>
+            <marker id="t-v" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2491d"/></marker>
+            <marker id="t-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2e7d4f"/></marker>
+            <marker id="t-k" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4a5058"/></marker>
+          </defs>
+
+          <!-- ROOT: the AC section -->
+          <g class="fx pop" style="--s:.04;--d:.10">
+            <rect x="268" y="118" width="246" height="96" fill="#fffdf8" stroke="#1f4e79" stroke-width="2"/>
+            <text x="284" y="142" font-size="12" font-weight="600" fill="#1f4e79">plan.dd.json</text>
+            <text x="284" y="160" font-size="10" fill="#4a5058">#plan-phase-ac.phase-2</text>
+            <text x="284" y="181" font-size="10.5" fill="#2e7d4f">✓ ac-4b1c · declined card</text>
+            <text x="284" y="198" font-size="10.5" fill="#57606a">□ ac-9d02 · no double-charge</text>
+          </g>
+
+          <!-- inbound: the spine window -->
+          <g class="fx rv" style="--s:.16;--d:.10">
+            <rect x="20" y="136" width="152" height="62" fill="#0d2440" stroke="#123057" stroke-width="1.5"/>
+            <text x="34" y="160" font-size="11.5" font-weight="600" fill="#8fd4ea">the-flow.json</text>
+            <text x="34" y="178" font-size="9.5" fill="#b9d4e4">phase-2 · nav gate</text>
+          </g>
+          <path class="edge fx" pathLength="1" d="M 172 167 L 266 167" stroke="#1f4e79" stroke-width="1.7" marker-end="url(#t-b)" style="--s:.24;--d:.10"/>
+          <text class="fx rv" style="--s:.28;--d:.08" x="180" y="156" font-size="9.5" fill="#1f4e79">transcludes · live</text>
+
+          <!-- out-link 1: pressure -->
+          <path class="edge fx" pathLength="1" d="M 514 146 C 580 130, 596 84, 646 66" stroke="#c2491d" stroke-width="1.7" marker-end="url(#t-v)" style="--s:.36;--d:.10"/>
+          <text class="fx rv" style="--s:.40;--d:.08" x="540" y="104" font-size="9.5" fill="#c2491d">pressure · pinned @5d10ab77</text>
+          <g class="fx pop" style="--s:.46;--d:.10">
+            <rect x="648" y="28" width="264" height="66" fill="#fffdf8" stroke="#c2491d" stroke-width="1.5"/>
+            <text x="664" y="52" font-size="11.5" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
+            <text x="664" y="70" font-size="9.5" fill="#4a5058">row bp-2e88 · BUILD→RUN · harness check idempotency</text>
+            <text x="664" y="84" font-size="9" fill="#8a8371">two links in — one from the plan, one from tasks</text>
+          </g>
+
+          <!-- out-link 2: discharge -->
+          <path class="edge fx" pathLength="1" d="M 514 186 L 646 186" stroke="#2e7d4f" stroke-width="1.7" marker-end="url(#t-g)" style="--s:.56;--d:.10"/>
+          <text class="fx rv" style="--s:.60;--d:.08" x="536" y="176" font-size="9.5" fill="#2e7d4f">discharge · receipt</text>
+          <g class="fx pop" style="--s:.64;--d:.10">
+            <rect x="648" y="152" width="264" height="62" fill="#fffdf8" stroke="#2e7d4f" stroke-width="1.5"/>
+            <text x="664" y="176" font-size="11.5" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
+            <text x="664" y="194" font-size="9.5" fill="#4a5058">entry el-0042 · cmd exit:0 · append-only</text>
+          </g>
+
+          <!-- second inbound to backpressure: from tasks -->
+          <g class="fx rv" style="--s:.74;--d:.10">
+            <rect x="648" y="266" width="264" height="58" fill="#fffdf8" stroke="#4a5058" stroke-width="1.5" stroke-dasharray="5 4"/>
+            <text x="664" y="290" font-size="11.5" font-weight="600" fill="#4a5058">tasks.dd.json</text>
+            <text x="664" y="308" font-size="9.5" fill="#4a5058">done-when dw-31c0 · implements ac-4b1c</text>
+          </g>
+          <path class="edge fx" pathLength="1" d="M 700 264 C 620 220, 616 128, 646 78" stroke="#4a5058" stroke-width="1.5" stroke-dasharray="1" marker-end="url(#t-k)" style="--s:.82;--d:.10"/>
+          <text class="fx rv" style="--s:.86;--d:.08" x="560" y="236" font-size="9.5" fill="#4a5058">proof · links in from tasks too</text>
+        </svg></div>
+        <p class="punch fx rv" style="--s:.92;--d:.08">Out-links are authored where they live. In-links are derived — <span style="font-family:var(--mono);font-style:normal;font-size:13px">dd links</span> answers “who points at me” in one read.</p>
       </figure>
     </div>
 
