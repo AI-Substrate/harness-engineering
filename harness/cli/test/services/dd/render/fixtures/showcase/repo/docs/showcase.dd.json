@@ -56,7 +56,12 @@
       "name": "evidence",
       "value": {
         "tk-a1b2": [
-          { "id": "dw-1111", "assertion": "renderer emits the banner", "state": "checked" },
+          {
+            "id": "dw-1111",
+            "assertion": "renderer emits the banner",
+            "state": "checked",
+            "proven_by": "#tasks/tk-a1b2"
+          },
           { "id": "dw-2222", "assertion": "golden files are hand-authored", "state": "checked" },
           { "id": "dw-3333", "assertion": "adapters load through jiti", "state": "checked" },
           { "id": "dw-4444", "assertion": "drift is byte-exact", "state": "unchecked" },

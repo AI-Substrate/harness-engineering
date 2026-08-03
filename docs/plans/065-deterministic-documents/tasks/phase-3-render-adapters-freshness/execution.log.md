@@ -134,9 +134,98 @@ $ cd harness/cli && npx vitest run test/services/dd/render
 
 ---
 
-## Discoveries & Learnings
+## T002 — Pure renderer
+
+**Status**: complete. `src/services/dd/render/{contract,renderer}.ts` + `renderer.test.ts` +
+`renderer-purity.test.ts`.
+
+`renderDd(doc, resolved) => string` exactly as the plan specified — the frozen-ish signature is
+kept literally, and adapter *issues* travel on the injected `DdAdapterSet` rather than widening
+the return, so the function stays a plain `(inputs) => markdown`.
+
+**Machine-enforced purity** (fence amendment 1): three depcruise rules mirroring the dd-core trio
+(`dd-render-never-imports-{output,acts,node-adapters}`, `reachable: true`, severity warn) plus the
+in-fence transitive scan in `renderer-purity.test.ts`, which also asserts those three rules exist
+and are reachable — so deleting the rule reddens the suite.
+
+`arch-check` **AFTER** the append: **2 violations** — the SAME two `services-ports-type-only`
+findings in telemetry, status `degraded`. **Baseline unmoved.** (Module count moved 233 → 246 and
+deps 497 → 537; that is new P3/P4 source landing, not new violations.)
+
+### Render rules this phase settled
+
+Every rule below is pinned by a golden, an inline case, or both.
+
+- **Anchors are heading-only** (workshop-001 § Anchors, verbatim): no HTML anchor mode. Sections
+  become `##` headings; a keyed-map entry earns a `###` heading of its own, so an instance link has
+  a nearest heading to land on. An array member lands on its *section* heading, with its id visible
+  in the link text — `[tk-a1b2](#tasks)`.
+- **Cross-file links point at the sibling `.dd.md`**, not the `.dd.json`: the rendered file is the
+  artifact a human clicking the link can read.
+- **Only the basename of the source path is rendered.** A golden that pinned an absolute path
+  would be machine-specific; this makes the corpus cwd-independent by construction.
+- **Gate pips are borrowed, not invented**: `◆` terminal, `◇` holds, `✗` blocked (the flow rail's
+  own vocabulary), plus `◐` for the partial summary the plan named. A `state` field pips from the
+  schema's gate-terminal set; an enum pips only when it *declares* `gate_terminal` — an enum
+  without one is a vocabulary, not a gate, and pipping it would invent a semantic the schema
+  declined (workshop-002 Ruling 2).
+- **A summary is suppressed when there is nothing to count** (`total === 0`), so a link to a
+  stateless section stays a plain link rather than claiming a meaningless `◆ 0/0`.
+- **A3 — undeclared interiors render**: declared columns first in declaration order, then whatever
+  the data carries, first-seen. A declared-but-absent field still gets a column (an empty cell says
+  "this could be filled"; hiding it says nothing). An undeclared field named `state` still pips,
+  because that is the same structural convention `deriveState` itself uses.
+- **An undeclared string is read as a link only when it parses as an address AND its file half is
+  either empty or a real `.dd.json`.** The grammar alone is not enough — `"See #tasks"` parses.
+  This exists for workshop-002 Ruling 3: an evidence entry's `proven_by`/`pressure` links live in
+  an interior the schema never declares, and rendering them as prose would strand exactly the
+  links the design exists to make navigable.
+- **Escaping is context-scoped**: table cells escape `<`, `>`, `|` and fold newlines to `<br>`;
+  block prose is verbatim, because nothing there can break a row. Adapter output is never escaped —
+  it is a markdown fragment by contract.
+- **`MAX_CELL_DEPTH = 2`** — the phase's ONE invented limit, shipped as a named exported constant
+  with `limits.dd.json` carrying a row at the bound and a row past it (P2 DL-006). The bound applies
+  to containers only; a scalar at any depth renders.
+
+**Evidence**: `renderer.test.ts` 14 tests, `renderer-purity.test.ts` 3 tests, all golden
+comparisons byte-exact.
+
+---
+
+## T004 — Adapter pipeline
+
+**Status**: complete. `src/services/dd/render/adapters.ts` + `adapters.test.ts`.
+
+Presence is registration (W1 rule 2): `<schema package>/adapters/<type>.ts`, resolved from the
+*winning* schema file's own folder, so a shadowed package cannot smuggle in adapters. Loading is
+jiti through an **injected** `DdAdapterModuleLoader` — the interface is declared in this layer, not
+imported from `src/adapters`, exactly as P2 declared its own `SchemaFs`; `JitiLoader` and
+`NodeSchemaFs` satisfy both structurally, so the depcruise purity rules hold with no exception.
+
+Loading is async and rendering is not: every import completes before the pure renderer is called.
+That is what lets `renderDd` stay synchronous while adapters live on disk.
+
+`.ts` is the only extension probed. W1 locked that home, and a probe list would invent a precedence
+order nobody asked for; a `.js` home is an additive change the day a consumer needs one.
+
+**Every failure class produces the same visible outcome and a different recorded issue** — the
+whole design in one line. The fallback (`` `<value>` ⟨type:foo⟩ ``) means a reader never gets a
+blank cell or a stack trace (W1 rule 4); the recorded WARN means an operator never gets a silent
+degradation (W1 rule 5). Issues deduplicate per type — a 200-row table with one broken adapter
+yields one finding — but keep the first location, so the finding is still actionable.
+
+`DdAdapterWarnSource` is the WARN-aggregation seam P4's doctor consumes at P5. **Interface only**,
+as the fence requires: implemented and fake-tested here, wired nowhere.
+
+**Evidence**: `adapters.test.ts` 9 tests, driving the REAL jiti loader over the fixture corpus —
+all four classes provoked, and the showcase golden re-rendered through the real `duration.ts`
+rather than the renderer suite's fake, so no golden rests on a fake.
+
+
 
 | Date | Task | Type | Discovery | Resolution | References |
 |------|------|------|-----------|------------|------------|
 | 2026-08-03 | T001 | Noteworthy | The P3 fence lists source paths but not `.dependency-cruiser.cjs`, while T002's Done-When requires a depcruise rule — the same *"the fence names sources, not the shared files a change necessarily touches"* shape P2 hit as DL-002. | Asked the PM before editing; fence amendment 1 recorded above with a custody-window rider. | tasks.md § Shared-surface custody |
 | 2026-08-03 | T006 | Noteworthy | Nothing in the freeze says which adapter failure gets `E424` vs `E426`; a non-callable default export could defensibly be either. | Ruled (a) above: `E426` is reserved for an adapter that *ran*, so a non-callable export is `E424`. | dd-surface.md § E420-E429 |
+| 2026-08-03 | T002 | Noteworthy | Nothing in the freeze said whether an UNDECLARED string that parses as an address should render as a link. Rendering it as prose strands workshop-002 Ruling 3's `proven_by`/`pressure` links (they live in an undeclared interior); rendering every parsing string as a link turns `"See #tasks"` into a broken link. | Inference accepted, but gated on the file half being empty or a real `.dd.json`. Pinned by a golden and by an explicit "never mistakes prose for one" case. | renderer.ts § looksLikeAddress |
+| 2026-08-03 | T004 | Noteworthy | `services/dd/render` needs a module loader and an fs probe, but importing `src/adapters/**` — even type-only — trips the very purity rule this phase added (`reachable: true` catches type-only edges). | Declared `DdAdapterFs`/`DdAdapterModuleLoader` locally, exactly as P2 declared `SchemaFs`; `NodeSchemaFs`/`JitiLoader` satisfy both structurally. No rule exception needed. | adapters.ts, P2 `schema/model.ts` |

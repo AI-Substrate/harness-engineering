@@ -34,13 +34,13 @@
 
 ### tk-a1b2
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-1111 | renderer emits the banner | ◆ checked |
-| dw-2222 | golden files are hand-authored | ◆ checked |
-| dw-3333 | adapters load through jiti | ◆ checked |
-| dw-4444 | drift is byte-exact | ◇ unchecked |
-| dw-5555 | watcher contract proven | ◇ unchecked |
+| id | assertion | state | proven_by |
+| --- | --- | --- | --- |
+| dw-1111 | renderer emits the banner | ◆ checked | [tk-a1b2](#tasks) |
+| dw-2222 | golden files are hand-authored | ◆ checked | — |
+| dw-3333 | adapters load through jiti | ◆ checked | — |
+| dw-4444 | drift is byte-exact | ◇ unchecked | — |
+| dw-5555 | watcher contract proven | ◇ unchecked | — |
 
 ### tk-b2c3
 
