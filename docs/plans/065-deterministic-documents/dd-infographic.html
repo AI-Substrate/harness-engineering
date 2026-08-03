@@ -524,7 +524,7 @@
             <text x="664" y="84" font-size="9" fill="#7189a0">pointed at from two places — the plan and the task list</text>
           </g>
 
-          <!-- out-link 2: discharge -->
+          <!-- out-link 2: proven-by -->
           <path class="edge fx" pathLength="1" d="M 514 186 L 646 186" stroke="#2e7d4f" stroke-width="1.7" marker-end="url(#t-g)" style="--s:.56;--d:.10"/>
           <text class="fx rv" style="--s:.60;--d:.08" x="508" y="176" font-size="9.5" fill="#2e7d4f">what happened</text>
           <g class="fx pop" style="--s:.64;--d:.10">
@@ -676,7 +676,7 @@
           <span class="k">"pressure"</span>:  { <span class="k">"target"</span>: <span class="lk">"./backpressure.dd.json
                            #table:evidence/row:bp-7f3a"</span>,
                          <span class="k">"basis"</span>:  <span class="s">"5d10ab77"</span> },
-          <span class="k">"discharge"</span>: { <span class="k">"target"</span>: <span class="lk">"./execution-log.dd.json
+          <span class="k">"proven_by"</span>: { <span class="k">"target"</span>: <span class="lk">"./execution-log.dd.json
                            #log:entries/entry:el-0042"</span> } }
       ] }
   ]
@@ -693,7 +693,7 @@ Let a signed-out shopper complete checkout…
 
 <span class="h">## Phase 2 — Acceptance Criteria</span>  `plan-phase-ac.phase-2`
 
-| State | Criterion | Pressure | Discharged |
+| State | Criterion | Pressure | Proven by |
 |---|---|---|---|
 | <span class="ok">[✓] checked</span> | Declined card returns a typed
   error, cart preserved | <span class="ok">RUN · npm test decline-path</span>
@@ -768,7 +768,7 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="card rev d1"><span class="tag gold">PROPOSED</span>
         <h3>log (append-only)</h3>
-        <p>Entries with born-once ids that may be <b>added but never mutated or deleted</b> — enforced by validate, not convention. The execution log becomes this <span class="num-col">(decided · D3)</span>: the durable trail AC rows point their <code>discharge</code> links into.</p>
+        <p>Entries with born-once ids that may be <b>added but never mutated or deleted</b> — enforced by validate, not convention. The execution log becomes this <span class="num-col">(decided · D3)</span>: the durable trail AC rows point their <code>proven_by</code> links into.</p>
       </div>
       <div class="card rev d2"><span class="tag gold">PROPOSED</span>
         <h3>record · include</h3>
@@ -813,12 +813,12 @@ Let a signed-out shopper complete checkout…
           “Declined card returns a<br>typed error, cart preserved”<br>
           <span style="color:var(--ink-soft)">note: suite green at 3f9a10c</span>
         </span>
-        <span>discharge ▶</span>
+        <span>proven by ▶</span>
       </div>
       <div class="card" style="border-color:var(--green)">
-        <span class="tag green">DEMONSTRATIVE · discharge →</span>
+        <span class="tag green">DEMONSTRATIVE · proven by →</span>
         <h3>execution-log.dd.json</h3>
-        <p>How it was actually discharged — appended <b>during</b> work. Entry <code>el-0042</code>: the command run, its exit and output digest, timestamp, actor, artifacts <span class="num-col">(entry shape illustrative — W3)</span>. Append-only by validation (a mutated prior entry fails <code>dd validate</code>).</p>
+        <p>How it was actually proven — appended <b>during</b> work. Entry <code>el-0042</code>: the command run, its exit and output digest, timestamp, actor, artifacts <span class="num-col">(entry shape illustrative — W3)</span>. Append-only by validation (a mutated prior entry fails <code>dd validate</code>).</p>
         <p style="margin-top:8px;font-size:12.5px">An append-only trail like this is normally kept by discipline — remember to log what you ran, remember never to edit it afterwards. Here it comes from the <b>format</b>: the document simply cannot be valid if a past entry was changed.</p>
       </div>
     </div>
@@ -912,7 +912,7 @@ Let a signed-out shopper complete checkout…
           <text x="622" y="50" fill="#c2491d">how it must be proven</text>
 
           <line x1="512" y1="114" x2="512" y2="218" stroke="#2e7d4f" stroke-width="1.6" marker-end="url(#arrG)"/>
-          <text x="522" y="170" fill="#2e7d4f">discharge · el-0042</text>
+          <text x="522" y="170" fill="#2e7d4f">proven by · el-0042</text>
 
           <path d="M 738 234 C 680 206, 640 160, 606 120" fill="none" stroke="#46586c" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
           <text x="618" y="192" fill="#46586c">implements ac-4b1c</text>
