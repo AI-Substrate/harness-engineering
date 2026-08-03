@@ -28,8 +28,8 @@ flowchart TD
 
 | # | Decision | Ruling | Status |
 |---|----------|--------|--------|
-| OD-3 | **Root `package.json` script entries** (`gen:dd-docs`, `check:dd-docs` — plan 2.5) sit outside the seat fence (root-tree) | Grant requested from prime (async). **Fallback if not granted by T007**: ship `scripts/gen-dd-docs.mjs` + `scripts/check-dd-docs.mjs` runnable via `node`, and P5's single-writer integration task adds the npm entries under its own grant | ⏳ pending grant — NOT blocking (fallback is complete) |
-| OD-4 | **`<gitroot>/.dd/schemas/` is a new repo-root directory** (D14 convention home for exemplar packages) | In-plan (task 2.3, validated); flagged to prime as a notify. Only `\.dd/schemas/builder/**` is written — nothing else at root | ✅ proceed, notify sent |
+| OD-3 | **Root `package.json` script entries** (`gen:dd-docs`, `check:dd-docs` — plan 2.5) sit outside the seat fence (root-tree) | **GRANTED** (prime, ruling amendment 2, 2026-08-03): add exactly `gen:dd-docs` + `check:dd-docs` to the `scripts` block, nothing else — no dependency blocks, no `package-lock.json`, no existing key, ESPECIALLY not the `prepare` lifecycle hook (supply-chain fence). Merge-time textual conflict with dependabot PRs #74–#82 is expected, not a mystery | ✅ GRANTED (narrow) |
+| OD-4 | **`<gitroot>/.dd/schemas/` is a new repo-root directory** (D14 convention home for exemplar packages) | Prime accepted after verifying `git check-ignore`: the path is NOT gitignored, namespace clean — the tree will actually commit. Only `.dd/schemas/builder/**` is written | ✅ ACCEPTED (verified) |
 
 ### Tasks
 
