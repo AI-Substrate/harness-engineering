@@ -64,11 +64,7 @@ function isBlank(value: unknown): boolean {
   return value === undefined || value === null || value === '';
 }
 
-function collectFromShape(
-  value: unknown,
-  shape: DdShape | undefined,
-  types: Set<string>,
-): void {
+function collectFromShape(value: unknown, shape: DdShape | undefined, types: Set<string>): void {
   if (shape === undefined || isBlank(value)) return;
   if (!BUILTIN_TYPES.has(shape.type)) {
     types.add(shape.type);
@@ -220,7 +216,9 @@ export async function loadAdapters(options: LoadAdaptersOptions): Promise<Loaded
     try {
       loaded = await options.loader.load(path);
     } catch (error) {
-      set.record('adapter-load-failed', type, `adapter failed to load: ${message(error)}`, { path });
+      set.record('adapter-load-failed', type, `adapter failed to load: ${message(error)}`, {
+        path,
+      });
       continue;
     }
     if (typeof loaded !== 'function') {

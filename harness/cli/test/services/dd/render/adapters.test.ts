@@ -5,7 +5,6 @@ import { NodeSchemaFs } from '../../../../src/acts/dd/schema-fs.js';
 import { JitiLoader } from '../../../../src/adapters/loader/jiti-loader.js';
 import type { DdDoc, ResolvedDdSchema } from '../../../../src/services/dd/core/model.js';
 import { parse } from '../../../../src/services/dd/core/parse.js';
-import { parseSchemaDeclaration } from '../../../../src/services/dd/schema/declarations.js';
 import {
   adapterPath,
   collectCustomTypes,
@@ -14,8 +13,12 @@ import {
   LoadedAdapterSet,
   loadAdapters,
 } from '../../../../src/services/dd/render/adapters.js';
-import type { DdAdapterContext, DdAdapterIssue } from '../../../../src/services/dd/render/contract.js';
+import type {
+  DdAdapterContext,
+  DdAdapterIssue,
+} from '../../../../src/services/dd/render/contract.js';
 import { renderDd } from '../../../../src/services/dd/render/renderer.js';
+import { parseSchemaDeclaration } from '../../../../src/services/dd/schema/declarations.js';
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
 
@@ -35,7 +38,8 @@ function schemaAt(
 ): { schema: ResolvedDdSchema; gateTerminal: readonly string[]; path: string } {
   const path = `${FIXTURES}${relative}`;
   const declaration = parseSchemaDeclaration(read(relative), name, path);
-  if (!declaration.ok) throw new Error(`fixture schema failed: ${JSON.stringify(declaration.issues)}`);
+  if (!declaration.ok)
+    throw new Error(`fixture schema failed: ${JSON.stringify(declaration.issues)}`);
   return {
     schema: declaration.declaration.schema,
     gateTerminal: declaration.declaration.gateTerminal,
@@ -62,14 +66,9 @@ const ADAPTERS_SCHEMA = 'adapters/repo/.dd/schemas/render/adapters/schema.json';
 describe('adapter pipeline — real jiti loading over every failure class', () => {
   it('discovers only the custom types the document actually populates', () => {
     const resolved = schemaAt(ADAPTERS_SCHEMA, 'render/adapters');
-    expect(collectCustomTypes(doc('adapters/repo/docs/adapters.dd.json'), resolved.schema)).toEqual([
-      'boom',
-      'broken',
-      'good',
-      'missing',
-      'numeric',
-      'shapeless',
-    ]);
+    expect(collectCustomTypes(doc('adapters/repo/docs/adapters.dd.json'), resolved.schema)).toEqual(
+      ['boom', 'broken', 'good', 'missing', 'numeric', 'shapeless'],
+    );
   });
 
   it('resolves adapters beside the winning schema file, by presence alone', () => {

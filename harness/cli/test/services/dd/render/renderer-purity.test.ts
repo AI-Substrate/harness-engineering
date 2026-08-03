@@ -124,4 +124,48 @@ describe('architecture — dd render purity', () => {
       expect(rule?.from?.path).toBe('^harness/cli/src/services/dd/render');
     }
   });
+
+  /**
+   * The fence proof, made durable. The dossier asks for a slice that is green with
+   * Phase 4 absent; physically deleting P4 is not an option (it is live in this
+   * shared worktree), and a one-off deletion would prove it for one run anyway.
+   * Import reachability proves the same claim permanently: if this render service
+   * cannot REACH a P4 module, P4's presence or absence cannot change its result.
+   */
+  it('reaches no Phase-4 module — the slice cannot depend on what it never imports', () => {
+    const P4_OWNED = ['services/dd/links/', 'services/dd/doctor/'];
+    const files = tsFiles(SRC);
+    const sources = new Map(files.map((file) => [file, readFileSync(file, 'utf8')]));
+    const reached: string[] = [];
+    const visited = new Set<string>();
+
+    const visit = (file: string, trace: readonly string[]): void => {
+      if (visited.has(file)) return;
+      visited.add(file);
+      for (const specifier of importSpecifiers(sources.get(file) ?? '')) {
+        const target = importTarget(file, specifier);
+        if (target === null) continue;
+        const label = relative(SRC, target).replaceAll('\\', '/');
+        if (P4_OWNED.some((owned) => label.startsWith(owned))) {
+          reached.push([...trace, label].join(' -> '));
+          continue;
+        }
+        visit(target, [...trace, label]);
+      }
+    };
+    for (const entry of tsFiles(RENDER)) visit(entry, [relative(SRC, entry).replaceAll('\\', '/')]);
+
+    expect(reached).toEqual([]);
+  });
+
+  it('keeps the slice suite itself free of Phase-4 imports', () => {
+    const suite = join(CLI_ROOT, 'test', 'services', 'dd', 'render');
+    for (const file of tsFiles(suite)) {
+      for (const specifier of importSpecifiers(readFileSync(file, 'utf8'))) {
+        expect({ file: relative(CLI_ROOT, file), specifier }).not.toMatchObject({
+          specifier: expect.stringMatching(/services\/dd\/(links|doctor)\//),
+        });
+      }
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import { isAddressFailure, type DdAddress, parseAddress } from '../core/address.js';
+import { type DdAddress, isAddressFailure, parseAddress } from '../core/address.js';
 import { DEFAULT_GATE_TERMINAL_STATES } from '../core/constants.js';
 import { type DdDerivedState, deriveState } from '../core/derive.js';
 import type { DdDoc, DdSection, DdShape, ResolvedDdSchema } from '../core/model.js';
@@ -120,7 +120,7 @@ function summarise(derived: DdDerivedState): string | null {
 // ---------------------------------------------------------------------------
 
 /** Resolve a same-document address to the section (or map entry) it names. */
-function sameDocTarget(doc: DdDoc, address: DdAddress): DdSection | null {
+export function sectionForAddress(doc: DdDoc, address: DdAddress): DdSection | null {
   const sectionName = address.segments[0]?.value;
   if (sectionName === undefined) return null;
   const section = doc.sections.find((entry) => entry.name === sectionName);
@@ -150,7 +150,7 @@ function renderLink(raw: string, doc: DdDoc, resolved: DdRenderContext): string 
   let anchor: string;
   let derived: DdDerivedState | undefined;
   if (address.file === null) {
-    const target = sameDocTarget(doc, address);
+    const target = sectionForAddress(doc, address);
     anchor = headingSlug(target ? target.name : (segments[0]?.value ?? ''));
     if (target) {
       derived = deriveState(target, resolved.gateTerminal ?? DEFAULT_GATE_TERMINAL_STATES);
@@ -258,7 +258,10 @@ function renderCell(
     return `${pipFor(value, terminal)} ${escapeCell(value)}`;
   }
 
-  if (typeof value === 'string' && (shape?.type === 'link' || (!shape && looksLikeAddress(value)))) {
+  if (
+    typeof value === 'string' &&
+    (shape?.type === 'link' || (!shape && looksLikeAddress(value)))
+  ) {
     return renderLink(value, deps.doc, deps.resolved);
   }
 
@@ -281,7 +284,10 @@ function renderTable(columns: readonly string[], rows: readonly string[][]): str
  * carries, in first-seen order. A3: an interior the schema never declared still
  * renders — an unvalidated field is invisible to the validator, not to the reader.
  */
-function columnsFor(rows: readonly Record<string, unknown>[], shape: DdShape | undefined): string[] {
+function columnsFor(
+  rows: readonly Record<string, unknown>[],
+  shape: DdShape | undefined,
+): string[] {
   const declared = Object.keys(shape?.fields ?? {});
   const columns = [...declared];
   for (const row of rows) {

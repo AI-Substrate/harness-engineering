@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { deriveState } from '../../../../src/services/dd/core/derive.js';
 import type { DdDoc, ResolvedDdSchema } from '../../../../src/services/dd/core/model.js';
 import { parse } from '../../../../src/services/dd/core/parse.js';
-import { parseSchemaDeclaration } from '../../../../src/services/dd/schema/declarations.js';
 import type {
   DdAdapterContext,
   DdAdapterIssue,
@@ -16,6 +15,7 @@ import {
   RENDER_BANNER,
   renderDd,
 } from '../../../../src/services/dd/render/renderer.js';
+import { parseSchemaDeclaration } from '../../../../src/services/dd/schema/declarations.js';
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
 
@@ -85,7 +85,10 @@ function durationAdapters(): FakeAdapters {
 describe('renderDd — golden corpus', () => {
   it('renders the showcase document byte-for-byte', () => {
     const path = 'showcase/repo/docs/showcase.dd.json';
-    const resolved = schema('showcase/repo/.dd/schemas/render/showcase/schema.json', 'render/showcase');
+    const resolved = schema(
+      'showcase/repo/.dd/schemas/render/showcase/schema.json',
+      'render/showcase',
+    );
     const output = renderDd(doc(path), {
       path: `/absolute/and/irrelevant/${path}`,
       schema: resolved.schema,
@@ -178,26 +181,23 @@ describe('renderDd — render rules', () => {
   });
 
   it('pips a gate-terminal enum but leaves a plain vocabulary enum unpipped', () => {
-    const output = renderSections(
-      [{ name: 'meta', value: { grade: 'shipped', mood: 'calm' } }],
-      {
-        enums: {
-          grade: { values: ['draft', 'shipped'], gate_terminal: ['shipped'] },
-          mood: { values: ['calm', 'tense'] },
-        },
-        sections: {
-          meta: {
-            shape: {
-              type: 'object',
-              fields: {
-                grade: { type: 'enum', enum: 'grade' },
-                mood: { type: 'enum', enum: 'mood' },
-              },
+    const output = renderSections([{ name: 'meta', value: { grade: 'shipped', mood: 'calm' } }], {
+      enums: {
+        grade: { values: ['draft', 'shipped'], gate_terminal: ['shipped'] },
+        mood: { values: ['calm', 'tense'] },
+      },
+      sections: {
+        meta: {
+          shape: {
+            type: 'object',
+            fields: {
+              grade: { type: 'enum', enum: 'grade' },
+              mood: { type: 'enum', enum: 'mood' },
             },
           },
         },
       },
-    );
+    });
     expect(output).toContain('| grade | ◆ shipped |');
     expect(output).toContain('| mood | calm |');
   });
@@ -245,7 +245,10 @@ describe('renderDd — render rules', () => {
 
   it('reads an undeclared address as a link, but never mistakes prose for one', () => {
     const output = renderSections([
-      { name: 'evidence', value: { 'tk-1': [{ id: 'dw-1', proof: '#items/a', note: 'See #items' }] } },
+      {
+        name: 'evidence',
+        value: { 'tk-1': [{ id: 'dw-1', proof: '#items/a', note: 'See #items' }] },
+      },
     ]);
     expect(output).toContain('| dw-1 | [a](#items) | See #items |');
   });
