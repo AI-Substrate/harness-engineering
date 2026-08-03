@@ -19,7 +19,7 @@ You are the calling agent. This verb gives you **pixel truth about an HTML file*
 
 ```bash
 harness html-snap --file docs/plans/065-deterministic-documents/dd-infographic.html --slices 8
-harness html-snap --file page.html --width 390 --page-height 16000 --slices 10     # mobile pass
+harness html-snap --file page.html --width 500 --page-height 16000 --slices 10     # narrow pass (500 = chrome-headless minimum window width; smaller values are refused — they lay out at 500 and crop, faking clipped content)
 harness html-snap --file page.html --offset 3200 --crop-height 1200 --out /tmp/beat2.png
 ```
 

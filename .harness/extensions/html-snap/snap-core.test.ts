@@ -74,6 +74,8 @@ describe('validateParams — known-bad argument shapes fail', () => {
 
   it('non-integer / out-of-range numerics fail', () => {
     expect(validateParams({ ...base, width: 10 }).length).toBeGreaterThan(0);
+    // below chrome-headless's 500px window floor: layout at 500 + crop to less = fake clipping (known-bad)
+    expect(validateParams({ ...base, width: 390 }).length).toBeGreaterThan(0);
     expect(validateParams({ ...base, slices: 500 }).length).toBeGreaterThan(0);
     expect(validateParams({ ...base, delayMs: Number.NaN }).length).toBeGreaterThan(0);
   });

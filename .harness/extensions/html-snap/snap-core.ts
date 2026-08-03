@@ -62,7 +62,10 @@ export function validateParams(p: SnapParams): ParamProblem[] {
       problems.push({ flag, problem: `must be an integer in [${min}, ${max}], got ${n}` });
     }
   };
-  intish(p.width, '--width', 320, 4000);
+  // Chrome headless clamps window width to a 500px MINIMUM: a --width below
+  // that lays out at 500 and crops the capture — uniform fake "clipping" on
+  // every element. Refuse rather than produce a screenshot that lies.
+  intish(p.width, '--width', 500, 4000);
   intish(p.pageHeight, '--page-height', 200, 40000);
   intish(p.offset, '--offset', 0, 40000);
   intish(p.cropHeight, '--crop-height', 0, 40000);
