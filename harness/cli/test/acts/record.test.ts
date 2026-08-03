@@ -178,6 +178,80 @@ describe('registerRecordAct', () => {
     expect(code).toBe(0);
   });
 
+  /*
+   * ALWAYS WARN, NEVER HIDE (s064 follow-up, Jordan's ruling 2026-08-03).
+   *
+   * A rejected extension used to be SILENT here: `--list` reported `status:"ok"`
+   * with only the surviving types and said nothing about the file it skipped, so
+   * an author checking their work got a confident, clean, wrong answer (this cost
+   * a consumer-repo operator its diagnosis time — it had followed the then-wrong
+   * flat-layout doc and got no signal at all).
+   *
+   * The DIAGNOSIS stays in `doctor` (one home for diagnostics — no doctorish
+   * sprawl): no error codes, no per-file reasons here. This surface only ever
+   * says "something was skipped, go ask doctor" — but it always says it, on BOTH
+   * surfaces, because an agent reading --json is hidden from a human-only line.
+   */
+  describe('skipped extensions are always surfaced, never hidden', () => {
+    const SKIPPED: RecordRegistry = buildRecordRegistry(
+      coreRecordTypes,
+      [],
+      [{ entryPath: '.harness/extensions/dev-survey.record.ts' }],
+    );
+
+    it('--list degrades and names the skipped path, pointing at doctor (still exit 0)', () => {
+      const { io, out } = ioFor('json');
+      const code = run(['--list'], io, configuredFs(), SKIPPED);
+      const env = JSON.parse(out());
+      expect(env.status).toBe('degraded');
+      expect(env.data.skipped).toEqual([{ entryPath: '.harness/extensions/dev-survey.record.ts' }]);
+      // Points at the one home for diagnosis; carries no code/reason itself.
+      expect(env.next_action).toContain('harness doctor');
+      expect(JSON.stringify(env)).not.toContain('E143');
+      // Degraded is non-blocking: the surviving types still enumerate.
+      expect(env.data.types.map((t: { type: string }) => t.type)).toContain('retro');
+      expect(code).toBe(0);
+    });
+
+    it('human mode prints the warning too (a JSON-only signal would still be hiding)', () => {
+      const { io, out } = ioFor('human');
+      const code = run(['--list'], io, configuredFs(), SKIPPED);
+      expect(out()).toContain('1 extension file skipped');
+      expect(out()).toContain('harness doctor');
+      expect(code).toBe(0);
+    });
+
+    it('a record type dropped for a name collision warns the same way', () => {
+      const shadowed: RecordRegistry = buildRecordRegistry(coreRecordTypes, [
+        {
+          recordType: {
+            kind: 'record',
+            type: 'retro',
+            description: 'Shadows the core retro type.',
+            template: '---\nrecord_type: retro\n---\n',
+          },
+          entryPath: '.harness/extensions/my-retro/extension.ts',
+        },
+      ]);
+      const { io, out } = ioFor('json');
+      const code = run(['--list'], io, configuredFs(), shadowed);
+      const env = JSON.parse(out());
+      expect(env.status).toBe('degraded');
+      expect(env.data.conflicts).toHaveLength(1);
+      expect(env.next_action).toContain('harness doctor');
+      expect(code).toBe(0);
+    });
+
+    it('stays plain ok when nothing was skipped (no crying wolf)', () => {
+      const { io, out } = ioFor('json');
+      const code = run(['--list'], io, configuredFs(), buildRecordRegistry(coreRecordTypes, []));
+      const env = JSON.parse(out());
+      expect(env.status).toBe('ok');
+      expect(env.data.skipped ?? []).toEqual([]);
+      expect(code).toBe(0);
+    });
+  });
+
   it('human mode prints a Created line and exits 0', () => {
     const { io, out } = ioFor('human');
     const code = run(['retro', '--slug', 'x'], io, configuredFs());

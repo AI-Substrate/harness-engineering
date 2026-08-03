@@ -211,12 +211,12 @@ Edit the template body, then `harness record dev-survey` works and `harness
 doctor` shows it under record-types. Routing is by the `kind:'record'` field —
 the filename carries no meaning.
 
-> **If your new type doesn't appear, check `harness doctor` — not `harness
-> record --list`.** A rejected extension (wrong layout, load failure) is
-> **silent** in `record --list`: it reports `status:"ok"` with just the core
-> types and says nothing about the file it skipped. `harness doctor` is where
-> the reason surfaces (`E143` for a flat file, `E140` for a load failure), named
-> against the offending path.
+> **If your new type doesn't appear, `harness record --list` will say so — and
+> `harness doctor` says why.** A rejected extension (wrong layout, load failure,
+> name collision) is never hidden: `record --list` degrades, names the file it
+> skipped, and points you at `doctor` (still exit 0 — the surviving types still
+> list). `doctor` owns the reason: `E143` for a flat file, `E140` for a load
+> failure, named against the offending path.
 
 ### Core vs extension
 
