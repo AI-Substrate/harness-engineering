@@ -108,6 +108,28 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "NOD-003",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:41:48.114Z",
+      "details": {
+        "node": "workshop-w1-w3-confirm",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:41:48.401Z",
+      "details": {
+        "node": "workshop-w1-w3-confirm",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -334,6 +356,26 @@
         {
           "at": "2026-08-03T08:37:18.396Z",
           "text": "Locked: gate REFUSES with --force (defended override, agents never on own judgment); enum unchecked/checked/blocked/human-skipped/na, terminal=checked|human-skipped|na; W10 evidence-section design (per-task lists keyed by task id); multi-phase file split; bare-# same-doc + explicit id override addenda; builder-flow integration = LAST plan phase. Record: workshops/002-w2-w10-completion-and-gating.md",
+          "source": "user",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "workshop-w1-w3-confirm",
+      "type": "workshop",
+      "label": "W1+W3: Adapters & log (confirm)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-03T08:41:48.114Z",
+      "modified_at": "2026-08-03T08:41:48.400Z",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-03T08:41:48.400Z",
+          "text": "W1: (value,ctx)=>string adapter in schema package /adapters, jiti-loaded, honest fallback, loud at build. W3: {lg- id, at, text, links[]}; append-only convention only (revises D3). Record: workshops/003-w1-w3-adapters-and-log.md. Workshop backlog CLOSED.",
           "source": "user",
           "kind": "decision"
         }
