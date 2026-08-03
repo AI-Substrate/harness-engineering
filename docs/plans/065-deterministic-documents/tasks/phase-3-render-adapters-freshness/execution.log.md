@@ -114,9 +114,20 @@ DL-006 subject). The fixture → feature/failure map is the README table, and
 every adapter class has its fixture and its frozen code, the drift subject still differs from the
 correct render, and no regeneration switch exists.
 
-**Goldens are hand-authored.** Each `.dd.md` was written before the renderer existed; T002's job
-is to match them. Where the renderer and a golden disagree, the disagreement is adjudicated in
-this log — never silently overwritten.
+**Golden provenance — per file, not blanket** (corrected under review F001; the original entry
+here claimed *every* `.dd.md` was written before the renderer, which P3's own history contradicts).
+The property that makes a golden a TDD floor is that it was authored from the spec with nothing to
+copy from. That is fully true of seven files, partly true of one column, and **not true at all** of
+one later file:
+
+| Golden | Authored | Independence basis |
+|---|---|---|
+| `showcase.dd.md`, `adapters.dd.md`, `chain/source.dd.md`, `chain/consumer.dd.md`, `drift.dd.md`, `drift.expected.md`, `limits.dd.md` | `d865563c` — before any renderer source existed | **Full.** Written from the workshop rulings; there was no implementation to copy. These are the files that caught D1–D3 below. |
+| `showcase.dd.md` — the `proven_by` column only | `44dc52db` — the same commit as the renderer | **Partial.** The column and its `.dd.json` input were added by hand from workshop-002 Ruling 3 to give the undeclared-address case a subject, and the renderer then *failed* it (D3). Commit-level history cannot order a fixture edit against a source edit inside one commit, so that ordering rests on the session record, not on git. |
+| `showcase/repo/docs/other.dd.md` | `3f84f7fb` — during T005 | **None. This is a support fixture, not a golden.** It exists so the showcase's live reference resolves; before it, the corpus carried a dangling reference and the showcase build was spuriously `degraded`. It was written with the renderer's output shape already in hand, so it proves nothing *about* the renderer. Its only guarantee is self-consistency: `dd build --check` renders it drift-free (`dd-build.test.ts` — "renders every committed golden in the corpus without drift"). |
+
+Where a renderer and a golden disagree, the disagreement is adjudicated here — never silently
+overwritten. The T002 adjudications are recorded in full below.
 
 **Invented limit (DL-006 compliance)**: the renderer needs exactly one bound —
 `MAX_CELL_DEPTH`, how deep a nested container renders inside a table cell before collapsing to
@@ -151,6 +162,26 @@ and are reachable — so deleting the rule reddens the suite.
 `arch-check` **AFTER** the append: **2 violations** — the SAME two `services-ports-type-only`
 findings in telemetry, status `degraded`. **Baseline unmoved.** (Module count moved 233 → 246 and
 deps 497 → 537; that is new P3/P4 source landing, not new violations.)
+
+### Golden-caught defects (T002 first run) — the adjudication record
+
+The corpus earned its keep on the renderer's first run: **three renderer defects, every one caught
+by a golden written before the code, every one resolved in the golden's favour.** A fourth failure
+in the same run was mine and was *not* a renderer defect — it is recorded because I reported all
+four to the PM live as "goldens are right, code is wrong", and that report was wrong about D4.
+
+| # | Subject | Golden expects | Renderer emitted | Cause & remediation |
+|---|---|---|---|---|
+| D1 | `showcase.dd.md:16` — the `meta.summary` cell | `Every render feature in one document.<br>Second line proves newline folding.` | `…in one document.&lt;br&gt;Second line…` | `escapeCell` folded newlines to `<br>` **before** escaping `<`/`>`, so the escape pass ate its own output. Fixed by ordering the passes — escape `<`, `>`, `\|` first, fold newlines last (`renderer.ts:62-68`). The order is load-bearing and is now the reason that function is not a one-liner. |
+| D2 | `limits.dd.md:10` — the **at-bound** row's `config` cell | `a: 1; nested: (b: 2)` | `a: 1; nested: (b: ⟨…⟩)` | The `depth > MAX_CELL_DEPTH` test ran before the value was classified, so it truncated **scalars** as well as containers — an off-by-one in *kind*, not in number: `b`'s scalar `2` sits at depth 3 (cells enter at depth 1) and was collapsed even though the container holding it was legally at the bound. Fixed by moving the bound inside the array and record branches only (`renderer.ts:203-216`); a scalar at any depth renders, which is the rule T006 then wrote down. |
+| D3 | `showcase.dd.md:39` — the `proven_by` cell | `[tk-a1b2](#tasks)` | `#tasks/tk-a1b2` (raw, unlinked) | Link rendering keyed only off a *declared* `link` shape, but workshop-002 Ruling 3 puts evidence links in an interior no schema declares — so the design's own navigable links rendered as dead prose. Fixed by adding `looksLikeAddress` plus the `!shape && looksLikeAddress(value)` branch (`renderer.ts:235-265`), gated on the file half so `"See #tasks"` stays prose. |
+| D4 | *(no golden)* `renderer.test.ts` — the empty-section case | — | — | **My test was wrong; the renderer was already right.** That case asserts the `_No entries._` / `_No fields._` / `_Empty._` trio for an empty array, empty object, and empty string, and I mis-assigned one of the three sentinels when writing it; the fix was to the expectation, not to `renderer.ts`. **The exact original expectation is not recoverable** — the correction predates the first commit of `renderer.test.ts` (`44dc52db`), so it exists in no diff. Per the review's instruction I state that rather than approximate it. What *is* supportable: it was in that case, it was an expectation error, and no golden carried it. |
+
+**Provenance of the two right-hand columns.** "Golden expects" is quoted from the committed
+goldens (exact, verifiable today). "Renderer emitted" is **reconstructed**, not remembered — the
+failing output existed only in a pre-commit run. Each reconstruction is mechanical from the fix
+itself: D1 is what escaping `<br>` produces, D2 is what the pre-fix depth guard does to
+`limits.dd.json`'s at-bound row, D3 is the unlinked raw string. None is a recollection of bytes.
 
 ### Render rules this phase settled
 

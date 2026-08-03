@@ -7,10 +7,16 @@ consumer repo. The whole tree sits under `test/**/fixtures/**`, which is the
 sweep-exclusion subject, so `harness checks` stays green with the corpus committed
 (AC-15).
 
-**Golden files are hand-authored expected output, not snapshots.** Each `*.dd.md`
-next to a `*.dd.json` was written first and the renderer was made to match it. See
-§ Updating a golden below — regeneration is a *verification* step, never the source
-of truth.
+**Golden files are hand-authored expected output, not snapshots.** The seven originals
+(`showcase`, `adapters`, `chain/source`, `chain/consumer`, `drift`, `drift.expected`,
+`limits`) were written **before the renderer existed** and the renderer was made to match
+them — they caught three real renderer defects doing it. Two later files do **not** carry
+that guarantee and must not be cited as if they did: `showcase.dd.md`'s `proven_by` column
+was added alongside the renderer, and `showcase/repo/docs/other.dd.md` is a **support
+fixture** (it makes the showcase's live reference resolve) authored with the renderer's
+output shape already in hand. The per-file provenance record is the phase execution log,
+§ T001. See § Updating a golden below — regeneration is a *verification* step, never the
+source of truth.
 
 ## Fixture → feature map
 

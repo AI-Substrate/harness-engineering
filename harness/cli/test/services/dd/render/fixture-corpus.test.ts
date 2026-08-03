@@ -1,7 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
+import { registerBuildCommand } from '../../../../src/acts/dd/build.js';
+import { FakeClock } from '../../../../src/adapters/clock/fake-clock.js';
 import { ErrorCodes } from '../../../../src/output/error-codes.js';
+import type { CliIo } from '../../../../src/output/output-port.js';
 
 const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
 const README = readFileSync(`${FIXTURES}README.md`, 'utf8');
@@ -29,7 +33,7 @@ const ADAPTER_CLASSES = [
 const ADAPTER_DIR = `${FIXTURES}adapters/repo/.dd/schemas/render/adapters/adapters/`;
 
 describe('dd render fixture corpus', () => {
-  it('pairs every fixture document with a hand-authored golden render', () => {
+  it('pairs every fixture document with a committed golden render', () => {
     const documents = files('.dd.json');
     expect(documents.length).toBeGreaterThanOrEqual(6);
     for (const document of documents) {
@@ -67,6 +71,17 @@ describe('dd render fixture corpus', () => {
   });
 
   it('ships no golden-regeneration switch — the corpus is a spec, not a snapshot', () => {
+    // Pin the REAL command surface, not prose about it: registering the act on a
+    // bare commander root exposes exactly the flags `dd build` accepts, so adding
+    // an `--update-goldens` escape hatch reddens this row (review F002 — the
+    // earlier version of this test only read the README, which an escape hatch
+    // could be added without ever touching).
+    const root = new Command();
+    const io: CliIo = { mode: 'json', writers: { out: () => undefined, err: () => undefined } };
+    registerBuildCommand(root, io, { clock: new FakeClock('2026-08-03T00:00:00.000Z') });
+    const build = root.commands.find((command) => command.name() === 'build');
+    expect(build?.options.map((option) => option.long)).toEqual(['--check']);
+    // …and the README still carries the reason, so the next agent knows it is a rule.
     expect(README).toContain('no `--update-goldens` flag');
   });
 });
