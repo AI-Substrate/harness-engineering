@@ -77,6 +77,27 @@ module.exports = {
       to: { path: '^harness/cli/src/adapters', reachable: true },
     },
     {
+      name: 'dd-render-never-imports-output',
+      comment: 'The dd renderer is pure — it returns markdown and never imports harness envelopes or exits.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/render' },
+      to: { path: '^harness/cli/src/output', reachable: true },
+    },
+    {
+      name: 'dd-render-never-imports-acts',
+      comment: 'The dd renderer is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/render' },
+      to: { path: '^harness/cli/src/acts', reachable: true },
+    },
+    {
+      name: 'dd-render-never-imports-node-adapters',
+      comment: 'The dd renderer takes precomputed inputs — it is ports-free and imports no harness adapter.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/render' },
+      to: { path: '^harness/cli/src/adapters', reachable: true },
+    },
+    {
       name: 'adapters-stay-leaf',
       comment: 'Adapters are leaves — they never import services, acts, or output.',
       severity: 'warn',
