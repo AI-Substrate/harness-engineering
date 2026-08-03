@@ -166,6 +166,13 @@
     padding:1.5px 5px;border:1px solid var(--rule);white-space:nowrap;
   }
   .num-col{font-family:var(--mono);color:var(--verm);font-size:12px}
+  /* narrow viewports: a table's min-content width must scroll inside itself,
+     never push the whole page wide (the 390px global-overflow blocker) */
+  @media(max-width:880px){
+    table.spec{display:block;overflow-x:auto}
+    .flowline{overflow-x:auto}
+    pre.code,pre.md{font-size:11px}
+  }
 
   .callout{
     border-left:4px solid var(--blue);background:#fbfdff;border-top:1px solid var(--rule);
@@ -416,14 +423,14 @@
           </div>
           <div class="arrwrap" style="padding:0 8px;width:120px">
             <div class="arrbar fx growx" style="--s:.26;--d:.12"></div>
-            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible">read by · the link lives on THEIR side</div>
+            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible"style-fix-3b</div>
             <div class="arrbar fx growx" style="--s:.52;--d:.12;background:#46586c;margin-top:26px"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
             <div class="doc fx rv" style="--s:.36;--d:.10;border-color:var(--blue)">
               <div class="d-title">the-flow.json · spine</div>
               <div class="navnode"><span class="navdot"></span>phase-2 · implement</div>
-              <div class="jrow" style="margin-top:6px"><span class="jk">"dd_link"</span>: <span class="jv">"plan.dd.json#…phase-2"</span>, <span class="jk">"gate"</span>: <span class="jv">"all-complete"</span></div>
+              <div class="jrow" style="margin-top:6px"><span class="jk">"dd_link"</span>: <span class="jv">"…#phase-2"</span> · <span class="jk">"gate"</span>: <span class="jv">"all-complete"</span></div>
             </div>
             <div class="doc fx rv" style="--s:.62;--d:.10">
               <div class="d-title">the tooling</div>
@@ -518,7 +525,7 @@
 
           <!-- out-link 2: discharge -->
           <path class="edge fx" pathLength="1" d="M 514 186 L 646 186" stroke="#2e7d4f" stroke-width="1.7" marker-end="url(#t-g)" style="--s:.56;--d:.10"/>
-          <text class="fx rv" style="--s:.60;--d:.08" x="536" y="176" font-size="9.5" fill="#2e7d4f">what actually happened</text>
+          <text class="fx rv" style="--s:.60;--d:.08" x="508" y="176" font-size="9.5" fill="#2e7d4f">what happened</text>
           <g class="fx pop" style="--s:.64;--d:.10">
             <rect x="648" y="152" width="264" height="62" fill="#fbfdff" stroke="#2e7d4f" stroke-width="1.5"/>
             <text x="664" y="176" font-size="11.5" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
@@ -645,7 +652,7 @@
     <div class="grid2">
       <div class="rev">
 <pre class="code"><span class="lbl">plan.dd.json — the truth</span>{
-  <span class="k">"dd"</span>: { <span class="k">"doc_type"</span>: <span class="s">"plan"</span>, <span class="k">"spec"</span>: <span class="s">"dd@1"</span> },        <span class="c">← self-describing</span>
+  <span class="k">"dd"</span>: { <span class="k">"doc_type"</span>: <span class="s">"plan"</span>, <span class="k">"spec"</span>: <span class="s">"dd@1"</span> },  <span class="c">← self-describing</span>
   <span class="k">"meta"</span>: {
     <span class="k">"title"</span>: <span class="s">"Checkout flow — guest payment"</span>,
     <span class="k">"edited_at"</span>: <span class="s">"2026-08-03T04:12:55Z"</span>,
@@ -663,7 +670,7 @@
         { <span class="k">"id"</span>: <span class="hl"><span class="s">"ac-4b1c"</span></span>,          <span class="c">← born-once id (§3)</span>
           <span class="k">"criterion"</span>: <span class="s">"Declined card returns a
                         typed error, cart preserved"</span>,
-          <span class="k">"state"</span>: <span class="b">"checked"</span>,       <span class="c">← a state, not a boolean (§4)</span>
+          <span class="k">"state"</span>: <span class="b">"checked"</span>,  <span class="c">← a state (§4)</span>
           <span class="k">"note"</span>: <span class="s">"decline-path suite green at 3f9a10c"</span>,
           <span class="k">"pressure"</span>:  { <span class="k">"target"</span>: <span class="lk">"./backpressure.dd.json
                            #table:evidence/row:bp-7f3a"</span>,
@@ -827,7 +834,7 @@ Let a signed-out shopper complete checkout…
     <div class="sec-head"><span class="sec-num">06</span><h2>Links, and the two ways of tracking change</h2></div>
     <p class="sec-sub">A link here is not a hyperlink you click — it is a <b>value in the data</b>, made of three parts: a path to another file, the id of a section inside it, and the id of a row inside that. It resolves the same way from anywhere in the repo. There are two reasons to point at something, and they want opposite behaviour when the target changes: sometimes you want to always see the latest version, and sometimes you want to be told the moment it stops being what you agreed to.</p>
 
-<pre class="code rev" style="margin-bottom:26px"><span class="lbl">the address · grammar to be locked in the addressing workshop (W9)</span>  ../071-checkout-flow/backpressure.dd.json <span class="k">#</span> table:evidence <span class="k">/</span> row:bp-7f3a
+<pre class="code rev" style="margin-bottom:26px;padding-top:32px"><span class="lbl">the address · grammar to be locked in the addressing workshop (W9)</span>  ../071-checkout-flow/backpressure.dd.json <span class="k">#</span> table:evidence <span class="k">/</span> row:bp-7f3a
   <span class="c">└── relative path (repo-internal) ──┘   └─ stable section ─┘  └─ born-once row ─┘</span></pre>
 
     <div class="ledger">
@@ -905,7 +912,7 @@ Let a signed-out shopper complete checkout…
           <text x="522" y="170" fill="#2e7d4f">discharge · el-0042</text>
 
           <line x1="740" y1="250" x2="612" y2="250" stroke="#46586c" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
-          <text x="640" y="240" fill="#46586c">implements ac-4b1c</text>
+          <text x="618" y="240" fill="#46586c">implements ac-4b1c</text>
           <line x1="800" y1="220" x2="800" y2="116" stroke="#46586c" stroke-width="1.4" stroke-dasharray="4 4" marker-end="url(#arr)"/>
           <text x="808" y="176" fill="#46586c">proof bp-7f3a</text>
         </g>
@@ -962,7 +969,7 @@ Let a signed-out shopper complete checkout…
         </table>
       </div>
       <div class="rev d1">
-<pre class="code"><span class="lbl">doctor finding — diagnostics prescribe the fix</span><span class="c">// every non-ok envelope carries a next_action — blank is rejected</span>
+<pre class="code"><span class="lbl">doctor finding — diagnostics prescribe the fix</span><span class="c">// non-ok needs a next_action — blank rejected</span>
 {
   <span class="k">"code"</span>: <span class="s">"E322 DD_LINK_UNRESOLVED"</span>,
   <span class="k">"severity"</span>: <span class="b">"error"</span>,
@@ -972,7 +979,7 @@ Let a signed-out shopper complete checkout…
            (2 rows: bp-7f3a, bp-2e88)"</span>,
   <span class="k">"next_action"</span>: <span class="s">"re-point: dd link --path plan.dd.json
            --row ac-9d02 --col pressure
-           --to ./backpressure.dd.json#table:evidence/row:bp-2e88"</span>
+           --to …#table:evidence/row:bp-2e88"</span>
 }</pre>
         <div class="callout" style="margin-top:18px">
           <span class="mini">Contract inheritance</span>
