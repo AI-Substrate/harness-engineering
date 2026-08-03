@@ -77,6 +77,36 @@ module.exports = {
       to: { path: '^harness/cli/src/adapters', reachable: true },
     },
     {
+      name: 'dd-graph-never-imports-render',
+      comment:
+        'dd graph emits mermaid directly. A renderer import anywhere in its chain would re-couple the render and links phases, which were split so they could land in parallel.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/acts/dd/(graph|links)\\.ts$' },
+      to: { path: '^harness/cli/src/services/dd/render', reachable: true },
+    },
+    {
+      name: 'dd-links-never-imports-render',
+      comment:
+        'The links layer consumes the render layer only through an injected interface; it never imports it.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/links' },
+      to: { path: '^harness/cli/src/services/dd/render', reachable: true },
+    },
+    {
+      name: 'dd-links-never-imports-output',
+      comment: 'The links layer returns structured findings and never imports harness envelopes or exits.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/links' },
+      to: { path: '^harness/cli/src/output', reachable: true },
+    },
+    {
+      name: 'dd-links-never-imports-acts',
+      comment: 'The links layer is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/links' },
+      to: { path: '^harness/cli/src/acts', reachable: true },
+    },
+    {
       name: 'dd-render-never-imports-output',
       comment: 'The dd renderer is pure — it returns markdown and never imports harness envelopes or exits.',
       severity: 'warn',
