@@ -516,17 +516,17 @@
 
           <!-- out-link 1: pressure -->
           <path class="edge fx" pathLength="1" d="M 514 146 C 580 130, 596 84, 646 66" stroke="#c2491d" stroke-width="1.7" marker-end="url(#t-v)" style="--s:.36;--d:.10"/>
-          <text class="fx rv" style="--s:.40;--d:.08" x="540" y="104" font-size="9.5" fill="#c2491d">how it must be proven</text>
+          <text class="fx rv" style="--s:.40;--d:.08" x="660" y="112" font-size="9.5" fill="#c2491d">how it must be proven</text>
           <g class="fx pop" style="--s:.46;--d:.10">
             <rect x="648" y="28" width="264" height="66" fill="#fbfdff" stroke="#c2491d" stroke-width="1.5"/>
             <text x="664" y="52" font-size="11.5" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
-            <text x="664" y="70" font-size="9.5" fill="#46586c">row bp-2e88 · BUILD→RUN · harness check idempotency</text>
-            <text x="664" y="84" font-size="9" fill="#7189a0">pointed at from two places — the plan and the task list</text>
+            <text x="664" y="70" font-size="9.5" fill="#46586c">row bp-2e88 · BUILD→RUN · idempotency</text>
+            <text x="664" y="84" font-size="9" fill="#7189a0">pointed at from two places</text>
           </g>
 
           <!-- out-link 2: proven-by -->
           <path class="edge fx" pathLength="1" d="M 514 186 L 646 186" stroke="#2e7d4f" stroke-width="1.7" marker-end="url(#t-g)" style="--s:.56;--d:.10"/>
-          <text class="fx rv" style="--s:.60;--d:.08" x="508" y="176" font-size="9.5" fill="#2e7d4f">what happened</text>
+          <text class="fx rv" style="--s:.60;--d:.08" x="524" y="176" font-size="9.5" fill="#2e7d4f">what happened</text>
           <g class="fx pop" style="--s:.64;--d:.10">
             <rect x="648" y="152" width="264" height="62" fill="#fbfdff" stroke="#2e7d4f" stroke-width="1.5"/>
             <text x="664" y="176" font-size="11.5" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
@@ -540,7 +540,17 @@
             <text x="664" y="308" font-size="9.5" fill="#46586c">done-when dw-31c0 · implements ac-4b1c</text>
           </g>
           <path class="edge fx" pathLength="1" d="M 700 264 C 620 220, 616 128, 646 78" stroke="#46586c" stroke-width="1.5" stroke-dasharray="1" marker-end="url(#t-k)" style="--s:.82;--d:.10"/>
-          <text class="fx rv" style="--s:.86;--d:.08" x="560" y="236" font-size="9.5" fill="#46586c">the task list points here too</text>
+          <!-- label moved left out of its own curve's path: the curve sweeps the narrow
+               x≈616-700 channel, which is the only route between the plan box and the
+               right-hand column, so any label parked in that channel gets struck through. -->
+          <text class="fx rv" style="--s:.86;--d:.08" x="706" y="246" font-size="9.5" fill="#46586c">the task list points here too</text>
+
+          <!-- tasks → plan: the implements link. Drawn last and deliberately subordinate
+               (thinner, lighter) so the tree still reads as one checklist at the centre.
+               Unlabelled on purpose — the tasks box already names the item it implements,
+               and a second label in this corner crowds it. Cannot be visually dashed:
+               .edge uses stroke-dasharray for the draw-on animation. -->
+          <path class="edge fx" pathLength="1" d="M 646 306 C 570 316, 500 300, 476 218" stroke="#8a9bb0" stroke-width="1.2" marker-end="url(#t-k)" style="--s:.88;--d:.09"/>
         </svg></div>
         <p class="punch fx rv" style="--s:.92;--d:.08">You write a link where it belongs; the tooling finds every link pointing back. “Who depends on this?” becomes one command.</p>
       </figure>
