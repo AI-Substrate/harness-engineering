@@ -8,9 +8,9 @@ import {
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event, HarnessEvent } from '../events.js';
-import { parseApplyPatchDeltas } from './copilot-adapter.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type { SegmentModelStat } from '../segment.js';
+import { parseApplyPatchDeltas } from './copilot-adapter.js';
 import type {
   HarnessAdapter,
   HarnessCapabilities,
@@ -407,7 +407,8 @@ export const cursorAdapter: HarnessAdapter = {
       tools: nullIfEmptyMap(tools),
       user_prompts: userPrompts.length > 0 ? userPrompts : null,
       subagents: null,
-      files: written.size > 0 || edited.size > 0 ? { written: [...written], edited: [...edited] } : null,
+      files:
+        written.size > 0 || edited.size > 0 ? { written: [...written], edited: [...edited] } : null,
       compactions: null,
       api_errors: null,
       local_commands: null,
