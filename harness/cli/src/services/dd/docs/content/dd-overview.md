@@ -57,8 +57,13 @@ Gate-terminal by default: `checked ∪ human-skipped ∪ na`. A schema may decla
 with their own `gate_terminal` sets — for any field, so "done" means what that schema says it
 means, not what a hard-coded list says.
 
-Task state is **derived**: a task is completable when every one of its evidence entries is
-gate-terminal. Nothing is self-reported.
+A task's completion **summary** is derived: it reads gate-terminal when every one of its
+evidence entries is. That summary is computed, never typed.
+
+An explicit `state` field on the task itself is a **separate claim, and is not reconciled
+against the evidence it points at** — a task may say `checked` while its evidence says
+`unchecked`, and validation will not object. When the two disagree, trust the derived summary:
+it is the one backed by rows. Prefer not to store both as competing authorities.
 
 ## Schema resolution
 
@@ -102,5 +107,6 @@ harness dd schema list --json | jq -r '.data.schemas[] | "\(.name)\t\(.path)"'
 This page is the tour. The full reference — the address grammar in detail, the schema-package
 convention, the completion states and the `human-skipped` receipt convention, the basis ledger,
 the sweep's exclusion contract, and a page of jq recipes — lives in the repository at
-`docs/how/harness-dd.md`. A worked corpus sits beside it in
-`docs/plans/065-deterministic-documents/exemplar/`.
+`docs/how/dd/` — a progressive reference, starting at `docs/how/dd/README.md`. A worked corpus
+sits in `docs/plans/065-deterministic-documents/exemplar/`, including a fully self-contained one
+with its own schema and adapters in `exemplar/custom-render/`.

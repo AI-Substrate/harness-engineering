@@ -139,8 +139,16 @@ An adapter is a file whose presence *is* its registration — no manifest, no im
 ```
 
 ```ts
-/** (value, ctx) => string — pure, synchronous, and never throws for user input. */
-export default function sparkline(value: unknown, ctx: { schema: string; location: string }): string {
+/**
+ * (value, ctx) => string — pure, synchronous, and never throws for user input.
+ *
+ * `ctx` carries: `type` (the custom type name, i.e. this file's own basename),
+ * `field` (the column), `shape` (the column's declaration, verbatim from the
+ * schema), `path` (the document being rendered), and `location` (where the
+ * value sits inside it). Destructure only what you need — the parameter below
+ * narrows to `location` on purpose.
+ */
+export default function sparkline(value: unknown, ctx: { location: string }): string {
   if (!Array.isArray(value) || value.length === 0) {
     return `_(no data for ${ctx.location})_`;
   }
