@@ -33,7 +33,7 @@ privacy / offline guarantees.
 
 Every `harness <verb>` runs a tiny, fail-safe **capture preamble** before the
 command does its work. It detects the innermost agent harness (Claude Code,
-Copilot CLI; Cursor later), reads everything that happened *since the last
+Copilot CLI, Cursor, Copilot-VSCode), reads everything that happened *since the last
 command* via a per-session cursor, and writes one normalized `segment` — tokens,
 skills, tools, subagents, files, plan links, model/branch/timecode — to a
 **gitignored buffer**. Nothing is pushed on the hot path.
@@ -209,10 +209,14 @@ emit an *exact*-timed stream (Copilot CLI turns even carry per-interaction
 tokens). The next two surfaces hit a **tokens-`null` ceiling** — they keep usage
 server-side, so the adapter reports the timeline and **never estimates tokens**:
 
-- **Cursor** (`cursor-agent`) has no transcript timestamps, so its events are
-  **anchored** to the IDE-store bubble times (`t_precision: "anchored"`); a
-  headless Cursor session with no bubbles serializes an **empty `event_stream`
-  with `rollup: null`** rather than a fabricated one.
+- **Cursor** (`cursor-agent`) has no transcript timestamps, so its timed events
+  are **anchored** to the IDE-store bubble times (`t_precision: "anchored"`).
+  `file` events (plan 066: `ApplyPatch` patch deltas, the same V4A grammar as
+  copilot's `apply_patch`) don't need the bubbles: without an anchor they take
+  the capture wall-clock at `t_precision: "interval"` — "within this window" —
+  so a headless session still carries its file evidence. A headless session with
+  no bubbles **and no file activity** serializes an **empty `event_stream` with
+  `rollup: null`** rather than a fabricated one.
 - **Copilot Chat in VS Code** (`copilot-vscode`) is a **distinct surface from
   `copilot-cli`** — the VS Code extension keeps its own SQLite store
   (`…/globalStorage/github.copilot-chat/session-store.db`, `sessions` + `turns`),

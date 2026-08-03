@@ -56,7 +56,7 @@ capture", which is also precisely the granularity the attribution join needs
 
 1. **Golden fixture**: the fixture corpus (`test/services/telemetry/fixtures/real/cursor/`) has no editing session. Cut a fixture from the `1a501a09` transcript (sanitized) + `expected-segment.json` so drift-guard covers the new path. Required before this leaves prototype status.
 2. **Adapter unit tests**: direct tests for the `ApplyPatch` branch (string input, multi-file patch, `Delete File:`, absolute-path confinement, `interval` stamping).
-3. **Docs drift**: `docs/how/telemetry.md`, `docs/how/telemetry-field-reference.html`, and the plan-056 capability matrix still say cursor emits no file events. Update with the shipped truth (AC-07's "honest null" no longer applies to files).
+3. **Docs drift**: ~~`docs/how/telemetry.md`, `docs/how/telemetry-field-reference.html`, and `docs/how/measuring-ai-contribution.md` still say cursor emits no file events~~ — **closed on this branch** (prime's merge condition: a PR must not ship documentation contradicting its own behaviour). All three now state the plan-066 truth; `copilot-vscode` remains the honest null.
 4. **copilot-vscode has the same blind spot** — `files: null` in `copilot-vscode-adapter.ts`. Next stream: point the same specimen-generating prompt at VS Code Copilot, dissect what its store logs for edits, and port the same pattern. (Jordan is generating that specimen next.)
 5. **Headless-session enrichment**: `~/.cursor/chats/<workspace-hash>/<conv>/store.db` (protobuf) exists per CLI conversation and is the candidate source for **models + real timestamps** for headless sessions (the IDE `state.vscdb` only covers IDE sessions). Would upgrade `interval` → `anchored` and un-null `models`. Separate investigation; protobuf decoding is a heavier lift.
 6. **What stays honestly null**: `tokens` (Cursor keeps consumption server-side; local `tokenCount`/`usageData` fields are vestigial/zeroed — never estimate), `thinking`, `compactions`, `api_errors` (absent from the transcript: only `text` and `tool_use` blocks exist, no `tool_result`, no thinking blocks).
@@ -67,6 +67,6 @@ capture", which is also precisely the granularity the attribution join needs
 
 - [ ] Fixture + expected-segment for a cursor editing session (drift-guarded)
 - [ ] Unit tests for `ApplyPatch` extraction paths
-- [ ] `telemetry.md` / field-reference / capability-matrix docs updated
+- [x] `telemetry.md` / field-reference / `measuring-ai-contribution.md` docs updated (this branch)
 - [ ] `harness checks` green on this branch
 - [ ] Review per repo discipline

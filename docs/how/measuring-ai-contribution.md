@@ -136,9 +136,11 @@ each. That is *modification* being counted as *authorship*.
 - Which specific lines an agent wrote. The data contains no line identity, so no amount of
   post-processing recovers it.
 - An exact per-file percentage. The gross-churn bias forbids it.
-- Any claim about a surface that does not expose per-file paths — `copilot-vscode` and
-  `cursor` emit **zero** `file` events by design. That is an honest null, and it must be
-  reported as *unavailable*, never as zero contribution.
+- Any claim about a surface that does not expose per-file paths — `copilot-vscode` emits
+  **zero** `file` events by design. That is an honest null, and it must be reported as
+  *unavailable*, never as zero contribution. (`cursor` shed this limit in plan 066: its
+  `ApplyPatch` patches now yield per-file deltas, at `interval` time precision when the
+  session has no bubble timeline.)
 
 > **Path-only authorship rows (plan 068).** The report's authorship table can
 > now carry rows whose delta fields are `null` with a `delta_unavailable`
