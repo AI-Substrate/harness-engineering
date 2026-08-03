@@ -13,7 +13,7 @@
 | status | in-progress |
 | complexity | CS-5 |
 | summary | A plan authored as a deterministic document. Every claim below is a row with its own id, its own state, and its own outbound proof — so "is this plan done?" is a query, not a reading. |
-| backpressure | ◐ 3/5 [rows](backpressure.dd.md#rows) |
+| backpressure | [~] 3/5 [rows](backpressure.dd.md#rows) |
 | log | [entries](execution-log.dd.md#entries) |
 
 ## goals
@@ -31,21 +31,21 @@
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0201 | A schema named `builder/plan` resolves doc-folder -&gt; &lt;gitroot&gt;/.dd -&gt; .harness/.dd -&gt; ~/.dd with deep scan, and every shadowed duplicate is reported with its path. | ◆ checked | — | — | [bp-0201](backpressure.dd.md#rows) | [lg-0201](execution-log.dd.md#entries) |
-| ac-0801 | `dd docs list` enumerates the baked docs with descriptions and `dd docs get how-to-add-a-schema` returns the worked schema+adapter guide, with a drift gate that fails when the committed module stops matching its sources. | ◆ checked | — | — | [bp-0801](backpressure.dd.md#rows) | [lg-0801](execution-log.dd.md#entries) |
-| ac-0901 | A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq. | ◇ unchecked | This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it. | — | [bp-0901](backpressure.dd.md#rows) | [lg-0901](execution-log.dd.md#entries) |
-| ac-1201 | dep-cruiser rules and an architecture test prove services/dd/core/** imports no output/, no acts, and no node-* adapters. | ◆ checked | — | — | [bp-1201](backpressure.dd.md#rows) | [lg-1201](execution-log.dd.md#entries) |
+| ac-0201 | A schema named `builder/plan` resolves doc-folder -&gt; &lt;gitroot&gt;/.dd -&gt; .harness/.dd -&gt; ~/.dd with deep scan, and every shadowed duplicate is reported with its path. | [x] checked | — | — | [bp-0201](backpressure.dd.md#rows) | [lg-0201](execution-log.dd.md#entries) |
+| ac-0801 | `dd docs list` enumerates the baked docs with descriptions and `dd docs get how-to-add-a-schema` returns the worked schema+adapter guide, with a drift gate that fails when the committed module stops matching its sources. | [x] checked | — | — | [bp-0801](backpressure.dd.md#rows) | [lg-0801](execution-log.dd.md#entries) |
+| ac-0901 | A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq. | [ ] unchecked | This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it. | — | [bp-0901](backpressure.dd.md#rows) | [lg-0901](execution-log.dd.md#entries) |
+| ac-1201 | dep-cruiser rules and an architecture test prove services/dd/core/** imports no output/, no acts, and no node-* adapters. | [x] checked | — | — | [bp-1201](backpressure.dd.md#rows) | [lg-1201](execution-log.dd.md#entries) |
 
 ## phases
 
 | id | title | brief | state | note | receipt | depends_on | tasks |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| ph-0001 | dd-core foundations | Document model, address grammar, validate engine with depth, derived state, the error space, every act stub, and the machine-enforced isolation boundary. | ◆ checked | — | — | — | — |
-| ph-0002 | Schema layer & baked docs | Convention-based schema resolution with shadow reporting, custom enums with their own gate-terminal sets, and the baked `dd docs` corpus with its drift gate. | ◆ checked | — | — | ph-0001 | ◆ 9/9 [tasks](tasks/phase-2/tasks.dd.md#tasks) |
-| ph-0003 | Render, adapters & freshness | The .dd.json to .dd.md pipeline with derived-state summaries, custom-type adapters that degrade loudly, and live-ledger refresh at render. | ◆ checked | — | — | ph-0002 | — |
-| ph-0004 | Links, ledger & doctor | Resolver engine, address and link tooling, the pinned ledger with verify-basis, and the doctor sweep at infinite radius with loop breakers. | ◆ checked | — | — | ph-0002 | — |
-| ph-0005 | Exemplar, plan verb & checks join | This corpus, the `harness plan` act, and the integration join that puts dd health inside the repository's own quality gate. | ◇ unchecked | — | — | ph-0003, ph-0004 | — |
-| ph-0006 | Flow-spine gating | The flow spine becomes dd's first gating consumer: a nav move off a gated node refuses, and --force is the defended, recorded override. | ◇ unchecked | — | — | ph-0005 | — |
+| ph-0001 | dd-core foundations | Document model, address grammar, validate engine with depth, derived state, the error space, every act stub, and the machine-enforced isolation boundary. | [x] checked | — | — | — | — |
+| ph-0002 | Schema layer & baked docs | Convention-based schema resolution with shadow reporting, custom enums with their own gate-terminal sets, and the baked `dd docs` corpus with its drift gate. | [x] checked | — | — | ph-0001 | [x] 9/9 [tasks](tasks/phase-2/tasks.dd.md#tasks) |
+| ph-0003 | Render, adapters & freshness | The .dd.json to .dd.md pipeline with derived-state summaries, custom-type adapters that degrade loudly, and live-ledger refresh at render. | [x] checked | — | — | ph-0002 | — |
+| ph-0004 | Links, ledger & doctor | Resolver engine, address and link tooling, the pinned ledger with verify-basis, and the doctor sweep at infinite radius with loop breakers. | [x] checked | — | — | ph-0002 | — |
+| ph-0005 | Exemplar, plan verb & checks join | This corpus, the `harness plan` act, and the integration join that puts dd health inside the repository's own quality gate. | [ ] unchecked | — | — | ph-0003, ph-0004 | — |
+| ph-0006 | Flow-spine gating | The flow spine becomes dd's first gating consumer: a nav move off a gated node refuses, and --force is the defended, recorded override. | [ ] unchecked | — | — | ph-0005 | — |
 
 ## references
 

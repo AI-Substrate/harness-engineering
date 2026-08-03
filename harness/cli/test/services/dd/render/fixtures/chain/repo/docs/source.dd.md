@@ -14,6 +14,6 @@
 
 | id | claim | state |
 | --- | --- | --- |
-| dw-aaaa | first proof | ◆ checked |
-| dw-bbbb | second proof | ◆ checked |
-| dw-cccc | third proof | ◇ unchecked |
+| dw-aaaa | first proof | [x] checked |
+| dw-bbbb | second proof | [x] checked |
+| dw-cccc | third proof | [ ] unchecked |

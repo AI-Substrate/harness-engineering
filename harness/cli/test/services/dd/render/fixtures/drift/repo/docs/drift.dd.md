@@ -8,13 +8,13 @@
 | Field | Value |
 | --- | --- |
 | title | Drift subject |
-| status | ◇ unchecked |
+| status | [ ] unchecked |
 
 ## items
 
 | id | label | state |
 | --- | --- | --- |
-| tk-0001 | first | ◆ checked |
-| tk-0002 | second, and a human typed this straight into the generated file | ◆ checked |
+| tk-0001 | first | [x] checked |
+| tk-0002 | second, and a human typed this straight into the generated file | [x] checked |
 
 A hand-added paragraph the generator would never emit.

@@ -312,7 +312,7 @@ describe('watch → CLI regeneration end to end', () => {
     const consumerMd = join(repo, 'docs/consumer.dd.md');
     const io = { mode: 'json' as const, writers: { out: () => {}, err: () => {} } };
 
-    expect(readFileSync(consumerMd, 'utf8')).toContain('◐ 2/3');
+    expect(readFileSync(consumerMd, 'utf8')).toContain('[~] 2/3');
 
     const watcher = new FakeWatcher();
     const pending: Promise<unknown>[] = [];
@@ -342,6 +342,6 @@ describe('watch → CLI regeneration end to end', () => {
     watcher.fire(source);
     await Promise.all(pending);
 
-    expect(readFileSync(consumerMd, 'utf8')).toContain('◆ 3/3');
+    expect(readFileSync(consumerMd, 'utf8')).toContain('[x] 3/3');
   });
 });

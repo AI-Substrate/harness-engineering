@@ -8,11 +8,11 @@
 | Field | Value |
 | --- | --- |
 | title | Drift subject |
-| status | ◇ unchecked |
+| status | [ ] unchecked |
 
 ## items
 
 | id | label | state |
 | --- | --- | --- |
-| tk-0001 | first | ◆ checked |
-| tk-0002 | second | ◇ unchecked |
+| tk-0001 | first | [x] checked |
+| tk-0002 | second | [ ] unchecked |

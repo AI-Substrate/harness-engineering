@@ -23,15 +23,15 @@ source of truth.
 | Fixture | Exercises |
 |---|---|
 | `showcase/repo/docs/showcase.dd.json` → `.dd.md` | The everything-doc: banner, document title from the first object section's `title`, `**Schema**/**Source**/**Sections**` meta line, object section → `Field \| Value` table, scalar array → bullet list, object array → table, **task-id-keyed evidence MAP** with a `###` sub-heading per key (A3 — interiors render although the shape declares no fields), text section → block, `references` ledger table |
-| ↳ `meta.status` / `tasks[].state` | Gate pips: `◆` gate-terminal · `◇` holds · `✗` blocked. `meta.risk` uses an enum with **no** `gate_terminal`, so it renders unpipped — Ruling 2's "enums are general-purpose" |
-| ↳ `tasks[].done` / `meta.coverage` | Same-document link + **derived-state row summary**: `◐ 3/5`, `◆ 2/2`, `◇ 0/1` (via P1 `deriveState`) |
+| ↳ `meta.status` / `tasks[].state` | Gate pips: `[x]` gate-terminal · `[ ]` holds · `[-]` blocked. `meta.risk` uses an enum with **no** `gate_terminal`, so it renders unpipped — Ruling 2's "enums are general-purpose" |
+| ↳ `tasks[].done` / `meta.coverage` | Same-document link + **derived-state row summary**: `[~] 3/5`, `[x] 2/2`, `[ ] 0/1` (via P1 `deriveState`) |
 | ↳ `tasks[].upstream` | Cross-file link → `[<last segment>](<file>.dd.md#<section>)`; heading-only anchors (workshop-001 § Anchors), id visible in the link text |
 | ↳ `tasks[0].note` | Table-cell escaping: a literal `\|` and `<tag>` survive a cell |
 | ↳ `goals[1]` | Block context does **not** escape — backticks and pipes stay verbatim outside tables |
 | ↳ `tasks[2].risk` | Undeclared column (A3): declared fields first in declaration order, undeclared appended in first-seen order |
 | ↳ `meta.budget` / `tasks[].spent` | Custom type → adapter (`adapters/duration.ts`), proving `ctx` carries the column declaration |
 | `limits/repo/docs/limits.dd.json` → `.dd.md` | Every **invented limit** with a fixture that CROSSES it (P2 DL-006): `MAX_CELL_DEPTH` nested-container rendering — `at-limit` sits at the bound, `crosses-limit` goes past it and collapses to `⟨…⟩`. Also proves the title fallback to the source basename when no section carries a `title` |
-| `chain/repo/docs/source.dd.json` + `consumer.dd.json` | Transclusion chain for live-ledger refresh (T005): consumer's `upstream` link carries a **precomputed cross-file** summary `◐ 2/3`; `references` row is `mode: live`; empty section renders `_No entries._` |
+| `chain/repo/docs/source.dd.json` + `consumer.dd.json` | Transclusion chain for live-ledger refresh (T005): consumer's `upstream` link carries a **precomputed cross-file** summary `[~] 2/3`; `references` row is `mode: live`; empty section renders `_No entries._` |
 | `drift/repo/docs/drift.dd.json` | The hand-edit path (AC-03). `drift.expected.md` is the correct render; `drift.dd.md` is the **deliberately hand-edited sibling** that `dd build --check` must catch as byte drift (E422) and `dd build` must overwrite |
 
 ## Adapter failure classes → fixture map

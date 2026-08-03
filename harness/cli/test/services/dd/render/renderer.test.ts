@@ -198,7 +198,7 @@ describe('renderDd — render rules', () => {
         },
       },
     });
-    expect(output).toContain('| grade | ◆ shipped |');
+    expect(output).toContain('| grade | [x] shipped |');
     expect(output).toContain('| mood | calm |');
   });
 
@@ -208,7 +208,47 @@ describe('renderDd — render rules', () => {
     ]);
     expect(output).toContain('### tk-1');
     expect(output).toContain('| id | state | why |');
-    expect(output).toContain('| dw-1 | ✗ blocked | no proof |');
+    expect(output).toContain('| dw-1 | [-] blocked | no proof |');
+  });
+
+  it('renders every address in an array-of-link cell as a real link, declared or inferred', () => {
+    // The execution-log shape: one row, many outbound addresses. A cell that
+    // holds a LIST of addresses must be as clickable as a cell that holds one —
+    // rendering it as plain text strands exactly the links dd exists to make
+    // navigable. Both routes are covered: the DECLARED `array of link` shape,
+    // and the undeclared interior that falls back to address inference (A3).
+    // The declared case deliberately targets a NON-.dd.json file: address
+    // inference refuses those (`looksLikeAddress`), so this assertion can only
+    // pass by honouring the declared `link` shape. Using a .dd.json target here
+    // would let inference carry the test and prove nothing about declaration.
+    const declared = renderSections(
+      [
+        {
+          name: 'entries',
+          value: [{ id: 'lg-1', links: ['notes.md#section/detail', '#entries'] }],
+        },
+      ],
+      {
+        sections: {
+          entries: {
+            shape: {
+              type: 'array',
+              items: {
+                type: 'object',
+                fields: { links: { type: 'array', items: { type: 'link' } } },
+              },
+            },
+          },
+        },
+      },
+    );
+    expect(declared).toContain('[detail](notes.md#section)');
+    expect(declared).toContain('[entries](#entries)');
+
+    const inferred = renderSections([
+      { name: 'entries', value: [{ id: 'lg-1', links: ['plan.dd.json#phases/ph-0001'] }] },
+    ]);
+    expect(inferred).toContain('[ph-0001](plan.dd.md#phases)');
   });
 
   it('escapes a cell but never block prose', () => {

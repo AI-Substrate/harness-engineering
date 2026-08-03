@@ -8,7 +8,7 @@
 | Field | Value |
 | --- | --- |
 | title | Neighbour document |
-| status | ◇ draft |
+| status | [ ] draft |
 | risk | — |
 | weight | — |
 | ratio | — |
@@ -21,4 +21,4 @@
 
 | id | title | state | note | spent | tags | done | upstream |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-z9y8 | Upstream task | ◆ checked | — | — | — | — | — |
+| tk-z9y8 | Upstream task | [x] checked | — | — | — | — | — |

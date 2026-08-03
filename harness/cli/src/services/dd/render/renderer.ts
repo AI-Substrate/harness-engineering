@@ -38,12 +38,18 @@ const BUILTIN_TYPES = new Set([
   'text',
 ]);
 
-/** Gate pips, borrowed from the flow rail rather than invented: passes / holds / blocked. */
-const PIP_TERMINAL = '◆';
-const PIP_HOLDS = '◇';
-const PIP_BLOCKED = '✗';
-/** Partial progress, per plan § 3.1 (`◐ 3/5`). */
-const PIP_PARTIAL = '◐';
+/**
+ * Gate marks in the markdown task-list vocabulary a plan reader already knows:
+ * passes / holds / blocked. A mark PREFIXES the state word, never replaces it —
+ * a schema may declare its own state vocabulary (workshop-002 Ruling 2), so
+ * `shipped`, `waived` and `approved` must stay distinguishable at a glance
+ * instead of collapsing into one identical `[x]`.
+ */
+const PIP_TERMINAL = '[x]';
+const PIP_HOLDS = '[ ]';
+const PIP_BLOCKED = '[-]';
+/** Partial progress, per plan § 3.1 (`[~] 3/5`). */
+const PIP_PARTIAL = '[~]';
 
 function basename(path: string): string {
   const parts = path.replaceAll('\\', '/').split('/');
@@ -108,7 +114,7 @@ function terminalSetFor(
   return null;
 }
 
-/** `◐ 3/5` — the derived-state row summary. Suppressed when there is nothing to count. */
+/** `[~] 3/5` — the derived-state row summary. Suppressed when there is nothing to count. */
 function summarise(derived: DdDerivedState): string | null {
   if (derived.total === 0) return null;
   const pip = derived.complete ? PIP_TERMINAL : derived.terminal > 0 ? PIP_PARTIAL : PIP_HOLDS;
@@ -200,18 +206,29 @@ function renderCustomType(
   return `\`${escapeCell(raw ?? String(value))}\` ⟨type:${escapeCell(type)}⟩`;
 }
 
-function renderContainer(value: unknown, depth: number, deps: CellDeps): string {
+function renderContainer(value: unknown, depth: number, deps: CellDeps, shape?: DdShape): string {
   if (Array.isArray(value)) {
     if (depth > MAX_CELL_DEPTH) return '⟨…⟩';
-    const items = value.map((entry) => renderContainer(entry, depth + 1, deps));
+    const items = value.map((entry) => renderContainer(entry, depth + 1, deps, shape?.items));
     return depth <= 1 ? items.join(', ') : `[${items.join(', ')}]`;
   }
   if (isRecord(value)) {
     if (depth > MAX_CELL_DEPTH) return '⟨…⟩';
     const pairs = Object.entries(value).map(
-      ([key, entry]) => `${key}: ${renderContainer(entry, depth + 1, deps)}`,
+      ([key, entry]) =>
+        `${key}: ${renderContainer(entry, depth + 1, deps, shape?.fields?.[key] ?? shape?.valuesShape)}`,
     );
     return depth <= 1 ? pairs.join('; ') : `(${pairs.join('; ')})`;
+  }
+  // An address inside a container is as navigable as one in a cell of its own —
+  // by its DECLARED `link` shape, or by the same undeclared-address inference
+  // `renderCell` applies (A3 / workshop-002 Ruling 3). Without this, a schema
+  // that says `array of link` silently renders plain text.
+  if (
+    typeof value === 'string' &&
+    (shape?.type === 'link' || (!shape && looksLikeAddress(value)))
+  ) {
+    return renderLink(value, deps.doc, deps.resolved);
   }
   return renderScalar(value);
 }
@@ -265,7 +282,7 @@ function renderCell(
     return renderLink(value, deps.doc, deps.resolved);
   }
 
-  if (Array.isArray(value) || isRecord(value)) return renderContainer(value, 1, deps);
+  if (Array.isArray(value) || isRecord(value)) return renderContainer(value, 1, deps, shape);
   return renderScalar(value);
 }
 

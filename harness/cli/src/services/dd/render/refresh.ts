@@ -67,7 +67,7 @@ export interface RefreshOptions {
  * an operator two answers to one question.
  *
  * So the refresh's visible effect is the **derived summaries** — a task row that
- * says `◐ 2/3` about a list living in another file. `refreshed[]` reports which
+ * says `[~] 2/3` about a list living in another file. `refreshed[]` reports which
  * bases have moved, for a caller that wants to say so.
  *
  * The ledger is the opt-in: only files carrying a `live` entry are read, so a

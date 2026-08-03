@@ -8,14 +8,14 @@
 | Field | Value |
 | --- | --- |
 | title | Render showcase |
-| status | ◇ ready |
+| status | [ ] ready |
 | risk | high |
 | weight | 3 |
 | ratio | 0.5 |
 | released | false |
 | summary | Every render feature in one document.<br>Second line proves newline folding. |
 | budget | **2h 15m** |
-| coverage | ◐ 3/5 [tk-a1b2](#tk-a1b2) |
+| coverage | [~] 3/5 [tk-a1b2](#tk-a1b2) |
 
 ## goals
 
@@ -26,9 +26,9 @@
 
 | id | title | state | note | spent | tags | done | upstream | risk |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-a1b2 | Wire capture | ◇ unchecked | a pipe \| and a &lt;tag&gt; inside a cell | **1h 30m** | render, core | ◐ 3/5 [tk-a1b2](#tk-a1b2) | — | — |
-| tk-b2c3 | Prove drift | ◆ checked | landed | — | — | ◆ 2/2 [tk-b2c3](#tk-b2c3) | [tk-z9y8](../docs/other.dd.md#tasks) | — |
-| tk-c3d4 | Hold the gate | ✗ blocked | waiting on P4 | — | — | ◇ 0/1 [tk-c3d4](#tk-c3d4) | — | high |
+| tk-a1b2 | Wire capture | [ ] unchecked | a pipe \| and a &lt;tag&gt; inside a cell | **1h 30m** | render, core | [~] 3/5 [tk-a1b2](#tk-a1b2) | — | — |
+| tk-b2c3 | Prove drift | [x] checked | landed | — | — | [x] 2/2 [tk-b2c3](#tk-b2c3) | [tk-z9y8](../docs/other.dd.md#tasks) | — |
+| tk-c3d4 | Hold the gate | [-] blocked | waiting on P4 | — | — | [ ] 0/1 [tk-c3d4](#tk-c3d4) | — | high |
 
 ## evidence
 
@@ -36,24 +36,24 @@
 
 | id | assertion | state | proven_by |
 | --- | --- | --- | --- |
-| dw-1111 | renderer emits the banner | ◆ checked | [tk-a1b2](#tasks) |
-| dw-2222 | golden files are hand-authored | ◆ checked | — |
-| dw-3333 | adapters load through jiti | ◆ checked | — |
-| dw-4444 | drift is byte-exact | ◇ unchecked | — |
-| dw-5555 | watcher contract proven | ◇ unchecked | — |
+| dw-1111 | renderer emits the banner | [x] checked | [tk-a1b2](#tasks) |
+| dw-2222 | golden files are hand-authored | [x] checked | — |
+| dw-3333 | adapters load through jiti | [x] checked | — |
+| dw-4444 | drift is byte-exact | [ ] unchecked | — |
+| dw-5555 | watcher contract proven | [ ] unchecked | — |
 
 ### tk-b2c3
 
 | id | assertion | state | receipt |
 | --- | --- | --- | --- |
-| dw-6666 | sibling write is atomic enough | ◆ checked | — |
-| dw-7777 | human waived the perf claim | ◆ human-skipped | not measuring perf this phase |
+| dw-6666 | sibling write is atomic enough | [x] checked | — |
+| dw-7777 | human waived the perf claim | [x] human-skipped | not measuring perf this phase |
 
 ### tk-c3d4
 
 | id | assertion | state | note |
 | --- | --- | --- | --- |
-| dw-8888 | gate refuses | ✗ blocked | P6 owns it |
+| dw-8888 | gate refuses | [-] blocked | P6 owns it |
 
 ## notes
 

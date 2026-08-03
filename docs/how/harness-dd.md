@@ -160,7 +160,7 @@ composes across files — a task from its list, a phase from its tasks, a plan f
 summary cannot drift from the thing it summarises. The rendered markdown shows the count it computed:
 
 ```text
-| tk-0201 | Resolution fixture corpus | ◆ checked | ◆ 3/3 [tk-0201](#tk-0201) |
+| tk-0201 | Resolution fixture corpus | [x] checked | [x] 3/3 [tk-0201](#tk-0201) |
 ```
 
 ## Rendering

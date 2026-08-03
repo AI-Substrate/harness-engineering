@@ -8,7 +8,7 @@
 | Field | Value |
 | --- | --- |
 | title | Chain consumer |
-| upstream | ◐ 2/3 [items](source.dd.md#items) |
+| upstream | [~] 2/3 [items](source.dd.md#items) |
 
 ## items
 
