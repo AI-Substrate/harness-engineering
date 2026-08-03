@@ -1,4 +1,4 @@
-import type { FlowComment, FlowDoc, FlowNode } from './flow-events.js';
+import { type FlowComment, type FlowDoc, type FlowNode, readingCounts } from './flow-events.js';
 import { dueChores } from './flow-mutations.js';
 
 /**
@@ -123,10 +123,16 @@ const choreStatusGlyph = (status: string | undefined): string =>
 function ddGateBadge(node: FlowNode): string | null {
   const link = node.dd_link;
   if (link === undefined || typeof link.address !== 'string') return null;
-  const reading = link.reading;
-  if (reading === undefined) return '⛨';
-  const tick = reading.status === 'complete' ? ' ✓' : '';
-  return `⛨${reading.terminal}/${reading.total}${tick}`;
+  // F004: the counts are re-checked HERE too, not merely at the mutation boundary.
+  // A `FlowDoc` is JSON on disk, and anyone with an editor can put anything in a
+  // recorded reading — including `1"] --> EVIL["pwned`, which would inject a node
+  // into the diagram. A reading whose counts are not counts is not rendered as
+  // counts; it renders as the bare shield, which is what "nothing trustworthy to
+  // report" has always looked like here.
+  const counts = readingCounts(link.reading);
+  if (counts === null) return '⛨';
+  const tick = link.reading?.status === 'complete' ? ' ✓' : '';
+  return `⛨${counts.terminal}/${counts.total}${tick}`;
 }
 
 /** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
@@ -200,8 +206,23 @@ const LEGEND =
   ' · 🔶 decision · 🗣 user input · 🟪 harness chore (faded = not yet done) · 🤖 companion · 🛠 worker' +
   ' · 🟧 current (you are here).' +
   ' Badges: 💬 comments · 📄 artifacts · 📝 instructions · 🧰 chore' +
-  ' (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped)' +
-  ' · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).';
+  ' (° optional / recommended / ‼ strongly-recommended; ✓ done · ✕ skipped)';
+
+/**
+ * The dd-gate legend clause — appended ONLY when some node actually carries a
+ * `dd_link` (P6 review F006).
+ *
+ * `dd_link` is opt-in, and opt-in has to mean invisible when unused: a flow that
+ * has never heard of dd should render the bytes it rendered before the gate
+ * existed. An unconditional clause broke that quietly — every golden in the repo
+ * changed by one line, which is precisely the blast radius the opt-in promise was
+ * made to prevent. The legend explains a glyph; with no glyph on the page there is
+ * nothing to explain.
+ */
+const GATE_LEGEND = ' · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).';
+
+const legendFor = (nodes: readonly FlowNode[]): string =>
+  nodes.some((n) => n.dd_link !== undefined) ? `${LEGEND}${GATE_LEGEND}` : `${LEGEND}.`;
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -523,7 +544,7 @@ export function renderFlow(doc: FlowDoc): string {
 
   // --- Legend ----------------------------------------------------------------
   out.push('');
-  out.push(LEGEND);
+  out.push(legendFor(nodes));
 
   // --- Node log (the markdown half of AC-06; render-only) --------------------
   // A node logs when it carries comments OR artifacts — both ride the body-log
@@ -740,13 +761,15 @@ function railGateCallout(doc: FlowDoc): string {
   const link = node?.dd_link;
   if (node === undefined || link === undefined || link.gate === false) return '';
   if (typeof link.address !== 'string' || link.address.length === 0) return '';
-  const reading = link.reading;
+  // Same untrusted-counts defence as the badge (F004) — an unreadable reading is
+  // reported as unevaluated rather than interpolated.
+  const counts = readingCounts(link.reading);
   const state =
-    reading === undefined
+    counts === null
       ? 'not yet evaluated'
-      : reading.status === 'complete'
-        ? `${reading.terminal}/${reading.total} ✓`
-        : `${reading.terminal}/${reading.total}`;
+      : link.reading?.status === 'complete'
+        ? `${counts.terminal}/${counts.total} ✓`
+        : `${counts.terminal}/${counts.total}`;
   return `  ⚑ gate: ${escapeMd(node.label ?? node.id)} ⛨ ${state}`;
 }
 

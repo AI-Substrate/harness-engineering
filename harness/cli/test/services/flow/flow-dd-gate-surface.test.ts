@@ -193,7 +193,15 @@ describe('AC-11 (surfacing) — per-item states come through the evaluator', () 
     ]);
   });
 
-  it('reports an out-of-vocabulary state as unknown rather than refusing to read', () => {
+  it('NAMES an out-of-vocabulary state rather than flattening it to "unknown"', () => {
+    // Changed deliberately in the P6 fix round (F001). The old reconstruction
+    // inferred each state by re-deriving once per candidate vocabulary value, so a
+    // value the schema never declared could only come back as `unknown` — and two
+    // different bad states looked identical in the refusal. That is the same defect
+    // 6.6(b) already found once (`blocked` and `unchecked` reading alike). The dd
+    // SDK seam reports what the document actually says, so the refusal can too.
+    // Out-of-vocabulary is still REPORTED, never refused: `dd validate` owns that
+    // finding, and the gate's answer for it — "not terminal" — is unchanged.
     const fx = corpus([STATES.checked, 'wat']);
     const result = evaluateDdGate({ address: 'docs/tasks.dd.json#tasks' }, fx.deps, {
       repoRoot: fx.root,
@@ -201,6 +209,7 @@ describe('AC-11 (surfacing) — per-item states come through the evaluator', () 
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.items[1]).toEqual({ id: 'dw-0002', state: 'unknown', terminal: false });
+    expect(result.items[1]).toEqual({ id: 'dw-0002', state: 'wat', terminal: false });
+    expect(result.complete).toBe(false);
   });
 });

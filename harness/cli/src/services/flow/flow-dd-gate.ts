@@ -1,10 +1,13 @@
-import { deriveState } from '../dd/core/derive.js';
-import type { DdSection } from '../dd/core/model.js';
-import type { SchemaResolver } from '../dd/core/validate.js';
-import type { DocLoader } from '../dd/core/walk.js';
-import { resolveLink, verifyBasis } from '../dd/links/index.js';
 import {
-  BUILTIN_COMPLETION_ENUM,
+  type DocLoader,
+  resolveLink,
+  type SchemaResolver,
+  verifyBasis,
+} from '../dd/links/index.js';
+import {
+  type DdSchemaItem,
+  type DdSection,
+  deriveSchemaItems,
   deriveSchemaState,
   type SchemaRecord,
   type SchemaResolution,
@@ -22,16 +25,25 @@ import type { DdLink, DdLinkReading } from './flow-events.js';
  *     part of it, and the document's content sha;
  *   - `resolveDetailed` (schema) yields the target schema's OWN `gate_terminal`
  *     set, so a custom enum genuinely changes what "complete" means here;
- *   - `deriveSchemaState` (schema → core `deriveState`) computes the reading over
- *     that set;
+ *   - `deriveSchemaState` / `deriveSchemaItems` (schema) compute the aggregate
+ *     reading and the per-item states over that set;
  *   - `verifyBasis` (links) answers the separate, non-gating question of whether
  *     the target has moved since the recorded basis.
  *
- * Nothing in dd is reached into directly, and nothing about the gate's *policy*
- * lives in dd. The split is deliberate: dd computes completion, the flow decides
- * what completion is allowed to stop. Which is why this file is pure over injected
- * dependencies — it has no filesystem, no clock, no envelope and no exit, and the
- * act layer supplies the real adapters exactly as it does for every dd verb.
+ * **Every import above comes from a dd BARREL — `dd/links/index.js` and
+ * `dd/schema/index.js` — and nothing here may ever import a dd module path.** The
+ * flow is an external consumer of dd, and the difference between an SDK and a
+ * shared folder is exactly this line. When the gate needs something dd does not
+ * export, the fix is to expose a named seam on a barrel deliberately (as
+ * `deriveSchemaItems` was, for the per-item read this file's refusal message
+ * needs) — never to reach past one. The `flow-consumes-dd-sdk-only`
+ * dependency-cruiser rule and `flow-dd-sdk-seam.test.ts` refuse the alternative.
+ *
+ * Nothing about the gate's *policy* lives in dd. The split is deliberate: dd
+ * computes completion, the flow decides what completion is allowed to stop. Which
+ * is why this file is pure over injected dependencies — it has no filesystem, no
+ * clock, no envelope and no exit, and the act layer supplies the real adapters
+ * exactly as it does for every dd verb.
  */
 
 /**
@@ -110,17 +122,7 @@ export interface DdGateReading {
 }
 
 /** One gated item: what it is called, what state it is in, and whether that passes. */
-export interface DdGateItem {
-  id: string;
-  /**
-   * The item's state value, or `'unknown'` when it is outside every vocabulary the
-   * schema declares. Unknown is REPORTED rather than refused: an out-of-vocabulary
-   * state is a document-validation finding that `dd validate` already owns, and the
-   * gate's answer for it is simply "not terminal", which it already is.
-   */
-  state: string;
-  terminal: boolean;
-}
+export type DdGateItem = DdSchemaItem;
 
 export type DdGateResult = DdGateReading | DdGateFailure;
 
@@ -131,47 +133,15 @@ function failure(reason: DdGateFailureReason, address: string, message: string):
 /**
  * Every item the section carries, in document order, each labelled with its state.
  *
- * `deriveState` is the only structural collector dd exposes, and it reports the
- * items that FAILED a terminal set — so this asks it the same question once per
- * candidate vocabulary value. An empty terminal set fails everything, which yields
- * the complete ordered id list; a single-value set fails everything except the
- * items carrying that value, which names them.
- *
- * The alternative was a second walker over `section.value` here. That would be a
- * second answer to "what counts as an item", living one directory away from the
- * first, and the two would eventually disagree about a nested shape — at which
- * point the gate and `dd validate` would report different totals for the same
- * document. Several cheap calls over an in-memory value is the better trade.
+ * Delegated wholesale to `deriveSchemaItems` — the dd SDK seam exposed for exactly
+ * this read. An item whose state is outside every vocabulary the schema declares is
+ * REPORTED WITH THE STATE IT ACTUALLY CARRIES, never refused and never flattened:
+ * an out-of-vocabulary state is a document-validation finding `dd validate` already
+ * owns, and the gate's answer for it is simply "not terminal", which it already is.
+ * Naming it is what lets the refusal distinguish one bad state from another.
  */
-function itemsOf(
-  record: SchemaRecord,
-  section: DdSection,
-  incomplete: readonly string[],
-): DdGateItem[] {
-  const ordered = deriveState(section, []).incomplete;
-  const notTerminal = new Set(incomplete);
-  const stateById = new Map<string, string>();
-  for (const value of candidateStates(record)) {
-    const missing = new Set(deriveState(section, [value]).incomplete);
-    for (const id of ordered) {
-      if (!missing.has(id) && !stateById.has(id)) stateById.set(id, value);
-    }
-  }
-  return ordered.map((id) => ({
-    id,
-    state: stateById.get(id) ?? 'unknown',
-    terminal: !notTerminal.has(id),
-  }));
-}
-
-/** Every state value this schema could legitimately carry: its own enums, plus the built-in. */
-function candidateStates(record: SchemaRecord): string[] {
-  const values = new Set<string>(BUILTIN_COMPLETION_ENUM.values);
-  for (const declared of Object.values(record.schema.enums ?? {})) {
-    for (const value of declared.values) values.add(value);
-  }
-  for (const value of record.gateTerminal) values.add(value);
-  return [...values];
+function itemsOf(record: SchemaRecord, section: DdSection): DdGateItem[] {
+  return deriveSchemaItems(record, section);
 }
 
 /**
@@ -244,7 +214,7 @@ export function evaluateDdGate(
     terminal: derived.terminal,
     total: derived.total,
     incomplete: derived.incomplete,
-    items: itemsOf(record, section, derived.incomplete),
+    items: itemsOf(record, section),
   };
 }
 

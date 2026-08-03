@@ -122,6 +122,38 @@ function ddGateDeps(repoRoot: string, deps: FlowActDeps): DdGateDeps {
   };
 }
 
+/**
+ * The repository root of the DOCUMENT, derived from the flow file's own location
+ * (P6 review F005) — not from wherever the process happens to be standing.
+ *
+ * A `dd_link.address` is repo-relative and PERSISTED: it was written against the
+ * repository the flow lives in, and it means the same thing forever. Anchoring it
+ * at `process.cwd()` silently makes it mean something different per caller — the
+ * identical `harness flow orient --path /abs/the-flow.json` reports a healthy gate
+ * from the repo root and a missing target (`E441`) one directory down. That is
+ * worse than an error: it is a refusal the reader can only clear with `--force`,
+ * for a document that was never incomplete.
+ *
+ * So the anchor travels with the document. Walk up from the flow file to the
+ * nearest ancestor carrying a `.git` (a FILE in a worktree, a directory in a normal
+ * clone — `exists` covers both), and fall back to `cwd` when there is none, which
+ * is exactly the old behaviour for the un-versioned case.
+ *
+ * Scope is deliberate: this anchors dd ADDRESS RESOLUTION only. The write-path
+ * containment root (`E303`) is a separate, older contract and is untouched here.
+ */
+function docRepoRoot(flowPath: string, deps: FlowActDeps): string {
+  const fallback = toPosix(deps.proc.cwd());
+  let dir = posixDirname(toPosix(flowPath));
+  for (let hops = 0; hops < 64; hops += 1) {
+    if (deps.fs.exists(posixJoin(dir, '.git'))) return dir;
+    const parent = posixDirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return fallback;
+}
+
 /** The `GateEvaluator` seam `setNow` consumes — one live evaluation per link. */
 function gateEvaluator(
   repoRoot: string,
@@ -379,8 +411,11 @@ export function registerFlowAct(
             ),
           );
         }
-        const clk = { clock: deps.clock, gate: gateEvaluator(repoRoot(), deps) };
-        runMutation(io, deps, opts, (doc) => {
+        runMutation(io, deps, opts, (doc, flowPath) => {
+          const clk = {
+            clock: deps.clock,
+            gate: gateEvaluator(docRepoRoot(flowPath, deps), deps),
+          };
           let r: MutationResult = { ok: true, doc };
           // The gate notice must survive the later setters: a forced departure is
           // still a forced departure when the same command also set --intent.
@@ -547,9 +582,10 @@ export function registerFlowAct(
       if (!resolved.ok) return emit(orientIo, failureEnvelope(needPath(), deps.clock));
       const read = readFlowDoc(resolved.path, svc);
       if (!read.ok) return emit(orientIo, failureEnvelope(read, deps.clock));
+      const gateRoot = docRepoRoot(resolved.path, deps);
       const view = orientView(read.doc, {
-        deps: ddGateDeps(repoRoot(), deps),
-        repoRoot: repoRoot(),
+        deps: ddGateDeps(gateRoot, deps),
+        repoRoot: gateRoot,
       });
       // Robustness: a SET nav.now that doesn't resolve to a node in nodes[] is a
       // corrupt/inconsistent flow — error (E305, the missing-NODE case; the
@@ -1368,24 +1404,38 @@ function orientView(doc: FlowDoc, gate?: { deps: DdGateDeps; repoRoot: string })
  * unreadable. The renderer stays pure and stays the single owner of the rail's
  * shape; it is simply handed the fresher document — which is what the reader
  * already believed they were looking at.
+ *
+ * **The UNEVALUABLE branch is the one that bites** (P6 review F002). Returning the
+ * stored document there resurrected the exact contradiction this function exists to
+ * kill, in its worst form: a previously-recorded `complete` rendered an open
+ * `⚑ gate: … ⛨ 2/2 ✓` immediately above `! could not evaluate`. A rail asserting
+ * a gate is OPEN while the block says the gate cannot be read is not a cosmetic
+ * mismatch — it is the surface telling a reader they may depart. So the stored
+ * reading is CLEARED instead: `not yet evaluated` is the only honest thing the rail
+ * can say about a reading nothing can currently confirm, and it agrees with the
+ * block underneath it.
  */
 function railDoc(doc: FlowDoc, node: FlowNode | undefined, gate: OrientGate | undefined): FlowDoc {
-  if (node === undefined || gate === undefined || gate.status === 'unevaluable') return doc;
+  if (node === undefined || gate === undefined) return doc;
   const link = node.dd_link;
   if (link === undefined) return doc;
-  const live: FlowNode = {
-    ...node,
-    dd_link: {
-      ...link,
-      reading: {
-        status: gate.status,
-        terminal: gate.terminal,
-        total: gate.total,
-        incomplete: gate.items.filter((i) => i.pip !== '■').map((i) => i.id),
-        at: '',
-      },
-    },
-  };
+  const { reading: _cleared, ...withoutReading } = link;
+  const live: FlowNode =
+    gate.status === 'unevaluable'
+      ? { ...node, dd_link: withoutReading }
+      : {
+          ...node,
+          dd_link: {
+            ...link,
+            reading: {
+              status: gate.status,
+              terminal: gate.terminal,
+              total: gate.total,
+              incomplete: gate.items.filter((i) => i.pip !== '■').map((i) => i.id),
+              at: '',
+            },
+          },
+        };
   return { ...doc, nodes: doc.nodes.map((n) => (n.id === node.id ? live : n)) };
 }
 
@@ -1501,7 +1551,7 @@ function runMutation(
   io: CliIo,
   deps: FlowActDeps,
   opts: { path?: string; slug?: string },
-  mutate: (doc: FlowDoc) => MutationResult,
+  mutate: (doc: FlowDoc, flowPath: string) => MutationResult,
 ): never {
   const svc: FlowServiceDeps = { fs: deps.fs, clock: deps.clock, git: deps.git, env: deps.env };
   const root = toPosix(deps.proc.cwd());
@@ -1509,7 +1559,9 @@ function runMutation(
   if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
   const read = readFlowDoc(resolved.path, svc);
   if (!read.ok) return emit(io, failureEnvelope(read, deps.clock));
-  const result = mutate(read.doc);
+  // The resolved path is handed to the mutator so a gate can anchor its dd address
+  // at the DOCUMENT's repo root rather than the process cwd (F005).
+  const result = mutate(read.doc, resolved.path);
   if (!result.ok) return emit(io, failureEnvelope(result, deps.clock));
   // Post-mutation schema validation (companion HIGH): the mechanical mutation
   // preserves shape, but a bad --status/--type/--next could still violate the

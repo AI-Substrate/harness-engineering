@@ -23,12 +23,16 @@ export interface DdRollupState extends DdDerivedState {
   children: DdRollupState[];
 }
 
-interface StateEntry {
+/**
+ * One evidence entry as the collector found it: what it is called, and the state
+ * value it carries. The atom every completion answer in dd is computed from.
+ */
+export interface DdStateEntry {
   id: string;
   state: string;
 }
 
-function collectStateEntries(value: unknown, entries: StateEntry[], location: string): void {
+function collectStateEntries(value: unknown, entries: DdStateEntry[], location: string): void {
   if (Array.isArray(value)) {
     for (const [index, entry] of value.entries()) {
       collectStateEntries(entry, entries, `${location}[${index}]`);
@@ -49,13 +53,29 @@ function collectStateEntries(value: unknown, entries: StateEntry[], location: st
   }
 }
 
+/**
+ * Every evidence entry the section carries, in document order, each with the state
+ * value it holds.
+ *
+ * This is the read model underneath `deriveState`, exposed deliberately: a caller
+ * that needs to say WHAT state each item is in — not merely how many passed a
+ * terminal set — would otherwise have to write a second walker over `section.value`,
+ * and two structural collectors one directory apart eventually disagree about a
+ * nested shape. Then the same document reports different totals depending on who
+ * asked. One collector, two projections.
+ */
+export function deriveItems(section: DdSection): DdStateEntry[] {
+  const entries: DdStateEntry[] = [];
+  collectStateEntries(section.value, entries, `$.sections[${section.name}].value`);
+  return entries;
+}
+
 /** Compute a completable section from its evidence-entry state values. */
 export function deriveState(
   section: DdSection,
   gateTerminal: readonly string[] = DEFAULT_GATE_TERMINAL_STATES,
 ): DdDerivedState {
-  const entries: StateEntry[] = [];
-  collectStateEntries(section.value, entries, `$.sections[${section.name}].value`);
+  const entries = deriveItems(section);
   const terminalSet = new Set(gateTerminal);
   const incomplete = entries
     .filter((entry) => !terminalSet.has(entry.state))

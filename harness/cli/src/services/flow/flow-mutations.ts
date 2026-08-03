@@ -12,6 +12,7 @@ import {
   type FlowDoc,
   type FlowNode,
   type Nav,
+  sanitizeDdLink,
 } from './flow-events.js';
 import { type FlowFailure, fail } from './flow-service.js';
 
@@ -170,11 +171,26 @@ function departureGate(
  * `modified_at` is deliberately NOT bumped: a computed reading is machine
  * bookkeeping, not an authored edit, and restamping it would make every nav move
  * look like someone changed the node.
+ *
+ * An UNEVALUABLE result CLEARS the stored reading rather than leaving the old one
+ * standing (P6 review F002, "kill it everywhere"). This only ever runs on a path
+ * that is already writing — a `--force` departure through a gate that could not be
+ * read — and leaving a stale `⛨3/3 ✓` on a node the CLI has just said it cannot
+ * evaluate persists the same contradiction into the committed diagram, where the
+ * next reader meets it with no error message beside it. `basis_sha` survives: it is
+ * an anchor for a later drift check, not a completion claim.
+ *
+ * A REFUSAL never reaches here, so the "nothing was written" invariant is intact.
  */
 function recordReading(node: FlowNode, result: DdGateResult, at: string): void {
-  if (!result.ok) return;
   const link = node.dd_link;
   if (link === undefined) return;
+  if (!result.ok) {
+    if (link.reading === undefined) return;
+    const { reading: _stale, ...kept } = link;
+    node.dd_link = kept;
+    return;
+  }
   node.dd_link = { ...link, basis_sha: result.sha, reading: readingOf(result, at) };
 }
 
@@ -503,8 +519,8 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
   };
 }
 
-/** The closed shared-core zone enum (ws-002); an invalid explicit `--zone` is rejected pre-write. */
-const ZONE_VALUES = new Set(['preflight', 'flight', 'postflight']);
+/** The closed shared-core zone enum (ws-002); an invalid explicit `--zone` is rejected pre-write. */ const ZONE_VALUES =
+  new Set(['preflight', 'flight', 'postflight']);
 function badZone(spec: NodeSpec): FlowFailure | null {
   if (spec.zone !== undefined && !ZONE_VALUES.has(spec.zone)) {
     return fail(
@@ -514,6 +530,32 @@ function badZone(spec: NodeSpec): FlowFailure | null {
     );
   }
   return null;
+}
+
+/**
+ * Refuse a `dd_link` that is not a `dd_link` — the mutation-boundary half of the
+ * untrusted-reading defence (P6 review F004).
+ *
+ * `dd_link` is the only node field a caller can hand in as an arbitrary nested
+ * object, and both of its recorded counts are interpolated into a mermaid label
+ * downstream. So it is checked HERE, before anything is written, not merely
+ * defended at the renderer: the file is the artifact people commit, review and
+ * diff, and letting `{"total": "1\\"] --> EVIL"}` land in it is a durable problem
+ * that a render-time escape only hides.
+ *
+ * `sanitizeDdLink` draws the AUTHORED/RECORDED distinction: a bad `address` or
+ * `gate` is a mistake the author must be told about (this `E108`), while a bad
+ * `basis_sha`/`reading` is dropped on the way in — nobody authored it, and the gate
+ * recomputes it live on the next departure.
+ */
+function badDdLink(value: unknown): FlowFailure | null {
+  if (value === undefined) return null;
+  if (sanitizeDdLink(value) !== null) return null;
+  return fail(
+    ErrorCodes.INVALID_ARGS,
+    'invalid dd_link — it needs a non-empty string "address", and "gate" (if present) must be a boolean.',
+    'Write {"address": "<path>.dd.json#<section>", "gate": true|false}. `basis_sha` and `reading` are recorded BY the gate — do not author them.',
+  );
 }
 
 /**
@@ -634,16 +676,23 @@ export function setNode(
   if (fields.zone !== undefined && zoneErr !== null) return zoneErr;
   const choreErr = badChore({ chore: fields.chore } as NodeSpec);
   if (fields.chore !== undefined && choreErr !== null) return choreErr;
+  // Same pre-write guard for `dd_link` (F004) — and the value that lands is the
+  // SANITIZED one, so a hand-supplied `reading` full of mermaid syntax never
+  // reaches the file even when the authored half is well-formed.
+  const linkErr = badDdLink(fields.dd_link);
+  if (linkErr !== null) return linkErr;
+  const safeFields =
+    fields.dd_link === undefined ? fields : { ...fields, dd_link: sanitizeDdLink(fields.dd_link) };
   // Idempotent no-op (AC-07): if every requested field already equals the node's
   // current value, return the doc UNCHANGED — no `modified_at` restamp, no
   // `node-updated` event. This makes re-flagging an already-correct chore (the
   // R-1 re-injection path) byte-identical. Validation above still runs first.
-  const unchanged = Object.entries(fields).every(
+  const unchanged = Object.entries(safeFields).every(
     ([key, value]) => key === 'id' || JSON.stringify(node[key]) === JSON.stringify(value),
   );
   if (unchanged) return { ok: true, doc };
   const applied: string[] = [];
-  for (const [key, value] of Object.entries(fields)) {
+  for (const [key, value] of Object.entries(safeFields)) {
     if (key === 'id') continue; // identity is immutable
     node[key] = value;
     applied.push(key);
@@ -1119,7 +1168,12 @@ function specFrom(raw: Record<string, unknown>): NodeSpec {
   if (typeof raw.command === 'string') spec.command = raw.command;
   // The shape is validated at runtime by `badChore`; the cast only satisfies TS.
   if (isObject(raw.chore)) spec.chore = raw.chore as unknown as NodeSpec['chore'];
-  if (isObject(raw.dd_link)) spec.dd_link = raw.dd_link as unknown as DdLink;
+  // Sanitized on the way in (F004) — `parseOp`'s `badDdLink` has already refused a
+  // malformed AUTHORED half, so this only ever strips an untrustworthy recorded one.
+  if (isObject(raw.dd_link)) {
+    const link = sanitizeDdLink(raw.dd_link);
+    if (link !== null) spec.dd_link = link;
+  }
   if (Array.isArray(raw.artifacts)) spec.artifacts = raw.artifacts as string[];
   if (Array.isArray(raw.instructions)) spec.instructions = raw.instructions as string[];
   if (typeof raw.user_input === 'string') spec.user_input = raw.user_input;
@@ -1131,6 +1185,14 @@ const OP_CONTROL_KEYS = new Set(['op', 'id', 'after', 'before', 'branch_of', 're
 function fieldsFrom(raw: Record<string, unknown>): Record<string, unknown> {
   const fields: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) if (!OP_CONTROL_KEYS.has(k)) fields[k] = v;
+  // F004: the same sanitize the creating ops get. `parseOp` refuses a malformed
+  // authored link before this runs, so a `null` here is unreachable — the delete is
+  // the honest handling of "unreachable" rather than a cast that pretends otherwise.
+  if (fields.dd_link !== undefined) {
+    const link = sanitizeDdLink(fields.dd_link);
+    if (link === null) delete fields.dd_link;
+    else fields.dd_link = link;
+  }
   return fields;
 }
 
@@ -1161,6 +1223,11 @@ function parseOp(raw: unknown, i: number): NormOp | FlowFailure {
     );
   }
   const id = raw.id;
+  // Every op that can carry a node field can carry a `dd_link` (F004) — checked
+  // once here, before the op is normalized, so no code path reaches a write with
+  // an unvalidated one.
+  const linkErr = badDdLink(raw.dd_link);
+  if (linkErr !== null) return linkErr;
   switch (raw.op) {
     case 'add':
     case 'insert': {

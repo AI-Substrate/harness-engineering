@@ -145,6 +145,80 @@ export function ddLinkGates(link: DdLink | undefined): link is DdLink {
   return link !== undefined && link.gate !== false;
 }
 
+/**
+ * A recorded reading's counts, ONLY if they are counts (P6 review F004).
+ *
+ * `DdLinkReading` says `terminal: number`, but a `FlowDoc` is JSON read off disk —
+ * the type is a promise the file never made. `dd_link` reaches the document through
+ * `apply --ops` and through anyone with an editor, and both halves of the reading
+ * are interpolated straight into a mermaid node label and a rail line. A `total` of
+ * `1"] --> EVIL["pwned` is not a display bug; it is a writable diagram.
+ *
+ * So the counts are TRUSTED NOWHERE and re-checked at every boundary they cross:
+ * two non-negative safe integers, or nothing at all. Narrowing to integers is
+ * stronger than escaping, because an integer has no representation that can carry
+ * syntax. `null` means "no usable reading", which every caller already renders as
+ * `not yet evaluated` — the honest answer for a reading that cannot be read.
+ */
+export function readingCounts(
+  reading: DdLinkReading | undefined,
+): { terminal: number; total: number } | null {
+  if (reading === undefined || reading === null || typeof reading !== 'object') return null;
+  const { terminal, total } = reading;
+  if (!isCount(terminal) || !isCount(total)) return null;
+  return { terminal, total };
+}
+
+const isCount = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+
+/**
+ * Normalize an untrusted `dd_link` at the MUTATION boundary (P6 review F004).
+ *
+ * Two key classes, two answers, matching who owns them:
+ *   - AUTHORED (`address`, `gate`) — a human wrote these, so a malformed one is
+ *     REFUSED by the caller and said out loud. `null` here means "reject the op".
+ *   - RECORDED (`basis_sha`, `reading`) — the gate wrote these, and they are
+ *     display-only. A malformed one is DROPPED rather than refused: it is not a
+ *     claim anyone made, the gate re-derives it live on the next departure, and the
+ *     surfaces already have an honest rendering for its absence. Dropping loses a
+ *     stale badge; keeping it risks rendering an attacker's syntax.
+ */
+export function sanitizeDdLink(raw: unknown): DdLink | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  if (typeof src.address !== 'string' || src.address.trim().length === 0) return null;
+  if (src.gate !== undefined && typeof src.gate !== 'boolean') return null;
+
+  const link: DdLink = { address: src.address };
+  if (src.gate !== undefined) link.gate = src.gate;
+  if (typeof src.basis_sha === 'string' && /^[0-9a-f]{4,128}$/i.test(src.basis_sha)) {
+    link.basis_sha = src.basis_sha;
+  }
+  const reading = sanitizeReading(src.reading);
+  if (reading !== null) link.reading = reading;
+  return link;
+}
+
+/** A recorded reading, or `null` when any part of it is not what it claims to be. */
+function sanitizeReading(raw: unknown): DdLinkReading | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const src = raw as Record<string, unknown>;
+  if (src.status !== 'complete' && src.status !== 'incomplete') return null;
+  if (!isCount(src.terminal) || !isCount(src.total)) return null;
+  if (!Array.isArray(src.incomplete) || src.incomplete.some((i) => typeof i !== 'string')) {
+    return null;
+  }
+  if (typeof src.at !== 'string') return null;
+  return {
+    status: src.status,
+    terminal: src.terminal,
+    total: src.total,
+    incomplete: [...(src.incomplete as string[])],
+    at: src.at,
+  };
+}
+
 /** A single flow node. Overlays add/constrain the `type`/`status` vocabularies. */
 export interface FlowNode {
   id: string;

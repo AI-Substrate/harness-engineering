@@ -1,8 +1,9 @@
 import { posixDirname, posixJoin, toPosix } from '../../shared/posix-path.js';
-import { type DdDerivedState, deriveState } from '../core/derive.js';
+import { type DdDerivedState, deriveItems, deriveState } from '../core/derive.js';
 import type { DdSection } from '../core/model.js';
 import type { SchemaResolveResult, SchemaResolver } from '../core/validate.js';
 import { type DeclarationResult, parseSchemaDeclaration } from './declarations.js';
+import type { DdSchemaItem } from './model.js';
 import {
   type SchemaFs,
   type SchemaHit,
@@ -232,4 +233,23 @@ export class ConventionSchemaResolver implements SchemaResolver {
  */
 export function deriveSchemaState(record: SchemaRecord, section: DdSection): DdDerivedState {
   return deriveState(section, record.gateTerminal);
+}
+
+/**
+ * The same section, item by item — each id with the state it carries and whether
+ * that state is terminal under THIS schema's declaration.
+ *
+ * `deriveSchemaState` answers "how many, and which ones are outstanding?".
+ * A caller that must NAME an item's state — a refusal that distinguishes `blocked`
+ * from `unchecked`, a reviewer's per-item list — needs this instead. Both project
+ * the one collector in dd-core (`deriveItems`), so they can never disagree about
+ * what an item is or how many there are.
+ */
+export function deriveSchemaItems(record: SchemaRecord, section: DdSection): DdSchemaItem[] {
+  const terminal = new Set(record.gateTerminal);
+  return deriveItems(section).map((entry) => ({
+    id: entry.id,
+    state: entry.state,
+    terminal: terminal.has(entry.state),
+  }));
 }

@@ -190,6 +190,25 @@ describe('T007 — write-path containment (isWithin → E303); --schema is exemp
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.code).toBe(ErrorCodes.FLOW_PATH_ESCAPE);
   });
+
+  it('the E303 message names BOTH sides of the comparison, not just the rejection', () => {
+    // Found by operating the feature (065 P6, 6.6b): on macOS `/var` is a symlink
+    // to `/private/var`, so a temp-dir path and the process's own resolved cwd can
+    // look identical to a reader and still fail containment. A message naming only
+    // the rejected path leaves no way to see WHY — the two strings have to be side
+    // by side before the difference is visible. Pinned exactly, because "improve
+    // the error message" is the kind of fix that silently regresses.
+    const { d } = deps();
+    const doc = JSON.parse(freshFixture);
+    const res = writeFlowAtomic('/private/var/t/flow.json', '/var/t', doc, d);
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.message).toBe(
+      'flow write path escapes the repo root: /private/var/t/flow.json is not inside /var/t',
+    );
+    expect(res.message).toContain('/private/var/t/flow.json'); // the rejected path
+    expect(res.message).toContain('is not inside /var/t'); // AND the root it was measured against
+  });
 });
 
 describe('T008 — E308 FLOW_LEGACY_FORMAT (positive legacy signature; never empty events[])', () => {

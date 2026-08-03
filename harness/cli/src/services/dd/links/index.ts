@@ -10,6 +10,11 @@
  * findings are structured values, and the mapping onto the CLI's E-codes lives
  * in `acts/dd/`.
  */
+
+// The two injected seams `DdLinkResolverDeps` is made of, re-exported so an external
+// consumer can NAME them without importing a dd internal module path.
+export type { SchemaResolver } from '../core/validate.js';
+export type { DocLoader } from '../core/walk.js';
 export {
   type DdBasisResult,
   type DdLedgerUpdate,

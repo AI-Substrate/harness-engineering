@@ -128,6 +128,17 @@ module.exports = {
       to: { path: '^harness/cli/src/adapters', reachable: true },
     },
     {
+      name: 'flow-consumes-dd-sdk-only',
+      comment:
+        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts and services/dd/schema/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was) — never reach past one.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/flow' },
+      to: {
+        path: '^harness/cli/src/services/dd',
+        pathNot: '^harness/cli/src/services/dd/(links|schema)/index\\.ts$',
+      },
+    },
+    {
       name: 'adapters-stay-leaf',
       comment: 'Adapters are leaves — they never import services, acts, or output.',
       severity: 'warn',

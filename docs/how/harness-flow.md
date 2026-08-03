@@ -486,6 +486,26 @@ departure records what it computed onto the node (`dd_link.reading`, plus the
 target's digest in `dd_link.basis_sha`). That record is display only — it is never
 consulted to decide anything.
 
+Three consequences worth knowing:
+
+- **The rail never disagrees with the block underneath it.** `orient` rails from
+  the reading it just computed, and when the gate is *unevaluable* it clears the
+  stored one rather than printing a stale `⛨ 2/2 ✓` above `! could not evaluate`.
+  `not yet evaluated` is the only honest thing a rail can say about a reading
+  nothing can currently confirm.
+- **A stored reading is untrusted input.** It reaches the file through `apply
+  --ops` and through anyone with an editor, so its counts are re-checked wherever
+  they are interpolated: two non-negative integers, or the surface reports the link
+  as unevaluated. Authoring `basis_sha` or `reading` by hand is not supported —
+  they are the gate's to write.
+- **The address anchors at the flow document's repository, not your shell.**
+  `dd_link.address` is repo-relative and persisted, so the same
+  `--path /abs/the-flow.json` reports the same verdict from any working directory.
+
+The `⛨` legend clause appears only when some node actually carries a `dd_link`: a
+flow that has never heard of dd renders exactly the bytes it rendered before the
+gate existed.
+
 ### Basis drift — information, never a refusal
 
 `basis_sha` is what makes the stored reading honest. When the linked document has

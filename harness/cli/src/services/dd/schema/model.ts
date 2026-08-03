@@ -86,6 +86,18 @@ export interface SchemaResolution {
   issues: SchemaIssue[];
 }
 
+/**
+ * One evidence item read through a schema: its id, the state value it carries, and
+ * whether that state is gate-terminal under that schema's own declaration.
+ *
+ * The per-item counterpart to `DdDerivedState`'s aggregate — see `deriveSchemaItems`.
+ */
+export interface DdSchemaItem {
+  id: string;
+  state: string;
+  terminal: boolean;
+}
+
 /** One row of `dd schema list`. A row with no `record` failed to load; `issues` says why. */
 export interface SchemaListEntry {
   name: string;
