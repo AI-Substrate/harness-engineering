@@ -169,3 +169,11 @@ W10 composability: if done-when becomes a nested completable list, the grammar e
 ## Open Questions
 
 None within addressing. **Handed off**: nav gate posture (warn vs refuse — W2, with state vocabulary); id-prefix registry finalization and ledger field naming (plan pass).
+
+---
+
+## Addenda (2026-08-03, ruled in the W2+W10 session — `002-w2-w10-completion-and-gating.md`)
+
+1. **Bare-`#` same-doc addresses**: a link targeting its own file omits the file part — `#phase-2-evidence/tk-9f2a`. Survives file rename/move; all other grammar rules unchanged.
+2. **Explicit id override**: minted short-hash ids are the **default**; an instance may carry an explicitly-named id where meaning demands it (e.g. an evidence list keyed by its owning task's id, a named section). Uniqueness-per-file + born-once semantics apply unchanged; renaming an explicit id is breaking like any rename (no machinery). Flagged by Jordan as broader than one workshop — the plan pass sweeps it through schema design and validation rules.
+3. The gate-posture handoff is **closed**: refuse with `--force` (workshop 002 § Ruling 1).

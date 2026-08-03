@@ -86,6 +86,28 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:37:18.120Z",
+      "details": {
+        "node": "workshop-w2-w10-gating",
+        "type": "workshop"
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T08:37:18.396Z",
+      "details": {
+        "node": "workshop-w2-w10-gating",
+        "fields": [
+          "comments"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -292,6 +314,26 @@
         {
           "at": "2026-08-03T08:01:20.709Z",
           "text": "W9 locked in session: #-grammar, alternating name/id descent, minted per-kind ids, per-doc references ledger (live|pinned), WARN posture, heading-only anchors, no rename machinery (D8 superseded), address tooling, checks OOTB. Record: workshops/001-w9-addressing.md",
+          "source": "user",
+          "kind": "decision"
+        }
+      ]
+    },
+    {
+      "id": "workshop-w2-w10-gating",
+      "type": "workshop",
+      "label": "W2+W10: Completion & gating",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-03T08:37:18.119Z",
+      "modified_at": "2026-08-03T08:37:18.396Z",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-03T08:37:18.396Z",
+          "text": "Locked: gate REFUSES with --force (defended override, agents never on own judgment); enum unchecked/checked/blocked/human-skipped/na, terminal=checked|human-skipped|na; W10 evidence-section design (per-task lists keyed by task id); multi-phase file split; bare-# same-doc + explicit id override addenda; builder-flow integration = LAST plan phase. Record: workshops/002-w2-w10-completion-and-gating.md",
           "source": "user",
           "kind": "decision"
         }
