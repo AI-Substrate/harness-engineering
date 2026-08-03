@@ -96,6 +96,12 @@ describe('command construction', () => {
     });
   });
 
+  it('sips offset 0 clamps to 1 — sips center-crops on 0, which would lie about the origin (known-bad)', () => {
+    const c = cropArgs('sips', '/f.png', '/o.png', 1440, 0, 900);
+    expect(c.args).toContain('1');
+    expect(c.args).not.toContain('0,');
+  });
+
   it('magick crop: geometry WxH+0+Y with +repage', () => {
     const c = cropArgs('magick', '/f.png', '/o.png', 1440, 3000, 900);
     expect(c.args).toContain('1440x900+0+3000');

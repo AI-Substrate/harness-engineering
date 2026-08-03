@@ -108,9 +108,12 @@ export function cropArgs(
   cropHeight: number,
 ): { command: string; args: string[] } {
   if (tool === 'sips') {
+    // sips treats --cropOffset 0 as "unspecified" and silently CENTER-crops —
+    // a crop that lies about its origin. Clamp to 1px so y=0 means the top.
+    const y = Math.max(1, offset);
     return {
       command: 'sips',
-      args: ['-c', String(cropHeight), String(width), '--cropOffset', String(offset), '0', fullPng, '--out', outPng],
+      args: ['-c', String(cropHeight), String(width), '--cropOffset', String(y), '0', fullPng, '--out', outPng],
     };
   }
   return {
