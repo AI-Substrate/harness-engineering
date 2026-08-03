@@ -1,0 +1,31 @@
+{
+  "dd_schema": 1,
+  "description": "A two-document transclusion chain: a source list and a consumer whose live reference must refresh at render.",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": ["title"],
+        "fields": {
+          "title": { "type": "string" },
+          "upstream": { "type": "link", "target": "render/chain/section/items" }
+        }
+      }
+    },
+    "items": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "state"],
+          "fields": {
+            "id": { "type": "string" },
+            "claim": { "type": "text" },
+            "state": { "type": "state" }
+          }
+        }
+      }
+    }
+  }
+}

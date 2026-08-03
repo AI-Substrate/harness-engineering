@@ -1,0 +1,18 @@
+{
+  "dd": { "schema": "render/adapters", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Adapter failure classes",
+        "good": 7,
+        "missing": 41,
+        "boom": "boom-value",
+        "shapeless": 12,
+        "numeric": 5,
+        "broken": 9
+      }
+    }
+  ],
+  "references": []
+}

@@ -1,0 +1,15 @@
+{
+  "dd": { "schema": "render/chain", "spec": "dd@1" },
+  "sections": [
+    { "name": "meta", "value": { "title": "Chain source" } },
+    {
+      "name": "items",
+      "value": [
+        { "id": "dw-aaaa", "claim": "first proof", "state": "checked" },
+        { "id": "dw-bbbb", "claim": "second proof", "state": "checked" },
+        { "id": "dw-cccc", "claim": "third proof", "state": "unchecked" }
+      ]
+    }
+  ],
+  "references": []
+}

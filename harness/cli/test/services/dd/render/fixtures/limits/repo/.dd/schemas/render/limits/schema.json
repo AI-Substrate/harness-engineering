@@ -1,0 +1,20 @@
+{
+  "dd_schema": 1,
+  "description": "Fixtures that CROSS every limit the renderer invents, so no bare constant ships invisibly (P2 DL-006).",
+  "sections": {
+    "rows": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id"],
+          "fields": {
+            "id": { "type": "string" },
+            "config": { "type": "object", "allowAdditional": true, "fields": {} },
+            "trail": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    }
+  }
+}

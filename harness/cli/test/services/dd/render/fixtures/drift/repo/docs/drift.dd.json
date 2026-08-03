@@ -1,0 +1,17 @@
+{
+  "dd": { "schema": "render/simple", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": { "title": "Drift subject", "status": "unchecked" }
+    },
+    {
+      "name": "items",
+      "value": [
+        { "id": "tk-0001", "label": "first", "state": "checked" },
+        { "id": "tk-0002", "label": "second", "state": "unchecked" }
+      ]
+    }
+  ],
+  "references": []
+}

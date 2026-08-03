@@ -1,0 +1,22 @@
+{
+  "dd_schema": 1,
+  "description": "Every adapter failure class in one schema: found, missing, throwing, mis-shaped export, invalid output, unloadable.",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": ["title"],
+        "fields": {
+          "title": { "type": "string" },
+          "good": { "type": "good" },
+          "missing": { "type": "missing" },
+          "boom": { "type": "boom" },
+          "shapeless": { "type": "shapeless" },
+          "numeric": { "type": "numeric" },
+          "broken": { "type": "broken" }
+        }
+      }
+    }
+  }
+}
