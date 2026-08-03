@@ -61,12 +61,13 @@ capture", which is also precisely the granularity the attribution join needs
 5. **Headless-session enrichment**: `~/.cursor/chats/<workspace-hash>/<conv>/store.db` (protobuf) exists per CLI conversation and is the candidate source for **models + real timestamps** for headless sessions (the IDE `state.vscdb` only covers IDE sessions). Would upgrade `interval` → `anchored` and un-null `models`. Separate investigation; protobuf decoding is a heavier lift.
 6. **What stays honestly null**: `tokens` (Cursor keeps consumption server-side; local `tokenCount`/`usageData` fields are vestigial/zeroed — never estimate), `thinking`, `compactions`, `api_errors` (absent from the transcript: only `text` and `tool_use` blocks exist, no `tool_result`, no thinking blocks).
 7. **Capture-stall defect** (observed live, reported to the o-prime): the real Cursor session captured once (`harness doctor`, transcript line 2) then never again despite subsequent verbs + 5 hook syncs — read-cursor stuck while a controlled replay of the same transcript captured perfectly. Consistent with the known load-dependent per-invocation defect; owned outside this plan.
-8. **Anchoring rhythm** (method consequence, not a defect): post-commit-hook-only capture anchors file events at the NEW head, crediting them to the *next* commit. The rhythm "run any harness verb between editing and committing" fixes anchoring; a **pre-commit capture hook** would make it deterministic and model-independent. Worth a follow-up decision.
+8. **fixture-scrub cursor-mangle gap** (found during fixture minting): `fixture-scrub`'s `pathVariants` covers native/posix/Claude-mangled paths but not Cursor's own projects-dir mangle (`Users-<user>-<path>`). The bare-username sweep still neutralises identity (no leak), but the real machine directory structure would survive verbatim in a fixture captured from a cursor IDE session. The 066 fixture pre-mapped the mangle before scrubbing; the src gap remains open.
+9. **Anchoring rhythm** (method consequence, not a defect): post-commit-hook-only capture anchors file events at the NEW head, crediting them to the *next* commit. The rhythm "run any harness verb between editing and committing" fixes anchoring; a **pre-commit capture hook** would make it deterministic and model-independent. Worth a follow-up decision.
 
 ## Definition of done (for landing, beyond the prototype)
 
-- [ ] Fixture + expected-segment for a cursor editing session (drift-guarded)
-- [ ] Unit tests for `ApplyPatch` extraction paths
+- [x] Fixture + expected-segment for a cursor editing session (drift-guarded) — `fixtures/real/cursor/2026-08-03-applypatch-textstat/`, minted at the CURRENT 2.6/v0.3 schema with exact comparison (tighter than the frozen 2.4/v0.1 corpus); re-mint via `REGEN_066_GOLDEN=1`. Delegated to a copilot/claude-opus-5 peer, verified by the orchestrator.
+- [x] Unit tests for `ApplyPatch` extraction paths — `cursor-file-events.test.ts` (14 cases) + a plan-066 block in `real-capture.e2e.test.ts` (6 cases); non-vacuity proven by two src mutations each turning the suite red (src restored byte-identical).
 - [x] `telemetry.md` / field-reference / `measuring-ai-contribution.md` docs updated (this branch)
 - [ ] `harness checks` green on this branch
 - [ ] Review per repo discipline
