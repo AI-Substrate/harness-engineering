@@ -347,6 +347,97 @@ describe('dd links family — live over a real corpus', () => {
     expect(recheck.envelope.data).toMatchObject({ state: 'fresh' });
   });
 
+  it('T004: a THROWING adapter surfaces in the doctor sweep as a WARN, with the render E-code', async () => {
+    // The seam Phase 4 left injectable and Phase 5 wires: the doctor repeats a
+    // degraded render repo-wide (AC-04). `runtime-failed` is the class that
+    // proves the collector RENDERS rather than merely loading \u2014 no load-time
+    // check could ever discover an adapter that throws while rendering.
+    const dir = 'adapters-gap';
+    write(`.dd/schemas/live/report/schema.json`, {
+      dd_schema: 1,
+      description: 'One custom type whose adapter throws, one with no adapter at all.',
+      sections: {
+        meta: {
+          required: true,
+          shape: {
+            type: 'object',
+            required: ['title'],
+            fields: {
+              title: { type: 'string' },
+              spent: { type: 'duration' },
+              trend: { type: 'sparkline' },
+            },
+          },
+        },
+      },
+    });
+    mkdirSync(join(repo, '.dd/schemas/live/report/adapters'), { recursive: true });
+    writeFileSync(
+      join(repo, '.dd/schemas/live/report/adapters/duration.ts'),
+      "export default function duration(): string {\n  throw new Error('adapter blew up');\n}\n",
+      'utf8',
+    );
+    write(`${dir}/report.dd.json`, {
+      dd: { schema: 'live/report', spec: 'dd@1' },
+      sections: [{ name: 'meta', value: { title: 'Gap demo', spent: 4200, trend: [1, 2, 3] } }],
+      references: [],
+    });
+
+    const swept = await runDd(['dd', 'doctor', '--path', dir]);
+    expect(swept.code).toBe(0);
+    expect(swept.envelope.status).toBe('degraded');
+    const findings = (swept.envelope.data as { findings: Array<Record<string, unknown>> }).findings;
+    expect(findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          class: 'adapter-gap',
+          severity: 'WARN',
+          adapterKind: 'runtime-failed',
+          code: 'E425',
+        }),
+        expect.objectContaining({
+          class: 'adapter-gap',
+          severity: 'WARN',
+          adapterKind: 'not-found',
+          code: 'E423',
+        }),
+      ]),
+    );
+
+    rmSync(join(repo, dir), { recursive: true, force: true });
+    rmSync(join(repo, '.dd/schemas/live/report'), { recursive: true, force: true });
+  });
+
+  it('T004: re-verification regenerates the touched document\u2019s sibling markdown', async () => {
+    // `autoRegenerateSibling` shipped in Phase 3 with no call site, because every
+    // dd verb until now was read-only. This is the first verb that MUTATES a
+    // document, so it is the first that owes its `.dd.md` a regeneration \u2014 and
+    // without it `dd build --check` would later report the ledger move as drift.
+    const before = JSON.parse(readFileSync(join(repo, 'docs/plan.dd.json'), 'utf8'));
+    write('docs/evidence.dd.json', evidenceDoc('another upstream edit'));
+
+    const updated = await runDd([
+      'dd',
+      'link',
+      'verify-basis',
+      'docs/evidence.dd.json#entries',
+      '--sha',
+      before.references[0].sha,
+      '--update',
+      'docs/plan.dd.json',
+    ]);
+    expect(updated.code).toBe(0);
+    expect(updated.envelope.data).toMatchObject({ updated: true, sibling_regenerated: true });
+
+    // The sibling carries the NEW basis, and it is byte-identical to what
+    // `dd build` itself would have produced \u2014 the drift gate agrees.
+    const sibling = readFileSync(join(repo, 'docs/plan.dd.md'), 'utf8');
+    expect(sibling).toContain(sha('docs/evidence.dd.json'));
+    const check = await runDd(['dd', 'build', 'docs/plan.dd.json', '--check']);
+    expect(check.code).toBe(0);
+    expect(check.envelope.data).toMatchObject({ drift: false });
+  });
+
   it('refuses to mint a ledger entry that was never recorded', async () => {
     const result = await runDd([
       'dd',

@@ -9,8 +9,7 @@ import {
   scanCorpus,
   traverseCorpus,
 } from '../../services/dd/links/index.js';
-import { codedLinkIssues, createLinkContext } from './link.js';
-import type { DdActDeps } from './shared.js';
+import { codedLinkIssues, createLinkContext, type DdActDeps } from './shared.js';
 
 export function registerLinksCommand(dd: Command, io: CliIo, deps: DdActDeps): void {
   dd.command('links <target>')

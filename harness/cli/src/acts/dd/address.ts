@@ -10,8 +10,7 @@ import {
   parseAddress,
 } from '../../services/dd/core/address.js';
 import { resolveLink } from '../../services/dd/links/index.js';
-import { codedLinkIssues, createLinkContext, nextActionFor } from './link.js';
-import type { DdActDeps } from './shared.js';
+import { codedLinkIssues, createLinkContext, type DdActDeps, nextActionFor } from './shared.js';
 
 export function registerAddressCommands(dd: Command, io: CliIo, deps: DdActDeps): void {
   const address = dd.command('address').description('Generate and validate canonical dd addresses');

@@ -1,96 +1,19 @@
 import type { Command } from 'commander';
-import type { Clock } from '../../adapters/clock/clock-port.js';
-import { SystemClock } from '../../adapters/clock/system-clock.js';
-import { NodeEnv } from '../../adapters/env/node-env.js';
-import { NodeExec } from '../../adapters/exec/node-exec.js';
 import { NodeFs } from '../../adapters/fs/node-fs.js';
-import { NodeHash } from '../../adapters/hash/node-hash.js';
-import { NodeProcess } from '../../adapters/process/node-process.js';
 import { formatDegraded, formatError, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
-import { type CliIo, createOutputPort, type OutputPort } from '../../output/output-port.js';
-import type { DocLoader } from '../../services/dd/core/walk.js';
+import type { CliIo } from '../../output/output-port.js';
+import { resolveLink, updateLedgerEntry, verifyBasis } from '../../services/dd/links/index.js';
+import { resolveInRepo } from '../../services/shared/posix-path.js';
+import { autoRegenerateSibling } from './build.js';
 import {
-  MemoizingDocLoader,
-  resolveLink,
-  updateLedgerEntry,
-  verifyBasis,
-} from '../../services/dd/links/index.js';
-import type { DdLinkIssue, DdLinkIssueClass } from '../../services/dd/links/model.js';
-import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
-import { resolveInRepo, toPosix } from '../../services/shared/posix-path.js';
-import { NodeSchemaFs } from './schema-fs.js';
-import type { DdActDeps } from './shared.js';
-import { FsDocLoader, trackedPaths } from './validate.js';
-
-/**
- * Link-layer issue class → frozen E-code (P1 allocation; Phase 4 adds none).
- * Every code below is already named in `dd-surface.md` § E430-E439.
- */
-export const LINK_ISSUE_CODES: Record<DdLinkIssueClass, string> = {
-  'adapter-gap': ErrorCodes.DD_ADAPTER_NOT_FOUND,
-  'link-scan-failed': ErrorCodes.DD_LINK_SCAN_FAILED,
-  'link-scan-incomplete': ErrorCodes.DD_LINK_SCAN_FAILED,
-  'link-unresolved': ErrorCodes.DD_LINK_UNRESOLVED,
-};
-
-export function codedLinkIssues(issues: readonly DdLinkIssue[]) {
-  return issues.map((issue) => ({ ...issue, code: LINK_ISSUE_CODES[issue.class] }));
-}
-
-export interface DdLinkContext {
-  clock: Clock;
-  port: OutputPort;
-  repoRoot: string;
-  fs: NodeSchemaFs;
-  resolver: ConventionSchemaResolver;
-  loader: DocLoader;
-}
-
-/**
- * Compose the adapters every Phase 4 verb needs, once.
- *
- * `dd address`, `dd link`, `dd links`, `dd graph` and `dd doctor` all resolve
- * schemas the same way and load documents the same way, and a second copy of
- * that wiring is a second place for the two to drift apart. It lives in this
- * file rather than in `acts/dd/shared.ts` because that file belongs to Phase 1
- * and the parallel phases must not touch each other's files.
- *
- * `tracked` comes from one `git ls-files` snapshot (P2's `trackedPaths`), so an
- * untracked target is reported honestly instead of every readable file being
- * called tracked.
- */
-export async function createLinkContext(
-  io: CliIo,
-  deps: DdActDeps,
-  options: { tracked?: boolean } = {},
-): Promise<DdLinkContext> {
-  const clock = deps.clock ?? new SystemClock();
-  const port = createOutputPort(io.mode, io.writers);
-  const fs = new NodeSchemaFs();
-  const repoRoot = toPosix(new NodeProcess().cwd());
-  const home = new NodeEnv().home();
-  const resolver = new ConventionSchemaResolver({
-    fs,
-    repoRoot,
-    ...(home !== undefined && { home: toPosix(home) }),
-  });
-  const tracked = options.tracked === false ? null : await trackedPaths(new NodeExec(), repoRoot);
-  const loader = new MemoizingDocLoader(new FsDocLoader(fs, new NodeHash(), tracked));
-  return { clock, port, repoRoot, fs, resolver, loader };
-}
-
-export function nextActionFor(issues: readonly DdLinkIssue[], address: string): string {
-  const reason = issues[0]?.reason;
-  if (reason === 'no-base-document') {
-    return 'Address the file explicitly — `<path>#<interior>`. A bare-"#" address only means something inside its own document.';
-  }
-  if (reason === 'malformed') {
-    return 'Generate the address instead of writing it: `harness dd address generate "<interior>" --path <file>`.';
-  }
-  return `Check the target with \`harness dd links <target>\`, then fix ${address}.`;
-}
+  codedLinkIssues,
+  createLinkContext,
+  type DdActDeps,
+  type DdLinkContext,
+  nextActionFor,
+} from './shared.js';
 
 export function registerLinkCommands(dd: Command, io: CliIo, deps: DdActDeps): void {
   const link = dd.command('link').description('Resolve links and inspect recorded basis freshness');
@@ -194,7 +117,7 @@ export function registerLinkCommands(dd: Command, io: CliIo, deps: DdActDeps): v
         );
       }
 
-      updateBasis(ctx, resolveInRepo(opts.update, ctx.repoRoot), verdict, address);
+      await updateBasis(ctx, resolveInRepo(opts.update, ctx.repoRoot), verdict, address, io);
     });
 }
 
@@ -209,13 +132,21 @@ export function registerLinkCommands(dd: Command, io: CliIo, deps: DdActDeps): v
  * `--update` names the *referencing* document, because the ledger lives in the
  * citing file and not in the target. One option therefore carries both the
  * decision to mutate and the answer to "whose basis moves".
+ *
+ * This is also `autoRegenerateSibling`'s FIRST call site (P5 T004). Phase 3 built
+ * and proved that helper with no consumer, because every dd verb shipped until
+ * now was read-only; this is the first dd verb that mutates a document, so it is
+ * the first that owes its `.dd.md` a regeneration. The posture is Phase 3's, not
+ * a new one: warn on failure, never roll back — the ledger move already
+ * succeeded, and a stale render is a smaller harm than a reverted mutation.
  */
-function updateBasis(
+async function updateBasis(
   ctx: DdLinkContext,
   docPath: string,
   verdict: { state: string; path: string; actual: string },
   address: string,
-): never {
+  io: CliIo,
+): Promise<never> {
   const fail = (message: string, next_action?: string): never =>
     exitWithEnvelope(
       formatError('dd link verify-basis', ErrorCodes.DD_BASIS_VERIFY_FAILED, message, ctx.clock, {
@@ -251,6 +182,11 @@ function updateBasis(
     );
   }
 
+  // The document just changed on disk, so its sibling markdown is now stale by
+  // construction. Regenerate it here rather than leaving `dd build --check` to
+  // discover the drift later and call it a hand-edit.
+  const regeneration = await autoRegenerateSibling(docPath, ctx.repoRoot, io);
+
   exitWithEnvelope(
     formatOk(
       'dd link verify-basis',
@@ -263,13 +199,16 @@ function updateBasis(
         previous: update.previous,
         sha: update.entry.sha,
         mode: update.entry.mode,
+        sibling_regenerated: regeneration.regenerated,
+        ...(regeneration.reason !== undefined && { sibling_reason: regeneration.reason }),
       },
       ctx.clock,
       {
-        next_action:
-          verdict.state === 'stale'
-            ? `Recompute anything that derived state through ${address} — the basis moved.`
-            : 'The basis already matched; the ledger is unchanged in substance.',
+        next_action: regeneration.regenerated
+          ? verdict.state === 'stale'
+            ? `Recompute anything that derived state through ${address} — the basis moved. Commit the document and its regenerated sibling together.`
+            : 'The basis already matched; the ledger is unchanged in substance.'
+          : `The ledger moved but the sibling markdown did not regenerate (${regeneration.reason ?? 'unknown'}) — run \`harness dd build ${docPath}\` before committing.`,
       },
     ),
     ctx.port,

@@ -1,44 +1,14 @@
 import type { Command } from 'commander';
+import { JitiLoader } from '../../adapters/loader/jiti-loader.js';
 import { formatDegraded, formatError, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import type { CliIo } from '../../output/output-port.js';
-import type { DdIssueClass } from '../../services/dd/core/validate.js';
+import { shouldExcludeFromSweep } from '../../services/dd/core/walk.js';
 import type { DdAdapterGap, DdDoctorFinding } from '../../services/dd/links/index.js';
-import { runDoctor } from '../../services/dd/links/index.js';
-import type { DdLinkIssueClass } from '../../services/dd/links/model.js';
-import { createLinkContext } from './link.js';
-import type { DdActDeps } from './shared.js';
-
-/**
- * Finding class → frozen E-code, for every class the sweep can produce.
- *
- * The dd-core half repeats `acts/dd/validate.ts`'s allocation because that map is
- * private to its own act and the two phases may not edit each other's files.
- * TypeScript's exhaustive `Record` is the guard that matters: a new issue class
- * cannot be added to dd-core without this map failing to compile.
- */
-const FINDING_CODES: Record<DdIssueClass | DdLinkIssueClass, string> = {
-  'address-malformed': ErrorCodes.DD_ADDRESS_INVALID,
-  'address-path-absolute': ErrorCodes.DD_ADDRESS_INVALID,
-  'address-path-escape': ErrorCodes.DD_LINK_PATH_ESCAPE,
-  'address-path-non-posix': ErrorCodes.DD_ADDRESS_INVALID,
-  'address-target-missing': ErrorCodes.DD_LINK_TARGET_MISSING,
-  'address-target-untracked': ErrorCodes.DD_LINK_TARGET_UNTRACKED,
-  'adapter-gap': ErrorCodes.DD_ADAPTER_NOT_FOUND,
-  'basis-stale': ErrorCodes.DD_BASIS_STALE,
-  'duplicate-id': ErrorCodes.DD_ID_DUPLICATE,
-  'enum-invalid': ErrorCodes.DD_ENUM_INVALID,
-  'human-skipped-receipt-required': ErrorCodes.DD_HUMAN_SKIP_RECEIPT_REQUIRED,
-  'id-invalid': ErrorCodes.DD_ID_INVALID,
-  'link-scan-failed': ErrorCodes.DD_DOCTOR_SCAN_FAILED,
-  'link-scan-incomplete': ErrorCodes.DD_LINK_SCAN_FAILED,
-  'link-type-mismatch': ErrorCodes.DD_LINK_TYPE_MISMATCH,
-  'link-unresolved': ErrorCodes.DD_LINK_UNRESOLVED,
-  'schema-shape': ErrorCodes.DD_SCHEMA_SHAPE_INVALID,
-  'schema-unresolvable': ErrorCodes.DD_SCHEMA_UNRESOLVABLE,
-  'state-note-required': ErrorCodes.DD_STATE_NOTE_REQUIRED,
-};
+import { runDoctor, scanCorpus } from '../../services/dd/links/index.js';
+import { adapterGapSource, collectAdapterGaps } from '../../services/dd/render/gaps.js';
+import { createLinkContext, DD_ISSUE_CODES, type DdActDeps } from './shared.js';
 
 /** An adapter gap keeps the render layer's own code (AC-04 repeats it, it does not rename it). */
 const ADAPTER_CODES: Record<DdAdapterGap['kind'], string> = {
@@ -49,9 +19,7 @@ const ADAPTER_CODES: Record<DdAdapterGap['kind'], string> = {
 };
 
 function codeFor(finding: DdDoctorFinding): string {
-  return finding.adapterKind
-    ? ADAPTER_CODES[finding.adapterKind]
-    : FINDING_CODES[finding.class as DdIssueClass | DdLinkIssueClass];
+  return finding.adapterKind ? ADAPTER_CODES[finding.adapterKind] : DD_ISSUE_CODES[finding.class];
 }
 
 export function registerDoctorCommand(dd: Command, io: CliIo, deps: DdActDeps): void {
@@ -62,12 +30,33 @@ export function registerDoctorCommand(dd: Command, io: CliIo, deps: DdActDeps): 
       const ctx = await createLinkContext(io, deps);
       const root = opts.path ? resolveScope(opts.path, ctx.repoRoot) : ctx.repoRoot;
 
-      // Phase 3's adapter aggregation is injected at Phase 5; until then the
-      // source is simply absent, which means no adapter findings — never a
-      // silently missing check pretending to be a clean one.
+      // Phase 3's adapter aggregation, injected for real (P5 T004 seam 1).
+      //
+      // The sweep is synchronous and adapter loading is not, so the gaps are
+      // collected first and the sweep then filters them by the documents it
+      // actually reached. Sweep-excluded documents are dropped BEFORE collection:
+      // a known-bad fixture's deliberately broken adapter is not a finding about
+      // this repository, and loading it would be work done only to throw away.
+      const scan = scanCorpus(ctx.fs, root);
+      const inspectable = scan.paths.filter((path) => {
+        const loaded = ctx.loader.load(path);
+        return loaded.ok && !shouldExcludeFromSweep(path, loaded.doc);
+      });
+      const gaps = await collectAdapterGaps({
+        paths: inspectable,
+        fs: ctx.fs,
+        loader: new JitiLoader(),
+        resolveSchema: (schemaRef, fromPath) =>
+          ctx.resolver.resolveDetailed(schemaRef, fromPath).record ?? null,
+      });
+
       const report = runDoctor(
         ctx.fs,
-        { schemaResolver: ctx.resolver, docLoader: ctx.loader },
+        {
+          schemaResolver: ctx.resolver,
+          docLoader: ctx.loader,
+          adapterGaps: adapterGapSource(gaps),
+        },
         { repoRoot: ctx.repoRoot, root },
       );
       const findings = report.findings.map((finding) => ({ ...finding, code: codeFor(finding) }));

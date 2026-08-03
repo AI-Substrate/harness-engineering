@@ -4,8 +4,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import type { CliIo } from '../../output/output-port.js';
 import { scanCorpus, toMermaid, traverseCorpus } from '../../services/dd/links/index.js';
-import { codedLinkIssues, createLinkContext } from './link.js';
-import type { DdActDeps } from './shared.js';
+import { codedLinkIssues, createLinkContext, type DdActDeps } from './shared.js';
 
 export function registerGraphCommand(dd: Command, io: CliIo, deps: DdActDeps): void {
   dd.command('graph')
