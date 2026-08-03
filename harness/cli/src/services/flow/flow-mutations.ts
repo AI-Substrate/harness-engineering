@@ -9,6 +9,7 @@ import {
   type Chore,
   type DdLink,
   ddLinkGates,
+  ddLinkOf,
   type FlowDoc,
   type FlowNode,
   type Nav,
@@ -135,7 +136,7 @@ function departureGate(
   if (typeof fromId !== 'string' || fromId.length === 0) return null;
   const node = findNode(doc, fromId);
   if (node === undefined) return null;
-  const link = node.dd_link;
+  const link = ddLinkOf(node);
   if (!ddLinkGates(link)) return null;
 
   const result = deps.gate.evaluate(link);
@@ -183,7 +184,7 @@ function departureGate(
  * A REFUSAL never reaches here, so the "nothing was written" invariant is intact.
  */
 function recordReading(node: FlowNode, result: DdGateResult, at: string): void {
-  const link = node.dd_link;
+  const link = ddLinkOf(node);
   if (link === undefined) return;
   if (!result.ok) {
     if (link.reading === undefined) return;

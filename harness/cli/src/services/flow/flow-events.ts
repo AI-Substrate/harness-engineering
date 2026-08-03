@@ -140,9 +140,36 @@ export interface DdLink {
   reading?: DdLinkReading;
 }
 
+/**
+ * The node's `dd_link`, or `undefined` when it carries nothing usable (P6 review
+ * F007).
+ *
+ * F004 hardened the *contents* of a link against a hand-edited document. F007 is
+ * the same threat one level up: the FIELD itself. `dd_link: null` passes flow
+ * validation (the overlay only says which keys may appear), reaches every read
+ * surface as a value that is `!== undefined`, and throws on the first property
+ * access — so a single hand-edited character bricked `render`, the rail, `orient`
+ * and `nav set` at once. A gate that crashes the commands you would use to
+ * diagnose it is worse than a gate that refuses.
+ *
+ * So every surface asks THIS instead of touching `node.dd_link`, and the answer for
+ * anything that is not a plain object is the same as for a node that never had a
+ * link: clean absence. That is honest — a `null` link expresses no address, gates
+ * nothing, and has nothing to badge. Authored garbage is still REFUSED on the way
+ * in (`badDdLink` → `E108`); this is purely about surviving what is already on disk.
+ *
+ * An empty-string `address` is deliberately NOT filtered here: that is a real link
+ * with a broken address, and `E449` exists to say so.
+ */
+export function ddLinkOf(node: { dd_link?: DdLink }): DdLink | undefined {
+  const link: unknown = node.dd_link;
+  if (link === null || typeof link !== 'object' || Array.isArray(link)) return undefined;
+  return link as DdLink;
+}
+
 /** Whether a link gates departure — absent `gate` means gated (see {@link DdLink}). */
 export function ddLinkGates(link: DdLink | undefined): link is DdLink {
-  return link !== undefined && link.gate !== false;
+  return link !== undefined && link !== null && link.gate !== false;
 }
 
 /**

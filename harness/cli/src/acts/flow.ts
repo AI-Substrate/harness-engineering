@@ -24,6 +24,7 @@ import {
   buildManualEvent,
   type Chore,
   type DdLink,
+  ddLinkOf,
   type FlowDoc,
   type FlowNode,
 } from '../services/flow/flow-events.js';
@@ -1319,7 +1320,7 @@ function gatePip(terminal: boolean): string {
  * the RECORDED half has gone stale.
  */
 function orientGate(node: FlowNode, deps: DdGateDeps, repoRoot: string): OrientGate | undefined {
-  const link = node.dd_link;
+  const link = ddLinkOf(node);
   if (link === undefined || typeof link.address !== 'string' || link.address.length === 0) {
     return undefined;
   }
@@ -1417,7 +1418,7 @@ function orientView(doc: FlowDoc, gate?: { deps: DdGateDeps; repoRoot: string })
  */
 function railDoc(doc: FlowDoc, node: FlowNode | undefined, gate: OrientGate | undefined): FlowDoc {
   if (node === undefined || gate === undefined) return doc;
-  const link = node.dd_link;
+  const link = ddLinkOf(node);
   if (link === undefined) return doc;
   const { reading: _cleared, ...withoutReading } = link;
   const live: FlowNode =

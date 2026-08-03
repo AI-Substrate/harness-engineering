@@ -509,3 +509,94 @@ describe('gate resolution anchors at the flow document, not the cwd (F005)', () 
     expect((env.data as { dd_gate: { status: string } }).dd_gate.status).toBe('complete');
   });
 });
+
+// ---------------------------------------------------------------------------
+// F007 — a persisted `dd_link: null` must not brick the diagnosis commands.
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed a flow whose node carries a RAW `dd_link` value written straight into the
+ * file — `seed`'s own `null` argument means "no link at all", which is precisely
+ * the case F007 is not about. This writes the JSON the way a hand-edit would.
+ */
+function seedRawLink(rawLink: unknown): VerbActDeps {
+  const deps = seed([{ id: 'dw-0001', state: 'unchecked' }], null);
+  const doc = JSON.parse(deps.fs.readText(FLOW_PATH) ?? '{}');
+  doc.nodes[0].dd_link = rawLink;
+  deps.fs.writeText(FLOW_PATH, JSON.stringify(doc, null, 2));
+  return deps;
+}
+
+const NOT_LINKS: Array<[string, unknown]> = [
+  ['null', null],
+  ['a string', 'docs/tasks.dd.json#tasks'],
+  ['an array', [{ address: 'docs/tasks.dd.json#tasks' }]],
+  ['a number', 7],
+];
+
+describe('a non-object dd_link on disk survives every command (F007)', () => {
+  // The unit-level surfaces (render/rail/setNow) are pinned in
+  // flow-dd-untrusted-reading.test.ts; these are the ACT paths — `orient` resolves a
+  // live gate and `nav set` runs the real mutation pipeline, and each reads the
+  // field through its own call chain rather than the renderer's.
+  it.each(NOT_LINKS)('orient reports the node normally when dd_link is %s', async (_n, link) => {
+    const deps = seedRawLink(link);
+    const { env, code } = await runJson(deps, ['flow', 'orient', '--path', FLOW_PATH, '--json']);
+    expect(env.status).toBe('ok');
+    expect(code).toBe(0);
+    expect((env.data as Record<string, unknown>).dd_gate).toBeUndefined();
+    expect((env.data as { node: { id: string } }).node.id).toBe('a');
+  });
+
+  it.each(
+    NOT_LINKS,
+  )('orient (human) prints no gate block or rail callout for %s', async (_n, link) => {
+    const { out, code } = await runHuman(seedRawLink(link), ORIENT_HUMAN);
+    expect(code).toBe(0);
+    expect(out).toContain('\u25b6 Phase A (a)');
+    expect(out).not.toContain('\u2691 gate:');
+    expect(out).not.toContain('dd gate:');
+  });
+
+  it.each(
+    NOT_LINKS,
+  )('nav set moves the cursor for %s instead of throwing E100', async (_n, link) => {
+    const deps = seedRawLink(link);
+    const { env, code } = await runJson(deps, NAV_SET);
+    // No usable link ⇒ no gate ⇒ an ordinary move. The alternative that shipped was
+    // a crash, which is the one outcome that helps nobody: it took out the very
+    // commands you would reach for to find the bad field.
+    expect(env.status).toBe('ok');
+    expect(code).toBe(0);
+    expect(JSON.parse(deps.fs.readText(FLOW_PATH) ?? '{}').nav.now).toBe('b');
+  });
+
+  it.each(NOT_LINKS)('render (via the auto-rendered sibling) survives %s', async (_n, link) => {
+    const deps = seedRawLink(link);
+    await runJson(deps, NAV_SET);
+    const md = deps.fs.readText(FLOW_PATH.replace(/\.json$/, '.md'));
+    expect(md).toBeTruthy();
+    expect(md).toContain('a["Phase A"]'); // plain label — no shield
+    expect(md).not.toContain('\u26e8');
+  });
+
+  it('AUTHORING a null link is still refused — surviving it is not condoning it', async () => {
+    // Tolerance on the READ side is not permission on the WRITE side. Anything the
+    // CLI itself writes stays well-formed; F007 is only about not detonating on a
+    // document that is already broken.
+    const deps = seed([{ id: 'dw-0001', state: 'checked' }]);
+    deps.fs.writeText('/repo/ops.json', JSON.stringify([{ op: 'set', id: 'b', dd_link: null }]));
+    const { env, code } = await runJson(deps, [
+      'flow',
+      'apply',
+      '--path',
+      FLOW_PATH,
+      '--ops',
+      '/repo/ops.json',
+    ]);
+    expect(env.status).toBe('error');
+    expect(env.error?.code).toBe('E108');
+    expect(env.error?.message).toContain('invalid dd_link');
+    expect(code).not.toBe(0);
+  });
+});

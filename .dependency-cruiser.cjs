@@ -22,6 +22,15 @@
 module.exports = {
   options: {
     doNotFollow: { path: 'node_modules' },
+    // Gotcha #4 (measured 2026-08-04, plan 065 P6 review F008): WITHOUT this,
+    // depcruise analyses the TRANSPILED graph, where TypeScript has already erased
+    // every `import type` — so a type-only import across a forbidden boundary is
+    // invisible and every rule here silently exempts it. An enforcement rule with a
+    // bypass is decoration. Turning it on left the violation count exactly where it
+    // was (2 × services-ports-type-only), so it costs nothing and closes the hole.
+    // NOTE this is NOT the rejected `tsConfig` option of Gotcha #2 — different key,
+    // no TS18003.
+    tsPreCompilationDeps: true,
   },
   forbidden: [
     {
@@ -130,9 +139,12 @@ module.exports = {
     {
       name: 'flow-consumes-dd-sdk-only',
       comment:
-        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts and services/dd/schema/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was) — never reach past one.',
+        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts and services/dd/schema/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was) — never reach past one. Covers TYPE-ONLY imports too (see tsPreCompilationDeps above): a type reaching past the barrel couples the flow to an internal shape just as hard as a value does, and breaks the same way when dd moves it.',
       severity: 'warn',
-      from: { path: '^harness/cli/src/services/flow' },
+      // Both flow consumers: the service layer AND the act that composes it. The act
+      // is the composition root, so it legitimately constructs dd's adapters — but it
+      // must construct them from the barrels like anyone else.
+      from: { path: '^harness/cli/src/(services/flow|acts/flow\\.ts$)' },
       to: {
         path: '^harness/cli/src/services/dd',
         pathNot: '^harness/cli/src/services/dd/(links|schema)/index\\.ts$',

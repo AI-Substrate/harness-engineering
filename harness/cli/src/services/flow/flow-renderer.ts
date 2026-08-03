@@ -1,4 +1,10 @@
-import { type FlowComment, type FlowDoc, type FlowNode, readingCounts } from './flow-events.js';
+import {
+  ddLinkOf,
+  type FlowComment,
+  type FlowDoc,
+  type FlowNode,
+  readingCounts,
+} from './flow-events.js';
 import { dueChores } from './flow-mutations.js';
 
 /**
@@ -121,7 +127,7 @@ const choreStatusGlyph = (status: string | undefined): string =>
  * to say it in words.
  */
 function ddGateBadge(node: FlowNode): string | null {
-  const link = node.dd_link;
+  const link = ddLinkOf(node);
   if (link === undefined || typeof link.address !== 'string') return null;
   // F004: the counts are re-checked HERE too, not merely at the mutation boundary.
   // A `FlowDoc` is JSON on disk, and anyone with an editor can put anything in a
@@ -222,7 +228,7 @@ const LEGEND =
 const GATE_LEGEND = ' · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).';
 
 const legendFor = (nodes: readonly FlowNode[]): string =>
-  nodes.some((n) => n.dd_link !== undefined) ? `${LEGEND}${GATE_LEGEND}` : `${LEGEND}.`;
+  nodes.some((n) => ddLinkOf(n) !== undefined) ? `${LEGEND}${GATE_LEGEND}` : `${LEGEND}.`;
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -758,7 +764,7 @@ function railGateCallout(doc: FlowDoc): string {
   const now = doc.nav?.now;
   if (typeof now !== 'string' || now.length === 0) return '';
   const node = (Array.isArray(doc.nodes) ? doc.nodes : []).find((n) => n.id === now);
-  const link = node?.dd_link;
+  const link = node === undefined ? undefined : ddLinkOf(node);
   if (node === undefined || link === undefined || link.gate === false) return '';
   if (typeof link.address !== 'string' || link.address.length === 0) return '';
   // Same untrusted-counts defence as the badge (F004) — an unreadable reading is

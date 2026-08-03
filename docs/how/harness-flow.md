@@ -493,11 +493,14 @@ Three consequences worth knowing:
   stored one rather than printing a stale `⛨ 2/2 ✓` above `! could not evaluate`.
   `not yet evaluated` is the only honest thing a rail can say about a reading
   nothing can currently confirm.
-- **A stored reading is untrusted input.** It reaches the file through `apply
-  --ops` and through anyone with an editor, so its counts are re-checked wherever
-  they are interpolated: two non-negative integers, or the surface reports the link
-  as unevaluated. Authoring `basis_sha` or `reading` by hand is not supported —
-  they are the gate's to write.
+- **The whole field is untrusted input.** A `dd_link` reaches the file through
+  `apply --ops` and through anyone with an editor. Its counts are re-checked
+  wherever they are interpolated (two non-negative integers, or the surface reports
+  the link as unevaluated), and a `dd_link` that is not an object at all — `null`
+  from a stray hand-edit — is read as *no link* rather than crashing the commands
+  you would use to find it. Authoring is stricter than reading: the CLI refuses
+  (`E108`) to write any of these itself, and `basis_sha`/`reading` are the gate's
+  to write, never yours.
 - **The address anchors at the flow document's repository, not your shell.**
   `dd_link.address` is repo-relative and persisted, so the same
   `--path /abs/the-flow.json` reports the same verdict from any working directory.

@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import {
   type DdLinkReading,
+  ddLinkGates,
+  ddLinkOf,
   type FlowDoc,
   readingCounts,
   sanitizeDdLink,
 } from '../../../src/services/flow/flow-events.js';
-import { applyBatch, setNode } from '../../../src/services/flow/flow-mutations.js';
+import { applyBatch, setNode, setNow } from '../../../src/services/flow/flow-mutations.js';
 import { renderFlow, renderRailLine } from '../../../src/services/flow/flow-renderer.js';
 
 /**
@@ -138,6 +140,113 @@ describe('renderer boundary — a malformed reading is suppressed, never interpo
     ).toEqual({ terminal: 2, total: 2 });
     expect(readingCounts(undefined)).toBeNull();
     expect(readingCounts({ terminal: '2', total: 2 } as unknown as DdLinkReading)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The FIELD itself is untrusted too (P6 review F007).
+//
+// F004 hardened a link's CONTENTS. F007 is the same threat one level up: a
+// hand-edited `dd_link: null` passes flow validation (the overlay says which keys
+// may appear, not what they hold), arrives at every read surface as a value that is
+// `!== undefined`, and throws on the first property access. One character bricked
+// `render`, the rail, `orient` and `nav set` simultaneously — a gate that crashes
+// the commands you would use to diagnose it. Each surface is asserted separately,
+// because they read the field through four different call paths.
+// ---------------------------------------------------------------------------
+
+/** A doc whose node carries `dd_link` set to something that is not a link. */
+function docWithRawLink(link: unknown): FlowDoc {
+  const d = plainDoc();
+  (d.nodes[0] as Record<string, unknown>).dd_link = link;
+  return d;
+}
+
+const NOT_LINKS: Array<[string, unknown]> = [
+  ['null', null],
+  ['a string', 'docs/tasks.dd.json#tasks'],
+  ['a number', 7],
+  ['an array', [{ address: 'docs/tasks.dd.json#tasks' }]],
+  ['a boolean', true],
+];
+
+describe('a dd_link that is not an object is treated as ABSENT, never a crash (F007)', () => {
+  it.each(NOT_LINKS)('renderFlow survives %s and badges nothing', (_name, link) => {
+    const doc = docWithRawLink(link);
+    expect(() => renderFlow(doc)).not.toThrow();
+    const out = renderFlow(doc);
+    expect(out).toContain('a["A"]'); // the plain label — no shield, no badge
+    expect(out).not.toContain('⛨');
+    // And no legend clause: absence must be indistinguishable from never having one.
+    expect(out).not.toContain('dd gate');
+  });
+
+  it.each(NOT_LINKS)('renderRailLine survives %s and prints no gate callout', (_name, link) => {
+    const doc = docWithRawLink(link);
+    expect(() => renderRailLine(doc)).not.toThrow();
+    expect(renderRailLine(doc)).not.toContain('⚑ gate:');
+  });
+
+  it.each(
+    NOT_LINKS,
+  )('setNow survives %s — the departure gate is simply unreachable', (_name, link) => {
+    const doc = docWithRawLink(link);
+    const gate = {
+      evaluate: () => {
+        throw new Error('the gate was evaluated for a node whose dd_link is not a link');
+      },
+    };
+    expect(() => setNow(doc, 'b', { ...deps(), gate })).not.toThrow();
+    const res = setNow(docWithRawLink(link), 'b', { ...deps(), gate });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.doc.nav?.now).toBe('b');
+    expect(res.notice).toBeUndefined();
+  });
+
+  it('ddLinkOf and ddLinkGates each hold on their own (both are exported)', () => {
+    // Belt AND braces, each pinned separately. `ddLinkGates` is redundant behind
+    // `ddLinkOf` on today's call paths, which is exactly why it needs its own test:
+    // an untested guard is one a future refactor deletes as dead, and it is exported,
+    // so the next caller may not go through `ddLinkOf` at all. Its parameter type
+    // says `DdLink | undefined`; a JSON document says otherwise.
+    expect(ddLinkOf({ dd_link: null as never })).toBeUndefined();
+    expect(ddLinkOf({ dd_link: 'x' as never })).toBeUndefined();
+    expect(ddLinkOf({ dd_link: [] as never })).toBeUndefined();
+    expect(ddLinkOf({})).toBeUndefined();
+    expect(ddLinkOf({ dd_link: { address: 'a#b' } })).toEqual({ address: 'a#b' });
+
+    expect(ddLinkGates(null as never)).toBe(false);
+    expect(ddLinkGates(undefined)).toBe(false);
+    expect(ddLinkGates({ address: 'a#b' })).toBe(true); // absent `gate` means gated
+    expect(ddLinkGates({ address: 'a#b', gate: false })).toBe(false);
+  });
+
+  it('a REAL link with an empty address is NOT swallowed — E449 must stay reachable', () => {
+    // The guard filters non-objects, never a well-shaped link with a bad address:
+    // an empty address is a real fault with its own code, and quietly treating it as
+    // "no link" would replace an explainable refusal with silence.
+    let consulted = false;
+    const res = setNow(docWithRawLink({ address: '' }), 'b', {
+      ...deps(),
+      gate: {
+        evaluate: () => {
+          consulted = true;
+          return {
+            ok: false as const,
+            reason: 'link-missing' as const,
+            address: '',
+            message: 'the node carries a dd_link with no address',
+          };
+        },
+      },
+    });
+    expect(consulted).toBe(true); // the gate WAS reached — not treated as absent
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.code).toBe('E449');
+    // And it still badges: the node genuinely carries a link, broken or not.
+    expect(renderFlow(docWithRawLink({ address: '' }))).toContain('⛨');
   });
 });
 
