@@ -292,7 +292,7 @@
     <h1 class="rev d1">Deterministic<br><em>Documents</em></h1>
     <p class="tagline rev d2">A new way to write documents that <strong>machines can verify</strong> and <strong>humans can read</strong> — where the markdown is a view, the data is the truth, and every claim is an address.<span class="cursor"></span></p>
     <div class="hero-def rev d3">
-      A <b>deterministic document</b> (“DD”) is a document whose source of truth is structured data: a <b>.dd.json</b> file in which every section declares its type, every element carries an id, and the human-readable <b>.dd.md</b> is <b>generated</b> beside it — never authored. Structure is validated, content is hashed, and anything — a plan, a flow node, a check — can point at any section or row and be told when it drifts.
+      A <b>deterministic document</b> (“DD”) is a document whose source of truth is structured data: a <b>.dd.json</b> file in which every section declares its type, everything addressable carries an id, and the human-readable <b>.dd.md</b> is <b>generated</b> beside it — never authored. Structure is validated, content is hashed, and anything — a plan, a flow node, a check — can point at any section or row and be told when it drifts.
     </div>
     <div class="hero-meta rev d4">
       <span>DOC · <b>dd-infographic</b></span>
@@ -416,7 +416,7 @@
           </div>
           <div class="arrwrap" style="padding:0 8px;width:120px">
             <div class="arrbar fx growx" style="--s:.26;--d:.12"></div>
-            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible">consumed by</div>
+            <div class="jrow fx rv" style="--s:.30;--d:.08;text-align:center;color:var(--blue);overflow:visible">read by · the link lives on THEIR side</div>
             <div class="arrbar fx growx" style="--s:.52;--d:.12;background:#46586c;margin-top:26px"></div>
           </div>
           <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
@@ -438,7 +438,7 @@
     <!-- BEAT 4 -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 4</span><h3>The check becomes a gate</h3></div>
-      <p class="b-cap">Here is the payoff of the checklist being <b>data</b>: other software can read it and <b>rely on it</b>. A workflow system, for example, can point one of its steps at the plan’s checklist and simply refuse to move to the next step while items are still open. When the last item is checked — with its proof attached — the gate opens on its own. Nobody has to <i>remember</i> to update the plan anymore: the workflow literally cannot move on until the plan says the work is done.</p>
+      <p class="b-cap">Here is the payoff of the checklist being <b>data</b>: other software can read it and <b>rely on it</b>. A workflow system, for example, can point one of its steps at the plan’s checklist and simply refuse to move to the next step while items are still open. When the last item is checked — with its proof attached — the gate opens on its own. Nobody has to <i>remember</i> to update the plan anymore: the workflow won’t move on until the plan says the work is done.</p>
       <figure class="scene" data-beat="b4" data-dur="4200">
         <div class="b4grid">
           <div class="doc fx rv" style="--s:.02;--d:.10">
@@ -684,7 +684,7 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="card rev d1"><span class="tag blue">PRIMITIVE</span>
         <h3>list</h3>
-        <p>A flat enumeration with no state — goals, non-goals, notes. Plain strings, no ids. The rule: <b>an element earns an id when it carries state or is a link target</b>; wanting to link to a list item means you needed a completable section.</p>
+        <p>A flat enumeration with no state — goals, non-goals, notes. Plain strings, no ids. The rule <span class="num-col">(decided · D13)</span>: <b>an element earns an id when it carries state or is a link target</b>; wanting to link to a list item means you needed a completable section.</p>
       </div>
       <div class="card rev d2"><span class="tag blue">PRIMITIVE</span>
         <h3>completable-list</h3>
@@ -692,7 +692,7 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="card rev"><span class="tag blue">PRIMITIVE</span>
         <h3>completable-table</h3>
-        <p>Same completion semantics, richer rows: typed columns — <code>string</code> · <code>int</code> · <code>state</code> · <code>link</code>. Link columns declare their <b>target shape</b> (“a backpressure doc’s evidence row”) and <b>cardinality</b> (“every AC must name its pressure”), so schema — not review habit — enforces the wiring.</p>
+        <p>Same completion semantics, richer rows: typed columns — <code>string</code> · <code>int</code> · <code>state</code> · <code>link</code>. Link columns declare their <b>target shape</b> (“a backpressure doc’s evidence row”) and <b>cardinality</b> (“every AC must name its pressure”), so schema — not review habit — enforces the wiring <span class="num-col">(shapes illustrative until W3/W6 close)</span>.</p>
       </div>
       <div class="card rev d1"><span class="tag gold">PROPOSED</span>
         <h3>log (append-only)</h3>
@@ -746,7 +746,7 @@ Let a signed-out shopper complete checkout…
       <div class="card" style="border-color:var(--green)">
         <span class="tag green">DEMONSTRATIVE · discharge →</span>
         <h3>execution-log.dd.json</h3>
-        <p>How it was actually discharged — appended <b>during</b> work. Entry <code>el-0042</code>: the command run, its exit and output digest, timestamp, actor, artifacts. Append-only by validation (a mutated prior entry fails <code>dd validate</code>).</p>
+        <p>How it was actually discharged — appended <b>during</b> work. Entry <code>el-0042</code>: the command run, its exit and output digest, timestamp, actor, artifacts <span class="num-col">(entry shape illustrative — W3)</span>. Append-only by validation (a mutated prior entry fails <code>dd validate</code>).</p>
         <p style="margin-top:8px;font-size:12.5px">The append-only trail that receipts taught the harness to demand — provided by the <b>format</b>, not by discipline.</p>
       </div>
     </div>
@@ -853,7 +853,7 @@ Let a signed-out shopper complete checkout…
     <div class="grid3" style="margin-top:26px">
       <div class="card rev"><span class="tag blue">VERB</span>
         <h3>dd links</h3>
-        <p>The edges of one target — inbound and outbound. “What depends on this evidence row?” answered from the <b>derived reverse index</b>: links are stored only where authored; the reverse direction is computed and cached, rebuildable at any time — so it can’t lie, can’t churn a target’s sha, and can’t merge-conflict a hub doc. <span class="num-col">(D11)</span></p>
+        <p>The edges of one target — inbound and outbound. “What depends on this evidence row?” is <b>computed, never stored</b>: links live only where authored, and the reverse direction comes from a scan — local scope (this folder and below) for interactive queries, doctor’s full-repo sweep in <code>checks</code> for the rest. One copy of the truth, no index to go stale, nothing to merge-conflict. <span class="num-col">(D11)</span></p>
       </div>
       <div class="card rev d1"><span class="tag blue">VERB</span>
         <h3>dd build</h3>
@@ -1047,7 +1047,7 @@ Let a signed-out shopper complete checkout…
 <section class="panel" id="receipts">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">11</span><h2>What this kills — the receipts</h2></div>
-    <p class="sec-sub">Every failure below was found in this repo’s own plan corpus during the 065 survey. Each maps to the specific mechanism that makes it <b>unrepresentable</b>, not merely discouraged.</p>
+    <p class="sec-sub">Every failure below was found in this repo’s own plan corpus during the 065 research pass — the 7-plan survey plus per-claim verification in the deep-dive analyses (all preserved under <code>research/</code>; the typo detail, the stale-basis check, and the 54-file count are from the verified deep dives). Each maps to the specific mechanism that makes it <b>unrepresentable</b>, not merely discouraged.</p>
 
     <table class="spec rev">
       <tr><th style="width:46%">measured failure</th><th>killed by</th></tr>
@@ -1090,7 +1090,8 @@ Let a signed-out shopper complete checkout…
       <span class="chip">D7 portable lib, harness first</span>
       <span class="chip">D8 rename-section first-class</span>
       <span class="chip">D9 contributors ledger + basis pins</span>
-      <span class="chip">D11 reverse index derived</span>
+      <span class="chip">D11 links source-only · reverse by scan</span>
+      <span class="chip">D13 ids where state or linkable</span>
       <span class="chip open">W1 render adapters for custom types</span>
       <span class="chip open">W2 state vocabulary</span>
       <span class="chip open">W3 log entry kinds</span>
