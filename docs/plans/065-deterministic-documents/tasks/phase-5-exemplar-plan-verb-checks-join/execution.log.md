@@ -549,3 +549,133 @@ rather than hand-edited, and `check:dd-docs` is green.
 
 **markdown-lint holds at exactly 199** with the new doc in scope — `filesLinted` moved 109 → 110 and
 the finding count did not move, so the doc is lint-clean rather than merely tolerated.
+
+---
+
+## T006 — End-to-end validation
+
+### The exemplar, in one recorded run
+
+```text
+### 1. validate at depth 3
+   status: ok  counts: {"error":0,"warn":0}
+
+### 2. dd build --check on every document (byte stability)
+    ok drift=false   plan.dd.md
+    ok drift=false   backpressure.dd.md
+    ok drift=false   execution-log.dd.md
+    ok drift=false   tasks/phase-2/tasks.dd.md
+
+### 3. dd doctor over the corpus
+   status: ok  discovered: 4  swept: 4  counts: {"error":0,"warn":0}
+```
+
+### The jq demo — what the corpus is actually FOR
+
+```text
+### Which acceptance criteria are NOT yet proven?
+   ac-0901  [unchecked]  A real plan authored as plan.dd.json — with per-task evidence lists an…
+
+### Every waiver a human signed, with the words they used
+   dw-0294
+     assertion: The repository-root invocation of the suite is exercised by the quality gate,
+                not merely sanctioned by a config file.
+     receipt:   Recorded in the phase-2 log: "left to the retro / P5 checks conversation, per
+                the PM's ruling not to decide it inside a fix round".
+
+### Task tk-0209 progress — COMPUTED from its evidence, not claimed
+   4/4 assertions terminal
+
+### Which log entries does the plan's whole coverage rest on?
+   execution-log.dd.json#entries/lg-0201
+   execution-log.dd.json#entries/lg-0801
+   execution-log.dd.json#entries/lg-0901
+   execution-log.dd.json#entries/lg-1201
+
+### The AC-to-coverage linkage P1 retro DL-001 called hand-maintained prose — now one query
+   ac-0201 [checked]    pressure -> …#rows/bp-0201   proven_by -> …#entries/lg-0201
+   ac-0801 [checked]    pressure -> …#rows/bp-0801   proven_by -> …#entries/lg-0801
+   ac-0901 [unchecked]  pressure -> …#rows/bp-0901   proven_by -> …#entries/lg-0901
+   ac-1201 [checked]    pressure -> …#rows/bp-1201   proven_by -> …#entries/lg-1201
+```
+
+The second query is the one worth pausing on. "Show me every waiver a human signed, and the words
+they used" is not a query you can run against a plan written in prose. Neither is the last: P1's retro
+recorded the AC-to-coverage linkage as hand-maintained prose that nothing could check, and it is now
+one line of `jq` — which is exactly the claim AC-09 makes.
+
+### Suites, both sanctioned invocations
+
+```text
+just test
+  Test Files  262 passed (262)
+       Tests  3582 passed (3582)
+  Statements 88.91% · Branches 79.44% · Functions 91.59% · Lines 91.37%
+
+extension suites (run inside `harness checks`)
+  Test Files  20 passed (20)   Tests  330 passed (330)
+
+both-cwds proof — the NEW CLI-spawning suites, from each sanctioned invocation:
+  cd harness/cli && npx vitest run test/acts/{plan,dd-links-live,dd-live,dd-build}.test.ts
+    Test Files  4 passed (4)   Tests  56 passed (56)
+  cd <repo root>  && npx vitest run test/acts/{plan,dd-links-live,dd-live,dd-build}.test.ts
+    Test Files  4 passed (4)   Tests  56 passed (56)
+```
+
+The second invocation is no longer a courtesy: `root-invocation-smoke` runs it inside `harness checks`
+from now on, so it cannot quietly rot again.
+
+### Baselines
+
+| Signal | Before | After |
+|---|---|---|
+| `harness checks` | error / exit 1 | **degraded / exit 0** |
+| arch-check | 2 warn violations | **2** — unmoved, `dd-graph-never-imports-render` live and green |
+| markdown-lint | 199 findings / 109 files | **199** findings / **110** files |
+| windows-check | 6 hazards | 6 — unmoved |
+| full suite | 1 file red (4 phases running) | **262 / 262 green** |
+
+---
+
+## Retro follow-ins
+
+| Follow-in | Outcome |
+|---|---|
+| **GIT_CONFIG_* env injection** (P1 DL-003, P2 DL-004, P3/P4 DL-004 — third strike) | **DONE.** The fixture helper in `exec-remote-telemetry-git.int.test.ts` strips ambient `GIT_CONFIG_*` instead of inheriting it (18 lines, that helper only). 91/91 green, and the full suite is green for the first time in this plan. |
+| **Proof ceiling** (P3/P4 DL-005-class; P2 DL-008) | **DONE, and decided rather than deferred.** `root-invocation-smoke` runs the repo-root invocation inside `harness checks` — a smoke, not a second full suite, because the open question was whether that invocation resolves at all, not coverage. The root `vitest.config.ts` stays, now that something exercises it. |
+| **Per-row fixture roots** (CONF-001) | **N/A, stated rather than assumed.** No P5 test drives a multi-root corpus. The new live suites use ONE temp repo each with `process.chdir` in `beforeEach` — per-row by construction, not a describe-level pin. |
+
+---
+
+## Deferred & Noteworthy (this phase)
+
+| Tag | What | Why a human should see it |
+|---|---|---|
+| **Deferred** | **The "clever use of primitives" bar is a HUMAN call and is deliberately unresolved.** | Jordan's standing constraint on plans-as-exemplar is a judgement, and the corpus says so about itself: `bp-0902` is an `unchecked` **human-judgement** row reading "the exemplar uses dd primitives cleverly and renders well for a human reader", with the proof column recording that no machine proves taste. Read `exemplar/plan.dd.md` and `exemplar/tasks/phase-2/tasks.dd.md` — the rendered siblings are the artifacts — then set that row. This is the one thing in the phase that ships unresolved on purpose. |
+| **Deferred** | `ac-0901` in the exemplar is `unchecked`. | The corpus is that criterion's own subject, and the machine half is now green (validate / `--check` / doctor / jq, all above). It stays unchecked because the human half is `bp-0902`. |
+| **Noteworthy** | **The E-code for `address-path-escape` changed in `dd validate`**: `E405` → `E430`. | The three duplicated maps had already drifted; collapsing them forced one winner and the specific code won (PM-confirmed). Both codes are inside the frozen block so no surface moved, but this is a real behaviour change to a filled body — flagged for the reviewer to re-derive rather than take on trust. |
+| **Noteworthy** | OD-8 landed in **five** files, not the three ratified. | `schema/declarations.ts` (the parser's allow-list would have silently dropped the ratified key — a no-op grant) and `links/resolver.ts` (a dynamic-key map was unsteppable, which broke workshop-002 Ruling 3 outright) were both found by reading implementations, proposed, and separately granted before landing. Neither was in the original scope because neither was knowable from the contracts. |
+| **Noteworthy** | `createLinkContext`, `codedLinkIssues`, `nextActionFor`, `FsDocLoader` and `trackedPaths` MOVED from `acts/dd/link.ts` to `acts/dd/shared.ts`. | A pure relocation with no logic change, and it touched three files outside the original fence (`links.ts`, `graph.ts`, `address.ts` — import redirects only, granted). Without it, wiring `autoRegenerateSibling` would have pushed arch-check from 2 violations to 4 by dragging `graph`/`links` across a boundary P3/P4 were split along. |
+| **Noteworthy** | `SCAN_SKIP_PATHS` is a **semantic decision shipped as a constant**. | `.harness/temp` is now invisible to the sweep. It is matched by position rather than by name (a real `temp/` directory elsewhere is still scanned — two fixtures pin that), and it yields to an explicit root. If a future repo puts real dd documents under `.harness/temp`, this is the line that hides them. |
+| **Noteworthy** | The renderer still derives a dynamic-key map's interior COLUMN ORDER from the data, not from the `valuesShape` that now exists. | Evidence tables in the exemplar have slightly different column orders list-to-list. Harmless, and a natural follow-on now that a map interior has a declared shape: pass `valuesShape` down and interiors get declared column order for free. Captured as `harness observe --kind magic-wand` (MW-001). |
+| **Noteworthy** | `exitDdStub` / `DdOwningPhase` in `acts/dd/shared.ts` are now **dead code**. | Every act stub they served has been filled by P2/P3/P4. Left in place because the PM asked for a pure move in that file and deleting exports is not one; a one-line removal for whoever touches it next. |
+| **Noteworthy** | Test runs write telemetry INTO a committed fixture tree. | `harness/cli/test/services/dd/render/fixtures/adapters/repo/.harness/temp/telemetry/**` exists on disk (gitignored, so nothing is committed) — a CLI invocation with cwd inside a fixture repo captured real telemetry there. Not this phase's to fix, but a fixture tree accumulating runtime state is how fixtures stop being deterministic. |
+
+No `TODO`/`FIXME`/`HACK` markers were introduced. No task was skipped or blocked.
+
+---
+
+## Phase complete
+
+All six tasks `[x]`. Phase 5 delivers: the living exemplar corpus (four documents, PM-cited as the
+thing that found two real gaps no fixture corpus could have), the `harness plan` core act, the three
+fan-in seams reconciled, dd health inside the repository's own quality gate with its control proven
+against a known-bad fixture, the shipped consumer-repo doctor layer, the `.dd` sensor, the build-chain
+wiring with OD-5's hard condition probed live, and `docs/how/harness-dd.md`.
+
+`harness checks` moved from **error/exit 1 to degraded/exit 0**, with the warn-launch trio unmoved at
+its standing numbers — the improvement is the retro follow-in, not a weakened gate.
+
+Four observations captured live: DL-001 (the four-phase `GIT_CONFIG_*` host defect), DL-002 (gitignored
+scratch shaping a gate — the third member of a general class), WIN-001 (dog-fooding beat fixtures),
+MW-001 (the renderer could take a map's declared `valuesShape` as its column order).
