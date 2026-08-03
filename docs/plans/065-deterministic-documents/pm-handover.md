@@ -4,7 +4,7 @@
 
 ## The concept in one paragraph
 
-A **Deterministic Document** is a document stored as validated data: a `.dd.json` file (schema in-file, content hash over sections) with a generated, human-readable `.dd.md` beside it. Sections are typed primitives (free-text, list, completable-list, completable-table, append-only log, record, include). Anything stateful or linkable gets a stable address; typed links between documents carry target shape and cardinality, so a CLI can validate the whole graph mechanically. The payoff: another process — like a workflow engine — can *compute* gates from document state ("all acceptance-criteria rows are done") instead of an agent remembering to tick a box. Knowledge lives in one graph (the documents), workflow in another (the flow spine), bridged by one typed link.
+A **Deterministic Document** is a document stored as validated data: a `.dd.json` file (naming its schema by reference, content hash over sections) with a generated, human-readable `.dd.md` beside it. Sections are typed primitives (free-text, list, completable-list, completable-table, append-only log, record, include). Anything stateful or linkable gets a stable address; typed links between documents carry target shape and cardinality, so a CLI can validate the whole graph mechanically. The payoff: another process — like a workflow engine — can *compute* gates from document state ("all acceptance-criteria rows are done") instead of an agent remembering to tick a box. Knowledge lives in one graph (the documents), workflow in another (the flow spine), bridged by one typed link.
 
 ## Reading order
 
