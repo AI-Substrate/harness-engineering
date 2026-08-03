@@ -1,6 +1,5 @@
 import { isWithin, posixJoin } from '../../shared/posix-path.js';
 import {
-  MAX_SCAN_DEPTH,
   SCAN_SKIP_DIRS,
   SCHEMA_FILE,
   SCHEMAS_DIR,
@@ -57,20 +56,21 @@ function collectPackages(
  * Deep-scan one discovery root for `schemas/<pkg>/<schema>/schema.json` packages.
  *
  * "Deep" is the point (D14): a package may sit at any depth beneath its root, so
- * the walk descends until it meets a `schemas/` folder (which it enumerates but
- * never recurses into — a nested `schemas` there is a package name, not another
- * convention folder). Directory-ness is inferred from `readdir` returning
- * entries, which is all the port promises; skip-listed and over-deep branches are
- * silently pruned, and any port failure becomes one honest `scan-failed` issue
- * rather than a thrown exception.
+ * the walk descends **until it finds** the convention folder — there is no depth
+ * bound, because D14 rules the hierarchy above a package organization-only and a
+ * bound would silently omit a valid package rather than report one. The walk
+ * enumerates a `schemas/` folder but never recurses into it (a nested `schemas`
+ * there is a package name, not another convention folder). Directory-ness is
+ * inferred from `readdir` returning entries, which is all the port promises;
+ * skip-listed branches are pruned, and any port failure becomes one honest
+ * `scan-failed` issue rather than a thrown exception.
  */
 export function scanRoot(fs: SchemaFs, root: SchemaRoot): RootScan {
   const hits: SchemaHit[] = [];
   const issues: SchemaIssue[] = [];
   const skip = new Set<string>(SCAN_SKIP_DIRS);
 
-  const walk = (dir: string, depth: number): void => {
-    if (depth > MAX_SCAN_DEPTH) return;
+  const walk = (dir: string): void => {
     for (const entry of [...fs.readdir(dir)].sort()) {
       if (skip.has(entry)) continue;
       const child = posixJoin(dir, entry);
@@ -78,12 +78,12 @@ export function scanRoot(fs: SchemaFs, root: SchemaRoot): RootScan {
         collectPackages(fs, child, root, hits, issues);
         continue;
       }
-      if (fs.readdir(child).length > 0) walk(child, depth + 1);
+      if (fs.readdir(child).length > 0) walk(child);
     }
   };
 
   try {
-    walk(root.path, 0);
+    walk(root.path);
   } catch (error) {
     issues.push(
       schemaIssue(

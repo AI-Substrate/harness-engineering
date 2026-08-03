@@ -21,6 +21,7 @@ function filesUnder(relativeDir: string): string[] {
 describe('dd schema fixture corpus', () => {
   it('enumerates one world per resolution case, every file real and parseable', () => {
     expect(cases()).toEqual([
+      'beyond-cap',
       'chain',
       'custom-enum',
       'deep-scan',

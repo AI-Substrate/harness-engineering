@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { VerbActDeps } from '../../src/acts/verb.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
@@ -12,6 +13,8 @@ import type { CliIo, Writers } from '../../src/output/output-port.js';
 import { RESERVED_NAMES, type VerbRegistry } from '../../src/services/extensions/registry.js';
 
 const EMPTY: VerbRegistry = { verbs: [], records: [] };
+/** The CLI package dir — the cwd `just test` runs from, and the base fixture paths assume. */
+const CLI_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 function deps(): VerbActDeps {
   return {
@@ -46,7 +49,21 @@ async function runDd(argv: string[]): Promise<{ envelope: Envelope; code: number
 }
 
 describe('harness dd act surface', () => {
+  // The two live `dd validate` rows below hand the act repo-relative fixture
+  // paths, and the act resolves them against process.cwd() (house repo-root
+  // convention). Pin cwd to the CLI package so this suite means the same thing
+  // under `just test` (which cds to harness/cli) and under the repo's own root
+  // vitest.config.ts — vitest's `root` option does NOT set process.cwd(). The
+  // stub rows are cwd-agnostic, so the shared pin changes nothing they assert.
+  let previousCwd = '';
+
+  beforeEach(() => {
+    previousCwd = process.cwd();
+    process.chdir(CLI_ROOT);
+  });
+
   afterEach(() => {
+    process.chdir(previousCwd);
     vi.restoreAllMocks();
   });
 

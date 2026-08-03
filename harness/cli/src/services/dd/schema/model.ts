@@ -112,9 +112,6 @@ export const SCHEMA_FILE = 'schema.json';
 /** Directories the deep scan never descends into. */
 export const SCAN_SKIP_DIRS = ['node_modules', '.git', 'dist', 'coverage'] as const;
 
-/** How many directory levels below a root the scan descends. */
-export const MAX_SCAN_DEPTH = 8;
-
 export function schemaIssue(
   issueClass: SchemaIssueClass,
   severity: SchemaSeverity,

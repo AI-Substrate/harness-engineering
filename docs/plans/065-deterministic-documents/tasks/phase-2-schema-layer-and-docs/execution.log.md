@@ -113,9 +113,11 @@ is the four-document hop chain the `--depth` proof needs.
   satisfies structurally, so the layer names no adapter at all, and keeps the whole layer free
   of `output/` — the act owns the class → E-code mapping, exactly as dd-core does.
 - `scan.ts` deep-scans a root for `schemas/<pkg>/<schema>/schema.json` at any depth, pruning
-  `node_modules`/`.git`/`dist`/`coverage` and stopping at `MAX_SCAN_DEPTH` 8. It never recurses
-  *into* a found `schemas/` folder (a nested `schemas` there is a package name). Any port
-  failure becomes one `scan-failed` issue per root instead of an exception.
+  `node_modules`/`.git`/`dist`/`coverage`. It descends **until it finds** the convention folder —
+  there is no depth bound (see the fix round below: an 8-level cap shipped here and was removed
+  as review finding F001). It never recurses *into* a found `schemas/` folder (a nested
+  `schemas` there is a package name). Any port failure becomes one `scan-failed` issue per root
+  instead of an exception.
 - `resolve.ts` implements P1's `SchemaResolver` **exactly** (`resolve(ref, fromPath)`), with the
   richer surface — `resolveDetailed`, `list`, `rootsFor` — hanging off separate methods so the
   frozen seam stays one method wide. Precedence is D14's, first-hit-wins with **all** hits
@@ -310,3 +312,96 @@ clash/shadow diagnostics, declarable enums with their own `gate_terminal` sets f
 the validate engine and `deriveState`, the five Phase-2 command bodies live (the OD-2 handoff
 closed), three exemplar `builder/*` packages, and the D15 baked docs with a two-way drift gate.
 The frozen surface is unchanged: no command, positional, option, or E-code moved.
+
+---
+
+## Fix round — P2 code review (F001 + held cwd stabilization)
+
+One commit, both items, per the reviewer's verdict (FIX, 1 HIGH) and the PM's rulings.
+
+### F001 (HIGH) — the scan carried an undocumented semantic depth cap
+
+`scan.ts` pruned the walk with `if (depth > MAX_SCAN_DEPTH) return` (`MAX_SCAN_DEPTH = 8`).
+**D14 rules the hierarchy above a package organization-only and sets no bound**, so the cap was
+a semantic decision smuggled in as a constant — and the worst kind, because a package below
+depth 8 is not *reported*, it is silently **not found**. No ruling authorised it; I did not
+attempt to justify it after the fact.
+
+Fix: `MAX_SCAN_DEPTH` deleted from `model.ts`, the guard and the now-unused `depth` parameter
+deleted from `scan.ts`, and the function's doc comment corrected (it had claimed over-deep
+branches are "silently pruned" — that sentence described the bug).
+
+No cycle guard was added in its place. There was none to keep, and the port
+(`SchemaFs` = `readdir`/`exists`/`readText`) exposes no `realpath`/`stat`, so a symlink loop
+cannot be detected by identity — and a path-set guard would not catch it, since each traversal
+yields a *new* path. A loop therefore terminates by `ENAMETOOLONG` (which `NodeFs.readdir`
+absorbs to `[]`) or by recursion depth, which the existing `try/catch` converts into one honest
+`scan-failed` ERROR. Silent omission is traded for a loud, bounded failure. Adding a guard would
+have meant re-introducing a bound by the back door; per the PM's instruction that would be a
+renegotiation, not a coder's constant.
+
+**Fixture: `fixtures/beyond-cap/`** — `builder/plan` at
+`repo/.dd/org/team/squad/area/service/module/component/feature/config/schemas/builder/plan/`:
+nine levels below its root, exactly one past the former cap.
+
+**Mutation proof (the fixture has teeth).** Re-introducing an equivalent cap transiently —
+`if (dir.split('/').length - root.path.split('/').length > 8) return;` — reddened exactly the
+new row and nothing else:
+
+```
+ FAIL  test/services/dd/schema/resolve.test.ts > dd schema resolution — precedence >
+       finds a package nested past the former scan cap — the walk has no depth bound
+ Test Files  1 failed | 12 passed (13)
+      Tests  1 failed | 106 passed (107)
+```
+
+The mutation was reverted and its absence verified by grep before commit.
+
+### Held item — cwd stabilization of the live act suites
+
+`dd validate` resolves its document argument against `process.cwd()` (the house repo-root
+convention, `validate.ts`). The live rows hand it `harness/cli`-relative fixture paths, so they
+only meant what they said when cwd happened to be `harness/cli`.
+
+That is not a theoretical exposure: **this repo ships its own root `vitest.config.ts`**
+(`mergeConfig(cliConfig, { root: 'harness/cli' })`). Vitest's `root` relocates *discovery*; it
+does **not** set `process.cwd()`. So a root-level `npx vitest run` is a supported invocation, and
+under it 7 tests were red — 2 in `dd.test.ts`, 5 in `dd-live.test.ts` — with the path miss
+surfacing as `E400` instead of `E401`/`E408`.
+
+Fix: each affected `describe` pins cwd to `CLI_ROOT` (derived from `import.meta.url`) in
+`beforeEach` and restores it in the existing `afterEach`. This is the idiom already proven in
+`dd-live.test.ts`'s `schema / docs` group, which was green from either cwd throughout. Absolute
+fixture paths were rejected: they would change `repoRoot`, and with it the `git ls-files`
+tracked-ness WARNs the assertions depend on.
+
+Per the PM's ruling, the pin is **describe-level**: a row-level freeze pins the assertions, not
+the file's scaffolding. Every frozen row's text is byte-identical (`git diff` on `dd.test.ts`
+touches only imports, one `const`, and the hooks), and the 8 P3/P4 stub rows are cwd-agnostic,
+so a shared pin changes nothing they assert.
+
+### Proof — both cwds, because a fix proven from one leaves the other unproven
+
+```
+cd harness/cli && npx vitest run test/services/dd test/acts/dd-surface.test.ts \
+  test/acts/dd.test.ts test/acts/dd-live.test.ts
+  Test Files  16 passed (16)
+       Tests  148 passed (148)
+
+cd <repo root> && npx vitest run test/services/dd test/acts/dd-surface.test.ts \
+  test/acts/dd.test.ts test/acts/dd-live.test.ts
+  Test Files  16 passed (16)
+       Tests  148 passed (148)
+```
+
+147 → 148 is the one new beyond-cap row. `npx biome check harness/cli/src harness/cli/test`
+clean (459 files); `npx tsc -p harness/cli/tsconfig.json` passes.
+
+### Left undecided on purpose
+
+The durable lesson is not the test bug — it is the **proof ceiling** behind it: two *sanctioned*
+invocations of the same suite disagreed, and nothing in `harness checks` ran the second one. The
+remedy is a choice, not a patch — add a repo-root run to the gate, **or** delete the root
+`vitest.config.ts` if that invocation is not really supported. Today the repo asserts both work
+and only one does. Captured as `harness observe --kind difficulty` (**DL-008**) and left to the
+retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round.

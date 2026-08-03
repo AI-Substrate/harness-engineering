@@ -40,6 +40,12 @@ end-to-end proof runs against the same files on real disk.
   reported as shadows with their paths.
 - **`deep-scan/`** — `builder/plan` buried at `repo/.dd/team/shared/nested/schemas/builder/plan/`.
   Proves the scan is deep, not a fixed two-level probe.
+- **`beyond-cap/`** — `builder/plan` nested **nine** levels below its root, at
+  `repo/.dd/org/team/squad/area/service/module/component/feature/config/schemas/builder/plan/`.
+  D14 rules the hierarchy above a package organization-only and sets **no** depth bound, so this
+  world exists to redden the moment anyone reintroduces one: it sits one level past the 8-level
+  semantic cap that P2 review F001 removed. A bounded scan omits it silently — the worst failure
+  mode there is, since the schema is simply "not found" rather than reported.
 - **`single-root/`** — one schema, one root: the plain good twin, plus documents that exercise
   each validate outcome (`plan` clean, `invalid-plan` ERROR-class, `warn-only` WARN-class,
   `unknown-schema` unresolvable).

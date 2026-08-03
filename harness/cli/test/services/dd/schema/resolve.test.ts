@@ -65,6 +65,21 @@ describe('dd schema resolution — precedence', () => {
     expect(resolution.record?.shadows).toEqual([]);
   });
 
+  // D14 sets no depth bound, so neither does the scan. This world sits one level
+  // past the 8-level semantic cap review F001 removed: a reintroduced bound omits
+  // it *silently* (schema simply "not found"), so only a fixture catches it.
+  it('finds a package nested past the former scan cap — the walk has no depth bound', () => {
+    const { world, resolver } = resolverFor('beyond-cap');
+    const resolution = resolver.resolveDetailed('builder/plan', world.doc('plan.dd.json'));
+    expect(resolution.record?.path).toBe(
+      world.path(
+        'repo/.dd/org/team/squad/area/service/module/component/feature/config/schemas/builder/plan/schema.json',
+      ),
+    );
+    expect(resolution.record?.shadows).toEqual([]);
+    expect(resolution.issues).toEqual([]);
+  });
+
   it('always carries the resolved absolute path on the result', () => {
     const { world, resolver } = resolverFor('single-root');
     const record = resolver.resolveDetailed('builder/plan', world.doc('plan.dd.json')).record;

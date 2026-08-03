@@ -14,6 +14,8 @@ import { RESERVED_NAMES, type VerbRegistry } from '../../src/services/extensions
 
 const EMPTY: VerbRegistry = { verbs: [], records: [] };
 const CHAIN = 'test/services/dd/schema/fixtures/chain/repo/docs';
+/** The CLI package dir — the cwd `just test` runs from, and the base `CHAIN` is relative to. */
+const CLI_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 function deps(): VerbActDeps {
   return {
@@ -70,7 +72,19 @@ async function runDd(argv: string[], mode: 'json' | 'human' = 'json') {
 }
 
 describe('harness dd validate — live body (OD-2 handoff)', () => {
+  // `dd validate` resolves its document argument against process.cwd() (the house
+  // repo-root convention), so CHAIN's relative path only means what it says when
+  // cwd is the CLI package. Pin it — the repo also ships a root vitest.config.ts,
+  // and vitest's `root` option does NOT set process.cwd().
+  let previousCwd = '';
+
+  beforeEach(() => {
+    previousCwd = process.cwd();
+    process.chdir(CLI_ROOT);
+  });
+
   afterEach(() => {
+    process.chdir(previousCwd);
     vi.restoreAllMocks();
   });
 
