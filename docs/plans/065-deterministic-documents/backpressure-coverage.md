@@ -1,7 +1,7 @@
 # Backpressure Coverage — Deterministic Documents (dd)
 
 **Plan**: [deterministic-documents-plan.md](./deterministic-documents-plan.md)
-**Basis (plan SHA-256)**: ff67c2cc63914c3c5d329e070918c7960499533839f698423de5c7cef0aceb6c
+**Basis (plan SHA-256)**: e1318b51944ac6f51fd2a5ac49cbbd05b5d2f047cde07f5d925277b356f98c0a (v1.1.1 — task 6.6 added)
 **Generated**: 2026-08-03 (re-selected against plan v1.1.0 — post-Opus-validation; graph now P1→P2→(P3∥P4)→P5→P6)
 **Certainty**: Partial
 
@@ -79,6 +79,8 @@
 | Proves | Mode | Proof line |
 |--------|------|------------|
 | AC-10, AC-11 | EXTEND→RUN | `npx vitest run test/services/flow test/acts/flow` then full `just test` |
+| 6.6 dog-food (deterministic lens) | EXTEND→RUN | temp-dir e2e suite (scaffold→link→refuse→`--force`→drift→verify-basis→orient/rail) inside `just test` |
+| 6.6 dog-food (inference lens) | — | human-judgement row by design: agent-operated walkthrough; findings note in execution.log.md (≥1 observation or defended "none") |
 
 ## Certainty: Partial
 
