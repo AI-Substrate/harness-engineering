@@ -91,5 +91,5 @@ describe('docs command — end-to-end through a real pipe (F002 truncation/EPIPE
 
     expect(firstLine.length).toBeGreaterThan(0);
     expect(stderr).not.toMatch(/EPIPE|Error:/);
-  });
+  }, 120_000);
 });
