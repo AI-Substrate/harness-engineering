@@ -1,0 +1,19 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "evidence",
+      "value": {
+        "tk-a1b2": [
+          { "id": "dw-a1b2", "state": "checked" },
+          { "id": "dw-b2c3", "state": "human-skipped", "receipt": "Skip this assertion" }
+        ],
+        "tk-b2c3": [
+          { "id": "dw-c3d4", "state": "blocked", "note": "Waiting on proof" }
+        ]
+      }
+    }
+  ],
+  "references": []
+}
+

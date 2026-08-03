@@ -1,0 +1,20 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "title": "Cycle A",
+          "state": "checked",
+          "dependency": "cycle-b.dd.json#tasks/tk-b2c3"
+        }
+      ]
+    }
+  ],
+  "references": [
+    { "path": "cycle-b.dd.json", "sha": "sha-cycle-b", "mode": "live" }
+  ]
+}
+

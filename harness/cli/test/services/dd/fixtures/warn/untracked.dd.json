@@ -1,0 +1,12 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        { "id": "tk-b2c3", "title": "Untracked but loadable", "state": "checked" }
+      ]
+    }
+  ],
+  "references": []
+}

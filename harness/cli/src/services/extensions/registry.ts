@@ -86,6 +86,7 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'observe',
   'init',
   'flow',
+  'dd',
   'sensors',
 ]);
 

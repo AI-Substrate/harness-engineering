@@ -1,0 +1,18 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "title": "Bad address",
+          "state": "checked",
+          "dependency": "tasks/tk-a1b2"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
+

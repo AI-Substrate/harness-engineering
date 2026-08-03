@@ -1,0 +1,13 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1", "sweep_exclude": true },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        { "id": "tk-a1b2", "title": "Invalid but excluded from sweeps", "state": "done" }
+      ]
+    }
+  ],
+  "references": []
+}
+

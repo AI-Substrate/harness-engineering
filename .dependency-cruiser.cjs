@@ -56,6 +56,27 @@ module.exports = {
       to: { path: '^harness/cli/src/adapters/.*-port\\.ts$', dependencyTypesNot: ['type-only'] },
     },
     {
+      name: 'dd-core-never-imports-output',
+      comment: 'dd-core returns structured values and never imports harness envelopes or exits.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/core' },
+      to: { path: '^harness/cli/src/output' },
+    },
+    {
+      name: 'dd-core-never-imports-acts',
+      comment: 'dd-core is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/core' },
+      to: { path: '^harness/cli/src/acts' },
+    },
+    {
+      name: 'dd-core-never-imports-node-adapters',
+      comment: 'dd-core is ports-free and never imports any harness adapter.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/core' },
+      to: { path: '^harness/cli/src/adapters' },
+    },
+    {
       name: 'adapters-stay-leaf',
       comment: 'Adapters are leaves — they never import services, acts, or output.',
       severity: 'warn',

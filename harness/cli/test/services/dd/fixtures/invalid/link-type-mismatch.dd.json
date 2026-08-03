@@ -1,0 +1,19 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "title": "Wrong link target",
+          "state": "checked",
+          "dependency": "#mode"
+        }
+      ]
+    },
+    { "name": "mode", "value": "high" }
+  ],
+  "references": []
+}
+
