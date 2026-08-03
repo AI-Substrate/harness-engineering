@@ -538,6 +538,69 @@
       </figure>
     </div>
 
+    <!-- BEAT 6 · D12 -->
+    <div class="beat">
+      <div class="b-head"><span class="b-num">BEAT 6</span><h3>Two graphs, one bridge</h3></div>
+      <p class="b-cap">Step back and there are <b>two separate webs</b> here, kept in separate files on purpose. One is the <b>knowledge graph</b> — what you know and can prove: plans, evidence, logs. The other is the <b>workflow graph</b> — where work is and what may move next. Neither stores the other’s data: the workflow holds no checklist text, the documents hold no notion of “current step.” They meet at exactly <b>one typed link</b> — and across it, the workflow <i>computes</i> its gates from what the knowledge can prove. <span class="num-col">(decided · D12)</span></p>
+      <figure class="scene" data-beat="b6" data-dur="4200" style="max-width:860px;margin:0 auto">
+        <div style="overflow-x:auto"><svg viewBox="0 0 900 320" style="min-width:680px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
+          <defs>
+            <marker id="g2-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f4e79"/></marker>
+          </defs>
+          <!-- knowledge cluster -->
+          <g class="fx rv" style="--s:.04;--d:.12">
+            <rect x="20" y="24" width="360" height="272" fill="none" stroke="#1f4e79" stroke-width="1.5" stroke-dasharray="7 5"/>
+            <text x="38" y="52" font-size="11.5" font-weight="600" fill="#1f4e79">KNOWLEDGE GRAPH</text>
+            <text x="38" y="68" font-size="9.5" fill="#46586c">what is known — and proven</text>
+          </g>
+          <g class="fx pop" style="--s:.14;--d:.10">
+            <rect x="48" y="96" width="180" height="52" fill="#fbfdff" stroke="#1f4e79" stroke-width="1.7"/>
+            <text x="62" y="118" font-size="11" font-weight="600" fill="#1f4e79">plan.dd.json</text>
+            <text x="62" y="136" font-size="9" fill="#46586c">the checklist · ✓ ✓ □</text>
+          </g>
+          <g class="fx pop" style="--s:.24;--d:.10">
+            <rect x="120" y="196" width="230" height="42" fill="#fbfdff" stroke="#c2491d" stroke-width="1.4"/>
+            <text x="134" y="214" font-size="10" font-weight="600" fill="#c2491d">backpressure.dd.json</text>
+            <text x="134" y="229" font-size="8.5" fill="#46586c">how each item is proven</text>
+          </g>
+          <g class="fx pop" style="--s:.32;--d:.10">
+            <rect x="48" y="252" width="220" height="36" fill="#fbfdff" stroke="#2e7d4f" stroke-width="1.4"/>
+            <text x="62" y="268" font-size="10" font-weight="600" fill="#2e7d4f">execution-log.dd.json</text>
+            <text x="62" y="281" font-size="8.5" fill="#46586c">what actually happened</text>
+          </g>
+          <path class="edge fx" pathLength="1" d="M 180 148 C 190 170, 200 182, 214 196" stroke="#c2491d" stroke-width="1.3" style="--s:.28;--d:.08"/>
+          <path class="edge fx" pathLength="1" d="M 120 148 C 110 190, 108 226, 116 252" stroke="#2e7d4f" stroke-width="1.3" style="--s:.36;--d:.08"/>
+
+          <!-- workflow cluster -->
+          <g class="fx rv" style="--s:.42;--d:.12">
+            <rect x="560" y="24" width="320" height="272" fill="#0d2440" stroke="#123057" stroke-width="1.5"/>
+            <text x="578" y="52" font-size="11.5" font-weight="600" fill="#8fd4ea">WORKFLOW GRAPH</text>
+            <text x="578" y="68" font-size="9.5" fill="#a4b8ca">where work is — and what may move</text>
+          </g>
+          <g class="fx rv" style="--s:.50;--d:.08">
+            <rect x="600" y="88" width="150" height="34" fill="#12325a" stroke="#3f6a8f"/>
+            <text x="614" y="110" font-size="10" fill="#cfe6f2">step: plan ✓</text>
+          </g>
+          <path class="edge fx" pathLength="1" d="M 675 122 L 675 142" stroke="#8fd4ea" stroke-width="1.3" style="--s:.56;--d:.05"/>
+          <g class="fx rv" style="--s:.58;--d:.08">
+            <rect x="600" y="144" width="150" height="34" fill="#12325a" stroke="#8fd4ea" stroke-width="1.5"/>
+            <text x="614" y="166" font-size="10" fill="#fff">step: build ● current</text>
+          </g>
+          <path class="edge fx" pathLength="1" d="M 675 178 L 675 198" stroke="#8fd4ea" stroke-width="1.3" style="--s:.62;--d:.05"/>
+          <g class="fx rv" style="--s:.64;--d:.08">
+            <rect x="600" y="200" width="150" height="34" fill="#0f2848" stroke="#3f6a8f" stroke-dasharray="4 3"/>
+            <text x="614" y="222" font-size="10" fill="#7ea0b8">step: review</text>
+          </g>
+
+          <!-- the one bridge -->
+          <path class="edge fx" pathLength="1" d="M 598 161 C 470 160, 340 130, 232 122" stroke="#8fd4ea" stroke-width="2" marker-end="url(#g2-b)" style="--s:.72;--d:.12"/>
+          <text class="fx rv" style="--s:.78;--d:.08" x="330" y="132" font-size="9.5" fill="#1f4e79">the one bridge · dd_link</text>
+          <text class="fx rv" style="--s:.86;--d:.08" x="330" y="148" font-size="9.5" fill="#2e7d4f">gate = computed from the checklist</text>
+        </svg></div>
+        <p class="punch fx rv" style="--s:.92;--d:.08">Knowledge remembers. Workflow moves. They meet at one typed link.</p>
+      </figure>
+    </div>
+
   </div>
 </section>
 
@@ -1091,6 +1154,7 @@ Let a signed-out shopper complete checkout…
       <span class="chip">D8 rename-section first-class</span>
       <span class="chip">D9 contributors ledger + basis pins</span>
       <span class="chip">D11 links source-only · reverse by scan</span>
+      <span class="chip">D12 two graphs, one bridge</span>
       <span class="chip">D13 ids where state or linkable</span>
       <span class="chip open">W1 render adapters for custom types</span>
       <span class="chip open">W2 state vocabulary</span>
