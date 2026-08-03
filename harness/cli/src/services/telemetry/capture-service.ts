@@ -652,7 +652,7 @@ function captureUnsafe(deps: CaptureDeps): void {
   // Extract the window's capabilities FIRST — its `files` are the evidence the
   // plan-identity union (below) reads (T1.2-fix); nothing about `caps` depends on
   // the plan link, so this reorder is behaviour-neutral for every non-plan field.
-  const ctx: HarnessContext = { ...source, window };
+  const ctx: HarnessContext = { ...source, window, capturedAt: deps.clock.nowIso() };
   const caps = adapter.extract(ctx);
 
   // Plan identity (T1.2-fix / AC-12): `plans_touched` is the DEDUPED UNION of the

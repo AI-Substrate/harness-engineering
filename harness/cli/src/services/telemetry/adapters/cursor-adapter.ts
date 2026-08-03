@@ -8,6 +8,7 @@ import {
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
 import type { Event, HarnessEvent } from '../events.js';
+import { parseApplyPatchDeltas } from './copilot-adapter.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type { SegmentModelStat } from '../segment.js';
 import type {
@@ -277,6 +278,9 @@ export const cursorAdapter: HarnessAdapter = {
     const toolCalls: ToolCall[] = [];
     const skillOpens: SkillOpen[] = [];
     const commandObs: { cmd: string; t: string }[] = [];
+    const fileEvents: Event[] = [];
+    const written = new Set<string>();
+    const edited = new Set<string>();
     let anyTs = false;
 
     for (const line of windowLines) {
@@ -318,6 +322,28 @@ export const cursorAdapter: HarnessAdapter = {
           if (b.type !== 'tool_use') continue;
           const name = typeof b.name === 'string' ? b.name : 'unknown';
           tools[name] = (tools[name] ?? 0) + 1;
+          // ApplyPatch (cursor's file-edit tool): `input` is the raw V4A patch
+          // STRING — the same `*** Add/Update File:` grammar as copilot's
+          // apply_patch, so the counting parser is shared (plan 056 lineage).
+          // Counts + header paths only; body text never travels (AC-04). The
+          // transcript is untimed, so without a bubble anchor the event takes the
+          // capture wall-clock at `t_precision: 'interval'` (within this window).
+          if (name === 'ApplyPatch' && typeof b.input === 'string') {
+            const fallbackT = ctx.capturedAt;
+            for (const f of parseApplyPatchDeltas(b.input)) {
+              (f.add ? written : edited).add(f.path);
+              const t = at ?? fallbackT;
+              if (t === undefined) continue;
+              fileEvents.push({
+                t,
+                t_precision: at !== undefined ? 'anchored' : 'interval',
+                kind: 'file',
+                path: f.path,
+                change: f.add ? 'written' : 'edited',
+                delta: f.delta,
+              });
+            }
+          }
           const input = (b.input ?? {}) as Record<string, unknown>;
           // FX001-A: keep a shell call's non-harness command signature (keys its burst).
           let signature: string | undefined;
@@ -355,15 +381,19 @@ export const cursorAdapter: HarnessAdapter = {
       }
     }
 
-    const event_stream = anyTs
-      ? buildEventStream({
-          direct,
-          toolCalls,
-          skillOpens,
-          lastSkillActive: false,
-          precision: 'anchored',
-        })
-      : null;
+    // File events carry their own t/t_precision, so they ride the stream even
+    // when the bubble timeline is absent (headless CLI sessions) and `anyTs`
+    // never fired for the timed kinds.
+    const event_stream =
+      anyTs || fileEvents.length > 0
+        ? buildEventStream({
+            direct: [...direct, ...fileEvents],
+            toolCalls,
+            skillOpens,
+            lastSkillActive: false,
+            precision: 'anchored',
+          })
+        : null;
 
     return {
       // The conversation id IS this harness's session id (plan 068 item 6) — it was
@@ -377,7 +407,7 @@ export const cursorAdapter: HarnessAdapter = {
       tools: nullIfEmptyMap(tools),
       user_prompts: userPrompts.length > 0 ? userPrompts : null,
       subagents: null,
-      files: null,
+      files: written.size > 0 || edited.size > 0 ? { written: [...written], edited: [...edited] } : null,
       compactions: null,
       api_errors: null,
       local_commands: null,
