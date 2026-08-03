@@ -3,8 +3,8 @@
   "kind": "flight-plan",
   "slug": "deterministic-documents",
   "nav": {
-    "now": "research",
-    "next": null,
+    "now": "plan",
+    "next": "plan",
     "intent": "start new flow, get flow spine in please, then proceed to explore phase. then we go to workshops — Deterministic Documents (dd) per initial-brief.md",
     "bag": {
       "mode": "unknown",
@@ -31,6 +31,39 @@
         "kind": "flight-plan",
         "slug": "deterministic-documents"
       }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T05:48:58.117Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T05:48:58.380Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "note"
+        ]
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T05:48:58.635Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
     }
   ],
   "nodes": [
@@ -38,7 +71,7 @@
       "id": "research",
       "type": "research",
       "label": "Research",
-      "status": "in_progress",
+      "status": "done",
       "command": "/builder 1a explore",
       "next": [
         "plan"
@@ -47,7 +80,10 @@
         "Explore how the relevant code works before you plan — start cheap, climb only when the evidence demands it; never jump straight to a plan.",
         "Run /builder 1a explore \"<intent>\" — it produces research-dossier.md, a decision packet (not a transcript) with evidence links.",
         "Done when the dossier names the core decision the plan must resolve and the findings that bound it."
-      ]
+      ],
+      "modified_at": "2026-08-03T05:48:58.380Z",
+      "ran_at": "2026-08-03T05:48:58.117Z",
+      "note": "research-dossier.md: 14 current + 5 historical findings; dd = core act, dd-core lib new pattern, no mechanical gate exists (posture ruling needed), watcher/render/checks precedents all exist"
     },
     {
       "id": "plan",
