@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-e8f9", "brief": "Inside a scoped subtree, linking out of it: the doctor must keep following" }] },
+    { "name": "citations", "value": [{ "id": "ct-f90a", "cite": "../beyond-scope.dd.json#phases/ph-0a1b" }] }
+  ],
+  "references": []
+}

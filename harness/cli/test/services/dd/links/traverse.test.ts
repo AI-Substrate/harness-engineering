@@ -61,6 +61,55 @@ describe('dd links traversal — loop breakers', () => {
     expect(new Set(loader.loads).size).toBe(loader.loads.length);
     expect(graph.issues.filter((issue) => issue.class === 'link-scan-failed')).toEqual([]);
   });
+
+  it('does not trip its own tripwire on a document with two missing neighbours', () => {
+    // F001 regression. The tripwire counts POPS against SCHEDULED paths. Counting
+    // it against successfully *loaded* paths instead made this exact shape fail:
+    // one seed plus two distinct missing targets is three legitimate pops against
+    // a bound of two, so a perfectly terminating walk reported itself as a scan
+    // failure — and the doctor turned two ruled WARNs into an E439 ERROR.
+    const { graph } = traverse([docPath('docs/two-missing-neighbours.dd.json')]);
+    expect(graph.issues.filter((issue) => issue.class === 'link-scan-failed')).toEqual([]);
+    expect(graph.issues.filter((issue) => issue.severity === 'ERROR')).toEqual([]);
+    expect(graph.edges.map((edge) => edge.to)).toEqual([
+      docPath('docs/gone-one.dd.json'),
+      docPath('docs/gone-two.dd.json'),
+    ]);
+  });
+
+  it('scales that bound with the number of missing neighbours, not the loaded ones', () => {
+    // The same shape at greater width: every additional missing target is another
+    // legitimate pop, so a bound that ignores them gets worse as the corpus grows.
+    const seed = `${REPO}/docs/many-missing.dd.json`;
+    const targets = Array.from({ length: 12 }, (_, index) => `missing-${index}.dd.json`);
+    const doc = {
+      dd: { schema: 'links/plan' },
+      sections: [
+        { name: 'phases', value: [{ id: 'ph-1a2b', brief: 'many missing neighbours' }] },
+        {
+          name: 'citations',
+          value: targets.map((path, index) => ({ id: `ct-${index}`, cite: `${path}#entries` })),
+        },
+      ],
+      references: [],
+    };
+    const inner = new FixtureDocLoader();
+    const graph = traverseCorpus(
+      [seed],
+      {
+        schemaResolver: deps().schemaResolver,
+        docLoader: {
+          load: (path) =>
+            path === seed
+              ? { ok: true as const, path, doc: doc as never, sha: 'sha-many', tracked: true }
+              : inner.load(path),
+        },
+      },
+      { repoRoot: REPO, mode: 'sweep' },
+    );
+    expect(graph.issues.filter((issue) => issue.class === 'link-scan-failed')).toEqual([]);
+    expect(graph.edges).toHaveLength(targets.length);
+  });
 });
 
 describe('dd links traversal — edges and nodes', () => {

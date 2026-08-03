@@ -53,6 +53,21 @@ the neighbour: the neighbour is the file that must change.
 Traversal must terminate on both, visiting each document once. The visited set
 is the breaker; removing it must redden a bounded test, never hang it.
 
+`repo/docs/two-missing-neighbours.dd.json` guards the *other* side of that
+tripwire: one valid document pointing at two distinct in-repo documents that do
+not exist. Those are three legitimate pops, so a bound that counts only
+successfully loaded documents fires on a perfectly terminating walk — turning two
+ruled WARNs into an ERROR. The bound counts scheduled paths for exactly this
+reason.
+
+## Scoped roots beyond the subtree
+
+`repo/docs/nested/gateway.dd.json` links out of the `nested/` subtree to
+`repo/docs/beyond-scope.dd.json`, which carries an invalid interior of its own.
+With the sweep scoped to `nested/`, `beyond-scope` is reached only by link — and
+its finding must still be reported, because `--path` scopes the root set and
+never the radius.
+
 ## Same-document form
 
 `repo/docs/bare-same-doc.dd.json` carries a bare-`#` address, which resolves

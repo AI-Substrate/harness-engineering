@@ -145,9 +145,66 @@ describe('dd doctor — adapter gaps (AC-04, consumed by interface)', () => {
 describe('dd doctor — scoping', () => {
   it('scopes the root set without changing the radius', () => {
     const { report } = doctor(undefined, `${REPO}/docs/nested`);
-    expect(report.discovered).toEqual([docPath('docs/nested/child.dd.json')]);
+    expect(report.discovered).toEqual([
+      docPath('docs/nested/child.dd.json'),
+      docPath('docs/nested/gateway.dd.json'),
+    ]);
     // Radius stays infinite: the walk still leaves the scoped subtree by link.
     expect(report.graph.nodes.map((node) => node.path)).toContain(docPath('docs/plan.dd.json'));
-    expect(report.swept).toEqual([docPath('docs/nested/child.dd.json')]);
+    expect(report.swept).toEqual([
+      docPath('docs/nested/child.dd.json'),
+      docPath('docs/nested/gateway.dd.json'),
+    ]);
+  });
+
+  it('reports a bad interior in a document reached BEYOND the scoped subtree', () => {
+    // F002 regression. `--path` scopes which documents SEED the sweep; it never
+    // caps the walk. `beyond-scope.dd.json` sits outside the scoped subtree and is
+    // reached only by a link from inside it — and it is broken on its own terms.
+    // Driving the interior pass from the root set alone silently dropped this
+    // finding, which is precisely the class of miss a radius-∞ doctor exists to
+    // prevent.
+    const { report } = doctor(undefined, `${REPO}/docs/nested`);
+    const beyond = docPath('docs/beyond-scope.dd.json');
+    expect(report.swept).not.toContain(beyond);
+    expect(report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          class: 'link-unresolved',
+          severity: 'ERROR',
+          reason: 'section-unknown',
+          owner: beyond,
+        }),
+      ]),
+    );
+  });
+
+  it('offers adapter-gap aggregation every reached document, not just the seeds', () => {
+    const seen: string[] = [];
+    const source: DdAdapterGapSource = {
+      adapterGaps: (paths) => {
+        seen.push(...paths);
+        return [];
+      },
+    };
+    doctor(source, `${REPO}/docs/nested`);
+    expect(seen).toContain(docPath('docs/beyond-scope.dd.json'));
+    expect(seen).toContain(docPath('docs/nested/gateway.dd.json'));
+  });
+
+  it('still excludes an opted-out document from the reached set', () => {
+    // The widened pass must not widen past the exclusion contract: a document
+    // skipped by `sweep_exclude` never becomes a node, so it is not "reached".
+    const seen: string[] = [];
+    const source: DdAdapterGapSource = {
+      adapterGaps: (paths) => {
+        seen.push(...paths);
+        return [];
+      },
+    };
+    const { report } = doctor(source);
+    const excluded = docPath('docs/sweep-excluded.dd.json');
+    expect(seen).not.toContain(excluded);
+    expect(report.findings.some((finding) => finding.owner === excluded)).toBe(false);
   });
 });

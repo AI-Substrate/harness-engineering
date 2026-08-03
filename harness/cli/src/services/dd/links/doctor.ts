@@ -126,9 +126,16 @@ export function runDoctor(
   }
   findings.push(...walkIssues);
 
-  const sweptSet = new Set(swept);
+  // Radius ∞ means every document the traversal REACHED, not only the ones the
+  // root set named. `--path` scopes which documents seed the sweep; it does not
+  // cap the walk, so an invalid interior in a document reached beyond the scoped
+  // subtree is still this doctor's finding. `graph.nodes` is exactly the reached
+  // and non-excluded set — a document skipped by `sweep_exclude` never became a
+  // node, so the exclusion contract survives unchanged. `swept` stays the
+  // root-set metric the envelope reports.
+  const reached = new Set(graph.nodes.map((node) => node.path));
   for (const edge of graph.edges) {
-    if (!sweptSet.has(edge.from)) continue;
+    if (!reached.has(edge.from)) continue;
     const resolution = resolveLink(edge.address, walkDeps, {
       repoRoot: options.repoRoot,
       fromPath: edge.from,
@@ -143,7 +150,7 @@ export function runDoctor(
     );
   }
 
-  for (const gap of deps.adapterGaps?.adapterGaps(swept) ?? []) {
+  for (const gap of deps.adapterGaps?.adapterGaps([...reached]) ?? []) {
     findings.push(adapterFinding(gap));
   }
 

@@ -40,13 +40,20 @@ export interface DdTraverseOptions {
  * **The visited set is the loop breaker.** The corpus contains real cycles by
  * design (`cycle-a` ↔ `cycle-b`, and `self-cycle` pointing at itself); without
  * the set this queue never drains. Because "it hangs" is a terrible test
- * failure, the walk also carries a *derived* tripwire: with the breaker in place
- * every queued document is popped at most once, so the number of pops can never
- * exceed the seeds plus the distinct documents actually loaded. Exceeding that
- * bound is structurally impossible unless the breaker is gone — so a regression
- * reddens a bounded test in milliseconds instead of hanging it. The bound is
- * derived from the corpus, not an invented ceiling (P2 DL-006), and it can never
- * fire on a well-formed run however large the repository is.
+ * failure, the walk also carries a *derived* tripwire: every path that is ever
+ * scheduled — the seeds, plus each in-repo target queued along the way — can be
+ * popped at most once while the breaker holds, so the number of pops can never
+ * exceed the number of distinct scheduled paths. Exceeding that bound is
+ * structurally impossible unless the breaker is gone, so a regression reddens a
+ * bounded test in milliseconds instead of hanging it.
+ *
+ * The bound counts *scheduled* paths, not successfully *loaded* ones, and the
+ * difference is load-bearing: a document that will not load is still a document
+ * this walk legitimately popped. Counting only loaded documents made one seed
+ * with two missing neighbours trip its own tripwire (pops 3 against a bound of
+ * 2) and report a terminating walk as a scan failure — promoting two ruled WARNs
+ * into an ERROR. The bound is derived from the corpus rather than invented
+ * (P2 DL-006), and it cannot fire on a well-formed run at any repository size.
  */
 export function traverseCorpus(
   seeds: readonly string[],
@@ -56,7 +63,8 @@ export function traverseCorpus(
   const follow = options.follow ?? true;
   const seedSet = new Set(seeds);
   const visited = new Set<string>();
-  const loaded = new Set<string>();
+  /** Every path this walk has ever put on the queue — the tripwire's denominator. */
+  const scheduled = new Set<string>(seeds);
   const nodes: DdGraphNode[] = [];
   const edges: DdLinkEdge[] = [];
   const issues: DdLinkIssue[] = [];
@@ -68,7 +76,7 @@ export function traverseCorpus(
     if (path === undefined) break;
     if (visited.has(path)) continue;
     pops += 1;
-    if (pops > seeds.length + loaded.size) {
+    if (pops > scheduled.size) {
       issues.push(
         linkIssue(
           'link-scan-failed',
@@ -89,7 +97,6 @@ export function traverseCorpus(
       }
       continue;
     }
-    loaded.add(path);
     if (options.mode === 'sweep' && shouldExcludeFromSweep(path, result.doc)) continue;
 
     const resolved = deps.schemaResolver.resolve(result.doc.dd.schema, path);
@@ -139,7 +146,10 @@ export function traverseCorpus(
         sameDocument,
         ...(cell.target && { target: cell.target }),
       });
-      if (follow && within && !visited.has(to)) queue.push(to);
+      if (follow && within) {
+        scheduled.add(to);
+        if (!visited.has(to)) queue.push(to);
+      }
     }
   }
 
