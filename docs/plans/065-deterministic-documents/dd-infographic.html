@@ -611,7 +611,12 @@ Let a signed-out shopper complete checkout…
     <div class="grid2">
       <div class="card rev"><span class="tag blue">SECTIONS · STABLE BY CONVENTION</span>
         <h3>Sections are addresses</h3>
-        <p>A section id is <b>derived</b>, never invented: <code>type + name</code> → <code>plan-phase-ac.phase-2</code>. The same phase carries the <b>same id in every plan file in the repo, forever</b> — semantic, greppable, and predictable <i>before the file even exists</i>, which is how a flow node can point at a plan section that hasn’t been authored yet and have doctor report it as “dangling” rather than nothing.</p>
+        <p>A section id is <b>derived</b>, never invented — <code>type + name</code>, mechanically:</p>
+<pre class="md" style="margin:10px 0;padding:10px 14px;font-size:11.5px;line-height:1.8">type: <span class="h">plan-phase-ac</span>   name: <span class="h">"Phase 2"</span>
+        └──────── slug + join ────────┘
+   id: <span class="ok">plan-phase-ac.phase-2</span>
+ full: <span class="ok">plan.dd.json#plan-phase-ac.phase-2/row:ac-4b1c</span></pre>
+<p>The same phase carries the <b>same id in every plan file in the repo, forever</b> — semantic, greppable, and predictable <i>before the file even exists</i>, which is how a flow node can point at a plan section that hasn’t been authored yet and have doctor report it as “dangling” rather than nothing.</p>
         <p style="margin-top:8px">Renaming changes the address — so renaming is a <b>first-class operation</b>: <code>dd rename-section</code> recomputes the id and rewrites every inbound link across the repo in one transaction <span class="num-col">(decided · D8)</span>.</p>
       </div>
       <div class="card rev d1"><span class="tag green">ROWS · UNIQUE, BORN ONCE</span>
