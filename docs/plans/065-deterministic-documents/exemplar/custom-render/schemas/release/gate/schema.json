@@ -1,0 +1,72 @@
+{
+  "dd_schema": 1,
+  "description": "A release gate whose items are signed off or waived, not ticked — with its own completion vocabulary, a pure vocabulary enum, three custom types, and a dynamic-key evidence map.",
+  "enums": {
+    "signoff": {
+      "values": ["pending", "in-review", "approved", "waived", "rejected"],
+      "gate_terminal": ["approved", "waived"]
+    },
+    "surface": {
+      "values": ["cli", "api", "docs", "telemetry"]
+    }
+  },
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": ["title", "release"],
+        "fields": {
+          "title": { "type": "string" },
+          "release": { "type": "string" },
+          "owner": { "type": "string" },
+          "window": { "type": "duration" },
+          "footprint": { "type": "bytes" },
+          "burndown": { "type": "sparkline" },
+          "summary": { "type": "text" },
+          "plan": { "type": "link" }
+        }
+      }
+    },
+    "gates": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "state"],
+          "fields": {
+            "id": { "type": "string" },
+            "claim": { "type": "text" },
+            "state": { "type": "state", "enum": "signoff" },
+            "surface": { "type": "enum", "enum": "surface" },
+            "budget": { "type": "duration" },
+            "artifact": { "type": "bytes" },
+            "trend": { "type": "sparkline" },
+            "note": { "type": "string" },
+            "receipt": { "type": "string" },
+            "evidence": { "type": "array", "items": { "type": "link" } }
+          }
+        }
+      }
+    },
+    "sign_offs": {
+      "shape": {
+        "type": "object",
+        "valuesShape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "state"],
+            "fields": {
+              "id": { "type": "string" },
+              "who": { "type": "string" },
+              "state": { "type": "state", "enum": "signoff" },
+              "at": { "type": "string" },
+              "receipt": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

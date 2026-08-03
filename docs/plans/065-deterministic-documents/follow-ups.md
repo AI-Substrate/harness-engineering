@@ -193,6 +193,50 @@ the P6 `.git`-walking idiom, share it between `build.ts` and `createLinkContext`
 resolution win and the containment boundary. Until then `dd build` must be run
 from the repository root.
 
+### A sharper repro landed later — `exemplar/custom-render/`
+
+The self-contained corpus added for Jordan (its own schema + adapters, nothing
+registered anywhere) reproduces this harder than the E401 above, because the
+**same unmodified document returns three different verdicts** depending only on
+where the operator is standing:
+
+| cwd | `dd validate release.dd.json` |
+| --- | --- |
+| repository root | `ok` — 0 errors, 0 warnings |
+| the document's own folder | `degraded` — 5 `address-path-escape` warnings |
+| `exemplar/` (its parent) | `error` — E401, `builder/plan` not found |
+
+This is the more useful repro for whoever fixes it because it exercises **both
+halves** of `repoRoot`, not just resolution:
+
+- from the doc's folder, the containment boundary shrinks to that folder, so
+  the legitimate `../plan.dd.json` links read as escaping the repository — the
+  `path-escape` guard firing on correct data;
+- from `exemplar/`, resolution and containment fail *together*: the document's
+  own `release/gate` schema still resolves (doc-folder root), but the
+  depth-walk reaches the linked `../plan.dd.json` and cannot resolve
+  `builder/plan` for it, because that package lives at the true repo `.dd/`.
+
+**A verdict that changes with cwd is the whole bug in one line.** Whatever the
+fix is, this table is its acceptance test: all three rows must read `ok`.
+
+**Do not "fix" the corpus to make the warnings go away** — the folder is
+deliberately left reproducing until FU-4 lands.
+
+### Adjacent, smaller (FU-4a): `dd schema list` has no doc-folder root
+
+`harness dd schema list` reports only the gitroot / harness / home roots — the
+doc-folder root is structurally absent, because `list` has no document to anchor
+on. Run from `custom-render/` it therefore lists **zero** schemas, while a
+document in that same folder resolves `release/gate` without trouble.
+
+That is defensible behaviour (no document, no doc-folder root) but it is not
+what "which schemas resolve from here" implies, and `list` is the command a
+reader reaches for when resolution surprises them — the one moment it is
+guaranteed to under-report. Either state the limitation in `next_action`, or let
+`list` take an optional document path to anchor on. Worth folding into the FU-4
+round since it is the same precedence chain.
+
 ---
 
 ## Status
