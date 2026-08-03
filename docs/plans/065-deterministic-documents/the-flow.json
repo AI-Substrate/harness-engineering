@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "deterministic-documents",
   "nav": {
-    "now": "phase-5",
+    "now": "phase-6",
     "next": null,
     "intent": "start new flow, get flow spine in please, then proceed to explore phase. then we go to workshops — Deterministic Documents (dd) per initial-brief.md",
     "bag": {
@@ -1238,6 +1238,143 @@
         "from": "phase-4",
         "to": "phase-5"
       }
+    },
+    {
+      "id": "UPD-034",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:14.505Z",
+      "details": {
+        "node": "boot-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-030",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:14.799Z",
+      "details": {
+        "node": "boot-5",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-035",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:15.093Z",
+      "details": {
+        "node": "observe-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-031",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:15.375Z",
+      "details": {
+        "node": "observe-5",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-036",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:15.661Z",
+      "details": {
+        "node": "retro-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-032",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:15.953Z",
+      "details": {
+        "node": "retro-5",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-037",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:27.648Z",
+      "details": {
+        "node": "phase-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-033",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:27.931Z",
+      "details": {
+        "node": "phase-5",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-038",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:28.221Z",
+      "details": {
+        "node": "review-5",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-034",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:28.494Z",
+      "details": {
+        "node": "review-5",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-008",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-03T16:57:28.771Z",
+      "details": {
+        "from": "phase-5",
+        "to": "phase-6"
+      }
     }
   ],
   "nodes": [
@@ -2032,12 +2169,12 @@
       "id": "phase-5",
       "type": "phase",
       "label": "P5: Exemplar & checks join",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-5"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T16:57:27.931Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\" (add --companion for a live review companion); log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -2045,35 +2182,53 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-03T16:57:27.648Z",
+          "text": "T001-T006 all [x]. Coder pij-easy-octopus (opus5 xhigh). Five commits ending 722a90f1 + fix e7a17746 (60+8 files). OD-8 ratified + 2 dog-food companions (parser drop, resolver map-step: 9 ERRORs->0); plan act live on Jordan-cited authority; checks gate TESTED (planted-bad control); amendment-5 grants used with true grounds; exemplar validates/renders/doctors clean; ONE human row open by design (bp-0902 taste call). Proof: 3591/3591, checks degraded/0, warn trio 2/199/6 unmoved, both-cwds 56",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T16:57:27.931Z"
     },
     {
       "id": "review-5",
       "type": "review",
       "label": "Review: P5",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "phase-6"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T16:57:28.494Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
         "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
-      "zone": "flight"
+      "zone": "flight",
+      "comments": [
+        {
+          "at": "2026-08-03T16:57:28.221Z",
+          "text": "verdict:APPROVE (after 1 FIX round — 5 findings, 3 contract-vs-cited-ruling drift incl. valuesShape precedence + E436 over-move + wrong E-code in evidence record; all fixed with value-pinning assertions, 19 class->code pairs pinned) mutations:4/4+2/2 reviewer:pij-classical-yime (gpt-5.6-terra xhigh) report:.harness/temp/pair-p5/review-p5.md",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T16:57:28.494Z"
     },
     {
       "id": "boot-5",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-5"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T16:57:14.799Z",
       "branch_of": "phase-5",
       "instructions": [
         "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -2085,18 +2240,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T16:57:14.505Z",
+          "text": "verdict:HEALTHY boot:just test 3591/3591 green exit 0 at P5 final tree (e7a17746) — FIRST fully-green full suite of the plan (GIT_CONFIG defect fixed at source); harness checks degraded/exit 0, all hard gates ok, warn trio at standing 2/199/6 time:2026-08-03T16:57Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T16:57:14.799Z"
     },
     {
       "id": "observe-5",
       "type": "observe",
       "label": "Observe: P5",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-5"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T16:57:15.375Z",
       "branch_of": "phase-5",
       "instructions": [
         "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -2109,18 +2273,27 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T16:57:15.093Z",
+          "text": "decision:satisfied 5 real captures (coder: GIT_CONFIG source-fix, scratch-gate class, ruled-values drift, dog-food win, renderer column-order magic-wand) drained 2026-08-03T16:58Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T16:57:15.375Z"
     },
     {
       "id": "retro-5",
       "type": "harness-retro",
       "label": "Retro: P5 (drain)",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-5"
       ],
       "created_at": "2026-08-03T09:26:50.972Z",
-      "modified_at": "2026-08-03T09:26:50.972Z",
+      "modified_at": "2026-08-03T16:57:15.953Z",
       "branch_of": "phase-5",
       "instructions": [
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
@@ -2130,7 +2303,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-03T16:57:15.661Z",
+          "text": "decision:drained time:2026-08-03T16:58Z record:.harness/records/retro/2026-08-03/004-065-dd-phase-5.md entries:5 dispositions: 2 fixed-now/encoded, 1 plan (ruled-values-need-pinning -> P6), 1 kept, 1 deferred; buffer cleared (5)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-03T16:57:15.953Z"
     },
     {
       "id": "phase-6",
