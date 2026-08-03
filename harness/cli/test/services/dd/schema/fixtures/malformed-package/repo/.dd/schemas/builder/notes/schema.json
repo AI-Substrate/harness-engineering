@@ -1,0 +1,11 @@
+{
+  "dd_schema": 1,
+  "sections": {
+    "body": {
+      "shape": {
+        "type": "nope-not-a-shape",
+        "fields": 3
+      }
+    }
+  }
+}

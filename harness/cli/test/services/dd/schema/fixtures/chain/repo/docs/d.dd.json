@@ -1,0 +1,23 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "chain d"
+      }
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-1a2b",
+          "state": "blocked"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

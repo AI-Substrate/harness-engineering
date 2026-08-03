@@ -1,0 +1,23 @@
+{
+  "dd": {
+    "schema": "builder/nowhere"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Sample"
+      }
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-1a2b",
+          "state": "checked"
+        }
+      ]
+    }
+  ],
+  "references": []
+}

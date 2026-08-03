@@ -1,0 +1,24 @@
+{
+  "dd_schema": 1,
+  "description": "a field binds an enum the schema never declares",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "fields": {
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "enum",
+            "enum": "nowhere"
+          }
+        }
+      }
+    }
+  }
+}

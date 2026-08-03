@@ -1,0 +1,27 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Sample"
+      }
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-1a2b",
+          "state": "approved"
+        },
+        {
+          "id": "tk-3c4d",
+          "state": "in-review"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
