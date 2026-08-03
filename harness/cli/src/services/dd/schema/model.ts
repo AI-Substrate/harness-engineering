@@ -112,6 +112,27 @@ export const SCHEMA_FILE = 'schema.json';
 /** Directories the deep scan never descends into. */
 export const SCAN_SKIP_DIRS = ['node_modules', '.git', 'dist', 'coverage'] as const;
 
+/**
+ * Directories the scan skips by their POSITION, not by their name.
+ *
+ * {@link SCAN_SKIP_DIRS} holds BASENAMES — `node_modules` anywhere is never
+ * source. `.harness/temp` is different in kind: `temp` is an ordinary word, and a
+ * `temp/` directory somewhere in a source tree may be entirely real. Only *this*
+ * path is scratch, so only this path is skipped, and the matching below is on the
+ * path rather than the name.
+ *
+ * **Why it is here at all**: `.harness/temp` is the harness's declared gitignored
+ * scratch area — agents, sensors and the flow all write there. Once `dd doctor`
+ * feeds a quality gate, a stray scratch document would report findings about
+ * files that are not repository content and degrade that gate. That is the same
+ * judgement `sweep_exclude` and the test-fixture rule already make, on its third
+ * occasion: deliberately-not-repo-content must never shape a gate (AC-15).
+ *
+ * The skip is POSITIONAL, so it yields to an explicit root: pointing the sweep
+ * INSIDE the scratch dir sweeps it, mirroring OD-1's direct-invocation-never-skips.
+ */
+export const SCAN_SKIP_PATHS = ['.harness/temp'] as const;
+
 export function schemaIssue(
   issueClass: SchemaIssueClass,
   severity: SchemaSeverity,

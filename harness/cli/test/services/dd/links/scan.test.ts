@@ -26,6 +26,22 @@ describe('dd links corpus scan', () => {
     expect(paths.some((path) => path.includes('node_modules'))).toBe(false);
   });
 
+  it('skips the harness scratch directory by POSITION, not by name', () => {
+    // The distinction the constant exists for: `temp` is an ordinary word, and a
+    // source tree may hold a real one. Only `.harness/temp` is scratch.
+    const { paths } = scan();
+    expect(paths).not.toContain(`${REPO}/.harness/temp/scratch.dd.json`);
+    expect(paths).toContain(`${REPO}/docs/temp/kept.dd.json`);
+    expect(paths).toContain(`${REPO}/docs/temp-utils/kept.dd.json`);
+  });
+
+  it('yields to an EXPLICIT root inside the scratch directory (OD-1 symmetry)', () => {
+    // Pointing the sweep into scratch is saying what you mean, exactly as
+    // pointing `dd validate` at a known-bad fixture is.
+    const { paths } = scanCorpus(new FixtureFs(), `${REPO}/.harness/temp`);
+    expect(paths).toEqual([`${REPO}/.harness/temp/scratch.dd.json`]);
+  });
+
   it('reports a discovery failure instead of an empty corpus', () => {
     // The distinction P2 F002 paid for: a port that cannot look must not be read
     // as a root that holds nothing.

@@ -43,7 +43,7 @@
     "check:telemetry-fixtures": "node scripts/telemetry-fixtures.mjs --check",
     "check:doctrine-parity": "node scripts/doctrine-parity.mjs --check",
     "check:dd-docs": "node scripts/check-dd-docs.mjs",
-    "build": "npm run gen:docs && npm run gen:flows && tsc -p harness/cli/tsconfig.json",
+    "build": "npm run gen:docs && npm run gen:flows && npm run gen:dd-docs && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
     "test": "cd harness/cli && vitest run --coverage",
     "lint": "biome check harness/cli",

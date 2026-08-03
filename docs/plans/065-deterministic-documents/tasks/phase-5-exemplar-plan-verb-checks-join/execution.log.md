@@ -392,3 +392,160 @@ eleven live rows covering scaffold→validate→render, whole-plan rendering, dr
 while the plan document is untouched, folder-or-file targeting, the total refusal, and three honest
 failures). `test/app.test.ts` and `test/index.test.ts` gain one ADDITIVE `'plan'` row each in the
 command enumeration — the P1-retro fence lesson, pre-granted for exactly this.
+
+---
+
+## T003 — The integration join
+
+Four wirings, each in the single file that owns it.
+
+### `harness checks` gains three gates
+
+| Gate | Severity | Why that severity |
+|---|---|---|
+| `dd doctor` | **the sub-verb's own envelope status** | `runVerbGate` takes no severity parameter, and that is the design: WARN-class findings make `dd doctor` `degraded`, ERROR-class make it `error`, and the gate reports what it was told. One place decides what is serious (Opus F3). |
+| `check:dd-docs` | warn-launch | matches the other generated-content guards' launch posture; promote once it has run clean for a while |
+| `root-invocation-smoke` | warn-launch | see below |
+
+`runVerbGate` needed one honest change: it passed its argument as a single argv element, so a
+sub-verb (`dd doctor`) could never have matched. It now splits on whitespace. Same one-line change in
+the sensor helper, for the same reason.
+
+### The proof ceiling (P2 DL-008), decided
+
+P2's log left a real choice open: the repo sanctions a repo-root `vitest run` through the root
+`vitest.config.ts`, and **nothing ever ran it** — two sanctioned invocations, one of them unproven,
+which is exactly how a cwd bug hid for a phase. The two options were "add a root-invocation line to
+checks" or "delete the root config".
+
+**Decision: add it, as a SMOKE rather than a second full suite.** The gate already runs every test
+once from `harness/cli`; the open question was never coverage, it was whether the root invocation
+*resolves at all*. One CLI-spawning file answers that in seconds instead of paying for a whole second
+pass. Deleting the config would also have closed the question, but by removing an invocation people
+actually use.
+
+### The shipped `checkDd` doctor layer (AC-07's consumer half)
+
+`harness checks` is this repository's own unpublished extension, so a consumer repo gets nothing from
+it. `checkDd` is what a consumer installs. It answers the one dd question a doctor is allowed to
+answer — **is every committed document's rendered sibling present?** — because that is the breakage
+people really ship, and it is knowable from `exists()` alone.
+
+It never runs the sweep (P7). The deep answer is `harness dd doctor`, and the row's text says so
+rather than pretending to have asked. A repo with no dd documents stays ok and silent. The sweep's
+exclusion contract is honoured by *asking dd-core*, not by re-deriving it: a fixture and a
+`sweep_exclude` document are not missing a render, they are deliberately not participating (AC-15).
+
+### The `.dd` sensor
+
+`dd-doctor`, watching `**/*.dd.json` **and** `.dd/schemas/**` — both halves, because a schema edit
+can redden a document nobody touched, and a watch set that only knew about documents would miss it.
+
+### The build chain (OD-5)
+
+Exactly one line in root `package.json`:
+
+```diff
+-"build": "npm run gen:docs && npm run gen:flows && tsc -p harness/cli/tsconfig.json",
++"build": "npm run gen:docs && npm run gen:flows && npm run gen:dd-docs && tsc -p harness/cli/tsconfig.json",
+```
+
+Placed **with the other generators, before `tsc`** — not literally last. `gen:dd-docs` emits a
+TypeScript module that `tsc` must then compile; appending it after `tsc` would generate bytes nothing
+compiled, which is the opposite of what the wiring is for.
+
+**OD-5's hard condition, probed live.** The grant binds on `gen-dd-docs.mjs` still exiting 0 on a tree
+with no `.dd/`, because `build` is install-time-reachable through `prepare`:
+
+```text
+$ grep -n '\.dd\b' scripts/gen-dd-docs.mjs      → no matches: it never reads .dd/ at all
+$ mv .dd .dd.probe-aside && npm run gen:dd-docs; echo "exit=$?"; mv .dd.probe-aside .dd
+exit=0
+stdout: (empty — the script logs to stderr, because stdout is data inside an npm lifecycle)
+stderr: gen-dd-docs: wrote 2 docs → …/docs-content.ts
+```
+
+Two independent reasons it holds: the generator reads only its manifest and the source markdown named
+in it, and the probe confirms the behaviour rather than inferring it. Tree restored and verified.
+
+### A finding the gate forced: gitignored scratch was shaping the sweep
+
+The first whole-repo sweep came back **degraded with 5 WARNs — every one of them about my own P5
+proof artifacts under `.harness/temp/`**. Real repo content was 0/0 clean.
+
+That is not a cosmetic problem for a gate: `.harness/temp` is the harness's *declared* scratch area —
+agents, sensors and the flow all write there — so the moment `dd doctor` feeds `harness checks`, any
+scratch document degrades the repository's quality gate with findings about files that are not
+repository content.
+
+It is the **third member of a class that is now clearly general**: deliberately-not-repo-content must
+never shape a gate. The first two members are the test-fixture path rule and `sweep_exclude`, both
+from P1. Fixed with a granted one-element constant, `SCAN_SKIP_PATHS`, and the riders matter:
+
+- **matched by POSITION, not by name.** `SCAN_SKIP_DIRS` holds basenames because `node_modules` is
+  never source anywhere. `temp` is an ordinary word and a source tree may hold a real one, so the
+  match is on the path's tail. Two fixtures cross it: `docs/temp/` and `docs/temp-utils/` are both
+  still scanned.
+- **it yields to an explicit root.** Pointing the sweep *inside* the scratch dir sweeps it — the same
+  OD-1 principle that makes `dd validate` fail a known-bad fixture you named. A test pins it.
+- **the constant carries its own WHY** (DL-006 discipline), because this is a semantic decision
+  shipped as an array element.
+
+Captured as `harness observe --kind difficulty` (DL-002 this session).
+
+### The control is TESTED, not demonstrated
+
+A known-bad document (`state: "blocked"` with no note — an ERROR-class finding) was planted in a
+swept path, `harness checks` run against it, and then removed:
+
+```text
+WITH the known-bad document present:
+  dd doctor: error  (E408 state-note-required, naming docs/.dd-control-probe/known-bad.dd.json)
+  checks:    error / exit 1   ← the gate FAILS, and names the exact document
+
+after removing it:
+  dd doctor: ok
+  checks:    degraded / exit 0
+```
+
+### `harness checks`, before and after the new gates (the prime rider)
+
+| Gate | BEFORE (inherited) | AFTER |
+|---|---|---|
+| tests | **error** | **ok** |
+| biome | error | ok |
+| typecheck · check:docs · check:flows · check:telemetry-fixtures · check:doctrine-parity · skills-check | ok | ok |
+| check:dd-docs | *(did not exist)* | **ok** |
+| root-invocation-smoke | *(did not exist)* | **ok** |
+| dd doctor | *(did not exist)* | **ok** |
+| arch-check | degraded (2 violations) | degraded (**2** violations — unmoved) |
+| markdown-lint | degraded (199) | degraded (**199** — unmoved, with 110 files linted, up from 109) |
+| windows-check | degraded (6 hazards) | degraded (6 hazards — unmoved) |
+| **composite** | **error / exit 1** | **degraded / exit 0** |
+
+**The warn-launch baseline did not move.** The same three gates are degraded, at the same numbers, for
+the same pre-existing reasons — none of them dd's. The composite improved because the retro follow-in
+fixed the `tests` gate that had been red for four phases.
+
+Two enumeration expectations were updated ADDITIVELY, never weakened: `test/acts/doctor.test.ts` gains
+the `dd-documents` layer row, and the repo-sensors extension test gains `dd-doctor` (twelve-sensor set
+→ thirteen). Both are lists that must change when a row is added; that is what they are for.
+
+---
+
+## T005 — `docs/how/harness-dd.md`
+
+The deep reference: the envelope, the address grammar, the schema-package convention and its four
+resolution roots, the completion states with the `human-skipped` receipt convention, derived state,
+rendering and drift, the basis ledger (including why it must stay acyclic), the sweep's exclusion
+contract, adapters, and a page of jq recipes that answer real questions with no dd command at all.
+
+Written plain-first, as the task asked: every term is introduced with its meaning in the same breath —
+"a **deterministic document** is a file called `something.dd.json`" — with no insider compression and
+no assumed prior reading.
+
+The baked overview now points at it (`## Going deeper`), regenerated through `npm run gen:dd-docs`
+rather than hand-edited, and `check:dd-docs` is green.
+
+**markdown-lint holds at exactly 199** with the new doc in scope — `filesLinted` moved 109 → 110 and
+the finding count did not move, so the doc is lint-clean rather than merely tolerated.

@@ -1,5 +1,5 @@
 import { posixJoin, posixNormalize } from '../../shared/posix-path.js';
-import { SCAN_SKIP_DIRS, type SchemaFs } from '../schema/model.js';
+import { SCAN_SKIP_DIRS, SCAN_SKIP_PATHS, type SchemaFs } from '../schema/model.js';
 import { type DdLinkIssue, linkIssue } from './model.js';
 
 /** Every deterministic document carries this suffix; enumeration matches nothing else. */
@@ -32,6 +32,10 @@ export function scanCorpus(fs: SchemaFs, root: string): DdCorpusScan {
   const paths: string[] = [];
   const issues: DdLinkIssue[] = [];
   const skip = new Set<string>(SCAN_SKIP_DIRS);
+  // Positional skips match on the path's tail, so `src/temp-utils` and a fixture
+  // `temp/` are untouched — and a root INSIDE the scratch dir still sweeps,
+  // because only children are ever tested against these (OD-1 symmetry).
+  const skipTails = SCAN_SKIP_PATHS.map((path) => `/${path}`);
   const seen = new Set<string>();
 
   const walk = (dir: string): void => {
@@ -41,6 +45,7 @@ export function scanCorpus(fs: SchemaFs, root: string): DdCorpusScan {
     for (const entry of [...fs.readdir(dir)].sort()) {
       if (skip.has(entry)) continue;
       const child = posixJoin(dir, entry);
+      if (skipTails.some((tail) => child.endsWith(tail))) continue;
       if (entry.endsWith(DD_SUFFIX)) {
         paths.push(child);
         continue;

@@ -1,0 +1,5 @@
+{
+  "dd": { "schema": "links/evidence", "spec": "dd@1" },
+  "sections": [{ "name": "entries", "value": [{ "id": "ev-7081", "state": "checked" }] }],
+  "references": []
+}

@@ -780,3 +780,94 @@ describe('sensor-watcher check (plan 059 follow-up — the live-scanner nudge)',
     expect(text).toContain('harness sensors watch');
   });
 });
+
+// ---------------------------------------------------------------------------
+// dd-documents layer (plan 065 T003 — AC-07's CONSUMER half).
+// ---------------------------------------------------------------------------
+
+const DD_DOC = JSON.stringify({
+  dd: { schema: 'builder/plan' },
+  sections: [{ name: 'meta', value: { title: 'x' } }],
+});
+
+function ddLayer(files: Record<string, string>, dirs: Record<string, string[]>) {
+  const report = buildDoctorReport(
+    deps({ fs: new FakeFs({ ...BUILT_CLI, ...files }, dirs) }),
+    EMPTY,
+  );
+  const layer = report.layers.find((entry) => entry.name === 'dd-documents');
+  if (!layer) throw new Error('dd-documents layer missing');
+  return layer;
+}
+
+describe('doctor — the shipped dd layer', () => {
+  it('stays silent and ok in a repository that does not use dd', () => {
+    // Same posture as the quality-gate and telemetry rows: never nag a repo the
+    // feature does not apply to.
+    const layer = ddLayer({}, { '/repo': ['README.md'] });
+    expect(layer.ok).toBe(true);
+    expect(layer.detail).toContain('dd not in use');
+    expect(layer.next_action).toBeUndefined();
+  });
+
+  it('reports health when every document has its rendered sibling', () => {
+    const layer = ddLayer(
+      { '/repo/docs/plan.dd.json': DD_DOC, '/repo/docs/plan.dd.md': '# rendered' },
+      { '/repo': ['docs'], '/repo/docs': ['plan.dd.json', 'plan.dd.md'] },
+    );
+    expect(layer.ok).toBe(true);
+    expect(layer.detail).toContain('1 deterministic document(s)');
+    // The deep answer belongs to the sweep, and this row says so rather than
+    // pretending to have run it (P7 — doctor never invokes).
+    expect(layer.detail).toContain('harness dd doctor');
+  });
+
+  it('fails a document committed without its rendered sibling', () => {
+    const layer = ddLayer(
+      { '/repo/docs/plan.dd.json': DD_DOC },
+      { '/repo': ['docs'], '/repo/docs': ['plan.dd.json'] },
+    );
+    expect(layer.ok).toBe(false);
+    expect(layer.detail).toContain('no rendered sibling');
+    expect(layer.detail).toContain('docs/plan.dd.json');
+    expect(layer.next_action).toContain('harness dd build');
+  });
+
+  it('honours the sweep exclusion contract instead of re-deriving it', () => {
+    // A known-bad fixture and a sweep_exclude document are not missing a render;
+    // they are deliberately not participating (AC-15). Neither may redden a row.
+    const excluded = JSON.stringify({
+      dd: { schema: 'builder/plan', sweep_exclude: true },
+      sections: [{ name: 'meta', value: { title: 'x' } }],
+    });
+    const layer = ddLayer(
+      {
+        '/repo/test/fixtures/bad.dd.json': DD_DOC,
+        '/repo/docs/opted-out.dd.json': excluded,
+      },
+      {
+        '/repo': ['docs', 'test'],
+        '/repo/docs': ['opted-out.dd.json'],
+        '/repo/test': ['fixtures'],
+        '/repo/test/fixtures': ['bad.dd.json'],
+      },
+    );
+    expect(layer.ok).toBe(true);
+    expect(layer.detail).toContain('dd not in use');
+  });
+
+  it('reports an enumeration failure rather than an empty, clean-looking corpus', () => {
+    // P2's F002 lesson, applied to a doctor row: a port that cannot look must
+    // never read as a tree that holds nothing.
+    const failing = new FakeFs({ ...BUILT_CLI });
+    failing.readdir = () => {
+      const error = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
+      error.code = 'EACCES';
+      throw error;
+    };
+    const report = buildDoctorReport(deps({ fs: failing }), EMPTY);
+    const layer = report.layers.find((entry) => entry.name === 'dd-documents');
+    expect(layer?.ok).toBe(false);
+    expect(layer?.detail).toContain('could not be enumerated');
+  });
+});

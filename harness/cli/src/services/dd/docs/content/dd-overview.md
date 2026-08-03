@@ -96,3 +96,11 @@ jq -r '.sections[] | select(.name=="tasks") | .value[] | "\(.id) \(.state)"' pla
 harness dd validate plan.dd.json --json | jq '.data.issues[] | {code, location, owner}'
 harness dd schema list --json | jq -r '.data.schemas[] | "\(.name)\t\(.path)"'
 ```
+
+## Going deeper
+
+This page is the tour. The full reference — the address grammar in detail, the schema-package
+convention, the completion states and the `human-skipped` receipt convention, the basis ledger,
+the sweep's exclusion contract, and a page of jq recipes — lives in the repository at
+`docs/how/harness-dd.md`. A worked corpus sits beside it in
+`docs/plans/065-deterministic-documents/exemplar/`.

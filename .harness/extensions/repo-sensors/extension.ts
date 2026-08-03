@@ -76,7 +76,9 @@ function harnessVerbMeasurement(
   verb: string,
 ): (ctx: SensorRunContext) => Promise<SensorReading> {
   return async (ctx) => {
-    const result = await ctx.exec('node', [HARNESS_BIN, verb, '--json'], {
+    // `verb` may name a sub-verb (`dd doctor`); split it into argv so commander
+    // sees two words rather than one unmatched argument.
+    const result = await ctx.exec('node', [HARNESS_BIN, ...verb.split(' '), '--json'], {
       timeoutMs: DEFAULT_TIMEOUT_MS,
     });
     let status: 'ok' | 'degraded' | 'unconfigured' | 'error';
@@ -333,6 +335,18 @@ export default defineExtension({
       timeoutMs: DEFAULT_TIMEOUT_MS,
       guidance: 'Resolve or convert stale debt annotations into owned work items.',
       run: todoDebt,
+    },
+    'dd-doctor': {
+      summary: 'Sweep every deterministic document at infinite validation radius.',
+      // The watch set is snapshotted when the scheduler is built, so it names both
+      // halves of what a dd finding can come from: the documents themselves, and
+      // the schema packages that decide whether those documents are valid. A
+      // schema edit can redden a document nobody touched.
+      watch: ['**/*.dd.json', '.dd/schemas/**/*.{json,ts}', '.harness/.dd/schemas/**/*.{json,ts}'],
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+      guidance:
+        'Run `node harness/cli/bin/harness.js dd doctor --json` and fix the owning document named in each finding.',
+      run: harnessVerbMeasurement('dd doctor'),
     },
     'lock-hygiene': {
       summary: 'Require public-form package-lock URLs with no internal feed or signed CDN hosts.',
