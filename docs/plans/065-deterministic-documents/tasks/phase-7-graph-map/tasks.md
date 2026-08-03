@@ -128,9 +128,79 @@ flowchart TD
 | [ ] | T002 | **Item-scoped edge selection.** Given an address naming an item (`…#acceptance_criteria/ac-0201`), select only edges whose `location` lies within that item. Derive the item's `location` prefix from the parsed document; never infer it from the id string. A section address keeps today's section-wide behaviour. | harness-cli | `harness/cli/src/services/dd/links/**` | Seeding at `#acceptance_criteria/ac-0201` returns ONLY that row's edges — `$.sections[meta].*` is absent — proven against the real exemplar | **The core of this phase.** Fixture must include a document where two items in the same section have different outbound targets, so a section-wide answer cannot pass |
 | [ ] | T003 | **Bidirectional transitive walk.** From the seed, follow outbound edges to depth N and inbound edges to depth N, recording each node's distance and direction. Reuse `traverseCorpus`/`reachableFrom`; extend them rather than writing a second walker. Cycles terminate. | harness-cli | `harness/cli/src/services/dd/links/traverse.ts` | AC → tasks → backpressure appears as a **2-hop outbound chain**, and an inbound edge from another document appears on the inbound arm, in one invocation | P4 F001: bound on SCHEDULED nodes, not loaded ones. A self-referential cycle must not loop |
 | [ ] | T004 | `--json` envelope: seed, nodes (address, direction, distance), edges, and an explicit `truncated` block naming what was cut and why (`depth` or `max-nodes`). | harness-cli | `harness/cli/src/acts/dd/graph.ts` | `--json` output parses and round-trips; `truncated` is present and honest in both a bounded and an unbounded run | An omitted `truncated` key reads as "complete" — it must always be present, `false`/empty when nothing was cut |
-| [ ] | T005 | ASCII renderer: incoming above, outgoing below, seed in the middle, indented by distance, each line carrying the address and its state mark. Readable in 80 columns. | harness-cli | `harness/cli/src/services/dd/links/report.ts` (or a sibling) | A golden fixture pins the exact ASCII for the exemplar AC row; it wraps within 80 cols | Reuse the `[x]/[ ]/[-]/[~]` marks the renderer already uses — do not invent a second vocabulary |
+| [ ] | T005 | **The showcase renderer.** Incoming above, outgoing below, seed in the middle, indented by distance, each line carrying the address and its state mark. Readable in 80 columns. **This is a demo surface — see § T005 below; it must genuinely pop.** | harness-cli | `harness/cli/src/services/dd/links/report.ts` (or a sibling), `harness/cli/src/output/style.ts` | A golden fixture pins the exact PLAIN ASCII (no ANSI) for the exemplar AC row, wrapping within 80 cols; a second test proves colour appears when enabled and is absent under `NO_COLOR` | Reuse the `[x]/[ ]/[-]/[~]` marks — do not invent a second vocabulary. **Zero new dependencies** |
 | [ ] | T006 | **Prove the bounds bind.** A fixture corpus larger than `--max-nodes` and deeper than `--depth`; assert the walk stops, reports `truncated`, and does not hang. Then MUTATE each bound and show the test fails. | harness-cli | `harness/cli/test/services/dd/links/**` | Raising `--max-nodes` past the corpus size changes the result; removing the bound check fails a test | A cap only ever run against a small corpus has been demonstrated, not tested — build the corpus that exceeds it |
 | [ ] | T007 | **Two-lens dog-food.** (a) deterministic: drive the real CLI in a temp sandbox. (b) inference: operate the command as a user against the live exemplar and write a short findings note — what was confusing, what you expected and did not get. | harness-cli | `harness/cli/test/integration/**`, `docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/findings.md` | Both lenses run; the findings note contains at least one real `harness observe` capture | Phase 6's inference lens found 5 defects a fully-green suite could not see. This is not ceremony |
+
+---
+
+## T005 in detail — this is the demo surface
+
+Jordan's steer: *"this feature should look real nice in human mode… make it
+really pop as a UX based demo for folks to see power of the DD system"*.
+
+Treat the human render as a **showcase**, not a debug dump. It is the artifact
+someone is shown when asked why deterministic documents are worth having: one
+command, and the whole web of claims → proof → pressure around a single row
+appears, in colour, in a terminal.
+
+### Do NOT add chalk, picocolors, kleur, or any colour dependency
+
+This CLI ships **`commander` + `jiti` and nothing else**, deliberately.
+`harness/cli/src/output/style.ts` says so in its own header: pulling in a colour
+library "would bloat the published install + supply-chain surface … against the
+lean-prod-dep posture". That decision stands.
+
+**Extend `output/style.ts` instead.** It already hand-rolls SGR wrappers —
+`bold`, `dim`, `cyan`, `green` — from a two-line `sgr(open, close)` helper. Add
+the handful you need the same way. This costs nothing and keeps one styling
+vocabulary across the CLI.
+
+### Colour gating is already solved — use it, do not re-invent it
+
+`resolveUseColor({ mode, isTty, env })` in the same file already implements the
+full precedence: `NO_COLOR` (any non-empty) and `FORCE_COLOR=0|false` force off;
+truthy `FORCE_COLOR` / any `CLICOLOR_FORCE` force on; otherwise colour is on
+only for `mode === 'human' && isTty`. It deliberately mirrors commander's own
+`useColor()` so every surface agrees.
+
+Three hard rules fall out of it:
+
+1. **`--json` is never styled.** Not one escape byte.
+2. **Piped output is plain.** `harness dd graph map … | cat` must be clean ASCII.
+3. **The golden fixture pins the PLAIN form.** Never pin ANSI escapes into a
+   golden — pin the plain render, and test colour separately by asserting
+   escapes appear when enabled and are absent under `NO_COLOR`.
+
+### What "pops" means here — carry meaning, not decoration
+
+Colour must encode something a reader can act on. Suggested treatment; refine it
+if you can do better, but every choice must mean something:
+
+- **the seed row** — bold, visually unmistakable as the centre;
+- **direction** — inbound and outbound distinguished at a glance (they are
+  genuinely different questions, so they should not look alike);
+- **state marks** — `[x]` passing green, `[ ]` holding plain/dim, `[-]` blocked
+  red, `[~]` partial yellow. This is the one place colour is doing real work:
+  a chain of proof that is green to its leaves reads instantly as sound;
+- **distance** — dimmer as it gets further from the seed, so the eye lands on
+  what is near;
+- **ids** — accented so `ac-0201` / `bp-0201` / `tk-0201` are scannable;
+- **truncation** — the "cut off here" line must be impossible to miss. A
+  silently truncated graph that looks complete is the worst possible outcome.
+
+Box-drawing characters (`├─`, `└─`, `│`) for the tree structure are welcome and
+need no dependency.
+
+**The honesty rule still wins over the pretty rule.** If a node could not be
+resolved, or the walk hit a bound, or an edge is dangling — say so, visibly. A
+beautiful render that hides a broken link is worse than an ugly one that shows
+it.
+
+### Prove it by looking at it
+
+T007's inference lens covers this: actually run it against the exemplar AC row
+and look. If it does not make you want to show someone, it is not done.
 
 ---
 
