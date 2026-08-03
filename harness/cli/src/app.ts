@@ -8,6 +8,7 @@ import { registerInitAct } from './acts/init.js';
 import { registerInstructionsAct } from './acts/instructions.js';
 import { registerNewAct } from './acts/new.js';
 import { registerObserveAct } from './acts/observe.js';
+import { registerPlanAct } from './acts/plan/index.js';
 import { registerRecordAct } from './acts/record.js';
 import { registerRetroAct } from './acts/retro.js';
 import { registerSensorsAct } from './acts/sensors.js';
@@ -321,6 +322,7 @@ export function buildProgram(
   registerRetroAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
   registerDdAct(program, io, deps);
+  registerPlanAct(program, io, deps);
   registerSensorsAct(
     program,
     io,

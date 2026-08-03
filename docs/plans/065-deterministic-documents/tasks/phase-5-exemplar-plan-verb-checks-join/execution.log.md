@@ -295,3 +295,100 @@ render-only ones, path/schema carried, unresolvable and unreadable documents yie
 no-custom-types skip, and the source's path filtering), plus two live rows in
 `test/acts/dd-links-live.test.ts` — a throwing adapter surfacing in the sweep as `E425`/`E423`, and
 `--update` regenerating a sibling that `dd build --check` then agrees with byte-for-byte.
+
+---
+
+## T002 — `harness plan`, a core act
+
+Two files under `acts/plan/`, plus the two registration lines OD-7 grants (`registerPlanAct` in
+`app.ts`, `plan` in `RESERVED_NAMES`). Nothing else in `app.ts` was touched.
+
+### Why it is a verb and not a `dd` subcommand
+
+On cited authority (`initial-brief.md`: *"Harness to have a first class plan verb (which uses dd under
+the hood)"*) — and the distinction turns out to be real rather than ceremonial. **Every `dd` verb acts
+on ONE document; every `plan` verb acts on the whole plan.** `plan render` renders the overview *and
+every task file it links to*, and `plan validate` walks the same set. That composition is the value;
+`dd build` pointed at `plan.dd.json` renders one file and says nothing about the three beside it.
+
+The dd surface gains nothing. `plan render` calls `renderDocument` — the exact function `dd build`
+uses — so a plan's markdown cannot disagree with the markdown `dd build` would have produced for the
+same file. `plan validate` runs dd-core's own walk with the unified `DD_ISSUE_CODES` from T004.
+
+### Decisions worth the reader's time
+
+**Minted ids are derived, not random.** Workshop-001 wants four lowercase hex digits, born once,
+unique per file — and a random mint would satisfy that while breaking something the scaffold needs:
+`plan new` with the same arguments must produce the same bytes, or the scaffold cannot be
+golden-tested and every re-scaffold reads as a diff. A small FNV-1a over `slug/phase/index`, probed
+for uniqueness within the file, gives born-once ids that are also reproducible. It is not a content
+hash and does not need to be: the requirement is "distinct within one document".
+
+**Always split by phase, even for one phase.** Workshop-002 Ruling 4 allows a single-file plan; the
+scaffold declines the option. A plan that starts as one file and grows into many is a migration; a
+plan that starts split is just a plan.
+
+**The evidence section ships empty but present**, so the first task added has somewhere to put its
+proof instead of inventing a section the workshop already named.
+
+**No references are recorded at creation.** A ledger entry means "I transclude this and my view of it
+must be current"; a basis is minted when something is first *verified*, which is
+`dd link verify-basis --update`'s job. Writing shas at scaffold time would record a promise nobody made.
+
+**`plan new` renders immediately, and reports what the render found.** A scaffold cannot answer "does
+`builder/plan` actually resolve from here?" — but its first render can. Resolution failure is
+`degraded` with the roots-searched next_action, so the honest answer arrives at creation instead of
+surprising the first `validate`.
+
+**Refuse before writing anything.** An existing plan folder stops the whole command (`E152`), not the
+document that happened to collide first: a half-landed scaffold is worse than none, because the next
+run has to work out which half it is looking at. The test asserts the refusal is total.
+
+No new E-codes. `plan new` is a scaffolding verb and reuses the scaffolding family already in the
+frozen block (`E150` invalid name, `E152` exists, `E153` write failed); the delegating verbs report
+whatever dd's own codes say.
+
+### Proof — a real scaffold, driven live
+
+```text
+$ harness plan new telemetry-repair --title "Telemetry repair" \
+    --phase "Capture pipeline" --phase "Remote sync" --dir <tmp>
+status: ok
+  telemetry-repair/plan.dd.json                          + plan.dd.md
+  telemetry-repair/tasks/phase-1-capture-pipeline/…json   + …md
+  telemetry-repair/tasks/phase-2-remote-sync/…json        + …md
+
+$ harness plan validate <tmp>/telemetry-repair
+status: degraded  counts {"error":0,"warn":2}
+ - WARN address-target-untracked  $.sections[phases].value[0].tasks
+ - WARN address-target-untracked  $.sections[phases].value[1].tasks
+
+$ harness plan render <tmp>/telemetry-repair --check
+status: ok | documents: 3 | drifted: 0
+```
+
+The two WARNs are the design working, not a defect: the scaffolded task files are not committed yet,
+and workshop-001 rules an untracked target a WARN precisely because "not committed yet" is a real,
+recoverable state. Zero ERRORs, exit 0 — the plan validates out of the box, and says the one true
+thing about itself that a brand-new plan can say.
+
+The rendered overview reads as a plan: phases as a table with `◇ unchecked` pips, `depends_on`
+chained, and each phase's `tasks` cell a live link to its own file.
+
+### Suite
+
+```text
+cd harness/cli && npx vitest run
+  Test Files  262 passed (262)
+       Tests  3575 passed (3575)
+```
+
+**That is the plan's first fully green full-suite run.** P1, P2 and P3/P4 each recorded a red or a
+caveat here — P2's log records 3354/3355 with the docs integration test timing out under load, and
+every phase lost the git integration file to the `GIT_CONFIG_*` host defect. Both are green now.
+
+New rows: `test/acts/plan.test.ts` (17 — six pure scaffold rows incl. the reproducibility pin, and
+eleven live rows covering scaffold→validate→render, whole-plan rendering, drift caught in a task file
+while the plan document is untouched, folder-or-file targeting, the total refusal, and three honest
+failures). `test/app.test.ts` and `test/index.test.ts` gain one ADDITIVE `'plan'` row each in the
+command enumeration — the P1-retro fence lesson, pre-granted for exactly this.
