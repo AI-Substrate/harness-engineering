@@ -23,10 +23,16 @@ There is also a hand-maintained **Phase Index** table that duplicates the phase 
     - `proven_by` → entries in the execution-log DD (append-only, per D3).
 - The **Phase Index stops being hand-maintained** — it is exactly the kind of view `dd build` derives from the phase sections, so it can never drift from them.
 
-## Schema sketch (in-file, per W6 — shape illustrative, grammar is W9's to lock)
+## Schema sketch (shape illustrative; grammar is W9's to lock)
+
+Per **D14**, this schema does not live inside the plan document. It is a named package —
+`builder/plan` — resolved from `.dd/schemas/builder/plan/`; the plan's `.dd.json` only
+*names* it. What follows is the content of that schema file, not a block inside the plan.
 
 ```jsonc
 {
+  "schema": "builder/plan",
+  "description": "A builder plan: context, acceptance criteria, and repeating phases.",
   "sections": [
     { "id": "context", "type": "free-text" },
     { "id": "acceptance-criteria", "type": "completable-table",
@@ -59,6 +65,12 @@ There is also a hand-maintained **Phase Index** table that duplicates the phase 
     ]}
   ]
 }
+```
+
+The plan document itself then carries only the reference and its data:
+
+```jsonc
+{ "dd": { "schema": "builder/plan", "spec": "dd@1" }, "sections": { /* … data … */ } }
 ```
 
 The schema names each section's primitive, its convention-derived address stem (`plan-phase.phase-2.tasks`), and — for every link column — the **target shape and cardinality**. That is what lets `dd validate` check the graph mechanically, and what lets the flow spine gate a nav node on "all rows in `plan-phase.phase-2.tasks` reach a terminal state" without parsing any prose (D5, D12: the gate is *computed from* knowledge, never copied into the workflow).

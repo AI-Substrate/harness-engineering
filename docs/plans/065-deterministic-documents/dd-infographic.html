@@ -653,7 +653,7 @@
     <div class="grid2">
       <div class="rev">
 <pre class="code"><span class="lbl">plan.dd.json — the truth</span>{
-  <span class="k">"dd"</span>: { <span class="k">"doc_type"</span>: <span class="s">"plan"</span>, <span class="k">"spec"</span>: <span class="s">"dd@1"</span> },  <span class="c">← self-describing</span>
+  <span class="k">"dd"</span>: { <span class="k">"schema"</span>: <span class="s">"builder/plan"</span>, <span class="k">"spec"</span>: <span class="s">"dd@1"</span> },  <span class="c">← names its schema</span>
   <span class="k">"meta"</span>: {
     <span class="k">"title"</span>: <span class="s">"Checkout flow — guest payment"</span>,
     <span class="k">"edited_at"</span>: <span class="s">"2026-08-03T04:12:55Z"</span>,
@@ -1072,7 +1072,7 @@ Let a signed-out shopper complete checkout…
     <div class="grid3">
       <div class="card rev"><span class="tag blue">DEPTH 1</span>
         <h3>Standalone files</h3>
-        <p>Any git repo or filesystem. Hand-edit the <code>.dd.json</code>, run validate, commit the pair. No harness, no SDK — the format is self-describing, so a lone doc is still checkable, addressable, and render-true. A checklist, an ADR, a runbook: deterministic on day one.</p>
+        <p>Any git repo or filesystem. Hand-edit the <code>.dd.json</code>, run validate, commit the pair. No harness, no SDK — a document names the schema it follows, and the simplest place to keep that schema is the folder the document sits in, so a lone doc is still checkable, addressable, and render-true. A checklist, an ADR, a runbook: deterministic on day one.</p>
       </div>
       <div class="card rev d1"><span class="tag blue">DEPTH 2</span>
         <h3>Standalone CLI <span style="font-size:11px;color:var(--gold)">· out of scope, by design possible</span></h3>
