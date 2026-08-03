@@ -156,6 +156,137 @@ export function traverseCorpus(
   return { nodes, edges, issues, visited: [...visited] };
 }
 
+/** One neighbour a {@link boundedWalk} expansion offered, and the edge that carried it. */
+export interface DdWalkStep<E> {
+  key: string;
+  edge: E;
+}
+
+export interface DdWalkBounds {
+  /** Greatest distance from a seed a node may be scheduled at. */
+  depth: number;
+  /** Greatest number of nodes ever SCHEDULED, seeds included. */
+  maxNodes: number;
+}
+
+export interface DdWalkVisit<E> {
+  key: string;
+  distance: number;
+  /** The edge that scheduled this node — null for a seed. The tree edge. */
+  via: E | null;
+}
+
+/** A neighbour the bounds refused to schedule, and which bound refused it. */
+export interface DdWalkCut {
+  key: string;
+  reason: 'depth' | 'max-nodes';
+}
+
+export interface DdWalkResult<E> {
+  /** Scheduled nodes in visit order, each with its distance from the nearest seed. */
+  order: DdWalkVisit<E>[];
+  /** Every edge followed between two nodes that are both in the answer. */
+  edges: E[];
+  cuts: DdWalkCut[];
+}
+
+/** The bounds a caller passes when it wants the whole component, unclipped. */
+export const UNBOUNDED: DdWalkBounds = {
+  depth: Number.POSITIVE_INFINITY,
+  maxNodes: Number.POSITIVE_INFINITY,
+};
+
+/**
+ * Breadth-first over an arbitrary keyed graph, with bounds that bind and cuts
+ * that are reported rather than silently applied.
+ *
+ * There is one walk in this layer and this is it: `reachableFrom` is a
+ * projection of it, and so is the address-level map (`map.ts`). Two walkers that
+ * must agree about cycles and bounds eventually disagree, and the disagreement
+ * shows up as a graph that is wrong rather than as a test that is red.
+ *
+ * **The bounds count SCHEDULED nodes, never expanded or loaded ones** (P4 F001,
+ * where a tripwire denominated on loaded documents let a legitimate walk trip
+ * itself). A node is counted the moment it is put on the queue, so `maxNodes` is
+ * the size of the answer the caller gets back, exactly.
+ *
+ * Level order is what a shared budget buys: two arms seeded together are drained
+ * a distance at a time, so one arm's DEEPER nodes can never displace the other
+ * arm's nearer ones. Within a single expansion the order is whatever the caller
+ * offered — level order bounds how unfair the split can get, it does not make it
+ * even.
+ *
+ * A node at the depth bound is still expanded — but only so the neighbours it
+ * would have reached can be REPORTED as cut. Nothing beyond the bound is
+ * scheduled, because a truncated graph that looks complete is the worst answer
+ * this can give. An edge between two nodes that BOTH made it into the answer is
+ * always recorded, at any distance: hiding it would misdraw a cycle as a chain.
+ * `via` separates the edge that first scheduled a node — the tree edge a reader
+ * sees — from those closing edges.
+ */
+export function boundedWalk<E>(
+  seeds: readonly string[],
+  expand: (key: string, distance: number) => readonly DdWalkStep<E>[],
+  bounds: DdWalkBounds,
+): DdWalkResult<E> {
+  const scheduled = new Set<string>();
+  const order: DdWalkVisit<E>[] = [];
+  const edges: E[] = [];
+  const cuts: DdWalkCut[] = [];
+  const cutKeys = new Set<string>();
+  const queue: DdWalkVisit<E>[] = [];
+
+  const cut = (key: string, reason: DdWalkCut['reason']): void => {
+    const marker = `${reason}\u0000${key}`;
+    if (cutKeys.has(marker)) return;
+    cutKeys.add(marker);
+    cuts.push({ key, reason });
+  };
+
+  for (const seed of seeds) {
+    if (scheduled.has(seed)) continue;
+    if (scheduled.size >= bounds.maxNodes) {
+      cut(seed, 'max-nodes');
+      continue;
+    }
+    scheduled.add(seed);
+    queue.push({ key: seed, distance: 0, via: null });
+  }
+
+  let pops = 0;
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined) break;
+    // The same derived tripwire `traverseCorpus` carries: a node is scheduled at
+    // most once, so pops can never exceed the scheduled count while the visited
+    // discipline holds. A regression reddens in milliseconds instead of hanging.
+    pops += 1;
+    if (pops > scheduled.size) break;
+    order.push(current);
+
+    const atDepth = current.distance >= bounds.depth;
+    for (const step of expand(current.key, current.distance)) {
+      if (scheduled.has(step.key)) {
+        edges.push(step.edge);
+        continue;
+      }
+      if (atDepth) {
+        cut(step.key, 'depth');
+        continue;
+      }
+      if (scheduled.size >= bounds.maxNodes) {
+        cut(step.key, 'max-nodes');
+        continue;
+      }
+      scheduled.add(step.key);
+      edges.push(step.edge);
+      queue.push({ key: step.key, distance: current.distance + 1, via: step.edge });
+    }
+  }
+
+  return { order, edges, cuts };
+}
+
 /**
  * Every document reachable from one seed, over an already-built edge list.
  *
@@ -164,6 +295,10 @@ export function traverseCorpus(
  * the remaining seeds are skipped. Pure graph work — no I/O, and the same
  * visited-set discipline as the traversal, because the corpus really does
  * contain cycles.
+ *
+ * A projection of {@link boundedWalk} at radius infinity, rather than its own
+ * loop: the doctor's reachability and `dd graph map`'s bounded walk are then the
+ * same breadth-first traversal read two ways.
  */
 export function reachableFrom(seed: string, edges: readonly DdLinkEdge[]): Set<string> {
   const outgoing = new Map<string, string[]>();
@@ -171,16 +306,10 @@ export function reachableFrom(seed: string, edges: readonly DdLinkEdge[]): Set<s
     if (edge.to === null) continue;
     outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
   }
-  const reached = new Set<string>([seed]);
-  const queue = [seed];
-  while (queue.length > 0) {
-    const current = queue.shift();
-    if (current === undefined) break;
-    for (const next of outgoing.get(current) ?? []) {
-      if (reached.has(next)) continue;
-      reached.add(next);
-      queue.push(next);
-    }
-  }
-  return reached;
+  const walk = boundedWalk<null>(
+    [seed],
+    (key) => (outgoing.get(key) ?? []).map((next) => ({ key: next, edge: null })),
+    UNBOUNDED,
+  );
+  return new Set(walk.order.map((visit) => visit.key));
 }

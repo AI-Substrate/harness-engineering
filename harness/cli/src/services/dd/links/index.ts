@@ -31,8 +31,36 @@ export {
 } from './doctor.js';
 export { toMermaid } from './graph.js';
 export { MemoizingDocLoader } from './loader.js';
+export {
+  addressableAt,
+  anchorForLocation,
+  type DdAddressable,
+  type DdAddressableKind,
+  type DdDocumentIndex,
+  type DdMapArm,
+  type DdMapCut,
+  type DdMapDeps,
+  type DdMapDirection,
+  type DdMapEdge,
+  type DdMapMark,
+  type DdMapNode,
+  type DdMapOptions,
+  type DdMapResult,
+  indexDocument,
+  isWithinLocation,
+  mapAddress,
+  resolveMapSeed,
+} from './map.js';
 export * from './model.js';
-export { type DdLinksReport, linksFor, resolveLinksTarget } from './report.js';
+export {
+  type DdLinksReport,
+  type DdMapPalette,
+  linksFor,
+  MAP_WIDTH,
+  PLAIN_MAP_PALETTE,
+  renderMapTree,
+  resolveLinksTarget,
+} from './report.js';
 export {
   type DdLinkResolveOptions,
   type DdLinkResolverDeps,
@@ -40,8 +68,15 @@ export {
 } from './resolver.js';
 export { DD_SUFFIX, type DdCorpusScan, scanCorpus } from './scan.js';
 export {
+  boundedWalk,
   type DdTraverseDeps,
   type DdTraverseOptions,
+  type DdWalkBounds,
+  type DdWalkCut,
+  type DdWalkResult,
+  type DdWalkStep,
+  type DdWalkVisit,
   reachableFrom,
   traverseCorpus,
+  UNBOUNDED,
 } from './traverse.js';

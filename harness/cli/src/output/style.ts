@@ -2,11 +2,12 @@ import type { HelpConfiguration } from 'commander';
 import type { OutputMode } from './output-port.js';
 
 /**
- * Minimal ANSI styling for the human help surfaces — deliberately zero runtime
- * deps. The CLI ships only `commander` + `jiti`; pulling in a color library
+ * Minimal ANSI styling for the human surfaces — deliberately zero runtime deps.
+ * The CLI ships only `commander` + `jiti`; pulling in a color library
  * (chalk/picocolors) would bloat the published install + supply-chain surface
- * for help text alone, against the lean-prod-dep posture. These few SGR wrappers
- * cover it.
+ * for text decoration alone, against the lean-prod-dep posture. These few SGR
+ * wrappers cover it, and every new colour belongs HERE rather than in the
+ * surface that wanted it, so the CLI keeps one styling vocabulary.
  *
  * Two surfaces, two gating strategies:
  *   - commander's `--help` (auto-generated): styled via {@link helpStyleConfig}
@@ -28,6 +29,9 @@ export const bold = sgr(1, 22);
 export const dim = sgr(2, 22);
 export const cyan = sgr(36, 39);
 export const green = sgr(32, 39);
+export const red = sgr(31, 39);
+export const yellow = sgr(33, 39);
+export const magenta = sgr(35, 39);
 
 /**
  * Whether OUR own renderers should emit ANSI. Color is ON for an interactive

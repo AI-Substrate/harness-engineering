@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { traverseCorpus } from '../../../../src/services/dd/links/traverse.js';
+import type { DdLinkEdge } from '../../../../src/services/dd/links/model.js';
+import { reachableFrom, traverseCorpus } from '../../../../src/services/dd/links/traverse.js';
 import { deps, docPath, FixtureDocLoader, REPO } from './helpers.js';
 
 function traverse(seeds: string[], mode: 'direct' | 'sweep' = 'sweep') {
@@ -207,5 +208,37 @@ describe('dd links traversal — sweep exclusion (OD-1)', () => {
       );
     expect(load('sweep').nodes).toEqual([]);
     expect(load('direct').nodes).toEqual([expect.objectContaining({ path: asFixture })]);
+  });
+});
+
+describe('dd links traversal — reachability over a built edge list', () => {
+  const edge = (from: string, to: string | null): DdLinkEdge => ({
+    from,
+    to,
+    address: `${to ?? 'nowhere'}#entries`,
+    location: '$.sections[citations].value[0].cite',
+    sameDocument: false,
+  });
+
+  it('closes over the whole component, transitively', () => {
+    // The doctor's component skip depends on this: a walk rooted anywhere in a
+    // component must already cover the component, or it re-validates documents
+    // it has already answered for.
+    const edges = [edge('a', 'b'), edge('b', 'c'), edge('x', 'y')];
+    expect([...reachableFrom('a', edges)].sort()).toEqual(['a', 'b', 'c']);
+    expect([...reachableFrom('x', edges)].sort()).toEqual(['x', 'y']);
+  });
+
+  it('terminates on a cycle and on a self-reference', () => {
+    expect([...reachableFrom('a', [edge('a', 'b'), edge('b', 'a')])].sort()).toEqual(['a', 'b']);
+    expect([...reachableFrom('a', [edge('a', 'a')])]).toEqual(['a']);
+  });
+
+  it('follows nothing through an edge that never resolved to a file', () => {
+    expect([...reachableFrom('a', [edge('a', null), edge('a', 'b')])].sort()).toEqual(['a', 'b']);
+  });
+
+  it('returns the seed alone when nothing leaves it', () => {
+    expect([...reachableFrom('lonely', [edge('a', 'b')])]).toEqual(['lonely']);
   });
 });
