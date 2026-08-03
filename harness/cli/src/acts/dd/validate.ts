@@ -4,7 +4,6 @@ import { NodeEnv } from '../../adapters/env/node-env.js';
 import type { ExecPort } from '../../adapters/exec/exec-port.js';
 import { NodeExec } from '../../adapters/exec/node-exec.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
-import { NodeFs } from '../../adapters/fs/node-fs.js';
 import type { HashPort } from '../../adapters/hash/hash-port.js';
 import { NodeHash } from '../../adapters/hash/node-hash.js';
 import { NodeProcess } from '../../adapters/process/node-process.js';
@@ -18,6 +17,7 @@ import type { DocLoader, DocLoadResult } from '../../services/dd/core/walk.js';
 import { validateWalk } from '../../services/dd/core/walk.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
 import { posixJoin, resolveInRepo, toPosix } from '../../services/shared/posix-path.js';
+import { NodeSchemaFs } from './schema-fs.js';
 import type { DdActDeps } from './shared.js';
 
 /**
@@ -112,7 +112,7 @@ export function registerValidateCommand(dd: Command, io: CliIo, deps: DdActDeps)
     .action(async (path: string, opts: { depth: string }) => {
       const clock = deps.clock ?? new SystemClock();
       const port = createOutputPort(io.mode, io.writers);
-      const fs = new NodeFs();
+      const fs = new NodeSchemaFs();
       const proc = new NodeProcess();
       const home = new NodeEnv().home();
 

@@ -340,6 +340,12 @@ absorbs to `[]`) or by recursion depth, which the existing `try/catch` converts 
 have meant re-introducing a bound by the back door; per the PM's instruction that would be a
 renegotiation, not a coder's constant.
 
+> **CORRECTION (fix round 2, F002).** The paragraph above is wrong and is kept only so the
+> mistake is legible. `NodeFs.readdir` swallows *every* exception and returns `[]`, so no error
+> ever reached that `try/catch` and the "loud, bounded failure" never fired — a real symlink loop
+> produced total silence. See **Fix round 2** below for the finding and the dd-owned `SchemaFs`
+> that makes the fallback real.
+
 **Fixture: `fixtures/beyond-cap/`** — `builder/plan` at
 `repo/.dd/org/team/squad/area/service/module/component/feature/config/schemas/builder/plan/`:
 nine levels below its root, exactly one past the former cap.
@@ -405,3 +411,89 @@ remedy is a choice, not a patch — add a repo-root run to the gate, **or** dele
 `vitest.config.ts` if that invocation is not really supported. Today the repo asserts both work
 and only one does. Captured as `harness observe --kind difficulty` (**DL-008**) and left to the
 retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round.
+
+---
+
+## Fix round 2 — F002 (HIGH): the loud-failure fallback never fired
+
+### The finding, and where my round-1 reasoning was wrong
+
+Round 1 removed the depth cap and I argued no cycle guard was needed because a symlink loop
+would surface as `ENAMETOOLONG`/recursion and `scanRoot`'s `try/catch` would turn it into an
+honest `scan-failed`. **That was wrong, and it was wrong for a reason I could have checked.**
+`NodeFs.readdir` catches *every* exception and returns `[]` (`adapters/fs/node-fs.ts`), so no
+error ever reached my `try/catch`. The reviewer probed a real loop (`.dd/loop -> .`) and
+`scanRoot` returned `{ hits: [], issues: [] }` — silence. I reasoned about the port's contract
+instead of its implementation; the trade I proposed could never have held.
+
+### Fix — a dd-owned `SchemaFs`, not a change to the shared adapter
+
+Per the PM's seam ruling, `adapters/fs/node-fs.ts` is untouched: it is shared, out of fence, and
+its swallow is correct for callers that genuinely want "no entries". The dishonesty is only a
+problem *here*, so the honest implementation lives here — `src/acts/dd/schema-fs.ts`,
+`NodeSchemaFs`, wired into both acts that previously constructed `NodeFs`
+(`validate.ts`, `schema.ts`).
+
+Placement: `acts/` rather than `services/dd/schema/`. Acts are this CLI's composition root
+(`acts/doctor.ts` sets the precedent), and the repo's own arch rules only let `services/` import
+`*-port.ts` adapters. Keeping the concrete `node:fs` implementation in `acts/` leaves the schema
+service `node:*`-free and fakes-only, which is the property its whole suite rests on.
+
+The semantic is one distinction: **"I found nothing" and "I could not look" are different
+answers.** `ENOENT`/`ENOTDIR` stay a benign `[]` — that is load-bearing, because the walk uses a
+non-empty `readdir` as its directory probe — and every other errno propagates, which `scanRoot`
+converts into one `scan-failed` issue per root, which the act maps to **E416**.
+
+### A worse failure mode than the one reported
+
+Re-wiring `schema.ts` back to `NodeFs` to prove the act test has teeth did not produce the
+expected `E410`. It produced **`E412 name-conflict`**:
+
+```
+AssertionError: expected 'E412' to be 'E416'
+```
+
+Because the swallow lets the walk keep traversing the loop, it finds the *same* package again at
+`.dd/loop/schemas/…`, `.dd/loop/loop/schemas/…`, and so on — manufacturing phantom duplicates of
+a schema that exists exactly once. So the defect has two faces: a false `E410 not-found` when the
+looped root is empty (the reviewer's probe), and a false `E412 duplicate` when it actually holds
+the schema you asked for. The second is worse: it is a hard error blaming the user's tree for a
+corruption the scanner invented.
+
+### Proof
+
+`test/acts/dd-schema-fs.test.ts` — the one suite that touches the real filesystem, because the
+property under test *is* the fs boundary and no fake can witness it. All work confined to
+`mkdtemp` and removed after:
+
+1. `readdir` returns `[]` for the two benign cases (missing path, plain file).
+2. `readdir` throws on a 64-hop loop chain — long enough to exceed the symlink-resolution limit
+   on both macOS (32) and Linux (40).
+3. `scanRoot` over a real looped root yields **exactly one** `scan-failed` ERROR, does not throw,
+   and discards partial hits.
+4. Positive control: a loop-free root still resolves `builder/plan` with zero issues, so the
+   honesty is not bought by failing everything.
+
+`test/acts/dd-live.test.ts` adds the **act-level** proof, which is the one that pins the *wiring*:
+a unit test of the adapter passes even if someone re-points the act back at `NodeFs`. Against a
+looped repo whose root genuinely contains `builder/plan`, `dd schema show builder/plan` answers
+`E416`.
+
+Both mutations were run and reverted, residue verified by grep:
+
+| mutation | result |
+|---|---|
+| `NodeSchemaFs.readdir` swallows everything (NodeFs semantics) | 2 failed / 2 passed — exactly the two honesty assertions; benign + positive control stayed green |
+| `schema.ts` re-wired to `NodeFs` | act test failed with `E412` (see above) |
+
+```
+cd harness/cli && npx vitest run test/services/dd test/acts/dd-surface.test.ts \
+  test/acts/dd.test.ts test/acts/dd-live.test.ts test/acts/dd-schema-fs.test.ts
+  Tests  153 passed (153)
+
+cd <repo root> && (same selectors)
+  Tests  153 passed (153)
+```
+
+148 → 153 is the 4 new fs/scan rows plus the act-level wiring row. biome clean (461 files),
+`tsc` passes, `arch-check` at its 2-warning baseline.

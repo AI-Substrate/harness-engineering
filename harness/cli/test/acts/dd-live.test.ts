@@ -1,5 +1,8 @@
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { VerbActDeps } from '../../src/acts/verb.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
@@ -205,5 +208,60 @@ describe('harness dd schema / docs — live bodies', () => {
     expect(result.code).toBe(0);
     expect(result.out.startsWith('# Deterministic documents (dd)')).toBe(true);
     expect(result.out).not.toContain('"status"');
+  });
+});
+
+/**
+ * F002: the acts must be wired to a `SchemaFs` that distinguishes "found
+ * nothing" from "could not look". Proving that at the act boundary is the point
+ * — a unit test of the adapter passes even if someone re-wires the act back to
+ * the shared `NodeFs`, whose `readdir` swallows every error.
+ */
+describe('harness dd schema — an unscannable root is reported, not silently empty (F002)', () => {
+  let tmp = '';
+  let previousCwd = '';
+  let previousHome: string | undefined;
+
+  beforeAll(() => {
+    tmp = mkdtempSync(join(tmpdir(), 'dd-act-loop-'));
+    const root = join(tmp, '.dd');
+    const pkg = join(root, 'schemas', 'builder', 'plan');
+    mkdirSync(pkg, { recursive: true });
+    writeFileSync(
+      join(pkg, 'schema.json'),
+      JSON.stringify({ dd_schema: 1, description: 'probe', sections: {} }),
+      'utf8',
+    );
+    // The root HAS the schema being asked for. Only the loop stops the scan
+    // reaching it — so a swallowed error yields the worst possible answer: a
+    // confident "no such schema" about a schema that is right there.
+    symlinkSync('.', join(root, 'loop'));
+  });
+
+  afterAll(() => {
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    previousCwd = process.cwd();
+    previousHome = process.env.HOME;
+    // Keep the scan hermetic: the home root must not wander into the real ~/.dd.
+    process.env.HOME = join(tmp, 'home');
+    process.chdir(tmp);
+  });
+
+  afterEach(() => {
+    process.chdir(previousCwd);
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    vi.restoreAllMocks();
+  });
+
+  it('reports E416 scan-failed, never a confident E410 not-found', async () => {
+    const result = await runDd(['dd', 'schema', 'show', 'builder/plan']);
+
+    expect(result.code).toBe(1);
+    expect(result.envelope?.status).toBe('error');
+    expect(result.envelope?.error?.code).toBe('E416');
   });
 });

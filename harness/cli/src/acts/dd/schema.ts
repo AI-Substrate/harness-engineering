@@ -1,7 +1,6 @@
 import type { Command } from 'commander';
 import { SystemClock } from '../../adapters/clock/system-clock.js';
 import { NodeEnv } from '../../adapters/env/node-env.js';
-import { NodeFs } from '../../adapters/fs/node-fs.js';
 import { NodeProcess } from '../../adapters/process/node-process.js';
 import { type Envelope, formatDegraded, formatError, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
@@ -15,6 +14,7 @@ import type {
 } from '../../services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
 import { toPosix } from '../../services/shared/posix-path.js';
+import { NodeSchemaFs } from './schema-fs.js';
 import type { DdActDeps } from './shared.js';
 
 /** Schema-layer issue class → frozen E-code (P1 allocation; Phase 2 adds none). */
@@ -77,7 +77,7 @@ interface ListData {
 function buildResolver(): ConventionSchemaResolver {
   const home = new NodeEnv().home();
   return new ConventionSchemaResolver({
-    fs: new NodeFs(),
+    fs: new NodeSchemaFs(),
     repoRoot: toPosix(new NodeProcess().cwd()),
     ...(home !== undefined && { home: toPosix(home) }),
   });
