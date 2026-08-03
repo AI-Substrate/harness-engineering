@@ -375,7 +375,7 @@
     <!-- BEAT 3 -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 3</span><h3>Everything has an address</h3></div>
-      <p class="b-cap">Because sections and rows are data, each one has a <b>stable address</b>. So a row in one document can link to a row in <b>another file</b> — as a JSON value with a relative path, not prose that hopes. Here the AC names the backpressure evidence that must prove it:</p>
+      <p class="b-cap">Because sections and rows are data, each one has a <b>stable address</b>. So a row in one document can link to a row in <b>another file</b> — as a JSON value with a relative path, not prose that hopes. Here one of those checklist items — an <i>acceptance criterion</i>, “AC” for short — points at a row in a second document, the row that says how this criterion will be proven:</p>
       <figure class="scene" data-beat="b3" data-dur="3800">
         <div class="b3grid">
           <div class="doc fx rv" style="--s:.02;--d:.12">
@@ -407,7 +407,7 @@
     <!-- BEAT 3B -->
     <div class="beat">
       <div class="b-head"><span class="b-num">BEAT 3B</span><h3>…and not just documents</h3></div>
-      <p class="b-cap">Anything that speaks the address grammar can bind to the knowledge. The <b>navigation flow</b> is the first consumer: a spine node carries one <code>dd_link</code> to the AC section — and the tooling reads the same addresses to check every edge.</p>
+      <p class="b-cap">Documents are not the only things that can hold an address — anything that can store a short string can. The first thing to use that here is the workflow tracker, the tool that knows which step a piece of work is on: one of its steps carries a single link field, <code>dd_link</code>, aimed at the plan’s checklist. It stores no copy of the items. And because every link is written the same way, a checking tool can walk all of them and confirm each still points at something real.</p>
       <figure class="scene" data-beat="b3b" data-dur="3600">
         <div class="b3grid">
           <div class="doc fx pop" style="--s:.04;--d:.10">
@@ -608,7 +608,7 @@
 <section class="panel" id="problem">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">01</span><h2>The problem: coding in markdown</h2></div>
-    <p class="sec-sub">Markdown documents that carry <b>operational state</b> — acceptance criteria, checklists, evidence, proof plans — are programs written in a language with no parser. Every failure below is real, measured in this repo’s own plan corpus.</p>
+    <p class="sec-sub">Plenty of markdown does more than describe things — it carries working state: checklists that say what is done, criteria that say what must be true, notes that say what was proven. That makes it a program written in a language with no parser: nothing can read it back and check it. Every failure below is a real one, counted in the plan documents of the codebase this idea grew out of.</p>
 
     <div class="grid2">
       <div class="card rev"><span class="tag verm">ROT 1</span>
@@ -621,17 +621,17 @@
       </div>
       <div class="card rev d2"><span class="tag verm">ROT 3</span>
         <h3>References drift silently</h3>
-        <p>Of 11 backpressure surveys, <b>exactly one</b> ever recorded which plan version it surveyed (a SHA basis) — <b>and that one is now stale</b>: the plan changed after the survey, and nothing noticed. The only document that tried to do it right was silently orphaned.</p>
+        <p>A backpressure survey — the document that works out how each criterion should be proven — is written against a plan as it stood at one moment. Of 11 such surveys, exactly one recorded which version of the plan it had actually read (a content fingerprint, or SHA, taken at the time) — <b>and that one is now stale</b>: the plan changed afterwards, and nothing noticed. The single document that tried to do it properly was quietly left citing a version that no longer exists.</p>
       </div>
       <div class="card rev d3"><span class="tag verm">ROT 4</span>
         <h3>Nothing is addressable, so everything is copied</h3>
-        <p>You cannot say “AC-3 of phase 2” in a form a tool can resolve — so the spine keeps no ACs at all, the plan keeps prose, and the tasks keep a paraphrase. In plan 056, an AC’s id was lost to a typo (<code>**n**</code> instead of <code>**AC-03**</code>): the criterion became <b>unnameable</b>, nothing could demand proof of it, and it shipped unverified.</p>
+        <p>You cannot say “criterion 3 of phase 2” in a form a tool can look up — so every place keeps its own version: the workflow tracker keeps none of the criteria at all, the plan keeps them as prose, and the task list keeps a paraphrase. In one real plan, a criterion’s label was lost to a typo (<code>**n**</code> typed instead of <code>**AC-03**</code>): the criterion could no longer be <b>named</b>, so nothing could demand proof of it, and it shipped unverified.</p>
       </div>
     </div>
 
     <div class="callout warn rev">
       <span class="mini">The measured baseline</span>
-      Across 54 flight-plan files: <b>zero</b> carry any requirement field · <b>one</b> basis hash ever recorded (now stale) · phase instructions are byte-identical boilerplate (“done when the acceptance criteria are met”) across three harness versions. An agent resuming from the spine knows a label and a verb — <b>never what it owes, or how that would be proven.</b>
+      Counted across 54 of those workflow files: <b>not one</b> carries any field saying what the work must achieve · <b>exactly one</b> ever recorded the version of the document it was based on (and that record is now stale) · the per-step instructions are byte-for-byte identical boilerplate (“done when the acceptance criteria are met”) across three generations of the tooling. An agent picking work back up gets a step name and a command to run — <b>never what it owes, or how that would be proven.</b>
     </div>
   </div>
 </section>
@@ -692,11 +692,11 @@ Let a signed-out shopper complete checkout…
   → bp-7f3a | log el-0042 |</pre>
         <div class="callout" style="margin-top:20px">
           <span class="mini">Why the pair matters</span>
-          Humans and GitHub read the <b>.md</b>; tools and agents read the <b>.json</b>. Because the .md is a build artifact, a stale or hand-edited copy isn’t “reconciled” — it’s <b>detected</b> (render-drift is a doctor error) and regenerated. One representation, two views, zero divergence.
+          Humans and GitHub read the <b>.md</b>; tools and agents read the <b>.json</b>. Because the .md is a build artifact, a stale or hand-edited copy isn’t “reconciled” — it is <b>detected</b> (the checker reports the generated file as out of date with its data) and regenerated. One representation, two views, zero divergence.
         </div>
         <div class="callout gold">
           <span class="mini">Write posture — decided (D1)</span>
-          Unlike the flow spine, a DD is a <b>validated file format, not a mediated store</b>: any person, agent, or tool may edit the .dd.json directly — <code>dd validate</code> / <code>dd doctor</code> / regeneration are the contract that keeps every edit honest. That is what makes DD portable beyond the harness.
+          Some formats can only be written through their own tool: you ask the tool, and the tool edits the file. A DD is not like that. It is a <b>validated file format</b>, so any person, agent, or tool may open the <code>.dd.json</code> and edit it directly — <code>dd validate</code>, <code>dd doctor</code> and regeneration are what keep every edit honest, whoever made it. That is exactly what lets a DD stay useful in a repo that has none of this tooling installed.
         </div>
       </div>
     </div>
@@ -717,7 +717,7 @@ Let a signed-out shopper complete checkout…
         └──────── slug + join ────────┘
    id: <span class="ok">plan-phase-ac.phase-2</span>
  full: <span class="ok">plan.dd.json#plan-phase-ac.phase-2/row:ac-4b1c</span></pre>
-<p>The same phase carries the <b>same id in every plan file in the repo, forever</b> — semantic, greppable, and predictable <i>before the file even exists</i>, which is how a flow node can point at a plan section that hasn’t been authored yet and have doctor report it as “dangling” rather than nothing.</p>
+<p>The same phase carries the <b>same id in every plan file in the repo, forever</b> — semantic, greppable, and predictable <i>before the file even exists</i>, which matters more than it sounds. A workflow step can be written to point at “phase 2’s criteria” of a plan nobody has authored yet, and the checker will report that address as pointing at nothing, instead of the pointer silently meaning nothing at all.</p>
         <p style="margin-top:8px">Renaming changes the address — so renaming is a <b>first-class operation</b>: <code>dd rename-section</code> recomputes the id and rewrites every inbound link across the repo in one transaction <span class="num-col">(decided · D8)</span>.</p>
       </div>
       <div class="card rev d1"><span class="tag green">ROWS · UNIQUE, BORN ONCE</span>
@@ -738,7 +738,7 @@ Let a signed-out shopper complete checkout…
 <section class="panel" id="primitives">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">04</span><h2>Section primitives</h2></div>
-    <p class="sec-sub">Doc <b>types</b> are many and open (plan, backpressure, execution-log, ADR…). Section <b>primitives</b> are few and closed — the shapes the tooling knows how to store, validate, gate on, and render. A <code>plan-phase-ac</code> section and a <code>bp-evidence</code> section are different <i>types</i> sharing one <i>primitive</i>.</p>
+    <p class="sec-sub">There can be as many <b>kinds</b> of document as you like — a plan, a proof survey, a run log, a decision record — and teams can add their own. Underneath, though, there are only a few section <b>shapes</b>, and that set is deliberately closed: a shape is something the tooling knows how to store, check, render, and let a workflow refuse to move past. Two documents as different as a plan’s criteria list and a survey’s evidence list are different <i>kinds</i> built on the same <i>shape</i>.</p>
 
     <div class="grid3">
       <div class="card rev"><span class="tag blue">PRIMITIVE</span>
@@ -751,11 +751,11 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="card rev d2"><span class="tag blue">PRIMITIVE</span>
         <h3>completable-list</h3>
-        <p>Tickable items with ids, a state, and evidence links — the acceptance-criteria shape, and the thing <b>nav gates on</b>. A completed item with no evidence is a <b>validation error</b>, not a style nit: an unevidenced tick is unexpressible in a valid document.</p>
+        <p>Tickable items, each with an id, a state, and links to its evidence — this is the shape an acceptance-criteria checklist uses, and the shape a workflow can be told to wait on before it lets work move to the next step. An item marked complete with no evidence attached is a <b>validation error</b>, not a style nit: an unevidenced tick cannot be expressed in a valid document at all.</p>
       </div>
       <div class="card rev"><span class="tag blue">PRIMITIVE</span>
         <h3>completable-table</h3>
-        <p>Same completion semantics, richer rows: typed columns — <code>string</code> · <code>int</code> · <code>state</code> · <code>link</code>. Link columns declare their <b>target shape</b> (“a backpressure doc’s evidence row”) and <b>cardinality</b> (“every AC must name its pressure”), so schema — not review habit — enforces the wiring <span class="num-col">(shapes illustrative until W3/W6 close)</span>.</p>
+        <p>Same completion behaviour, richer rows: columns carry declared types — <code>string</code> · <code>int</code> · <code>state</code> · <code>link</code>. A link column also declares what it is allowed to point at (“a row in a proof-survey document”) and how many it must have (“every criterion must name its proof”). The wiring is then enforced by the document’s own schema, rather than by somebody remembering to check for it in review <span class="num-col">(shapes illustrative until W3/W6 close)</span>.</p>
       </div>
       <div class="card rev d1"><span class="tag gold">PROPOSED</span>
         <h3>log (append-only)</h3>
@@ -763,12 +763,12 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="card rev d2"><span class="tag gold">PROPOSED</span>
         <h3>record · include</h3>
-        <p><b>record</b>: typed key/value header (owner, linked flow, counts) — kills the bolded pseudo-table. <b>include</b>: transclude another DD’s section by address, storing a reference + hash, never a copy (§6).</p>
+        <p><b>record</b>: a small typed header of key/value facts — owner, linked workflow, counts — replacing the bolded-label-and-colon fake tables people hand-write today. <b>include</b>: show another document’s section in place, by address, storing a pointer and a fingerprint rather than a copy of the content (§6).</p>
       </div>
     </div>
 
     <h3 style="font-family:var(--disp);font-size:20px;margin:38px 0 6px">Completion is a state, not a boolean <span class="num-col">(decided · D4)</span></h3>
-    <p class="sec-sub" style="margin-bottom:6px">A checkbox can only lie by omission. A state can tell the truth about <i>why</i> it isn’t done — and the survey found today’s spine doing exactly this damage: one status (<code>assumed</code>) doing double duty for “not yet” and “never ran, no record”.</p>
+    <p class="sec-sub" style="margin-bottom:6px">A checkbox can only lie by omission. A state can tell the truth about <i>why</i> it isn’t done — and the research behind this page found exactly that damage in the existing workflow files: one status (<code>assumed</code>) doing double duty for “not yet” and “never ran, no record”.</p>
     <div class="statebar rev">
       <span class="state st-un">□ unchecked <small>— open; holds the gate</small></span>
       <span class="state st-ck">✓ checked <small>— proven; passes</small></span>
@@ -779,7 +779,7 @@ Let a signed-out shopper complete checkout…
 
     <div class="callout gold rev" style="margin-top:26px">
       <span class="mini">Open workshop item — W1 · render adapters for custom types</span>
-      Built-in types render natively. But DD is a platform: a team adding richer column types in <b>their own doc types</b> needs a story for how those render — registered per-type render adapters shipped by doc-type packages, with a mandatory <b>honest fallback</b> for unknown types (raw value + type tag; never a crash, never a silent blank). Flagged for its own workshop.
+      The built-in column types come with their own display rules. But teams will invent their own — a risk rating, a currency, a severity — and something has to decide how those look in the generated markdown. The likely answer: whoever defines the document type also ships the display rule for its own column types, plus a mandatory <b>honest fallback</b> for anything unrecognised — print the raw value and the name of its type; never crash, never silently show a blank cell. Flagged for its own workshop.
     </div>
   </div>
 </section>
@@ -788,14 +788,14 @@ Let a signed-out shopper complete checkout…
 <section class="panel" id="signpost">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">05</span><h2>The AC row is a signpost, not a container</h2></div>
-    <p class="sec-sub">The row a plan renders and a flow node gates on stays <b>light</b> — id, criterion, state, a short note — plus <b>two typed links pointing in opposite directions in time</b> <span class="num-col">(decided · D2)</span>. The heavy material lives at the link targets, each in the document that owns it.</p>
+    <p class="sec-sub">Imagine your plan has an acceptance criterion in it: <i>“a declined card returns a typed error.”</i> Where should everything about that criterion live? <b>Not on the row.</b> The row stays small — an id, the sentence itself, its state, maybe a short note — plus <b>two links pointing in opposite directions in time</b>: one at <b>how it’s meant to be proven</b>, one at <b>how it actually was</b>. All the heavy detail lives at the other end of those links, in the documents that own it. The row is a signpost, not a filing cabinet. <span class="num-col">(decided · D2)</span></p>
 
     <div class="rev sign3">
       <div class="card" style="border-color:var(--blue)">
         <span class="tag blue">← PRESCRIPTIVE · pressure</span>
         <h3>backpressure.dd.json</h3>
-        <p>What must be proven and how — selected <b>before</b> work. Row <code>bp-7f3a</code>: mode <b>RUN</b>, paved command <code>npm test -- decline-path</code>, tier computational, certainty strong.</p>
-        <p style="margin-top:8px;font-size:12.5px">Link carries a <b>basis pin</b> — the evidence doc’s content-sha when cited. If the prescription changes later, the citation goes visibly stale (§6).</p>
+        <p>What must be proven, and how — decided <b>before</b> the work starts. Row <code>bp-7f3a</code> says this criterion is proven by actually running something (rather than by reading the code or eyeballing the result), names the exact command that does it — <code>npm test -- decline-path</code> — and records what that proof is worth: machine-checkable, high confidence.</p>
+        <p style="margin-top:8px;font-size:12.5px">The link also stores a fingerprint of the evidence document as it read at the moment it was cited — a <i>basis pin</i>. If how the criterion is meant to be proven changes later, that fingerprint no longer matches, and the citation shows up as stale rather than quietly meaning something else (§6).</p>
       </div>
       <div class="sign-mid" style="display:flex;flex-direction:column;justify-content:center;padding:0 14px;font-family:var(--mono);font-size:11px;color:var(--verm);text-align:center;letter-spacing:.1em">
         <span>◀ pressure</span>
@@ -810,13 +810,13 @@ Let a signed-out shopper complete checkout…
         <span class="tag green">DEMONSTRATIVE · discharge →</span>
         <h3>execution-log.dd.json</h3>
         <p>How it was actually discharged — appended <b>during</b> work. Entry <code>el-0042</code>: the command run, its exit and output digest, timestamp, actor, artifacts <span class="num-col">(entry shape illustrative — W3)</span>. Append-only by validation (a mutated prior entry fails <code>dd validate</code>).</p>
-        <p style="margin-top:8px;font-size:12.5px">The append-only trail that receipts taught the harness to demand — provided by the <b>format</b>, not by discipline.</p>
+        <p style="margin-top:8px;font-size:12.5px">An append-only trail like this is normally kept by discipline — remember to log what you ran, remember never to edit it afterwards. Here it comes from the <b>format</b>: the document simply cannot be valid if a past entry was changed.</p>
       </div>
     </div>
 
     <div class="callout good rev" style="margin-top:24px">
       <span class="mini">Validation has teeth in both directions</span>
-      An AC with no <b>pressure</b> link is <b>unproven by design</b> (cardinality error at plan time). An AC <code>checked</code> with no <b>discharge</b> link is <b>unproven in fact</b> (doctor finding at done time). Both are edge counts on a graph the documents already declare — not archaeology.
+      A criterion with no link to <b>how it will be proven</b> is unproven by design — the schema requires that link, so the document fails validation while you are still writing the plan. A criterion ticked complete with no link to <b>how it actually was proven</b> is unproven in fact — the repo-wide check catches that at the moment you claim to be done. Neither answer needs anyone to go digging through history: both are just counting links the documents already declare.
     </div>
   </div>
 </section>
@@ -824,8 +824,8 @@ Let a signed-out shopper complete checkout…
 <!-- ======================= 06 LINKS & LEDGERS ======================= -->
 <section class="panel" id="links">
   <div class="wrap">
-    <div class="sec-head"><span class="sec-num">06</span><h2>Links, and the two hash ledgers</h2></div>
-    <p class="sec-sub">A link is a <b>typed value</b>, not a hyperlink: relative path + stable section id + row id, resolvable from anywhere in the repo. There are two ways to point at something, and they want <b>opposite drift behaviour</b>.</p>
+    <div class="sec-head"><span class="sec-num">06</span><h2>Links, and the two ways of tracking change</h2></div>
+    <p class="sec-sub">A link here is not a hyperlink you click — it is a <b>value in the data</b>, made of three parts: a path to another file, the id of a section inside it, and the id of a row inside that. It resolves the same way from anywhere in the repo. There are two reasons to point at something, and they want opposite behaviour when the target changes: sometimes you want to always see the latest version, and sometimes you want to be told the moment it stops being what you agreed to.</p>
 
 <pre class="code rev" style="margin-bottom:26px"><span class="lbl">the address · grammar to be locked in the addressing workshop (W9)</span>  ../071-checkout-flow/backpressure.dd.json <span class="k">#</span> table:evidence <span class="k">/</span> row:bp-7f3a
   <span class="c">└── relative path (repo-internal) ──┘   └─ stable section ─┘  └─ born-once row ─┘</span></pre>
@@ -834,8 +834,8 @@ Let a signed-out shopper complete checkout…
       <div class="card rev" style="border-top:4px solid var(--blue)">
         <span class="tag blue">A WINDOW · transclusion</span>
         <h3>Live, and it can never drift</h3>
-        <p>The flow spine “shows” the plan’s AC section. There is no copy — it displays the plan’s rows through the link, live. Tick an AC in the plan and the flow sees it instantly, <b>because there is only one list</b>.</p>
-        <p style="margin-top:8px">Freshness of the <i>rendered view</i> is handled mechanically: every render records a <b>contributors manifest</b> (path + content-sha of each input doc). A contributor changed → the render is stale → <b>regenerate, automatically</b> — cascade on edit, watcher for hand-edits, <code>checks</code> backstop. Auto-refresh is always correct here: regenerating a view cannot lie. <span class="num-col">(D9)</span></p>
+        <p>The workflow’s step “shows” the plan’s criteria section. There is no copy — it displays the plan’s own rows through the link, live. Tick an item in the plan and the workflow sees it immediately, <b>because there is only one list</b>.</p>
+        <p style="margin-top:8px">Keeping the readable markdown fresh is handled mechanically: each time a file is generated, it records which documents fed it and a fingerprint of each one. If an input has changed since, the generated file is known to be out of date and is simply rebuilt — automatically when a document is edited, by a watcher when someone edits by hand, and as a last backstop when the project’s checks run. Auto-refreshing is always safe here: regenerating a view of the truth cannot make it lie. <span class="num-col">(D9)</span></p>
       </div>
       <div class="card rev d1" style="border-top:4px solid var(--verm)">
         <span class="tag verm">A CITATION · reference + basis pin</span>
@@ -847,7 +847,7 @@ Let a signed-out shopper complete checkout…
 
     <div class="callout rev" style="margin-top:24px">
       <span class="mini">How drift is “announced” — it isn’t</span>
-      Nothing pushes a notification. The pin makes drift <b>computable</b>, and the readers that already run at the right moments surface it: <b>doctor</b> (inside <code>harness checks</code> — CI catches it like a failing test) · <b>orient</b> (a criterion whose cited proof drifted shows as <code>checked (stale)</code> on the node, every turn) · <b>the renderer</b> (a visible marker beside the link in the .md). Same trust model as a checksum on a download: verified at the moment of use, which is the only moment that matters.
+      Nothing pushes a notification. The fingerprint just makes drift <b>computable</b>, and the things that already run at useful moments will say so: the repo-wide checker, which runs alongside the project’s other checks, so CI fails on a stale citation exactly like a failing test; the agent’s start-of-turn status readout, where a criterion whose cited proof has drifted prints as <code>checked (stale)</code>; and the renderer, which puts a visible marker beside the link in the generated markdown. Same trust model as a checksum on a download: verified at the moment of use, which is the only moment that matters.
     </div>
   </div>
 </section>
@@ -856,7 +856,7 @@ Let a signed-out shopper complete checkout…
 <section class="panel" id="graph">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">07</span><h2>The graph, and the verbs that walk it</h2></div>
-    <p class="sec-sub">Typed links turn a plan folder into a small, well-formed graph. Drawn for one feature — and note where the authority sits versus where the data sits.</p>
+    <p class="sec-sub">Typed links turn a plan folder into a small, well-formed graph. Drawn for one feature — worth noticing as you read it: the thing that decides whether work may move forward stores almost nothing itself.</p>
 
     <div class="rev" style="border:1px solid var(--rule);background:#fbfdff;padding:26px 18px;overflow-x:auto">
       <svg viewBox="0 0 980 330" style="min-width:760px;width:100%;display:block" font-family="IBM Plex Mono,monospace">
@@ -910,21 +910,21 @@ Let a signed-out shopper complete checkout…
           <text x="808" y="176" fill="#46586c">proof bp-7f3a</text>
         </g>
       </svg>
-      <p style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:10px;text-align:center">the node with the most authority in the workflow holds the least data</p>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-top:10px;text-align:center">the step that decides whether work may proceed holds the least data of anything here</p>
     </div>
 
     <div class="grid3" style="margin-top:26px">
       <div class="card rev"><span class="tag blue">VERB</span>
         <h3>dd links</h3>
-        <p>The edges of one target — inbound and outbound. “What depends on this evidence row?” is <b>computed, never stored</b>: links live only where authored, and the reverse direction comes from a scan — local scope (this folder and below) for interactive queries, doctor’s full-repo sweep in <code>checks</code> for the rest. One copy of the truth, no index to go stale, nothing to merge-conflict. <span class="num-col">(D11)</span></p>
+        <p>The edges of one target — inbound and outbound. “What depends on this evidence row?” is <b>computed, never stored</b>: links live only where authored, and the reverse direction comes from a quick scan of the current folder and below when you ask interactively, and the full-repo sweep when the project’s checks run. One copy of the truth, no index to go stale, nothing to merge-conflict. <span class="num-col">(D11)</span></p>
       </div>
       <div class="card rev d1"><span class="tag blue">VERB</span>
         <h3>dd build</h3>
-        <p>Run on a file; composes the graph to N link-hops — the doc plus its resolved pressure rows, discharge entries, everything a reader needs in <b>one read</b>. The context packet for agents. <b>Honest frontier rule:</b> when the graph continues past the depth, say so — “7 links beyond the frontier across 3 docs.” Truncation is fine; silent truncation is the sin. <span class="num-col">(W7)</span></p>
+        <p>Point it at a file and it follows the links outward a set number of steps, returning the document <b>together with what it points at</b> — the proof rows, the log entries — so a reader gets the whole picture in one read instead of chasing files. That is what you hand an agent so it does not have to go hunting. <b>Honest frontier rule:</b> when there is more graph past the depth you asked for, it says so — “7 links beyond the edge of this view, across 3 documents.” Cutting the view short is fine; cutting it short silently is the sin. <span class="num-col">(W7)</span></p>
       </div>
       <div class="card rev d2"><span class="tag blue">VERB</span>
         <h3>dd validate / doctor</h3>
-        <p>The same walk collecting <b>findings</b> instead of content, with a radius dial: depth 0 = this doc; depth 1 = links resolve, basis pins vs current SHAs, render freshness, neighbours’ health; doctor = radius ∞ over every root + sweep-only checks (orphans, unfolded proofs). A finding is <b>owned by the file that must change to fix it</b>. <span class="num-col">(W8)</span></p>
+        <p>The same walk, collecting <b>problems</b> instead of content, with a dial for how far to look. Look at one document only and you get schema problems. Look one step further out and you also get: do its links resolve, do the fingerprints it recorded still match the files today, is the generated markdown up to date, are its neighbours healthy. Turn the dial all the way up and it sweeps the whole repo, which additionally catches what is only visible from above — documents nobody points at, proofs that were chosen but never picked up. Each finding is <b>owned by the one file that has to change to fix it</b>. <span class="num-col">(W8)</span></p>
       </div>
     </div>
   </div>
@@ -934,7 +934,7 @@ Let a signed-out shopper complete checkout…
 <section class="panel" id="lifecycle">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">08</span><h2>The verb surface &amp; document lifecycle</h2></div>
-    <p class="sec-sub">Two write paths, one contract: edit through the CLI <i>or</i> edit the JSON by hand — either way, validation is the gate and the render regenerates. Verbs marked ▸ are proposed names; the shapes follow the proven <code>harness flow</code> family.</p>
+    <p class="sec-sub">Two write paths, one contract: edit through the CLI <i>or</i> edit the JSON by hand — either way, validation is the gate and the render regenerates. Verbs marked ▸ are proposed names; they deliberately copy the shape of an existing, well-worn command family, so nothing new has to be learned.</p>
 
     <div class="flowline rev">
       <div class="flowstep"><span class="fs-n">①</span><h4>intent</h4><p>agent or human decides: “AC-4b1c is met” / “add phase 3”</p></div>
@@ -976,7 +976,7 @@ Let a signed-out shopper complete checkout…
 }</pre>
         <div class="callout" style="margin-top:18px">
           <span class="mini">Contract inheritance</span>
-          Every verb follows the harness command contract: structured <code>--json</code> envelopes, stable exit codes, typed <code>E3xx</code> errors, <b>degraded ≠ failed</b>, and never fake green. First-class, boring, provable plumbing.
+          Every verb behaves the way the rest of the tooling already does: it can return a structured JSON result instead of prose, its exit codes are stable enough to script against, its errors carry stable codes rather than only messages, and a partial result reports itself as partial instead of as success. The rule underneath all of it: never report green for something that was not actually proven. Boring, provable plumbing — which is the point.
         </div>
       </div>
     </div>
@@ -986,8 +986,8 @@ Let a signed-out shopper complete checkout…
 <!-- ======================= 09 THE FLOW ======================= -->
 <section class="panel" id="flow">
   <div class="wrap">
-    <div class="sec-head"><span class="sec-num">09</span><h2>How the-flow uses it</h2></div>
-    <p class="sec-sub">Today the spine carries <b>zero requirement knowledge</b> — a phase node is a label, a verb, and the boilerplate line <i>“done when the acceptance criteria are met.”</i> After: the node carries <b>one pointer</b>, and “what do I owe” becomes a read.</p>
+    <div class="sec-head"><span class="sec-num">09</span><h2>How a workflow tracker uses it</h2></div>
+    <p class="sec-sub">The workflow tracker used here — “the flow” — keeps the list of steps that work moves through. Today a step knows almost nothing about the requirements: it has a name, a command to run, and the same boilerplate line every other step has, <i>“done when the acceptance criteria are met.”</i> Which criteria? It cannot say. After: the step carries <b>one pointer</b> at the plan’s checklist, and “what do I still owe?” stops being a judgement call and becomes something you simply read.</p>
 
     <div class="grid2">
       <div class="rev">
@@ -1030,25 +1030,25 @@ Let a signed-out shopper complete checkout…
         <span class="tag green">THE COMPLETION MECHANIC</span>
         <h3>Receipt first, state second</h3>
         <p style="line-height:1.9">
-          <b>1 · orient</b> — the open criterion and its paved proof command are a read<br>
-          <b>2 · work</b> — implement<br>
-          <b>3 · prove</b> — run the command; a real invocation, never a narrated one<br>
-          <b>4 · discharge</b> — entry appends to the execution log; <code>dd check</code> sets the state with the entry linked<br>
-          <b>5 · gate clears</b> — <code>due criteria: none</code><br>
-          <b>6 · depart</b> — nav moves on
+          <b>1 · look</b> — the agent’s start-of-turn readout already shows the open criterion and the exact command that proves it<br>
+          <b>2 · work</b> — implement it<br>
+          <b>3 · prove</b> — run that command for real; claiming it passed is not the same as running it<br>
+          <b>4 · record</b> — the run appends an entry to the log; <code>dd check</code> then sets the item’s state with that entry linked to it<br>
+          <b>5 · the block lifts</b> — nothing is outstanding any more<br>
+          <b>6 · move on</b> — the workflow allows the next step
         </p>
       </div>
       <div class="card rev d1">
         <span class="tag gold">GATE DOCTRINE</span>
         <h3>Binds the agent, never the human</h3>
-        <p><b>Warn</b> when a linked DD fails validation (someone else’s defect shouldn’t strand travel). <b>Refuse departure</b> while items sit <code>unchecked</code>/<code>blocked</code> — the same rule as today’s chore gate. The human retains the override always: <code>human-skipped</code>, set by a human, receipted with their words, passing the gate but <b>queryable forever</b>.</p>
-        <p style="margin-top:8px;font-size:12.5px;color:var(--ink-soft)">Honesty note: today’s chore “refusal” is skill doctrine, not CLI enforcement. DD doesn’t claim to close that — it closes the <b>knowability</b> gap: an unmet criterion stops being invisible. <code>due_criteria</code> is computed and printed every turn; enforcement depth stays a shared, explicit question.</p>
+        <p><b>Warn</b> if a linked document is itself invalid — somebody else’s broken file should not strand you where you are. <b>Refuse to let the workflow advance</b> while items are still open or blocked; that is the same rule the existing routine-task check already applies. The human keeps the override, always: an item can be marked <code>human-skipped</code> — only by a person, only with their reason recorded — which lets the work move on while leaving the skip <b>permanently visible to anyone who asks</b>.</p>
+        <p style="margin-top:8px;font-size:12.5px;color:var(--ink-soft)">Honesty note: today that refusal is a rule the agent is <i>told</i> to follow, not something the CLI enforces — an agent could ignore it. Deterministic documents do not claim to fix that. What they fix is <b>knowing</b>: an unmet criterion stops being invisible, because the count of what is still open is computed and printed at the start of every turn. How hard the refusal should bite stays a separate, deliberate question.</p>
       </div>
     </div>
 
     <div class="callout good rev" style="margin-top:22px">
       <span class="mini">The resume test</span>
-      Context compacted mid-phase. <b>Today:</b> the agent re-reads a 300-line plan, guesses which criteria were already satisfied, and its derivation is an opinion. <b>After:</b> orient prints 3 criteria — 2 discharged with receipts, 1 open with its proof command. Zero plan reads; the answer is the <i>same one the previous context had</i>, because it was never in anyone’s context — it was in the document.
+      An agent’s working memory is cleared and summarised partway through a phase — routine, and unavoidable. <b>Today:</b> it re-reads a 300-line plan, works out for itself which criteria look satisfied, and that working-out is an opinion. <b>After:</b> its start-of-turn readout prints 3 criteria — 2 already proven, each with the run that proved it, and 1 still open with the command that will. No plan reading at all, and the answer is <i>identical to the one the previous context had</i>, because it never lived in anyone’s context — it lived in the document.
     </div>
   </div>
 </section>
@@ -1070,7 +1070,7 @@ Let a signed-out shopper complete checkout…
       </div>
       <div class="card rev d2"><span class="tag blue">DEPTH 3</span>
         <h3>SDK-embedded</h3>
-        <p>A host system builds first-class features <i>on</i> the lib — which is exactly what the harness does: <code>harness plan</code> is a doc-type package (plan schema, section conventions, minted ids, SDD wiring) and the flow spine consumes AC sections through dd-links. Your system’s “plans” could be someone else’s “controls register.”</p>
+        <p>A host system builds first-class features <i>on top of</i> the library — which is exactly what the harness does here. Its <code>plan</code> command is a document-type package: it owns the plan’s schema, its section naming conventions, how ids are minted, and how plans slot into the wider planning method. The workflow tracker then reads a plan’s criteria sections through these links. What this system calls “plans”, another could call a controls register — same machinery underneath.</p>
       </div>
     </div>
 
@@ -1090,7 +1090,7 @@ Let a signed-out shopper complete checkout…
   <span class="k">ports</span>         fs · clock · hash
     <span class="c">← injected; no node:* imports —</span>
   <span class="c">└─── enforced by the existing arch-check ┘</span></pre>
-        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px">dd-core imports nothing from harness — no envelopes, no error codes, no CLI plumbing. It lives <b>inside</b> the harness repo for now (no premature split; the concepts are the contract), but the boundary is real from day one, so extraction later is a move, not a rewrite.</p>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px">dd-core imports nothing from harness — no structured-output format, no error-code scheme, no CLI plumbing. It lives <b>inside</b> the harness repo for now (no premature split; the concepts are the contract), but the boundary is real from day one, so extraction later is a move, not a rewrite.</p>
       </div>
       <div class="rev d1">
         <table class="spec">
@@ -1110,7 +1110,7 @@ Let a signed-out shopper complete checkout…
 <section class="panel" id="receipts">
   <div class="wrap">
     <div class="sec-head"><span class="sec-num">11</span><h2>What this kills — the receipts</h2></div>
-    <p class="sec-sub">Every failure below was found in this repo’s own plan corpus during the 065 research pass — the 7-plan survey plus per-claim verification in the deep-dive analyses (all preserved under <code>research/</code>; the typo detail, the stale-basis check, and the 54-file count are from the verified deep dives). Each maps to the specific mechanism that makes it <b>unrepresentable</b>, not merely discouraged.</p>
+    <p class="sec-sub">Every failure below was found by going through the plan documents of one real codebase and checking each claim against the files themselves — a survey of seven plans first, then per-claim verification across the wider set (the typo, the stale fingerprint, and the 54-file count all come from that verified pass). Each is paired with the specific mechanism that makes it <b>unrepresentable</b>, rather than merely discouraged.</p>
 
     <table class="spec rev">
       <tr><th style="width:46%">measured failure</th><th>killed by</th></tr>
@@ -1119,12 +1119,12 @@ Let a signed-out shopper complete checkout…
         <td>A completable row <b>cannot exist without an id</b> — validate fails the document before a flow node can ever point at it; the gate enumerates the set, so a hole is a visible open item, not silence.</td>
       </tr>
       <tr>
-        <td><b>Checkbox rot</b> — five shipped plans with every plan-doc checkbox still <code>[ ]</code>, while the tasks-dossier copy was maintained. Two ledgers, zero reconciliation.</td>
+        <td><b>Checkbox rot</b> — five shipped plans with every plan-doc checkbox still <code>[ ]</code>, while a second copy of the same list, kept alongside the tasks, <i>was</i> maintained. Two ledgers, zero reconciliation.</td>
         <td><b>One row, one owner, everyone else links.</b> The flow renders the plan’s rows through the link; there is no second checkbox to rot.</td>
       </tr>
       <tr>
-        <td><b>Stranded proof plans</b> — backpressure surveys selected proofs that never became task criteria; folding was archaeology (“the plan verb does not auto-read the coverage, so fold the findings in yourself”).</td>
-        <td>The AC’s <code>pressure</code> link column with <b>cardinality 1</b>: an AC with no named proof is a schema error at plan time; “did it get folded in” is an inbound-edge count — an exit code, not an afternoon.</td>
+        <td><b>Proof plans that went nowhere</b> — surveys carefully chose how each criterion would be proven, and then nobody carried those choices into the actual task list. Finding out whether it had happened meant reading old documents side by side. The tooling’s own instructions said as much: the planning command does not read the survey for you, so copy the findings across yourself.</td>
+        <td><b>Every criterion must name its proof</b> — the schema requires exactly one such link, so a criterion with nothing named fails validation while the plan is still being written. And “did those choices actually get picked up?” becomes a count of the links pointing in: an exit code, not an afternoon.</td>
       </tr>
       <tr>
         <td><b>Orphaned surveys</b> — one basis hash ever recorded across 11 surveys, and that lone example is <i>already stale</i> without anyone noticing.</td>
@@ -1132,7 +1132,7 @@ Let a signed-out shopper complete checkout…
       </tr>
       <tr>
         <td><b>Resume-by-re-inference</b> — an agent landing cold on a node knows a label and a verb; what it owes lives in 300 lines of markdown it must re-read and re-judge.</td>
-        <td>Orient prints the criteria, their states, their receipts, and the open item’s paved command — <b>a read, not an inference</b>, identical for every agent and every session.</td>
+        <td>The agent’s start-of-turn readout prints the criteria, the state of each, the run that proved the finished ones, and the exact command waiting on the open one — <b>something it reads, not something it works out</b>, and identical for every agent and every session.</td>
       </tr>
     </table>
   </div>
