@@ -144,6 +144,22 @@
   retrofits itself mid-journey — ph-7002 lands, THIS flow gains real gates
   for its remaining nodes.
 
+## DF-013 — prose sections authored without paragraph breaks = wall-of-text
+
+- **When**: Jordan reading the rendered plan ("looks like no line breaks
+  working?").
+- **What**: NOT a renderer bug — `renderer.ts` block context is verbatim
+  (`return String(value)`), so `\n\n` in source renders as real paragraphs.
+  The fault was authoring: research_context (1037 chars), meta.summary (921),
+  implementation_summary (728), risks_assumptions (409), and the tasks-file
+  meta.summary were all single newline-free strings.
+- **Fix**: inserted `\n\n` at topic boundaries, `harness dd build` both
+  siblings, validate 0/0.
+- **Landed**: observation DL-005; prompting requirement for tk-7041/7042
+  (authoring verbs must write paragraph-broken prose); candidate semantic
+  warn (long prose, zero breaks) for the ph-7001 validator — LEAN only, not
+  ruled.
+
 ## Open dogfood threads (check before ship)
 
 - [ ] **RENAME PENDING — 070 → 071** (prime ruling 2026-08-04: ordinal

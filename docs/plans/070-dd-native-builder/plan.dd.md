@@ -14,7 +14,7 @@
 | ordinal | 70 |
 | status | draft |
 | complexity | CS-4 |
-| summary | Make the builder pipeline dd-native, 100%: plans and per-phase task files are authored as .dd.json (humans read the generated sibling — there is no -plan.md), the flight-plan template and expander author the dd_link gates, and navigation is mechanically refused when the documents say the work is not done. Around that spine: typed link relations (a frozen five with machine semantics), the per-item links bucket, mandatory pressure on every assertion, the satisfies edge from tasks to the ACs they serve, a semantic validation layer (harness plan validate) with contradiction warnings, scoped proof-tree reads, and a strict-zero --complete mode, plus a PR surface that renders closed ACs with their resolved evidence for the human checkpoint. The thesis: the graph does not make claims true — it makes false claims expensive and visible. Agents run the journey autonomously; humans review claims-with-evidence at the PR. |
+| summary | Make the builder pipeline dd-native, 100%: plans and per-phase task files are authored as .dd.json (humans read the generated sibling — there is no -plan.md), the flight-plan template and expander author the dd_link gates, and navigation is mechanically refused when the documents say the work is not done.<br><br>Around that spine: typed link relations (a frozen five with machine semantics), the per-item links bucket, mandatory pressure on every assertion, the satisfies edge from tasks to the ACs they serve, a semantic validation layer (harness plan validate) with contradiction warnings, scoped proof-tree reads, and a strict-zero --complete mode, plus a PR surface that renders closed ACs with their resolved evidence for the human checkpoint.<br><br>The thesis: the graph does not make claims true — it makes false claims expensive and visible. Agents run the journey autonomously; humans review claims-with-evidence at the PR. |
 | backpressure | — |
 | log | — |
 | mode | Full |
@@ -27,7 +27,13 @@
 
 ## Research Context
 
-Direct continuation of plan 065 (shipped, PR #87): the dd document layer, builder/* schemas, exemplar corpus, and flow-spine departure gate all exist and are tested — but nothing drives them (zero dd_links in any flight plan; builder has no dd knowledge). Design authority: the 2026-08-04 Jordan/koala session, recorded as a RULED/LEAN/OPEN ledger in docs/plans/065-deterministic-documents/builder-tuning/notes.md and the design doc structural-proof-graph.md beside it. An independent Opus validation pass (NEEDS ATTENTION, 10 findings F1–F10) was folded in — all ten addressed, the load-bearing ones promoted to Key Findings. Plan #90 (merged) moved builder in-repo (skills/builder/), introduced the assets/ layout, the 7b post-flight stage, and plan archiving — constraints this plan lands inside. This plan is itself the first dd-native plan: this document IS the dogfood, and authoring it forced the schema extension it rides on (full builder spec as schema sections) plus one recorded difficulty (the CLI-frozen id-prefix registry).
+Direct continuation of plan 065 (shipped, PR #87): the dd document layer, builder/* schemas, exemplar corpus, and flow-spine departure gate all exist and are tested — but nothing drives them (zero dd_links in any flight plan; builder has no dd knowledge).
+
+Design authority: the 2026-08-04 Jordan/koala session, recorded as a RULED/LEAN/OPEN ledger in docs/plans/065-deterministic-documents/builder-tuning/notes.md and the design doc structural-proof-graph.md beside it. An independent Opus validation pass (NEEDS ATTENTION, 10 findings F1–F10) was folded in — all ten addressed, the load-bearing ones promoted to Key Findings.
+
+Plan #90 (merged) moved builder in-repo (skills/builder/), introduced the assets/ layout, the 7b post-flight stage, and plan archiving — constraints this plan lands inside.
+
+This plan is itself the first dd-native plan: this document IS the dogfood, and authoring it forced the schema extension it rides on (full builder spec as schema sections) plus one recorded difficulty (the CLI-frozen id-prefix registry).
 
 <a id="goals"></a>
 
@@ -109,7 +115,11 @@ Direct continuation of plan 065 (shipped, PR #87): the dd document layer, builde
 
 ## Risks & Assumptions
 
-Standing assumption: R-elegance — when a mechanism can be a convention, it is. The dd/flow injection seams shipped in 065 accommodate the second gate kind without surface renegotiation beyond the E45x block. The #90 layout amendments (dd pair replaces -plan.md at root; bare-ordinal task dirs) are accepted as STATED amendments in the builder docs, never silent divergence. Risk detail: see the risks section.
+Standing assumption: R-elegance — when a mechanism can be a convention, it is.
+
+The dd/flow injection seams shipped in 065 accommodate the second gate kind without surface renegotiation beyond the E45x block. The #90 layout amendments (dd pair replaces -plan.md at root; bare-ordinal task dirs) are accepted as STATED amendments in the builder docs, never silent divergence.
+
+Risk detail: see the risks section.
 
 <a id="open-questions"></a>
 
@@ -176,7 +186,11 @@ Standing assumption: R-elegance — when a mechanism can be a convention, it is.
 
 ## Implementation Summary
 
-The dd proof graph shipped in 065 but nothing drives it: no flight plan carries a dd_link, builder authors markdown, and the semantic questions (does this plan's story hang together?) have no surface. This plan wires the loop end to end — schema features first (rels, buckets, mandatory pressure, satisfies), then the semantic validator, then the flow wiring (gates + dd-native authoring, exiting on the end-to-end dry-run), then one close-out phase: PR surface, corpus/docs upgrade, self-hosting audit, and the blind flow-eval. The outcome: an autonomous journey whose phase departures are mechanically refused until the documents prove the work, and whose PR hands the human reviewer claims with their evidence one click away.
+The dd proof graph shipped in 065 but nothing drives it: no flight plan carries a dd_link, builder authors markdown, and the semantic questions (does this plan's story hang together?) have no surface.
+
+This plan wires the loop end to end — schema features first (rels, buckets, mandatory pressure, satisfies), then the semantic validator, then the flow wiring (gates + dd-native authoring, exiting on the end-to-end dry-run), then one close-out phase: PR surface, corpus/docs upgrade, self-hosting audit, and the blind flow-eval.
+
+The outcome: an autonomous journey whose phase departures are mechanically refused until the documents prove the work, and whose PR hands the human reviewer claims with their evidence one click away.
 
 <a id="key-findings"></a>
 

@@ -14,7 +14,7 @@
 | ordinal | 1 |
 | status | in-progress |
 | complexity | — |
-| summary | Task detail for ph-7001. Each task row carries one done link to its own evidence list; task state is computed from that list, never typed. Hand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks verb must reproduce. Section is named evidence under today's schema; the done_when rename is this phase's own deliverable (tk-7015). |
+| summary | Task detail for ph-7001. Each task row carries one done link to its own evidence list; task state is computed from that list, never typed.<br><br>Hand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks verb must reproduce. Section is named evidence under today's schema; the done_when rename is this phase's own deliverable (tk-7015). |
 | backpressure | — |
 | log | — |
 | mode | — |
