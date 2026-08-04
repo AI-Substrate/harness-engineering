@@ -446,6 +446,11 @@
               }
             }
           }
+        },
+        "interval_events": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Events excluded from active-time accrual because their `t_precision` is `interval` \u2014 a capture-window stamp, not a work instant (plan 066 file events). They still count everywhere non-temporal; the exclusion is surfaced here so a shorter clock is never silent (plan 068 item 2)."
         }
       }
     },

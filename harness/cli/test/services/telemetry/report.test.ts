@@ -1127,3 +1127,81 @@ describe('report.schema.json — attribution.required pins the D1 self-descripti
     expect(report.attribution.notes.length).toBeGreaterThan(0);
   });
 });
+
+// ── Plan 068 item 2 — `t_precision: 'interval'` no longer buys fake active time ──
+
+/**
+ * Plan 066 emits file events at `t_precision: 'interval'` stamped with the CAPTURE
+ * wall-clock: the write happened somewhere in the preceding window, not at that
+ * instant. The report's gap classifier treated them as exact instants, so a file
+ * event landing far from any anchored turn silently accrued its whole span into
+ * `totals.time_s` — a duration nothing measured.
+ *
+ * AC-2: the same session reads the same active time with and without those events;
+ * they still count everywhere non-temporal; provenance names how many were excluded.
+ */
+describe('plan 068 · item 2 — interval-precision events are excluded from active time', () => {
+  const anchored: Event[] = [
+    { t: '2026-06-29T00:00:00Z', kind: 'prompt', words: 10 },
+    { t: '2026-06-29T00:00:30Z', kind: 'turn', dur_s: 30, in: 100, out: 50 },
+    { t: '2026-06-29T00:01:00Z', kind: 'tools', name: 'Bash', count: 1, span_s: 1 },
+  ];
+  // Two capture-stamped file events, an hour past the last anchored event: read as
+  // instants they would buy ~2 more hours of "active" time out of nowhere.
+  const intervalFiles: Event[] = [
+    {
+      t: '2026-06-29T01:00:00Z',
+      t_precision: 'interval',
+      kind: 'file',
+      path: 'src/a.ts',
+      change: 'written',
+      delta: { lines_added: 10, lines_removed: 0, bytes_added: 100, bytes_removed: 0 },
+    },
+    {
+      t: '2026-06-29T02:00:00Z',
+      t_precision: 'interval',
+      kind: 'file',
+      path: 'src/b.ts',
+      change: 'edited',
+      delta: { lines_added: 3, lines_removed: 1, bytes_added: 30, bytes_removed: 10 },
+    },
+  ];
+
+  it('reports BYTE-IDENTICAL totals.time_s with and without the interval events (AC-2)', () => {
+    const without = buildReport([exportOf('noFiles', [seg(anchored)])]);
+    const with_ = buildReport([exportOf('withFiles', [seg([...anchored, ...intervalFiles])])]);
+    expect(with_.totals.time_s).toBe(without.totals.time_s);
+    // Non-vacuity: the same events read as EXACT instants DO move the number, so the
+    // equality above is a real exclusion, not two zeroes agreeing.
+    const asExact = intervalFiles.map((e) => {
+      const { t_precision: _dropped, ...rest } = e as Event & { t_precision?: string };
+      return rest as Event;
+    });
+    const exact = buildReport([exportOf('exactFiles', [seg([...anchored, ...asExact])])]);
+    expect(exact.totals.time_s).toBeGreaterThan(without.totals.time_s);
+  });
+
+  it('still counts the interval events everywhere non-temporal', () => {
+    const report = buildReport([exportOf('withFiles2', [seg([...anchored, ...intervalFiles])])]);
+    // The authorship surface (plan 056) is built from the very same file events.
+    expect(report.authorship?.files.map((f) => f.path).sort()).toEqual(['src/a.ts', 'src/b.ts']);
+  });
+
+  it('NAMES how many events were excluded, in provenance', () => {
+    const report = buildReport([exportOf('withFiles3', [seg([...anchored, ...intervalFiles])])]);
+    expect(report.provenance.interval_events).toBe(2);
+    const clean = buildReport([exportOf('noFiles3', [seg(anchored)])]);
+    expect(clean.provenance.interval_events).toBe(0);
+  });
+
+  it('leaves an exact-timed session byte-identical (no silent re-clocking)', () => {
+    for (const [sub, segment] of [
+      ['claudeIv', CLAUDE],
+      ['cursorIv', CURSOR],
+      ['copilotIv', COPILOT],
+    ] as const) {
+      const report = buildReport([exportOf(sub, [segment])]);
+      expect(report.provenance.interval_events).toBe(0);
+    }
+  });
+});
