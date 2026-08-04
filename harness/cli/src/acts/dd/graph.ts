@@ -157,8 +157,17 @@ function registerGraphMapCommand(graph: Command, io: CliIo, deps: DdActDeps): vo
     .option('--depth <n>', 'how many hops to follow from the seed', '3')
     .option('--max-nodes <n>', 'greatest number of nodes the answer may contain', '20')
     .option('--direction <way>', 'in, out, or both', 'both')
+    .option(
+      '--rel <rel>',
+      'follow only edges carrying this relation; repeat for more (default: every relation)',
+      (value: string, previous: string[]) => [...previous, value],
+      [] as string[],
+    )
     .action(
-      async (address: string, opts: { depth: string; maxNodes: string; direction: string }) => {
+      async (
+        address: string,
+        opts: { depth: string; maxNodes: string; direction: string; rel: string[] },
+      ) => {
         const ctx = await createLinkContext(io, deps);
         const port = mapPort(io, ctx.port);
         const linkDeps = { schemaResolver: ctx.resolver, docLoader: ctx.loader };
@@ -264,6 +273,10 @@ function registerGraphMapCommand(graph: Command, io: CliIo, deps: DdActDeps): vo
           depth,
           maxNodes,
           direction,
+          // No default: an absent `--rel` means every relation. A filter that
+          // defaulted to a set would answer a narrower question than the one asked
+          // while looking like a complete map.
+          ...(opts.rel.length > 0 && { rels: opts.rel }),
         });
         const issues = codedLinkIssues([...corpus.issues, ...result.issues]);
         const data = {
@@ -274,6 +287,7 @@ function registerGraphMapCommand(graph: Command, io: CliIo, deps: DdActDeps): vo
             inbound: result.nodes.filter((node) => node.arm === 'in').length,
             outbound: result.nodes.filter((node) => node.arm === 'out').length,
           },
+          ...(opts.rel.length > 0 && { rel_filter: opts.rel }),
           scanned: scan.paths.length,
           issues,
         };

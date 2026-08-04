@@ -246,6 +246,8 @@ export interface DdMapEdge {
   to: string;
   address: string;
   location: string;
+  /** The relation the edge carries, so a reader sees WHY one row points at another. */
+  rel: string;
   /** Which arm of the walk found it — the question it answers, not its direction. */
   arm: 'in' | 'out';
 }
@@ -284,6 +286,12 @@ export interface DdMapOptions {
   depth: number;
   maxNodes: number;
   direction: DdMapDirection;
+  /**
+   * Follow only edges carrying one of these relations. Undefined means every
+   * relation — a filter that defaults to something would quietly answer a
+   * different question than the one asked.
+   */
+  rels?: readonly string[];
 }
 
 export type DdMapSeedResult =
@@ -501,6 +509,7 @@ export function mapAddress(
     const steps: { key: string; edge: DdMapEdge }[] = [];
     for (const edge of edges) {
       if (edge.from !== from.path) continue;
+      if (options.rels !== undefined && !options.rels.includes(edge.rel)) continue;
       if (!isWithinLocation(edge.location, anchor.location)) continue;
       const parsed = parseAddress(edge.address);
       if (edge.to === null || isAddressFailure(parsed)) {
@@ -519,7 +528,14 @@ export function mapAddress(
         });
         steps.push({
           key,
-          edge: { from: fromKey, to: key, address: edge.address, location: edge.location, arm },
+          edge: {
+            from: fromKey,
+            to: key,
+            address: edge.address,
+            location: edge.location,
+            rel: edge.rel,
+            arm,
+          },
         });
         continue;
       }
@@ -528,7 +544,14 @@ export function mapAddress(
       register(key, describe(edge.to, interior));
       steps.push({
         key,
-        edge: { from: fromKey, to: key, address: edge.address, location: edge.location, arm },
+        edge: {
+          from: fromKey,
+          to: key,
+          address: edge.address,
+          location: edge.location,
+          rel: edge.rel,
+          arm,
+        },
       });
     }
     return steps;
@@ -540,6 +563,7 @@ export function mapAddress(
     const steps: { key: string; edge: DdMapEdge }[] = [];
     for (const edge of edges) {
       if (edge.to !== to.path) continue;
+      if (options.rels !== undefined && !options.rels.includes(edge.rel)) continue;
       const parsed = parseAddress(edge.address);
       if (isAddressFailure(parsed)) continue;
       const target = parsed.segments.map((segment) => segment.value);
@@ -554,7 +578,14 @@ export function mapAddress(
       register(key, describe(edge.from, interior));
       steps.push({
         key,
-        edge: { from: key, to: toKey, address: edge.address, location: edge.location, arm },
+        edge: {
+          from: key,
+          to: toKey,
+          address: edge.address,
+          location: edge.location,
+          rel: edge.rel,
+          arm,
+        },
       });
     }
     return steps;

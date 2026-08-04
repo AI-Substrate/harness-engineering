@@ -88,6 +88,12 @@ export interface DdLinkEdge {
   location: string;
   /** The column's declared type path, when the schema pins one. */
   target?: string;
+  /**
+   * The RELATION this edge carries — `ref` unless the schema (or a links-bucket
+   * entry) says otherwise. Carried on the edge so every reading of the graph
+   * asks the same question the contradiction engine does.
+   */
+  rel: string;
   /** True for the bare-`#` same-document form (an edge back into `from`). */
   sameDocument: boolean;
 }

@@ -1,4 +1,5 @@
 import { isAddressFailure, normalizeFilePath, parseAddress } from './address.js';
+import { LINKS_BUCKET_FIELD, readLinksBucket } from './bucket.js';
 import { COMPLETION_STATES, ID_PREFIXES, MINTED_ID_PATTERN } from './constants.js';
 import type { DdDoc, DdShape, ResolvedDdSchema } from './model.js';
 import { relOf } from './rel.js';
@@ -213,6 +214,24 @@ function collectShapeLinks(
         collectShapeLinks(value[field], fieldShape, `${location}.${field}`, links);
       }
     }
+    // The links BUCKET (ac-7002): edges an author attached to a row without the
+    // schema growing a field for them. Collected here so they are validated,
+    // traversed and graphed exactly like a declared cell — a bucket edge that
+    // only the renderer could see would be a second class of link, and the
+    // whole point of the bucket is that it is not one.
+    if (!shape.fields || !(LINKS_BUCKET_FIELD in shape.fields)) {
+      const bucket = readLinksBucket(
+        value[LINKS_BUCKET_FIELD],
+        `${location}.${LINKS_BUCKET_FIELD}`,
+      );
+      for (const entry of bucket.entries) {
+        links.push({
+          raw: entry.ref,
+          location: `${location}.${LINKS_BUCKET_FIELD}[${entry.index}].ref`,
+          rel: entry.rel,
+        });
+      }
+    }
     // OD-8: a dynamic-key map's interiors carry real link cells too — an evidence
     // entry's `proven_by`/`pressure` is the linkage the design exists to make
     // navigable, and leaving it uncollected would strand it outside the walk.
@@ -258,7 +277,7 @@ function validateShape(
         });
       }
       return;
-    case 'object':
+    case 'object': {
       if (!isRecord(value)) {
         addIssue(ctx, 'schema-shape', 'ERROR', location, 'value must be an object');
         return;
@@ -285,6 +304,26 @@ function validateShape(
           );
         }
       }
+      // The bucket is a reserved convention, so a closed shape must not reject it
+      // — and it is still SHAPED rather than waved through.
+      const bucketDeclared = shape.fields !== undefined && LINKS_BUCKET_FIELD in shape.fields;
+      if (!bucketDeclared && LINKS_BUCKET_FIELD in value) {
+        const bucket = readLinksBucket(
+          value[LINKS_BUCKET_FIELD],
+          `${location}.${LINKS_BUCKET_FIELD}`,
+        );
+        for (const problem of bucket.problems) {
+          addIssue(ctx, 'schema-shape', 'ERROR', problem.location, problem.message);
+        }
+        for (const entry of bucket.entries) {
+          validateLink(
+            entry.ref,
+            { type: 'link' },
+            `${location}.${LINKS_BUCKET_FIELD}[${entry.index}].ref`,
+            ctx,
+          );
+        }
+      }
       if (shape.valuesShape) {
         // OD-8: keys the schema cannot name in advance are SHAPED, not forbidden.
         // `fields` still wins per key, so a map may declare fixed members and a
@@ -303,6 +342,7 @@ function validateShape(
         }
       } else if (shape.allowAdditional === false && shape.fields) {
         for (const field of Object.keys(value)) {
+          if (field === LINKS_BUCKET_FIELD) continue;
           if (!(field in shape.fields)) {
             addIssue(
               ctx,
@@ -316,6 +356,7 @@ function validateShape(
       }
       validateStateNotes(value, location, ctx);
       return;
+    }
     case 'bool':
       if (typeof value !== 'boolean') {
         addIssue(ctx, 'schema-shape', 'ERROR', location, 'value must be a boolean');

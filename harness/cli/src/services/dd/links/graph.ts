@@ -1,4 +1,5 @@
 import { posixRelative } from '../../shared/posix-path.js';
+import { DEFAULT_REL } from '../core/constants.js';
 import type { DdCorpusGraph, DdLinkEdge } from './model.js';
 
 interface MermaidNode {
@@ -62,7 +63,11 @@ export function toMermaid(graph: DdCorpusGraph, repoRoot: string): string {
     const from = nodes.get(edge.from);
     const to = nodes.get(unresolvedKey(edge));
     if (!from || !to) continue;
-    lines.push(`  ${from.id} ${to.resolved ? '-->' : '-.->'} ${to.id}`);
+    // The relation labels the edge, but only when it says something: `ref` is the
+    // default every undeclared link already carries, so labelling it would add a
+    // word to every arrow in the corpus and mean nothing on any of them.
+    const label = edge.rel === DEFAULT_REL ? '' : `|${escapeLabel(edge.rel)}|`;
+    lines.push(`  ${from.id} ${to.resolved ? '-->' : '-.->'}${label} ${to.id}`);
   }
 
   const unresolved = [...nodes.values()].filter((node) => !node.resolved);

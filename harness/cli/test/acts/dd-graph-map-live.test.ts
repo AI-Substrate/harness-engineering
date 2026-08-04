@@ -290,6 +290,8 @@ describe('dd graph map — live over a real corpus', () => {
       ['--depth', '3'],
       ['--max-nodes', '20'],
       ['--direction', 'both'],
+      // `--rel` collects; its empty default means "every relation", never a subset.
+      ['--rel', []],
     ]);
   });
 

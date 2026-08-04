@@ -130,6 +130,7 @@ export function traverseCorpus(
           to: null,
           address: cell.raw,
           location: cell.location,
+          rel: cell.rel,
           sameDocument: false,
           ...(cell.target && { target: cell.target }),
         });
@@ -143,6 +144,7 @@ export function traverseCorpus(
         to: within ? to : null,
         address: cell.raw,
         location: cell.location,
+        rel: cell.rel,
         sameDocument,
         ...(cell.target && { target: cell.target }),
       });
