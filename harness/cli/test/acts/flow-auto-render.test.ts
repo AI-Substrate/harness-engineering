@@ -16,8 +16,24 @@ const FLOW = '/repo/.harness/flows/demo.json';
 const RENDER = '/repo/.harness/flows/demo.md';
 
 class MdFailFs extends FakeFs {
+  /** Flipped ON only once the fixture is in the state a control needs. */
+  failMd = true;
   override writeText(path: string, contents: string): void {
-    if (path.endsWith('.md')) throw new Error('read-only render');
+    if (this.failMd && path.endsWith('.md')) throw new Error('read-only render');
+    super.writeText(path, contents);
+  }
+}
+
+/**
+ * The worse case: the sibling cannot be written AND neither can the rollback.
+ * `.tmp` writes still land, so `writeFlowAtomic`'s temp-write + rename succeeds
+ * and the failure lands where this control needs it — on the sibling, with the
+ * restore then blocked too.
+ */
+class RollbackFailFs extends FakeFs {
+  failFinalWrites = true;
+  override writeText(path: string, contents: string): void {
+    if (this.failFinalWrites && !path.endsWith('.tmp')) throw new Error('read-only volume');
     super.writeText(path, contents);
   }
 }
@@ -115,15 +131,113 @@ describe('FX001-5 flow mutation auto-render', () => {
     const checked = await runFlow(deps, ['flow', 'render', '--slug', 'demo', '--check']);
     expect(checked.code).toBe(0);
   });
+});
 
-  it('warns on a sibling markdown write failure without changing mutation success or stdout', async () => {
+/**
+ * tk-7174 / DF-016 — the sibling is half of the write, not decoration.
+ *
+ * These controls exist because the OPPOSITE behaviour used to be pinned in this
+ * very file: a failed sibling write warned on stderr and the verb still exited 0,
+ * leaving a moved `.json` beside a stale `.md` — the exact drift `flow render
+ * --check` exists to catch, manufactured by the tool that promises not to. Each
+ * control drives one of the three callsites and asserts BOTH halves of the
+ * contract: the operation is refused, AND the source is exactly as it was.
+ */
+describe('dw-000f — a failed sibling render refuses the flow operation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('create refuses and leaves NO flow behind — a refused create creates nothing', async () => {
     const fs = new MdFailFs();
     const deps = fakeDeps(fs);
+
+    const created = await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+
+    expect(created.code).not.toBe(0);
+    expect(created.env.status).toBe('error');
+    expect(created.env.error?.code).toBe('E302');
+    expect(created.env.error?.message).toContain('sibling markdown could not be written');
+    // The rollback is the point: no half-created flow, and no sibling either.
+    expect(fs.exists(FLOW)).toBe(false);
+    expect(fs.exists(RENDER)).toBe(false);
+  });
+
+  it('a mutation refuses and restores the source byte-for-byte', async () => {
+    const fs = new MdFailFs();
+    fs.failMd = false;
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    const sourceBefore = fs.readText(FLOW);
+    const siblingBefore = fs.readText(RENDER);
+    fs.failMd = true;
+
+    const mutated = await runFlow(deps, [
+      'flow',
+      'status',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--to',
+      'in_progress',
+    ]);
+
+    expect(mutated.code).not.toBe(0);
+    expect(mutated.env.error?.code).toBe('E302');
+    expect(mutated.env.next_action).toContain('Nothing was changed');
+    expect(fs.readText(FLOW)).toBe(sourceBefore);
+    expect(fs.readText(RENDER)).toBe(siblingBefore);
+  });
+
+  it('the append-only event verb refuses too — an unrenderable event is not recorded', async () => {
+    const fs = new MdFailFs();
+    fs.failMd = false;
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    const sourceBefore = fs.readText(FLOW);
+    fs.failMd = true;
+
+    const event = await runFlow(deps, ['flow', 'event', 'test-run', '--slug', 'demo']);
+
+    expect(event.code).not.toBe(0);
+    expect(event.env.error?.code).toBe('E302');
+    expect(fs.readText(FLOW)).toBe(sourceBefore);
+  });
+
+  it('says so LOUDLY when the rollback itself fails — the honest worse case', async () => {
+    const fs = new RollbackFailFs();
+    fs.failFinalWrites = false;
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    // Now nothing final can be written: not the sibling, and not the rollback either.
+    fs.failFinalWrites = true;
+
+    const mutated = await runFlow(deps, [
+      'flow',
+      'status',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--to',
+      'in_progress',
+    ]);
+
+    expect(mutated.code).not.toBe(0);
+    expect(mutated.env.next_action).toContain('the rollback of');
+    expect(mutated.env.next_action).toContain('also failed');
+  });
+
+  it('does NOT refuse when the sibling writes fine — the guard is not a blanket', async () => {
+    const fs = new MdFailFs();
+    fs.failMd = false;
+    const deps = fakeDeps(fs);
+
     const created = await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
 
     expect(created.code).toBe(0);
     expect(created.env.status).toBe('ok');
-    expect(created.err).toContain('warning: flow state saved but auto-render failed');
-    expect(fs.readText(FLOW)).not.toBeNull();
+    expect(fs.readText(RENDER)).not.toBeNull();
   });
 });

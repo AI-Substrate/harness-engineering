@@ -354,6 +354,26 @@ function anchorAddress(address: string, planDir: string): string {
   return `${planDir}/${trimmed}`;
 }
 
+/**
+ * The path `createFlow` will write to, resolved from the same two rules the create
+ * itself uses (`--path` anchored in-repo › `.harness/flows/<slug>.json`).
+ *
+ * Exported because the act must read the pre-write bytes at that exact path to be
+ * able to roll the source back if the sibling render fails (tk-7174). A caller
+ * re-deriving the target with its own copy of these two rules would work until the
+ * day the rules changed on one side, and then it would restore — or delete — the
+ * WRONG file. One function, one answer.
+ */
+export function resolveCreateTarget(
+  opts: { path?: string; slug: string },
+  repoRoot: string,
+): string {
+  const root = toPosix(repoRoot);
+  return opts.path
+    ? resolveInRepo(opts.path, root)
+    : posixJoin(root, FLOWS_DIR, `${opts.slug}.json`);
+}
+
 export function createFlow(
   opts: CreateFlowOptions,
   deps: FlowServiceDeps,
@@ -371,9 +391,7 @@ export function createFlow(
   // A relative --path anchors to the repo root before the containment check
   // (else an in-repo relative path resolves to `../…` and is wrongly rejected);
   // an absolute path passes through. Containment still applies after resolution.
-  const targetPath = opts.path
-    ? resolveInRepo(opts.path, repoRoot)
-    : posixJoin(repoRoot, FLOWS_DIR, `${opts.slug}.json`);
+  const targetPath = resolveCreateTarget(opts, repoRoot);
 
   // Containment first — an out-of-repo write target is rejected before any work.
   if (!isWithin(repoRoot, targetPath)) {

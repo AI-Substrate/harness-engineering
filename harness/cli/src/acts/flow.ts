@@ -61,9 +61,11 @@ import {
   FLOWS_DIR,
   type FlowFailure,
   type FlowServiceDeps,
+  fail,
   listFlows,
   newFlowSchema,
   readFlowDoc,
+  resolveCreateTarget,
   showFlow,
   writeFlowAtomic,
 } from '../services/flow/flow-service.js';
@@ -201,16 +203,84 @@ function summary(doc: FlowDoc, path: string): Record<string, unknown> {
   };
 }
 
-function autoRenderSibling(io: CliIo, fs: FsPort, path: string, doc: FlowDoc): void {
-  const target = `${path.replace(/\.json$/, '')}.md`;
+/**
+ * Restore a flow source to the bytes it held before the operation — or remove it
+ * if it had none. Returns whether the world was actually put back, because a
+ * failed rollback is a louder problem than the failure that triggered it and the
+ * caller has to be able to say so.
+ */
+function restoreFlowSource(fs: FsPort, path: string, previous: string | null): boolean {
+  try {
+    if (previous === null) {
+      fs.deleteFile(path);
+      return !fs.exists(path);
+    }
+    fs.writeText(path, previous);
+    return fs.readText(path) === previous;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Persist a flow's sibling markdown as the second half of ONE operation — or undo
+ * the first half (DF-016, tk-7174).
+ *
+ * This used to warn and carry on. A best-effort regen is a drift factory: the verb
+ * reports success, the `.json` has moved, the `.md` has not, and the next reader
+ * trusts a document the repo's own `flow render --check` would refuse. That
+ * directly contradicts the no-drift promise the drift gate exists to keep, and it
+ * hides the failure in a warning line nobody greps for.
+ *
+ * So the sibling is not optional decoration; it is half of the write. If the render
+ * throws, or the `.md` cannot be written, the source is put back the way it was
+ * (deleted, if the operation created it) and the operation REFUSES — the same
+ * either-both-or-neither contract `writeDocumentWithSibling` gives dd's mutating
+ * verbs, and the same phase-1 law: validate/render before write, failure = refusal
+ * with the source untouched.
+ *
+ * `previousSource` is the bytes at `sourcePath` BEFORE the operation wrote it, or
+ * `null` when the file did not exist. It is the only thing that makes the refusal
+ * honest rather than merely loud.
+ *
+ * Of the two arms, the WRITE arm is the one under test (`flow-auto-render.test.ts`
+ * plants an fs that refuses `.md`). The RENDER arm is a belt: `renderFlow` is pure
+ * and contains no `throw`, so today it can only fail on a runtime error from a doc
+ * that schema validation already rejects — it is caught anyway rather than left as
+ * an uncaught exception the caller would report as a crash instead of a refusal.
+ */
+function persistSibling(
+  fs: FsPort,
+  sourcePath: string,
+  doc: FlowDoc,
+  previousSource: string | null,
+): { ok: true; target: string } | FlowFailure {
+  const target = `${sourcePath.replace(/\.json$/, '')}.md`;
+  const refuse = (stage: 'rendered' | 'written', err: unknown): FlowFailure => {
+    const restored = restoreFlowSource(fs, sourcePath, previousSource);
+    const reason = err instanceof Error ? err.message : String(err);
+    return fail(
+      ErrorCodes.FLOW_WRITE_FAILED,
+      `the flow change was refused because its sibling markdown could not be ${stage} (${target}): ${reason}`,
+      restored
+        ? `Nothing was changed — ${sourcePath} is exactly as it was. Fix the cause and retry.`
+        : `WARNING: the rollback of ${sourcePath} also failed — inspect it before retrying, it may be out of step with ${target}.`,
+    );
+  };
+
+  let markdown: string;
+  try {
+    markdown = renderFlow(doc);
+  } catch (err) {
+    return refuse('rendered', err);
+  }
   try {
     fs.mkdirp(posixDirname(target));
-    fs.writeText(target, renderFlow(doc));
+    fs.writeText(target, markdown);
   } catch (err) {
-    io.writers.err(
-      `warning: flow state saved but auto-render failed for ${target}: ${err instanceof Error ? err.message : String(err)}\n`,
-    );
+    return refuse('written', err);
   }
+  return { ok: true, target };
 }
 
 /** Resolve a flow file path: `--path` › `.harness/flows/<slug>.json` (workshop 001 D4). */
@@ -282,6 +352,11 @@ export function registerFlowAct(
           title?: string;
         },
       ) => {
+        // The bytes at the write target BEFORE the create — the rollback anchor if
+        // the sibling render gives way. `null` (the usual case) means "no flow
+        // here", and a refusal must therefore leave none.
+        const target = resolveCreateTarget({ path: opts.path, slug: opts.slug }, repoRoot());
+        const previous = svc.fs.readText(target);
         const res = createFlow(
           {
             type,
@@ -300,7 +375,8 @@ export function registerFlowAct(
           svc,
         );
         if (!res.ok) return emit(io, failureEnvelope(res, deps.clock));
-        autoRenderSibling(io, svc.fs, res.path, res.doc);
+        const sibling = persistSibling(svc.fs, res.path, res.doc, previous);
+        if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
         emit(
           io,
           formatOk('flow', summary(res.doc, res.path), deps.clock, {
@@ -1008,9 +1084,11 @@ export function registerFlowAct(
                 description: opts.description,
               });
         doc.events.push(event);
+        const previous = svc.fs.readText(resolved.path);
         const written = writeFlowAtomic(resolved.path, repoRoot(), doc, svc);
         if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
-        autoRenderSibling(io, svc.fs, written.path, doc);
+        const sibling = persistSibling(svc.fs, written.path, doc, previous);
+        if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
         emit(
           io,
           formatOk(
@@ -1595,9 +1673,11 @@ function runMutation(
   // --schema not re-passed here), skip validation — the create already validated.
   const invalid = validateMutatedDoc(result.doc, root, svc);
   if (invalid !== null) return emit(io, failureEnvelope(invalid, deps.clock));
+  const previous = svc.fs.readText(resolved.path);
   const written = writeFlowAtomic(resolved.path, root, result.doc, svc);
   if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
-  autoRenderSibling(io, svc.fs, written.path, result.doc);
+  const sibling = persistSibling(svc.fs, written.path, result.doc, previous);
+  if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
   // Plan 057 (D1/AC-02): `--quiet` slims the repeated per-mutation summary echo
   // to `{path}` — mutation verbs only; create/show/read verbs keep the frozen
   // full shape, and the default (no flag) stays byte-identical.
