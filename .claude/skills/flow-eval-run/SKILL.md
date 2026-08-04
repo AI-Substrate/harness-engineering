@@ -39,6 +39,28 @@ The variant decides the drive style too: the mandated variant takes **no stage
 nudges** (the subject's own cadence is scored) and the orchestrator answers flow
 gates under the **fixed gate-conduct policy** in its `prompts/orchestrator.md`.
 
+### `dd-native-builder` — do the GATES do any work?
+
+| Scenario | Packet | Measures | Base ref |
+|---|---|---|---|
+| `dd-native-builder` | `/builder` MANDATED, only that | **discoverability + gate efficacy** — can a subject that has never seen the dd-native flow find it, and does anything ever REFUSE the subject? | current-code sha (must carry the `command_exit` error-code capture, or `gate-refused` cannot be answered) |
+
+Two things to get right when running it:
+
+- **Resolve A11**: its `cmd` is the placeholder token `SUBJECT_PLAN_VALIDATE_COMPLETE`.
+  Pass `--resolve SUBJECT_PLAN_VALIDATE_COMPLETE="node harness/cli/bin/harness.js plan
+  validate <the subject's plan.dd.json> --complete"`. Unresolved it scores `unknown`,
+  which is honest but wastes the row.
+- **Dry-score before spending a subject**: `harness flow-eval score --scenario
+  dd-native-builder --session <a session that does not exist>` and check every
+  placeholder row reads `?`. A placeholder must be the WHOLE `cmd`; an embedded
+  `${VAR}` is executed literally and false-FAILS. This bundle was authored with that
+  mistake and a dry score caught it.
+
+Read A10 (`gate-refused`) first, not the total. A run that scores well while A10 fails
+means the subject was never stopped — which tells you about the gates, not the subject,
+and is the finding the scenario exists to produce.
+
 ## The loop (≈6 beats)
 
 1. **Pick or scaffold a scenario** under `live-testing/scenarios/<slug>/`
