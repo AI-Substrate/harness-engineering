@@ -54,6 +54,7 @@ describe('registerDoctorAct', () => {
       'sensor-watcher',
       'telemetry-flush-hook',
       'dd-documents',
+      'precommit-hook-latency',
       'instructions',
       'record-types',
     ]);
