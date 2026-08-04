@@ -218,6 +218,21 @@ journey autonomously; the human reviews claims-with-evidence at the PR.
     adopts, and resumes; pinned by a detection test over a legacy-folder
     fixture. "No dual path" means no dual *authoring* path, never deleting
     the reader.
+15. **AC-15 Tooling taught where it's needed**: the dd/plan command surface
+    is documented at BOTH layers of the builder flow. **(a) Node
+    `instructions[]`** — the template/expander bake the relevant commands
+    onto the nodes themselves, so `harness flow orient` (re-read every turn,
+    invariant #12) puts the right command in front of the agent positionally:
+    phase nodes carry the scoped rehearsal (`plan validate --address …`) and
+    state-update commands; the last review node carries `--complete`,
+    closure practice, and `verify-basis`; gates print their own escape
+    hatch (`--force` etiquette) when they refuse. **(b) Stage modules** —
+    `5 tasks` documents authoring (schemas, `satisfies`, mandatory
+    `pressure`/`not-applicable`, done_when); `6 implement`/`6a progress`
+    document state flips and the rehearsal; `7 review` documents closure +
+    `--complete`; `8 ship` documents the PR render. A dry-run reader
+    following only orient output + the current stage module never needs a
+    command this plan introduced but didn't surface.
 
 ### Clarifications (all Jordan, 2026-08-04 — see original-ask.md)
 
@@ -294,7 +309,10 @@ never past one (extend `flow-consumes-dd-sdk-only` accordingly).
 #90 assets/ layout; `5 tasks` authors the phase task file (done_when +
 satisfies + pressure) and adds the phase row's `tasks` link; `6 implement` /
 `6a progress` update states through dd surfaces; discovery/readers
-re-pointed. The doctrine-parity block is untouched; where prompt-ware
+re-pointed. AC-15's two documentation layers land here: dd commands baked
+into node `instructions[]` (template + expander) and taught in each stage
+module at its seam — the flow teaches its own tooling positionally, never
+assuming the agent read a reference doc. The doctrine-parity block is untouched; where prompt-ware
 behaviour can't be compile-checked, the joint-exit dry-run is the proof
 (AC-10, run at the P3+P4 join per the phase graph).
 
