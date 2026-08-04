@@ -4,10 +4,21 @@
 **From**: pij-related-koala (orchestrator). Report verdict to me by pij send —
 wire discipline, first line = verdict.
 
-## Filled at dispatch (do not review until present)
+## Filled at dispatch
 
-- Coder report: `<pointer — filled when pij-sole-snipe reports>`
-- Commit range under review: `<base>..<head>` (all coder commits, explicit shas)
+- Coder report: `/tmp/pij-msgs/phase1-report.md` (read it in full — its
+  "Design calls worth your eye" section lists five judgment calls to audit,
+  and its baseline note matters for attribution).
+- Commits under review (six, interleaved with orchestrator docs commits —
+  review THESE, not a contiguous range): `77e3ef3f`, `5aeb53af`, `5d7b1d2e`,
+  `20bfca82`, `0f687eca`, `d8ae90f8`.
+- Attribution baseline: `3ba8f11d` (orchestrator's exemplar repair). The
+  warn trio in `harness checks` (arch-check 2, markdown-lint 196,
+  windows-check 6) is pre-existing at that baseline — verify the coder added
+  zero to it rather than accepting the claim.
+- Known flake (not the coder's): `exec-remote-telemetry-git.int.test.ts` is
+  ~50% flaky under full-suite load at baseline. If it fails your run, rerun
+  it alone before attributing.
 
 ## Mission
 
