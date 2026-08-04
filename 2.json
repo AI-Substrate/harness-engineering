@@ -1,0 +1,45 @@
+{
+  "schema_version": "2.6",
+  "command": "checks",
+  "harness": "copilot-cli",
+  "harness_version": "unknown",
+  "harness_session_id": "ec588bc2-5d05-4885-9114-2ed3e45c41c7",
+  "timecode": "2026-08-04T05:48:00.799Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 0
+  },
+  "branch": null,
+  "tokens": null,
+  "effort": null,
+  "captured_env": {
+    "PIJ_HARNESS": "copilot",
+    "PIJ_PARENT_ID": "pij-respectable-clam",
+    "PIJ_SESSION_ID": "pij-urban-platypus"
+  },
+  "event_stream": [
+    {
+      "t": "2026-08-04T05:48:00.799Z",
+      "kind": "checks",
+      "status": "error"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "checks": "error",
+      "exits": {}
+    }
+  }
+}
