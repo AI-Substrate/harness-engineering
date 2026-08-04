@@ -259,7 +259,7 @@ export function registerFlowAct(
     .option('--bare', 'root-only — copy no template nodes')
     .option(
       '--plan-dir <dir>',
-      "the repo-relative plan folder this flow belongs to; anchors the template's relative dd_link gate addresses at it",
+      "the repo-relative plan folder this flow belongs to; anchors the template's relative dd_link gate addresses at it (absolute or `..`-escaping values are REFUSED, never dropped)",
     )
     .option(
       '--agent <name>',

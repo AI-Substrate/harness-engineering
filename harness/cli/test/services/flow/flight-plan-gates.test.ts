@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import { evaluateDdGate } from '../../../src/services/flow/flow-dd-gate.js';
 import { type DdLink, ddLinkOf, type FlowNode } from '../../../src/services/flow/flow-events.js';
 import { setNow } from '../../../src/services/flow/flow-mutations.js';
 import { createFlow } from '../../../src/services/flow/flow-service.js';
+import { runCliIn } from '../../support/run-cli.js';
 
 /**
  * tk-7133 / dw-0005 + dw-0006 — the template authors the gates, and a pre-JIT
@@ -156,15 +157,30 @@ describe('dw-0005 — `flow create --plan-dir` anchors those addresses', () => {
     );
   });
 
-  it('refuses to bake an ABSOLUTE plan dir into a committed flow', () => {
+  it('REFUSES an ABSOLUTE plan dir — it never silently drops it', () => {
     // A machine-specific prefix in a committed document is worse than no prefix:
-    // the gates would resolve on exactly one laptop.
+    // the gates would resolve on exactly one laptop. But dropping it silently is
+    // worse still — `--plan-dir /abs` then becomes byte-indistinguishable from
+    // not passing the flag, and the mistake surfaces as an E441 at departure,
+    // hours later, nowhere near the typo.
     root = mkdtempSync(join(tmpdir(), 'anchor-'));
     const created = create('/Users/someone/repo/docs/plans/x');
-    expect(created.ok).toBe(true);
-    if (!created.ok) throw new Error('unreachable');
-    expect(created.doc.plan_dir).toBeUndefined();
-    expect(ddLinkOf(nodeById(created.doc.nodes, 'review-1'))?.address).toBe('plan.dd.json');
+    expect(created.ok).toBe(false);
+    if (created.ok) throw new Error('unreachable');
+    expect(created.code).toBe(ErrorCodes.INVALID_ARGS);
+    expect(created.message).toContain('repo-relative');
+  });
+
+  it('REFUSES a repo-ESCAPING plan dir — a gate outside the repo is not a gate', () => {
+    // `../outside/plan.dd.json` names something no reviewer, CI job, or fresh
+    // clone can see. A gate that points there cannot be checked by anyone but
+    // the author, on the day they wrote it.
+    root = mkdtempSync(join(tmpdir(), 'anchor-'));
+    const created = create('../outside');
+    expect(created.ok).toBe(false);
+    if (created.ok) throw new Error('unreachable');
+    expect(created.code).toBe(ErrorCodes.INVALID_ARGS);
+    expect(created.message).toContain('inside the repository');
   });
 
   it('leaves an already-anchored address alone', () => {
@@ -257,5 +273,79 @@ describe('dw-0006 — a pre-JIT departure REFUSES, it never passes vacuously', (
     expect(result.ok).toBe(false);
     if (result.ok) throw new Error('unreachable');
     expect(result.reason).toBe('target-invalid');
+  });
+});
+
+/**
+ * The same two refusals, driven through the REAL CLI.
+ *
+ * The service-level controls above pin the decision; these pin the SURFACE. The
+ * defect they exist to catch was invisible at the service boundary precisely
+ * because it produced a well-formed document: `flow create --plan-dir /abs`
+ * exited 0 and wrote an unanchored flow, indistinguishable from a correct run
+ * until a gate refused hours later. So the assertion that matters is not just
+ * the code — it is that the refusal happens BEFORE anything reaches disk.
+ */
+describe('dw-0005 — `flow create` refuses a bad --plan-dir at the CLI, writing nothing', () => {
+  async function refuse(planDir: string) {
+    root = mkdtempSync(join(tmpdir(), 'plandir-'));
+    const run = await runCliIn(root, [
+      'flow',
+      'create',
+      'flight-plan',
+      '--slug',
+      'demo',
+      '--path',
+      '.harness/flows/demo.json',
+      '--schema',
+      SCHEMA_PATH,
+      '--template',
+      TEMPLATE_PATH,
+      '--plan-dir',
+      planDir,
+    ]);
+    return run;
+  }
+
+  it('refuses an ABSOLUTE --plan-dir with a non-zero exit and no flow on disk', async () => {
+    const run = await refuse('/Users/reviewer/plan');
+    expect(run.code).not.toBe(0);
+    expect(run.envelope?.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+    expect(existsSync(join(root, '.harness/flows/demo.json'))).toBe(false);
+  });
+
+  it('refuses a repo-ESCAPING --plan-dir with a non-zero exit and no flow on disk', async () => {
+    const run = await refuse('../outside');
+    expect(run.code).not.toBe(0);
+    expect(run.envelope?.error?.code).toBe(ErrorCodes.INVALID_ARGS);
+    expect(existsSync(join(root, '.harness/flows/demo.json'))).toBe(false);
+  });
+
+  it('still creates normally with a good --plan-dir — the guard is not a blanket', async () => {
+    root = mkdtempSync(join(tmpdir(), 'plandir-'));
+    const run = await runCliIn(root, [
+      'flow',
+      'create',
+      'flight-plan',
+      '--slug',
+      'demo',
+      '--path',
+      '.harness/flows/demo.json',
+      '--schema',
+      SCHEMA_PATH,
+      '--template',
+      TEMPLATE_PATH,
+      '--plan-dir',
+      'docs/plans/071-dd-native-builder',
+    ]);
+    expect(run.code, JSON.stringify(run.envelope?.error)).toBe(0);
+    const doc = JSON.parse(readFileSync(join(root, '.harness/flows/demo.json'), 'utf8')) as {
+      plan_dir?: string;
+      nodes: FlowNode[];
+    };
+    expect(doc.plan_dir).toBe('docs/plans/071-dd-native-builder');
+    expect(ddLinkOf(nodeById(doc.nodes, 'review-1'))?.address).toBe(
+      'docs/plans/071-dd-native-builder/plan.dd.json',
+    );
   });
 });

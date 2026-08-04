@@ -273,24 +273,49 @@ function resolveTemplate(
  * the `created` event, validate, and atomically write.
  */
 /**
- * `--plan-dir`, normalized: repo-relative POSIX, no leading or trailing slash,
- * or `null` when absent/empty.
+ * `--plan-dir`, normalized: repo-relative POSIX, no leading or trailing slash;
+ * `absent` when the flag was not passed (or was empty); `invalid` otherwise.
  *
- * An absolute path is refused by returning `null` rather than by failing the
- * create: the option exists to anchor addresses INSIDE the repository, and a
- * machine-specific absolute prefix baked into a committed flow is worse than no
- * prefix at all — a flow whose gates only resolve on one laptop.
+ * A bad value is REFUSED, never quietly dropped. Dropping it makes
+ * `--plan-dir /abs/path` byte-indistinguishable from not passing the flag at
+ * all: `flow create` exits 0 and writes an UNANCHORED flow whose every gate is
+ * guaranteed to refuse E441 later, at the point of departure, far from the
+ * mistake. Two shapes are refused for two different reasons:
+ *
+ * - ABSOLUTE — a machine-specific prefix baked into a committed flow is a flow
+ *   whose gates only resolve on one laptop.
+ * - REPO-ESCAPING (`..`) — a gate address outside the repository is not a gate;
+ *   it points at something no reviewer, CI job, or clone can see.
  */
-function normalizePlanDir(raw: string | undefined): string | null {
-  if (typeof raw !== 'string') return null;
+type PlanDirResult =
+  | { kind: 'absent' }
+  | { kind: 'ok'; value: string }
+  | { kind: 'invalid'; reason: string; hint: string };
+
+function normalizePlanDir(raw: string | undefined): PlanDirResult {
+  if (typeof raw !== 'string') return { kind: 'absent' };
   const posix = toPosix(raw).trim();
   // Absoluteness is checked BEFORE any stripping — stripping a leading `/` first
   // would silently turn `/Users/someone/repo/docs/plans/x` into a plausible-looking
   // relative path and bake it in, which is the exact outcome this guard exists to
   // prevent.
-  if (posix.startsWith('/') || /^[a-zA-Z]:/.test(posix)) return null;
+  if (posix.startsWith('/') || /^[a-zA-Z]:/.test(posix)) {
+    return {
+      kind: 'invalid',
+      reason: `--plan-dir must be repo-relative, got an absolute path: ${posix}`,
+      hint: 'Pass the folder as seen from the repo root, e.g. --plan-dir docs/plans/071-my-plan.',
+    };
+  }
   const trimmed = posix.replace(/^\.\//, '').replace(/\/+$/, '');
-  return trimmed.length === 0 ? null : trimmed;
+  if (trimmed.length === 0) return { kind: 'absent' };
+  if (trimmed.split('/').includes('..')) {
+    return {
+      kind: 'invalid',
+      reason: `--plan-dir must stay inside the repository, got: ${trimmed}`,
+      hint: 'Remove the `..` segments — gate addresses are anchored at the repo root, e.g. --plan-dir docs/plans/071-my-plan.',
+    };
+  }
+  return { kind: 'ok', value: trimmed };
 }
 
 /**
@@ -334,6 +359,15 @@ export function createFlow(
   deps: FlowServiceDeps,
 ): { ok: true; path: string; doc: FlowDoc } | FlowFailure {
   const repoRoot = toPosix(opts.repoRoot);
+
+  // `--plan-dir` is validated FIRST, before the template is resolved and long
+  // before anything reaches disk: a refusal must leave no flow behind, because a
+  // half-anchored flow is the failure mode this option exists to remove.
+  const planDir = normalizePlanDir(opts.planDir);
+  if (planDir.kind === 'invalid') {
+    return fail(ErrorCodes.INVALID_ARGS, planDir.reason, planDir.hint);
+  }
+
   // A relative --path anchors to the repo root before the containment check
   // (else an in-repo relative path resolves to `../…` and is wrongly rejected);
   // an absolute path passes through. Containment still applies after resolution.
@@ -388,8 +422,8 @@ export function createFlow(
       ? template.cursor
       : template.nodes[0]?.id;
 
-  const planDir = normalizePlanDir(opts.planDir);
-  const nodes = planDir === null ? template.nodes : anchorDdLinks(template.nodes, planDir);
+  const nodes =
+    planDir.kind === 'ok' ? anchorDdLinks(template.nodes, planDir.value) : template.nodes;
 
   const doc: FlowDoc = {
     schema_version: resolved.schema.schemaVersionMajor,
@@ -403,7 +437,7 @@ export function createFlow(
     events: [],
     nodes,
   };
-  if (planDir !== null) doc.plan_dir = planDir;
+  if (planDir.kind === 'ok') doc.plan_dir = planDir.value;
   if (opts.title !== undefined && opts.title.length > 0) doc.title = opts.title;
   // The `created` (CRT) built-in event — the flow's first audit fact (ws-002 §E2).
   doc.events.push(

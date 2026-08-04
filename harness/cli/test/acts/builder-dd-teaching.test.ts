@@ -112,12 +112,19 @@ describe('ac-7116 layer b — each stage module teaches its own seam (tk-7145)',
     expect(text).toContain('No `<slug>-plan.md` is emitted');
   });
 
-  it('5 lands the phase link in the SAME stroke as the task file', () => {
+  it('5 lands the phase link in the SAME stroke as the task file — at the SOURCE', () => {
     // A task file nothing points at is invisible to the gate, so the two writes
     // are one instruction, not two steps a reader may stop between.
     const text = read('stages/50-phase-tasks.md');
     expect(text).toContain('same stroke');
-    expect(text).toContain('#phases/');
+    // The EXACT command, not merely the section name. The earlier `#phases/`
+    // substring was satisfied by a line that wrote the GENERATED sibling
+    // (`tasks.dd.md#tasks`) — a non-document link that disconnects the plan's
+    // work-accounting while every surrounding assertion still passes.
+    expect(text).toMatch(
+      /harness dd set "\$\{PLAN_DIR\}\/plan\.dd\.json#phases\/ph-XXXX\/tasks" "assets\/tasks\/phase-N\/tasks\.dd\.json#tasks"/,
+    );
+    expect(text).not.toMatch(/tasks\.dd\.md#tasks/);
   });
 
   it('5 uses BARE-ORDINAL task paths, matching the gate the template baked', () => {

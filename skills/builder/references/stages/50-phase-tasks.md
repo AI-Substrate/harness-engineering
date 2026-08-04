@@ -29,7 +29,10 @@ harness dd add "${TASKS}#done_when/tk-XXXX" \
 #    ... '{"assertion":"…","state":"unchecked","pressure":"not-applicable","note":"<the real instrument>"}' --mint dw
 
 # 4. THE SAME STROKE: point the phase row at the file it just got
-harness dd set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets/tasks/phase-N/tasks.dd.md#tasks"
+harness dd set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets/tasks/phase-N/tasks.dd.json#tasks"
+#    the SOURCE (`.dd.json`), never the generated sibling: `.dd.md#tasks` is not a
+#    document link, so the phase row would name nothing and the plan's
+#    work-accounting would silently disconnect.
 
 # 5. prove it
 harness plan validate "${PLAN_DIR}/plan.dd.json"
