@@ -193,3 +193,14 @@ allocation; the surface test counts sixty E4xx codes.
 | E457 | `DD_PLAN_INCOMPLETE` | `--complete` found open completables or orphan ACs |
 | E458 | `DD_PLAN_SCOPE_UNRESOLVED` | `--address` scope did not resolve |
 | E459 | `DD_PLAN_VALIDATE_FAILED` | the semantic validation pass itself failed |
+
+### E460-E469 — builder fence and review documents
+**GRANTED 2026-08-04 (one-line renegotiation, plan 071 ph-7103)**: E450-E459 is a
+complete allocation, so the fence check (`harness plan fence`, ac-7120) and the
+review corpus (ac-7121) open the next block. Partial allocation — E462-E469 are
+free. The surface test counts sixty-two E4xx codes.
+
+| Code | Name | Failure class |
+|---|---|---|
+| E460 | `DD_FENCE_VIOLATION` | a touched path is refused by an active fence row |
+| E461 | `DD_FENCE_INVALID` | the fence document cannot be read as a fence |

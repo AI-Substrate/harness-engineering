@@ -240,6 +240,12 @@ export const ErrorCodes = {
   DD_PLAN_SCOPE_UNRESOLVED: 'E458',
   /** The plan semantic validation pass itself could not complete. */
   DD_PLAN_VALIDATE_FAILED: 'E459',
+
+  // --- builder fence + review documents (plan 071 ph-7103; E460-E469) ---
+  /** `harness plan fence`: a touched path is refused by an active fence row. */
+  DD_FENCE_VIOLATION: 'E460',
+  /** `harness plan fence`: the fence document itself cannot be read as a fence. */
+  DD_FENCE_INVALID: 'E461',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

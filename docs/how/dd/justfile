@@ -255,3 +255,25 @@ f-relocate: f-create
     @echo "--- after the move, before the relocate (dead addresses): ---"
     @cd {{scratch}} && jq -r '.nodes[] | select(.dd_link) | .dd_link.address' .harness/flows/demo.json
     @cd {{scratch}} && harness flow relocate --path .harness/flows/demo.json --to docs/plans/archive/exemplar --json | jq -r '.data.rewritten[] | "\(.node)\t\(.from)\n\t-> \(.to)"'
+
+# ── Fences as data ───────────────────────────────────────────────────────────
+
+# The worked fence document: rows with owner, cause and expiry.
+fence-show:
+    cd {{root}} && harness dd get "{{ex}}/fence/dispatch.dd.json#rows"
+
+# In fence — the paths this dispatch's allow rows cover.
+fence-ok:
+    cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
+        --paths harness/cli/src/acts/plan/fence.ts harness/cli/test/acts/plan-fence.test.ts
+
+# The refusal: an out-of-fence path is refused BY NAME, and the row that refused
+# it is named too — so the answer to "why?" is data, not an argument.
+fence-refused:
+    -cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
+        --paths docs/plans/071-dd-native-builder/plan.dd.json
+
+# A rule that has outlived its cause is visible rather than remembered.
+fence-expired:
+    -cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
+        --paths harness/cli/src/acts/plan/fence.ts --now 2099-01-01

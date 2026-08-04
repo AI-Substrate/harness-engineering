@@ -38,6 +38,8 @@ const SHIPPED = [
   { command: 'flow create --plan-dir', chapter: '--plan-dir <dir>', recipe: 'f-create:' },
   { command: 'flow relocate', chapter: 'harness flow relocate --to <dir>', recipe: 'f-relocate:' },
   { command: 'the check-kind gate', chapter: '"check": "plan-validate"', recipe: 'f-create:' },
+  { command: 'plan fence', chapter: 'harness plan fence <fence>', recipe: 'fence-ok:' },
+  { command: 'plan fence --paths', chapter: '--paths <p...>', recipe: 'fence-refused:' },
 ] as const;
 
 describe("dw-0005 — this plan's commands are covered by a chapter and a recipe", () => {

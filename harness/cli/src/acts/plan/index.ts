@@ -40,6 +40,7 @@ import {
 import { renderDocument } from '../dd/build.js';
 import { NodeSchemaFs } from '../dd/schema-fs.js';
 import { DD_ISSUE_CODES, type DdActDeps, FsDocLoader, trackedPaths } from '../dd/shared.js';
+import { checkFence, readFenceRows } from './fence.js';
 import { renderPrBody } from './pr-body.js';
 import { buildPlanScaffold } from './scaffold.js';
 
@@ -746,6 +747,108 @@ export function headBlobBase(
   return { ok: true, base: `https://${host}/${slug}/blob/${sha}/`, sha };
 }
 
+function registerFenceCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
+  plan
+    .command('fence <target>')
+    .description("Check a change's touched paths against a fence document")
+    .option(
+      '--paths <paths...>',
+      'the touched paths to check (default: what changed against --base)',
+    )
+    .option('--base <ref>', 'derive the touched paths from `git diff --name-only <ref>...HEAD`')
+    .option('--now <date>', 'the date expiry is judged against (default: today)')
+    .action(async (target: string, opts: { paths?: string[]; base?: string; now?: string }) => {
+      const ctx = context(io, deps);
+      const path = resolveInRepo(target.split('#')[0] ?? target, ctx.repoRoot);
+      const { doc } = readPlan(ctx, 'plan fence', path);
+      const rows = readFenceRows(doc);
+      if (!rows.ok) {
+        exitWithEnvelope(
+          formatError('plan fence', ErrorCodes.DD_FENCE_INVALID, rows.message, ctx.clock, {
+            details: { path },
+            next_action: rows.next_action,
+          }),
+          ctx.port,
+        );
+      }
+
+      let paths = opts.paths ?? [];
+      if (opts.paths === undefined) {
+        const base = opts.base ?? 'HEAD';
+        const listed = await new NodeExec().run('git', ['diff', '--name-only', `${base}`], {
+          cwd: ctx.repoRoot,
+        });
+        if (listed.code !== 0) {
+          exitWithEnvelope(
+            formatError(
+              'plan fence',
+              ErrorCodes.INVALID_ARGS,
+              `could not list changed paths against ${base}: ${listed.stderr.trim()}`,
+              ctx.clock,
+              {
+                next_action:
+                  'Pass the paths explicitly with `--paths <p...>`, or name a ref that exists with `--base`.',
+              },
+            ),
+            ctx.port,
+          );
+        }
+        paths = listed.stdout
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0);
+      }
+
+      const reading = checkFence(rows.rows, paths, {
+        now: opts.now ?? new Date(ctx.clock.nowIso()).toISOString().slice(0, 10),
+      });
+      const data = {
+        path,
+        checked: reading.checked,
+        rows: reading.rows.length,
+        violations: reading.violations,
+        expired: reading.expired,
+      };
+      if (reading.violations.length > 0) {
+        const first = reading.violations[0];
+        exitWithEnvelope(
+          formatError(
+            'plan fence',
+            ErrorCodes.DD_FENCE_VIOLATION,
+            `${reading.violations.length} touched path(s) are out of fence: ${reading.violations
+              .map((violation) => `${violation.path} (${violation.row})`)
+              .join(', ')}`,
+            ctx.clock,
+            {
+              details: data,
+              next_action: `Ask ${first?.owner ?? 'the fence issuer'} to amend row ${first?.row ?? ''} — its cause is "${first?.cause ?? ''}". Do not widen the fence yourself.`,
+            },
+          ),
+          ctx.port,
+        );
+      }
+      if (reading.expired.length > 0) {
+        exitWithEnvelope(
+          formatDegraded(
+            'plan fence',
+            data,
+            `every path is in fence, but ${reading.expired.length} row(s) are past their expiry (${reading.expired
+              .map((row) => `${row.row} expired ${row.expiry}`)
+              .join(', ')}) — a rule that outlives its cause is a rule nobody can defend.`,
+            ctx.clock,
+          ),
+          ctx.port,
+        );
+      }
+      exitWithEnvelope(
+        formatOk('plan fence', data, ctx.clock, {
+          next_action: `All ${reading.checked} touched path(s) are inside the fence.`,
+        }),
+        ctx.port,
+      );
+    });
+}
+
 /**
  * `harness plan` — a plan is a folder of deterministic documents.
  *
@@ -768,4 +871,5 @@ export function registerPlanAct(program: Command, io: CliIo, deps: DdActDeps): v
   registerValidateCommand(plan, io, deps);
   registerRenderCommand(plan, io, deps);
   registerPrBodyCommand(plan, io, deps);
+  registerFenceCommand(plan, io, deps);
 }

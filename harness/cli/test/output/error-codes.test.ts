@@ -130,6 +130,8 @@ describe('ErrorCodes table', () => {
       DD_PLAN_INCOMPLETE: 'E457',
       DD_PLAN_SCOPE_UNRESOLVED: 'E458',
       DD_PLAN_VALIDATE_FAILED: 'E459',
+      DD_FENCE_VIOLATION: 'E460',
+      DD_FENCE_INVALID: 'E461',
     });
   });
 

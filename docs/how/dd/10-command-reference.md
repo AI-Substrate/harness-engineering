@@ -146,6 +146,26 @@ reviewer's approval mean less than the reviewer thought it did.
 of dropping it. A dropped `--plan-dir` is byte-indistinguishable from never
 passing one, and the flow it writes fails later at a departure, far from the typo.
 
+## Fences as data
+
+A dispatch fence — the paths a delegated agent may and may not touch — is a
+`builder/fence` document rather than a paragraph in a brief.
+
+| Command | Effect |
+| --- | --- |
+| `harness plan fence <fence>` | check the working tree's changed paths against the fence |
+| `harness plan fence <fence> --paths <p...>` | check exactly these paths |
+| `harness plan fence <fence> --base <ref>` | check what changed since a ref |
+
+Every row carries `owner`, `cause` and `expiry`, so a rule cannot quietly outlive
+its reason and an amendment is a row edit with an author. A refusal names BOTH
+the offending path and the row that refused it — a fence that cannot say which
+rule applies is an opinion.
+
+`forbid` beats `allow`, always. Written the other way round, adding a broad allow
+row later would silently unlock everything an earlier forbid row named. A fence
+with no `allow` rows at all is read as a blocklist, not as a total prohibition.
+
 ## Gate a flow on the documents
 
 A flow node may carry a `dd_link`, and departure is refused until it reads

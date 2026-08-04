@@ -1,4 +1,14 @@
-export const ID_PREFIXES = ['ph-', 'tk-', 'ac-', 'bp-', 'lg-', 'dw-'] as const;
+/**
+ * The item kinds dd can mint an id for.
+ *
+ * A CLI constant rather than a schema declaration, which is a known limitation:
+ * a new schema cannot introduce a new addressable item kind without a change
+ * here (recorded as a dogfood finding on plan 071). `fn-` joined for fence rows
+ * (tk-7171); each addition is deliberate, because a prefix becomes part of every
+ * address that will ever name one of these rows — closer to a surface than to a
+ * constant, which is why a test pins the list.
+ */
+export const ID_PREFIXES = ['ph-', 'tk-', 'ac-', 'bp-', 'lg-', 'dw-', 'fn-'] as const;
 
 export type IdPrefix = (typeof ID_PREFIXES)[number];
 
