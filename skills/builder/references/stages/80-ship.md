@@ -11,7 +11,7 @@
 
 **Flags**: `--plan "<abs path to docs/plans/<ordinal>-<slug>/>"` (optional; auto-detect from cwd) · `--base "<branch>"` (optional; PR base, default = repo default branch) · `[--no-watch]` (optional; open the PR but skip the CI-check watch) · `[--draft]` (optional; open the PR as a draft) · `[--watch-cap "<minutes>"]` (optional; bound the check-watch, default 20).
 
-**Produces**: a pushed branch; an opened (or reused) PR behind an explicit confirm; a ship report at `${PLAN_DIR}/ship/${DATE}/ship-report.md` (PR URL, base, check results, any failing checks + their details link, a whole-plan **Deferred & Noteworthy** rollup, resume note); terminal summary = PR URL + check status + (on red) the fix-loop offer + (when non-empty) the deferred-items count. An actual merge is produced **only** on a separate typed `PROCEED`.
+**Produces**: a pushed branch; an opened (or reused) PR behind an explicit confirm; a ship report at `${PLAN_DIR}/assets/ship/${DATE}/ship-report.md` (PR URL, base, check results, any failing checks + their details link, a whole-plan **Deferred & Noteworthy** rollup, resume note); terminal summary = PR URL + check status + (on red) the fix-loop offer + (when non-empty) the deferred-items count. An actual merge is produced **only** on a separate typed `PROCEED`.
 
 **Side effects**: outward-facing — `git push` (confirm #1), `gh pr create` (confirm #2), and an **optional** `gh pr merge` / `git merge` **only** on typed `PROCEED`. Each is public; **never** fired on a generic "yes". Plus one **non-gated** action: `harness telemetry sync` flushes the counts-only telemetry buffer to its out-of-tree `refs/harness-telemetry/*` shard refs — it publishes no work (no branch, no PR), is reversible/prunable, and is fail-safe, so it runs **without a confirm** (see Safety). No source files are modified.
 
@@ -56,7 +56,10 @@ $ARGUMENTS
 
 1) Input Resolution
 
-   - PLAN_DIR = provided --plan OR auto-detect from cwd (look for *-plan.md, or a legacy *-spec.md)
+   - PLAN_DIR = provided --plan OR auto-detect from cwd (look for *-plan.md, or a legacy *-spec.md).
+     Completed plans live under `docs/plans/archive/<ord>-<slug>/` (the close-out stage archives them
+     pre-ship), so resolve there FIRST; a `docs/plans/<ord>-<slug>/` path that no longer exists has
+     almost certainly moved to the archive — probe `docs/plans/archive/<same basename>/` before erroring.
    - PLAN_SLUG = plan folder name minus ordinal (e.g. "035-flow-ship-stage" -> "flow-ship-stage")
    - BASE = provided --base OR repo default branch:
      `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` (fallback:
@@ -116,7 +119,7 @@ $ARGUMENTS
    - acceptance criteria not yet met (plan `## Acceptance Criteria`)
    - `TODO` / `FIXME` / `HACK` / `XXX` introduced in the shipped diff:
      `git grep -nE 'TODO|FIXME|HACK|XXX' -- $(git diff --name-only origin/${BASE}..HEAD)` (best-effort; skip cleanly on error)
-   - deferred review / companion findings recorded in the execution log
+   - deferred review findings recorded in the execution log
 
    This is a **read-time view** — no `DEFERRALS.md`, nothing persisted beyond the ship report. Empty across all
    sources → record "none" (silence is the all-clear). It surfaces at the open-PR gate (step 6) and in the report;
@@ -175,7 +178,7 @@ $ARGUMENTS
 
 ## Ship Report Template
 
-Write to `${PLAN_DIR}/ship/${DATE}/ship-report.md`:
+Write to `${PLAN_DIR}/assets/ship/${DATE}/ship-report.md` (create the folders if missing):
 
 ```markdown
 # Ship Report — ${PLAN_SLUG}
@@ -225,7 +228,7 @@ _Everything punted across the build that's about to ship — surfaced so the go-
 ✅ Shipped: PR ${PR_URL} (#${PR_NUMBER})
    Branch ${BRANCH} → ${BASE}
    Checks: ${all green | N failing | no CI | still running}
-   Report: ${PLAN_DIR}/ship/${DATE}/ship-report.md
+   Report: ${PLAN_DIR}/assets/ship/${DATE}/ship-report.md
    ${deferred: "⚠️ ${N} deferred/noteworthy items rolled up in the report — review before merge." }
    ${on red: "Red check — fixes go back through implement, then re-run ship." }
    ${merge: "Merge is optional — auto-merge armed / type PROCEED to merge now / base diverged → reconcile." }

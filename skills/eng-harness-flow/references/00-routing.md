@@ -13,7 +13,7 @@
 
 ## The state contract (the engine's first principle)
 
-**Routing is stateless; flow position is persisted (plan 032).** `eng-harness-flow`'s *detection* is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **re-derives every call** (re-entry after `/compact` needs nothing reloaded; the rail is recomputed from substrate, never remembered); **never gates, scores, or blocks** (every route is a suggestion; `at=`/`--hook` is a hint, never a command; declining the harness is conversational, not a `.disabled` file); **never runs `minih`** (companions belong to the implement verb) **or `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion).
+**Routing is stateless; flow position is persisted (plan 032).** `eng-harness-flow`'s *detection* is a **pure dispatcher**: `(repo signals, conversation, optional hint) → next harness action`. It **re-derives every call** (re-entry after `/compact` needs nothing reloaded; the rail is recomputed from substrate, never remembered); **never gates, scores, or blocks** (every route is a suggestion; `at=`/`--hook` is a hint, never a command; declining the harness is conversational, not a `.disabled` file); **never runs `/compact`** (it can only recommend it); and **never invents a verdict** (`harness doctor` answers whether the harness is healthy, not the router's opinion).
 
 > **"Never gates / blocks" is about the *user*, not the *agent*.** The router never hard-blocks, scores, or installs a `.disabled` sentinel — the **user** can always override or decline. That is not the **agent's** licence to silently skip a stage: the agent still boots before leaning on the system, surveys before building, captures friction as it bites, and at plan completion surfaces the top improvement and offers the encode — **out loud, every time**. The user may wave any of these past; the agent staying silent is the defect the loop exists to prevent.
 
@@ -405,7 +405,7 @@ P → H: end-of-phase      (--event phase-end --plan-dir <p>)  → retro verb --
 P → H: plan-complete     (--event plan-complete)             → retro verb --harvest (buffer now empty)
 ```
 
-Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks).
+Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks). Note on `post-flight` timing: "the whole plan / journey is complete" means **the work is complete**, not that it shipped — the-flow fires it at its **pre-ship `post-flight` close-out stage** (all phases + reviews done, before the plan folder archives; a ship may follow later, or never). The hook's frozen wording is host-neutral; where in its own lifecycle a host places the close-out is the host's call.
 
 This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness verb to mention at each seam, it can simply call `/eng-harness-flow --hook <name>` (or the `--event <seam>` alias) and let this skill own the harness-routing logic in **one** place.
 

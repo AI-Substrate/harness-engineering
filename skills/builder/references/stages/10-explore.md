@@ -6,7 +6,7 @@
 
 **Verb**: explore
 **Purpose**: Answer *how existing functionality works* and produce evidence suitable for planning — a compact, history-aware research dossier (or console-only report). **Minimum-sufficient by design**: start cheap, climb only when evidence demands it.
-**Consumes**: a research query. No prior artifacts required — auto-detects plan context (ordinal branch / cwd / conversation) or creates a new plan folder; `--console` creates nothing. Optional context: an existing `docs/plans/<ordinal>-<slug>/`, institutional memory (prior plans, tasks, execution logs, workshops, ADRs, reviews, retros), `docs/domains/registry.md`, FlowSpace MCP when available.
+**Consumes**: a research query. No prior artifacts required — auto-detects plan context (ordinal branch / cwd / conversation) or creates a new plan folder; `--console` creates nothing. Optional context: an existing `docs/plans/<ordinal>-<slug>/`, institutional memory (prior plans, tasks, execution logs, workshops, ADRs, reviews, retros), `docs/domains/registry.md`.
 **Flags**: `"research query"` · `--plan <name>` (explicit plan folder) · `--console` (console-only output)
 **Produces**: `docs/plans/<ordinal>-<slug>/research-dossier.md` — a **decision packet** (§ Dossier contract), not a transcript — or a console-only report with `--console`. Read-only; STOPs and waits after output.
 **Side effects**: none (read-only research; STOPs and waits after output)
@@ -19,7 +19,7 @@
 
 Every token, worker, file read, finding, and dossier line must earn its place — change a decision, constrain an implementation, prove a behaviour, expose a risk, record evidence, preserve intent, or enable the next action — else cut it (the seven-function line test + doctrine: `references/00-routing.md` § Shared conventions). The dossier is **output**: research broadly *internally*; emit only decision-relevant findings as tables with evidence links — link, don't restate. **No finding quotas, no fixed worker roster** — fan-out follows the independent questions left after a cheap scout, never a standing count.
 
-**Authority**: live code is authoritative for *current behaviour*. Historical artifacts are authoritative for *recorded decisions* only when the repo designates them so (an applicable ADR, an authoritative workshop); other prior plans and retros explain intent, friction, rejected approaches, proven workarounds, and risks — they never silently override current code.
+**Authority**: live code is authoritative for *current behaviour*. Historical artifacts are authoritative for *recorded decisions* only when the repo designates them so (an applicable ADR, an authoritative workshop); other prior plans and retros explain intent, friction, rejected approaches, proven workarounds, and risks — they never silently override current code. **Archived plans (`docs/plans/archive/`) are completed prior work and rich research material, but never authoritative for current behaviour**: any of them may be out of date, and the ordinal prefix is chronology (`001` oldest → higher = newer), so where two archived plans conflict the higher ordinal supersedes the lower — and live code supersedes both. Verify an archived claim against current code before carrying it forward.
 
 ```md
 $ARGUMENTS
@@ -43,8 +43,6 @@ Begin at the lowest rung; climb only when evidence requires it. Workers are *add
 | 4 | Add one independent boundary / history / verification investigation | 2–3 total | Cross-cutting uncertainty is resolved |
 | 5 | Broad audit | evidence-driven | Only for an explicit comprehensive/audit/deep request or substantial exposed uncertainty |
 
-No new public depth flag. Treat explicit query wording (`comprehensive`, `audit`, `deep`, `migration`, `security`, `cross-cutting architecture`) as a signal to *consider* the broad rung — even then, follow the questions, not a roster.
-
 ---
 
 ## Algorithm
@@ -58,18 +56,19 @@ No new public depth flag. Treat explicit query wording (`comprehensive`, `audit`
 - Fail clearly on: missing query; an explicit `--plan` that names a non-existent `NNN-` folder; an irreducibly ambiguous target.
 - No routine detection chatter unless it changes user action.
 
-### 2) Probe tools once
+### 2) Pick the toolset once
 
-One cheap FlowSpace availability call. If present, use its core operations (`tree`, `search` text/regex/semantic, `get_node`) as appropriate; if absent or it fails mid-run, fall back to standard search/glob/read and note the degradation **only if it affects confidence**. Describe **one** research protocol — tool choice is an implementation detail inside each investigation; do **not** duplicate worker prompts per tool, probe every API with min/max arguments, enumerate hypothetical capabilities, or print install/setup marketing on a successful standard run.
+Use the standard deterministic surface — search/glob/direct reads — and describe **one** research protocol; tool choice is an implementation detail inside each investigation. Do **not** duplicate worker prompts per tool, probe every API with min/max arguments, enumerate hypothetical capabilities, or print install/setup marketing on a successful run. Note a tool degradation **only if it affects confidence**.
 
 ### 3) Cheap dual-lane scout (the lead does both, before deciding on workers)
 
-**Live-code lane** — discover only enough to *frame* the question: repo shape relevant to the query; query terms / named symbols / paths / APIs / events / commands / schemas / config; likely entry points; one likely execution path; nearby tests and contracts; touched domains or boundaries (load domain context per `references/00-routing.md` § Domain context loading when relevant). Prefer deterministic search + direct reads — don't read broadly just to fill categories.
+**Live-code lane** — discover only enough to *frame* the question: repo shape relevant to the query; query terms / named symbols / paths / APIs / events / commands / schemas / config; likely entry points; one likely execution path; nearby tests and contracts; touched domains or boundaries (load domain context per `references/00-routing.md` § Domain mode & context loading — only when domain mode is ON). Prefer deterministic search + direct reads — don't read broadly just to fill categories.
 
 **Institutional-memory lane** — always run a *cheap* historical lookup; these repos deliberately retain implementation memory. Candidate sources:
 
-- `docs/plans/*/*-plan.md` · `docs/plans/*/tasks/*/tasks.md` · `docs/plans/*/tasks/*/execution.log.md`
-- `docs/plans/**/reviews/*.md` · `docs/plans/*/workshops/*.md` · `docs/adr/*.md`
+- `docs/plans/*/*-plan.md` · `docs/plans/*/assets/tasks/*/tasks.md` · `docs/plans/*/assets/execution.log.md` *(older plans carry these at legacy root paths — `tasks/*/tasks.md`, `tasks/*/execution.log.md` — probe both; § Plan-folder layout, `references/00-routing.md`)*
+- `docs/plans/**/assets/reviews/*.md` (legacy `**/reviews/*.md`) · `docs/plans/*/assets/workshops/*.md` (legacy `*/workshops/*.md`) · `docs/adr/*.md`
+- **`docs/plans/archive/**` — completed plans the post-flight stage archived** (same artifact shapes as above, plus each plan's `assets/post-flight.md` close-out note with its open-items digest). Often the densest institutional memory in the repo — mine it, but per **Authority** above: never authoritative, ordinals date it, higher ordinal wins a conflict, live code wins everything.
 - `docs/harness/agents/**/*.retro.md` · `docs/retros/*.md` *(read-only frozen history — never a live loop this verb drives or writes)*
 
 Build the history query from the original intent **plus** terms discovered in live code (exact symbols/paths, domain/contract names, libraries/protocols/storage/services, failure modes, the plan id when known). Rank candidates: ① exact symbol/path overlap → ② same contract/domain/API/schema/failure-mode → ③ same technology+operation → ④ strong topic similarity → ⑤ unresolved/encoded/proven learning status → ⑥ recency as a tie-breaker only (**no** hard 30-day cutoff — old evidence about the same contract beats recent unrelated evidence).
@@ -125,7 +124,6 @@ A decision packet — not a transcript or a repo inventory. **Required**: header
 **Generated**: <ISO timestamp>
 **Query**: "<verbatim query>"
 **Effort**: Quick | Standard | Deep | Audit
-**Tools**: FlowSpace | Standard | Mixed
 **Evidence**: <N current sources> · <N historical sources>
 
 ## The Ask
@@ -188,10 +186,10 @@ _Omit when none is material._
 ### Output
 
 - **`--console`**: print the same compact contract to the console; create no folder and no file.
-- **File mode**: write `research-dossier.md` to the resolved plan folder, then print only an output-contract summary:
+- **File mode**: write `assets/research-dossier.md` under the resolved plan folder (create `assets/` if missing — § Plan-folder layout, `references/00-routing.md`), then print only an output-contract summary:
 
   ```text
-  ✅ <path>/research-dossier.md — <N> findings, <H> material historical learnings, <R> high risks, <U> open questions
+  ✅ <path>/assets/research-dossier.md — <N> findings, <H> material historical learnings, <R> high risks, <U> open questions
   ```
 
   Add one short degradation line only if a tool failure materially reduced confidence. Do **not** re-summarize the dossier in the terminal.

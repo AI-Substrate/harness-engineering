@@ -51,7 +51,7 @@ $ARGUMENTS
 
 ### Domain Context Loading
 
-Before research, load domain context per `references/00-routing.md` § Domain context loading.
+Before research, load domain context per `references/00-routing.md` § Domain mode & context loading (OFF by default — when OFF, skip domain context).
 
 - For each NEW domain in spec → note the sketch (Purpose, Boundary Owns/Excludes)
 - If no domain system exists → note "No domain registry found — domain impact will be inferred from spec and codebase"

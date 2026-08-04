@@ -8,7 +8,7 @@
 **Purpose**: Generate an actionable tasks + context brief dossier for exactly one phase (or a subtask / lightweight tracked fix), then stop before any code changes.
 **Consumes**: a plan (Full Mode, typically `**Status**: READY` from the architect verb) with the target phase identified; the plan's task table, Key Findings, Domain Manifest, prior-phase dossiers and execution logs. Subtask mode additionally needs a parent task ID; fix mode needs only a summary (`--plan` optional).
 **Flags**: `--phase "<Phase N: Title>"` + `--plan "<abs path to plan.md>"`; optional subtask mode `--subtask "<summary>" --parent "T###"`; optional fix mode `--fix "<summary>"` / `--from-review "<abs path>"` / `--fix --list`
-**Produces**: `PLAN_DIR/tasks/<phase-slug>/tasks.md` (Executive Briefing, Prior Phase Context, Pre-Implementation Check, Architecture Map, canonical 7-column Tasks table, Context Brief, Discoveries & Learnings) — or a subtask dossier `<ORD>-subtask-<slug>.md`, or a fix dossier `FX###-<slug>.md` + empty execution log. STOPS before implementation; terminal report = dossier path + wait for human GO.
+**Produces**: `PLAN_DIR/assets/tasks/<phase-slug>/tasks.md` (Executive Briefing, Prior Phase Context, Pre-Implementation Check, Architecture Map, canonical 7-column Tasks table, Context Brief, Discoveries & Learnings) — or a subtask dossier `<ORD>-subtask-<slug>.md`, or a fix dossier `FX###-<slug>.md` + empty execution log. STOPS before implementation; terminal report = dossier path + wait for human GO.
 **Side effects**: none
 
 ---
@@ -33,7 +33,7 @@ INPUT:
   --plan "/abs/path/docs/plans/3-feature-x/feature-x-plan.md"
 
 OUTPUT:
-  docs/plans/3-feature-x/tasks/phase-2-core-implementation/tasks.md
+  docs/plans/3-feature-x/assets/tasks/phase-2-core-implementation/tasks.md
 ```
 
 ---
@@ -65,7 +65,7 @@ Otherwise → **Phase Mode** (continue).
 
 ## PHASE MODE
 
-1) Verify PLAN exists; set PLAN_DIR = dirname(PLAN); define PHASE_DIR = PLAN_DIR/tasks/${PHASE_SLUG}; create if missing.
+1) Verify PLAN exists; set PLAN_DIR = dirname(PLAN); define PHASE_DIR = PLAN_DIR/assets/tasks/${PHASE_SLUG}; create if missing. (Writers use the `assets/` path always; readers fall back to the legacy root `tasks/` for plans made before the assets layout — § Plan-folder layout, `references/00-routing.md`.)
 
 2) **Prior Phase Review** (skip if Phase 1):
 
@@ -76,8 +76,8 @@ Otherwise → **Phase Mode** (continue).
    "Review Phase X implementation. Read:
    tier: Opus-class
 
-   - `PLAN_DIR/tasks/${PHASE_X_SLUG}/tasks.md`
-   - `PLAN_DIR/tasks/${PHASE_X_SLUG}/execution.log.md`
+   - `PLAN_DIR/assets/tasks/${PHASE_X_SLUG}/tasks.md` (legacy root `tasks/` fallback)
+   - `PLAN_DIR/assets/tasks/${PHASE_X_SLUG}/execution.log.md` (legacy root fallback)
    - Plan progress tracking for Phase X
 
    Report these 5 sections ONLY:
@@ -204,9 +204,10 @@ Otherwise → **Phase Mode** (continue).
    ```
    docs/plans/<ordinal>-<slug>/
      ├── <slug>-plan.md
-     └── tasks/phase-N/
-         ├── tasks.md
-         └── execution.log.md   # created by the implement verb
+     └── assets/
+         └── tasks/phase-N/
+             ├── tasks.md
+             └── execution.log.md   # created by the implement verb
    ```
 
 STOP: Do NOT edit code. Output tasks.md and wait for human GO.
@@ -296,7 +297,7 @@ F2) If `--from-review` provided:
    - Use selected items to populate Problem and Tasks sections
 
 F3) Load domain context:
-   - Load domain context per `references/00-routing.md` § Domain context loading
+   - Load domain context per `references/00-routing.md` § Domain mode & context loading (OFF by default — when OFF, skip domain context and carry `—` in Domain columns)
    - Identify which domains this fix touches
    - If fix affects domain contracts → flag as higher risk in the dossier
 
@@ -306,7 +307,7 @@ F4) Quick codebase check:
    - NO prior-phase review (fixes are self-contained)
 
 F5) Check for relevant workshops:
-   - If --plan exists, check PLAN_DIR/workshops/ for relevant workshops
+   - If --plan exists, check PLAN_DIR/assets/workshops/ (legacy root workshops/) for relevant workshops
    - Note any consumed workshops in the dossier
 
 F6) Write fix dossier (FIX_FILE):

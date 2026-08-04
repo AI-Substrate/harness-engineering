@@ -7,7 +7,7 @@
 **Verb**: review
 **Purpose**: Read-only per-phase code review — inspects diffs, validates domain compliance, checks for concept reinvention, verifies testing evidence, and produces structured findings as file artifacts. Does NOT modify code.
 
-**Consumes**: an implemented phase (the implement verb finished — execution log written, changes committed or in working tree); plan.md with `**Mode**: Simple` or `**Mode**: Full`; in Full Mode the phase's tasks dossier (`tasks/<phase-slug>/tasks.md`); spec, git diffs, `docs/domains/**`, `docs/project-rules/**`.
+**Consumes**: an implemented phase (the implement verb finished — execution log written, changes committed or in working tree); plan.md with `**Mode**: Simple` or `**Mode**: Full`; in Full Mode the phase's tasks dossier (`assets/tasks/<phase-slug>/tasks.md`; legacy root `tasks/` fallback); spec, git diffs, `docs/domains/**` (domain mode ON only), `docs/project-rules/**`.
 
 **Flags**: `--plan "<abs path to plan.md>"` (required), `--phase "<Phase N: Title>"` (required for Full Mode, omit for Simple Mode), `--diff-file "<abs path to unified.diff>"` (optional; otherwise computed from git), `--strict` (optional; treat HIGH as blocking).
 
@@ -43,7 +43,7 @@ $ARGUMENTS
 - PLAN_DIR = dirname(PLAN)
 - SPEC = `${PLAN_DIR}/<slug>-plan.md` § `## Business Specification` (unified plan), else a legacy `${PLAN_DIR}/<slug>-spec.md`
 - PHASE_SLUG = slugified phase title
-- PHASE_DIR = `${PLAN_DIR}/tasks/${PHASE_SLUG}`
+- PHASE_DIR = `${PLAN_DIR}/assets/tasks/${PHASE_SLUG}` (legacy root `tasks/` fallback — § Plan-folder layout, `references/00-routing.md`; write review files where the dossier already lives)
 - PHASE_DOC = `${PHASE_DIR}/tasks.md`
 - EXEC_LOG = `${PHASE_DIR}/execution.log.md`
 - REVIEW_FILE = `${PHASE_DIR}/reviews/review.${PHASE_SLUG}.md`
@@ -54,13 +54,13 @@ $ARGUMENTS
 - PLAN_DIR = dirname(PLAN)
 - SPEC = `${PLAN_DIR}/<slug>-plan.md` § `## Business Specification` (unified plan), else a legacy `${PLAN_DIR}/<slug>-spec.md`
 - PHASE_DOC = PLAN itself (inline tasks from § Implementation)
-- EXEC_LOG = `${PLAN_DIR}/execution.log.md`
-- REVIEW_FILE = `${PLAN_DIR}/reviews/review.md`
-- FIX_FILE = `${PLAN_DIR}/reviews/fix-tasks.md` (only if REQUEST_CHANGES)
+- EXEC_LOG = `${PLAN_DIR}/assets/execution.log.md` (legacy root fallback)
+- REVIEW_FILE = `${PLAN_DIR}/assets/reviews/review.md`
+- FIX_FILE = `${PLAN_DIR}/assets/reviews/fix-tasks.md` (only if REQUEST_CHANGES)
 
 Create the `reviews/` directory if it doesn't exist:
 - **Full Mode**: `${PHASE_DIR}/reviews/`
-- **Simple Mode**: `${PLAN_DIR}/reviews/`
+- **Simple Mode**: `${PLAN_DIR}/assets/reviews/`
 
 ## Step 2: Gather Diffs
 
@@ -109,7 +109,7 @@ tier: Opus-class
 [{\"severity\": \"HIGH|MEDIUM|LOW\", \"file\": \"abs/path:lines\", \"category\": \"correctness|security|error-handling|performance|scope|pattern\", \"issue\": \"...\", \"suggestion\": \"...\"}]
 ```"
 
-### Subagent 2: Domain Compliance Validator
+### Subagent 2: Domain Compliance Validator *(domain mode ON only — `references/00-routing.md` § Domain mode & context loading; when OFF, skip this subagent entirely and report Domain Compliance as `N/A (domains off)`)*
 "Validate domain compliance for all changes in this phase.
 
 tier: Opus-class
@@ -414,8 +414,8 @@ Apply in order. Re-run review after fixes.
 - **Read-only**: Do NOT change source files
 - **Patches are hints only**: Unified diff snippets in report, not applied
 - **Report is deterministic**: Quote minimal context, use absolute paths throughout
-- **Domain map validation is mandatory**: If domain-map.md exists, it MUST be checked
-- **ALWAYS write review file**: Never just output to console — write the file to the phase's `reviews/` directory (Full Mode: `${PHASE_DIR}/reviews/`, Simple Mode: `${PLAN_DIR}/reviews/`)
+- **Domain map validation is mandatory when domain mode is ON**: If domain-map.md exists (and domain mode is ON), it MUST be checked; domain mode OFF → skip
+- **ALWAYS write review file**: Never just output to console — write the file to the phase's `reviews/` directory (Full Mode: `${PHASE_DIR}/reviews/`, Simple Mode: `${PLAN_DIR}/assets/reviews/`)
 - **ALWAYS include Handover Brief**: The next agent needs full context with absolute paths
 ```
 

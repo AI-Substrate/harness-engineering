@@ -251,7 +251,7 @@ tier: Opus-class
 **Read (via git show ${TARGET}:path):**
 - ${PLAN_FOLDER}/${SLUG}-plan.md § `## Business Specification` (summary, goals, acceptance criteria); legacy ${PLAN_FOLDER}/${SLUG}-spec.md if present
 - ${PLAN_FOLDER}/${SLUG}-plan.md § `## Implementation Plan` (phases, tasks, critical findings)
-- ${PLAN_FOLDER}/tasks/*/execution.log.md (implementation decisions)
+- ${PLAN_FOLDER}/assets/tasks/*/execution.log.md (implementation decisions; legacy root `tasks/` fallback)
 
 **Output** - Plan Summary Card:
 ```markdown
@@ -280,8 +280,6 @@ tier: Opus-class
 - [semantic conflicts: same concept modified differently]
 - [domain contract conflicts: same domain contract modified differently]
 
-**FlowSpace Footnotes** (if present):
-- [^N]: [summary] - files: [list]
 ```
 "
 
@@ -395,40 +393,28 @@ For each concept/component:
 - Same configuration with conflicting values
 - Same domain contract changed with different interface expectations (check `docs/domains/*/domain.md` § Contracts)
 
-**PHASE 2 - FlowSpace Verification (optional, if available):**
+**PHASE 2 - Source Verification (for each candidate conflict):**
 
-If FlowSpace MCP is available AND candidate conflicts were found:
-```
-For each candidate conflict:
-  /flowspace-research "[component name]" --limit 3
-
-  If results found:
-    - Extract actual code signatures/definitions
-    - Verify conflict is real (not false positive from summary analysis)
-    - Record node_ids for merge plan evidence
-  Else:
-    - Mark as "cannot verify in codebase"
-```
-
-If FlowSpace unavailable: Skip Phase 2, output summary-based conflicts only.
+Read the actual code on both sides (your branch + upstream) at the implicated
+files: extract the real signatures/definitions, and verify the conflict is real
+rather than a false positive from summary analysis. Unverifiable from source →
+mark as "cannot verify in codebase".
 
 **Output:**
 ```markdown
 ### Semantic Conflicts
 
 **Potential Semantic Conflicts Found**: [N]
-**FlowSpace Verification**: [Enabled | Skipped - FlowSpace unavailable]
 
-| Component/Concept | Your Assumption | Upstream Reality | Risk Level | Verified | Node ID |
-|-------------------|-----------------|------------------|------------|----------|---------|
-| User.email field | Added validation | Added new format | High | ✓ | class:src/models/user.py:User |
-| PaymentService API | Uses v1 endpoint | Migrated to v2 | Critical | ✓ | callable:src/services/payment.py:process |
+| Component/Concept | Your Assumption | Upstream Reality | Risk Level | Verified |
+|-------------------|-----------------|------------------|------------|----------|
+| User.email field | Added validation | Added new format | High | ✓ |
+| PaymentService API | Uses v1 endpoint | Migrated to v2 | Critical | ✓ |
 
 **Reasoning Chain** (for each conflict):
 1. [Conflict]: [description]
    - Your code at [file:line]: [what you assume]
    - Upstream code at [file:line]: [what they changed]
-   - FlowSpace Evidence: [node_id if verified, "N/A" if skipped]
    - Risk: [why this is a problem]
    - Verification: [how to test this works]
 ```
@@ -437,7 +423,6 @@ If FlowSpace unavailable: Skip Phase 2, output summary-based conflicts only.
 - Only flag conflicts with specific file:line evidence
 - Confidence < 80%: flag for human review, do not assert as definite conflict
 - Never invent code or assume changes not visible in diffs
-- FlowSpace verification increases confidence but doesn't guarantee correctness
 "
 
 ### Subagent R1: Regression Risk Analyst
@@ -860,13 +845,12 @@ Before generating merge plan, verify:
 
 ### Footnote Reconciliation Protocol
 
-**Critical**: Footnotes span 4 locations. All must sync after merge.
+**Critical**: Footnotes span 3 locations. All must sync after merge.
 
 **Locations to update:**
 1. Plan § Change Footnotes Ledger (plan.md)
-2. Phase Footnote Stubs (tasks/phase-N/tasks.md)
+2. Phase Footnote Stubs (assets/tasks/phase-N/tasks.md; legacy root tasks/)
 3. Task table Notes column (footnote tags [^N])
-4. Source code FlowSpace comments (if present)
 
 **Conflict detection:**
 - Your footnotes: [^1] through [^${YOUR_MAX}]
@@ -882,25 +866,8 @@ Your [^2] -> [^${NEW_START + 1}]
 
 **Update list:**
 1. Update plan.md § 12: Add your renumbered footnotes
-2. Update tasks/*/tasks.md: Replace [^N] tags with new numbers
-3. Update source code FlowSpace comments: Replace [^N] with new numbers
-4. Verify bidirectional links still resolve
-
-### FlowSpace ID Reconciliation
-
-**If source code has FlowSpace comments:**
-
-For each file with embedded FlowSpace IDs:
-1. Check if footnote number changed due to renumbering
-2. If changed, add to update list:
-   ```markdown
-   ## FlowSpace ID Updates Required
-
-   | File | Line | Old ID | New ID |
-   |------|------|--------|--------|
-   | src/auth.py | 45 | [^3] | [^7] |
-   | src/user.py | 112 | [^4] | [^8] |
-   ```
+2. Update assets/tasks/*/tasks.md (legacy root tasks/): Replace [^N] tags with new numbers
+3. Verify bidirectional links still resolve
 
 ### Human Approval Gate
 
@@ -947,8 +914,7 @@ After merge execution, verify:
 - [ ] Key user flows still work
 - [ ] Upstream plan functionality not regressed
 - [ ] Your plan functionality not regressed
-- [ ] Footnote ledgers synchronized (4 locations)
-- [ ] FlowSpace IDs updated (if applicable)
+- [ ] Footnote ledgers synchronized (3 locations)
 - [ ] Domain artifacts reconciled: `docs/domains/registry.md` and `docs/domains/domain-map.md` reflect merged state (if domains exist)
 ```
 
@@ -1024,7 +990,6 @@ For picking the merge back up later:
 - This command is **analysis only** by default
 - Merge execution requires explicit "PROCEED" response
 - All context derived from git history (no external files)
-- FlowSpace MCP is optional (command works without it)
 - Domain system is optional (if `docs/domains/` exists, domain impact is tracked; otherwise skipped)
 - Cross-mode merges (Simple + Full) require extra care
 ```

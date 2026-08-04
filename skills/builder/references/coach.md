@@ -23,7 +23,7 @@ Every time you surface a next step:
 
 - **`/compact`** — a CLI built-in that wipes context; you literally cannot invoke it. Print it, explain the re-run handshake (below).
 - **The final ship** — push and PR-open each pause for a confirm; an immediate merge (or the reconcile excursion's merge) executes only on an explicit typed `PROCEED`.
-- **Implement (heavy build, plain or `--companion`)** — you *may* run it on request, but say it'll be a long turn and offer the cleaner alternative: `/compact` first, then run it in a fresh turn. Their call.
+- **Implement (heavy build)** — you *may* run it on request, but say it'll be a long turn and offer the cleaner alternative: `/compact` first, then run it in a fresh turn. Their call.
 
 The per-block "Type: …" prompts below are **branch selectors** (which option the user wants) — once a branch is chosen, the same print-then-offer applies to its command.
 
@@ -34,7 +34,7 @@ The per-block "Type: …" prompts below are **branch selectors** (which option t
 **Every** guided turn begins with a fixed one-line **host rail**, on its own line, then a blank line, then the narration. It marks the guide's voice (never confusable with a stage's `✅`/`📁` output) **and** shows how far down the flow we are.
 
 ```
-[the-flow] ◆─◆─[◆─◐─◇]─◇  research · plan · [build 2/3] · ship
+[the-flow] ◆─◆─[◆─◐─◇]─◇─◇  research · plan · [build 2/3] · post-flight · ship
 
 Where we are: …
 ```
@@ -43,11 +43,11 @@ Where we are: …
 - **Same-line legend**: two spaces after the pips, the milestone names ride the same line — lowercase, in rail order, joined by ` · `, the **current** one wrapped in `[…]`. Brackets follow the `◐`; on a settled rail (no `◐`) bracket the first `◇` (the next milestone up). Once the `plan` pass reveals per-phase nodes, the phase group reads as one bracketed word with a counter (`[build 2/3]`); if naming every phase would overflow ~100 columns, shorten to `p1 … pN`.
 - **Phase grouping**: per-phase nodes are wrapped in one `[ … ]` so they read distinctly from the fixed flow nodes → `◆─◆─◆─[◆─◐─◇]─◇`. During Build, the phase currently being implemented is the `◐` inside the group.
 - **Render the whole rail block as a fenced code block — always.** The rail line(s), any anchored companion line, and the `now`/`next` groups are ONE ``` fence (no language tag). Outside a fence markdown collapses leading spaces — and **never** fake alignment with `&nbsp;` or any HTML entity (terminals print them literally). Real spaces inside the fence are the only alignment tool. **If you ever catch yourself typing `&nbsp;`, the rail isn't fenced — fence it, don't entity-pad it:** ❌ `&nbsp;&nbsp;&nbsp;&nbsp;└─ workshop-x` (prints the literal letters `&nbsp;`) → ✅ four real spaces inside the ``` fence: `    └─ workshop-x`. The CLI rail (`harness flow rail`) is already a clean single line; the only sanctioned multi-line extension is the harness `└─ ⚙` anchored line — non-harness excursions (workshop, backpressure, reconcile, fix-loop) are mentioned in the digest's *Optional* facet as prose, **not** hand-appended to the rail as indented sub-lines.
-- **Macro-milestones (Full)**: Research · Plan · Tasks · Build · Review · Ship (6). The old separate Spec + Plan milestones collapse into **one `Plan` pip** — the atomic `plan` verb writes both halves (business spec + implementation plan) in one pass, so the pip fills once that document exists. Optional/sub-steps (deep-research, workshops, the post-spec backpressure check, ADRs, the fix loop) live *under* a milestone and get **no diamond** — opting in/out never changes the total.
-- **Dynamic total**: the rail total is an estimate early, then reflects the real phase count once the **`plan` pass** reveals it (Research · Plan · **one node per phase** · Ship). A 5-phase plan expands the rail (2 + 5 + 1 = 8); a 1-phase Simple plan collapses it. **The pip fill is *derived*, not stored** — `harness flow rail` computes it from live node status + zones (`◆`/`◐`/`◇` follow each node's `done`/`in_progress`/`known` state); there is no `milestones_*` counter. The coach's job is the *presentation* layer on top (the same-line legend, phase-grouping, the `now`/`next` block) — not the count.
+- **Macro-milestones (Full)**: Research · Plan · Tasks · Build · Review · Post-flight · Ship (7). The old separate Spec + Plan milestones collapse into **one `Plan` pip** — the atomic `plan` verb writes both halves (business spec + implementation plan) in one pass, so the pip fills once that document exists. Optional/sub-steps (deep-research, workshops, the post-spec backpressure check, ADRs, the fix loop) live *under* a milestone and get **no diamond** — opting in/out never changes the total.
+- **Dynamic total**: the rail total is an estimate early, then reflects the real phase count once the **`plan` pass** reveals it (Research · Plan · **one node per phase** · Post-flight · Ship). A 5-phase plan expands the rail (2 + 5 + 2 = 9); a 1-phase Simple plan collapses it. **The pip fill is *derived*, not stored** — `harness flow rail` computes it from live node status + zones (`◆`/`◐`/`◇` follow each node's `done`/`in_progress`/`known` state); there is no `milestones_*` counter. The coach's job is the *presentation* layer on top (the same-line legend, phase-grouping, the `now`/`next` block) — not the count.
 - **Status line** after the diamonds: `· now: <current> · next: <next>`. **Dynamic expansion** — inline when there's a single short next; when `next` has **≥2 options** (or would wrap), break `now`/`next` onto their **own lines** with options stacked (labelled + aligned, recommended first):
   ```
-  [the-flow] ◆─◆─◇─◇─◇─◇  research · plan · [tasks] · build · review · ship
+  [the-flow] ◆─◆─◇─◇─◇─◇─◇  research · plan · [tasks] · build · review · post-flight · ship
    now  · plan written (both halves) — CS-4, Full, READY
    next · ▸ {{render-edge: awaiting-1b → tasks}}         Phase 1 tasks               (recommended)
           ▸ {{render-edge: awaiting-1b → workshop}}      workshop a topic, then re-plan
@@ -279,11 +279,9 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > **Where we are**: Phase `<N>` tasks are tabled (`tasks/<phase>/tasks.md`) with success criteria.
 > Did you notice the first task's done-when is `<criterion>`? That's the bar the implementer codes to.
 > **Heads-up for the next step**: at the phase edge the flow **fires the pre-flight boot seam** (`/eng-harness-flow --hook pre-flight --json`, auto, read-only) — when a harness exists, the router proves the system runs before a line of code; the verdict is narrated verbatim (`healthy / SLOW / UNHEALTHY / UNAVAILABLE`). No router or no harness? One calm note, then standard testing.
-> **Companion option (optional)**: build with a live reviewer — the implement verb's **`--companion` mode** runs a `code-review-companion` (a parallel `minih` agent) that reviews every commit and **supersedes the review stage** (the Graph carries that decoration). Want a different watcher (security/perf) or a parallel **worker** (e.g. a `docs-writer`)? Spin it up with `minih run <slug>` and I'll track it on the flight view. I don't run minih myself — I narrate and record it.
-> Next, type one of:
+> Next:
 >
-> {{render-edge: awaiting-5 → implement --phase "<Phase N: Title>" --plan "<plan path>"}}  *(recommended)*
-> {{render-edge: awaiting-5 → implement --companion --phase "<Phase N: Title>" --plan "<plan path>"}}  *(optional — only if you want the live minih reviewer above)*
+> {{render-edge: awaiting-5 → implement --phase "<Phase N: Title>" --plan "<plan path>"}}
 
 ### `awaiting-6` → after a phase
 > **Where we are**: Phase `<N>` landed — `<what it delivered>`; acceptance `<AC refs>` met. Progress was tracked per task (stage 62).
@@ -291,7 +289,7 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > You may have seen the harness offer a few environment improvements it noticed at the end — that's it draining this phase's friction notes at the **post-coding retro seam** the flow fired at the phase-end edge (the router decides drain-vs-harvest, presenting each recommendation conversationally: numbered, lead with the highest-value one and why, default to save-all, and record what we decided on each — declines included). If the top fix was small and reversible, it may have offered to **do it right now** as a tracked mid-flow excursion (see `harness-seams.md` § Mid-flow fix excursion). No harness → you saw nothing, which is also fine.
 > Did you notice `<one execution-log discovery>`? Worth carrying forward.
 > *More phases (Full)*: a between-phase seam — `/compact` now, then {{render-edge: awaiting-6 → tasks}} for Phase `<N+1>`. Type: `compact` or `next phase`.
-> *Last phase / Simple*: next is review — {{render-edge: awaiting-6 → review}} (skip if a companion already reviewed every commit — the Graph's decoration). Type: `review`.
+> *Last phase / Simple*: next is review — {{render-edge: awaiting-6 → review}}. Type: `review`.
 
 ### `awaiting-7` → after review
 > **Where we are**: review written (`reviews/<file>`) — verdict `<…>`.
@@ -299,14 +297,20 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > Worth knowing: the review stage is the **inferential / eyeball** tier; the backpressure check earlier was the **computational** tier. Together they cover what each can't.
 > Did you notice `<one finding>`? `<It routes back to implement | it's clean>`.
 > *Findings*: fix, then re-run {{render-edge: awaiting-7 → review}}. Type: `fix`.
-> *Clean*: next is **ship** — push, open the PR, watch checks — {{render-edge: awaiting-7 → ship}}. Type: `ship`.
+> *More phases (Full)*: next phase's tasks — {{render-edge: awaiting-7 → tasks}}. Type: `next phase`.
+> *Clean, last phase*: next is **post-flight** — close out the flight and archive the plan — {{render-edge: awaiting-7 → post-flight}}. Type: `post-flight`.
+
+### `awaiting-7b` → at post-flight
+> **Where we are**: every phase and review is done — post-flight closes the flight out **before** any ship (shipping is optional and may never happen; the close-out isn't). The flow **fires the post-flight retro seam here** (`/eng-harness-flow --hook post-flight --json`, auto, read-only); the router owns the long-horizon reflection — harvest + the encode offer — and what it surfaces is yours to accept or wave past. All flight-plan receipts land **before** the move.
+> Then the stage writes the close-out note (`assets/post-flight.md`) and **archives the whole plan folder** to `docs/plans/archive/<ord>-<slug>/` — `git mv`, reversible, layout intact. Anything still open is listed first; archiving over open items needs your explicit go-ahead.
+> *Done*: **ship** is available whenever you want it — {{render-edge: awaiting-7b → ship}} (it reads the plan from the archive path). Type: `ship` — or just stop here; the flight is closed.
 
 ### `awaiting-8` → at ship
-> **Where we are**: ship pushes the branch and opens the PR (**each behind its own confirm** — a "yes" to push isn't a "yes" to open a PR), then watches CI checks and reports. After ship reports, the flow **fires the post-flight retro seam** (`/eng-harness-flow --hook post-flight --json`, auto, read-only); the router owns the long-horizon reflection, and the harvest/encode it surfaces is what you accept or wave past.
+> **Where we are**: ship pushes the branch and opens the PR (**each behind its own confirm** — a "yes" to push isn't a "yes" to open a PR), then watches CI checks and reports. (The plan folder was archived at post-flight — ship reads it from `docs/plans/archive/`; the long-horizon retro already ran there.)
 > Checks green → the flow's done. A **red check** routes back to a fix, then re-ship (never blocks). A meaningfully **diverged base** hands off to the **reconcile** excursion — its merge (and any immediate merge) is typed-**`PROCEED`**-gated, never a generic "yes". I'll mark the flow complete once the PR is up and checks are reported.
 
 ### `complete`
-> 🎉 That's the full loop: spec → plan → tasks → code → review → ship. If a harness was installed, it captured friction along the way and reflected at the post-flight seam — `/eng-harness-flow` any time for a check-in. Re-run `/the-flow` any time to start a new one.
+> 🎉 That's the full loop: spec → plan → tasks → code → review → post-flight → ship. If a harness was installed, it captured friction along the way and reflected at the post-flight seam — `/eng-harness-flow` any time for a check-in. Re-run `/the-flow` any time to start a new one.
 
 ### Optional branch mentions (one-liners, surfaced at their seam — never new stages)
 
@@ -328,7 +332,7 @@ USER types:  /compact       ← CLI built-in; wipes conversation context. the-fl
         ▼
 USER types:  /builder      ← no args; conversation memory is gone.
         ▼
-the-flow:  glob docs/plans/*/the-flow.json → harness flow nav show
+the-flow:  glob docs/plans/*/the-flow.json + docs/plans/archive/*/the-flow.json → harness flow nav show
            (active = bag.status:active OR — pre-bag flows — bag.status absent & nav.now real & terminal not-done; the §6 signal)
            → finds the flow @ nav.now
            → discover the stage artifact (exists, unchanged since checkpoint)
@@ -356,15 +360,16 @@ When invoked with **no active state** but the resolved plan folder **already hol
 | `*-plan.md` with `## Business Specification`, **no** `## Implementation Plan` (interrupted run) | `awaiting-1b` | `plan` — re-run to complete (atomic, regenerates both) | Research |
 | legacy `*-spec.md` only (no plan) | `awaiting-1b` | `plan` — reads the legacy spec as the business source | Research |
 | legacy `*-spec.md` + `*-plan.md` (plan has no `## Business Specification`) | `awaiting-1b` | `implement` / `tasks` — completed split plan; **do not migrate** | Research, Plan |
-| `tasks/phase-N/` present, **no** `reviews/review.phase-N*` | `awaiting-6` (mid-build) | `review` (review phase N) | + per-phase to N-1 |
-| `reviews/review.phase-N*` present | phase N reviewed | `implement --phase "Phase N+1…"` (or `ship` if last) | + per-phase to N |
+| `assets/tasks/phase-N/` (legacy root `tasks/`) present, **no** `reviews/review.phase-N*` | `awaiting-6` (mid-build) | `review` (review phase N) | + per-phase to N-1 |
+| `reviews/review.phase-N*` present (under `assets/tasks/…` or legacy paths) | phase N reviewed | `implement --phase "Phase N+1…"` (or `post-flight` if last) | + per-phase to N |
+| folder already under `docs/plans/archive/` (+ `assets/post-flight.md`) | `awaiting-7b` done | `ship` (optional — the flight is closed) | all but Ship |
 
-**Mode / rail**: read `**Mode**` from the plan's top-metadata block → `nav meta set mode <…>` (no plan yet → `mode: "unknown"`). The rail shows the 6-milestone estimate (derived from the seeded nodes) until the `plan` pass reveals the real phase count.
+**Mode / rail**: read `**Mode**` from the plan's top-metadata block → `nav meta set mode <…>` (no plan yet → `mode: "unknown"`). The rail shows the seeded-node milestone estimate (research · plan · build · review · post-flight · ship) until the `plan` pass reveals the real phase count.
 
 **Back-fill the flight plan via the CLI** (never hand-write `the-flow.json`): `harness flow create flight-plan --slug <slug> --path docs/plans/<ord>-<slug>/the-flow.json --schema "<skill base>/references/flight-plan.schema.json" --bare --agent the-flow`, then `add-node` each inferred node and `status`/`set-node` it to its back-filled state — completed → `status --to done` (the CLI stamps `ran_at`; for adoption that's the back-fill time, best-effort), `user_input` omitted or `set-node --note "reconstructed"`; remaining nodes → `known`/`assumed` per the taxonomy. Then set position + session bag: `nav set --now <furthest-progressed node>` (+ `--intent` from `original-ask.md` if present), `nav meta set status active`, and `nav meta set mode <from the plan's **Mode**>`. Then `harness flow render --path … --output the-flow.md`. (`<skill base>` = this skill's base dir.)
 
 **Safety — never clobber**:
-- Never re-run a stage or touch `*-spec.md` / `*-plan.md` / `tasks/` / `reviews/`. Adoption writes **only** the-flow bookkeeping files.
+- Never re-run a stage or touch `*-spec.md` / `*-plan.md` / `assets/` / legacy `tasks/` / `reviews/`. Adoption writes **only** the-flow bookkeeping files.
 - If `original-ask.md` **exists**, write `original-ask.reconstructed.md` instead — never overwrite the user's original.
 - If `the-flow.json` exists and is non-empty, **merge** (preserve real nodes); on conflict, print a notice and keep the existing file.
 

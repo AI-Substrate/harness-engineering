@@ -5,17 +5,17 @@
 > Composition is the bundling flow's job.
 
 **Verb**: progress
-**Purpose**: Update plan and dossier progress tracking with task status and domain context; on the last task of a phase, optionally run the full code-review-companion debrief (Step 9) when `--companion-run-id` is provided. Directly invocable, and also read and followed by the implement verb (a declared delegation): after each completed task, and on the final task — with the companion debrief flags when its companion mode ran. Control returns to the caller when this verb finishes.
-**Consumes**: a plan (and, in Full Mode, a phase dossier); a task that has just changed status. Companion debrief additionally requires `--status completed` on the last task in the phase + `--companion-run-id`.
-**Flags**: `--plan`, `--task`, `--status completed|in_progress|blocked`, `--changes "<files>"`, optional `--domain`, `--phase`, `--subtask`, `--inline`, `--companion-run-id "<run id>"`, `--companion-slug "<slug>"` (default `code-review-companion`)
-**Produces**: Task table Status column + Architecture Map nodes updated; plan progress section updated; domain-context change record (incl. domain-map / Concepts update flags); when the debrief fires: drain ping + control:stop + farewell envelope read, findings reconciliation in the execution log, magicWand surfaced as follow-up candidate. Terminal report = files touched, whether the companion debrief fired (yes — runId / no — flag absent), follow-up candidates surfaced.
-**Side effects**: none (progress tracking + optional companion debrief only)
+**Purpose**: Update plan and dossier progress tracking with task status and domain context. Directly invocable, and also read and followed by the implement verb (a declared delegation) after each completed task. Control returns to the caller when this verb finishes.
+**Consumes**: a plan (and, in Full Mode, a phase dossier); a task that has just changed status.
+**Flags**: `--plan`, `--task`, `--status completed|in_progress|blocked`, `--changes "<files>"`, optional `--domain`, `--phase`, `--subtask`, `--inline`
+**Produces**: Task table Status column + Architecture Map nodes updated; plan progress section updated; domain-context change record (incl. domain-map / Concepts update flags). Terminal report = files touched.
+**Side effects**: none (progress tracking only)
 
 ---
 
 ## Procedure
 
-Update plan and dossier progress tracking with task status. Adds domain context to change tracking. **Companion debrief** when called with `--companion-run-id` on the last task of a phase.
+Update plan and dossier progress tracking with task status. Adds domain context to change tracking.
 
 ```md
 User input:
@@ -31,18 +31,13 @@ $ARGUMENTS
 # --phase "<Phase N: Title>" (Full Mode)
 # --subtask "<subtask-key>" (if updating subtask)
 # --inline (Simple Mode — update inline task table in plan)
-# --companion-run-id "<run id>" (optional — if provided, signals that a
-#   code-review-companion ran in parallel during the phase; triggers
-#   Step 9 companion debrief on the last task)
-# --companion-slug "<slug>" (optional, default: "code-review-companion" —
-#   only used in conjunction with --companion-run-id)
 
 ## Steps
 
 1) Resolve paths:
    - PLAN, PLAN_DIR from --plan
    - If --inline: update task table within PLAN itself
-   - If --phase: locate dossier at PLAN_DIR/tasks/${PHASE_SLUG}/tasks.md
+   - If --phase: locate dossier at PLAN_DIR/assets/tasks/${PHASE_SLUG}/tasks.md (legacy root `tasks/` fallback — § Plan-folder layout, `references/00-routing.md`)
    - If --subtask: locate subtask dossier
 
 2) Parse --changes as a list of changed file paths.
@@ -83,89 +78,20 @@ $ARGUMENTS
    questions. (Step number kept so callers' "Step 9" references stay
    stable.)
 
-9) Companion debrief (phase-end conditional — fires ONLY when ALL of:
-   `--status completed`, last-task-in-phase, AND `--companion-run-id`
-   was provided):
-
-   **If `--companion-run-id` was NOT provided → skip this entire step.**
-   This is the "no companion ran" branch — no debrief needed, no
-   farewell to read.
-
-   **If `--companion-run-id` WAS provided** (signals a companion ran in
-   parallel during the phase — the implement verb's companion mode passes
-   it on the final task):
-
-   a) **Drain ping** (give the companion a final-sweep opportunity):
-      ```bash
-      COMPANION_SLUG="${companion_slug:-code-review-companion}"
-      FINAL_SHA=$(git rev-parse --short HEAD)
-      minih outside inbox send "$COMPANION_SLUG" --run "$RUN_ID" \
-        --type task \
-        --subject "review-request: final $FINAL_SHA — DONE" \
-        --body "Final commit for <Phase Title>. Please scan the entire
-                phase commit range for: end-to-end correctness, anything
-                you noticed across multiple commits, missing tests,
-                unhandled edge cases. control:stop incoming after your
-                reply."
-      ```
-      Wait 30-60 seconds for the companion to respond. Read inbox for
-      any final findings. Address HIGH/CRITICAL inline if possible
-      (this may produce one more commit + ping cycle BEFORE the stop).
-
-   b) **Send control:stop**:
-      ```bash
-      minih outside inbox send "$COMPANION_SLUG" --run "$RUN_ID" \
-        --type control \
-        --subject "stop — phase done" \
-        --body "stop — phase complete. Please write your farewell
-                envelope and exit."
-      ```
-
-   c) **Read the farewell envelope via the dogfood path** (NOT by `cat`-ing
-      output/report.json directly):
-      ```bash
-      # Preferred: aggregate retros across runs (in case minih harvested already)
-      minih retros --slug "$COMPANION_SLUG" 2>/dev/null
-
-      # Or: validate the latest run's output
-      LAST_RUN_DIR=$(minih last-run "$COMPANION_SLUG" 2>/dev/null | jq -r '.data.runDir')
-      minih validate "$COMPANION_SLUG" --file "$LAST_RUN_DIR/output/report.json" 2>/dev/null
-      ```
-      The farewell contains: `findings[]`, `summary`, `retrospective.magicWand`,
-      `retrospective.coordination`, `retrospective.difficulties[]`.
-
-   d) **Reconcile findings**: walk every finding from the farewell + any
-      `finding`-typed messages received during the phase. For each:
-      - **ADDRESSED INLINE** — fixed during the phase. Note the fix sha.
-      - **DEFERRED WITH REASONING** — out-of-scope; document the deferral
-        in execution.log.md and (if appropriate) a follow-up dossier.
-      - **DISAGREE** — companion was wrong. Briefly justify and move on.
-      Never ignore a finding silently. The disposition appears in the
-      execution log + the user-facing final summary.
-
-   e) **Surface the companion's magicWand as follow-up candidate**: if
-      the magicWand is non-trivial, print a stderr note recommending the
-      caller file a fix dossier (the tasks verb's `--fix "<companion magicWand>"`
-      mode owns that).
-      Do NOT auto-create dossiers; surface only.
+9) (Retired) Companion debrief — companion mode left the pipeline entirely;
+   this verb takes no companion flags and runs no debrief. (Step number
+   kept so callers' historical "Step 9" references stay stable.)
 
 10) Report what was updated:
     - Files touched (task table, plan progress)
-    - Whether companion debrief fired (yes — runId / no — flag absent)
-    - Any follow-up candidates surfaced
 ```
 
-This sub-skill is the **single source of truth** for progress updates AND the companion debrief. Always delegate both here rather than manually editing task tables or hand-running drain/stop sequences.
+This sub-skill is the **single source of truth** for progress updates. Always delegate here rather than manually editing task tables.
 
-**Why the companion debrief lives here**: this sub-skill already owns the "last task in phase" branch (the phase-complete summary in the execution log + task table). Adding the conditional companion debrief (Step 9) means the implement verb's companion mode gets full phase-end ceremony coverage for free with zero duplication.
-
-**Call signature symmetry** (how the implement verb's declared delegation calls this):
-- Standard run: `--task <T> --status completed --plan <P>` — Step 9 skipped (no flag).
-- Companion-mode run: `--task <T> --status completed --plan <P> --companion-run-id <RUN>` — Step 9 fires.
 ---
 
-> Note: this sub-skill writes no retro artifacts — progress tracking and (optionally) the minih companion debrief only. `docs/harness/agents/**` is frozen read-only history (nothing writes there anymore).
+> Note: this sub-skill writes no retro artifacts — progress tracking only. `docs/harness/agents/**` is frozen read-only history (nothing writes there anymore).
 
 ## Exit
 
-Print the output-contract summary (✅ block: what was updated, whether the debrief fired, follow-ups surfaced). Then STOP. Do not name a next stage. If invoked standalone, end with exactly: "Routing is the flow's job — run the parent flow bare to continue."
+Print the output-contract summary (✅ block: what was updated). Then STOP. Do not name a next stage. If invoked standalone, end with exactly: "Routing is the flow's job — run the parent flow bare to continue."
