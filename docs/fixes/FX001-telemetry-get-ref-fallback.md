@@ -71,3 +71,30 @@ Cross-model review required (same pair discipline as plan 071): Dim-0
 mutation gate on T3's controls first, then fix verification, then
 no-regression (`just test` full suite + `harness checks` warn trio
 byte-identical to the current baseline at dispatch sha).
+
+## Ruling #1 (2026-08-05, pij-related-koala — T4 scope + D2/D3)
+
+Coder recon (357 coded-exit events on koala's ref, 0 carrying a code; 0 E440
+bytes anywhere on 112 refs; koala ref segments all captured_env {}) proved
+T4 unmeetable as written. Ruling = the coder's recommendation, adopted:
+
+- **D2 IS IN SCOPE** (option b): preserve `command_exit.code` through the
+  OTLP round trip (otlp/logs.ts encode + decode). It is the difference
+  between the fix working and looking like it works — without it, every
+  flushed session's refusal lane reads empty forever. The
+  `check:telemetry-fixtures` drift-gate regeneration must be a DELIBERATE,
+  quoted step in the report (never a scope-dodge). Historic refusal bytes
+  are accepted as unrecoverable — they were never encoded; the fix is
+  prospective and the report must say so.
+- **T4 RE-SCOPED** (option a): live proof runs against
+  `pij-key-constrictor` (real, joinable, flushed — 28 segments with the
+  PIJ key on its ref) for the fallback, plus a FRESH post-fix E440
+  manufactured and round-tripped to prove the refusal lane end to end
+  (capture → roll → ref → get → refusals non-empty with the code).
+- **D3 SPUN OUT**: the adopted-root-seat identity gap (no PIJ_SESSION_ID
+  captured for adopted seats — koala's own lane unjoinable by PIJ key) is
+  capture-side, already a known class, and goes to prime as a finding; if
+  prime wants it as a fix, prime allocates the FX ordinal (FX ordinals are
+  prime-allocated as of tonight).
+- **D1 noted**: the partial fallback at session-evidence.ts:555-566 is
+  replaced by the full fold with provenance — one implementation, not two.
