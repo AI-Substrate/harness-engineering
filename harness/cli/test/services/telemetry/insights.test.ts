@@ -567,3 +567,190 @@ describe('observe_conversion + disposition_mix generators (plan 056 T005)', () =
     expect(s.available).toBe(false);
   });
 });
+
+// ── Plan 068 item 3 — §8 renders path-only evidence with a NAMED gap ─────────
+
+/**
+ * A harness that records WHICH files were touched but exposes no per-file payload
+ * (a `files.written`/`files.edited` path list with no `file` event) produced
+ * authorship rows §8 could not render — the evidence existed and stayed invisible.
+ * §8 now renders such rows explicitly. The rules it must never break: state no
+ * number it did not measure, leave delta-backed rows untouched, and carry the
+ * marker all the way out.
+ */
+describe('plan 068 · item 3 — §8 files_written renders delta-unavailable rows', () => {
+  const withAuthorship = (files: TelemetryReport['authorship']): InsightInput => {
+    const report = mkReport();
+    report.authorship = files;
+    return input(report);
+  };
+
+  const pathOnly = {
+    path: 'src/only-path.ts',
+    change: 'written' as const,
+    lines_added: null,
+    lines_removed: null,
+    bytes_added: null,
+    bytes_removed: null,
+    events: 0,
+    delta_unavailable: 'no_per_file_delta_capture' as const,
+  };
+  const measured = {
+    path: 'src/measured.ts',
+    change: 'edited' as const,
+    lines_added: 40,
+    lines_removed: 4,
+    bytes_added: 400,
+    bytes_removed: 40,
+    events: 3,
+  };
+
+  it('renders the row with null values, a named marker, and NO invented number', () => {
+    const doc = buildInsights(
+      [
+        withAuthorship({
+          files: [pathOnly],
+          totals: {
+            files: 1,
+            lines_added: 0,
+            lines_removed: 0,
+            bytes_added: 0,
+            bytes_removed: 0,
+            files_delta_unavailable: 1,
+          },
+        }),
+      ],
+      { generatedAt: '' },
+    );
+    const section = sectionById(doc, 'files_written');
+    expect(section.available).toBe(true);
+    expect(section.rows).toHaveLength(1);
+    const row = section.rows[0];
+    expect(row.values.delta_unavailable).toBe('no_per_file_delta_capture');
+    expect(row.values.lines_added).toBeNull();
+    expect(row.values.lines_removed).toBeNull();
+    expect(row.values.bytes_added).toBeNull();
+    expect(row.values.bytes_removed).toBeNull();
+    // The claim states the gap, never a churn figure (no "+0/-0").
+    expect(row.claim).toContain('delta unavailable');
+    expect(row.claim).not.toMatch(/[+-]\d/);
+    expect(row.caveat).toMatch(/not zero/i);
+  });
+
+  it('leaves a delta-backed row byte-identical to its measured rendering', () => {
+    const only = buildInsights(
+      [
+        withAuthorship({
+          files: [measured],
+          totals: {
+            files: 1,
+            lines_added: 40,
+            lines_removed: 4,
+            bytes_added: 400,
+            bytes_removed: 40,
+          },
+        }),
+      ],
+      { generatedAt: '' },
+    );
+    const mixed = buildInsights(
+      [
+        withAuthorship({
+          files: [measured, pathOnly],
+          totals: {
+            files: 2,
+            lines_added: 40,
+            lines_removed: 4,
+            bytes_added: 400,
+            bytes_removed: 40,
+            files_delta_unavailable: 1,
+          },
+        }),
+      ],
+      { generatedAt: '' },
+    );
+    const measuredRow = (doc: ReturnType<typeof buildInsights>) =>
+      sectionById(doc, 'files_written').rows.find((r) => r.values.path === 'src/measured.ts');
+    expect(JSON.stringify(measuredRow(mixed))).toBe(JSON.stringify(measuredRow(only)));
+    // …and the unavailable row never outranks a measured one.
+    expect(sectionById(mixed, 'files_written').rows.map((r) => r.values.path)).toEqual([
+      'src/measured.ts',
+      'src/only-path.ts',
+    ]);
+  });
+
+  it('a measured row anywhere in the cohort beats a path-only row for the same path', () => {
+    const doc = buildInsights(
+      [
+        withAuthorship({
+          files: [{ ...pathOnly, path: 'src/shared.ts' }],
+          totals: {
+            files: 1,
+            lines_added: 0,
+            lines_removed: 0,
+            bytes_added: 0,
+            bytes_removed: 0,
+            files_delta_unavailable: 1,
+          },
+        }),
+        withAuthorship({
+          files: [{ ...measured, path: 'src/shared.ts' }],
+          totals: {
+            files: 1,
+            lines_added: 40,
+            lines_removed: 4,
+            bytes_added: 400,
+            bytes_removed: 40,
+          },
+        }),
+      ],
+      { generatedAt: '' },
+    );
+    const rows = sectionById(doc, 'files_written').rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].values.delta_unavailable).toBeUndefined();
+    // The gap contributed NOTHING to the measured churn.
+    expect(rows[0].values.lines_added).toBe(40);
+    expect(rows[0].values.events).toBe(3);
+  });
+});
+
+describe('plan 068 · item 3 — a path-only row states its REAL sample size', () => {
+  const row = (path: string) => ({
+    path,
+    change: 'written' as const,
+    lines_added: null,
+    lines_removed: null,
+    bytes_added: null,
+    bytes_removed: null,
+    events: 0,
+    delta_unavailable: 'no_per_file_delta_capture' as const,
+  });
+  const reportObserving = (path: string): InsightInput => {
+    const report = mkReport();
+    report.authorship = {
+      files: [row(path)],
+      totals: {
+        files: 1,
+        lines_added: 0,
+        lines_removed: 0,
+        bytes_added: 0,
+        bytes_removed: 0,
+        files_delta_unavailable: 1,
+      },
+    };
+    return input(report);
+  };
+
+  it('n counts the reports that observed the path — not a hardcoded 1', () => {
+    const three = buildInsights(
+      [reportObserving('src/x.ts'), reportObserving('src/x.ts'), reportObserving('src/x.ts')],
+      { generatedAt: '' },
+    );
+    const rows = sectionById(three, 'files_written').rows;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].n).toBe(3);
+    const one = buildInsights([reportObserving('src/x.ts')], { generatedAt: '' });
+    expect(sectionById(one, 'files_written').rows[0].n).toBe(1);
+  });
+});

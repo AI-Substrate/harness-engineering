@@ -319,16 +319,45 @@ function round(n: number): number {
 // ── Authorship aggregate (plan 056 · T007) ──────────────────────────────────
 
 /** Per-file authorship totals, aggregated across a session's `file` events. */
+/**
+ * The named reason a row carries NO delta: the capture recorded THAT the path was
+ * written/edited, but the harness exposes no per-file payload to measure it from
+ * (e.g. a `files.written` path list with no `file` event behind it). It is a
+ * missing CAPABILITY, not a measurement of zero — which is precisely why the delta
+ * fields are `null` on such a row and never `0`.
+ */
+export const AUTHORSHIP_DELTA_UNAVAILABLE = 'no_per_file_delta_capture' as const;
+
 export interface AuthorshipFile {
   path: string;
   /** The most recent change kind observed for the path. */
   change: 'written' | 'edited';
-  lines_added: number;
-  lines_removed: number;
-  bytes_added: number;
-  bytes_removed: number;
-  /** How many `file` events (writes/edits) touched this path. */
+  /**
+   * Measured line/byte churn — `null` when {@link delta_unavailable} is set. NEVER
+   * 0 as a stand-in for "not captured": a zero is a measurement, a null is a gap.
+   */
+  lines_added: number | null;
+  lines_removed: number | null;
+  bytes_added: number | null;
+  bytes_removed: number | null;
+  /** How many `file` events (writes/edits) touched this path. `0` on a path-only row. */
   events: number;
+  /**
+   * Set ONLY on a path-only row, naming why no delta exists
+   * ({@link AUTHORSHIP_DELTA_UNAVAILABLE}). ABSENT on every delta-backed row, so a
+   * report with no path-only evidence is byte-identical to one built before this
+   * field existed (plan 068 item 3).
+   */
+  delta_unavailable?: typeof AUTHORSHIP_DELTA_UNAVAILABLE;
+}
+
+/**
+ * A path the capture OBSERVED being written/edited without a measurable delta —
+ * a `files.written` / `files.edited` entry with no `file` event behind it.
+ */
+export interface ObservedPath {
+  path: string;
+  change: 'written' | 'edited';
 }
 
 /** The "which files did agents write, and how much" view — a pure fn of the stream. */
@@ -336,10 +365,16 @@ export interface Authorship {
   files: AuthorshipFile[];
   totals: {
     files: number;
+    /** Sums over DELTA-BACKED rows only; a path-only row contributes nothing. */
     lines_added: number;
     lines_removed: number;
     bytes_added: number;
     bytes_removed: number;
+    /**
+     * How many rows carry no delta. OMITTED when none do, so the delta-backed
+     * totals object is byte-identical to its pre-change shape.
+     */
+    files_delta_unavailable?: number;
   };
 }
 
@@ -349,8 +384,17 @@ export interface Authorship {
  * writes/edits of one path fold into a single per-path row (deltas summed; the
  * `change` reflects the latest event; `events` counts the touches). Preserves
  * first-seen path order.
+ *
+ * `observed` (plan 068 item 3) carries paths the capture recorded WITHOUT a
+ * measurable delta. Each such path that has no `file` event becomes a row with
+ * `null` deltas and a named {@link AuthorshipFile.delta_unavailable} reason — the
+ * evidence is made visible without inventing a single number. With no `observed`
+ * paths the output is byte-identical to the events-only aggregate.
  */
-export function computeAuthorship(events: readonly Event[]): Authorship {
+export function computeAuthorship(
+  events: readonly Event[],
+  observed: readonly ObservedPath[] = [],
+): Authorship {
   const byPath = new Map<string, AuthorshipFile>();
   for (const e of events) {
     if (e.kind !== 'file') continue;
@@ -368,11 +412,29 @@ export function computeAuthorship(events: readonly Event[]): Authorship {
       byPath.set(e.path, f);
     }
     f.change = e.change;
-    f.lines_added += e.delta.lines_added;
-    f.lines_removed += e.delta.lines_removed;
-    f.bytes_added += e.delta.bytes_added;
-    f.bytes_removed += e.delta.bytes_removed;
+    f.lines_added = (f.lines_added ?? 0) + e.delta.lines_added;
+    f.lines_removed = (f.lines_removed ?? 0) + e.delta.lines_removed;
+    f.bytes_added = (f.bytes_added ?? 0) + e.delta.bytes_added;
+    f.bytes_removed = (f.bytes_removed ?? 0) + e.delta.bytes_removed;
     f.events += 1;
+  }
+  // A path the capture SAW touched but could not measure becomes an explicit
+  // delta-unavailable row — visible evidence with a named gap, never zeros. A path
+  // that already has a `file` event keeps its measured row untouched.
+  let unavailable = 0;
+  for (const o of observed) {
+    if (byPath.has(o.path)) continue;
+    byPath.set(o.path, {
+      path: o.path,
+      change: o.change,
+      lines_added: null,
+      lines_removed: null,
+      bytes_added: null,
+      bytes_removed: null,
+      events: 0,
+      delta_unavailable: AUTHORSHIP_DELTA_UNAVAILABLE,
+    });
+    unavailable += 1;
   }
   const files = [...byPath.values()];
   const totals = {
@@ -381,12 +443,13 @@ export function computeAuthorship(events: readonly Event[]): Authorship {
     lines_removed: 0,
     bytes_added: 0,
     bytes_removed: 0,
+    ...(unavailable > 0 ? { files_delta_unavailable: unavailable } : {}),
   };
   for (const f of files) {
-    totals.lines_added += f.lines_added;
-    totals.lines_removed += f.lines_removed;
-    totals.bytes_added += f.bytes_added;
-    totals.bytes_removed += f.bytes_removed;
+    totals.lines_added += f.lines_added ?? 0;
+    totals.lines_removed += f.lines_removed ?? 0;
+    totals.bytes_added += f.bytes_added ?? 0;
+    totals.bytes_removed += f.bytes_removed ?? 0;
   }
   return { files, totals };
 }

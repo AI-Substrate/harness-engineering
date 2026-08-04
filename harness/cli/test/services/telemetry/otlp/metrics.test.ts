@@ -416,11 +416,9 @@ describe('metric production degrades, never throws (plan 068 · item 1)', () => 
     );
 
   const exitCodePoints = (seg: Segment): readonly NumberDataPoint[] =>
-    produceOtlpMetrics(seg)
-      .metrics.resourceMetrics[0].scopeMetrics[0].metrics.find(
-        (metric) => metric.name === 'harness.command.exit_code',
-      )
-      ?.gauge?.dataPoints ?? [];
+    produceOtlpMetrics(seg).metrics.resourceMetrics[0].scopeMetrics[0].metrics.find(
+      (metric) => metric.name === 'harness.command.exit_code',
+    )?.gauge?.dataPoints ?? [];
 
   it('admits the multi-word extension verb the logs path already admits (root cause)', () => {
     // The exact verb from the live unreadable session.

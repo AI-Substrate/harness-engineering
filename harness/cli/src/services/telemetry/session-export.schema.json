@@ -213,6 +213,29 @@
         },
         "token_evidence": {
           "$ref": "#/$defs/tokenEvidence"
+        },
+        "files_observed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "written",
+            "edited"
+          ],
+          "description": "Paths the capture recorded as written/edited in a segment's `files` lists (plan 068 item 3). The OTLP logs carry only `file` EVENTS, which exist solely where the harness exposed a measurable per-file payload \u2014 so on harnesses that expose a path but no payload this is the only surviving evidence the file was touched. OMITTED when no segment carried a path list.",
+          "properties": {
+            "written": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "edited": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },

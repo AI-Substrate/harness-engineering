@@ -40,6 +40,7 @@ import {
   computeAuthorship,
   computeRollup,
   IDLE_CAP_S,
+  type ObservedPath,
   parseIso,
 } from './rollup.js';
 import type { SessionExport } from './session-export.js';
@@ -1015,6 +1016,9 @@ export function buildReport(
   let controlTimeline: TimelineMarker[] | undefined;
   // plan 056: the file events across every included session → one authorship view.
   const fileEventsAll: SessionView['events'] = [];
+  // plan 068 item 3: paths the capture recorded WITHOUT a measurable delta, so the
+  // authorship surface can show them with a named gap rather than drop them.
+  const observedPaths: ObservedPath[] = [];
   // Plan 056 (workshop D6) — friction proxies + retro-drain aggregates. Counted
   // straight off the ordered event stream (P12-safe: codes/verbs/closed counts only).
   let commandErrors = 0;
@@ -1081,6 +1085,13 @@ export function buildReport(
     if (included.length === 1) controlTimeline = buildControlTimeline(view.events);
     // plan 056: collect this session's file events for the cohort authorship view.
     for (const e of view.events) if (e.kind === 'file') fileEventsAll.push(e);
+    // plan 068 item 3: and the path-only evidence beside them.
+    for (const path of exp.summary.files_observed?.written ?? []) {
+      observedPaths.push({ path, change: 'written' });
+    }
+    for (const path of exp.summary.files_observed?.edited ?? []) {
+      observedPaths.push({ path, change: 'edited' });
+    }
   }
 
   const idCap = opts.sessionIdCap ?? 200;
@@ -1154,7 +1165,9 @@ export function buildReport(
       interval_events: intervalEvents,
     },
     ...(controlTimeline !== undefined ? { control_timeline: controlTimeline } : {}),
-    ...(fileEventsAll.length > 0 ? { authorship: computeAuthorship(fileEventsAll) } : {}),
+    ...(fileEventsAll.length > 0 || observedPaths.length > 0
+      ? { authorship: computeAuthorship(fileEventsAll, observedPaths) }
+      : {}),
   };
 }
 

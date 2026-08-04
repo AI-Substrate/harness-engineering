@@ -79,6 +79,15 @@ export interface SessionExportSummary {
   token_evidence: TokenEvidence;
   /** Field names absent/unknown across the session, surfaced honestly (AC-10). */
   degraded: string[];
+  /**
+   * Paths the capture recorded as written/edited in a segment's `files` lists
+   * (plan 068 item 3). The OTLP logs carry only `file` EVENTS, which exist solely
+   * where the harness exposed a measurable per-file payload — so on harnesses that
+   * expose a path but no payload this is the only surviving evidence that the file
+   * was touched. Carried so the read path can render it with a named gap instead
+   * of dropping it. OMITTED when no segment carried a path list.
+   */
+  files_observed?: { written: string[]; edited: string[] };
 }
 
 export interface SessionExportSignals {
@@ -474,6 +483,17 @@ export function combineSession(
   let firstTc: string | null = null;
   let lastTc: string | null = null;
   const hasV1 = reads.some(({ seg }) => !hasEventStream(seg));
+  // Paths the capture SAW touched (plan 068 item 3) — de-duplicated, first-seen order.
+  const filesWritten: string[] = [];
+  const filesEdited: string[] = [];
+  for (const { seg } of reads) {
+    for (const path of seg.files?.written ?? []) {
+      if (!filesWritten.includes(path)) filesWritten.push(path);
+    }
+    for (const path of seg.files?.edited ?? []) {
+      if (!filesEdited.includes(path)) filesEdited.push(path);
+    }
+  }
   for (const { seg } of reads) {
     const v = seg.schema_version ?? 'unknown';
     versions[v] = (versions[v] ?? 0) + 1;
@@ -558,6 +578,9 @@ export function combineSession(
       tokens,
       token_evidence,
       degraded,
+      ...(filesWritten.length > 0 || filesEdited.length > 0
+        ? { files_observed: { written: filesWritten, edited: filesEdited } }
+        : {}),
     },
     signals: {
       logs: producedLogs.logs,

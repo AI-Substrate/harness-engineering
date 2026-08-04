@@ -611,7 +611,13 @@ describe('logs production degrades, never throws (plan 068 · item 1)', () => {
         ...base,
         event_stream: [
           { t: '2026-08-03T21:20:09Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
-          { t: '2026-08-03T21:20:10Z', kind: 'tools', name: 'not a legal atom', count: 1, span_s: 1 },
+          {
+            t: '2026-08-03T21:20:10Z',
+            kind: 'tools',
+            name: 'not a legal atom',
+            count: 1,
+            span_s: 1,
+          },
           { t: '2026-08-03T21:20:11Z', kind: 'prompt', words: 12 },
         ],
       },
@@ -637,7 +643,13 @@ describe('logs production degrades, never throws (plan 068 · item 1)', () => {
       {
         ...base,
         event_stream: [
-          { t: '2026-08-03T21:20:09Z', kind: 'tools', name: 'not a legal atom', count: 1, span_s: 1 },
+          {
+            t: '2026-08-03T21:20:09Z',
+            kind: 'tools',
+            name: 'not a legal atom',
+            count: 1,
+            span_s: 1,
+          },
           { t: '2026-08-03T21:20:10Z', kind: 'tools', name: 'also not legal', count: 1, span_s: 1 },
           { t: '2026-08-03T21:20:11Z', kind: 'skill', name: 'nor is this', status: 'completed' },
         ],
@@ -654,7 +666,13 @@ describe('logs production degrades, never throws (plan 068 · item 1)', () => {
         event_stream: [
           { t: '2026-08-03T21:20:09Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
           { t: '2026-08-03T21:20:10Z', kind: 'tools', name: 'Bash', count: 1, span_s: 1 },
-          { t: '2026-08-03T21:20:11Z', kind: 'command_exit', verb: 'dd build', exit: 1, status: 'error' },
+          {
+            t: '2026-08-03T21:20:11Z',
+            kind: 'command_exit',
+            verb: 'dd build',
+            exit: 1,
+            status: 'error',
+          },
         ],
       },
       '/repo',

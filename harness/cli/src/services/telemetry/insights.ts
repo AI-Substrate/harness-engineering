@@ -31,7 +31,7 @@ import type {
   TimelineMarker,
   TokenCoverage,
 } from './report.js';
-import { parseIso } from './rollup.js';
+import { AUTHORSHIP_DELTA_UNAVAILABLE, parseIso } from './rollup.js';
 
 export const INSIGHTS_SCHEMA_VERSION = 'harness.telemetry-insights/v1' as const;
 
@@ -1119,6 +1119,11 @@ function dispositionMix(inputs: InsightInput[]): InsightSection {
  * the tool payload (a Write's content / an Edit's old→new / an apply_patch's +/-),
  * NOT a git diff — a per-file churn signal, never the file text. Renders
  * `available:false` when no input report carried authorship (older captures).
+ *
+ * A path the capture recorded WITHOUT a measurable delta (plan 068 item 3) renders
+ * as its own row with `null` deltas and a caveat naming the missing capability. It
+ * states no number, and it contributes to no sum — the file's existence is the
+ * evidence; its churn is unavailable, not zero.
  */
 function filesWritten(inputs: InsightInput[]): InsightSection {
   const withAuthorship = inputs.filter((i) => i.report.authorship !== undefined);
@@ -1131,19 +1136,26 @@ function filesWritten(inputs: InsightInput[]): InsightSection {
       note: 'Unavailable: no input report carries `authorship` (pre-plan-056 captures emit no `file` events).',
     };
   }
-  const byPath = new Map<
-    string,
-    {
-      change: 'written' | 'edited';
-      lines_added: number;
-      lines_removed: number;
-      bytes_added: number;
-      bytes_removed: number;
-      events: number;
-    }
-  >();
+  interface PathAccumulator {
+    change: 'written' | 'edited';
+    lines_added: number;
+    lines_removed: number;
+    bytes_added: number;
+    bytes_removed: number;
+    events: number;
+    /**
+     * True while EVERY contributing row was delta-unavailable. One measured row
+     * anywhere in the cohort makes the path measured — a real delta always
+     * outranks a gap, and the gap never subtracts from it.
+     */
+    deltaUnavailable: boolean;
+    /** Input reports that observed this path — the only sample a path-only row has. */
+    reports: number;
+  }
+  const byPath = new Map<string, PathAccumulator>();
   for (const { report } of withAuthorship) {
     for (const f of report.authorship?.files ?? []) {
+      const unavailable = f.delta_unavailable !== undefined;
       const cur = byPath.get(f.path) ?? {
         change: f.change,
         lines_added: 0,
@@ -1151,38 +1163,69 @@ function filesWritten(inputs: InsightInput[]): InsightSection {
         bytes_added: 0,
         bytes_removed: 0,
         events: 0,
+        deltaUnavailable: unavailable,
+        reports: 0,
       };
+      cur.reports += 1;
       cur.change = f.change;
-      cur.lines_added += f.lines_added;
-      cur.lines_removed += f.lines_removed;
-      cur.bytes_added += f.bytes_added;
-      cur.bytes_removed += f.bytes_removed;
+      // A `null` delta contributes NOTHING — it is a gap, not a zero.
+      cur.lines_added += f.lines_added ?? 0;
+      cur.lines_removed += f.lines_removed ?? 0;
+      cur.bytes_added += f.bytes_added ?? 0;
+      cur.bytes_removed += f.bytes_removed ?? 0;
       cur.events += f.events;
+      cur.deltaUnavailable = cur.deltaUnavailable && unavailable;
       byPath.set(f.path, cur);
     }
   }
   const CAP = 25;
-  const all = [...byPath.entries()].sort(
-    (a, b) => b[1].lines_added + b[1].lines_removed - (a[1].lines_added + a[1].lines_removed),
-  );
+  // Measured rows rank by churn; delta-unavailable rows carry NO churn to rank by
+  // (their churn is unknown, not zero), so they sort last, by path, and are never
+  // silently pushed out of the cap ahead of a measured row.
+  const all = [...byPath.entries()].sort((a, b) => {
+    if (a[1].deltaUnavailable !== b[1].deltaUnavailable) return a[1].deltaUnavailable ? 1 : -1;
+    if (a[1].deltaUnavailable) return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
+    return b[1].lines_added + b[1].lines_removed - (a[1].lines_added + a[1].lines_removed);
+  });
   const rows = all.slice(0, CAP).map(([path, f]) =>
-    makeRow({
-      claim: `${path}: +${f.lines_added}/-${f.lines_removed} lines over ${f.events} write(s) (${f.change})`,
-      measures_used: ['authorship.files'],
-      // n = how many write/edit events touched this path (the sample behind the churn).
-      n: f.events,
-      caveat:
-        'Deltas are computed from the tool payload (Write content / Edit old→new / apply_patch +/-), not a git diff — a per-file churn estimate, never the file text.',
-      values: {
-        path,
-        change: f.change,
-        lines_added: f.lines_added,
-        lines_removed: f.lines_removed,
-        bytes_added: f.bytes_added,
-        bytes_removed: f.bytes_removed,
-        events: f.events,
-      },
-    }),
+    f.deltaUnavailable
+      ? makeRow({
+          // No number is stated because none was measured — the claim names the file
+          // and the gap, nothing else.
+          claim: `${path}: ${f.change}, line/byte delta unavailable (this harness records the path, not the per-file payload)`,
+          measures_used: ['authorship.files'],
+          // n = the reports that observed this path; there are no delta events to count.
+          n: f.reports,
+          caveat:
+            'The capture recorded THAT this path was written/edited but exposes no per-file payload to measure it from, so its churn is UNAVAILABLE — not zero. It contributes nothing to any total.',
+          values: {
+            path,
+            change: f.change,
+            lines_added: null,
+            lines_removed: null,
+            bytes_added: null,
+            bytes_removed: null,
+            events: 0,
+            delta_unavailable: AUTHORSHIP_DELTA_UNAVAILABLE,
+          },
+        })
+      : makeRow({
+          claim: `${path}: +${f.lines_added}/-${f.lines_removed} lines over ${f.events} write(s) (${f.change})`,
+          measures_used: ['authorship.files'],
+          // n = how many write/edit events touched this path (the sample behind the churn).
+          n: f.events,
+          caveat:
+            'Deltas are computed from the tool payload (Write content / Edit old→new / apply_patch +/-), not a git diff — a per-file churn estimate, never the file text.',
+          values: {
+            path,
+            change: f.change,
+            lines_added: f.lines_added,
+            lines_removed: f.lines_removed,
+            bytes_added: f.bytes_added,
+            bytes_removed: f.bytes_removed,
+            events: f.events,
+          },
+        }),
   );
   const section: InsightSection = {
     id: 'files_written',

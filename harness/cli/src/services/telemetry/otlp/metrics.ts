@@ -13,11 +13,7 @@
  */
 import type { Event } from '../events.js';
 import { parseIso } from '../rollup.js';
-import {
-  isTelemetryCommand,
-  isTelemetryExtensionString,
-  type Segment,
-} from '../segment.js';
+import { isTelemetryCommand, isTelemetryExtensionString, type Segment } from '../segment.js';
 import { resourceAttrs } from './resource.js';
 import { A, GENAI_TOKEN_TYPE, GENAI_TOKEN_USAGE_METRIC } from './semconv.js';
 import {
