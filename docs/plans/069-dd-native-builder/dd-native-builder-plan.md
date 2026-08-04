@@ -1,5 +1,13 @@
 # dd-native builder — the structural proof graph, wired end to end
 
+> **This plan is dogfooded**: the structured, stateful layer lives in
+> [`plan.dd.json`](plan.dd.json) beside this file (rendered:
+> [`plan.dd.md`](plan.dd.md)) — ACs, phases, and their states are queried
+> there, never read from this prose. This file is the narrative companion:
+> reasoning, phase detail, guardrails. AC ids here (AC-01…AC-15) map to
+> `ac-6901…ac-6916` in the dd doc (AC-07b = `ac-6908`; the dd id grammar
+> requires four hex digits).
+
 > Plan 069. Drafted by koala from the 2026-08-04 design session; the design
 > decisions below are recorded in
 > `docs/plans/065-deterministic-documents/builder-tuning/notes.md` (the ruling

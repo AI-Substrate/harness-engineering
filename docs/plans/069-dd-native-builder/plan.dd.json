@@ -1,0 +1,186 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "dd-native builder — the structural proof graph, wired end to end",
+        "slug": "dd-native-builder",
+        "ordinal": 69,
+        "status": "draft",
+        "complexity": "CS-4",
+        "summary": "Make the builder pipeline dd-native: plans and task files authored as .dd.json, flow gates driven by document state, typed link relations, a semantic validation layer with strict-zero --complete, and a PR surface rendering claims with their evidence. Narrative and phase detail: dd-native-builder-plan.md beside this file; ruling provenance: ../065-deterministic-documents/builder-tuning/."
+      }
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Typed link relations: semantics on the rel, not the field name; five built-ins frozen (pressure, proven_by, satisfies, derives, ref); unknown rels legal as ref.",
+        "Every list item can carry a links bucket (list-typed rel ref), auto-rendered as a final table column, traversed by dd graph map.",
+        "Every done_when assertion names its instrument: pressure is a BP-row link or the literal not-applicable; absence is a validation ERROR.",
+        "evidence sections become done_when; task rows carry satisfies (always an array) back to the ACs they serve.",
+        "harness plan validate grows the semantic layer: open-completables summary, rel-generic contradiction warnings, --complete mode with strict-zero green, and --address scoping to any proof subgraph.",
+        "The flow gains a check-kind gate: the last review node refuses departure until plan validate --complete is green; phase nodes gate on their task sections; the template/expander author all of it.",
+        "1b plan and 5 tasks author .dd.json natively; ship renders the dd-derived AC/evidence table into the PR body.",
+        "The dd command surface is taught positionally: baked into node instructions[] and each stage module at its seam."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No probe execution anywhere in dd/plan surfaces — harness checks owns instrument execution (ruled, twice).",
+        "No AC-state derivation — closure stays a performed act; agents close, guard rails make it trustworthy.",
+        "No code-drift freshness beyond the existing basis ledger.",
+        "No migration of existing markdown plans; the archive is institutional memory, not a conversion backlog.",
+        "No per-assertion satisfies (ruled: task row, coarse).",
+        "No allowlist/policy surface for --complete warnings (ruled: strict zero; --force is the bypass).",
+        "No changes to the five lifecycle hooks, the harness-seam doctrine, or the E44x gate-code meanings."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-6901",
+          "claim": "Schemas declare rel on link fields; the frozen five parse, resolve, and label/filter dd graph map edges; unknown rels behave as ref; every existing builder/* link field declares its rel (pressure, proven_by, done→derives, satisfies), pinned by schema test.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6902",
+          "claim": "Any list-item shape may carry a links bucket (array of rel-ref links), rendered as a final Links column only when populated, traversed by dd links / dd graph map; absent bucket renders byte-identical to today.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6903",
+          "claim": "A done_when assertion without pressure is a validation ERROR (planted-bad fixture proves it fires); pressure not-applicable validates, renders honestly, and is queryable with stock jq.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6904",
+          "claim": "Builder schemas and the exemplar use done_when (unchanged dw- ids); no evidence-named section remains in living builder schemas; frozen historical corpora are signposted, not rewritten.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6905",
+          "claim": "Task rows carry satisfies as an always-array of rel-typed links to AC rows; dd graph map on an AC shows the incoming work-accounting; a non-array satisfies fails validation.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6906",
+          "claim": "harness plan validate warns whenever a gate-terminal item links via proven_by, satisfies, or derives to a checkable target that is not gate-terminal — written once against rels; planted-bad fixtures prove each rel path fires; consistent-open and evidence-ready-unclaimed stay silent.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6907",
+          "claim": "plan validate --complete adds per-row warnings for every open completable and every orphan AC (no incoming satisfies); green means zero errors and zero warnings; without --complete, opens appear only as a summary info line (carried lean, awaiting confirm).",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6908",
+          "claim": "plan validate --address scopes the semantic checks to the address's reachable closure (plus incoming satisfies for AC rows) using the P7 graph-map traversal; scoped runs are always per-row; green = in-scope terminal, no contradictions, no stale bases in scope.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6909",
+          "claim": "A flow node may carry dd_link {check: plan-validate, address}; departure evaluates the semantic validator live, refuses on non-green quoting findings verbatim, records --force as a defended override; the completion-kind gate is unchanged; both kinds share the untrusted-reading discipline.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6910",
+          "claim": "The flight-plan template + expander emit dd_links: each phase node gates on assets/tasks/phase-N/tasks.dd.json#tasks (bare ordinal — the stated dd-native amendment to #90's title-slug convention), the last review node carries the check gate; a pre-JIT departure refuses target-invalid, pinned by test.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6911",
+          "claim": "1b plan emits plan.dd.json (+ built sibling plan.dd.md) and 5 tasks emits assets/tasks/phase-N/tasks.dd.json with done_when lists and satisfies edges, adding the phase row's tasks link in the same stroke; the flow discovers both; the end-to-end dry-run (create → JIT → refuse → green → depart) runs at the P3+P4 join.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6912",
+          "claim": "Ship renders the dd-derived AC table (state marks + resolved proven_by / pressure / incoming-satisfies links) into the PR body from the corpus under docs/plans/archive/<ord>-<slug>/; it refuses to fabricate when handed an unclosed corpus.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6913",
+          "claim": "The dd-native plan root holds exactly five files (plan.dd.json, plan.dd.md, the-flow.json, the-flow.md, original-ask.md — the stated amendment to #90's four-file allow-list); task files live under assets/tasks/phase-N/; after the post-flight git mv the corpus is doctor-clean and the archive step rewrites the flow's repo-root-anchored dd_link addresses.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6914",
+          "claim": "The exemplar corpus upgrades to the new schemas (18 of 26 dw rows gain pressure or not-applicable), keeps its teaching layout at docs/how/dd/exemplar/, and docs/how/dd + baked docs cover the new surface; just checks green; warn trio at baseline.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6915",
+          "claim": "dd-native is the only write path; the legacy markdown read/adopt/resume path stays unchanged and is pinned by a detection test over a legacy-folder fixture.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-6916",
+          "claim": "The dd/plan command surface is taught at both builder layers: baked into node instructions[] (surfaced by orient every turn) and documented in each stage module at its seam; a dry-run reader following only orient output + the current stage module never lacks a command this plan introduced.",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-6901",
+          "title": "Relations, buckets, and schema surface (dd core)",
+          "brief": "rel declaration parsing + frozen-five registry in the surface manifest; links-bucket render column; builder/* schemas gain done_when, satisfies, mandatory pressure with not-applicable, and rel declarations on every existing link field. Planted-bad fixtures per failure class; OD-8 allow-list watch item.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ph-6902",
+          "title": "The semantic validation layer (harness plan validate)",
+          "brief": "Open-completables summary line, rel-generic contradiction engine, --complete mode (strict-zero green), --address scoping. E450–E459 block via surface-manifest renegotiation (E43x and E44x are both full); dd validate stays byte-for-byte mechanical, regression-pinned.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-6901"
+          ]
+        },
+        {
+          "id": "ph-6903",
+          "title": "The check-kind flow gate",
+          "brief": "DdLink check variant behind the existing deps.gate seam; live evaluation at departure, refusal quotes findings, --force records; template/expander author per-phase completion gates + last-review check gate; pre-JIT target-invalid refusal pinned as intended. Barrel discipline extended.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-6902"
+          ]
+        },
+        {
+          "id": "ph-6904",
+          "title": "Builder goes dd-native (prompt-ware, in-repo)",
+          "brief": "1b plan authors plan.dd.json; 5 tasks authors the phase task file and adds the phase row's tasks link; 6/6a update states through dd; readers re-pointed (legacy read path retained); AC-15 instructions[] + stage-module documentation. Joint exit with ph-6903: the AC-10 dry-run.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-6902"
+          ]
+        },
+        {
+          "id": "ph-6905",
+          "title": "The PR surface (ship)",
+          "brief": "dd-derived AC table with resolved evidence links in the PR body, read from the archive path; refuses to fabricate on an unclosed corpus.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-6903",
+            "ph-6904"
+          ]
+        },
+        {
+          "id": "ph-6906",
+          "title": "Exemplar, docs, checks join",
+          "brief": "Exemplar upgraded to the new schemas; docs/how/dd chapters + justfile extended; structural-proof-graph promoted; baked docs regenerated; archive-move doctor-clean proof; full checks + warn-trio baseline.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-6905"
+          ]
+        }
+      ]
+    }
+  ],
+  "references": []
+}
