@@ -412,7 +412,8 @@
             "Synthetic corpus factory + lifecycle-mutation suites; dd validate regression pin"
           ],
           "key_risks": "The OD-8 allow-list silently dropping rel — first task pins it at the parse layer. --address closure semantics — settle in tests before wiring.",
-          "state": "unchecked"
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         },
         {
           "id": "ph-7002",
@@ -455,118 +456,6 @@
     {
       "name": "tasks",
       "value": [
-        {
-          "id": "tk-7011",
-          "title": "rel on link shapes: parse, allow-list, resolved-schema exposure",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Declarations round-trip rel; unknown rel accepted as ref; pin in declarations.test.ts/parse.test.ts.",
-          "notes": "key finding: OD-8 allow-list",
-          "satisfies": [
-            "#acceptance_criteria/ac-7001"
-          ]
-        },
-        {
-          "id": "tk-7012",
-          "title": "Frozen-five registry: manifest row + surface test",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Manifest names the five rels; surface test counts them.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7001"
-          ]
-        },
-        {
-          "id": "tk-7013",
-          "title": "Links bucket: shape treatment + renderer final-column",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Column appears only when populated; absent ⇒ byte-identical goldens.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7002"
-          ]
-        },
-        {
-          "id": "tk-7014",
-          "title": "dd graph map / dd links rel labels + filter",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Edges labelled; --rel filter works.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7001",
-            "#acceptance_criteria/ac-7002"
-          ]
-        },
-        {
-          "id": "tk-7015",
-          "title": "builder/* schema upgrades: done_when, satisfies, mandatory pressure, rel declarations",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Planted-bad fixtures fire per new ERROR class; good twins pass; schema test pins the rel map.",
-          "notes": "key findings: inert-engine, exemplar scale",
-          "satisfies": [
-            "#acceptance_criteria/ac-7001",
-            "#acceptance_criteria/ac-7003",
-            "#acceptance_criteria/ac-7004",
-            "#acceptance_criteria/ac-7005"
-          ]
-        },
-        {
-          "id": "tk-7021",
-          "title": "Contradiction engine over rels",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Planted-bad per rel path fires; silent cells stay silent.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7006"
-          ]
-        },
-        {
-          "id": "tk-7022",
-          "title": "Summary info line (non---complete)",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "One info line, zero per-row warns mid-flight.",
-          "notes": "carried LEAN — see open_questions",
-          "satisfies": [
-            "#acceptance_criteria/ac-7007"
-          ]
-        },
-        {
-          "id": "tk-7023",
-          "title": "--complete: per-row opens + orphan ACs + strict-zero green",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Green ⇔ 0/0; orphan fixture fires.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7007"
-          ]
-        },
-        {
-          "id": "tk-7024",
-          "title": "--address scoped closure",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Phase scope excludes other phases' opens; AC scope shows the full proof tree.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7008"
-          ]
-        },
-        {
-          "id": "tk-7025",
-          "title": "E450–E459 block + manifest row + 50-pin adjustment",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "dd-surface.test.ts green with the new count; JSDoc discipline.",
-          "notes": "key finding: E-blocks full"
-        },
-        {
-          "id": "tk-7026",
-          "title": "dd validate regression pin (byte-for-byte mechanical)",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "success": "Byte-identical behaviour on existing corpora."
-        },
         {
           "id": "tk-7031",
           "title": "DdLink check-variant model + sanitize + untrusted-reading rules",
@@ -775,20 +664,6 @@
           ],
           "success": "backpressure + execution-log docs linked from every AC; task files with done_when; rel-typed satisfies; flight-plan gate events show a real refusal and a real pass; plan validate --complete green; doctor-clean.",
           "notes": "The journey itself produces most of this; the task is the final audit that nothing was hand-waved."
-        },
-        {
-          "id": "tk-7027",
-          "title": "Synthetic corpus factory + lifecycle-mutation suites",
-          "phase": "ph-7001",
-          "state": "unchecked",
-          "satisfies": [
-            "#acceptance_criteria/ac-7006",
-            "#acceptance_criteria/ac-7007",
-            "#acceptance_criteria/ac-7008",
-            "#acceptance_criteria/ac-7009"
-          ],
-          "success": "Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7002 and ph-7003 test suites.",
-          "notes": "Jordan's explicit unit-coverage expectation"
         },
         {
           "id": "tk-7068",
