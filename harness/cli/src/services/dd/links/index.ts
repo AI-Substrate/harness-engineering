@@ -60,6 +60,7 @@ export {
   PLAIN_MAP_PALETTE,
   renderMapTree,
   resolveLinksTarget,
+  wrapPlain,
 } from './report.js';
 export {
   type DdLinkResolveOptions,

@@ -15,6 +15,7 @@ import {
   scanCorpus,
   toMermaid,
   traverseCorpus,
+  wrapPlain,
 } from '../../services/dd/links/index.js';
 import { codedLinkIssues, createLinkContext, type DdActDeps, nextActionFor } from './shared.js';
 
@@ -256,13 +257,18 @@ function mapPort(io: CliIo, jsonPort: OutputPort): OutputPort {
   const palette = mapPalette(io.useColor === true);
   return {
     emit: (envelope: Envelope) => {
+      // The 80-column contract covers every line this command puts on a
+      // terminal, not only the tree — status lines wrap through the same helper.
+      const status = (text: string, indent: string): void => {
+        for (const line of wrapPlain(text, '', indent)) io.writers.err(`${line}\n`);
+      };
       if (envelope.status === 'error') {
-        io.writers.err(`${envelope.command}: ${envelope.error?.message ?? 'failed'}\n`);
-        if (envelope.next_action) io.writers.err(`  \u2192 ${envelope.next_action}\n`);
+        status(`${envelope.command}: ${envelope.error?.message ?? 'failed'}`, '  ');
+        if (envelope.next_action) status(`  \u2192 ${envelope.next_action}`, '     ');
         return;
       }
       io.writers.out(renderMapTree(envelope.data as unknown as DdMapResult, palette));
-      if (envelope.next_action) io.writers.err(`  \u2192 ${envelope.next_action}\n`);
+      if (envelope.next_action) status(`  \u2192 ${envelope.next_action}`, '     ');
     },
   };
 }

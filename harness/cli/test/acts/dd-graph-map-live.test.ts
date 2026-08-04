@@ -13,6 +13,7 @@ import { buildProgram } from '../../src/app.js';
 import type { Envelope } from '../../src/output/envelope.js';
 import type { CliIo, Writers } from '../../src/output/output-port.js';
 import type { DdMapResult } from '../../src/services/dd/links/map.js';
+import { cellWidth } from '../../src/services/dd/links/report.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
 
 const EMPTY: VerbRegistry = { verbs: [], records: [] };
@@ -385,7 +386,7 @@ describe('dd graph map — live over a real corpus', () => {
     expect(run.out).toContain('#acceptance_criteria/ac-0201');
     expect(run.out).not.toContain(`${ESC}[`);
     for (const line of run.out.split('\n')) {
-      expect([...line].length).toBeLessThanOrEqual(80);
+      expect(cellWidth(line)).toBeLessThanOrEqual(80);
     }
   });
 
@@ -449,5 +450,244 @@ describe('dd graph map — live over a real corpus', () => {
       'docs/log.dd.json#entries/lg-0201',
       'docs/pressure.dd.json#rows/bp-0801',
     ]);
+  });
+});
+
+/**
+ * The 80-column contract, proved on the whole terminal surface.
+ *
+ * The suite above measures today's short exemplar addresses, which pass whether
+ * or not the render can survive a long one. This corpus is built so that the
+ * header, the node rows, the back-reference, the truncation block AND the
+ * next-action line all exceed the budget before wrapping — and it measures
+ * stderr as well as stdout, because the contract is about what lands on a
+ * terminal, not about one writer.
+ */
+describe('dd graph map — 80 columns over the whole terminal surface (T005)', () => {
+  /** Deep enough that the header's folder line alone cannot fit. */
+  const DEEP = 'docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/evidence';
+  /** Long enough that no single address fits a line. */
+  const LONG = 'unreasonably-but-entirely-legitimate-document-name-nobody-plans-for';
+  const SEED = `${DEEP}/plan-${LONG}.dd.json#acceptance_criteria/ac-0201`;
+
+  let wide = '';
+  let previous = '';
+
+  beforeAll(() => {
+    wide = mkdtempSync(join(tmpdir(), 'dd-graph-map-wide-'));
+    repo = wide;
+    write('.dd/schemas/live/plan/schema.json', PLAN_SCHEMA);
+    write('.dd/schemas/live/log/schema.json', LOG_SCHEMA);
+    write('.dd/schemas/live/pressure/schema.json', PRESSURE_SCHEMA);
+    write(`${DEEP}/plan-${LONG}.dd.json`, {
+      dd: { schema: 'live/plan', spec: 'dd@1' },
+      sections: [
+        { name: 'meta', value: { title: 'A plan filed a long way down' } },
+        {
+          name: 'acceptance_criteria',
+          value: [
+            {
+              id: 'ac-0201',
+              claim: 'The claim under test',
+              state: 'checked',
+              pressure: `pressure-${LONG}.dd.json#rows/bp-0201`,
+              proven_by: `log-${LONG}.dd.json#entries/lg-0201`,
+            },
+          ],
+        },
+      ],
+      references: [],
+    });
+    write(`${DEEP}/pressure-${LONG}.dd.json`, {
+      dd: { schema: 'live/pressure', spec: 'dd@1' },
+      sections: [
+        { name: 'rows', value: [{ id: 'bp-0201', criterion: 'The pressure', state: 'checked' }] },
+      ],
+      references: [],
+    });
+    write(`${DEEP}/log-${LONG}.dd.json`, {
+      dd: { schema: 'live/log', spec: 'dd@1' },
+      sections: [
+        {
+          name: 'entries',
+          value: [
+            {
+              id: 'lg-0201',
+              text: 'Proved it',
+              cites: `pressure-${LONG}.dd.json#rows/bp-0201`,
+            },
+            {
+              id: 'lg-0202',
+              text: 'Mentions it',
+              cites: `plan-${LONG}.dd.json#acceptance_criteria/ac-0201`,
+            },
+          ],
+        },
+      ],
+      references: [],
+    });
+  });
+
+  afterAll(() => {
+    rmSync(wide, { recursive: true, force: true });
+  });
+
+  beforeEach(() => {
+    previous = process.cwd();
+    process.chdir(wide);
+  });
+
+  afterEach(() => {
+    process.chdir(previous);
+  });
+
+  // Measured with the RENDERER's own width function. Characters are not columns,
+  // and an oracle that counts code points clears a line a terminal draws at
+  // twice the width — the defect this suite exists to catch.
+  const widths = (text: string): number[] =>
+    text
+      .replaceAll(ANSI, '')
+      .split('\n')
+      .map((line) => cellWidth(line));
+
+  it('proves the fixture really does exceed the budget first', () => {
+    expect(SEED.length).toBeGreaterThan(80);
+  });
+
+  it('keeps stdout AND stderr inside 80 columns, plain and coloured', async () => {
+    for (const useColor of [false, true]) {
+      const run = await runDd(['dd', 'graph', 'map', SEED], { mode: 'human', useColor });
+      expect(run.out).toContain('-> outbound');
+      for (const width of widths(run.out)) expect(width).toBeLessThanOrEqual(80);
+      for (const width of widths(run.err)) expect(width).toBeLessThanOrEqual(80);
+    }
+  });
+
+  it('keeps the next-action line inside 80 columns when a bound fires', async () => {
+    const run = await runDd(['dd', 'graph', 'map', SEED, '--max-nodes', '2'], { mode: 'human' });
+    // The line this exists for: the truncation next-action is the longest string
+    // the command can write, and it goes to stderr, which no width check saw.
+    expect(run.err).toContain('bound');
+    expect(run.err.split('\n').length).toBeGreaterThan(2);
+    for (const width of widths(run.out)) expect(width).toBeLessThanOrEqual(80);
+    for (const width of widths(run.err)) expect(width).toBeLessThanOrEqual(80);
+  });
+
+  it('keeps the ERROR path inside 80 columns too, and wraps the address there', async () => {
+    // The branch that only runs once something has already gone wrong, which is
+    // the branch least often exercised and most often reasoned about instead of
+    // tested. It matters here because `nextActionFor` INTERPOLATES the address
+    // into its message, so on a long address the error's next-action line grows
+    // with it — the same defect, on the one path the success tests cannot reach.
+    const missing = `${DEEP}/plan-${LONG}.dd.json#acceptance_criteria/ac-9999`;
+    const run = await runDd(['dd', 'graph', 'map', missing], { mode: 'human' });
+    expect(run.code).toBe(1);
+    expect(run.err).toContain('dd graph map:');
+    expect(run.err).toContain('\u2192');
+    // Same seed under `--json` names the code, so this really is the E430 path
+    // and not some other failure that happens to write to stderr.
+    const asJson = await runDd(['dd', 'graph', 'map', missing]);
+    expect(asJson.envelope?.error?.code).toBe('E430');
+    // It genuinely had to wrap, rather than passing because it happened to fit.
+    expect(run.err.split('\n').length).toBeGreaterThan(3);
+    for (const width of widths(run.err)) expect(width).toBeLessThanOrEqual(80);
+
+    // Wrapped, not clipped — the same standard the tree is held to. A next
+    // action naming half an address sends the reader somewhere that does not
+    // exist, which is worse than saying nothing.
+    expect(run.err).not.toContain('\u2026');
+    const joined = run.err
+      .split('\n')
+      .map((line) => line.replace(/^ +/, ''))
+      .join('');
+    expect(joined).toContain(missing);
+  });
+
+  it('wraps the error MESSAGE too, not only the next action', async () => {
+    // A sibling of the line above, and it survived the first sweep of this fix:
+    // an id that is missing from a document that exists gives a short message,
+    // so the message line passed on the fixture rather than on its merits. A
+    // missing FILE interpolates the resolved absolute path, which is longer than
+    // the address the reader typed.
+    const missing = `${DEEP}/nope-${LONG}.dd.json#rows/bp-9999`;
+    const run = await runDd(['dd', 'graph', 'map', missing], { mode: 'human' });
+    expect(run.code).toBe(1);
+    expect(run.err).toContain('is missing');
+    expect(run.err.split('\n').length).toBeGreaterThan(4);
+    for (const width of widths(run.err)) expect(width).toBeLessThanOrEqual(80);
+    expect(run.err).not.toContain('\u2026');
+    const joined = run.err
+      .split('\n')
+      .map((line) => line.replace(/^ +/, ''))
+      .join('');
+    expect(joined).toContain(`nope-${LONG}.dd.json`);
+  });
+
+  /** A legal file part that a terminal draws two cells per character. */
+  const WIDE = '\u754c'.repeat(70);
+  /** A legal file part with none of the characters the wrapper breaks at. */
+  const NO_JOINTS = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+
+  it('budgets in terminal CELLS, so a CJK file part cannot overflow', async () => {
+    // `core/address.ts` constrains only the INTERIOR segments to ASCII, so the
+    // file part may legitimately be CJK. Counted as characters this address
+    // "fits"; drawn by a terminal it is 146 cells wide.
+    write(`${DEEP}/${WIDE}.dd.json`, {
+      dd: { schema: 'live/pressure', spec: 'dd@1' },
+      sections: [{ name: 'rows', value: [{ id: 'bp-0301', criterion: 'Wide', state: 'checked' }] }],
+      references: [],
+    });
+    const run = await runDd(['dd', 'graph', 'map', `${DEEP}/${WIDE}.dd.json#rows/bp-0301`], {
+      mode: 'human',
+    });
+    expect(run.code).toBe(0);
+    expect(run.out).toContain('\u754c');
+    for (const width of widths(run.out)) expect(width).toBeLessThanOrEqual(80);
+    for (const width of widths(run.err)) expect(width).toBeLessThanOrEqual(80);
+
+    // Measured a SECOND way, without the renderer's helper. The check above
+    // shares its width function with the code under test, so it proves the two
+    // agree, not that either is right — break the helper and both move together.
+    // This one knows one fact by hand: U+754C is two cells.
+    const byHand = (line: string): number =>
+      [...line].reduce((cells, char) => cells + (char === '\u754c' ? 2 : 1), 0);
+    for (const line of run.out.replaceAll(ANSI, '').split('\n')) {
+      expect(byHand(line)).toBeLessThanOrEqual(80);
+    }
+  });
+
+  it('wraps an address that offers no break joint at all', async () => {
+    // The degenerate input for a joint-seeking wrapper: nothing to break at, and
+    // longer than the budget. It has to fall back to a hard cut rather than
+    // giving up and emitting one long line.
+    write(`${DEEP}/${NO_JOINTS}.dd.json`, {
+      dd: { schema: 'live/pressure', spec: 'dd@1' },
+      sections: [
+        { name: 'rows', value: [{ id: 'bp-0401', criterion: 'Jointless', state: 'checked' }] },
+      ],
+      references: [],
+    });
+    const run = await runDd(['dd', 'graph', 'map', `${DEEP}/${NO_JOINTS}.dd.json#rows/bp-0401`], {
+      mode: 'human',
+    });
+    expect(run.code).toBe(0);
+    for (const width of widths(run.out)) expect(width).toBeLessThanOrEqual(80);
+    // Still whole: a hard cut is a wrap, not a truncation.
+    const joined = run.out
+      .split('\n')
+      .map((line) => line.replace(/^[ \u2502]+/, ''))
+      .join('');
+    expect(joined).toContain(NO_JOINTS);
+  });
+
+  it('never shortens an address to make it fit', async () => {
+    const run = await runDd(['dd', 'graph', 'map', SEED], { mode: 'human' });
+    const address = `pressure-${LONG}.dd.json#rows/bp-0201`;
+    for (const line of run.out.split('\n')) expect(line).not.toContain(address);
+    const joined = run.out
+      .split('\n')
+      .map((line) => line.replace(/^[ \u2502]+/, ''))
+      .join('');
+    expect(joined).toContain(address);
   });
 });
