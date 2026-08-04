@@ -75,6 +75,27 @@ function gateVerdicts(data: unknown): Record<string, string> | null {
 }
 
 /**
+ * Build the `checks` event for one observed `harness checks` outcome — the SINGLE
+ * grammar both producers share (plan 069):
+ *  - the ADAPTER path, when a harness JSON envelope was captured in a transcript's
+ *    tool result ({@link outcomeEvents}), and
+ *  - the SELF path, when the harness CLI observes its OWN exit envelope
+ *    (`checks-capture.ts`) — the only observer that works on every agent harness.
+ *
+ * Returns `null` when `rawStatus` is not a recognized verdict — an honest silence,
+ * never a fabricated `ok`. CODES/VERDICTS ONLY: gate `note` (free text) and every
+ * other envelope field are dropped.
+ */
+export function buildChecksEvent(rawStatus: unknown, data: unknown, t: string): Event | null {
+  const status = normalizeChecksStatus(rawStatus);
+  if (status === null) return null;
+  const ev: Event = { t, kind: 'checks', status };
+  const gates = gateVerdicts(data);
+  if (gates !== null) ev.gates = gates;
+  return ev;
+}
+
+/**
  * Derive the outcome events for one captured harness command result. Returns `[]`
  * when `resultText` is not a harness envelope (the command ran without `--json`,
  * or the text is human rail) — honest, never fabricated.
@@ -104,12 +125,12 @@ export function outcomeEvents(resultText: string, t: string, isError = false): E
   if (code !== null) ce.code = code;
   events.push(ce);
 
-  // checks — overall verdict + per-gate verdicts (names/statuses only).
-  if (verb === 'checks' && status !== null) {
-    const ck: Event = { t, kind: 'checks', status };
-    const gates = gateVerdicts(env.data);
-    if (gates !== null) ck.gates = gates;
-    events.push(ck);
+  // checks — overall verdict + per-gate verdicts (names/statuses only), via the
+  // shared builder so this path and the CLI's own exit-observation path cannot
+  // produce differently-shaped `checks` events (plan 069).
+  if (verb === 'checks') {
+    const ck = buildChecksEvent(env.status, env.data, t);
+    if (ck !== null) events.push(ck);
   }
   return events;
 }

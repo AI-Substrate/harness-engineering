@@ -268,9 +268,48 @@ export function observeKindFromCommand(raw: string): ObservationKind | null {
  * program+verb allowlist and NEVER carries a positional/flag/path/quote. A pure
  * harness invocation yields `undefined` (the harness verb is a separate
  * `HarnessEvent`, so attaching nothing here avoids a bash/harness double-count).
+ *
+ * NOTE (plan 069): being the chain HEAD, this alone cannot answer "did the agent
+ * push?" — 97.1% of real `git push`/`git commit` lines are chained behind a
+ * `cd …`/`git add …`/`set -e` prefix, so the head signature is `cd`, not the git
+ * verb. {@link controlSignatures} carries that lost signal; see its note.
  */
 export function shellSignature(raw: string): string | undefined {
   return partitionCommands([raw]).bash[0];
+}
+
+/**
+ * The CLOSED allowlist of shell signatures that carry control-loop meaning — the
+ * *shared grammar* of the producer/consumer seam (plan 069). The producer stamps
+ * these onto a shell tool event ({@link controlSignatures}) and the report reads
+ * exactly this set to build its `bash` control-timeline markers, so neither side
+ * can drift from the other. Deliberately TINY: widening it widens what telemetry
+ * says about a command line, so every addition is a deliberate P12 decision.
+ */
+export const CONTROL_SIGNATURES: ReadonlySet<string> = new Set(['git push', 'git commit']);
+
+/**
+ * Per-signature COUNTS of the {@link CONTROL_SIGNATURES} appearing ANYWHERE in a
+ * (possibly chained) command line — the discipline signal `shellSignature` drops
+ * (plan 069, item 0).
+ *
+ * `shellSignature` answers "what did this call lead with" and keeps its meaning;
+ * this answers "did this call push or commit, and how many times". Measured over
+ * 859 real chained git lines, the head rule captured 2.9% of pushes/commits — the
+ * other 97.1% hid behind `cd …` (647), `git add …` (102), a bare `git` (33), or
+ * `set -e` (30). Both facets are derived by {@link commandSignatures}, so this
+ * inherits the same program+verb allowlist, and the result is then intersected
+ * with a 2-member closed set — a positional/flag/path/quote can never appear.
+ *
+ * Returns `undefined` when the line contains none (an honest omission, never an
+ * empty object), so a non-git call is byte-identical to before.
+ */
+export function controlSignatures(raw: string): Record<string, number> | undefined {
+  const counts: Record<string, number> = {};
+  for (const sig of commandSignatures(raw)) {
+    if (CONTROL_SIGNATURES.has(sig)) counts[sig] = (counts[sig] ?? 0) + 1;
+  }
+  return Object.keys(counts).length > 0 ? counts : undefined;
 }
 
 /**

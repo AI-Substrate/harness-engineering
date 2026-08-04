@@ -64,11 +64,22 @@ naming is split into two deliberate layers:
    rebuilt from.
 
 - **Current `schema_url`** (pinned on both Resource and Scope):
-  `https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0`.
-- **Current Scope**: `name = harness.telemetry`, `version = 2.5` (kept in
-  lockstep with Segment 2.5).
-- **Legacy identity**: Segment 2.4 records retain schema URL `.../v0.1.0` and
-  scope version `2.4`; they never gain the new attribute during serialization.
+  `https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.4.0`.
+- **Current Scope**: `name = harness.telemetry`, `version = 2.7` (kept in
+  lockstep with Segment 2.7).
+- **The identity ladder** — every prior identity is FROZEN as a predecessor
+  pair; a record is serialized under the identity of the segment version that
+  produced it and never gains a later version's attributes:
+
+  | Segment | scope `version` | `schema_url` suffix |
+  |---|---|---|
+  | 2.4 (legacy) | `2.4` | `.../v0.1.0` |
+  | 2.5 | `2.5` | `.../v0.2.0` |
+  | 2.6 | `2.6` | `.../v0.3.0` |
+  | 2.7 (current) | `2.7` | `.../v0.4.0` |
+
+  The machine constants live in `otlp/types.ts`; treat the code as
+  authoritative if this table ever disagrees.
 - The complete attribute vocabulary is frozen in
   `harness/cli/src/services/telemetry/otlp/harness-otlp.schema.json` and pinned
   key-set-equal to the single mapping module (`otlp/semconv.ts`) by a freeze test —
@@ -165,6 +176,31 @@ The downstream eng-thrive scraper (out of this repo) reads telemetry like this:
 
 The attribute vocabulary the scraper binds to is the frozen
 `harness-otlp.schema.json` — that file is the authoritative read contract.
+
+### Reconciled segments (Segment 2.7, plan 070) — what a reader must know
+
+Some evidence arrives **late**: a lane whose source (an agent transcript) was
+written after the session's last harness command is recovered by a later
+`telemetry sync` and emitted as a *reconciled* segment. On the wire:
+
+- The segment's Resource carries **`harness.capture_mode: "reconciled"`** —
+  the ONLY value this attribute is ever written with. **A live segment is
+  proven live by the attribute's absence** (a claim that cannot be forged by
+  omission). Strict readers fail closed on a `capture_mode` appearing in a
+  pre-2.7 identity.
+- **Provenance is per-Resource**: a combined session that contains recovered
+  evidence carries MULTIPLE `resourceLogs` entries — recovered events stay
+  under their own Resource (with the attribute) and live events under theirs
+  (without it). Readers must attribute reconciled-ness per event via its
+  enclosing Resource, never by timestamp ranges — live and recovered events
+  can interleave and even share an instant.
+- Recovered events carry **interval-grade `harness.event.t_precision`** and
+  are excluded from agent-working-time/gap math; their window's end is
+  anchored to the source file's mtime, and the segment's `timecode` is the
+  recovery instant (which `capture_mode` announces), never the work's time.
+- The session summary exposes `reconciled_segments` (a count). Rendered
+  surfaces (report timeline, attribution table) mark recovered evidence
+  visibly — downstream renderers should do the same.
 
 ---
 

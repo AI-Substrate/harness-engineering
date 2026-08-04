@@ -20,6 +20,12 @@ import {
 } from './adapters/harness-adapter.js';
 import { artifactSemanticsEvents } from './artifact-semantics.js';
 import {
+  type CaptureProbe,
+  classifyAttempt,
+  newCaptureProbe,
+  recordCaptureAttempt,
+} from './capture-liveness.js';
+import {
   branchPathFor,
   cursorPathFor,
   flowCursorPathFor,
@@ -77,7 +83,7 @@ export interface CaptureDeps {
   adapters?: HarnessAdapter[];
 }
 
-interface DetectedHarness {
+export interface DetectedHarness {
   harness: string;
   sessionId: string;
 }
@@ -99,10 +105,10 @@ const HARNESS_ENV_CHAIN: readonly { env: string; harness: string }[] = [
  * The env chain covers harnesses that publish a session-id env var. VS Code
  * Copilot **Chat** is the exception: it sets `AI_AGENT=github_copilot_vscode_agent`
  * but NO session-id var, so it's recognized here with an EMPTY `sessionId` — a
- * "resolve me from the store by cwd" marker that {@link captureUnsafe} fills via
- * {@link resolveCopilotVscodeSessionId} (it needs cwd + the db, neither available
- * to this pure env-only function). `TERM_PROGRAM=vscode` is deliberately NOT
- * consulted — a `copilot-cli` run inside VS Code's terminal must not false-match.
+ * "resolve me from the store by cwd" marker that {@link resolveDetectedSession}
+ * fills via {@link resolveCopilotVscodeSessionId} (it needs cwd + the db, neither
+ * available to this pure env-only function). `TERM_PROGRAM=vscode` is deliberately
+ * NOT consulted — a `copilot-cli` run inside VS Code's terminal must not false-match.
  */
 export function detectHarness(env: EnvPort): DetectedHarness | null {
   for (const { env: key, harness } of HARNESS_ENV_CHAIN) {
@@ -112,9 +118,36 @@ export function detectHarness(env: EnvPort): DetectedHarness | null {
     }
   }
   if (env.get('AI_AGENT') === COPILOT_VSCODE_AI_AGENT) {
-    return { harness: COPILOT_VSCODE_HARNESS, sessionId: '' }; // db-resolved by cwd in captureUnsafe
+    return { harness: COPILOT_VSCODE_HARNESS, sessionId: '' }; // db-resolved by cwd
   }
   return null;
+}
+
+/**
+ * Complete a {@link detectHarness} result into a session the buffer can be keyed
+ * by, or `null` when there is no attributable lane (→ a clean no-op, AC-21).
+ *
+ * Only VS Code Copilot Chat needs completing: it publishes no session-id env var,
+ * so detection leaves `sessionId` EMPTY and the active session is read from the
+ * chat store BY CWD. Every env-chain harness passes straight through unchanged.
+ *
+ * SHARED ON PURPOSE. Both writers of a session lane — the kernel's capture
+ * preamble ({@link captureUnsafe}) and the `checks` exit-chokepoint marker
+ * (`captureChecksOutcome`) — resolve through this ONE function. If they resolved
+ * differently, a VS Code run's `checks` verdict would land on a different lane
+ * than the command marker it is supposed to be joined with, and the discipline
+ * panel would silently mis-attribute (or lose) the pairing.
+ */
+export function resolveDetectedSession(
+  detected: DetectedHarness,
+  deps: { env: EnvPort; db?: DbPort },
+  cwd: string,
+): DetectedHarness | null {
+  if (detected.sessionId.length > 0) return detected;
+  if (detected.harness !== COPILOT_VSCODE_HARNESS) return null;
+  const sessionId =
+    deps.db !== undefined ? resolveCopilotVscodeSessionId(deps.db, deps.env, cwd) : null;
+  return sessionId === null ? null : { harness: detected.harness, sessionId };
 }
 
 /**
@@ -197,6 +230,45 @@ function writeJsonLine(fs: FsPort, path: string, obj: unknown): void {
   const tmp = `${path}.tmp`;
   fs.writeText(tmp, `${JSON.stringify(obj)}\n`);
   fs.rename(tmp, path);
+}
+
+/**
+ * Write a serialized segment into a session's buffer as the next `<seq>.json`
+ * PLUS its two OTLP sidecars, atomically (temp + rename).
+ *
+ * Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): the SAME serialized
+ * segment is emitted as OTLP/JSON Lines beside the buffer entry — one `LogsData`
+ * line + one `MetricsData` line (the fileexporter idiom; one file per signal,
+ * research A1). Written from the serialized segment only, so the counts-only
+ * allowlist is inherited. The transport (sync) ships these — the serializer
+ * carries no transport knowledge.
+ *
+ * SHARED by the live capture path and the orphan-lane reconciler (plan 070) so
+ * the two can never drift in what a buffered segment consists of: a recovered
+ * segment must ride exactly the same rails, or "recovered" would quietly mean
+ * "recovered into a shape only some consumers can see".
+ */
+export function writeCapturedSegment(
+  deps: { fs: FsPort; proc: ProcessPort },
+  cwd: string,
+  sessionId: string,
+  segment: Segment,
+): string {
+  ensureTemp({ fs: deps.fs, proc: deps.proc });
+  const sessionDir = sessionDirFor(cwd, sessionId);
+  deps.fs.mkdirp(sessionDir);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
+  const tmp = `${entryPath}.tmp`;
+  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
+  deps.fs.rename(tmp, entryPath);
+  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
+  writeJsonLine(
+    deps.fs,
+    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
+    rollupToOtlpMetrics(segment),
+  );
+  return entryPath;
 }
 
 /** Next `<seq>.json` index, seeded above the durable flushed high-water. */
@@ -566,15 +638,52 @@ export function captureTelemetry(deps: CaptureDeps): void {
     if (Number(deps.env.get(CAPTURE_DEPTH_ENV) ?? '0') > 0) {
       return;
     }
-    captureUnsafe(deps);
+    // From here the invocation is ELIGIBLE: telemetry is on and this is the
+    // top-level process. Everything an eligible attempt observes is recorded on
+    // the probe so the liveness marker can describe what happened — INCLUDING
+    // when the attempt dies in a swallowed throw (plan 070).
+    const probe = newCaptureProbe();
+    let threw = false;
+    try {
+      captureUnsafe(deps, probe);
+    } catch (err) {
+      // Fail-safe (AC-09): a corrupt source / parse error / fs failure inside
+      // capture must never surface to the host command. Swallow — but no longer
+      // silently: the attempt is about to be written down.
+      threw = true;
+      // The error CLASS only — never its message: a message can carry paths or
+      // content, and this marker is diagnostic state, not curated telemetry.
+      probe.errorKind = err instanceof Error ? err.name : typeof err;
+    }
+    if (probe.session !== null) {
+      recordCaptureAttempt(deps, toPosix(deps.proc.cwd()), {
+        session: probe.session,
+        harness: probe.harness ?? 'unknown',
+        command: deps.command,
+        at: deps.clock.nowIso(),
+        outcome: classifyAttempt(probe, threw),
+        cursor: probe.cursor,
+        position: probe.position,
+        sourcePath: probe.sourcePath,
+        ...(probe.errorKind !== undefined ? { errorKind: probe.errorKind } : {}),
+      });
+    }
+    // A throw BEFORE the session was resolved leaves nothing to key a marker by
+    // (zero-harness, or a store lookup that failed). We record nothing rather than
+    // invent a lane — the detector marks absence, it never fabricates data.
   } catch {
-    // Fail-safe (AC-09): a corrupt source / parse error / fs failure inside
-    // capture must never surface to the host command. Swallow and move on.
+    // Last-resort fail-safe: even the liveness bookkeeping above can never change
+    // the host command's behaviour or exit code (AC-09 / plan 070 AC-5).
   }
 }
 
-/** The core capture path — may throw; always called through the {@link captureTelemetry} guard. */
-function captureUnsafe(deps: CaptureDeps): void {
+/**
+ * The core capture path — may throw; always called through the
+ * {@link captureTelemetry} guard. Fills `probe` PROGRESSIVELY (each field only
+ * once the attempt genuinely observed it), so a throw part-way through still
+ * leaves an honest record of how far the attempt got.
+ */
+function captureUnsafe(deps: CaptureDeps, probe: CaptureProbe = newCaptureProbe()): void {
   let detected = detectHarness(deps.env);
   if (detected === null) {
     return; // zero-harness → clean no-op (no buffer, no writes)
@@ -583,16 +692,16 @@ function captureUnsafe(deps: CaptureDeps): void {
   const cwd = toPosix(deps.proc.cwd());
 
   // VS Code Copilot Chat carries no session-id env var (detection left it ''); the
-  // active session is resolved from the store BY CWD (latest `updated_at`). This is
-  // the ONE detection-time db read — done here, before the cursor/branch/buffer
-  // paths consume `detected.sessionId`. No match → clean no-op (AC-21), never a
-  // forced segment. Best-effort: a missing db / no `deps.db` resolves to null.
-  if (detected.harness === COPILOT_VSCODE_HARNESS && detected.sessionId === '') {
-    const sessionId =
-      deps.db !== undefined ? resolveCopilotVscodeSessionId(deps.db, deps.env, cwd) : null;
-    if (sessionId === null) return;
-    detected = { harness: detected.harness, sessionId };
-  }
+  // active session is resolved from the store BY CWD (latest `updated_at`) through
+  // the shared resolver — done here, before the cursor/branch/buffer paths consume
+  // `detected.sessionId`. No match → clean no-op (AC-21), never a forced segment.
+  const resolved = resolveDetectedSession(detected, deps, cwd);
+  if (resolved === null) return;
+  detected = resolved;
+  // The lane is now known — from here every outcome is attributable to a session,
+  // so the liveness marker has a key to be written under.
+  probe.session = detected.sessionId;
+  probe.harness = detected.harness;
   const standardClaude =
     detected.harness === 'claude-code'
       ? (() => {
@@ -637,6 +746,12 @@ function captureUnsafe(deps: CaptureDeps): void {
   const prev = readCursor(deps.fs, cursorPath);
   const position = adapter.currentPosition?.(source) ?? null;
   const window = computeWindow(prev, position);
+  // The two numbers the stall is defined by: the watermark this attempt started
+  // from, and how far the harness's own source had actually run.
+  probe.cursor = prev;
+  probe.position = position;
+  probe.positionSupported = adapter.currentPosition !== undefined;
+  probe.sourcePath = adapter.sourcePath?.(source) ?? null;
 
   // Branch-change detection: compare the live git branch to the one persisted on
   // the prior capture of this session. First capture (no prior) → not a change.
@@ -711,28 +826,7 @@ function captureUnsafe(deps: CaptureDeps): void {
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).
-  ensureTemp({ fs: deps.fs, proc: deps.proc });
-  const sessionDir = sessionDirFor(cwd, detected.sessionId);
-  deps.fs.mkdirp(sessionDir);
-  const seq = nextSeq(deps.fs, sessionDir);
-  const entryPath = posixJoin(sessionDir, `${seq}.json`);
-  const tmp = `${entryPath}.tmp`;
-  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
-  deps.fs.rename(tmp, entryPath);
-
-  // Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): emit the SAME
-  // serialized segment as OTLP/JSON Lines beside the buffer entry — one `LogsData`
-  // line + one `MetricsData` line per capture (the fileexporter idiom; one file
-  // per signal, research A1). Written from the serialized segment only, so the
-  // counts-only allowlist is inherited; atomic temp+rename. The transport (sync)
-  // ships these — the serializer carries no transport knowledge. (Segment JSON is
-  // kept until the sync publisher + scraper migrate to `.jsonl` in T011/T013.)
-  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
-  writeJsonLine(
-    deps.fs,
-    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
-    rollupToOtlpMetrics(segment),
-  );
+  writeCapturedSegment(deps, cwd, detected.sessionId, segment);
 
   // Advance the high-water mark crash-safely, then remember this capture's branch
   // so the NEXT capture can detect a switch, and advance the flow-log offset so
@@ -740,4 +834,9 @@ function captureUnsafe(deps: CaptureDeps): void {
   writeCursor(deps.fs, cursorPath, window.to);
   if (currentBranch !== null) writeBranch(deps.fs, branchPath, currentBranch);
   if (flowCursorPath !== null) writeFlowCursor(deps.fs, flowCursorPath, flowLog.nextOffset);
+  // The window is durably consumed: this attempt is a proven-live capture, and
+  // the watermark it leaves behind is the one a later residue check measures
+  // against (on a first capture the PRIOR watermark is null — meaningless here).
+  probe.captured = true;
+  probe.cursor = window.to;
 }

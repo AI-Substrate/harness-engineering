@@ -38,6 +38,13 @@ function compatibilitySegmentView(segment: Segment): Record<string, unknown> {
   view.event_stream = segment.event_stream
     .filter((event) => event.kind !== 'usage')
     .map((event) => {
+      // plan 069: `tools.control` post-dates the frozen 2.4 oracle — project it,
+      // exactly as the 2.6 usage channel below.
+      if (event.kind === 'tools') {
+        const projected: Record<string, unknown> = { ...event };
+        delete projected.control;
+        return projected;
+      }
       if (event.kind !== 'turn') return event;
       const projected: Record<string, unknown> = { ...event };
       delete projected.in;
@@ -57,8 +64,8 @@ function compatibilitySegmentView(segment: Segment): Record<string, unknown> {
  * projecting the intentional Segment-2.6 usage channel and version metadata.
  */
 export function expectCurrentSegmentMatchesLegacy(current: Segment, legacy: Segment): void {
-  expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
-  expect(current.schema_version).toBe('2.6');
+  expect(SEGMENT_SCHEMA_VERSION).toBe('2.7');
+  expect(current.schema_version).toBe('2.7');
   expect(legacy.schema_version).toBe(LEGACY_SEGMENT_VERSION);
   expect(legacy.product_commit).toBeUndefined();
   if (current.product_commit !== undefined) {
@@ -120,11 +127,15 @@ function expectLogsMetadata(
 }
 
 function compatibilityLogsView(data: LogsData): LogsData {
-  const turnUsageAttributes = new Set([
+  // Attributes the frozen v0.1 oracle predates — the typed usage channel (2.6) and
+  // the `tools` control-signature counts (plan 069). Projected away on BOTH sides,
+  // so the comparison still pins every attribute the oracle actually froze.
+  const postFreezeAttributes = new Set([
     GENAI_INPUT_TOKENS,
     GENAI_OUTPUT_TOKENS,
     A.CACHE_READ,
     A.CACHE_CREATE,
+    A.TOOL_CONTROL,
   ]);
   const eventKind = (record: LogRecord): string | undefined =>
     record.attributes?.find((attribute) => attribute.key === A.KIND)?.value.stringValue;
@@ -143,7 +154,7 @@ function compatibilityLogsView(data: LogsData): LogsData {
           .map((record) => ({
             ...record,
             attributes: record.attributes?.filter(
-              (attribute) => !turnUsageAttributes.has(attribute.key),
+              (attribute) => !postFreezeAttributes.has(attribute.key),
             ),
           })),
       })),

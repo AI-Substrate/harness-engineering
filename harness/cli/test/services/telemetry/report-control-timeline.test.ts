@@ -175,4 +175,109 @@ describe('report control_timeline (Q2 — closed-allowlist control markers)', ()
     expect(report.scope.single).toBe(false);
     expect(report.control_timeline).toBeUndefined();
   });
+
+  // ── plan 069: the `control` lane (the chained push the HEAD signature drops) ──
+
+  const bashKeys = (events: Event[]): string[] =>
+    (buildReport([exportOf('sessX', [seg(events)])]).control_timeline ?? [])
+      .filter((m) => m.kind === 'bash')
+      .map((m) => m.key);
+
+  it('builds `bash` markers from `control` — the push a `cd …` prefix hid', () => {
+    // The real shape the adapters now emit: the HEAD signature is the `cd`
+    // prefix, and the actual act is in `control`.
+    expect(
+      bashKeys([
+        {
+          t: '2026-06-29T00:00:08Z',
+          kind: 'tools',
+          name: 'bash',
+          count: 1,
+          span_s: 0,
+          signature: 'cd',
+          control: { 'git commit': 1, 'git push': 1 },
+        },
+      ]),
+    ).toEqual(['git commit', 'git push']);
+  });
+
+  it('emits one marker PER invocation, so a burst of pushes is not counted once', () => {
+    expect(
+      bashKeys([
+        {
+          t: '2026-06-29T00:00:08Z',
+          kind: 'tools',
+          name: 'bash',
+          count: 3,
+          span_s: 2,
+          signature: 'cd',
+          control: { 'git push': 3 },
+        },
+      ]),
+    ).toEqual(['git push', 'git push', 'git push']);
+  });
+
+  it('never double-counts when the HEAD signature IS the control command', () => {
+    expect(
+      bashKeys([
+        {
+          t: '2026-06-29T00:00:08Z',
+          kind: 'tools',
+          name: 'bash',
+          count: 1,
+          span_s: 0,
+          signature: 'git push',
+          control: { 'git push': 1 },
+        },
+      ]),
+    ).toEqual(['git push']);
+  });
+
+  it('still reads PRE-069 shards through the `signature` fallback (no `control`)', () => {
+    expect(
+      bashKeys([
+        {
+          t: '2026-06-29T00:00:08Z',
+          kind: 'tools',
+          name: 'bash',
+          count: 1,
+          span_s: 0,
+          signature: 'git push',
+        },
+      ]),
+    ).toEqual(['git push']);
+  });
+
+  it('a non-control `control` key can never mint a marker', () => {
+    // Reach the READ-side allowlist, which the serializer would otherwise mask:
+    // `otlpLogsToEvents` decodes without validating, so a hand-edited/foreign
+    // *.session.json can carry any attribute. Plant one directly on the wire.
+    const exp = exportOf('sessX', [
+      seg([
+        {
+          t: '2026-06-29T00:00:08Z',
+          kind: 'tools',
+          name: 'bash',
+          count: 1,
+          span_s: 0,
+          signature: 'cd',
+          control: { 'git push': 1 },
+        },
+      ]),
+    ]);
+    for (const rl of exp.signals.logs.resourceLogs ?? []) {
+      for (const sl of rl.scopeLogs ?? []) {
+        for (const rec of sl.logRecords ?? []) {
+          for (const attr of rec.attributes ?? []) {
+            if (attr.key !== 'harness.tool.control') continue;
+            attr.value.kvlistValue = {
+              values: [{ key: 'rm -rf /', value: { intValue: '4' } }],
+            };
+          }
+        }
+      }
+    }
+    const tl = buildReport([exp]).control_timeline ?? [];
+    expect(tl.filter((m) => m.kind === 'bash')).toEqual([]);
+  });
 });

@@ -660,3 +660,161 @@ resolves the session.
 Full suite: 4286 tests. One integration test (`post-commit-hook`, "a value other than 1
 does NOT opt out") hit its 5s timeout on a loaded run and passes in 1.03s on its own and
 under `just checks`; it spawns a real git commit and is unrelated to this change.
+
+## FX001-MERGE — origin/main (f17b195c) into s065/deterministic-documents
+
+Merge, not rebase: 113 commits ahead, and a rebase would rewrite the exact shas the
+cross-model review approved.
+
+**One conflict, not nine.** `git merge-tree --write-tree --name-only HEAD origin/main`
+names exactly one file — `otlp/logs.ts` — and the merge produced exactly one CONFLICT
+line, in the string/kv ROLE unions. The other eight files main and we both touched
+auto-merged clean. (The nine-file figure came from a probe that could not distinguish
+"changed in both" from "conflicts"; the correction landed mid-task and matched what the
+merge itself reported.)
+
+### logs.ts — hunk by hunk, because this is where D2 lives
+
+Resolving a merge inside the file whose defect you are fixing is the highest-risk
+resolution available: take `ours` wholesale and D2's drop is silently reinstated; take
+`theirs` wholesale and the fix is reverted. So neither side was picked.
+
+The single conflicted hunk was two INDEPENDENT ADDITIVE members of two different unions:
+
+| side | intent |
+|---|---|
+| ours | `LogStringRole` gains `'e-code'` — the refusal-code role D2 validates `harness.command.code` with |
+| main | `LogKvRole` gains `'control-signatures'` — plan 069's closed 2-member control allowlist |
+
+They collide only because git saw adjacent edits to two consecutive type declarations.
+Resolution is the union of both members; nothing else in the hunk moved.
+
+The proof that no side was lost is the merged file diffed BOTH ways:
+
+- **merged vs `origin/main`** = exactly our five D2 hunks and nothing else (the `e-code`
+  role, the `E_CODE` regex, `optionalString(A.CMD_CODE,'e-code')` in the `command_exit`
+  definition, the encode push, the decode + re-validate).
+- **merged vs our pre-merge HEAD** = exactly main's hunks and nothing else
+  (`control-signatures` role + `TOOL_CONTROL` encode/decode/validate, `RES_CAPTURE_MODE`,
+  the `2.7` acceptance in `reconstructSegmentFromOtlpLogs`, and its fail-closed
+  `capture_mode` guard).
+
+**And the controls were proved able to fail on the merged file**, not merely observed
+green: deleting the one D2 encode line from the MERGED `logs.ts` breaks five controls —
+
+```text
+× command_exit.code round-trips through the rolled logs record
+× a non-E-code value is REFUSED by the wire contract, not quietly accepted
+× (a) a FLUSHED buffer + a present ref returns the whole session from the ref
+     AssertionError: expected {} to deeply equal { E440: 1 }
+× a flushed half + an unflushed delta says buffer+ref, and counts both
+     AssertionError: expected { E440: 1 } to deeply equal { E440: 2 }
+× `telemetry get` on a flushed session exits 0 and reports source: ref
+```
+
+— restored, 35/35 green.
+
+### The version ladder (ruling 1)
+
+main is at Segment **2.7** / `schema_url` **v0.4.0** and does not carry
+`harness.command.code`; we were at 2.6/v0.3.0 and do. The merge lands on main's identity
+with our attribute on it — verified in the merged
+`harness-otlp.schema.json`: `scope_version: "2.7"`, `v0.4.0`, and the vocabulary
+carries `harness.command.code` beside main's `harness.capture_mode` /
+`harness.tool.control`. The freeze test (key-set equality against `semconv.ts`) passes,
+which is the check that would have caught a half-landed vocabulary.
+
+Ruling #2 is not reversed by this: it forbade inventing a version bump to carry a
+vocabulary addition. main bumped the ladder for its OWN reasons (069/070 attributes) and
+we land on whatever the ladder now is — which is the same rule, applied to a ladder that
+moved for a legitimate cause.
+
+**Open ladder question, NOT resolved here.** main gates its 2.7-only attribute by
+version (`capture_mode` on a non-2.7 resource ⇒ `unsafe_resource`, fail closed).
+`harness.command.code` has NO such guard, so it decodes off a 2.6-identity record too.
+That is what keeps this branch's own live E440 evidence (produced under 2.6) readable, so
+adding a guard would invalidate the proof of the fix. Whether the ladder wants the
+attribute pinned to ≥2.6 or ≥2.7 is a design question for prime, not a merge decision.
+
+### D4 (ruling 2)
+
+main's `outcome-events.ts` still has the bare `trimmed[0] !== '{'` guard, so our unwrap
+is still load-bearing rather than a duplicate. Both survived the auto-merge:
+`unwrapFailedBashResult` is intact and still wired at the claude-adapter call site (which
+main edited around, adding `control` capture in the same function). D4's four controls
+pass.
+
+### Semantic overlap with plans 069/070 (ruling 3) — the reasoning, not the absence of a marker
+
+`session-evidence.ts` and `fleet-evidence.ts` are not in main's diff at all, so nothing
+here rests on a clean auto-merge. Four contact points, three compose, one does not:
+
+1. **Reconciled segments vs the pij join — composes, and here is why.** Plan 070 writes
+   recovered segments with `capture_mode: 'reconciled'` and DELIBERATELY does not recover
+   `captured_env`. Our fold joins on `captured_env.PIJ_SESSION_ID`, so a reconciled
+   segment can never satisfy the join, from the buffer OR through the ref — no
+   double-count, and no interval-grade counts silently mixing into a live fold. The flip
+   side is an honest blind spot worth stating: work recovered ONLY by reconciliation is
+   invisible to `telemetry get --session <pij>`, which is the verb FX001 exists to make
+   honest. Finding for prime, not a merge fix.
+2. **Liveness markers vs the buffer scan — composes.** 070 writes
+   `<session>.liveness.json` into the telemetry dir; every buffer scanner here filters
+   session subdirs on `!name.includes('.')`, the same convention that already excludes
+   `.flushed` / `.cursor`. Compatible by construction rather than by luck.
+3. **`t_precision: 'interval'` vs `duration_s` — composes today, by (1).** Our
+   `duration_s` is a wall-span over `ev.t` and does not exclude interval events; since
+   reconciled segments cannot join, none reach it. If (1) is ever fixed, this becomes
+   live and `duration_s` must exclude interval events or say it does not.
+4. **`checks` verdicts DOUBLE-EMIT — real, measured, and NOT resolved here.**
+
+### The one that does not compose
+
+Plan 069 added a SELF-observed `checks` verdict at the CLI exit chokepoint. The claude
+transcript ADAPTER path that already emitted `checks` events was not removed — 069
+refactored both onto a shared `buildChecksEvent`. Both producers carry
+`captured_env.PIJ_SESSION_ID`, so both land on the same lane, and our `fold` appends one
+entry per `checks` event.
+
+Measured on this session, not inferred:
+
+- the SELF segment exists: ref blob `34.json`, `command: "checks"`, window
+  `{from:0,to:0}`, `event_stream` = exactly one `checks` event, `captured_env` carrying
+  `PIJ_SESSION_ID`.
+- the ADAPTER path yields a second one from the SAME run: feeding the real transcript
+  tool_result bytes (line 1399) to the shipped `outcomeEvents` returns
+  `[command_exit, checks]`.
+
+My live probe still read `checks: [{"status":"degraded"}]` — ONE entry — and the reason
+matters, because it is the difference between "composes" and "did not fire today": the
+adapter path is gated on `harnessBashIds.has(refId)`, and I invoked the gate as
+`node harness/cli/bin/harness.js checks`, which signs as `node`. That is the SAME
+command-signature correlation gap already reported as the third independent cause of the
+empty refusal lane. Through the linked binary, both producers fire.
+
+Exposure is not confined to our lane: `report.ts` pushes one control-timeline marker per
+`checks` event, so the discipline panel 069 exists to feed would count the same verdict
+twice; `rollup.ts` is immune (last-wins scalar).
+
+This is a design question about 069's own two producers, so per the stopping rule it is
+REPORTED, not resolved.
+
+### The warn-trio baseline is re-established (ruling 4)
+
+The 57d9cda5 baseline is dead. Fresh from `origin/main` (f17b195c), measured by running
+the real gate against a scratch CLONE of main (`git clone --shared` + a fetch from this
+worktree's `refs/remotes/origin/main` — no `git worktree add`, so no shared branch
+namespace or lock is touched; telemetry killed with `HARNESS_NO_TELEMETRY=1` so the
+baseline run could not write to this session's lane):
+
+| gate | origin/main baseline | merged branch |
+|---|---|---|
+| arch-check | 2 (services-ports-type-only) | 2 |
+| markdown-lint | 196 (194 + 1 + 1) | 196 (194 + 1 + 1) |
+| windows-check | 6 [WIN004×1, WIN007×5] | 6 [WIN004×1, WIN007×5] |
+
+The numbers happen to be identical to the dead baseline — which is worth stating
+explicitly, because "unchanged" here is a measured result against a NEW reference, not
+the old comparison quietly reused.
+
+Full suite on the merge: **307 files / 4408 tests green** (up from 303/4286 — main's own
+tests included). All 35 FX001 controls pass.

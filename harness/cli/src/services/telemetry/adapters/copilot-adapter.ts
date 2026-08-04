@@ -1,5 +1,6 @@
 import {
   commandSignatures,
+  controlSignatures,
   harnessSubcommand,
   observeKindFromCommand,
   shellSignature,
@@ -475,12 +476,17 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
   // FX001-A: callId → the shell call's non-harness signature (harness verbs stay
   // separate `harness` events, so a pure-harness command contributes no signature).
   const sigByCall = new Map<string, string>();
+  // plan 069: callId → the closed-allowlist control commands (`git push`/`git
+  // commit`) the line ran ANYWHERE, which the head-only signature drops.
+  const controlByCall = new Map<string, Record<string, number>>();
   for (const [callId, { cmd, t }] of commandByCall) {
     const tn = toolNameByCall.get(callId);
     if (tn !== 'bash' && tn !== 'shell') continue;
     if (t !== null) commandObs.push({ cmd, t });
     const sig = shellSignature(cmd);
     if (sig !== undefined) sigByCall.set(callId, sig);
+    const control = controlSignatures(cmd);
+    if (control !== undefined) controlByCall.set(callId, control);
     // command_exit (AC-19) — a harness subcommand's exit from the `success` flag.
     // Copilot has ONE success bool for the WHOLE shell execution, so it can be
     // attributed only to a LONE harness command: a compound — whether two harness
@@ -502,6 +508,8 @@ function readEvents(content: string, fromLine: number, toLine: number): EventsVi
     const call: ToolCall = { name, t };
     const sig = sigByCall.get(callId);
     if (sig !== undefined) call.signature = sig;
+    const control = controlByCall.get(callId);
+    if (control !== undefined) call.control = control;
     const rt = resultTokensByCall.get(callId);
     if (rt !== undefined) call.result_tokens = rt;
     return call;
@@ -598,8 +606,11 @@ export const copilotAdapter: HarnessAdapter = {
   handles: (harnessId) => harnessId === 'copilot-cli',
 
   currentPosition(src) {
-    const home = src.env.home();
-    const sessionId = src.env.get('COPILOT_AGENT_SESSION_ID');
+    // Env-located source + env-keyed session id: with no env there is nothing to
+    // measure. This adapter therefore does not declare `reconciles` (below), and
+    // the reconciler never calls it without one.
+    const home = src.env?.home();
+    const sessionId = src.env?.get('COPILOT_AGENT_SESSION_ID');
     if (home === undefined || sessionId === undefined || sessionId.length === 0) return null;
     const content = src.fs.readText(copilotEventsPath(home, sessionId));
     if (content === null) return null;
@@ -607,8 +618,8 @@ export const copilotAdapter: HarnessAdapter = {
   },
 
   extract(ctx: HarnessContext) {
-    const home = ctx.env.home();
-    const sessionId = ctx.env.get('COPILOT_AGENT_SESSION_ID');
+    const home = ctx.env?.home();
+    const sessionId = ctx.env?.get('COPILOT_AGENT_SESSION_ID');
     if (home === undefined || sessionId === undefined || sessionId.length === 0) return nullCaps;
 
     // --- events.jsonl (windowed): effort + tools + subagents + the attribution key ---

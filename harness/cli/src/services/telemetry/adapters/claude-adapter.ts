@@ -1,5 +1,6 @@
 import {
   commandSignatures,
+  controlSignatures,
   harnessSubcommand,
   observeKindFromCommand,
   shellSignature,
@@ -141,6 +142,11 @@ function candidatePath(configRoot: string, projectRoot: string, sessionId: strin
 
 function locationFor(src: HarnessSource): NonNullable<HarnessSource['standardClaude']> | null {
   if (src.standardClaude !== undefined) return src.standardClaude;
+  // No env ⇒ no discovery. Reconciliation resolves its root from the marker's own
+  // recorded path instead (see `readTranscriptAt`); it must never fall back to the
+  // RECOVERING process's `CLAUDE_CONFIG_DIR`/`HOME`, which point at a different
+  // machine location than the dead lane was reading.
+  if (src.env === undefined) return null;
   const selectedRoot = src.env.get('CLAUDE_CONFIG_DIR');
   const home = src.env.home();
   const configRoot =
@@ -159,7 +165,7 @@ function locateAt(
   const sessionId =
     src.sessionId !== undefined && src.sessionId.length > 0
       ? src.sessionId
-      : src.env.get('CLAUDE_CODE_SESSION_ID');
+      : src.env?.get('CLAUDE_CODE_SESSION_ID');
   if (sessionId === undefined || sessionId.length === 0 || location.projectRoots.length === 0) {
     return unavailable('unresolved');
   }
@@ -217,7 +223,24 @@ function locateAt(
   if (matches.length > 1) return unavailable('multiple');
 
   const path = matches[0] as string;
-  const read = src.fs.readTextFileNoFollow(location.configRoot, path, MAX_CLAUDE_TRANSCRIPT_BYTES);
+  return readAndValidate(src, location.configRoot, path);
+}
+
+/**
+ * Read a KNOWN transcript path (no candidate discovery) and validate it the same
+ * way {@link locateAt} validates the one it found. Shared so the reconciliation
+ * path cannot drift from the live path's notion of "a usable transcript".
+ *
+ * The no-follow read stays rooted at the config root, so a recorded path outside
+ * it — or a symlink planted since — degrades to `unavailable` rather than reading
+ * an arbitrary file. Reconciliation NEVER relaxes the containment the live path has.
+ */
+function readAndValidate(
+  src: HarnessSource,
+  configRoot: string,
+  path: string,
+): ClaudeTranscriptResolution {
+  const read = src.fs.readTextFileNoFollow(configRoot, path, MAX_CLAUDE_TRANSCRIPT_BYTES);
   if (read.status === 'unavailable') {
     if (read.reason === 'missing' || read.reason === 'io-error') return unavailable('unresolved');
     return unavailable(read.reason);
@@ -234,6 +257,39 @@ function locateAt(
   return hasJsonObject ? { status: 'found', path, content: read.text } : unavailable('malformed');
 }
 
+/**
+ * Reconciliation read: the marker already recorded which transcript this lane was
+ * reading, so the path is taken verbatim.
+ *
+ * The containment root is derived from THAT PATH's own layout
+ * (`<configRoot>/projects/<projectKey>/<sessionId>.jsonl`), never from env: at
+ * recovery time `CLAUDE_CONFIG_DIR`/`HOME` describe the recovering process, so
+ * rooting the read there would either fail on a machine whose config moved, or —
+ * with a same-shaped root — check containment against the wrong tree entirely.
+ * The no-follow read still walks every component BELOW that root, so a symlink
+ * planted since the marker was written is still refused.
+ *
+ * The recorded session id must also match the file the path names. That is the
+ * one cross-check available without env, and it is the one that matters: it is
+ * what stops a lane's segment being filled from a different session's transcript.
+ */
+function readTranscriptAt(src: HarnessSource, path: string): ClaudeTranscriptResolution {
+  if (src.reconcile === undefined) return unavailable('unresolved');
+  const layout = /^(.*)\/projects\/[^/]+\/([^/]+)\.jsonl$/.exec(path);
+  const configRoot = layout?.[1];
+  const named = layout?.[2];
+  if (
+    configRoot === undefined ||
+    named !== src.reconcile.sessionId ||
+    !isAbsolutePath(configRoot) ||
+    hasTraversal(configRoot) ||
+    hasTraversal(path)
+  ) {
+    return unavailable('unresolved');
+  }
+  return readAndValidate(src, configRoot, path);
+}
+
 /** Resolve one transcript from explicit bounded candidates only. */
 export function locateClaudeTranscript(src: HarnessSource): ClaudeTranscriptResolution {
   const location = locationFor(src);
@@ -241,6 +297,10 @@ export function locateClaudeTranscript(src: HarnessSource): ClaudeTranscriptReso
 }
 
 function resolveClaudeTranscript(src: HarnessSource): ClaudeTranscriptResolution {
+  // Reconciliation bypasses discovery entirely: the marker already recorded the
+  // exact transcript this lane was reading, and re-deriving it from a recovery-time
+  // env/worktree set could resolve to a different session's file.
+  if (src.reconcile !== undefined) return readTranscriptAt(src, src.reconcile.sourcePath);
   const location = locationFor(src);
   if (location === null) return unavailable('unresolved');
   if (src.standardClaude === undefined) return locateAt(src, location);
@@ -309,10 +369,19 @@ const nullCaps: HarnessCapabilities = {
 export const claudeAdapter: HarnessAdapter = {
   harness: 'claude-code',
   handles: (harnessId) => harnessId === 'claude-code',
+  // The transcript is self-contained (timed JSONL) and the marker records its
+  // path; the containment root is re-derived from that path's own layout.
+  reconciles: true,
 
   currentPosition(src) {
     const resolution = resolveClaudeTranscript(src);
     return resolution.status === 'found' ? nonEmptyLines(resolution.content).length : null;
+  },
+
+  /** The resolved transcript file — the source whose extent `currentPosition` counts. */
+  sourcePath(src) {
+    const resolution = resolveClaudeTranscript(src);
+    return resolution.status === 'found' ? resolution.path : null;
   },
 
   extract(ctx) {
@@ -328,7 +397,10 @@ export const claudeAdapter: HarnessAdapter = {
     const lines = nonEmptyLines(content).slice(ctx.window.from, ctx.window.to);
     if (lines.length === 0) return nullCaps; // empty window → all-null (a real read)
 
-    const effort = ctx.env.get('CLAUDE_EFFORT') ?? null;
+    // Reconciliation has no env by construction, so there is nothing to read here
+    // and nothing is guessed: `effort` is a fact about the process that RAN the
+    // work, and the recovering process is a different one. Omitted, not inherited.
+    const effort = ctx.env?.get('CLAUDE_EFFORT') ?? null;
 
     // Token accumulators (deduped by message.id) + per-model turns/output.
     const seenMessageIds = new Set<string>();
@@ -465,6 +537,7 @@ export const claudeAdapter: HarnessAdapter = {
             // FX001-A: a shell tool's non-harness command signature (kept, not
             // discarded) → keys its burst; harness verbs stay separate below.
             let signature: string | undefined;
+            let control: Record<string, number> | undefined;
             if (name === 'Skill' && typeof tInput.skill === 'string') {
               increment(skills, tInput.skill);
               // FX001-B: only a LEADING pure-digit positional survives (P12).
@@ -511,6 +584,8 @@ export const claudeAdapter: HarnessAdapter = {
               }
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
               signature = shellSignature(tInput.command);
+              // plan 069: the git push/commit the chain HEAD signature drops.
+              control = controlSignatures(tInput.command);
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
               // Mark this Bash call as a harness invocation so ONLY its result is
               // parsed for outcome events (companion F003).
@@ -525,6 +600,7 @@ export const claudeAdapter: HarnessAdapter = {
             if (ts !== null) {
               const call: ToolCall = { name, t: ts };
               if (signature !== undefined) call.signature = signature;
+              if (control !== undefined) call.control = control;
               toolCalls.push(call);
               // FX003: register by tool_use id so the correlated tool_result can
               // back-fill its payload size onto this call.

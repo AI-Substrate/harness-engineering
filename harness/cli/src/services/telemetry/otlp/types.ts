@@ -16,13 +16,17 @@ export const LEGACY_OTLP_SCOPE_VERSION = '2.4';
 export const SEGMENT_2_5_HARNESS_SCHEMA_URL =
   'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0';
 export const SEGMENT_2_5_OTLP_SCOPE_VERSION = '2.5';
-/** Current Segment-2.6 wire identity (adds closed typed usage events). */
-export const HARNESS_SCHEMA_URL =
+/** Immutable Segment-2.6 wire identity retained for already-published records. */
+export const SEGMENT_2_6_HARNESS_SCHEMA_URL =
   'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.3.0';
+export const SEGMENT_2_6_OTLP_SCOPE_VERSION = '2.6';
+/** Current Segment-2.7 wire identity (adds the reconciled capture-mode provenance). */
+export const HARNESS_SCHEMA_URL =
+  'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.4.0';
 /** The harness telemetry instrumentation scope. */
 export const SCOPE_NAME = 'harness.telemetry';
 /** Mirrors the current internal segment schema version (kept in lockstep). */
-export const OTLP_SCOPE_VERSION = '2.6';
+export const OTLP_SCOPE_VERSION = '2.7';
 
 export interface OtlpSchemaIdentity {
   schemaUrl: string;
@@ -31,8 +35,14 @@ export interface OtlpSchemaIdentity {
 
 /** Version-aware wire selection preserves both published predecessor identities. */
 export function schemaIdentityForSegmentVersion(version: string): OtlpSchemaIdentity {
-  if (version === '2.6') {
+  if (version === '2.7') {
     return { schemaUrl: HARNESS_SCHEMA_URL, scopeVersion: OTLP_SCOPE_VERSION };
+  }
+  if (version === '2.6') {
+    return {
+      schemaUrl: SEGMENT_2_6_HARNESS_SCHEMA_URL,
+      scopeVersion: SEGMENT_2_6_OTLP_SCOPE_VERSION,
+    };
   }
   if (version === '2.5') {
     return {

@@ -61,6 +61,14 @@ export interface ToolCall {
    */
   signature?: string;
   /**
+   * Per-signature counts of the closed-allowlist control commands this ONE call
+   * ran anywhere in its (possibly chained) command line — see
+   * {@link import('./command-signature.js').controlSignatures}. Also part of the
+   * burst KEY (below), so a `cd … && git push` call never merges into an adjacent
+   * `cd … && git add` burst and lose its instant. Absent for non-control calls.
+   */
+  control?: Record<string, number>;
+  /**
    * The size (a token-count ESTIMATE, never payload text) of THIS call's
    * `tool_result` payload (FX003). `collapseToolBursts` sums it across the burst.
    * Absent when the source carries no per-tool payload (honest omission).
@@ -77,6 +85,12 @@ export interface ToolBurst {
   /** Carried from the burst's calls (a burst is a single `(name, signature)`). */
   signature?: string;
   /**
+   * Σ of the burst's calls' `control` counts (plan 069) — how many `git push` /
+   * `git commit` invocations this burst carried. Part of the burst key, so every
+   * call in the burst shares the same shape. Absent when none did.
+   */
+  control?: Record<string, number>;
+  /**
    * Σ of the burst's calls' `result_tokens` (FX003) — the total this signature
    * dumped back over its `count` calls. Absent when NO call in the burst carried
    * a size (honest absence — never a fabricated 0).
@@ -86,13 +100,20 @@ export interface ToolBurst {
 
 /**
  * Collapse a maximal run of consecutive calls of the SAME tool (AND, for a
- * shell tool, the same {@link ToolCall.signature}) whose inter-call gap is
- * `< burstNs` into one burst (§4.2). A name OR signature change, or a gap ≥
- * `burstNs`, starts a new burst — so a burst is always one `(name, signature)`
- * and the per-signature counts survive (`bash:rg ×54` vs `bash:git ×12` stay
+ * shell tool, the same {@link ToolCall.signature} AND the same {@link ToolCall.control}
+ * shape) whose inter-call gap is
+ * `< burstNs` into one burst (§4.2). A name OR signature OR control-shape change, or
+ * a gap ≥
+ * `burstNs`, starts a new burst — so a burst is always one `(name, signature,
+ * control)` and the per-signature counts survive (`bash:rg ×54` vs `bash:git ×12` stay
  * distinct — FX001-2), while the by-name `rollup.tools` histogram is unchanged
  * (AC-16). `count` = calls collapsed; `span_s` = last − first; `t` = the burst's
  * first call. Input must be in time order.
+ *
+ * Keying on `control` too (plan 069) keeps a `cd … && git push` call out of an
+ * adjacent `cd … && git add` burst: both have `signature:'cd'`, so without it the
+ * push would inherit the earlier call's instant and blur the strict
+ * `checks.t < push.t` discipline join.
  */
 export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N_S): ToolBurst[] {
   const bursts: ToolBurst[] = [];
@@ -100,6 +121,7 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
     t: string;
     name: string;
     signature?: string;
+    control?: Record<string, number>;
     first: number;
     last: number;
     count: number;
@@ -111,12 +133,14 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
       cur !== null &&
       call.name === cur.name &&
       call.signature === cur.signature &&
+      controlKey(call.control) === controlKey(cur.control) &&
       Number.isFinite(at) &&
       Number.isFinite(cur.last) &&
       at - cur.last < burstNs
     ) {
       cur.last = at;
       cur.count += 1;
+      if (call.control !== undefined) cur.control = addControl(cur.control, call.control);
       if (call.result_tokens !== undefined) {
         cur.resultTokens = (cur.resultTokens ?? 0) + call.result_tokens;
       }
@@ -124,16 +148,37 @@ export function collapseToolBursts(calls: readonly ToolCall[], burstNs = BURST_N
     }
     if (cur !== null) bursts.push(finishBurst(cur));
     cur = { t: call.t, name: call.name, signature: call.signature, first: at, last: at, count: 1 };
+    if (call.control !== undefined) cur.control = { ...call.control };
     if (call.result_tokens !== undefined) cur.resultTokens = call.result_tokens;
   }
   if (cur !== null) bursts.push(finishBurst(cur));
   return bursts;
 }
 
+/** Stable identity of a control-count map — the burst-key comparison (order-insensitive). */
+function controlKey(control: Record<string, number> | undefined): string {
+  if (control === undefined) return '';
+  return Object.entries(control)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([k, v]) => `${k}=${v}`)
+    .join(',');
+}
+
+/** Sum two control-count maps (the burst accumulates its calls' counts). */
+function addControl(
+  acc: Record<string, number> | undefined,
+  next: Record<string, number>,
+): Record<string, number> {
+  const out: Record<string, number> = { ...(acc ?? {}) };
+  for (const [k, v] of Object.entries(next)) out[k] = (out[k] ?? 0) + v;
+  return out;
+}
+
 function finishBurst(b: {
   t: string;
   name: string;
   signature?: string;
+  control?: Record<string, number>;
   first: number;
   last: number;
   count: number;
@@ -143,6 +188,7 @@ function finishBurst(b: {
     Number.isFinite(b.last) && Number.isFinite(b.first) ? Math.round(b.last - b.first) : 0;
   const burst: ToolBurst = { t: b.t, name: b.name, count: b.count, span_s: span < 0 ? 0 : span };
   if (b.signature !== undefined) burst.signature = b.signature;
+  if (b.control !== undefined) burst.control = b.control;
   if (b.resultTokens !== undefined) burst.result_tokens = b.resultTokens;
   return burst;
 }

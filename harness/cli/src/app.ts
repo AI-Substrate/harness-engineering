@@ -302,6 +302,7 @@ export function buildProgram(
     env: deps.env,
     proc: deps.proc,
     gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    db: new NodeDb(),
     mode: io.mode,
     writers: io.writers,
   });
@@ -443,6 +444,7 @@ export async function main(
     env: deps.env,
     proc: deps.proc,
     gitWrite: deps.gitWrite ?? new ExecGitWrite(),
+    db: new NodeDb(),
     mode: io.mode,
     writers: io.writers,
   });

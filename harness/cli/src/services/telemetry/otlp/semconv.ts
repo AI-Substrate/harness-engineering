@@ -33,6 +33,12 @@ export const RES_SCHEMA_VERSION = 'harness.schema_version';
 /** Segment-2.5 optional product HEAD provenance; forbidden on older wire versions. */
 export const RES_PRODUCT_COMMIT = 'harness.product.commit';
 /**
+ * Segment-2.7 capture provenance (`reconciled`); forbidden on older wire versions.
+ * Present ONLY on a late, orphan-lane-recovered segment — its ABSENCE is what a
+ * reader takes as "captured live", so a forger cannot assert liveness with it.
+ */
+export const RES_CAPTURE_MODE = 'harness.capture_mode';
+/**
  * The allowlisted env snapshot (segment `captured_env`) → ONE kvlist-valued
  * resource attribute (name → value), not N dynamic keys — so the frozen
  * attribute contract stays a closed, fixed set (mirrors `harness.checks.gates`).
@@ -54,6 +60,7 @@ export const A = {
   TOOL_COUNT: 'harness.tool.count',
   TOOL_SPAN_S: 'harness.tool.span_s',
   TOOL_SIG: 'harness.tool.signature',
+  TOOL_CONTROL: 'harness.tool.control',
   TOOL_RESULT_TOKENS: 'harness.tool.result_tokens',
   SKILL_NAME: 'harness.skill.name',
   SKILL_STATUS: 'harness.skill.status',
