@@ -72,7 +72,7 @@
           "tier": "computational",
           "proof": "Per-rel planted-bad fixtures + silent good twins in the plan-validate suite.",
           "state": "unchecked",
-          "probe": "npx vitest run harness/cli/test/acts/plan.test.ts"
+          "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
           "id": "bp-7007",
@@ -82,7 +82,7 @@
           "tier": "computational",
           "proof": "Mode tests: strict-zero pin, orphan fixture, summary-line snapshot.",
           "state": "unchecked",
-          "probe": "npx vitest run harness/cli/test/acts/plan.test.ts"
+          "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
           "id": "bp-7008",
@@ -92,7 +92,7 @@
           "tier": "computational",
           "proof": "Scope-closure tests over a multi-phase synthetic corpus (factory).",
           "state": "unchecked",
-          "probe": "npx vitest run harness/cli/test/acts/plan.test.ts"
+          "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
           "id": "bp-7009",
@@ -260,6 +260,5 @@
         }
       ]
     }
-  ],
-  "references": []
+  ]
 }
