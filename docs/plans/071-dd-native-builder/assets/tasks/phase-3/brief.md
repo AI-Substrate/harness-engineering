@@ -104,3 +104,15 @@ proof per AC with reproduced counts, per-assertion evidence mapping
 (dw-000x → test/command), the flow-eval run's ACTUAL results (as-is),
 design calls worth the reviewer's eye, out-of-fence sightings (NOT
 touched), observations via `harness observe` (leave the buffer undrained).
+
+## Fence amendment 1 (post-dispatch, 2026-08-04 — pij-related-koala, fence issuer)
+
+`docs/how/dd/README.md` is opened for EXACTLY two edits, both tk-7161
+consequences: line 39's sample `"done": "#evidence/tk-0201"` →
+`"done": "#done_when/tk-0201"`, and line 43's words "evidence list" →
+"`done_when` list". No other README bytes — the pitch prose stays
+Jordan-tuned and untouched. Rationale: the sample is quoted FROM the
+exemplar tk-7161 just migrated; after the alias drop the front-door README
+teaches an address the schema refuses. Cause: the fence was written before
+ruling A's blast radius was mapped. Expiry: this grant closes with the
+phase-3 exit (it licenses these two edits once, not README access).
