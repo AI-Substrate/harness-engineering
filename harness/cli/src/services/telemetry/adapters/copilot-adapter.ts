@@ -606,8 +606,11 @@ export const copilotAdapter: HarnessAdapter = {
   handles: (harnessId) => harnessId === 'copilot-cli',
 
   currentPosition(src) {
-    const home = src.env.home();
-    const sessionId = src.env.get('COPILOT_AGENT_SESSION_ID');
+    // Env-located source + env-keyed session id: with no env there is nothing to
+    // measure. This adapter therefore does not declare `reconciles` (below), and
+    // the reconciler never calls it without one.
+    const home = src.env?.home();
+    const sessionId = src.env?.get('COPILOT_AGENT_SESSION_ID');
     if (home === undefined || sessionId === undefined || sessionId.length === 0) return null;
     const content = src.fs.readText(copilotEventsPath(home, sessionId));
     if (content === null) return null;
@@ -615,8 +618,8 @@ export const copilotAdapter: HarnessAdapter = {
   },
 
   extract(ctx: HarnessContext) {
-    const home = ctx.env.home();
-    const sessionId = ctx.env.get('COPILOT_AGENT_SESSION_ID');
+    const home = ctx.env?.home();
+    const sessionId = ctx.env?.get('COPILOT_AGENT_SESSION_ID');
     if (home === undefined || sessionId === undefined || sessionId.length === 0) return nullCaps;
 
     // --- events.jsonl (windowed): effort + tools + subagents + the attribution key ---

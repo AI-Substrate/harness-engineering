@@ -4,7 +4,7 @@
  *
  * THE SUBSTRATE (workshop 002 + the two Phase-2 decisions in `execution.log.md`):
  * every dimension derives from the ONE lossless event stream a `SessionExport`
- * carries — `otlpLogsToEvents(export.signals.logs)` — never from per-segment
+ * carries — `otlpLogsToEventRecords(export.signals.logs)` — never from per-segment
  * cumulative metrics (KF-02/KF-03). Counts are **EXACT** (event counts); time and
  * tokens are **ESTIMATES** with a declared method (`attribution`), never a ledger.
  *
@@ -34,7 +34,7 @@
 
 import { CONTROL_SIGNATURES } from './command-signature.js';
 import type { Event } from './events.js';
-import { otlpLogsToEvents } from './otlp/logs.js';
+import { otlpLogsToEventRecords } from './otlp/logs.js';
 import type { PublishedDataCoverage } from './published-telemetry.js';
 import {
   type Authorship,
@@ -499,7 +499,7 @@ function turnOutput(e: { kind: string; out?: number }): number {
 interface SessionView {
   export: SessionExport;
   /** Sorted asc by `t`, `flow_log` markers removed (replay-only — KF gap math). */
-  events: ReturnType<typeof otlpLogsToEvents>;
+  events: Event[];
   rollup: ReturnType<typeof computeRollup>;
   /**
    * The `cursor-moved` stage-transition marks extracted BEFORE the `flow_log`
@@ -511,10 +511,15 @@ interface SessionView {
    * The events that came from a RECONCILED segment (plan 070) — a window recovered
    * late from an orphaned lane, which no live process ever watched.
    *
-   * Resolved from the export's `reconciled_windows` (the recovered events' own
-   * instants), because {@link combineSession} collapses every segment into ONE
-   * session-level resource and per-segment provenance does not survive that. Held
-   * as an IDENTITY set so it survives the sort/filter above without widening
+   * Read PER EVENT from the resource each event was decoded from
+   * (`harness.capture_mode`), which is where OTLP already models provenance and
+   * the only representation that stays exact when live and recovered work
+   * INTERLEAVE — the normal case for a lane reconciled between two live captures.
+   * Anything coarser (a session-level flag, a recovered time range) marks live
+   * events as reconstructed, which is the same dishonesty as the reverse, pointed
+   * the other way.
+   *
+   * Held as an IDENTITY set so it survives the sort/filter above without widening
    * `Event` with a read-path-only field that would then have to be kept out of
    * every serializer. Every rendered surface that would otherwise draw these
    * identically to live capture consults it.
@@ -523,14 +528,10 @@ interface SessionView {
 }
 
 function viewOf(exp: SessionExport): SessionView {
-  const all = otlpLogsToEvents(exp.signals.logs);
-  const windows = exp.summary.reconciled_windows ?? [];
+  const records = otlpLogsToEventRecords(exp.signals.logs);
+  const all = records.map((r) => r.event);
   const reconciled = new Set<Event>();
-  if (windows.length > 0) {
-    for (const e of all) {
-      if (windows.some((w) => e.t >= w.from && e.t <= w.to)) reconciled.add(e);
-    }
-  }
+  for (const r of records) if (r.reconciled) reconciled.add(r.event);
   const cursorMarks = all
     .filter(
       (e): e is Extract<(typeof all)[number], { kind: 'flow_log' }> =>

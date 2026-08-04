@@ -4,7 +4,11 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { Event } from './events.js';
-import { produceOtlpLogs, reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
+import {
+  type OtlpLogsProduction,
+  produceOtlpLogs,
+  reconstructSegmentFromOtlpLogs,
+} from './otlp/logs.js';
 import { produceOtlpMetrics } from './otlp/metrics.js';
 import type { LogsData, MetricsData } from './otlp/types.js';
 import { ROLLED_LOGS_NAME, splitJsonl } from './rolled-shard.js';
@@ -89,24 +93,21 @@ export interface SessionExportSummary {
    */
   files_observed?: { written: string[]; edited: string[] };
   /**
-   * plan 070 — the instant ranges covered by RECONCILED segments: windows that were
-   * recovered LATE from an orphaned capture lane, after the session had stopped
-   * running harness commands. Nobody watched that work happen; it was reconstructed
-   * from the harness's own transcript afterwards.
-   *
-   * Carried as TIME RANGES, not a flag, because this combine collapses every
-   * segment into ONE session-level resource — per-segment provenance would be lost
-   * at exactly the moment a reader needs it. The bounds are the reconciled events'
-   * OWN first and last instants (nothing derived, nothing widened), so a read
-   * surface can say which part of the timeline was reconstructed rather than only
-   * that some of it was. A live event sharing an instant with a reconciled one is
-   * flagged too — conservative in the safe direction: it under-claims observation,
-   * never over-claims it.
+   * plan 070 — how many contributing segments were RECONCILED: windows recovered
+   * LATE from an orphaned capture lane, after the session had stopped running
+   * harness commands. Nobody watched that work happen; it was reconstructed from
+   * the harness's own transcript afterwards.
    *
    * OMITTED when no segment was reconciled, which is every ordinary session.
+   *
+   * This is a COUNT, deliberately: it says how much of the session was recovered,
+   * and it cannot be used to decide whether any PARTICULAR event was. That
+   * question is answered where OTLP already models provenance — the reconciled
+   * events keep their own `ResourceLogs`, carrying `harness.capture_mode`, so a
+   * reader asks per event and gets a per-event answer (see the split below).
+   * An earlier revision carried time RANGES here instead, and a live event that
+   * merely fell inside a recovered window rendered as reconciled.
    */
-  reconciled_windows?: { from: string; to: string }[];
-  /** plan 070 — how many contributing segments were reconciled. Omitted when none. */
   reconciled_segments?: number;
 }
 
@@ -484,6 +485,23 @@ function buildTokens(
 }
 
 /**
+ * Concatenate two logs productions into one `LogsData`, preserving each side's own
+ * `ResourceLogs` (and therefore its resource-level provenance). Used only when a
+ * session mixes live and reconciled capture; the skipped-kind notes union.
+ */
+function mergeLogs(
+  live: OtlpLogsProduction | undefined,
+  reconciled: OtlpLogsProduction,
+): OtlpLogsProduction {
+  const resourceLogs = [
+    ...(live?.logs.resourceLogs ?? []),
+    ...(reconciled.logs.resourceLogs ?? []),
+  ];
+  const skipped = new Set<string>([...(live?.skipped ?? []), ...reconciled.skipped]);
+  return { logs: { resourceLogs }, skipped: [...skipped].sort() };
+}
+
+/**
  * Combine one session's buffered segments into a schema-valid {@link SessionExport}
  * from the temp source. Fail-safe: an unreadable/empty session yields a well-formed
  * export with `segment_count: 0` and empty signals (never throws).
@@ -524,17 +542,18 @@ export function combineSession(
     }
   }
 
-  // plan 070 — the reconstructed slices of this session's timeline, taken from the
-  // recovered events' own instants before the per-segment resources are collapsed.
-  const reconciledWindows: { from: string; to: string }[] = [];
+  // plan 070 — which EVENTS came from a reconciled segment, held by object identity
+  // while the per-segment structure still exists. Identity, not time: a live event
+  // and a recovered one can share an instant (and an interleaved window is the
+  // normal case for a lane recovered between two live captures), so any range-based
+  // answer marks live work as reconstructed. Consumed below to keep the recovered
+  // events in their OWN `ResourceLogs` rather than collapsing them with the rest.
+  const reconciledEvents = new Set<Event>();
+  let reconciledSegments = 0;
   for (const r of reads) {
-    if (r.seg.capture_mode !== 'reconciled' || r.events.length === 0) continue;
-    const times = r.events.map((e) => e.t).filter((t) => typeof t === 'string' && t.length > 0);
-    if (times.length === 0) continue;
-    reconciledWindows.push({
-      from: times.reduce((a, b) => (a < b ? a : b)),
-      to: times.reduce((a, b) => (a > b ? a : b)),
-    });
+    if (r.seg.capture_mode !== 'reconciled') continue;
+    reconciledSegments += 1;
+    for (const event of r.events) reconciledEvents.add(event);
   }
 
   // Unify through the event stream: merge all events, order by `t`.
@@ -593,7 +612,29 @@ export function combineSession(
   // degrade notes the read surfaces carry.
   const producedMetrics = produceOtlpMetrics(sessionSeg);
   for (const name of producedMetrics.skipped) degraded.push(`metric_skipped:${name}`);
-  const producedLogs = produceOtlpLogs(sessionSeg);
+  // The collapse is honest for everything EXCEPT capture provenance, which OTLP
+  // models on the resource. So the synthetic session keeps one resource per capture
+  // mode instead of one overall: live events under an unmarked resource, recovered
+  // events under one carrying `harness.capture_mode`. Every reader that flattens
+  // (`otlpLogsToEvents`) is unaffected; a reader that asks per event
+  // (`otlpLogsToEventRecords`) gets an exact answer that survives both the collapse
+  // and any interleaving. Sessions with nothing reconciled — every ordinary one —
+  // still produce exactly ONE resource, byte-identically to before.
+  const liveEvents = allEvents.filter((event) => !reconciledEvents.has(event));
+  const lateEvents = allEvents.filter((event) => reconciledEvents.has(event));
+  const producedLogs =
+    lateEvents.length === 0
+      ? produceOtlpLogs(sessionSeg)
+      : mergeLogs(
+          liveEvents.length === 0
+            ? undefined
+            : produceOtlpLogs({ ...sessionSeg, event_stream: liveEvents }),
+          produceOtlpLogs({
+            ...sessionSeg,
+            event_stream: lateEvents,
+            capture_mode: 'reconciled',
+          }),
+        );
   for (const kind of producedLogs.skipped) degraded.push(`event_skipped:${kind}`);
 
   return {
@@ -614,12 +655,7 @@ export function combineSession(
       ...(filesWritten.length > 0 || filesEdited.length > 0
         ? { files_observed: { written: filesWritten, edited: filesEdited } }
         : {}),
-      ...(reconciledWindows.length > 0
-        ? {
-            reconciled_windows: reconciledWindows,
-            reconciled_segments: reconciledWindows.length,
-          }
-        : {}),
+      ...(reconciledSegments > 0 ? { reconciled_segments: reconciledSegments } : {}),
     },
     signals: {
       logs: producedLogs.logs,

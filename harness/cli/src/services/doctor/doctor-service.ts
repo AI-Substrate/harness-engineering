@@ -756,7 +756,9 @@ function checkCaptureLiveness(
   // (or vice versa). Two projections of one answer, never two implementations.
   const owed: string[] = [];
   const unrecoverable: string[] = [];
-  const reconcileDeps = { fs, env, clock, proc, adapters, ...(db !== undefined && { db }) };
+  // No `env`: doctor asks the recoverability question exactly as sync will answer
+  // it, and sync has no EnvPort to give an adapter either (plan 070 P1-B).
+  const reconcileDeps = { fs, clock, proc, adapters, ...(db !== undefined && { db }) };
   for (const r of verdict.residue) {
     const reason = laneRecoveryReason(reconcileDeps, cwd, r);
     if (reason === null) {

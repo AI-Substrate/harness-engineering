@@ -58,7 +58,12 @@ export function cursorTranscriptPath(transcriptsDir: string, convId: string): st
  * rows wins). macOS + Linux hang off `$HOME`; Windows off `%APPDATA%`. Forward
  * slashes are fine for Node's file APIs on every platform.
  */
-export function cursorStateDbPaths(env: EnvPort): string[] {
+export function cursorStateDbPaths(env: EnvPort | undefined): string[] {
+  // No env (reconciliation) ⇒ NO candidates. The IDE store is located through the
+  // recovering user's `HOME`/`APPDATA`, so a recovered lane that consulted it would
+  // be attributed the models and bubble timings of whoever ran the recovery.
+  // Cursor's marker records the transcript only, so timing/model stay unavailable.
+  if (env === undefined) return [];
   const paths: string[] = [];
   const home = env.home();
   if (home !== undefined && home.length > 0) {
@@ -260,6 +265,10 @@ function countRole(lines: readonly string[], role: 'user' | 'assistant'): number
 export const cursorAdapter: HarnessAdapter = {
   harness: 'cursor-agent',
   handles: (harnessId) => harnessId === 'cursor-agent',
+  // The marker records the transcript path and the conversation id, which is all
+  // this adapter needs; the env-located IDE store (models + bubble timing) is
+  // simply unavailable in that mode, and the events fall back to interval grade.
+  reconciles: true,
 
   currentPosition(src) {
     const content = readTranscript(src);

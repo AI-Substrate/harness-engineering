@@ -535,9 +535,10 @@ function runReconcile(deps: SyncDeps): ReconciledLanes | undefined {
   const wiring = deps.reconcile;
   const clock = deps.clock;
   if (wiring === undefined || clock === undefined) return undefined;
+  // Note the absence of `env`: the reconciler has no EnvPort to give an adapter,
+  // so a recovered lane cannot inherit THIS process's environment.
   const result = reconcileOrphanLanes({
     fs: deps.fs,
-    env: deps.env,
     proc: deps.proc,
     clock,
     adapters: wiring.adapters,

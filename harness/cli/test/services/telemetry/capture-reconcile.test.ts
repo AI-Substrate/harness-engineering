@@ -21,8 +21,15 @@ import { FakeGit } from '../../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import { buildDoctorReport } from '../../../src/services/doctor/doctor-service.js';
 import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
+import { claudeAdapter } from '../../../src/services/telemetry/adapters/claude-adapter.js';
 import { cursorAdapter } from '../../../src/services/telemetry/adapters/cursor-adapter.js';
-import type { HarnessAdapter } from '../../../src/services/telemetry/adapters/harness-adapter.js';
+import type {
+  HarnessAdapter,
+  HarnessCapabilities,
+  HarnessContext,
+  LiveHarnessSource,
+  ReconcileHarnessSource,
+} from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import {
   LIVENESS_RESIDUE_IDLE_MS,
   type LivenessRecord,
@@ -182,8 +189,9 @@ function bubbleDb(): FakeDb {
  */
 function writeSegmentJson(
   seq: number,
-  spec: { command: string; t: string; verb: string; reconciled?: boolean },
+  spec: { command: string; t: string | string[]; verb: string; reconciled?: boolean },
 ): void {
+  const instants = Array.isArray(spec.t) ? spec.t : [spec.t];
   mkdirSync(join(tel(), SESSION), { recursive: true });
   const segment = serializeSegment(
     {
@@ -191,17 +199,15 @@ function writeSegmentJson(
       harness: 'cursor-agent',
       harness_version: 'test',
       harness_session_id: SESSION,
-      timecode: spec.t,
+      timecode: instants[0],
       window: { since: 'last-command', from: 0, to: 1 },
       branch: STALL_FIXTURE.buffer_markers.branch,
-      event_stream: [
-        {
-          t: spec.t,
-          t_precision: spec.reconciled === true ? 'interval' : 'anchored',
-          kind: 'harness',
-          verb: spec.verb,
-        },
-      ],
+      event_stream: instants.map((t) => ({
+        t,
+        t_precision: spec.reconciled === true ? ('interval' as const) : ('anchored' as const),
+        kind: 'harness' as const,
+        verb: spec.verb,
+      })),
       ...(spec.reconciled === true ? { capture_mode: 'reconciled' } : {}),
     },
     repo,
@@ -214,18 +220,43 @@ function writeSegmentJson(
 }
 
 function deps(
-  over: { env?: Record<string, string>; now?: string; db?: FakeDb } = {},
+  over: { now?: string; db?: FakeDb; adapters?: HarnessAdapter[] } = {},
 ): ReconcileDeps {
   return {
     fs: new NodeFs(),
-    // Deliberately EMPTY by default: at recovery time nothing about the dead lane
-    // is in the environment, which is exactly the condition the seam must survive.
-    env: new FakeEnv(over.env ?? {}, '/home/test'),
+    // Note what CANNOT be passed: `ReconcileDeps` has no `env` field at all, so no
+    // test (and no caller) can hand the recovery process's environment to an
+    // adapter even by mistake. That absence is the fix for P1-B, and it is checked
+    // behaviourally by `records the ctx the adapter was handed` below.
     clock: new FakeClock(over.now ?? NOW),
     proc: new FakeProcess({}, repo),
     version: 'test',
-    adapters: [cursorAdapter],
+    adapters: over.adapters ?? [cursorAdapter],
     ...(over.db !== undefined && { db: over.db }),
+  };
+}
+
+/**
+ * An adapter that records every context it is handed and returns whatever the test
+ * asked for. Lets a test assert on the SEAM (what reached the adapter) instead of
+ * only on the segment that came out the other side.
+ */
+function recordingAdapter(caps: HarnessCapabilities = {}): {
+  adapter: HarnessAdapter;
+  seen: HarnessContext[];
+} {
+  const seen: HarnessContext[] = [];
+  return {
+    seen,
+    adapter: {
+      harness: 'cursor-agent',
+      handles: (id) => id === 'cursor-agent',
+      reconciles: true,
+      extract(ctx) {
+        seen.push(ctx);
+        return caps;
+      },
+    },
   };
 }
 
@@ -368,22 +399,24 @@ describe('the recovered segment declares itself (constraint 1)', () => {
 
 describe('it never fabricates work-time (constraints 2 + 3)', () => {
   it('stamps every recovered event interval-grade', () => {
-    // Driven from a TIMED source on purpose: with bubbles the adapter emits
-    // `anchored` turn/tool events, so this only passes if reconciliation actively
-    // downgrades them. Without a timed source every event is interval anyway and
-    // the assertion would prove nothing.
+    // Driven from an adapter that returns ANCHORED events on purpose: the downgrade
+    // is only proved if something upstream claimed a precision to downgrade. (The
+    // cursor adapter cannot supply that here — its only timed source is the IDE
+    // store, which reconciliation deliberately cannot reach; see the env-isolation
+    // suite. Testing through it would assert a precision nothing ever set.)
     seedTranscript();
     seedMarker();
+    const { adapter } = recordingAdapter({
+      event_stream: [
+        { t: '2026-08-03T08:00:10.000Z', t_precision: 'anchored', kind: 'turn', dur_s: 3 },
+        { t: '2026-08-03T08:00:20.000Z', t_precision: 'exact', kind: 'prompt', words: 12 },
+      ],
+    });
 
-    reconcileOrphanLanes(deps({ db: bubbleDb() }));
-
-    const anchored = bufferedSegments()[0].event_stream.filter(
-      (e) => e.kind === 'turn' || e.kind === 'tools',
-    );
-    expect(anchored.length).toBeGreaterThan(0); // the events that WOULD have been anchored
+    reconcileOrphanLanes(deps({ adapters: [adapter] }));
 
     const seg = bufferedSegments()[0];
-    expect(seg.event_stream.length).toBeGreaterThan(0);
+    expect(seg.event_stream.length).toBe(2);
     for (const event of seg.event_stream) {
       expect(event.t_precision).toBe('interval');
     }
@@ -449,32 +482,59 @@ describe('it never fabricates work-time (constraints 2 + 3)', () => {
 });
 
 describe('attribution comes only from the marker (constraint 4)', () => {
-  it('ignores a live CURSOR_CONVERSATION_ID pointing at a different session', () => {
+  it('recovers this lane\u2019s own transcript, identified only by the marker', () => {
     // The realistic recovery condition: the reconciler runs INSIDE another live
     // cursor session. An adapter that fell back to env would join this dead lane's
     // transcript to that live lane's identity — a cross-lane fabrication.
     seedTranscript();
     seedMarker();
 
-    reconcileOrphanLanes(
-      deps({
-        db: bubbleDb(),
-        env: {
-          CURSOR_CONVERSATION_ID: 'some-other-live-session',
-          AGENT_TRANSCRIPTS: '/nonexistent/elsewhere',
-        },
-      }),
-    );
+    reconcileOrphanLanes(deps({ db: bubbleDb() }));
 
     const segments = bufferedSegments();
     expect(segments).toHaveLength(1);
     expect(segments[0].harness_session_id).toBe(SESSION);
     // And the recovered content is genuinely this lane's transcript, not an empty
-    // shell produced by a failed env-based lookup.
+    // shell produced by a failed lookup.
     expect(segments[0].tools?.ApplyPatch).toBe(9);
-    // The db join used the LANE's id too: bubbles answer only for this conversation,
-    // so timed turns exist at all only if env did not win the lookup.
-    expect(segments[0].event_stream.some((e) => e.kind === 'turn')).toBe(true);
+  });
+
+  it('hands the adapter the marker\u2019s facts and NO EnvPort at all', () => {
+    // P1-B. The seam contract said env was unavailable in reconcile mode; the code
+    // passed `deps.env` through anyway, so a recovered lane inherited the RECOVERY
+    // shell's environment. Assert the seam directly — what reached the adapter —
+    // because every downstream symptom (effort, model store, HOME-selected paths)
+    // is a consequence of this one fact.
+    seedTranscript();
+    seedMarker();
+    const { adapter, seen } = recordingAdapter();
+
+    reconcileOrphanLanes(deps({ adapters: [adapter] }));
+
+    expect(seen).toHaveLength(1);
+    const ctx = seen[0];
+    expect(ctx.env).toBeUndefined();
+    // Not merely undefined-valued: the key is absent, so `'env' in ctx` — the check
+    // a defensive adapter would write — also says no.
+    expect(Object.hasOwn(ctx, 'env')).toBe(false);
+    expect(ctx.reconcile).toEqual({ sourcePath: transcriptPath(), sessionId: SESSION });
+  });
+
+  it('skips a harness whose adapter never declared it can reconcile', () => {
+    // An adapter that finds its source through env can be CONSTRUCTED without one;
+    // it would then read nothing, and that emptiness would be reported as "the
+    // source holds no evidence" — a claim about the source made from a fact about
+    // the adapter. Undeclared means unrecoverable, and the lane is left intact.
+    seedTranscript();
+    seedMarker();
+    const { adapter, seen } = recordingAdapter({ tools: { ApplyPatch: 9 } });
+    const undeclared: HarnessAdapter = { ...adapter, reconciles: undefined };
+
+    const result = reconcileOrphanLanes(deps({ adapters: [undeclared] }));
+
+    expect(seen).toHaveLength(0); // never even asked to extract
+    expect(bufferedSegments()).toHaveLength(0);
+    expect(result.skipped).toEqual([{ session: SESSION, reason: 'no-adapter' }]);
   });
 
   it('never touches a lane that has no marker (constraint 5)', () => {
@@ -501,6 +561,146 @@ describe('attribution comes only from the marker (constraint 4)', () => {
     // Critically: the cursor did NOT advance. Burning the residue with no adapter
     // to read it would destroy the evidence a future adapter could recover.
     expect(readCursorFile()).toBe(String(FROZEN_CURSOR));
+  });
+});
+
+/**
+ * P1-B, at the adapter seam. The reconciler no longer HAS an `EnvPort` to pass, so
+ * these prove the consequence that matters: the same adapter, the same source, the
+ * same db — with env, it reports facts about the running process; without env, it
+ * omits them instead of inheriting them. Each pair is a false attribution the
+ * reviewer reproduced, held down from both directions so a re-introduced env
+ * fallback fails here rather than showing up as a plausible number in a report.
+ */
+describe('a recovered lane never inherits the recovery process\u2019s environment', () => {
+  function claudeSources(effort: string): {
+    live: LiveHarnessSource;
+    late: ReconcileHarnessSource;
+    path: string;
+  } {
+    const configRoot = join(tmp, '.claude');
+    // The path LIVE discovery would derive, so both modes read the same file and
+    // the only difference between them is where the answer came from.
+    const projectKey = repo.replace(/[^A-Za-z0-9]/g, '-');
+    const path = join(configRoot, 'projects', projectKey, `${SESSION}.jsonl`);
+    mkdirSync(join(configRoot, 'projects', projectKey), { recursive: true });
+    writeFileSync(
+      path,
+      `${JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-08-03T08:00:10.000Z',
+        message: { id: 'm1', model: 'test-model', usage: { input_tokens: 5, output_tokens: 7 } },
+      })}\n`,
+      'utf8',
+    );
+    const base = { fs: new NodeFs(), repoRoot: repo, harness: 'claude-code', sessionId: SESSION };
+    return {
+      path,
+      live: {
+        ...base,
+        env: new FakeEnv({ CLAUDE_EFFORT: effort, CLAUDE_CONFIG_DIR: configRoot }, tmp),
+      },
+      late: { ...base, reconcile: { sourcePath: path, sessionId: SESSION } },
+    };
+  }
+
+  it('omits `effort`, which describes the process that RAN the work', () => {
+    // The recovering agent is running at some effort level right now. That number
+    // is a fact about the recovery, and stamping it on a window captured hours ago
+    // reads as a measurement of how the work was actually done.
+    const { live, late } = claudeSources('high');
+    const window = { since: 'session-start' as const, from: 0, to: 1 };
+
+    const liveCaps = claudeAdapter.extract({ ...live, window });
+    const lateCaps = claudeAdapter.extract({ ...late, window, capturedAt: SOURCE_MTIME });
+
+    expect(liveCaps.effort).toBe('high'); // the leak this reproduces
+    expect(lateCaps.effort).toBeNull(); // omitted, not inherited
+    // …and the recovery still WORKED: it read the transcript the marker named.
+    expect(lateCaps.tokens?.input).toBe(5);
+  });
+
+  it('never resolves a transcript the recovery env points at', () => {
+    // The other half of the same leak: with no env there is no config root to
+    // discover, so the ONLY path that can be read is the marker's — and it must
+    // name the lane's own session, or nothing is read at all.
+    const { late, path } = claudeSources('high');
+    const window = { since: 'session-start' as const, from: 0, to: 1 };
+    const impostor = path.replace(`${SESSION}.jsonl`, 'someone-elses-session.jsonl');
+    writeFileSync(impostor, readFileSync(path, 'utf8'), 'utf8');
+
+    const caps = claudeAdapter.extract({
+      ...late,
+      reconcile: { sourcePath: impostor, sessionId: SESSION },
+      window,
+      capturedAt: SOURCE_MTIME,
+    });
+
+    expect(caps.tokens).toBeNull();
+  });
+
+  it('omits models: the IDE store is selected by the RECOVERING user\u2019s HOME', () => {
+    // cursor's model/timing store lives under `$HOME` (or `%APPDATA%`). At recovery
+    // time that is whoever ran the sync — a different machine account, or simply a
+    // different install than the dead lane used. The db here WOULD answer for this
+    // conversation, which is the point: the difference between the two cases is
+    // env alone.
+    seedTranscript();
+    const db = bubbleDb();
+    const base = {
+      fs: new NodeFs(),
+      db,
+      repoRoot: repo,
+      harness: 'cursor-agent',
+      window: { since: 'session-start' as const, from: 0, to: TOTAL_LINES },
+      capturedAt: SOURCE_MTIME,
+    };
+
+    const liveCaps = cursorAdapter.extract({
+      ...base,
+      env: new FakeEnv(
+        { AGENT_TRANSCRIPTS: transcripts, CURSOR_CONVERSATION_ID: SESSION, APPDATA: tmp },
+        tmp,
+      ),
+    });
+    const lateCaps = cursorAdapter.extract({
+      ...base,
+      reconcile: { sourcePath: transcriptPath(), sessionId: SESSION },
+    });
+
+    expect(liveCaps.models).not.toBeNull(); // the store answered, via HOME
+    expect(lateCaps.models).toBeNull(); // unavailable, and not filled in from elsewhere
+    // The recovery is still real: the transcript's own evidence came through.
+    expect(lateCaps.tools?.ApplyPatch).toBe(9);
+  });
+
+  it('drops to interval grade rather than borrowing the recovery HOME\u2019s timings', () => {
+    // The bubble store is also the only TIMED cursor source. Unreachable without
+    // env, so the recovered events fall back to the window anchor — interval grade,
+    // excluded from active-time accrual. Losing precision is the honest outcome;
+    // borrowing another install's clock is not.
+    seedTranscript();
+    const base = {
+      fs: new NodeFs(),
+      db: bubbleDb(),
+      repoRoot: repo,
+      harness: 'cursor-agent',
+      window: { since: 'session-start' as const, from: 0, to: TOTAL_LINES },
+      capturedAt: SOURCE_MTIME,
+    };
+
+    const live = cursorAdapter.extract({
+      ...base,
+      env: new FakeEnv({ AGENT_TRANSCRIPTS: transcripts, CURSOR_CONVERSATION_ID: SESSION }, tmp),
+    });
+    const late = cursorAdapter.extract({
+      ...base,
+      reconcile: { sourcePath: transcriptPath(), sessionId: SESSION },
+    });
+
+    expect((live.event_stream ?? []).some((e) => e.t_precision === 'anchored')).toBe(true);
+    expect((late.event_stream ?? []).every((e) => e.t_precision !== 'anchored')).toBe(true);
+    for (const event of late.event_stream ?? []) expect(event.t).toBe(SOURCE_MTIME);
   });
 });
 
@@ -723,6 +923,62 @@ describe('honesty reaches the RENDER, not just the stored field', () => {
     expect(timeline[0].reconciled).toBeUndefined();
     expect(timeline[1].reconciled).toBe(true);
     expect(report.provenance.reconciled_sessions).toBe(1);
+  });
+
+  it('flags per EVENT when live and recovered work INTERLEAVE in the same window', () => {
+    // P1-A, and the exact inverse of the trap this render fix was written for. The
+    // first fix carried provenance as the recovered segment's {from,to} RANGE, so
+    // any live event that happened to fall inside it rendered as reconstructed —
+    // "correct field, wrong events", which is the same dishonesty pointed the other
+    // way. Interleaving is not a corner case: a lane reconciled between two live
+    // captures produces exactly this shape.
+    //
+    // Timeline: recovered [09:00 … 09:10] with a LIVE push at 09:05 inside it.
+    writeSegmentJson(1, {
+      command: RECONCILE_COMMAND,
+      t: ['2026-08-03T09:00:00.000Z', '2026-08-03T09:10:00.000Z'],
+      verb: 'checks',
+      reconciled: true,
+    });
+    writeSegmentJson(2, { command: 'boot', t: '2026-08-03T09:05:00.000Z', verb: 'boot' });
+
+    const report = buildReport([
+      combineSession(SESSION, { fs: new NodeFs(), proc: new FakeProcess({}, repo) }),
+    ]);
+    const timeline = report.control_timeline ?? [];
+
+    expect(timeline.map((m) => `${m.key}@${m.t}`)).toEqual([
+      'checks@2026-08-03T09:00:00.000Z',
+      'boot@2026-08-03T09:05:00.000Z',
+      'checks@2026-08-03T09:10:00.000Z',
+    ]);
+    expect(timeline.map((m) => m.reconciled === true)).toEqual([true, false, true]);
+    // The counts agree with the flags — 2 recovered events, not the 3 a range
+    // would have swept up.
+    expect(report.provenance.reconciled_events).toBe(2);
+  });
+
+  it('flags a recovered event sharing an INSTANT with a live one, and only it', () => {
+    // The degenerate case a range representation cannot express at all: identical
+    // timestamps. Object identity can, because provenance rides the resource each
+    // event was decoded from rather than its position on a clock.
+    writeSegmentJson(1, {
+      command: RECONCILE_COMMAND,
+      t: '2026-08-03T09:00:00.000Z',
+      verb: 'checks',
+      reconciled: true,
+    });
+    writeSegmentJson(2, { command: 'boot', t: '2026-08-03T09:00:00.000Z', verb: 'boot' });
+
+    const report = buildReport([
+      combineSession(SESSION, { fs: new NodeFs(), proc: new FakeProcess({}, repo) }),
+    ]);
+    const timeline = report.control_timeline ?? [];
+    const flagged = timeline.filter((m) => m.reconciled === true).map((m) => m.key);
+
+    expect(timeline).toHaveLength(2);
+    expect(flagged).toEqual(['checks']);
+    expect(report.provenance.reconciled_events).toBe(1);
   });
 
   it('says so in the attribution table, where a reader asks what the numbers are made of', () => {

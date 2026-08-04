@@ -120,6 +120,11 @@ function candidatePath(configRoot: string, projectRoot: string, sessionId: strin
 
 function locationFor(src: HarnessSource): NonNullable<HarnessSource['standardClaude']> | null {
   if (src.standardClaude !== undefined) return src.standardClaude;
+  // No env ⇒ no discovery. Reconciliation resolves its root from the marker's own
+  // recorded path instead (see `readTranscriptAt`); it must never fall back to the
+  // RECOVERING process's `CLAUDE_CONFIG_DIR`/`HOME`, which point at a different
+  // machine location than the dead lane was reading.
+  if (src.env === undefined) return null;
   const selectedRoot = src.env.get('CLAUDE_CONFIG_DIR');
   const home = src.env.home();
   const configRoot =
@@ -138,7 +143,7 @@ function locateAt(
   const sessionId =
     src.sessionId !== undefined && src.sessionId.length > 0
       ? src.sessionId
-      : src.env.get('CLAUDE_CODE_SESSION_ID');
+      : src.env?.get('CLAUDE_CODE_SESSION_ID');
   if (sessionId === undefined || sessionId.length === 0 || location.projectRoots.length === 0) {
     return unavailable('unresolved');
   }
@@ -232,21 +237,35 @@ function readAndValidate(
 
 /**
  * Reconciliation read: the marker already recorded which transcript this lane was
- * reading, so the path is taken verbatim — only the config root (a machine-level
- * location, not a session identity) is re-derived, to keep the containment check.
+ * reading, so the path is taken verbatim.
+ *
+ * The containment root is derived from THAT PATH's own layout
+ * (`<configRoot>/projects/<projectKey>/<sessionId>.jsonl`), never from env: at
+ * recovery time `CLAUDE_CONFIG_DIR`/`HOME` describe the recovering process, so
+ * rooting the read there would either fail on a machine whose config moved, or —
+ * with a same-shaped root — check containment against the wrong tree entirely.
+ * The no-follow read still walks every component BELOW that root, so a symlink
+ * planted since the marker was written is still refused.
+ *
+ * The recorded session id must also match the file the path names. That is the
+ * one cross-check available without env, and it is the one that matters: it is
+ * what stops a lane's segment being filled from a different session's transcript.
  */
 function readTranscriptAt(src: HarnessSource, path: string): ClaudeTranscriptResolution {
-  const location = locationFor(src);
+  if (src.reconcile === undefined) return unavailable('unresolved');
+  const layout = /^(.*)\/projects\/[^/]+\/([^/]+)\.jsonl$/.exec(path);
+  const configRoot = layout?.[1];
+  const named = layout?.[2];
   if (
-    location === null ||
-    !isAbsolutePath(location.configRoot) ||
-    hasTraversal(location.configRoot) ||
-    !isAbsolutePath(path) ||
+    configRoot === undefined ||
+    named !== src.reconcile.sessionId ||
+    !isAbsolutePath(configRoot) ||
+    hasTraversal(configRoot) ||
     hasTraversal(path)
   ) {
     return unavailable('unresolved');
   }
-  return readAndValidate(src, location.configRoot, path);
+  return readAndValidate(src, configRoot, path);
 }
 
 /** Resolve one transcript from explicit bounded candidates only. */
@@ -328,6 +347,9 @@ const nullCaps: HarnessCapabilities = {
 export const claudeAdapter: HarnessAdapter = {
   harness: 'claude-code',
   handles: (harnessId) => harnessId === 'claude-code',
+  // The transcript is self-contained (timed JSONL) and the marker records its
+  // path; the containment root is re-derived from that path's own layout.
+  reconciles: true,
 
   currentPosition(src) {
     const resolution = resolveClaudeTranscript(src);
@@ -353,7 +375,10 @@ export const claudeAdapter: HarnessAdapter = {
     const lines = nonEmptyLines(content).slice(ctx.window.from, ctx.window.to);
     if (lines.length === 0) return nullCaps; // empty window → all-null (a real read)
 
-    const effort = ctx.env.get('CLAUDE_EFFORT') ?? null;
+    // Reconciliation has no env by construction, so there is nothing to read here
+    // and nothing is guessed: `effort` is a fact about the process that RAN the
+    // work, and the recovering process is a different one. Omitted, not inherited.
+    const effort = ctx.env?.get('CLAUDE_EFFORT') ?? null;
 
     // Token accumulators (deduped by message.id) + per-model turns/output.
     const seenMessageIds = new Set<string>();

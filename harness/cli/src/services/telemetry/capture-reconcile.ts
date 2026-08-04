@@ -1,6 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { DbPort } from '../../adapters/db/db-port.js';
-import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
@@ -9,7 +8,7 @@ import type {
   HarnessAdapter,
   HarnessCapabilities,
   HarnessContext,
-  HarnessSource,
+  ReconcileHarnessSource,
 } from './adapters/harness-adapter.js';
 import {
   evaluateCaptureLiveness,
@@ -66,8 +65,9 @@ import { type Segment, serializeSegment } from './segment.js';
  *    real tool calls while claiming zero measured duration is the honest trade.
  * 4. **It attributes only through the marker.** The lane's session id and source
  *    path come from its own liveness marker; the adapter is put in
- *    {@link HarnessSource.reconcile} mode so it CANNOT fall back to env — which
- *    at recovery time describes a different, live session.
+ *    {@link ReconcileHarnessSource} mode, which carries NO `EnvPort` at all —
+ *    env at recovery time describes a different, live session, so anything only
+ *    env could have told us (effort, the IDE model/timing store) is OMITTED.
  * 5. **It is a consumer, not a detector.** It acts only on lanes the residue
  *    detector already flagged. No marker ⇒ the lane is never touched, ever.
  * 6. **It cannot double-emit.** Two independent guards: the `.cursor` watermark
@@ -127,10 +127,15 @@ import { type Segment, serializeSegment } from './segment.js';
  */
 export const RECONCILE_COMMAND = 'telemetry reconcile';
 
-/** Ports the reconciler reads/writes through (P2: no `node:*`). */
+/**
+ * Ports the reconciler reads/writes through (P2: no `node:*`).
+ *
+ * There is deliberately NO {@link EnvPort} here. The reconciler has no env to
+ * hand an adapter even by accident, because the environment it would hand over
+ * is the RECOVERING process's — see {@link ReconcileHarnessSource}.
+ */
 export interface ReconcileDeps {
   fs: FsPort;
-  env: EnvPort;
   clock: Clock;
   proc: ProcessPort;
   /** Read-only SQLite, for adapters whose timing/model signal lives in a local db. */
@@ -236,7 +241,15 @@ function prepareLane(
   // recover. The null-default is deliberately NOT used as a fallback here: it would
   // emit an all-null segment that says "we recovered this window" while carrying no
   // evidence at all.
-  if (adapter === undefined) return { ok: false, reason: 'no-adapter' };
+  //
+  // `reconciles` is required for the same reason one step further in: an adapter
+  // that finds its source through env CAN still be constructed without one, and
+  // would then read nothing — reported as "the source holds no evidence", which is
+  // a claim about the SOURCE made from a fact about the ADAPTER. Undeclared means
+  // unrecoverable, and doctor says so.
+  if (adapter === undefined || adapter.reconciles !== true) {
+    return { ok: false, reason: 'no-adapter' };
+  }
 
   // The `.cursor` sidecar is the AUTHORITY on what was consumed; the marker's copy
   // can only be equal or staler. Taking the higher of the two means a lane that was
@@ -253,14 +266,15 @@ function prepareLane(
   // and untimed events are dropped by the adapter rather than invented.
   const capturedAt = mtimeIso(deps.fs, lane.source);
 
-  const source: HarnessSource = {
-    env: deps.env,
+  const source: ReconcileHarnessSource = {
     fs: deps.fs,
     db: deps.db,
     repoRoot: cwd,
     harness: lane.harness,
     sessionId: lane.session,
-    // Rule 4: the adapter may resolve NEITHER the source nor the session from env.
+    // Rule 4: there IS no env on this source type, so the adapter cannot resolve
+    // the transcript, the session id, the model store or the effort level from the
+    // recovering process — those facts are omitted rather than inherited.
     reconcile: { sourcePath: lane.source, sessionId: lane.session },
   };
   const window = computeWindow(from, lane.extent);
