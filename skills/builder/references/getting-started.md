@@ -27,7 +27,7 @@ The pipeline used to be a family of standalone per-stage skills; it is now **one
 | Workshop | `2c` | `workshop` | `references/stages/25-workshop.md` |
 | ADR | `3a` | `adr` | `references/stages/35-adr.md` |
 | Phase tasks | `5` | `tasks` | `references/stages/50-phase-tasks.md` |
-| Implement | `6` | `implement` | `references/stages/60-implement.md` — `--companion` mode adds a live minih reviewer |
+| Implement | `6` | `implement` | `references/stages/60-implement.md` |
 | Progress | `6a` | `progress` | `references/stages/62-progress.md` |
 | Review | `7` | `review` | `references/stages/70-review.md` |
 | Post-flight | `7b` | `post-flight` | `references/stages/75-post-flight.md` — pre-ship close-out: completion check, `assets/post-flight.md` note, archives the whole plan folder to `docs/plans/archive/<ord>-<slug>/`; the terminal harvest seam fires here. Typed `archive` / `close-out` resolve here |
@@ -35,7 +35,7 @@ The pipeline used to be a family of standalone per-stage skills; it is now **one
 | Reconcile | `8c` | `reconcile` | `references/stages/80-merge.md` — conditional upstream-reconcile excursion (divergent base); merge on typed `PROCEED`. Typed `merge` / `plan-8-v2-merge` resolve here |
 | Reconcile spine *(maintenance)* | `sync` | `sync` | `references/00-routing.md` § Reconcile the spine — engine pass, **auto-fired every guided entry** (idempotent); keeps every past/present/future phase + workshop + harness seam-node present in the flight plan. Not a journey stage; also invokable on demand. Distinct from `8c reconcile` (git-base merge) |
 
-> **What changed (formerly)**: each stage was its own public skill — `/plan-1a`; `/plan-1b` (specify) **and** `/plan-3` (architect), now folded into the single `1b plan` step that writes the business spec and implementation plan into one document in one atomic pass; `/plan-2` (clarify — now the Re-entry section of stage 1b); `/plan-2c`, `/plan-3a`, `/plan-5`, `/plan-6` (+ its companion variant, now the implement verb's `--companion` mode), `/plan-6a`, `/plan-7`, `/plan-8`. Those skills are deleted; `/builder <id|verb> [flags]` is the only public surface for the main flow (typed `6c` or `companion` still resolves, via the alias table, to implement with `--companion`; typed `specify` or `architect` resolve to `1b plan`). The utility skills (`validate-v2`, `deepresearch-v2`, `didyouknow-v2`, `htmlify-v2`, `plan-0-v2-constitution`, `plan-2b-v2-prep-issue`, `plan-v2-extract-domain`, `util-0-v2-handover`, `install-hve-core-rpiv`) are unchanged and still called by their own names.
+> **What changed (formerly)**: each stage was its own public skill — `/plan-1a`; `/plan-1b` (specify) **and** `/plan-3` (architect), now folded into the single `1b plan` step that writes the business spec and implementation plan into one document in one atomic pass; `/plan-2` (clarify — now the Re-entry section of stage 1b); `/plan-2c`, `/plan-3a`, `/plan-5`, `/plan-6` (+ its retired companion variant), `/plan-6a`, `/plan-7`, `/plan-8`. Those skills are deleted; `/builder <id|verb> [flags]` is the only public surface for the main flow (typed `6c` or `companion` still resolves, via the alias table, to plain implement — companion mode is retired; typed `specify` or `architect` resolve to `1b plan`). The utility skills (`validate-v2`, `deepresearch-v2`, `didyouknow-v2`, `htmlify-v2`, `plan-0-v2-constitution`, `plan-2b-v2-prep-issue`, `plan-v2-extract-domain`, `util-0-v2-handover`, `install-hve-core-rpiv`) are unchanged and still called by their own names.
 
 ---
 
@@ -73,7 +73,7 @@ flowchart TB
 
     subgraph implement["IMPLEMENT · per phase"]
         P5["/builder 5 tasks"]:::manual
-        P6["/builder 6 implement<br/>(--companion = +live review)"]:::manual
+        P6["/builder 6 implement"]:::manual
         P6A["/builder 6a progress"]:::auto
         P7["/builder 7 review"]:::optional
         P7B["/builder 7b post-flight<br/>close-out + archive"]:::manual
@@ -155,7 +155,7 @@ flowchart LR
 
 ## Example Walkthrough
 
-> **Scenario**: Add a `POST /api/widgets` endpoint to an existing app. Full Mode, with the companion reviewer. Router installed; repo provisioned with a harness.
+> **Scenario**: Add a `POST /api/widgets` endpoint to an existing app. Full Mode. Router installed; repo provisioned with a harness.
 
 ```
 1.  /builder 1a explore "how are API endpoints structured here?"
@@ -176,16 +176,15 @@ flowchart LR
 3.  /builder 5 tasks --phase "Phase 1: Route & Validation" --plan ".../api-widgets-plan.md"
     → tasks.md (harness seams are engine-owned — offered at the phase edge, not task rows).
 
-4.  /builder 6 implement --companion --phase "Phase 1: ..." --plan "..."
+4.  /builder 6 implement --phase "Phase 1: ..." --plan "..."
     → SEAM FIRST (engine-offered at the phase edge): /eng-harness-flow --hook pre-flight ... —
       the router proves the system runs before a line of code; verdict narrated
       verbatim (healthy → build).
     → Implements; the progress verb (6a) auto-tracks per task.
-    → Companion mode reviews each commit live (supersedes /builder 7 review here).
     → End of phase (engine-offered): /eng-harness-flow --hook post-coding ... — the router
       decides what reflection happens (the harness may offer a few environment improvements it noticed, one at a time).
 
-5.  /builder 5 tasks + /builder 6 implement --companion for Phase 2 ...
+5.  /builder 5 tasks + /builder 6 implement for Phase 2, then /builder 7 review ...
 
 6.  /builder 7b post-flight --plan "..."
     → SEAM FIRST (engine-fired at this edge): /eng-harness-flow --hook post-flight ... —
@@ -216,9 +215,9 @@ You never named a harness skill — the flow told the router *where the work was
 | `/eng-harness-flow --hook pre-coding` | Backpressure survey *(optional post-plan refinement)* | `assets/backpressure-coverage.md` | advisory output; informs your re-plan; never blocks |
 | `/builder 3a adr` · `adr` | Architectural Decision Record *(optional)* | `docs/adr/*.md` | — |
 | `/builder 5 tasks` · `tasks` | Task table + brief for one phase | `assets/tasks/<phase>/tasks.md` | — (harness seams engine-owned, offered at the phase edge) |
-| `/builder 6 implement` · `implement` | Implement one phase — add `--companion` for live companion review (typed `6c`/`companion` alias here) | code + `execution.log.md` (+ reviews in companion mode) | engine offers `--hook pre-flight` (before) + `--hook post-coding` (after) |
+| `/builder 6 implement` · `implement` | Implement one phase | code + `execution.log.md` | engine offers `--hook pre-flight` (before) + `--hook post-coding` (after) |
 | `/builder 6a progress` · `progress` | Progress tracking *(auto-run by the implement verb)* | updated task tables + execution log | none (progress only) |
-| `/builder 7 review` · `review` | Code review *(rare in companion flow)* | Full: `assets/tasks/<phase>/reviews/review.<phase>.md` · Simple: `assets/reviews/review.md` | none (read-only review) |
+| `/builder 7 review` · `review` | Code review | Full: `assets/tasks/<phase>/reviews/review.<phase>.md` · Simple: `assets/reviews/review.md` | none (read-only review) |
 | `/builder 7b post-flight` · `post-flight` | Pre-ship close-out: completion check → `assets/post-flight.md` note → archive the whole plan folder to `docs/plans/archive/<ord>-<slug>/` (typed `archive`/`close-out` alias here) | archived plan folder + close-out note | engine fires `--hook post-flight` here — the terminal harvest, before the move |
 | `/builder 8 ship` · `ship` | Get work out — push + open PR (repo-guidance-aware) + watch CI checks + report; push & PR-open each behind a confirm, merge optional; reads the plan from its archive path | pushed branch + PR + `assets/ship/<date>/ship-report.md` | — (the post-flight harvest already ran at 7b) |
 | `/builder 8c reconcile` · `reconcile` | Conditional upstream-reconcile excursion (divergent base) — kept merge-analysis machinery; typed `merge` resolves here | reconcile/merge plan | merge executes only on typed `PROCEED` |

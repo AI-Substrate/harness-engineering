@@ -119,7 +119,7 @@ $ARGUMENTS
    - acceptance criteria not yet met (plan `## Acceptance Criteria`)
    - `TODO` / `FIXME` / `HACK` / `XXX` introduced in the shipped diff:
      `git grep -nE 'TODO|FIXME|HACK|XXX' -- $(git diff --name-only origin/${BASE}..HEAD)` (best-effort; skip cleanly on error)
-   - deferred review / companion findings recorded in the execution log
+   - deferred review findings recorded in the execution log
 
    This is a **read-time view** — no `DEFERRALS.md`, nothing persisted beyond the ship report. Empty across all
    sources → record "none" (silence is the all-clear). It surfaces at the open-PR gate (step 6) and in the report;

@@ -6,7 +6,7 @@
 
 **Verb**: explore
 **Purpose**: Answer *how existing functionality works* and produce evidence suitable for planning — a compact, history-aware research dossier (or console-only report). **Minimum-sufficient by design**: start cheap, climb only when evidence demands it.
-**Consumes**: a research query. No prior artifacts required — auto-detects plan context (ordinal branch / cwd / conversation) or creates a new plan folder; `--console` creates nothing. Optional context: an existing `docs/plans/<ordinal>-<slug>/`, institutional memory (prior plans, tasks, execution logs, workshops, ADRs, reviews, retros), `docs/domains/registry.md`, FlowSpace MCP when available.
+**Consumes**: a research query. No prior artifacts required — auto-detects plan context (ordinal branch / cwd / conversation) or creates a new plan folder; `--console` creates nothing. Optional context: an existing `docs/plans/<ordinal>-<slug>/`, institutional memory (prior plans, tasks, execution logs, workshops, ADRs, reviews, retros), `docs/domains/registry.md`.
 **Flags**: `"research query"` · `--plan <name>` (explicit plan folder) · `--console` (console-only output)
 **Produces**: `docs/plans/<ordinal>-<slug>/research-dossier.md` — a **decision packet** (§ Dossier contract), not a transcript — or a console-only report with `--console`. Read-only; STOPs and waits after output.
 **Side effects**: none (read-only research; STOPs and waits after output)
@@ -56,9 +56,9 @@ Begin at the lowest rung; climb only when evidence requires it. Workers are *add
 - Fail clearly on: missing query; an explicit `--plan` that names a non-existent `NNN-` folder; an irreducibly ambiguous target.
 - No routine detection chatter unless it changes user action.
 
-### 2) Probe tools once
+### 2) Pick the toolset once
 
-One cheap FlowSpace availability call. If present, use its core operations (`tree`, `search` text/regex/semantic, `get_node`) as appropriate; if absent or it fails mid-run, fall back to standard search/glob/read and note the degradation **only if it affects confidence**. Describe **one** research protocol — tool choice is an implementation detail inside each investigation; do **not** duplicate worker prompts per tool, probe every API with min/max arguments, enumerate hypothetical capabilities, or print install/setup marketing on a successful standard run.
+Use the standard deterministic surface — search/glob/direct reads — and describe **one** research protocol; tool choice is an implementation detail inside each investigation. Do **not** duplicate worker prompts per tool, probe every API with min/max arguments, enumerate hypothetical capabilities, or print install/setup marketing on a successful run. Note a tool degradation **only if it affects confidence**.
 
 ### 3) Cheap dual-lane scout (the lead does both, before deciding on workers)
 
@@ -124,7 +124,6 @@ A decision packet — not a transcript or a repo inventory. **Required**: header
 **Generated**: <ISO timestamp>
 **Query**: "<verbatim query>"
 **Effort**: Quick | Standard | Deep | Audit
-**Tools**: FlowSpace | Standard | Mixed
 **Evidence**: <N current sources> · <N historical sources>
 
 ## The Ask

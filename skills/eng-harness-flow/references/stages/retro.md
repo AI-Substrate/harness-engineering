@@ -534,8 +534,8 @@ No on-disk index files · no auto-applied diffs · no transient-buffer reads bey
 
 - `harness/cli` — the `observe` act (capture/list/clear), `record` act (committed placement), doctor temp-hygiene check; `harness instructions` carries the zero-context briefing
 - Workshop 001 — self-improvement vibe (anti-vibe 7 over-introspection; terse one-line hints)
-- Workshop 005 — universal retro contract (entry schema; D5 kinds; D6 identity; D9 minih round-trip)
-- Workshop 006 — compound folder layout (D4 KISS no-indexes; D6 pruning; D7 minih back-compat)
+- Workshop 005 — universal retro contract (entry schema; D5 kinds; D6 identity; D9 producer round-trip)
+- Workshop 006 — compound folder layout (D4 KISS no-indexes; D6 pruning; D7 producer back-compat)
 - [docs/harness-presentations/](https://github.com/AI-Substrate/harness-engineering/tree/main/docs/harness-presentations) + [harness-foundations/simple-mode.md](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/simple-mode.md) — Rule 2 (encode the fix, not the memory) and Rule 5 (the question pair this verb headlines)
 
 ## Exit

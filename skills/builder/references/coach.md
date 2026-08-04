@@ -23,7 +23,7 @@ Every time you surface a next step:
 
 - **`/compact`** — a CLI built-in that wipes context; you literally cannot invoke it. Print it, explain the re-run handshake (below).
 - **The final ship** — push and PR-open each pause for a confirm; an immediate merge (or the reconcile excursion's merge) executes only on an explicit typed `PROCEED`.
-- **Implement (heavy build, plain or `--companion`)** — you *may* run it on request, but say it'll be a long turn and offer the cleaner alternative: `/compact` first, then run it in a fresh turn. Their call.
+- **Implement (heavy build)** — you *may* run it on request, but say it'll be a long turn and offer the cleaner alternative: `/compact` first, then run it in a fresh turn. Their call.
 
 The per-block "Type: …" prompts below are **branch selectors** (which option the user wants) — once a branch is chosen, the same print-then-offer applies to its command.
 
@@ -279,11 +279,9 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > **Where we are**: Phase `<N>` tasks are tabled (`tasks/<phase>/tasks.md`) with success criteria.
 > Did you notice the first task's done-when is `<criterion>`? That's the bar the implementer codes to.
 > **Heads-up for the next step**: at the phase edge the flow **fires the pre-flight boot seam** (`/eng-harness-flow --hook pre-flight --json`, auto, read-only) — when a harness exists, the router proves the system runs before a line of code; the verdict is narrated verbatim (`healthy / SLOW / UNHEALTHY / UNAVAILABLE`). No router or no harness? One calm note, then standard testing.
-> **Companion option (optional)**: build with a live reviewer — the implement verb's **`--companion` mode** runs a `code-review-companion` (a parallel `minih` agent) that reviews every commit and **supersedes the review stage** (the Graph carries that decoration). Want a different watcher (security/perf) or a parallel **worker** (e.g. a `docs-writer`)? Spin it up with `minih run <slug>` and I'll track it on the flight view. I don't run minih myself — I narrate and record it.
-> Next, type one of:
+> Next:
 >
-> {{render-edge: awaiting-5 → implement --phase "<Phase N: Title>" --plan "<plan path>"}}  *(recommended)*
-> {{render-edge: awaiting-5 → implement --companion --phase "<Phase N: Title>" --plan "<plan path>"}}  *(optional — only if you want the live minih reviewer above)*
+> {{render-edge: awaiting-5 → implement --phase "<Phase N: Title>" --plan "<plan path>"}}
 
 ### `awaiting-6` → after a phase
 > **Where we are**: Phase `<N>` landed — `<what it delivered>`; acceptance `<AC refs>` met. Progress was tracked per task (stage 62).
@@ -291,7 +289,7 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > You may have seen the harness offer a few environment improvements it noticed at the end — that's it draining this phase's friction notes at the **post-coding retro seam** the flow fired at the phase-end edge (the router decides drain-vs-harvest, presenting each recommendation conversationally: numbered, lead with the highest-value one and why, default to save-all, and record what we decided on each — declines included). If the top fix was small and reversible, it may have offered to **do it right now** as a tracked mid-flow excursion (see `harness-seams.md` § Mid-flow fix excursion). No harness → you saw nothing, which is also fine.
 > Did you notice `<one execution-log discovery>`? Worth carrying forward.
 > *More phases (Full)*: a between-phase seam — `/compact` now, then {{render-edge: awaiting-6 → tasks}} for Phase `<N+1>`. Type: `compact` or `next phase`.
-> *Last phase / Simple*: next is review — {{render-edge: awaiting-6 → review}} (skip if a companion already reviewed every commit — the Graph's decoration). Type: `review`.
+> *Last phase / Simple*: next is review — {{render-edge: awaiting-6 → review}}. Type: `review`.
 
 ### `awaiting-7` → after review
 > **Where we are**: review written (`reviews/<file>`) — verdict `<…>`.
