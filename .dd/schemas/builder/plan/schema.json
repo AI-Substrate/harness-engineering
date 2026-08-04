@@ -19,6 +19,34 @@
         "CS-4",
         "CS-5"
       ]
+    },
+    "plan_mode": {
+      "values": [
+        "Simple",
+        "Full"
+      ]
+    },
+    "gate_status": {
+      "values": [
+        "PASS",
+        "FAIL",
+        "N/A"
+      ]
+    },
+    "impact": {
+      "values": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ]
+    },
+    "likelihood": {
+      "values": [
+        "Low",
+        "Medium",
+        "High"
+      ]
     }
   },
   "sections": {
@@ -58,6 +86,22 @@
           "log": {
             "type": "link",
             "target": "builder/execution-log/section/entries"
+          },
+          "mode": {
+            "type": "enum",
+            "enum": "plan_mode"
+          },
+          "plan_version": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "complexity_breakdown": {
+            "type": "string"
           }
         }
       }
@@ -154,6 +198,18 @@
             },
             "tasks": {
               "type": "link"
+            },
+            "objective": {
+              "type": "text"
+            },
+            "delivers": {
+              "type": "array",
+              "items": {
+                "type": "text"
+              }
+            },
+            "key_risks": {
+              "type": "text"
             }
           }
         }
@@ -194,6 +250,19 @@
             "done": {
               "type": "link",
               "target": "builder/plan/section/evidence"
+            },
+            "success": {
+              "type": "text"
+            },
+            "notes": {
+              "type": "string"
+            },
+            "satisfies": {
+              "type": "array",
+              "items": {
+                "type": "link",
+                "target": "builder/plan/section/acceptance_criteria"
+              }
             }
           }
         }
@@ -239,6 +308,280 @@
               }
             }
           }
+        }
+      }
+    },
+    "research_context": {
+      "title": "Research Context",
+      "shape": {
+        "type": "text"
+      }
+    },
+    "testing_strategy": {
+      "title": "Testing Strategy",
+      "shape": {
+        "type": "object",
+        "fields": {
+          "approach": {
+            "type": "text"
+          },
+          "rationale": {
+            "type": "text"
+          },
+          "focus_areas": {
+            "type": "text"
+          },
+          "excluded": {
+            "type": "text"
+          },
+          "mock_usage": {
+            "type": "text"
+          }
+        }
+      }
+    },
+    "documentation_strategy": {
+      "title": "Documentation Strategy",
+      "shape": {
+        "type": "object",
+        "fields": {
+          "location": {
+            "type": "text"
+          },
+          "rationale": {
+            "type": "text"
+          }
+        }
+      }
+    },
+    "risks_assumptions": {
+      "title": "Risks & Assumptions",
+      "shape": {
+        "type": "text"
+      }
+    },
+    "open_questions": {
+      "title": "Open Questions",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "question",
+            "state"
+          ],
+          "fields": {
+            "question": {
+              "type": "text"
+            },
+            "state": {
+              "type": "state"
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "workshop_opportunities": {
+      "title": "Workshop Opportunities",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "topic"
+          ],
+          "fields": {
+            "topic": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "why": {
+              "type": "text"
+            },
+            "key_questions": {
+              "type": "text"
+            },
+            "status": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "clarifications": {
+      "title": "Clarifications",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "question",
+            "answer"
+          ],
+          "fields": {
+            "session": {
+              "type": "string"
+            },
+            "question": {
+              "type": "text"
+            },
+            "answer": {
+              "type": "text"
+            }
+          }
+        }
+      }
+    },
+    "planning_seam": {
+      "title": "Planning Seam",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "artifact"
+          ],
+          "fields": {
+            "artifact": {
+              "type": "string"
+            },
+            "present": {
+              "type": "string"
+            },
+            "effect": {
+              "type": "text"
+            }
+          }
+        }
+      }
+    },
+    "gate_matrix": {
+      "title": "Gate Matrix",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "gate",
+            "check",
+            "status"
+          ],
+          "fields": {
+            "gate": {
+              "type": "string"
+            },
+            "check": {
+              "type": "string"
+            },
+            "status": {
+              "type": "enum",
+              "enum": "gate_status"
+            },
+            "notes": {
+              "type": "text"
+            }
+          }
+        }
+      }
+    },
+    "implementation_summary": {
+      "title": "Implementation Summary",
+      "shape": {
+        "type": "text"
+      }
+    },
+    "key_findings": {
+      "title": "Key Findings",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "impact",
+            "finding",
+            "action"
+          ],
+          "fields": {
+            "impact": {
+              "type": "enum",
+              "enum": "impact"
+            },
+            "finding": {
+              "type": "text"
+            },
+            "action": {
+              "type": "text"
+            }
+          }
+        }
+      }
+    },
+    "acceptance_coverage": {
+      "title": "Acceptance Coverage Map",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "ac",
+            "covered_by"
+          ],
+          "fields": {
+            "ac": {
+              "type": "string"
+            },
+            "covered_by": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "verified_in": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "risks": {
+      "title": "Risks",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "risk"
+          ],
+          "fields": {
+            "risk": {
+              "type": "text"
+            },
+            "likelihood": {
+              "type": "enum",
+              "enum": "likelihood"
+            },
+            "impact": {
+              "type": "enum",
+              "enum": "impact"
+            },
+            "mitigation": {
+              "type": "text"
+            }
+          }
+        }
+      }
+    },
+    "execution_guardrails": {
+      "title": "Execution Guardrails",
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "text"
         }
       }
     }

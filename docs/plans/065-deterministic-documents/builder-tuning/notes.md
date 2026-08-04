@@ -298,6 +298,26 @@ Two new work items from this session:
   proof-tree read. Phase gates stay on the cheap completion read. Plan 069
   AC-07b.
 
+- `RULED` (2026-08-04, late session) — **plan 070 is self-hosting**: by ship,
+  its own dd corpus must be fully retrofitted — real gates hit (recorded
+  refusal + pass events from the actual journey), real `--complete` green at
+  the final review, backpressure/log docs linked from every AC, done_when
+  task files, rel-typed satisfies — "it will look like it was entirely made
+  with the feature we just built." Encoded as ac-7017 + tk-7067. Jordan also
+  re-emphasized: **builder flow prompting is in scope** (agents must be
+  instructed how to use the tooling) — already carried as ac-7016's two
+  layers (node instructions[] + stage modules).
+
+- `RULED` (2026-08-04, late session) — **the flow evaluates its own
+  delivery**: the flow-eval harness extension (+ prompting) gains a
+  single-phase dd-native scenario — blind subject peer runs the new flow,
+  telemetry-scored assertions prove correct tool use (dd-authored plan, JIT
+  task file with pressure/satisfies, recorded refusal→pass, --complete
+  green, dd-surface mutations only). Multi-phase deferred. Encoded ac-7018 +
+  tk-7068. AND: unit coverage must span a synthetic-corpus mutation space
+  (mock plans/phases through tick/untick/block/human-skip/JIT-birth/drift) —
+  encoded as the shared factory task tk-7027 + testing-strategy language.
+
 ## Session log
 
 - 2026-08-04 — folder created at Jordan's request; notes drafted from the live
