@@ -266,6 +266,38 @@ describe('copilotVscodeAdapter — session_files evidence (plan 066 Phase 2)', (
       expect(later.files ?? null).toBeNull();
       expect(later.tools ?? null).toBeNull();
     });
+
+    it('MIXED timestamps: an untimed turn at the boundary must not open-end the window', () => {
+      // Regression (review round 1, HIGH). Turns [T0, untimed, T1]: the end boundary
+      // seeks the next TIMED turn (T1). Stopping at the untimed turns[1] would leave
+      // window [0,1) open-ended, so it AND window [2,3) would both claim CLI.
+      const mixed: DbRow[] = [
+        { turn_index: 0, words: 5, has_response: 1, timestamp: T0 },
+        { turn_index: 1, words: 3, has_response: 1, timestamp: null },
+        { turn_index: 2, words: 4, has_response: 1, timestamp: T1 },
+      ];
+      const rows: DbRow[] = [
+        { file_path: LIB, tool_name: 'apply_patch', turn_index: null, first_seen_at: T0 },
+        { file_path: CLI, tool_name: 'apply_patch', turn_index: null, first_seen_at: T1 },
+      ];
+      const at = (from: number, to: number) =>
+        copilotVscodeAdapter.extract(
+          ctx({ db: db(rows, mixed), window: { since: 'last-command', from, to } }),
+        );
+
+      const first = at(0, 1);
+      expect(first.files).toEqual({ written: [], edited: [LIB] });
+      expect(first.tools).toEqual({ apply_patch: 1 });
+
+      // the untimed turn alone has no basis to place a row — it claims nothing
+      const middle = at(1, 2);
+      expect(middle.files ?? null).toBeNull();
+      expect(middle.tools ?? null).toBeNull();
+
+      const last = at(2, 3);
+      expect(last.files).toEqual({ written: [], edited: [CLI] });
+      expect(last.tools).toEqual({ apply_patch: 1 });
+    });
   });
 
   describe('the honest ceiling + the privacy idiom', () => {

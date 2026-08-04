@@ -325,11 +325,34 @@ function isEmptyContentHash(hash: string): boolean {
   return EMPTY_CONTENT_SHA1.startsWith(h) || h.startsWith(EMPTY_CONTENT_SHA1);
 }
 
+/** A turn's timestamp as epoch ms, or null when it carries no usable time. */
+function turnMs(t: string | null): number | null {
+  if (t === null) return null;
+  const ms = Date.parse(t);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * The first turn at-or-after `from` that CARRIES a usable timestamp, as epoch ms.
+ *
+ * Seeking PAST untimed turns is the whole point for the window's end boundary:
+ * stopping at an untimed `turns[window.to]` would leave the boundary open, so this
+ * window would swallow every later row AND the window that owns the next TIMED turn
+ * would claim them again — double-counted authorship and premature tool counts.
+ */
+function firstTimedMs(turns: TurnRow[], from: number): number | null {
+  for (let i = Math.max(from, 0); i < turns.length; i += 1) {
+    const ms = turnMs(turns[i]?.t ?? null);
+    if (ms !== null) return ms;
+  }
+  return null;
+}
+
 /**
  * Keep only the rows belonging to THIS window. `session_files.turn_index` is NULL
  * in practice, so a row is placed by `first_seen_at` against the windowed turns'
- * timestamps: `[first windowed turn, first turn AFTER the window)`. Without that,
- * every capture in a session would re-claim the whole session's files.
+ * timestamps: `[first timed windowed turn, first TIMED turn at-or-after the window)`.
+ * Without that, every capture in a session would re-claim the whole session's files.
  *
  * When the turns carry no timestamps at all there is no basis to place a row, so
  * only a window that starts at the session start (`claimUntimed`) claims files — a
@@ -378,16 +401,9 @@ function extractFileEvidence(
   const found = readSessionFiles(ctx, sessionId);
   if (found === null) return { tools: null, files: null };
 
-  const startIso = windowTurns.find((t) => t.t !== null)?.t ?? null;
-  const startMs = startIso === null ? null : Date.parse(startIso);
-  const nextIso = turns[ctx.window.to]?.t ?? null;
-  const nextMs = nextIso === null ? null : Date.parse(nextIso);
-  const rows = windowFileRows(
-    found.rows,
-    startMs !== null && Number.isFinite(startMs) ? startMs : null,
-    nextMs !== null && Number.isFinite(nextMs) ? nextMs : null,
-    ctx.window.from === 0,
-  );
+  const startMs = firstTimedMs(windowTurns, 0);
+  const nextMs = firstTimedMs(turns, ctx.window.to);
+  const rows = windowFileRows(found.rows, startMs, nextMs, ctx.window.from === 0);
   if (rows.length === 0) return { tools: null, files: null };
 
   const tools: Record<string, number> = {};
