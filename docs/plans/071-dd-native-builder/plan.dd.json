@@ -139,7 +139,7 @@
         {
           "id": "ac-7113",
           "claim": "Layout & archive: the dd-native plan root holds plan.dd.json, plan.dd.md, the-flow.json, the-flow.md, plus original-ask.md where one exists (the stated amendment to #90's allow-list: the dd pair REPLACES <slug>-plan.md);\ntask files under assets/tasks/phase-N/;\nafter the post-flight git mv the corpus is doctor-clean AND the archive step rewrites the flow's repo-root-anchored dd_link addresses (fromPath null — they would otherwise silently go stale).",
-          "state": "checked"
+          "state": "unchecked"
         },
         {
           "id": "ac-7114",
@@ -159,12 +159,12 @@
         {
           "id": "ac-7117",
           "claim": "Self-hosting: by the final review, plan 071's own corpus is fully dogfooded — backpressure.dd.json and execution-log.dd.json exist with AC rows carrying pressure/proven_by links;\nper-phase task files exist with done_when lists (mandatory pressure honoured);\ntasks carry rel-typed satisfies;\nthe flight plan carries real dd_link gates exercised by the actual journey with the evidence RECORDED where each side lives: at least one genuine refusal captured in telemetry (command_exit carrying the gate E-code — refusals write nothing to the flow by pinned invariant) and any force as the existing dd-gate-override flow event;\nplan validate --complete runs green at the last review node's gate;\nship's PR renders this plan's own AC table.\n\nThe corpus is indistinguishable from one authored entirely by the finished feature — the plan is its own acceptance fixture.",
-          "state": "checked"
+          "state": "unchecked"
         },
         {
           "id": "ac-7118",
           "claim": "Flow-eval conformance: the flow-eval extension carries a single-phase dd-native builder scenario — a BLIND subject peer (pij) runs the new flow end-to-end on a scaffolded repo, and telemetry-scored assertions prove correct tool use: plan authored as plan.dd.json with no -plan.md, task file JIT-born with done_when + mandatory pressure + satisfies, at least one gate refusal evidenced in telemetry (command_exit gate E-code — tk-7169) followed by a pass, plan validate --complete green before ship-ward departure, states mutated through dd surfaces (never hand-edited generated md).\n\nScenario prompting/instructions updated to match; scored via harness flow-eval score and ledgered. Multi-phase deferred.",
-          "state": "checked"
+          "state": "unchecked"
         },
         {
           "id": "ac-7119",

@@ -77,15 +77,15 @@ JIT-authored at the phase-2 boundary through the taught stage-5 stroke (file bir
 
 ### tk-7162
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0005 | Every new command shipped by this plan (dd writer verbs, plan validate flags, flow create --plan-dir, the check-kind gate) is covered by a docs/how/dd chapter and a runnable justfile recipe. | [ ] unchecked | [bp-7114](../../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0005 | Every new command shipped by this plan (dd writer verbs, plan validate flags, flow create --plan-dir, the check-kind gate) is covered by a docs/how/dd chapter and a runnable justfile recipe. | [ ] unchecked | not-applicable | human review is the instrument for coverage (enumerate new commands vs chapters/recipes in the review packet); just checks proves only baked-docs freshness + markdown lint |
 
 ### tk-7163
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0006 | docs/how/dd/11-the-builder-proof-graph.md lands per the ruling — updated to the shipped surface, framed as the work-graph/knowledge-graph join (work graph expires, knowledge graph compounds, joined by deterministic typed citations with recorded freshness); README chapter index updated; builder-tuning keeps a signpost. | [ ] unchecked | [bp-7114](../../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0006 | docs/how/dd/11-the-builder-proof-graph.md lands per the ruling — updated to the shipped surface, framed as the work-graph/knowledge-graph join (work graph expires, knowledge graph compounds, joined by deterministic typed citations with recorded freshness); README chapter index updated; builder-tuning keeps a signpost. | [ ] unchecked | not-applicable | human review is the instrument for content/framing; markdown-lint + link check cover mechanics only |
 
 ### tk-7164
 
@@ -115,7 +115,7 @@ JIT-authored at the phase-2 boundary through the taught stage-5 stroke (file bir
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000b | Flow-eval: scenario bundle + prompts pair authored; base-ref pinned to include 071 code; run scored via harness flow-eval score with the judged lane filled, rendered, ledgered; results reported as-is per ruling (run it and report, no gold-plating). | [ ] unchecked | [bp-7118](../../../backpressure.dd.md#rows) |
+| dw-000b | Flow-eval: scenario bundle + prompts pair authored; base-ref pinned to include 071 code; run scored via harness flow-eval score with the judged lane filled, rendered, ledgered; live-testing instructions.md and the flow-eval-run SKILL updated for the new scenario; results reported as-is per ruling (run it and report, no gold-plating). | [ ] unchecked | [bp-7118](../../../backpressure.dd.md#rows) |
 
 ### tk-7171
 
@@ -133,10 +133,10 @@ JIT-authored at the phase-2 boundary through the taught stage-5 stroke (file bir
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-000e | exec-remote-telemetry-git.int.test.ts no longer flakes under load (isolated/serialized or root-caused) and index.lock collisions no longer fail the suite — 20 consecutive loaded runs green. | [ ] unchecked | not-applicable | the instrument IS the repeated loaded run; no bp row — CI-stability task born from the phase-2 drain (COORD-001) |
+| dw-000e | exec-remote-telemetry-git.int.test.ts no longer flakes under load (isolated/serialized or root-caused) and index.lock collisions no longer fail the suite — 20 consecutive loaded runs green. | [ ] unchecked | not-applicable | the 20x loaded run is the acceptance demonstration; the DURABLE residue is the serialized/isolated test living under just checks (bp-7114) thereafter |
 
 ### tk-7174
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-000f | All 3 flow.ts autoRenderSibling callsites are strict: a sibling-render failure refuses the operation (source untouched) instead of best-effort swallowing; the planted failing render fires; a regression test pins it. | [ ] unchecked | not-applicable | unit/regression test is the instrument (dogfood-log DF-016) |
+| dw-000f | All 3 flow.ts autoRenderSibling callsites are strict: a sibling-render failure refuses the operation (source untouched) instead of best-effort swallowing; the planted failing render fires; a regression test pins it. | [ ] unchecked | [bp-7114](../../../backpressure.dd.md#rows) | the regression test joins the suite just checks runs; planted failing render must FIRE before it pins |

@@ -349,3 +349,19 @@
   dogfooded on this plan's own review-3).
 - **Scope note**: ph-7103 grows by two tasks; close-out is heavier by
   design, per Jordan.
+
+## DF-022 — validate-v2 caught the ORCHESTRATOR's boundary error (2026-08-04)
+
+The phase-2 boundary flipped ac-7113/ac-7117/ac-7118 checked because the
+phase-2 review packet listed them in its mission — but their claims are
+phase-3-provable (archive git-mv proof, self-hosting audit, flow-eval). With
+them checked, tk-7165/7167/7168 could have been abandoned with zero
+AC-level contradiction: the plan's closing proof was silently skippable.
+The validate-v2 subagent caught it (MAJOR); reverted via dd set. The
+contradiction engine then fired 3 WARNs (tk-7141→ac-7113, tk-7169→ac-7117/
+ac-7118) — the honest standing state, accepted until phase 3 proves the
+ACs. Lesson: a review packet's mission list is not an AC-flip warrant; flip
+only ACs whose claim text is provable AT this boundary. Also fixed (MINOR):
+dw-000b under-asserted tk-7168's success; two docs-coverage assertions
+overstated `just checks` as their instrument (now honest not-applicable +
+human-review notes); dw-000f now carries bp-7114 as its durable instrument.
