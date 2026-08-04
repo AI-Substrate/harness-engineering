@@ -1,0 +1,35 @@
+{
+  "slug": "dd-native-builder",
+  "title": "Run one phase of the dd-native builder flow end to end",
+  "task": "Plan and implement one small feature using the builder skill, with the plan authored as deterministic documents — and let the flow's gates decide when you may move on.",
+  "base": {
+    "repo": ".",
+    "ref": "f947a2fc49928b997079297c53ef3925e107c789"
+  },
+  "subject": {
+    "harness": "claude",
+    "model": "opus",
+    "effort": "high"
+  },
+  "flow": {
+    "mode": "simple",
+    "stages": ["plan", "tasks", "implement", "review"]
+  },
+  "prompts": {
+    "orchestrator": "prompts/orchestrator.md",
+    "subject": "prompts/subject.md"
+  },
+  "placeholder_policy": "unknown",
+  "judge": {
+    "model": "gpt-5.5",
+    "model_version": "gpt-5.5-2026-07-01",
+    "criteria": ["explanation-matches-telemetry"],
+    "different_family_than_subject": true,
+    "artifact_only": true,
+    "identity_stripped": true,
+    "temperature": 0,
+    "version_pinned": true,
+    "anti_verbosity": "Do not reward length, rhetorical polish, or confidence without artifact evidence."
+  },
+  "assertions": "assertions.json"
+}

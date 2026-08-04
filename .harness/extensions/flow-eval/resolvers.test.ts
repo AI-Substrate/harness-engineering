@@ -39,6 +39,7 @@ function evidence(): SessionEvidence {
     tools: { Write: 5, Edit: 3 },
     gaps: ['plans_touched'],
     duration_s: 900,
+    refusals: { E441: 1 },
   };
 }
 
@@ -142,6 +143,29 @@ describe('resolvers — telemetry lane (evidence present ⇒ pass/fail)', () => 
     expect(await resolveAssertion(a('checks-ran', { status: 'ok' }), rc)).toBe('pass');
     expect(await resolveAssertion(a('tool-used', { tool: 'Write' }), rc)).toBe('pass');
     expect(await resolveAssertion(a('compaction-occurred', { min: 1 }), rc)).toBe('pass');
+    expect(await resolveAssertion(a('gate-refused', { code: 'E441' }), rc)).toBe('pass');
+  });
+
+  it('gate-refused proves a gate FIRED, and stays honest about which one', async () => {
+    // The assertion this whole evidence widening exists for. A dd gate refusal
+    // writes nothing to the flow — deliberately, since a refused departure must
+    // not leave a trace that looks like a departure — so before tk-7169 the only
+    // durable record of hitting a gate was a FORCE, which is the failure case.
+    const rc = ctxWith(evidence());
+    expect(await resolveAssertion(a('gate-refused', {}), rc)).toBe('pass');
+    expect(await resolveAssertion(a('gate-refused', { code: 'E441' }), rc)).toBe('pass');
+    // A DIFFERENT gate code is not evidence for this one: a scenario asking for a
+    // check-kind refusal must not be satisfied by a completion-gate refusal.
+    expect(await resolveAssertion(a('gate-refused', { code: 'E443' }), rc)).toBe('fail');
+    expect(await resolveAssertion(a('gate-refused', { code: 'E441', min: 2 }), rc)).toBe('fail');
+  });
+
+  it('gate-refused FAILS on a run where no gate ever refused', async () => {
+    // The case that matters most: a scenario whose gates never fired has not
+    // demonstrated that the gates work, only that the subject avoided them.
+    const rc = ctxWith({ ...evidence(), refusals: {} });
+    expect(await resolveAssertion(a('gate-refused', {}), rc)).toBe('fail');
+    expect(await resolveAssertion(a('gate-refused', { code: 'E441' }), rc)).toBe('fail');
   });
 
   it('skill-sequence FAILS when the order is violated (out-of-order) under STRICT mode', async () => {
