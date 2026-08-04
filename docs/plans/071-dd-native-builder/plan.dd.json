@@ -517,10 +517,10 @@
         },
         {
           "id": "tk-7163",
-          "title": "Promote structural-proof-graph into docs/how/dd",
+          "title": "Promote structural-proof-graph to docs/how/dd/11-the-builder-proof-graph.md",
           "phase": "ph-7103",
           "state": "unchecked",
-          "success": "Links repaired; builder-tuning keeps a signpost."
+          "success": "Doc lands as docs/how/dd/11-the-builder-proof-graph.md (Jordan's ruling 2026-08-04: builder graph joins the dd chapter set, not a new docs/how/builder dir), updated to the shipped surface (rels, pressure, done_when, writer verbs, semantic validate, check gates) and framed as the work-graph/knowledge-graph join per the graph-engineering concepts (work graph expires, knowledge graph compounds, joined via deterministic typed citations with recorded freshness). README chapter index updated; links repaired; builder-tuning keeps a signpost."
         },
         {
           "id": "tk-7164",
