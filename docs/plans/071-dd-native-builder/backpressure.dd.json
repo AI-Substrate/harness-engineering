@@ -170,9 +170,9 @@
           "phase": "ph-7102",
           "mode": "ABSENT",
           "tier": "human-judgement",
-          "proof": "Orient output cases cover the instructions[] half mechanically; whether the teaching actually suffices is judged by the blind subject (bp-7118) and the dry-run reader check — inference, honestly.",
+          "proof": "22 coverage cases (builder-dd-teaching.test.ts) prove the commands are PRESENT where a reader would look — a coverage instrument, not a sufficiency one. Mode stays ABSENT/human-judgement: whether the teaching suffices is judged by the blind subject (bp-7118).",
           "state": "unchecked",
-          "probe": "—"
+          "probe": "npx vitest run harness/cli/test/acts/builder-dd-teaching.test.ts"
         },
         {
           "id": "bp-7117",
