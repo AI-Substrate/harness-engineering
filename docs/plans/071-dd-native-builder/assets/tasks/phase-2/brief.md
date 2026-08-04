@@ -4,8 +4,7 @@
 **Phase**: ph-7102 "Wire the flow — check-kind gate + dd-native authoring"
 **Corpus note**: the plan was RENAMED 070→071 at the phase-1 boundary (prime's
 ordinal ruling). All ids are 71xx now (tk-7028→tk-7128 etc.); re-read the
-corpus, never trust remembered 70xx ids. Baseline for attribution: `6c6cfccb`
-(the phase-2 JIT commit).
+corpus, never trust remembered 70xx ids. Baseline for attribution: `eab1e69a` (post-validate-v2 fixes).
 
 ## Mission
 
