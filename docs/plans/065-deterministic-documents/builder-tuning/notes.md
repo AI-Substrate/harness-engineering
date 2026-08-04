@@ -291,6 +291,13 @@ Two new work items from this session:
   includes the links bucket on list items (list-typed `rel: "ref"`, Jordan:
   explicit include).
 
+- `RULED` (2026-08-04, post-validation) — **scoped semantic validate**:
+  `plan validate <plan> --address <addr>` runs the semantic checks over the
+  address's reachable closure (+ incoming `satisfies` for ACs); always
+  per-row/strict in scope; the pre-departure rehearsal and the per-claim
+  proof-tree read. Phase gates stay on the cheap completion read. Plan 069
+  AC-07b.
+
 ## Session log
 
 - 2026-08-04 — folder created at Jordan's request; notes drafted from the live

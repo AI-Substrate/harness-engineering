@@ -154,7 +154,15 @@ journey autonomously; the human reviews claims-with-evidence at the PR.
    `satisfies` edge (orphan); green means **zero errors and zero warnings**;
    without `--complete`, open completables appear only as a summary info
    line. Exit/envelope semantics match house degrade rules.
-8. **AC-08 Check-kind gate**: a flow node may carry
+8. **AC-07b Scoped validate**: `harness plan validate <plan> --address
+   <address>` scopes the semantic checks to the address's reachable closure
+   (outbound edges + the incoming `satisfies` arm for AC rows), reusing the
+   P7 graph-map traversal; scoped runs are always per-row (strict posture
+   implied — no `--complete` flag); green = everything in scope terminal +
+   no contradictions + no stale bases in scope. Serves as the pre-departure
+   rehearsal for a phase gate and the per-claim proof-tree read for a PR
+   reviewer; the phase *gate* itself stays on the cheap completion read.
+9. **AC-08 Check-kind gate**: a flow node may carry
    `dd_link: { check: "plan-validate", address: <plan.dd.json> }`; departure
    evaluates the semantic validator live and refuses on non-green, quoting
    the findings verbatim; `--force` records the defended override exactly as
