@@ -26,9 +26,8 @@ import type {
  * Ports-only (P2): an adapter reads through injected `env`/`fs`, never `node:*`.
  */
 
-/** The window-independent source an adapter reads — used to probe the current extent. */
-export interface HarnessSource {
-  env: EnvPort;
+/** The facts every extraction has, in either mode. Never constructed directly. */
+interface HarnessSourceBase {
   fs: FsPort;
   /**
    * Read-only SQLite access for harnesses whose richer signal lives in a local
@@ -52,14 +51,60 @@ export interface HarnessSource {
    * explicit Git worktree roots for this capture. The object identity is shared
    * by position and extraction so the adapter can memoize one safe resolution.
    */
-  standardClaude?: {
+  readonly standardClaude?: {
     readonly configRoot: string;
     readonly projectRoots: readonly string[];
   };
 }
 
+/**
+ * A LIVE extraction: the running process IS the session, so its environment is a
+ * fact about the work being captured and the adapter may read it.
+ */
+export interface LiveHarnessSource extends HarnessSourceBase {
+  env: EnvPort;
+  /** Never set in live mode — the discriminant against {@link ReconcileHarnessSource}. */
+  readonly reconcile?: undefined;
+}
+
+/**
+ * A RECONCILED extraction (plan 070): a window recovered LONG after its session
+ * ended, from inside a *different, live* process.
+ *
+ * There is NO {@link EnvPort} here, and that absence is the point. Environment at
+ * recovery time describes the RECOVERING shell — its `CLAUDE_EFFORT`, its `HOME`
+ * and `APPDATA`, its session-id vars — none of which are facts about the lane
+ * being recovered. An adapter that read them would attribute the recovering
+ * agent's effort level, or select the recovering user's model/timing store, and
+ * stamp both onto a dead session's segment: a cross-lane fabrication that reads
+ * as measurement. Taking the port away makes that a COMPILE error rather than a
+ * convention, so a future adapter cannot reintroduce it by forgetting.
+ *
+ * What remains is exactly the immutable evidence the lane's own liveness marker
+ * recorded. Any fact that cannot be established from those sources is OMITTED
+ * (`null`) — never inherited from the recovery process.
+ */
+export interface ReconcileHarnessSource extends HarnessSourceBase {
+  /** Structurally unavailable — see the interface doc. */
+  readonly env?: undefined;
+  readonly reconcile: {
+    /** The session source file recorded on the marker when the lane was alive. */
+    readonly sourcePath: string;
+    /** The lane's own session id — the ONLY id this extraction may attribute to. */
+    readonly sessionId: string;
+  };
+}
+
+/**
+ * The window-independent source an adapter reads — used to probe the current extent.
+ *
+ * A UNION, not a flag: `src.env` is `EnvPort | undefined` until the code proves
+ * which mode it is in (see {@link ReconcileHarnessSource}).
+ */
+export type HarnessSource = LiveHarnessSource | ReconcileHarnessSource;
+
 /** Read-only context an adapter extracts counts from (a source + the computed window). */
-export interface HarnessContext extends HarnessSource {
+export type HarnessContext = HarnessSource & {
   /** The "since last command" window the cursor computed. */
   window: SegmentWindow;
   /**
@@ -69,7 +114,7 @@ export interface HarnessContext extends HarnessSource {
    * dropping them. Optional: timed sources never need it.
    */
   capturedAt?: string;
-}
+};
 
 /**
  * Counts-only capabilities an adapter can extract. EVERY field is optional and
@@ -118,6 +163,33 @@ export interface HarnessAdapter {
    * capture this command). Optional: the null-default has no source.
    */
   currentPosition?(src: HarnessSource): number | null;
+  /**
+   * The path whose extent {@link HarnessAdapter.currentPosition} measures — the
+   * session's own source file (plan 070). Optional: an adapter whose source is
+   * not a single file (or a null-default with no source at all) omits it, and
+   * liveness simply makes no residue claim about that harness.
+   *
+   * It exists so a lane's UNCONSUMED RESIDUE stays checkable AFTER the session
+   * stops running commands. Every in-flight signal is blind to the failure where
+   * the source itself lags: each attempt honestly sees "nothing new", captures
+   * nothing, and the transcript only reaches its full length once no further
+   * harness invocation will ever look at it. Recording the path lets `doctor`
+   * re-measure the source later and notice a watermark that never caught up.
+   */
+  sourcePath?(src: HarnessSource): string | null;
+  /**
+   * Declares that this adapter has a real {@link ReconcileHarnessSource} path —
+   * i.e. it can read its source and identify its session from the marker's
+   * recorded facts ALONE, with no env (plan 070).
+   *
+   * Opt-in, and absent by default, because the failure of the alternative is
+   * silent: an adapter that only knows how to find its source through env would,
+   * asked to reconcile, either read nothing (and have that misreported as "the
+   * source holds no evidence") or — worse — resolve some other live session's
+   * store. The reconciler skips any adapter that has not declared this, and
+   * `doctor` names those lanes unrecoverable rather than pretending.
+   */
+  readonly reconciles?: true;
   /** Extract counts-only capabilities for the window; each capability `null` if unavailable. */
   extract(ctx: HarnessContext): HarnessCapabilities;
 }

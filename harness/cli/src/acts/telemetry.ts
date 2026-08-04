@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
+import type { DbPort } from '../adapters/db/db-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
 import type { GitReadPort, ShardBlob } from '../adapters/git/git-read-port.js';
@@ -12,6 +13,7 @@ import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import { posixDirname, posixJoin } from '../services/shared/posix-path.js';
+import { coreTelemetryAdapters } from '../services/telemetry/adapters/index.js';
 import { readFlushed, sanitizeSessionId, telemetryDir } from '../services/telemetry/cursor.js';
 import type { MarkCountKey } from '../services/telemetry/events.js';
 import { getFleetEvidence } from '../services/telemetry/fleet-evidence.js';
@@ -77,6 +79,14 @@ export interface TelemetryActDeps {
   remoteGit?: RemoteTelemetryGitPort;
   /** P059 SHA-256 port consumed for repository keys and bundle integrity. */
   hash?: HashPort;
+  /**
+   * OPTIONAL read-only SQLite — lets the orphan-lane reconciler recover a Cursor
+   * lane's model/timing signal from the IDE store, exactly as live capture does.
+   * Absent ⇒ recovery still happens, just without that second source.
+   */
+  db?: DbPort;
+  /** OPTIONAL producing CLI version → a recovered segment's `harness_version`. */
+  version?: string;
 }
 
 interface RemoteCommandOptions extends RawRemoteSelector {
@@ -841,6 +851,14 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         git: deps.gitWrite,
         clock: deps.clock,
         ...(deps.gitRead !== undefined && { gitRead: deps.gitRead }),
+        // plan 070 — the orphan-lane recovery pass rides the EXPLICIT sync verb
+        // (which the post-commit hook already runs), never the latency-critical
+        // `checks` auto-sync. It is a no-op unless a liveness marker flags a lane.
+        reconcile: {
+          adapters: coreTelemetryAdapters,
+          ...(deps.version !== undefined && { version: deps.version }),
+          ...(deps.db !== undefined && { db: deps.db }),
+        },
       });
 
       if (!result.ok) {

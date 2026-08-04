@@ -77,7 +77,9 @@ export const COPILOT_VSCODE_AI_AGENT = 'github_copilot_vscode_agent';
  * Linux hang off `$HOME`; Windows off `%APPDATA%`. Forward slashes are fine for
  * Node's file APIs on every platform.
  */
-export function copilotVscodeUserRoots(env: EnvPort): string[] {
+export function copilotVscodeUserRoots(env: EnvPort | undefined): string[] {
+  // No env (reconciliation) ⇒ no candidates — see `cursorStateDbPaths`.
+  if (env === undefined) return [];
   const roots: string[] = [];
   const home = env.home();
   if (home !== undefined && home.length > 0) {
@@ -98,7 +100,7 @@ const STORE_DB_REL = 'globalStorage/github.copilot-chat/session-store.db';
  * Candidate paths to the VS Code Copilot Chat store across platforms (first that
  * returns rows wins) — one per {@link copilotVscodeUserRoots} entry.
  */
-export function copilotVscodeStoreDbPaths(env: EnvPort): string[] {
+export function copilotVscodeStoreDbPaths(env: EnvPort | undefined): string[] {
   return copilotVscodeUserRoots(env).map((root) => `${root}/${STORE_DB_REL}`);
 }
 

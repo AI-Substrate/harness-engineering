@@ -66,6 +66,7 @@ import {
   GENAI_MODEL,
   GENAI_OUTPUT_TOKENS,
   RES_BRANCH,
+  RES_CAPTURE_MODE,
   RES_COMMAND,
   RES_ENV,
   RES_HARNESS,
@@ -1012,7 +1013,10 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
   const command = readStr(attrs.get(RES_COMMAND));
   const branch = readStr(attrs.get(RES_BRANCH));
   if (
-    (schemaVersion !== '2.4' && schemaVersion !== '2.5' && schemaVersion !== '2.6') ||
+    (schemaVersion !== '2.4' &&
+      schemaVersion !== '2.5' &&
+      schemaVersion !== '2.6' &&
+      schemaVersion !== '2.7') ||
     service !== 'harness' ||
     serviceVersion === undefined ||
     !isTelemetryServiceVersion(serviceVersion) ||
@@ -1037,6 +1041,7 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
   }
   if (
     schemaVersion !== '2.6' &&
+    schemaVersion !== '2.7' &&
     scopeLogs.logRecords.some((record) => {
       const kind = readStr(attrMap(record.attributes).get(A.KIND));
       return kind === 'usage';
@@ -1051,6 +1056,14 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
     (productCommit !== undefined && !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(productCommit))
   ) {
     return { ok: false, reason: 'product_commit' };
+  }
+
+  // v2.7 capture provenance. `reconciled` is the only value, and it exists only on
+  // 2.7 — anything else is a forged or corrupt resource, so the read fails closed
+  // rather than dropping the marker and handing back a segment that looks live.
+  const captureMode = readStr(attrs.get(RES_CAPTURE_MODE));
+  if (captureMode !== undefined && (schemaVersion !== '2.7' || captureMode !== 'reconciled')) {
+    return { ok: false, reason: 'unsafe_resource' };
   }
 
   const envPairs = attrs.get(RES_ENV)?.kvlistValue?.values ?? [];
@@ -1079,6 +1092,7 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
     rollup: events.length > 0 ? computeRollup(events) : null,
   };
   if (productCommit !== undefined) segment.product_commit = productCommit;
+  if (captureMode === 'reconciled') segment.capture_mode = 'reconciled';
   if (envPairs.length > 0) {
     segment.captured_env = Object.fromEntries(
       envPairs.flatMap(({ key, value }) => {
@@ -1145,9 +1159,41 @@ export function segmentToOtlpLogs(seg: Segment): LogsData {
 
 /** Reconstruct the exact serialized `Event[]` from OTLP Logs (the inverse). */
 export function otlpLogsToEvents(logs: LogsData): Event[] {
-  const out: Event[] = [];
-  for (const rl of logs.resourceLogs ?? [])
+  return otlpLogsToEventRecords(logs).map((r) => r.event);
+}
+
+/** One decoded event plus the RESOURCE-level facts a reader needs about its origin. */
+export interface OtlpEventRecord {
+  event: Event;
+  /**
+   * True when the `ResourceLogs` this event came from declared
+   * `harness.capture_mode = reconciled` — i.e. the whole window was recovered
+   * LATE, from an orphaned lane, by a process that never watched it happen.
+   */
+  reconciled: boolean;
+}
+
+/**
+ * {@link otlpLogsToEvents}, but keeping each event's resource provenance (plan 070).
+ *
+ * A combined session export concatenates one `ResourceLogs` per segment, so capture
+ * provenance is a per-RESOURCE fact that the flat event list throws away. Without
+ * this, a reconciled window's events arrive at the report indistinguishable from
+ * live ones and every rendered surface — timeline, attribution, discipline panel —
+ * draws them the same. Correct field, indistinguishable render, is not honesty.
+ *
+ * Returns event objects by IDENTITY, so a caller can sort and filter the event list
+ * freely and still ask "was this one recovered?" via a `Set`, without threading a
+ * parallel array or widening the `Event` type with a field that must never be
+ * serialized.
+ */
+export function otlpLogsToEventRecords(logs: LogsData): OtlpEventRecord[] {
+  const out: OtlpEventRecord[] = [];
+  for (const rl of logs.resourceLogs ?? []) {
+    const reconciled =
+      readStr(attrMap(rl.resource?.attributes).get(RES_CAPTURE_MODE)) === 'reconciled';
     for (const sl of rl.scopeLogs ?? [])
-      for (const rec of sl.logRecords ?? []) out.push(decodeEvent(rec));
+      for (const rec of sl.logRecords ?? []) out.push({ event: decodeEvent(rec), reconciled });
+  }
   return out;
 }

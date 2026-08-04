@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.6.json",
+  "$id": "https://ai-substrate.dev/schemas/telemetry/segment-2.7.json",
   "title": "Harness telemetry segment (counts-only)",
   "description": "Normalized, counts-only per-session telemetry record (plan 034). The load-bearing cross-tool/cross-repo contract. NO content fields ever — only allowlisted counts and identifiers; file paths are repo-relative. Capability fields are nullable (null when unimplemented, never estimated). Kept key-set-equal to SEGMENT_FIELD_KEYS by segment-schema.test.ts.",
   "type": "object",
@@ -20,7 +20,7 @@
     "rollup"
   ],
   "properties": {
-    "schema_version": { "type": "string", "const": "2.6" },
+    "schema_version": { "type": "string", "const": "2.7" },
     "command": { "type": "string" },
     "harness": { "type": "string" },
     "harness_version": { "type": "string" },
@@ -157,6 +157,11 @@
       "type": "string",
       "description": "v2.5 — optional lowercase full product HEAD OID observed during this activity window.",
       "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "capture_mode": {
+      "type": "string",
+      "description": "v2.7 — OMITTED for a normal in-session capture. 'reconciled' marks a LATE segment recovered from an orphaned lane after the session stopped running harness commands: its timecode is the recovery time and its event instants are interval-grade.",
+      "const": "reconciled"
     },
     "event_stream": {
       "type": "array",

@@ -64,8 +64,8 @@ function compatibilitySegmentView(segment: Segment): Record<string, unknown> {
  * projecting the intentional Segment-2.6 usage channel and version metadata.
  */
 export function expectCurrentSegmentMatchesLegacy(current: Segment, legacy: Segment): void {
-  expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
-  expect(current.schema_version).toBe('2.6');
+  expect(SEGMENT_SCHEMA_VERSION).toBe('2.7');
+  expect(current.schema_version).toBe('2.7');
   expect(legacy.schema_version).toBe(LEGACY_SEGMENT_VERSION);
   expect(legacy.product_commit).toBeUndefined();
   if (current.product_commit !== undefined) {

@@ -87,9 +87,9 @@ describe('schema_url pinning + version lockstep (T006)', () => {
   });
 
   it('keeps the current OTLP scope version in lockstep with the producer schema version', () => {
-    expect(HARNESS_SCHEMA_URL).toContain('/v0.3.0');
+    expect(HARNESS_SCHEMA_URL).toContain('/v0.4.0');
     expect(OTLP_SCOPE_VERSION).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(OTLP_SCOPE_VERSION).toBe('2.6');
+    expect(OTLP_SCOPE_VERSION).toBe('2.7');
   });
 });
 
@@ -207,7 +207,7 @@ describe('Segment-2.6 product provenance reconstruction', () => {
     expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({
       ok: true,
       segment: {
-        schema_version: '2.6',
+        schema_version: '2.7',
         product_commit: productCommit,
         event_stream: [],
       },

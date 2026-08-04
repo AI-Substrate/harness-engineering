@@ -84,7 +84,7 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     // emitted, version pinned. Empty v1-compat collections are omitted (v2).
     for (const k of Object.keys(seg)) expect(SEGMENT_FIELD_KEYS).toContain(k);
     for (const k of SEGMENT_REQUIRED_KEYS) expect(Object.keys(seg)).toContain(k);
-    expect(seg.schema_version).toBe('2.6');
+    expect(seg.schema_version).toBe('2.7');
     // the one implemented capability survives; everything unimplemented is null/omitted
     expect(seg.tools).toEqual({ AcmeTool: 2 });
     expect(seg.tokens).toBeNull();

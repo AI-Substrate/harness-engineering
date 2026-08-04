@@ -210,7 +210,7 @@ describe('T002 — combineSession: merge a session into one SessionExport (temp 
     const exp = combineSession('mixed-version', makeDeps(files, dirs), { root: '/work' });
     const reconstructed = reconstructSegmentFromOtlpLogs(exp.signals.logs);
 
-    expect(reconstructed).toMatchObject({ ok: true, segment: { schema_version: '2.6' } });
+    expect(reconstructed).toMatchObject({ ok: true, segment: { schema_version: '2.7' } });
   });
 
   it('does not fall back to stale scalar tokens when typed evidence is partial', () => {
@@ -261,7 +261,7 @@ describe('T002 — combineSession: merge a session into one SessionExport (temp 
   it('skips malformed loose event streams without throwing', () => {
     const { files, dirs } = layout('/work', 'malformed-loose', [
       {
-        schema_version: '2.6',
+        schema_version: '2.7',
         tokens: null,
         event_stream: [{ t: 'not-a-time', kind: 'usage', out: 1 }],
       },

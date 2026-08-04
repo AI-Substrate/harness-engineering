@@ -13,6 +13,8 @@ export type {
   HarnessCapabilities,
   HarnessContext,
   HarnessSource,
+  LiveHarnessSource,
+  ReconcileHarnessSource,
 } from './harness-adapter.js';
 export { nullDefaultAdapter } from './harness-adapter.js';
 

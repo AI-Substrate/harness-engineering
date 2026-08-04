@@ -58,7 +58,12 @@ export function cursorTranscriptPath(transcriptsDir: string, convId: string): st
  * rows wins). macOS + Linux hang off `$HOME`; Windows off `%APPDATA%`. Forward
  * slashes are fine for Node's file APIs on every platform.
  */
-export function cursorStateDbPaths(env: EnvPort): string[] {
+export function cursorStateDbPaths(env: EnvPort | undefined): string[] {
+  // No env (reconciliation) ⇒ NO candidates. The IDE store is located through the
+  // recovering user's `HOME`/`APPDATA`, so a recovered lane that consulted it would
+  // be attributed the models and bubble timings of whoever ran the recovery.
+  // Cursor's marker records the transcript only, so timing/model stay unavailable.
+  if (env === undefined) return [];
   const paths: string[] = [];
   const home = env.home();
   if (home !== undefined && home.length > 0) {
@@ -144,12 +149,26 @@ function blocksOf(message: Record<string, unknown>): Record<string, unknown>[] {
 }
 
 function readTranscript(src: HarnessSource): string | null {
+  // Reconciliation reads the marker's recorded path verbatim — env at recovery
+  // time belongs to a different (live) process and must never select the source.
+  if (src.reconcile !== undefined) return src.fs.readText(src.reconcile.sourcePath);
   const dir = src.env.get(CURSOR_TRANSCRIPTS_ENV);
   const convId = src.env.get(CURSOR_SESSION_ENV);
   if (dir === undefined || dir.length === 0 || convId === undefined || convId.length === 0) {
     return null;
   }
   return src.fs.readText(cursorTranscriptPath(dir, convId));
+}
+
+/**
+ * The conversation id THIS extraction may attribute to. In reconciliation it is
+ * the orphaned lane's own id from its marker — never `CURSOR_CONVERSATION_ID`,
+ * which at recovery time names whatever session is running the reconciler and
+ * would join a dead lane's transcript to a live lane's model/timing bubbles.
+ */
+function conversationId(src: HarnessSource): string {
+  if (src.reconcile !== undefined) return src.reconcile.sessionId;
+  return src.env.get(CURSOR_SESSION_ENV) ?? '';
 }
 
 const nullCaps: HarnessCapabilities = {
@@ -246,10 +265,25 @@ function countRole(lines: readonly string[], role: 'user' | 'assistant'): number
 export const cursorAdapter: HarnessAdapter = {
   harness: 'cursor-agent',
   handles: (harnessId) => harnessId === 'cursor-agent',
+  // The marker records the transcript path and the conversation id, which is all
+  // this adapter needs; the env-located IDE store (models + bubble timing) is
+  // simply unavailable in that mode, and the events fall back to interval grade.
+  reconciles: true,
 
   currentPosition(src) {
     const content = readTranscript(src);
     return content === null ? null : nonEmptyLines(content).length;
+  },
+
+  /** The conversation's own JSONL — the file whose non-empty lines `currentPosition` counts. */
+  sourcePath(src) {
+    if (src.reconcile !== undefined) return src.reconcile.sourcePath;
+    const dir = src.env.get(CURSOR_TRANSCRIPTS_ENV);
+    const convId = src.env.get(CURSOR_SESSION_ENV);
+    if (dir === undefined || dir.length === 0 || convId === undefined || convId.length === 0) {
+      return null;
+    }
+    return cursorTranscriptPath(dir, convId);
   },
 
   extract(ctx: HarnessContext) {
@@ -259,7 +293,7 @@ export const cursorAdapter: HarnessAdapter = {
     const windowLines = allLines.slice(ctx.window.from, ctx.window.to);
     if (windowLines.length === 0) return nullCaps;
 
-    const convId = ctx.env.get(CURSOR_SESSION_ENV) ?? '';
+    const convId = conversationId(ctx);
     // The only timed Cursor source is the bubble store; the transcript is untimed.
     // Correlate windowed transcript turns to whole-conversation bubbles by order
     // → anchored timing (t_precision 'anchored'). tokens stay null (server-side).

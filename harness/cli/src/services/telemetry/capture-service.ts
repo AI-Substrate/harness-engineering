@@ -20,6 +20,12 @@ import {
 } from './adapters/harness-adapter.js';
 import { artifactSemanticsEvents } from './artifact-semantics.js';
 import {
+  type CaptureProbe,
+  classifyAttempt,
+  newCaptureProbe,
+  recordCaptureAttempt,
+} from './capture-liveness.js';
+import {
   branchPathFor,
   cursorPathFor,
   flowCursorPathFor,
@@ -224,6 +230,45 @@ function writeJsonLine(fs: FsPort, path: string, obj: unknown): void {
   const tmp = `${path}.tmp`;
   fs.writeText(tmp, `${JSON.stringify(obj)}\n`);
   fs.rename(tmp, path);
+}
+
+/**
+ * Write a serialized segment into a session's buffer as the next `<seq>.json`
+ * PLUS its two OTLP sidecars, atomically (temp + rename).
+ *
+ * Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): the SAME serialized
+ * segment is emitted as OTLP/JSON Lines beside the buffer entry — one `LogsData`
+ * line + one `MetricsData` line (the fileexporter idiom; one file per signal,
+ * research A1). Written from the serialized segment only, so the counts-only
+ * allowlist is inherited. The transport (sync) ships these — the serializer
+ * carries no transport knowledge.
+ *
+ * SHARED by the live capture path and the orphan-lane reconciler (plan 070) so
+ * the two can never drift in what a buffered segment consists of: a recovered
+ * segment must ride exactly the same rails, or "recovered" would quietly mean
+ * "recovered into a shape only some consumers can see".
+ */
+export function writeCapturedSegment(
+  deps: { fs: FsPort; proc: ProcessPort },
+  cwd: string,
+  sessionId: string,
+  segment: Segment,
+): string {
+  ensureTemp({ fs: deps.fs, proc: deps.proc });
+  const sessionDir = sessionDirFor(cwd, sessionId);
+  deps.fs.mkdirp(sessionDir);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
+  const tmp = `${entryPath}.tmp`;
+  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
+  deps.fs.rename(tmp, entryPath);
+  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
+  writeJsonLine(
+    deps.fs,
+    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
+    rollupToOtlpMetrics(segment),
+  );
+  return entryPath;
 }
 
 /** Next `<seq>.json` index, seeded above the durable flushed high-water. */
@@ -593,15 +638,52 @@ export function captureTelemetry(deps: CaptureDeps): void {
     if (Number(deps.env.get(CAPTURE_DEPTH_ENV) ?? '0') > 0) {
       return;
     }
-    captureUnsafe(deps);
+    // From here the invocation is ELIGIBLE: telemetry is on and this is the
+    // top-level process. Everything an eligible attempt observes is recorded on
+    // the probe so the liveness marker can describe what happened — INCLUDING
+    // when the attempt dies in a swallowed throw (plan 070).
+    const probe = newCaptureProbe();
+    let threw = false;
+    try {
+      captureUnsafe(deps, probe);
+    } catch (err) {
+      // Fail-safe (AC-09): a corrupt source / parse error / fs failure inside
+      // capture must never surface to the host command. Swallow — but no longer
+      // silently: the attempt is about to be written down.
+      threw = true;
+      // The error CLASS only — never its message: a message can carry paths or
+      // content, and this marker is diagnostic state, not curated telemetry.
+      probe.errorKind = err instanceof Error ? err.name : typeof err;
+    }
+    if (probe.session !== null) {
+      recordCaptureAttempt(deps, toPosix(deps.proc.cwd()), {
+        session: probe.session,
+        harness: probe.harness ?? 'unknown',
+        command: deps.command,
+        at: deps.clock.nowIso(),
+        outcome: classifyAttempt(probe, threw),
+        cursor: probe.cursor,
+        position: probe.position,
+        sourcePath: probe.sourcePath,
+        ...(probe.errorKind !== undefined ? { errorKind: probe.errorKind } : {}),
+      });
+    }
+    // A throw BEFORE the session was resolved leaves nothing to key a marker by
+    // (zero-harness, or a store lookup that failed). We record nothing rather than
+    // invent a lane — the detector marks absence, it never fabricates data.
   } catch {
-    // Fail-safe (AC-09): a corrupt source / parse error / fs failure inside
-    // capture must never surface to the host command. Swallow and move on.
+    // Last-resort fail-safe: even the liveness bookkeeping above can never change
+    // the host command's behaviour or exit code (AC-09 / plan 070 AC-5).
   }
 }
 
-/** The core capture path — may throw; always called through the {@link captureTelemetry} guard. */
-function captureUnsafe(deps: CaptureDeps): void {
+/**
+ * The core capture path — may throw; always called through the
+ * {@link captureTelemetry} guard. Fills `probe` PROGRESSIVELY (each field only
+ * once the attempt genuinely observed it), so a throw part-way through still
+ * leaves an honest record of how far the attempt got.
+ */
+function captureUnsafe(deps: CaptureDeps, probe: CaptureProbe = newCaptureProbe()): void {
   let detected = detectHarness(deps.env);
   if (detected === null) {
     return; // zero-harness → clean no-op (no buffer, no writes)
@@ -616,6 +698,10 @@ function captureUnsafe(deps: CaptureDeps): void {
   const resolved = resolveDetectedSession(detected, deps, cwd);
   if (resolved === null) return;
   detected = resolved;
+  // The lane is now known — from here every outcome is attributable to a session,
+  // so the liveness marker has a key to be written under.
+  probe.session = detected.sessionId;
+  probe.harness = detected.harness;
   const standardClaude =
     detected.harness === 'claude-code'
       ? (() => {
@@ -660,6 +746,12 @@ function captureUnsafe(deps: CaptureDeps): void {
   const prev = readCursor(deps.fs, cursorPath);
   const position = adapter.currentPosition?.(source) ?? null;
   const window = computeWindow(prev, position);
+  // The two numbers the stall is defined by: the watermark this attempt started
+  // from, and how far the harness's own source had actually run.
+  probe.cursor = prev;
+  probe.position = position;
+  probe.positionSupported = adapter.currentPosition !== undefined;
+  probe.sourcePath = adapter.sourcePath?.(source) ?? null;
 
   // Branch-change detection: compare the live git branch to the one persisted on
   // the prior capture of this session. First capture (no prior) → not a change.
@@ -734,28 +826,7 @@ function captureUnsafe(deps: CaptureDeps): void {
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).
-  ensureTemp({ fs: deps.fs, proc: deps.proc });
-  const sessionDir = sessionDirFor(cwd, detected.sessionId);
-  deps.fs.mkdirp(sessionDir);
-  const seq = nextSeq(deps.fs, sessionDir);
-  const entryPath = posixJoin(sessionDir, `${seq}.json`);
-  const tmp = `${entryPath}.tmp`;
-  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
-  deps.fs.rename(tmp, entryPath);
-
-  // Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): emit the SAME
-  // serialized segment as OTLP/JSON Lines beside the buffer entry — one `LogsData`
-  // line + one `MetricsData` line per capture (the fileexporter idiom; one file
-  // per signal, research A1). Written from the serialized segment only, so the
-  // counts-only allowlist is inherited; atomic temp+rename. The transport (sync)
-  // ships these — the serializer carries no transport knowledge. (Segment JSON is
-  // kept until the sync publisher + scraper migrate to `.jsonl` in T011/T013.)
-  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
-  writeJsonLine(
-    deps.fs,
-    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
-    rollupToOtlpMetrics(segment),
-  );
+  writeCapturedSegment(deps, cwd, detected.sessionId, segment);
 
   // Advance the high-water mark crash-safely, then remember this capture's branch
   // so the NEXT capture can detect a switch, and advance the flow-log offset so
@@ -763,4 +834,9 @@ function captureUnsafe(deps: CaptureDeps): void {
   writeCursor(deps.fs, cursorPath, window.to);
   if (currentBranch !== null) writeBranch(deps.fs, branchPath, currentBranch);
   if (flowCursorPath !== null) writeFlowCursor(deps.fs, flowCursorPath, flowLog.nextOffset);
+  // The window is durably consumed: this attempt is a proven-live capture, and
+  // the watermark it leaves behind is the one a later residue check measures
+  // against (on a first capture the PRIOR watermark is null — meaningless here).
+  probe.captured = true;
+  probe.cursor = window.to;
 }

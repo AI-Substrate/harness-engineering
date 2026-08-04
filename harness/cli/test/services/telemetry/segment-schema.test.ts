@@ -59,9 +59,9 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
     expect(schema.additionalProperties).toBe(false);
   });
 
-  it('pins schema_version const to "2.6"', () => {
-    expect(schema.properties.schema_version?.const).toBe('2.6');
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
+  it('pins schema_version const to "2.7"', () => {
+    expect(schema.properties.schema_version?.const).toBe('2.7');
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.7');
   });
 
   it('closes current captured_env to the exact eight Segment-2.6 keys', () => {
@@ -115,7 +115,7 @@ describe('T002 — segment.schema.json key-set EQUALITY with the allowlist', () 
   });
 
   it('$id tracks the schema version (no stale $id drift — companion LOW finding)', () => {
-    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.6');
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.7');
   });
 
   it('the event_stream kind enum mirrors EVENT_KINDS exactly (a new kind can never appear on one side only)', () => {
@@ -174,6 +174,7 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
       thinking: { blocks: 7 },
       captured_env: { PIJ_SESSION_ID: 'pij-golden', PIJ_ROLE: 'coder' },
       product_commit: 'A'.repeat(40),
+      capture_mode: 'reconciled',
       // a non-empty stream ⇒ event_stream populated + rollup derived (both present)
       event_stream: [{ t: '2026-06-23T04:58:00Z', kind: 'prompt', words: 5 }],
     };
@@ -187,13 +188,20 @@ describe('T002 — a golden segment populates EVERY top-level field', () => {
     expect(seg.tokens).not.toBeNull();
     expect(seg.thinking).not.toBeNull();
     expect(seg.product_commit).toBe('a'.repeat(40));
+    expect(seg.capture_mode).toBe('reconciled');
+    // …and `reconciled` is the ONLY value that survives: a caller cannot stamp a
+    // segment as live, because liveness is the field's absence.
+    expect(
+      serializeSegment({ ...golden, capture_mode: 'live' }, REPO).capture_mode,
+    ).toBeUndefined();
   });
 });
 
 describe('T002 — version freeze (field-set change MUST bump schema_version)', () => {
-  it('the frozen field set is paired with schema_version 2.6', () => {
-    // FROZEN SNAPSHOT — 2.6 adds optional product_commit; required keys stay fixed.
-    const FROZEN_V2_6_FIELDS = [
+  it('the frozen field set is paired with schema_version 2.7', () => {
+    // FROZEN SNAPSHOT — 2.7 adds optional capture_mode (plan 070: a LATE, orphan-lane
+    // segment declaring itself); required keys stay fixed.
+    const FROZEN_V2_7_FIELDS = [
       'schema_version',
       'command',
       'harness',
@@ -217,10 +225,14 @@ describe('T002 — version freeze (field-set change MUST bump schema_version)', 
       'thinking',
       'captured_env',
       'product_commit',
+      'capture_mode',
     ];
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
-    expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_6_FIELDS].sort());
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.7');
+    expect([...SEGMENT_FIELD_KEYS].sort()).toEqual([...FROZEN_V2_7_FIELDS].sort());
     expect(SEGMENT_REQUIRED_KEYS).not.toContain('product_commit');
+    // A segment is live UNLESS it says otherwise: liveness is the ABSENCE of the
+    // field, which is the one claim a producer cannot forge by omission.
+    expect(SEGMENT_REQUIRED_KEYS).not.toContain('capture_mode');
   });
 
   it('omits unavailable/invalid provenance and accepts both 40- and 64-hex OIDs', () => {
@@ -306,9 +318,9 @@ describe('P063 T008 — closed typed usage event schema', () => {
     expect(acceptsUsageRule({ t: '0', kind: 'turn', in: 1, out: 1 })).toBe(true);
   });
 
-  it('advances the closed wire version for the additive usage kind', () => {
-    expect(SEGMENT_SCHEMA_VERSION).toBe('2.6');
-    expect(schema.properties.schema_version?.const).toBe('2.6');
-    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.6');
+  it('advances the closed wire version for the additive capture-mode field', () => {
+    expect(SEGMENT_SCHEMA_VERSION).toBe('2.7');
+    expect(schema.properties.schema_version?.const).toBe('2.7');
+    expect((schema as unknown as { $id: string }).$id).toContain('segment-2.7');
   });
 });

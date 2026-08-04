@@ -7,6 +7,7 @@
 import type { Segment } from '../segment.js';
 import {
   RES_BRANCH,
+  RES_CAPTURE_MODE,
   RES_COMMAND,
   RES_ENV,
   RES_HARNESS,
@@ -31,6 +32,9 @@ export function resourceAttrs(seg: Segment): KeyValue[] {
   if (seg.schema_version !== '2.4' && seg.product_commit !== undefined) {
     attrs.push(kv(RES_PRODUCT_COMMIT, sv(seg.product_commit)));
   }
+  // v2.7 — carried on the RESOURCE (once per segment) rather than per event, so a
+  // reader learns that this whole window is late BEFORE it reads a single instant.
+  if (seg.capture_mode !== undefined) attrs.push(kv(RES_CAPTURE_MODE, sv(seg.capture_mode)));
   // The allowlisted env snapshot → ONE kvlist attribute (omitted when absent/empty),
   // so the resource attribute key set stays closed even as var names vary.
   const env = seg.captured_env;
