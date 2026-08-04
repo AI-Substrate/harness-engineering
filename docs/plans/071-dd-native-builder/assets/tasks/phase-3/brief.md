@@ -116,3 +116,15 @@ exemplar tk-7161 just migrated; after the alias drop the front-door README
 teaches an address the schema refuses. Cause: the fence was written before
 ruling A's blast radius was mapped. Expiry: this grant closes with the
 phase-3 exit (it licenses these two edits once, not README access).
+
+## Fence amendment 2 (post-dispatch, 2026-08-05 — pij-related-koala, fence issuer)
+
+`docs/plans/065-deterministic-documents/builder-tuning/structural-proof-graph.md`
+is opened for the tk-7163 signpost ONLY: the proposed 3-line SUPERSEDED note
+at the top, no other bytes. Rationale: tk-7163's task text instructs the
+signpost and the fence omitted the file it lives in (defect shape #4, all
+mine). The note's "kept as the record of how the design formed; not
+maintained" wording is REQUIRED — it marks the rough-out as frozen
+provenance so future sweeps stop at it instead of editing it. Cause: fence
+authored from the 071 tree view; the signpost target lives in the 065
+folder. Expiry: grant closes with the phase-3 exit.
