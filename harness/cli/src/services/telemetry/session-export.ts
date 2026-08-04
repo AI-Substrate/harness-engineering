@@ -4,8 +4,8 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { Event } from './events.js';
-import { reconstructSegmentFromOtlpLogs, segmentToOtlpLogs } from './otlp/logs.js';
-import { rollupToOtlpMetrics } from './otlp/metrics.js';
+import { produceOtlpLogs, reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
+import { produceOtlpMetrics } from './otlp/metrics.js';
 import type { LogsData, MetricsData } from './otlp/types.js';
 import { ROLLED_LOGS_NAME, splitJsonl } from './rolled-shard.js';
 import { computeRollup, parseIso } from './rollup.js';
@@ -34,7 +34,7 @@ import {
  * the events come from (in priority) a strictly reconstructed `<seq>.logs.jsonl` companion
  * → the segment's own `event_stream` → a v1 (no-`event_stream`) segment normalized
  * to a minimal stream (T007). The merged events then regenerate ONE `resourceLogs`
- * (via {@link segmentToOtlpLogs}) and ONE `resourceMetrics` (via {@link rollupToOtlpMetrics}
+ * (via {@link produceOtlpLogs}) and ONE `resourceMetrics` (via {@link produceOtlpMetrics}
  * over `computeRollup(all events)`) — **forward only, never inverting metrics, never
  * summing per-command cumulative metrics**.
  *
@@ -136,7 +136,7 @@ interface V1FlatView {
  * A v1 segment has flat count histograms and no per-event timestamps, so there is no
  * real timeline to reconstruct — every synthesized event is stamped at the segment's
  * `timecode` (honest: counts preserved, no fabricated durations). This keeps
- * {@link segmentToOtlpLogs}/{@link rollupToOtlpMetrics} from throwing on `.map` of
+ * {@link produceOtlpLogs}/{@link produceOtlpMetrics} from reading `.map` of
  * `undefined` while the counts survive into the combined logs.
  */
 export function normalizeV1ToEvents(seg: Segment): Event[] {
@@ -534,6 +534,15 @@ export function combineSession(
     sessionSeg.captured_env = reads[0].seg.captured_env;
   }
 
+  // A metric or event the producer contract cannot admit is DROPPED and NAMED here,
+  // never thrown: one bad datapoint/event used to make the whole session unreadable
+  // (plan 068 item 1). `metric_skipped:<name>` / `event_skipped:<kind>` are the
+  // degrade notes the read surfaces carry.
+  const producedMetrics = produceOtlpMetrics(sessionSeg);
+  for (const name of producedMetrics.skipped) degraded.push(`metric_skipped:${name}`);
+  const producedLogs = produceOtlpLogs(sessionSeg);
+  for (const kind of producedLogs.skipped) degraded.push(`event_skipped:${kind}`);
+
   return {
     schema_version: SESSION_EXPORT_SCHEMA_VERSION,
     identity,
@@ -551,8 +560,8 @@ export function combineSession(
       degraded,
     },
     signals: {
-      logs: segmentToOtlpLogs(sessionSeg),
-      metrics: rollupToOtlpMetrics(sessionSeg),
+      logs: producedLogs.logs,
+      metrics: producedMetrics.metrics,
     },
   };
 }

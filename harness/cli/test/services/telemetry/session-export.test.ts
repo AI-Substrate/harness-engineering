@@ -508,3 +508,75 @@ describe('N2 — session-export.schema.json structural contract', () => {
     for (const k of tokReq) expect(tokens[k]).toBeDefined();
   });
 });
+
+/**
+ * Plan 068 item 1 — a read of a session the producer contract cannot fully carry
+ * degrades and NAMES the loss; it never throws, and it never loses the rest.
+ *
+ * Live regression: `71679da4-…` carried `command_exit{verb:"dd build"}`. The logs
+ * grammar admits a multi-word extension verb, the metrics grammar did not, and the
+ * mismatch threw — making every signal in that session unreadable.
+ */
+describe('plan 068 · item 1 — metric production degrades instead of killing the read', () => {
+  const verbEvents = (verb: string): Event[] => [
+    { t: '2026-08-03T21:20:09Z', kind: 'harness', verb },
+    { t: '2026-08-03T21:20:10Z', kind: 'command_exit', verb, exit: 1, status: 'error' },
+  ];
+
+  it('reads a session carrying a multi-word extension verb end-to-end, with the metric intact', () => {
+    const { files, dirs } = layout('/work', 'sessVerb', [seg(verbEvents('dd build'))]);
+    let exp: ReturnType<typeof combineSession> | undefined;
+    expect(() => {
+      exp = combineSession('sessVerb', makeDeps(files, dirs), { root: '/work' });
+    }).not.toThrow();
+    if (exp === undefined) throw new Error('expected an export');
+    expect(exp.summary.degraded.filter((d) => d.startsWith('metric_skipped:'))).toEqual([]);
+    const exitCode = exp.signals.metrics.resourceMetrics[0].scopeMetrics[0].metrics.find(
+      (m) => m.name === 'harness.command.exit_code',
+    );
+    expect(exitCode?.gauge?.dataPoints[0].attributes).toEqual([
+      { key: 'harness.command.verb', value: { stringValue: 'dd build' } },
+    ]);
+  });
+
+  it('NAMES a metric it cannot carry in summary.degraded, and still returns every other signal', () => {
+    // A tool name the segment decoder admits but the metric attribute grammar cannot:
+    // the exact class of value that used to make a whole session unreadable.
+    const { files, dirs } = layout('/work', 'sessSkip', [
+      seg([
+        { t: '2026-08-03T21:20:09Z', kind: 'turn', dur_s: 1, in: 7, out: 3 },
+        { t: '2026-08-03T21:20:10Z', kind: 'tools', name: 'not a legal atom', count: 1, span_s: 1 },
+      ]),
+    ]);
+    let exp: ReturnType<typeof combineSession> | undefined;
+    expect(() => {
+      exp = combineSession('sessSkip', makeDeps(files, dirs), { root: '/work' });
+    }).not.toThrow();
+    if (exp === undefined) throw new Error('expected an export');
+
+    expect(exp.summary.degraded).toContain('metric_skipped:harness.tool.calls');
+    expect(exp.summary.degraded).toContain('event_skipped:tools');
+    const emitted = exp.signals.metrics.resourceMetrics[0].scopeMetrics[0].metrics.map(
+      (m) => m.name,
+    );
+    expect(emitted).not.toContain('harness.tool.calls');
+    // The rest of the read survives: the turn is still in the logs, tokens are real.
+    expect(emitted).toContain('gen_ai.client.token.usage');
+    expect(otlpLogsToEvents(exp.signals.logs).map((e) => e.kind)).toEqual(['turn']);
+    const tokenPoints =
+      exp.signals.metrics.resourceMetrics[0].scopeMetrics[0].metrics.find(
+        (m) => m.name === 'gen_ai.client.token.usage',
+      )?.sum?.dataPoints ?? [];
+    expect(tokenPoints.map((p) => p.asInt)).toContain('7');
+  });
+
+  it('adds NO degraded note when every metric is admissible (no false alarm)', () => {
+    const { files, dirs } = layout('/work', 'sessClean', [seg(verbEvents('checks'))]);
+    const exp = combineSession('sessClean', makeDeps(files, dirs), { root: '/work' });
+    expect(
+      exp.summary.degraded.some(
+        (d) => d.startsWith('metric_skipped:') || d.startsWith('event_skipped:'),
+      ),
+    ).toBe(false);
+  });
+});

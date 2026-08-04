@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   METRIC_DEFINITION_BY_NAME,
   METRIC_DEFINITIONS,
+  produceOtlpMetrics,
   rollupToOtlpMetrics,
   validateMetricDataPointSet,
   validateMetricDataPointTuple,
@@ -13,7 +14,11 @@ import {
   LEGACY_HARNESS_SCHEMA_URL,
   type NumberDataPoint,
 } from '../../../../src/services/telemetry/otlp/types.js';
-import { type Segment, serializeSegment } from '../../../../src/services/telemetry/segment.js';
+import {
+  isTelemetryCommand,
+  type Segment,
+  serializeSegment,
+} from '../../../../src/services/telemetry/segment.js';
 import { conformMetrics } from '../../../conformance/otlp-conformance.js';
 
 /**
@@ -373,5 +378,173 @@ describe('rollup → OTLP Metrics (T008)', () => {
     const md = rollupToOtlpMetrics(empty);
     expect(md.resourceMetrics[0].scopeMetrics[0].metrics).toEqual([]);
     expect(conformMetrics(md)).toEqual({ ok: true });
+  });
+});
+
+/**
+ * Plan 068 item 1 — the read path degrades instead of throwing.
+ *
+ * The live regression: session `71679da4-…` carried `command_exit{verb:"dd build"}`
+ * — a multi-word extension verb the LOGS path admits (`command` grammar) but the
+ * METRICS path rejected (atom grammar), so producing metrics threw and the whole
+ * session became unreadable. Two independent guarantees are pinned here: the
+ * grammars now agree (root cause), and an unadmittable set is skipped-and-named
+ * rather than thrown (contract).
+ */
+describe('metric production degrades, never throws (plan 068 · item 1)', () => {
+  const segmentWithVerb = (verb: string): Segment =>
+    serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: 'verb-grammar',
+        timecode: '2026-08-03T21:20:09Z',
+        window: { since: 'session-start' as const, from: 0, to: 1 },
+        branch: 'main',
+        event_stream: [
+          { t: '2026-08-03T21:20:09Z', kind: 'harness' as const, verb },
+          {
+            t: '2026-08-03T21:20:10Z',
+            kind: 'command_exit' as const,
+            verb,
+            exit: 1,
+            status: 'error' as const,
+          },
+        ],
+      },
+      '/repo',
+    );
+
+  const exitCodePoints = (seg: Segment): readonly NumberDataPoint[] =>
+    produceOtlpMetrics(seg)
+      .metrics.resourceMetrics[0].scopeMetrics[0].metrics.find(
+        (metric) => metric.name === 'harness.command.exit_code',
+      )
+      ?.gauge?.dataPoints ?? [];
+
+  it('admits the multi-word extension verb the logs path already admits (root cause)', () => {
+    // The exact verb from the live unreadable session.
+    const seg = segmentWithVerb('dd build');
+    const produced = produceOtlpMetrics(seg);
+    expect(produced.skipped).toEqual([]);
+    expect(exitCodePoints(seg).map((point) => point.attributes)).toEqual([
+      [{ key: 'harness.command.verb', value: { stringValue: 'dd build' } }],
+    ]);
+    expect(conformMetrics(produced.metrics)).toEqual({ ok: true });
+    // Same grammar both sides of the seam: what logs encode, metrics can carry.
+    expect(isTelemetryCommand('dd build')).toBe(true);
+    const definition = METRIC_DEFINITION_BY_NAME.get('harness.command.exit_code');
+    if (definition === undefined) throw new Error('missing exit_code definition');
+    expect(
+      validateMetricDataPointTuple(definition, [
+        { key: 'harness.command.verb', value: { stringValue: 'dd build' } },
+      ]),
+    ).toBe(true);
+  });
+
+  it('still rejects a verb neither grammar admits, and never widens to free text', () => {
+    const definition = METRIC_DEFINITION_BY_NAME.get('harness.command.exit_code');
+    if (definition === undefined) throw new Error('missing exit_code definition');
+    for (const verb of ['Build The Thing', 'a b c d e', 'rm -rf /tmp/x', '', 'token=abcdefghij']) {
+      expect(
+        validateMetricDataPointTuple(definition, [
+          { key: 'harness.command.verb', value: { stringValue: verb } },
+        ]),
+        verb,
+      ).toBe(false);
+    }
+  });
+
+  it('keeps the atom grammar on every non-command attribute', () => {
+    const skills = METRIC_DEFINITION_BY_NAME.get('harness.skill.runs');
+    if (skills === undefined) throw new Error('missing skill definition');
+    expect(
+      validateMetricDataPointTuple(skills, [
+        { key: 'harness.skill.name', value: { stringValue: 'the flow' } },
+        { key: 'harness.skill.status', value: { stringValue: 'runs' } },
+      ]),
+    ).toBe(false);
+  });
+
+  it('SKIPS and NAMES an unadmittable metric set instead of throwing', () => {
+    // A duplicate tuple is the shape the set validator exists to catch: two datapoints
+    // that carry the same identity are not a producible set, so the metric cannot be
+    // emitted — but that must cost exactly ONE metric, never the whole session.
+    const definition = METRIC_DEFINITION_BY_NAME.get('harness.command.exit_code');
+    if (definition === undefined) throw new Error('missing exit_code definition');
+    const duplicate: NumberDataPoint = {
+      startTimeUnixNano: '1',
+      timeUnixNano: '2',
+      asInt: '0',
+      attributes: [{ key: 'harness.command.verb', value: { stringValue: 'checks' } }],
+    };
+    expect(validateMetricDataPointSet(definition, [duplicate, structuredClone(duplicate)])).toBe(
+      false,
+    );
+
+    // An unadmittable set reached through the real producer: a tool name that is not a
+    // legal atom. The rest of the production survives and the loss is named.
+    const seg = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: 'skip-one',
+        timecode: '2026-08-03T21:20:09Z',
+        window: { since: 'session-start' as const, from: 0, to: 1 },
+        branch: 'main',
+        event_stream: [
+          { t: '2026-08-03T21:20:09Z', kind: 'turn' as const, dur_s: 1, in: 2, out: 3 },
+          { t: '2026-08-03T21:20:10Z', kind: 'tools' as const, name: 'Bash', count: 1, span_s: 1 },
+        ],
+      },
+      '/repo',
+    );
+    if (seg.rollup === null) throw new Error('expected a rollup');
+    seg.rollup.tools = { 'not a legal atom': 1 };
+
+    let produced: ReturnType<typeof produceOtlpMetrics> | undefined;
+    expect(() => {
+      produced = produceOtlpMetrics(seg);
+    }).not.toThrow();
+    if (produced === undefined) throw new Error('expected a production');
+    expect(produced.skipped).toEqual(['harness.tool.calls']);
+    const emitted = produced.metrics.resourceMetrics[0].scopeMetrics[0].metrics.map((m) => m.name);
+    expect(emitted).not.toContain('harness.tool.calls');
+    // Everything else still ships, and what does ship is still contract-valid.
+    expect(emitted).toContain('harness.session.wall_seconds');
+    expect(emitted).toContain('gen_ai.client.token.usage');
+    expect(conformMetrics(produced.metrics)).toEqual({ ok: true });
+  });
+
+  it('never emits an invalid datapoint set in place of skipping it', () => {
+    const seg = serializeSegment(
+      {
+        command: 'flow',
+        harness: 'claude-code',
+        harness_session_id: 'no-invalid-emit',
+        timecode: '2026-08-03T21:20:09Z',
+        window: { since: 'session-start' as const, from: 0, to: 1 },
+        branch: 'main',
+        event_stream: [
+          { t: '2026-08-03T21:20:09Z', kind: 'tools' as const, name: 'Bash', count: 1, span_s: 1 },
+        ],
+      },
+      '/repo',
+    );
+    if (seg.rollup === null) throw new Error('expected a rollup');
+    seg.rollup.skills = { 'not a legal atom': { runs: 1, abandoned: 0, superseded: 0 } };
+    const produced = produceOtlpMetrics(seg);
+    expect(produced.skipped).toEqual(['harness.skill.runs']);
+    for (const metric of produced.metrics.resourceMetrics[0].scopeMetrics[0].metrics) {
+      const definition = METRIC_DEFINITION_BY_NAME.get(metric.name);
+      if (definition === undefined) throw new Error(`missing ${metric.name}`);
+      const points = metric.sum?.dataPoints ?? metric.gauge?.dataPoints ?? [];
+      expect(validateMetricDataPointSet(definition, points), metric.name).toBe(true);
+    }
+  });
+
+  it('rollupToOtlpMetrics stays byte-identical to the checked production', () => {
+    const seg = segmentWithVerb('checks');
+    expect(rollupToOtlpMetrics(seg)).toEqual(produceOtlpMetrics(seg).metrics);
   });
 });

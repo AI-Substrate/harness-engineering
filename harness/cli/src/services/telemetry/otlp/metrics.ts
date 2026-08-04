@@ -13,7 +13,11 @@
  */
 import type { Event } from '../events.js';
 import { parseIso } from '../rollup.js';
-import { isTelemetryExtensionString, type Segment } from '../segment.js';
+import {
+  isTelemetryCommand,
+  isTelemetryExtensionString,
+  type Segment,
+} from '../segment.js';
 import { resourceAttrs } from './resource.js';
 import { A, GENAI_TOKEN_TYPE, GENAI_TOKEN_USAGE_METRIC } from './semconv.js';
 import {
@@ -28,10 +32,21 @@ import {
   sv,
 } from './types.js';
 
+/**
+ * The value grammar an attribute is admitted under. `identifier` (the default) is the
+ * conservative extension-string atom; `command` is the SAME grammar the logs path
+ * already admits for a harness verb (`isTelemetryCommand`), which permits the
+ * multi-word extension verbs (`dd build`, `flow eval`) an atom grammar rejects.
+ * Metrics and logs must agree on a value's grammar or a legal event becomes an
+ * illegal datapoint — exactly the mismatch that made session 71679da4 unreadable.
+ */
+export type MetricStringRole = 'identifier' | 'command';
+
 export interface MetricAttributeDefinition {
   key: string;
   required: boolean;
   values?: readonly string[];
+  role?: MetricStringRole;
 }
 
 export interface MetricDefinition {
@@ -143,7 +158,7 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
     kind: 'gauge',
     monotonic: false,
     point: 'int',
-    attributes: [{ key: A.CMD_VERB, required: true }],
+    attributes: [{ key: A.CMD_VERB, required: true, role: 'command' }],
     tuple: 'independent',
   },
 ];
@@ -151,6 +166,11 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 export const METRIC_DEFINITION_BY_NAME: ReadonlyMap<string, MetricDefinition> = new Map(
   METRIC_DEFINITIONS.map((definition) => [definition.name, definition]),
 );
+
+/** Admit one attribute value under the role its producer contract declares. */
+function validMetricStringRole(role: MetricStringRole | undefined, value: string): boolean {
+  return role === 'command' ? isTelemetryCommand(value) : isTelemetryExtensionString(value);
+}
 
 /** Validate exact attributes and producer-dependent combinations for one datapoint. */
 export function validateMetricDataPointTuple(
@@ -162,8 +182,7 @@ export function validateMetricDataPointTuple(
     if (
       values.has(attribute.key) ||
       Object.keys(attribute.value).length !== 1 ||
-      typeof attribute.value.stringValue !== 'string' ||
-      !isTelemetryExtensionString(attribute.value.stringValue)
+      typeof attribute.value.stringValue !== 'string'
     ) {
       return false;
     }
@@ -177,6 +196,9 @@ export function validateMetricDataPointTuple(
       if (attribute.required) return false;
       continue;
     }
+    // Every retained value is grammar-checked here (an unknown key was already
+    // rejected above), under the role the producer contract declares for it.
+    if (!validMetricStringRole(attribute.role, value)) return false;
     if (attribute.values !== undefined && !attribute.values.includes(value)) return false;
   }
   if (definition.tuple === 'token-buckets') {
@@ -260,10 +282,29 @@ function bounds(events: readonly Event[]): { startNs: string; endNs: string } {
   return { startNs: toNs(min), endNs: toNs(max) };
 }
 
-export function rollupToOtlpMetrics(seg: Segment): MetricsData {
+/**
+ * A metrics production and the honest note of what it could not carry.
+ *
+ * `skipped` names every metric dropped because its producer datapoint set failed the
+ * contract in {@link METRIC_DEFINITIONS}. It is NEVER an error: a read path that threw
+ * here made the WHOLE session unreadable (no report, no insights, no partial) over one
+ * bad datapoint. The house rule applies — always warn, never hide: drop the metric,
+ * name it, return the rest.
+ */
+export interface OtlpMetricsProduction {
+  metrics: MetricsData;
+  skipped: readonly string[];
+}
+
+/**
+ * Produce this segment's OTLP metrics, naming any metric the producer contract could
+ * not admit. Never throws.
+ */
+export function produceOtlpMetrics(seg: Segment): OtlpMetricsProduction {
   const r = seg.rollup;
   const identity = schemaIdentityForSegmentVersion(seg.schema_version);
   const metrics: Metric[] = [];
+  const skipped: string[] = [];
 
   if (r !== null) {
     const { startNs, endNs } = bounds(seg.event_stream);
@@ -279,38 +320,37 @@ export function rollupToOtlpMetrics(seg: Segment): MetricsData {
       asInt: String(n),
       ...(attributes && attributes.length > 0 ? { attributes } : {}),
     });
-    const checkedPoints = (
-      definition: MetricDefinition,
-      dataPoints: NumberDataPoint[],
-    ): NumberDataPoint[] => {
-      if (!validateMetricDataPointSet(definition, dataPoints)) {
-        throw new Error(`invalid producer metric set: ${definition.name}`);
-      }
-      return dataPoints;
+    // A metric whose set fails its own contract is dropped and NAMED — never thrown,
+    // never silently emitted invalid.
+    const admit = (definition: MetricDefinition, dataPoints: NumberDataPoint[]): boolean => {
+      if (validateMetricDataPointSet(definition, dataPoints)) return true;
+      skipped.push(definition.name);
+      return false;
     };
-    const sum = (name: string, dataPoints: NumberDataPoint[]): Metric => {
+    const sum = (name: string, dataPoints: NumberDataPoint[]): Metric | null => {
       const definition = metricDefinition(name, 'sum');
+      if (!admit(definition, dataPoints)) return null;
       return {
         name: definition.name,
         unit: definition.unit,
         sum: {
-          dataPoints: checkedPoints(definition, dataPoints),
+          dataPoints,
           aggregationTemporality: AGG_TEMPORALITY_CUMULATIVE,
           isMonotonic: definition.monotonic,
         },
       };
     };
-    const gauge = (name: string, dataPoints: NumberDataPoint[]): Metric => {
+    const gauge = (name: string, dataPoints: NumberDataPoint[]): Metric | null => {
       const definition = metricDefinition(name, 'gauge');
-      return {
-        name: definition.name,
-        unit: definition.unit,
-        gauge: { dataPoints: checkedPoints(definition, dataPoints) },
-      };
+      if (!admit(definition, dataPoints)) return null;
+      return { name: definition.name, unit: definition.unit, gauge: { dataPoints } };
+    };
+    const push = (...produced: readonly (Metric | null)[]): void => {
+      for (const metric of produced) if (metric !== null) metrics.push(metric);
     };
 
     // activity — wall/agent/human/idle seconds (sum, non-monotonic: a window total)
-    metrics.push(
+    push(
       sum('harness.session.wall_seconds', [dpD(r.activity.wall_s)]),
       sum('harness.session.agent_working_seconds', [dpD(r.activity.agent_working_s)]),
       sum('harness.session.human_seconds', [dpD(r.activity.human_s)]),
@@ -322,7 +362,7 @@ export function rollupToOtlpMetrics(seg: Segment): MetricsData {
     const stageDps = Object.entries(r.flow_stage_time_s).map(([stage, secs]) =>
       dpD(secs, [kv(A.FLOW_STAGE, sv(stage))]),
     );
-    if (stageDps.length > 0) metrics.push(sum('harness.flow.stage_seconds', stageDps));
+    if (stageDps.length > 0) push(sum('harness.flow.stage_seconds', stageDps));
 
     // tokens — gen_ai.client.token.usage; cache buckets keep gen_ai.token.type=input
     // (they ARE input tokens) + a harness.token.type discriminator.
@@ -337,12 +377,12 @@ export function rollupToOtlpMetrics(seg: Segment): MetricsData {
           kv(A.TOKEN_TYPE, sv('cache_create')),
         ]),
       ];
-      metrics.push(sum(GENAI_TOKEN_USAGE_METRIC, tokDps));
+      push(sum(GENAI_TOKEN_USAGE_METRIC, tokDps));
     }
 
     // tools — calls per tool
     const toolDps = Object.entries(r.tools).map(([name, c]) => dpI(c, [kv(A.TOOL_NAME, sv(name))]));
-    if (toolDps.length > 0) metrics.push(sum('harness.tool.calls', toolDps));
+    if (toolDps.length > 0) push(sum('harness.tool.calls', toolDps));
 
     // skills — runs/abandoned/superseded per skill, status-tagged
     const skillDps: NumberDataPoint[] = [];
@@ -355,28 +395,36 @@ export function rollupToOtlpMetrics(seg: Segment): MetricsData {
         dpI(s.superseded, [kv(A.SKILL_NAME, sv(name)), kv(A.SKILL_STATUS, sv('superseded'))]),
       );
     }
-    if (skillDps.length > 0) metrics.push(sum('harness.skill.runs', skillDps));
+    if (skillDps.length > 0) push(sum('harness.skill.runs', skillDps));
 
     // command exits — last-seen exit code per verb (gauge: a code, not a running count)
     const exitDps = Object.entries(r.outcomes.exits).map(([verb, code]) =>
       dpI(code, [kv(A.CMD_VERB, sv(verb))]),
     );
-    if (exitDps.length > 0) metrics.push(gauge('harness.command.exit_code', exitDps));
+    if (exitDps.length > 0) push(gauge('harness.command.exit_code', exitDps));
   }
 
   return {
-    resourceMetrics: [
-      {
-        resource: { attributes: resourceAttrs(seg) },
-        schemaUrl: identity.schemaUrl,
-        scopeMetrics: [
-          {
-            scope: { name: SCOPE_NAME, version: identity.scopeVersion },
-            schemaUrl: identity.schemaUrl,
-            metrics,
-          },
-        ],
-      },
-    ],
+    metrics: {
+      resourceMetrics: [
+        {
+          resource: { attributes: resourceAttrs(seg) },
+          schemaUrl: identity.schemaUrl,
+          scopeMetrics: [
+            {
+              scope: { name: SCOPE_NAME, version: identity.scopeVersion },
+              schemaUrl: identity.schemaUrl,
+              metrics,
+            },
+          ],
+        },
+      ],
+    },
+    skipped,
   };
+}
+
+/** {@link produceOtlpMetrics} for callers that carry no degrade channel. Never throws. */
+export function rollupToOtlpMetrics(seg: Segment): MetricsData {
+  return produceOtlpMetrics(seg).metrics;
 }
