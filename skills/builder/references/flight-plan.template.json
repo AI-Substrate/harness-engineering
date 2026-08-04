@@ -20,6 +20,7 @@
 
     { "id": "phase-1", "type": "phase", "phase": 1, "label": "P1: Implementation", "status": "known",
       "command": "/builder 6 implement", "next": ["review-1"],
+      "dd_link": { "address": "assets/tasks/phase-1/tasks.dd.json#tasks" },
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -31,6 +32,7 @@
 
     { "id": "review-1", "type": "review", "label": "Review: P1", "status": "assumed",
       "command": "/builder 7 review", "next": ["post-flight"], "zone": "flight",
+      "dd_link": { "address": "plan.dd.json", "check": "plan-validate" },
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
         "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",

@@ -258,6 +258,10 @@ export function registerFlowAct(
     .option('--template <path>', 'create-seed override (may be out-of-repo)')
     .option('--bare', 'root-only — copy no template nodes')
     .option(
+      '--plan-dir <dir>',
+      "the repo-relative plan folder this flow belongs to; anchors the template's relative dd_link gate addresses at it",
+    )
+    .option(
       '--agent <name>',
       'stamp provenance.agent (the rail-title source); the only source — no env fallback',
     )
@@ -272,6 +276,7 @@ export function registerFlowAct(
           schema?: string;
           template?: string;
           bare?: boolean;
+          planDir?: string;
           agent?: string;
           planId?: string;
           title?: string;
@@ -287,6 +292,7 @@ export function registerFlowAct(
             schemaPath: opts.schema,
             templatePath: opts.template,
             bare: opts.bare,
+            planDir: opts.planDir,
             agent: opts.agent,
             planId: opts.planId,
             title: opts.title,

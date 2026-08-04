@@ -61,6 +61,28 @@ General `apply` mechanics survive here (they describe the verb, not the chore sh
 - **Op kinds**: `add | upsert | set | insert | mv | remove`. `upsert` dedups on `id` (a byte-stable no-op when the node is identical) — which is what makes the plan-complete expander idempotent on re-run.
 - **D5 terminal guard**: no op flips a `done`/`skipped` node back to `todo`; `remove`/`mv` of a terminal needs `--force`; a `remove`-then-re-`add`/`upsert` of the same terminal id in one batch cannot launder it (the guard is batch-wide).
 
+### §3c — dd gates: what `create` bakes, and the ONE thing the expander must move (plan 071, ac-7110)
+
+The flight-plan seed carries **both** gate kinds. You do not add them; you preserve them.
+
+| node | `dd_link` | what it refuses |
+|------|-----------|-----------------|
+| `phase-N` | `{"address": "assets/tasks/phase-N/tasks.dd.json#tasks"}` | departing a phase whose task rows are not all gate-terminal |
+| the **last** `review-N` | `{"address": "plan.dd.json", "check": "plan-validate"}` | departing toward ship while `harness plan validate --complete` is not green |
+
+- **Addresses are written relative to the PLAN FOLDER, and `create` anchors them.** Pass **`harness flow create … --plan-dir "<plan dir>"`**: it records `plan_dir` on the root and prefixes every relative `dd_link.address` with it, because a flow's `dd_link` is repo-root anchored and a static template cannot know which plan folder it lands in. **Omit the flag and the gates will not resolve** — the addresses stay plan-relative and every departure refuses `E441 target-invalid`. Never hand-assemble the absolute address: a gate address built by paraphrase is a gate that fails the day the paraphrase drifts.
+- **Bare ordinal, always.** `assets/tasks/phase-2/…`, never `phase-2-<kebab-title>` — a static template can bake an ordinal before titles exist, and retitling a phase must never move its task-file address. (Stated amendment to #90's convention.)
+- **The expander MOVES the check gate.** When you splice phases 2..N, the whole-plan check must end up on the NEW last review and be **removed from the old one** — a `plan-validate` gate sitting on `review-1` of a multi-phase flight would refuse a departure that is legitimately mid-plan (phase 2 has not been written yet, so `--complete` cannot be green). Two ops, in the same batch that adds the new review:
+
+  ```json
+  [{"op":"set","id":"review-1","path":"dd_link","value":null},
+   {"op":"upsert","node":{"id":"review-2","type":"review","zone":"flight","dd_link":{"address":"<plan dir>/plan.dd.json","check":"plan-validate"}}}]
+  ```
+
+  Each spliced `phase-N` carries its own completion gate at `<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks` — anchored, because ops run after `create` and are not re-anchored.
+- **A pre-JIT departure REFUSES, and that is correct.** Between `1b plan` and `5 tasks` the task file does not exist, so `phase-N`'s gate answers `E441 target-invalid` rather than passing with zero items. A gate that reports success because it found nothing to check reports safety it never verified. Birth the task file; do not `--force` past it.
+- **`--force` is the human's, never yours.** Both kinds record a defended override as a `dd-gate-override` event and return a **degraded** envelope. An agent may not force a dd gate on its own judgment.
+
 ## §4 — Spine vs excursion (the rule that keeps the rail clean)
 
 The rail walks the MAIN SPINE only and excludes any node with `branch_of`.

@@ -6,6 +6,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import { isWithin, posixDirname, posixJoin, resolveInRepo, toPosix } from '../shared/posix-path.js';
 import {
   buildBuiltinEvent,
+  ddLinkOf,
   type FlowDoc,
   type FlowNode,
   type FlowProvenance,
@@ -200,6 +201,14 @@ export interface CreateFlowOptions {
   /** `--bare` — root-only, copy no template nodes. */
   bare?: boolean;
   /**
+   * `--plan-dir` — the repo-relative plan folder this flow belongs to.
+   *
+   * Recorded on the root, and used to ANCHOR the template's relative `dd_link`
+   * addresses at the folder (see `anchorDdLinks`). Absent ⇒ nothing is recorded
+   * and no address is touched, so every existing flow and template is unaffected.
+   */
+  planDir?: string;
+  /**
    * `--agent` — stamp `provenance.agent` (D-06 fix). **The only source**: there is deliberately
    * NO `HARNESS_AGENT` fallback (026 AC-5 / companion HIGH — the env carries the model name in
    * an agent runtime and it would surface in the rail title). Omitted → `null`.
@@ -263,6 +272,63 @@ function resolveTemplate(
  * deep-copy the template nodes verbatim, stamp root identity + provenance, fire
  * the `created` event, validate, and atomically write.
  */
+/**
+ * `--plan-dir`, normalized: repo-relative POSIX, no leading or trailing slash,
+ * or `null` when absent/empty.
+ *
+ * An absolute path is refused by returning `null` rather than by failing the
+ * create: the option exists to anchor addresses INSIDE the repository, and a
+ * machine-specific absolute prefix baked into a committed flow is worse than no
+ * prefix at all — a flow whose gates only resolve on one laptop.
+ */
+function normalizePlanDir(raw: string | undefined): string | null {
+  if (typeof raw !== 'string') return null;
+  const posix = toPosix(raw).trim();
+  // Absoluteness is checked BEFORE any stripping — stripping a leading `/` first
+  // would silently turn `/Users/someone/repo/docs/plans/x` into a plausible-looking
+  // relative path and bake it in, which is the exact outcome this guard exists to
+  // prevent.
+  if (posix.startsWith('/') || /^[a-zA-Z]:/.test(posix)) return null;
+  const trimmed = posix.replace(/^\.\//, '').replace(/\/+$/, '');
+  return trimmed.length === 0 ? null : trimmed;
+}
+
+/**
+ * Anchor a template's RELATIVE `dd_link` addresses at the plan folder (ac-7110).
+ *
+ * A flight-plan template is static: it is authored once, shipped in `skills/`, and
+ * cannot know which plan folder it will be instantiated into. But a flow's
+ * `dd_link.address` is REPO-ROOT anchored (`fromPath: null`, key finding F8) —
+ * which is why ac-7113 has the archive step rewrite them. So the template writes
+ * what it can know, `assets/tasks/phase-1/tasks.dd.json#tasks`, and create
+ * prefixes the folder it is being instantiated into.
+ *
+ * Doing it HERE rather than in prompt-ware is the whole point. A gate address
+ * assembled by a model is a gate that fails silently the day the model
+ * paraphrases, and mechanical refusal is precisely what this surface is for.
+ *
+ * ABSOLUTE-shaped addresses are left ALONE — an address already anchored at the
+ * repo root means what it says, and prefixing it would break a template that
+ * deliberately gates on something outside its own folder.
+ */
+function anchorDdLinks(nodes: readonly FlowNode[], planDir: string): FlowNode[] {
+  return nodes.map((node) => {
+    const link = ddLinkOf(node);
+    if (link === undefined || typeof link.address !== 'string') return node;
+    const anchored = anchorAddress(link.address, planDir);
+    return anchored === link.address ? node : { ...node, dd_link: { ...link, address: anchored } };
+  });
+}
+
+/** Prefix one address, unless it is already repo-root anchored. */
+function anchorAddress(address: string, planDir: string): string {
+  const trimmed = address.trim();
+  if (trimmed.length === 0) return address;
+  if (trimmed.startsWith('/') || trimmed.startsWith('#')) return address;
+  if (trimmed.startsWith(`${planDir}/`)) return address;
+  return `${planDir}/${trimmed}`;
+}
+
 export function createFlow(
   opts: CreateFlowOptions,
   deps: FlowServiceDeps,
@@ -322,6 +388,9 @@ export function createFlow(
       ? template.cursor
       : template.nodes[0]?.id;
 
+  const planDir = normalizePlanDir(opts.planDir);
+  const nodes = planDir === null ? template.nodes : anchorDdLinks(template.nodes, planDir);
+
   const doc: FlowDoc = {
     schema_version: resolved.schema.schemaVersionMajor,
     kind: resolved.schema.kind,
@@ -332,8 +401,9 @@ export function createFlow(
     created_at: createdAt,
     provenance,
     events: [],
-    nodes: template.nodes,
+    nodes,
   };
+  if (planDir !== null) doc.plan_dir = planDir;
   if (opts.title !== undefined && opts.title.length > 0) doc.title = opts.title;
   // The `created` (CRT) built-in event — the flow's first audit fact (ws-002 §E2).
   doc.events.push(
