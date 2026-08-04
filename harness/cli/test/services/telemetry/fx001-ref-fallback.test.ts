@@ -433,7 +433,11 @@ describe('FX001 T2 — the act envelope names its evidence source', () => {
 
     expect(code).toBe(1);
     expect(envelope.error.code).toBe('E100');
-    expect(envelope.error.details).toEqual({ ref_checked: true, resolution: 'both_empty' });
+    expect(envelope.error.details).toEqual({
+      ref_checked: true,
+      resolution: 'both_empty',
+      ref_namespace: 'present',
+    });
     expect(envelope.next_action).toContain('BOTH surfaces were checked');
   });
 
@@ -447,7 +451,11 @@ describe('FX001 T2 — the act envelope names its evidence source', () => {
 
     expect(code).toBe(1);
     expect(envelope.error.code).toBe('E100');
-    expect(envelope.error.details).toEqual({ ref_checked: false, resolution: 'ref_unavailable' });
+    expect(envelope.error.details).toEqual({
+      ref_checked: false,
+      resolution: 'ref_unavailable',
+      ref_namespace: 'absent',
+    });
     expect(envelope.next_action).toContain('NO local refs/harness-telemetry/* namespace');
     expect(envelope.next_action).not.toContain('BOTH surfaces were checked');
   });
@@ -467,6 +475,7 @@ describe('FX001 T2 — the act envelope names its evidence source', () => {
     expect(envelope.error.details).toEqual({
       ref_checked: false,
       resolution: 'resolution_failed',
+      ref_namespace: 'absent',
     });
     expect(envelope.next_action).toContain('absence of evidence, not evidence of absence');
   });
@@ -644,7 +653,11 @@ describe('FX001 R2 — a failed read never poses as an empty one', () => {
 
     expect(code).toBe(1);
     expect(envelope.error.code).toBe('E100');
-    expect(envelope.error.details).toEqual({ ref_checked: false, resolution: 'resolution_failed' });
+    expect(envelope.error.details).toEqual({
+      ref_checked: false,
+      resolution: 'resolution_failed',
+      ref_namespace: 'present',
+    });
     // The exact false claims this control exists to keep out of the envelope.
     expect(envelope.next_action).not.toContain('BOTH surfaces were checked');
     expect(envelope.next_action).not.toContain('NO local refs/harness-telemetry/* namespace');
@@ -663,8 +676,138 @@ describe('FX001 R2 — a failed read never poses as an empty one', () => {
     expect(envelope.error.details).toEqual({
       ref_checked: false,
       resolution: 'ref_unavailable',
+      ref_namespace: 'absent',
       records_skipped: 1,
     });
     expect(envelope.next_action).toContain('UNREADABLE');
+  });
+});
+
+/**
+ * FX001 · R3 — "not checked" is not "not there", and a miss covers only the roots it
+ * could reach.
+ *
+ * Two survivors of the R2 enumeration, both of which make the envelope ASSERT SOMETHING
+ * IT DID NOT ESTABLISH — the line that decides what still gets fixed:
+ *
+ *  · a caller with NO git read port was mapped to namespace `absent`. The three-valued
+ *    type was still one value short of the truth: it had no way to say "I had nothing to
+ *    look WITH". The same too-small-type defect as the boolean it replaced, one layer out.
+ *  · the LOCATOR silently drops the pij-folder candidate when `~/.pij/<id>.json` is
+ *    corrupt, so "the buffer held nothing" quietly covers fewer roots than it sounds like.
+ */
+describe('FX001 R3 — an unchecked surface names itself', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('NO git read port resolves ref_namespace: not_checked, never absent', async () => {
+    // The extension facade's exact shape. `absent` claimed the namespace was not there;
+    // nothing looked. The resolution stays `ref_unavailable` — the ref could not
+    // contribute either way — but the REASON is now a different one.
+    const outcome = await resolveSessionEvidence(PIJ, deps(new FakeFs({}, {})));
+
+    expect(outcome.evidence).toBeNull();
+    expect(outcome.resolution).toBe('ref_unavailable');
+    expect(outcome.ref_namespace).toBe('not_checked');
+  });
+
+  it('an EMPTY namespace still says absent — the two must not collapse the other way', async () => {
+    // The control that keeps the fix honest in both directions: a real, readable,
+    // empty ref namespace is an established `absent`, and must not drift to
+    // `not_checked` just because both produce the same resolution.
+    const outcome = await resolveSessionEvidence(PIJ, deps(new FakeFs({}, {}), new FakeGitRead()));
+
+    expect(outcome.resolution).toBe('ref_unavailable');
+    expect(outcome.ref_namespace).toBe('absent');
+  });
+
+  it('the act envelope tells a portless read from an absent namespace', async () => {
+    // Driven through the REAL act with no gitRead injected — the same path any caller
+    // without a git port takes.
+    const { io, out, err } = actIo();
+    let code = -1;
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      code = c ?? 0;
+      throw new Error(`exit:${code}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerTelemetryAct(program, io, {
+      fs: new FakeFs({}, {}),
+      proc: new FakeProcess({}, REPO),
+      clock: new FakeClock('2026-08-05T10:06:00.000Z'),
+      env: new FakeEnv({}, '/home/u'),
+      gitWrite: new FakeGitWrite(),
+    });
+    await expect(
+      program.parseAsync(['node', 'harness', 'telemetry', 'get', 'pij-nobody']),
+    ).rejects.toThrow(/^exit:/);
+    const envelope = JSON.parse(out() || err());
+
+    expect(code).toBe(1);
+    expect(envelope.error.details).toEqual({
+      ref_checked: false,
+      resolution: 'ref_unavailable',
+      ref_namespace: 'not_checked',
+    });
+    expect(envelope.next_action).toContain('NEVER CONSULTED');
+    // The false diagnostic this control exists to keep out: a `git fetch` cannot fix a
+    // missing port, and there was no finding of an absent namespace to report.
+    expect(envelope.next_action).not.toContain('NO local refs/harness-telemetry/* namespace');
+  });
+
+  it('a CORRUPT ~/.pij/<id>.json is disclosed, not silently dropped', async () => {
+    // The locator drops the worktree candidate and reads on. That is still the right
+    // behaviour — but the miss must say it covered fewer roots than it could have.
+    const fs = new FakeFs({ [`/home/u/.pij/${PIJ}.json`]: '{ "folder": ' }, {});
+    const outcome = await resolveSessionEvidence(PIJ, deps(fs, new FakeGitRead()));
+
+    expect(outcome.evidence).toBeNull();
+    expect(outcome.locator_degraded).toBe(true);
+  });
+
+  it('a state file with no usable folder degrades too; a good one does NOT', async () => {
+    const unusable = new FakeFs({ [`/home/u/.pij/${PIJ}.json`]: '{"folder":""}' }, {});
+    expect((await resolveSessionEvidence(PIJ, deps(unusable))).locator_degraded).toBe(true);
+
+    // The negative half: a state file that resolves is not a degradation, and neither
+    // is an ABSENT one — `FsPort.readText` returns null for missing AND unreadable
+    // alike, so flagging that would fire on every session without a pij state file.
+    const good = new FakeFs({ [`/home/u/.pij/${PIJ}.json`]: '{"folder":"/repo"}' }, {});
+    expect((await resolveSessionEvidence(PIJ, deps(good))).locator_degraded).toBe(false);
+    expect((await resolveSessionEvidence(PIJ, deps(new FakeFs({}, {})))).locator_degraded).toBe(
+      false,
+    );
+  });
+
+  it('the act envelope discloses a dropped root', async () => {
+    const fs = new FakeFs({ [`/home/u/.pij/pij-nobody.json`]: 'not json at all' }, {});
+    const { io, out, err } = actIo();
+    const code = await runGet(['pij-nobody'], io, fs, new FakeGitRead());
+    const envelope = JSON.parse(out() || err());
+
+    expect(code).toBe(1);
+    expect(envelope.error.details).toEqual({
+      ref_checked: false,
+      resolution: 'ref_unavailable',
+      ref_namespace: 'absent',
+      locator_degraded: true,
+    });
+    expect(envelope.next_action).toContain('candidate buffer root was DROPPED');
+  });
+
+  it('a locator degradation NEVER stops the read from answering', async () => {
+    // Fail-safe intact: the corrupt state file is disclosed AND the cwd candidate still
+    // resolves the session. Disclosure must not become a refusal.
+    const files: Record<string, string> = { [`/home/u/.pij/${PIJ}.json`]: '{ broken' };
+    const names: string[] = [];
+    capture(files, names, SESSION, PIJ, 1);
+    const fs = new FakeFs(files, { [TEL]: [SESSION], [`${TEL}/${SESSION}`]: names });
+
+    const outcome = await resolveSessionEvidence(PIJ, deps(fs, new FakeGitRead()));
+
+    expect(outcome.resolution).toBe('resolved');
+    expect(outcome.evidence?.segments).toBe(1);
+    expect(outcome.locator_degraded).toBe(true);
   });
 });

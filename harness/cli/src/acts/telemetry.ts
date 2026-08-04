@@ -1030,7 +1030,12 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           outcome.resolution === 'both_empty'
             ? 'BOTH surfaces were checked and both were empty — the live buffer and the committed refs/harness-telemetry/* rollup. Check the id (`pij list`); telemetry is captured per command — run a harness command in that session, then retry. Use --worktree <path> if it ran from a git worktree.'
             : outcome.resolution === 'ref_unavailable'
-              ? 'The live buffer held nothing and there was NO local refs/harness-telemetry/* namespace to check (ref_checked: false) — this is NOT proof the ref surface is empty. Fetch the namespace (`git fetch <remote> "refs/harness-telemetry/*:refs/harness-telemetry/*"`) and retry, or check the id (`pij list`). Use --worktree <path> if it ran from a git worktree.'
+              ? // Two different reasons the ref could not contribute, and they need
+                // different fixes: fetch the namespace, vs use a caller that HAS a git
+                // read port. "No port to look with" is not "there is nothing there" (R3).
+                outcome.ref_namespace === 'not_checked'
+                ? 'The live buffer held nothing and the committed refs/harness-telemetry/* surface was NEVER CONSULTED — this read had no git read port (ref_namespace: not_checked). That is not a statement about the ref surface at all. Run it through the CLI (`harness telemetry get <id>`), which injects the read port.'
+                : 'The live buffer held nothing and there was NO local refs/harness-telemetry/* namespace to check (ref_checked: false) — this is NOT proof the ref surface is empty. Fetch the namespace (`git fetch <remote> "refs/harness-telemetry/*:refs/harness-telemetry/*"`) and retry, or check the id (`pij list`). Use --worktree <path> if it ran from a git worktree.'
               : 'Resolution FAILED before either surface could be established (ref_checked: false) — neither the buffer nor the ref was proven empty, so this is an absence of evidence, not evidence of absence. Re-run; if it persists, check read access to the worktree buffer and the local git refs.';
         // A miss that had to REJECT records is not the same claim as a miss over an
         // empty surface: something was there and could not be read (R2).
@@ -1038,6 +1043,10 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           outcome.records_skipped > 0
             ? ` ${outcome.records_skipped} record(s) were present but UNREADABLE and skipped, so this miss is partly unread rather than empty — inspect the buffer/ref records before concluding the session produced nothing.`
             : '';
+        // …and a miss over FEWER ROOTS than exist is a smaller claim than it sounds (R3).
+        const degraded = outcome.locator_degraded
+          ? ' A candidate buffer root was DROPPED (no HOME, or an unusable ~/.pij/<id>.json), so this covers the roots that were reachable, not every root that exists — pass --worktree <path> to name the buffer explicitly.'
+          : '';
         const envelope = formatError(
           'telemetry',
           ErrorCodes.UNKNOWN,
@@ -1047,9 +1056,11 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
             details: {
               ref_checked: outcome.ref_checked,
               resolution: outcome.resolution,
+              ref_namespace: outcome.ref_namespace,
+              ...(outcome.locator_degraded ? { locator_degraded: true } : {}),
               ...(outcome.records_skipped > 0 ? { records_skipped: outcome.records_skipped } : {}),
             },
-            next_action: `${nextAction}${skipped}`,
+            next_action: `${nextAction}${skipped}${degraded}`,
           },
         );
         const port: OutputPort =

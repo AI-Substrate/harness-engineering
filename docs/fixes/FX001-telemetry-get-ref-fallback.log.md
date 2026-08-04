@@ -570,3 +570,93 @@ record inside an otherwise readable tree is skipped and the good record still an
 "fixed" rows 11–14 by breaking the behaviour they exist to protect.
 
 Full suite: 303 files / 4279 tests green.
+
+## FX001-R3 — the two boundaries that were asserting, not merely missing
+
+Ruled in from the R2 boundary list under a stopping rule I am recording verbatim,
+because it is the rule that ends this chain: **a finding gets FIXED only if it makes an
+envelope ASSERT SOMETHING IT DID NOT ESTABLISH. Anything else — capability gaps,
+contracts outside the fence, design questions — gets ROUTED, not fixed.** Boundaries 1
+(fleet lane reader) and 2 (`FsPort` fail-safe by contract) fail that test and stay
+routed; 3 and 4 meet it.
+
+### #4 — the type was STILL one value short
+
+I reported this as a capability gap (an extension calling the facade can never reach the
+ref fallback). The orchestrator verified it is also a TRUTH gap, and the sharper reading:
+
+```ts
+deps.gitRead === undefined ? 'absent' : telemetryRefNamespace(deps.gitRead)
+```
+
+A caller with **no git port** was assigned `absent` — an assertion nobody established.
+This is the same defect I had just diagnosed one layer out: R2 replaced a boolean that
+could not express `unreadable`, and the three-valued replacement still could not express
+**"I had nothing to look WITH"**. So the branch reached for the nearest wrong word again.
+A type too small to hold the truth does not produce one bug; it produces a bug at every
+site that must speak it.
+
+`RefNamespaceState` gains `not_checked`, produced only by a CALLER (the probe always has
+a port by construction). The resolution stays `ref_unavailable` — the ref genuinely could
+not contribute either way — but the REASON now reaches the envelope as
+`details.ref_namespace`, and the `next_action` differs because the fixes differ: a
+`git fetch` cannot repair a missing port.
+
+```text
+PRE-R3   details {"ref_checked":false,"resolution":"ref_unavailable"}
+         next_action "…there was NO local refs/harness-telemetry/* namespace to check…"
+         ^ false: nothing looked at the namespace at all.
+
+POST-R3  details {"ref_checked":false,"resolution":"ref_unavailable",
+                  "ref_namespace":"not_checked"}
+         next_action "…the committed refs/harness-telemetry/* surface was NEVER
+                      CONSULTED — this read had no git read port (ref_namespace:
+                      not_checked). That is not a statement about the ref surface at
+                      all. Run it through the CLI (`harness telemetry get <id>`)…"
+```
+
+The facade's capability gap itself is unchanged and stays a finding for prime: a
+`VerbContext` carries no git port, so it cannot be closed from inside
+`getSessionEvidenceFromContext`. What it may no longer do is MISLABEL the reason.
+
+### #3 — a miss over fewer roots than it sounds like
+
+`pijFolder` returning `null` for a corrupt `~/.pij/<id>.json` silently drops the worktree
+candidate, so a later "the buffer held nothing" covers the roots that were reachable
+rather than every root that exists. Disclosed in the smallest form, the way
+`records_skipped` was: `details.locator_degraded: true` plus one `next_action` sentence.
+No redesign — the read still degrades to the next candidate exactly as before.
+
+Flagged for the two cases the locator CAN establish: no HOME to build the path from, and
+a state file that was read but is corrupt / carries no usable `folder`. **Not** flagged
+for an absent file, because `FsPort.readText` returns `null` for missing AND unreadable
+alike — flagging that would fire on every session without a pij state file, and that
+conflation is boundary 2, routed rather than papered over with a flag that means nothing.
+
+### Controls (35 in the file, up from 28)
+
+All seven new controls were run against a re-simulated pre-R3 build (`not_checked` →
+`absent`, the locator note never set): **6 of 7 failed**, one is the both-directions
+negative control that must hold either way.
+
+```text
+× NO git read port resolves ref_namespace: not_checked, never absent
+    AssertionError: expected 'absent' to be 'not_checked'
+× the act envelope tells a portless read from an absent namespace
+× a CORRUPT ~/.pij/<id>.json is disclosed, not silently dropped
+× a state file with no usable folder degrades too; a good one does NOT
+× the act envelope discloses a dropped root
+× a locator degradation NEVER stops the read from answering
+✓ an EMPTY namespace still says absent — the two must not collapse the other way
+```
+
+The last one is deliberate: a real, readable, EMPTY namespace must stay an established
+`absent` and must not drift into `not_checked` just because both produce the same
+resolution. A fix that makes everything "unknown" is not more honest, it is less useful.
+And `a locator degradation NEVER stops the read from answering` keeps disclosure from
+turning into refusal — the corrupt state file is reported AND the cwd candidate still
+resolves the session.
+
+Full suite: 4286 tests. One integration test (`post-commit-hook`, "a value other than 1
+does NOT opt out") hit its 5s timeout on a loaded run and passes in 1.03s on its own and
+under `just checks`; it spawns a real git commit and is unrelated to this change.

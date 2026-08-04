@@ -201,14 +201,23 @@ function readShardStrict(gitRead: GitReadPort, ref: string): readonly ShardBlob[
 }
 
 /**
- * Whether a `refs/harness-telemetry/*` namespace exists to read in this clone — with
- * the third answer the boolean form could not hold (FX001 · R2).
+ * Whether a `refs/harness-telemetry/*` namespace exists to read in this clone — the
+ * answers a boolean could not hold (FX001 · R2/R3).
  *
- * `present` / `absent` are established facts. `unreadable` is the one that used to
- * masquerade as `absent`: the enumeration itself failed, so NOTHING about the ref
- * surface was established and any downstream "checked and empty" is a fabrication.
+ * `present` / `absent` are established facts. The other two are the ones that used to
+ * masquerade as `absent`, each a different reason the surface was never established:
+ *
+ * - `unreadable` — the enumeration itself FAILED, so any downstream "checked and empty"
+ *   is a fabrication (R2).
+ * - `not_checked` — there was no git read port to look WITH. "I have no port" is not
+ *   "there is nothing there", and the caller that had to say so was reaching for
+ *   `absent` because this value did not exist (R3). Only a CALLER can produce it — the
+ *   probe below always has a port by construction.
+ *
+ * The type being too small to express the truth is the defect; the branch that then
+ * picks the wrong value is only its symptom.
  */
-export type RefNamespaceState = 'present' | 'absent' | 'unreadable';
+export type RefNamespaceState = 'present' | 'absent' | 'unreadable' | 'not_checked';
 
 /**
  * Probe the ref namespace (FX001 · T2/R2). Never throws — the failure is REPORTED

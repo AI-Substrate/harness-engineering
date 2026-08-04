@@ -178,17 +178,47 @@ export interface SessionEvidenceOpts {
 /** The pij join key written into `captured_env` by the live capture (from `$PIJ_SESSION_ID`). */
 const PIJ_SESSION_ENV = 'PIJ_SESSION_ID';
 
-/** Read the pij peer's worktree `folder` from `~/.pij/<id>.json`, or null (never throws). */
-function pijFolder(deps: SessionEvidenceDeps, id: string): string | null {
+/**
+ * Whether the locator had to DROP a candidate buffer root for a reason it could not
+ * establish (FX001 · R3).
+ *
+ * A dropped root shrinks what "the buffer held nothing" covers, so a miss over the
+ * remaining roots asserts less than it sounds like it does. Disclosed as a flag rather
+ * than redesigned: the read still degrades to the next candidate exactly as before.
+ */
+export interface LocatorNotes {
+  /** `true` once any candidate root was dropped for an UNESTABLISHED reason. */
+  degraded: boolean;
+}
+
+/**
+ * Read the pij peer's worktree `folder` from `~/.pij/<id>.json` (never throws), saying
+ * whether the answer was ESTABLISHED.
+ *
+ * `degraded` marks the two cases where the drop proves nothing about the peer: no HOME
+ * to build the path from, and a state file that was read but is corrupt / carries no
+ * usable `folder`. An absent file (`readText` → `null`) is NOT flagged: `FsPort` returns
+ * `null` for missing AND unreadable alike, so flagging it would fire on every session
+ * that simply has no pij state file — that conflation is the fs-port contract boundary,
+ * routed rather than papered over here.
+ */
+function pijFolder(
+  deps: SessionEvidenceDeps,
+  id: string,
+): { folder: string | null; degraded: boolean } {
   const home = deps.env.home();
-  if (!home) return null;
+  if (!home) return { folder: null, degraded: true };
   const raw = deps.fs.readText(posixJoin(toPosix(home), '.pij', `${id}.json`));
-  if (raw === null) return null;
+  if (raw === null) return { folder: null, degraded: false };
   try {
     const folder = (JSON.parse(raw) as { folder?: unknown }).folder;
-    return typeof folder === 'string' && folder.length > 0 ? folder : null;
+    return typeof folder === 'string' && folder.length > 0
+      ? { folder, degraded: false }
+      : { folder: null, degraded: true };
   } catch {
-    return null; // a corrupt state file falls through to the next candidate
+    // A corrupt state file falls through to the next candidate — but SILENTLY doing so
+    // is how a later "both surfaces were empty" comes to cover fewer roots than it claims.
+    return { folder: null, degraded: true };
   }
 }
 
@@ -196,11 +226,15 @@ function pijFolder(deps: SessionEvidenceDeps, id: string): string | null {
  * Telemetry buffer dirs to try, in priority order (deduped): worktree → pij folder → cwd.
  * Exported (read-only) so the fleet-evidence service reuses the SAME worktree-safe
  * buffer-location logic instead of re-deriving it (plan 051 · T002).
+ *
+ * `notes` (optional, additive) records whether a candidate was dropped for a reason the
+ * locator could not establish (R3).
  */
 export function candidateRoots(
   id: string,
   deps: SessionEvidenceDeps,
   opts?: SessionEvidenceOpts,
+  notes?: LocatorNotes,
 ): string[] {
   const roots: string[] = [];
   const add = (root: string | null | undefined): void => {
@@ -209,7 +243,9 @@ export function candidateRoots(
     if (!roots.includes(dir)) roots.push(dir);
   };
   add(opts?.worktree);
-  add(pijFolder(deps, id));
+  const pij = pijFolder(deps, id);
+  if (pij.degraded && notes) notes.degraded = true;
+  add(pij.folder);
   add(deps.proc.cwd());
   return roots;
 }
@@ -655,7 +691,12 @@ export type SessionEvidenceResolution =
   | 'resolved'
   /** Both surfaces really were consulted and neither held this session. */
   | 'both_empty'
-  /** The buffer held nothing and there was NO local ref namespace to check. */
+  /**
+   * The buffer held nothing and the ref surface could not be CONSULTED — either no
+   * local namespace exists, or there was no git read port to look with. Which one is
+   * in {@link SessionEvidenceOutcome.ref_namespace}; they send a reader to different
+   * fixes (fetch the namespace vs use a caller that has a port).
+   */
   | 'ref_unavailable'
   /** The read failed before either surface could be established — nothing is known. */
   | 'resolution_failed';
@@ -666,6 +707,18 @@ export interface SessionEvidenceOutcome {
   /** Whether a local `refs/harness-telemetry/*` namespace was there to consult. */
   ref_checked: boolean;
   resolution: SessionEvidenceResolution;
+  /**
+   * WHY the ref surface could or could not contribute — the precise reason behind the
+   * coarse `resolution` (R3). `not_checked` is the one `ref_checked: false` used to
+   * hide: no git read port existed, so nothing was looked at.
+   */
+  ref_namespace: RefNamespaceState;
+  /**
+   * `true` when the buffer LOCATOR dropped a candidate root for a reason it could not
+   * establish (no HOME, or a corrupt `~/.pij/<id>.json`) — so a miss covers the roots
+   * that were reachable, not every root that exists (R3).
+   */
+  locator_degraded: boolean;
   /**
    * Records the read REJECTED as malformed (buffer files + rolled ref records).
    * Skipping them is the documented fail-safe and stays that way — but a miss with
@@ -688,15 +741,28 @@ export async function resolveSessionEvidence(
   opts?: SessionEvidenceOpts,
 ): Promise<SessionEvidenceOutcome> {
   const skips: RecordSkips = { skipped: 0 };
+  const notes: LocatorNotes = { degraded: false };
+  // Hoisted so even the catch reports the namespace it HAD established rather than
+  // resetting to a value it did not observe.
+  let namespace: RefNamespaceState = 'not_checked';
+  const provenance = (): Pick<
+    SessionEvidenceOutcome,
+    'ref_namespace' | 'locator_degraded' | 'records_skipped'
+  > => ({
+    ref_namespace: namespace,
+    locator_degraded: notes.degraded,
+    records_skipped: skips.skipped,
+  });
   try {
     // Is there a ref namespace at all? Answered once, up front, so the provenance is
-    // the same statement whichever tier ends up answering — including a miss. THREE
-    // answers, not two: `unreadable` is the one that used to pass as `absent` (R2).
-    const namespace: RefNamespaceState =
-      deps.gitRead === undefined ? 'absent' : telemetryRefNamespace(deps.gitRead);
+    // the same statement whichever tier ends up answering — including a miss. FOUR
+    // answers, not two: `unreadable` is the one that used to pass as `absent` (R2), and
+    // `not_checked` — no port to look WITH — is the one this branch itself used to
+    // mislabel as `absent` (R3). "I have no port" is not "there is nothing there".
+    namespace = deps.gitRead === undefined ? 'not_checked' : telemetryRefNamespace(deps.gitRead);
     const refChecked = namespace === 'present';
 
-    for (const telDir of candidateRoots(pijSessionId, deps, opts)) {
+    for (const telDir of candidateRoots(pijSessionId, deps, opts, notes)) {
       const matched = readBufferedSegments(deps.fs, telDir, skips).filter(
         (e) => e.seg.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
       );
@@ -708,7 +774,7 @@ export async function resolveSessionEvidence(
       // this fix exists to abolish; keep looking rather than dress it up as one (R2).
       if (evidence.segments === 0) continue;
       evidence.ref_checked = refChecked;
-      return { evidence, ref_checked: refChecked, resolution: 'resolved', ...tally(skips) };
+      return { evidence, ref_checked: refChecked, resolution: 'resolved', ...provenance() };
     }
 
     // The buffer is absent or flushed-markers-only. The ref is not a consolation
@@ -722,7 +788,7 @@ export async function resolveSessionEvidence(
           evidence: ref.evidence,
           ref_checked: refChecked,
           resolution: 'resolved',
-          ...tally(skips),
+          ...provenance(),
         };
       }
       // The read did not complete — a git command failed. Whatever came back empty
@@ -732,35 +798,36 @@ export async function resolveSessionEvidence(
           evidence: null,
           ref_checked: false,
           resolution: 'resolution_failed',
-          ...tally(skips),
+          ...provenance(),
         };
       }
     }
     // A miss. WHICH miss is the whole point: "checked and empty", "there was nothing
-    // to check", and "the check itself failed" send a reader to three different places.
+    // to check", "no port to check with", and "the check itself failed" send a reader
+    // to four different places.
     if (namespace === 'unreadable') {
       return {
         evidence: null,
         ref_checked: false,
         resolution: 'resolution_failed',
-        ...tally(skips),
+        ...provenance(),
       };
     }
     return {
       evidence: null,
       ref_checked: refChecked,
       resolution: refChecked ? 'both_empty' : 'ref_unavailable',
-      ...tally(skips),
+      ...provenance(),
     };
   } catch {
     // Nothing was established — not the buffer, not the ref. Say exactly that.
-    return { evidence: null, ref_checked: false, resolution: 'resolution_failed', ...tally(skips) };
+    return {
+      evidence: null,
+      ref_checked: false,
+      resolution: 'resolution_failed',
+      ...provenance(),
+    };
   }
-}
-
-/** Carry the rejected-record count onto an outcome (one spelling, every branch). */
-function tally(skips: RecordSkips): { records_skipped: number } {
-  return { records_skipped: skips.skipped };
 }
 
 /**
