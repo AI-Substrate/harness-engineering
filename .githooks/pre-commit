@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# Pre-commit telemetry CAPTURE (plan 068 phase 2) — the DETERMINISTIC ANCHOR point.
+#
+# Buffers ONE counts-only telemetry segment for the active session while HEAD is
+# still the commit the work was based on, so file evidence anchors to the right
+# commit even when nobody ran a harness verb between editing and committing.
+# Without it, attribution is rhythm-dependent: "run `harness checks` before every
+# commit" is a discipline, and a discipline that must be prompted will be skipped
+# (measured failing twice during the 066 work). Capture ONLY — never sync, never
+# push, never checks.
+#
+# ─── READ THIS BEFORE YOU EDIT — pre-commit IS NOT post-commit ───────────────
+# GIT HONOURS THIS HOOK'S EXIT CODE. The post-commit hook beside it is safe
+# STRUCTURALLY, because git IGNORES post-commit's exit code — nothing that file
+# does can block a commit. Here, a non-zero exit EATS THE COMMIT. "exit 0 always"
+# is therefore a property we must BUILD, not one we inherit.
+#
+# So: `trap 'exit 0' EXIT` is the first executable line, and `set -u` is BANNED.
+# This is measured, not reasoned about — the o-prime copied post-commit's
+# `set -uo pipefail` into a pre-commit hook in a throwaway repo and one unbound
+# variable silently blocked the commit, aborting BEFORE the `|| true` guards and
+# the trailing `exit 0` that were supposedly protecting it. `set -u` aborts before
+# its own safety net. The trap survives anything: unbound variable, syntax-time
+# failure of any command, early return, a `kill`ed child. Do not add `set -e`,
+# `set -u`, or a bare `set -o pipefail` "for hygiene" — there is no pipeline here
+# whose status we read, and each one is a new way to eat someone's commit.
+#
+# Why this is SAFE — and categorically different from the removed pre-push gate:
+#   - it runs the CAPTURE preamble only: one short node process, no build, no
+#     tests, no git writes (the buffer lives in gitignored `.harness/temp/`);
+#   - it invokes the harness with NO verb, so the recorded command is `harness`
+#     and the envelope is the orientation envelope. Telemetry housekeeping is
+#     scoped to `boot`/`checks`/`doctor` (`housekeeping.ts`), and only `checks`
+#     auto-pushes — so this invocation cannot sync or push even by accident.
+#     STRUCTURAL, not disciplinary: the recursion class that pinned a 16-core box
+#     at load 175 (a pre-push gate whose own push re-fired the gate) needs a hook
+#     that can trigger a git write. A capture cannot trigger a commit.
+#   - every failure mode — no node, dist not built, unborn HEAD, no session,
+#     telemetry off — is a silent no-op.
+#
+# MEASURED firing matrix (throwaway repo, counted, not assumed — 2026-08-04):
+#   git commit .................. FIRES     git rebase (replayed commits) .. no
+#   git commit --amend .......... FIRES     git cherry-pick ................ no
+#                                           git merge --no-ff .............. no
+#                                             (that path is `pre-merge-commit`)
+#
+# AMEND DISPOSITION = DEDUPE (skip). On `--amend`, HEAD is the commit about to be
+# DISCARDED, so capturing there would anchor evidence to an object that is about
+# to become unreachable. Skipping is LOSSLESS: the transcript-window cursor only
+# advances when a segment is spooled, so the very same work is still captured by
+# the next fire — against a commit that exists. Detection reads the invoking
+# `git` process's own argv (this hook's parent); if that read fails we fall
+# through and capture, which is the safe direction (noise, never loss).
+#
+# Enable once per clone:   just install-hooks   (sets core.hooksPath=.githooks)
+# Disarm just this hook:   export HARNESS_NO_TELEMETRY_PRECOMMIT=1
+# Telemetry off entirely:  export HARNESS_NO_TELEMETRY=1
+#
+# Latency is INSTRUMENTED, not commented: each fire appends its wall duration to
+# `.harness/temp/precommit-latency.tsv` and `harness doctor` reads that file and
+# warns when p95 crosses the recorded budget (`PRECOMMIT_P95_BUDGET_MS`). A hook
+# on the critical path of every commit does not get to police itself with prose.
+trap 'exit 0' EXIT
+
+[ "${HARNESS_NO_TELEMETRY:-}" = "1" ] && exit 0
+[ "${HARNESS_NO_TELEMETRY_PRECOMMIT:-}" = "1" ] && exit 0
+
+# C2 — dedupe the amend fire (see AMEND DISPOSITION above). Matched as whole
+# TOKENS, not a substring: the invoking argv contains the commit MESSAGE too, and
+# `git commit -m "use --among other flags"` must not silently disarm the hook.
+# The abbreviations are listed because git accepts any unambiguous prefix and
+# `--am*` has exactly one expansion (verified: `git commit --amen` is accepted).
+case " $(ps -o args= -p "$PPID" 2>/dev/null | tr '\n' ' ') " in
+  *' --amend '*|*' --amen '*|*' --ame '*|*' --am '*) exit 0 ;;
+esac
+
+command -v node >/dev/null 2>&1 || exit 0
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+[ -n "$repo_root" ] || exit 0
+bin="$repo_root/harness/cli/bin/harness.js"
+[ -f "$bin" ] || exit 0   # dist not built / not the harness repo → nothing to do
+
+# Epoch milliseconds, or empty when this host has no sub-second clock. `%N` is
+# supported by GNU date and by modern Darwin date; where it is not, the result
+# holds a literal `N` and we record NOTHING rather than a fabricated number.
+now_ms() {
+  ns="$(date +%s%N 2>/dev/null)"
+  case "$ns" in
+    ''|*[!0-9]*) return 0 ;;
+  esac
+  [ "${#ns}" -ge 16 ] || return 0
+  printf '%s' "${ns%??????}"
+}
+
+started="$(now_ms)"
+
+# Capture-only invocation: no verb (recorded command is `harness`), extensions
+# skipped (nothing here needs them, and it roughly halves the process cost).
+node "$bin" --json --no-extensions >/dev/null 2>&1 || true
+
+finished="$(now_ms)"
+if [ -n "$started" ] && [ -n "$finished" ]; then
+  samples="$repo_root/.harness/temp/precommit-latency.tsv"
+  mkdir -p "$repo_root/.harness/temp" 2>/dev/null
+  # `.harness/temp/` is gitignored and self-ignoring (it carries its own
+  # `.gitignore` = `*`), so this write can never dirty the tree or the index.
+  printf '%s\t%s\n' "$finished" "$((finished - started))" >> "$samples" 2>/dev/null
+  # Bounded ring: trim back to the most recent 50 samples once it drifts past 200.
+  if [ "$(wc -l < "$samples" 2>/dev/null || echo 0)" -gt 200 ]; then
+    tail -n 50 "$samples" > "$samples.tmp" 2>/dev/null && mv "$samples.tmp" "$samples" 2>/dev/null
+  fi
+fi
+
+exit 0
