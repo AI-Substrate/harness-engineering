@@ -1,6 +1,6 @@
 {
   "dd_schema": 1,
-  "description": "A builder plan: goals, acceptance criteria, phases, tasks, and one evidence list per task.",
+  "description": "A builder plan: goals, acceptance criteria, phases, tasks, and one evidence list per task. Assertion lists live in `done_when`, where `pressure` is MANDATORY (a backpressure row, or the literal `not-applicable`). The `evidence` section is a DEPRECATED ALIAS kept only so frozen corpora keep validating while they migrate: it is dropped \u2014 and `tasks[].done` regains its `builder/plan/section/done_when` target pin \u2014 in tk-7061 (plan 070, ph-7003), which is the same commit that migrates the exemplar. Do not author a new `evidence` section.",
   "enums": {
     "plan_status": {
       "values": [
@@ -81,11 +81,13 @@
           },
           "backpressure": {
             "type": "link",
-            "target": "builder/backpressure/section/rows"
+            "target": "builder/backpressure/section/rows",
+            "rel": "pressure"
           },
           "log": {
             "type": "link",
-            "target": "builder/execution-log/section/entries"
+            "target": "builder/execution-log/section/entries",
+            "rel": "ref"
           },
           "mode": {
             "type": "enum",
@@ -151,11 +153,13 @@
             },
             "pressure": {
               "type": "link",
-              "target": "builder/backpressure/section/rows"
+              "target": "builder/backpressure/section/rows",
+              "rel": "pressure"
             },
             "proven_by": {
               "type": "link",
-              "target": "builder/execution-log/section/entries"
+              "target": "builder/execution-log/section/entries",
+              "rel": "proven_by"
             }
           }
         }
@@ -197,7 +201,8 @@
               }
             },
             "tasks": {
-              "type": "link"
+              "type": "link",
+              "rel": "derives"
             },
             "objective": {
               "type": "text"
@@ -249,7 +254,7 @@
             },
             "done": {
               "type": "link",
-              "target": "builder/plan/section/evidence"
+              "rel": "derives"
             },
             "success": {
               "type": "text"
@@ -261,12 +266,60 @@
               "type": "array",
               "items": {
                 "type": "link",
-                "target": "builder/plan/section/acceptance_criteria"
+                "target": "builder/plan/section/acceptance_criteria",
+                "rel": "satisfies"
               }
             }
           }
         }
       }
+    },
+    "done_when": {
+      "shape": {
+        "type": "object",
+        "allowAdditional": true,
+        "fields": {},
+        "valuesShape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "assertion",
+              "state",
+              "pressure"
+            ],
+            "fields": {
+              "id": {
+                "type": "string"
+              },
+              "assertion": {
+                "type": "text"
+              },
+              "state": {
+                "type": "state"
+              },
+              "note": {
+                "type": "string"
+              },
+              "receipt": {
+                "type": "string"
+              },
+              "proven_by": {
+                "type": "link",
+                "target": "builder/execution-log/section/entries",
+                "rel": "proven_by"
+              },
+              "pressure": {
+                "type": "link",
+                "target": "builder/backpressure/section/rows",
+                "rel": "pressure"
+              }
+            }
+          }
+        }
+      },
+      "title": "Done when"
     },
     "evidence": {
       "shape": {
@@ -300,11 +353,13 @@
               },
               "proven_by": {
                 "type": "link",
-                "target": "builder/execution-log/section/entries"
+                "target": "builder/execution-log/section/entries",
+                "rel": "proven_by"
               },
               "pressure": {
                 "type": "link",
-                "target": "builder/backpressure/section/rows"
+                "target": "builder/backpressure/section/rows",
+                "rel": "pressure"
               }
             }
           }

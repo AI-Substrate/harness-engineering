@@ -1,6 +1,11 @@
 import { isAddressFailure, normalizeFilePath, parseAddress } from './address.js';
 import { LINKS_BUCKET_FIELD, readLinksBucket } from './bucket.js';
-import { COMPLETION_STATES, ID_PREFIXES, MINTED_ID_PATTERN } from './constants.js';
+import {
+  COMPLETION_STATES,
+  ID_PREFIXES,
+  MINTED_ID_PATTERN,
+  PRESSURE_NOT_APPLICABLE,
+} from './constants.js';
 import type { DdDoc, DdShape, ResolvedDdSchema } from './model.js';
 import { relOf } from './rel.js';
 import { isRecord } from './value.js';
@@ -132,6 +137,12 @@ function nonEmptyString(value: unknown): value is string {
 }
 
 function validateLink(raw: string, shape: DdShape, location: string, ctx: ValidationContext) {
+  // `not-applicable` is the explicit out for an assertion no instrument checks.
+  // It is keyed on the RELATION, never on a field name, so any schema that
+  // declares `rel: "pressure"` inherits the escape — and silence still fails,
+  // which is the whole bargain: saying "nothing checks this" is legal, saying
+  // nothing at all is not.
+  if (raw === PRESSURE_NOT_APPLICABLE && relOf(shape) === 'pressure') return;
   const address = parseAddress(raw);
   if (isAddressFailure(address)) {
     addIssue(ctx, 'address-malformed', 'ERROR', location, address.message);
@@ -284,13 +295,16 @@ function validateShape(
       }
       for (const field of shape.required ?? []) {
         if (!(field in value)) {
-          addIssue(
-            ctx,
-            'schema-shape',
-            'ERROR',
-            `${location}.${field}`,
-            `missing required field "${field}"`,
-          );
+          // A missing REQUIRED PRESSURE link earns its own sentence. "missing
+          // required field" is true and useless; the rule this breaks is a
+          // design decision an author needs to be told about, including the way
+          // out of it.
+          const missing = shape.fields?.[field];
+          const message =
+            missing?.type === 'link' && relOf(missing) === 'pressure'
+              ? `"${field}" names no instrument — link a backpressure row, or say "${PRESSURE_NOT_APPLICABLE}" on purpose`
+              : `missing required field "${field}"`;
+          addIssue(ctx, 'schema-shape', 'ERROR', `${location}.${field}`, message);
         }
       }
       for (const [field, fieldShape] of Object.entries(shape.fields ?? {})) {

@@ -7,11 +7,11 @@ import { fileURLToPath } from 'node:url';
 const REPO_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 
 /**
- * The section holding per-task assertion lists. Named once because tk-7015
- * renames it (`evidence` → `done_when`) and a factory that spelled it inline in
- * four places would be four places to miss.
+ * The section holding per-task assertion lists. Named once because it was renamed
+ * once (`evidence` → `done_when`, tk-7015) and a factory that spelled it inline
+ * in four places would have been four places to miss.
  */
-export const ASSERTIONS_SECTION = 'evidence';
+export const ASSERTIONS_SECTION = 'done_when';
 
 export interface SyntheticAssertion {
   id: string;
@@ -181,6 +181,7 @@ export function createSyntheticPlan(options: SyntheticPlanOptions = {}): Synthet
           status: options.status ?? 'draft',
         },
       },
+      { name: 'summary', value: options.title ?? 'A synthetic plan for tests.' },
       {
         name: 'acceptance_criteria',
         value: acceptance.map((row) => ({
@@ -216,6 +217,7 @@ export function createSyntheticPlan(options: SyntheticPlanOptions = {}): Synthet
             status: 'in-progress',
           },
         },
+        { name: 'summary', value: `Task detail for ${phase.id}.` },
         { name: 'tasks', value: phase.tasks.map((task) => taskRow(task, phase.id)) },
         ...(withAssertions.length > 0
           ? [

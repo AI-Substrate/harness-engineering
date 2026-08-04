@@ -73,30 +73,60 @@ describe('exemplar builder/* schema packages', () => {
     expect(issues).toEqual([]);
   });
 
-  it('declares D2 link columns on AC rows and on every evidence entry', () => {
+  it('declares D2 link columns on AC rows and on every done_when entry', () => {
     const record = resolver.resolveDetailed('builder/plan').record;
     const acRow = record?.schema.sections.acceptance_criteria?.shape.items?.fields;
     expect(acRow?.pressure).toEqual({
       type: 'link',
       target: 'builder/backpressure/section/rows',
+      rel: 'pressure',
     });
     expect(acRow?.proven_by).toEqual({
       type: 'link',
       target: 'builder/execution-log/section/entries',
+      rel: 'proven_by',
     });
 
-    // Each task row points at ITS own evidence list, in this document.
+    // Each task row points at ITS own assertion list, in this document. The
+    // `target` pin is DELIBERATELY absent for the duration of the `evidence`
+    // alias window — a corpus mid-migration may legally land in either section —
+    // and tk-7061 restores it pointed at `builder/plan/section/done_when` in the
+    // same commit that drops the alias.
     expect(record?.schema.sections.tasks?.shape.items?.fields?.done).toEqual({
       type: 'link',
-      target: 'builder/plan/section/evidence',
+      rel: 'derives',
     });
   });
 
-  it('keys the evidence section by the owning task id — a map, not an id-bearing row', () => {
+  /**
+   * The alias exists on sufferance, and this test is its leash: it names the task
+   * that must remove it, so the deprecation cannot quietly become permanent.
+   */
+  it('keeps `evidence` only as a signposted legacy alias of `done_when`', () => {
+    const record = resolver.resolveDetailed('builder/plan').record;
+    expect(record?.schema.sections.done_when).toBeDefined();
+    expect(record?.schema.sections.evidence).toBeDefined();
+    // The signpost lives in the schema DESCRIPTION, never in a section `title`:
+    // a title is the rendered heading, so a deprecation notice there would
+    // rewrite every legacy sibling's markdown and trip the drift gate.
+    expect(record?.schema.sections.evidence?.title).toBeUndefined();
+    expect(record?.description).toContain('DEPRECATED ALIAS');
+    expect(record?.description).toContain('tk-7061');
+
+    // Mandatory pressure fires on the LIVING section only. That asymmetry is the
+    // whole reason the alias is safe: a frozen corpus keeps validating, while
+    // anything authored today must name its instrument.
+    const living = record?.schema.sections.done_when?.shape.valuesShape?.items?.required;
+    expect(living).toContain('pressure');
+    const legacy = record?.schema.sections.evidence?.shape.valuesShape?.items?.required;
+    expect(legacy).not.toContain('pressure');
+  });
+
+  it('keys the done_when section by the owning task id — a map, not an id-bearing row', () => {
     // workshop-002 Ruling 3: `tk-9f2a:` is a KEY. As an id-bearing array entry it
     // would collide with the task row's own id (ids are unique per FILE), which is
     // exactly what a live `dd validate` reported before this shape was adopted.
-    const evidence = section(doc('plan'), 'evidence').value as Record<string, unknown>;
+    const evidence = section(doc('plan'), 'done_when').value as Record<string, unknown>;
     expect(Array.isArray(evidence)).toBe(false);
     const taskIds = (section(doc('plan'), 'tasks').value as { id: string }[]).map(
       (task) => task.id,
@@ -115,7 +145,7 @@ describe('exemplar builder/* schema packages', () => {
   it('still derives the gate through the map — ownership kept, nothing self-reported', () => {
     const record = resolver.resolveDetailed('builder/plan').record;
     if (!record) throw new Error('expected builder/plan to resolve');
-    const evidence = section(doc('plan'), 'evidence');
+    const evidence = section(doc('plan'), 'done_when');
 
     // Six assertions across two tasks; `human-skipped` passes, the one `unchecked`
     // entry is what holds the gate — and it is named, not merely counted.
@@ -129,7 +159,7 @@ describe('exemplar builder/* schema packages', () => {
   });
 
   it('carries a human-skipped receipt with the human words, as the convention requires', () => {
-    const evidence = section(doc('plan'), 'evidence').value as Record<
+    const evidence = section(doc('plan'), 'done_when').value as Record<
       string,
       { id: string; state: string; receipt?: string }[]
     >;

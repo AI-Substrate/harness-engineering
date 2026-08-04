@@ -80,7 +80,7 @@ function stringify(value: unknown): string {
  * single phase. A plan that starts as one file and grows into many is a
  * migration; a plan that starts split is just a plan. The overview carries meta,
  * goals, non-goals, acceptance criteria and phases; each phase's detail lives in
- * its own task file with the evidence section already present, so the first task
+ * its own task file with the done_when section already present, so the first task
  * added has somewhere to put its proof instead of inventing a section.
  */
 export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
@@ -104,6 +104,10 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
           summary: '',
         },
       },
+      // `summary` is a REQUIRED first-class section, not the meta field of the
+      // same name — a scaffold that omitted it would emit a plan that fails its
+      // own `plan validate` on the first run.
+      { name: 'summary', value: '' },
       { name: 'goals', value: [] as string[] },
       { name: 'non_goals', value: [] as string[] },
       { name: 'acceptance_criteria', value: [] as unknown[] },
@@ -134,8 +138,11 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
           name: 'meta',
           value: { title: phase.title, slug: phase.slug, status: 'draft', summary: '' },
         },
+        { name: 'summary', value: '' },
         { name: 'tasks', value: [] as unknown[] },
-        { name: 'evidence', value: {} },
+        // `done_when`, never `evidence`: the alias exists only for corpora that
+        // predate the rename, and nothing new should be authored into it.
+        { name: 'done_when', value: {} },
       ],
       references: [] as unknown[],
     }),

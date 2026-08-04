@@ -105,7 +105,7 @@ describe('plan scaffold — pure', () => {
     expect(phases[1]?.tasks).toBe('tasks/phase-2-second/tasks.dd.json#tasks');
   });
 
-  it('gives every task file its evidence section up front', () => {
+  it('gives every task file its done_when section up front', () => {
     // So the first task added has somewhere to put its proof, instead of having
     // to invent a section that workshop-002 already named.
     const scaffold = buildPlanScaffold({ slug: 'demo', phases: ['A'] });
@@ -113,8 +113,13 @@ describe('plan scaffold — pure', () => {
       name: string;
       value: unknown;
     }>;
-    expect(sections.map((section) => section.name)).toEqual(['meta', 'tasks', 'evidence']);
-    expect(sections[2]?.value).toEqual({});
+    expect(sections.map((section) => section.name)).toEqual([
+      'meta',
+      'summary',
+      'tasks',
+      'done_when',
+    ]);
+    expect(sections[3]?.value).toEqual({});
   });
 
   it('records no basis for documents nobody has verified yet', () => {

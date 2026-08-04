@@ -145,16 +145,16 @@ describe('harness dd get/set/add/rm — live', () => {
     const born = await runCli([
       'dd',
       'add',
-      `${tasks()}#evidence/tk-0002`,
-      '[{"id":"dw-0002","assertion":"first","state":"unchecked"}]',
+      `${tasks()}#done_when/tk-0002`,
+      '[{"id":"dw-0002","assertion":"first","state":"unchecked","pressure":"not-applicable"}]',
     ]);
     expect(born.code).toBe(0);
 
     const appended = await runCli([
       'dd',
       'add',
-      `${tasks()}#evidence/tk-0002`,
-      '{"assertion":"second","state":"unchecked"}',
+      `${tasks()}#done_when/tk-0002`,
+      '{"assertion":"second","state":"unchecked","pressure":"not-applicable"}',
       '--mint',
       'dw',
     ]);
@@ -163,7 +163,7 @@ describe('harness dd get/set/add/rm — live', () => {
     const doc = JSON.parse(readFileSync(corpus.taskFiles['ph-0001'] as string, 'utf8')) as {
       sections: { name: string; value: Record<string, { id: string }[]> }[];
     };
-    const entries = doc.sections.find((s) => s.name === 'evidence')?.value['tk-0002'];
+    const entries = doc.sections.find((s) => s.name === 'done_when')?.value['tk-0002'];
     expect(entries?.map((entry) => entry.id)).toStrictEqual(['dw-0002', 'dw-0003']);
   });
 
