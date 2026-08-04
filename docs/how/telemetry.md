@@ -286,6 +286,58 @@ guessing). And pre-069 shards carry no `control` field, so **historical
 discipline numbers are permanently unmeasurable** — reports declare this as
 `coverage.push_signatures_unavailable` instead of rendering a false zero.
 
+### Capture liveness & late recovery (plan 070)
+
+Some agent harnesses write their transcripts **lazily** — cursor-agent (since
+~July 2026) buffers the transcript in memory during an agent turn and flushes
+at turn boundaries, so a long agentic run is a 2-line stub on disk for its
+entire duration and materializes at the end. Every in-session capture honestly
+sees "nothing new", and a session whose last flush lands after its last
+harness command strands its evidence forever — **a confident thin record, not
+an error**. Two instruments make that class observable and recoverable:
+
+- **Liveness marker** — every eligible capture attempt records
+  `.harness/temp/telemetry/<session>.liveness.json`: last outcome
+  (`captured` / `no-window` / `unread-window` / `source-unreadable` /
+  `error` + error *class*, never a message), the watermark, the observed
+  source extent, and the source path. Local-only: never synced, never in a
+  ref, pruned with its session.
+- **Detectors** (surface: `harness doctor`, layer `capture-liveness`) — a
+  **stall** detector (2+ consecutive attempts that saw an unconsumed window
+  and didn't capture — names which stage stopped), a **residue** detector
+  (a quiet lane whose source holds materially more than it ever captured:
+  residue > cursor and ≥10 lines, 6h idle), and a **lost** state (source
+  file gone for a lane whose marker *recorded* seeing unconsumed work —
+  never guessed from absence alone). Owed lanes say how they'll be
+  recovered; unrecoverable lanes say why (`no reconcile adapter…`, `source
+  has no usable evidence`, `source file no longer exists`) and never get a
+  sync suggestion that would quietly never come true. All WARN, never error.
+  Green means **nothing is owed anywhere**.
+- **Reconciliation** — on an explicit `harness telemetry sync` (the
+  post-commit hook runs one; hourly-debounced; the `checks` auto-push path
+  deliberately does not sweep), owed lanes are re-read from the recorded
+  source and the missed segment is emitted **attributed to the original
+  session** and shipped in the same pass. A recovered segment declares
+  itself: Segment 2.7 `capture_mode: 'reconciled'` (the ONLY accepted value
+  — a live segment is proven live by the field's *absence*, the one claim
+  that cannot be forged by omission), interval-grade `t_precision` (recovered
+  events never accrue agent-working time), the window end anchored to the
+  source file's mtime (an observed fact, never the recovery clock), and
+  attribution taken ONLY from the marker — in reconcile mode adapters
+  structurally have **no env access** (facts the source can't establish are
+  omitted, never inherited from the recovery shell). Recovery is idempotent
+  (two independent guards) and possible in a **[6h, 14d)** window whose
+  ordering against the buffer prune is pinned by test. Reports and the
+  attribution table render recovered evidence **visibly marked** — honesty
+  reaches the render, not just the record.
+
+Known limits, stated rather than papered over: the sweep is
+**per-worktree** — each worktree heals itself on its own sync; run
+`harness telemetry sync` in a worktree **before removing it** (a deleted
+worktree destroys markers, buffers, and watermarks together — nothing can
+recover what no longer exists); and the last session before a repo goes
+quiet stays thin until anything touches that repo again.
+
 ## Disabling telemetry
 
 Two switches, broad and narrow. Both are environment variables (telemetry is on
