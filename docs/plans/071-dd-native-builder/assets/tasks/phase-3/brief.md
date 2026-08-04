@@ -128,3 +128,14 @@ maintained" wording is REQUIRED — it marks the rough-out as frozen
 provenance so future sweeps stop at it instead of editing it. Cause: fence
 authored from the 071 tree view; the signpost target lives in the 065
 folder. Expiry: grant closes with the phase-3 exit.
+
+## Fence amendment 3 (post-dispatch, 2026-08-05 — pij-related-koala, fence issuer)
+
+`.claude/skills/flow-eval-run/SKILL.md` is opened for tk-7168 ONLY: one
+additive subsection naming the dd-native-builder scenario, its prescribed
+element (/builder), the --resolve SUBJECT_PLAN_VALIDATE_COMPLETE flag, and
+the dry-score step. No other SKILL bytes. Rationale: tk-7168's task text
+instructs "flow-eval-run SKILL updated" and the fence omitted the file
+(defect shape #5 — the recurring omission tk-7171's fences-as-data exists
+to kill). Cause: `.claude/**` never entered the allow-list when the task
+was seeded. Expiry: grant closes with the phase-3 exit.
