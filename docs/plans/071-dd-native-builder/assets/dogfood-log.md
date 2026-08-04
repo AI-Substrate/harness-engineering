@@ -304,3 +304,20 @@
 - **Mapping honesty**: per-row where the rows demanded it (tk-7115's four
   assertions map 1:1 to bp-7104/7105/7103/7101), per-task first-arm
   elsewhere.
+
+## DF-019 — wall-of-text, round two: table CELLS need authored breaks too
+
+- **What**: Jordan hit the same unbroken-flow problem in the rendered
+  Phases table that DF-013 fixed for prose sections — long `brief`/`claim`
+  cell values authored as single unbroken strings. The renderer already
+  handles it (`escapeCell` converts newlines to `<br>`, renderer.ts:118);
+  the defect is authoring, again.
+- **Fix**: 25 long cells across acceptance_criteria/phases/tasks/
+  open_questions/key_findings re-authored with sentence-boundary paragraph
+  breaks (`\n\n`) and semicolon-list line breaks (`\n`) — 22 via `dd set`,
+  3 in id-less key_findings rows via the DL-003 bypass.
+- **Lesson for tk-7141/tk-7142 (authoring verbs) and tk-7144/7145
+  (prompting)**: the authoring guidance must SAY that cell values take
+  newlines and long cells without them are a defect — the renderer's
+  capability is invisible to an author who has never seen it used, which is
+  exactly how both DF-013 and this recurrence happened.
