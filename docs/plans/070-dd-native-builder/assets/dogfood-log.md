@@ -160,6 +160,22 @@
   warn (long prose, zero breaks) for the ph-7001 validator — LEAN only, not
   ruled.
 
+## DF-014 — required `summary` section: forced in schema, and it bit immediately
+
+- **When**: Jordan asked whether future agents' plans get the Summary section
+  too, or only ours.
+- **What**: flipped `required: true` on the new `summary` section in
+  `builder/plan` — `validate.ts` refuses a missing required section with
+  E402, so this is now mechanical for every future builder/plan dd, not a
+  convention. The very first validate then E402'd **our own task file**:
+  phase task files ride the `builder/plan` schema today, so plan-level
+  requireds bind them too.
+- **Fix**: gave tasks.dd.json its own summary section (prose out of
+  meta.summary, strapline left behind) — same move as the plan.
+- **Landed**: evidence that task files need their OWN schema
+  (`builder/tasks`), not a borrowed plan schema — feeds tk-7042's 5-tasks
+  design directly.
+
 ## Open dogfood threads (check before ship)
 
 - [ ] **RENAME PENDING — 070 → 071** (prime ruling 2026-08-04: ordinal

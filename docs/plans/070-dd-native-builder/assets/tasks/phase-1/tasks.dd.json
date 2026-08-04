@@ -10,8 +10,12 @@
         "slug": "phase-1-dd-core",
         "ordinal": 1,
         "status": "in-progress",
-        "summary": "Task detail for ph-7001. Each task row carries one done link to its own evidence list; task state is computed from that list, never typed.\n\nHand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks verb must reproduce. Section is named evidence under today's schema; the done_when rename is this phase's own deliverable (tk-7015)."
+        "summary": "Phase-1 task detail for ph-7001 — hand-JIT dogfood fixture."
       }
+    },
+    {
+      "name": "summary",
+      "value": "Task detail for ph-7001. Each task row carries one done link to its own evidence list; task state is computed from that list, never typed.\n\nHand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks verb must reproduce. Section is named evidence under today's schema; the done_when rename is this phase's own deliverable (tk-7015)."
     },
     {
       "name": "tasks",
