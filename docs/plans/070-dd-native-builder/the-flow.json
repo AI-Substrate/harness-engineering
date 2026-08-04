@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "dd-native-builder",
   "nav": {
-    "now": "phase-1",
+    "now": "phase-2",
     "next": "review-1",
     "intent": "Make the builder pipeline dd-native: plans and task files as .dd.json, flow gates driven by document state, typed rels, semantic validate with strict-zero --complete, PR evidence surface — the flow that delivers this plan is the feature itself",
     "bag": {
@@ -374,6 +374,126 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "UPD-014",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:17:54.166Z",
+      "details": {
+        "node": "observe-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:17:54.570Z",
+      "details": {
+        "node": "observe-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-015",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:51.303Z",
+      "details": {
+        "node": "retro-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:51.669Z",
+      "details": {
+        "node": "retro-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-016",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:52.029Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-008",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:52.395Z",
+      "details": {
+        "node": "phase-1",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-003",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:53.106Z",
+      "details": {
+        "from": "phase-1",
+        "to": "review-1"
+      }
+    },
+    {
+      "id": "UPD-017",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:53.454Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-009",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:18:53.837Z",
+      "details": {
+        "node": "review-1",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:19:27.519Z",
+      "details": {
+        "from": "review-1",
+        "to": "phase-2"
+      }
     }
   ],
   "nodes": [
@@ -432,7 +552,7 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: dd core — relations, buckets, semantic validator",
-      "status": "in_progress",
+      "status": "done",
       "command": "/builder 6 implement",
       "next": [
         "review-1"
@@ -445,13 +565,22 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
       ],
-      "modified_at": "2026-08-04T08:42:21.929Z"
+      "modified_at": "2026-08-04T10:18:52.395Z",
+      "comments": [
+        {
+          "at": "2026-08-04T10:18:52.029Z",
+          "text": "verdict:complete reason:13/13 tasks, 29 dw assertions, 9 ACs checked via dd set (commit bf6fec64); coder commits 77e3ef3f..d8ae90f8 + fix ab37d55d; 4064 tests green; dd doctor 0/0. time:2026-08-04T10:19Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T10:18:52.395Z"
     },
     {
       "id": "review-1",
       "type": "review",
       "label": "Review: P1",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 7 review",
       "next": [
         "phase-2"
@@ -462,7 +591,16 @@
         "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
       ],
-      "modified_at": "2026-08-04T08:18:21.559Z"
+      "modified_at": "2026-08-04T10:18:53.837Z",
+      "comments": [
+        {
+          "at": "2026-08-04T10:18:53.454Z",
+          "text": "verdict:APPROVE reason:cross-model review (pij-widespread-gore, gpt-5.6-terra high) — Dim-0 mutation gate 3 planted-bad classes FIRED (E402/E451/E454); fix round 1 (ab37d55d atomic sibling staging) independently reproduced: failure-path tests fire, sweep confirmed, 4064 tests, warn trio at baseline; fence amendment e2ebb908 accepted. time:2026-08-04T10:19Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T10:18:53.837Z"
     },
     {
       "id": "post-flight",
@@ -561,7 +699,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "known",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -578,13 +716,23 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-1 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-1 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-1 --to skipped.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-04T10:17:54.166Z",
+          "text": "decision:satisfied reason:real captures exist across phase 1 — DL-001..DL-005 (orchestrator), DL-006..DL-008 (coder, buffer left undrained for the drain seam), CONF-001 (first live contradiction fire, captured 2026-08-04T10:17Z). Buffer: .harness/temp/agent/session-buffer.md. time:2026-08-04T10:18Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-04T10:17:54.570Z",
+      "ran_at": "2026-08-04T10:17:54.570Z"
     },
     {
       "id": "retro-1",
       "type": "harness-retro",
       "label": "Retro: P1 (drain)",
-      "status": "known",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -598,7 +746,17 @@
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
         "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
         "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-1 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-1 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-1 --to skipped."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-04T10:18:51.303Z",
+          "text": "decision:drained reason:real /eng-harness-flow --hook post-coding invocation; 9 entries (DL-001..DL-008, CONF-001) drained via harness record retro to .harness/records/retro/2026-08-04/002-070-dd-native-builder-phase-1.md with per-entry dispositions (2 fixed-now, 5 task, 2 kept); buffer cleared (cleared:9, malformed:0). time:2026-08-04T10:18:30Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-04T10:18:51.669Z",
+      "ran_at": "2026-08-04T10:18:51.669Z"
     },
     {
       "id": "retro-harvest",
