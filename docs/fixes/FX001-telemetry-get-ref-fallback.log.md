@@ -293,3 +293,93 @@ The control that makes step 4 mean something: at that moment the live buffer hel
 segment and **zero** `E440` bytes (`grep -l E440 …/*.json` → 0 files, coded exits → 0). The
 `{"E440": 1}` can only have come from the REF half of the union. `source: buffer+ref` rather
 than `ref` is honest, not a miss — a capture landed after the sync, and the envelope says so.
+
+## Blast radius of D4 — what else was silent (enumeration only, no code changed)
+
+Prime's question: D4 is not a bigger D2, it is a DIFFERENT failure that produced the SAME
+silence and masked the other — so does a capture that never fired invalidate assertions
+beyond A10? Enumerated below. This is the capture-side list, meant to be INTERSECTED with the
+orchestrator's independent assertion-side sweep; where the two disagree, the disagreement is
+the finding.
+
+### 1. The complete set that call site emits
+
+`claude-adapter.ts:558` → `outcomeEvents` pushes exactly two event kinds and nothing else:
+
+| event | fields | evidence field it feeds |
+|---|---|---|
+| `command_exit` | `verb`, `exit`, `status?`, `code?` | `SessionEvidence.refusals` (from `code`); verb/status also surface on the report + metric lenses |
+| `checks` (only when `verb === 'checks'`) | `status`, `gates?` | `SessionEvidence.checks[]` — **status only**; `gates` is captured and has NO consumer today |
+
+**Precision on "absent".** The drop is conditioned on `is_error === true` — the shell exit
+PROPAGATED to the tool result. A harness command whose failure was MASKED (piped, `|| true`,
+redirected, or last-in-a-compound that succeeded) had `is_error: false`, no wrapper line, and
+was captured normally. Measured over this clone's 112 local refs:
+
+```text
+command_exit events: 360 total — exit:0 = 210, exit:1 = 150, carrying a code = 1
+  …and all 150 exit:1 derive from the ENVELOPE's `status: error`, not from isError
+checks events: 8 total — degraded 4, error 4, ok 0
+```
+
+So the failures that survived are exactly the ones whose exit was masked; what D4 destroyed
+is the HONEST, propagated failure. (The single coded exit is the T4b proof from this session —
+the first one that has ever existed.)
+
+### 2. Assertions that consume them
+
+Swept all five `live-testing/scenarios/*/assertions.json`:
+
+| assertion | scenario(s) | consumes | affected |
+|---|---|---|---|
+| `gate-refused` A10 (required) | dd-native-builder | `refusals` ← `command_exit.code` | YES — directly, and it is the assertion the scenario exists for |
+| `checks-ran {status:"ok"}` | md-to-pdf A9, md-to-pdf-flow A10, md-to-pdf-ponytail A9, md-to-pdf-ponytail-harness A9 | `checks[]` ← `checks` events | YES, but only for a FAILING checks run: `ok` exits 0, so an `ok` event was never at risk |
+
+**Nothing else.** Every other telemetry-source assertion — `skill-called`, `skill-sequence`,
+`flow-seam-fired`, `compaction-occurred`, `harness-verb-ran`, `tool-used`, and the telemetry
+half of `retro-drained` (which keys on `harness_verbs.record`) — derives from the TOOL_USE
+side of the transcript (`commandSignatures` / the `Skill` tool / `event-builder`), never from
+`outcomeEvents`. D4 could not touch them.
+
+### 3. Is there a GREEN that never consulted its evidence?
+
+**Among D4-affected assertions: NO.** In both real `dd-native-builder` runs every
+telemetry-lane assertion read `unknown` — A1, A7, A8, A10 — and the judged A12
+(`explanation-matches-telemetry`) also read `unknown`, naming its own reason: "0 segments
+joined for session pij-key-constrictor (telemetry.available=false), so the telemetry half of
+the criterion is unmeasurable." The instrument failed LOUDLY. No green was ever taken off a
+leg D4 silenced.
+
+**But the shape is worse than it looks going forward, which is why both fixes had to land
+together.** `gateRefused` returns `bool(...)`, not `unknown`, whenever evidence is PRESENT and
+`refusals` is empty. Both real runs escaped a false verdict only because the evidence was
+`null` (E100). With FX001's fallback in place the evidence now RESOLVES — so a D4-style
+silence from here on would score A10 a false **RED**: "the subject dodged the gate", about a
+subject that was correctly stopped. That is the inverse of prime's worry and it is closed by
+D4, not by the fallback.
+
+**One green worth naming anyway, arrived at independently of D4.** `dd-native-builder` A9
+(`command-succeeds`, required, `node harness/cli/bin/harness.js dd doctor`) read **pass** in
+the `20260804-210515Z-dkoala` run — the run in which A2, A4, A5 and A6 ALL failed, i.e. the
+subject authored no dd documents at all. A doctor sweep over a corpus with nothing new in it
+is clean by vacuity. A9's own `describe` claims it proves "never hand-edited the generated
+markdown"; with zero authored documents it cannot distinguish correct work from NO work. That
+is a green that consulted an empty evidence set. It is not a D4 consequence — reported because
+it is precisely the class prime asked to have named.
+
+### 4. The THIRD independent reason this lane reads empty
+
+Outcome events fire only for a Bash call whose command SIGNATURE is a harness sub-command
+(`claude-adapter.ts:520`). Measured with the real `commandSignatures()`:
+
+```text
+"harness flow nav set --now y --json"                        -> ["harness flow nav"]   correlated
+"node harness/cli/bin/harness.js flow nav set --json"        -> ["node"]               NOT correlated
+"cd /sb && node /path/harness/cli/bin/harness.js flow nav …" -> ["cd","node"]          NOT correlated
+```
+
+Correct behaviour, not a defect — but it means any subject or prover that invokes the CLI BY
+PATH rather than through the linked `harness` binary produces zero outcome events no matter
+what D2 and D4 do. It cost me one failed T4b attempt. Anyone re-deriving these counts will hit
+it, so it belongs in the same enumeration as the other two causes: **three independent reasons
+this lane can read empty, and finding any one of them explains the whole observation.**
