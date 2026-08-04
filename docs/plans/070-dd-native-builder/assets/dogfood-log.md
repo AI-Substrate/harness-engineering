@@ -200,6 +200,11 @@
 - [ ] DF-008 collision-free dw mint reaches tk-7042's design.
 - [ ] Backpressure survey (flow chore) → `backpressure.dd.json` → evidence
       lists gain `pressure` links (mandatory once tk-7015 lands).
+- [ ] **MIGRATE 070's tasks.dd.json** `evidence` → `done_when` + per-row
+      `pressure` links (bp-70xx or `not-applicable`) — MINE, using the
+      tk-7028 writer verbs, as soon as tk-7015 lands (fence ruling A,
+      2026-08-04: coder ships a deprecated `evidence` alias; the alias DROP
+      rides tk-7061's exemplar migration commit in ph-7003).
 
 ## DF-011 — the reconcile pass and module contracts are dd-blind
 
