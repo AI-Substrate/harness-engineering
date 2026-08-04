@@ -756,9 +756,16 @@ function sessionOf(ref: string): string {
   return rest.slice(3).join('/');
 }
 
-/** True when a ref's TIP tree carries a rollup `manifest.json` (⇒ already rolled, not old-shape). */
-function isRolledShape(gitRead: GitReadPort, ref: string): boolean {
-  return gitRead.readShardTree(ref).some((b) => b.name === ROLLED_MANIFEST_NAME);
+/**
+ * Classify a set of refs by SHAPE in ONE batched probe: a ref whose tip tree carries a
+ * rollup `manifest.json` is already rolled (not old-shape). Reading each ref's WHOLE
+ * tree to answer this — the pre-plan-067 `readShardTree(ref).some(…)` — re-read every
+ * blob of every ref on every sync, which one 17,566-blob legacy ref turned into 18k git
+ * subprocesses and ~2 minutes for a sync that flushed nothing. The batched probe reads
+ * headers only, so its cost is independent of tree size.
+ */
+function rolledRefSet(gitRead: GitReadPort, refs: readonly string[]): Set<string> {
+  return new Set(gitRead.refsWithBlob(refs, ROLLED_MANIFEST_NAME));
 }
 
 interface MigrationOutcome {
@@ -783,6 +790,15 @@ const NO_MIGRATION: MigrationOutcome = {
  * port are wired (the explicit `telemetry sync` verb), the `.migrated` sentinel is
  * absent, AND a LOCAL old-shape ref dated < today exists. The trigger scan uses only
  * `for-each-ref` + `cat-file` (no network), so steady state never pulls. Never throws.
+ *
+ * SELF-RETIRING (plan 067): a scan that finds NOTHING to migrate now writes the
+ * sentinel too. Before, a clone whose refs were ALL already rolled re-scanned the whole
+ * corpus on every single sync — forever, for a result that could never change by itself
+ * — which is what made an empty `telemetry sync` cost minutes. Recording "this clone is
+ * migrated" is the same claim `runMigration` makes after a clean pass, so steady-state
+ * sync now reads ONE local file and touches no ref at all. Delete
+ * `.harness/temp/telemetry/.migrated` to force a re-scan (e.g. after fetching an
+ * old-shape ref written by a pre-plan-049 CLI).
  */
 function maybeMigrate(deps: SyncDeps, telDir: string): MigrationOutcome {
   const { clock, gitRead } = deps;
@@ -793,11 +809,17 @@ function maybeMigrate(deps: SyncDeps, telDir: string): MigrationOutcome {
 
     const todayPath = datePathFromIso(clock.nowIso());
     const localRefs = gitRead.listTelemetryRefs(TELEMETRY_REF_GLOB);
+    const rolled = rolledRefSet(gitRead, localRefs);
     const hasLocalOld = localRefs.some((ref) => {
       const d = refDateOf(ref);
-      return d !== null && d < todayPath && !isRolledShape(gitRead, ref);
+      return d !== null && d < todayPath && !rolled.has(ref);
     });
-    if (!hasLocalOld) return NO_MIGRATION; // no old-shape ref → nothing to migrate
+    if (!hasLocalOld) {
+      // Nothing old-shape is reachable locally → this clone IS migrated. Record it so
+      // the scan never repeats (the whole point of the sentinel).
+      writeSentinel(deps, telDir, sentinelPath);
+      return NO_MIGRATION;
+    }
 
     return runMigration(deps, gitRead, telDir, todayPath, sentinelPath, localRefs);
   } catch (err) {
@@ -810,6 +832,13 @@ function maybeMigrate(deps: SyncDeps, telDir: string): MigrationOutcome {
       message: errMsg(err),
     };
   }
+}
+
+/** Stamp the durable per-clone "migration done" sentinel (best-effort — never fatal). */
+function writeSentinel(deps: SyncDeps, telDir: string, sentinelPath: string): void {
+  if (deps.clock === undefined) return;
+  deps.fs.mkdirp(telDir);
+  deps.fs.writeText(sentinelPath, `${deps.clock.nowIso()}\n`);
 }
 
 interface SessionGroup {
@@ -847,12 +876,14 @@ function runMigration(
     if (!localSet.has(ref)) deps.git.fetchRef(ref);
   }
 
-  // Group by session; classify each candidate as rolled (manifest) vs old-shape.
+  // Group by session; classify each candidate as rolled (manifest) vs old-shape — ONE
+  // batched shape probe for the whole candidate set (plan 067), not a tree read each.
+  const rolled = rolledRefSet(gitRead, candidates);
   const groups = new Map<string, SessionGroup>();
   for (const ref of candidates) {
     const session = sessionOf(ref);
     const g = groups.get(session) ?? { oldRefs: [], rolledRefs: [] };
-    if (isRolledShape(gitRead, ref)) g.rolledRefs.push(ref);
+    if (rolled.has(ref)) g.rolledRefs.push(ref);
     else g.oldRefs.push(ref);
     groups.set(session, g);
   }
@@ -908,8 +939,7 @@ function runMigration(
   }
 
   if (allClean && deps.clock !== undefined) {
-    deps.fs.mkdirp(telDir);
-    deps.fs.writeText(sentinelPath, `${deps.clock.nowIso()}\n`);
+    writeSentinel(deps, telDir, sentinelPath);
   }
   return { attempted: true, ok: allClean, rewritten, deleted, segments };
 }
