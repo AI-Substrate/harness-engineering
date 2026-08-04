@@ -228,7 +228,14 @@ server-side, so the adapter reports the timeline and **never estimates tokens**:
   presence flag are computed **at the SQL boundary** (`user_message` /
   `assistant_response` appear only inside `length()`/`CASE`), so the message
   **text never enters the telemetry process** — only `turn_index`, `words`,
-  `has_response`, `timestamp` cross the read-only `DbPort`.
+  `has_response`, `timestamp` cross the read-only `DbPort`. Plan 066 added its
+  store's `session_files` table as a source: **`files` written/edited path
+  lists** (write-tool allowlist; reads excluded; written-vs-edited from the
+  chat-editing state's initial-content hash when present) and a **`tools`
+  histogram** (per-file-first-seen — a lower bound on invocations, not a call
+  count). The store keeps no patch payloads, so per-file line/byte deltas are
+  unknowable: copilot-vscode emits **no `file` events** — path lists yes,
+  deltas honestly never (until the store exposes payloads).
 
 `event_stream` itself is always present, never `null`. Outcome events follow each
 harness's result-capture ability: Claude has the full result envelope (`checks` +
