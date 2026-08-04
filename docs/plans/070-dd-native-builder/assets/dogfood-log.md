@@ -176,6 +176,30 @@
   (`builder/tasks`), not a borrowed plan schema — feeds tk-7042's 5-tasks
   design directly.
 
+## DF-015 — my required-summary commit broke the repo corpus; the coder caught it
+
+- **When**: the coder measured the checks baseline before its tk-7015 commit
+  (`git stash` → `dd doctor`) and found the tree ALREADY red: 2× E402 on the
+  exemplar corpus + E422 render drift, all inherited from my commits.
+- **Root cause**: I flipped `required: true` on `summary` after validating
+  only MY plan's neighbourhood — a scoped gate run is not a general green. A
+  required-section change sweeps every document on the schema repo-wide;
+  `dd doctor` before commit would have shown it in one call. The exemplar
+  siblings had also been drifting since the DF-003 schema extension (never
+  regenerated).
+- **Fix (mine — outside the coder's fence)**: summary sections added to both
+  exemplar docs, all five exemplar siblings rebuilt, recorded basis for the
+  tasks ref updated (E434). `dd doctor` 0/0, `build --check` drift-free.
+- **Also learned**: `dd build` REPORTS a moved live basis
+  (`refreshed_bases`) but never persists it — updating the recorded sha is a
+  deliberate author act (065 ledger semantics); the new `dd set` verb isn't
+  in dist until the phase-end rebuild.
+- **Process debt owned**: I also committed schema.json inside the coder's
+  declared fence mid-flight. Standing rule for the rest of phase 1: I do NOT
+  touch `.dd/schemas/builder/**`; needs route through the coder.
+- **Landed**: this entry; prompting candidate for tk-7041 (schema edits
+  demand a doctor sweep pre-commit).
+
 ## Open dogfood threads (check before ship)
 
 - [ ] **RENAME PENDING — 070 → 071** (prime ruling 2026-08-04: ordinal

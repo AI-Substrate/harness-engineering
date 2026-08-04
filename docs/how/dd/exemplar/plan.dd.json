@@ -11,10 +11,14 @@
         "ordinal": 65,
         "status": "in-progress",
         "complexity": "CS-5",
-        "summary": "A plan authored as a deterministic document. Every claim below is a row with its own id, its own state, and its own outbound proof — so \"is this plan done?\" is a query, not a reading.",
+        "summary": "The exemplar plan, kept minimal: every claim is an addressable row with typed links to its proof.",
         "backpressure": "backpressure.dd.json#rows",
         "log": "execution-log.dd.json#entries"
       }
+    },
+    {
+      "name": "summary",
+      "value": "A plan authored as a deterministic document. Every claim below is a row with its own id, its own state, and its own outbound proof — so \"is this plan done?\" is a query, not a reading."
     },
     {
       "name": "goals",
@@ -127,7 +131,7 @@
   "references": [
     {
       "path": "tasks/phase-2/tasks.dd.json",
-      "sha": "32a764b25a4767fa18618ad1c5888ffccf405195c8eade99e7aff55d3bb33229",
+      "sha": "826906f58e22f12668695cb8321aff96dda51df40d9e67badebd2b6bb0b9d34c",
       "mode": "live"
     },
     {

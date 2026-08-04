@@ -10,10 +10,14 @@
         "slug": "phase-2-schema-layer-and-docs",
         "ordinal": 2,
         "status": "shipped",
-        "summary": "The task detail for one phase. The plan document carries the overview and links here; each task row carries one link to its own evidence list, and the row's progress is computed from that list rather than typed into it.",
+        "summary": "Phase-2 task detail for the exemplar plan.",
         "backpressure": "../../backpressure.dd.json#rows",
         "log": "../../execution-log.dd.json#entries"
       }
+    },
+    {
+      "name": "summary",
+      "value": "The task detail for one phase. The plan document carries the overview and links here; each task row carries one link to its own evidence list, and the row's progress is computed from that list rather than typed into it."
     },
     {
       "name": "tasks",
