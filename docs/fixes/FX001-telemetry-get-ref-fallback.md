@@ -44,7 +44,19 @@ refs only; if the ref namespace is absent locally, say so in the envelope
 |---|------|--------|------------------|---------|----|----|
 | T1 | Ref-read path: enumerate `refs/harness-telemetry/*`, filter to the session by join key, read+parse rolled segment files | telemetry/adapters | `harness/cli/src/adapters/git/*telemetry*`, `services/telemetry/**` | A flushed session returns its real segments from the ref | 3 | Reuse the existing rollup format (`manifest.json` + `session.logs.jsonl` + `session.metrics.jsonl`); never shell to `git` outside the existing adapter idiom |
 | T2 | Fallback wiring + provenance in the envelope (`source`, `ref_checked`) | telemetry/services | `telemetry get` act + service | Envelope names its evidence source; buffer-only behavior byte-identical when buffer has data | 2 | Buffer wins when non-empty (freshest); no silent merge |
-| T3 | Controls, planted-bad BOTH ways | tests | `harness/cli/test/**` | (a) flushed-buffer + ref-present → segments returned, `source: ref` FIRES pre-fix as E100; (b) both-empty → E100 still; (c) buffer-present → identical to today, `source: buffer`; (d) a ref present for a DIFFERENT session must NOT satisfy the join (wrong-session control) | 3 | Fixture: real git repo with a `refs/harness-telemetry/...` commit built by the existing sync code, then buffer wiped — the control must see the opposite (pre-fix E100) |
+| T3 | Controls, planted-bad BOTH ways | tests | `harness/cli/test/**` | (a) flushed-buffer + ref-present → segments returned, `source: ref` — **see the correction below**; (b) both-empty → E100 still; (c) buffer-present → identical to today, `source: buffer`; (d) a ref present for a DIFFERENT session must NOT satisfy the join (wrong-session control) | 3 | Fixture: real git repo with a `refs/harness-telemetry/...` commit built by the existing sync code, then buffer wiped — the control must see the opposite |
+
+> **CORRECTION to T3a (2026-08-05, pij-related-koala — coder-supplied, evidence-backed).**
+> This row originally said T3a "FIRES pre-fix as E100". **That was wrong**, and a
+> reviewer holding the original wording would report a false finding when the
+> control does something else. The pre-fix failure has **two distinct shapes**:
+> a flushed session that DOES carry the pij join key returns **hollow evidence**,
+> not E100 — the assertion that fires is `expected {} to deeply equal
+> { 'the-flow': 1 }`, because the old partial branch filled token totals while
+> leaving `skills`/`tools`/`flow_seams`/`refusals` empty. The **E100** shape is
+> the no-join-key case (the D3 class, reproduced live against
+> `pij-related-koala`). Both are real pre-fix failures; only the second is E100.
+> The authored spec was the imprecise artifact here, not the implementation.
 | T4 | Live proof against tonight's evidence | validation | none (run-only) | `telemetry get pij-related-koala` returns segments incl. the E440 `command_exit`; re-score `dd-native-builder --session pij-related-koala` shows `telemetry.available: true` (verdict may still FAIL on fs-lane domain — that is expected and out of scope) | 1 | Quote both envelopes in the execution log; do NOT commit a new ledger row as proof of exit-anything |
 
 ## Constraints (fence for the fix pair)
@@ -146,6 +158,69 @@ Riders (all cheap, none scope growth):
   version 2.5 / schema_url v0.2.0 while the code is at 2.6 / v0.3.0. It was
   already a version stale before FX001 touched anything; fixing it is scope
   creep on a fix task. Finding to prime, not a task.
+
+## Ruling #3 (2026-08-05, pij-related-koala — D4, the refusal capture never fires)
+
+Coder found a FOURTH defect, upstream of D2 and independent of it:
+`outcome-events.ts` `parseEnvelope()` requires the trimmed tool-result text to
+start with `{`, but Claude Code wraps a FAILING Bash result as
+`Exit code 1\n{…}`. Trimmed, that starts with `E` → `parseEnvelope` returns
+null → `outcomeEvents` returns `[]` → **no `command_exit` event is emitted at
+all**. Every refusal exits non-zero, so the `code` field plan 071 tk-7169 added
+has never once been captured from a real refusal in this harness.
+
+Verified independently before ruling: the guard is `trimmed[0] !== '{'` at
+`outcome-events.ts:55`, and `outcomeEvents` already receives the `isError` flag
+it uses at line 97 — so the information the fix needs is present at both
+candidate layers.
+
+**D4 IS IN SCOPE.** This is the same test I applied to D2 — "the difference
+between the fix working and looking like it works" — and it applies harder
+here: D2 fixed the wire, D4 means nothing was ever put on the wire. Option (c)
+(spin it out, close FX001 with T4b unproven) would ship a fix whose headline
+claim — the refusal lane works end to end — stays undemonstrated, which is the
+one assertion the whole scenario exists for.
+
+**Why D4 is in scope when D3 was spun out**, so the line is principled and not
+convenience: D3 (adopted-seat identity capture) is orthogonal to the refusal
+lane, unbounded in scope, and changes *who can be joined*, not *whether
+refusals exist at all*. D4 sits directly on FX001's claimed path, is ~3 lines,
+and has a crisp control. Path-relevance and boundedness, not appetite.
+
+**Layer: option (b) — fix at the `claude-adapter.ts` call site.** The coder's
+reasoning is right and one fact I checked makes it decisive: `outcomeEvents`
+has **exactly one caller**, `claude-adapter.ts:537`. Today (a) and (b) are
+behaviourally identical — which is precisely why (b) wins: it is the only one
+still correct when a second adapter starts calling `outcomeEvents` and must NOT
+inherit a Claude-specific strip. `Exit code N` is a Claude Code tool-result
+convention, not a harness envelope convention. The strict guard stays
+harness-agnostic and untouched.
+
+Requirements on the fix:
+
+- Strip only under `isError`, anchored (`^`), a single leading line, and accept
+  `\r?\n` — this repo already carries cross-platform hazards in its warn trio
+  and a CRLF transcript would silently re-break the lane.
+- Controls: the exact transcript-shaped string yields
+  `command_exit{verb:'flow', exit:1, code:'E440'}` · planted-bad
+  `Exit code 1\nsome prose` still yields `[]` · **and a regression guard** —
+  `isError` true with a bare JSON body (no prefix) still parses, so the strip
+  can never eat real content.
+
+**Two findings to record in the log, not just the fix:**
+
+1. **D2's loss was MASKED by D4.** The 0-coded-exits count across 112 refs is
+   fully explained by D4 alone — D2 was never needed to explain it. The first
+   sufficient-looking explanation was incomplete, and only looking again past a
+   confirmed cause found the second. Neither fix alone repairs the lane: D4
+   puts the event on the wire, D2 keeps its code through the roll. This does
+   not weaken Ruling #1; it means both were always required.
+2. **Plan 071's lg-0009 was doubly unrecorded.** That gate refusal was real and
+   human-observed, but it reached telemetry through neither defect. My
+   orchestrator note in the log says A10 was structurally unanswerable for
+   flushed sessions; D4 means it was unanswerable for *unflushed* ones too.
+   Strengthen that note rather than replacing it — a future reader must not
+   read either `unknown` as "the subject never hit a gate".
 
 On the regeneration clause of Ruling #1: the coder's report that
 `check:telemetry-fixtures` needed NO regeneration — because no committed golden

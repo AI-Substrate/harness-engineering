@@ -36,6 +36,13 @@ and the coder's own table is a claim, not a result. Reproduce it yourself:
 
 **If Dim-0 does not reproduce, stop and report — the rest of the review is void.**
 
+**Do not report the dossier's original T3a wording as a defect** — it said the control
+"FIRES pre-fix as E100" and that was *my* error in the authored spec, corrected in the
+dossier on 2026-08-05. The pre-fix failure has two shapes: **hollow evidence** when the
+flushed session carries the pij join key (`expected {} to deeply equal { 'the-flow': 1 }`),
+and **E100** only when there is no join key at all. Both are genuine; only the second is
+E100. The implementation was right and the spec was imprecise.
+
 One control deserves adversarial attention: **(c) populated buffer → `source: buffer`**
 fails pre-fix only because the `source` field did not exist. That makes it a weak
 witness for the actual requirement — *buffer-only behaviour is byte-identical to today*.
