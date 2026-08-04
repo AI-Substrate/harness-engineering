@@ -146,6 +146,21 @@
 
 ## Open dogfood threads (check before ship)
 
+- [ ] **RENAME PENDING — 070 → 071** (prime ruling 2026-08-04: ordinal
+      collision with `070-capture-stall`; capture-stall keeps 070, we take
+      071; 072 is next-free and must be ASKED for, never read off main).
+      Timing per Jordan: execute at the phase-1 boundary (coder report +
+      review verdict in), NOT mid-flight — the coder works in this same
+      worktree against tk-70xx ids. The sweep: `git mv` folder →
+      `071-dd-native-builder`; ids `ac-/tk-/ph-/bp-70xx → 71xx` (dw-0XYi ids
+      carry no ordinal — untouched); prose "plan 070"; `meta.ordinal` 70→71;
+      the-flow `plan_id` (CLI-owned — check for a verb, else note); rebuild
+      .dd.md siblings via `harness dd build`; recompute plan SHA-256 →
+      update backpressure-coverage.md Basis + re-receipt the backpressure
+      seam (`backpressure-<hash12>` node, renumber-only delta). Own commit,
+      explicit pathspec, confirm path+SHA to prime. Notify coder of the id
+      mapping before its next phase touches the corpus.
+
 - [ ] DF-002 revisit lands in ph-7001 (prefix registry vs id-less pattern).
 - [ ] DF-003 schema extension gets its fixtures + ordering test (tk-7041).
 - [ ] DF-005 ordinal-at-create rule reaches tk-7041's prompting.
