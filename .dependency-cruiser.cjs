@@ -116,6 +116,29 @@ module.exports = {
       to: { path: '^harness/cli/src/acts', reachable: true },
     },
     {
+      name: 'dd-mutate-never-imports-output',
+      comment:
+        'The dd writer layer returns structured refusals and never imports harness envelopes or exits — the act maps a refusal reason to an E-code, exactly as it does for dd-core and links.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/mutate' },
+      to: { path: '^harness/cli/src/output', reachable: true },
+    },
+    {
+      name: 'dd-mutate-never-imports-acts',
+      comment: 'The dd writer layer is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/mutate' },
+      to: { path: '^harness/cli/src/acts', reachable: true },
+    },
+    {
+      name: 'dd-mutate-never-imports-node-adapters',
+      comment:
+        'The dd writer layer is `(doc, address, value) => doc | refusal`. Reading and writing files belongs to the act, so a mutation is testable — and a refusal provable — without a filesystem.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/mutate' },
+      to: { path: '^harness/cli/src/adapters', reachable: true },
+    },
+    {
       name: 'dd-render-never-imports-output',
       comment: 'The dd renderer is pure — it returns markdown and never imports harness envelopes or exits.',
       severity: 'warn',

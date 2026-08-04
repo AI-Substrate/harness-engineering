@@ -26,6 +26,10 @@ renegotiation.
 | `dd links <target> [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
 | `dd graph [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
 | `dd doctor [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd get <address> [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
+| `dd set <address> <value> [--value-json] [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
+| `dd add <address> <json> [--mint <prefix>] [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
+| `dd rm <address> [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
 
 Every placeholder `next_action` names its owning phase exactly. `dd validate`
 remains a placeholder until Phase 2 supplies the real convention-based schema
@@ -125,3 +129,23 @@ string.
 | E447 | `DD_GATE_EVENT_WRITE_FAILED` | force event receipt write failed |
 | E448 | `DD_GATE_SURFACE_FAILED` | orient/rail/render gate output failed |
 | E449 | `DD_GATE_LINK_MISSING` | gate-enabled node lacks link data |
+
+### E450-E459 — dd writer verbs & the plan semantic layer
+
+**GRANTED 2026-08-04 (one-line renegotiation, plan 070 Phase 1)**: E430-E439 and
+E440-E449 are both complete allocations, so the writer family (`dd get/set/add/rm`)
+and `harness plan validate`'s semantic layer open the next block. Complete
+allocation; the surface test counts sixty E4xx codes.
+
+| Code | Name | Failure class |
+|---|---|---|
+| E450 | `DD_MUTATION_TARGET_INVALID` | address names no target the verb can act on |
+| E451 | `DD_MUTATION_SCHEMA_REFUSED` | mutation would break the schema; nothing written |
+| E452 | `DD_MUTATION_WRITE_FAILED` | writing the mutated document failed |
+| E453 | `DD_MUTATION_VALUE_INVALID` | value unreadable as the declared type |
+| E454 | `DD_ID_MINT_FAILED` | no collision-free id under the requested prefix |
+| E455 | `DD_REL_INVALID` | schema declares a malformed link relation |
+| E456 | `DD_PLAN_CONTRADICTION` | gate-terminal item links to a non-terminal target |
+| E457 | `DD_PLAN_INCOMPLETE` | `--complete` found open completables or orphan ACs |
+| E458 | `DD_PLAN_SCOPE_UNRESOLVED` | `--address` scope did not resolve |
+| E459 | `DD_PLAN_VALIDATE_FAILED` | the semantic validation pass itself failed |

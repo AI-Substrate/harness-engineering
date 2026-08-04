@@ -83,6 +83,26 @@ const SURFACE = [
     codeNeedles: ["command('doctor')"],
     manifestNeedle: '`dd doctor [--json]`',
   },
+  {
+    file: 'write',
+    codeNeedles: ["command('get <address>')"],
+    manifestNeedle: '`dd get <address> [--json]`',
+  },
+  {
+    file: 'write',
+    codeNeedles: ["command('set <address> <value>')", ".option('--value-json'"],
+    manifestNeedle: '`dd set <address> <value> [--value-json] [--json]`',
+  },
+  {
+    file: 'write',
+    codeNeedles: ["command('add <address> <json>')", ".option('--mint <prefix>'"],
+    manifestNeedle: '`dd add <address> <json> [--mint <prefix>] [--json]`',
+  },
+  {
+    file: 'write',
+    codeNeedles: ["command('rm <address>')"],
+    manifestNeedle: '`dd rm <address> [--json]`',
+  },
 ] as const;
 
 describe('dd frozen surface manifest', () => {
@@ -98,9 +118,13 @@ describe('dd frozen surface manifest', () => {
     expect(MANIFEST).toContain(manifestNeedle);
   });
 
-  it('records every E400-E449 name and value', () => {
+  it('records every E400-E459 name and value', () => {
     const entries = Object.entries(ErrorCodes).filter(([, value]) => /^E4\d\d$/.test(value));
-    expect(entries).toHaveLength(50);
+    // Sixty, not fifty: plan 070 Phase 1 opened E450-E459 by the one-line
+    // renegotiation recorded in the manifest. The count is adjusted
+    // DELIBERATELY — never loosened to a range — so a code that ships without a
+    // manifest row still fails here.
+    expect(entries).toHaveLength(60);
     for (const [name, value] of entries) {
       expect(MANIFEST).toContain(`| ${value} | \`${name}\``);
     }

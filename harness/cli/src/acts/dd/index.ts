@@ -10,6 +10,7 @@ import { registerLinksCommand } from './links.js';
 import { registerSchemaCommands } from './schema.js';
 import type { DdActDeps } from './shared.js';
 import { registerValidateCommand } from './validate.js';
+import { registerWriterCommands } from './write.js';
 
 export function registerDdAct(program: Command, io: CliIo, deps: DdActDeps): void {
   const dd = program
@@ -24,4 +25,5 @@ export function registerDdAct(program: Command, io: CliIo, deps: DdActDeps): voi
   registerLinksCommand(dd, io, deps);
   registerGraphCommand(dd, io, deps);
   registerDoctorCommand(dd, io, deps);
+  registerWriterCommands(dd, io, deps);
 }
