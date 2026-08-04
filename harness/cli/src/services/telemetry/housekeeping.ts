@@ -1,3 +1,4 @@
+import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitWritePort } from '../../adapters/git/git-write-port.js';
@@ -52,6 +53,12 @@ export interface HousekeepingDecoratorDeps {
   proc: ProcessPort;
   /** WRITE plumbing for the auto-push (the composition root injects `ExecGitWrite`). */
   gitWrite: GitWritePort;
+  /**
+   * Read-only store access for the `checks` verdict marker — the ONE harness with
+   * no session-id env var (VS Code Copilot Chat) resolves its lane by cwd. Optional:
+   * without it that one harness stays silent, every other harness is unaffected.
+   */
+  db?: DbPort;
   mode: OutputMode;
   writers: Writers;
 }
@@ -102,7 +109,7 @@ export function buildHousekeepingDecorator(
         // record that `checks` ran; only here is the outcome known. Isolated so a
         // capture failure can never cost the auto-push.
         try {
-          captureChecksOutcome({ fs: deps.fs, env: deps.env, proc: deps.proc }, env);
+          captureChecksOutcome({ fs: deps.fs, env: deps.env, proc: deps.proc, db: deps.db }, env);
         } catch {
           // Defensive: an unwritable buffer must not break the gate or the push.
         }

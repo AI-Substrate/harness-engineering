@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { DbPort, DbRow } from '../../../src/adapters/db/db-port.js';
+import { FakeDb } from '../../../src/adapters/db/fake-db.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import type { Envelope } from '../../../src/output/envelope.js';
+import {
+  detectHarness,
+  resolveDetectedSession,
+} from '../../../src/services/telemetry/capture-service.js';
 import { captureChecksOutcome } from '../../../src/services/telemetry/checks-capture.js';
 import {
   CONTROL_SIGNATURES,
@@ -28,6 +34,9 @@ import { serializeEvent } from '../../../src/services/telemetry/segment.js';
 
 const REPO = '/repo';
 
+/** The VS Code Copilot Chat marker — the one harness with NO session-id env var. */
+const VSCODE_ENV = { AI_AGENT: 'github_copilot_vscode_agent' };
+
 function envelope(over: Partial<Envelope> = {}): Envelope {
   return {
     command: 'checks',
@@ -37,9 +46,30 @@ function envelope(over: Partial<Envelope> = {}): Envelope {
   };
 }
 
-function checksDeps(env: Record<string, string> = { COPILOT_AGENT_SESSION_ID: 'sessA' }) {
+function checksDeps(
+  env: Record<string, string> = { COPILOT_AGENT_SESSION_ID: 'sessA' },
+  store: { home?: string; db?: DbPort } = {},
+) {
   const fs = new FakeFs();
-  return { deps: { fs, env: new FakeEnv(env), proc: new FakeProcess({}, REPO) }, fs };
+  return {
+    deps: {
+      fs,
+      env: new FakeEnv(env, store.home),
+      proc: new FakeProcess({}, REPO),
+      db: store.db,
+    },
+    fs,
+  };
+}
+
+/** A VS Code chat store that answers the cwd→session query with `rows`. */
+function vscodeStore(rows: DbRow[]): { home: string; db: DbPort } {
+  return {
+    home: '/home/u',
+    db: new FakeDb((sql, params) =>
+      sql.includes('FROM sessions') && params[0] === REPO ? rows : [],
+    ),
+  };
 }
 
 describe('plan 069 · controlSignatures — the git verbs the chain HEAD drops', () => {
@@ -217,14 +247,56 @@ describe('plan 069 · checks outcome capture — the harness observing its own v
   });
 
   it('works for EVERY agent harness — the CLI is the observer, not the transcript', () => {
-    for (const env of [
-      { COPILOT_AGENT_SESSION_ID: 'sessA' },
-      { CLAUDE_CODE_SESSION_ID: 'sessB' },
-      { CURSOR_CONVERSATION_ID: 'sessC' },
-    ]) {
-      const { deps } = checksDeps(env);
-      expect(captureChecksOutcome(deps, envelope())).not.toBeNull();
+    const cases: {
+      env: Record<string, string>;
+      store?: { home: string; db: DbPort };
+      id: string;
+    }[] = [
+      { env: { COPILOT_AGENT_SESSION_ID: 'sessA' }, id: 'sessA' },
+      { env: { CLAUDE_CODE_SESSION_ID: 'sessB' }, id: 'sessB' },
+      { env: { CURSOR_CONVERSATION_ID: 'sessC' }, id: 'sessC' },
+      // VS Code Copilot Chat publishes no session-id var, so its lane is read
+      // from the chat store by cwd — the one harness that needs resolving, and
+      // the one a session-id-only gate would have silently dropped.
+      { env: VSCODE_ENV, store: vscodeStore([{ id: 'sessD' }]), id: 'sessD' },
+    ];
+    for (const { env, store, id } of cases) {
+      const { deps } = checksDeps(env, store ?? {});
+      expect(captureChecksOutcome(deps, envelope())?.sessionId).toBe(id);
     }
+  });
+
+  it('files the VS Code verdict on the SAME lane the capture preamble resolves', () => {
+    // One grammar across the seam: if the exit path resolved differently, the
+    // verdict would land on a different session than the `checks` command marker
+    // it must be joined with, and the discipline panel would lose the pairing.
+    const store = vscodeStore([{ id: 'vsc-cwd-1' }]);
+    const { deps, fs } = checksDeps(VSCODE_ENV, store);
+    const preamble = resolveDetectedSession(
+      detectHarness(deps.env) ?? { harness: '', sessionId: '' },
+      deps,
+      REPO,
+    );
+    const result = captureChecksOutcome(deps, envelope());
+    expect(preamble).toEqual({ harness: 'copilot-vscode', sessionId: 'vsc-cwd-1' });
+    expect(result).toMatchObject({ harness: 'copilot-vscode', sessionId: 'vsc-cwd-1' });
+    const written = JSON.parse(fs.readText(result?.path ?? '') ?? '{}');
+    expect(written.harness_session_id).toBe('vsc-cwd-1');
+    expect(written.event_stream?.[0]?.kind).toBe('checks');
+  });
+
+  it('writes NOTHING when the VS Code store has no session for this cwd', () => {
+    const { deps, fs } = checksDeps(VSCODE_ENV, vscodeStore([]));
+    expect(captureChecksOutcome(deps, envelope())).toBeNull();
+    expect(fs.writes).toEqual([]);
+  });
+
+  it('writes NOTHING for VS Code when no store access was injected', () => {
+    // Honest silence, never a fabricated lane: an empty session id must not
+    // become a segment path.
+    const { deps, fs } = checksDeps(VSCODE_ENV);
+    expect(captureChecksOutcome(deps, envelope())).toBeNull();
+    expect(fs.writes).toEqual([]);
   });
 
   // ── AC-4: nothing is ever fabricated ──────────────────────────────────────
