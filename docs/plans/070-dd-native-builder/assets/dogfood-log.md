@@ -252,3 +252,22 @@
   and **built FIRST in phase 1** ("do it early on") so the journey itself
   stops hand-editing the moment the verbs exist. tk-7043 (6/6a state
   mutation) explicitly depends on it.
+
+## DF-016 — best-effort sibling regen = silent drift; same defect sighted in flow.ts
+
+- **What**: the reviewer's phase-1 MAJOR finding — `persist()` wrote the
+  `.dd.json` then best-effort regenerated the sibling; a regen failure still
+  reported `written: true`, manufacturing exactly the source/sibling drift
+  the writer verbs exist to prevent. Fixed at `ab37d55d` (atomic staging:
+  render in memory first, refuse with nothing written, restore on write
+  failure; E452; failure-path tests whose control demonstrably FIRES —
+  proven by stashing the src fix and watching them fail).
+- **Sighting (coder, out-of-fence)**: `harness/cli/src/acts/flow.ts:203`
+  `autoRenderSibling()` has the identical shape — write flow state, catch
+  render failure, warn, report success — at 3 callsites (:296, :1006,
+  :1576). Same defect, same consequence if `check:flows` gates those
+  siblings. Candidate plan task at phase-2/3 JIT (alongside DL-008).
+- **Lesson**: "rebuilt in the same operation" is a contract only if failure
+  is a refusal; a best-effort tail turns a writer verb into a drift factory
+  with a green exit code. Best-effort is honest only for pure repair of an
+  already-correct source (the transclusion watcher).
