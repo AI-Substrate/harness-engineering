@@ -356,6 +356,21 @@ export interface CommandExitEvent extends EventBase {
   verb: string;
   exit: number;
   status?: string;
+  /**
+   * The envelope's `error.code` — an `E###` and nothing else (plan 071 tk-7169).
+   *
+   * Gate refusals were previously unprovable from evidence: the refusal writes
+   * NOTHING to the flow (a pinned P6 invariant), so a run that was correctly
+   * stopped and a run that never hit a gate left identical traces. Only a FORCE
+   * was durable, which meant the record favoured the one outcome nobody wants.
+   *
+   * It is a FIXED VOCABULARY, precedented by `checks.gates` and `mark.verdict`:
+   * the value is validated against `/^E\d{3}$/` before capture, so no message
+   * body, path or identifier can ride in on this field. A code that does not
+   * match is DROPPED, never truncated or sanitized — sanitizing free text is a
+   * promise this layer must not make.
+   */
+  code?: string;
 }
 
 /** A spawned sub-agent span. */

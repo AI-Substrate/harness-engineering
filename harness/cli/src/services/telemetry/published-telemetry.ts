@@ -616,6 +616,13 @@ function validEvent(value: unknown, version: PublishedSegmentVersion): boolean {
       if (typeof child !== 'string' || !ARTIFACT_TYPES.has(child)) return false;
     } else if (key === 'mark_kind' || key === 'verdict') {
       if (typeof child !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(child)) return false;
+    } else if (key === 'code') {
+      // A gate/verb refusal code (plan 071 tk-7169) — `E###`, anchored, nothing
+      // else. This is the THIRD place the vocabulary is enforced (capture,
+      // segment, publish) and the one that matters most: publish is where data
+      // leaves the machine, and an allowlist that trusted an upstream check
+      // would be trusting a writer it cannot see.
+      if (typeof child !== 'string' || !/^E\d{3}$/.test(child)) return false;
     } else if (key === 'path') {
       if (typeof child !== 'string' || !RELATIVE_PATH_STRING.test(child) || child.includes('\\')) {
         return false;

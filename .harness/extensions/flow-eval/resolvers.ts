@@ -56,6 +56,12 @@ export interface SessionEvidence {
   checks: Array<{ status: string }>;
   compactions: number;
   tools: Record<string, number>;
+  /**
+   * Refusal E-code -> count (plan 071 tk-7169). LOCK-STEP with the CLI's
+   * `SessionEvidence`; a field added to one and not the other fails to compile
+   * in `session-evidence-lockstep.test.ts`. Fixed vocabulary, never message text.
+   */
+  refusals: Record<string, number>;
   gaps: string[];
   /**
    * Wall-span in seconds between the first + last telemetry event across the

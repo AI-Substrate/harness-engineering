@@ -80,6 +80,21 @@ export interface SessionEvidence {
   compactions: number;
   /** Tool name → total invocation count (sum of each `tools` event's `count`). */
   tools: Record<string, number>;
+  /**
+   * Refusal E-code → count, from `command_exit` events that carried one
+   * (plan 071 tk-7169).
+   *
+   * A gate refusal writes NOTHING to the flow — that is a pinned invariant, not
+   * an oversight — so before this field a run that was correctly stopped and a
+   * run that never met a gate produced identical evidence, and only a `--force`
+   * left a durable trace. The record favoured the one outcome nobody wants.
+   * Counting the codes makes the refusal provable without weakening the
+   * nothing-written invariant by a single byte.
+   *
+   * Fixed vocabulary (`E###`), never message text. Kept in LOCK-STEP with the
+   * flow-eval extension's re-declared `SessionEvidence`.
+   */
+  refusals: Record<string, number>;
   /** Field names that were absent / unknown (e.g. `subagent_tokens`, `plans_touched`). */
   gaps: string[];
   /**
@@ -292,6 +307,7 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
   const written: string[] = [];
   const edited: string[] = [];
   let compactions = 0;
+  const refusals: Record<string, number> = {};
   let subagentTokensKnown = true;
   let anyPlans = false;
   // F13 (plan 046 · AC-08): the run's wall-span, tracked as min/max event epoch.
@@ -327,6 +343,14 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
           break;
         case 'compaction':
           compactions += 1;
+          break;
+        case 'command_exit':
+          // Only a code-carrying exit is evidence of a REFUSAL. A plain non-zero
+          // exit is a failure of some other kind, and conflating the two would
+          // make "the gate stopped me" unprovable all over again.
+          if (typeof ev.code === 'string' && ev.code.length > 0) {
+            refusals[ev.code] = (refusals[ev.code] ?? 0) + 1;
+          }
           break;
         default:
           break; // other kinds are not part of the evidence surface
@@ -414,6 +438,7 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
     checks,
     compactions,
     tools,
+    refusals,
     gaps,
     // A span needs ≥ 2 timestamped events; otherwise the duration is honestly
     // unknown (null), never 0. Rounded to whole seconds.

@@ -240,6 +240,7 @@
         "checks",
         "compactions",
         "tools",
+        "refusals",
         "gaps",
         "duration_s"
       ],
@@ -341,6 +342,17 @@
             "minimum": 0
           },
           "description": "tool name \u2192 total invocation count (histogram)."
+        },
+        "refusals": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^E\\d{3}$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "refusal E-code \u2192 count (histogram). The KEY SPACE is pinned to `E###` so this open map cannot become a free-text channel \u2014 the one histogram here whose keys are a closed vocabulary rather than repo-supplied names."
         },
         "gaps": {
           "type": "array",
