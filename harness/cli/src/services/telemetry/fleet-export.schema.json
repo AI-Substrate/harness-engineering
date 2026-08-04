@@ -242,7 +242,9 @@
         "tools",
         "refusals",
         "gaps",
-        "duration_s"
+        "duration_s",
+        "source",
+        "ref_checked"
       ],
       "properties": {
         "pij_session_id": {
@@ -366,6 +368,19 @@
             "null"
           ],
           "minimum": 0
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "buffer",
+            "ref",
+            "buffer+ref"
+          ],
+          "description": "Which surface this evidence was read from (FX001): the live temp buffer, the committed refs/harness-telemetry/* rollup, or the durable union of both. Provenance is stated, never inferred — a silent merge is how the next reader gets lied to about which surface was empty."
+        },
+        "ref_checked": {
+          "type": "boolean",
+          "description": "Whether a refs/harness-telemetry/* namespace was visible locally to check. `false` means the ref surface could not contribute (no git read port, or a clone that never fetched it) — NOT that the ref had nothing for this session, which is an empty join and still reports `true`."
         },
         "token_evidence": {
           "$ref": "#/$defs/tokenEvidence"

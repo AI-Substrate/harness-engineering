@@ -172,6 +172,22 @@ function segmentsFromBlobs(blobs: readonly ShardBlob[]): Segment[] {
 }
 
 /**
+ * Is there a `refs/harness-telemetry/*` namespace to read AT ALL in this clone?
+ *
+ * The provenance answer a reader owes its caller (FX001 · T2): "no evidence" and "no
+ * ref surface to look at" are different statements, and only the second one tells an
+ * operator that the fix is a `git fetch` rather than a re-run. Fail-safe: any error →
+ * `false` (never throws).
+ */
+export function telemetryRefsPresent(gitRead: GitReadPort): boolean {
+  try {
+    return gitRead.listTelemetryRefs(TELEMETRY_REF_GLOB).length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The committed WHOLE-session segments per harness session id — the flushed truth the
  * buffer prune is allowed to delete (finding 02). Readers union these with the buffer's
  * unflushed delta and fold ONCE, which is the same reconstruction `sync` itself performs

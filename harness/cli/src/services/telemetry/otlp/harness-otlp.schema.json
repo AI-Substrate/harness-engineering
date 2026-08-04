@@ -61,6 +61,7 @@
     "harness.command.verb",
     "harness.command.exit",
     "harness.command.status",
+    "harness.command.code",
     "harness.subagent.name",
     "harness.subagent.status",
     "harness.subagent.dur_s",

@@ -5,7 +5,7 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { ChecksStatus } from './events.js';
-import { readRefLanes, readRefSegments } from './ref-source.js';
+import { readRefSegments, telemetryRefsPresent } from './ref-source.js';
 import type { Segment } from './segment.js';
 import { type TokenEvidence, transcriptEvidenceReason } from './token-evidence.js';
 import {
@@ -38,8 +38,16 @@ import {
  * worktree key is the `folder` field of the peer STATE file (`~/.pij/<id>.json`,
  * == `pij path <id> --state`). We read it directly through {@link FsPort} (no
  * shell-out → stays `node:*`-free, P2). Candidate order: explicit `opts.worktree`
- * → pij `folder` → `proc.cwd()`. (A published-refs scan — `refs/harness-telemetry/**`
- * — is a deferred second tier; the buffer is the live source the scorer reads.)
+ * → pij `folder` → `proc.cwd()`.
+ *
+ * TWO SURFACES (FX001): the buffer is the live source, but the post-commit hook
+ * flushes it to `refs/harness-telemetry/*` on EVERY commit — so any subject that
+ * commits blinds its own telemetry lane before an orchestrator can score it. When the
+ * buffer yields no segments for the session (absent OR flushed-markers-only), the read
+ * falls back to the committed refs and folds them the same way, joined on the same
+ * `PIJ_SESSION_ID` key. The evidence SAYS which surface answered (`source`) and
+ * whether a ref namespace existed to check (`ref_checked`); `null` — the act's `E100`
+ * — is reserved for BOTH surfaces being empty. Local refs only: never a fetch.
  *
  * NO CACHE — reads fresh on every call so a downstream fs resolver always observes
  * the latest buffer state.
@@ -106,6 +114,27 @@ export interface SessionEvidence {
    * `SessionEvidence` (`.harness/extensions/flow-eval/resolvers.ts`).
    */
   duration_s: number | null;
+  /**
+   * Which surface this evidence was read from (FX001 · T2).
+   *
+   * `buffer` — the live `.harness/temp/telemetry` spool alone. `ref` — the committed
+   * `refs/harness-telemetry/*` rollup alone, which is where a session lives once a
+   * commit has flushed it. `buffer+ref` — the durable union: the ref's flushed half
+   * plus the buffer's unflushed delta, folded once.
+   *
+   * Provenance is stated, never inferred. A reader that silently merges two surfaces
+   * is how the next debugging session gets lied to about which one was empty.
+   */
+  source: 'buffer' | 'ref' | 'buffer+ref';
+  /**
+   * Whether a `refs/harness-telemetry/*` namespace was visible locally to check.
+   *
+   * `false` means the ref surface could not contribute — no git read port, or a clone
+   * that has never fetched the namespace. NOT the same as "the ref had nothing for
+   * this session": that is an empty join, and it still reports `true`. Read-only —
+   * this never triggers a network fetch.
+   */
+  ref_checked: boolean;
 }
 
 /** The two fs reads the evidence path uses — list buffer subdirs, read each segment. */
@@ -297,7 +326,17 @@ export function turnBuckets(
  * fold instead of reimplementing it (plan 051 · T002; dossier F-05 "reuse, don't
  * reimplement"). `pijSessionId` is echoed into `SessionEvidence.pij_session_id`.
  */
-export function fold(pijSessionId: string, segments: readonly Segment[]): SessionEvidence {
+export function fold(
+  pijSessionId: string,
+  segments: readonly Segment[],
+  /**
+   * Where these segments came from. `ref` stamps the token evidence `ref` and marks
+   * the legacy sum whole-session — a rolled ref holds every seq of the session in ONE
+   * tree by construction, which is the same rule `readRefLanes` (ref-source.ts)
+   * applies. Two readers, one number for one session.
+   */
+  origin: 'live' | 'ref' = 'live',
+): SessionEvidence {
   const skills: Record<string, number> = {};
   const skillOrder: string[] = [];
   const tools: Record<string, number> = {};
@@ -405,8 +444,12 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
   }
   const tokenEvidence =
     usageObservation !== null
-      ? tokenEvidenceFromObservation(usageObservation, 'live')
-      : tokenEvidenceFromLegacyTokens(legacyMeasured ? legacy : null, 'live');
+      ? tokenEvidenceFromObservation(usageObservation, origin)
+      : tokenEvidenceFromLegacyTokens(
+          legacyMeasured ? legacy : null,
+          origin,
+          origin === 'ref' ? { wholeSession: true } : undefined,
+        );
   if (usageObservation === null && legacyMeasured && legacyMissing) {
     tokenEvidence.coverage = 'partial';
     tokenEvidence.reason = 'source_unavailable';
@@ -443,6 +486,11 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
     // A span needs ≥ 2 timestamped events; otherwise the duration is honestly
     // unknown (null), never 0. Rounded to whole seconds.
     duration_s: timestamped >= 2 && maxT > minT ? Math.round((maxT - minT) / 1000) : null,
+    // Provenance the CALLER owns — `fold` only knows which segments it was handed,
+    // not whether a ref surface existed to check. Both are overwritten by the read
+    // path below; these are the honest defaults for a bare fold.
+    source: origin === 'ref' ? 'ref' : 'buffer',
+    ref_checked: origin === 'ref',
   };
 }
 
@@ -521,7 +569,7 @@ function foldDurable(
   telDir: string,
   deps: SessionEvidenceDeps,
 ): SessionEvidence {
-  const { segments, flushedUnreachable } = durableSegments(matched, telDir, deps);
+  const { segments, flushedUnreachable, refRecovered } = durableSegments(matched, telDir, deps);
   const evidence = fold(
     pijSessionId,
     segments.filter((s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId),
@@ -530,7 +578,27 @@ function foldDurable(
     evidence.token_evidence.coverage = 'partial';
     evidence.token_evidence.reason = 'flushed_segments_unreadable';
   }
+  // The union really did read both surfaces — say so rather than let `buffer` imply
+  // the ref contributed nothing.
+  evidence.source = refRecovered.length > 0 ? 'buffer+ref' : 'buffer';
   return evidence;
+}
+
+/**
+ * Tier 2 — the session as its COMMITTED ref knows it (FX001 · T1).
+ *
+ * The post-commit hook flushes on every commit, so a subject that commits blinds its
+ * own telemetry lane: the buffer keeps markers and the segments live only on
+ * `refs/harness-telemetry/*`. This joins those rolled segments by the SAME key the
+ * buffer read uses — `captured_env.PIJ_SESSION_ID` — so a ref belonging to another
+ * session can never satisfy the join. `null` when the ref surface holds nothing for
+ * this pij id, which is what keeps `E100` meaning something.
+ */
+function foldFromRefs(pijSessionId: string, gitRead: GitReadPort): SessionEvidence | null {
+  const matched = [...readRefSegments(gitRead).values()]
+    .flat()
+    .filter((s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId);
+  return matched.length > 0 ? fold(pijSessionId, matched, 'ref') : null;
 }
 
 /**
@@ -546,25 +614,31 @@ export async function getSessionEvidence(
   opts?: SessionEvidenceOpts,
 ): Promise<SessionEvidence | null> {
   try {
+    // Is there a ref namespace at all? Answered once, up front, so the provenance is
+    // the same statement whichever tier ends up answering.
+    const refChecked = deps.gitRead !== undefined && telemetryRefsPresent(deps.gitRead);
+
     for (const telDir of candidateRoots(pijSessionId, deps, opts)) {
       const matched = readBufferedSegments(deps.fs, telDir).filter(
         (e) => e.seg.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
       );
-      if (matched.length > 0) return foldDurable(pijSessionId, matched, telDir, deps);
-    }
-    if (deps.gitRead !== undefined) {
-      const ref = [...readRefLanes(deps.gitRead).values()].find(
-        (lane) => lane.pij_session_id === pijSessionId,
-      );
-      if (ref !== undefined) {
-        const evidence = fold(pijSessionId, []);
-        evidence.harness_session_id = ref.harness_session_id;
-        evidence.segments = ref.segments;
-        evidence.token_evidence = ref.token_evidence;
+      if (matched.length > 0) {
+        const evidence = foldDurable(pijSessionId, matched, telDir, deps);
+        evidence.ref_checked = refChecked;
         return evidence;
       }
     }
-    return null;
+
+    // The buffer is absent or flushed-markers-only. The ref is not a consolation
+    // prize here — after the first commit it is the ONLY place the session exists.
+    if (deps.gitRead !== undefined) {
+      const evidence = foldFromRefs(pijSessionId, deps.gitRead);
+      if (evidence !== null) {
+        evidence.ref_checked = refChecked;
+        return evidence;
+      }
+    }
+    return null; // both surfaces empty — E100 keeps its meaning
   } catch {
     return null;
   }

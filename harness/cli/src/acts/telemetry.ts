@@ -1000,7 +1000,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
   telemetry
     .command('get')
     .description(
-      "Read a pij session's telemetry into a normalized, counts-only evidence object (the conformance scorer's telemetry lane)",
+      "Read a pij session's telemetry into a normalized, counts-only evidence object (the conformance scorer's telemetry lane). Reads the live buffer first and falls back to the committed refs/harness-telemetry/* rollup when a commit has already flushed it; the envelope names its evidence source (`source`: buffer | ref | buffer+ref) and whether a local ref namespace existed to check (`ref_checked`). Local refs only — never a fetch.",
     )
     .argument('<pij-session-id>', 'The pij session id whose telemetry to resolve')
     .option(
@@ -1028,7 +1028,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           deps.clock,
           {
             next_action:
-              'Check the id (`pij list`); telemetry is captured per command — run a harness command in that session, then retry. Use --worktree <path> if it ran from a git worktree.',
+              'BOTH surfaces were empty — the live buffer and the committed refs/harness-telemetry/* rollup. Check the id (`pij list`); telemetry is captured per command — run a harness command in that session, then retry. Use --worktree <path> if it ran from a git worktree.',
           },
         );
         const port: OutputPort =
@@ -1063,7 +1063,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
               emit: () => {
                 const gaps = evidence.gaps.length ? `, gaps: ${evidence.gaps.join(',')}` : '';
                 io.writers.out(
-                  `telemetry get: ${evidence.segments} segment(s), ${evidence.skill_order.length} skill(s), ${Object.keys(evidence.tools).length} tool(s)${gaps}\n`,
+                  `telemetry get: ${evidence.segments} segment(s), ${evidence.skill_order.length} skill(s), ${Object.keys(evidence.tools).length} tool(s)${gaps} [source: ${evidence.source}${evidence.ref_checked ? '' : ', ref namespace absent'}]\n`,
                 );
               },
             };

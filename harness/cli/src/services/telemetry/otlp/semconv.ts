@@ -78,6 +78,12 @@ export const A = {
   CMD_VERB: 'harness.command.verb',
   CMD_EXIT: 'harness.command.exit',
   CMD_STATUS: 'harness.command.status',
+  /**
+   * The refusal's E-code (`E###`), the fixed vocabulary `CommandExitEvent.code`
+   * carries. Without it on the wire, a gate refusal is indistinguishable from any
+   * other non-zero exit the moment the segment is rolled to its ref (FX001 · D2).
+   */
+  CMD_CODE: 'harness.command.code',
   SUBAGENT_NAME: 'harness.subagent.name',
   SUBAGENT_STATUS: 'harness.subagent.status',
   SUBAGENT_DUR_S: 'harness.subagent.dur_s',
