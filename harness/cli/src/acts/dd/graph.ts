@@ -26,6 +26,7 @@ export function registerGraphCommand(dd: Command, io: CliIo, deps: DdActDeps): v
     .option('--path <dir>', 'scope the graph to a subtree (default: the repository root)')
     .action(async (opts: { path?: string }) => {
       const ctx = await createLinkContext(io, deps, { tracked: false });
+      const port = graphPort(io, ctx.port);
       const root = opts.path ? resolveScope(opts.path, ctx.repoRoot) : ctx.repoRoot;
 
       const scan = scanCorpus(ctx.fs, root);
@@ -36,7 +37,7 @@ export function registerGraphCommand(dd: Command, io: CliIo, deps: DdActDeps): v
             details: { root },
             next_action: 'Fix the unreadable directory, then re-run `harness dd graph`.',
           }),
-          ctx.port,
+          port,
         );
       }
 
@@ -67,18 +68,72 @@ export function registerGraphCommand(dd: Command, io: CliIo, deps: DdActDeps): v
             `${issues.length} document(s) could not be scanned — the graph may be incomplete.`,
             ctx.clock,
           ),
-          ctx.port,
+          port,
         );
       }
       exitWithEnvelope(
         formatOk('dd graph', data, ctx.clock, {
           next_action: 'Run `harness dd links <target>` to inspect one document\u2019s edges.',
         }),
-        ctx.port,
+        port,
       );
     });
 
   registerGraphMapCommand(graph, io, deps);
+}
+
+/**
+ * The human port for `dd graph`: the mermaid goes to stdout, JSON is untouched.
+ *
+ * The command whose entire job is to emit a graph was showing a human nothing —
+ * the mermaid it had already built was reachable only under `--json`. The P4
+ * surface grant justified having no `--emit` option on the stated grounds that
+ * "global --json + human mermaid already cover both modes" (`dd-surface.md`, P4
+ * T007c); human mermaid was the other half of that bargain, and this is it.
+ *
+ * RAW AND UNSTYLED, ON A TTY TOO. This is a deliberate exception to the palette
+ * used by `dd graph map`, not an oversight: mermaid is a machine format whose
+ * value is that it can be pasted into a viewer, and SGR bytes in a paste corrupt
+ * the diagram. Colour helps a human read a tree; it damages a document a human
+ * is only carrying somewhere else.
+ *
+ * NOT WRAPPED, EITHER. The 80-column contract belongs to the map tree, where a
+ * line is prose a reader scans. A mermaid line is syntax: a newline inserted in
+ * the middle of one produces a file that does not parse. Do not "fix" this by
+ * routing it through the wrap helper.
+ *
+ * Only the diagram goes to stdout — status, diagnostics and the next action go
+ * to stderr — so `harness dd graph --no-json > graph.mmd` yields a file that is
+ * valid on its own. That is the point of emitting a machine format at all.
+ */
+function graphPort(io: CliIo, jsonPort: OutputPort): OutputPort {
+  if (io.mode === 'json') return jsonPort;
+  return {
+    emit: (envelope: Envelope) => {
+      if (envelope.status === 'error') {
+        io.writers.err(`${envelope.command}: ${envelope.error?.message ?? 'failed'}\n`);
+        if (envelope.next_action) io.writers.err(`  \u2192 ${envelope.next_action}\n`);
+        return;
+      }
+      const data = envelope.data as {
+        root: string;
+        mermaid: string;
+        counts: { nodes: number; edges: number };
+      };
+      // An empty corpus still gets a valid (empty) diagram on stdout, because a
+      // consumer redirecting stdout should always get parseable mermaid. What it
+      // must NOT get is silence: "ok" and no output reads as "here is your
+      // graph" when the truth is "there was nothing to graph". Where it looked
+      // is half the answer — an empty result is almost always a wrong `--path`.
+      if (data.counts.nodes === 0) {
+        io.writers.err(`dd graph: no dd documents found under ${data.root}\n`);
+      }
+      io.writers.out(data.mermaid);
+      // A degraded run carries its explanation in `next_action` (that is what
+      // `formatDegraded` puts there), so it needs no branch of its own.
+      if (envelope.next_action) io.writers.err(`  \u2192 ${envelope.next_action}\n`);
+    },
+  };
 }
 
 /**
