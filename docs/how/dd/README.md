@@ -191,6 +191,25 @@ E451: the change would make tasks.dd.json invalid: value must be an array
 You can still lie to it — but lying means fabricating rows in a diffable
 file with your evidence one click away at review time.
 
+## Where this goes next
+
+Once state, addresses, and typed edges are substrate, more of engineering
+stops being prose. Two that are already on the roadmap (plan 071, phase 3):
+
+- **Fences as data.** An agent's dispatch fence — which paths it may touch,
+  who owns the grant, why it exists, when it expires — as rows in a fence
+  document, with a mechanical check that refuses an out-of-fence change by
+  naming the offending path and the fence row. Fence violations stop being
+  something a reviewer has to notice.
+- **Reviews as documents.** Findings as rows with severity and a repo
+  address, the verdict linking every finding confirmed / refuted / fixed,
+  and each planted-bad control carrying a `pressure` link to the fixture
+  that fired. Review history becomes something you can query across
+  reviews — and across models.
+
+Same trick both times: take a thing agents and humans currently keep honest
+by discipline, and give it rows.
+
 ## Smallest self-contained example
 
 A document needs a schema package. Put both under one directory:
