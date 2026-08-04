@@ -10,7 +10,7 @@ From the repository root:
 
 ```bash
 harness dd validate \
-  docs/plans/065-deterministic-documents/exemplar/plan.dd.json \
+  docs/how/dd/exemplar/plan.dd.json \
   --depth 3
 ```
 
@@ -62,7 +62,7 @@ Scope the starting set:
 
 ```bash
 harness dd doctor \
-  --path docs/plans/065-deterministic-documents/exemplar
+  --path docs/how/dd/exemplar
 ```
 
 The exemplar sweep discovers and checks five documents cleanly. `--path`

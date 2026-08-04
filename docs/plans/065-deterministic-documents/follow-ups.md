@@ -185,7 +185,7 @@ that is a coverage finding, not a clean bill of health.
 command from the exemplar's own folder fails:
 
 ```
-$ cd docs/plans/065-deterministic-documents/exemplar
+$ cd docs/how/dd/exemplar
 $ harness dd build plan.dd.json
 E401  schema "builder/plan" was not found in any discovery root
       (…/exemplar, …/exemplar/.dd, …/exemplar/.harness/.dd, ~/.dd)
@@ -307,12 +307,48 @@ beside it unreconciled — and the honest reading is that a document can assert
 "done" over evidence that says otherwise, which is precisely the failure dd
 exists to prevent.
 
-**Three possible resolutions, needs a ruling:** refuse the disagreement at
-validate time (an ERROR); report it as a WARN; or keep both and make the docs
-state plainly that an explicit state is a *claim* while the summary is the
-*proof*, and that the reader should trust the summary. Whichever is chosen, the
-documentation claim must change — it currently promises reconciliation that does
-not happen.
+### RULED (Jordan, 2026-08-04): WARN — and only when evidence is actually cited
+
+My first framing of this was too broad, and Jordan corrected it: **not every
+checkable thing has evidence.** A reminders list, a simple checklist, a row
+someone ticks — these are legitimate dd documents, and there `state: checked`
+standing alone *is* the truth. Complaining about a self-reported state in
+general would make the common case noisy for no gain.
+
+The defect is narrower. It exists only when a row **cites** evidence and then
+contradicts what it cited:
+
+```json
+{ "id": "tk-0001", "state": "checked", "done": "#evidence/tk-0001" }
+   evidence tk-0001 → [ { "id": "dw-0001", "state": "unchecked" } ]
+```
+
+That is not self-reporting — that is a claim pointing at its own proof and
+disagreeing with it. The document has already told us where to check.
+
+**So the rule is conditional, and the condition is the whole ruling:**
+
+| the row | verdict |
+|---|---|
+| explicit `state`, no evidence link | **silent** — nothing to reconcile against |
+| explicit `state`, cites evidence, agrees | silent |
+| explicit `state`, cites evidence, **contradicts it** | **WARN** |
+
+WARN not ERROR: the disagreement is often transient and legitimate mid-work (a
+task marked done before its last evidence row is filled in), so it must be
+visible without blocking a build. ERROR would make the honest intermediate state
+unrepresentable.
+
+Implementation notes for whoever takes it: the WARN belongs in the validate
+layer beside the other link-class findings, and it needs a new code — but
+**E430-E439 is full**, so this is a genuine block-extension decision rather than
+a free addition. It must also degrade quietly when the evidence link is
+*unresolvable* — a dangling link is already its own finding, and reporting both
+would double-count one defect.
+
+The documentation half is already fixed: `dd-overview.md` no longer claims
+"nothing is self-reported" and now says the derived summary is the one backed by
+rows.
 
 **Method note worth keeping:** my first reproduction probe was malformed and
 failed on an unrelated missing required field, which reads as "cannot

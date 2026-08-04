@@ -63,7 +63,7 @@ at the same time.
 The first working render put a full repo-relative path on every line:
 
 ```
-├─<- [x] docs/plans/065-deterministic-documents/exemplar/tasks/phase-2/tasks.dd…
+├─<- [x] docs/how/dd/exemplar/tasks/phase-2/tasks.dd…
 ```
 
 136 columns, no room for the claim text, and forty characters of it identical on

@@ -50,7 +50,7 @@ At the command line, use a repository-root-qualified address:
 
 ```bash
 harness dd link verify-basis \
-  "docs/plans/065-deterministic-documents/exemplar/plan.dd.json#meta" \
+  "docs/how/dd/exemplar/plan.dd.json#meta" \
   --sha <recorded-sha>
 ```
 
@@ -64,7 +64,7 @@ After reviewing the current target:
 
 ```bash
 harness dd link verify-basis \
-  "docs/plans/065-deterministic-documents/exemplar/plan.dd.json#meta" \
+  "docs/how/dd/exemplar/plan.dd.json#meta" \
   --sha <recorded-sha> \
   --update path/to/consumer.dd.json
 ```

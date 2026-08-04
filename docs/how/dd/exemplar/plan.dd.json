@@ -1,5 +1,7 @@
 {
-  "dd": { "schema": "builder/plan" },
+  "dd": {
+    "schema": "builder/plan"
+  },
   "sections": [
     {
       "name": "meta",
@@ -77,7 +79,9 @@
           "title": "Schema layer & baked docs",
           "brief": "Convention-based schema resolution with shadow reporting, custom enums with their own gate-terminal sets, and the baked `dd docs` corpus with its drift gate.",
           "state": "checked",
-          "depends_on": ["ph-0001"],
+          "depends_on": [
+            "ph-0001"
+          ],
           "tasks": "tasks/phase-2/tasks.dd.json#tasks"
         },
         {
@@ -85,28 +89,37 @@
           "title": "Render, adapters & freshness",
           "brief": "The .dd.json to .dd.md pipeline with derived-state summaries, custom-type adapters that degrade loudly, and live-ledger refresh at render.",
           "state": "checked",
-          "depends_on": ["ph-0002"]
+          "depends_on": [
+            "ph-0002"
+          ]
         },
         {
           "id": "ph-0004",
           "title": "Links, ledger & doctor",
           "brief": "Resolver engine, address and link tooling, the pinned ledger with verify-basis, and the doctor sweep at infinite radius with loop breakers.",
           "state": "checked",
-          "depends_on": ["ph-0002"]
+          "depends_on": [
+            "ph-0002"
+          ]
         },
         {
           "id": "ph-0005",
           "title": "Exemplar, plan verb & checks join",
           "brief": "This corpus, the `harness plan` act, and the integration join that puts dd health inside the repository's own quality gate.",
           "state": "unchecked",
-          "depends_on": ["ph-0003", "ph-0004"]
+          "depends_on": [
+            "ph-0003",
+            "ph-0004"
+          ]
         },
         {
           "id": "ph-0006",
           "title": "Flow-spine gating",
           "brief": "The flow spine becomes dd's first gating consumer: a nav move off a gated node refuses, and --force is the defended, recorded override.",
           "state": "unchecked",
-          "depends_on": ["ph-0005"]
+          "depends_on": [
+            "ph-0005"
+          ]
         }
       ]
     }
@@ -114,12 +127,12 @@
   "references": [
     {
       "path": "tasks/phase-2/tasks.dd.json",
-      "sha": "7ecec970543db1f5523bedf52714d63ed3d194434c48948827f9eeed775c4f3c",
+      "sha": "32a764b25a4767fa18618ad1c5888ffccf405195c8eade99e7aff55d3bb33229",
       "mode": "live"
     },
     {
       "path": "backpressure.dd.json",
-      "sha": "edfd3f50cdfca662d01ea838984688b865333415cf495635a07a1e095ae76526",
+      "sha": "64fb9c9d29ead0712f33d122337fbc1156668bc1e9c15d6a9f8a5c9ef93025b9",
       "mode": "live"
     },
     {

@@ -108,5 +108,5 @@ This page is the tour. The full reference — the address grammar in detail, the
 convention, the completion states and the `human-skipped` receipt convention, the basis ledger,
 the sweep's exclusion contract, and a page of jq recipes — lives in the repository at
 `docs/how/dd/` — a progressive reference, starting at `docs/how/dd/README.md`. A worked corpus
-sits in `docs/plans/065-deterministic-documents/exemplar/`, including a fully self-contained one
+sits in `docs/how/dd/exemplar/`, including a fully self-contained one
 with its own schema and adapters in `exemplar/custom-render/`.

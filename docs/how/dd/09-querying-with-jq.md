@@ -4,14 +4,14 @@ The generated markdown is for reading. The `.dd.json` is for questions. The
 examples below run against:
 
 ```text
-docs/plans/065-deterministic-documents/exemplar/
+docs/how/dd/exemplar/
 ```
 
 Set a shell variable to shorten the commands:
 
 ```bash
-plan=docs/plans/065-deterministic-documents/exemplar/plan.dd.json
-tasks=docs/plans/065-deterministic-documents/exemplar/tasks/phase-2/tasks.dd.json
+plan=docs/how/dd/exemplar/plan.dd.json
+tasks=docs/how/dd/exemplar/tasks/phase-2/tasks.dd.json
 ```
 
 ## Acceptance criteria that still hold the built-in gate
@@ -121,7 +121,7 @@ Each result is an addressable task id under `#evidence/<task-id>`.
 ## Query custom-type source values
 
 ```bash
-release=docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json
+release=docs/how/dd/exemplar/custom-render/release.dd.json
 
 jq '
   .sections[]

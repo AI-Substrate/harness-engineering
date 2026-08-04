@@ -48,7 +48,7 @@ Example:
 ```bash
 harness dd address generate \
   "phases/ph-0002/tasks" \
-  --path docs/plans/065-deterministic-documents/exemplar/plan.dd.json
+  --path docs/how/dd/exemplar/plan.dd.json
 ```
 
 Bare addresses cannot resolve at the command line without a containing

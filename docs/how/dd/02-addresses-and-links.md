@@ -5,7 +5,7 @@ name one of its parts without copying the prose. A dd **address** has one file
 part, one `#` boundary, and an interior:
 
 ```text
-docs/plans/065-deterministic-documents/exemplar/plan.dd.json#phases/ph-0002/tasks
+docs/how/dd/exemplar/plan.dd.json#phases/ph-0002/tasks
 └──────────────────────── file ────────────────────────────┘ └── interior ──┘
 ```
 
@@ -22,7 +22,7 @@ Run the resolver when the classification matters:
 
 ```bash
 harness dd address validate \
-  "docs/plans/065-deterministic-documents/exemplar/plan.dd.json#phases/ph-0002/tasks" \
+  "docs/how/dd/exemplar/plan.dd.json#phases/ph-0002/tasks" \
   --resolve
 ```
 
@@ -63,7 +63,7 @@ was supplied. Use a qualified address at the command line:
 
 ```bash
 harness dd link resolve \
-  "docs/plans/065-deterministic-documents/exemplar/tasks/phase-2/tasks.dd.json#evidence/tk-0201"
+  "docs/how/dd/exemplar/tasks/phase-2/tasks.dd.json#evidence/tk-0201"
 ```
 
 Qualified paths entered on the command line are anchored at the repository
@@ -86,7 +86,7 @@ Generate addresses rather than assembling them:
 ```bash
 harness dd address generate \
   "phases/ph-0002/tasks" \
-  --path docs/plans/065-deterministic-documents/exemplar/plan.dd.json
+  --path docs/how/dd/exemplar/plan.dd.json
 ```
 
 Generation normalizes separators and dot segments, then sends the result
@@ -154,7 +154,7 @@ subsection.
 
 ```bash
 harness dd links \
-  docs/plans/065-deterministic-documents/exemplar/plan.dd.json
+  docs/how/dd/exemplar/plan.dd.json
 ```
 
 The result is computed from current documents; no stored link index can drift.
@@ -165,7 +165,7 @@ For a repository or subtree view:
 
 ```bash
 harness dd graph \
-  --path docs/plans/065-deterministic-documents/exemplar
+  --path docs/how/dd/exemplar
 ```
 
 The graph command returns Mermaid beginning with `flowchart LR`, plus structured

@@ -70,7 +70,7 @@ re-introduce** (from `.harness/records/retro/2026-08-03/003-065-dd-phases-3-4.md
 `dd links` does **not** scope to an item. Run today on a real AC row:
 
 ```bash
-harness dd links "docs/plans/065-deterministic-documents/exemplar/plan.dd.json#acceptance_criteria/ac-0201"
+harness dd links "docs/how/dd/exemplar/plan.dd.json#acceptance_criteria/ac-0201"
 ```
 
 It returns edges for the **whole document**, including
@@ -233,7 +233,7 @@ rather than compensating for it.
 
 ### Test corpora available
 
-- `docs/plans/065-deterministic-documents/exemplar/` — the real four-document
+- `docs/how/dd/exemplar/` — the real four-document
   corpus with AC → backpressure/log links. **The primary target of the use case.**
 - `exemplar/custom-render/` — self-contained, own schema and adapters. Note it
   deliberately reproduces FU-4; leave it alone.

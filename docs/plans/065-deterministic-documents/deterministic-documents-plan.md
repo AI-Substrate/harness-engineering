@@ -184,7 +184,7 @@ graph LR
 | `.harness/extensions/checks/extension.ts` | harness-repo-substrate | cross-domain | dd doctor gate line + `check:dd-docs` cmd gate (P5 — single owner) |
 | `.harness/extensions/repo-sensors/extension.ts` | harness-repo-substrate | cross-domain | `.dd` watch-glob sensor declaration (P5 — single owner; F11) |
 | `harness/cli/src/services/doctor/doctor-service.ts` | harness-cli | cross-domain | shipped `checkDd` layer (P5 — the consumer-repo OOTB path, F2) |
-| `docs/plans/065-deterministic-documents/exemplar/**` | harness-repo-substrate | contract | the living exemplar corpus (P5) |
+| `docs/how/dd/exemplar/**` | harness-repo-substrate | contract | the living exemplar corpus (P5) |
 | `docs/how/harness-dd.md` | harness-repo-substrate | contract | deep reference (P5) |
 | `harness/cli/src/services/flow/{flow-events,flow-mutations,flow-schema}.ts` + `schemas/flow.schema.json` (+ gen) | flow spine | cross-domain | `dd_link` field + gate check (P6 only) |
 | `harness/cli/src/acts/flow.ts` + `services/flow/flow-renderer.ts` | flow spine | cross-domain | refusal wiring, orient/rail/render surfacing (P6 only) |
@@ -307,7 +307,7 @@ grant is recorded in `dd-surface.md` as a P7 PM renegotiation. Dossier:
 | # | Task | Domain | Success Criteria | Notes |
 |---|------|--------|-----------------|-------|
 | 5.1 | `harness plan` core act MVP: `plan new <slug>` scaffolds `plan.dd.json` from `builder/plan` + per-phase task file wiring; `plan render/validate` delegate to dd; **`plan` into RESERVED_NAMES + `registerPlanAct` in app.ts + deviation-ledger row** (already recorded above) | harness-cli | Scaffolded plan validates + renders OOTB | Opus F10 |
-| 5.2 | Living exemplar corpus at `docs/plans/065-deterministic-documents/exemplar/`: real plan.dd.json + `tasks/phase-2/tasks.dd.json` (evidence section keyed by task ids, AC rows with `pressure`/`proven_by`) + rendered md, mirroring workshop-002 shapes | substrate | AC-09 green: validates, renders, jq-queryable | human review for the *clever* bar |
+| 5.2 | Living exemplar corpus at `docs/how/dd/exemplar/`: real plan.dd.json + `tasks/phase-2/tasks.dd.json` (evidence section keyed by task ids, AC rows with `pressure`/`proven_by`) + rendered md, mirroring workshop-002 shapes | substrate | AC-09 green: validates, renders, jq-queryable | human review for the *clever* bar |
 | 5.3 | Integration (single owner): checks extension — `runVerbGate` dd-doctor line (severity via doctor's own envelope) **+ `runCmdGate('check:dd-docs', warn)`**; `gen:dd-docs` into root build script; shipped `checkDd` doctor-service layer (the consumer-repo path); `.dd` watch-glob sensor declaration in repo-sensors | substrate + harness-cli | AC-07 checks half + AC-08 drift half + AC-15 green (`harness checks` green with bad fixtures present) | Opus F2/F3/F11/F12 |
 | 5.4 | `docs/how/harness-dd.md`: grammar, schema convention, states/gating (incl. receipt convention), adapter guide pointer, jq recipes | substrate | Doc exists, lint-clean, linked from dd docs | plain-first rule |
 | 5.5 | End-to-end validation: full `just test` + `harness checks` + recorded exemplar run (`dd validate --depth 3 && dd build --check && dd doctor` + jq demo) in the execution log | harness-cli | All green in one recorded run | evidence for review |

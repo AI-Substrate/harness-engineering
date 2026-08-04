@@ -11,7 +11,7 @@ import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../../../src/services/dd/schema/resolve.js';
 
 const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url)).replace(/\/$/, '');
-const EXEMPLAR = `${REPO_ROOT}/docs/plans/065-deterministic-documents/exemplar`;
+const EXEMPLAR = `${REPO_ROOT}/docs/how/dd/exemplar`;
 const AC_0201 = `${EXEMPLAR}/plan.dd.json#acceptance_criteria/ac-0201`;
 
 const NOT_A_DIRECTORY = new Set(['ENOENT', 'ENOTDIR']);
@@ -107,8 +107,8 @@ describe('dd graph map — the real exemplar corpus', () => {
     });
     expect(result.seed.location).toBe('$.sections[acceptance_criteria].value[0]');
     expect(result.nodes.filter((node) => node.arm === 'out').map((node) => node.address)).toEqual([
-      'docs/plans/065-deterministic-documents/exemplar/backpressure.dd.json#rows/bp-0201',
-      'docs/plans/065-deterministic-documents/exemplar/execution-log.dd.json#entries/lg-0201',
+      'docs/how/dd/exemplar/backpressure.dd.json#rows/bp-0201',
+      'docs/how/dd/exemplar/execution-log.dd.json#entries/lg-0201',
     ]);
     // The `meta` edges — `#rows` and `#entries`, the whole sections — are the
     // ones a document-scoped answer wrongly includes.
@@ -145,12 +145,8 @@ describe('dd graph map — the real exemplar corpus', () => {
       direction: 'in',
     });
     const inbound = result.nodes.filter((node) => node.arm === 'in').map((node) => node.address);
-    expect(inbound).toContain(
-      'docs/plans/065-deterministic-documents/exemplar/execution-log.dd.json#entries/lg-0201',
-    );
-    expect(inbound).toContain(
-      'docs/plans/065-deterministic-documents/exemplar/execution-log.dd.json#entries/lg-0202',
-    );
+    expect(inbound).toContain('docs/how/dd/exemplar/execution-log.dd.json#entries/lg-0201');
+    expect(inbound).toContain('docs/how/dd/exemplar/execution-log.dd.json#entries/lg-0202');
     // Every one of them is a ROW, not a bare file path.
     expect(inbound.every((address) => address.includes('#'))).toBe(true);
   });

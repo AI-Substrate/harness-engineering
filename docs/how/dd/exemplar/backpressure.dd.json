@@ -40,7 +40,7 @@
           "tier": "computational",
           "proof": "This corpus is the subject: validate it at depth 3, prove the rendered siblings do not drift, sweep it with the doctor, and answer a real question with jq.",
           "state": "unchecked",
-          "probe": "harness dd validate docs/plans/065-deterministic-documents/exemplar/plan.dd.json --depth 3"
+          "probe": "harness dd validate docs/how/dd/exemplar/plan.dd.json --depth 3"
         },
         {
           "id": "bp-1201",

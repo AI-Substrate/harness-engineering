@@ -24,7 +24,7 @@ The source stays exact and queryable:
 
 ```bash
 jq '.sections[] | select(.name=="meta") | .value.footprint' \
-  docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json
+  docs/how/dd/exemplar/custom-render/release.dd.json
 ```
 
 The result is `1572864`, not formatted text.
@@ -143,7 +143,7 @@ other readable cell.
 Read these files together:
 
 ```text
-docs/plans/065-deterministic-documents/exemplar/custom-render/
+docs/how/dd/exemplar/custom-render/
 ├── README.md
 ├── release.dd.json
 ├── release.dd.md
@@ -156,13 +156,13 @@ Regenerate it from the repository root:
 
 ```bash
 harness dd build \
-  docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json
+  docs/how/dd/exemplar/custom-render/release.dd.json
 ```
 
 Check byte drift without writing:
 
 ```bash
 harness dd build \
-  docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json \
+  docs/how/dd/exemplar/custom-render/release.dd.json \
   --check
 ```

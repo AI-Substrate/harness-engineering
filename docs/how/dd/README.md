@@ -125,6 +125,36 @@ resolves from the document's own folder; no registry entry is required.
 | [09 - Querying with jq](09-querying-with-jq.md) | copyable questions over real documents |
 | [10 - Command reference](10-command-reference.md) | the complete `harness dd` command family |
 
+## Run the examples
+
+A worked corpus sits in [`exemplar/`](exemplar/), and a `justfile` beside it
+turns every example in these pages into something you can run:
+
+```bash
+cd docs/how/dd
+just                 # list every example
+just graph-ac        # what flows in and out of one acceptance-criteria row
+just graph-truncated # the same row, bounded, showing the truncation warning
+just mermaid         # the whole corpus as a diagram (stdout is only the diagram)
+just validate        # validate a document and everything it links to
+just doctor          # sweep every dd document in the repository
+just q-open          # jq: which acceptance criteria still hold the gate?
+just fu4             # the open cwd defect, demonstrated in three commands
+```
+
+Every recipe changes to the repository root before running, so they work from
+this folder despite the defect described below. You never have to remember it.
+
+The corpus itself:
+
+| | |
+| --- | --- |
+| [`exemplar/plan.dd.json`](exemplar/plan.dd.json) | a real plan, with acceptance criteria linked to their pressure and proof |
+| [`exemplar/backpressure.dd.json`](exemplar/backpressure.dd.json) | the coverage survey those criteria point at |
+| [`exemplar/execution-log.dd.json`](exemplar/execution-log.dd.json) | the log entries that prove them |
+| [`exemplar/tasks/phase-2/`](exemplar/tasks/phase-2/) | one phase's tasks, each with its own evidence list |
+| [`exemplar/custom-render/`](exemplar/custom-render/) | a **fully self-contained** corpus — its own schema, its own adapters, its own completion vocabulary |
+
 ## Current operating rule
 
 Run dd commands from the repository root. Open defect FU-4 currently derives

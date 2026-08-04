@@ -1,5 +1,22 @@
 # custom-render — a self-contained dd corpus with its own schema and adapters
 
+> **⚠ This corpus fails on purpose, and that is the point.**
+>
+> Run `harness dd validate` on it from **this folder** and you get 5 warnings.
+> Run it from the **repository root** and you get a clean bill of health. Run it
+> from the folder **above** and you get a hard `E401`.
+>
+> Three verdicts, one unmodified document, and the only thing that changed is
+> where you were standing. That is open defect **FU-4**, reproduced deliberately
+> and left un-silenced — a fixture that has been quietened cannot prove a fix.
+> See § Known issue at the bottom, or run `just fu4` from `docs/how/dd/` to
+> watch all three happen in a row.
+>
+> **Everything else here works normally.** The custom schema, the three
+> adapters, the enums and the dynamic-key map are all sound, and they resolve
+> from any directory. Only the cross-document links and the containment boundary
+> move with your cwd.
+
 Everything this document needs lives in this folder. Nothing here is registered
 anywhere, imported by anything, or listed in a manifest.
 
@@ -77,7 +94,7 @@ actually read.
 ## Regenerating
 
 ```bash
-harness dd build docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json
+harness dd build docs/how/dd/exemplar/custom-render/release.dd.json
 ```
 
 **Run it from the repository root.** That is not a preference — see below.
@@ -85,7 +102,8 @@ harness dd build docs/plans/065-deterministic-documents/exemplar/custom-render/r
 ## Known issue: what does and does not resolve relatively (FU-4)
 
 This corpus is also a live reproduction of the open defect in
-[`../../follow-ups.md`](../../follow-ups.md) § FU-4. The same unmodified
+[`docs/plans/065-deterministic-documents/follow-ups.md`](../../../../plans/065-deterministic-documents/follow-ups.md)
+§ FU-4. The same unmodified
 document produces **three different verdicts depending on where you stand**:
 
 | cwd | `dd validate release.dd.json` |

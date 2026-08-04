@@ -46,7 +46,7 @@ depth limit.
 The custom release corpus is self-contained:
 
 ```text
-docs/plans/065-deterministic-documents/exemplar/custom-render/
+docs/how/dd/exemplar/custom-render/
 ├── release.dd.json
 └── schemas/release/gate/schema.json
 ```
@@ -197,7 +197,7 @@ probe for a document-local package:
 
 ```bash
 harness dd validate \
-  docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json \
+  docs/how/dd/exemplar/custom-render/release.dd.json \
   --depth 0
 ```
 
