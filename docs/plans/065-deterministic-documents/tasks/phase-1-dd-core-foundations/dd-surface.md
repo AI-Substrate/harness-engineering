@@ -69,6 +69,35 @@ table, and `dd-surface.test.ts` counts the rows.
 | `derives` | this item's state is computed FROM the target |
 | `ref` | a plain reference, carrying no further semantics |
 
+## Frozen flow gate kinds
+
+**GRANTED 2026-08-04 (one-line renegotiation, plan 071 ph-7102, tk-7131/tk-7132)**:
+a flow node's `dd_link` may carry an optional `check`, naming WHICH question the
+departure gate asks. Absent `check` is the completion kind and is byte-identical
+to what shipped in 065 — the opt-in guarantee is unchanged, and a flow with no
+`check` anywhere behaves exactly as before. The vocabulary is FROZEN; an unknown
+value is REFUSED (authoring → `E108`; a file already on disk → `E444` at the
+gate), never defaulted, because both plausible defaults lie: running a check
+nobody asked for, or silently downgrading a gate the author believed they had.
+Extending the set is a one-line renegotiation of this table, and
+`dd-surface.test.ts` counts the rows.
+
+| Gate kind | `dd_link` shape | Question it asks |
+|---|---|---|
+| completion | `{address}` (no `check`) | are every item at the address gate-terminal? |
+| `plan-validate` | `{address, check: "plan-validate"}` | does `harness plan validate --complete` come back green for the plan at the address? |
+
+**No new E-codes.** A non-green check is `E440 DD_GATE_UNSATISFIED` — a gate that
+is not satisfied, which is what it is; an unresolvable address is `E441`; an
+unimplemented `check` is `E444 DD_GATE_EVALUATION_FAILED`, because "this CLI
+cannot answer that question" is precisely a gate that could not be evaluated. An
+agent that already handles a gate refusal handles the second kind without
+learning anything, and E440–E449 stays a complete allocation.
+
+The check gate's `address` accepts BOTH a bare document path and a full
+`path#interior` address; an interior scopes the check to that address's closure
+(the `--address` read), and its absence checks the whole plan.
+
 ## Error allocation
 
 ### E400-E409 — core/validate

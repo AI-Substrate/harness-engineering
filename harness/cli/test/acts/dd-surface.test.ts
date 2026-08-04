@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ErrorCodes } from '../../src/output/error-codes.js';
 import { BUILTIN_RELS } from '../../src/services/dd/core/constants.js';
+import { PLAN_CHECK_KINDS } from '../../src/services/dd/plan/index.js';
 
 const MANIFEST = readFileSync(
   new URL(
@@ -134,10 +135,25 @@ describe('dd frozen surface manifest', () => {
   it('freezes exactly the five built-in link relations, and fails on a sixth', () => {
     // The manifest is the registry; the code follows it. Counting the rows is what
     // makes adding a rel a DELIBERATE renegotiation rather than an import away.
-    const table = MANIFEST.split('## Frozen link relations')[1]?.split('## Error allocation')[0];
+    const table = MANIFEST.split('## Frozen link relations')[1]?.split(
+      '## Frozen flow gate kinds',
+    )[0];
     const rows = [...(table ?? '').matchAll(/^\| `([a-z_]+)` \|/gm)].map((match) => match[1]);
     expect(rows).toStrictEqual([...BUILTIN_RELS]);
     expect(rows).toHaveLength(5);
+  });
+
+  it('freezes the flow gate kinds, and fails on an unregistered one', () => {
+    // Same discipline as the rels, for the same reason: a second gate kind changes
+    // what a departure MEANS, so it arrives by renegotiation or not at all. The
+    // completion kind is listed too — an unnamed default is how a surface quietly
+    // acquires a second one.
+    const table = MANIFEST.split('## Frozen flow gate kinds')[1]?.split('## Error allocation')[0];
+    const rows = [...(table ?? '').matchAll(/^\| (?:`([a-z-]+)`|(completion)) \|/gm)].map(
+      (match) => match[1] ?? match[2],
+    );
+    expect(rows).toStrictEqual(['completion', ...PLAN_CHECK_KINDS]);
+    expect(rows).toHaveLength(2);
   });
 
   it('records the one-way extension reservations', () => {

@@ -13,6 +13,22 @@
  * Every check is written against RELATIONS, never field names. That is what lets
  * a second schema, or a renamed field, inherit the whole layer for free.
  */
+
+export {
+  isPlanCheckKind,
+  PLAN_CHECK_KINDS,
+  type PlanCheckDeps,
+  type PlanCheckFailure,
+  type PlanCheckFailureReason,
+  type PlanCheckKind,
+  type PlanCheckOptions,
+  type PlanCheckReading,
+  type PlanCheckResult,
+  type PlanCheckSchemaResolver,
+  planDocumentSet,
+  readPlanCheck,
+  resolvePlanAddress,
+} from './check.js';
 export {
   buildPlanIndex,
   claimSections,

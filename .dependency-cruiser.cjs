@@ -193,7 +193,7 @@ module.exports = {
     {
       name: 'flow-consumes-dd-sdk-only',
       comment:
-        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts and services/dd/schema/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was) — never reach past one. Covers TYPE-ONLY imports too (see tsPreCompilationDeps above): a type reaching past the barrel couples the flow to an internal shape just as hard as a value does, and breaks the same way when dd moves it.',
+        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts, services/dd/schema/index.ts and services/dd/plan/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was, and as `readPlanCheck` is for the check-kind gate) — never reach past one. Covers TYPE-ONLY imports too (see tsPreCompilationDeps above): a type reaching past the barrel couples the flow to an internal shape just as hard as a value does, and breaks the same way when dd moves it.',
       severity: 'warn',
       // Both flow consumers: the service layer AND the act that composes it. The act
       // is the composition root, so it legitimately constructs dd's adapters — but it
@@ -201,7 +201,7 @@ module.exports = {
       from: { path: '^harness/cli/src/(services/flow|acts/flow\\.ts$)' },
       to: {
         path: '^harness/cli/src/services/dd',
-        pathNot: '^harness/cli/src/services/dd/(links|schema)/index\\.ts$',
+        pathNot: '^harness/cli/src/services/dd/(links|schema|plan)/index\\.ts$',
       },
     },
     {

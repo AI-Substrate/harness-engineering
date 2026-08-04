@@ -5,6 +5,13 @@ import {
   verifyBasis,
 } from '../dd/links/index.js';
 import {
+  isPlanCheckKind,
+  type PlanCheckReading,
+  type PlanCheckResult,
+  readPlanCheck,
+  resolvePlanAddress,
+} from '../dd/plan/index.js';
+import {
   type DdSchemaItem,
   type DdSection,
   deriveSchemaItems,
@@ -12,7 +19,7 @@ import {
   type SchemaRecord,
   type SchemaResolution,
 } from '../dd/schema/index.js';
-import type { DdLink, DdLinkReading } from './flow-events.js';
+import { type DdLink, type DdLinkReading, ddLinkCheck } from './flow-events.js';
 
 /**
  * The flow spine's dd gate (plan 065 Phase 6; workshop-002 Ruling 1; AC-10/AC-11).
@@ -86,7 +93,9 @@ export type DdGateFailureReason =
   /** The address does not resolve to anything in the repository. */
   | 'target-invalid'
   /** The target resolved, but its schema could not be read. */
-  | 'schema-unresolvable';
+  | 'schema-unresolvable'
+  /** The link names a `check` this CLI does not implement. */
+  | 'check-unknown';
 
 export interface DdGateFailure {
   ok: false;
@@ -99,6 +108,13 @@ export interface DdGateFailure {
 
 export interface DdGateReading {
   ok: true;
+  /**
+   * Which question this gate asked. `completion` reads gate-terminal items at the
+   * address; `check` runs a named validator over the plan at the address.
+   */
+  kind: 'completion' | 'check';
+  /** The check the link named, for a `check`-kind reading. */
+  check?: string;
   /** The address as written. */
   address: string;
   /** Absolute path of the resolved target document. */
@@ -119,6 +135,34 @@ export interface DdGateReading {
   incomplete: string[];
   /** EVERY item with the state it carries, in document order (AC-11's per-item read). */
   items: DdGateItem[];
+  /**
+   * Check-kind only: what the validator said, QUOTED. Empty on a green check.
+   *
+   * These messages are produced by the validator and reproduced by the refusal
+   * without interpretation — see {@link evaluateCheckGate}.
+   */
+  findings: DdGateFinding[];
+}
+
+/**
+ * One thing the validator said, carried to the refusal unchanged.
+ *
+ * Every field here is data the CLI itself produced from a document's STRUCTURE —
+ * never a string a document supplied. `message` is the validator's own sentence
+ * (which may quote an address the document contains), and it is treated as text to
+ * print, never as something to execute, resolve or believe: the untrusted-reading
+ * discipline F004/F007 established for `dd_link` counts applies to gate findings
+ * for the same reason, and is pinned by test.
+ */
+export interface DdGateFinding {
+  /** `ERROR` or `WARN`, from the layer that produced it. */
+  severity: string;
+  /** The mechanical issue class or the semantic finding class. */
+  class: string;
+  /** The address or document location the finding is about. */
+  address: string;
+  /** The validator's own words — reproduced verbatim, never re-worded. */
+  message: string;
 }
 
 /** One gated item: what it is called, what state it is in, and whether that passes. */
@@ -167,6 +211,9 @@ export function evaluateDdGate(
     );
   }
 
+  const check = ddLinkCheck(link);
+  if (check !== undefined) return evaluateCheckGate(check, address, deps, options);
+
   const resolution = resolveLink(
     address,
     { schemaResolver: deps.schemaResolver, docLoader: deps.docLoader },
@@ -205,6 +252,7 @@ export function evaluateDdGate(
 
   return {
     ok: true,
+    kind: 'completion',
     address,
     path: target.path,
     sha: target.sha,
@@ -215,7 +263,110 @@ export function evaluateDdGate(
     total: derived.total,
     incomplete: derived.incomplete,
     items: itemsOf(record, section),
+    findings: [],
   };
+}
+
+/**
+ * The CHECK-kind gate (ac-7109): does the plan at this address pass its own
+ * validator?
+ *
+ * The verdict is not re-derived here. `readPlanCheck` is the single implementation
+ * `harness plan validate` runs too, reached through dd's `plan` barrel like every
+ * other seam this file uses — so "the gate says green" and "the verb says green"
+ * are the same sentence, not two implementations that agree until they do not.
+ *
+ * `--complete` is not optional for a gate. A departure is a completion claim, and
+ * the mid-flight posture (opens as one info line, ac-7107) exists precisely so a
+ * human reading a half-built plan is not nagged. A gate asking the mid-flight
+ * question would pass a plan with every row still open, which is the one thing it
+ * exists to stop.
+ *
+ * The address's INTERIOR, when it has one, scopes the check — so a phase node can
+ * gate on its own subgraph and a last-review node on the whole plan, with one
+ * mechanism and no second field. `resolveLink`'s job (which document?) and
+ * `readPlanCheck`'s job (which rows?) meet at the same string.
+ *
+ * ONE ASSERTION, so the counts stay honest: a check gate asks a single question, so
+ * `total` is 1 and `terminal` is 1 exactly when the answer is green. Reporting the
+ * finding count as `total` would render `0/17 ✓` on a plan whose real problem is
+ * that seventeen things are wrong — a badge that gets worse as you fix them.
+ */
+function evaluateCheckGate(
+  check: string,
+  address: string,
+  deps: DdGateDeps,
+  options: DdGateOptions,
+): DdGateResult {
+  if (!isPlanCheckKind(check)) {
+    return failure(
+      'check-unknown',
+      address,
+      `the node gates on check "${check}", which this CLI does not implement`,
+    );
+  }
+
+  const target = resolvePlanAddress(address, options.repoRoot);
+  if (!target.ok) return failure('target-invalid', address, target.message);
+
+  const result = readPlanCheck(target.path, deps, {
+    repoRoot: options.repoRoot,
+    complete: true,
+    address: target.scope,
+  });
+  if (!result.ok) return checkFailure(result, address);
+
+  return {
+    ok: true,
+    kind: 'check',
+    check,
+    address,
+    path: result.path,
+    sha: result.sha,
+    schema: result.schema,
+    gate_terminal: [`${check} green`],
+    complete: result.green,
+    terminal: result.green ? 1 : 0,
+    total: 1,
+    incomplete: result.green ? [] : [address],
+    items: [{ id: address, state: result.green ? 'green' : 'not-green', terminal: result.green }],
+    findings: findingsOf(result),
+  };
+}
+
+/** A plan-check refusal, mapped onto the gate's own failure vocabulary. */
+function checkFailure(
+  result: Extract<PlanCheckResult, { ok: false }>,
+  address: string,
+): DdGateFailure {
+  const reason: DdGateFailureReason =
+    result.reason === 'schema-unresolvable' ? 'schema-unresolvable' : 'target-invalid';
+  return failure(reason, address, result.message);
+}
+
+/**
+ * The validator's findings, mechanical first, each carrying the words the layer
+ * that found it chose.
+ *
+ * Nothing is summarised, truncated or re-phrased. A gate that says "5 problems"
+ * sends the reader back to the command line to ask what they were, which is the
+ * refusal doing half its job; and a gate that re-words a finding invents a second
+ * vocabulary for the same problem.
+ */
+function findingsOf(result: PlanCheckReading): DdGateFinding[] {
+  const mechanical: DdGateFinding[] = result.issues.map((issue) => ({
+    severity: issue.severity,
+    class: issue.class,
+    address: issue.location ?? issue.owner,
+    message: issue.message,
+  }));
+  const semantic: DdGateFinding[] = result.findings.map((finding) => ({
+    severity: finding.severity,
+    class: finding.class,
+    address: finding.address,
+    message: finding.message,
+  }));
+  return [...mechanical, ...semantic];
 }
 
 /** Project a live reading into the recorded, renderer-visible form. */

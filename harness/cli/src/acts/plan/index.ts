@@ -24,9 +24,7 @@ import {
   buildPlanIndex,
   itemKey,
   type PlanDocument,
-  type PlanSemanticResult,
-  readPlanSemantics,
-  scopeFrom,
+  readPlanCheck,
 } from '../../services/dd/plan/index.js';
 import type { SchemaIssue } from '../../services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
@@ -364,29 +362,26 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
           new NodeHash(),
           depth === 0 ? null : await trackedPaths(new NodeExec(), ctx.repoRoot),
         );
-        const issues: Array<DdIssue & { code: string }> = validateWalk(
-          doc,
+        // ONE implementation of "what does this plan's validator say" — the same
+        // call the flow's check-kind gate makes (ac-7109). The verb reading a
+        // second opinion is how a gate ends up refusing work the verb calls
+        // finished, so the verb reads the gate's answer instead.
+        const check = readPlanCheck(
           path,
           { schemaResolver: planResolver(ctx), docLoader: loader },
-          { repoRoot: ctx.repoRoot, depth, mode: 'direct' },
-        ).map((issue) => ({ ...issue, code: DD_ISSUE_CODES[issue.class] }));
-
-        // The MECHANICAL half stays exactly what it was — this is the byte-for-byte
-        // regression pin the design demands: `plan validate` grew opinions, it did
-        // not change its answer about whether a document is well-formed.
-        const blocking = issues.find((issue) => issue.severity === 'ERROR');
-        const semantics = blocking
-          ? null
-          : readPlanSemanticsFor(ctx, path, {
-              ...(opts.complete === true && { complete: true }),
-              ...(opts.address !== undefined && { address: opts.address }),
-            });
-        if (semantics !== null && !semantics.ok) {
+          {
+            repoRoot: ctx.repoRoot,
+            depth,
+            ...(opts.complete === true && { complete: true }),
+            ...(opts.address !== undefined && { address: opts.address }),
+          },
+        );
+        if (!check.ok && check.reason === 'scope-unresolved') {
           exitWithEnvelope(
             formatError(
               'plan validate',
               ErrorCodes.DD_PLAN_SCOPE_UNRESOLVED,
-              semantics.message,
+              check.message,
               ctx.clock,
               {
                 details: { path, address: opts.address },
@@ -397,24 +392,35 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
             ctx.port,
           );
         }
-        const semantic = semantics === null || !semantics.ok ? null : semantics.result;
-        const warnCount =
-          issues.filter((issue) => issue.severity === 'WARN').length +
-          (semantic?.findings.length ?? 0);
+        if (!check.ok) {
+          exitWithEnvelope(
+            formatError('plan validate', ErrorCodes.DD_DOCUMENT_INVALID, check.message, ctx.clock, {
+              details: { path, reason: check.reason },
+              next_action: 'Fix the reported location, then re-run.',
+            }),
+            ctx.port,
+          );
+        }
+
+        const issues: Array<DdIssue & { code: string }> = check.issues.map((issue) => ({
+          ...issue,
+          code: DD_ISSUE_CODES[issue.class],
+        }));
+        const blocking = issues.find((issue) => issue.severity === 'ERROR');
+        const warnCount = check.counts.warn;
         const data = {
           path,
           depth,
-          mode:
-            opts.complete === true ? 'complete' : opts.address !== undefined ? 'scoped' : 'summary',
+          mode: check.mode,
           ...(opts.address !== undefined && { address: opts.address }),
           counts: {
-            error: issues.filter((issue) => issue.severity === 'ERROR').length,
+            error: check.counts.error,
             warn: warnCount,
-            ...(semantic ? { semantic: semantic.counts } : {}),
+            ...(check.counts.semantic ? { semantic: check.counts.semantic } : {}),
           },
           issues,
-          findings: semantic?.findings ?? [],
-          ...(semantic?.summary != null && { summary: semantic.summary }),
+          findings: check.findings,
+          ...(check.summary != null && { summary: check.summary }),
         };
         if (blocking) {
           exitWithEnvelope(
@@ -426,7 +432,7 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
           );
         }
         if (warnCount > 0) {
-          const contradictions = semantic?.counts.contradictions ?? 0;
+          const contradictions = check.counts.semantic?.contradictions ?? 0;
           exitWithEnvelope(
             formatDegraded(
               'plan validate',
@@ -444,74 +450,13 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
             next_action:
               opts.complete === true
                 ? 'Nothing open, nothing unclaimed, nothing contradictory — this plan is complete by its own documents.'
-                : (semantic?.summary ??
+                : (check.summary ??
                   `Run \`harness plan render ${target}\` to regenerate the markdown.`),
           }),
           ctx.port,
         );
       },
     );
-}
-
-type PlanSemanticOutcome =
-  | { ok: true; result: PlanSemanticResult }
-  | { ok: false; message: string };
-
-/**
- * Compose the semantic read: gather the plan's documents, walk them once for
- * edges, flatten to items, then ask the questions.
- *
- * The traversal is `direct` and unfollowed beyond the plan's own set: a plan is
- * accountable for its own documents, and chasing a citation into an unrelated
- * corpus would make one plan's verdict depend on another plan's state.
- */
-function readPlanSemanticsFor(
-  ctx: PlanContext,
-  path: string,
-  options: { complete?: boolean; address?: string },
-): PlanSemanticOutcome {
-  const { doc } = readPlan(ctx, 'plan validate', path);
-  const documentSet = planDocuments(ctx, doc, path);
-  if (!documentSet.ok) return { ok: false, message: documentSet.message };
-  const { entries, loader } = loadPlanDocuments(ctx, documentSet.documents);
-  const resolver = planResolver(ctx);
-  const corpus = traverseCorpus(
-    entries.map((entry) => entry.path),
-    { schemaResolver: resolver, docLoader: loader },
-    { repoRoot: ctx.repoRoot, mode: 'direct', follow: false },
-  );
-  const index = buildPlanIndex(entries, corpus.edges, ctx.repoRoot);
-
-  let scope: ReadonlySet<string> | undefined;
-  if (options.address !== undefined) {
-    const seed = resolveMapSeed(
-      options.address,
-      { schemaResolver: resolver, docLoader: loader },
-      { repoRoot: ctx.repoRoot },
-    );
-    if (!seed.ok) {
-      return {
-        ok: false,
-        message: seed.issues[0]?.message ?? `address did not resolve: ${options.address}`,
-      };
-    }
-    const key = itemKey(seed.path, seed.interior);
-    if (!index.byKey.has(key)) {
-      return {
-        ok: false,
-        message: `${options.address} resolves, but not to a row inside this plan`,
-      };
-    }
-    scope = scopeFrom(index, key);
-  }
-
-  return {
-    ok: true,
-    result: readPlanSemantics(index, {
-      ...(options.complete === true && { complete: true }),
-      ...(scope !== undefined && { scope }),
-    }),
-  };
 }
 
 function registerRenderCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
