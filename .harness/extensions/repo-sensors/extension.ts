@@ -8,6 +8,15 @@ const HARNESS_BIN = 'harness/cli/bin/harness.js';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const SUITE_TIMEOUT_MS = 60_000;
 const COVERAGE_TARGET = 80;
+/**
+ * A ROLLED telemetry ref carries exactly three blobs (`manifest.json`,
+ * `session.logs.jsonl`, `session.metrics.jsonl`). The threshold sits well above
+ * that so an in-flight per-seq ref is not nagged about, while the legacy
+ * unrolled shape — thousands of `<seq>.json` blobs — is impossible to miss.
+ */
+const TELEMETRY_REF_FILE_LIMIT = 16;
+/** Offenders named in the report; the rest are counted, never silently dropped. */
+const TELEMETRY_REF_REPORT_CAP = 5;
 const TODO_TARGET = 20;
 const DEBT_MARKERS = ['TO' + 'DO', 'FIX' + 'ME', 'HA' + 'CK'];
 const INTERNAL_LOCK_PATTERN =
@@ -222,6 +231,77 @@ async function lockHygiene(ctx: SensorRunContext): Promise<SensorReading> {
   };
 }
 
+/**
+ * Watch the size of every `refs/harness-telemetry/**` tree.
+ *
+ * A 17,566-file legacy ref sat in this repo undetected from June because NOTHING
+ * watched ref tree size. This sensor's job is to make that visible, NOT to make it
+ * red: an oversized ref is a `warn` forever if that is the honest state (the June
+ * ref is a known, accepted offender and will trip this by design). It never
+ * returns `fail` — a historical ref is not a broken build.
+ */
+async function telemetryRefSize(ctx: SensorRunContext): Promise<SensorReading> {
+  const listed = await ctx.exec(
+    'git',
+    ['for-each-ref', '--format=%(refname)', 'refs/harness-telemetry'],
+    { timeoutMs: DEFAULT_TIMEOUT_MS },
+  );
+  if (!listed.ok) {
+    return {
+      state: 'skip',
+      details: 'telemetry refs unreadable (no git repo or no refs)',
+      report: [
+        'Measurement: file count of every refs/harness-telemetry/** tree',
+        'Local command: git for-each-ref refs/harness-telemetry',
+        `Result: git exited ${listed.code} — nothing measured`,
+      ].join('\n'),
+      guidance: 'Run this sensor inside a git repository that captures harness telemetry.',
+    };
+  }
+
+  const refs = listed.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('refs/harness-telemetry/'));
+
+  const offenders: { ref: string; files: number }[] = [];
+  let unreadable = 0;
+  for (const ref of refs) {
+    const tree = await ctx.exec('git', ['ls-tree', '-r', '--name-only', ref], {
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    });
+    if (!tree.ok) {
+      unreadable += 1;
+      continue;
+    }
+    const files = tree.stdout.split('\n').filter((line) => line.trim().length > 0).length;
+    if (files > TELEMETRY_REF_FILE_LIMIT) offenders.push({ ref, files });
+  }
+  offenders.sort((a, b) => b.files - a.files);
+
+  const named = offenders
+    .slice(0, TELEMETRY_REF_REPORT_CAP)
+    .map((o) => `${o.ref} (${o.files} files)`);
+  const rest = offenders.length - named.length;
+  return {
+    // WARN, never fail: naming the offender is the whole job.
+    state: offenders.length === 0 ? 'pass' : 'warn',
+    score: offenders.length,
+    direction: 'lower',
+    threshold: 0,
+    details: `${offenders.length}/${refs.length} telemetry ref(s) over ${TELEMETRY_REF_FILE_LIMIT} files`,
+    report: [
+      'Measurement: file count of every refs/harness-telemetry/** tree',
+      'Local command: git for-each-ref + git ls-tree -r --name-only',
+      `Refs measured: ${refs.length}${unreadable > 0 ? ` (${unreadable} unreadable)` : ''}`,
+      `Threshold: more than ${TELEMETRY_REF_FILE_LIMIT} files (a rolled ref carries 3)`,
+      offenders.length === 0
+        ? 'Oversized refs: none'
+        : `Oversized refs: ${named.join(' · ')}${rest > 0 ? ` · +${rest} more` : ''}`,
+    ].join('\n'),
+  };
+}
+
 export default defineExtension({
   name: 'repo-sensors',
   summary: 'Fast deterministic health signals for this repository.',
@@ -354,6 +434,17 @@ export default defineExtension({
       timeoutMs: DEFAULT_TIMEOUT_MS,
       guidance: 'Regenerate only the intended lock topology and normalize resolved URLs to public form.',
       run: lockHygiene,
+    },
+    'telemetry-ref-size': {
+      summary: 'Name any refs/harness-telemetry tree that never rolled; warn only, never a gate failure.',
+      watch: [
+        'harness/cli/src/services/telemetry/**/*.ts',
+        '.githooks/post-commit',
+      ],
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+      guidance:
+        'Inspect the named ref (`git ls-tree -r --name-only <ref> | wc -l`). A rolled ref carries 3 files; an unrolled legacy ref is expected to stay listed here.',
+      run: telemetryRefSize,
     },
   },
 });

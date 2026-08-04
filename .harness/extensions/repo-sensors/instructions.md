@@ -31,6 +31,7 @@ invocations; all other readings retain the 30-second default budget.
 | `coverage-branch` | independent `npm test`, then parse its branch summary | 7,954 ms | 60,000 ms |
 | `todo-debt` | local `git grep` count over tracked debt annotations | 194 ms | 30,000 ms |
 | `lock-hygiene` | local `git grep` over `package-lock.json` | 19 ms | 30,000 ms |
+| `telemetry-ref-size` | local `git for-each-ref` + `git ls-tree` over `refs/harness-telemetry/**` | 931 ms | 30,000 ms |
 
 No wrapper invokes `npx`, installs a package, resolves registry metadata, or
 opens the network. The coverage sensor never depends on the `tests` sensor or a
@@ -49,6 +50,15 @@ without a branch summary becomes `skip`, never a fabricated score.
   intentionally honest and may warn while debt is paid down.
 - `lock-hygiene` is lower-is-better with threshold zero and fails if a private
   feed, CDN, proxy, or signed URL appears in the tracked lock.
+- `telemetry-ref-size` is lower-is-better with threshold zero and counts
+  `refs/harness-telemetry/**` trees carrying more than 16 files (a ROLLED ref
+  carries exactly 3). It **warns and never fails**: a 17,566-file legacy June ref
+  sat here undetected because nothing watched ref size, and that ref is a known,
+  accepted offender that is expected to trip this forever. The sensor's job is
+  making it visible, not red — `harness sensors check` maps `warn` to exit 0, so
+  it can never break the gate. Refs are read READ-ONLY; nothing is ever written
+  to `refs/harness-telemetry/*`. A ref git cannot read is reported as unreadable
+  in the report, never counted as compliant.
 
 Raw child stdout and stderr are used only to derive decisions. They are never
 copied to `details` or `report`; persisted text is bounded, author-written, and
