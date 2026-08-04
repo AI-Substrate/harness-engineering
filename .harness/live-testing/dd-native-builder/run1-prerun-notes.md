@@ -21,3 +21,24 @@ outside the window.
 Also material to reading this run: the eval measures the BRANCH build
 (base f947a2fc on s065/deterministic-documents), not shipped behaviour —
 deliberate, confirmed with prime.
+
+## Post-run instrument findings (2026-08-05, orchestrator)
+
+1. HEADLINE: the subject never saw the dd-native builder. /builder resolved
+   to the ~/.agents deployed copy (dated Jul 15, pre-dd); the worktree has
+   no project-level builder skill. The base-ref pin covers CLI code but not
+   the SKILL surface. The run therefore measured the July builder's flow —
+   competently driven (markdown plan, receipted flow state, honest refusal
+   handling) — and could not measure dd-native discoverability at all.
+2. A2/A4/A5/A6 PASSED as false positives: their fs globs matched the 14
+   inherited plan.dd.json corpora shipped in base (exemplar + docs), not
+   subject work. The subject authored ZERO dd documents. A3's required FAIL
+   is the one true deterministic signal (a markdown plan exists).
+3. Telemetry lane blind: 0 segments joined for the session; A1/A7/A8/A10
+   unknown. Judged lane filled artifact-only: verdict unknown per rubric
+   (account corroborated by worktree artifacts on every checkable claim).
+4. Verdict FAIL stands and is HONEST at the headline level — the dd-native
+   flow was not driven — but for the wrong mechanical reasons in the
+   capability lane. Read this run as an instrument-topology finding, not a
+   builder-discoverability measurement. Re-run requires: skill-surface
+   pinning + new-since-base assertion scoping + sync/score order pinned.
