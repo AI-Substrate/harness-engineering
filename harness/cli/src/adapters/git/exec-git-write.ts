@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { readFlatTree } from './cat-file-tree.js';
 import { GIT_MAX_BUFFER } from './exec-git-limits.js';
 import {
   type GitWritePort,
@@ -49,6 +50,21 @@ export class ExecGitWrite implements GitWritePort {
     });
   }
 
+  /**
+   * The same invocation as {@link run} but handing back RAW BYTES — `cat-file --batch`
+   * frames its records by BYTE length, so decoding to a string first would
+   * desynchronise the stream on any multi-byte character (plan 067).
+   */
+  private runBytes(args: string[], input?: string) {
+    const r = spawnSync('git', args, {
+      cwd: this.cwd,
+      timeout: this.timeoutMs,
+      maxBuffer: GIT_MAX_BUFFER,
+      ...(input !== undefined && { input }),
+    });
+    return { status: r.status, stdout: r.stdout, error: r.error };
+  }
+
   hashObject(content: string): string {
     const r = this.run(['hash-object', '-w', '--stdin'], content);
     if (r.status !== 0) throw new Error(`git hash-object failed: ${r.stderr?.trim()}`);
@@ -80,10 +96,11 @@ export class ExecGitWrite implements GitWritePort {
 
   readRefTree(ref: string): RefTreeBlob[] | null {
     // Walk the ref's tip tree with `cat-file -p <ref>^{tree}` — a LOCAL read of the
-    // ref's OWN object, never the remote (AC-03) — then `cat-file blob <sha>` each
-    // flat entry. The rolled tree is flat by construction (sync-service builds no
-    // subtrees), so a non-recursive walk suffices; a subtree entry (should never
-    // occur) is skipped.
+    // ref's OWN object, never the remote (AC-03) — then read every flat entry's blob
+    // in ONE `cat-file --batch` (plan 067: a spawn PER blob made a 17.5k-entry legacy
+    // tree cost 17.5k subprocesses). The rolled tree is flat by construction
+    // (sync-service builds no subtrees), so a non-recursive walk suffices; a subtree
+    // entry (should never occur) is skipped.
     //
     // FAIL CLOSED (plan 049 round-2 F1): this is the T007 union base — the flushed
     // half of the rolled rewrite — so a PARTIAL read would force-push a truncated
@@ -92,28 +109,12 @@ export class ExecGitWrite implements GitWritePort {
     // (ENOBUFS truncation, timeout) or a blob read that fails after its sha came
     // FROM the tree THROWS, so the sync surfaces `ok:false` and leaves the ref +
     // buffer + watermark untouched — never a silently short tree.
-    const tree = this.run(['cat-file', '-p', `${ref}^{tree}`]);
-    if (tree.error)
-      throw new Error(`git cat-file tree read failed for ${ref}: ${tree.error.message}`);
-    if (tree.status !== 0) return null; // clean non-zero exit → the ref/tree is absent
-    const blobs: RefTreeBlob[] = [];
-    for (const line of tree.stdout.split('\n')) {
-      // `<mode> SP <type> SP <sha> TAB <name>`.
-      const m = /^(\S+) (\S+) (\S+)\t(.+)$/.exec(line);
-      if (m === null) continue;
-      const [, , type, sha, name] = m;
-      if (type !== 'blob') continue;
-      const blob = this.run(['cat-file', 'blob', sha]);
-      // The sha is FROM the tree listing, so the blob MUST read cleanly. A spawn
-      // error (ENOBUFS/timeout) or a non-zero exit means a partial/lost blob — throw
-      // rather than return a short tree that would rewrite the ref with fewer bytes.
-      if (blob.error || blob.status !== 0)
-        throw new Error(
-          `git cat-file blob read failed for ${name} (${sha}): ${blob.error?.message ?? blob.stderr?.trim()}`,
-        );
-      blobs.push({ name, content: blob.stdout });
+    const result = readFlatTree((args, input) => this.runBytes(args, input), `${ref}^{tree}`);
+    if (result.kind === 'failed') {
+      throw new Error(`git cat-file read failed for ${ref}: ${result.message}`);
     }
-    return blobs;
+    if (result.kind === 'absent') return null; // clean non-zero exit → the ref/tree is absent
+    return result.blobs;
   }
 
   readRefBlob(ref: string, name: string): string | null {

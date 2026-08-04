@@ -91,6 +91,17 @@ export class FakeGitRead implements GitReadPort {
     return (this.shards.get(ref) ?? []).map((b) => ({ ...b }));
   }
 
+  /**
+   * Faithful to the real `cat-file --batch-check` probe: ONE call classifies the whole
+   * set from the seeded TIP trees, WITHOUT reading any blob content — so it is recorded
+   * as a single `refsWithBlob` call and never appears in {@link readRefs} (plan 067's
+   * O(corpus)→O(buffer) contract is asserted on exactly that history).
+   */
+  refsWithBlob(refs: readonly string[], name: string): string[] {
+    this.calls.push('refsWithBlob');
+    return refs.filter((ref) => (this.shards.get(ref) ?? []).some((b) => b.name === name));
+  }
+
   listRefHistory(ref: string): string[] {
     this.calls.push('listRefHistory');
     return [...(this.history.get(ref) ?? [])];
