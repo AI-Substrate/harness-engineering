@@ -14,6 +14,7 @@ import { buildProgram } from '../../src/app.js';
 import type { Envelope } from '../../src/output/envelope.js';
 import type { CliIo, Writers } from '../../src/output/output-port.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
+import { failWriteMidWay } from '../support/partial-write.js';
 
 const EMPTY: VerbRegistry = { verbs: [], records: [] };
 
@@ -345,6 +346,60 @@ describe('dd links family — live over a real corpus', () => {
       after.references[0].sha,
     ]);
     expect(recheck.envelope.data).toMatchObject({ state: 'fresh' });
+  });
+
+  it('leaves the sibling UNTOUCHED when verify-basis --update gives way MID-WRITE', async () => {
+    // The second public mutator through `writeDocumentWithSibling`. Same defect
+    // class, same proof: `writeFileSync` opens with `O_TRUNC`, so a write that
+    // emits some bytes and then throws destroys the old sibling before the new
+    // one is committed. Unstaged, the rollback restores only `docs/plan.dd.json`
+    // and the verb reports E452 "the document was left unchanged" over a repo
+    // that now carries a truncated `docs/plan.dd.md`.
+    const source = join(repo, 'docs/plan.dd.json');
+    const sibling = join(repo, 'docs/plan.dd.md');
+    const before = JSON.parse(readFileSync(source, 'utf8')) as { references: { sha: string }[] };
+
+    // A first, clean re-verification so an existing sibling is on disk to lose.
+    const seeded = await runDd([
+      'dd',
+      'link',
+      'verify-basis',
+      'docs/evidence.dd.json#entries',
+      '--sha',
+      before.references[0]?.sha as string,
+      '--update',
+      'docs/plan.dd.json',
+    ]);
+    expect(seeded.code).toBe(0);
+    const sourceBefore = readFileSync(source, 'utf8');
+    const siblingBefore = readFileSync(sibling, 'utf8');
+    expect(siblingBefore.length).toBeGreaterThan(0);
+
+    // Move the basis again so there is a real mutation to refuse, then make the
+    // sibling write give way half-way. The matcher covers the staging temp.
+    write('docs/evidence.dd.json', evidenceDoc('a second upstream edit'));
+    failWriteMidWay(/\.dd\.md(\.[^/\\]+)?$/);
+    const result = await runDd([
+      'dd',
+      'link',
+      'verify-basis',
+      'docs/evidence.dd.json#entries',
+      '--sha',
+      JSON.parse(sourceBefore).references[0].sha,
+      '--update',
+      'docs/plan.dd.json',
+    ]);
+
+    expect(result.code).toBe(1);
+    expect(result.envelope.error?.code).toBe('E452');
+    expect(result.envelope.error?.details).toMatchObject({
+      stage: 'sibling',
+      updated: false,
+      source_restored: true,
+    });
+    expect(readFileSync(source, 'utf8')).toBe(sourceBefore);
+    expect(readFileSync(sibling, 'utf8')).toBe(siblingBefore);
+    expect(readdirSync(join(repo, 'docs')).filter((name) => name.endsWith('.tmp'))).toEqual([]);
   });
 
   it('T004: a THROWING adapter surfaces in the doctor sweep as a WARN, with the render E-code', async () => {

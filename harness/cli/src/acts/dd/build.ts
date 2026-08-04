@@ -275,6 +275,18 @@ function restoreSource(fs: NodeFs, path: string, previousText: string): boolean 
  * A mutating verb therefore has exactly two outcomes a reader has to reason
  * about: source and sibling both moved, or neither did. There is no third state
  * in which the verb says `written: true` and the drift gate says otherwise.
+ *
+ * Both files are STAGED (`.tmp` then `rename`), the same crash-safe shape
+ * `writeFlowAtomic` gives a flow source and `persistSibling` gives a flow's
+ * sibling. Writing them live made the refusal a liar in exactly one case, and it
+ * is the case that matters: `writeFileSync` opens with `O_TRUNC`, so a write that
+ * gives way after emitting some of its bytes — ENOSPC, a disk error, a process
+ * killed mid-`write(2)` — leaves a TRUNCATED `.dd.md` on disk while the rollback
+ * puts only the `.dd.json` back. The verb then returned E452 saying "the document
+ * was left unchanged", which was false: the repo was left in precisely the drift
+ * state this function exists to make impossible, and `dd build --check` would
+ * later report it as a hand-edit. "It threw" never implied "it wrote nothing";
+ * staging is what makes those two the same claim.
  */
 export async function writeDocumentWithSibling(options: {
   documentPath: string;
@@ -300,9 +312,22 @@ export async function writeDocumentWithSibling(options: {
   }
 
   const fs = new NodeFs();
+  // Whatever a failed staged write managed to emit is scrap: drop it, so a
+  // refusal leaves no half-written file for the next reader (or `git status`).
+  const dropStaged = (staged: string): void => {
+    try {
+      fs.deleteFile(staged);
+    } catch {
+      /* best effort — the staged temp is not the promise, the two live files are */
+    }
+  };
+
+  const stagedSource = `${documentPath}.tmp`;
   try {
-    fs.writeText(documentPath, text);
+    fs.writeText(stagedSource, text);
+    fs.rename(stagedSource, documentPath);
   } catch (error) {
+    dropStaged(stagedSource);
     return {
       ok: false,
       stage: 'source',
@@ -313,10 +338,13 @@ export async function writeDocumentWithSibling(options: {
     };
   }
 
+  const stagedSibling = `${rendered.sibling}.tmp`;
   try {
     fs.mkdirp(posixDirname(rendered.sibling));
-    fs.writeText(rendered.sibling, rendered.markdown);
+    fs.writeText(stagedSibling, rendered.markdown);
+    fs.rename(stagedSibling, rendered.sibling);
   } catch (error) {
+    dropStaged(stagedSibling);
     return {
       ok: false,
       stage: 'sibling',

@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createSyntheticPlan, type SyntheticCorpus } from '../support/dd-corpus.js';
+import { failWriteMidWay } from '../support/partial-write.js';
 import { runCli } from '../support/run-cli.js';
 
 /**
@@ -129,6 +131,44 @@ describe('harness dd get/set/add/rm — live', () => {
     // (c) nothing stale was left where the sibling would have gone
     expect(statSync(sibling).isDirectory()).toBe(true);
     expect(readdirSync(sibling)).toEqual([]);
+  });
+
+  it('leaves the sibling UNTOUCHED when its write gives way MID-WAY (dw-0283)', async () => {
+    // The control above parks a directory on the sibling path, so the write fails
+    // at `open` and the file is never touched — all-or-nothing by luck. This one
+    // injects the failure that actually happens on a full or failing disk: some
+    // bytes land, then the write throws. `writeFileSync` opens with `O_TRUNC`, so
+    // writing the live `.dd.md` destroys the old bytes BEFORE the new ones are
+    // committed. Without staging, the rollback restores only the `.dd.json` and
+    // the verb returns E452 saying the document was left unchanged — while the
+    // repo carries a half-written sibling, the exact drift the either-both-or-
+    // neither contract exists to make impossible.
+    const source = corpus.taskFiles['ph-0001'] as string;
+    const sibling = `${source.replace(/\.json$/, '')}.md`;
+
+    // A first, clean mutation so there IS an existing sibling to be truncated.
+    expect((await runCli(['dd', 'set', `${tasks()}#tasks/tk-0002/title`, 'first'])).code).toBe(0);
+    const sourceBefore = readFileSync(source, 'utf8');
+    const siblingBefore = readFileSync(sibling, 'utf8');
+    expect(siblingBefore.length).toBeGreaterThan(0);
+
+    // Matches the staging temp too — a matcher pinned to `.dd.md` would inject
+    // nothing once the write moved to `.dd.md.tmp`.
+    failWriteMidWay(/\.dd\.md(\.[^/\\]+)?$/);
+    const result = await runCli(['dd', 'set', `${tasks()}#tasks/tk-0002/title`, 'second']);
+
+    expect(result.code).toBe(1);
+    expect(result.envelope?.error?.code).toBe('E452');
+    expect(result.envelope?.error?.details).toMatchObject({
+      stage: 'sibling',
+      written: false,
+      source_restored: true,
+    });
+    // The refusal's claim, checked against the disk rather than taken on trust.
+    expect(readFileSync(source, 'utf8')).toBe(sourceBefore);
+    expect(readFileSync(sibling, 'utf8')).toBe(siblingBefore);
+    // ...and no half-written scrap survives the refusal.
+    expect(readdirSync(dirname(sibling)).filter((name) => name.endsWith('.tmp'))).toEqual([]);
   });
 
   it('mints the next collision-free id under a registered prefix (dw-0284)', async () => {
